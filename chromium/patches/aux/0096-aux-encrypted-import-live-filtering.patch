@@ -1,0 +1,1303 @@
+From: Aux clean-room build
+Subject: [PATCH 0096] Real source Safe Storage migration and live native filtering
+
+Specs: docs/spec/native/adblock-import.md I1/I2 and F1/F4.
+No owner-profile or owner-Keychain acceptance is claimed.
+
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -7255,6 +7255,13 @@
+     mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
+         handshake_client,
+     content::ContentBrowserClient::WebSocketOptions options) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux_adblock::BlockWebSocket(frame, url)) {
++    mojo::Remote<network::mojom::WebSocketHandshakeClient> client(std::move(handshake_client));
++    client->OnFailure("Blocked by Aux filtering", net::ERR_BLOCKED_BY_CLIENT, -1);
++    return;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   // TODO(crbug.com/40195467): Request w/o a frame also should be proxied.
+   if (!frame) {
+diff --git a/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc
+--- a/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc
++++ b/chrome/browser/extensions/api/aux_adblock/cosmetic_host.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
+ #include "chrome/browser/extensions/api/aux_adblock/cosmetic_host.h"
+ 
++#include "base/callback_list.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_writer.h"
+ #include "base/memory/weak_ptr.h"
+@@ -8,6 +9,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "content/public/browser/document_service.h"
+ #include "content/public/browser/render_frame_host.h"
++#include "mojo/public/cpp/bindings/remote.h"
+ namespace aux_adblock {
+ namespace {
+ class Host final : public content::DocumentService<mojom::CosmeticHost> {
+@@ -27,7 +29,30 @@
+         base::BindOnce(&Host::Reply, weak_.GetWeakPtr(), std::move(callback)));
+   }
+ 
++  void Watch(mojo::PendingRemote<mojom::CosmeticClient> client) override {
++    client_.Bind(std::move(client));
++    auto* profile =
++        Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
++    auto* service = FilterService::Get(profile);
++    subscription_ = service->ObserveCosmetics(
++        base::BindRepeating(&Host::Changed, weak_.GetWeakPtr()));
++    service->WhenReady(base::BindOnce(&Host::Changed, weak_.GetWeakPtr()));
++  }
++
+  private:
++  void Changed() {
++    if (!client_.is_bound()) {
++      return;
++    }
++    const auto url = render_frame_host().GetLastCommittedURL();
++    auto* profile =
++        Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
++    client_->ResourcesChanged(
++        base::WriteJson(url.SchemeIsHTTPOrHTTPS()
++                            ? FilterService::Get(profile)->Cosmetics(url)
++                            : base::DictValue())
++            .value_or("{}"));
++  }
+   void Reply(GetResourcesCallback callback) {
+     const auto url = render_frame_host().GetLastCommittedURL();
+     auto* profile =
+@@ -36,6 +61,8 @@
+         base::WriteJson(FilterService::Get(profile)->Cosmetics(url))
+             .value_or("{}"));
+   }
++  mojo::Remote<mojom::CosmeticClient> client_;
++  base::CallbackListSubscription subscription_;
+   base::WeakPtrFactory<Host> weak_{this};
+ };
+ }  // namespace
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc b/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc
+--- a/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc
++++ b/chrome/browser/extensions/api/aux_adblock/filter_hooks.cc
+@@ -11,6 +11,7 @@
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/navigation_throttle.h"
+ #include "content/public/browser/navigation_throttle_registry.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_user_data.h"
+ #include "net/base/net_errors.h"
+@@ -291,4 +292,19 @@
+ void AddNavigationThrottle(content::NavigationThrottleRegistry& registry) {
+   registry.AddThrottle(std::make_unique<DocumentThrottle>(registry));
+ }
++bool BlockWebSocket(content::RenderFrameHost* frame, const GURL& url) {
++  if (!frame) {
++    return false;
++  }
++  auto* service = FilterService::Get(
++      Profile::FromBrowserContext(frame->GetBrowserContext()));
++  if (!service->ready()) {
++    return true;
++  }
++  const auto decision = service->Evaluate(
++      MakeRequest(url, frame->GetLastCommittedOrigin().GetURL(), "websocket"));
++  // A WebSocket cannot safely consume resource redirects or query rewrites.
++  return decision.block || !decision.redirect.empty() ||
++         !decision.rewritten_url.empty();
++}
+ }  // namespace aux_adblock
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_hooks.h b/chrome/browser/extensions/api/aux_adblock/filter_hooks.h
+--- a/chrome/browser/extensions/api/aux_adblock/filter_hooks.h
++++ b/chrome/browser/extensions/api/aux_adblock/filter_hooks.h
+@@ -2,6 +2,7 @@
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_HOOKS_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_ADBLOCK_FILTER_HOOKS_H_
+ #include <memory>
++class GURL;
+ namespace blink {
+ class URLLoaderThrottle;
+ }
+@@ -13,6 +14,7 @@
+ namespace aux_adblock {
+ std::unique_ptr<blink::URLLoaderThrottle> CreateRequestThrottle(
+     content::BrowserContext* context);
++bool BlockWebSocket(content::RenderFrameHost* frame, const GURL& url);
+ void AddNavigationThrottle(content::NavigationThrottleRegistry& registry);
+ }  // namespace aux_adblock
+ #endif
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.cc b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.cc
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+@@ -143,6 +143,10 @@
+ Decision FilterService::Evaluate(const Request& request) const {
+   return enabled_ && engine_ ? engine_->Evaluate(request) : Decision();
+ }
++base::CallbackListSubscription FilterService::ObserveCosmetics(
++    base::RepeatingClosure changed) {
++  return cosmetic_observers_.Add(std::move(changed));
++}
+ base::DictValue FilterService::Cosmetics(const GURL& url) const {
+   return enabled_ && engine_ ? engine_->Cosmetics(url) : base::DictValue();
+ }
+@@ -301,6 +305,7 @@
+   }
+   previous_texts_.clear();
+   engine_ = std::move(engine);
++  cosmetic_observers_.Notify();
+   active_ = generation;
+   loaded_ = true;
+   auto callbacks = std::move(ready_callbacks_);
+@@ -607,6 +612,7 @@
+       return;
+     }
+     enabled_ = args[0].GetBool();
++    cosmetic_observers_.Notify();
+     Persist();
+     done(base::Value(State()));
+     return;
+diff --git a/chrome/browser/extensions/api/aux_adblock/filter_service.h b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.h
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.h
+@@ -4,6 +4,7 @@
+ #include <deque>
+ #include <map>
+ 
++#include "base/callback_list.h"
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/supports_user_data.h"
+@@ -19,6 +20,8 @@
+   ~FilterService() override;
+   bool ready() const { return loaded_ && engine_ != nullptr; }
+   void WhenReady(base::OnceClosure ready);
++  base::CallbackListSubscription ObserveCosmetics(
++      base::RepeatingClosure changed);
+   bool loaded() const { return loaded_; }
+   bool enabled() const { return enabled_; }
+   Decision Evaluate(const Request& request) const;
+@@ -49,6 +52,7 @@
+                   std::string id,
+                   std::string status,
+                   std::string error);
++  base::RepeatingClosureList cosmetic_observers_;
+   std::vector<base::OnceClosure> ready_callbacks_;
+   base::WeakPtr<Profile> profile_;
+   const base::FilePath directory_;
+diff --git a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+--- a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -2,16 +2,22 @@
+ source_set("aux_browser_import") {
+  sources = [ "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "import_webui.cc", "import_webui.h" ]
+  public_deps = [ ":headers" ]
+- deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
++ deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
+ }
+ 
+ source_set("migrator") {
+- sources = [ "migrator.cc", "migrator.h" ]
++ sources = [ "migrator.cc", "migrator.h", "source_crypto.h", "source_crypto_mac.mm" ]
++ frameworks = [ "AppKit.framework", "Security.framework", "LocalAuthentication.framework" ]
+  public_deps = [ "//base" ]
+- deps = [ "//third_party/sqlite" ]
++ deps = [ "//third_party/sqlite", "//crypto", "//third_party/boringssl" ]
+ }
+ executable("migrator_probe") {
+  testonly=true
+  sources=[ "migrator_probe.cc" ]
+  deps=[ ":migrator", "//base", "//third_party/sqlite" ]
+ }
++executable("encrypted_probe") {
++ testonly=true
++ sources=[ "encrypted_probe.mm" ]
++ deps=[ ":migrator", "//base", "//crypto", "//third_party/sqlite" ]
++}
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.cc b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -12,6 +12,7 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
+ #include "chrome/browser/history/history_service_factory.h"
++#include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+@@ -20,9 +21,18 @@
+ #include "components/history/core/browser/history_types.h"
+ #include "components/history/core/common/pref_names.h"
+ #include "components/keyed_service/core/service_access_type.h"
++#include "components/password_manager/core/browser/password_form_digest.h"
++#include "components/password_manager/core/browser/password_store/password_store_consumer.h"
++#include "components/password_manager/core/browser/password_store/stored_credential.h"
++#include "components/password_manager/core/common/password_manager_pref_names.h"
+ #include "components/prefs/pref_service.h"
++#include "content/public/browser/storage_partition.h"
+ #include "extensions/browser/event_router.h"
+ #include "extensions/browser/extension_event_histogram_value.h"
++#include "net/cookies/canonical_cookie.h"
++#include "net/cookies/cookie_access_result.h"
++#include "net/cookies/cookie_options.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
+ #include "ui/base/page_transition_types.h"
+ namespace aux_import {
+ namespace {
+@@ -48,15 +58,65 @@
+                    : base::Time::FromDeltaSinceWindowsEpoch(micros);
+ }
+ }  // namespace
++class SecretLookup final : public password_manager::PasswordStoreConsumer {
++ public:
++  SecretLookup(scoped_refptr<password_manager::PasswordStoreInterface> store,
++               password_manager::StoredCredential form,
++               base::OnceCallback<void(bool, bool)> done)
++      : store_(std::move(store)),
++        form_(std::move(form)),
++        done_(std::move(done)) {}
++  void Start() {
++    store_->GetLogins(password_manager::PasswordFormDigest(
++                          form_.scheme, form_.signon_realm, form_.url),
++                      weak_.GetWeakPtr());
++  }
++  void OnGetPasswordStoreResultsOrErrorFrom(
++      password_manager::PasswordStoreInterface*,
++      base::expected<std::vector<password_manager::StoredCredential>,
++                     password_manager::PasswordStoreBackendError> result)
++      override {
++    if (!result.has_value()) {
++      std::move(done_).Run(false, false);
++      return;
++    }
++    for (const auto& current : result.value()) {
++      if (password_manager::AreStoredCredentialUniqueKeysEqual(current,
++                                                               form_)) {
++        std::move(done_).Run(true, true);
++        return;
++      }
++    }
++    auto store = store_;
++    store_->AddLogin(
++        std::move(form_),
++        base::BindOnce(
++            [](scoped_refptr<password_manager::PasswordStoreInterface> store,
++               base::OnceCallback<void(bool, bool)> done) {
++              std::move(done).Run(
++                  store->GetError() ==
++                      password_manager::ActionableError::kNoError,
++                  false);
++            },
++            std::move(store), std::move(done_)));
++  }
++
++ private:
++  scoped_refptr<password_manager::PasswordStoreInterface> store_;
++  password_manager::StoredCredential form_;
++  base::OnceCallback<void(bool, bool)> done_;
++  base::WeakPtrFactory<SecretLookup> weak_{this};
++};
+ struct ImportService::Job {
+   base::DictValue state;
+-  std::string extension;
++  std::string extension, source;
+   bool firefox = false, cancelled = false;
+   base::FilePath path;
+   std::vector<std::string> categories;
+   size_t category = 0, row = 0;
+   int imported = 0;
+   base::ListValue rows;
++  std::unique_ptr<SecretLookup> secret_lookup;
+ };
+ ImportService* ImportService::Get(Profile* profile) {
+   auto* service = static_cast<ImportService*>(profile->GetUserData(kService));
+@@ -123,6 +183,8 @@
+           (*job.state.FindString("status") == "running" ||
+            *job.state.FindString("status") == "queued")) {
+         job.cancelled = true;
++        job.rows.clear();
++        job.secret_lookup.reset();
+         job.state.Set("status", "cancelled");
+         job.state.Set("importedRows", job.imported);
+         Emit(job);
+@@ -188,6 +250,7 @@
+   }
+   job->firefox = source->FindBool("nativeFirefox").value_or(false);
+   job->extension = extension;
++  job->source = *source_id;
+   for (const auto& category : *categories) {
+     if (!category.is_string() ||
+         std::ranges::find(*source->FindList("categories"), category) ==
+@@ -246,7 +309,7 @@
+   Emit(job);
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+-      base::BindOnce(&ReadCategory, job.path, job.firefox,
++      base::BindOnce(&ReadAuthorizedCategory, job.path, job.firefox, job.source,
+                      job.categories[job.category]),
+       base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));
+ }
+@@ -267,6 +330,15 @@
+   if (const auto* error = data.FindString("error")) {
+     fail(*error);
+     return;
++  }
++  if (auto* secrets = data.FindList(job.categories[job.category])) {
++    if (job.categories[job.category] == "passwords" ||
++        job.categories[job.category] == "cookies") {
++      job.rows = std::move(*secrets);
++      job.row = 0;
++      ApplySecret(id);
++      return;
++    }
+   }
+   if (auto* visits = data.FindList("visits")) {
+     job.rows = std::move(*visits);
+@@ -401,6 +473,176 @@
+   }
+   fail("Source category did not produce valid migration records");
+ }
++
++void ImportService::ApplySecret(std::string id) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    job.rows.clear();
++    return;
++  }
++  if (job.row >= job.rows.size()) {
++    job.rows.clear();
++    CompleteCategory(id);
++    return;
++  }
++  auto& row = job.rows[job.row].GetDict();
++  auto* secret = row.FindString("secret");
++  if (!secret) {
++    DidWriteSecret(id, false);
++    return;
++  }
++  if (job.categories[job.category] == "passwords") {
++    auto* prefs = profile_->GetPrefs();
++    auto store = ProfilePasswordStoreFactory::GetForProfile(
++        profile_.get(), ServiceAccessType::EXPLICIT_ACCESS);
++    if (!store ||
++        !prefs->GetBoolean(
++            password_manager::prefs::kCredentialsEnableService) ||
++        store->GetError() != password_manager::ActionableError::kNoError) {
++      DidWriteSecret(id, false);
++      return;
++    }
++    password_manager::StoredCredential form;
++    form.url = GURL(*row.FindString("url"));
++    form.action = GURL(*row.FindString("action"));
++    form.signon_realm = *row.FindString("realm");
++    if (!form.url.SchemeIsHTTPOrHTTPS() ||
++        !GURL(form.signon_realm).SchemeIsHTTPOrHTTPS()) {
++      DidWriteSecret(id, false);
++      return;
++    }
++    const auto scheme = row.FindInt("scheme").value_or(-1);
++    if (scheme < 0 || scheme > 4) {
++      DidWriteSecret(id, false);
++      return;
++    }
++    form.scheme = static_cast<password_manager::PasswordForm::Scheme>(scheme);
++    form.username_element =
++        base::UTF8ToUTF16(*row.FindString("usernameElement"));
++    form.username_value = base::UTF8ToUTF16(*row.FindString("username"));
++    form.password_element =
++        base::UTF8ToUTF16(*row.FindString("passwordElement"));
++    form.password_value =
++        password_manager::PasswordString(base::UTF8ToUTF16(*secret));
++    form.date_created = Timestamp(row, "created", false);
++    form.date_last_used = Timestamp(row, "used", false);
++    form.date_password_modified = Timestamp(row, "modified", false);
++    form.times_used_in_html_form = row.FindInt("timesUsed").value_or(0);
++    row.Remove("secret");
++    job.secret_lookup = std::make_unique<SecretLookup>(
++        std::move(store), std::move(form),
++        base::BindOnce(&ImportService::DidWriteSecret, weak_.GetWeakPtr(), id));
++    job.secret_lookup->Start();
++    return;
++  }
++  std::string host = *row.FindString("host");
++  if (host.starts_with('.')) {
++    host.erase(0, 1);
++  }
++  const bool secure = row.FindBool("secure").value_or(false);
++  GURL source(std::string(secure ? "https://" : "http://") + host + "/");
++  auto partition = net::CookiePartitionKey::FromStorage(
++      *row.FindString("partition"), row.FindBool("crossSite").value_or(false));
++  const int same_site = row.FindInt("sameSite").value_or(-2),
++            priority = row.FindInt("priority").value_or(-1);
++  if (!source.is_valid() || !partition.has_value() || same_site < -1 ||
++      same_site > 2 || priority < 0 || priority > 2) {
++    DidWriteSecret(id, false);
++    return;
++  }
++  auto expiry = Timestamp(row, "expires", false);
++  if (*row.FindString("expires") == "0") {
++    expiry = base::Time();
++  }
++  if (!expiry.is_null() && expiry <= base::Time::Now()) {
++    row.Remove("secret");
++    DidWriteSecret(id, true, true);
++    return;
++  }
++  const int source_scheme = row.FindInt("sourceScheme").value_or(-1),
++            source_port = row.FindInt("sourcePort").value_or(-2),
++            source_type = row.FindInt("sourceType").value_or(0);
++  if (source_scheme < 0 || source_scheme > 2 || source_port < -1 ||
++      source_port > 65535 || source_type < 1 || source_type > 3 ||
++      row.FindString("name")->size() + secret->size() > 4096 ||
++      host.size() > 253 || row.FindString("path")->size() > 1024) {
++    DidWriteSecret(id, false);
++    return;
++  }
++  source = GURL(std::string(source_scheme == 2 || (source_scheme == 0 && secure)
++                                ? "https://"
++                                : "http://") +
++                host +
++                (source_port >= 0 ? ":" + base::NumberToString(source_port)
++                                  : std::string()) +
++                "/");
++  if (!source.is_valid()) {
++    DidWriteSecret(id, false);
++    return;
++  }
++  auto cookie = net::CanonicalCookie::FromStorage(
++      *row.FindString("name"), *secret, *row.FindString("host"),
++      *row.FindString("path"), Timestamp(row, "created", false), expiry,
++      Timestamp(row, "accessed", false), Timestamp(row, "updated", false),
++      secure, row.FindBool("httpOnly").value_or(false),
++      static_cast<net::CookieSameSite>(same_site),
++      static_cast<net::CookiePriority>(priority), std::move(partition.value()),
++      static_cast<net::CookieSourceScheme>(source_scheme), source_port,
++      static_cast<net::CookieSourceType>(source_type),
++      net::CanonicalCookieFromStorageCallSite::kSqlitePersistentCookieStore);
++  row.Remove("secret");
++  if (!cookie) {
++    DidWriteSecret(id, false);
++    return;
++  }
++  profile_->GetDefaultStoragePartition()
++      ->GetCookieManagerForBrowserProcess()
++      ->SetCanonicalCookie(
++          *cookie, source, net::CookieOptions::MakeAllInclusive(),
++          base::BindOnce(
++              [](base::WeakPtr<ImportService> self, std::string id,
++                 net::CookieAccessResult result) {
++                if (self) {
++                  self->DidWriteSecret(id, result.status.IsInclude());
++                }
++              },
++              weak_.GetWeakPtr(), id));
++}
++void ImportService::DidWriteSecret(std::string id,
++                                   bool accepted,
++                                   bool skipped) {
++  if (!profile_ || !jobs_.contains(id)) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.cancelled) {
++    job.rows.clear();
++    return;
++  }
++  if (!accepted) {
++    job.rows.clear();
++    job.state.Set("status", "failed");
++    job.state.Set("error",
++                  "Destination rejected a credential or cookie; previously "
++                  "accepted rows were retained");
++    job.state.Set("importedRows", job.imported);
++    Emit(job);
++    return;
++  }
++  ++job.row;
++  if (!skipped) {
++    ++job.imported;
++  } else {
++    job.state.Set("skippedRows",
++                  job.state.FindInt("skippedRows").value_or(0) + 1);
++  }
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE,
++      base::BindOnce(&ImportService::ApplySecret, weak_.GetWeakPtr(), id));
++}
+ void ImportService::ApplyHistory(std::string id) {
+   if (!profile_ || !jobs_.contains(id)) {
+     return;
+diff --git a/chrome/browser/extensions/api/aux_browser_import/import_service.h b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.h
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -24,6 +24,8 @@
+   void DidDiscover(Reply reply, base::ListValue);
+   void Next(std::string id);
+   void DidRead(std::string id, base::DictValue);
++  void ApplySecret(std::string id);
++  void DidWriteSecret(std::string id, bool accepted, bool skipped = false);
+   void ApplyHistory(std::string id);
+   void CompleteCategory(std::string id);
+   void Emit(const Job&);
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator.cc b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -2,6 +2,8 @@
+ // Independent Chromium/Firefox snapshot migrators: adblock-import I1/I2.
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
+ 
++#include <algorithm>
++#include <cstring>
+ #include <memory>
+ 
+ #include "base/files/file_enumerator.h"
+@@ -11,6 +13,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/threading/platform_thread.h"
++#include "crypto/hash.h"
+ #include "third_party/sqlite/sqlite3.h"
+ namespace aux_import {
+ namespace {
+@@ -222,7 +225,8 @@
+     base::DictValue source;
+     source.Set("id", family.id);
+     source.Set("name", family.name);
+-    source.Set("installed", base::DirectoryExists(directory));
++    source.Set("installed", base::DirectoryExists(directory) &&
++                                InstalledSourceApplication(family.id));
+     base::ListValue profiles;
+     if (family.firefox) {
+       base::FileEnumerator directories(directory, false,
+@@ -263,8 +267,15 @@
+     for (auto category : {"bookmarks", "history"}) {
+       categories.Append(category);
+     }
++    if (family.firefox) {
++      categories.Append("cookies");
++    }
+     if (!family.firefox) {
+       categories.Append("preferences");
++      if (SupportsSourceKey(family.id)) {
++        categories.Append("passwords");
++        categories.Append("cookies");
++      }
+     }
+     source.Set("categories", std::move(categories));
+     source.Set("nativeFirefox", family.firefox);
+@@ -289,6 +300,84 @@
+     result.Set("error", std::move(message));
+     return std::move(result);
+   };
++  if (firefox && category == "cookies") {
++    std::string snapshot_error;
++    auto db = Snapshot(profile.AppendASCII("cookies.sqlite"), snapshot_error);
++    if (!db) {
++      return base::DictValue().Set("error", snapshot_error);
++    }
++    auto query = Prepare(
++        db.get(),
++        "SELECT "
++        "host,name,path,value,creationTime,expiry,lastAccessed,isSecure,"
++        "isHttpOnly,sameSite,originAttributes FROM moz_cookies LIMIT 50001");
++    if (!query) {
++      return base::DictValue().Set(
++          "error", "Firefox cookie schema lacks required columns");
++    }
++    base::ListValue rows;
++    size_t decoded_bytes = 0;
++    int status;
++    while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
++      if (rows.size() >= 50000) {
++        return base::DictValue().Set("error",
++                                     "Firefox cookie row limit exceeded");
++      }
++      if (!Text(query.get(), 10).empty()) {
++        return base::DictValue().Set(
++            "error",
++            "Firefox container or partition attributes require a separate "
++            "context migrator");
++      }
++      base::DictValue row;
++      for (auto [key, index] :
++           {std::pair{"host", 0}, {"name", 1}, {"path", 2}, {"secret", 3}}) {
++        row.Set(key, Text(query.get(), index));
++      }
++      for (auto [field, value] : row) {
++        const auto& text = value.GetString();
++        decoded_bytes += text.size();
++        if (!base::IsStringUTF8(text)) {
++          return base::DictValue().Set("error",
++                                       "Firefox cookie contains invalid text");
++        }
++      }
++      if (decoded_bytes > 32 * 1024 * 1024) {
++        return base::DictValue().Set(
++            "error", "Firefox decoded cookie size limit exceeded");
++      }
++      constexpr int64_t offset = 11644473600000000LL;
++      const auto creation = sqlite3_column_int64(query.get(), 4),
++                 expiry = sqlite3_column_int64(query.get(), 5),
++                 accessed = sqlite3_column_int64(query.get(), 6);
++      if (creation < 0 || accessed < 0 || creation > INT64_MAX - offset ||
++          accessed > INT64_MAX - offset || expiry < 0 ||
++          expiry > (INT64_MAX - offset) / 1000000) {
++        return base::DictValue().Set(
++            "error", "Firefox cookie timestamp is outside supported bounds");
++      }
++      row.Set("created", base::NumberToString(creation + offset));
++      row.Set("accessed", base::NumberToString(accessed + offset));
++      row.Set("expires",
++              base::NumberToString(expiry ? expiry * 1000000 + offset : 0));
++      row.Set("secure", !!sqlite3_column_int(query.get(), 7));
++      row.Set("httpOnly", !!sqlite3_column_int(query.get(), 8));
++      row.Set("sameSite", sqlite3_column_int(query.get(), 9));
++      row.Set("priority", 1);
++      row.Set("partition", "");
++      row.Set("crossSite", false);
++      row.Set("sourceScheme", 0);
++      row.Set("sourcePort", -1);
++      row.Set("sourceType", 3);
++      row.Set("updated", base::NumberToString(accessed + offset));
++      rows.Append(std::move(row));
++    }
++    if (status != SQLITE_DONE) {
++      return base::DictValue().Set(
++          "error", "Firefox cookie snapshot could not be read completely");
++    }
++    return base::DictValue().Set("cookies", std::move(rows));
++  }
+   if (category == "preferences") {
+     if (firefox) {
+       return error("Firefox preference migration is not supported");
+@@ -420,4 +509,187 @@
+   result.Set("firefoxBookmarks", std::move(entries));
+   return result;
+ }
++
++base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
++                                      std::string category,
++                                      const SourceKey& key) {
++  base::DictValue result;
++  auto fail = [&](const char* message) {
++    result.clear();
++    result.Set("error", message);
++    return std::move(result);
++  };
++  const bool cookies = category == "cookies";
++  if (!cookies && category != "passwords") {
++    return fail("Unknown encrypted category");
++  }
++  auto path = profile.AppendASCII(cookies ? "Network/Cookies" : "Login Data");
++  if (cookies && !base::PathExists(path)) {
++    path = profile.AppendASCII("Cookies");
++  }
++  std::string error;
++  auto db = Snapshot(path, error);
++  if (!db) {
++    result.Set("error", error);
++    return result;
++  }
++  int version = 0;
++  if (cookies) {
++    auto meta = Prepare(db.get(), "SELECT value FROM meta WHERE key='version'");
++    if (!meta || sqlite3_step(meta.get()) != SQLITE_ROW) {
++      return fail("Cookie database version is unavailable");
++    }
++    version = sqlite3_column_int(meta.get(), 0);
++    if (version < 0 || version > 100) {
++      return fail("Cookie database version is unsupported");
++    }
++  }
++  auto query = Prepare(
++      db.get(),
++      cookies
++          ? "SELECT "
++            "host_key,name,path,value,encrypted_value,creation_utc,expires_utc,"
++            "last_access_utc,is_secure,is_httponly,samesite,priority,top_frame_"
++            "site_key,has_cross_site_ancestor,source_scheme,source_port,source_"
++            "type,last_update_utc FROM cookies LIMIT 50001"
++          : "SELECT "
++            "origin_url,action_url,signon_realm,username_element,username_"
++            "value,password_element,password_value,date_created,date_last_used,"
++            "date_password_modified,times_used,blacklisted_by_user,scheme FROM "
++            "logins "
++            "LIMIT 50001");
++  if (!query) {
++    return fail("Encrypted source database lacks required columns");
++  }
++  base::ListValue rows;
++  size_t bytes = 0;
++  int status;
++  while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
++    if (rows.size() >= 50000) {
++      return fail("Encrypted category exceeds the 50000-row limit");
++    }
++    if (!cookies && sqlite3_column_int(query.get(), 11)) {
++      continue;
++    }
++    int column = cookies ? 4 : 6;
++    auto* blob = sqlite3_column_blob(query.get(), column);
++    const int length = sqlite3_column_bytes(query.get(), column);
++    if (length < 0 || length > 1024 * 1024) {
++      return fail("Encrypted source row exceeds the size limit");
++    }
++    std::optional<std::string> plaintext;
++    if (length) {
++      plaintext = DecryptSourceValue(
++          std::string_view(static_cast<const char*>(blob), length), key);
++    } else if (cookies) {
++      plaintext = Text(query.get(), 3);
++    } else {
++      plaintext = std::string();
++    }
++    if (!plaintext) {
++      return fail(
++          "Source value could not be decrypted; wrong key, denied access or "
++          "unsupported encryption version");
++    }
++    const auto host = cookies ? Text(query.get(), 0) : std::string();
++    if (cookies && length && version >= 24) {
++      const auto digest = crypto::hash::Sha256(host);
++      if (plaintext->size() < digest.size() ||
++          !std::ranges::equal(plaintext->substr(0, digest.size()), digest,
++                              [](char a, unsigned char b) {
++                                return static_cast<unsigned char>(a) == b;
++                              })) {
++        return fail("Decrypted cookie does not match its source host");
++      }
++      plaintext->erase(0, digest.size());
++    }
++    if (!base::IsStringUTF8(*plaintext)) {
++      return fail(
++          "Decoded category exceeds its bounds or contains invalid text");
++    }
++    base::DictValue row;
++    row.Set("secret", std::move(*plaintext));
++    if (cookies) {
++      row.Set("host", host);
++      row.Set("name", Text(query.get(), 1));
++      row.Set("path", Text(query.get(), 2));
++      for (auto [field, index] :
++           {std::pair{"created", 5}, {"expires", 6}, {"accessed", 7}}) {
++        row.Set(field,
++                base::NumberToString(sqlite3_column_int64(query.get(), index)));
++      }
++      row.Set("secure", !!sqlite3_column_int(query.get(), 8));
++      row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
++      row.Set("sameSite", sqlite3_column_int(query.get(), 10));
++      row.Set("priority", sqlite3_column_int(query.get(), 11));
++      row.Set("partition", Text(query.get(), 12));
++      row.Set("crossSite", !!sqlite3_column_int(query.get(), 13));
++      row.Set("sourceScheme", sqlite3_column_int(query.get(), 14));
++      row.Set("sourcePort", sqlite3_column_int(query.get(), 15));
++      row.Set("sourceType", sqlite3_column_int(query.get(), 16));
++      row.Set("updated",
++              base::NumberToString(sqlite3_column_int64(query.get(), 17)));
++    } else {
++      for (auto [field, index] : {std::pair{"url", 0},
++                                  {"action", 1},
++                                  {"realm", 2},
++                                  {"usernameElement", 3},
++                                  {"username", 4},
++                                  {"passwordElement", 5}}) {
++        row.Set(field, Text(query.get(), index));
++      }
++      for (auto [field, index] :
++           {std::pair{"created", 7}, {"used", 8}, {"modified", 9}}) {
++        row.Set(field,
++                base::NumberToString(sqlite3_column_int64(query.get(), index)));
++      }
++      row.Set("timesUsed", sqlite3_column_int(query.get(), 10));
++      row.Set("scheme", sqlite3_column_int(query.get(), 12));
++    }
++    bytes += 256;
++    for (auto [field, value] : row) {
++      if (value.is_string()) {
++        bytes += value.GetString().size();
++        if (!base::IsStringUTF8(value.GetString())) {
++          return fail("Decoded source metadata contains invalid text");
++        }
++      }
++    }
++    if (bytes > 32 * 1024 * 1024) {
++      return fail("Decoded category exceeds the 32 MiB limit");
++    }
++    rows.Append(std::move(row));
++  }
++  if (status != SQLITE_DONE) {
++    return fail("Encrypted source snapshot failed while reading rows");
++  }
++  result.Set(cookies ? "cookies" : "passwords", std::move(rows));
++  return result;
++}
++base::DictValue ReadAuthorizedCategory(const base::FilePath& profile,
++                                       bool firefox,
++                                       std::string source,
++                                       std::string category) {
++  if ((firefox && category == "cookies") ||
++      (category != "passwords" && category != "cookies")) {
++    return ReadCategory(profile, firefox, category);
++  }
++  auto database = profile.AppendASCII(
++      category == "passwords" ? "Login Data" : "Network/Cookies");
++  if (category == "cookies" && !base::PathExists(database)) {
++    database = profile.AppendASCII("Cookies");
++  }
++  if (!base::PathExists(database)) {
++    return base::DictValue().Set("error",
++                                 "Selected source database is unavailable");
++  }
++  std::string error;
++  auto key = AuthorizeSourceKey(source, error);
++  if (!key) {
++    return base::DictValue().Set("error", error);
++  }
++  auto result = ReadEncryptedCategory(profile, category, *key);
++  ClearSourceKey(*key);
++  return result;
++}
+ }  // namespace aux_import
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator.h b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.h
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+@@ -3,6 +3,7 @@
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_MIGRATOR_H_
+ #include "base/files/file_path.h"
+ #include "base/values.h"
++#include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
+ namespace aux_import {
+ // Worker-only bounded SQLite backup snapshots and JSON reads. Never writes to
+ // the source profile. Paths come exclusively from native installed discovery.
+@@ -10,5 +11,13 @@
+                              bool firefox,
+                              std::string category);
+ base::ListValue DiscoverSources();
++// Results remain in native worker/UI memory; never returned to extension RPC.
++base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
++                                      std::string category,
++                                      const SourceKey& key);
++base::DictValue ReadAuthorizedCategory(const base::FilePath& profile,
++                                       bool firefox,
++                                       std::string source,
++                                       std::string category);
+ }  // namespace aux_import
+ #endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator_probe.cc
+@@ -77,6 +77,23 @@
+                .FindList("firefoxBookmarks")
+                ->size(),
+            2u);
++  SQLite(
++      profile.AppendASCII("cookies.sqlite"),
++      "CREATE TABLE "
++      "moz_cookies(host,name,path,value,creationTime,expiry,lastAccessed,"
++      "isSecure,isHttpOnly,sameSite,originAttributes);INSERT INTO moz_cookies "
++      "VALUES('.firefox.fixture','test','/"
++      "','fixture-value',1700000000000123,1700000000,1700000000000456,1,1,2,''"
++      ")");
++  auto cookies = aux_import::ReadCategory(profile, true, "cookies");
++  CHECK(!cookies.FindString("error"));
++  CHECK_EQ(*(*cookies.FindList("cookies"))[0].GetDict().FindString("expires"),
++           "13344473600000000");
++  CHECK_EQ(*(*cookies.FindList("cookies"))[0].GetDict().FindString("created"),
++           "13344473600000123");
++  SQLite(profile.AppendASCII("cookies.sqlite"),
++         "UPDATE moz_cookies SET originAttributes='^userContextId=2'");
++  CHECK(aux_import::ReadCategory(profile, true, "cookies").FindString("error"));
+   CHECK(aux_import::ReadCategory(profile, false, "passwords")
+             .FindString("error"));
+   std::cout
+diff --git a/components/aux_adblock/mojom/filters.mojom b/components/aux_adblock/mojom/filters.mojom
+--- a/components/aux_adblock/mojom/filters.mojom
++++ b/components/aux_adblock/mojom/filters.mojom
+@@ -1,4 +1,8 @@
+ // Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
+ module aux_adblock.mojom;
+ // The browser derives document identity from the bound RenderFrameHost.
+-interface CosmeticHost { GetResources() => (string rules_json); };
++interface CosmeticClient { ResourcesChanged(string rules_json); };
++interface CosmeticHost {
++  GetResources() => (string rules_json);
++  Watch(pending_remote<CosmeticClient> client);
++};
+diff --git a/components/aux_adblock/renderer_observer.cc b/components/aux_adblock/renderer_observer.cc
+--- a/components/aux_adblock/renderer_observer.cc
++++ b/components/aux_adblock/renderer_observer.cc
+@@ -20,16 +20,23 @@
+ void RendererObserver::DidCreateDocumentElement() {
+   weak_.InvalidateWeakPtrs();
+   host_.reset();
++  client_.reset();
++  last_rules_.clear();
+   auto url = render_frame()->GetWebFrame()->GetDocument().Url();
+   if (!url.ProtocolIs("http") && !url.ProtocolIs("https")) {
+     return;
+   }
+   render_frame()->GetBrowserInterfaceBroker().GetInterface(
+       host_.BindNewPipeAndPassReceiver());
+-  host_->GetResources(
+-      base::BindOnce(&RendererObserver::Apply, weak_.GetWeakPtr()));
++  host_->Watch(client_.BindNewPipeAndPassRemote());
++}
++void RendererObserver::ResourcesChanged(const std::string& rules) {
++  Apply(rules);
+ }
+ void RendererObserver::Apply(const std::string& rules) {
++  if (rules == last_rules_) {
++    return;
++  }
+   if (rules.size() > 2 * 1024 * 1024) {
+     return;
+   }
+@@ -41,21 +48,23 @@
+   if (!json) {
+     return;
+   }
++  last_rules_ = rules;
+   const std::string code =
+-      R"JS((()=>{'use strict';const rules=)JS" + *json + R"JS(;
++      R"JS((()=>{'use strict';globalThis.__auxCosmeticCleanup?.();const rules=)JS" +
++      *json + R"JS(;
+  const selectors=Array.isArray(rules.selectors)?rules.selectors.slice(0,10000):[];
+  const procedural=Array.isArray(rules.procedural)?rules.procedural.slice(0,1000):[];
+- let paused=false,timer=0,ruleCursor=0,nodeCursor=0;const style=document.createElement('style');
++ if(!selectors.length&&!procedural.length){delete globalThis.__auxCosmeticCleanup;return}const changed=new Map;let paused=false,timer=0,ruleCursor=0,nodeCursor=0;const style=document.createElement('style');
+  const css=[];for(const selector of selectors){if(typeof selector!=='string'||selector.length>2048||/[{}\0]/.test(selector))continue;try{document.querySelector(selector);css.push(selector+'{display:none!important}')}catch{}}
+  style.textContent=css.join('\n');document.documentElement.append(style);
+  const unquote=s=>s.replace(/^(['"])(.*)\1$/,'$2');
+- function pass(){timer=0;if(paused||document.visibilityState==='hidden')return;const start=performance.now();let visited=0;while(ruleCursor<procedural.length){const rule=procedural[ruleCursor];if(!rule||typeof rule.selector!=='string'||typeof rule.value!=='string'){ruleCursor++;nodeCursor=0;continue}let nodes;try{nodes=document.querySelectorAll(rule.selector)}catch{ruleCursor++;nodeCursor=0;continue}while(nodeCursor<nodes.length){if(visited>0&&(visited>=500||performance.now()-start>6)){schedule();return}const node=nodes[nodeCursor++];visited++;let match=false;const text=unquote(rule.value);if(rule.op===':has-text(')match=(node.textContent||'').includes(text);else if(rule.op===':matches-attr('){const i=text.indexOf('=');const name=i<0?text:text.slice(0,i);if(/^[\w:-]+$/.test(name))match=i<0?node.hasAttribute(name):node.getAttribute(name)===unquote(text.slice(i+1));}else if(rule.op===':matches-css('){const i=text.indexOf(':');const name=text.slice(0,i).trim();if(i>0&&/^[a-zA-Z-]+$/.test(name))match=getComputedStyle(node).getPropertyValue(name).trim()===unquote(text.slice(i+1).trim());}if(match&&(node.style.getPropertyValue('display')!=='none'||node.style.getPropertyPriority('display')!=='important'))node.style.setProperty('display','none','important');}ruleCursor++;nodeCursor=0;}ruleCursor=0;nodeCursor=0;}
++ function pass(){timer=0;if(paused||document.visibilityState==='hidden')return;const start=performance.now();let visited=0;while(ruleCursor<procedural.length){const rule=procedural[ruleCursor];if(!rule||typeof rule.selector!=='string'||typeof rule.value!=='string'){ruleCursor++;nodeCursor=0;continue}let nodes;try{nodes=document.querySelectorAll(rule.selector)}catch{ruleCursor++;nodeCursor=0;continue}while(nodeCursor<nodes.length){if(visited>0&&(visited>=500||performance.now()-start>6)){schedule();return}const node=nodes[nodeCursor++];visited++;let match=false;const text=unquote(rule.value);if(rule.op===':has-text(')match=(node.textContent||'').includes(text);else if(rule.op===':matches-attr('){const i=text.indexOf('=');const name=i<0?text:text.slice(0,i);if(/^[\w:-]+$/.test(name))match=i<0?node.hasAttribute(name):node.getAttribute(name)===unquote(text.slice(i+1));}else if(rule.op===':matches-css('){const i=text.indexOf(':');const name=text.slice(0,i).trim();if(i>0&&/^[a-zA-Z-]+$/.test(name))match=getComputedStyle(node).getPropertyValue(name).trim()===unquote(text.slice(i+1).trim());}if(match&&(node.style.getPropertyValue('display')!=='none'||node.style.getPropertyPriority('display')!=='important')){if(!changed.has(node)&&changed.size>=20000)continue;changed.set(node,[node.style.getPropertyValue('display'),node.style.getPropertyPriority('display')]);node.style.setProperty('display','none','important');}}ruleCursor++;nodeCursor=0;}ruleCursor=0;nodeCursor=0;}
+ 
+  function schedule(){if(!paused&&!timer)timer=setTimeout(pass,50)}
+  const observer=new MutationObserver(()=>{if(!style.isConnected&&document.documentElement)document.documentElement.append(style);schedule()});
+  function resume(){paused=false;observer.observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','id','hidden','style','src','href']});schedule()}
+  function suspend(){paused=true;observer.disconnect();clearTimeout(timer);timer=0}
+- addEventListener('pagehide',suspend);document.addEventListener('freeze',suspend);addEventListener('pageshow',resume);document.addEventListener('resume',resume);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')schedule()});resume();
++ const visible=()=>{if(document.visibilityState==='visible')schedule()};globalThis.__auxCosmeticCleanup=()=>{suspend();style.remove();for(const [node,[value,priority]] of changed){if(node.style.getPropertyValue('display')==='none'&&node.style.getPropertyPriority('display')==='important'){if(value)node.style.setProperty('display',value,priority);else node.style.removeProperty('display')}}changed.clear();removeEventListener('pagehide',suspend);document.removeEventListener('freeze',suspend);removeEventListener('pageshow',resume);document.removeEventListener('resume',resume);document.removeEventListener('visibilitychange',visible)};addEventListener('pagehide',suspend);document.addEventListener('freeze',suspend);addEventListener('pageshow',resume);document.addEventListener('resume',resume);document.addEventListener('visibilitychange',visible);resume();
+ })())JS";
+   render_frame()->GetWebFrame()->ExecuteScriptInIsolatedWorld(
+       world_, blink::WebScriptSource(blink::WebString::FromUtf8(code)),
+diff --git a/components/aux_adblock/renderer_observer.h b/components/aux_adblock/renderer_observer.h
+--- a/components/aux_adblock/renderer_observer.h
++++ b/components/aux_adblock/renderer_observer.h
+@@ -4,9 +4,11 @@
+ #include "base/memory/weak_ptr.h"
+ #include "components/aux_adblock/mojom/filters.mojom.h"
+ #include "content/public/renderer/render_frame_observer.h"
++#include "mojo/public/cpp/bindings/receiver.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ namespace aux_adblock {
+-class RendererObserver final : public content::RenderFrameObserver {
++class RendererObserver final : public content::RenderFrameObserver,
++                               public mojom::CosmeticClient {
+  public:
+   RendererObserver(content::RenderFrame* frame, int world_id);
+   ~RendererObserver() override;
+@@ -15,6 +17,9 @@
+   void DidCreateDocumentElement() override;
+   void OnDestruct() override;
+   void Apply(const std::string& rules);
++  void ResourcesChanged(const std::string& rules) override;
++  std::string last_rules_;
++  mojo::Receiver<mojom::CosmeticClient> client_{this};
+   const int world_;
+   mojo::Remote<mojom::CosmeticHost> host_;
+   base::WeakPtrFactory<RendererObserver> weak_{this};
+diff --git a/chrome/browser/extensions/api/aux_browser_import/source_crypto.h b/chrome/browser/extensions/api/aux_browser_import/source_crypto.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SOURCE_CRYPTO_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SOURCE_CRYPTO_H_
++#include <array>
++#include <optional>
++#include <string>
++#include <string_view>
++namespace aux_import {
++struct SourceKey : std::array<unsigned char, 16> {
++  ~SourceKey();
++};
++// Explicit source lookup; never consults the destination OSCrypt provider or
++// its mock-keychain switch. Worker only; macOS may present its permission UI.
++std::optional<SourceKey> AuthorizeSourceKey(std::string_view source,
++                                            std::string& error);
++bool SupportsSourceKey(std::string_view source);
++bool InstalledSourceApplication(std::string_view source);
++SourceKey DeriveSourceKey(std::string_view password);
++std::optional<std::string> DecryptSourceValue(std::string_view ciphertext,
++                                              const SourceKey& key);
++void ClearSourceKey(SourceKey& key);
++}  // namespace aux_import
++#endif
+diff --git a/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+@@ -0,0 +1,148 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Public Chromium macOS v10 encryption format; no reference implementation.
++#include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
++
++#import <AppKit/AppKit.h>
++#include <CommonCrypto/CommonCryptor.h>
++#include <CommonCrypto/CommonKeyDerivation.h>
++#import <LocalAuthentication/LocalAuthentication.h>
++#import <Security/Security.h>
++#include <string.h>
++
++#include "third_party/boringssl/src/include/openssl/mem.h"
++namespace aux_import {
++namespace {
++const char* Service(std::string_view source) {
++  if (source == "chrome") {
++    return "Chrome Safe Storage";
++  }
++  if (source == "brave") {
++    return "Brave Safe Storage";
++  }
++  if (source == "edge") {
++    return "Microsoft Edge Safe Storage";
++  }
++  return nullptr;
++}
++const char* Bundle(std::string_view source) {
++  if (source == "chrome") {
++    return "com.google.Chrome";
++  }
++  if (source == "brave") {
++    return "com.brave.Browser";
++  }
++  if (source == "edge") {
++    return "com.microsoft.edgemac";
++  }
++  if (source == "arc") {
++    return "company.thebrowser.Browser";
++  }
++  if (source == "dia") {
++    return "company.thebrowser.dia";
++  }
++  if (source == "atlas") {
++    return "com.openai.atlas";
++  }
++  if (source == "comet") {
++    return "ai.perplexity.comet";
++  }
++  if (source == "helium") {
++    return "net.imput.helium";
++  }
++  if (source == "firefox") {
++    return "org.mozilla.firefox";
++  }
++  return nullptr;
++}
++}  // namespace
++bool SupportsSourceKey(std::string_view source) {
++  return Service(source);
++}
++bool InstalledSourceApplication(std::string_view source) {
++  @autoreleasepool {
++    const auto* bundle = Bundle(source);
++    return bundle && [[NSWorkspace sharedWorkspace]
++                         URLForApplicationWithBundleIdentifier:
++                             [NSString stringWithUTF8String:bundle]];
++  }
++}
++SourceKey DeriveSourceKey(std::string_view password) {
++  SourceKey key{};
++  constexpr unsigned char salt[] = {'s', 'a', 'l', 't', 'y',
++                                    's', 'a', 'l', 't'};
++  CCKeyDerivationPBKDF(kCCPBKDF2, password.data(), password.size(), salt,
++                       sizeof(salt), kCCPRFHmacAlgSHA1, 1003, key.data(),
++                       key.size());
++  return key;
++}
++SourceKey::~SourceKey() {
++  ClearSourceKey(*this);
++}
++void ClearSourceKey(SourceKey& key) {
++  OPENSSL_cleanse(key.data(), key.size());
++}
++std::optional<SourceKey> AuthorizeSourceKey(std::string_view source,
++                                            std::string& error) {
++  @autoreleasepool {
++    const auto* service = Service(source);
++    if (!service) {
++      error = "Source Safe Storage format is not supported";
++      return {};
++    }
++    LAContext* context = [[LAContext alloc] init];
++    context.interactionNotAllowed = NO;
++    NSDictionary* query = @{
++      (__bridge id)kSecClass : (__bridge id)kSecClassGenericPassword,
++      (__bridge id)kSecAttrService : [NSString stringWithUTF8String:service],
++      (__bridge id)kSecMatchLimit : (__bridge id)kSecMatchLimitOne,
++      (__bridge id)kSecReturnData : @YES,
++      (__bridge id)kSecUseAuthenticationContext : context,
++    };
++    CFTypeRef result = nullptr;
++    const OSStatus status =
++        SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
++    if (status != errSecSuccess || !result ||
++        CFGetTypeID(result) != CFDataGetTypeID()) {
++      if (result) {
++        CFRelease(result);
++      }
++      error = "Source Safe Storage permission was denied or its credential is "
++              "unavailable";
++      return {};
++    }
++    auto data = static_cast<CFDataRef>(result);
++    const auto length = CFDataGetLength(data);
++    if (length <= 0 || length > 4096) {
++      CFRelease(result);
++      error = "Source Safe Storage credential is invalid";
++      return {};
++    }
++    auto key = DeriveSourceKey(std::string_view(
++        reinterpret_cast<const char*>(CFDataGetBytePtr(data)), length));
++    CFRelease(result);
++    return key;
++  }
++}
++std::optional<std::string> DecryptSourceValue(std::string_view ciphertext,
++                                              const SourceKey& key) {
++  if (!ciphertext.starts_with("v10") || ciphertext.size() <= 3 ||
++      ciphertext.size() > 1024 * 1024 || (ciphertext.size() - 3) % 16) {
++    return {};
++  }
++  const auto payload = ciphertext.substr(3);
++  std::string plaintext(payload.size(), '\0');
++  std::array<unsigned char, 16> iv;
++  iv.fill(' ');
++  size_t size = 0;
++  const auto status =
++      CCCrypt(kCCDecrypt, kCCAlgorithmAES, kCCOptionPKCS7Padding, key.data(),
++              key.size(), iv.data(), payload.data(), payload.size(),
++              plaintext.data(), plaintext.size(), &size);
++  if (status != kCCSuccess) {
++    OPENSSL_cleanse(plaintext.data(), plaintext.size());
++    return {};
++  }
++  plaintext.resize(size);
++  return plaintext;
++}
++}  // namespace aux_import
+diff --git a/chrome/browser/extensions/api/aux_browser_import/encrypted_probe.mm b/chrome/browser/extensions/api/aux_browser_import/encrypted_probe.mm
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/encrypted_probe.mm
+@@ -0,0 +1,103 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++// Disposable fixtures only: never asks macOS for a real Safe Storage key.
++#include <CommonCrypto/CommonCryptor.h>
++
++#include <iostream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++#include "crypto/hash.h"
++#include "third_party/sqlite/sqlite3.h"
++namespace {
++std::string Encrypt(std::string_view text, const aux_import::SourceKey& key) {
++  std::string out(text.size() + 32, '\0');
++  std::array<unsigned char, 16> iv;
++  iv.fill(' ');
++  size_t size = 0;
++  CHECK_EQ(CCCrypt(kCCEncrypt, kCCAlgorithmAES, kCCOptionPKCS7Padding,
++                   key.data(), key.size(), iv.data(), text.data(), text.size(),
++                   out.data(), out.size(), &size),
++           kCCSuccess);
++  out.resize(size);
++  return "v10" + out;
++}
++void Execute(sqlite3* db, const std::string& sql) {
++  CHECK_EQ(sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
++}
++}  // namespace
++int main() {
++  CHECK_EQ(sqlite3_initialize(), SQLITE_OK);
++  base::ScopedTempDir temp;
++  CHECK(temp.CreateUniqueTempDir());
++  const auto profile = base::MakeAbsoluteFilePath(temp.GetPath());
++  auto key = aux_import::DeriveSourceKey("fixture source password");
++  CHECK_EQ(base::HexEncode(key), "AF09FA5F9F0623E56E30E339D414C6D7");
++  const auto secret = Encrypt("fixture-password", key);
++  CHECK_EQ(aux_import::DecryptSourceValue(secret, key).value_or(""),
++           "fixture-password");
++  auto wrong = aux_import::DeriveSourceKey("wrong fixture password");
++  // CBC has no authentication tag: padding alone cannot prove key identity.
++  CHECK_NE(aux_import::DecryptSourceValue(secret, wrong).value_or(""),
++           "fixture-password");
++  CHECK(!aux_import::DecryptSourceValue("v20unsupported", key));
++  sqlite3* db = nullptr;
++  CHECK_EQ(sqlite3_open(profile.AppendASCII("Login Data").value().c_str(), &db),
++           SQLITE_OK);
++  Execute(db,
++          "CREATE TABLE "
++          "logins(origin_url,action_url,signon_realm,username_element,username_"
++          "value,password_element,password_value,date_created,date_last_used,"
++          "date_password_modified,times_used,blacklisted_by_user,scheme)");
++  Execute(db,
++          "INSERT INTO logins "
++          "VALUES('https://fixture.test/','https://fixture.test/login','https:/"
++          "/fixture.test/','user','fixture-user','pass',X'" +
++              base::HexEncode(secret) +
++              "',13200000000000001,13200000000000002,13200000000000003,7,0,0)");
++  CHECK_EQ(sqlite3_close(db), SQLITE_OK);
++  auto passwords = aux_import::ReadEncryptedCategory(profile, "passwords", key);
++  CHECK(!passwords.FindString("error"));
++  CHECK_EQ(passwords.FindList("passwords")->size(), 1u);
++  const auto& password = (*passwords.FindList("passwords"))[0].GetDict();
++  CHECK_EQ(*password.FindString("secret"), "fixture-password");
++  CHECK_EQ(*password.FindString("created"), "13200000000000001");
++  CHECK_EQ(sqlite3_open(profile.AppendASCII("Cookies").value().c_str(), &db),
++           SQLITE_OK);
++  Execute(db, "CREATE TABLE meta(key,value);INSERT INTO meta "
++              "VALUES('version',24);CREATE TABLE "
++              "cookies(host_key,name,path,value,encrypted_value,creation_utc,"
++              "expires_utc,last_access_utc,is_secure,is_httponly,samesite,"
++              "priority,top_frame_site_key,has_cross_site_ancestor,source_"
++              "scheme,source_port,source_type,last_update_utc)");
++  auto digest = crypto::hash::Sha256(".fixture.test");
++  std::string text(reinterpret_cast<const char*>(digest.data()), digest.size());
++  text += "fixture-cookie";
++  Execute(db, "INSERT INTO cookies VALUES('.fixture.test','fixture','/','',X'" +
++                  base::HexEncode(Encrypt(text, key)) +
++                  "',13200000000000001,14200000000000001,13200000000000002,1,1,"
++                  "0,1,'https://top.fixture',1,2,443,1,13200000000000003)");
++  CHECK_EQ(sqlite3_close(db), SQLITE_OK);
++  auto cookies = aux_import::ReadEncryptedCategory(profile, "cookies", key);
++  CHECK(!cookies.FindString("error"));
++  const auto& cookie = (*cookies.FindList("cookies"))[0].GetDict();
++  CHECK_EQ(*cookie.FindString("secret"), "fixture-cookie");
++  CHECK(cookie.FindBool("httpOnly").value_or(false));
++  CHECK_EQ(*cookie.FindString("partition"), "https://top.fixture");
++  CHECK_EQ(sqlite3_open(profile.AppendASCII("Cookies").value().c_str(), &db),
++           SQLITE_OK);
++  Execute(db, "UPDATE cookies SET host_key='.tampered.test'");
++  CHECK_EQ(sqlite3_close(db), SQLITE_OK);
++  CHECK(aux_import::ReadEncryptedCategory(profile, "cookies", key)
++            .FindString("error"));
++  std::string error;
++  CHECK(!aux_import::AuthorizeSourceKey("unsupported-fixture", error));
++  aux_import::ClearSourceKey(key);
++  for (auto byte : key) {
++    CHECK_EQ(byte, 0);
++  }
++  std::cout << "Disposable encrypted password/cookie, host binding, exact "
++               "metadata, unsupported format and key-clearing probes passed\n";
++}
