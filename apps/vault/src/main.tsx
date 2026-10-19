@@ -20,6 +20,7 @@ import type { FieldKey, PageFillContext } from './autofill-protocol';
 import type { Snapshot, VaultItem, VaultStatus } from './client';
 import { backgroundRequest, reconnect, resolveAccount, rpc } from './client';
 import { copySensitiveField } from './clipboard';
+import { CredentialExchangeImport } from './credential-exchange';
 import { exportSnapshot } from './export';
 import { FillReview } from './fill-review';
 import { VaultLockSettings } from './lock-settings';
@@ -437,6 +438,7 @@ function App() {
         <ImportDialog
           accountId={accountId}
           vaultId={vaultId}
+          vaults={snapshot.vaults}
           onClose={() => setImporting(false)}
           onImported={() => refresh(accountId)}
         />
@@ -1188,11 +1190,13 @@ function VaultSettings({
 function ImportDialog({
   accountId,
   vaultId,
+  vaults,
   onClose,
   onImported,
 }: {
   accountId: number;
   vaultId: string;
+  vaults: Snapshot['vaults'];
   onClose: () => void;
   onImported: () => Promise<void>;
 }) {
@@ -1227,6 +1231,7 @@ function ImportDialog({
               ['dashlane-csv', 'Dashlane CSV'],
               ['proton-csv', 'Proton CSV'],
               ['bitwarden-json', 'Bitwarden JSON'],
+              ['native-exchange', 'Native password manager exchange'],
             ].map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -1234,88 +1239,99 @@ function ImportDialog({
             ))}
           </select>
         </label>
-        <input
-          type="file"
-          accept=".csv,.json,text/csv,application/json"
-          aria-label="Choose an exported password file"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            if (file.size > 16000000) {
-              setError('Choose a file smaller than 16 MB.');
-              return;
-            }
-            void file
-              .text()
-              .then((text) => {
-                setData(text);
-                setPreview(undefined);
-              })
-              .catch(() => setError('This file could not be read.'));
-          }}
-        />
-        <p className="muted">
-          Choose a file you exported. Aux does not open another browser or
-          password manager profile.
-        </p>
-        <Button
-          disabled={!data || pending}
-          onClick={() => {
-            setPending(true);
-            setError('');
-            void rpc<NonNullable<typeof preview>>(
-              'passwordImport.preview',
-              { accountId, vaultId, source, data },
-              true,
-            )
-              .then(setPreview)
-              .catch((error) => setError(error.message))
-              .finally(() => setPending(false));
-          }}
-        >
-          Review imported items
-        </Button>
-        {preview && (
+        {source === 'native-exchange' ? (
+          <CredentialExchangeImport
+            accountId={accountId}
+            vaults={vaults}
+            initialVaultId={vaultId}
+            onImported={onImported}
+          />
+        ) : (
           <>
-            <p>
-              {preview.valid} of {preview.total} items can be imported.
+            <input
+              type="file"
+              accept=".csv,.json,text/csv,application/json"
+              aria-label="Choose an exported password file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                if (file.size > 16000000) {
+                  setError('Choose a file smaller than 16 MB.');
+                  return;
+                }
+                void file
+                  .text()
+                  .then((text) => {
+                    setData(text);
+                    setPreview(undefined);
+                  })
+                  .catch(() => setError('This file could not be read.'));
+              }}
+            />
+            <p className="muted">
+              Choose a file you exported. Aux does not open another browser or
+              password manager profile.
             </p>
-            {preview.errors.map((error) => (
-              <p key={error.row} className="error">
-                Row {error.row}: {error.message}
-              </p>
-            ))}
-            <ul>
-              {preview.items.slice(0, 20).map((item, index) => (
-                <li key={`${index}.${item.title}`}>
-                  {item.title} · {item.category}
-                </li>
-              ))}
-            </ul>
             <Button
-              className="primary"
-              disabled={pending || preview.valid === 0}
+              disabled={!data || pending}
               onClick={() => {
                 setPending(true);
-                void rpc(
-                  'passwordImport.commit',
-                  { accountId, vaultId, source, data, accepted: true },
+                setError('');
+                void rpc<NonNullable<typeof preview>>(
+                  'passwordImport.preview',
+                  { accountId, vaultId, source, data },
                   true,
                 )
-                  .then(async () => {
-                    setData('');
-                    await onImported();
-                    onClose();
-                  })
+                  .then(setPreview)
                   .catch((error) => setError(error.message))
                   .finally(() => setPending(false));
               }}
             >
-              Import selected items
+              Review imported items
             </Button>
+            {preview && (
+              <>
+                <p>
+                  {preview.valid} of {preview.total} items can be imported.
+                </p>
+                {preview.errors.map((error) => (
+                  <p key={error.row} className="error">
+                    Row {error.row}: {error.message}
+                  </p>
+                ))}
+                <ul>
+                  {preview.items.slice(0, 20).map((item, index) => (
+                    <li key={`${index}.${item.title}`}>
+                      {item.title} · {item.category}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className="primary"
+                  disabled={pending || preview.valid === 0}
+                  onClick={() => {
+                    setPending(true);
+                    void rpc(
+                      'passwordImport.commit',
+                      { accountId, vaultId, source, data, accepted: true },
+                      true,
+                    )
+                      .then(async () => {
+                        setData('');
+                        await onImported();
+                        onClose();
+                      })
+                      .catch((error) => setError(error.message))
+                      .finally(() => setPending(false));
+                  }}
+                >
+                  Import selected items
+                </Button>
+              </>
+            )}
+            {error && <ErrorNotice error={error} />}
           </>
         )}
-        {error && <ErrorNotice error={error} />}
       </div>
     </Dialog>
   );
