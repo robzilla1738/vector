@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { Credentials } from '@aux/agent';
 import {
   accountScopeSchema,
   modelSelectionSchema,
@@ -58,6 +59,16 @@ export const settingTypes: Record<string, z.ZodType> = {
   'models.default': modelSelectionSchema,
   'cli.saveSessions': z.boolean(),
   'skills.disabled': z.array(z.string().min(1)),
+  'onboarding.stage': z.enum([
+    'welcome',
+    'browser-import',
+    'password-import',
+    'model',
+    'permissions',
+    'appearance',
+    'finish',
+  ]),
+  'onboarding.modelDeferred': z.boolean(),
   theme: z.enum(['light', 'dark', 'system']),
   contextAwarenessEnabled: z.boolean(),
   sidebarRecentLimit: z.number().int().min(1).max(200),
@@ -154,10 +165,49 @@ export function createCoreRouter(
         )
         .mutation(({ input }) => store.removeBinding(input)),
       completeOnboarding: procedure
-        .input(scope)
-        .mutation(({ input }) =>
-          store.update(input.accountId, { onboardingCompletedAt: Date.now() }),
-        ),
+        .input(scope.extend({ deferModelSetup: z.boolean().default(false) }))
+        .mutation(({ input }) => {
+          ensure(input.accountId);
+          const path = store.safeFile(input.accountId, 'security-state.json');
+          const security = existsSync(path)
+            ? z
+                .object({
+                  accountId: z.number(),
+                  configured: z.boolean(),
+                  locked: z.boolean(),
+                })
+                .safeParse(JSON.parse(readFileSync(path, 'utf8')))
+            : null;
+          if (
+            !security?.success ||
+            security.data.accountId !== input.accountId ||
+            !security.data.configured ||
+            security.data.locked
+          )
+            throw new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message:
+                'Set up and unlock local account security before finishing.',
+            });
+          if (
+            !input.deferModelSetup &&
+            new Credentials(store).list(input.accountId).length === 0
+          )
+            throw new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message: 'Connect a model or explicitly defer model setup.',
+            });
+          store.set(
+            input.accountId,
+            'settings',
+            'onboarding.modelDeferred',
+            input.deferModelSetup,
+          );
+          store.set(input.accountId, 'settings', 'onboarding.stage', 'finish');
+          return store.update(input.accountId, {
+            onboardingCompletedAt: Date.now(),
+          });
+        }),
       deleteAccount: procedure
         .input(scope)
         .mutation(async ({ input }) => store.deleteAccount(input.accountId)),

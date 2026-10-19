@@ -10,6 +10,11 @@ import { matchingSkills } from '@aux/skills';
 import { TRPCError } from '@trpc/server';
 import type { Hono } from 'hono';
 import { z } from 'zod';
+import {
+  ChannelService,
+  channelTools,
+  createChannelRouter,
+} from './channels/index.js';
 import { createReplService } from './cli/repl.js';
 import { accountSkills, createSkillRouters } from './cli/skills.js';
 import { createContextRouter } from './context/index.js';
@@ -33,6 +38,7 @@ import { createVaultRouters, VaultService } from './vault/index.js';
 export function createFeatures() {
   let engine: AgentEngine | undefined;
   let memory: MemoryService | undefined;
+  let channels: ChannelService | undefined;
   let helper: HelperClient | undefined;
   let importer: HelperClient | undefined;
   let vault: VaultService | undefined;
@@ -58,6 +64,7 @@ export function createFeatures() {
             .join('\n')}\n${active.map((item) => item.body).join('\n\n')}`;
         },
         tools: (session, signal) => ({
+          ...(channels ? channelTools(channels, session, signal) : {}),
           ...(engine && helper
             ? computerUseTools(engine, helper, session, signal)
             : {}),
@@ -85,6 +92,8 @@ export function createFeatures() {
         }),
       });
       const activeEngine = engine;
+      channels = new ChannelService(services.store, activeEngine);
+      channels.resume(services.store.accounts().map((account) => account.id));
       memory = new MemoryService(services.store, activeEngine);
       const history = new BrowsingHistory(memory);
       const inbox = new InboxService(services.store, activeEngine);
@@ -122,6 +131,7 @@ export function createFeatures() {
       repl = createReplService(services, activeEngine);
       return {
         ...createAgentRouters(services, activeEngine),
+        channel: createChannelRouter(services, channels),
         ...createVaultRouters(services, vault),
         ...(importer
           ? {
@@ -152,6 +162,7 @@ export function createFeatures() {
     async shutdown() {
       if (routineTimer) clearInterval(routineTimer);
       await repl?.close();
+      await channels?.close();
       vault?.close();
       await helper?.close();
       await importer?.close();

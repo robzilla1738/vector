@@ -318,7 +318,11 @@ function Onboarding({ accountId }: { accountId: number }) {
         disabled={pending}
         onClick={() => {
           setPending(true);
-          void rpc('accounts.completeOnboarding', { accountId }, true)
+          void rpc(
+            'accounts.completeOnboarding',
+            { accountId, deferModelSetup: true },
+            true,
+          )
             .then(() => {
               location.hash = '/';
             })
