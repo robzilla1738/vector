@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix="aux-helper-smoke-") as directory:
     rows = [json.loads(line) for line in result.stdout.splitlines()]
     assert rows[0]["result"]["service"] == "aux-computer-use"
     assert rows[1]["result"]["fullDiskAccess"] == "unknown"
-    assert rows[1]["result"]["semanticCapture"] == "unavailable"
+    assert rows[1]["result"]["semanticCapture"] in ("available", "permission-required")
     assert rows[2]["error"]["code"] == "UNAUTHORIZED"
     payload = json.dumps({"id": 1, "method": "capabilities"}).encode()
     framed = subprocess.run([str(executable), "--native-messaging"], input=struct.pack("<I", len(payload)) + payload, capture_output=True, timeout=20, env=env, check=True).stdout

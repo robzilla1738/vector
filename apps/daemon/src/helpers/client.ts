@@ -27,6 +27,8 @@ export type HelperMethod =
   | 'input.scroll'
   | 'input.key'
   | 'apps.list'
+  | 'apps.frontmost'
+  | 'accessibility.snapshot'
   | 'apps.open'
   | 'automation.run'
   | 'contacts.search'
@@ -35,7 +37,12 @@ export type HelperMethod =
   | 'vault.biometryStatus'
   | 'vault.biometryEnroll'
   | 'vault.biometryUnlock'
-  | 'vault.biometryRemove';
+  | 'vault.biometryRemove'
+  | 'import.pickFile'
+  | 'import.prepare'
+  | 'import.review'
+  | 'import.commit'
+  | 'import.cancel';
 interface Pending {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
@@ -57,7 +64,9 @@ export class HelperClient {
     if (this.child) return this.child;
     const executable = resolve(this.executable);
     if (
-      basename(executable) !== 'aux-computer-use' ||
+      !['aux-computer-use', 'aux-password-importer'].includes(
+        basename(executable),
+      ) ||
       !existsSync(executable) ||
       !lstatSync(executable).isFile()
     )

@@ -4,6 +4,7 @@ import ApplicationServices
 import Contacts
 import Carbon
 import Darwin
+import CryptoKit
 
 func contactPermission() -> String {
     switch CNContactStore.authorizationStatus(for: .contacts) {
@@ -27,7 +28,7 @@ func automationPermission(_ bundleId: String, request: Bool) throws -> [String: 
 func permissionStatus(_ params: [String: Any]) throws -> [String: Any] {
     let targets = params["automationTargets"] as? [String] ?? []
     guard targets.count <= 20 else { throw HelperError("BAD_REQUEST", "Too many automation targets") }
-    return ["accessibility": AXIsProcessTrusted() ? "granted" : "not-granted", "screenRecording": CGPreflightScreenCaptureAccess() ? "granted" : "not-granted", "contacts": contactPermission(), "automation": try targets.map { try automationPermission($0, request: false) }, "fullDiskAccess": "unknown", "messages": "requires-authorized-operation", "biometry": biometricAvailability(), "semanticCapture": "unavailable"]
+    return ["accessibility": AXIsProcessTrusted() ? "granted" : "not-granted", "screenRecording": CGPreflightScreenCaptureAccess() ? "granted" : "not-granted", "contacts": contactPermission(), "automation": try targets.map { try automationPermission($0, request: false) }, "fullDiskAccess": "unknown", "messages": "requires-authorized-operation", "biometry": biometricAvailability(), "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required"]
 }
 func requestPermission(_ params: [String: Any]) throws -> [String: Any] {
     switch try requiredString(params, "kind", limit: 50) {
@@ -145,7 +146,7 @@ func appleScriptLiteral(_ value: String) -> String { "\"" + value.replacingOccur
 func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] {
     switch method {
     case "ping": return ["service": "aux-computer-use", "version": "0.1.0", "pid": ProcessInfo.processInfo.processIdentifier]
-    case "capabilities": return ["methods": ["permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.open", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": "unavailable", "messagesRead": "unavailable"]
+    case "capabilities": return ["methods": ["permissions.status", "permissions.request", "screen.capture", "input.click", "input.type", "input.scroll", "input.key", "apps.list", "apps.frontmost", "apps.open", "accessibility.snapshot", "automation.run", "contacts.search", "messages.send", "vault.biometryAvailable", "vault.biometryStatus", "vault.biometryEnroll", "vault.biometryUnlock", "vault.biometryRemove"], "privateTransportRequired": true, "semanticCapture": AXIsProcessTrusted() ? "available" : "permission-required", "messagesRead": "unavailable"]
     case "permissions.status": return try permissionStatus(params)
     case "permissions.request": return try requestPermission(params)
     case "vault.biometryAvailable": return biometricAvailability()
@@ -159,6 +160,8 @@ func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] 
         let x = Int32(try requiredNumber(params, "x", range: -10000...10000)), y = Int32(try requiredNumber(params, "y", range: -10000...10000))
         guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: y, wheel2: x, wheel3: 0) else { throw HelperError("NATIVE_ERROR", "Could not create scroll event") }
         event.post(tap: .cghidEventTap); return ["posted": true]
+    case "apps.frontmost": return try frontmostApplication()
+    case "accessibility.snapshot": return try accessibilitySnapshot(params)
     case "apps.list": return ["applications": NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }.map { ["pid": $0.processIdentifier, "bundleId": $0.bundleIdentifier ?? "", "name": $0.localizedName ?? "", "bundlePath": $0.bundleURL?.path ?? "", "active": $0.isActive] as [String: Any] }]
     case "apps.open":
         let bundleId = try requiredString(params, "bundleId", limit: 255)
@@ -173,8 +176,24 @@ func execute(_ method: String, _ params: [String: Any]) throws -> [String: Any] 
     case "messages.send":
         guard params["confirmed"] as? Bool == true else { throw HelperError("FORBIDDEN", "Message sending requires a recorded human confirmation") }
         let recipient = try requiredString(params, "recipient", limit: 500), body = try requiredString(params, "body", limit: 50000)
+        let operationId = try requiredString(params, "operationId", limit: 200)
+        let operationHash = SHA256.hash(data: Data(operationId.utf8)).map { String(format: "%02x", $0) }.joined()
+        let requestHash = SHA256.hash(data: Data("\(recipient)\0\(body)".utf8)).map { String(format: "%02x", $0) }.joined()
+        let journal = try artifactDirectory().appendingPathComponent("operation-\(operationHash).json")
+        if FileManager.default.fileExists(atPath: journal.path) {
+            guard let existing = try JSONSerialization.jsonObject(with: Data(contentsOf: journal)) as? [String: String], existing["requestHash"] == requestHash else { throw HelperError("CONFLICT", "Native operation identity does not match") }
+            guard existing["state"] == "completed" else { throw HelperError("CONFLICT", "Message outcome is unknown; inspect Messages before choosing a new operation") }
+            return ["sent": true, "transport": "imessage", "replayed": true]
+        }
+        let claim = try JSONSerialization.data(withJSONObject: ["requestHash": requestHash, "state": "started"])
+        let descriptor = open(journal.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        guard descriptor >= 0 else { throw HelperError("CONFLICT", "Native operation identity was already claimed") }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        try handle.write(contentsOf: claim); fsync(descriptor); try handle.close()
         let script = "tell application \"Messages\"\nset channel to first service whose service type is iMessage\nset destination to buddy \(appleScriptLiteral(recipient)) of channel\nsend \(appleScriptLiteral(body)) to destination\nend tell"
         _ = try runProgram("/usr/bin/osascript", ["-"], stdin: Data(script.utf8), timeout: 60)
+        try JSONSerialization.data(withJSONObject: ["requestHash": requestHash, "state": "completed"]).write(to: journal, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: journal.path)
         return ["sent": true, "transport": "imessage"]
     default: throw HelperError("NOT_IMPLEMENTED", "Unknown Aux helper method")
     }
