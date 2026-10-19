@@ -12,7 +12,17 @@ export type ModelSelection = {
   thinkingLevel: string;
   fastMode: boolean;
 };
+export type Attachment = {
+  id: string;
+  sessionId: string;
+  fileName: string;
+  mediaType: string;
+  size: number;
+  sha256: string;
+  createdAt: number;
+};
 export type Message = {
+  attachmentIds?: string[];
   id: string;
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -26,7 +36,14 @@ export type Session = {
   model: ModelSelection;
   permissionMode: string;
   transcriptRevision: number;
-  queue: { id: string; timestamp: number; prompt: string; version: number }[];
+  runtimeConfig?: { proactiveMode?: boolean };
+  queue: {
+    id: string;
+    timestamp: number;
+    prompt: string;
+    version: number;
+    attachmentIds?: string[];
+  }[];
   suspension?: {
     toolCallId: string;
     kind: string;
