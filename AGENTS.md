@@ -2,7 +2,7 @@
 
 Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. Independently recreating the product is not the objective. The owner's explicit direction on 2026-10-19 supersedes the clean-room rebuild plan and its source-reading/copying restrictions.
 
-Read `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
+Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
 
 ## Implementation policy
 
