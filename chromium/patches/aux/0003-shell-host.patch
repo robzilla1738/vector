@@ -3822,7 +3822,7 @@ index 7188576..d9fb165 100644
 +    NativeWidgetMac::OnWidgetInitDone();
 +    // The bridge creates its real content view after OnWindowInitialized.
 +    // Install the material only once that view and its compositor exist.
-+    if (auto* bridge = GetInProcessNSWindowBridge()) {
++    if ([[maybe_unused]] auto* bridge = GetInProcessNSWindowBridge()) {
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +      const PrefService* prefs = browser_->GetProfile()->GetPrefs();
 +      ApplyAuxAppearance(

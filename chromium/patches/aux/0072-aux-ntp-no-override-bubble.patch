@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/extensions/settings_overridden_params_providers.cc b/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
+index 59a08a4e0e..9e4d601389 100644
+--- a/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
++++ b/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
+@@ -406,6 +406,10 @@ std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
+   if (!extension) {
+     return std::nullopt;
+   }
++  // The Aux agent manager owns the new tab page by design.
++  if (extension->id() == "fjdhphbdlfjogobdofoaagnlnkoibdge") {
++    return std::nullopt;
++  }
+ 
+   // This preference tracks whether users have acknowledged the extension's
+   // control, so that they are not warned twice about the same extension.

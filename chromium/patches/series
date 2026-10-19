@@ -67,3 +67,6 @@ aux/0066-native-context-input-proof.patch
 aux/0067-native-chat-split-menus.patch
 aux/0068-person-omnibox-handback.patch
 aux/0069-content-fullscreen.patch
+aux/0070-stock-build-gating.patch
+aux/0071-vertical-tabs-default.patch
+aux/0072-aux-ntp-no-override-bubble.patch

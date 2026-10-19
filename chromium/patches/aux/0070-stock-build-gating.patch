@@ -1,0 +1,168 @@
+diff --git a/chrome/browser/password_manager/chrome_password_manager_client.cc b/chrome/browser/password_manager/chrome_password_manager_client.cc
+index f039dd58ae..c199169b42 100644
+--- a/chrome/browser/password_manager/chrome_password_manager_client.cc
++++ b/chrome/browser/password_manager/chrome_password_manager_client.cc
+@@ -48,7 +48,10 @@
+ #include "chrome/browser/password_manager/password_change_service_factory.h"
+ #include "chrome/browser/password_manager/password_manager_critical_action_logger.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/egress_controller.h"
++#endif
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
+ #include "chrome/browser/signin/signin_ui_util.h"
+@@ -296,12 +299,14 @@ bool ChromePasswordManagerClient::IsSavingAndFillingEnabled(
+ bool ChromePasswordManagerClient::IsFillingEnabled(
+     const url::Origin& origin,
+     base::optional_ref<const GURL> url) const {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+       profile && aux::EgressController::ForProfile(profile)->IsIsolatedPage(web_contents())) {
+     // Task partitions start without the owner's saved-password authority.
+     // An explicit reviewed Aux fill uses its separate one-use native path.
+     return false;
+   }
++#endif
+   if (origin.opaque() &&
+       base::FeatureList::IsEnabled(
+           password_manager::features::kPasswordBlockOpaqueOrigins)) {
+diff --git a/chrome/browser/ui/cocoa/applescript/space_applescript.mm b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
+index d7cf408f1c..9b1acfd89a 100644
+--- a/chrome/browser/ui/cocoa/applescript/space_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
+@@ -4,8 +4,11 @@
+ #include "base/strings/sys_string_conversions.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_spaces.h"
++#endif
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/sessions/core/session_id.h"
+ #include "ui/base/base_window.h"
+@@ -24,6 +27,7 @@
+   return base::SysUTF8ToNSString(directory == "Default" ? "default" : directory);
+ }
+ - (NSString*)title {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (!_browser) return nil;
+   std::string error;
+   auto snapshot = aux::OrganizationStore::Snapshot(_browser->GetProfile(), base::NumberToString(_browser->GetSessionID().id()), &error);
+@@ -31,15 +35,21 @@
+   for (const auto& space : *snapshot->FindDict("layout")->FindDict("shared")->FindList("spaces"))
+     if (*space.GetDict().FindString("id") == base::SysNSStringToUTF8(self.uniqueID))
+       return base::SysUTF8ToNSString(*space.GetDict().FindString("name"));
++#endif
+   return nil;
+ }
+ - (void)handlesFocusScriptCommand:(NSScriptCommand*)command {
+   std::string error;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (!_browser || !aux::FocusProfileSpace(_browser.get(), base::SysNSStringToUTF8(self.uniqueID), &error)) {
+     command.scriptErrorNumber = -10000;
+     command.scriptErrorString = base::SysUTF8ToNSString(error.empty() ? "This Space or its window is no longer available" : error);
+     return;
+   }
+   _browser->GetWindow()->Activate();
++#else
++  command.scriptErrorNumber = -10000;
++  command.scriptErrorString = @"Spaces are not available";
++#endif
+ }
+ @end
+diff --git a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
+index fffc99231c..ea133c8a07 100644
+--- a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
+@@ -3,9 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #import "chrome/browser/ui/cocoa/applescript/tab_applescript.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
++#endif
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -99,12 +102,16 @@ void ResumeAppleEventAndSendReply(NSAppleEventManagerSuspensionID suspension_id,
+     return false;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   auto* const identity = aux::PageIdentity::FromWebContents(_webContents.get());
+   aux::EgressRequestContext context;
+   context.page_id = aux::PageIdentity::GetOrCreate(self.profile, _webContents.get());
+   context.document = _webContents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+   if (self.profile->IsOffTheRecord() || (identity && identity->runtime_owned()) ||
+       aux::EgressController::ForProfile(self.profile)->IsProtected(context)) return false;
++#else
++  if (self.profile->IsOffTheRecord()) return false;
++#endif
+   return chrome::mac::IsJavaScriptEnabledForProfile(self.profile);
+ }
+ 
+@@ -112,6 +119,7 @@ void ResumeAppleEventAndSendReply(NSAppleEventManagerSuspensionID suspension_id,
+   if (!_webContents || self.profile->IsOffTheRecord()) return @"unpinned";
+   auto* window = ProfileBrowserCollection::GetForProfile(self.profile)->FindBrowserWithTab(_webContents.get());
+   if (!window) return @"unpinned";
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   std::string error;
+   auto snapshot = aux::OrganizationStore::Snapshot(self.profile, base::NumberToString(window->GetSessionID().id()), &error);
+   if (!snapshot || !snapshot->FindDict("layout")) return @"unpinned";
+@@ -122,6 +130,7 @@ void ResumeAppleEventAndSendReply(NSAppleEventManagerSuspensionID suspension_id,
+     if ((id && *id == aux::PageIdentity::GetOrCreate(self.profile, _webContents.get())) ||
+         (!id && *pin.FindString("url") == _webContents->GetLastCommittedURL().spec())) return @"topApp";
+   }
++#endif
+   return window->GetTabStripModel()->IsTabPinned(window->GetTabStripModel()->GetIndexOfWebContents(_webContents.get())) ? @"pinned" : @"unpinned";
+ }
+ 
+diff --git a/chrome/browser/ui/cocoa/applescript/window_applescript.mm b/chrome/browser/ui/cocoa/applescript/window_applescript.mm
+index 979b1aaaa8..e854d50614 100644
+--- a/chrome/browser/ui/cocoa/applescript/window_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/window_applescript.mm
+@@ -6,7 +6,10 @@
+ 
+ #include <memory>
+ #import "chrome/browser/ui/cocoa/applescript/space_applescript.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/organization_store.h"
++#endif
+ #include "base/strings/string_number_conversions.h"
+ 
+ #import "base/apple/foundation_util.h"
+@@ -136,6 +139,7 @@
+ 
+ - (NSArray<SpaceAppleScript*>*)spaces {
+   NSMutableArray* result = [NSMutableArray array];
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (!_browser || _browser->GetProfile()->IsOffTheRecord()) return result;
+   std::string error;
+   auto snapshot = aux::OrganizationStore::Snapshot(_browser->GetProfile(), base::NumberToString(_browser->GetSessionID().id()), &error);
+@@ -144,15 +148,18 @@
+     SpaceAppleScript* space = [[SpaceAppleScript alloc] initWithBrowser:_browser.get() spaceId:base::SysUTF8ToNSString(*item.GetDict().FindString("id"))];
+     [space setContainer:self property:@"spaces"]; [result addObject:space];
+   }
++#endif
+   return result;
+ }
+ - (SpaceAppleScript*)activeSpace {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (!_browser || _browser->GetProfile()->IsOffTheRecord()) return nil;
+   std::string error;
+   auto snapshot = aux::OrganizationStore::Snapshot(_browser->GetProfile(), base::NumberToString(_browser->GetSessionID().id()), &error);
+   if (!snapshot || !snapshot->FindDict("layout")) return nil;
+   const auto* id = snapshot->FindDict("layout")->FindDict("window")->FindString("activeSpaceId");
+   for (SpaceAppleScript* space in self.spaces) if ([space.uniqueID isEqualToString:base::SysUTF8ToNSString(*id)]) return space;
++#endif
+   return nil;
+ }
+ - (void)setActiveSpace:(SpaceAppleScript*)space {

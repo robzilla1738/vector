@@ -12,7 +12,7 @@ node scripts/aux.mjs --temp-profile
 
 Install the `aux` command and a launcher app (`~/Applications/Aux.app`) with `npm run package`.
 
-Options: `--chromium <path>`, `--home <dir>`, `--profile <dir>`, `--temp-profile`, `--env-file`, `--no-browser`, `--real-keychain`, and `-- <extra chromium args>`. The default Chromium is `~/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app`.
+Options: `--chromium <path>`, `--home <dir>`, `--profile <dir>` (default `~/.aux/profile`), `--temp-profile`, `--env-file`, `--no-browser`, `--real-keychain`, and `-- <extra chromium args>`. The default Chromium is `~/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app`.
 
 The CLI is staged at `out/aside-staged/cli/Aux CLI.app`. Run `aux --help`.
 

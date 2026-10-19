@@ -24,7 +24,7 @@ const option = (name) => (flag(name) ? args[args.indexOf(name) + 1] : undefined)
 
 const home = resolve(option("--home") ?? process.env.ASIDE_HOME ?? join(homedir(), ".aux"));
 const tempProfile = flag("--temp-profile");
-const profile = tempProfile ? mkdtempSync(join(tmpdir(), "aux-profile-")) : resolve(option("--profile") ?? join(homedir(), "Library/Application Support/Aux"));
+const profile = tempProfile ? mkdtempSync(join(tmpdir(), "aux-profile-")) : resolve(option("--profile") ?? join(home, "profile"));
 const chromium = resolve(
   option("--chromium") ??
     process.env.AUX_CHROMIUM ??
