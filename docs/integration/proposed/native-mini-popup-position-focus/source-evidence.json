@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0459577c.c",
+      "sha256": "db73de2ea45cb8ee89269642d8660e9162427e40a1a30f5897e0cf6af40eeef2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045983e0.c",
+      "sha256": "4bcb0845b5b1fce13ad68464d43a873835f6bcf55fdd0deb5116d368c8f30c89"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045965a0.c",
+      "sha256": "477f95aef51d2db8efeaabb5ac35a5e23d52f281b5c53e988b31c3b066894193"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04598574.c",
+      "sha256": "2c44869db8ad1a693269890157285230dab009c03b0968f1980b938339dca9fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045975a8.c",
+      "sha256": "57cf8ad5994d391ec718724c3125155ad36cac70781fbb8d5bbf0313446aaa6f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/display/screen.h",
+      "sha256": "383c03893910b724359610079113039e3b07dabb580674de22ab57544a5eb932"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/display/display.h",
+      "sha256": "5753c88c297600de04354850fe04c9d23f7e0a1ce40031556df9dd9457c7248f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/config/BUILDCONFIG.gn",
+      "sha256": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/config/compiler/BUILD.gn",
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3"
+    }
+  ],
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "functions": [
+      {
+        "name": "InitialBounds",
+        "rva": "0x4598240",
+        "bytes": 416,
+        "sha256": "d5eccbafe7c11cf931bc5c51bae796a5e489925f562120f7d98a570f2487978e"
+      },
+      {
+        "name": "ResizeBounds",
+        "rva": "0x4596d1c",
+        "bytes": 760,
+        "sha256": "0bd05bd1540901808c64fceb3f7e804994b3bc75920d2e63f063fdde317a8dfd"
+      },
+      {
+        "name": "ActivateWindow",
+        "rva": "0x45983e0",
+        "bytes": 396,
+        "sha256": "3b724364a0ba7985c0b19ebe0fef004d0051298bca83188dc15977bc1cbf140e"
+      },
+      {
+        "name": "RequestHide",
+        "rva": "0x45965a0",
+        "bytes": 444,
+        "sha256": "0a2f88eaede7d1d7c8740cb996f45b56ac4691a4dcc06a5e079a101d8e661c1e"
+      }
+    ]
+  },
+  "rea": [
+    {
+      "evidenceId": "ev_f2ea56e59b8d39a882325754ed4922bd8c6f3dfd8e99887272641de40c3b44eb",
+      "rva": "0x4598240",
+      "snapshotPath": "/tmp/aux-mini-popup-placement-snapshot.json",
+      "body": "0x4598240..0x45983df"
+    },
+    {
+      "evidenceId": "ev_f750bc27645f9d39e3330bf80f86a89fd98c8d347c113c87b58e010775d4934f",
+      "rva": "0x4596d1c",
+      "snapshotPath": "/tmp/aux-mini-popup-bounds-snapshot.json",
+      "bodyRanges": [
+        "0x4596d1c..0x4596fdb",
+        "0x4596fe4..0x459700b"
+      ]
+    }
+  ],
+  "placementConstant": {
+    "rva": "0xdf4f690",
+    "bytesHex": "0100008056555555",
+    "signedInt32": [
+      -2147483647,
+      1431655766
+    ],
+    "interpretation": "signed multiply-high correction implements truncating division of widthdelta by2 and workheight by3"
+  },
+  "observations": [
+    {
+      "source": "04598240",
+      "behavior": "Screen virtual0x10 gets cursor;0x58 gets nearestpoint display. Display workarea atoffset40 supplies x/y/width/height. Newbounds x=workx+(workwidth-440)/2, y=worky+workheight/3; actual state height92/148/534, display-fit follows."
+    },
+    {
+      "source": "04596d1c",
+      "behavior": "Resizes around current x+(oldwidth-newwidth)/2,y+(oldheight-newheight)/2, then fits nearest-center display workarea. Original180ms animation and reduced-motion bypass are recorded but not ported."
+    },
+    {
+      "source": "045983e0",
+      "behavior": "Records previous NSApp keyWindow once only when NSApp active, using objc_storeWeak; activates popup."
+    },
+    {
+      "source": "045965a0",
+      "behavior": "Explicit RequestHide for exact main contents clears captured flag/weakwindow, conditionally makeKeyAndOrderFront on visible/canBecomeKeyWindow previous window, then hides."
+    },
+    {
+      "source": "045975a8/04598574",
+      "behavior": "Blur dismissal does not invoke explicit RequestHide restoration. Hides complete through existing separate path."
+    }
+  ],
+  "limitations": [
+    "Raw bounded ARM64 analyses omit external globals/callees; function body sets/limitations are recorded. Pseudocode is not recovered source.",
+    "Current155 Screen/display field order supports named equivalents; this is a port across native versions153 and155.",
+    "This slice changes initial creation and content-resize geometry, not original offscreen reopen recovery/animation/material/lock routing.",
+    "Weak prior NSWindow restoration occurs only for explicit close/Escape; no external app activation, account or profile fallback is added."
+  ]
+}

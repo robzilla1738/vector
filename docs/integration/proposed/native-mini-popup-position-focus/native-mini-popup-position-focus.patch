@@ -1,0 +1,131 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -49,6 +49,9 @@
+   }
+ }
+ void ApplyAuxPopupMaterial(gfx::NativeWindow window);
++void CaptureAuxPopupActivation();
++void ClearAuxPopupActivation();
++void RestoreAuxPopupActivation();
+ namespace {
+ constexpr char kEnabled[] = "aux.popup.enabled",
+                kShortcut[] = "aux.popup.shortcut";
+@@ -157,14 +160,29 @@
+           ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE),
+           ui::AcceleratorManager::kHighPriority, this);
+       ApplyAuxPopupMaterial(widget_->GetNativeWindow());
++      auto* screen = display::Screen::Get();
++      const auto area =
++          screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint())
++              .work_area();
++      gfx::Rect initial_bounds(area.x() + (area.width() - size_.width()) / 2,
++                               area.y() + area.height() / 3, size_.width(),
++                               size_.height());
++      initial_bounds.AdjustToFit(area);
++      widget_->SetBoundsConstrained(initial_bounds);
+     }
+     webview_->LoadInitialURL(url);
+     webview_->GetWebContents()->SetDelegate(this);
+     Resize(size_);
++    CaptureAuxPopupActivation();
+     widget_->Show();
+     webview_->RequestFocus();
+   }
++  void RequestHide() {
++    RestoreAuxPopupActivation();
++    Hide();
++  }
+   void Hide() {
++    ClearAuxPopupActivation();
+     ++generation_;
+     dismiss_.Stop();
+     if (options_) {
+@@ -175,6 +193,7 @@
+     }
+   }
+   void DestroyWindows() {
++    ClearAuxPopupActivation();
+     options_webview_ = nullptr;
+     if (options_) {
+       options_->RemoveObserver(this);
+@@ -196,15 +215,13 @@
+     if (!widget_ || widget_->IsClosed()) {
+       return;
+     }
+-    auto area = display::Screen::Get()
+-                    ->GetDisplayNearestWindow(widget_->GetNativeWindow())
+-                    .work_area();
+-    size.SetToMin(area.size());
+-    gfx::Rect bounds(size_);
+-    bounds.set_size(size);
+-    bounds.set_origin(gfx::Point(
+-        area.CenterPoint().x() - size.width() / 2,
+-        area.y() + std::max(20, (area.height() - size.height()) / 4)));
++    const auto current = widget_->GetWindowBoundsInScreen();
++    gfx::Rect bounds(current.x() + (current.width() - size.width()) / 2,
++                     current.y() + (current.height() - size.height()) / 2,
++                     size.width(), size.height());
++    bounds.AdjustToFit(display::Screen::Get()
++                           ->GetDisplayNearestPoint(bounds.CenterPoint())
++                           .work_area());
+     widget_->SetBoundsConstrained(bounds);
+   }
+   bool IsMainContents(content::WebContents* source) const {
+@@ -278,7 +295,7 @@
+     if (IsOptionContents(source)) {
+       options_->Close();
+     } else if (IsMainContents(source)) {
+-      Hide();
++      RequestHide();
+     }
+   }
+   std::optional<std::string> ResizeOptions(content::WebContents* source,
+@@ -317,7 +334,7 @@
+     OnKeyPressed(accelerator_);
+   }
+   bool AcceleratorPressed(const ui::Accelerator&) override {
+-    Hide();
++    RequestHide();
+     return true;
+   }
+   bool CanHandleAccelerators() const override {
+@@ -393,7 +410,7 @@
+     if (!manager.IsMainContents(GetSenderWebContents())) {
+       return RespondNow(Error("Popup is unavailable for this calling page"));
+     }
+-    manager.Hide();
++    manager.RequestHide();
+     return RespondNow(NoArguments());
+   }
+   if (method == "setEnabled") {
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm
+@@ -4,6 +4,28 @@
+
+ #include "ui/gfx/native_ui_types.h"
+ namespace extensions {
++namespace {
++__weak NSWindow* g_previous_key_window;
++bool g_activation_captured = false;
++}  // namespace
++void CaptureAuxPopupActivation() {
++  if (g_activation_captured) {
++    return;
++  }
++  g_activation_captured = true;
++  g_previous_key_window = NSApp.isActive ? NSApp.keyWindow : nil;
++}
++void ClearAuxPopupActivation() {
++  g_activation_captured = false;
++  g_previous_key_window = nil;
++}
++void RestoreAuxPopupActivation() {
++  NSWindow* previous = g_previous_key_window;
++  ClearAuxPopupActivation();
++  if (previous.isVisible && previous.canBecomeKeyWindow) {
++    [previous makeKeyAndOrderFront:nil];
++  }
++}
+ void ApplyAuxPopupMaterial(gfx::NativeWindow native_window) {
+   NSWindow* window = native_window.GetNativeNSWindow();
+   if (!window) {

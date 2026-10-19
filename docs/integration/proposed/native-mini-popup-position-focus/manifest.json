@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-mini-popup-options exact CC output940de3c895cc0e987c0c9e6540e826f3fa4df0c8a69bb085f75fca441453efdf (root v47); mac file unchanged fromv32",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "940de3c895cc0e987c0c9e6540e826f3fa4df0c8a69bb085f75fca441453efdf",
+      "outputSha256": "a3fe2c2a8b4deff2193a65e2b2f70e742d7ebacc33156568afc5079bdc04b4da"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api_mac.mm",
+      "baselineSha256": "cf32406e6f70ec75ab60bb1d2853e764e0b339055b5eedd5fc86439aa6bd77b0",
+      "outputSha256": "732b6ec397cff11aaf94e50f16229fc6b7f0195ca7f959bd6c1bce9c4000da03"
+    }
+  ]
+}
