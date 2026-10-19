@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "baselineSha256": "daf4c67fe88e55f197ea4691cbcc2961584536294b4fe5572803f5ae554ccc9f",
+      "outputSha256": "55517679a4d7ee98bef5f9869bd88c7b4928f9f6de5b7efdc7f9e95405ab951f"
+    }
+  ],
+  "reason": "Actual Chromium155 compile: PreferredSizeChanged is protected; invalidate the child and notify the scroll owner instead. Construct RectF from the existing integer Rect form."
+}

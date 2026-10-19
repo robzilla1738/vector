@@ -1,0 +1,19 @@
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+@@ -206,7 +206,6 @@
+ 
+   void OnShrinkChanged() {
+     tab_strip_->InvalidateLayout();
+-    tab_strip_->PreferredSizeChanged();
+     PreferredSizeChanged();
+     InvalidateLayout();
+   }
+@@ -477,7 +476,7 @@
+   // true.
+   if (tab_strip_scroll_container_ &&
+       IsHitInView(tab_strip_scroll_container_, point)) {
+-    gfx::RectF rect(point, gfx::Size(1, 1));
++    gfx::RectF rect(gfx::Rect(point, gfx::Size(1, 1)));
+     View::ConvertRectToTarget(this, tab_strip_scroll_container_, &rect);
+     return tab_strip_scroll_container_->IsRectInWindowCaption(
+         gfx::ToEnclosingRect(rect));

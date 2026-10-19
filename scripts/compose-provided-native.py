@@ -51,6 +51,7 @@ steps.append(('native-preference-effects/native.patch', 'native-preference-effec
 steps.append(('native-window-vibrancy/native.patch', 'native-window-vibrancy/manifest.json'))
 steps.append(('native-horizontal-shrink/native.patch', 'native-horizontal-shrink/manifest.json'))
 steps.append(('native-vertical-navigation/native.patch', 'native-vertical-navigation/manifest.json'))
+steps.append(('native-compile-fixes/004-horizontal-boundaries/fix.patch', 'native-compile-fixes/004-horizontal-boundaries/manifest.json'))
 
 def safe(path):
     value = Path(path)

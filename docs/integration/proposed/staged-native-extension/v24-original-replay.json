@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "originalSnapshot": "out/native-original-replay-v16",
+  "freshComposition": "out/native-replayed-composition-v24",
+  "appliedComposition": "out/native-reuse-composition-v24",
+  "sourceFilesMatched": 78,
+  "artworkTargetsMatched": 23,
+  "freshOrderedSteps": 33,
+  "freshComposerSha256": "0f247199d38bb36c56614ba0af4c29c94b784320f2334027db87d324c76f64c0",
+  "focusedChangedObjectsCompiled": 10,
+  "fullBuildComplete": false,
+  "keychainOperationsExecuted": false
+}
