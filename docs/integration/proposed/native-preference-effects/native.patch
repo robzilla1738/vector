@@ -1,0 +1,202 @@
+--- a/chrome/common/pref_names.h
++++ b/chrome/common/pref_names.h
+@@ -29,6 +29,10 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ namespace prefs {
++
++// Supplied browser-global vertical new-tab placement.
++inline constexpr char kAuxVerticalTabInsertionPosition[] =
++    "aux.browser_preferences.vertical_tab_insertion_position";
+ 
+ // Opt-in native measurement, used only in a disposable benchmark Local State.
+ inline constexpr char kNativeBenchmarkEnabled[] = "performance.native_benchmark";
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
+@@ -9,6 +9,7 @@
+ }
+ namespace extensions {
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
++void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry);
+ class AuxBrowserPreferencesFunction : public AuxFunction {
+  protected:
+   ~AuxBrowserPreferencesFunction() override = default;
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1426,6 +1426,7 @@
+ void RegisterLocalState(PrefRegistrySimple* registry) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   extensions::RegisterAuxPopupLocalStatePrefs(registry);
++  extensions::RegisterAuxBrowserLocalStatePrefs(registry);
+ #endif
+   registry->RegisterBooleanPref(prefs::kNativeBenchmarkEnabled, false);
+   registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -36,9 +36,9 @@
+ namespace extensions {
+ base::DictValue ReadAuxDockState();
+ base::DictValue AddAuxToDock();
++bool ReadAuxWindowVibrancyEnabled();
++bool WriteAuxWindowVibrancyEnabled(bool enabled);
+ namespace {
+-constexpr char kVibrancy[] = "aux.browser.window_vibrancy";
+-constexpr char kInsertion[] = "aux.browser.vertical_tab_insertion";
+ constexpr char kShrink[] = "aux.browser.horizontal_tab_shrink";
+ constexpr char kMru[] = "aux.browser.tab_switcher_mru";
+ constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
+@@ -72,16 +72,17 @@
+ }
+ }  // namespace
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterBooleanPref(kVibrancy, true);
+   registry->RegisterBooleanPref("aux.browser.preload_new_tab", true);
+   registry->RegisterListPref("aux.browser.sidebar.expanded_bookmark_folders");
+   registry->RegisterListPref("aux.browser.sidebar.collapsed_sections");
+   registry->RegisterListPref("aux.browser.import.source_profiles");
+-  registry->RegisterStringPref(kInsertion, "bottom");
+   registry->RegisterBooleanPref(kShrink, true);
+   registry->RegisterBooleanPref(kMru, true);
+   registry->RegisterBooleanPref(kBookmarks, true);
+   registry->RegisterBooleanPref(kKeepTasks, false);
++}
++void RegisterAuxBrowserLocalStatePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterStringPref(prefs::kAuxVerticalTabInsertionPosition, "top");
+ }
+ ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
+   const std::string_view method = std::string_view(name()).substr(22);
+@@ -99,8 +100,6 @@
+     const char* key;
+   };
+   for (const auto& item : std::initializer_list<BooleanPref>{
+-           {"getWindowBackgroundVibrancyEnabled",
+-            "setWindowBackgroundVibrancyEnabled", kVibrancy},
+            {"getHorizontalTabShrinkEnabled", "setHorizontalTabShrinkEnabled",
+             kShrink},
+            {"getTabSwitcherSortByRecentlyUsed",
+@@ -121,6 +120,18 @@
+       return RespondNow(NoArguments());
+     }
+   }
++  if (method == "getWindowBackgroundVibrancyEnabled") {
++    return RespondNow(WithArguments(ReadAuxWindowVibrancyEnabled()));
++  }
++  if (method == "setWindowBackgroundVibrancyEnabled") {
++    if (!args()[0].is_bool()) {
++      return RespondNow(Error("Boolean value required"));
++    }
++    if (!WriteAuxWindowVibrancyEnabled(args()[0].GetBool())) {
++      return RespondNow(Error("Could not synchronize window vibrancy preference"));
++    }
++    return RespondNow(NoArguments());
++  }
+   if (method == "getBrowserColorScheme") {
+     const auto scheme =
+         ThemeServiceFactory::GetForProfile(profile())->GetBrowserColorScheme();
+@@ -161,14 +172,26 @@
+     return RespondNow(NoArguments());
+   }
+   if (method == "getVerticalTabInsertionPosition") {
+-    return RespondNow(WithArguments(prefs->GetString(kInsertion)));
++    auto* local_state = g_browser_process->local_state();
++    return RespondNow(WithArguments(
++        local_state && local_state->GetString(
++                           prefs::kAuxVerticalTabInsertionPosition) == "bottom"
++            ? "bottom" : "top"));
+   }
+   if (method == "setVerticalTabInsertionPosition") {
+     if (!args()[0].is_string() ||
+         (args()[0].GetString() != "top" && args()[0].GetString() != "bottom")) {
+       return RespondNow(Error("Insertion position must be top or bottom"));
+     }
+-    prefs->SetString(kInsertion, args()[0].GetString());
++    auto* local_state = g_browser_process->local_state();
++    if (!local_state) {
++      return RespondNow(Error("Browser local state unavailable"));
++    }
++    if (local_state->IsManagedPreference(prefs::kAuxVerticalTabInsertionPosition)) {
++      return RespondNow(Error("Setting is managed"));
++    }
++    local_state->SetString(prefs::kAuxVerticalTabInsertionPosition,
++                           args()[0].GetString());
+     return RespondNow(NoArguments());
+   }
+   if (method == "getDefaultZoom") {
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
+@@ -2,9 +2,40 @@
+ #import <Foundation/Foundation.h>
+ 
+ #include "base/apple/bundle_locations.h"
++#include "base/apple/scoped_cftyperef.h"
+ #include "base/values.h"
+ #include "chrome/browser/mac/dock.h"
+ namespace extensions {
++namespace {
++CFStringRef AuxVibrancyDomain() {
++  return (__bridge CFStringRef)base::apple::OuterBundle().bundleIdentifier;
++}
++}  // namespace
++bool ReadAuxWindowVibrancyEnabled() {
++  const auto domain = AuxVibrancyDomain();
++  if (!domain) {
++    return true;
++  }
++  CFPreferencesAppSynchronize(domain);
++  base::apple::ScopedCFTypeRef<CFPropertyListRef> disabled(
++      CFPreferencesCopyAppValue(CFSTR("windowBackgroundVibrancyDisabled"), domain));
++  return !disabled || CFGetTypeID(disabled.get()) != CFBooleanGetTypeID() ||
++         !CFBooleanGetValue(static_cast<CFBooleanRef>(disabled.get()));
++}
++bool WriteAuxWindowVibrancyEnabled(bool enabled) {
++  const auto domain = AuxVibrancyDomain();
++  if (!domain) {
++    return false;
++  }
++  CFPreferencesSetAppValue(CFSTR("windowBackgroundVibrancyDisabled"),
++                           enabled ? kCFBooleanFalse : kCFBooleanTrue, domain);
++  if (!CFPreferencesAppSynchronize(domain)) {
++    return false;
++  }
++  CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
++                                       domain, nullptr, nullptr, true);
++  return true;
++}
+ base::DictValue ReadAuxDockState() {
+   auto state = dock::ChromeIsInTheDock();
+   base::DictValue value;
+--- a/chrome/browser/ui/browser_commands.cc
++++ b/chrome/browser/ui/browser_commands.cc
+@@ -1397,8 +1397,19 @@
+ 
+   if (WindowFeatureController::From(browser)->SupportsWindowFeature(
+           WindowFeatureController::WindowFeature::kFeatureTabStrip)) {
+-    return *AddAndReturnTabAt(browser, GURL(), -1, /*foreground=*/true,
+-                              std::nullopt, /*pinned=*/false, window_action);
++    int insertion_index = -1;
++    auto* local_state = g_browser_process->local_state();
++    const auto* vertical_tabs =
++        tabs::VerticalTabStripStateController::From(browser);
++    if (vertical_tabs && vertical_tabs->ShouldDisplayVerticalTabs() &&
++        local_state &&
++        local_state->FindPreference(prefs::kAuxVerticalTabInsertionPosition) &&
++        local_state->GetString(prefs::kAuxVerticalTabInsertionPosition) != "bottom") {
++      insertion_index = browser->GetTabStripModel()->IndexOfFirstNonPinnedTab();
++    }
++    return *AddAndReturnTabAt(browser, GURL(), insertion_index,
++                              /*foreground=*/true, std::nullopt,
++                              /*pinned=*/false, window_action);
+   }
+ 
+   ScopedTabbedBrowserDisplayer displayer(browser->GetProfile());
+--- a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+@@ -2,7 +2,7 @@
+   sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+   deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
+-  frameworks = [ "Foundation.framework" ]
++  frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
+ }
+ 
+ source_set("headers") {

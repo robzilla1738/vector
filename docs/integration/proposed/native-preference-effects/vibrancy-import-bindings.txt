@@ -1,0 +1,7 @@
+imports 2772 1
+0xe028f78 0x801000000000022a _kCFBooleanFalse
+0xe028f80 0x801000000000022b _kCFBooleanTrue
+stub 0xcbb6b14 bind 0xe029258 _CFPreferencesAppSynchronize
+stub 0xcbb6b08 bind 0xe029250 _CFPreferencesCopyAppValue
+stub 0xcbb736c bind 0xe029c70 _CFPreferencesSetAppValue
+stub 0xcbb781c bind 0xe02a1d0 _CFNotificationCenterPostNotification

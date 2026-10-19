@@ -1,0 +1,51 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 814b9ac: d0034f20     	adrp	x0, 0xeb31000 <dyld_stub_binder+0xeb31000>
+ 814b9b0: 912a6000     	add	x0, x0, #0xa98
+ 814b9b4: b0034f21     	adrp	x1, 0xeb30000 <dyld_stub_binder+0xeb30000>
+ 814b9b8: 9104e021     	add	x1, x1, #0x138
+ 814b9bc: 9529ac53     	bl	0xcbb6b08 <dyld_stub_binder+0xcbb6b08>
+ 814b9c0: b5000340     	cbnz	x0, 0x814ba28 <_ChromeMain+0x814678c>
+ 814b9c4: 52800035     	mov	w21, #0x1               ; =1
+ 814b9c8: 39003bf5     	strb	w21, [sp, #0xe]
+ 814b9cc: 91003fe8     	add	x8, sp, #0xf
+ 814b9d0: 91003be1     	add	x1, sp, #0xe
+ 814b9d4: aa1403e0     	mov	x0, x20
+ 814b9d8: 97b3a070     	bl	0x6e33b98 <_ChromeMain+0x6e2e8fc>
+ 814b9dc: 39403ff6     	ldrb	w22, [sp, #0xf]
+ 814b9e0: 90ff5968     	adrp	x8, 0x6c77000 <_ChromeMain+0x6c71d64>
+ 814b9e4: 91397108     	add	x8, x8, #0xe5c
+ 814b9e8: a9037fe8     	stp	x8, xzr, [sp, #0x30]
+ 814b9ec: f90017f4     	str	x20, [sp, #0x28]
+ 814b9f0: d0feaaa0     	adrp	x0, 0x56a1000 <_ChromeMain+0x569bd64>
+ 814b9f4: 91120000     	add	x0, x0, #0x480
+ 814b9f8: 9100c3e1     	add	x1, sp, #0x30
+ 814b9fc: 9100a3e2     	add	x2, sp, #0x28
+ 814ba00: 97acb476     	bl	0x6c78bd8 <_ChromeMain+0x6c7393c>
+ 814ba04: 39000276     	strb	w22, [x19]
+ 814ba08: f9000660     	str	x0, [x19, #0x8]
+ 814ba0c: 39004275     	strb	w21, [x19, #0x10]
+ 814ba10: a9477bfd     	ldp	x29, x30, [sp, #0x70]
+ 814ba14: a9464ff4     	ldp	x20, x19, [sp, #0x60]
+ 814ba18: a94557f6     	ldp	x22, x21, [sp, #0x50]
+ 814ba1c: a9445ff8     	ldp	x24, x23, [sp, #0x40]
+ 814ba20: 910203ff     	add	sp, sp, #0x80
+ 814ba24: d65f03c0     	ret
+ 814ba28: aa0003f5     	mov	x21, x0
+ 814ba2c: 9529aa51     	bl	0xcbb6370 <dyld_stub_binder+0xcbb6370>
+ 814ba30: aa0003f6     	mov	x22, x0
+ 814ba34: 9529aa55     	bl	0xcbb6388 <dyld_stub_binder+0xcbb6388>
+ 814ba38: 52800037     	mov	w23, #0x1               ; =1
+ 814ba3c: 52800028     	mov	w8, #0x1                ; =1
+ 814ba40: eb0002df     	cmp	x22, x0
+ 814ba44: 540000a1     	b.ne	0x814ba58 <_ChromeMain+0x81467bc>
+ 814ba48: aa1503e0     	mov	x0, x21
+ 814ba4c: 9529aa4c     	bl	0xcbb637c <dyld_stub_binder+0xcbb637c>
+ 814ba50: 7100001f     	cmp	w0, #0x0
+ 814ba54: 1a9f17e8     	cset	w8, eq
+ 814ba58: 39003be8     	strb	w8, [sp, #0xe]
+ 814ba5c: 91003fe8     	add	x8, sp, #0xf

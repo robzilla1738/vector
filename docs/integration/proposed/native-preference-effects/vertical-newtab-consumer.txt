@@ -1,0 +1,40 @@
+
+out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4565b70: aa1403e0     	mov	x0, x20
+ 4565b74: 52800041     	mov	w1, #0x2                ; =2
+ 4565b78: 9731fce8     	bl	0x11e4f18 <_ChromeMain+0x11dfc7c>
+ 4565b7c: 34000560     	cbz	w0, 0x4565c28 <_ChromeMain+0x456098c>
+ 4565b80: 37000136     	tbnz	w22, #0x0, 0x4565ba4 <_ChromeMain+0x4560908>
+ 4565b84: aa1303e0     	mov	x0, x19
+ 4565b88: 97f208dc     	bl	0x41e7ef8 <_ChromeMain+0x41e2c5c>
+ 4565b8c: 340000c0     	cbz	w0, 0x4565ba4 <_ChromeMain+0x4560908>
+ 4565b90: f9403268     	ldr	x8, [x19, #0x60]
+ 4565b94: f9400108     	ldr	x8, [x8]
+ 4565b98: f9404908     	ldr	x8, [x8, #0x90]
+ 4565b9c: b9401902     	ldr	w2, [x8, #0x18]
+ 4565ba0: 14000002     	b	0x4565ba8 <_ChromeMain+0x456090c>
+ 4565ba4: 12800002     	mov	w2, #-0x1               ; =-1
+ 4565ba8: 9100e3f4     	add	x20, sp, #0x38
+ 4565bac: a903ffff     	stp	xzr, xzr, [sp, #0x38]
+ 4565bb0: b804f3ff     	stur	wzr, [sp, #0x4f]
+ 4565bb4: f90027ff     	str	xzr, [sp, #0x48]
+ 4565bb8: 6f07e600     	movi.2d	v0, #0xffffffff00000000
+ 4565bbc: 3c8583e0     	stur	q0, [sp, #0x58]
+ 4565bc0: 3c8683e0     	stur	q0, [sp, #0x68]
+ 4565bc4: 3c8783e0     	stur	q0, [sp, #0x78]
+ 4565bc8: 3d8016a0     	str	q0, [x21, #0x50]
+ 4565bcc: 790133ff     	strh	wzr, [sp, #0x98]
+ 4565bd0: a90a7fff     	stp	xzr, xzr, [sp, #0xa0]
+ 4565bd4: 390083ff     	strb	wzr, [sp, #0x20]
+ 4565bd8: 3900c3ff     	strb	wzr, [sp, #0x30]
+ 4565bdc: 9100e3e1     	add	x1, sp, #0x38
+ 4565be0: 910083e4     	add	x4, sp, #0x20
+ 4565be4: aa1303e0     	mov	x0, x19
+ 4565be8: 52800023     	mov	w3, #0x1                ; =1
+ 4565bec: 52800005     	mov	w5, #0x0                ; =0
+ 4565bf0: 9596c8e5     	bl	0xab17f84 <_ChromeMain+0xab12ce8>
+ 4565bf4: aa0003f3     	mov	x19, x0
