@@ -4,10 +4,10 @@ import {
   execFileSync,
   spawn,
 } from 'node:child_process';
-import { randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync } from 'node:fs';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { existsSync, lstatSync, mkdirSync, realpathSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { basename, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fail } from '@aux/agent';
 import { z } from 'zod';
 
@@ -44,7 +44,13 @@ export type HelperMethod =
   | 'import.prepare'
   | 'import.review'
   | 'import.commit'
-  | 'import.cancel';
+  | 'import.cancel'
+  | 'exchange.begin'
+  | 'exchange.status'
+  | 'exchange.read'
+  | 'exchange.ack'
+  | 'exchange.cancel'
+  | 'exchange.finish';
 interface Pending {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
@@ -250,7 +256,16 @@ export class HelperClient {
   }
 }
 export function createVaultBiometryAdapter(client: HelperClient) {
-  const identity = (accountId: number) => ({ accountId, vaultId: 'master-v1' });
+  // Disposable and relocated app bundles must not share an enrollment with
+  // another Aux home. Canonicalize the existing home, never a credential path.
+  const namespace = createHash('sha256')
+    .update('Aux Vault Keychain v1\0')
+    .update(realpathSync(dirname(client.artifactDirectory)))
+    .digest('hex');
+  const identity = (accountId: number) => ({
+    accountId,
+    vaultId: `master-${namespace}`,
+  });
   return {
     status: async (accountId: number) =>
       z
