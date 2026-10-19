@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "base": "actual applied v26",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "80e63e75cdd7f6daaebaa0c12415e049f3b39f1a9ef5396de73375e92e81837e",
+      "outputSha256": "bdfb92b1531db53778fb2d1d60a8728a88ecdc28469ad0a8e1dbf09031be5b42",
+      "anchors": [
+        {
+          "find": "    pref_observer_.RemoveAll();\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
+      "baselineSha256": "4768e8ab721af078ad75cf166447ae25bf5b8c2953f3088ebbb33f6d6c39726b",
+      "outputSha256": "e19ef7eb70bfe922e65c2023f5c7ca05f62a3b0d6b5c9647a08ebe209a32def2",
+      "anchors": [
+        {
+          "find": "          params->transition == ui::PAGE_TRANSITION_TYPED) {",
+          "replace": "          ui::PageTransitionCoreTypeIs(params->transition,\n                                       ui::PAGE_TRANSITION_TYPED)) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "temporaryReplayVerified": true,
+  "sharedSourceModified": false,
+  "compiled": false
+}

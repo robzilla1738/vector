@@ -1,0 +1,22 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -322,7 +322,6 @@
+   }
+   void OnProfileWillBeDestroyed(Profile*) override {
+     weak_.InvalidateWeakPtrs();
+-    pref_observer_.RemoveAll();
+     ClearPreload();
+     timer_.Stop();
+     loader_.reset();
+--- a/chrome/browser/ui/navigator/browser_navigator.cc
++++ b/chrome/browser/ui/navigator/browser_navigator.cc
+@@ -1038,7 +1038,8 @@
+       if (params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB &&
+           !params->opener && !params->is_renderer_initiated &&
+           !params->post_data && params->extra_headers.empty() &&
+-          params->transition == ui::PAGE_TRANSITION_TYPED) {
++          ui::PageTransitionCoreTypeIs(params->transition,
++                                       ui::PAGE_TRANSITION_TYPED)) {
+         target_contents = aux::TakePrerenderedNewTab(params->browser, params->url);
+       }
+ #endif
