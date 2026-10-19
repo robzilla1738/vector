@@ -102,6 +102,15 @@ steps.extend([
     ('native-profile-switch-omnibox-core/build-registration/native.patch', 'native-profile-switch-omnibox-core/build-registration/manifest.json'),
     ('native-profile-switch-location-bar/native.patch', 'native-profile-switch-location-bar/manifest.json'),
     ('native-profile-switch-location-bar/build-registration/native.patch', 'native-profile-switch-location-bar/build-registration/manifest.json'),
+    ('native-profile-switch-omnibox-saved-state/native.patch', 'native-profile-switch-omnibox-saved-state/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/toolbar-owned-actions.patch', 'native-profile-switch-owner/transaction-map/toolbar-owned-actions-manifest.json'),
+    ('native-popup-material/native.patch', 'native-popup-material/manifest.json'),
+    ('native-profile-switch-toolbar-status/native.patch', 'native-profile-switch-toolbar-status/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/avatar-state-manager.patch', 'native-profile-switch-owner/transaction-map/avatar-state-manager-manifest.json'),
+    ('native-profile-switch-toolbar-build-registration/native.patch', 'native-profile-switch-toolbar-build-registration/manifest.json'),
+    ('native-profile-switch-user-education/native.patch', 'native-profile-switch-user-education/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/reload-metrics-profile.patch', 'native-profile-switch-owner/transaction-map/reload-metrics-profile-manifest.json'),
+    ('native-profile-switch-user-education/build-registration/native.patch', 'native-profile-switch-user-education/build-registration/manifest.json'),
 ])
 
 def safe(path):

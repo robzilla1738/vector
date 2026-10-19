@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/views/user_education/BUILD.gn
++++ b/chrome/browser/ui/views/user_education/BUILD.gn
+@@ -25,6 +25,7 @@
+   ]
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//chrome/browser/ui/browser_window",
+     "//chrome/browser/ui/user_education",

@@ -1,0 +1,42 @@
+--- a/chrome/browser/ui/views/toolbar/BUILD.gn
++++ b/chrome/browser/ui/views/toolbar/BUILD.gn
+@@ -61,6 +61,7 @@
+   ]
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//build:buildflag_header_h",
+     "//chrome/browser:command_updater_impl",
+--- a/chrome/browser/ui/toolbar/BUILD.gn
++++ b/chrome/browser/ui/toolbar/BUILD.gn
+@@ -12,7 +12,8 @@
+     "chrome_location_bar_model_delegate.cc",
+     "chrome_location_bar_model_delegate.h",
+   ]
+-  public_deps = [ "//components/omnibox/browser:location_bar" ]
++  public_deps = [
++    "//chrome/browser:buildflags", "//components/omnibox/browser:location_bar" ]
+   deps = [
+     "//base",
+     "//chrome/browser/autocomplete",
+--- a/chrome/browser/ui/views/global_media_controls/BUILD.gn
++++ b/chrome/browser/ui/views/global_media_controls/BUILD.gn
+@@ -27,6 +27,7 @@
+     "media_toolbar_button_view.h",
+   ]
+   public_deps = [
++    "//chrome/browser:buildflags",
+     ":media_toolbar_button",
+     "//base",
+     "//chrome/browser/ui/global_media_controls",
+--- a/chrome/browser/ui/views/profiles/BUILD.gn
++++ b/chrome/browser/ui/views/profiles/BUILD.gn
+@@ -125,6 +125,7 @@
+     ]
+ 
+     public_deps = [
++    "//chrome/browser:buildflags",
+       ":avatar_toolbar_button_types",
+       "//base",
+       "//chrome/browser/profiles",
