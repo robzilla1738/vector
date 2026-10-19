@@ -22,6 +22,7 @@ export type HelperMethod =
   | 'permissions.status'
   | 'notifications.status'
   | 'notifications.enqueue'
+  | 'notifications.takeActivations'
   | 'permissions.request'
   | 'screen.capture'
   | 'input.click'
@@ -68,6 +69,7 @@ export class HelperClient {
   constructor(
     readonly executable: string,
     readonly artifactDirectory: string,
+    private readonly options: { role?: 'notifications' } = {},
   ) {}
   private start() {
     if (this.closed) fail('PRECONDITION_FAILED', 'Helper client is closed');
@@ -97,6 +99,7 @@ export class HelperClient {
         LANG: 'en_US.UTF-8',
         AUX_HELPER_AUTH_TOKEN: this.token,
         AUX_HELPER_ARTIFACT_DIR: resolve(this.artifactDirectory),
+        ...(this.options.role ? { AUX_HELPER_ROLE: this.options.role } : {}),
       },
     });
     this.child = child;
