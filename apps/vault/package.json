@@ -1,0 +1,24 @@
+{
+  "name": "@aux/vault",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "dev": "vite --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@aux/ui": "workspace:*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "lucide-react": "1.59.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/chrome": "0.3.5",
+    "typescript": "7.0.2"
+  }
+}

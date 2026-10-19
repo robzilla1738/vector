@@ -404,8 +404,9 @@ export class VaultService {
             this.decrypt(accountId, 'item', record),
           );
           return (
+            item.vaultId === data.vaultId &&
             item.importProvenance?.fingerprint ===
-            data.importProvenance?.fingerprint
+              data.importProvenance?.fingerprint
           );
         })
       )

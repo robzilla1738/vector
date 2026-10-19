@@ -254,10 +254,12 @@ export function createVaultRouters(
             .object({
               id: recordId,
               accountId: z.number(),
-              browserBinding: z.object({
-                profileId: z.string(),
-                browserMode: z.enum(['default', 'incognito']),
-              }),
+              browserBinding: z
+                .object({
+                  profileId: z.string(),
+                  browserMode: z.enum(['default', 'incognito']),
+                })
+                .passthrough(),
               suspensions: z.array(
                 z
                   .object({
@@ -342,7 +344,10 @@ export function createVaultRouters(
               message:
                 'This Vault item cannot be filled into the approved page.',
             });
-          approval.response = { verdict: 'allow', consumedAt: Date.now() };
+          approval.response = {
+            ...z.record(z.string(), z.unknown()).parse(approval.response),
+            consumedAt: Date.now(),
+          };
           store.set(
             input.accountId,
             'sessions',

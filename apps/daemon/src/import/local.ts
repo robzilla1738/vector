@@ -4,6 +4,7 @@ import { parse } from 'csv-parse/sync';
 import { z } from 'zod';
 import { itemFields } from '../vault/schema.js';
 export const importSource = z.enum([
+  'aux-json',
   'generic-csv',
   'apple-csv',
   'onepassword-csv',
@@ -55,6 +56,44 @@ export function parseLocalImport(input: z.infer<typeof importInput>) {
   const items: z.infer<typeof itemFields>[] = [];
   const errors: { row: number; message: string }[] = [];
   const sourceRows: Record<string, string>[] = [];
+  if (input.source === 'aux-json') {
+    let decoded: unknown;
+    try {
+      decoded = JSON.parse(input.data);
+    } catch {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This file is not valid JSON.',
+      });
+    }
+    const snapshot = z
+      .object({ items: z.array(z.unknown()).max(20000) })
+      .safeParse(decoded);
+    if (!snapshot.success)
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Choose an Aux JSON export containing an items array.',
+      });
+    for (const [index, value] of snapshot.data.items.entries()) {
+      const parsed = itemFields.safeParse(value);
+      if (!parsed.success) {
+        errors.push({
+          row: index + 1,
+          message: 'This saved item has invalid or unsupported fields.',
+        });
+        continue;
+      }
+      const fingerprint = createHash('sha256')
+        .update(JSON.stringify(parsed.data))
+        .digest('hex');
+      items.push({
+        ...parsed.data,
+        vaultId: input.vaultId,
+        importProvenance: { source: 'aux-json', fingerprint },
+      });
+    }
+    return { items, errors, total: snapshot.data.items.length };
+  }
   if (input.source === 'bitwarden-json') {
     let decoded: unknown;
     try {
@@ -108,7 +147,12 @@ export function parseLocalImport(input: z.infer<typeof importInput>) {
     let decoded: unknown;
     try {
       decoded = parse(input.data, {
-        columns: true,
+        columns: (headers: string[]) => {
+          const names = headers.map((name) => name.toLocaleLowerCase().trim());
+          if (new Set(names).size !== names.length)
+            throw new Error('Duplicate CSV columns');
+          return headers;
+        },
         bom: true,
         skip_empty_lines: true,
         max_record_size: 2_000_000,
