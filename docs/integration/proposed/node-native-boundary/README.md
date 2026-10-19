@@ -10,7 +10,7 @@ The CJS loader checks the explicit externally accepted runtime flag, canonical h
 
 The original helper's asynchronous worker requires `workerData.bindingPath=loadedBindingPath`; this is now the guarded CJS, so every worker independently validates scope before loading the original module. Original PDF methods call `loadPdfBinding()` through that same guarded loader. CJS explicitly sets canonical home/scope into the Node environment for subsequently created worker copies. NAPI guard keeps no per-environment handles globally and uses a context-aware stable NAPI module registration.
 
-`AUX_PROVIDED_NATIVE_LOAD_ONLY=1` latches deny-all and permits original NAPI registration only. Its exports refuse actual run/PDF calls; boundaryStatus reads current deny-all/counter state. A process that entered load-only cannot become production afterward. Actual execution additionally refuses until an internal fresh isolated Keychain target exists. Provisioning is deliberately not implemented/claimed by this source slice; readiness remains false.
+`AUX_PROVIDED_NATIVE_LOAD_ONLY=1` latches deny-all and permits original NAPI registration only. Its exports refuse actual run/PDF calls; boundaryStatus reads current deny-all/counter state. A process that entered load-only cannot become production afterward. Production preserves original DataProtection storage semantics under the immutable Aux scope; it does not substitute a file Keychain. Actual execution remains externally gated pending compiled isolation evidence and explicit approval for new Aux-only DP operations. Shared host entitlement-domain behavior is unproven; readiness remains false. See dp-production-design.md and approval-preview/.
 
 ## Build and immutable resources
 

@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "verification": "inventory-only; compilation/load/DP acceptance tracked separately",
+  "productionReady": false,
+  "sources": [
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "8c6765ae1258920d60e313145381a563d62697bd4a0ed6e93cdf4a0918e7692b"
+    },
+    {
+      "path": "vendor/provided/build-native-boundary.mjs",
+      "sha256": "f9960ae7135d328bda4172490b1aeab3f5eec3395c0b71fa8878e2dcf307b1f5"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.h",
+      "sha256": "4191ac2bf8c8e083d019467e30e15ef41bb86bb9ddee2e649ec1c95668a201e6"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "01f8526a7ac3cb6d9ab785e195f952491b6d08b665730e89e914904fc8156a14"
+    },
+    {
+      "path": "vendor/provided/native/keychain-interpose.mm",
+      "sha256": "56b9813b29d416fb90aefdbeb8bd777521a5c51a91b4bea7415c701277578450"
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "91085e810287552315d60cddec2c31dde44c3dfcc3175b953672407bc1e674f4"
+    },
+    {
+      "path": "vendor/provided/native/node-boundary-guard.mm",
+      "sha256": "33316274fc8e7071f5d3f4daa0de8cb12367ca865a2beafee54a7ce1b7f439d1"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/dry-run/aux-native-carrier",
+      "destination": "native/aux-native-carrier",
+      "present": false,
+      "sha256": null
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/dry-run/libaux-native-boundary.dylib",
+      "destination": "native/libaux-native-boundary.dylib",
+      "present": false,
+      "sha256": null
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/dry-run/aux-native-guard.node",
+      "destination": [
+        "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+        "apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node"
+      ],
+      "present": false,
+      "sha256": null
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/dry-run/keychain-query-map-test",
+      "destination": null,
+      "present": false,
+      "sha256": null
+    }
+  ],
+  "immutableOriginal": {
+    "name": "provided-native.node",
+    "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+  }
+}
