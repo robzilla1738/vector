@@ -3351,7 +3351,7 @@ index 01f863a..7693497 100644
 +  // Snapshot the original invocation before any closability/observer callback.
 +  // Retirement may invalidate it, but can never turn this call into human work.
 +  std::vector<base::UnguessableToken> original_invocations;
-+  for (auto* contents : items) {
++  for ([[maybe_unused]] auto* contents : items) {
 +    base::UnguessableToken invocation;
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
 +    if (auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(contents)) {
