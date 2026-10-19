@@ -1,0 +1,833 @@
+{
+  "node": {
+    "version": "26.12.0",
+    "url": "https://nodejs.org/dist/v26.12.0/node-v26.12.0-darwin-arm64.tar.gz",
+    "sha256": "2a154d4a5458930e0a2d6a1ecf64eddf5a2b3e1c13636b609c2ecb042e8c4553",
+    "license": "MIT",
+    "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v26.12.0/LICENSE"
+  },
+  "python": {
+    "version": "20261013",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz",
+    "sha256": "16a5332fb0dcb77f163fc8f8cbccd95be1644cc53e68e5d2a79f50afd6680a0e",
+    "license": "Python-2.0",
+    "release": "https://github.com/astral-sh/python-build-standalone/releases/tag/20261013",
+    "licenses": [
+      {
+        "file": "LICENSE",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE",
+        "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+      },
+      {
+        "file": "LICENSE.bdb.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.bdb.txt",
+        "sha256": "3bdff06e69991c94664f2ef5c5f8096f60b7dbec071756ea6cc26b445e06ec5b"
+      },
+      {
+        "file": "LICENSE.bzip2.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.bzip2.txt",
+        "sha256": "1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441"
+      },
+      {
+        "file": "LICENSE.cpython.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.cpython.txt",
+        "sha256": "86e61415828a8b5b06ec8d024e6f086ce155a8b85fd0c419c0ba4dc004e74fdd"
+      },
+      {
+        "file": "LICENSE.expat.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.expat.txt",
+        "sha256": "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534"
+      },
+      {
+        "file": "LICENSE.libX11.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libX11.txt",
+        "sha256": "2daec087a88e7c9b8082557cdeebad5bbb8155a4137472f0b22e269cd99d0c1e"
+      },
+      {
+        "file": "LICENSE.libXau.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libXau.txt",
+        "sha256": "56abe29bb1d9806a9e04fa9f80fed2c0f18027594df3f098148d814aef6bddfa"
+      },
+      {
+        "file": "LICENSE.libedit.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libedit.txt",
+        "sha256": "29cea33c32bbc9785142386377915612a2fa786482c46843383384aded2e09b1"
+      },
+      {
+        "file": "LICENSE.libffi.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libffi.txt",
+        "sha256": "deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0"
+      },
+      {
+        "file": "LICENSE.liblzma.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.liblzma.txt",
+        "sha256": "9a4062de0a2c388a98cf35a35d348b62fa97c838a71c3c28ee1a2d7d0a565b02"
+      },
+      {
+        "file": "LICENSE.libuuid.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libuuid.txt",
+        "sha256": "122ee1f7e258f2c3c0e538a75c037684f420454bf3850ddc74ce750bbf5fe86b"
+      },
+      {
+        "file": "LICENSE.libxcb.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.libxcb.txt",
+        "sha256": "c5ffbfeaa501071ceeb97b7de2c0d703fdaa35de01c0fb6cbac1c28453a3e9fd"
+      },
+      {
+        "file": "LICENSE.mpdecimal.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.mpdecimal.txt",
+        "sha256": "669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b"
+      },
+      {
+        "file": "LICENSE.ncurses.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.ncurses.txt",
+        "sha256": "87a4c4442337b8968ef956031c406b74f9cb7149b7ba87311bdaba534816201c"
+      },
+      {
+        "file": "LICENSE.openssl-1.1.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.openssl-1.1.txt",
+        "sha256": "9c04cce50c4989d5601dd8b07f6ab922c40388b66ac736c9007cb1ed9d9dd560"
+      },
+      {
+        "file": "LICENSE.openssl-3.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.openssl-3.txt",
+        "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+      },
+      {
+        "file": "LICENSE.sqlite.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.sqlite.txt",
+        "sha256": "38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719"
+      },
+      {
+        "file": "LICENSE.tcl.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.tcl.txt",
+        "sha256": "c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16"
+      },
+      {
+        "file": "LICENSE.tix.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.tix.txt",
+        "sha256": "3ac5cdd0bef6c43ce34c6a7ced452081d9e5a0bf94082b9f9147d23ec9e214f5"
+      },
+      {
+        "file": "LICENSE.zlib.txt",
+        "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261013/LICENSE.zlib.txt",
+        "sha256": "818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c"
+      }
+    ]
+  },
+  "rg": {
+    "version": "15.2.0",
+    "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-apple-darwin.tar.gz",
+    "sha256": "3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4",
+    "license": "Unlicense OR MIT",
+    "release": "https://github.com/BurntSushi/ripgrep/releases/tag/15.2.0"
+  },
+  "poppler": {
+    "version": "26.10.0",
+    "source": "https://formulae.brew.sh/api/formula/poppler.json",
+    "bottles": [
+      {
+        "name": "poppler",
+        "version": "26.10.0",
+        "revision": 0,
+        "license": "GPL-2.0-only OR GPL-3.0-only",
+        "homepage": "https://poppler.freedesktop.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/poppler/blobs/sha256:22f3925ca1c4338daae2775b48a7e4f658e340360b4c61d06b7835daf992e4ee",
+        "sha256": "22f3925ca1c4338daae2775b48a7e4f658e340360b4c61d06b7835daf992e4ee",
+        "dependencies": [
+          "brotli",
+          "cairo",
+          "fontconfig",
+          "freetype",
+          "glib",
+          "gpgmepp",
+          "harfbuzz",
+          "jpeg-turbo",
+          "libpng",
+          "libtiff",
+          "little-cms2",
+          "nspr",
+          "nss",
+          "openjpeg",
+          "gettext",
+          "gpgme"
+        ]
+      },
+      {
+        "name": "brotli",
+        "version": "1.2.0",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://github.com/google/brotli",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/brotli/blobs/sha256:b8e388c96be5a63a46e0335c390fecb20dda7adb1368a2ba0209b38cae17c708",
+        "sha256": "b8e388c96be5a63a46e0335c390fecb20dda7adb1368a2ba0209b38cae17c708",
+        "dependencies": []
+      },
+      {
+        "name": "cairo",
+        "version": "1.18.6",
+        "revision": 0,
+        "license": "LGPL-2.1-only OR MPL-1.1",
+        "homepage": "https://cairographics.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/cairo/blobs/sha256:2eb1ea8f47088a4bddf68c052eef3ef5e52a5bc1369118d432db6bea2e363853",
+        "sha256": "2eb1ea8f47088a4bddf68c052eef3ef5e52a5bc1369118d432db6bea2e363853",
+        "dependencies": [
+          "fontconfig",
+          "freetype",
+          "glib",
+          "libpng",
+          "libx11",
+          "libxcb",
+          "libxext",
+          "libxrender",
+          "lzo",
+          "pixman",
+          "gettext"
+        ]
+      },
+      {
+        "name": "fontconfig",
+        "version": "2.18.3",
+        "revision": 0,
+        "license": "HPND-sell-variant AND Unicode-3.0 AND MIT-Modern-Variant AND MIT AND LicenseRef-Homebrew-public-domain",
+        "homepage": "https://wiki.freedesktop.org/www/Software/fontconfig/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/fontconfig/blobs/sha256:a5f5df5f8d02e8a5b2587cac464c7bd45128447da06b7ab39938a9645982ef49",
+        "sha256": "a5f5df5f8d02e8a5b2587cac464c7bd45128447da06b7ab39938a9645982ef49",
+        "dependencies": [
+          "freetype",
+          "gettext"
+        ]
+      },
+      {
+        "name": "freetype",
+        "version": "2.15.0",
+        "revision": 0,
+        "license": "FTL",
+        "homepage": "https://www.freetype.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/freetype/blobs/sha256:7e7a7bb07a484cf6fccb168587d697ed24b98cce52e6ac735debb22adb422237",
+        "sha256": "7e7a7bb07a484cf6fccb168587d697ed24b98cce52e6ac735debb22adb422237",
+        "dependencies": [
+          "brotli",
+          "libpng"
+        ]
+      },
+      {
+        "name": "glib",
+        "version": "2.90.1",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://docs.gtk.org/glib/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/glib/blobs/sha256:ce9568a335281cb6bd12c48fd89d7a118a046f9df16761c120826fdae116e468",
+        "sha256": "ce9568a335281cb6bd12c48fd89d7a118a046f9df16761c120826fdae116e468",
+        "dependencies": [
+          "pcre2",
+          "gettext"
+        ]
+      },
+      {
+        "name": "gpgmepp",
+        "version": "2.2.0",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://www.gnupg.org/related_software/gpgme/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gpgmepp/blobs/sha256:bc1ad2a64e672863fe6501a4877e9f2f5d7cabdd4111cf4093badfa1e6928e3a",
+        "sha256": "bc1ad2a64e672863fe6501a4877e9f2f5d7cabdd4111cf4093badfa1e6928e3a",
+        "dependencies": [
+          "gpgme"
+        ]
+      },
+      {
+        "name": "harfbuzz",
+        "version": "14.6.0",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://github.com/harfbuzz/harfbuzz",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/harfbuzz/blobs/sha256:cc62ba7fd7ee2b04d81bd5e032cb49af70613039fefe09063c7c47c055da4607",
+        "sha256": "cc62ba7fd7ee2b04d81bd5e032cb49af70613039fefe09063c7c47c055da4607",
+        "dependencies": [
+          "cairo",
+          "freetype",
+          "glib",
+          "graphite2",
+          "icu4c@78",
+          "libpng"
+        ]
+      },
+      {
+        "name": "jpeg-turbo",
+        "version": "3.2.0",
+        "revision": 0,
+        "license": "IJG AND Zlib AND BSD-3-Clause",
+        "homepage": "https://www.libjpeg-turbo.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/jpeg-turbo/blobs/sha256:6dc55edcd33c693e474299ed2bba3c472ac1331cbe300066ec8ef99b88fab17c",
+        "sha256": "6dc55edcd33c693e474299ed2bba3c472ac1331cbe300066ec8ef99b88fab17c",
+        "dependencies": []
+      },
+      {
+        "name": "libpng",
+        "version": "1.6.59",
+        "revision": 0,
+        "license": "libpng-2.0",
+        "homepage": "https://www.libpng.org/pub/png/libpng.html",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libpng/blobs/sha256:6461c4dde6a693b559c531357b32126bd649ab67f53db5a5b70c25a5c12de4f1",
+        "sha256": "6461c4dde6a693b559c531357b32126bd649ab67f53db5a5b70c25a5c12de4f1",
+        "dependencies": []
+      },
+      {
+        "name": "libtiff",
+        "version": "4.7.2",
+        "revision": 0,
+        "license": "libtiff",
+        "homepage": "https://libtiff.gitlab.io/libtiff/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libtiff/blobs/sha256:e971adc15ce3387a9c68a10ff1cf431755faf0e86b9d3a6daf668efc2f6f31d8",
+        "sha256": "e971adc15ce3387a9c68a10ff1cf431755faf0e86b9d3a6daf668efc2f6f31d8",
+        "dependencies": [
+          "jpeg-turbo",
+          "webp",
+          "xz",
+          "zstd"
+        ]
+      },
+      {
+        "name": "little-cms2",
+        "version": "2.19.1",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.littlecms.com/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/little-cms2/blobs/sha256:f68c3c93b9ee63891388f6485b27c5bc2605638df36b4806bdc52f0636e8254b",
+        "sha256": "f68c3c93b9ee63891388f6485b27c5bc2605638df36b4806bdc52f0636e8254b",
+        "dependencies": [
+          "jpeg-turbo",
+          "libtiff"
+        ]
+      },
+      {
+        "name": "nspr",
+        "version": "4.40",
+        "revision": 0,
+        "license": "MPL-2.0",
+        "homepage": "https://hg.mozilla.org/projects/nspr",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/nspr/blobs/sha256:afa910ba680a2a951e5e624ff83f756ba7a53a2647cb1aabdf602cb94468eee2",
+        "sha256": "afa910ba680a2a951e5e624ff83f756ba7a53a2647cb1aabdf602cb94468eee2",
+        "dependencies": []
+      },
+      {
+        "name": "nss",
+        "version": "3.131",
+        "revision": 0,
+        "license": "MPL-2.0",
+        "homepage": "https://firefox-source-docs.mozilla.org/security/nss/index.html",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/nss/blobs/sha256:cc1520169f1cb4186001ca6a6b0ba720080637dcdb175d811eaaca7032327b02",
+        "sha256": "cc1520169f1cb4186001ca6a6b0ba720080637dcdb175d811eaaca7032327b02",
+        "dependencies": [
+          "nspr"
+        ]
+      },
+      {
+        "name": "openjpeg",
+        "version": "2.5.4",
+        "revision": 1,
+        "license": "BSD-2-Clause",
+        "homepage": "https://www.openjpeg.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/openjpeg/blobs/sha256:5f2c17c1be495ddc03d00c721b7144f63e9f5098cbee3147cb67610f3875a516",
+        "sha256": "5f2c17c1be495ddc03d00c721b7144f63e9f5098cbee3147cb67610f3875a516",
+        "dependencies": [
+          "libpng",
+          "libtiff",
+          "little-cms2"
+        ]
+      },
+      {
+        "name": "gettext",
+        "version": "1.0",
+        "revision": 0,
+        "license": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+        "homepage": "https://www.gnu.org/software/gettext/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gettext/blobs/sha256:98a116d35792ccd730360ffc8c0d8fc5799b2282b96bb7696192c573f064a331",
+        "sha256": "98a116d35792ccd730360ffc8c0d8fc5799b2282b96bb7696192c573f064a331",
+        "dependencies": [
+          "json-c",
+          "libunistring"
+        ]
+      },
+      {
+        "name": "gpgme",
+        "version": "2.2.0",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://www.gnupg.org/related_software/gpgme/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gpgme/blobs/sha256:1b998805d11e6020682577dd8b817e7ff771bac1d6e289c142f8b079308475b4",
+        "sha256": "1b998805d11e6020682577dd8b817e7ff771bac1d6e289c142f8b079308475b4",
+        "dependencies": [
+          "gnupg",
+          "libassuan",
+          "libgpg-error"
+        ]
+      },
+      {
+        "name": "webp",
+        "version": "1.6.0",
+        "revision": 0,
+        "license": "BSD-3-Clause",
+        "homepage": "https://developers.google.com/speed/webp/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/webp/blobs/sha256:3f5c1ccc592312b2170bc1ea673f902aa65fc479aa9a4c308ff0b1b1a35315fe",
+        "sha256": "3f5c1ccc592312b2170bc1ea673f902aa65fc479aa9a4c308ff0b1b1a35315fe",
+        "dependencies": [
+          "giflib",
+          "jpeg-turbo",
+          "libpng"
+        ]
+      },
+      {
+        "name": "xz",
+        "version": "5.8.4",
+        "revision": 0,
+        "license": "0BSD AND GPL-2.0-or-later",
+        "homepage": "https://tukaani.org/xz/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/xz/blobs/sha256:c2724c0db0398134694b8366d30d14f4de376115fb54c559c331d5fd0474af76",
+        "sha256": "c2724c0db0398134694b8366d30d14f4de376115fb54c559c331d5fd0474af76",
+        "dependencies": []
+      },
+      {
+        "name": "zstd",
+        "version": "1.5.7",
+        "revision": 1,
+        "license": "(BSD-3-Clause OR GPL-2.0-only) AND BSD-2-Clause AND MIT",
+        "homepage": "https://facebook.github.io/zstd/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/zstd/blobs/sha256:d72adf48460a8384b256f88061cd7b9df4977df7fa2e0794051d427db754a565",
+        "sha256": "d72adf48460a8384b256f88061cd7b9df4977df7fa2e0794051d427db754a565",
+        "dependencies": [
+          "lz4",
+          "xz"
+        ]
+      },
+      {
+        "name": "json-c",
+        "version": "0.19",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://github.com/json-c/json-c/wiki",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/json-c/blobs/sha256:5624048dbb067f1a6d3784081029c3d738edeefd57188ce6724bb93d01aa53aa",
+        "sha256": "5624048dbb067f1a6d3784081029c3d738edeefd57188ce6724bb93d01aa53aa",
+        "dependencies": []
+      },
+      {
+        "name": "libunistring",
+        "version": "1.5",
+        "revision": 0,
+        "license": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+        "homepage": "https://www.gnu.org/software/libunistring/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libunistring/blobs/sha256:5001abe192babcfaf0f97ad322e2e59958d0d991de3da9f2e941b24924b8a2b8",
+        "sha256": "5001abe192babcfaf0f97ad322e2e59958d0d991de3da9f2e941b24924b8a2b8",
+        "dependencies": []
+      },
+      {
+        "name": "graphite2",
+        "version": "1.3.15",
+        "revision": 0,
+        "license": "MIT OR MPL-2.0 OR LGPL-2.1-or-later OR GPL-2.0-or-later",
+        "homepage": "https://graphite.sil.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/graphite2/blobs/sha256:bcbf8282acc59c6ed6a0c9a7cf076935735c21de1495bb4e22c3d6bf32f31ee0",
+        "sha256": "bcbf8282acc59c6ed6a0c9a7cf076935735c21de1495bb4e22c3d6bf32f31ee0",
+        "dependencies": []
+      },
+      {
+        "name": "icu4c@78",
+        "version": "78.3",
+        "revision": 0,
+        "license": "Unicode-3.0",
+        "homepage": "https://icu.unicode.org/home",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/icu4c/78/blobs/sha256:d1206febbce23e5014f51b631afd7129b2a247ee18a9f97226cd5889e66c1686",
+        "sha256": "d1206febbce23e5014f51b631afd7129b2a247ee18a9f97226cd5889e66c1686",
+        "dependencies": []
+      },
+      {
+        "name": "pcre2",
+        "version": "10.49",
+        "revision": 0,
+        "license": "BSD-3-Clause",
+        "homepage": "https://www.pcre.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/pcre2/blobs/sha256:0ec47d18c50f5770db2b3f07b5b85644284cc6ee8e07e23b11d2727e95932b77",
+        "sha256": "0ec47d18c50f5770db2b3f07b5b85644284cc6ee8e07e23b11d2727e95932b77",
+        "dependencies": []
+      },
+      {
+        "name": "libx11",
+        "version": "1.8.14",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libx11/blobs/sha256:fdc6503c67fb5814bf7de665629b8dbda0807eda7b07d3c2668807768b4ae103",
+        "sha256": "fdc6503c67fb5814bf7de665629b8dbda0807eda7b07d3c2668807768b4ae103",
+        "dependencies": [
+          "libxcb",
+          "xorgproto"
+        ]
+      },
+      {
+        "name": "libxcb",
+        "version": "1.17.0",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libxcb/blobs/sha256:cce8d9e12c3f0b2fdbffbb3f7ba02f7e25cf3fa495b3e759d34a6264599543b3",
+        "sha256": "cce8d9e12c3f0b2fdbffbb3f7ba02f7e25cf3fa495b3e759d34a6264599543b3",
+        "dependencies": [
+          "libxau",
+          "libxdmcp"
+        ]
+      },
+      {
+        "name": "libxext",
+        "version": "1.3.7",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libxext/blobs/sha256:71225436c92940977248a28433951e8e26732d3a9eed954ce1999a770f93f98e",
+        "sha256": "71225436c92940977248a28433951e8e26732d3a9eed954ce1999a770f93f98e",
+        "dependencies": [
+          "libx11",
+          "xorgproto"
+        ]
+      },
+      {
+        "name": "libxrender",
+        "version": "0.9.13",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libxrender/blobs/sha256:d281b755455ee77f28bcf83c93501b525d7eb2c7a4b8eb8fdf640ee2c6e4b69b",
+        "sha256": "d281b755455ee77f28bcf83c93501b525d7eb2c7a4b8eb8fdf640ee2c6e4b69b",
+        "dependencies": [
+          "libx11",
+          "xorgproto"
+        ]
+      },
+      {
+        "name": "lzo",
+        "version": "2.10",
+        "revision": 0,
+        "license": "GPL-2.0-or-later",
+        "homepage": "https://www.oberhumer.com/opensource/lzo/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/lzo/blobs/sha256:6bb0401c41a18fd37071ec9591fe053a808f07552ff7ea22542faa470eb8e589",
+        "sha256": "6bb0401c41a18fd37071ec9591fe053a808f07552ff7ea22542faa470eb8e589",
+        "dependencies": []
+      },
+      {
+        "name": "pixman",
+        "version": "0.46.4",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://cairographics.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/pixman/blobs/sha256:86f5fc013d2b22bbe41c1c14661287bf8e8e4c3ac95cd05b08b886d24918fe34",
+        "sha256": "86f5fc013d2b22bbe41c1c14661287bf8e8e4c3ac95cd05b08b886d24918fe34",
+        "dependencies": []
+      },
+      {
+        "name": "giflib",
+        "version": "6.1.3",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://giflib.sourceforge.net/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/giflib/blobs/sha256:cfd0ce71b021f10c57fe01270b77703a82c56032afd078a48d7ad48c603ae0de",
+        "sha256": "cfd0ce71b021f10c57fe01270b77703a82c56032afd078a48d7ad48c603ae0de",
+        "dependencies": []
+      },
+      {
+        "name": "lz4",
+        "version": "1.10.0",
+        "revision": 0,
+        "license": "BSD-2-Clause",
+        "homepage": "https://lz4.github.io/lz4/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/lz4/blobs/sha256:91674f1c7407b1f7b73d5bd1d85ed1abaaca93be3b68607af4ef3df632540ac0",
+        "sha256": "91674f1c7407b1f7b73d5bd1d85ed1abaaca93be3b68607af4ef3df632540ac0",
+        "dependencies": []
+      },
+      {
+        "name": "xorgproto",
+        "version": "2026.1",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/xorgproto/blobs/sha256:8327b24ee8a0d4b3cd9dfb6d49eb20a80484c0f25535be6e726d1b908f444514",
+        "sha256": "8327b24ee8a0d4b3cd9dfb6d49eb20a80484c0f25535be6e726d1b908f444514",
+        "dependencies": []
+      },
+      {
+        "name": "libxau",
+        "version": "1.0.12",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libxau/blobs/sha256:e8a5fedbd9e5c49f10006171decc5b1e56c48fbd4267e7668f813e47c0da984f",
+        "sha256": "e8a5fedbd9e5c49f10006171decc5b1e56c48fbd4267e7668f813e47c0da984f",
+        "dependencies": [
+          "xorgproto"
+        ]
+      },
+      {
+        "name": "libxdmcp",
+        "version": "1.1.5",
+        "revision": 0,
+        "license": "MIT",
+        "homepage": "https://www.x.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libxdmcp/blobs/sha256:b09a915dae5b45371a86f20a4ccce13c16c7a8eadc843b665e91bc5b2d2143ce",
+        "sha256": "b09a915dae5b45371a86f20a4ccce13c16c7a8eadc843b665e91bc5b2d2143ce",
+        "dependencies": [
+          "xorgproto"
+        ]
+      },
+      {
+        "name": "gnupg",
+        "version": "2.5.24",
+        "revision": 1,
+        "license": "GPL-3.0-or-later",
+        "homepage": "https://gnupg.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gnupg/blobs/sha256:91163072d2759706aa41c014bc865019900eaa815ab5bd017263ab059694addf",
+        "sha256": "91163072d2759706aa41c014bc865019900eaa815ab5bd017263ab059694addf",
+        "dependencies": [
+          "gnutls",
+          "libassuan",
+          "libgcrypt",
+          "libgpg-error",
+          "libksba",
+          "libusb",
+          "npth",
+          "pinentry",
+          "readline",
+          "gettext"
+        ]
+      },
+      {
+        "name": "libassuan",
+        "version": "3.0.2",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later AND GPL-3.0-or-later AND FSFULLR",
+        "homepage": "https://www.gnupg.org/related_software/libassuan/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libassuan/blobs/sha256:1430611fe9f337d6a7568a12321f125c567ca8d4d2bdcd7ff0717bdcd82a32dc",
+        "sha256": "1430611fe9f337d6a7568a12321f125c567ca8d4d2bdcd7ff0717bdcd82a32dc",
+        "dependencies": [
+          "libgpg-error"
+        ]
+      },
+      {
+        "name": "libgpg-error",
+        "version": "1.61",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://www.gnupg.org/related_software/libgpg-error/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libgpg-error/blobs/sha256:d209486b1890cf8194a71c00d976bdb4708ff82336232e4b7b38c64f7686de6d",
+        "sha256": "d209486b1890cf8194a71c00d976bdb4708ff82336232e4b7b38c64f7686de6d",
+        "dependencies": [
+          "gettext"
+        ]
+      },
+      {
+        "name": "gnutls",
+        "version": "3.8.13",
+        "revision": 2,
+        "license": "LGPL-2.1-or-later AND GPL-3.0-only",
+        "homepage": "https://gnutls.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gnutls/blobs/sha256:0c8ba0cb42636a98b28a2c173b33c4298a286972a9838d27602f0bbc860acdbb",
+        "sha256": "0c8ba0cb42636a98b28a2c173b33c4298a286972a9838d27602f0bbc860acdbb",
+        "dependencies": [
+          "ca-certificates",
+          "gmp",
+          "libidn2",
+          "libtasn1",
+          "libunistring",
+          "nettle",
+          "p11-kit",
+          "gettext"
+        ]
+      },
+      {
+        "name": "libgcrypt",
+        "version": "1.12.4",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later AND GPL-2.0-or-later",
+        "homepage": "https://gnupg.org/related_software/libgcrypt/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libgcrypt/blobs/sha256:c314eec8280f768dba978c7c55a569d3944505d7d709285e4721f24ae765748c",
+        "sha256": "c314eec8280f768dba978c7c55a569d3944505d7d709285e4721f24ae765748c",
+        "dependencies": [
+          "libgpg-error"
+        ]
+      },
+      {
+        "name": "libksba",
+        "version": "1.8.1",
+        "revision": 0,
+        "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "homepage": "https://www.gnupg.org/related_software/libksba/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libksba/blobs/sha256:cc1bfa116e5e7550d0caeee4aba27203aa15ceb485083f5a6e91e6ab9c7011dd",
+        "sha256": "cc1bfa116e5e7550d0caeee4aba27203aa15ceb485083f5a6e91e6ab9c7011dd",
+        "dependencies": [
+          "libgpg-error"
+        ]
+      },
+      {
+        "name": "libusb",
+        "version": "1.0.30",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://libusb.info/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libusb/blobs/sha256:a8d271bd5d9e7065987960caa52a9130d7fe6321ff1bad751499e465d0413e38",
+        "sha256": "a8d271bd5d9e7065987960caa52a9130d7fe6321ff1bad751499e465d0413e38",
+        "dependencies": []
+      },
+      {
+        "name": "npth",
+        "version": "1.8",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://gnupg.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/npth/blobs/sha256:7836af0109be87ab2b8155b533cd33508eb3b738190031c8ca2e2b94df6f5c2b",
+        "sha256": "7836af0109be87ab2b8155b533cd33508eb3b738190031c8ca2e2b94df6f5c2b",
+        "dependencies": []
+      },
+      {
+        "name": "pinentry",
+        "version": "1.3.3",
+        "revision": 0,
+        "license": "GPL-2.0-or-later",
+        "homepage": "https://www.gnupg.org/related_software/pinentry/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/pinentry/blobs/sha256:eb7ffd4b8a4f31ce85cf0395656bbc1fd5241fdc1b9f92d9900e813993d4e1e0",
+        "sha256": "eb7ffd4b8a4f31ce85cf0395656bbc1fd5241fdc1b9f92d9900e813993d4e1e0",
+        "dependencies": [
+          "libassuan",
+          "libgpg-error"
+        ]
+      },
+      {
+        "name": "readline",
+        "version": "8.3.6",
+        "revision": 0,
+        "license": "GPL-3.0-or-later",
+        "homepage": "https://tiswww.case.edu/php/chet/readline/rltop.html",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/readline/blobs/sha256:461763fa21c050a59e5bbceedf67dcacf24e4aa4604490d73f0c9fa0f40e7fe5",
+        "sha256": "461763fa21c050a59e5bbceedf67dcacf24e4aa4604490d73f0c9fa0f40e7fe5",
+        "dependencies": []
+      },
+      {
+        "name": "ca-certificates",
+        "version": "2026-09-25",
+        "revision": 0,
+        "license": "MPL-2.0",
+        "homepage": "https://curl.se/docs/caextract.html",
+        "tag": "all",
+        "url": "https://ghcr.io/v2/homebrew/core/ca-certificates/blobs/sha256:81804ad8a70a7a8d2a0a964d106765ff88716b310decaeffb4b4895a3252186a",
+        "sha256": "81804ad8a70a7a8d2a0a964d106765ff88716b310decaeffb4b4895a3252186a",
+        "dependencies": []
+      },
+      {
+        "name": "gmp",
+        "version": "6.3.0",
+        "revision": 0,
+        "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "homepage": "https://gmplib.org/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/gmp/blobs/sha256:b30bf31c50c294e0981d2a7cb4c149e9c43f50f3cf4f7f552c3dcf9da66b95b5",
+        "sha256": "b30bf31c50c294e0981d2a7cb4c149e9c43f50f3cf4f7f552c3dcf9da66b95b5",
+        "dependencies": []
+      },
+      {
+        "name": "libidn2",
+        "version": "2.3.8",
+        "revision": 0,
+        "license": "(GPL-2.0-or-later OR LGPL-3.0-or-later) AND (Unicode-TOU AND Unicode-DFS-2016) AND GPL-3.0-or-later AND LGPL-2.1-or-later AND FSFAP-no-warranty-disclaimer",
+        "homepage": "https://www.gnu.org/software/libidn/#libidn2",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libidn2/blobs/sha256:1eb02bfa40ec00b7ea64d8608fcf2115069d99de5a35eb3e2b3ac444a695ea46",
+        "sha256": "1eb02bfa40ec00b7ea64d8608fcf2115069d99de5a35eb3e2b3ac444a695ea46",
+        "dependencies": [
+          "libunistring",
+          "gettext"
+        ]
+      },
+      {
+        "name": "libtasn1",
+        "version": "4.21.0",
+        "revision": 0,
+        "license": "LGPL-2.1-or-later",
+        "homepage": "https://www.gnu.org/software/libtasn1/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/libtasn1/blobs/sha256:973e0fd7d529808f53fa9ae281020bcbcc750a1dff60e5e5bc37c0da274cca5e",
+        "sha256": "973e0fd7d529808f53fa9ae281020bcbcc750a1dff60e5e5bc37c0da274cca5e",
+        "dependencies": []
+      },
+      {
+        "name": "nettle",
+        "version": "4.0",
+        "revision": 0,
+        "license": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+        "homepage": "https://www.lysator.liu.se/~nisse/nettle/",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/nettle/blobs/sha256:01050aa13ce3825fc1b81f1a3c5994a165301b9d5223a9fb9015d122bde5ca3e",
+        "sha256": "01050aa13ce3825fc1b81f1a3c5994a165301b9d5223a9fb9015d122bde5ca3e",
+        "dependencies": [
+          "gmp"
+        ]
+      },
+      {
+        "name": "p11-kit",
+        "version": "0.26.5",
+        "revision": 0,
+        "license": "BSD-3-Clause",
+        "homepage": "https://p11-glue.github.io/p11-glue/p11-kit.html",
+        "tag": "arm64_sequoia",
+        "url": "https://ghcr.io/v2/homebrew/core/p11-kit/blobs/sha256:6a61302c1be785c331903fe9252f87d0d4ca722fda0697c4e22f6063cd4f1be2",
+        "sha256": "6a61302c1be785c331903fe9252f87d0d4ca722fda0697c4e22f6063cd4f1be2",
+        "dependencies": [
+          "ca-certificates",
+          "libtasn1"
+        ]
+      }
+    ]
+  }
+}

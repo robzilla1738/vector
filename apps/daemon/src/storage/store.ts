@@ -172,7 +172,9 @@ export class Store {
     const accountId =
       context.accountId ??
       previous?.accountId ??
-      this.add('Local account', 'local').id;
+      (bindings.length === 0 && this.accounts().length === 1
+        ? this.current()
+        : this.add('Local account', 'local').id);
     this.requireAccount(accountId);
     const binding = {
       ...previous,

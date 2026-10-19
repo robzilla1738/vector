@@ -84,3 +84,4 @@ aux/0083-aux-profile-icon-picker.patch
 aux/0084-aux-sidebar-toolbar-parity.patch
 aux/0085-aux-ntp-omnibox-parity-and-aux-scheme.patch
 aux/0086-aux-native-platform-auth.patch
+aux/0087-aux-native-private-apis.patch

@@ -75,6 +75,32 @@ try {
   socket.send(JSON.stringify({ method: 'register', connectionId: 'core-smoke', route: { accountId: registry.currentAccountId, profileId: 'smoke', browserMode: 'default' } }));
   assert.equal((await registered).method, 'registered');
   socket.close();
+  if (process.argv.includes('--repl')) {
+    async function rpc(name, input) {
+      const response = await fetch(`${origin}/trpc/${name}`, {
+        method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: registry.currentAccountId, ...input }),
+      });
+      return { status: response.status, body: await response.json() };
+    }
+    const started = await rpc('cli.replStart', {});
+    assert.equal(started.status, 200);
+    const id = started.body.result.data.id;
+    const first = await rpc('cli.replRun', { id, code: 'let value = await Promise.resolve(40); value + 2' });
+    assert.equal(first.status, 200);
+    assert.equal(first.body.result.data.result, 42);
+    const second = await rpc('cli.replRun', { id, code: 'value += 1; value' });
+    assert.equal(second.body.result.data.result, 41);
+    const isolated = await rpc('cli.replRun', { id, code: 'typeof process + ":" + typeof require' });
+    assert.equal(isolated.body.result.data.result, 'undefined:undefined');
+    const imported = await rpc('cli.replRun', { id, code: 'await import("node:fs")' });
+    assert.notEqual(imported.status, 200);
+    const timed = await rpc('cli.replStart', {});
+    const timedId = timed.body.result.data.id;
+    const interrupted = await rpc('cli.replRun', { id: timedId, code: 'while (true) {}', timeoutMs: 25 });
+    assert.notEqual(interrupted.status, 200);
+    console.log('Isolated REPL smoke passed: async bindings persist, host globals/imports unavailable, runaway execution interrupted.');
+  }
   if (process.argv.includes('--ai')) {
     const values = parseEnv(await readFile(join(root, '.env'), 'utf8'));
     if (!values.AI_GATEWAY_API_KEY) throw new Error('AI_GATEWAY_API_KEY is missing from the private environment file.');

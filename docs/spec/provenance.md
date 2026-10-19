@@ -84,3 +84,9 @@ The owner clarified that the standard HTML element named `aside` is permitted an
 Verified independent upstream sources:
 - `prosemirror-model@1.25.12` (MIT), `src/from_dom.ts`, SHA256 `b4f5e77c9dd4f430002b83fae8e1d114d9653e16ef4b28fba5ea01eb52980abb`. Acquired through the independently resolved pnpm lock; contains HTML block element vocabulary.
 - `micromark-util-html-tag-name@2.0.1` (MIT), `index.js`, SHA256 `da74ea4080075b3f45a13eda9a05789e7038e1560954aff6979daafa68d0f096`. Acquired through the independently resolved pnpm lock; contains HTML block element vocabulary.
+
+The independently acquired Apache-2.0 `Xenova/all-MiniLM-L6-v2` tokenizer contains ordinary English vocabulary (including the lowercase word `aside`). These are linguistic tokens rather than product names. Name-only detection admits the exact immutable `tokenizer.json` and `vocab.txt` SHA256 values in `apps/memory/models/manifest.json`; extension-ID and reference-artifact hash checks still run. The model artifacts are hash-verified before local inference.
+
+The source checker also recognizes literal HTML opening/closing `aside` tags and the retained reader's HTML removal-selector sequence. Those refer to the standard HTML element authorized by the owner, not reference product identity. Existing filter-list and legacy native naming findings remain unresolved and visible pending retirement/audit.
+
+The canonical Apache-2.0 license text was acquired directly from https://www.apache.org/licenses/LICENSE-2.0.txt (SHA256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`). It naturally collides with the same public legal text in the reference inventory. The checker permits that exact digest only at license/notice filenames; names and extension-identity checks still apply. This is a public upstream license allowance, not an allowance for copied product artifacts.

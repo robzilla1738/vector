@@ -1,123 +1,73 @@
 #!/usr/bin/env node
-/**
- * Local installation helpers for Aux.
- *
- *   node scripts/package-aux.mjs [--app <dir>] [--bin <dir>] [--chromium <Aux.app>] [--dev]
- *
- * - Installs the staged CLI to ~/.aux/cli/Aux CLI.app and puts an `aux` command in --bin (default ~/.local/bin).
- * - Builds Aux.app (default ~/Applications/Aux.app). It carries the browser, daemon, extensions, agent runtime
- *   and launcher scripts, and starts the daemon, the CDP gate and the browser. The launcher scripts need a
- *   `node` (22 or newer) on PATH. Files are APFS clones, so the copy costs no extra disk space.
- * - With --dev the app is a thin launcher that points back at this checkout instead.
- *
- * The result is ad-hoc signed at most. Developer ID signing and notarization are release steps, not done here.
- */
-import { execFileSync } from "node:child_process";
-import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { AUX_BUNDLE_ID } from "../vendor/aside/patches/daemon.mjs";
+// Assemble only independent Aux builds and pinned upstream runtimes.
+import { execFileSync } from 'node:child_process';
+import { constants, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 
-const root = resolve(import.meta.dirname, "..");
-const staged = join(root, "out/aside-staged");
+const root = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
-const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
-
-const appDir = resolve(option("--app", join(homedir(), "Applications/Aux.app")));
-const binDir = resolve(option("--bin", join(homedir(), ".local/bin")));
-const chromiumApp = resolve(
-  option("--chromium", join(homedir(), "Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app")),
-);
-const cliSource = join(staged, "cli/Aux CLI.app");
-const cliInstall = join(homedir(), ".aux/cli/Aux CLI.app");
-
-if (!existsSync(cliSource)) {
-  console.error("Missing staged CLI. Run: node scripts/vendor-aside.mjs");
-  process.exit(1);
+const options = {};
+for (let i = 0; i < args.length; i++) {
+  const flag = args[i];
+  if (flag === '--development') { options.development = true; continue; }
+  if (flag === '--install-cli') { options.installCli = true; continue; }
+  if (!['--app', '--chromium', '--bin'].includes(flag) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Usage: package-aux.mjs [--development] [--app PATH] [--chromium Aux.app] [--install-cli] [--bin PATH]');
+  options[flag.slice(2)] = resolve(args[++i]);
 }
-
-// The CLI hangs at launch from some protected folders (such as ~/Documents), so it runs from ~/.aux.
-rmSync(cliInstall, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
-mkdirSync(join(cliInstall, ".."), { recursive: true });
-execFileSync("cp", ["-cR", cliSource, cliInstall]);
-mkdirSync(binDir, { recursive: true });
-const command = join(binDir, "aux");
-rmSync(command, { force: true });
-writeFileSync(command, `#!/bin/sh\nexec "${join(cliInstall, "Contents/MacOS/aux-cli")}" "$@"\n`);
-chmodSync(command, 0o755);
-console.log(`installed ${command}`);
-
-const dev = args.includes("--dev");
-const contents = join(appDir, "Contents");
-rmSync(appDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
-mkdirSync(join(contents, "MacOS"), { recursive: true });
-mkdirSync(join(contents, "Resources"), { recursive: true });
-cpSync(join(root, "assets/brand/Aux.icns"), join(contents, "Resources/Aux.icns"));
-writeFileSync(
-  join(contents, "Info.plist"),
-  `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleName</key><string>Aux</string>
-<key>CFBundleDisplayName</key><string>Aux</string>
-<key>CFBundleIdentifier</key><string>${AUX_BUNDLE_ID}.launcher</string>
-<key>CFBundleExecutable</key><string>Aux</string>
-<key>CFBundleIconFile</key><string>Aux</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>LSUIElement</key><true/>
-</dict></plist>
-`,
-);
-
-const clone = (from, to) => {
-  mkdirSync(join(to, ".."), { recursive: true });
-  execFileSync("cp", ["-c", "-R", from, to]);
-};
-const launcher = join(contents, "MacOS/Aux");
-const preamble = `#!/bin/sh
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-if ! command -v node >/dev/null 2>&1; then
-  osascript -e 'display alert "Aux needs Node.js" message "Install Node.js 22 or newer (for example: brew install node), then open Aux again."' >/dev/null 2>&1
-  exit 1
-fi
-`;
-
-if (dev) {
-  writeFileSync(launcher, `${preamble}exec node "${join(root, "scripts/aux.mjs")}" --chromium "${join(chromiumApp, "Contents/MacOS/Aux")}" "$@"\n`);
-} else {
-  const browserOut = join(chromiumApp, "..");
-  const resources = join(contents, "Resources");
-  const browser = join(resources, "browser");
-  mkdirSync(browser, { recursive: true });
-  // A component build resolves its dylibs relative to the directory that holds Aux.app.
-  clone(chromiumApp, join(browser, "Aux.app"));
-  for (const name of readdirSync(browserOut)) {
-    if (name.endsWith(".dylib") || ["angledata", "MEIPreload", "icudtl.dat", "chrome_crashpad_handler", "hyphen-data"].includes(name)) {
-      clone(join(browserOut, name), join(browser, name));
-    }
-  }
-
-  const aux = join(resources, "aux");
-  clone(staged, join(aux, "out/aside-staged"));
-  for (const file of [
-    "scripts/aux.mjs",
-    "vendor/aside/shims/aux-cdp-gate.mjs",
-    "vendor/aside/patches/daemon.mjs",
-    "vendor/aside/patches/brand.mjs",
-  ]) {
-    mkdirSync(join(aux, file, ".."), { recursive: true });
-    cpSync(join(root, file), join(aux, file));
-  }
-  // pnpm links node_modules entries into its store; ws has no dependencies, so copy the real directory.
-  clone(realpathSync(join(root, "node_modules/ws")), join(aux, "node_modules/ws"));
-  writeFileSync(
-    launcher,
-    `${preamble}here="$(cd "$(dirname "$0")/../Resources" && pwd)"
-exec node "$here/aux/scripts/aux.mjs" --chromium "$here/browser/Aux.app/Contents/MacOS/Aux" "$@"
-`,
-  );
+const native = options.chromium ?? join(homedir(), 'Documents/Code/aux-chromium-security-155/chromium/src/out/AuxAside/Aux.app');
+const destination = options.app ?? (options.development ? join(root, 'out/local/Aux.app') : join(homedir(), 'Applications/Aux.app'));
+if (resolve(native) === destination) throw new Error('Package destination must differ from the native build.');
+const flags = readFileSync(join(dirname(native), 'args.gn'), 'utf8');
+if (!/^enable_aux_browser\s*=\s*true\s*$/m.test(flags)) throw new Error('Native build must enable the independent Aux browser.');
+if (/^enable_aux_shell\s*=\s*true\s*$/m.test(flags)) throw new Error('Retired shell must be disabled.');
+if (!options.development && !/^is_component_build\s*=\s*false\s*$/m.test(flags)) throw new Error('Production packaging requires is_component_build=false.');
+for (const path of [join(native, 'Contents/MacOS/Aux'), 'out/sea/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', 'out/sea/cli/Aux CLI.app/Contents/MacOS/aux-cli', 'apps/computer-use/dist/Aux Computer Use.app/Contents/MacOS/aux-computer-use', 'apps/password-importer/dist/Aux Password Importer.app/Contents/MacOS/aux-password-importer', 'apps/extension/dist/manifest.json', 'apps/vault/dist/manifest.json', 'out/runtime/node', 'out/runtime/python/bin/python3', 'out/runtime/pdftotext', 'out/runtime/pdfinfo', 'out/runtime/pdftoppm']) {
+  if (!existsSync(resolve(root, path))) throw new Error(`Build prerequisite missing: ${path}`);
 }
-chmodSync(launcher, 0o755);
-execFileSync("codesign", ["--force", "--sign", "-", appDir], { stdio: "inherit" });
-console.log(`built ${appDir}${dev ? " (dev launcher)" : ""}`);
+const temporary = `${destination}.assembling`;
+rmSync(temporary, { recursive: true, force: true });
+mkdirSync(dirname(temporary), { recursive: true });
+function copy(from, to) {
+  mkdirSync(dirname(to), { recursive: true });
+  cpSync(from, to, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
+}
+copy(native, temporary);
+const bundle = join(temporary, 'Contents/Resources/aux');
+rmSync(bundle, { recursive: true, force: true });
+copy(join(root, 'out/sea/daemon'), join(bundle, 'apps/daemon'));
+copy(join(root, 'out/sea/cli'), join(bundle, 'apps/cli'));
+copy(join(root, 'out/runtime'), join(bundle, 'runtime'));
+for (const name of ['extension', 'vault']) copy(join(root, `apps/${name}/dist`), join(bundle, `apps/${name}/dist`));
+copy(join(root, 'apps/computer-use/dist/Aux Computer Use.app'), join(bundle, 'apps/computer-use/Aux Computer Use.app'));
+copy(join(root, 'apps/password-importer/dist/Aux Password Importer.app'), join(bundle, 'apps/password-importer/Aux Password Importer.app'));
+copy(join(root, 'apps/memory/models/minilm'), join(bundle, 'apps/memory/models/minilm'));
+for (const name of ['NOTICE.md', 'manifest.json', 'LICENSE-APACHE-2.0.txt']) copy(join(root, 'apps/memory/models', name), join(bundle, 'apps/memory/models', name));
+copy(join(root, 'packages/ui/NOTICE.md'), join(bundle, 'licenses/ui/NOTICE.md'));
+copy(join(root, 'packages/ui/licenses'), join(bundle, 'licenses/ui/fonts-icons'));
+copy(join(root, 'vendor/runtime/sources.json'), join(bundle, 'licenses/runtime-sources.json'));
+copy(join(root, 'assets/brand/Aux.icns'), join(temporary, 'Contents/Resources/Aux.icns'));
+const manifest = { version: '0.2.0', development: !!options.development, daemon: 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', cli: 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli', sourceRevision: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), assembledAt: new Date().toISOString() };
+writeFileSync(join(bundle, 'bundle.json'), JSON.stringify(manifest, null, 2) + '\n');
+execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', temporary], { stdio: 'inherit' });
+if (options.development) {
+  // Intermediate component builds resolve their own libraries beside Aux.app.
+  for (const entry of readdirSync(dirname(native))) {
+    if (entry.endsWith('.dylib')) copy(join(dirname(native), entry), join(dirname(destination), entry));
+  }
+}
+// Preserve an existing installation until assembly and local signing succeeded.
+const previous = `${destination}.previous`;
+if (existsSync(previous)) throw new Error(`Previous app backup already exists: ${previous}`);
+if (existsSync(destination)) renameSync(destination, previous);
+try { renameSync(temporary, destination); }
+catch (error) { if (existsSync(previous)) renameSync(previous, destination); throw error; }
+if (existsSync(previous)) rmSync(previous, { recursive: true, force: true });
+if (options.installCli) {
+  const bin = options.bin ?? join(homedir(), '.local/bin');
+  mkdirSync(bin, { recursive: true });
+  const command = join(bin, 'aux');
+  if (existsSync(command)) throw new Error(`CLI command already exists; inspect it before replacing: ${command}`);
+  symlinkSync(join(destination, 'Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli'), command);
+}
+console.log(`Assembled ${destination}${options.development ? ' (intermediate component build)' : ''}`);
