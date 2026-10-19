@@ -1,5 +1,6 @@
 import { Button, Dialog, Empty, ErrorNotice } from '@aux/ui';
 import { useCallback, useEffect, useState } from 'react';
+import { BrowserImportSettings } from './browser-import-settings';
 import { ChannelsSettings } from './channels';
 import { CustomModelSettings } from './custom-model-settings';
 import { rpc } from './daemon';
@@ -323,6 +324,7 @@ export function Settings({
           )}
           {section === 'general' && (
             <>
+              <BrowserImportSettings key={accountId} accountId={accountId} />
               <Setting label="Make Aux your default browser">
                 <Button
                   disabled={pending}
