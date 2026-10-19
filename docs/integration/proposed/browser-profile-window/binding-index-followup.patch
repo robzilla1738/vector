@@ -1,0 +1,66 @@
+--- a/chrome/browser/aux/profile_state.h
++++ b/chrome/browser/aux/profile_state.h
+@@ -10,6 +10,7 @@
+ std::string ProfileIdForPath(const base::FilePath& path);
+ struct ProfileSecurityState {
+   std::optional<int> account_id;
++  std::optional<int> profile_index;
+   bool bound = false;
+   // Unset means registry identity could not be classified safely.
+   std::optional<bool> local_only;
+@@ -23,6 +24,10 @@
+   bool locked = true;
+   bool onboarding_complete = false;
+   std::string error;
++  bool matches_profile_index(int requested) const {
++    return bound && requested >= 0 && profile_index &&
++           *profile_index == requested;
++  }
+   bool allows_browsing() const {
+     return bound && local_only.has_value() && binding_error.empty() &&
+            configured && !locked && onboarding_complete;
+--- a/chrome/browser/aux/profile_state.cc
++++ b/chrome/browser/aux/profile_state.cc
+@@ -83,6 +83,8 @@
+     result.error = result.binding_error;
+     return result;
+   }
++  if (const auto index = binding->FindInt("profileIndex"); index && *index >= 0)
++    result.profile_index = *index;
+   for (const auto& value : *accounts) {
+     if (!value.is_dict() || value.GetDict().FindInt("id") != account_id) continue;
+     const auto& account = value.GetDict();
+--- a/chrome/browser/aux/profile_security_client.cc
++++ b/chrome/browser/aux/profile_security_client.cc
+@@ -113,6 +113,7 @@
+     if (!current.bound || !current.binding_error.empty() ||
+         current.local_only != state_.local_only ||
+         current.account_id != state_.account_id ||
++        current.profile_index != state_.profile_index ||
+         current.onboarding_complete != state_.onboarding_complete ||
+         current.local_anonymous != state_.local_anonymous ||
+         current.bound_user_id != state_.bound_user_id) {
+--- a/chrome/browser/aux/profile_state_probe.cc
++++ b/chrome/browser/aux/profile_state_probe.cc
+@@ -44,6 +44,21 @@
+   CHECK(local.bound && local.account_id == 0 && local.local_only == true);
+   CHECK(local.local_anonymous && local.onboarding_complete);
+   CHECK(local.locked && !local.configured && !local.allows_browsing());
++  // Legacy positional requests must fail on missing, stale, or reordered index.
++  CHECK(!local.matches_profile_index(0));
++  auto* index_binding = registry.FindDict("profileAccountBindings")->FindDict(id);
++  index_binding->Set("profileIndex", 0);
++  CHECK(read().matches_profile_index(0));
++  CHECK(!read().matches_profile_index(1));  // Native order changed; do not open.
++  index_binding->Set("profileIndex", 1);  // Fixture of daemon metadata refresh.
++  CHECK(read().matches_profile_index(1));
++  CHECK(!read().matches_profile_index(0));
++  index_binding->Set("profileIndex", -1);
++  CHECK(!read().profile_index.has_value());
++  index_binding->Remove("profileIndex");
++  CHECK(!read().matches_profile_index(0));
++  index_binding->Set("profileIndex", 0);
++
+   auto& row = registry.FindList("accounts")->front().GetDict();
+   row.Set("mode", "cloud");
+   row.Set("provider", "email");

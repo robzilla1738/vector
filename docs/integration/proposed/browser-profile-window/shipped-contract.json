@@ -1,0 +1,55 @@
+{
+  "targetSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "authority": "static shipped bytes",
+  "coverage": "three generated field descriptors and explicit instruction ranges; not runtime observation or complete decompilation",
+  "fields": [
+    {
+      "tableAddress": "0xead93c8",
+      "name": "profileIndex",
+      "rawKind": 12,
+      "optional": 0,
+      "parserAddress": "0x46b63f0"
+    },
+    {
+      "tableAddress": "0xead93e8",
+      "name": "shouldFocus",
+      "rawKind": 11,
+      "optional": 1,
+      "parserAddress": "0x64c30a0"
+    },
+    {
+      "tableAddress": "0xead9408",
+      "name": "url",
+      "rawKind": 3,
+      "optional": 1,
+      "parserAddress": "0x46b6470"
+    }
+  ],
+  "ranges": [
+    {
+      "name": "dispatcher",
+      "start": "0x46b5fc0",
+      "endExclusive": "0x46b6320",
+      "sha256": "6ac0390643bc590ed47cd100fb282668bd60ccfb8125634ea8e5bc9cb09c8769"
+    },
+    {
+      "name": "backend",
+      "start": "0x46b4a74",
+      "endExclusive": "0x46b51a8",
+      "sha256": "91db912337b55f130cc65702b89c17c438249614eb40b948607125113a68da75"
+    },
+    {
+      "name": "empty-success-serializer",
+      "start": "0x46b6320",
+      "endExclusive": "0x46b63f0",
+      "sha256": "64913b6d6661a52ce2f183e4f53dc96c14a92a3e7f718b89073533beab8f1d9d"
+    }
+  ],
+  "guardAndErrors": {
+    "0xded6978": "Profile windows are only supported from secure remote debugging sessions",
+    "0xded69e4": "Profile %d does not exist",
+    "0xded69fe": "Profile %d is locked",
+    "0xded6a13": "URL must be valid",
+    "0xded6d0c": "Failed to open URL"
+  }
+}

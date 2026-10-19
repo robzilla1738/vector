@@ -1,0 +1,50 @@
+{
+  "chrome/browser/devtools/BUILD.gn": {
+    "beforeSha256": "afb0501109db5fa9f0d9da084ac8e0904d0cd376dce3fb4e4b487e12c033c911",
+    "afterSha256": "e0b3512b7c80ea7c6575bfd7d96e76dd5147963ed1917d3a685c82f3f04d9612"
+  },
+  "chrome/browser/devtools/chrome_devtools_session.cc": {
+    "beforeSha256": "aa83643fd9f7ac1b11b78e78e96c0e4c22160cbf565ff2642edfc432192fbeca",
+    "afterSha256": "d57b092b7cca6a865d09a40e27fadb85a0fb4cc671bae801467bc0e45983f8bc"
+  },
+  "chrome/browser/devtools/inspector_protocol_config.json": {
+    "beforeSha256": "a57f944a96a7d100c540d5abdb9a1eda9a72396aa4e822250ac217019da5ead7",
+    "afterSha256": "736155a7ce2076b45e63d662eeb1b9d8bb7e1edf65075b9b2517d34fca97ad3b"
+  },
+  "chrome/browser/devtools/protocol/aux_profile_window.cc": {
+    "beforeSha256": null,
+    "afterSha256": "885e15ca4d0e97b78c87c36e528c71586ae895220edbdbca373aaa70c71bfc04"
+  },
+  "chrome/browser/devtools/protocol/aux_profile_window.h": {
+    "beforeSha256": null,
+    "afterSha256": "e33d557520000ee3bb29fbb80495bd7458f742061de28cc46c1bfe7da0148390"
+  },
+  "chrome/browser/devtools/protocol/browser_handler.cc": {
+    "beforeSha256": "475e3eef998a5e3255bcd295901cab18672c17fa098bb0bd7ebbb642a1c31c2a",
+    "afterSha256": "37007c1063ede9b7534f4314f2944accf513e2e2515f9637907734f9eed20be2"
+  },
+  "chrome/browser/devtools/protocol/browser_handler.h": {
+    "beforeSha256": "f5ceb168726411502ac6b0748e5ceefbe6b3276fcdfb81d19e97b503eb3b07e7",
+    "afterSha256": "efa5f47e9015d0189bffde40a198df307bcb64fbe605fd2d04a59562caa2c164"
+  },
+  "chrome/browser/profiles/profile_attributes_storage.h": {
+    "beforeSha256": "a0cade3f7fdc90a8027a520b00d17139334a35b71329f4ed44396069dd1312d5",
+    "afterSha256": "8123fe72170c6c958ccdc3a049f556c8757f625e5b0306d0603f255ef9bb4f66"
+  },
+  "content/browser/devtools/devtools_http_handler.cc": {
+    "beforeSha256": "0813ce7c22cc125fba4e61c8a1f930077e589402c49e4c6308de3054b4c7ef6b",
+    "afterSha256": "6338d8c9cd4c2d1ada6d76117426fcd145a8fd6d0ad17f980e81a758e42944b3"
+  },
+  "content/public/browser/devtools_agent_host_client.cc": {
+    "beforeSha256": "a591a4c4d2185dae61cded5c0d43febefff03bcb9b69c02ab9b6a5d131027425",
+    "afterSha256": "e04744ad0cbaa04a576db29bf0edb9a30b5af1154944b708190c008221b1ba42"
+  },
+  "content/public/browser/devtools_agent_host_client.h": {
+    "beforeSha256": "5117bc8229dd02ec7a5fa07a30280aaf29fa0d1c7c2d3122e7b98be919cd6f00",
+    "afterSha256": "c98430e63a39af47f7fa0d6844cd5c27fd66ac486b24c86248ecc326844aa72d"
+  },
+  "third_party/blink/public/devtools_protocol/domains/Browser.pdl": {
+    "beforeSha256": "5e1faf7dbe56cce01447ea627ca6cc023418cafe7528bede3e5f2571363170da",
+    "afterSha256": "bf2dafad91d7f5d2cd7c86262c4551ca898c9737e98a74882debe5b4c1fff054"
+  }
+}
