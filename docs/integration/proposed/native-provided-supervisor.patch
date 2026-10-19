@@ -1,20 +1,42 @@
 --- a/chrome/browser/aux/daemon_supervisor.cc
 +++ b/chrome/browser/aux/daemon_supervisor.cc
-@@ -71,8 +71,11 @@
+@@ -71,19 +71,17 @@
                "apps/computer-use/Aux Computer "
                "Use.app/Contents/MacOS/aux-computer-use")
            .value();
 -  options.environment["AUX_EMBEDDING_MODEL_DIR"] =
 -      paths.root.AppendASCII("apps/memory/models/minilm").value();
+-  const base::FilePath runtime = paths.root.AppendASCII("runtime");
+-  std::string path =
+-      runtime.value() + ":" + runtime.AppendASCII("python/bin").value();
 +  // Supplied agent runtime supports this explicit immutable bundle root.
 +  options.environment["AUX_AGENT_RUNTIME_DIR"] =
 +      paths.root.AppendASCII("agent-runtime").value();
 +  options.environment["AUX_COMPUTER_USE_SOURCE_APP"] =
 +      paths.root.AppendASCII("apps/computer-use/Aux Computer Use.app").value();
-   const base::FilePath runtime = paths.root.AppendASCII("runtime");
-   std::string path =
-       runtime.value() + ":" + runtime.AppendASCII("python/bin").value();
-@@ -215,7 +218,7 @@
++  const base::FilePath runtime = paths.root.AppendASCII("agent-runtime");
++  std::string path = runtime.AppendASCII("bin").value();
+   if (auto inherited = base::Environment::Create()->GetVar("PATH")) {
+     path += ":" + *inherited;
+   }
+   options.environment["PATH"] = path;
+-  options.environment["FONTCONFIG_PATH"] =
+-      runtime.AppendASCII("poppler/etc/fonts").value();
+-  options.environment["FONTCONFIG_FILE"] =
+-      runtime.AppendASCII("poppler/etc/fonts/fonts.conf").value();
+   options.current_directory = paths.root;
+   return base::LaunchProcess(command, options);
+ }
+@@ -119,7 +117,7 @@
+   paths.root = contents.AppendASCII("Resources/aux");
+   paths.daemon_executable = paths.root.AppendASCII(
+       "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon");
+-  paths.node = paths.root.AppendASCII("runtime/node");
++  paths.node = paths.root.AppendASCII("agent-runtime/node/bin/node");
+   paths.daemon_script = paths.root.AppendASCII("apps/daemon/dist/index.js");
+   paths.agent_extension = paths.root.AppendASCII("apps/extension/dist");
+   paths.vault_extension = paths.root.AppendASCII("apps/vault/dist");
+@@ -215,7 +213,7 @@
    const bool healthy = health && health->FindString("service") &&
                         *health->FindString("service") == "aux-daemon" &&
                         health->FindString("version") &&

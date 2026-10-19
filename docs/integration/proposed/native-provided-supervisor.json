@@ -11,6 +11,21 @@
       "find": "*health->FindString(\"version\") == \"0.2.0\"",
       "replace": "*health->FindString(\"version\") == \"1.26.1016.1852\"",
       "count": 1
+    },
+    {
+      "find": "const base::FilePath runtime = paths.root.AppendASCII(\"runtime\");\n  std::string path =\n      runtime.value() + \":\" + runtime.AppendASCII(\"python/bin\").value();",
+      "replace": "const base::FilePath runtime = paths.root.AppendASCII(\"agent-runtime\");\n  std::string path = runtime.AppendASCII(\"bin\").value();",
+      "count": 1
+    },
+    {
+      "find": "  options.environment[\"FONTCONFIG_PATH\"] =\n      runtime.AppendASCII(\"poppler/etc/fonts\").value();\n  options.environment[\"FONTCONFIG_FILE\"] =\n      runtime.AppendASCII(\"poppler/etc/fonts/fonts.conf\").value();\n",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "find": "paths.node = paths.root.AppendASCII(\"runtime/node\");",
+      "replace": "paths.node = paths.root.AppendASCII(\"agent-runtime/node/bin/node\");",
+      "count": 1
     }
   ],
   "blocked": [
