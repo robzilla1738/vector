@@ -186,3 +186,47 @@ test('shutdown never starts queued work and duplicate queue keys are retained on
     f.close();
   }
 });
+
+test('external execution owns suspensions and cancellation closes cleanly', async () => {
+  const f = fixture();
+  try {
+    const s = f.engine.create(createSchema.parse({ accountId: f.accountId }));
+    const run = f.engine.runExternal(f.accountId, s.id, (signal) =>
+      f.engine.suspend(
+        f.accountId,
+        s.id,
+        'external-call',
+        'approval',
+        { operation: 'external' },
+        signal,
+      ),
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(f.engine.get(f.accountId, s.id).status, 'suspended');
+    f.engine.resolve(f.accountId, s.id, 'external-call', {
+      verdict: 'allow',
+      always: false,
+    });
+    assert.deepEqual(await run, { verdict: 'allow', always: false });
+    assert.equal(f.engine.get(f.accountId, s.id).status, 'idle');
+    const cancelled = f.engine.runExternal(
+      f.accountId,
+      s.id,
+      (signal) =>
+        new Promise((_resolve, reject) =>
+          signal.addEventListener(
+            'abort',
+            () => reject(new Error('Cancelled')),
+            { once: true },
+          ),
+        ),
+    );
+    const rejected = assert.rejects(cancelled, /shutting down|Cancelled/);
+    await new Promise((resolve) => setImmediate(resolve));
+    await f.engine.close();
+    await rejected;
+    assert.equal(f.engine.get(f.accountId, s.id).status, 'interrupted');
+  } finally {
+    f.close();
+  }
+});

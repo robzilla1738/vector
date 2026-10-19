@@ -710,7 +710,8 @@ export class AgentEngine {
     }
   }
   async wait(accountId: number, id: string) {
-    await this.active.get(this.key(accountId, id))?.promise;
+    const run = this.active.get(this.key(accountId, id));
+    if (run) await Promise.allSettled([run.promise]);
     return this.get(accountId, id);
   }
   registerCloseHandler(handler: () => void | Promise<void>) {
@@ -722,7 +723,7 @@ export class AgentEngine {
     const runs = [...this.active.values()];
     for (const run of runs)
       run.controller.abort(new Error('Daemon shutting down'));
-    await Promise.all(runs.map((run) => run.promise));
+    await Promise.allSettled(runs.map((run) => run.promise));
     await Promise.all(
       [...this.closeHandlers].map((handler) => Promise.resolve().then(handler)),
     );
