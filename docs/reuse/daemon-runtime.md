@@ -60,3 +60,9 @@ The compiled daemon ignores its development model-path environment variable. Its
 ### Skill and secure-storage identifiers
 
 Additional counted identity edits change the six embedded `aside-browser` names to `aux-browser` (including skill directory/front matter and MCP client labels), five embedded guide command references, two CLI update command references and the embedded CLI presence check. No lowercase task/file/routine wire links or provider/schema fields are blanket-renamed. `AUX_KEYCHAIN_ID_PREFIX` becomes `aux`; production native scope mapping still needs carrier integration. The mapper does not substitute encrypted bytes or KEM behavior.
+
+### Exact HTTP versus CDP signing inputs
+
+The original daemon HTTP verifier consumes `Aux Daemon Auth v1\0` concatenated with a 32-byte random challenge. Original secure-CDP client behavior differs: `signInstallationChallenge` decodes the `/json/challenge` challenge, requires exactly 32 bytes, and passes those **raw 32 bytes** to native `cdp-sign`, without a domain prefix. Native CDP must use that original contract rather than reuse the independent HTTP-domain verifier.
+
+For `p256_v1`, original daemon verification takes a raw 65-byte uncompressed point, constructs SPKI and verifies SHA256/DER ECDSA. For `pq_v1`, it takes a raw 1952-byte ML-DSA-65 public key, prepends SPKI DER `308207b2300b0609608648016503040312038207a100`, and uses `crypto.verify(null,message,key,signature)`. The native carrier passes caller bytes and original output unchanged; it adds no prefix or forced P256 downgrade. No real original signing has been executed.

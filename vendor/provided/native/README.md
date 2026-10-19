@@ -71,3 +71,11 @@ Before any original module is loaded, the carrier requires `AuxNativeBoundaryVal
 Observed boundary-only probe passed with `DYLD_INSERT_LIBRARIES=<absolute libaux-native-boundary.dylib>` and an isolated existing AUX_HOME. The negative no-interposer probe refused. Runtime invocation without acceptance switch refused before dlopen. No original module was loaded. Actual `.node` dynamic loading may still encounter unresolved NAPI imports; that is untested and is not hidden by a substitute implementation.
 
 Root staging can import `buildProvidedNativeBoundary(outputDirectory)` from `vendor/provided/build-native-boundary.mjs`; every compilation in that reusable build path goes through `scripts/native-build.py`. It returns `{carrier,boundary,fixture}`. Packaging/signing and daemon/CLI/native-browser caller wiring remain integrator-owned. Production-ready remains false until reviewed isolated module/crypto execution succeeds.
+
+### Deny-all load-only verification (pending serialized compile)
+
+The next carrier mode is `--verify-load <pinned provided-native.node>`. It verifies actual interposition first, invokes a one-way exported deny-all latch and checks the latched state before dlopen. All four SecItem replacements and key creation return before mapping or OS forwarding while latched. The probe only resolves original `AsideNativeRun`/`AsideNativeFree`, closes the module and reports bounded booleans plus a refused-call count. It never invokes either original native command function. No environment change can disable the latch once set.
+
+Original module initialization was additionally inspected statically: the sole `__init_offsets` entry at `0x517900` points to `__GLOBAL__sub_I_pdfium_bridge.cc` at `0x23e74`. It calls `0x23e48`, which only registers std::mutex destruction with `__cxa_atexit` (stub `0x515220`, mutex destructor pointer `0x724118`). There are no nonlazy Objective-C class/category load-list sections in this pinned image. System dependency constructors remain a separate coverage caveat. This inspection does not execute the module.
+
+The deny-all revision is queued through the native build lock; it has **not** yet compiled or run. Prior boundary-only evidence applies to the earlier carrier revision. Production crypto/Keychain invocation is still prohibited until isolated behavior and full coverage are reviewed.
