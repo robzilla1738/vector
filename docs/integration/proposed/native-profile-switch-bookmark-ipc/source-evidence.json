@@ -1,0 +1,21 @@
+{
+  "kind": "Actual Mojo ownership, shutdown and current tab/window binder source",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmarks_service_feature.h",
+      "sha256": "a0cd8c6f58ea594cfaa596182f8dcba4e5d00b61dfb1c34fa977f36cea0c6fe9"
+    },
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmarks_service_feature.cc",
+      "sha256": "99409c5b1e62ced68ddab80fc53e205e8879f4f7bd80a718167aefe1839ae8b2"
+    },
+    {
+      "path": "chrome/browser/ui/webui/bookmarks/bookmarks_ui.cc",
+      "sha256": "86d6ff101633a91444b6d1251b66643c9d3b2092e79a001918ca5f079ce0d295"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+      "sha256": "dc758c272827705a7a81062bae8978991ff1c0732c9562024e59bb7ce33e0082"
+    }
+  ]
+}

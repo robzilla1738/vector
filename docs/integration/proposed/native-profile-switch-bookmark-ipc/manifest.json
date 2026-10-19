@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "Exact current shared v71; these files untouched by other proposals",
+  "files": [
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmarks_service_feature.h",
+      "baselineSha256": "a0cd8c6f58ea594cfaa596182f8dcba4e5d00b61dfb1c34fa977f36cea0c6fe9",
+      "outputSha256": "02bef79ac7539a1b5d5bac7b25fade1a5844c8fbc775da2c262ce85cf12f2cd7"
+    },
+    {
+      "path": "chrome/browser/ui/bookmarks/bookmarks_service_feature.cc",
+      "baselineSha256": "99409c5b1e62ced68ddab80fc53e205e8879f4f7bd80a718167aefe1839ae8b2",
+      "outputSha256": "4c4372f67ce76c4bb81bcb59736b53b574b535d3ce297099fb9ea81388efb0d4"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
