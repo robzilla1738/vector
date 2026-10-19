@@ -1,0 +1,51 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -108,7 +108,7 @@
+  private:
+   GURL NewTabURL() const {
+     return GURL("chrome-extension://" + std::string(kAgentExtensionId) +
+-                "/index.html");
++                "/newtab.html");
+   }
+   void ClearPreload() {
+     Observe(nullptr);
+@@ -278,7 +278,7 @@
+     }
+     contents->LoadInitialURL(GURL("chrome-extension://" +
+                                   std::string(kAgentExtensionId) +
+-                                  "/index.html#" + route_));
++                                  "/main.html#/"));
+     widget_->Show();
+     contents->RequestFocus();
+   }
+--- a/chrome/browser/ui/aux_ntp_url.h
++++ b/chrome/browser/ui/aux_ntp_url.h
+@@ -15,7 +15,7 @@
+ // the account prefix (#/u/0).
+ inline bool IsAuxNtpUrl(const GURL& url) {
+   if (!url.SchemeIs(extensions::kExtensionScheme) ||
+-      url.host() != "fjdhphbdlfjogobdofoaagnlnkoibdge" ||
++      url.host() != "gokkffaiccpmoeodpmeamcjajcagjmkm" ||
+       url.path() != "/newtab.html") {
+     return false;
+   }
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -134,7 +134,7 @@
+   }
+   void Show(bool locked) {
+     const GURL url("chrome-extension://" + std::string(aux::kAgentExtensionId) +
+-                   "/index.html#" + (locked ? "/onboarding" : "/mini-popup"));
++                   (locked ? "/main.html#/" : "/minipopup.html#/"));
+     if (!widget_ || widget_->IsClosed()) {
+       DestroyWindows();
+       delegate_ = std::make_unique<views::WidgetDelegate>();
+@@ -226,7 +226,7 @@
+       options_->AddObserver(this);
+       webview->LoadInitialURL(GURL("chrome-extension://" +
+                                    std::string(aux::kAgentExtensionId) +
+-                                   "/index.html#/settings/general"));
++                                   "/minipopup-options.html"));
+     }
+     options_->SetSize(size);
+     options_->Show();

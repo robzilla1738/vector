@@ -1,0 +1,1222 @@
+{
+  "version": "1.26.1016.1852",
+  "components": {
+    "agent": {
+      "manifestSha256": "afa06a5fc5b0ca836413f8b7b8eae20d440dff502b1871b0cdb489a04d244570",
+      "changed": [
+        {
+          "path": "assets/_sessionId-ClN_BWh5.js",
+          "sourceSha256": "8a3aa2e69ecb52243e3ee6f3e3b3e35d3e4307cc893576929a62ebd34fb63697",
+          "transformedSha256": "998d750aa961572ff0e4d5aa7d568360dfc397bf004fb7f5567e5c3fb44874a6",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "Aside.controlTab",
+              "replace": "Aux.controlTab",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/agents-urkO3LLg.js",
+          "sourceSha256": "574ed2578ce5c57d208a423e1931aa2ae84e2f01e0c606abed7efb1709ae5329",
+          "transformedSha256": "1d2d282c361d667d1a6a579757dac2874e6c8cefca9ea30c76d4d5aa40fd027c",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "Aside.pickDirectory",
+              "replace": "Aux.pickDirectory",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/appearance-C03x8vQf.js",
+          "sourceSha256": "1f5d14b3e30936cfb80f0365da8e4dae92ff696aaf19b57d4bc2a38ddfa60506",
+          "transformedSha256": "d3136052b8364ba262f9d8d0f44159ca5bd185c398915fc88981aa407af8af19",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/appearance-Ceuw3-j6.js",
+          "sourceSha256": "5d6795dc6c007d961e8960cc41e6825634be81da00d023e179647bc22e20f318",
+          "transformedSha256": "bb9df4df2b6852bcb2dd1c1cd1a40d3861a94c8621fd74062d8514860f57dc3c",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 5
+            }
+          ]
+        },
+        {
+          "path": "assets/browser-binding-CzDmxQNA.js",
+          "sourceSha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b",
+          "transformedSha256": "7c1723d6d71f46cf98235fb77411277ba7ca533321cdf46dd73f4d7de7353231",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 4
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.openProfileUrl",
+              "replace": "Aux.openProfileUrl",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/browser-color-scheme-Df5VSuPV.js",
+          "sourceSha256": "3fce1340a0762bc33f0595a61e1debd88beea6e9bcc4c11b97c988ab45273b9a",
+          "transformedSha256": "907d1059a33cfa97ea0892d173b247da8553076fafa76674291dac29c367572d",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/done-DPzI9pFd.js",
+          "sourceSha256": "aea41f2be6aa1cd51f1171ac4a2cb209263328db276255bdf25733df6aa0bbfb",
+          "transformedSha256": "500da61441ae53bd7cda3b475c5be183f5e57c9a5afde907385b8150e697dd04",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAdblock",
+              "replace": "auxAdblock",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/extension-main-Dz1-AsCT.js",
+          "sourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+          "transformedSha256": "c08b1fec3711ab1906d4461da893ab20bd8165256f14d66883f0109f05be4c1d",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideBrowserImport",
+              "replace": "auxBrowserImport",
+              "count": 6
+            }
+          ]
+        },
+        {
+          "path": "assets/full-disk-access-BmnWkbG2.js",
+          "sourceSha256": "0db154196107e5822458942be2e06c855db962bf7cdc1201eccf808657fa9cc5",
+          "transformedSha256": "15d2b852fa7601d90f1c286af997791794fa6f119c27fcfc4751836dabd93cbe",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "@browser-aside/",
+              "replace": "@browser-aux/",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/general-3dgRbrRk.js",
+          "sourceSha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+          "transformedSha256": "06c253962a5ecf9a6351c37bac59a85b78f676c9c1efb8dbc8f2a27518175df3",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserImport",
+              "replace": "auxBrowserImport",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/globals-B-8L9em-.css",
+          "sourceSha256": "b8ed758b2ee5ea4171ea440d42ed0920699479c53ab5f56d72ba7cf62ac1d629",
+          "transformedSha256": "ab4bd402c0a6633b397a70324ba438391b8894006d2cfa55b2c6d6725070dd4a",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/iframe-Cu8MKeFf.js",
+          "sourceSha256": "66354d49b1f045b3553932f84997a327ffc4e11a316e4579136988df52ead357",
+          "transformedSha256": "06d2c1376992d8ad946a2339a9f1e3bd47b0e3ea3735fd884bc969044e3fde2e",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideSurface",
+              "replace": "auxSurface",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/inbox-BIWs6dWb.js",
+          "sourceSha256": "9475bc0bb4165cdc139c800a9dc948ec144b8b2de8bea0356caab7e3431fc3ba",
+          "transformedSha256": "53c93333c4c0fe0dcc7cf7df65244501c730d26ae74f8e8b37373ac4085c6745",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "Aside.revokeNotificationPermission",
+              "replace": "Aux.revokeNotificationPermission",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/mini-popup-BBLwe-a8.js",
+          "sourceSha256": "88d713ad57680cc14752afa3ea704ce3b9e418bc2a9ff992097b47c9e8783f35",
+          "transformedSha256": "2a3fb67bab90f42ab290d6a9609c96f6ba5afbd78c7fbc33f48506b3737deae7",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/minipopup-options-CxOtM5A8.css",
+          "sourceSha256": "3d0df5c256012096697791bb7ddf67611aacf33f494c7f58532abaf9e7a9bd54",
+          "transformedSha256": "09f02ad43bd0d784f80d047fcdfcb0ca526c9df926d0e4018f02f9f404b3134c",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 4
+            }
+          ]
+        },
+        {
+          "path": "assets/newtab-CnOLQ0yu.js",
+          "sourceSha256": "e300bb70a84a0630c94f20469822517ca0ca02be902d9bb150492994f719cb19",
+          "transformedSha256": "ae46cdc707cf5504a6d7cc287ec394c7fcc951630f88d85c8b66ec61d4c9d201",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideOmnibox",
+              "replace": "auxOmnibox",
+              "count": 26
+            },
+            {
+              "kind": "identity",
+              "find": "@browser-aside/",
+              "replace": "@browser-aux/",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/password-LjdLcSRV.js",
+          "sourceSha256": "e00998141c347fa2ff29dfe5b62b6e6b797fc50aff0112ddc77cfc86b7bbb7ed",
+          "transformedSha256": "b765dacaa633380fa8625e89638fff05e0a72f5883d35f2996ae7221b787a0fe",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "aside-password-manager",
+              "replace": "aux-password-manager",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "path": "assets/privacy-BeEEt9Qu.js",
+          "sourceSha256": "b69101623284eed5fb8c7a108489861f7dc65cd9c4885584992624c1f883556c",
+          "transformedSha256": "2aa077db3935a54bbdf231e3a3b0d8332b9eb5f8ce7ec80c9bf72888c5698679",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAdblock",
+              "replace": "auxAdblock",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.getThirdPartyCookies",
+              "replace": "Aux.getThirdPartyCookies",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.setThirdPartyCookies",
+              "replace": "Aux.setThirdPartyCookies",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/progress-CS-jrVXz.js",
+          "sourceSha256": "81193d2c8a1cbb56935e5a415d9863569660870ae3fc4ee852b48490f71e65e9",
+          "transformedSha256": "0ad70645d457d8e7f9f36a3c08553d9153a423360a83d7d7c6868841626e2804",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserImport",
+              "replace": "auxBrowserImport",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/provider-Cw0zhujt.js",
+          "sourceSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+          "transformedSha256": "3ca0640ac19356db7d80d5f0c4a1ef76c65cb8f6996497a01102ab6f95c76fcc",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "@browser-aside/",
+              "replace": "@browser-aux/",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.listTabs",
+              "replace": "Aux.listTabs",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/queries-ldd77hNk.js",
+          "sourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+          "transformedSha256": "21e320cdab16b2cca8f66e06b2121a1c983d33e18a34c88d5e43f6141b302309",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 10
+            },
+            {
+              "kind": "identity",
+              "find": "AsideDaemonSessionToken",
+              "replace": "AuxDaemonSessionToken",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_BASE_URL",
+              "replace": "VITE_AUX_DAEMON_BASE_URL",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_AUTH_TOKEN",
+              "replace": "VITE_AUX_DAEMON_AUTH_TOKEN",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "port 21420",
+              "replace": "port 21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21420",
+              "replace": "http://127.0.0.1:21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21421",
+              "replace": "http://127.0.0.1:21521",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://localhost:21420",
+              "replace": "http://localhost:21520",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/recovery-key-CPOQuYx2.js",
+          "sourceSha256": "1c77009c5bd4c06e4f1bdca84126d25be4eed0eb403268acb141eb47736027a0",
+          "transformedSha256": "48c43751101a025ad6a8cd8868bf806cec55abd3c3310f561d9971f9aa0c79c6",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "aside-recovery-key-",
+              "replace": "aux-recovery-key-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/route-context-BT2HpiwG.js",
+          "sourceSha256": "317b7fb9a3b6d9e57a654fc9bd09cbc469df8373d8f69c98217adad2bed15473",
+          "transformedSha256": "918719c242d4bd39eb5deb21762384637ad871ecd6d2d6fc97b44effe062476b",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/route-TQyeTEXE.js",
+          "sourceSha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+          "transformedSha256": "90ae046e6a4929f2f8366256d81c5f687796ab5ab11375f0f367b0b4c60be75a",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/search-navigation-TWhZq3-H.js",
+          "sourceSha256": "1bdf37a8cc1ff709ab1a1f54b40af0b4c3b89b5d96e7278e18ecfb17e813d145",
+          "transformedSha256": "fa69ae067efe32fc9d9002ac14ae3da3b1bb17d857c169e681be4d62d942b677",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideOmnibox",
+              "replace": "auxOmnibox",
+              "count": 4
+            }
+          ]
+        },
+        {
+          "path": "assets/search-view-gCFKEZ8L.js",
+          "sourceSha256": "67a5e527be3aa7c5d9c7a9116341eea0dfa5cd9f4939c5e4ac1e46f2e9969037",
+          "transformedSha256": "28220f59bab3f4aa2bac3a34b1ac9beef7224c07f214391a893b496f53adede1",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideOmnibox",
+              "replace": "auxOmnibox",
+              "count": 4
+            }
+          ]
+        },
+        {
+          "path": "assets/session-composer-Dc0LRfZA.js",
+          "sourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+          "transformedSha256": "2f9d1d1c70593caa98bc6861d9ca9ba2107c68d816c4b5861e435fea5084d41c",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.pickDirectory",
+              "replace": "Aux.pickDirectory",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/skills-CfSQ7MCw.js",
+          "sourceSha256": "0967d1025eeb8d0df5ee338feab28f1bd4fecdd699fc926c484e3003fcab66f7",
+          "transformedSha256": "a7cb33b6f1c544fc2f5f48cb0c8e547f1325d8796ed9e9eef3d8c20a584b5efe",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "Aside.pickDirectory",
+              "replace": "Aux.pickDirectory",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/strip-markdown-DRcmtuJc.js",
+          "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+          "transformedSha256": "265b178ffad9dbe140430eebe4fa68eee2b46a15ffd1654cb3e1f75e55b8af69",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "@browser-aside/",
+              "replace": "@browser-aux/",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.pickDirectory",
+              "replace": "Aux.pickDirectory",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/update-banner-C_z-hMCt.js",
+          "sourceSha256": "3fc13ddf82defd8bd6d1c0f6c6d2f4df770d624bf9a7aec0b1494c8a093fc1b9",
+          "transformedSha256": "98b1ec307b3e98eb8bd0da873cf99283a3b806d46c5f0e9c6859c0f52a63c794",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/use-shortcut-capture-DGr8Ws5Z.js",
+          "sourceSha256": "4223c21368db248316b71f434dafa996af0def37f2db26fc9d80caf19e2cad7c",
+          "transformedSha256": "4a53f9bb21d3fe9babdca4702dd6692840ab3e1ac5aab793cf4de6f14bf940cc",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "asideMiniPopup",
+              "replace": "auxMiniPopup",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "path": "assets/utils-DCBm67_n.js",
+          "sourceSha256": "c95e1cdbfbee45c1354898d72aa8523d956249025847b14da0255c616aafc359",
+          "transformedSha256": "3f9c66d150031ba78174b492ae4246ab002190947d0f3c7c4b049d35d33b30d7",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideBrowserPreferences",
+              "replace": "auxBrowserPreferences",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "background.js",
+          "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+          "transformedSha256": "dc7b72f52c3663182b7710f13f17d204c95ac3481b5982de34ad2f9c6fdaa2ec",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 10
+            },
+            {
+              "kind": "identity",
+              "find": "asideNotification",
+              "replace": "auxNotification",
+              "count": 6
+            },
+            {
+              "kind": "identity",
+              "find": "AsideDaemonSessionToken",
+              "replace": "AuxDaemonSessionToken",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_BASE_URL",
+              "replace": "VITE_AUX_DAEMON_BASE_URL",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_AUTH_TOKEN",
+              "replace": "VITE_AUX_DAEMON_AUTH_TOKEN",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "port 21420",
+              "replace": "port 21520",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.listTabs",
+              "replace": "Aux.listTabs",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.ownsTarget",
+              "replace": "Aux.ownsTarget",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.createAgentTab",
+              "replace": "Aux.createAgentTab",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.resolveBindingWindow",
+              "replace": "Aux.resolveBindingWindow",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.searchHistory",
+              "replace": "Aux.searchHistory",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.getThirdPartyCookies",
+              "replace": "Aux.getThirdPartyCookies",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.setThirdPartyCookies",
+              "replace": "Aux.setThirdPartyCookies",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.ensureTabInAiTabsGroup",
+              "replace": "Aux.ensureTabInAiTabsGroup",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.controlTab",
+              "replace": "Aux.controlTab",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.waitForDownload",
+              "replace": "Aux.waitForDownload",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.showNotification",
+              "replace": "Aux.showNotification",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.playNotificationSound",
+              "replace": "Aux.playNotificationSound",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.grantNotificationPermission",
+              "replace": "Aux.grantNotificationPermission",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.revokeNotificationPermission",
+              "replace": "Aux.revokeNotificationPermission",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.clearAiTabsGroup",
+              "replace": "Aux.clearAiTabsGroup",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.callExtensionMV3Api",
+              "replace": "Aux.callExtensionMV3Api",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.openProfileUrl",
+              "replace": "Aux.openProfileUrl",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.pickDirectory",
+              "replace": "Aux.pickDirectory",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.createPasswordManagerGeneratedPasswordRef",
+              "replace": "Aux.createPasswordManagerGeneratedPasswordRef",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.fillPasswordManagerGeneratedPasswordRef",
+              "replace": "Aux.fillPasswordManagerGeneratedPasswordRef",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.resolvePasswordManagerGeneratedPasswordRefs",
+              "replace": "Aux.resolvePasswordManagerGeneratedPasswordRefs",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.clearPasswordManagerGeneratedPasswordRefs",
+              "replace": "Aux.clearPasswordManagerGeneratedPasswordRefs",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.performPasswordManagerAutofill",
+              "replace": "Aux.performPasswordManagerAutofill",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "Aside.applePasswords",
+              "replace": "Aux.applePasswords",
+              "count": 14
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21420",
+              "replace": "http://127.0.0.1:21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21421",
+              "replace": "http://127.0.0.1:21521",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://localhost:21420",
+              "replace": "http://localhost:21520",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "content/content.js",
+          "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+          "transformedSha256": "4cde32b3ea068fe9d98b3187b9e635b03e0961ea3bb9b38d5394acc7378c54d5",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 4
+            },
+            {
+              "kind": "identity",
+              "find": "AsideDaemonSessionToken",
+              "replace": "AuxDaemonSessionToken",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_BASE_URL",
+              "replace": "VITE_AUX_DAEMON_BASE_URL",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_AUTH_TOKEN",
+              "replace": "VITE_AUX_DAEMON_AUTH_TOKEN",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "aside:google-docs-",
+              "replace": "aux:google-docs-",
+              "count": 8
+            },
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "asideGoogleDocsSelectionBridge",
+              "replace": "auxGoogleDocsSelectionBridge",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "asideSelectionPrevUserSelect",
+              "replace": "auxSelectionPrevUserSelect",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "asideSelectionPrevWebkitUserSelect",
+              "replace": "auxSelectionPrevWebkitUserSelect",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "asideSelectionPrevWebkitUserDrag",
+              "replace": "auxSelectionPrevWebkitUserDrag",
+              "count": 2
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21420",
+              "replace": "http://127.0.0.1:21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21421",
+              "replace": "http://127.0.0.1:21521",
+              "count": 2
+            },
+            {
+              "kind": "integration",
+              "find": "http://localhost:21420",
+              "replace": "http://localhost:21520",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "content/google-docs-selection-bridge.js",
+          "sourceSha256": "e1bf6144de4c4f3210cf8a3441b65fe6bbefe3edcf6217dbdce8b48e6c4b6e0e",
+          "transformedSha256": "e49f9abe389a8c63937dc6fba3226226d6177518833656eb54cddab8cfd18dff",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "aside:google-docs-",
+              "replace": "aux:google-docs-",
+              "count": 4
+            },
+            {
+              "kind": "identity",
+              "find": "__asideGoogleDocsSelectionBridgeInstalled",
+              "replace": "__auxGoogleDocsSelectionBridgeInstalled",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "asideGoogleDocsSelectionBridge",
+              "replace": "auxGoogleDocsSelectionBridge",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "manifest.json",
+          "sourceSha256": "afa06a5fc5b0ca836413f8b7b8eae20d440dff502b1871b0cdb489a04d244570",
+          "transformedSha256": "336787ca98a3860cb05f507ebcc8e181dad29a111619b21948a5646cfd361745",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "at.studio.Aside.blink.expose-wv",
+              "replace": "dev.aux.blink.expose-wv",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "at.studio.Aside.ext.private.pref-get-set",
+              "replace": "dev.aux.ext.private.browserPreferences",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "at.studio.Aside.ext.private.browser-import",
+              "replace": "dev.aux.ext.private.browserImport",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "at.studio.Aside.ext.private.",
+              "replace": "dev.aux.ext.private.",
+              "count": 6
+            },
+            {
+              "kind": "integration",
+              "find": "\"dev.aux.ext.private.browserPreferences\"",
+              "replace": "\"dev.aux.ext.private.browserPreferences\",\n    \"dev.aux.ext.private.miniPopup\"",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "minipopup-options.html",
+          "sourceSha256": "58997b38edfa3d1c6df4b44cf4be7d30ed4fe3a5fbda7206001fbe8b7f14bd0d",
+          "transformedSha256": "58e0ed8d152cebaed93aca0e321ba4f07b4b9704aba88140a7b6bacb189624bc",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "minipopup.html",
+          "sourceSha256": "52eeee71612a84c0502bf1c81f9365645002ad05dad1387750327288d2a6c715",
+          "transformedSha256": "c74c9d62fabb8e5f42e0f21e97ad254151c3795e08e6cb57e12e4eb3ef01ca37",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "react-grab-bridge.js",
+          "sourceSha256": "fcd41cc9889cb95789818bd4d6cb99a0f67f6d9299998626fc33b21ee034aa9c",
+          "transformedSha256": "2b43e73751bf279a439da43af29388497e07339b5937a1a90bd207f3c00ae317",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "remix.js",
+          "sourceSha256": "55f7ebc473769052fd7986888150b71f1dcb0702486bac3d5f39536d8d67422f",
+          "transformedSha256": "7c045806746d5f7fdd5a004c881a403cc535c0b691cd1fb47ad7cefe6217304a",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-handle-with-aside",
+              "replace": "data-aux-handle-with-aux",
+              "count": 3
+            }
+          ]
+        }
+      ]
+    },
+    "vault": {
+      "manifestSha256": "440e83e27c6576af3c19877ddcff224b731c09bd4069399832215e25074f804b",
+      "changed": [
+        {
+          "path": "assets/globals-CvG2QIZG.css",
+          "sourceSha256": "0f90fce4a52341c1fef7599a8dcb2ff88e49a9cf46cbd3410369c8bf2a12c16b",
+          "transformedSha256": "300353ad76e21b1462712bea838209edfcafc6e689a37de50f823c734776130a",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "path": "assets/iframe-CPJY6beY.js",
+          "sourceSha256": "5a0194e9940f33106569349021c0f8af4eee3cdc5637681bf56bd119493bd2c9",
+          "transformedSha256": "a90779899ba9a58cba415aaf6dab5d255c4794b3cdab2b8940b19a404fa1aae4",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideSurface",
+              "replace": "auxSurface",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "assets/index.esm-B13NI78u.js",
+          "sourceSha256": "ae0dddc0b7e2a9347ba6a98cc06f9a576fe7bbc312ce9d2e28f5211c35064092",
+          "transformedSha256": "842ecbde8b3ccded2ac0ae826c35f5d9a9c4c41eff8305ba73aa514ce03ad878",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 8
+            },
+            {
+              "kind": "identity",
+              "find": "AsideDaemonSessionToken",
+              "replace": "AuxDaemonSessionToken",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_BASE_URL",
+              "replace": "VITE_AUX_DAEMON_BASE_URL",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_AUTH_TOKEN",
+              "replace": "VITE_AUX_DAEMON_AUTH_TOKEN",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "port 21420",
+              "replace": "port 21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21420",
+              "replace": "http://127.0.0.1:21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21421",
+              "replace": "http://127.0.0.1:21521",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://localhost:21420",
+              "replace": "http://localhost:21520",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "assets/popup-MxHiJ2Et.js",
+          "sourceSha256": "172e509c9ee498da414d73a1124ace50434b077ef627a53dc904d985c1290bc4",
+          "transformedSha256": "9491284ab6382a5a365bddc67fecefc9c9c00c3b7d39dcbf5669a4ab2c1b4b8a",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "@browser-aside/",
+              "replace": "@browser-aux/",
+              "count": 3
+            },
+            {
+              "kind": "identity",
+              "find": "aside-password-manager",
+              "replace": "aux-password-manager",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "aside-recovery-key-",
+              "replace": "aux-recovery-key-",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "background.js",
+          "sourceSha256": "eb760bfead1afc936c7c4b12573423809a224a3859781991ae40f4e4c00139fb",
+          "transformedSha256": "3e2ae6a4bf425598d21b8eb8543d97806f9dbccdd70f2877957d46777195cb41",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "asideAccount",
+              "replace": "auxAccount",
+              "count": 9
+            },
+            {
+              "kind": "identity",
+              "find": "AsideDaemonSessionToken",
+              "replace": "AuxDaemonSessionToken",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_BASE_URL",
+              "replace": "VITE_AUX_DAEMON_BASE_URL",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "VITE_ASIDE_DAEMON_AUTH_TOKEN",
+              "replace": "VITE_AUX_DAEMON_AUTH_TOKEN",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "aside-password-manager",
+              "replace": "aux-password-manager",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "find": "port 21420",
+              "replace": "port 21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21420",
+              "replace": "http://127.0.0.1:21520",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://127.0.0.1:21421",
+              "replace": "http://127.0.0.1:21521",
+              "count": 1
+            },
+            {
+              "kind": "integration",
+              "find": "http://localhost:21420",
+              "replace": "http://localhost:21520",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "content/content.js",
+          "sourceSha256": "f0611ac53fad1785ab4f00e279548619fac873e87dbe667dd3ef2b248ae8a4da",
+          "transformedSha256": "f80e5c727aa6e1b6b6317f9e771075289ed17d764dc1739947628be01a3e794f",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "aside:passkey-conditional-",
+              "replace": "aux:passkey-conditional-",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 4
+            },
+            {
+              "kind": "identity",
+              "find": "__ASIDE_PM_",
+              "replace": "__AUX_PM_",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "path": "content-runtime.js",
+          "sourceSha256": "2f78dab77e44c4cfce723db8fdf853856a76345d78045c0cdc15c463446c1abf",
+          "transformedSha256": "d28fefd7b48c867b90c38285198ae151b3f7c22a118997d336e61ef10624d027",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "aside:passkey-conditional-",
+              "replace": "aux:passkey-conditional-",
+              "count": 2
+            },
+            {
+              "kind": "identity",
+              "find": "data-aside-",
+              "replace": "data-aux-",
+              "count": 6
+            },
+            {
+              "kind": "identity",
+              "find": "__ASIDE_PM_",
+              "replace": "__AUX_PM_",
+              "count": 4
+            }
+          ]
+        },
+        {
+          "path": "fido2-page-script.js",
+          "sourceSha256": "2e05878dff652660a572ac12cbdafb0cd05e298394fc0131cf187222c781df50",
+          "transformedSha256": "d46c1e001fb5956a5bd3b454eb0ec0b16cdd6540f55507cebe6518d5bf347d44",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "__asideFido2PageScriptInstalled",
+              "replace": "__auxFido2PageScriptInstalled",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "path": "manifest.json",
+          "sourceSha256": "440e83e27c6576af3c19877ddcff224b731c09bd4069399832215e25074f804b",
+          "transformedSha256": "58972365fab6797354844a58bb470dc80920cbab387b25fe7da67031be19011f",
+          "anchors": [
+            {
+              "kind": "identity",
+              "find": "at.studio.Aside.ext.private.",
+              "replace": "dev.aux.ext.private.",
+              "count": 2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

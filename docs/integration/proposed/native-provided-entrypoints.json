@@ -1,0 +1,45 @@
+[
+  {
+    "path": "chrome/browser/aux/profile_gate.cc",
+    "sourceSha256": "41e3e541421f84912901b9fd274725842414cc15d09a4cf0c8e9cbb8dd928c6a",
+    "edits": [
+      {
+        "find": "\"/index.html\");",
+        "replace": "\"/newtab.html\");",
+        "count": 1
+      },
+      {
+        "find": "\"/index.html#\" + route_));",
+        "replace": "\"/main.html#/\"));",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/ui/aux_ntp_url.h",
+    "sourceSha256": "5e3550356cab4330838c86c0227f12d50f355e8727b8bd9e8735e5e0d44be9dc",
+    "edits": [
+      {
+        "find": "\"fjdhphbdlfjogobdofoaagnlnkoibdge\"",
+        "replace": "\"gokkffaiccpmoeodpmeamcjajcagjmkm\"",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+    "sourceSha256": "dac8ed078b2d52fdbf584b7a3baf100802fddda738143f3b1890d80b5d071054",
+    "edits": [
+      {
+        "find": "\"/index.html#\" + (locked ? \"/onboarding\" : \"/mini-popup\"));",
+        "replace": "(locked ? \"/main.html#/\" : \"/minipopup.html#/\"));",
+        "count": 1
+      },
+      {
+        "find": "\"/index.html#/settings/general\"));",
+        "replace": "\"/minipopup-options.html\"));",
+        "count": 1
+      }
+    ]
+  }
+]
