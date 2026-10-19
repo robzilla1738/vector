@@ -9,6 +9,8 @@ import { stageProvidedUi } from './lib/provided-ui.mjs';
 import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
 import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
+import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
+import { transformProvidedUiBoundary } from './lib/provided-ui-boundary.mjs';
 import { transformProvidedNativeUi, unresolvedNativeCapabilities } from '../vendor/provided/native-ui-compat.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,10 +40,16 @@ const identities = JSON.parse(await readFile(join(repository, 'docs/design/exten
 const brandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
 const brandInputs = [];
 for (const path of brandPaths) brandInputs.push({ path, sha256: createHash('sha256').update(await readFile(join(repository, path))).digest('hex') });
+const adaptationInputs = [];
+for (const path of providedStageInputs) adaptationInputs.push({ path, sha256: createHash('sha256').update(await readFile(join(repository, path))).digest('hex') });
 await mkdir(dirname(output), { recursive: true });
 const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
-  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, transformText: transformProvidedNativeUi });
+  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, transformText(input) {
+    const native = transformProvidedNativeUi(input);
+    const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
+    return { text: boundary.text, anchors: [...native.anchors, ...boundary.anchors] };
+  } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
   await writeFile(join(temporary, 'ui/manifest.json'), `${JSON.stringify(ui, null, 2)}\n`);
@@ -64,11 +72,11 @@ try {
   });
   computerUse.outputRoot = join(output, 'computer-use/Aux Computer Use.app');
   await writeFile(join(temporary, 'computer-use/manifest.json'), `${JSON.stringify(computerUse, null, 2)}\n`);
-  for (const input of brandInputs) {
-    if (createHash('sha256').update(await readFile(join(repository, input.path))).digest('hex') !== input.sha256) throw new Error('Aux branding changed during staging; retry with a stable asset snapshot');
+  for (const input of [...brandInputs, ...adaptationInputs]) {
+    if (createHash('sha256').update(await readFile(join(repository, input.path))).digest('hex') !== input.sha256) throw new Error('Aux artwork or adaptation code changed during staging; retry with stable inputs');
   }
   const report = {
-    version: 1, implementation: 'supplied', productionReady: false, finalApp, brandInputs,
+    version: 1, implementation: 'supplied', productionReady: false, finalApp, brandInputs, adaptationInputs,
     components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', computerUse: 'computer-use/manifest.json' },
     blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', ...computerUse.remaining, 'Packaged local UI and behavior acceptance'],
   };

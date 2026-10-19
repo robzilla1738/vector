@@ -5,6 +5,7 @@ import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { providedAppRoots, providedIntegrationFiles } from './lib/provided-apps.mjs';
+import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
@@ -26,6 +27,10 @@ async function files(root, directory = '') {
 }
 const stack = await json(join(output, 'manifest.json'));
 if (stack.version !== 1 || stack.implementation !== 'supplied') throw new Error('Not a supplied implementation stage');
+if (JSON.stringify(stack.adaptationInputs?.map((input) => input.path)) !== JSON.stringify(providedStageInputs)) throw new Error('Restage: current adaptation provenance is missing');
+for (const input of stack.adaptationInputs) {
+  if (hash(await readFile(join(repository, input.path))) !== input.sha256) throw new Error(`Restage changed adaptation: ${input.path}`);
+}
 if (!stack.brandInputs?.length) throw new Error('Restage: updated canonical Aux logo provenance is missing');
 const expectedBrandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
 if (JSON.stringify(stack.brandInputs.map((file) => file.path).sort()) !== JSON.stringify(expectedBrandPaths.sort())) throw new Error('Incomplete Aux branding provenance');

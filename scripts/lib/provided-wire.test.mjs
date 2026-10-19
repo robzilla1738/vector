@@ -15,3 +15,9 @@ test('wire methods, prefix dispatch and authentication retain original bytes whi
   assert.equal(replayed, result.text);
   assert.throws(() => restoreProvidedWireNames(original, branded + ' Aux.getTab'), /drift/);
 });
+
+test('native permission identity changes are distinct from quoted command wire names', () => {
+  const original = '"at.studio.Aside.blink.expose-wv" "Aside.controlTab"';
+  const branded = '"dev.aux.blink.expose-wv" "Aux.controlTab"';
+  assert.equal(restoreProvidedWireNames(original, branded).text, '"dev.aux.blink.expose-wv" "Aside.controlTab"');
+});

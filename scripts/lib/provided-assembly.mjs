@@ -58,7 +58,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   const temporary = await mkdtemp(join(dirname(outputRoot), '.provided-resources-'));
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp: stack.finalApp,
-    brandInputs: stack.brandInputs, files: [], components: [],
+    brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
     blockers: [...new Set([...stack.blockers, 'Compiled native guard/carrier and reviewed Chromium integration', 'Explicit local signing and packaged acceptance'])],
   };
   try {

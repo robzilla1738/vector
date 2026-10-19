@@ -236,7 +236,7 @@ export async function planProvidedSigning({
       throw new Error('Refuse signing hardlinked code');
     if (
       (code.endsWith('.node') && basename(code) !== 'aux-native-guard.node') ||
-      /(?:^|\/)(?:agent-runtime|distribution\/runtime|distribution\/memory)(?:\/|$)/.test(
+      /(?:^|\/)(?:agent-runtime|memory-distribution|distribution\/runtime|distribution\/memory)(?:\/|$)/.test(
         code,
       )
     )

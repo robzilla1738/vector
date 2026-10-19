@@ -2,6 +2,8 @@
 
 `scripts/lib/provided-signing.mjs` provides a reusable planner/runner for root's package assembly. It neither assembles an app nor changes the root packaging CLI. Only explicit **ad hoc** signing is supported. No Developer ID lookup, Keychain access, notarization, OS grant, supplied executable launch or blanket `codesign --deep` operation occurs.
 
+The macOS compile/sign fixtures are opt-in: `AUX_RUN_SIGNING_FIXTURES=1 node --test scripts/lib/provided-signing.test.mjs`. Their tiny disposable native compilations now use `scripts/native-build.py` and wait for the shared build lock. The earlier fixture pass compiled these disposable sources directly; that process oversight is corrected. Normal preservation checks skip these fixtures rather than queue unrelated compilations behind an active Chromium build. No supplied executable was compiled or signed by those fixtures.
+
 ## Integrator contract
 
 ```js

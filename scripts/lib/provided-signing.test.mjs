@@ -14,6 +14,7 @@ import {
 } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   planProvidedSigning,
   runProvidedSigning,
@@ -24,8 +25,11 @@ const options = {
   skip:
     process.platform !== 'darwin'
       ? 'macOS static signing tools required'
-      : false,
+      : process.env.AUX_RUN_SIGNING_FIXTURES !== '1'
+        ? 'Opt in after the active native build: AUX_RUN_SIGNING_FIXTURES=1'
+        : false,
 };
+const nativeBuild = fileURLToPath(new URL('../native-build.py', import.meta.url));
 const policies = {
   preserveKeys: ['com.apple.security.cs.allow-jit'],
   removeKeys: ['com.apple.application-identifier'],
@@ -39,7 +43,7 @@ async function fixture() {
   const c = join(directory, 'fixture.c'),
     code = join(directory, 'fixture-code');
   await writeFile(c, 'int main(void) { return 0; }\n');
-  execFileSync('/usr/bin/clang', [c, '-o', code], { stdio: 'pipe' });
+  execFileSync('python3', [nativeBuild, '/usr/bin/clang', c, '-o', code], { stdio: 'pipe' });
   const entitlements = join(directory, 'fixture-entitlements.plist');
   await writeFile(
     entitlements,
@@ -91,7 +95,7 @@ async function fixture() {
     'immutable fixture catalog\n',
   );
   const guard = `${app}/Contents/Resources/libaux-native-boundary.dylib`;
-  execFileSync('/usr/bin/clang', ['-dynamiclib', c, '-o', join(root, guard)], {
+  execFileSync('python3', [nativeBuild, '/usr/bin/clang', '-dynamiclib', c, '-o', join(root, guard)], {
     stdio: 'pipe',
   });
   const guardSha256 = digest(await readFile(join(root, guard)));
