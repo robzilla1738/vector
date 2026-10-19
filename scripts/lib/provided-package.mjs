@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { assembleProvidedResources } from './provided-assembly.mjs';
 import { nativePackagingManifest } from '../../vendor/provided/native-packaging-manifest.mjs';
+import { xmlPlist } from '../../vendor/provided/prepare-development-dp.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const execute = promisify(execFile);
@@ -59,7 +60,8 @@ export async function verifyPackageInventory(directory, entries) {
   if (observed.length !== entries.length) throw new Error('Package inventory contains missing leaves');
 }
 
-export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot }) {
+export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false }) {
+  if (typeof developmentDpLayout !== 'boolean') throw new Error('Explicit boolean development layout required');
   stageRoot = await root(resolve(stageRoot));
   compositionRoot = await root(resolve(compositionRoot));
   outputRoot = resolve(outputRoot);
@@ -125,13 +127,30 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       await pinnedFile(target, artifact.sha256);
       additions.push({ path: destination, sha256: artifact.sha256, mode: 0o755 });
     }
-    await add('aux-native-carrier', 'native/aux-native-carrier');
+    await add('aux-native-carrier', developmentDpLayout ? 'native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier' : 'native/aux-native-carrier');
     await add('libaux-native-boundary.dylib', 'native/libaux-native-boundary.dylib');
     for (const role of ['daemon', 'cli']) await add('aux-native-guard.node', `apps/${role}/Aux ${role === 'daemon' ? 'Daemon' : 'CLI'}.app/Contents/Resources/native/aux-native-guard.node`);
     const cliExecutable = 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli';
     await absent(join(resources, `${cliExecutable}-sea`));
     await rename(join(resources, cliExecutable), join(resources, `${cliExecutable}-sea`));
     await add('aux-cli-launcher', cliExecutable);
+    const layoutChanges = [];
+    if (developmentDpLayout) {
+      const cliInfo = join(resources, 'apps/cli/Aux CLI.app/Contents/Info.plist');
+      const inspected = await execute('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '--', cliInfo]);
+      const info = JSON.parse(inspected.stdout);
+      if (info.CFBundleIdentifier !== 'dev.aux.browser.cli' || info.CFBundleExecutable !== 'aux-cli') throw new Error('Unexpected supplied CLI bundle identity/main');
+      const beforeSha256 = await digest(cliInfo);
+      await writeFile(cliInfo, xmlPlist({ ...info, CFBundleExecutable: 'aux-cli-sea' }));
+      layoutChanges.push({ path: 'apps/cli/Aux CLI.app/Contents/Info.plist', beforeSha256, sha256: await digest(cliInfo) });
+      const carrierInfo = 'native/Aux Native Carrier.app/Contents/Info.plist';
+      await writeFile(join(resources, carrierInfo), xmlPlist({ CFBundleIdentifier: 'dev.aux.browser.native-carrier', CFBundleExecutable: 'aux-native-carrier', CFBundleName: 'Aux Native Carrier', CFBundlePackageType: 'APPL', CFBundleVersion: '1', CFBundleShortVersionString: '1.0', LSUIElement: true }), { flag: 'wx' });
+      layoutChanges.push({ path: carrierInfo, sha256: await digest(join(resources, carrierInfo)) });
+      const bundleFile = join(resources, 'bundle.json');
+      const bundle = JSON.parse(await readFile(bundleFile, 'utf8'));
+      await writeFile(bundleFile, JSON.stringify({ ...bundle, nativeCarrierLayout: 'profile-bundle' }, null, 2) + '\n');
+      layoutChanges.push({ path: 'bundle.json', sha256: await digest(bundleFile) });
+    }
     // Recheck input provenance after copying. A concurrent build/source change
     // must not publish a mixed candidate as the recorded native artifact.
     await verifyPackageInventory(seed, native.appFiles);
@@ -144,7 +163,8 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       nativeFiles: native.appFiles.length, suppliedResources: assembled.files.length, additions,
       sourceRoots: sources,
       cliSea: `${cliExecutable}-sea`,
-      remaining: ['Explicit inside-out ad hoc signing', 'Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
+      developmentDpLayout, layoutChanges,
+      remaining: [developmentDpLayout ? 'Authenticated profiles and separate inside-out development signing plan; default ad hoc signer is incompatible' : 'Explicit inside-out ad hoc signing', 'Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
     };
     await writeFile(join(temporary, 'package.json'), JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
     await absent(outputRoot);

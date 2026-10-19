@@ -4,6 +4,11 @@ import { packageProvidedApp } from './lib/provided-package.mjs';
 const names = { '--stage': 'stageRoot', '--native-receipt': 'nativeReceiptPath', '--composition': 'compositionRoot', '--boundary-receipt': 'boundaryReceiptPath', '--output': 'outputRoot' };
 const options = {};
 for (let index = 2; index < process.argv.length; index++) {
+  if (process.argv[index] === '--development-dp-layout') {
+    if (options.developmentDpLayout) throw new Error('Duplicate development layout flag');
+    options.developmentDpLayout = true;
+    continue;
+  }
   const flag = process.argv[index], key = names[flag], value = process.argv[++index];
   if (!key || options[key] || !value || value.startsWith('--')) throw new Error('Usage: package-provided.mjs --stage PATH --native-receipt FILE --composition PATH --boundary-receipt FILE --output NEW_DIRECTORY');
   options[key] = resolve(value);
