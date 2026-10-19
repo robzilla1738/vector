@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "base": "actual frozen Chromium155 source; cookie page action dynamic activation already applied",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h",
+      "baselineSha256": "63c4f475a1176932de04a200c618b709ccbdb382213de4ead630b237b573ede5",
+      "outputSha256": "cd366a7c47a6e4c3a0a8a6fa80c37c4e1a090e28b71d0897c167663ed1bb40db"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc",
+      "baselineSha256": "24c5848c6120aeac0192e696c9b2c6c0987e0d7a8e2c21e4a1eebea14d6389ba",
+      "outputSha256": "c9afe32e4838582e5bdc8a78cd38eacbd16fe8c0c71aacbaba356eca58c6bb3d"
+    },
+    {
+      "path": "components/content_settings/browser/ui/cookie_controls_controller.h",
+      "baselineSha256": "b3c033e0afc4350f3068c4b56f27f10a0651bc709edc5f0c73830f17564a6079",
+      "outputSha256": "506dee55a773d6851f17f922218154002db32a044a68484408988b21d7e548ca"
+    },
+    {
+      "path": "components/content_settings/browser/ui/cookie_controls_controller.cc",
+      "baselineSha256": "51ad1491d0f5e652ddc1cf1ad46c960a7dc80ee906f930e06da584b41445308e",
+      "outputSha256": "ef3794e7fd4ed48df74698e0ddb1fd36173049d19e085a17365b9f71099848b1"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}

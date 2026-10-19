@@ -1,0 +1,171 @@
+--- a/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h
++++ b/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h
+@@ -6,10 +6,14 @@
+ #define CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_COOKIE_CONTROLS_COOKIE_CONTROLS_BUBBLE_COORDINATOR_H_
+ 
+ #include <optional>
++#include <vector>
+ 
+ #include "base/callback_list.h"
+ #include "base/functional/callback_forward.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+ #include "components/content_settings/browser/ui/cookie_controls_controller.h"
+@@ -17,6 +21,9 @@
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ #include "ui/views/view_observer.h"
+ 
++namespace views {
++class Widget;
++}
+ class CookieControlsBubbleViewImpl;
+ class CookieControlsBubbleViewController;
+ 
+@@ -48,6 +55,13 @@
+ 
+   virtual CookieControlsBubbleViewImpl* GetBubble() const;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  // Also used after source rollback: no TabStripModel emptiness is required.
++  void RebindForAuxProfileSwitch(actions::ActionItem* root_action_item);
++#endif
++
+   base::CallbackListSubscription RegisterBubbleClosingCallback(
+       base::RepeatingClosure callback);
+ 
+@@ -73,7 +87,13 @@
+   // The action item associated with showing a Cookie Controls UI.
+   // The bubbles use this to appropriately configure action item's
+   // "IsBubbleShowing" property.
+-  const raw_ptr<actions::ActionItem> action_item_;
++  raw_ptr<actions::ActionItem> action_item_;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool aux_profile_switch_prepared_ = false;
++  int aux_callback_depth_ = 0;
++  std::vector<base::WeakPtr<views::Widget>> aux_live_widgets_;
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_COOKIE_CONTROLS_COOKIE_CONTROLS_BUBBLE_COORDINATOR_H_
+--- a/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc
++++ b/chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.cc
+@@ -4,7 +4,12 @@
+ 
+ #include "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h"
+ 
++#include <algorithm>
++
++#include "base/auto_reset.h"
+ #include "base/callback_list.h"
++#include "base/check.h"
++#include "ui/views/widget/widget.h"
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+@@ -37,11 +42,49 @@
+ 
+ CookieControlsBubbleCoordinator::~CookieControlsBubbleCoordinator() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool CookieControlsBubbleCoordinator::CanRebindForAuxProfileSwitch() const {
++  return !aux_profile_switch_prepared_ && !aux_callback_depth_ &&
++         !bubble_view_ && !view_controller_ &&
++         std::ranges::none_of(aux_live_widgets_,
++                              [](const auto& widget) { return !!widget; });
++}
++
++void CookieControlsBubbleCoordinator::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_profile_switch_prepared_ = true;
++  // BrowserActions can now retire its actual action tree. Retain this stable
++  // coordinator and its callback list; no close/reload callback is synthesized.
++  action_item_ = nullptr;
++}
++
++void CookieControlsBubbleCoordinator::RebindForAuxProfileSwitch(
++    actions::ActionItem* root_action_item) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK(!bubble_view_);
++  CHECK(!view_controller_);
++  CHECK(std::ranges::none_of(aux_live_widgets_,
++                            [](const auto& widget) { return !!widget; }));
++  CHECK(root_action_item);
++  action_item_ = GetActionItem(root_action_item);
++  aux_live_widgets_.clear();
++  aux_profile_switch_prepared_ = false;
++}
++#endif
++
+ void CookieControlsBubbleCoordinator::ShowBubble(
+     ToolbarButtonProvider* toolbar_button_provider,
+     content::WebContents* web_contents,
+     content_settings::CookieControlsController* controller) {
+   CHECK(toolbar_button_provider);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                      aux_callback_depth_ + 1);
++#endif
+   if (bubble_view_ != nullptr) {
+     return;
+   }
+@@ -66,6 +109,12 @@
+ 
+   views::Widget* const widget =
+       views::BubbleDialogDelegateView::CreateBubble(std::move(bubble_view));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // WindowClosingCallback may clear bubble_view_ before actual destruction.
++  // Keep the real widget weak lifetime as the cold boundary.
++  std::erase_if(aux_live_widgets_, [](const auto& widget) { return !widget; });
++  aux_live_widgets_.push_back(widget->GetWeakPtr());
++#endif
+   controller->Update(web_contents);
+   widget->Show();
+ 
+@@ -99,6 +148,10 @@
+ 
+ void CookieControlsBubbleCoordinator::OnViewIsDeleting(
+     views::View* observed_view) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::AutoReset<int> callback_scope(&aux_callback_depth_,
++                                      aux_callback_depth_ + 1);
++#endif
+   bubble_view_ = nullptr;
+   view_controller_ = nullptr;
+   bubble_closing_callbacks_.Notify();
+--- a/components/content_settings/browser/ui/cookie_controls_controller.h
++++ b/components/content_settings/browser/ui/cookie_controls_controller.h
+@@ -80,6 +80,10 @@
+   void AddObserver(CookieControlsObserver* obs);
+   void RemoveObserver(CookieControlsObserver* obs);
+ 
++  // Private window owners may retire this controller only after real UI
++  // observers have detached. This does not close UI or request a page reload.
++  bool CanRetireWithoutUi() const;
++
+   base::WeakPtr<CookieControlsController> AsWeakPtr() {
+     return weak_ptr_factory_.GetWeakPtr();
+   }
+--- a/components/content_settings/browser/ui/cookie_controls_controller.cc
++++ b/components/content_settings/browser/ui/cookie_controls_controller.cc
+@@ -129,6 +129,10 @@
+ 
+ CookieControlsController::~CookieControlsController() = default;
+ 
++bool CookieControlsController::CanRetireWithoutUi() const {
++  return observers_.empty();
++}
++
+ void CookieControlsController::OnUiClosing() {
+   auto* web_contents = GetWebContents();
+   if (should_reload_ && web_contents && !web_contents->IsBeingDestroyed()) {
