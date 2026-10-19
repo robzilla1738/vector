@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-v27",
+  "focusedObjectsCompiled": 10,
+  "initialFocusedBuild": {
+    "session": 41754,
+    "exitCode": 1,
+    "compiled": 8,
+    "failed": 2
+  },
+  "correctedFocusedBuild": {
+    "session": 19850,
+    "exitCode": 0,
+    "compiled": 2,
+    "duration": "46.40s"
+  },
+  "fullBuildSession": 34310,
+  "fullBuildComplete": false,
+  "keychainOperationsExecuted": false
+}
