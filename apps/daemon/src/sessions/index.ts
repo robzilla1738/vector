@@ -558,6 +558,6 @@ export function createAgentRouters(
     models: createModelRouter(services, engine),
     projects: createProjectRouter(services, engine),
     routines: createRoutineRouter(services, engine),
-    mcp: createMcpRouter(services),
+    mcp: createMcpRouter(services, engine),
   };
 }

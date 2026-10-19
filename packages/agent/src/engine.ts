@@ -41,6 +41,7 @@ export class AgentEngine {
   private waiting: (() => void)[] = [];
   private running = 0;
   private closed = false;
+  private closeHandlers = new Set<() => void | Promise<void>>();
   constructor(
     readonly store: AgentStorage,
     readonly bridge?: Bridge,
@@ -626,12 +627,20 @@ export class AgentEngine {
     await this.active.get(this.key(accountId, id))?.promise;
     return this.get(accountId, id);
   }
+  registerCloseHandler(handler: () => void | Promise<void>) {
+    this.closeHandlers.add(handler);
+    return () => this.closeHandlers.delete(handler);
+  }
   async close() {
     this.closed = true;
     const runs = [...this.active.values()];
     for (const run of runs)
       run.controller.abort(new Error('Daemon shutting down'));
     await Promise.all(runs.map((run) => run.promise));
+    await Promise.all(
+      [...this.closeHandlers].map((handler) => Promise.resolve().then(handler)),
+    );
+    this.closeHandlers.clear();
   }
   get semaphore() {
     return { active: this.running, limit: this.concurrency };

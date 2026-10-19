@@ -1,6 +1,6 @@
 /** Implements docs/spec/daemon/services.md MCP client and local channels (MCP client). */
 
-import { fail, scope } from '@aux/agent';
+import { type AgentEngine, fail, scope } from '@aux/agent';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -23,8 +23,15 @@ interface Saved {
   tools: unknown[];
   updatedAt: number;
 }
-export function createMcpRouter({ t, procedure, store }: DaemonServices) {
+export function createMcpRouter(
+  { t, procedure, store }: DaemonServices,
+  engine: AgentEngine,
+) {
   const clients = new Map<string, Client>();
+  engine.registerCloseHandler(async () => {
+    await Promise.all([...clients.values()].map((client) => client.close()));
+    clients.clear();
+  });
   const key = (accountId: number, name: string) => `${accountId}:${name}`;
   async function connect(
     accountId: number,
