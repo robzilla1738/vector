@@ -1,0 +1,78 @@
+/** Pinned supplied daemon adaptation. No substitute RPC handlers or plan bypasses. */
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { findMachOSeaSection, readSeaBlob, writeSeaBlob, injectMachOSeaBlob } from '../aside/lib/sea.mjs';
+
+export const DAEMON_VERSION = '1.26.1016.1852';
+export const DAEMON_BINARY_SHA256 = '60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286';
+export const DAEMON_CODE_SHA256 = '5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5';
+export const nativeShimPath = fileURLToPath(new URL('./daemon-native.cjs', import.meta.url));
+const sha = (value) => createHash('sha256').update(value).digest('hex');
+const edit = (name, from, to, count) => ({ name, from, to, count });
+
+// Keep branding separate from the necessary platform/auth/local-service changes.
+export const identityEdits = [
+  edit('environment namespace', 'ASIDE_', 'AUX_', 241),
+  edit('bundle identity', 'at.studio.AsideBrowser', 'dev.aux.browser', 9),
+  edit('Agent identity', 'fjdhphbdlfjogobdofoaagnlnkoibdge', 'gokkffaiccpmoeodpmeamcjajcagjmkm', 1),
+  edit('Vault identity', 'clcdgiameigmljcbkkcbjiljinmfkncl', 'nbpghnminpifekjbgjefioajhiilbfla', 1),
+  edit('home', 'path.join(os.homedir(),`.aside`)', 'path.join(os.homedir(),`.aux`)', 1),
+  edit('daemon port', '||21420', '||21520', 1),
+  edit('daemon URL', 'localhost:21420', 'localhost:21520', 1),
+  edit('CDP URL', 'localhost:45103', 'localhost:45203', 1),
+  edit('signing domain', 'Aside Daemon Auth v1', 'Aux Daemon Auth v1', 2),
+  edit('development signing domain', 'Aside Daemon Dev Auth v1', 'Aux Daemon Dev Auth v1', 1),
+  edit('session scheme', 'AsideDaemonSessionToken ', 'AuxDaemonSessionToken ', 3),
+  edit('JWT audience', 'aside-daemon-localhost', 'aux-daemon-localhost', 4),
+  edit('JWT issuer', '`aside-daemon`', '`aux-daemon`', 5),
+  edit('WS auth prefix', 'aside.daemon.auth.', 'aux.daemon.auth.', 2),
+  edit('CDP auth scheme', 'AsideSessionToken', 'AuxSessionToken', 1),
+  edit('data key derivation namespace', 'aside.dk.', 'aux.dk.', 4),
+];
+export const platformEdits = [
+  // Original code hardcodes the original wire-prefix lengths.
+  edit('HTTP token offset', 'ei.slice(24).trim()', 'ei.slice(22).trim()', 2),
+  edit('WS token offset', 'let ei=ti.slice(18)', 'let ei=ti.slice(16)', 1),
+  // Never fall through to the original binding (custom Keychain and OS grants).
+  edit('isolated native binding', 'return[process.env.AUX_NATIVE_HELPER_BINDING,materializeEmbeddedBinding(),path.resolve(ei,`../Resources/native/aside-native.node`),path.resolve(ei,`native/aside-native.node`),...Cn.flatMap(Cn=>[path.resolve(packageRoot,`../../packages/native-helper-binding/prebuilds`,Cn,`aside-native.node`),path.resolve(packageRoot,`prebuilds`,Cn,`aside-native.node`)])].filter(Cn=>!!Cn)', 'return[process.env.AUX_NATIVE_HELPER_BINDING??path.resolve(ei,`../Resources/native/aux-native.cjs`)]', 1),
+  edit('telemetry disabled', 'new PostHog(ASIDE_POSTHOG_PROJECT_API_KEY,{'.replace('ASIDE_', 'AUX_'), 'new PostHog(AUX_POSTHOG_PROJECT_API_KEY,{disabled:!0,', 1),
+  // Local-only boundary: rejected network requests retain their original errors;
+  // nothing here invents plans, account state, search results or sync success.
+  edit('hosted API unavailable locally', 'https://api.aside.com', 'http://127.0.0.1:9/aux-unavailable/api', 8),
+  edit('legacy hosted API unavailable locally', 'https://api.asidehq.com', 'http://127.0.0.1:9/aux-unavailable/legacy-api', 1),
+  edit('hosted releases unavailable locally', 'https://releases.aside.com', 'http://127.0.0.1:9/aux-unavailable/releases', 6),
+  edit('hosted sharing unavailable locally', 'https://share.aside.com', 'http://127.0.0.1:9/aux-unavailable/share', 1),
+];
+
+export function adaptDaemonCode(original) {
+  if (sha(original) !== DAEMON_CODE_SHA256) throw new Error('Supplied daemon code hash mismatch');
+  let code = original;
+  const applied = [];
+  for (const e of [...identityEdits, ...platformEdits]) {
+    const count = code.split(e.from).length - 1;
+    if (count !== e.count) throw new Error(`${e.name}: expected ${e.count}, got ${count}`);
+    code = code.split(e.from).join(e.to);
+    applied.push({ name: e.name, count });
+  }
+  // Internal identifiers and displayed product names travel together in this
+  // self-contained bundle. Original lower-case provider/schema enums stay intact.
+  const remaining = code.split('Aside').length - 1;
+  if (remaining !== 647) throw new Error(`Remaining product identifiers: ${remaining}`);
+  code = code.replaceAll('Aside', 'Aux');
+  applied.push({ name: 'product names/internal identifiers', count: remaining });
+  return { code, applied, sha256: sha(code) };
+}
+
+export function adaptDaemonBinary(original) {
+  if (sha(original) !== DAEMON_BINARY_SHA256) throw new Error('Supplied daemon binary hash mismatch');
+  const section = findMachOSeaSection(original);
+  const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
+  const result = adaptDaemonCode(blob.code);
+  const binary = Buffer.from(original);
+  injectMachOSeaBlob(binary, writeSeaBlob({ ...blob, code: result.code }));
+  return { binary, codeSha256: result.sha256, applied: result.applied,
+    assets: blob.assets.map(([name, data]) => ({ name, bytes: data.length, sha256: sha(data) })) };
+}
+
+export function readPinnedDaemon(binaryPath) { return adaptDaemonBinary(readFileSync(binaryPath)); }
