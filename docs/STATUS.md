@@ -37,6 +37,15 @@ synthetic typing comparison succeeds in plain text and Home Ask; intermittent
 corruption and IME acceptance remain open. Current populated Memory/Forget and
 successful long-conversation compaction still need native acceptance.
 
+The [stock-only ingress follow-up](evidence/aside-stock-appkit-ingress-2026-10-18.json)
+is integrated at `78ac37e16`; its full check passes6,187tests in120.00s.
+It captures the actual native reserved-tab command before synchronous selection,
+using the existing exact fixture admission and original event timestamp. Exact
+stock replay and independent source review pass. Native compilation and an actual
+stock timing pair remain pending; the current stock88 binary is the earlier build.
+Aux873/22 is unchanged. A separate reference-backed Project glyph correction is
+frozen in an isolated worktree with13 focused tests; it is not yet integrated.
+
 Earlier cd76 native Routines geometry, wide/narrow model-menu states and normal
 runtime forced0/exit0 remain [pinned to that candidate](evidence/aside-native-cd76-observations-2026-10-18.json).
 Full reference/accessibility acceptance and the new-build Home Cmd-L observation

@@ -1,0 +1,34 @@
+{
+  "privateCommit": "3adc9e08d4d8e44bc7c1f91f3b003fb79285cf21",
+  "integratedCommit": "78ac37e16",
+  "canonical": "chromium/patches/benchmark/0052-native-performance-stock-155.patch",
+  "failure": {
+    "candidateFrameworkUUID": "4C4C4488-5555-3144-A181-1370107449ED",
+    "diagnostic": "/tmp/aux-appkit-batch5-v4-diagnostic-stock-6rWnDq/result.json",
+    "actualFixtures": 10,
+    "tabTimingPair": false,
+    "browserExit": 0
+  },
+  "sourceFinding": "Reserved AppKit SELECT/CYCLE tab commands bypass RootView/RWH observers. Actual event/active fixture must be captured before synchronous native selection.",
+  "change": "Before-command originalNSEvent timestamp admission checks WillExecute, enabled exact tab command, CURRENT_TAB, nondeleting browser, original key native window and exact active/live configured fixture WeakDocumentPtr. Existing key filter, duplicate handling, tab-input clock, presentation and product dispatch tail are unchanged.",
+  "patch": "/tmp/aux-stock-appkit-873d478be/.native/stock-appkit-ingress/stock.patch",
+  "patchSHA256": "84edbfd5868950fa7df054547c590e4a9ff11ea25516763ac8b1b5ea22c3e4c0",
+  "replay": "Stock0052 exact10paths/modes;3filedelta exact;0mismatches",
+  "independentReview": "AI/data source review found no concrete blocker; no compile or actual AppKit event availability claim.",
+  "fullCheck": {
+    "session": 31140,
+    "exit": 0,
+    "tests": 6187,
+    "files": 869,
+    "seconds": 120.0,
+    "log": "/tmp/aux-stock-appkit-integration-check-2026-10-18.log",
+    "nativeCompilerConcurrent": false
+  },
+  "nativeCompilation": "Pending; current stock88 binary remains previous candidate. Aux873/22 successful native signal evidence unchanged.",
+  "limits": [
+    "0qualified paired performance samples",
+    "No presentation/threshold relaxation",
+    "No product input or event consumption change",
+    "No phase or daily-use readiness completion"
+  ]
+}
