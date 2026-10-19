@@ -187,6 +187,13 @@ test('HTTP auth and host denial; WS registration, command correlation, cancellat
     assert.equal(daemon.bridge.status(route).connectionCount, 1);
     replacement.close();
     ws.close();
+    const closed = once(daemon.server, 'close');
+    const shutdown = await fetch(`${base}/shutdown`, {
+      method: 'POST',
+      headers,
+    });
+    assert.deepEqual(await shutdown.json(), { status: 'shutting_down' });
+    await closed;
   } finally {
     ws?.terminate();
     await daemon.close();
