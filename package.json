@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Aux \u2014 a local agent-first browser with one execution runtime shared by its native human interface and structured agent interfaces.",
+  "description": "Aux — a local agent-first browser with one execution runtime shared by its native human interface and structured agent interfaces.",
   "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": ">=22.18.0"
@@ -50,5 +50,8 @@
     "vite": "7.3.6",
     "vitest": "catalog:",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "ws": "8.21.3"
   }
 }

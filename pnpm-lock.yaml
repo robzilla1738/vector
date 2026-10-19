@@ -28,6 +28,10 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      ws:
+        specifier: 8.21.3
+        version: 8.21.3
     devDependencies:
       '@aux/filter-lists':
         specifier: workspace:*

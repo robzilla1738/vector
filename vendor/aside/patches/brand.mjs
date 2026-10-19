@@ -8,7 +8,7 @@ export const productWord = (excluding = "") =>
 export const PRODUCT_WORD = productWord("| Daemon (?:Dev )?Auth");
 
 // The lowercase CLI command in help text, hints and the shipped skill.
-export const CLI_COMMAND = /(?<=[`'" (])aside (?=<command>|repl\b|session\b|guide\b|login\b|host\b|exec\b|update\b|settings\b|mcp\b|account\b|skills\b|memory\b|--|-m\b|https)/g;
+export const CLI_COMMAND = /(?<=[`'" (])aside (?=<command>|"|repl\b|session\b|guide\b|login\b|host\b|exec\b|update\b|settings\b|mcp\b|account\b|skills\b|memory\b|--|-m\b|https)/g;
 
 export const AUX_SKILL_NAME = "aux-browser";
 
