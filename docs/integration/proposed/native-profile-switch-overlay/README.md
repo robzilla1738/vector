@@ -1,0 +1,21 @@
+# Supplied profile-switch image lifecycle
+
+Four-source incremental proposal against actual applied v32 frozen outputs. Apply `native.patch` with `manifest.json`; temporary four-source replay passed. No native build or actual capture/gesture observation is claimed. The shared checkout was never written.
+
+## Real implemented component
+
+The existing ContentsWebView state now provides the supplied profile-scroll owner's capture/begin/opacity/clear operations. Capture copies the actual visible renderer surface at the owner size with the original50ms timeout. It rejects missing surface/empty bitmap or pixels/wrong image dimensions, stale capture generation, destroyed/changed current contents, already-started crossfade, and resized owner. Only a successful current result constructs the original stock ImageView, adds it as the last child and initializes its nonopaque layer at opacity0. Begin requires a real matching-sized image child and raises its alpha to1. Requested native opacity is clamped using numeric min/max semantics (including NaN→0) and the screenshot fades at1-native opacity while active. The existing NTP hold continues to hide the native renderer independently. Clear invalidates pending captures, restores requested opacity1 and removes the owned child. Destruction clears it; size changes invalidate a held NTP clone and resize the image/its explicit ImageView image size. The NTP Prepare predicate now excludes this actual screenshot child, preserving the original separate-overlay guard.
+
+`ContentsWebView` exposes concrete forwarding methods for the real owner port: CaptureAuxProfileSwitchOverlay, BeginAuxProfileSwitchCrossfade, SetAuxProfileSwitchOpacity, ClearAuxProfileSwitchOverlay. These are functional visual operations, but deliberately have no invented automatic navigation trigger. The original browser profile-scroll owner must call them at its recovered initiation/settlement/cancel boundaries. This patch alone does not complete profile switching.
+
+The surface-copy API can deliver off-sequence in155, so the callback is explicitly posted to the originating UI sequence before touching a View; generation and identity checks still happen after posting. A dedicated capture weak factory preserves the original view lifetime independently of the current NTP document probe cancellation. Adoption does not fabricate a screenshot or clear a valid already-captured image.
+
+## Exact class/layout recovery and corrections
+
+Supplied constructor a686e60 installs vtable e6b2bd0. Its metadata slot0x58 points to1787aa0, whose factory reads literal `ImageView` and `../../ui/views/controls/image_view.h`. The original fields+310/+318 match ImageViewBase's optional image_size_ and preferred-size change, **not a clipping rectangle**; earlier overlay notes called them a clip and are corrected here. The port therefore uses SetImageSize, matching actual155 public semantics. Original+1a9 setter3b291f8 has the equality/store/property-notification shape of SetCanProcessEventsWithinSubtree; the image child does not intercept input. The stripped extra custom property assignment is not guessed into a layout/element-ID key. WebView's explicit child bounds and ImageView sizing are retained.
+
+## Remaining actual owner transaction
+
+Original465841c calls40fe7a4, which validates source/target profile paths and loads the target through7acaa10 (the actual ProfileManager asynchronous load path). Completion calls supplied04559f80 with source literal `SwitchProfileInPlaceForAside` in browser.cc. That transaction caches/detaches/restores per-profile tabs/session/selection state, migrates profile-bound controllers, and schedules a generation-checked session rebuild after500ms. It is neither a back/forward command nor opening/focusing a separate profile window. The original profile ordering proof remains ../native-ntp-final-guards/overlay/.
+
+Current155 Browser has a const profile and profile-bound TabStripModel/BrowserWindowFeatures. The complete controller/session migration and real preview-host/activation/cancel adapter remain active recovery work; simply changing the const profile pointer would leave real profile-bound services stale. These operations are not claimed complete by this visual component.

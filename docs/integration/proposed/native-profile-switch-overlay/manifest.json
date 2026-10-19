@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "actual applied v32 frozen source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.cc",
+      "baselineSha256": "7e0c01fb27de39aba9bd4dbbade71942f1c7766bdf5f8eaac5bc798052017d15",
+      "outputSha256": "937e46f7c21fb3c32cbda26966e1d591085956dbed392b5cc5bbd20b0d11afb9"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ntp_transition_state.h",
+      "baselineSha256": "0678c24f0a047909383523594a419c341f9304fe48adf0e71c070510303da736",
+      "outputSha256": "dff73a239db3e2348a9ff53940417a5d69d4d00dc56536b19416a88aa94aadfc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.h",
+      "baselineSha256": "f7b57c4e66936ab0f0ba4a5648d1ddb8feee7a59abeda892c94ae9225d1aba32",
+      "outputSha256": "a9ba074e27e08a0aed78e293c41eeda5a421d07d089af1138e120df196f3aa59"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.cc",
+      "baselineSha256": "88c68febd4342132d96c31c0e1df52b320a3a4eea2ed9a3d01fee1f8c943ac1a",
+      "outputSha256": "bafbe5a2a86006d0385e12df21fb31bcfa786b042353588b8ba3a4a51140d30a"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

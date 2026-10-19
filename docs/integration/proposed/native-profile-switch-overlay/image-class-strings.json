@@ -1,0 +1,13 @@
+{
+  "vtable": "0xe6b2bd0",
+  "metadataSlotOffset": "0x58",
+  "metadataPointerLow36Bits": "0x1787aa0",
+  "className": {
+    "address": "0xdd4408e",
+    "bytes": "ImageView"
+  },
+  "headerName": {
+    "address": "0xdd440ab",
+    "bytes": "../../ui/views/controls/image_view.h"
+  }
+}

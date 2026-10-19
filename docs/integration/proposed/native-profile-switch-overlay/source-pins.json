@@ -1,0 +1,52 @@
+{
+  "originalBinarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "originalLifecycleEvidence": "../native-ntp-final-guards/overlay/manifest.json",
+  "current155Sources": [
+    {
+      "path": "ui/views/controls/image_view.h",
+      "sha256": "c1ac045f9556c6eb62d33602066a9216c3ab6bc168e7f3d155a170e8dba2a2e3"
+    },
+    {
+      "path": "ui/views/controls/image_view.cc",
+      "sha256": "43e32cd57b5e78a7fd7a885a872ae3d036540c6a701801ccdf524503d6d11eaa"
+    },
+    {
+      "path": "ui/views/controls/image_view_base.h",
+      "sha256": "220d0097e0b0ddfb0da74c8373255ba465ca3e5c32e45003fb6b15344019e9bb"
+    },
+    {
+      "path": "ui/views/controls/image_view_base.cc",
+      "sha256": "25c090e277dea60ba2cabffc5c8bcfaa8def0121fa13ffc93d41034917c60102"
+    },
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "content/public/browser/render_widget_host_view.h",
+      "sha256": "035bf50d7dcd72ca6f3c11cd32f784f28f05631f15d6aa0ae851789c88e50c5b"
+    },
+    {
+      "path": "components/viz/common/frame_sinks/copy_output_result.h",
+      "sha256": "18a0eb8056a2d4bd3f7ab782708c81b165b025b931114e740dbcbff8fc63a328"
+    }
+  ],
+  "boundedProofFiles": [
+    {
+      "path": "input-target-property.txt",
+      "sha256": "4650965cc09dab8124c8c603d73a549de9c420ae7329b038cf4dd420b104aa3b"
+    },
+    {
+      "path": "image-metadata.txt",
+      "sha256": "fb3b15c595f4b4f31af6c857d54f60470935a2cde06d0d2c8840120891153d69"
+    },
+    {
+      "path": "image-constructor.txt",
+      "sha256": "6895f5f71edaae2ef845bcd406adc709bbef0c6eca7c3544a18374a8eb9e8b63"
+    }
+  ]
+}
