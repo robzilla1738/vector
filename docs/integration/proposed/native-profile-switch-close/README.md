@@ -1,0 +1,11 @@
+# Owned workspace close lifecycle
+
+This three-file proposal is pinned to the applied v55 native output. It closes only positively marked hidden profile-switch workspaces with the closing visible window's dedicated workspace owner ID. It does not use URLs, profile indices or mere profile equality to select windows.
+
+The supplied binary's `0x455d3c8` routine snapshots weak identities, rechecks cache/closing state, reports each cache's real SessionID to SessionService, suppresses empty-model closure, deletes its actual tabs and finalizes its closure. Its predicate at `0x455e974` requires the positive cache flag and the same dedicated owner ID. The normal owner close path calls this routine at `0x456b05c`, after the owner close has been accepted and its tabs have settled. Original `0x456afcc` also refuses closure during the synchronous switch or empty-model hold. This proposal preserves those two independent guards.
+
+The adapter uses Chromium 155's real `UnloadController::OnWindowCloseComplete()` after emptying each cache. That method emits the actual closed event and posts BrowserManager deletion, preserving current observer lifetime expectations. The supplied finalizer at `0x456b4e8` performs the same notification/delete effects synchronously; copying its deletion timing into current Chromium would violate the explicit current API contract. No beforeunload bypass is added to ordinary user windows: hidden cache disposal begins only at the accepted owner's final close boundary.
+
+`source-evidence.json` pins the supplied thin binary and five bounded disassemblies. `0x7d4da70` calls the real detach-with-deleted-reason operation and destroys the returned tab, matching current `DetachAndDeleteWebContentsAt(0)`. The separate original SessionService cache-tracking proposal remains required so closing these caches leaves their genuine per-profile session state coherent.
+
+Verification: exact three input hashes match applied v55; patch replay in a disposable filesystem matches all three output hashes. No native build, target execution, owner state access or runtime acceptance was performed. No new GN sources are needed. Apply after v55 and compile the actual Browser and UnloadController objects under the integrator's build lock.

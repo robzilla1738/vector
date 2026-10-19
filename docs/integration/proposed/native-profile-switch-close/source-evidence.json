@@ -1,0 +1,37 @@
+{
+  "source": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "evidence": "Static bounded arm64 disassembly only; no target execution or state reads.",
+  "ranges": [
+    {
+      "path": "proofs/owner-close.txt",
+      "start": "0x456afc0",
+      "endExclusive": "0x456b1dc",
+      "sha256": "6c9676fbdcedf562b73e8db881f2549c0a77f115d75d1d54dbabea9ef7caee8b"
+    },
+    {
+      "path": "proofs/cache-close.txt",
+      "start": "0x455d3c8",
+      "endExclusive": "0x455d6bc",
+      "sha256": "4e89ac08463134ca2616227a90d0efcb56454f36f4000da6d8f698efb51d8c45"
+    },
+    {
+      "path": "proofs/owner-predicate.txt",
+      "start": "0x455e974",
+      "endExclusive": "0x455eb00",
+      "sha256": "c7831e2c0bdb5303959d1612d97f888c1f71d6805c32e44cfa597dedc1e20f66"
+    },
+    {
+      "path": "proofs/cache-finalize.txt",
+      "start": "0x456b4e8",
+      "endExclusive": "0x456b580",
+      "sha256": "25dfadccf3bbf3cc2ea0f4bb7a6a3523d8bfceb6b77b058d32a4e3b781e6c1dd"
+    },
+    {
+      "path": "proofs/detach-delete.txt",
+      "start": "0x7d4da70",
+      "endExclusive": "0x7d4daa8",
+      "sha256": "5e32bd521df231ccd17ceaedc5a57f38751b09e7f5537d18e49b8bc8c5b69ccd"
+    }
+  ]
+}

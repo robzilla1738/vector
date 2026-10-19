@@ -1,0 +1,128 @@
+--- a/chrome/browser/ui/browser.h
++++ b/chrome/browser/ui/browser.h
+@@ -179,6 +179,7 @@
+  private:
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   friend class aux::ProfileSwitchTransaction;
++  friend class UnloadController;
+   friend class aux::ProfileSwitchTabCollection;
+ 
+   // Original same-window transaction only. No public profile setter: the
+@@ -187,6 +188,7 @@
+       Profile* target,
+       std::unique_ptr<ScopedProfileKeepAlive> prepared_keep_alive);
+   uint32_t SuppressEmptyForAuxProfileSwitch();
++  void CloseAuxProfileSwitchWorkspaces();
+   void PostClearAuxProfileSwitchEmptySuppression(uint32_t generation);
+   void ClearAuxProfileSwitchEmptySuppression(uint32_t generation);
+ #endif
+--- a/chrome/browser/ui/browser.cc
++++ b/chrome/browser/ui/browser.cc
+@@ -83,6 +83,7 @@
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/chrome_pages.h"
+ #include "chrome/browser/ui/dialogs/browser_dialogs.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+@@ -648,6 +649,51 @@
+                      weak_factory_.GetWeakPtr(), generation));
+ }
+ 
++void Browser::CloseAuxProfileSwitchWorkspaces() {
++  const auto* owner_state = BrowserInitState::From(this);
++  if (!owner_state || owner_state->is_aux_profile_switch_cache()) {
++    return;
++  }
++  const uint64_t owner_id = owner_state->aux_profile_switch_workspace_id();
++  std::vector<base::WeakPtr<BrowserWindowInterface>> caches;
++  for (auto* window : GetAllBrowserWindowInterfaces()) {
++    const auto* state = BrowserInitState::From(window);
++    if (window != this && state && state->is_aux_profile_switch_cache() &&
++        state->aux_profile_switch_workspace_id() == owner_id &&
++        !window->IsDeleteScheduled()) {
++      caches.push_back(window->GetWeakPtr());
++    }
++  }
++  // Snapshot weak identities first: real close observers can remove peers.
++  for (const auto& weak : caches) {
++    if (!weak) {
++      continue;
++    }
++    auto* window = weak.get();
++    const auto* state = BrowserInitState::From(window);
++    auto* unload = UnloadController::From(window);
++    if (!state || !state->is_aux_profile_switch_cache() ||
++        state->aux_profile_switch_workspace_id() != owner_id || !unload ||
++        unload->is_attempting_to_close_browser() ||
++        unload->is_delete_scheduled()) {
++      continue;
++    }
++    // Positive role+owner identity comes only from the real desktop Browser
++    // cache factory. Never close an arbitrary same-profile user window.
++    auto* cache = static_cast<Browser*>(window);
++    if (auto* service = GetAppropriateSessionServiceForProfile(window)) {
++      service->WindowClosing(window->GetSessionID());
++    }
++    cache->SuppressEmptyForAuxProfileSwitch();
++    while (!cache->GetTabStripModel()->empty()) {
++      cache->GetTabStripModel()->DetachAndDeleteWebContentsAt(0);
++    }
++    // Current155 requires the real did-close event followed by its normal
++    // posted owner deletion, rather than deleting during observer callbacks.
++    unload->OnWindowCloseComplete();
++  }
++}
++
+ void Browser::ClearAuxProfileSwitchEmptySuppression(uint32_t generation) {
+   if (generation == aux_profile_switch_generation_) {
+     aux_profile_switch_suppress_empty_ = false;
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -23,6 +23,8 @@
+ #include "chrome/browser/sessions/session_service_lookup.h"
+ #include "chrome/browser/sessions/tab_restore_service_factory.h"
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ #include "chrome/browser/ui/browser_manager_service.h"
+ #include "chrome/browser/ui/browser_tabstrip.h"
+@@ -143,6 +145,17 @@
+ }
+ 
+ void UnloadController::OnWindowClosing() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Actual desktop Browser caches/owners keep their empty tab strips alive
++  // through the original synchronous in-place transfer and zero-delay clear.
++  if (BrowserInitState::From(browser_)) {
++    auto* browser = static_cast<Browser*>(browser_.get());
++    if (browser->aux_profile_switch_in_progress_ ||
++        browser->aux_profile_switch_suppress_empty_) {
++      return;
++    }
++  }
++#endif
+   // There may be situations where async tasks, such as
+   // UnloadController::ProcessPendingTabs, may call into OnWindowClosing() after
+   // deletion has already been scheduled and closed notifications have been
+@@ -990,6 +1003,18 @@
+ }
+ 
+ void UnloadController::OnWindowCloseComplete() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Supplied456b054/455d3c8: after genuine owner close was accepted and its
++  // tabs settled, close only this window's positively owned hidden workspaces.
++  // Cache completion skips recursion through its fixed creation-time role.
++  if (!is_delete_scheduled_) {
++    if (const auto* state = BrowserInitState::From(browser_);
++        state && !state->is_aux_profile_switch_cache() &&
++        browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL) {
++      static_cast<Browser*>(browser_.get())->CloseAuxProfileSwitchWorkspaces();
++    }
++  }
++#endif
+   // If there are no tabs, then a task will be scheduled (by views) to delete
+   // this Browser.
+   is_delete_scheduled_ = true;

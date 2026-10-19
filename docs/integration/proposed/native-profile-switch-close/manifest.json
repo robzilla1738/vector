@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "base": "Exact applied v55 shared source; Browser.cc includes 4b04423e8 InitState profile rebind",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.h",
+      "baselineSha256": "7417185e7c50a3e67b538751f7aa893655b84b2ade8c849b1bb5e812923429d3",
+      "outputSha256": "607ffd58427cdded4971bbdc95c6fda8f9d27c1ffa2f670cb464c7038c21c034"
+    },
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "baselineSha256": "79dd0778a3c01d23c46e81f6c51bdd459135ebf660adbd8cc5fa241527229601",
+      "outputSha256": "f582f9cc1e4bb9944982bd1c1640bcd20fb817fd23466d9bedcab70a74f73d3d"
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "baselineSha256": "8f03787dc2c142d256a77faefacb4a3a71d79a72f9c06cb73a2bd3cc36b596ef",
+      "outputSha256": "2ba360323fc795b800c963b900e0cde9b44a3fd4142fe39f0656fea741d39512"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "patchSha256": "09bbb6924657285115f7a744a058ea946fc91076096943a8790b25d1c1aa61dd",
+  "verification": {
+    "exactBaselineMatchesAppliedV55": true,
+    "disposableReplayOutputsVerified": true
+  }
+}
