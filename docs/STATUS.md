@@ -502,3 +502,7 @@ The actual daemon adapter now count-checks and inserts the fixed bootstrap await
 ### Static supplied daemon/CDP startup contract (2026-10-19, L1)
 
 Recorded exact actual env, two auth exchanges and bounded ready-order trace in docs/integration/proposed/cdp-startup-contract. Thirteen fail-closed pinned-source anchors pass. No direct browser-CDP-before-daemon-ready wait appears in inspected bootstrap; carrier public acquisition occurs after daemon authentication. Health ready can still occur when helper availability fails, so real auth/public-key gates remain essential. Proposed one-count supervisor hunk sets owned AUX_HOST/AUX_BROWSER_CDP_HOST/DAEMON_BASE_URL explicitly; shared sources unchanged. Confirmed AUX_BROWSER_PID is unused and reused daemon lacks independent parent watcher; Browser.ensureChromiumProfile/ensureProfile native support also remains a distinct gap. Guard/DP/native runtime acceptance remains pending; no supplied code, Keychain or network call ran.
+
+### Preserve supplied DK cryptographic labels (2026-10-19, L1)
+
+Static source classifies all four aside.dk. matches as HKDF info labels: general DK purpose prefix, AUK→PMK/CSK and recovery sync derivation. Removed their unnecessary Aux rewrite, retaining original crypto/domain/format compatibility while home and mapped native selectors provide isolation. DK wrap label was already preserved. Three daemon tests and13 static startup anchors pass; adapted code SHA7344e4e4f4cea4df9722056bfe6ee5ccb56097b4372e9105ab5ef1425215609d. No actual crypto, owner state or Keychain access occurred.

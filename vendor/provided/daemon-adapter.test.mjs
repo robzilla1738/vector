@@ -69,6 +69,9 @@ test('pinned actual daemon keeps real plan checks and count-checked Aux branding
   assert.ok(result.code.includes('process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR)'));
   assert.ok(result.code.includes('process.env.AUX_ALLOW_EXTERNAL_SKILL_SYNC===`1`&&syncInstalledAuxBrowserSkills()'));
   assert.ok(result.code.includes('service:`aside-daemon`'));
+  assert.equal(result.code.split('aside.dk.').length - 1, 4);
+  assert.equal(result.code.includes('aux.dk.'), false);
+  assert.ok(result.code.includes('DK_WRAP_INFO=`aside.wrap.dk.v1`'));
   const startup = 'async function main(){await (await import(`node:module`)).createRequire(process.execPath)(path.resolve(path.dirname(process.execPath),`../Resources/native/memory-bootstrap.cjs`))();(0,import_undici.setGlobalDispatcher)';
   assert.equal(result.code.split(startup).length - 1, 1);
   assert.ok(result.applied.some((e) => e.name === 'bundled memory startup provisioning' && e.count === 1));

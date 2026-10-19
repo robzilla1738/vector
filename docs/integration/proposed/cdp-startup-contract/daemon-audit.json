@@ -1,6 +1,6 @@
 {
   "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
-  "adaptedCodeSha256": "7613531728aaa8206a0e29b3635186435342a62d33ef70728fbfc683048f8987",
+  "adaptedCodeSha256": "7344e4e4f4cea4df9722056bfe6ee5ccb56097b4372e9105ab5ef1425215609d",
   "verification": "static anchors only; not daemon/CDP/native execution or whole-program deadlock proof",
   "checks": [
     {

@@ -27,7 +27,6 @@ export const identityEdits = [
   edit('daemon port', '||21420', '||21520', 1),
   edit('daemon URL', 'localhost:21420', 'localhost:21520', 1),
   edit('CDP URL', 'localhost:45103', 'localhost:45203', 1),
-  edit('data key derivation namespace', 'aside.dk.', 'aux.dk.', 4),
 ];
 export const platformEdits = [
   edit('computer-use executable', 'aside-computer-use', 'aux-computer-use', 3),
