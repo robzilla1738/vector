@@ -32,7 +32,7 @@ export function adaptCliCode(original) {
   const binding = code.match(/function candidateBindingPaths\(\) \{[\s\S]*?\n\}/)?.[0];
   if (!binding) throw new Error('Supplied CLI native loader anchor missing');
   edit('isolated native binding', 'integration', binding,
-    'function candidateBindingPaths() {\n\treturn [process.env.AUX_NATIVE_HELPER_BINDING ?? path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")];\n}', 1);
+    'function candidateBindingPaths() {\n\treturn [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")];\n}', 1);
   // Includes matching RPC/internal names and auth-domain labels used by the supplied daemon.
   edit('product names and matching internal identifiers', 'branding', 'Aside', 'Aux', 101);
   const commands = [...code.matchAll(CLI_COMMAND)];

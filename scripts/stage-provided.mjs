@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { stageProvidedUi } from './lib/provided-ui.mjs';
 import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
+import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
 import { transformProvidedNativeUi, unresolvedNativeCapabilities } from '../vendor/provided/native-ui-compat.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,13 +55,22 @@ try {
   });
   for (const [name, component] of Object.entries(distribution.components)) component.outputRoot = join(output, 'distribution', name);
   await writeFile(join(temporary, 'distribution/manifest.json'), `${JSON.stringify(distribution, null, 2)}\n`);
+  const helperPins = JSON.parse(await readFile(join(repository, 'docs/source/provided-computer-use-inputs.json'), 'utf8'));
+  await mkdir(join(temporary, 'computer-use'));
+  const computerUse = await stageProvidedComputerUse({
+    sourceRoot: helperPins.inputRoot,
+    outputRoot: join(temporary, 'computer-use/Aux Computer Use.app'),
+    identities: { browserBundleId: 'dev.aux.browser', canaryBundleId: 'dev.aux.browser.canary', bundleId: 'dev.aux.browser.computer-use' },
+  });
+  computerUse.outputRoot = join(output, 'computer-use/Aux Computer Use.app');
+  await writeFile(join(temporary, 'computer-use/manifest.json'), `${JSON.stringify(computerUse, null, 2)}\n`);
   for (const input of brandInputs) {
     if (createHash('sha256').update(await readFile(join(repository, input.path))).digest('hex') !== input.sha256) throw new Error('Aux branding changed during staging; retry with a stable asset snapshot');
   }
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp, brandInputs,
-    components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json' },
-    blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', 'Supplied helper identity adaptation', 'Packaged local UI and behavior acceptance'],
+    components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', computerUse: 'computer-use/manifest.json' },
+    blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', ...computerUse.remaining, 'Packaged local UI and behavior acceptance'],
   };
   await writeFile(join(temporary, 'manifest.json'), `${JSON.stringify(report, null, 2)}\n`);
   const backup = `${output}.previous-${randomUUID()}`;
@@ -68,6 +78,6 @@ try {
   try { await rename(temporary, output); }
   catch (error) { if (previous) await rename(backup, output); throw error; }
   if (previous) console.log(`Previous generated stage preserved: ${backup}`);
-  console.log(`Staged supplied Agent/Vault UI, daemon, CLI, agent runtime and memory distributions: ${output}`);
+  console.log(`Staged supplied Agent/Vault UI, daemon, CLI, agent/memory distributions and Computer Use helper: ${output}`);
   console.log('Incomplete integration; not a runnable production package. See manifest.json blockers.');
 } catch (error) { await rm(temporary, { recursive: true, force: true }); throw error; }

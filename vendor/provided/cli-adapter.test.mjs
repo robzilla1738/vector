@@ -27,10 +27,11 @@ test('actual supplied CLI remains syntactically valid and its native loader cann
   assert.ok(after.code.includes('AuxDaemonSessionToken '));
   assert.ok(after.code.includes('Aux Daemon Auth v1\\0'));
   assert.ok(after.code.includes('aux.daemon.auth.'));
-  assert.ok(after.code.includes('return [process.env.AUX_NATIVE_HELPER_BINDING ??'));
+  assert.ok(after.code.includes('return [path.resolve(path.dirname(process.execPath), "../Resources/native/aux-native.cjs")]'));
   const loader = after.code.match(/function candidateBindingPaths\(\) \{[\s\S]*?\n\}/)[0];
   assert.equal(loader.includes('aside-native.node'), false);
   assert.equal(loader.includes('materializeEmbeddedBinding'), false);
+  assert.equal(loader.includes('AUX_NATIVE_HELPER_BINDING'), false);
   let replayed = before.code;
   for (const anchor of result.applied) {
     assert.equal(replayed.split(anchor.find).length - 1, anchor.count);

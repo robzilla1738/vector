@@ -147,6 +147,43 @@ if (stack.components.distribution) {
     await coverage();
   }
 } else throw new Error('Restage: supplied runtime and memory distributions are missing');
+if (!stack.components.computerUse) throw new Error('Restage: branded supplied Computer Use helper is missing');
+const helper = await json(join(output, 'computer-use/manifest.json'));
+const helperPins = await json(join(repository, 'docs/source/provided-computer-use-inputs.json'));
+const helperRoot = join(output, 'computer-use/Aux Computer Use.app');
+if (JSON.stringify(await files(helperRoot)) !== JSON.stringify(helper.files.map((file) => file.path).sort())) throw new Error('Unreported helper resources');
+const helperSources = new Map(helperPins.files.map((file) => [file.path, file]));
+for (const file of helper.files) {
+  if (!safe(file.path) || !safe(file.sourcePath)) throw new Error('Unsafe helper resource path');
+  const pinned = helperSources.get(file.sourcePath);
+  if (!pinned || pinned.sha256 !== file.sourceSha256 || file.outputMode !== pinned.mode) throw new Error('Helper source pin mismatch');
+  helperSources.delete(file.sourcePath);
+  const source = await readFile(join(helperPins.inputRoot, file.sourcePath)), bytes = await readFile(join(helperRoot, file.path));
+  if (hash(source) !== pinned.sha256 || hash(bytes) !== file.outputSha256 || ((await lstat(join(helperRoot, file.path))).mode & 0o777) !== pinned.mode) throw new Error('Helper preservation hash or mode mismatch');
+  if (file.sourcePath === 'Contents/MacOS/aside-computer-use') {
+    const replayed = Buffer.from(source);
+    for (const patch of helper.binary.patches) {
+      const before = Buffer.from(patch.beforeHex, 'hex'), after = Buffer.from(patch.afterHex, 'hex');
+      if (before.length !== after.length || !replayed.subarray(patch.offset, patch.offset + before.length).equals(before)) throw new Error('Helper binary patch anchor drift');
+      after.copy(replayed, patch.offset);
+    }
+    if (!replayed.equals(bytes)) throw new Error('Unreported helper binary modification');
+  } else if (file.anchors?.length) {
+    if (file.anchors[0].assetPath) {
+      const expected = { 'Contents/Resources/AppIcon.icns': 'assets/brand/Aux.icns', 'Contents/Resources/MenuBarIcon.png': 'assets/brand/MenuBarIcon.png', 'Contents/Resources/MenuBarIcon@2x.png': 'assets/brand/MenuBarIcon@2x.png' }[file.path];
+      if (!expected || !bytes.equals(await readFile(join(repository, expected)))) throw new Error('Helper does not use current Aux artwork');
+    } else {
+      let text = source.toString('utf8');
+      for (const anchor of file.anchors) {
+        if (!anchor.find || text.split(anchor.find).length - 1 !== anchor.count) throw new Error('Helper plist anchor drift');
+        text = text.split(anchor.find).join(anchor.replace);
+      }
+      if (!Buffer.from(text).equals(bytes)) throw new Error('Unreported helper plist change');
+    }
+  } else if (!source.equals(bytes)) throw new Error('Unreported helper resource change');
+}
+if (helperSources.size) throw new Error('Omitted helper source resources');
 console.log(`Preservation verified: ${unchanged} unchanged UI files; ${changed} explicitly changed; ${css} stylesheets preserve layout; ${appFiles} app resource records.`);
 console.log(`Distribution preservation: ${runtimeFiles} runtime files and ${memoryFiles} memory files, with declared relocations only.`);
+console.log(`Helper preservation: ${helper.files.length} files with ${helper.binary.patches.length} exact binary patch ranges and current Aux artwork.`);
 console.log(`Production ready: ${stack.productionReady}. This audit verifies recorded preservation, not native integration or runtime/UI acceptance.`);
