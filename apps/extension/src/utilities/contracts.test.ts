@@ -103,6 +103,7 @@ test('translation validates exact complete segment identities and keeps source l
   );
   for (const text of [
     '{"segments":[{"id":"t0","text":"Only partial"}]}',
+    '{"segments":[{"id":"t0","text":""},{"id":"t1","text":"other"}]}',
     '{"segments":[{"id":"t0","text":"one"},{"id":"t0","text":"duplicate"}]}',
     '{"segments":[{"id":"t0","text":"one"},{"id":"t9","text":"foreign"}]}',
   ])

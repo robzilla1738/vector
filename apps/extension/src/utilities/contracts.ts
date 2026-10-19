@@ -143,6 +143,7 @@ export function translationResult(textValue: string, segments: Segment[]) {
       !originals.has(id) ||
       translated.has(id) ||
       typeof row.text !== 'string' ||
+      !row.text.trim() ||
       row.text.length > 16000 ||
       row.text.includes('\0')
     )
