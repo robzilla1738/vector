@@ -8,7 +8,9 @@ import { McpSettings } from './mcp-settings';
 import { preference } from './native';
 import { OpenAIOAuthSettings } from './oauth-settings';
 import { PopupSettings } from './popup-settings';
+import { SearchSettings } from './search-settings';
 import { SkillsSettings } from './skill-settings';
+import { SubagentSettings } from './subagent-settings';
 import type { Session } from './types';
 
 type Item = Record<string, unknown>;
@@ -373,12 +375,14 @@ export function Settings({
                   }
                 />
               </Setting>
+              <SubagentSettings key={accountId} accountId={accountId} />
             </>
           )}
           {section === 'model' && (
             <div className="stack">
               <OpenAIOAuthSettings accountId={accountId} />
               <CustomModelSettings key={accountId} accountId={accountId} />
+              <SearchSettings key={accountId} accountId={accountId} />
               <form
                 className="stack"
                 onSubmit={(event) => {
