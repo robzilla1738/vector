@@ -28,3 +28,5 @@ Last updated 2026-10-19.
 ## Next
 
 Native sidebar profile pill and pinned tile grid, vibrancy material, `aside://` omnibox scheme, Aside's profile menu and icon picker, native `chrome.aside*` APIs, a signed non-component build, and a Node-free launcher.
+
+- Toolbar: Downloads is pinned by default (patch 0078).
