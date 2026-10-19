@@ -21,3 +21,5 @@ fixtures/dist-types/
 
 # Renderer resources are staged from the current build.
 chromium/shell-assets/
+/out/
+/vendor/aside/blobs/
