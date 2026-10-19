@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 
@@ -49,6 +50,6 @@ for (const target of targets) {
   await run(node, ['--build-sea', config]);
   await run('/usr/bin/codesign', ['--force', '--sign', '-', executable]);
   await writeFile(join(contents, 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>dev.aux.${target}</string><key>CFBundleName</key><string>${appName}</string><key>CFBundleExecutable</key><string>aux-${target}</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>0.2.0</string><key>LSUIElement</key><true/></dict></plist>\n`);
-  await writeFile(join(directory, 'sea-provenance.json'), JSON.stringify({ target, node: sources.node, entry: 'dist/index.js', format: 'module', localSignature: 'ad-hoc', builtAt: new Date().toISOString() }, null, 2) + '\n');
+  await writeFile(join(directory, 'sea-provenance.json'), JSON.stringify({ target, node: sources.node, entry: 'dist/index.js', entrySha256: createHash('sha256').update(await readFile(join(directory, 'dist/index.js'))).digest('hex'), format: 'module', localSignature: 'ad-hoc', builtAt: new Date().toISOString() }, null, 2) + '\n');
   console.log(`Built independent ${appName} SEA at ${executable}`);
 }

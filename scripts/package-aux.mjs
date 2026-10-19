@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Assemble only independent Aux builds and pinned upstream runtimes.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { constants, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -24,6 +25,14 @@ if (/^enable_aux_shell\s*=\s*true\s*$/m.test(flags)) throw new Error('Retired sh
 if (!options.development && !/^is_component_build\s*=\s*false\s*$/m.test(flags)) throw new Error('Production packaging requires is_component_build=false.');
 for (const path of [join(native, 'Contents/MacOS/Aux'), 'out/sea/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', 'out/sea/cli/Aux CLI.app/Contents/MacOS/aux-cli', 'apps/computer-use/dist/Aux Computer Use.app/Contents/MacOS/aux-computer-use', 'apps/password-importer/dist/Aux Password Importer.app/Contents/MacOS/aux-password-importer', 'apps/extension/dist/manifest.json', 'apps/vault/dist/manifest.json', 'out/runtime/node', 'out/runtime/python/bin/python3', 'out/runtime/pdftotext', 'out/runtime/pdfinfo', 'out/runtime/pdftoppm']) {
   if (!existsSync(resolve(root, path))) throw new Error(`Build prerequisite missing: ${path}`);
+}
+const executableProvenance = {};
+for (const target of ['daemon', 'cli']) {
+  const provenance = JSON.parse(readFileSync(join(root, 'out/sea', target, 'sea-provenance.json'), 'utf8'));
+  const staged = createHash('sha256').update(readFileSync(join(root, 'out/sea', target, 'dist/index.js'))).digest('hex');
+  const current = createHash('sha256').update(readFileSync(join(root, 'apps', target, 'dist/index.js'))).digest('hex');
+  if (provenance.entrySha256 !== staged || current !== staged) throw new Error(`Rebuild the ${target} SEA after the current workspace build.`);
+  executableProvenance[target] = provenance;
 }
 const temporary = `${destination}.assembling`;
 rmSync(temporary, { recursive: true, force: true });
@@ -65,7 +74,7 @@ for (const [directory, name] of [['computer-use', 'Aux Computer Use'], ['passwor
   execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Add :CFBundleIconFile string Aux.icns', join(app, 'Info.plist')]);
 }
 
-const manifest = { version: '0.2.0', development: !!options.development, daemon: 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', cli: 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli', sourceRevision: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), assembledAt: new Date().toISOString() };
+const manifest = { version: '0.2.0', development: !!options.development, daemon: 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon', cli: 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli', executables: executableProvenance, assemblyRevision: execFileSync('/usr/bin/git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), assembledAt: new Date().toISOString() };
 writeFileSync(join(bundle, 'bundle.json'), JSON.stringify(manifest, null, 2) + '\n');
 console.log('Applying local ad hoc signature…');
 execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', temporary], { stdio: 'inherit' });
