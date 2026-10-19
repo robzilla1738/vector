@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "base": "Unchanged applied v90 files; ordered after stable install watcher (disjoint)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h",
+      "baselineSha256": "c764f1c5881074f6428b3e98c6edcb7b9c1bc18ce75f39e989dd5d0e26e1380b",
+      "outputSha256": "df3f62385d8f5b405cef3b4b47a92b19862877326327f650ef3bb5a2c8fee241"
+    },
+    {
+      "path": "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.cc",
+      "baselineSha256": "77f0a7697f64c7b9ddb4663715ee5228fbe74748c54df63f3791073a66cb4862",
+      "outputSha256": "6052f2e35f10d251a03d3a1d14e089f0f741ad6ec051923893b021dfca9785d4"
+    },
+    {
+      "path": "chrome/browser/ui/search_engines/default_search_extension_controlled_controller.h",
+      "baselineSha256": "98f36e8144e13131f7a5097bac22548abeb59889614e4ba1f42984da529ab86f",
+      "outputSha256": "1f16ed5120f64ed3e94cac88274a4fe74b22027d8271563eb91b82e2f764fcea"
+    },
+    {
+      "path": "chrome/browser/ui/search_engines/default_search_extension_controlled_controller.cc",
+      "baselineSha256": "1151c3d4221d0e9ac0797874e08877895159568665444ff345cc11e9c42ba2c5",
+      "outputSha256": "0efcf64848706e09e8774afb6338225ca0bca8bb1bd8e698001562a0486fe85e"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "baselineSha256": "7cd3bc38c8b2dd59ec034458cd0ec6f021371b8178221001aa3a109fdb480aeb",
+      "outputSha256": "da25941c0952d14be6241819a4ef2e7e2ac6930fae9797984c693884d2667083"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "baselineSha256": "c7f397afae4273fabfc24128562c6804049f1b18a3a27155b4ee3c156d54ffc0",
+      "outputSha256": "db58b05d890f645df81be7e7c5b3737a8df5f6de3f4cba2c147c11d66ddccef5"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

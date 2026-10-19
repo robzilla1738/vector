@@ -1,0 +1,299 @@
+--- a/chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h
++++ b/chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_INCOGNITO_CLEAR_BROWSING_DATA_DIALOG_COORDINATOR_H_
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/incognito_clear_browsing_data_dialog_interface.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+@@ -41,6 +42,10 @@
+ 
+   // Returns true if the bubble is currently showing for this window.
+   bool IsShowing() const;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(BrowserWindowInterface& browser);
++#endif
+ 
+   IncognitoClearBrowsingDataDialog*
+   GetIncognitoClearBrowsingDataDialogForTesting();
+@@ -50,7 +55,7 @@
+       scoped_unowned_user_data_;
+ 
+   views::ViewTracker bubble_tracker_;
+-  const raw_ptr<Profile> profile_;
++  raw_ptr<Profile> profile_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_INCOGNITO_CLEAR_BROWSING_DATA_DIALOG_COORDINATOR_H_
+--- a/chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.cc
++++ b/chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.cc
+@@ -5,6 +5,9 @@
+ #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h"
+ 
+ #include <memory>
++
++#include "base/check_op.h"
++#include "chrome/browser/profiles/profile.h"
+ 
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog.h"
+@@ -38,6 +41,21 @@
+   widget->Show();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool IncognitoClearBrowsingDataDialogCoordinator::
++    CanRebindForAuxProfileSwitch() const {
++  return profile_->IsRegularProfile() && !IsShowing();
++}
++
++void IncognitoClearBrowsingDataDialogCoordinator::RebindForAuxProfileSwitch(
++    BrowserWindowInterface& browser) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK_EQ(From(&browser), this);
++  CHECK(browser.GetProfile()->IsRegularProfile());
++  profile_ = browser.GetProfile();
++}
++#endif
++
+ bool IncognitoClearBrowsingDataDialogCoordinator::IsShowing() const {
+   return bubble_tracker_.view() != nullptr;
+ }
+--- a/chrome/browser/ui/search_engines/default_search_extension_controlled_controller.h
++++ b/chrome/browser/ui/search_engines/default_search_extension_controlled_controller.h
+@@ -10,6 +10,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/extensions/extension_settings_overridden_dialog.h"
+ #include "chrome/browser/ui/extensions/settings_overridden_dialog_controller.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+@@ -58,6 +59,11 @@
+   void ShowConfirmationDialog(content::WebContents& web_contents,
+                               ConfirmationCallback callback);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch();
++#endif
++
+   void DialogResolved(
+       std::optional<SettingsOverriddenDialogController::DialogResult>
+           dialog_result);
+@@ -83,7 +89,10 @@
+   ui::ScopedUnownedUserData<DefaultSearchExtensionControlledController>
+       scoped_unowned_user_data_;
+   const raw_ref<BrowserWindowInterface> browser_window_interface_;
+-  const raw_ref<Profile> profile_;
++  raw_ref<Profile> profile_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  unsigned aux_result_callback_depth_ = 0;
++#endif
+ 
+   base::WeakPtrFactory<DefaultSearchExtensionControlledController>
+       weak_factory_{this};
+--- a/chrome/browser/ui/search_engines/default_search_extension_controlled_controller.cc
++++ b/chrome/browser/ui/search_engines/default_search_extension_controlled_controller.cc
+@@ -81,6 +81,24 @@
+   return browser ? Get(browser->GetUnownedUserDataHost()) : nullptr;
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool DefaultSearchExtensionControlledController::CanRebindForAuxProfileSwitch()
++    const {
++  // Set before asynchronous parameter loading, and retained until real dialog
++  // completion. Do not cancel a pending request or manufacture a user decision.
++  return GetDialogCurrentlyShowing().get() != this && !confirmation_callback_ &&
++         aux_result_callback_depth_ == 0 && profile_->IsRegularProfile();
++}
++
++void DefaultSearchExtensionControlledController::RebindForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(browser_window_interface_->GetProfile()->IsRegularProfile());
++  CHECK(browser_window_interface_->GetTabStripModel()->empty());
++  weak_factory_.InvalidateWeakPtrs();
++  profile_ = *browser_window_interface_->GetProfile();
++}
++#endif
++
+ bool DefaultSearchExtensionControlledController::
+     ShouldRequestConfirmationForExtensionDse(const GURL& url) const {
+   if (GetDialogCurrentlyShowing()) {
+@@ -216,5 +234,14 @@
+     SetDialogCurrentlyShowing(nullptr);
+   }
+   CHECK(confirmation_callback_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  auto weak = weak_factory_.GetWeakPtr();
++  ++aux_result_callback_depth_;
++#endif
+   std::move(confirmation_callback_).Run(dialog_result);
+-}
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (weak) {
++    --weak->aux_result_callback_depth_;
++  }
++#endif
++}
+--- a/chrome/browser/ui/browser_window/public/browser_window_features.h
++++ b/chrome/browser/ui/browser_window/public/browser_window_features.h
+@@ -27,6 +27,7 @@
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/buildflags.h"
+ #include "extensions/buildflags/buildflags.h"
+ #include "ui/base/unowned_user_data/user_data_factory.h"
+@@ -90,6 +91,7 @@
+ class LocationBarModel;
+ class MemorySaverOptInIPHController;
+ class PinnedToolbarActions;
++class Profile;
+ class ProfileMenuCoordinator;
+ class OrganizerPanelController;
+ class ReadingListSidePanelCoordinator;
+@@ -336,6 +338,23 @@
+  private:
+   static ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
+   GetUserDataFactory();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Only the complete window-owned profile plan may call these private phases.
++  // Existing real constructors/destructors own their service and registry work.
++  bool CanPrepareAuxPrivateProfileServices(Profile* target) const;
++  void BeginAuxPrivateProfileServices(Profile* target);
++  void RebindAuxPrivateProfileServices();
++  void FinishAuxPrivateProfileServices();
++  void AbortAuxPrivateProfileServices();
++  struct AuxPrivateProfileServices {
++    bool active = false;
++    raw_ptr<Profile> source = nullptr;
++    bool had_instant = false;
++    bool had_keybindings = false;
++    bool had_extension_window = false;
++  } aux_private_profile_services_;
++#endif
+ 
+   // Members owned by all browser window types.
+   std::unique_ptr<UnloadController> unload_controller_;
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features.cc
+@@ -11,6 +11,8 @@
+ #endif
+ 
+ #include "base/check_is_test.h"
++#include "base/check_op.h"
++#include "ui/base/base_window.h"
+ #include "base/containers/to_vector.h"
+ #include "base/feature_list.h"
+ #include "base/memory/ptr_util.h"
+@@ -247,6 +249,104 @@
+ BrowserWindowFeatures::BrowserWindowFeatures() = default;
+ BrowserWindowFeatures::~BrowserWindowFeatures() = default;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool BrowserWindowFeatures::CanPrepareAuxPrivateProfileServices(
++    Profile* target) const {
++  auto* view = browser_ ? BrowserView::GetBrowserViewForBrowser(browser_) : nullptr;
++  return target && target->IsRegularProfile() && browser_ &&
++         browser_->GetProfile()->IsRegularProfile() && view &&
++         !aux_private_profile_services_.active &&
++         (!extension_keybinding_registry_ || view->GetFocusManager()) &&
++         (!incognito_clear_browsing_data_dialog_coordinator_ ||
++          incognito_clear_browsing_data_dialog_coordinator_
++              ->CanRebindForAuxProfileSwitch()) &&
++         (!default_search_extension_controlled_controller_ ||
++          default_search_extension_controlled_controller_
++              ->CanRebindForAuxProfileSwitch());
++}
++
++void BrowserWindowFeatures::BeginAuxPrivateProfileServices(Profile* target) {
++  CHECK(CanPrepareAuxPrivateProfileServices(target));
++  auto& state = aux_private_profile_services_;
++  state.active = true;
++  state.source = browser_->GetProfile();
++  state.had_instant = !!instant_controller_;
++  state.had_keybindings = !!extension_keybinding_registry_;
++  state.had_extension_window = !!extension_window_controller_;
++  // Keep source Instant/window owners through genuine detach notifications.
++  // They still refer to the correct source profile until the empty commit.
++  // Its real destructor unregisters old accelerators and clears ONLY this
++  // registry from the actual source profile's active-window registry.
++  extension_keybinding_registry_.reset();
++}
++
++void BrowserWindowFeatures::RebindAuxPrivateProfileServices() {
++  auto& state = aux_private_profile_services_;
++  CHECK(state.active);
++  CHECK(browser_->GetTabStripModel()->empty());
++  Profile* profile = browser_->GetProfile();
++  CHECK(profile->IsRegularProfile());
++  auto* view = BrowserView::GetBrowserViewForBrowser(browser_);
++  CHECK(view);
++  // Keep the source controller through genuine source-tab detach events.
++  // Its original destructor/constructor notify the real extension window list.
++  extension_window_controller_.reset();
++  if (state.had_extension_window) {
++    extension_window_controller_ =
++        std::make_unique<extensions::BrowserExtensionWindowController>(browser_);
++  }
++  if (state.had_keybindings) {
++    CHECK(view->GetFocusManager());
++    extension_keybinding_registry_ =
++        std::make_unique<ExtensionKeybindingRegistryViews>(
++            browser_, extensions::ExtensionKeybindingRegistry::ALL_EXTENSIONS,
++            view->GetFocusManager());
++  }
++  instant_controller_.reset();
++  if (state.had_instant) {
++    CHECK(search::IsInstantExtendedAPIEnabled());
++    instant_controller_ = std::make_unique<BrowserInstantController>(
++        profile, browser_->GetTabStripModel());
++  }
++  if (incognito_clear_browsing_data_dialog_coordinator_) {
++    incognito_clear_browsing_data_dialog_coordinator_
++        ->RebindForAuxProfileSwitch(*browser_);
++  }
++  if (default_search_extension_controlled_controller_) {
++    default_search_extension_controlled_controller_->RebindForAuxProfileSwitch();
++  }
++}
++
++void BrowserWindowFeatures::FinishAuxPrivateProfileServices() {
++  CHECK(aux_private_profile_services_.active);
++  // Same physical window means no new OS activation notification. Bind the
++  // actual target registry to the genuine current activation state explicitly.
++  if (extension_keybinding_registry_) {
++    extension_keybinding_registry_->OnHostActivationChanged(
++        browser_->GetWindow()->IsActive());
++  }
++  aux_private_profile_services_ = {};
++}
++
++void BrowserWindowFeatures::AbortAuxPrivateProfileServices() {
++  auto& state = aux_private_profile_services_;
++  CHECK(state.active);
++  CHECK_EQ(browser_->GetProfile(), state.source);
++  // Abort is called after the core has restored genuine source collections.
++  // Instant/window/dialog owners never changed; recreate only old accelerators.
++  if (state.had_keybindings) {
++    auto* view = BrowserView::GetBrowserViewForBrowser(browser_);
++    CHECK(view && view->GetFocusManager());
++    extension_keybinding_registry_ =
++        std::make_unique<ExtensionKeybindingRegistryViews>(
++            browser_, extensions::ExtensionKeybindingRegistry::ALL_EXTENSIONS,
++            view->GetFocusManager());
++  }
++  FinishAuxPrivateProfileServices();
++}
++#endif
++
++
+ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
+   // This is used only for the controllers which will be created on demand
+   // later.
