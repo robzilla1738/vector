@@ -41,6 +41,7 @@ const names = {
   commandBar: "AuxPerf.CommandBarInputToPresented",
 };
 const fixturePresentedName = "AuxPerf.FixturePresented";
+const nativeWindowBounds = { width: 1280, height: 800, windowState: "normal" };
 const warmWindowNames = {
   firstFrameUs: "AuxPerf.WarmWindowFirstFrameUs",
   controlsReadyUs: "AuxPerf.WarmWindowControlsReadyUs",
@@ -65,7 +66,7 @@ if (process.argv.includes("--plan")) {
         },
         interactionsPerProcess: 20,
         controls:
-          "Same pinned Chromium VERSION and resolved fast flags; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; paired native presentation histograms; actual same-process new window; Aux-only process-role witness; no OS cache flush.",
+          "Same pinned Chromium VERSION and resolved fast flags; common 1280x800 normal native windows; AC power; prepared disposable Profiles; 50,000 synthetic history entries; 10 idle fixture tabs; paired native presentation histograms; actual same-process new window; Aux-only process-role witness; no OS cache flush.",
         status: "Measures only after native instrumentation is compiled in both apps.",
       },
       null,
@@ -201,6 +202,12 @@ try {
       runs: 5,
       historyEntries: 50000,
       idleTabs: 10,
+      windowBounds: {
+        ...nativeWindowBounds,
+        units: "device-independent pixels of the native outer window",
+        validation:
+          "Existing ordinary-target window queries reject changed size or state before interaction sampling and during the additional-window proof; no extra startup or warm-relaunch probe.",
+      },
       interactionSamplesPerProcess: 20,
       warmLaunch: "immediate relaunch of the same measured disposable Profile with ten tabs",
       warmWindow: {
@@ -359,6 +366,7 @@ try {
       build.binary,
       [
         `--user-data-dir=${profile}`,
+        `--window-size=${nativeWindowBounds.width},${nativeWindowBounds.height}`,
         "--remote-debugging-port=0",
         "--no-first-run",
         "--no-default-browser-check",
@@ -532,7 +540,11 @@ try {
   async function nativeWindowId(page) {
     const session = await page.context().newCDPSession(page);
     try {
-      return (await session.send("Browser.getWindowForTarget")).windowId;
+      const { windowId, bounds } = await session.send("Browser.getWindowForTarget");
+      assert.equal(bounds.width, nativeWindowBounds.width, "Native window width changed");
+      assert.equal(bounds.height, nativeWindowBounds.height, "Native window height changed");
+      assert.equal(bounds.windowState, nativeWindowBounds.windowState, "Native window state changed");
+      return windowId;
     } finally {
       await session.detach();
     }
