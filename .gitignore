@@ -6,3 +6,5 @@ node_modules/
 .playwright-mcp/
 /out/
 /vendor/aside/blobs/
+
+**/dist/

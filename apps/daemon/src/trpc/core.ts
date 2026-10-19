@@ -1,5 +1,9 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { accountScopeSchema, profileContextSchema } from '@aux/contracts';
+import {
+  accountScopeSchema,
+  modelSelectionSchema,
+  profileContextSchema,
+} from '@aux/contracts';
 import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Store } from '../storage/store.js';
@@ -51,6 +55,8 @@ const key = z
   .regex(/^[A-Za-z][A-Za-z0-9._-]*$/);
 // Explicit Aux setting inventory; unlisted setting names fail rather than accepting executable or mistyped data.
 export const settingTypes: Record<string, z.ZodType> = {
+  'models.default': modelSelectionSchema,
+  'cli.saveSessions': z.boolean(),
   theme: z.enum(['light', 'dark', 'system']),
   contextAwarenessEnabled: z.boolean(),
   sidebarRecentLimit: z.number().int().min(1).max(200),
@@ -62,6 +68,13 @@ export const settingTypes: Record<string, z.ZodType> = {
   followActiveTab: z.boolean(),
 };
 export const settingDefaults = {
+  'cli.saveSessions': false,
+  'models.default': {
+    provider: 'vercel-ai-gateway',
+    modelId: 'meta/muse-spark-1.3-contributor',
+    thinkingLevel: 'medium',
+    fastMode: false,
+  },
   theme: 'system',
   contextAwarenessEnabled: false,
   sidebarRecentLimit: 20,

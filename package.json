@@ -9,11 +9,10 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "vendor:aside": "node scripts/vendor-aside.mjs",
     "aux": "node scripts/aux.mjs",
     "package": "node scripts/package-aux.mjs",
-    "smoke": "node scripts/aside-smoke.mjs",
-    "check": "node scripts/vendor-aside.mjs && node scripts/aside-smoke.mjs",
+    "smoke": "node scripts/daemon-smoke.mjs",
+    "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",
     "check:cleanroom": "node scripts/check-cleanroom.mjs",
     "reference:index": "node scripts/reference-hashes.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
