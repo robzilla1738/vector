@@ -1,0 +1,43 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 464c9dc: f9400408     	ldr	x8, [x0, #0x8]
+ 464c9e0: f100051f     	cmp	x8, #0x1
+ 464c9e4: 54ffef89     	b.ls	0x464c7d4 <_ChromeMain+0x4647538>
+ 464c9e8: 39686268     	ldrb	w8, [x19, #0xa18]
+ 464c9ec: 370006c8     	tbnz	w8, #0x0, 0x464cac4 <_ChromeMain+0x4647828>
+ 464c9f0: 3975a268     	ldrb	w8, [x19, #0xd68]
+ 464c9f4: 35001528     	cbnz	w8, 0x464cc98 <_ChromeMain+0x46479fc>
+ 464c9f8: 2f00e400     	movi	d0, #0000000000000000
+ 464c9fc: fd050a60     	str	d0, [x19, #0xa10]
+ 464ca00: f9422e68     	ldr	x8, [x19, #0x458]
+ 464ca04: b4000608     	cbz	x8, 0x464cac4 <_ChromeMain+0x4647828>
+ 464ca08: f9432508     	ldr	x8, [x8, #0x648]
+ 464ca0c: b40005c8     	cbz	x8, 0x464cac4 <_ChromeMain+0x4647828>
+ 464ca10: f941d909     	ldr	x9, [x8, #0x3b0]
+ 464ca14: d37df136     	lsl	x22, x9, #3
+ 464ca18: b4000576     	cbz	x22, 0x464cac4 <_ChromeMain+0x4647828>
+ 464ca1c: f941d517     	ldr	x23, [x8, #0x3a8]
+ 464ca20: 14000006     	b	0x464ca38 <_ChromeMain+0x464779c>
+ 464ca24: aa1503e0     	mov	x0, x21
+ 464ca28: 97fe09a7     	bl	0x45cf0c4 <_ChromeMain+0x45c9e28>
+ 464ca2c: 910022f7     	add	x23, x23, #0x8
+ 464ca30: f10022d6     	subs	x22, x22, #0x8
+ 464ca34: 54000480     	b.eq	0x464cac4 <_ChromeMain+0x4647828>
+ 464ca38: f94002e8     	ldr	x8, [x23]
+ 464ca3c: b4ffff88     	cbz	x8, 0x464ca2c <_ChromeMain+0x4647790>
+ 464ca40: f941b915     	ldr	x21, [x8, #0x370]
+ 464ca44: b4ffff55     	cbz	x21, 0x464ca2c <_ChromeMain+0x4647790>
+ 464ca48: f94002a8     	ldr	x8, [x21]
+ 464ca4c: f9405508     	ldr	x8, [x8, #0xa8]
+ 464ca50: aa1503e0     	mov	x0, x21
+ 464ca54: d63f0100     	blr	x8
+ 464ca58: 34fffe60     	cbz	w0, 0x464ca24 <_ChromeMain+0x4647788>
+ 464ca5c: aa1503e0     	mov	x0, x21
+ 464ca60: 97fe0925     	bl	0x45ceef4 <_ChromeMain+0x45c9c58>
+ 464ca64: 17fffff2     	b	0x464ca2c <_ChromeMain+0x4647790>
+ 464ca68: 1e2e1000     	fmov	s0, #1.00000000
+ 464ca6c: 97fe09f5     	bl	0x45cf240 <_ChromeMain+0x45c9fa4>

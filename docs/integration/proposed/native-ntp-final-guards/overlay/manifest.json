@@ -1,0 +1,56 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "method": "bounded llvm-objdump; static only",
+  "windows": [
+    {
+      "file": "capture.txt",
+      "start": "0x45ceef4",
+      "stop": "0x45cf074",
+      "sha256": "a76f59ebf0eba5485dca6a0a0c22911986c901ab9958bb0c467a23c658779b8e"
+    },
+    {
+      "file": "clear.txt",
+      "start": "0x45cf0c4",
+      "stop": "0x45cf184",
+      "sha256": "586ce1239827b4ab18f72507549d4382dcf5d95242bf12acd0e847746ac0ca3c"
+    },
+    {
+      "file": "begin-fade.txt",
+      "start": "0x45cf184",
+      "stop": "0x45cf240",
+      "sha256": "d1184468ebe81f2b9bc7707ae3ad053e70867692adddb04ac14e7412a3a1219c"
+    },
+    {
+      "file": "opacity.txt",
+      "start": "0x45cf240",
+      "stop": "0x45cf31c",
+      "sha256": "e536e6360f13a7b9366384646477ee57912dca31ad73a399bf9bdb4d81384972"
+    },
+    {
+      "file": "capture-callback-lifetime.txt",
+      "start": "0x45cfea8",
+      "stop": "0x45d00a0",
+      "sha256": "6fab99f64d2f9006feb9f85d2ed1c030e7f7a34c19d3409bfe5ac78163ac4166"
+    },
+    {
+      "file": "capture-callback-child.txt",
+      "start": "0x45d00a0",
+      "stop": "0x45d021c",
+      "sha256": "2bd319bc0ce0cd1bca28b05281b109866fcdc08669fead357acfdf56f6fc7e31"
+    },
+    {
+      "file": "scroll-caller.txt",
+      "start": "0x464c9dc",
+      "stop": "0x464ca70",
+      "sha256": "124f18d3b00eae38c595d9bb5cb1688123d07e0ab4952c5df9e955241e71d14d"
+    },
+    {
+      "file": "settlement-caller.txt",
+      "start": "0x46564fc",
+      "stop": "0x465653c",
+      "sha256": "153d23143b74b1557e6110ae822b2485d4b2678cb96e426ffdd358f7cd7ce3cb"
+    }
+  ],
+  "sharedSourceModified": false,
+  "targetExecuted": false
+}
