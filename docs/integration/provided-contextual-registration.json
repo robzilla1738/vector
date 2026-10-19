@@ -167,6 +167,28 @@
       "sha256": "c329e27479192fad611e91828efc33ff3de67392bf327a2fcfff6e077e1ac3d0"
     }
   },
+  "constructionRanges": {
+    "clientAndHandlerConstruction": {
+      "start": "0x4280520",
+      "end": "0x42806f8",
+      "sha256": "d15786880351a4562552cf98b90e00bdb74ba71f6e91f9ad631a0e8f4dd4e567"
+    },
+    "baseClientConstructor": {
+      "start": "0x3284438",
+      "end": "0x328453c",
+      "sha256": "5e38a175ed0755e04281f2d2c9db6da8c00d4209e143ecf359966e8536f4debe"
+    },
+    "handlerConstructorPrefix": {
+      "start": "0x287dcc8",
+      "end": "0x287de68",
+      "sha256": "0f734d94244c1b05a1c9e3c5522b4682d03c207a4cf80633f9bc85a5a3972107"
+    },
+    "sessionHandleCallback": {
+      "start": "0x3f7e2d0",
+      "end": "0x3f7e2d8",
+      "sha256": "509d712a0d747485a74d3684f00fd4941c9c210d3f084bf792b1b75c5e6c3652"
+    }
+  },
   "thumbnailCalls": {
     "0x4285980": "0x2dbcd28",
     "0x428598c": "0x52d94",

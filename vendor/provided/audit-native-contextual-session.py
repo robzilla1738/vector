@@ -129,6 +129,26 @@ def audit(path):
                 ('showAiModePreferenceEvent', 0x428BB00, 0x428BBD4),
                 ('nativeLensEditModel', 0x7BB6630, 0x7BB67AC)]
         }
+        # The createSession body constructs its own client/handler. Class names
+        # are not recoverable from these instructions alone.
+        assert u32(0x4280560) == 0x5280AA00  # handler allocation size0x550
+        assert u32(0x428057C) == 0x52804800  # client allocation size0x240
+        assert call_target(0x4280590) == 0x3284438
+        assert u32(0x4280614) == 0xAA1703E5  # client x23 -> argument x5
+        assert u32(0x4280618) == 0xAA1C03E6  # callback x28 -> argument x6
+        assert call_target(0x4280620) == 0x287DCC8
+        assert u32(0x3F7E2D0) == 0xF9404000  # return session's +0x80 handle
+        assert u32(0x3F7E2D4) == 0xD65F03C0
+        assert u32(0x287DE64) == 0xF9022276  # handler retains callback
+        result['constructionRanges'] = {
+            name: {'start': hex(start), 'end': hex(end),
+                   'sha256': hashlib.sha256(arm[start:end]).hexdigest()}
+            for name, start, end in [
+                ('clientAndHandlerConstruction', 0x4280520, 0x42806F8),
+                ('baseClientConstructor', 0x3284438, 0x328453C),
+                ('handlerConstructorPrefix', 0x287DCC8, 0x287DE68),
+                ('sessionHandleCallback', 0x3F7E2D0, 0x3F7E2D8)]
+        }
         result['thumbnailCalls'] = {
             hex(offset): hex(call_target(offset))
             for offset in range(0x4285900, 0x4285B58, 4)
