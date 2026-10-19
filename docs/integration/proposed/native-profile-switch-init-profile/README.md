@@ -1,0 +1,9 @@
+# Required third profile identity: actual BrowserInitState
+
+Three source outputs pin exact appliedv47 outputs (the role→factory InitState and Browser/model identity source hashes). Temporary patch replay passes; no shared writes, native build or runtime acceptance.
+
+Original constructor31cd788..31cd7ac allocates0x168, passes the moved CreateParams and Browser userdata host to2e85080 and stores the result at Browser+198. Original2e85080 first moves CreateParams, copies its omit/trigger bytes+44 to object+f0 and registers userdata keyead4ad0; the same key is used by originalShouldTrackBrowser23bf730. This proves Browser+198 is BrowserInitState, not BrowserWindowFeatures. Consequently original04559f80's write `[Browser+198]+8=target` changes actual CreateParams.profile. Earlier caution that this was merely historical state was based on incomplete mapping and is superseded by this constructor proof.
+
+The actual155 port keeps external creation-parameter access const and adds a Browser-only PassKey method that retargets its raw_ref Profile. Geometry, omit/restore flags, workspace-owner identity, role and all other creation metadata remain unchanged. The private Browser identity commit now updates Browser profile, actual InitState creation profile and the same emptied model profile in original order without emitting callbacks between them. No const_cast or nonexistent BrowserWindowFeatures.profile field is used.
+
+Compose after d3d42bb34→c457aecda→121841c85, before the actual owner core13888e141. Exact source evidence and bounded constructor/session tracking windows are in transaction-map/session-cache-policy (8268b1062); that proposal also preserves the original positively-owned cache tracking exception. The two fixes have different purposes and both are mandatory for faithful switching.
