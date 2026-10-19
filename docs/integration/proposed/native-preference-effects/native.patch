@@ -132,7 +132,7 @@
    if (method == "getDefaultZoom") {
 --- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
 +++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm
-@@ -2,9 +2,40 @@
+@@ -2,9 +2,34 @@
  #import <Foundation/Foundation.h>
  
  #include "base/apple/bundle_locations.h"
@@ -142,14 +142,11 @@
  namespace extensions {
 +namespace {
 +CFStringRef AuxVibrancyDomain() {
-+  return (__bridge CFStringRef)base::apple::OuterBundle().bundleIdentifier;
++  return CFSTR("dev.aux.browser");
 +}
 +}  // namespace
 +bool ReadAuxWindowVibrancyEnabled() {
 +  const auto domain = AuxVibrancyDomain();
-+  if (!domain) {
-+    return true;
-+  }
 +  CFPreferencesAppSynchronize(domain);
 +  base::apple::ScopedCFTypeRef<CFPropertyListRef> disabled(
 +      CFPreferencesCopyAppValue(CFSTR("windowBackgroundVibrancyDisabled"), domain));
@@ -158,9 +155,6 @@
 +}
 +bool WriteAuxWindowVibrancyEnabled(bool enabled) {
 +  const auto domain = AuxVibrancyDomain();
-+  if (!domain) {
-+    return false;
-+  }
 +  CFPreferencesSetAppValue(CFSTR("windowBackgroundVibrancyDisabled"),
 +                           enabled ? kCFBooleanFalse : kCFBooleanTrue, domain);
 +  if (!CFPreferencesAppSynchronize(domain)) {

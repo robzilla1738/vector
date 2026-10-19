@@ -73,7 +73,7 @@
     "originalDomain": "at.studio.AsideBrowser",
     "getter": "0814b9ac: absent => true; CFBoolean value inverted; nonboolean => true",
     "setter": "04294bec: enabled selects kCFBooleanFalse, disabled kCFBooleanTrue; SetAppValue -> AppSynchronize -> Darwin PostNotification(domain,null,null,true)",
-    "newDomain": "Actual Aux outer bundleIdentifier, no owner Aside-domain read/write",
+    "newDomain": "Fixed dev.aux.browser in API and native material reader/notification, matching original fixeddomain semantics and avoiding helper-bundle divergence",
     "renderingConsumer": "043856d0 reads same disabled bool; its native rendering consumers are not yet adapted or observed"
   },
   "acceptance": {

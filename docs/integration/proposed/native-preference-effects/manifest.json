@@ -98,7 +98,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm",
       "baselineSha256": "827465abd0bd1e7311463631dde20ed39578fae3aaeb5c6664a53b108af6a12f",
-      "outputSha256": "e8bb4cd6f5ab47a5895b36235bf10d5735306f4e1dcf8c9222c7d0ce8a7db862",
+      "outputSha256": "ac1d7e119d496c7e7ebb426e4bf3954eea90da979b5719d6847038d699019b06",
       "anchors": [
         {
           "find": "#include \"base/apple/bundle_locations.h\"",
@@ -107,7 +107,7 @@
         },
         {
           "find": "namespace extensions {",
-          "replace": "namespace extensions {\nnamespace {\nCFStringRef AuxVibrancyDomain() {\n  return (__bridge CFStringRef)base::apple::OuterBundle().bundleIdentifier;\n}\n}  // namespace\nbool ReadAuxWindowVibrancyEnabled() {\n  const auto domain = AuxVibrancyDomain();\n  if (!domain) {\n    return true;\n  }\n  CFPreferencesAppSynchronize(domain);\n  base::apple::ScopedCFTypeRef<CFPropertyListRef> disabled(\n      CFPreferencesCopyAppValue(CFSTR(\"windowBackgroundVibrancyDisabled\"), domain));\n  return !disabled || CFGetTypeID(disabled.get()) != CFBooleanGetTypeID() ||\n         !CFBooleanGetValue(static_cast<CFBooleanRef>(disabled.get()));\n}\nbool WriteAuxWindowVibrancyEnabled(bool enabled) {\n  const auto domain = AuxVibrancyDomain();\n  if (!domain) {\n    return false;\n  }\n  CFPreferencesSetAppValue(CFSTR(\"windowBackgroundVibrancyDisabled\"),\n                           enabled ? kCFBooleanFalse : kCFBooleanTrue, domain);\n  if (!CFPreferencesAppSynchronize(domain)) {\n    return false;\n  }\n  CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),\n                                       domain, nullptr, nullptr, true);\n  return true;\n}",
+          "replace": "namespace extensions {\nnamespace {\nCFStringRef AuxVibrancyDomain() {\n  return CFSTR(\"dev.aux.browser\");\n}\n}  // namespace\nbool ReadAuxWindowVibrancyEnabled() {\n  const auto domain = AuxVibrancyDomain();\n  CFPreferencesAppSynchronize(domain);\n  base::apple::ScopedCFTypeRef<CFPropertyListRef> disabled(\n      CFPreferencesCopyAppValue(CFSTR(\"windowBackgroundVibrancyDisabled\"), domain));\n  return !disabled || CFGetTypeID(disabled.get()) != CFBooleanGetTypeID() ||\n         !CFBooleanGetValue(static_cast<CFBooleanRef>(disabled.get()));\n}\nbool WriteAuxWindowVibrancyEnabled(bool enabled) {\n  const auto domain = AuxVibrancyDomain();\n  CFPreferencesSetAppValue(CFSTR(\"windowBackgroundVibrancyDisabled\"),\n                           enabled ? kCFBooleanFalse : kCFBooleanTrue, domain);\n  if (!CFPreferencesAppSynchronize(domain)) {\n    return false;\n  }\n  CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),\n                                       domain, nullptr, nullptr, true);\n  return true;\n}",
           "count": 1
         }
       ]
