@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "sourceVersion": "1.26.1016.1852",
+  "daemonCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "daemonAnchors": [
+    {
+      "find": "SessionTabTable=sqliteTable",
+      "count": 1,
+      "offset": 2503542,
+      "context": "SessionTabTable=sqliteTable(`session_tabs`,{id:text$9(`id`).primaryKey(),sessionId:text$9(`session_id`).notNull().references(()=>SessionTable.id,{onDelete:`cascade`}),ownership:text$9(`ownership`).notNull().$type(),source:text$9(`source`).notNull().$type(),targetId:text$9(`target_id`).notNull(),url:text$9(`url`).notNull(),data:text$9(`data`,{mode:`json`}).notNull().default(`{}`).$type(),createdAt:integer(`created_at`,{mode:`timestamp`}).notNull().default(sql`(unixepoch())`),updatedAt:integer(`updated_at`,{mode:`timestamp`}).notNull().default(sql`(unixepoch())`)},Cn=>[index$1(`idx_session_tabs_session_id`).on(Cn.sessionId),index$1(`idx_session_tabs_target_id`).on(Cn.targetId),uniqueIndex(`idx_session_tabs_live_target`).on(Cn.sessionId,Cn.targetId)]),SessionTurnTable=sqliteTable(`session_turns`,{id:integer(`id`).primaryKey({autoIncrement:!0}),sessionId:text$9(`session_id`).notNull().references(()=>SessionTable.id,{onDelete:`cascade`}),turnId:text$9(`turn_id`).notNull(),finalStartedAt:int"
+    },
+    {
+      "find": "function listSessionTabs(",
+      "count": 1,
+      "offset": 3400766,
+      "context": "function listSessionTabs(Cn,ei,ti={}){let ni=stateDb(Cn);if(!ti.includeChildSessions)return ni.select().from(SessionTabTable).where(eq(SessionTabTable.sessionId,ei)).all().map(toSessionTab);let ri=ni.select({id:SessionTable.id}).from(SessionTable).where(eq(SessionTable.parentId,ei)).all().map(Cn=>Cn.id);return ni.select().from(SessionTabTable).where(inArray(SessionTabTable.sessionId,[ei,...ri])).all().map(toSessionTab)}async function closeOwnedSessionTabs(Cn,ei,ti={}){let ni=SessionStore.get(Cn,ei),ri=listSessionTabs(Cn,ei).filter(Cn=>Cn.ownership===`owned`),ii=ni?.browserBinding;return!ii?.browserMode||ri.length===0||await Promise.allSettled(ri.map(ei=>sendCommandToExtension({method:`Aside.controlTab`,params:{action:`close`,targetId:ei.targetId,skipIfActive:ti.skipIfActive??!0}},{accountId:Cn,profileId:ii.profileId,browserMode:ii.browserMode,windowId:ii.windowId}))),ri}async function detachOwnedSessionTabs(Cn,ei,ti={}){for(let ni of await closeOwnedSessionTabs(Cn,ei,ti))removeSessionT"
+    },
+    {
+      "find": "async openTab(Cn)",
+      "count": 1,
+      "offset": 3414369,
+      "context": "async openTab(Cn){if(this.#x)throw Error(`Browser is disposed`);await this.ensureAccess(`modify`,normalizeOpenUrl(Cn));let ei=this.state.activePage?.targetId??this.#h?.targetId??this.#r.browserBinding?.anchorTargetId,{targetId:ti,windowId:ni}=await this.#S.createTab({url:normalizeOpenUrl(Cn),...ei?{anchorTargetId:ei}:{}});try{let ei=await this.ensurePage(ti),ri=this.#r.browserBinding;if(ri&&ri.windowId===void 0&&ni!==void 0){let Cn={...ri,windowId:ni,anchorTargetId:ti};SessionStore.update(this.#n,this.#r.id,{browserBinding:Cn}),this.refreshBrowserBinding(Cn)}let ii=await this.#P(ei),ai=this.addNewTabState({targetId:ei.targetId,url:Cn,viewport:ii,ownership:`owned`,source:`open_tab`});this.setActiveTab(ai.targetId),this.#g=[...this.#g.filter(Cn=>Cn.targetId!==ti),ei],await ei.waitForLoadState(`stable`,5e3).catch(ei=>{console.warn(`[browser] openTab: waitForLoadState failed`,{targetId:ti,url:Cn,error:ei instanceof Error?ei.message:String(ei)})});let oi=await this.updateTabState(ei);await this.#A(ti,Cn,`openTab`),this.page=ei;let si=this.#g.length-1;return this.#j(`\u2714\ufe0e Opened a new tab and set it active: tabs[${si}], page \u2192 ${oi?.data?.title??`(no title)`} (${ei.url({truncate:!0})})`),this.#g.length>=OPEN_TAB_WARNING_THRESHOLD&&this.#j(`[warning] ${this.#g.length} tabs are open. Close tabs you do not need as you work.`),ei}catch(ei){throw await this.#I(ti),this.#S.closeTab({targetId:ti,url:Cn}).catch(()=>{}),ei}}async openPopupTab(Cn,ei){if(this.#x)throw Error(`Browser is disposed`);let ti=normalizeOpenUrl(Cn);await this.ensureAccess(`modify`,ti),await this.#V(ei);let{targetId:ni}=await this.#S.createTab({url:ti,anchorTargetId:"
+    },
+    {
+      "find": "tabsRouter=router",
+      "count": 1,
+      "offset": 12014494,
+      "context": "tabsRouter=router({list:accountProcedure.input(object({sessionId:string$3()})).query(({ctx:Cn,input:ei})=>listSessionTabs(Cn.accountId,ei.sessionId,{includeChildSessions:!0})),resolveByTarget:accountProcedure.input(object({targetId:string$3()})).query(({ctx:Cn,input:ei})=>resolveSessionTabByTargetId(Cn.accountId,ei.targetId)),remove:accountProcedure.input(object({sessionId:string$3(),sessionTabId:string$3()})).mutation(({ctx:Cn,input:ei})=>{let ti=getSessionTab(Cn.accountId,ei.sessionTabId);if(!ti||ti.sessionId!==ei.sessionId)return;let ni=GlobalAgentSessionServer.getLoadedAgent(Cn.accountId,ei.sessionId)?.browser;ni?ni.removeTab(ei.sessionTabId):removeSessionTab(Cn.accountId,ei.sessionTabId)})}),sessionsRouter=router({deliverChannelTask:accountProcedure.input(channelDeliverySchema).mutation(async({ctx:Cn,input:ei})=>{registerDeviceTaskPreviews(Cn.accountId);let ti=SessionStore.get(Cn.accountId,ei.sessionId)?.browserBinding??await resolveCliBrowserBinding(Cn.accountId);return{accepted:"
+    },
+    {
+      "find": "sessionListColumns=pick",
+      "count": 1,
+      "offset": 2666427,
+      "context": "sessionListColumns=pick(SessionTable,[`id`,`projectId`,`parentId`,`branchedFrom`,`title`,`trigger`,`routineId`,`status`,`suspension`,`incognito`,`ephemeral`,`readAt`,`pinnedAt`,`createdAt`,`updatedAt`]),DEFAULT_SESSION_CONTEXT_WINDOW={usedTokens:0,totalTokens:0},ephemeralPurgeLeases=/* @__PURE__ */ new Set,purgeLeaseKey=(Cn,ei)=>`${Cn}:${ei}`,sessionFromRow=Cn=>{let ei={...nullToUndefined({...Cn}),projectId:Cn.projectId};return{...ei,contextWindow:{usedTokens:ei.contextWindow?.usedTokens??DEFAULT_SESSION_CONTEXT_WINDOW.usedTokens,totalTokens:ei.contextWindow?.totalTokens??DEFAULT_SESSION_CONTE"
+    },
+    {
+      "find": "sessionListOptionsSchema=object",
+      "count": 1,
+      "offset": 2582268,
+      "context": "sessionListOptionsSchema=object({projectId:string$3().nullable().optional(),archived:_enum([`exclude`,`include`,`only`]).default(`exclude`),pinned:_enum([`include`,`only`,`exclude`]).default(`include`),parent:_enum([`root`,`all`]).default(`root`),order:_enum([`desc`,`asc`]).default(`desc`),ephemeral:_enum([`exclude`,`include`,`only`]).default(`exclude`),routines:_enum([`exclude`,`include`]).default(`exclude`),standaloneRoutines:_enum([`exclude`,`include`,`only`]).default(`include`),coders:_enum([`exclude`,`include`]).default(`include`),routineId:string$3().optional(),statuses:array(sessionStatusSchema).optional(),cursor:number$2().int().nonnegative().optional(),limit:number$2().int().positive().max(200).optional()}),sessionSearchResultSchema=object({id:sessionIdSchema,title:string$3(),updatedAt:datetime()}),sessionPreviewItemsOptionsSchema=sessionListOptionsSchema.extend({projectIds:array(string$3().min(1)).optional(),q:string$3().trim().optional(),sessionIds:array(string$3().min(1)).o"
+    },
+    {
+      "find": "browserBindingSchema=object",
+      "count": 1,
+      "offset": 2579561,
+      "context": "browserBindingSchema=object({profileId:string$3().min(1),browserMode:browserModeSchema.default(`default`).optional(),windowId:number$2().int().optional(),anchorTargetId:string$3().min(1).optional()}),BROWSER_BINDING_REQUIRED_MESSAGE=`This task is not bound to a browser profile. Open it in Aside browser and try again.`,isSessionUnread=Cn=>Cn.updatedAt!=null&&(Cn.readAt==null||Cn.readAt<Cn.updatedAt),jsonValueSchema=lazy(()=>union$1([string$3(),number$2(),boolean$1(),_null(),array(jsonValueSchema),record(string$3(),jsonValueSchema)])),actionConfirmationPreviewTypeSchema=_enum([`calendar-draft`,`"
+    },
+    {
+      "find": "async closeOwnedTabs()",
+      "count": 1,
+      "offset": 3416947,
+      "context": "async closeOwnedTabs(){let Cn=this.state.tabs.filter(Cn=>Cn.ownership===`owned`&&Cn.targetId);await Promise.allSettled(Cn.map(async Cn=>{let ei=Cn.targetId;await this.#S.closeTab({targetId:ei,url:Cn.url,skipIfActive:!0}).catch(()=>{}),await this.#I(ei)})),this.#_=null}async dispose(Cn={}){let{closeOwnedTabs:ei=!this.#a}=Cn;if(!this.#x){this.#x=!0,this.#v=null;for(let Cn of this.#c)Cn();this.#c.length=0,ei&&await this.closeOwnedTabs().catch(()=>{});for(let Cn of this.#o.keys())await this.#I(Cn);await this.#t.dispose(),this.#g=[],this.#h=null}}async installPageScript(Cn,ei,ti){let ni;for(let ri=0;ri<PAGE_SCRIPT_RETRY_COUNT;ri+=1)try{let ni=this"
+    },
+    {
+      "find": "removeTab(Cn,ei){",
+      "count": 1,
+      "offset": 3411647,
+      "context": "removeTab(Cn,ei){let ti=getSessionTab(this.#n,Cn);if(!ti)return;let ni=SessionStore.get(this.#n,ti.sessionId);removeSessionTab(this.#n,Cn),ni?.activeTabTargetId===ti.targetId&&(this.setActiveTab(null),!ei?.agentInitiated&&ni.status===`running`&&Promise.resolve().then(()=>(init_agent_session_server(),agent_session_server_exports)).then(({GlobalAgentSessionServer:Cn})=>Cn.sendSystemMessage(this.#n,ti.sessionId,`The active browser tab for this session just closed.\\nClosed tab: ${ti.data.title??`Unknown`} (${ti.url})`,{kind:`tab_lifecycle`,mode:`steer`})).catch(Cn=>{console.warn(`[AsideBrowser] Failed to send tab lifecycle system message`,Cn)})),this.#_=null}get page(){return this.#h}set page(Cn){if(Cn!==null&&!(Cn instanceof AsidePage))throw Error(`page must be set to null or an AsidePage instance`);this.#h=Cn,this.setActiveTab(Cn?.targetId??null)}get tabs(){return this.#g}get extensionBridgeRoute(){return this.#L()}refreshBrowserBinding(C"
+    }
+  ],
+  "autoClosePolicyLiteralCount": 0,
+  "background": {
+    "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/background.js",
+    "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+    "anchors": [
+      {
+        "find": "case \"Aside.createAgentTab\": {",
+        "count": 1,
+        "offset": 292795,
+        "context": ".params.url,\n        windowId: n\n      }), { success: !0 };\n    }\n    case \"Aside.createAgentTab\": {\n      if (!r) throw new Error(\"Browser route is required to create an agent tab\");\n      const n = await Di(r, e.params.anchorTargetId), o = await chrome.tabs.create({\n        active: !1,\n        url: e.params.url,\n        windowId: n\n      });\n      if (o.id === void 0) throw new Error(`Failed to create Chrome tab for ${e.params.url}`);\n      const i = o.id;\n      return await Ci(() => $i(i)).catch((s) => {\n        console.warn(\"[extension-bridge] createAgentTab: failed to group new agent tab\", s);\n      }), {\n        tabId: i,\n        targetId: await Mi([i]),\n        windowId: n\n      };\n    }\n    case \"Aside.resolveBindingWindow\":\n      return await Xv(Mi);\n    case \"Aside.searchHistory\": {\n      const { query: n, ...o } = e.params;\n      return { items: (await chrome.history.search({\n        text: n,\n   "
+      },
+      {
+        "find": "case \"Aside.controlTab\":",
+        "count": 1,
+        "offset": 294251,
+        "context": "    groupId: await $i(n),\n          tabId: n\n        };\n      });\n    case \"Aside.controlTab\":\n      return {\n        success: !0,\n        ...await mv(e.params, t, r?.windowId)\n      };\n    case \"Aside.waitForDownload\":\n      return await fy(e.params, t);\n    case \"Aside.showNotification\": {\n      const { title: n, message: o, t"
+      },
+      {
+        "find": "D.sessions.tabs.resolveByTarget.query",
+        "count": 2,
+        "offset": 354110,
+        "context": "\n    if (ae.delete(e), !t) return;\n    const r = await G(), n = await D.sessions.tabs.resolveByTarget.query({\n      targetId: t,\n      accountId: r\n    });\n    n && await D.sessions.tabs.remove.mutate({\n      sessionId: n.sessionId,\n      sessionTabId: n.sessionTabId,\n      accountId: r\n    });\n  })().catch(() => {\n    ae.delete(e);\n  });\n});\nchrome.runtime.onMessageExternal.addListener((e, t, r) => {\n  if (e?.type === \"aside.notificationPermissionChanged\") {\n    const n = e;\n    return (async () => {\n      try {\n        const o = await G();\n        await D.inbox.syncNotificationPermission.mutate({\n          accountId: o,\n"
+      }
+    ]
+  }
+}

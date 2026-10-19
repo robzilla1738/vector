@@ -1,0 +1,543 @@
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.cc
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.cc
+@@ -13,6 +13,8 @@
+ #include "base/environment.h"
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/task/single_thread_task_runner.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -23,6 +25,11 @@
+ #include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/web_contents.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "net/http/http_response_headers.h"
+ #include "net/base/url_util.h"
+@@ -130,6 +137,327 @@
+   return task;
+ }
+ }  // namespace
++
++class AuxNativeTaskFeed::AgentTabsRequest
++    : public base::RefCounted<AuxNativeTaskFeed::AgentTabsRequest> {
++ public:
++  AgentTabsRequest(base::WeakPtr<AuxNativeTaskFeed> feed,
++                   int account_id,
++                   AgentTabsOperation operation,
++                   base::DictValue input,
++                   AgentTabsCallback callback)
++      : feed_(feed),
++        profile_(feed->profile_->GetWeakPtr()),
++        account_id_(account_id),
++        operation_(operation),
++        input_(std::move(input)),
++        callback_(std::move(callback)),
++        profile_id_(aux::ProfileIdForPath(
++            feed->profile_->GetOriginalProfile()->GetPath())),
++        mode_(feed->profile_->IsOffTheRecord() ? "incognito" : "default") {}
++  void Start() {
++    if (operation_ == AgentTabsOperation::kPolicy) {
++      FinishError(
++          u"Per-task tab cleanup policy is not exposed by the supplied "
++          u"runtime.");
++      return;
++    }
++    if (operation_ != AgentTabsOperation::kList) {
++      const auto* id = input_.FindString("sessionId");
++      if (!id || !ValidIdentity(*id)) {
++        FinishError(u"The selected task identity is invalid.");
++        return;
++      }
++      base::DictValue row;
++      row.Set("id", *id);
++      sessions_.Append(std::move(row));
++      NextSession();
++      return;
++    }
++    base::DictValue input;
++    input.Set("parent", "all");
++    input.Set("ephemeral", "include");
++    input.Set("routines", "include");
++    input.Set("limit", 200);
++    Rpc("sessions.list", std::move(input),
++        base::BindOnce(&AgentTabsRequest::OnSessions,
++                       base::WrapRefCounted(this)));
++  }
++
++ private:
++  friend class base::RefCounted<AgentTabsRequest>;
++  ~AgentTabsRequest() = default;
++  using RpcCallback = base::OnceCallback<void(std::optional<base::Value>)>;
++  struct OwnedTarget {
++    std::string session_tab_id;
++    std::string target_id;
++  };
++  struct LiveTab {
++    raw_ptr<BrowserWindowInterface> browser;
++    raw_ptr<content::WebContents> contents;
++    int index;
++  };
++  std::optional<LiveTab> FindLiveTab(const std::string& target_id) const {
++    if (!profile_)
++      return std::nullopt;
++    auto host = content::DevToolsAgentHost::GetForId(target_id);
++    auto* contents = host ? host->GetWebContents() : nullptr;
++    if (!contents || contents->GetBrowserContext() != profile_.get())
++      return std::nullopt;
++    auto* browser = ProfileBrowserCollection::GetForProfile(profile_.get())
++                        ->FindBrowserWithTab(contents);
++    if (!browser)
++      return std::nullopt;
++    const int index =
++        browser->GetTabStripModel()->GetIndexOfWebContents(contents);
++    if (index == TabStripModel::kNoTab)
++      return std::nullopt;
++    return LiveTab{browser, contents, index};
++  }
++  void Rpc(const std::string& method, base::DictValue input, RpcCallback done) {
++    if (!feed_)
++      return;
++    input.Set("accountId", account_id_);
++    const auto url =
++        net::AppendQueryParameter(DaemonUrl("/trpc/" + method), "input",
++                                  base::WriteJson(input).value_or("{}"));
++    feed_->Load(
++        url, std::nullopt,
++        base::BindOnce(
++            [](RpcCallback done, std::optional<std::string> body, int status) {
++              auto reply =
++                  body && status == 200
++                      ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
++                      : std::nullopt;
++              const auto* result = reply ? reply->FindDict("result") : nullptr;
++              const auto* data = result ? result->Find("data") : nullptr;
++              std::move(done).Run(data ? std::make_optional(data->Clone())
++                                       : std::nullopt);
++            },
++            std::move(done)));
++  }
++  void OnSessions(std::optional<base::Value> value) {
++    const auto* rows = value ? value->GetIfList() : nullptr;
++    if (!rows || rows->size() > 200) {
++      FinishError(u"The supplied task inventory is unavailable.");
++      return;
++    }
++    truncated_ = rows->size() == 200;
++    sessions_ = rows->Clone();
++    NextSession();
++  }
++  void NextSession() {
++    if (!feed_)
++      return;
++    if (index_ == sessions_.size()) {
++      feed_->VerifySecurity(base::BindOnce(&AgentTabsRequest::OnSecurity,
++                                           base::WrapRefCounted(this)));
++      return;
++    }
++    const auto* row = sessions_[index_].GetIfDict();
++    const auto* id = row ? row->FindString("id") : nullptr;
++    if (!id || !ValidIdentity(*id)) {
++      FinishError(u"The supplied task inventory has an invalid identity.");
++      return;
++    }
++    session_id_ = *id;
++    base::DictValue input;
++    input.Set("sessionId", session_id_);
++    Rpc("sessions.get", std::move(input),
++        base::BindOnce(&AgentTabsRequest::OnSession,
++                       base::WrapRefCounted(this)));
++  }
++  void SkipSession(bool unavailable) {
++    if (unavailable)
++      unavailable_.Append(session_id_);
++    ++index_;
++    NextSession();
++  }
++  void OnSession(std::optional<base::Value> value) {
++    const auto* session = value ? value->GetIfDict() : nullptr;
++    const auto* id = session ? session->FindString("id") : nullptr;
++    const auto* binding =
++        session ? session->FindDict("browserBinding") : nullptr;
++    const auto* profile_id =
++        binding ? binding->FindString("profileId") : nullptr;
++    const auto* mode = binding ? binding->FindString("browserMode") : nullptr;
++    if (!id || *id != session_id_ || !profile_id || !mode) {
++      SkipSession(true);
++      return;
++    }
++    if (*profile_id != profile_id_ || *mode != mode_) {
++      if (operation_ != AgentTabsOperation::kList) {
++        FinishError(
++            u"The selected task belongs to another browser profile or mode.");
++        return;
++      }
++      SkipSession(false);
++      return;
++    }
++    const auto* title = session->FindString("title");
++    if (!title || title->size() > 8192) {
++      SkipSession(true);
++      return;
++    }
++    session_title_ = *title;
++    base::DictValue input;
++    input.Set("sessionId", session_id_);
++    Rpc("sessions.tabs.list", std::move(input),
++        base::BindOnce(&AgentTabsRequest::OnTabs, base::WrapRefCounted(this)));
++  }
++  void OnTabs(std::optional<base::Value> value) {
++    const auto* tabs = value ? value->GetIfList() : nullptr;
++    if (!tabs || tabs->size() > 2000) {
++      SkipSession(true);
++      return;
++    }
++    base::ListValue verified;
++    for (const auto& item : *tabs) {
++      const auto* tab = item.GetIfDict();
++      if (!tab) {
++        SkipSession(true);
++        return;
++      }
++      const auto* owner = tab->FindString("sessionId");
++      const auto* ownership = tab->FindString("ownership");
++      // list includes child sessions. Each child requires its own verified
++      // binding.
++      if (!owner || *owner != session_id_ || !ownership ||
++          *ownership != "owned")
++        continue;
++      const auto* id = tab->FindString("id");
++      const auto* target = tab->FindString("targetId");
++      const auto* url = tab->FindString("url");
++      const auto* data = tab->FindDict("data");
++      const auto* title = data ? data->FindString("title") : nullptr;
++      if (!id || !ValidIdentity(*id) || !target || !ValidIdentity(*target) ||
++          !url || url->size() > 65536 || !title || title->size() > 8192) {
++        SkipSession(true);
++        return;
++      }
++      if (!FindLiveTab(*target))
++        continue;
++      if (owned_.size() >= 2000) {
++        truncated_ = true;
++        continue;
++      }
++      base::DictValue row;
++      row.Set("id", *id);
++      row.Set("targetId", *target);
++      row.Set("title", *title);
++      row.Set("url", *url);
++      row.Set("createdByAgent", true);
++      verified.Append(std::move(row));
++      owned_.push_back({*id, *target});
++    }
++    if (!verified.empty()) {
++      base::DictValue group;
++      group.Set("sessionId", session_id_);
++      group.Set("title", session_title_);
++      group.Set("tabs", std::move(verified));
++      groups_.Append(std::move(group));
++    }
++    ++index_;
++    NextSession();
++  }
++  void OnSecurity(aux::ProfileSecurityState state) {
++    if (!feed_ || !profile_)
++      return;
++    if (!state.allows_browsing() || state.account_id != account_id_ ||
++        feed_->account_id_ != account_id_) {
++      FinishError(
++          u"This profile locked or its account changed. Reopen agent tabs.");
++      return;
++    }
++    if (operation_ == AgentTabsOperation::kList) {
++      base::DictValue response;
++      response.Set("groups", std::move(groups_));
++      response.Set("available", unavailable_.empty() ||
++                                    !response.FindList("groups")->empty());
++      response.Set("unavailableSessionIds", std::move(unavailable_));
++      response.Set("truncated", truncated_);
++      Finish(std::move(response));
++      return;
++    }
++    if (!unavailable_.empty() || truncated_) {
++      FinishError(u"The task's current tab ownership could not be verified.");
++      return;
++    }
++    if (operation_ == AgentTabsOperation::kClose) {
++      const auto* id = input_.FindString("sessionTabId");
++      const auto* target = input_.FindString("targetId");
++      auto chosen = std::ranges::find_if(owned_, [&](const auto& row) {
++        return id && target && row.session_tab_id == *id &&
++               row.target_id == *target;
++      });
++      if (chosen == owned_.end()) {
++        FinishError(u"This target is no longer owned by the selected task.");
++        return;
++      }
++      const OwnedTarget selected = *chosen;
++      owned_ = {selected};
++    }
++    for (const auto& row : owned_) {
++      auto live = FindLiveTab(row.target_id);
++      if (!live)
++        continue;
++      auto* model = live->browser->GetTabStripModel();
++      if (operation_ == AgentTabsOperation::kCleanup &&
++          model->active_index() == live->index) {
++        ++skipped_active_;
++        continue;
++      }
++      closing_.push_back(row.target_id);
++      model->CloseWebContents(live->contents,
++                              TabStripModel::CLOSE_CREATE_HISTORICAL_TAB);
++    }
++    ObserveClosures();
++  }
++  void ObserveClosures() {
++    if (!feed_ || !profile_)
++      return;
++    const bool pending = std::ranges::any_of(
++        closing_, [&](const auto& id) { return FindLiveTab(id).has_value(); });
++    if (!pending) {
++      base::DictValue response;
++      response.Set("closed", static_cast<int>(closing_.size()));
++      response.Set("skippedActive", skipped_active_);
++      Finish(std::move(response));
++    } else if (++close_observations_ >= 30) {
++      FinishError(
++          u"Some tabs remain open. Refresh to review them; a page may be "
++          u"waiting for confirmation.");
++    } else {
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++          FROM_HERE,
++          base::BindOnce(&AgentTabsRequest::ObserveClosures,
++                         base::WrapRefCounted(this)),
++          base::Milliseconds(100));
++    }
++  }
++  void Finish(base::DictValue response) {
++    if (callback_)
++      std::move(callback_).Run(base::WriteJson(response), std::nullopt);
++  }
++  void FinishError(const std::u16string& error) {
++    if (callback_)
++      std::move(callback_).Run(std::nullopt, error);
++  }
++  base::WeakPtr<AuxNativeTaskFeed> feed_;
++  base::WeakPtr<Profile> profile_;
++  const int account_id_;
++  const AgentTabsOperation operation_;
++  base::DictValue input_;
++  AgentTabsCallback callback_;
++  const std::string profile_id_, mode_;
++  base::ListValue sessions_, groups_, unavailable_;
++  std::vector<OwnedTarget> owned_;
++  std::vector<std::string> closing_;
++  size_t index_ = 0;
++  std::string session_id_, session_title_;
++  bool truncated_ = false;
++  int skipped_active_ = 0, close_observations_ = 0;
++};
+
+ AuxNativeTaskFeed::AuxNativeTaskFeed(Profile* profile, UpdatedCallback updated)
+     : profile_(profile), updated_(std::move(updated)) {}
+@@ -411,64 +739,25 @@
+ void AuxNativeTaskFeed::RequestAgentTabs(AgentTabsOperation operation,
+                                         base::DictValue input,
+                                         AgentTabsCallback callback) {
+-  VerifySecurity(
+-      base::BindOnce(
+-          [](base::WeakPtr<AuxNativeTaskFeed> self,
+-             AgentTabsOperation operation, base::DictValue input,
+-             AgentTabsCallback callback, aux::ProfileSecurityState security) {
+-            if (!self)
+-              return;
+-            if (!security.allows_browsing()) {
+-              std::move(callback).Run(std::nullopt,
+-                  u"Unlock Aux and finish setup for this browser profile.");
+-              return;
+-            }
+-            self->account_id_ = security.account_id;
+-            self->EnsureAuthorization(base::BindOnce(
+-                [](base::WeakPtr<AuxNativeTaskFeed> self,
+-                   AgentTabsOperation operation, base::DictValue input,
+-                   AgentTabsCallback callback, bool authorized) {
+-                  if (!self)
+-                    return;
+-                  if (!authorized) {
+-                    std::move(callback).Run(std::nullopt,
+-                        u"Aux could not authenticate this local browser.");
+-                    return;
+-                  }
+-                  std::string path = "/session/for-chrome/agent-tabs";
+-                  switch (operation) {
+-                    case AgentTabsOperation::kList: break;
+-                    case AgentTabsOperation::kClose: path += "/close"; break;
+-                    case AgentTabsOperation::kCleanup: path += "/cleanup"; break;
+-                    case AgentTabsOperation::kPolicy: path += "/policy"; break;
+-                  }
+-                  const std::string profile_id = aux::ProfileIdForPath(
+-                      self->profile_->GetOriginalProfile()->GetPath());
+-                  const std::string mode = self->profile_->IsOffTheRecord()
+-                                               ? "incognito" : "normal";
+-                  GURL url = self->AccountUrl(path);
+-                  std::optional<std::string> body;
+-                  if (operation == AgentTabsOperation::kList) {
+-                    url = net::AppendQueryParameter(url, "profileId", profile_id);
+-                    url = net::AppendQueryParameter(url, "browserMode", mode);
+-                  } else {
+-                    input.Set("accountId", *self->account_id_);
+-                    input.Set("profileId", profile_id);
+-                    input.Set("browserMode", mode);
+-                    body = base::WriteJson(input);
+-                  }
+-                  self->Load(url, std::move(body), base::BindOnce(
+-                      [](AgentTabsCallback callback,
+-                         std::optional<std::string> body, int status) {
+-                        if (!body || status != 200) {
+-                          std::move(callback).Run(std::nullopt,
+-                              u"Agent tabs could not be updated. Refresh and try again.");
+-                          return;
+-                        }
+-                        std::move(callback).Run(std::move(body), std::nullopt);
+-                      }, std::move(callback)));
+-                }, self, operation, std::move(input), std::move(callback)));
+-          },
+-          weak_factory_.GetWeakPtr(), operation, std::move(input),
+-          std::move(callback)));
+-}
++  VerifySecurity(base::BindOnce(
++      [](base::WeakPtr<AuxNativeTaskFeed> self, AgentTabsOperation operation,
++         base::DictValue input, AgentTabsCallback callback,
++         aux::ProfileSecurityState security) {
++        if (!self)
++          return;
++        if (!security.allows_browsing() || !security.account_id) {
++          std::move(callback).Run(
++              std::nullopt,
++              u"Unlock this browser profile before opening agent tabs.");
++          return;
++        }
++        self->account_id_ = security.account_id;
++        self->authorization_ = aux::BrowserPlatform::Get().authorization();
++        base::MakeRefCounted<AgentTabsRequest>(self, *security.account_id,
++                                               operation, std::move(input),
++                                               std::move(callback))
++            ->Start();
++      },
++      weak_factory_.GetWeakPtr(), operation, std::move(input),
++      std::move(callback)));
++}
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.h
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.h
+@@ -83,6 +83,7 @@
+   }
+
+  private:
++  class AgentTabsRequest;
+   using LoadCallback =
+       base::OnceCallback<void(std::optional<std::string>, int)>;
+   using AuthCallback = base::OnceCallback<void(bool)>;
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -40,10 +40,9 @@
+ using Operation = AuxNativeTaskFeed::AgentTabsOperation;
+ struct OwnedTab {
+   std::string target_id;
+-  int tab_id;
++  std::string session_tab_id;
+   std::u16string title;
+   std::string url;
+-  std::string policy;
+ };
+ struct OwnedGroup {
+   std::string session_id;
+@@ -69,17 +68,17 @@
+     for (const auto& tab_value : *tabs) {
+       const auto* tab = tab_value.GetIfDict();
+       const auto* target = tab ? tab->FindString("targetId") : nullptr;
+-      const auto tab_id = tab ? tab->FindInt("tabId") : std::nullopt;
++      const auto* session_tab_id = tab ? tab->FindString("id") : nullptr;
+       const auto* label = tab ? tab->FindString("title") : nullptr;
+       const auto* url = tab ? tab->FindString("url") : nullptr;
+-      const auto* policy = tab ? tab->FindString("autoClosePolicy") : nullptr;
+-      if (!target || target->empty() || target->size() > 128 || !tab_id ||
+-          *tab_id < 0 || !label || label->size() > 8192 || !url || url->size() > 65536 ||
+-          !policy || (*policy != "keep" && *policy != "on-completion") ||
++      if (!target || target->empty() || target->size() > 128 ||
++          !session_tab_id || session_tab_id->empty() ||
++          session_tab_id->size() > 128 || !label || label->size() > 8192 ||
++          !url || url->size() > 65536 ||
+           tab->FindBool("createdByAgent") != true)
+         return std::nullopt;
+-      entry.tabs.push_back(OwnedTab{*target, *tab_id,
+-          base::UTF8ToUTF16(*label), *url, *policy});
++      entry.tabs.push_back(
++          OwnedTab{*target, *session_tab_id, base::UTF8ToUTF16(*label), *url});
+     }
+     result.push_back(std::move(entry));
+   }
+@@ -177,12 +176,9 @@
+       for (const auto& tab : group.tabs) AddTab(group.session_id, tab);
+       auto* policy = rows_->AddChildView(std::make_unique<views::Checkbox>(
+           u"Close owned tabs when this task finishes"));
+-      policy->SetChecked(std::ranges::all_of(group.tabs, [](const auto& tab) {
+-        return tab.policy == "on-completion";
+-      }));
+-      policy->SetCallback(base::BindRepeating(
+-          &AgentTabsBubble::SetPolicy, weak_factory_.GetWeakPtr(),
+-          group.session_id, base::Unretained(policy)));
++      policy->SetEnabled(false);
++      policy->SetTooltipText(
++          u"The supplied runtime does not expose a per-task cleanup setting.");
+       base::DictValue input;
+       input.Set("sessionId", group.session_id);
+       rows_->AddChildView(std::make_unique<views::MdTextButton>(
+@@ -191,7 +187,11 @@
+                               base::OwnedRef(std::move(input))),
+           u"Close this task’s owned tabs"));
+     }
+-    if (unavailable && !unavailable->empty())
++    if (projection->FindBool("truncated").value_or(false))
++      ShowError(
++          u"This view reached its inventory limit. Only verified owned targets "
++          u"are listed.");
++    else if (unavailable && !unavailable->empty())
+       ShowError(u"Some tasks could not be verified. Only verified owned targets are listed.");
+     if (!any && (!unavailable || unavailable->empty())) rows_->AddChildView(std::make_unique<views::Label>(
+         u"No agent-owned tabs in this browser profile."));
+@@ -220,7 +220,7 @@
+     base::DictValue input;
+     input.Set("sessionId", session_id);
+     input.Set("targetId", tab.target_id);
+-    input.Set("tabId", tab.tab_id);
++    input.Set("sessionTabId", tab.session_tab_id);
+     row->AddChildView(std::make_unique<views::MdTextButton>(
+         base::BindRepeating(&AgentTabsBubble::Mutate, weak_factory_.GetWeakPtr(),
+                             Operation::kClose, base::OwnedRef(std::move(input))),
+@@ -243,17 +243,6 @@
+     model->ActivateTabAt(index);
+     browser->GetWindow()->Activate();
+     GetWidget()->Close();
+-  }
+-  void SetPolicy(const std::string& session_id, views::Checkbox* control) {
+-    if (busy_) {
+-      control->SetChecked(!control->GetChecked());
+-      ShowError(u"Wait for the current refresh, then try again.");
+-      return;
+-    }
+-    base::DictValue input;
+-    input.Set("sessionId", session_id);
+-    input.Set("autoClosePolicy", control->GetChecked() ? "on-completion" : "keep");
+-    Mutate(Operation::kPolicy, input);
+   }
+   void Mutate(Operation operation, const base::DictValue& input) {
+     if (busy_) { ShowError(u"Wait for the current refresh, then try again."); return; }

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-task-feed (84a105df3) as applied in current shared native checkout",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+      "baselineSha256": "e664ae432d66ac3e2440120332b485b5acd253887eacf9eff85243e5a8aa1fd3",
+      "outputSha256": "ace6121ad037eca3b4a4d717026cc5d0f21c1d5d97e63c9b3579ec8058bfafd3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_native_task_feed.h",
+      "baselineSha256": "e737675bdd561a6f972bad830aa846f27d4f40bf7d7bd5066e958ba6924c652c",
+      "outputSha256": "1ca325dabcab0518a7ad43b20053c2fe8ba89bc92db9d0d3e3d4804d76158893"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "a636dcf62a7b3faab20c2f1b00ccfbf33c0b952cd24614e41fb34deca6bb23cc",
+      "outputSha256": "8cd3a40336365cdadb67960df98ca4271d85de76b4e0da8c4cfabfdca834c7ee"
+    }
+  ]
+}
