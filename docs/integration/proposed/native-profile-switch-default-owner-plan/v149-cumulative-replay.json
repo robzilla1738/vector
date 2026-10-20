@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "composition": "v149",
+  "incrementalManifestSha256": "d6871728c0d0d472deaf6aa1c97baba6c352a5be154bf2caa4cc897e8431ed51",
+  "originalReplayManifestSha256": "60eae20e7d02e4791ace2ae6b2d9ab3945803ab73642511eaee0b1aa0ba30203",
+  "originalReplaySteps": 159,
+  "matchingSourceOutputs": 331,
+  "artworkTargets": 23,
+  "appliedToNative": false,
+  "compiled": false,
+  "runtimeAccepted": false,
+  "changes": [
+    "Actual default AiMode/Actor/Glic profile-owner lifecycles and provider integration",
+    "Original secure page-client capability",
+    "Actual agent tab-group marker, native-client eligibility and owned audio policy",
+    "Public native session query header GN registration"
+  ],
+  "limitations": [
+    "Current full v135 build remains live; newer native source is not applied while it runs.",
+    "Agent-tabs native row/control replacement and async profile gesture integration remain separate work.",
+    "Source replay establishes composition, not runtime/UI fidelity."
+  ]
+}
