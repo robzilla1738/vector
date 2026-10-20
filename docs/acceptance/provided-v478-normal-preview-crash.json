@@ -1,0 +1,29 @@
+{
+  "composition": "v478",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v478-local/Aux.app",
+  "launcherPid": 68996,
+  "command": [
+    "node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v478-local/Aux.app",
+    "--",
+    "--new-window",
+    "chrome://newtab/"
+  ],
+  "normalProfile": true,
+  "incognito": false,
+  "temporaryProfile": true,
+  "installedAppChanged": false,
+  "signingRun": false,
+  "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v478-normal-preview.log",
+  "runtimeAcceptance": false,
+  "browserPid": 69011,
+  "launchOutcome": "crashed",
+  "fatal": "observer_list.h:371 Observers can only be added once",
+  "owner": "extensions::OwnedContextualHandler constructor",
+  "logSha256": "7e7f59dfeab02e19dcb62606dc64050b9d7835242356c90cf14ec9de3847a096",
+  "fixComposition": "v479",
+  "windowObserved": false
+}

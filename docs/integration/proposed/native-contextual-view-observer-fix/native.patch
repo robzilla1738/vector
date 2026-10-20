@@ -1,0 +1,12 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.cc
+@@ -235,7 +235,8 @@
+             [](OwnedContextualHandler* handler, const std::u16string& text) {
+               handler->page_->SetInputText(base::UTF16ToUTF8(text));
+             }, base::Unretained(this)));
+-    owned_controller_->SetView(model_view_.get());
++    // OmniboxView construction already binds this exact view/controller and
++    // registers the controller observer. Binding it twice crashes regular NTPs.
+     autocomplete_controller_observation_.Observe(autocomplete_controller());
+     edit_model_observation_.Observe(edit_model());
+   }

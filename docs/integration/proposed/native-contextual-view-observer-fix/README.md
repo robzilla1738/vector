@@ -1,0 +1,3 @@
+# Regular new-tab duplicate observer fix
+
+The actual v478 regular disposable launch crashes in OwnedContextualHandler construction with observer_list.h371: observers can only be added once. Actual155 OmniboxView already calls SetView(this) during construction, and the controller registers its observer there. Remove the derived handler’s duplicate SetView call; do not suppress observer checks, change global features or replace the supplied omnibox implementation. Existing view-owned binding and actual callback/teardown behavior remain. The counted single-use anchor and actual source/crash hashes are pinned. Full rebuild and a fresh regular-window launch are required before claiming the crash fixed.

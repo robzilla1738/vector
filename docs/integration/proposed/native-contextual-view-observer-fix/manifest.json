@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.cc",
+      "baselineSha256": "b8973436f0f805aaa00ec64d6df7522386bf0ab58f09f07abb5ffec4f2faae61",
+      "outputSha256": "b8c6603c7b6d4cab069533f6de4e62087b6b562d3886cff6aaebf83659713f48",
+      "anchors": [
+        {
+          "find": "    owned_controller_->SetView(model_view_.get());\n",
+          "replace": "    // OmniboxView construction already binds this exact view/controller and\n    // registers the controller observer. Binding it twice crashes regular NTPs.\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -503,6 +503,7 @@ steps.extend([
     ('native-import-initialized-profile/native.patch', 'native-import-initialized-profile/manifest.json'),
     ('native-import-completion-choice/native.patch', 'native-import-completion-choice/manifest.json'),
     ('native-import-profile-helper-build/native.patch', 'native-import-profile-helper-build/manifest.json'),
+    ('native-contextual-view-observer-fix/native.patch', 'native-contextual-view-observer-fix/manifest.json'),
 ])
 
 if options.through:

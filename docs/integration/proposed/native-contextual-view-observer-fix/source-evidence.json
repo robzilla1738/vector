@@ -1,0 +1,22 @@
+{
+  "runtimeLog": {
+    "path": "out/native-integration/v478-normal-preview.log",
+    "sha256": "7e7f59dfeab02e19dcb62606dc64050b9d7835242356c90cf14ec9de3847a096"
+  },
+  "inputs": [
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_view.cc",
+      "sha256": "9d312ebf32fbf264be590dec4bbc4b762571cbca97fc4b625f7ec0d2efa3fc35"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_controller.cc",
+      "sha256": "240e691001af0f04dc7398a92631785793dcc5710f39b376ffe9e70cadd2a591"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.cc",
+      "sha256": "b8973436f0f805aaa00ec64d6df7522386bf0ab58f09f07abb5ffec4f2faae61"
+    }
+  ],
+  "cause": "OmniboxView constructor calls controller_->SetView(this). OmniboxController::SetView(nonnull) adds itself to autocomplete observers. OwnedContextualHandler redundantly calls SetView on the same view/controller, yielding actual regular-profile FATAL observer_list.h371 before NTP display.",
+  "scope": "Remove only redundant binding. Keep original model/view, handler/edit observation, actual view callbacks and teardown."
+}
