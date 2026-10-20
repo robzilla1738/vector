@@ -1,0 +1,97 @@
+diff --git a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
+--- a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
++++ b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
+@@ -14,6 +14,10 @@
+ namespace aux_importer {
+ // Captures the actual initiating native window weakly. The callback never
+ // resolves a different browser/window after a profile transfer or tab move.
++// Actual standalone importer provenance, not merely a matching tab URL. Both
++// capture helpers return empty for ordinary browser tabs. Owners must reject
++// that context before starting work, rather than accepting an absent lifecycle.
++bool IsStandaloneImportOwner(content::WebContents& contents);
+ base::RepeatingCallback<void(bool)> CaptureImportWindowControls(
+     content::WebContents& contents);
+ 
+diff --git a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
+--- a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
++++ b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
+@@ -12,15 +12,48 @@
+ #include "chrome/browser/profiles/profile_window.h"
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "ui/base/base_window.h"
+ #include "ui/views/widget/widget.h"
+ #include "content/public/browser/web_contents.h"
+ 
+ namespace aux_importer {
++bool IsStandaloneImportOwner(content::WebContents& contents) {
++  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
++      &contents);
++  if (!browser || browser->GetType() != BrowserWindowInterface::TYPE_APP_POPUP) {
++    return false;
++  }
++  const auto* init = BrowserInitState::From(browser);
++  auto* tabs = browser->GetTabStripModel();
++  const auto& url = contents.GetLastCommittedURL();
++  return init && init->create_params().app_name == "aux-import-data" &&
++         tabs && tabs->count() == 1 && tabs->GetWebContentsAt(0) == &contents &&
++         url.SchemeIs("chrome") && url.host() == "aux-import-data";
++}
++namespace {
++bool RetainsStandaloneOwner(
++    const base::WeakPtr<content::WebContents>& contents,
++    gfx::NativeWindow owner) {
++  return contents && IsStandaloneImportOwner(*contents) &&
++         contents->GetTopLevelNativeWindow().GetNativeNSWindow() ==
++             owner.GetNativeNSWindow();
++}
++}  // namespace
+ base::RepeatingCallback<void(bool)> CaptureImportWindowControls(
+     content::WebContents& contents) {
++  if (!IsStandaloneImportOwner(contents)) {
++    return {};
++  }
+   // gfx::NativeWindow is Chromium's WeakNSWindow, not an owning NSWindow*.
+   return base::BindRepeating(
+-      [](gfx::NativeWindow owner, bool enabled) {
++      [](base::WeakPtr<content::WebContents> contents,
++         gfx::NativeWindow owner, bool enabled) {
++        if (!RetainsStandaloneOwner(contents, owner)) {
++          return;
++        }
+         NSWindow* window = owner.GetNativeNSWindow();
+         if (!window) {
+           return;
+@@ -30,12 +63,18 @@
+         [[window standardWindowButton:NSWindowMiniaturizeButton] setEnabled:enabled];
+         [[window standardWindowButton:NSWindowZoomButton] setEnabled:enabled];
+       },
+-      contents.GetTopLevelNativeWindow());
++      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());
+ }
+ 
+ base::OnceClosure CaptureImportOwnerRetirement(content::WebContents& contents) {
++  if (!IsStandaloneImportOwner(contents)) {
++    return {};
++  }
+   return base::BindOnce(
+-      [](gfx::NativeWindow owner) {
++      [](base::WeakPtr<content::WebContents> contents, gfx::NativeWindow owner) {
++        if (!RetainsStandaloneOwner(contents, owner)) {
++          return;
++        }
+         NSWindow* window = owner.GetNativeNSWindow();
+         if (!window) {
+           return;
+@@ -50,7 +89,7 @@
+         [window orderOut:nil];
+         [window close];
+       },
+-      contents.GetTopLevelNativeWindow());
++      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());
+ }
+ 
+ void OpenImportedProfile(const base::FilePath& path) {

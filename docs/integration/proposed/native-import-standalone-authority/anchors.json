@@ -1,0 +1,50 @@
+[
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h",
+    "before": "base::RepeatingCallback<void(bool)> CaptureImportWindowControls(",
+    "after": "// Actual standalone importer provenance, not merely a matching tab URL. Both\n// capture helpers return empty for ordinary browser tabs. Owners must reject\n// that context before starting work, rather than accepting an absent lifecycle.\nbool IsStandaloneImportOwner(content::WebContents& contents);\nbase::RepeatingCallback<void(bool)> CaptureImportWindowControls(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+    "after": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"\n#include \"chrome/browser/ui/browser_window/public/global_browser_collection.h\"\n#include \"chrome/browser/ui/browser_init_state.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_model.h\"\n#include \"ui/base/base_window.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "namespace aux_importer {\n",
+    "after": "namespace aux_importer {\nbool IsStandaloneImportOwner(content::WebContents& contents) {\n  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(\n      &contents);\n  if (!browser || browser->GetType() != BrowserWindowInterface::TYPE_APP_POPUP) {\n    return false;\n  }\n  const auto* init = BrowserInitState::From(browser);\n  auto* tabs = browser->GetTabStripModel();\n  const auto& url = contents.GetLastCommittedURL();\n  return init && init->create_params().app_name == \"aux-import-data\" &&\n         tabs && tabs->count() == 1 && tabs->GetWebContentsAt(0) == &contents &&\n         url.SchemeIs(\"chrome\") && url.host() == \"aux-import-data\";\n}\nnamespace {\nbool RetainsStandaloneOwner(\n    const base::WeakPtr<content::WebContents>& contents,\n    gfx::NativeWindow owner) {\n  return contents && IsStandaloneImportOwner(*contents) &&\n         contents->GetTopLevelNativeWindow().GetNativeNSWindow() ==\n             owner.GetNativeNSWindow();\n}\n}  // namespace\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "    content::WebContents& contents) {\n  // gfx::NativeWindow",
+    "after": "    content::WebContents& contents) {\n  if (!IsStandaloneImportOwner(contents)) {\n    return {};\n  }\n  // gfx::NativeWindow",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "[](gfx::NativeWindow owner, bool enabled) {\n        NSWindow* window",
+    "after": "[](base::WeakPtr<content::WebContents> contents,\n         gfx::NativeWindow owner, bool enabled) {\n        if (!RetainsStandaloneOwner(contents, owner)) {\n          return;\n        }\n        NSWindow* window",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "      contents.GetTopLevelNativeWindow());\n}\n\nbase::OnceClosure",
+    "after": "      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());\n}\n\nbase::OnceClosure",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "base::OnceClosure CaptureImportOwnerRetirement(content::WebContents& contents) {\n  return base::BindOnce(\n      [](gfx::NativeWindow owner) {\n        NSWindow* window",
+    "after": "base::OnceClosure CaptureImportOwnerRetirement(content::WebContents& contents) {\n  if (!IsStandaloneImportOwner(contents)) {\n    return {};\n  }\n  return base::BindOnce(\n      [](base::WeakPtr<content::WebContents> contents, gfx::NativeWindow owner) {\n        if (!RetainsStandaloneOwner(contents, owner)) {\n          return;\n        }\n        NSWindow* window",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "      contents.GetTopLevelNativeWindow());\n}\n\nvoid OpenImportedProfile",
+    "after": "      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());\n}\n\nvoid OpenImportedProfile",
+    "count": 1
+  }
+]

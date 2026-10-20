@@ -1,0 +1,41 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4202ac4",
+      "end": "0x4202ebc",
+      "sha256": "d1d913ea155c8b154eae4179515e9348441a4dc0d1cd624db2304c5cf9cbb212",
+      "listing": "standalone-creator.asm",
+      "listingSha256": "173011097d1af4ffc4e1081d2793169b25e15c65481cf94e7ea6d8fd97b3ab2c"
+    },
+    {
+      "start": "0x4203838",
+      "end": "0x4203914",
+      "sha256": "521fa9e28bbe4baba848a3d6b8de2bf48479527552106971dd91133855d43feb",
+      "listing": "existing-owner-predicate.asm",
+      "listingSha256": "ddbd2221ea8cd0f5fa73469685e7cd87630cc4eea316fd929465428852e0e770"
+    },
+    {
+      "start": "0x458cc00",
+      "end": "0x458cf98",
+      "sha256": "a8af19170f0eb7cdc34af7e1100272a7a6a9bb4fa2906e1b6dc864237d955ed1",
+      "listing": "native-appearance-unported.asm",
+      "listingSha256": "e8c18c221d094738f03f3cb5ccc9dcfd4795ad8d0e082f9eb760f731d5078838"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xcf02924",
+      "hex": "61736964652d696d706f72742d64617461",
+      "encoding": "utf-8",
+      "text": "aside-import-data"
+    },
+    {
+      "address": "0xcf02936",
+      "hex": "6368726f6d653a2f2f61736964652d696d706f72742d646174612f",
+      "encoding": "utf-8",
+      "text": "chrome://aside-import-data/"
+    }
+  ]
+}
