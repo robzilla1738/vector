@@ -1,0 +1,128 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -250,6 +250,95 @@
+   }
+   return true;
+ }
++// Original426793c admits actual directories; retain Aux's existing identifier,
++// symlink and bounded-inventory checks at this external filesystem boundary.
++bool AppendChromiumProfile(base::ListValue& profiles,
++                           const base::FilePath& directory,
++                           std::string_view id,
++                           const base::DictValue* metadata) {
++  if (profiles.size() >= 128 || id.empty() || id.find('/') != id.npos ||
++      id.find("..") != id.npos || id.find('\0') != id.npos ||
++      !base::IsStringUTF8(id)) {
++    return false;
++  }
++  const auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));
++  if (!base::DirectoryExists(path) || base::IsLink(path)) {
++    return false;
++  }
++  // Original4267a88: metadata is absent during fallback, never a fabricated
++  // Preferences/cache row. Preserve the source's nonempty-string precedence.
++  std::string name(id);
++  std::string subtitle;
++  if (metadata) {
++    if (const auto* value = metadata->FindString("name"); value && !value->empty()) {
++      name = *value;
++    }
++    if (const auto* username = metadata->FindString("user_name");
++        username && !username->empty()) {
++      subtitle = *username;
++    } else if (const auto* gaia = metadata->FindString("gaia_name");
++               gaia && !gaia->empty()) {
++      subtitle = *gaia;
++    }
++  }
++  if (subtitle.empty() && name != id) {
++    subtitle = std::string(id);
++  }
++  base::DictValue profile;
++  profile.Set("id", id);
++  profile.Set("name", name);
++  if (!subtitle.empty()) {
++    profile.Set("subtitle", subtitle);
++  }
++  profile.Set("nativePath", path.value());
++  profiles.Append(std::move(profile));
++  return true;
++}
++base::ListValue DiscoverChromiumProfiles(const base::FilePath& directory,
++                                       bool atlas) {
++  base::ListValue profiles;
++  if (auto state = JSON(directory.AppendASCII("Local State"))) {
++    if (const auto* cache = state->FindDictByDottedPath("profile.info_cache")) {
++      std::set<std::string, std::less<>> ordered_ids;
++      if (const auto* order = state->FindListByDottedPath("profile.profiles_order")) {
++        for (const auto& value : *order) {
++          if (!value.is_string()) {
++            continue;
++          }
++          const auto& id = value.GetString();
++          if (const auto* metadata = cache->FindDict(id);
++              metadata && AppendChromiumProfile(profiles, directory, id, metadata)) {
++            ordered_ids.emplace(id);
++          }
++        }
++      }
++      for (auto [id, value] : *cache) {
++        if (!ordered_ids.contains(id) && value.is_dict()) {
++          AppendChromiumProfile(profiles, directory, id, &value.GetDict());
++        }
++      }
++    }
++  }
++  // Original4267508 is used only when no cache result survives admission.
++  if (profiles.empty()) {
++    base::FileEnumerator entries(directory, false,
++                                 base::FileEnumerator::DIRECTORIES);
++    for (auto path = entries.Next(); !path.empty(); path = entries.Next()) {
++      const auto id = path.BaseName().value();
++      if (id == "Default" || id.starts_with("Profile ") ||
++          (atlas && id.starts_with("user-"))) {
++        AppendChromiumProfile(profiles, directory, id, nullptr);
++      }
++    }
++    // Original4268340 compares record+8, its UTF8 ID, bytewise. No numeric
++    // Profile suffix sorting or display-name reordering is imposed.
++    std::ranges::sort(profiles, [](const auto& left, const auto& right) {
++      return *left.GetDict().FindString("id") <
++             *right.GetDict().FindString("id");
++    });
++  }
++  return profiles;
++}
+ }  // namespace
+ base::ListValue DiscoverSources() {
+   bool fixture = false;
+@@ -303,26 +392,9 @@
+                               .Set("nativePath", path.value()));
+         }
+       }
+-    } else if (auto state = JSON(directory.AppendASCII("Local State"))) {
+-      if (const auto* cache =
+-              state->FindDictByDottedPath("profile.info_cache")) {
+-        for (auto [id, value] : *cache) {
+-          if (profiles.size() >= 128 || id.empty() || id.find('/') != id.npos ||
+-              id.find("..") != id.npos || id.find('\0') != id.npos ||
+-              !base::IsStringUTF8(id) || !value.is_dict()) {
+-            continue;
+-          }
+-          auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));
+-          if (!base::DirectoryExists(path) || base::IsLink(path)) {
+-            continue;
+-          }
+-          const auto* name = value.GetDict().FindString("name");
+-          profiles.Append(base::DictValue()
+-                              .Set("id", id)
+-                              .Set("name", name ? *name : id)
+-                              .Set("nativePath", path.value()));
+-        }
+-      }
++    } else {
++      profiles = DiscoverChromiumProfiles(directory,
++                                           std::string_view(family.id) == "atlas");
+     }
+     source.Set("profiles", std::move(profiles));
+     base::ListValue categories;

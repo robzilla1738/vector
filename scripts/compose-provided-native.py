@@ -448,6 +448,9 @@ steps.extend([
     ('native-browser-import-password-stores/native.patch', 'native-browser-import-reader-integration/manifest-v421.json'),
     ('native-browser-import-blocked-partial/native.patch', 'native-browser-import-reader-integration/manifest-v422.json'),
     ('native-browser-import-optional-key/native.patch', 'native-browser-import-reader-integration/manifest-v423.json'),
+    ('native-browser-import-registry/native.patch', 'native-browser-import-registry-integration/manifest.json'),
+    ('native-browser-import-full-owner-key-gate/native.patch', 'native-browser-import-owner-profiles-integration/manifest-v425.json'),
+    ('native-browser-import-owner-profiles-integration/profiles.patch', 'native-browser-import-owner-profiles-integration/manifest-v426.json'),
 ])
 
 if options.through:

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "v424",
+  "originalProposal": "native-browser-import-full-owner-key-gate",
+  "originalPatchSha256": "6cc5a15f546027f9c1870cd418ee10e82c47f5bcb8d39e4e7a5d4e29c2f7b6b9",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "147067b7fcf60b1ef6ed32883c1aeefbdb7758c7b506668cf810343890e815a5",
+      "outputSha256": "119c8a6c58800ea07a880c29fbe0cb2eefbd29468bf25913bb2c1d083a1925de"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
