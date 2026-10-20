@@ -189,6 +189,7 @@ steps.extend([
     ('native-profile-switch-menu-forwarding/native.patch', 'native-profile-switch-menu-forwarding/manifest.json'),
     ('native-daemon-startup-budget/native.patch', 'native-daemon-startup-budget/manifest.json'),
     ('native-agent-tabs-paint/native.patch', 'native-agent-tabs-paint/manifest.json'),
+    ('native-profile-switch-glic-weak-order/native.patch', 'native-profile-switch-glic-weak-order/manifest.json'),
 ])
 
 if options.through:

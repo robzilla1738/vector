@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "composition": "v158",
+  "focusedBuildExitCode": 1,
+  "elapsedSeconds": 36.32701277732849,
+  "requestedObjects": 25,
+  "failedObjects": [
+    "obj/chrome/browser/glic/browser_ui/impl/glic_nudge_controller_impl.o",
+    "obj/chrome/browser/glic/browser_ui/impl/glic_split_button_controller.o",
+    "obj/chrome/browser/ui/ui/aux_agent_tabs_bubble.o"
+  ],
+  "passedObjects": [
+    "obj/chrome/browser/actor/ui/ui/actor_ui_tab_controller.o",
+    "obj/chrome/browser/actor/ui/ui/handoff_button_controller.o",
+    "obj/chrome/browser/actor/ui/window_controller_impl/actor_ui_window_controller.o",
+    "obj/chrome/browser/actor/ui/actor_overlay_web_view/actor_overlay_web_view.o",
+    "obj/chrome/browser/actor/ui/task_list_bubble/ui_impl/actor_task_list_bubble.o",
+    "obj/chrome/browser/actor/ui/task_list_bubble/controller_impl/actor_task_list_bubble_controller.o",
+    "obj/chrome/browser/glic/browser_ui/impl/glic_actor_nudge_controller.o",
+    "obj/chrome/browser/glic/browser_ui/impl/glic_button_controller.o",
+    "obj/chrome/browser/glic/browser_ui/impl/glic_split_button_delegate.o",
+    "obj/chrome/browser/glic/browser_ui/impl/glic_iph_controller.o",
+    "obj/chrome/browser/ui/ui/aux_profile_switch_request.o",
+    "obj/chrome/browser/ui/ui/horizontal_tab_strip_region_view.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/ui/tabs/tab_strip_impl/tab_strip_model.o",
+    "obj/chrome/browser/ui/omnibox/impl/ai_mode_page_action_controller.o",
+    "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o",
+    "obj/chrome/browser/ui/views/tabs/tab_strip_impl/tab_strip_action_container.o",
+    "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_top_container.o",
+    "obj/chrome/browser/ui/views/toolbar/impl/toolbar_view.o",
+    "obj/chrome/browser/aux/platform/daemon_supervisor.o",
+    "obj/content/browser/browser/devtools_agent_host_impl.o",
+    "obj/content/browser/browser/devtools_http_handler.o"
+  ],
+  "errors": [
+    "../../chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h:88:49: error: [chromium-style] WeakPtrFactory members which refer to their outer class must be the last member in the outer class definition.",
+    "../../chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h:88:49: error: [chromium-style] WeakPtrFactory members which refer to their outer class must be the last member in the outer class definition.",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:372:8: error: declaration of 'OnPaint' overrides a 'final' function",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:466:8: error: declaration of 'OnPaint' overrides a 'final' function",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:601:77: error: call to deleted constructor of 'base::ScopedObservation<TabStripModel, TabStripModelObserver>'",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:489:9: error: base class 'views::BubbleDialogDelegateView' has private constructor",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:650:8: error: declaration of 'OnPaint' overrides a 'final' function",
+    "../../chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc:735:77: error: call to deleted constructor of 'base::ScopedObservation<TabStripModel, TabStripModelObserver>'"
+  ],
+  "actualReceiptSha256": "6e31bddfd4143fe67cbb4686094674d0d5beeb369c9c253b680997a8f05de524",
+  "actualLogSha256": "d5c156a44283ccce310f8ecaac2e12bdfa89e4394ec4a6e2da6074274bc969a4",
+  "runtimeAccepted": false
+}

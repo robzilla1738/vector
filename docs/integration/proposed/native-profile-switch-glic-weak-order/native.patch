@@ -1,0 +1,12 @@
+--- a/chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h
++++ b/chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h
+@@ -85,8 +85,8 @@
+   std::unique_ptr<ScopedCallToActionLock> scoped_call_to_action_lock_;
+ 
+   ui::ScopedUnownedUserData<GlicNudgeController> scoped_unowned_user_data_;
++  base::WeakPtrFactory<GlicNudgeController> weak_factory_{this};
+   base::WeakPtrFactory<GlicNudgeControllerImpl> aux_mutation_weak_factory_{this};
+-  base::WeakPtrFactory<GlicNudgeController> weak_factory_{this};
+ };
+ 
+ }  // namespace glic

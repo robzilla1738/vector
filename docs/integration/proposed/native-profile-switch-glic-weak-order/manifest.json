@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h",
+      "baselineSha256": "9fbc586f6d93481fbc59cd1c1a7c3a815141db67187f532d3ec3d50b3eb5bc98",
+      "outputSha256": "38c6f5787fd01f538fd15bd952af7d92f6405fa0a02ed6d0b0899428bfcd3608"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
