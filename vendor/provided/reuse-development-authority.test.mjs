@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { assertFreshResourceBaseline, bundleExclusionOrderProof } from './reuse-development-authority.mjs';
+import { assertFreshResourceBaseline, bundleExclusionOrderProof, validateNativeBundleSealReview, nativeResealChanges } from './reuse-development-authority.mjs';
 
 test('reuse requires complete exact unsigned resource bytes/modes/links and identical final relocation path', () => {
   const cache = { finalApp: '/project/out/current/Aux.app', unsignedResources: [{ path: 'Aux.app/Contents/Resources/aux/apps/daemon/code', mode: 0o755, sha256: 'SEA-CURRENT' }, { path: 'Aux.app/Contents/Resources/aux/runtime/python/bin/link', link: '../python3' }] };
@@ -30,11 +30,28 @@ test('only identical unique excludedFiles records may differ in bundle order', (
   assert.throws(() => bundleExclusionOrderProof(encode(rows), encode([{ ...rows[0], extra: true }, rows[1]])));
 });
 
-test('native-only utility neither re-signs Apple helpers nor runs a Keychain/provisioning/authority probe', () => {
+test('reviewed native resume permits only exact linker bundle bytes and signature directories', () => {
+  const framework = 'Aux.app/Contents/Frameworks/Aux Framework.framework', version = framework + '/Versions/155.0.8059.85';
+  const names = ['Aux Helper (Alerts)', 'Aux Helper (Aperitif Alerts)', 'Aux Helper (Aperitif GPU)', 'Aux Helper (Aperitif Renderer)', 'Aux Helper (Aperitif)', 'Aux Helper (GPU)', 'Aux Helper (Renderer)', 'Aux Helper'];
+  const review = names.map(name => ({ path: version + '/Helpers/' + name + '.app', codeRelative: version + '/Helpers/' + name + '.app/Contents/MacOS/' + name, sha256: 'a'.repeat(64), flags: ['adhoc', 'linker-signed'], entitlements: {} }));
+  review.push({ path: framework, codeRelative: version + '/Aux Framework', sha256: 'b'.repeat(64), flags: ['adhoc', 'linker-signed'], entitlements: {} });
+  const before = [...review.map(step => ({ path: step.codeRelative, sha256: step.sha256, mode: 0o755 })), { path: version + '/Libraries/original.dylib', sha256: 'immutable', mode: 0o755 }, { path: 'Aux.app/Contents/Resources/aux/original.node', sha256: 'immutable', mode: 0o755 }];
+  const seals = validateNativeBundleSealReview(review, before);
+  const after = before.map(leaf => review.some(step => step.codeRelative === leaf.path) ? { ...leaf, sha256: 'resealed' } : leaf);
+  after.push({ path: version + '/_CodeSignature/CodeResources', sha256: 'seal', mode: 0o644 });
+  nativeResealChanges(before, after, seals);
+  assert.throws(() => validateNativeBundleSealReview(review.slice(1), before));
+  assert.throws(() => validateNativeBundleSealReview(review.map((step, i) => i ? step : { ...step, entitlements: { 'com.apple.security.cs.allow-jit': true } }), before));
+  assert.throws(() => validateNativeBundleSealReview(review.map((step, i) => i ? step : { ...step, sha256: 'changed' }), before));
+  for (const leafPath of [version + '/Libraries/original.dylib', 'Aux.app/Contents/Resources/aux/original.node']) assert.throws(() => nativeResealChanges(before, after.map(leaf => leaf.path === leafPath ? { ...leaf, sha256: 'changed' } : leaf), seals));
+  assert.throws(() => nativeResealChanges(before, [...after, { path: version + '/unexpected', sha256: 'extra', mode: 0o644 }], seals));
+});
+
+test('native-only utility never re-signs Apple helpers or runs a Keychain/provisioning/authority probe', () => {
   const source = readFileSync(new URL('./reuse-development-authority.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /runDevelopmentDpProbe|authenticateDevelopmentProfile|SecItem|xcodebuild|allowProvisioning|--deep|install-init|install-destroy/);
-  assert.equal((source.match(/codesign\(\['--force', '--sign', '-'/g) ?? []).length, 1);
-  assert.match(source, /signingChanges\(copied, after, \[\{ path: 'Aux.app'/);
+  assert.equal((source.match(/codesign\(\['--force', '--sign', '-'/g) ?? []).length, 2);
+  assert.match(source, /nativeResealChanges\(copied, after, nativeSeals\)/);
   assert.match(source, /verifyRetainedSignatures\(target, cache.retainedTargets\)/);
   assert.match(source, /authorityProofInherited: true/);
 });
