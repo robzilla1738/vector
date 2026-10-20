@@ -1,0 +1,59 @@
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -97,6 +97,18 @@
+                            border_thickness, border_thickness);
+ }
+ 
++// The Aux Agent coordinator installs an explicit empty border before adding
++// content. A null border still means the panel has not been initialized: keep
++// the stock estimate then, and for every ordinary panel/header border.
++gfx::Insets GetContentSizingInsets(const SidePanel* panel) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (panel->GetBorder() && panel->GetInsets().IsEmpty()) {
++    return panel->GetInsets();
++  }
++#endif
++  return GetBorderInsets();
++}
++
+ SidePanel::HorizontalAlignment GetHorizontalAlignment(
+     PrefService* pref_service,
+     std::optional<SidePanelEntryId> entry_id) {
+@@ -397,7 +409,7 @@
+     SetPanelWidth(width_from_pref.value());
+   } else {
+     SetPanelWidth(side_panel_ui->GetCurrentEntryDefaultContentWidth() +
+-                  GetBorderInsets().width());
++                  GetContentSizingInsets(this).width());
+   }
+ }
+ 
+@@ -408,7 +420,7 @@
+ gfx::Size SidePanel::GetMinimumSize() const {
+   const int min_height = 0;
+   return gfx::Size(
+-      SidePanelEntry::kSidePanelDefaultContentWidth + GetBorderInsets().width(),
++      SidePanelEntry::kSidePanelDefaultContentWidth + GetContentSizingInsets(this).width(),
+       min_height);
+ }
+ 
+@@ -461,8 +473,8 @@
+   const int side_panel_height =
+       height() > 0 ? height() : browser_view_->height();
+ 
+-  return gfx::Size(std::max(0, side_panel_width - GetBorderInsets().width()),
+-                   std::max(0, side_panel_height - GetBorderInsets().height()));
++  return gfx::Size(std::max(0, side_panel_width - GetContentSizingInsets(this).width()),
++                   std::max(0, side_panel_height - GetContentSizingInsets(this).height()));
+ }
+ 
+ void SidePanel::OnBoundsChanged(const gfx::Rect& previous_bounds) {
+@@ -567,7 +579,7 @@
+       return;
+     }
+ 
+-    int side_panel_contents_width = width() - GetBorderInsets().width();
++    int side_panel_contents_width = width() - GetContentSizingInsets(this).width();
+     int browser_window_width = browser_view_->width();
+     SidePanelMetrics::RecordSidePanelResizeMetrics(
+         id.value(), side_panel_contents_width, browser_window_width);

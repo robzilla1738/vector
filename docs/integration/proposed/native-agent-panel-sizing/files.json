@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v543",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+      "baselineSha256": "74192b21dd0a41a4fa0a88d65a0afd97e8fe601e19f52fef3b7b797287eeabaa",
+      "outputSha256": "7acc301223759233de2193457d641254b085c280396821c7381f1b3bd196b4b0"
+    }
+  ]
+}
