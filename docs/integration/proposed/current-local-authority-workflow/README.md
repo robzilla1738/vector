@@ -39,10 +39,10 @@ Use the actual reviewed public device ID from existing private output metadata, 
 node vendor/provided/current-development-authority.mjs prepare /absolute/request.json
 ```
 
-It returns `inputPath,inputSha256`. `plan` request:
+It returns `inputPath,inputSha256`. The signing-plan output must be a fresh **sibling** outside the preparation output, copied app and approved home (the legacy planner deliberately refuses overlapping review/input trees). `plan` request:
 
 ```json
-{"inputPath":".../inputs.json","inputSha256":"RETURNED_SHA","output":".../signing-plan"}
+{"inputPath":".../inputs.json","inputSha256":"RETURNED_SHA","output":"/absolute/repository/out/current-local-authority-v527-signing-plan"}
 ```
 
 ```
