@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "f0f525735 bookmark-admission outputs; root extension owner adds direct GURL include and //url dependency before compilation",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "4f3db28df0166e70958bca8092205ace3b304f2332dfdc6c430002189b55ba67",
+      "outputSha256": "276999580083f60f665837055ddd6f658b23cd328733766a6ed68c291566ead3"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "83042da212d2eae4bd46cb83719a8c81d945644f63b901de02d03b34d97da226",
+      "outputSha256": "c7604d33bd301d74dcba7fcfee93ce40564f977a077a03c6e80651087c732f36"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

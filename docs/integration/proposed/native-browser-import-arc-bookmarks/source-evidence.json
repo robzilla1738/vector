@@ -1,0 +1,187 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x42543c8",
+      "end": "0x4254498",
+      "sha256": "36374e371c4b760a6875fb410d5ac0ea1b9d0a92203df84638b8e5d558c2525f",
+      "listing": "worker-arc-gate.asm",
+      "listingSha256": "3c74085dc81abf7ff2fb3c86ab4e0d667b952004ee18c33a7ea93e520b497049"
+    },
+    {
+      "start": "0x4259984",
+      "end": "0x4259adc",
+      "sha256": "36ecff5b2a07f995d616fa006b7b114f635489b477136db51ab1b06645bf58de",
+      "listing": "arc-file-reader.asm",
+      "listingSha256": "d92b378ee9ffa7ab9ab608bf56dd0c73218ba95572d454994a06e52ac6a739fa"
+    },
+    {
+      "start": "0x426b4b0",
+      "end": "0x426be60",
+      "sha256": "e7b6ef80c5daa1d4410eca13270bbc6104dd7224a164fea6a3d0ae831bfd2737",
+      "listing": "arc-parser.asm",
+      "listingSha256": "bc7f50e4705493b1fab8add9fde270ec4ca4a2a9dd371f279af351e1248c2120"
+    },
+    {
+      "start": "0x426d388",
+      "end": "0x426d97c",
+      "sha256": "6c20ad06bd58aa989359590bf776fb7517fac79efab45f785989f6975623ce9d",
+      "listing": "arc-item-tree.asm",
+      "listingSha256": "98f1ff343622938e0af9648a799cb9ac5e9077d0c0e2ff580fb8252fa7e4a5bd"
+    },
+    {
+      "start": "0x426be60",
+      "end": "0x426c610",
+      "sha256": "8db66d1ade0fd1273d000c218596e2fe58b6f0fa0f069a165cf0b81e06eb0903",
+      "listing": "arc-augment.asm",
+      "listingSha256": "7b567467ddb431476b7a4ff63905f92a019d5bb0de043e6ddac6e43434eb0e54"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1f498",
+      "hex": "53746f7261626c65536964656261722e6a736f6e00",
+      "text": "StorableSidebar.json\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2044a",
+      "hex": "736964656261722e636f6e7461696e65727300",
+      "text": "sidebar.containers\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd96ce4b",
+      "hex": "6974656d7300",
+      "text": "items\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd91e78b",
+      "hex": "73706163657300",
+      "text": "spaces\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2045d",
+      "hex": "7369646562617253796e6353746174652e6974656d7300",
+      "text": "sidebarSyncState.items\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20474",
+      "hex": "7369646562617253796e6353746174652e73706163654d6f64656c7300",
+      "text": "sidebarSyncState.spaceModels\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20491",
+      "hex": "666972656261736553796e6353746174652e73796e63446174612e6974656d7300",
+      "text": "firebaseSyncState.syncData.items\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb204b2",
+      "hex": "666972656261736553796e6353746174652e73796e63446174612e73706163654d6f64656c7300",
+      "text": "firebaseSyncState.syncData.spaceModels\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd7ef960",
+      "hex": "76616c756500",
+      "text": "value\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd899d54",
+      "hex": "70726f66696c6500",
+      "text": "profile\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdadd5c5",
+      "hex": "637573746f6d00",
+      "text": "custom\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20515",
+      "hex": "5f3000",
+      "text": "_0\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20518",
+      "hex": "6469726563746f7279426173656e616d6500",
+      "text": "directoryBasename\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2052a",
+      "hex": "6e6577436f6e7461696e657249447300",
+      "text": "newContainerIDs\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2053a",
+      "hex": "70696e6e656400",
+      "text": "pinned\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20541",
+      "hex": "636f6e7461696e657249447300",
+      "text": "containerIDs\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb204fa",
+      "hex": "6368696c6472656e49647300",
+      "text": "childrenIds\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd7fcc1c",
+      "hex": "7469746c6500",
+      "text": "title\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20506",
+      "hex": "556e7469746c656420537061636500",
+      "text": "Untitled Space\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd88ac3a",
+      "hex": "64656661756c7400",
+      "text": "default\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20558",
+      "hex": "556e7469746c656420466f6c64657200",
+      "text": "Untitled Folder\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2054e",
+      "hex": "646174612e6c69737400",
+      "text": "data.list\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb20568",
+      "hex": "646174612e7461622e736176656455524c00",
+      "text": "data.tab.savedURL\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb2057a",
+      "hex": "646174612e7461622e73617665645469746c6500",
+      "text": "data.tab.savedTitle\u0000",
+      "encoding": "utf-8"
+    }
+  ]
+}
