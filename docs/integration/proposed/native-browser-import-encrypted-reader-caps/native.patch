@@ -1,0 +1,124 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -669,6 +669,14 @@
+   return result;
+ }
+ 
++// Supplied encrypted readers use SQLite string lengths, without Text()'s
++// inherited 8192-byte truncation. Native SQLite/allocation limits still apply.
++std::string EncryptedSourceText(sqlite3_stmt* statement, int column) {
++  const auto* value = sqlite3_column_text(statement, column);
++  const int size = sqlite3_column_bytes(statement, column);
++  return !value || size < 0 ? std::string()
++                           : std::string(reinterpret_cast<const char*>(value), size);
++}
+ base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+                                       std::string category,
+                                       const SourceKey& key) {
+@@ -702,7 +710,6 @@
+     }
+   }
+   base::ListValue rows;
+-  size_t bytes = 0;
+   std::set<std::string> seen_passwords;
+   size_t encrypted_values = 0;
+   size_t decrypted_values = 0;
+@@ -720,14 +727,12 @@
+               "creation_utc,host_key,top_frame_site_key,name,value,encrypted_"
+               "value,path,expires_utc,is_secure,is_httponly,last_access_utc,has_"
+               "expires,is_persistent,priority,samesite,source_scheme,source_port,"
+-              "last_update_utc,source_type,has_cross_site_ancestor FROM cookies "
+-              "LIMIT 50001"
++              "last_update_utc,source_type,has_cross_site_ancestor FROM cookies"
+             : "SELECT "
+               "origin_url,action_url,signon_realm,username_element,username_"
+               "value,password_element,password_value,date_created,date_last_used,"
+               "date_password_modified,times_used,blacklisted_by_user,scheme FROM "
+-              "logins "
+-              "LIMIT 50001");
++              "logins");
+     if (!query) {
+       return fail("Encrypted source database lacks required columns");
+     }
+@@ -737,15 +742,15 @@
+       int column = cookies ? 5 : 6;
+       auto* blob = sqlite3_column_blob(query.get(), column);
+       const int length = sqlite3_column_bytes(query.get(), column);
+-      if (length < 0 || length > 1024 * 1024) {
+-        return fail("Encrypted source row exceeds the size limit");
+-      }
+-      const auto host = cookies ? Text(query.get(), 1) : std::string();
++      if (length < 0) {
++        return fail("Encrypted source row has an invalid byte count");
++      }
++      const auto host = cookies ? EncryptedSourceText(query.get(), 1) : std::string();
+       std::optional<std::string> plaintext;
+       if (cookies) {
+         // Supplied425a8f4..425a918 prefers a nonempty plaintext value even
+         // when encrypted_value is also populated.
+-        plaintext = Text(query.get(), 4);
++        plaintext = EncryptedSourceText(query.get(), 4);
+       }
+       if (blocked) {
+         plaintext = std::string();
+@@ -787,8 +792,8 @@
+       row.Set("secret", std::move(*plaintext));
+       if (cookies) {
+         row.Set("host", host);
+-        row.Set("name", Text(query.get(), 3));
+-        row.Set("path", Text(query.get(), 6));
++        row.Set("name", EncryptedSourceText(query.get(), 3));
++        row.Set("path", EncryptedSourceText(query.get(), 6));
+         for (auto [field, index] :
+              {std::pair{"created", 0}, {"expires", 7}, {"accessed", 10}}) {
+           row.Set(field,
+@@ -798,7 +803,7 @@
+         row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
+         row.Set("sameSite", sqlite3_column_int(query.get(), 14));
+         row.Set("priority", sqlite3_column_int(query.get(), 13));
+-        row.Set("partition", Text(query.get(), 2));
++        row.Set("partition", EncryptedSourceText(query.get(), 2));
+         row.Set("crossSite", !!sqlite3_column_int(query.get(), 19));
+         row.Set("sourceScheme", sqlite3_column_int(query.get(), 15));
+         row.Set("sourcePort", sqlite3_column_int(query.get(), 16));
+@@ -812,7 +817,7 @@
+                                     {"usernameElement", 3},
+                                     {"username", 4},
+                                     {"passwordElement", 5}}) {
+-          row.Set(field, Text(query.get(), index));
++          row.Set(field, EncryptedSourceText(query.get(), index));
+         }
+         for (auto [field, index] :
+              {std::pair{"created", 7}, {"used", 8}, {"modified", 9}}) {
+@@ -837,20 +842,12 @@
+           continue;
+         }
+       }
+-      if (rows.size() >= 50000) {
+-        return fail("Encrypted category exceeds the 50000-row limit");
+-      }
+-      bytes += 256;
+       for (auto [field, value] : row) {
+         if (value.is_string()) {
+-          bytes += value.GetString().size();
+           if (!base::IsStringUTF8(value.GetString())) {
+             return fail("Decoded source metadata contains invalid text");
+           }
+         }
+-      }
+-      if (bytes > 32 * 1024 * 1024) {
+-        return fail("Decoded category exceeds the 32 MiB limit");
+       }
+       rows.Append(std::move(row));
+     }
+--- a/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+@@ -192,7 +192,7 @@
+ std::optional<std::string> DecryptSourceValue(std::string_view ciphertext,
+                                               const SourceKey& key) {
+   if (!ciphertext.starts_with("v10") || ciphertext.size() <= 3 ||
+-      ciphertext.size() > 1024 * 1024 || (ciphertext.size() - 3) % 16) {
++      (ciphertext.size() - 3) % 16) {
+     return {};
+   }
+   const auto payload = ciphertext.substr(3);

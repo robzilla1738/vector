@@ -1,0 +1,37 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "cookie-reader.asm",
+      "start": "0x425a380",
+      "endExclusive": "0x425b128",
+      "bytesSha256": "9649dafbcff24b53efbb39ca055e25563c3bf556e32cb42152fd406ee79fa83f",
+      "sha256": "033251c1c9159d2c3198bfcf40f7e7991bbc64515f3bbccb2084a3ba6249da06"
+    },
+    {
+      "file": "password-reader.asm",
+      "start": "0x425b128",
+      "endExclusive": "0x425c1c0",
+      "bytesSha256": "34dd830953da6137c009d6aed0b0469cf6b907806f39fdcf71baec937c888e5a",
+      "sha256": "b556d9365b1ac904ab5f3db063d87759e96e8a2bbf1ad895a94de3971f46b1da"
+    },
+    {
+      "file": "shared-decode.asm",
+      "start": "0x425cda0",
+      "endExclusive": "0x425cf50",
+      "bytesSha256": "37ef4c2b6684a4798f23d79959b8ca0d1f961f229c543d02c914bec8bb38b064",
+      "sha256": "e8103cba1c544e766761a2f7cf2b4be3652faf6183a9a6b6749c4890f1945f3e"
+    }
+  ],
+  "parents": {
+    "migrator": "8fe961c1f cookie-source output",
+    "crypto": "actual431 source_crypto_mac.mm, only decoder guard changes"
+  },
+  "sql": {
+    "0xdb1f55e": "SELECT creation_utc, host_key, top_frame_site_key, name, value, encrypted_value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, samesite, source_scheme, source_port, last_update_utc, source_type, has_cross_site_ancestor FROM cookies",
+    "0xdb1f67a": "SELECT origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, date_last_used, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, sender_profile_image_url, date_last_filled, actor_login_approved FROM logins"
+  }
+}
