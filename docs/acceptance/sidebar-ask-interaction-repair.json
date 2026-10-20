@@ -2,7 +2,7 @@
   "version": 1,
   "date": "2026-10-20",
   "composition": "v524",
-  "status": "Built and launched; controls rendered and collapse verified; genuine hover check pending",
+  "status": "Built and launched; collapse observed and genuine hover confirmed by owner; AI availability and visual parity unresolved",
   "build": {
     "receipt": "out/native-integration/native-full-build-v524.json",
     "sha256": "73698e24923e59a0e24614e1259622db25af526e5af3222f5ad164d55e0b5bff",
@@ -33,5 +33,6 @@
     "path": "out/provided-candidate-local-browser-pass/package.json",
     "sha256": "a97f7e36165cf7bcf5cab5dc7292a8aa8310f4b1e465d62650231f9bcaa691b5"
   },
-  "normalProfile": true
+  "normalProfile": true,
+  "ownerHoverObservation": "Owner confirmed floating sidebar appears on far-left hover and hides when moving away; requested seamless URL area."
 }

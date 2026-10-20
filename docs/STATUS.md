@@ -2,11 +2,15 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Current scoped local-signing exception — 2026-10-20
+
+The owner explicitly approved local development signing of the current password-manager-free daemon and necessary fixed helpers for this build, using the existing identity and disposable Aux scope. This overrides the ordinary no-signing rule only for this repair. No provisioning, release, notarization or owner-profile access is authorized. Current execution and real AI-control acceptance remain pending.
+
 ## Sidebar and Ask interaction repair — 2026-10-20
 
 Current candidate v524 restores omitted original normal-collapse frame animation dispatch, initial frame motion state, and retained-to-docked clearing; stale hover output is no longer sufficient to admit an overlay. The complete Ask options row was hidden by the supplied null-account gate, not removed CSS. Its disconnected branch now reuses supplied toolbar/control renderers with unavailable labels and disabled account-dependent actions; the resolved-account branch remains unchanged. This is not working AI availability. A narrow bubble-widget null guard addresses the matching activation/theme-change crash path.
 
-Actual Aside comparison observed Ask controls (composer, project, permission, model, reasoning, dictation) and a fully hidden collapsed sidebar. CUA edge click did not reveal Aside either, so it is not hover acceptance evidence. v524 native build and package passed. Actual regular-window observation confirms all six disconnected Ask control categories and a fully hidden collapsed sidebar after expand/collapse, without the previous empty rail. Recovery notice dismissal no longer reproduced the activation crash. Genuine pointer-hover observation remains pending; no hover acceptance is claimed. No signing, account fabrication, credential operation or owner-profile copying performed.
+Actual Aside comparison observed Ask controls (composer, project, permission, model, reasoning, dictation) and a fully hidden collapsed sidebar. CUA edge click did not reveal Aside either, so it is not hover acceptance evidence. v524 native build and package passed. Actual regular-window observation confirms all six disconnected Ask control categories and a fully hidden collapsed sidebar after expand/collapse, without the previous empty rail. Recovery notice dismissal no longer reproduced the activation crash. The owner subsequently verified genuine pointer movement reveals the floating sidebar and moving away hides it; the remaining reported mismatch is the toolbar/page seam. No signing, account fabrication, credential operation or owner-profile copying performed.
 
 ## Native frame fidelity pass — 2026-10-20
 
