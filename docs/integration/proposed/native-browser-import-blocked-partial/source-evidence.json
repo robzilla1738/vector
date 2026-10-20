@@ -1,0 +1,47 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "attempt-and-decode.asm",
+      "start": "0x425b304",
+      "endExclusive": "0x425b3ac",
+      "bytesSha256": "44bcfc8472a792eaca5a701cd21f562982609ef2c66f111ebf958f2c478eec0c",
+      "sha256": "39cc4bfea185b77a120aa911e7be6464ae9b97690e68695fe0591f5622066208"
+    },
+    {
+      "file": "aggregate-result.asm",
+      "start": "0x425b784",
+      "endExclusive": "0x425b7d8",
+      "bytesSha256": "be919079ad1b29fbb77fb7f3fd8ed897b5e9af07fa462323d120832d11a8b7be",
+      "sha256": "f53ac90add3d51134818e235413bed0fb7681ce76e1e17e3015753ee8fc9bed7"
+    },
+    {
+      "file": "blocked-form.asm",
+      "start": "0x425bcf0",
+      "endExclusive": "0x425bdf0",
+      "bytesSha256": "370773537c70708dd004d5f0b2e4cc62963ba93e536dd70a05e89f882a9f3b54",
+      "sha256": "fc2a22104bbf9b70a759e1a224bae8070020cff6c7e70c25646b060b85a54ecd"
+    },
+    {
+      "file": "password-copy-or-decrypt.asm",
+      "start": "0x425cda0",
+      "endExclusive": "0x425cf50",
+      "bytesSha256": "37ef4c2b6684a4798f23d79959b8ca0d1f961f229c543d02c914bec8bb38b064",
+      "sha256": "e8103cba1c544e766761a2f7cf2b4be3652faf6183a9a6b6749c4890f1945f3e"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/password_manager/core/browser/password_store/stored_credential.h",
+      "sha256": "3f0392d8a2e0847397636f2522dc144951b197ab93ceb1d3230be3451888ccd6"
+    }
+  ],
+  "parentReader": {
+    "proposal": "native-browser-import-password-stores",
+    "commit": "b63f85c0b",
+    "outputSha256": "62e00dcab50452ac9b05dec7dbd711e33f84e43a2f4710eb634f1b05a4aa4e37"
+  }
+}

@@ -1,0 +1,99 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -606,6 +606,8 @@
+   base::ListValue rows;
+   size_t bytes = 0;
+   std::set<std::string> seen_passwords;
++  size_t encrypted_passwords = 0;
++  size_t decrypted_passwords = 0;
+   for (const auto& path : paths) {
+     std::string error;
+     auto db = Snapshot(path, error);
+@@ -643,9 +645,7 @@
+     }
+     int status;
+     while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
+-      if (!cookies && sqlite3_column_int(query.get(), 11)) {
+-        continue;
+-      }
++      const bool blocked = !cookies && sqlite3_column_int(query.get(), 11);
+       int column = cookies ? 4 : 6;
+       auto* blob = sqlite3_column_blob(query.get(), column);
+       const int length = sqlite3_column_bytes(query.get(), column);
+@@ -653,15 +653,30 @@
+         return fail("Encrypted source row exceeds the size limit");
+       }
+       std::optional<std::string> plaintext;
+-      if (length) {
+-        plaintext = DecryptSourceValue(
+-            std::string_view(static_cast<const char*>(blob), length), key);
++      if (blocked) {
++        plaintext = std::string();
++      } else if (length) {
++        const std::string_view ciphertext(static_cast<const char*>(blob), length);
++        if (!cookies) {
++          ++encrypted_passwords;
++        }
++        // Supplied425ce4c copies a non-v10 password unchanged. v10 alone
++        // requires the real source-derived AES key.
++        plaintext = !cookies && !ciphertext.starts_with("v10")
++                        ? std::optional<std::string>(ciphertext)
++                        : DecryptSourceValue(ciphertext, key);
++        if (plaintext && !cookies) {
++          ++decrypted_passwords;
++        }
+       } else if (cookies) {
+         plaintext = Text(query.get(), 3);
+       } else {
+         plaintext = std::string();
+       }
+       if (!plaintext) {
++        if (!cookies) {
++          continue;
++        }
+         return fail(
+             "Source value could not be decrypted; wrong key, denied access or "
+             "unsupported encryption version");
+@@ -720,14 +735,18 @@
+         }
+         row.Set("timesUsed", sqlite3_column_int(query.get(), 10));
+         row.Set("scheme", sqlite3_column_int(query.get(), 12));
++        row.Set("blocked", blocked);
++        if (blocked) {
++          row.Set("username", "");
++        }
+       }
+       if (!cookies) {
+         // Original425b658..425b74c joins realm, UTF8 username, UTF8 password,
+         // and blocked state with newlines; its set insertion keeps the first.
+-        // Blocked entries are still excluded by this existing reader above.
+         const auto identity = *row.FindString("realm") + "\n" +
+                               *row.FindString("username") + "\n" +
+-                              *row.FindString("secret") + "\n0";
++                              *row.FindString("secret") + "\n" +
++                              (blocked ? "1" : "0");
+         if (!seen_passwords.insert(identity).second) {
+           continue;
+         }
+@@ -753,6 +772,11 @@
+       return fail("Encrypted source snapshot failed while reading rows");
+     }
+   }
++  // Original425b78c admits no encrypted attempts, or at least one decoded
++  // password across both stores; failed individual rows are not imported.
++  if (!cookies && encrypted_passwords && !decrypted_passwords) {
++    return fail("Source passwords could not be decrypted");
++  }
+   result.Set(cookies ? "cookies" : "passwords", std::move(rows));
+   return result;
+ }
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -725,6 +725,7 @@
+     form.date_last_used = Timestamp(row, "used", false);
+     form.date_password_modified = Timestamp(row, "modified", false);
+     form.times_used_in_html_form = row.FindInt("timesUsed").value_or(0);
++    form.blocked_by_user = row.FindBool("blocked").value_or(false);
+     if (const auto* note = row.FindString("note"); note && !note->empty()) {
+       form.SetPasswordNote(base::UTF8ToUTF16(*note));
+     }
