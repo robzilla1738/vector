@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "staticImage": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042530c0.c",
+      "sha256": "62b8337a2832b11d2c0feafe4bae4614206401c01931d0aaba939f6a7066e0ca"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042534e8.c",
+      "sha256": "b6edefd2b936149e9f9aa19bfc5d3501bc38fd25485d05b7153f8f53408fb509"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04255868.c",
+      "sha256": "a2f51007f34913b84c99c9163b291ad5f322573f81b904b7928974222cf21b9d"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04258618.c",
+      "sha256": "8bb09c41e36a79db9f3f1e255046d150dda4675bbd3464b0db0ceda31d5c1291"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04258c80.c",
+      "sha256": "0b6d82f26d17f98715552e9ced8ba4a59678d1382659f9970ff39b65ad8b7cd4"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0424f554.c",
+      "sha256": "f50be1e67e79a6bd4a886e214c5a617876e6d10b8e590cbc085fd4a2282c6f1c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "sha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "sha256": "147067b7fcf60b1ef6ed32883c1aeefbdb7758c7b506668cf810343890e815a5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "sha256": "d96fa5a3ea251fee4d9211292b5b7cc57591f307e60968b7db636a46d2d77d67"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.cc",
+      "sha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3"
+    }
+  ],
+  "boundedCopyHelper": {
+    "entry": "0x0425d438",
+    "endExclusive": "0x0425e608",
+    "size": 4560,
+    "sha256": "60fa796d22782c5b3145b669eb6607cf25cba64fe70329adcddd1a44ec578d40",
+    "reaEvidenceId": "ev_7d5d63b7c72348d8354bbea9a70cb5424aa61f0440a9ebac28f3d0ad66f8649a",
+    "limitations": "Raw helper only. External callees/string table are not mapped in its Ghidra Program; retained full supplied decompile and LLVM operands independently anchor caller and constants."
+  },
+  "encryptedFileExclusions": [
+    {
+      "pointerAddress": "0xe8a72b0",
+      "stringAddress": "0xdac011c",
+      "value": "Cookies"
+    },
+    {
+      "pointerAddress": "0xe8a72b8",
+      "stringAddress": "0xdb1f94f",
+      "value": "Cookies-journal"
+    },
+    {
+      "pointerAddress": "0xe8a72c0",
+      "stringAddress": "0xdb1f95f",
+      "value": "Extension Cookies"
+    },
+    {
+      "pointerAddress": "0xe8a72c8",
+      "stringAddress": "0xdb1f971",
+      "value": "Extension Cookies-journal"
+    },
+    {
+      "pointerAddress": "0xe8a72d0",
+      "stringAddress": "0xdb1f2bf",
+      "value": "Login Data"
+    },
+    {
+      "pointerAddress": "0xe8a72d8",
+      "stringAddress": "0xdb1f98b",
+      "value": "Login Data-journal"
+    },
+    {
+      "pointerAddress": "0xe8a72e0",
+      "stringAddress": "0xdb1f2ca",
+      "value": "Login Data For Account"
+    },
+    {
+      "pointerAddress": "0xe8a72e8",
+      "stringAddress": "0xdb1f99e",
+      "value": "Login Data For Account-journal"
+    }
+  ],
+  "directStartCalls": [
+    {
+      "address": "0x0427baa0",
+      "mode": "literal1",
+      "owner": "extension import job"
+    },
+    {
+      "address": "0x080cc6d8",
+      "mode": "loaded bound value",
+      "owner": "native WebUI chooser callback"
+    }
+  ],
+  "fullFlowRouting": "Mode1 branches to live-worker04253e58; other branch reserves targetpath and posts04255868. Do not reroute mode1 based on descriptor membership.",
+  "nativePatchPrepared": false,
+  "sharedNativeWritten": false,
+  "sourceProfilesRead": false,
+  "targetExecuted": false,
+  "compiled": false,
+  "signedOrProvisioned": false
+}

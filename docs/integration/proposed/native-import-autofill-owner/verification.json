@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "staticSourcePinsMatched": true,
+  "staticSourcePinCount": 7,
+  "nativeSnapshotPinsCurrent": false,
+  "nativePinObservations": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "recordedSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3",
+      "actualSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3",
+      "matched": true
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "recordedSha256": "147067b7fcf60b1ef6ed32883c1aeefbdb7758c7b506668cf810343890e815a5",
+      "actualSha256": "ad43322b1a083e1dacb905207156ab3776862c73f7a82935c739d073bbb9253a",
+      "matched": false
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "recordedSha256": "d96fa5a3ea251fee4d9211292b5b7cc57591f307e60968b7db636a46d2d77d67",
+      "actualSha256": "d96fa5a3ea251fee4d9211292b5b7cc57591f307e60968b7db636a46d2d77d67",
+      "matched": true
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.h",
+      "recordedSha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba",
+      "actualSha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba",
+      "matched": true
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.cc",
+      "recordedSha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3",
+      "actualSha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3",
+      "matched": true
+    }
+  ],
+  "note": "The integrator changed native importer source during static documentation capture. Native hashes are historical observations, not a current patch baseline or replay proof. No native patch is included.",
+  "evidenceFiles": [
+    {
+      "path": "README.md",
+      "sha256": "4311bdb1645b36338747006c2efe71a116e32c774f4f9364e652f3cafa41aa8c"
+    },
+    {
+      "path": "api-current-profile-mode.asm",
+      "sha256": "29defaf072b4c8ce581433c47bdc78f169d2fafa9b336bd7b394fa78202bf083"
+    },
+    {
+      "path": "evidence.json",
+      "sha256": "e7dded5c370394ce4d9ea2ed49aeea931776b030c1b14d2595df76eda35cf1a3"
+    },
+    {
+      "path": "new-target-created-callback.asm",
+      "sha256": "a31f1da5b6049ae1408da95fd2f44ba2fe64d3b6752c01eed5416aa21a688601"
+    },
+    {
+      "path": "new-target-path-reservation.asm",
+      "sha256": "aabbea63b0bcf7ce99cd7f557611983b1d678d6b8f420e9dd85daf0a684bb620"
+    },
+    {
+      "path": "recursive-copy-tail.asm",
+      "sha256": "6018da003b830ee2c703fc861ca0ed65a15ab6a2fa640abc7ecf8da1fa4b73cb"
+    },
+    {
+      "path": "recursive-copy.decompiled.c",
+      "sha256": "65bb0b1b1dbced117ce2ade528f2ebaf4f8f83972044149b546cbb5d4cd01469"
+    },
+    {
+      "path": "recursive-copy.snapshot.json",
+      "sha256": "51e1bfc05d912cf2d5181401be0179465808168754e69f59812c16bbeec806e0"
+    },
+    {
+      "path": "webui-selection-dispatch.asm",
+      "sha256": "48fde78c7c97fd16df892860333f7529af87f98caf0c7a801fa107d6e0c8d672"
+    },
+    {
+      "path": "webui-selection-mode.asm",
+      "sha256": "e89fc460a58d63eee25c78966d736451908c84b7e06814478b2f9c8ca0e22ba6"
+    }
+  ],
+  "nativeChanges": 0,
+  "targetExecuted": false,
+  "sourceProfileRead": false,
+  "compiled": false
+}
