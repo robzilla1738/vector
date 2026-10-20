@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "d2d906e4e leaf output plus18588efb6 model mutations; no region/core overlap",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "85f1f5654159e1112fc47a41b1b35550abc897b26f2e9bf246d910ce123bfa44",
+      "outputSha256": "6cf1ede57d31e66dd114179a555ff3424fb6b9e25c598f337a719269e958eeb5",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "dfa673d47e3ad8e35d87a13726d34719863a21f3c936bf2491b331145a086bfe",
+      "outputSha256": "fe9971a84a8a650717211369a678d90cb031ea28f76dcdc6f965654e14d3ce1d",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "native drag/drop/ghost",
+    "original hover-card controller integration",
+    "compact/temporary-width presentation writer",
+    "custom active RGB source"
+  ]
+}

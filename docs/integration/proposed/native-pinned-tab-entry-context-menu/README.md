@@ -1,0 +1,13 @@
+# Supplied saved-pin context menu
+
+Apply after `d2d906e4e` leaf and `18588efb6` saved-entry mutation helpers. Only the two leaf files change; root owns composition/build. Exact baseline/output hashes are in `manifest.json`. No GN or shared native changes are made here.
+
+The pinned original `EntryView` press path converts the actual entry's point to screen coordinates (`0460abe0`). Its live-association branch calls the real tab controller with the real tab, entry anchor and mouse source (`0460ac44 → 04124990`). Its other branch owns a one-item menu: command **1**, localized resource **11712**, actual text **Unpin**. The resource is an alias in the original UTF-8 locale DataPack, not present in the flattened resource text export; the verifier resolves the actual alias and pins the complete static locale file.
+
+The original delegate validates command1 and the remembered valid GURL (`04609b08`), calls the actual remove-first helper (`04609b58 → 041d4f20`), then clears that GURL. The menu-close delegate checks the actual owned model, resets runner/model and clears the URL (`04609c7c..04609d44`). These operations remove the first exact saved URL without closing another live tab.
+
+The Chromium155 adaptation instantiates its real `TabContextMenuController` and `TabMenuModel` for the same matched native tab handle, borrowing the actual region controller's command delegate. It keeps the current native menu model, extension items and command behavior rather than designing a replacement menu. The leaf owns that controller, as the original leaf owns its native controller at `+358`; it also holds155's current-state hover lock until the real menu-close callback. The callback is weak. The saved-only runner uses the original run flags9 (`HAS_MNEMONICS | CONTEXT_MENU`), actual widget, screen rectangle and mouse source1. No new layout, labels or API mocks are introduced.
+
+Profile pause cancels both owned menu forms before invalidating callbacks, discarding observers or rebinding the real model. Destruction does likewise. This is the required155 same-window profile-transaction adaptation; normal menu close does not retire the leaf. A menu uses a copied saved URL, not a mutable entry index, so a scheduled pref refresh cannot change its command destination.
+
+`python3 verify.py` checks original function ranges, call targets, the original alias, actual155 API baselines, command/lifetime source boundaries and exact two-file incremental patch replay. No native compilation, menu dialog, owner profile, app launch or runtime fidelity acceptance was performed. Remaining leaf gaps are drag/drop/ghost, hover-card controller, exact compact/temporary-width presentation writer and optional custom active RGB.

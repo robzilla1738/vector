@@ -1,0 +1,56 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "EntryView context dispatch",
+      "rva": "0x460ab6c",
+      "bytes": 852,
+      "sha256": "218173773f7c36507e48df13995e15b14dabd22e8514493b1ead3563f5fd8930"
+    },
+    {
+      "name": "Unpin delegate and close ownership",
+      "rva": "0x4609b08",
+      "bytes": 588,
+      "sha256": "965789c57376d4dc27319bf9a57ce2911f4c659aeb93607523d142c53d6c191d"
+    }
+  ],
+  "locale": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/en.lproj/locale.pak",
+    "sha256": "b3e12b14fee821ba97f6efd73554d344c8c79791ef60e46c05029859853320c6",
+    "resourceId": 11712,
+    "value": "Unpin"
+  },
+  "platformSources": [
+    {
+      "path": "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h",
+      "sha256": "6980854b7e01184e395b24e6236c11a9e69b9dad3a936a10927fbe3e8ba275fc"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h",
+      "sha256": "b877cd9b3bba2dc0f6ad241a8341096172498d0754f4bfdd67b01cdc36597ab0"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc",
+      "sha256": "40f5c1210307aedb51961a32f466f8a9b6faf5cec3bcbbef4f1edf3a1d68e6d2"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_menu_model_delegate.h",
+      "sha256": "37fa6e14e24a3737e5a1794e0c36b06b0b318ac528b5ffd82bea549e10e7a1e3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/base_tab_strip_region_view.h",
+      "sha256": "7e0691923e3af84fe3ca923578ddb4940e5b2f440faab1ab6b4cd63d6ab1e462"
+    },
+    {
+      "path": "ui/menus/simple_menu_model.h",
+      "sha256": "09d2fc46647ee5de1dc6350ffcf95ee84ea22eedd7db1ab752464a2bf00ad47a"
+    },
+    {
+      "path": "ui/views/controls/menu/menu_runner.h",
+      "sha256": "febb2928b25a680657ad91ffbe9754357d4aa669bcca76d35bc2059b7474c463"
+    }
+  ]
+}
