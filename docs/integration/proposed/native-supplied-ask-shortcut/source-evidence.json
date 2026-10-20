@@ -1,0 +1,91 @@
+{
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "ranges": [
+      {
+        "name": "accelerators",
+        "address": "0xcef735c",
+        "size": 24,
+        "sha256": "7e7aacca417a0625f04de6ee5eb33149074c0030e2ac92e96bd8f8728538bf9b",
+        "hex": "148500001000000045000000138500001200000045000000"
+      },
+      {
+        "name": "dispatch-entry",
+        "address": "0xd6e1954",
+        "size": 4,
+        "sha256": "917389662e12a208ea2167ccd667d6af71a1038d2b2781997ea1988e3a9c2b95",
+        "hex": "cc180000"
+      },
+      {
+        "name": "key-pointer",
+        "address": "0xe85d7d0",
+        "size": 8,
+        "sha256": "afd0e98c50935fe95a31c636873a0a04122e48587053f4d98b6db265196dcce0",
+        "hex": "7d0aa50d00001000"
+      },
+      {
+        "name": "key-name",
+        "address": "0xda50a7d",
+        "size": 24,
+        "sha256": "007e065e0ce0b80dc83545be586141f771e5c64d1c85a69b1866e6bf5a9871ec",
+        "hex": "5369646550616e656c55493a3a6b446174614b6579496d70"
+      },
+      {
+        "name": "extension-id",
+        "address": "0xce48949",
+        "size": 32,
+        "sha256": "e2ab54dc565d74622b86346998f35014adda2972f972b07dd0445cce43baa551",
+        "hex": "666a6468706862646c666a6f676f62646f666f6161676e6c6e6b6f6962646765"
+      }
+    ]
+  },
+  "evidenceFiles": [
+    {
+      "path": "evidence/accelerators.bin",
+      "sha256": "7e7aacca417a0625f04de6ee5eb33149074c0030e2ac92e96bd8f8728538bf9b",
+      "size": 24
+    },
+    {
+      "path": "evidence/action-helper.asm",
+      "sha256": "9fad2eabd168db151c3c9361267bd4bc72d174fe30864bd63ea0fec53b550887",
+      "size": 18283
+    },
+    {
+      "path": "evidence/dispatch-entry.bin",
+      "sha256": "917389662e12a208ea2167ccd667d6af71a1038d2b2781997ea1988e3a9c2b95",
+      "size": 4
+    },
+    {
+      "path": "evidence/dispatcher.asm",
+      "sha256": "730acdb9e9a8b7acb1b9af2968ae3ab5079c91131dd4bf9e9c0a286e94fa2344",
+      "size": 159119
+    },
+    {
+      "path": "evidence/dispatcher.decompiled.c",
+      "sha256": "fca7a7cff8f8e48cb5c2992e850a61dea7641f3e56945aed2b006cbdd2452b50",
+      "size": 68441
+    },
+    {
+      "path": "evidence/extension-id.bin",
+      "sha256": "e2ab54dc565d74622b86346998f35014adda2972f972b07dd0445cce43baa551",
+      "size": 32
+    },
+    {
+      "path": "evidence/key-name.bin",
+      "sha256": "007e065e0ce0b80dc83545be586141f771e5c64d1c85a69b1866e6bf5a9871ec",
+      "size": 24
+    },
+    {
+      "path": "evidence/key-pointer.bin",
+      "sha256": "afd0e98c50935fe95a31c636873a0a04122e48587053f4d98b6db265196dcce0",
+      "size": 8
+    }
+  ],
+  "observation": "Integrator observed actual supplied Aside CmdE closes existing panel, reopens same real route/context, then closes. Separate Aux533 CmdE did nothing while actual extension action opened panel.",
+  "limits": [
+    "No native compilation/runtime in lane",
+    "Original vtable method spelling is stripped; actual typed SidePanelUI producer plus actual supplied toggling observation mapped to155 public Toggle API",
+    "No fake account/session or provider inventory"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "baseline": "actual-native-v533",
+  "files": [
+    {
+      "path": "chrome/app/chrome_command_ids.h",
+      "baselineSha256": "52e80b67f21cdf7310e1c1b1d22eb04fc38f0077b2ba9f602f41c3ecc6d3657b",
+      "outputSha256": "fdc0bf334cfc96894ac03665789a5ecb15335f2aa91ad43d5f71ab0edeb3dfba",
+      "anchors": [
+        {
+          "find": "#define IDC_AUX_OPEN_NEW_CHAT           34067",
+          "replace": "#define IDC_AUX_OPEN_NEW_CHAT           34067\n#define IDC_AUX_ASK                     34068",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/accelerators_cocoa.mm",
+      "baselineSha256": "06f946e5a862c26bd57435e56ed20c261133f5a131f41d2eaf41c4cc0d94176b",
+      "outputSha256": "58a5d54d57e9b337070a2cc840cd287646817345b9f17852a573b2df3b449e1c",
+      "anchors": [
+        {
+          "find": "    // Supplied AcceleratorsCocoa entry0xcef7368, command34067.",
+          "replace": "    // Supplied AcceleratorsCocoa entry0xcef735c, command34068.\n    {IDC_AUX_ASK, ui::EF_COMMAND_DOWN, ui::VKEY_E},\n    // Supplied AcceleratorsCocoa entry0xcef7368, command34067.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "859e6eba1d38fa61d21d61843761dd003b44a35df14ad2058ac1ff0cce7cdffa",
+      "outputSha256": "8fbc846b5a40ca414979a2d82e1826981b3582665ad215a7b1a6f2d5f7bada6d",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/views/frame/aux_chat_navigation.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_chat_navigation.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"",
+          "count": 1
+        },
+        {
+          "find": "    case IDC_AUX_OPEN_NEW_CHAT:\n      aux::OpenNewChat(*browser_);\n      break;",
+          "replace": "    case IDC_AUX_OPEN_NEW_CHAT:\n      aux::OpenNewChat(*browser_);\n      break;\n    case IDC_AUX_ASK:\n      // Original command34068 toggles the actual Agent extension panel in the\n      // current window; its supplied WebContents owns account/session context.\n      if (auto* panel = SidePanelUI::From(browser_)) {\n        panel->Toggle(\n            SidePanelEntryKey(SidePanelEntryId::kExtension,\n                              aux::kAgentExtensionId),\n            SidePanelOpenTrigger::kExtension);\n      }\n      break;",
+          "count": 1
+        },
+        {
+          "find": "  command_updater_->UpdateCommandEnabled(IDC_AUX_OPEN_NEW_CHAT, true);",
+          "replace": "  command_updater_->UpdateCommandEnabled(IDC_AUX_OPEN_NEW_CHAT, true);\n  command_updater_->UpdateCommandEnabled(IDC_AUX_ASK, true);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

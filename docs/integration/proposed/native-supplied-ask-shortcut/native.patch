@@ -1,0 +1,56 @@
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -106,6 +106,7 @@
+ #define IDC_AUX_NEW_CHAT                34064
+ // Supplied native New Chat command; separate from retired shell dispatch.
+ #define IDC_AUX_OPEN_NEW_CHAT           34067
++#define IDC_AUX_ASK                     34068
+ #define IDC_AUX_SPLIT_SIDE_BY_SIDE      34065
+ #define IDC_AUX_SPLIT_STACKED           34066
+ 
+--- a/chrome/browser/ui/cocoa/accelerators_cocoa.mm
++++ b/chrome/browser/ui/cocoa/accelerators_cocoa.mm
+@@ -44,6 +44,8 @@
+      ui::VKEY_N},
+     {IDC_NEW_TAB, ui::EF_COMMAND_DOWN, ui::VKEY_T},
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // Supplied AcceleratorsCocoa entry0xcef735c, command34068.
++    {IDC_AUX_ASK, ui::EF_COMMAND_DOWN, ui::VKEY_E},
+     // Supplied AcceleratorsCocoa entry0xcef7368, command34067.
+     {IDC_AUX_OPEN_NEW_CHAT, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN, ui::VKEY_E},
+ #endif
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -6,6 +6,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/profile_prefs.h"
+@@ -865,6 +866,16 @@
+     case IDC_AUX_OPEN_NEW_CHAT:
+       aux::OpenNewChat(*browser_);
+       break;
++    case IDC_AUX_ASK:
++      // Original command34068 toggles the actual Agent extension panel in the
++      // current window; its supplied WebContents owns account/session context.
++      if (auto* panel = SidePanelUI::From(browser_)) {
++        panel->Toggle(
++            SidePanelEntryKey(SidePanelEntryId::kExtension,
++                              aux::kAgentExtensionId),
++            SidePanelOpenTrigger::kExtension);
++      }
++      break;
+ #endif
+     case IDC_NEW_TAB: {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -1855,6 +1866,7 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // IsCommandEnabled reevaluates the actual profile/Agent state on invocation.
+   command_updater_->UpdateCommandEnabled(IDC_AUX_OPEN_NEW_CHAT, true);
++  command_updater_->UpdateCommandEnabled(IDC_AUX_ASK, true);
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+   UpdateAuxMenuCommands();
