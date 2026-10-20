@@ -18,6 +18,7 @@ Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-suppli
 
 ## Working rules
 
+- On 2026-10-20, after the actual normal-window account failure, the owner explicitly authorized local signing to resolve it. This supersedes the no-signing restriction only for the copied v498 development app and its necessary fixed helpers. Use the current exact-byte signing plan and previously approved disposable Aux scope; preserve original addon/runtime bytes. No release, notarization, owner-profile access or unrelated OS grants are authorized.
 - The owner approved preparation of one concrete local-only development-signing review on 2026-10-20. See `docs/integration/proposed/local-development-review-v416/`. This exception permits unsigned copied artifacts, public profile/identity inspection and review documents only; signing, provisioning, Keychain/runtime operations and OS grants remain unapproved.
 - Current development priority: preserve Aside UI and behavior 1:1 with Aux branding. Do not run signing, provisioning or release preparation as part of this work; the owner explicitly removed them from the development path. Existing scoped signing evidence is historical.
 - Commit coherent slices to local `main`; parallel lanes use separate worktrees and deliver commits. Integrator owns root manifests, packaging, patch series, shared native registration/GN files and startup.

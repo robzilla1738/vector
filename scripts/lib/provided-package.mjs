@@ -13,6 +13,15 @@ import { resolveProvidedSourceSnapshot } from './provided-source-snapshot.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const execute = promisify(execFile);
+export function providedDevelopmentAuthority(bundle) {
+  if (bundle?.version !== 1 || bundle.implementation !== 'supplied' ||
+      ![undefined, 'provided-sea', 'provided-node-development'].includes(bundle.daemonRuntime)) {
+    throw new Error('Recognized supplied daemon runtime required for development authority');
+  }
+  // Only this app executable receives the daemon's reviewed development
+  // identity. The unchanged runtime Node host has a different Keychain identity.
+  return { ...bundle, nativeCarrierLayout: 'profile-bundle', daemonRuntime: 'provided-sea' };
+}
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const digest = async path => {
   const value = createHash('sha256');
@@ -172,7 +181,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       layoutChanges.push({ path: carrierInfo, sha256: await digest(join(resources, carrierInfo)) });
       const bundleFile = join(resources, 'bundle.json');
       const bundle = JSON.parse(await readFile(bundleFile, 'utf8'));
-      await writeFile(bundleFile, JSON.stringify({ ...bundle, nativeCarrierLayout: 'profile-bundle' }, null, 2) + '\n');
+      await writeFile(bundleFile, JSON.stringify(providedDevelopmentAuthority(bundle), null, 2) + '\n');
       layoutChanges.push({ path: 'bundle.json', sha256: await digest(bundleFile) });
     }
     // Recheck input provenance after copying. A concurrent build/source change

@@ -4,6 +4,8 @@ Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the
 
 ## Current acceptance gates
 
+The owner has now explicitly authorized local development signing to resolve the observed account startup failure. A fresh v498 copied development candidate, public-profile checks and exact signing plan are in preparation. The former no-signing restriction is superseded for this bounded repair; the startup error is not yet resolved.
+
 The latest candidate is `out/provided-candidate-v498-local/Aux.app`. All known importer integration work from this batch is committed, compiled and packaged. Goal completion is not established.
 
 | Requirement | Current evidence / remaining gate |

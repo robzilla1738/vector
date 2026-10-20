@@ -4,7 +4,17 @@ import { createHash } from 'node:crypto';
 import { chmod, cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { retireCopiedIndependentRuntime, verifyPackageInventory } from './provided-package.mjs';
+import { providedDevelopmentAuthority, retireCopiedIndependentRuntime, verifyPackageInventory } from './provided-package.mjs';
+
+test('development authority selects the profile-bearing supplied daemon and rejects unknown runtimes', () => {
+  const bundle = { version: 1, implementation: 'supplied', daemonRuntime: 'provided-node-development', files: [] };
+  const selected = providedDevelopmentAuthority(bundle);
+  assert.equal(selected.daemonRuntime, 'provided-sea');
+  assert.equal(selected.nativeCarrierLayout, 'profile-bundle');
+  assert.equal(selected.files, bundle.files);
+  assert.equal(bundle.daemonRuntime, 'provided-node-development');
+  assert.throws(() => providedDevelopmentAuthority({ ...bundle, daemonRuntime: 'unreviewed-host' }), /Recognized supplied/);
+});
 
 async function runtimeFixture(directory, name = '@aux/runtime') {
   const files = {
