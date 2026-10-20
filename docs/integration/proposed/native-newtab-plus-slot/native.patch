@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/views/frame/aux_vertical_new_tab_button.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_new_tab_button.cc
+@@ -104,6 +104,7 @@
+                                       gfx::Insets::TLBR(0, 0, 0, 8));
+   auto* image = static_cast<views::ImageView*>(image_container_view());
+   image->SetImageSize(gfx::Size(12, 12));
++  image->SetPreferredSize(gfx::Size(16, 16));
+   label()->SetProperty(
+       views::kFlexBehaviorKey,
+       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,

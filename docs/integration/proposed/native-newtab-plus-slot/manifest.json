@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_new_tab_button.cc",
+      "baselineSha256": "e9d444f4b3a9ea59b7d7a3cacdf249ef5a25e2c1610e6b7b5afaca034f146edd",
+      "outputSha256": "f4440bc6a09da1227cf084ba2f724f7e4390e6f9c2e7322a619b27a59d400c8a"
+    }
+  ]
+}
