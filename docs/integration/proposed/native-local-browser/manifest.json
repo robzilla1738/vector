@@ -1,0 +1,59 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/component_bootstrap.cc",
+      "baselineSha256": "20f3ee3904ec22f12cf335190ba99d375f45ed4bae0d656a85b8db9e244ed997",
+      "outputSha256": "c6fcf887271e079f7e9ca0d4313faf9d9e7e98237ceb19be0bd80dcd13ca68b7"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "9c4cdf9ab2c166235d5467996853e32ae8e5bef70b1018971bff485376fdf594",
+      "outputSha256": "0e40f3f530e249681b85611a4c8d38957a7d4559c339648b6572e96a657b8c7a"
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": "d9d476ea4becbee2d3aed2b15c365b3f54408010191de6fdcc4b9b925b208bfa",
+      "outputSha256": "d08340c65478129b0f7f80df4f6a0a230861baacc6aeb29fb6b2d502c454faa0"
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.h",
+      "baselineSha256": "6cf7b4c76f0e8aec8328b9df8c27a9d3ef8072a8d77ecba42c1f0975535c62ad",
+      "outputSha256": "8812cb3f2b929f9c915353628ba586a81652782ab530f7dfb05855792ac61cef"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "553727465ddf8656df2eb33959118122267424ba4726453f38e538ab5ff34437",
+      "outputSha256": "941a73387e63a3df5c0b85c49c4c030bbd54986fe941f3c413ed910f31ebd9d2"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "3e8442b74ca284420aa5c72d6663d514592c6430330ca8cf3eecf5bcc5fc7692",
+      "outputSha256": "00833461201bc5b681027c41da273662af86577e8efed84b627eed1fd36a30e1"
+    },
+    {
+      "path": "chrome/browser/password_manager/chrome_password_manager_client.cc",
+      "baselineSha256": "711cba98affb54c72d15b9fc7b3acffbfb8c8d7423e51f46fa2e5cfab506826c",
+      "outputSha256": "0f3b32d50e949c7e8a58303af85e2b2a5ccd5fd2a731385c2c3e9a2af973adde"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "aee66c07079b6e1bc0a3a6ffd894270a57a469c85d64de1d7d311ebe21cf85da",
+      "outputSha256": "3c052f1dbf4ff979bd4631da3749af96cc305df7cd1efbb005240d900359d26b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.h",
+      "baselineSha256": "a8f2836d5b73989acecf592747b5cd843383e3506609b5c24b2950216cf17add",
+      "outputSha256": "98a542e48ab9a968f47b0dd0e63592ac60a7fd6b8c6e850651a6397351d74833"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "4e84fadf6e88ed170d35e9bb8dc37ed1b6e1ef737a586f8798881e64bb0384eb",
+      "outputSha256": "d45d49536c2fe24e3877bda3210c23d21fb788bfdc955e21db4af4a34b304b80"
+    },
+    {
+      "path": "chrome/browser/ui/views/session_crashed_bubble_view.cc",
+      "baselineSha256": "b763860fcff2e6e10d04d36e2ccf4e97457d6c228960ab159c5add5dc0068e4a",
+      "outputSha256": "fa07bf26c555825251a9ed0eda4c19740832e858cbe39c9f1560eb909bae650a"
+    }
+  ]
+}
