@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "actual367; two NEW files, existing actual owners/helpers unchanged",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc",
+      "baselineSha256": null,
+      "outputSha256": "d0e0d9175177766535c41bfc015cd1a1303ef48faf98a1dbe82fa4fe20143a92",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.h",
+      "baselineSha256": null,
+      "outputSha256": "e863c9af9338693b7843cc0bc73831f419b56957f345efbe69c7c44464d12930",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

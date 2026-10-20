@@ -1,0 +1,179 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "saved-update",
+      "rva": "0x462b5c0",
+      "bytes": 1240,
+      "sha256": "164a270dffc52050bb606e3e397795c54c410d5835785084300c01c3af2e4d24",
+      "assemblySha256": "eb7cbe7a82ca6bdd24d6f05ae5d6610e606ac782ed1cc290efb3bb874644ad3e"
+    },
+    {
+      "name": "saved-finish-cleanup",
+      "rva": "0x462ba98",
+      "bytes": 1552,
+      "sha256": "fc41e6ddd0761213188ecc72e86d23d858805a5ff07bbf94b7954857b0401a51",
+      "assemblySha256": "ed953dcedaf6240dbab64f4bcdc07636ffd6de5a399711a57edf033add87f510"
+    },
+    {
+      "name": "bookmark-update-finish-cleanup",
+      "rva": "0x462d1c0",
+      "bytes": 2012,
+      "sha256": "cc3fa8b187bf33e641262a99d18f8aaa0ab5554cf9b55c015221d1947c5e8191",
+      "assemblySha256": "04d274066557e5eefcf3e8410e0931fd2fb41778da842a76a4817000a2c33d4b"
+    },
+    {
+      "name": "bookmark-projection",
+      "rva": "0x462ce28",
+      "bytes": 888,
+      "sha256": "d4c56e42f725bbb0773a748831ca3fd33a3fb42a086719af3ff2f4702c3c2c42",
+      "assemblySha256": "8d9d4afd36fd77d031b4e55268cb5aff008c287acd01d142ee9cad71eee2fd61"
+    },
+    {
+      "name": "preview-show-lock",
+      "rva": "0x4651140",
+      "bytes": 1120,
+      "sha256": "ebc7a25334f1f05dcac21d232ec4f8cf3d8189928c9c2b225cdbd06a32e5ec6f",
+      "assemblySha256": "ee1b544008ba1b52b566cf13d0c83a6c8f54d79224fc19f15a61868db4bbdeb7"
+    },
+    {
+      "name": "actual-bindings",
+      "rva": "0x37e0bd8",
+      "bytes": 252,
+      "sha256": "0a30d19af489069c6e639ce4dd705d3b995983cb6d1a8087c99e0818f67b6a3f",
+      "assemblySha256": "ac9c2ab55bdc46450a60efd13c3c0e366757568dc9740177f4217a50cf1b0181"
+    },
+    {
+      "name": "actual-bookmark-bindings",
+      "rva": "0x37e1790",
+      "bytes": 436,
+      "sha256": "7358979f3a4ca2ce7f0a064dd7169242233a3ba904059c01fe2c9e4256cd50a5",
+      "assemblySha256": "2533b6f67f0dff6811fcc9891b3ddb8ae091ef1f8b6c395deb559bd4c31ed552"
+    },
+    {
+      "name": "c248-not-an-entry",
+      "rva": "0x462c188",
+      "bytes": 268,
+      "sha256": "32f70e272ada87294b386ebe4e3ca2dbbaec26c16f8b0611cb8bff727c6f18ec",
+      "assemblySha256": "feb57a3aeede98659de7a604a82a2a3729d32cd5015794d04e882253414013ae"
+    },
+    {
+      "name": "real-lock-lifetime",
+      "rva": "0x7fb63f4",
+      "bytes": 188,
+      "sha256": "58a19ebac47056d2336aa8830e9071c29db19d85470cd4797175e618daa9d1a9",
+      "assemblySha256": "dc0539d4443a1ca9d94cbef1677d83960231ebe75d69a9c1517ae014c50afd21"
+    },
+    {
+      "name": "lock-counter-policy",
+      "rva": "0x465ac84",
+      "bytes": 256,
+      "sha256": "9ee2c6c90149a16714954248011e4f19d3c98d59221d77c02b6b75af4040e191",
+      "assemblySha256": "52a86feadfc66647eb2de9716be50c7d73ab0d0615370ec9e0a465fafe8e3872"
+    },
+    {
+      "name": "hover-lock-effect",
+      "rva": "0x34f95e8",
+      "bytes": 364,
+      "sha256": "b720740abf21e65aa7136acf9f978a44929f72ccb77c22e4fe31c2f7a2d142f3",
+      "assemblySha256": "5a4b09229ce48aafd303abd3ef4616b10acaaf671c28ba920d3f2a04bafa3b7f"
+    }
+  ],
+  "apiInputs": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_callbacks.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_drag_callbacks.h",
+      "sha256": "b836b407b0f02f78918ab411685231773da96cae2868147a16c3d9fa7a0d6654"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "sha256": "80622583909c4322b1554235488e9e959d52bdfd1d3a97476deffd1b11389885"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "sha256": "fd8e919d968163fa595372ebfba078709066608b3b8ce29b9ebbdaa7d72d1c91"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "sha256": "a8d1203a79ed9950477b8ea7e960d7d15de44d12eb6b34257a144695889ccd94"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h",
+      "sha256": "0585a8523b506b24b71a5687b1c8be4ef58ea15a9d9d4fcf76008dce72ae7b83"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "sha256": "520aeec6bd1eb292c7789ea22927ca9ed13999814ba0ed4edb57a5420c2b1a32"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "sha256": "6e709bfdd3ae373a784ee6fe3c38067c8b3acd123828673f4b563f54f08a6ad8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h",
+      "sha256": "15d056e91815115dfccff732b14310a141ff889e01fed40171f5bf28faad11df"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h",
+      "sha256": "867e74f3964d1515b51e33d9fe0507f20a2a552cd468d9e9688c45146a5f4ed5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc",
+      "sha256": "25b4c20d69a1009c15ae17aae94620bd9a58c3501177de2f58fc5cc1ded5b627"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h",
+      "sha256": "5711236898116fdce92a5c9047cd8978fc0a983e3aef193cbfb2e5b32ab82bee"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc",
+      "sha256": "47f236f9cbe6a15b462bd2d229bb871d4e0a8ea5c46230979d93a24ba0289b05"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/tab_strip_region_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/tab_strip_region_view.h",
+      "sha256": "10bf76e7e9c2adcfb43172fc690d5ecbbb90e9c03a4e944a9510b49fd8ba0fae"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "sha256": "b1e0cbf6854eee4765f68a2bb158cd22197cb9f74c81ea6ea1aeaac803075e55"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_interface.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/browser_window/public/browser_window_interface.h",
+      "sha256": "97dc7e368b29bd43bb0ce24bcbc2b9795b842bbdeb68aa58a2cfc85e20024c4a"
+    },
+    {
+      "path": "ui/views/view.h",
+      "snapshotPath": "evidence/api/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/view_tracker.h",
+      "snapshotPath": "evidence/api/ui/views/view_tracker.h",
+      "sha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692"
+    }
+  ],
+  "integrationAdaptations": [
+    "profile/window lifetime snapshot and mandatory pre-retirement",
+    "actual ViewTracker survival across notifying mutations",
+    "bookmark candidate uses actual id+uuid lookup instead of unretained raw pointer",
+    "155 real expansion lock delegated to the genuine region",
+    "screen rect conversion uses actual155View API"
+  ]
+}
