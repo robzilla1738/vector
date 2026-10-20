@@ -260,6 +260,9 @@ steps.extend([
     ('native-account-profile-prefs-api155/native.patch', 'native-account-profile-prefs-api155/manifest.json'),
     ('native-profile-compile-api155-v231/native.patch', 'native-profile-compile-api155-v231/manifest.json'),
     ('native-account-profile-prefs-registration/native.patch', 'native-account-profile-prefs-registration/manifest.json'),
+    ('native-profile-indicator-icons/native.patch', 'native-profile-indicator-icons/manifest.json'),
+    ('native-profile-pager-drag/native.patch', 'native-profile-pager-drag/manifest.json'),
+    ('native-profile-pager-catalog-registration/native.patch', 'native-profile-pager-catalog-registration/manifest.json'),
 ])
 
 if options.through:

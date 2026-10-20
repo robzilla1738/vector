@@ -1,0 +1,14 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1137,6 +1137,11 @@
+       "views/frame/aux_profile_preview_admission.h",
+       "views/frame/aux_profile_page_indicator_dot_button.cc",
+       "views/frame/aux_profile_page_indicator_dot_button.h",
++      "views/frame/aux_profile_pager_drag.cc",
++      "views/frame/aux_profile_pager_drag.h",
++      "views/profiles/aux_profile_indicator_icon.cc",
++      "views/profiles/aux_profile_indicator_icon.h",
++      "views/profiles/aux_profile_indicator_icons.inc",
+       "../aux/profile_gate.cc",
+       "views/frame/aux_vertical_sidebar_profile_icons.inc",
+       "views/frame/aux_profile_preview_capture_cache.cc",
