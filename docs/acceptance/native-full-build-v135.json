@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "composition": "v135",
+  "nativeBuildReceiptSha256": "75f8d1923e952dce8db8f7e1571abdfeadad270bb75837ce2e841a33883686c6",
+  "buildLogSha256": "9e1b4021dde279e776968a29b481c74df004b8d5ea04c09813dd7df83e115ea2",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "buildSteps": 1684,
+  "elapsedSeconds": 1470.69,
+  "nativeAppLeaves": 563,
+  "artifacts": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "bed7e94c6c1d919aae9a95797787cef7bb89bb941291dfbbfb7a3a220f59f1ef"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "0b4da9165b0fd202819311d0b047529f5dc8ff7884c36113337198cdced5cb33"
+    }
+  ],
+  "compositionSha256": "4dca23ff7d297ec966b0bd101cc5ad682e17dca3cca1cebccc5a78022f55f0ef",
+  "argsSha256": "0f484d6155c81fb28108deaf7c13d2999eb8b7c0077b62b171b69d710f714407",
+  "recordedAt": "2026-10-20T00:45:08.099811+00:00",
+  "localDevelopmentOnly": true,
+  "runtimeAcceptance": false,
+  "uiParityAccepted": false,
+  "remaining": [
+    "Package and observe disposable app",
+    "Compile newer staged default owner/group/UI/profile-request changes",
+    "Complete UI and behavior acceptance"
+  ]
+}
