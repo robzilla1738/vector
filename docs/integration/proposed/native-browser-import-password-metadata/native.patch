@@ -1,0 +1,106 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -729,17 +729,20 @@
+               "expires,is_persistent,priority,samesite,source_scheme,source_port,"
+               "last_update_utc,source_type,has_cross_site_ancestor FROM cookies"
+             : "SELECT "
+-              "origin_url,action_url,signon_realm,username_element,username_"
+-              "value,password_element,password_value,date_created,date_last_used,"
+-              "date_password_modified,times_used,blacklisted_by_user,scheme FROM "
+-              "logins");
++              "origin_url,action_url,username_element,username_value,password_"
++              "element,password_value,submit_element,signon_realm,date_created,"
++              "blacklisted_by_user,scheme,password_type,times_used,display_name,"
++              "icon_url,federation_url,skip_zero_click,generation_upload_status,"
++              "date_last_used,date_password_modified,sender_email,sender_name,"
++              "date_received,sharing_notification_displayed,sender_profile_"
++              "image_url,date_last_filled,actor_login_approved FROM logins");
+     if (!query) {
+       return fail("Encrypted source database lacks required columns");
+     }
+     int status;
+     while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
+-      const bool blocked = !cookies && sqlite3_column_int(query.get(), 11);
+-      int column = cookies ? 5 : 6;
++      const bool blocked = !cookies && sqlite3_column_int(query.get(), 9);
++      const int column = 5;
+       auto* blob = sqlite3_column_blob(query.get(), column);
+       const int length = sqlite3_column_bytes(query.get(), column);
+       if (length < 0) {
+@@ -811,21 +814,35 @@
+         row.Set("updated",
+                 base::NumberToString(sqlite3_column_int64(query.get(), 17)));
+       } else {
++        // Exact source425b820..425bda4 / original27-column SELECT.
+         for (auto [field, index] : {std::pair{"url", 0},
+                                     {"action", 1},
+-                                    {"realm", 2},
+-                                    {"usernameElement", 3},
+-                                    {"username", 4},
+-                                    {"passwordElement", 5}}) {
++                                    {"usernameElement", 2},
++                                    {"username", 3},
++                                    {"passwordElement", 4},
++                                    {"submitElement", 6},
++                                    {"realm", 7},
++                                    {"displayName", 13},
++                                    {"iconUrl", 14},
++                                    {"federationUrl", 15},
++                                    {"senderEmail", 20},
++                                    {"senderName", 21},
++                                    {"senderProfileImageUrl", 24}}) {
+           row.Set(field, EncryptedSourceText(query.get(), index));
+         }
+         for (auto [field, index] :
+-             {std::pair{"created", 7}, {"used", 8}, {"modified", 9}}) {
++             {std::pair{"created", 8}, {"used", 18}, {"modified", 19},
++              {"received", 22}, {"filled", 25}}) {
+           row.Set(field,
+                   base::NumberToString(sqlite3_column_int64(query.get(), index)));
+         }
+-        row.Set("timesUsed", sqlite3_column_int(query.get(), 10));
+-        row.Set("scheme", sqlite3_column_int(query.get(), 12));
++        row.Set("timesUsed", sqlite3_column_int(query.get(), 12));
++        row.Set("scheme", sqlite3_column_int(query.get(), 10));
++        row.Set("passwordType", sqlite3_column_int(query.get(), 11));
++        row.Set("skipZeroClick", !!sqlite3_column_int(query.get(), 16));
++        row.Set("generationUploadStatus", sqlite3_column_int(query.get(), 17));
++        row.Set("sharingNotificationDisplayed", !!sqlite3_column_int(query.get(), 23));
++        row.Set("actorLoginApproved", !!sqlite3_column_int(query.get(), 26));
+         row.Set("blocked", blocked);
+         if (blocked) {
+           row.Set("username", "");
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -86,6 +86,7 @@
+   // HTTP-only URL/realm filter; the real store retains its own validation.
+   const auto scheme = row.FindInt("scheme").value_or(0);
+   form.scheme = static_cast<password_manager::PasswordForm::Scheme>(scheme);
++  form.submit_element = base::UTF8ToUTF16(*row.FindString("submitElement"));
+   form.username_element =
+       base::UTF8ToUTF16(*row.FindString("usernameElement"));
+   form.username_value = base::UTF8ToUTF16(*row.FindString("username"));
+@@ -98,6 +99,23 @@
+   form.date_password_modified = Timestamp(row, "modified", false);
+   form.times_used_in_html_form = row.FindInt("timesUsed").value_or(0);
+   form.blocked_by_user = row.FindBool("blocked").value_or(false);
++  form.type = static_cast<password_manager::PasswordForm::Type>(
++      row.FindInt("passwordType").value_or(0));
++  form.display_name = base::UTF8ToUTF16(*row.FindString("displayName"));
++  form.icon_url = GURL(*row.FindString("iconUrl"));
++  form.federation_origin = url::SchemeHostPort(GURL(*row.FindString("federationUrl")));
++  form.skip_zero_click = row.FindBool("skipZeroClick").value_or(false);
++  form.generation_upload_status =
++      static_cast<password_manager::PasswordForm::GenerationUploadStatus>(
++          row.FindInt("generationUploadStatus").value_or(0));
++  form.date_received = Timestamp(row, "received", false);
++  form.date_last_filled = Timestamp(row, "filled", false);
++  form.sender_email = base::UTF8ToUTF16(*row.FindString("senderEmail"));
++  form.sender_name = base::UTF8ToUTF16(*row.FindString("senderName"));
++  form.sharing_notification_displayed =
++      row.FindBool("sharingNotificationDisplayed").value_or(false);
++  form.sender_profile_image_url = GURL(*row.FindString("senderProfileImageUrl"));
++  form.actor_login_approved = row.FindBool("actorLoginApproved").value_or(false);
+   if (const auto* note = row.FindString("note"); note && !note->empty()) {
+     form.SetPasswordNote(base::UTF8ToUTF16(*note));
+   }

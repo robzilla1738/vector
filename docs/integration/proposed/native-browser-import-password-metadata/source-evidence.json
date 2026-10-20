@@ -1,0 +1,36 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "password-projection.asm",
+      "start": "0x425b820",
+      "endExclusive": "0x425be60",
+      "bytesSha256": "c98d02d79b840ffdc279a1a2b941d2f99f25aa7fbfa0b2ffcf397256d220edb1",
+      "sha256": "92820747beedab00defe335a59a48f58989c85956f5a086c118ffa6b96fb04f8"
+    },
+    {
+      "file": "password-destination.asm",
+      "start": "0x42589ac",
+      "endExclusive": "0x4258b68",
+      "bytesSha256": "1752e77ae9b960b5b677601dedc4035118911b88a20db66c9df320295be08d06",
+      "sha256": "5a683acae2c4a5bd5ac2ecf4b75951a7abdc05a467a556c38cfe3359688b6858"
+    }
+  ],
+  "parents": {
+    "migrator": "af004b80a encrypted-reader-caps output",
+    "service": "66b295a59 destination-skips output"
+  },
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/password_manager/core/browser/password_store/stored_credential.h",
+      "sha256": "3f0392d8a2e0847397636f2522dc144951b197ab93ceb1d3230be3451888ccd6"
+    }
+  ],
+  "sql": {
+    "address": "0xdb1f67a",
+    "text": "SELECT origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, date_last_used, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, sender_profile_image_url, date_last_filled, actor_login_approved FROM logins"
+  }
+}
