@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc",
+      "baselineSha256": "0d1ee1eba385de530740d644c47df78768ff0221c2922d16a3dd8b87bd284557",
+      "outputSha256": "5608ffd28991d22bd044c00e3a6da894ae81e8eef042cea7fb9ea2a9abba222b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

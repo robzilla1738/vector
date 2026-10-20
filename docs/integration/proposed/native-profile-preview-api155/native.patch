@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
+@@ -5,7 +5,7 @@
+ #include <cmath>
+ 
+ #include "ui/compositor/layer.h"
+-#include "ui/gfx/transform.h"
++#include "ui/gfx/geometry/transform.h"
+ #include "ui/views/view.h"
+ 
+ namespace aux {

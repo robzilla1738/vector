@@ -1,0 +1,21 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1103,12 +1103,17 @@
+   ]
+ 
+   if (enable_aux_browser && is_mac) {
+-    deps += [ "//chrome/browser/extensions/api/aux_mini_popup" ]
++    deps += [
++      "//base:i18n",
++      "//chrome/browser/extensions/api/aux_mini_popup",
++    ]
+     sources += [
+       "views/frame/aux_profile_switch_request.cc",
+       "views/frame/aux_profile_switch_request.h",
+       "views/frame/aux_profile_preview_presentation.cc",
+       "views/frame/aux_profile_preview_presentation.h",
++      "views/profiles/profile_monogram_avatar_view.cc",
++      "views/profiles/profile_monogram_avatar_view.h",
+     ]
+   }
+ 

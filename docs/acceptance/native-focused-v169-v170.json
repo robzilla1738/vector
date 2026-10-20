@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "appliedComposition": "v170",
+  "sourceOutputs": 339,
+  "artworkTargets": 23,
+  "v169": {
+    "exitCode": 1,
+    "passed": [
+      "extension_tab_util",
+      "aux_sidebar_view",
+      "profile_monogram_avatar_view"
+    ],
+    "failed": "aux_profile_preview_presentation",
+    "failure": "Nonexistent ui/gfx/transform.h header"
+  },
+  "v170": {
+    "exitCode": 0,
+    "passed": [
+      "aux_profile_preview_presentation"
+    ],
+    "change": "Use existing ui/gfx/geometry/transform.h"
+  },
+  "runtimeAccepted": false,
+  "uiParityAccepted": false
+}

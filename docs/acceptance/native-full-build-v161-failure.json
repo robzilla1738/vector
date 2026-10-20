@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "composition": "v161",
+  "fullBuildExitCode": 1,
+  "completedSteps": 231,
+  "elapsedSeconds": 238.77,
+  "remainingAtFailure": 1998,
+  "logSha256": "374a910a1643688acb17313d5224a7dac669b169585790eb140ef0575a19d916",
+  "failedSource": "chrome/browser/extensions/extension_tab_util.cc",
+  "error": "New kAgentGroup TabMutedReason not handled in extension MutedInfo switch",
+  "generatedKeyProbeRun": false,
+  "runtimeAccepted": false,
+  "remaining": "Port original exported mute-reason mapping, then retry full build with current faithful UI/source integration"
+}

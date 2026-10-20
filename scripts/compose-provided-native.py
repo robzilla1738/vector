@@ -192,6 +192,15 @@ steps.extend([
     ('native-profile-switch-glic-weak-order/native.patch', 'native-profile-switch-glic-weak-order/manifest.json'),
     ('native-agent-tabs-api155/native.patch', 'native-agent-tabs-api155/manifest.json'),
     ('native-provided-node-development/native.patch', 'native-provided-node-development/manifest.json'),
+    ('native-profile-menu-rows/native.patch', 'native-profile-menu-rows/manifest.json'),
+    ('native-profile-preview-presentation/native.patch', 'native-profile-preview-presentation/manifest.json'),
+    ('native-profile-preview-presentation/build-registration/native.patch', 'native-profile-preview-presentation/build-registration/manifest.json'),
+    ('native-profile-menu-panel/native.patch', 'native-profile-menu-panel/manifest.json'),
+    ('native-agent-group-muted-info/native.patch', 'native-agent-group-muted-info/manifest.json'),
+    ('native-profile-monogram-avatar/native.patch', 'native-profile-monogram-avatar/manifest.json'),
+    ('native-profile-monogram-avatar/build-registration/native.patch', 'native-profile-monogram-avatar/build-registration/manifest.json'),
+    ('native-profile-preview-coordinates/native.patch', 'native-profile-preview-coordinates/manifest.json'),
+    ('native-profile-preview-api155/native.patch', 'native-profile-preview-api155/manifest.json'),
 ])
 
 if options.through:
