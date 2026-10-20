@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_view.h",
+      "baselineSha256": "77ec4787fcc62c722e5da86115918bd803a58dc38454b46c75bea15835ca8e4d",
+      "outputSha256": "0c9f7ca91a1de4483b18bb35743d4a659ef0c2eb5f6ffb6f988f5365daee0f7c"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_view.cc",
+      "baselineSha256": "0a59d222b5fa74b4c7f69841795627d131c22c8afd38441ae2849713bac2932b",
+      "outputSha256": "b4cd6c757a4485129ed684dca8b771bc049b15e17d1307037a3a127b0510918a"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc",
+      "baselineSha256": "6a8b9d30b02e7f5f8d39f1959e652438cf7d6f5542863d308aab7bac97fed1dd",
+      "outputSha256": "74a8e023921d7a50d519b401d49bd01e387a79db4898ef2f71a03b47eb0b7f68"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,136 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_view.h
+@@ -64,7 +64,9 @@
+   static constexpr base::TimeDelta kGlowHoverAnimationDuration =
+       base::Milliseconds(50);
+ 
+-  explicit TabView(TabCollectionNode* collection_node);
++  // Original412a6c0 third argument: individual session-list presentation.
++  explicit TabView(TabCollectionNode* collection_node,
++                   bool is_agent_session_tab = false);
+   TabView(const TabView&) = delete;
+   TabView& operator=(const TabView&) = delete;
+   ~TabView() override;
+@@ -216,6 +218,7 @@
+ 
+   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
+   TabStripOrientation orientation_ = TabStripOrientation::kHorizontal;
++  const bool is_agent_session_tab_;
+ 
+   std::unique_ptr<TabStyleViews> tab_styling_;
+ 
+--- a/chrome/browser/ui/views/tabs/common/tab_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view.cc
+@@ -312,10 +312,11 @@
+   const raw_ptr<const TabView> tab_view_;
+ };
+ 
+-TabView::TabView(TabCollectionNode* collection_node)
++TabView::TabView(TabCollectionNode* collection_node, bool is_agent_session_tab)
+     : HoverCardAnchorTarget(this),
+       collection_node_(collection_node),
+       orientation_(collection_node->orientation()),
++      is_agent_session_tab_(is_agent_session_tab),
+       tab_styling_(TabStyleViews::Create(
+           std::make_unique<TabStyleViewDelegateImpl>(this),
+           orientation_)),
+@@ -557,6 +558,11 @@
+     return true;
+   }
+ 
++  // Original412ea64: session rows retain activation, not keyboard reordering.
++  if (is_agent_session_tab_) {
++    return false;
++  }
++
+   std::optional<event_utils::ReorderDirection> reorder_direction =
+       event_utils::GetReorderCommandForKeyboardEvent(
+           event, views::LayoutOrientation::kVertical);
+@@ -634,8 +640,10 @@
+     // Potentially start the drag for the mouse press.
+     // Follow-up mouse-movement events will update the drag controller and
+     // eventually kick off the drag-loop.
+-    controller->GetDragHandler().InitializeDrag(
+-        *collection_node_, original_selection_model, event);
++    if (!is_agent_session_tab_) {
++      controller->GetDragHandler().InitializeDrag(
++          *collection_node_, original_selection_model, event);
++    }
+   }
+   return true;
+ }
+@@ -657,7 +665,9 @@
+   // Cancel the initialized drag (noop if not started). This is considered
+   // a cancel because the drag handler assumes mouse capture when the drag
+   // loop starts.
+-  controller->GetDragHandler().EndDrag(EndDragReason::kCancel);
++  if (!is_agent_session_tab_) {
++    controller->GetDragHandler().EndDrag(EndDragReason::kCancel);
++  }
+   if (!self) {
+     return;
+   }
+@@ -710,7 +720,7 @@
+ bool TabView::OnMouseDragged(const ui::MouseEvent& event) {
+   // Protect against key presses when the tab is animating out. Drag events may
+   // call this function after the node has been deleted.
+-  if (!collection_node_) {
++  if (!collection_node_ || is_agent_session_tab_) {
+     return false;
+   }
+ 
+@@ -752,8 +762,10 @@
+         // Ensure the tab is selected before dragging starts to avoid crashes.
+         controller->SelectTab(GetTabInterface(), GetGestureDetail(*event));
+       }
+-      controller->GetDragHandler().InitializeDrag(
+-          *collection_node_, original_selection_model, *event);
++      if (!is_agent_session_tab_) {
++        controller->GetDragHandler().InitializeDrag(
++            *collection_node_, original_selection_model, *event);
++      }
+       event->SetHandled();
+       break;
+     }
+@@ -1063,7 +1075,9 @@
+   CHECK(index != TabStripModel::kNoTab);
+ 
+   active_ = tab_strip_model->IsTabInForeground(index);
+-  split_ = tab->IsSplit();
++  // Original412c1e4: each session-list row represents the real tab separately,
++  // even when that tab is part of an actual split. Pinned state is retained.
++  split_ = !is_agent_session_tab_ && tab->IsSplit();
+   pinned_ = tab->IsPinned();
+ 
+   SetSelection(tab->IsSelected());
+--- a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+@@ -48,14 +48,24 @@
+     const views::SizeBounds& size_bounds) const {
+   const int width = size_bounds.width().value_or(
+       VerticalTabStripRegionView::kUncollapsedMaxWidth);
+-  const int height = GetLayoutConstant(
+-      TabView().pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
+-                        : LayoutConstant::kVerticalTabHeight);
++  // Original4133c58..3ce0: session rows use32px, or the original pinned
++  // metric58 (40px). Do not borrow155numeric layout IDs.
++  const int height = TabView().is_agent_session_tab_
++      ? (TabView().pinned_ ? 40 : 32)
++      : GetLayoutConstant(
++            TabView().pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
++                              : LayoutConstant::kVerticalTabHeight);
+   views::ProposedLayout layouts;
+   layouts.host_size = gfx::Size(width, height);
+ 
+   gfx::Rect bounds_remaining = gfx::Rect(layouts.host_size);
+-  bounds_remaining.Inset(TabView().tab_styling()->GetContentsInsets());
++  if (TabView().is_agent_session_tab_) {
++    // Original4133d00..2c: actualView insets, then8px horizontal insets.
++    bounds_remaining.Inset(TabView().GetInsets());
++    bounds_remaining.Inset(gfx::Insets::VH(0, 8));
++  } else {
++    bounds_remaining.Inset(TabView().tab_styling()->GetContentsInsets());
++  }
+ 
+   // If the tab is collapsed but animating with a wider width then we shouldn't
+   // center the contents.

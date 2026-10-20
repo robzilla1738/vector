@@ -1,0 +1,73 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x412a854",
+      "end": "0x412a864",
+      "purpose": "original third argument store",
+      "sha256": "b9f79eab79981d39076ea4ee0119340c76fe453ac82ea3b34451558108587e76"
+    },
+    {
+      "start": "0x412c1d4",
+      "end": "0x412c208",
+      "purpose": "split suppression with pinned retained",
+      "sha256": "a834b528c3e869cd8282a94f4fc98387bc8a8e2f7b01a77269dd52f2c71ce281"
+    },
+    {
+      "start": "0x412ea14",
+      "end": "0x412eaec",
+      "purpose": "activation before keyboard reorder refusal",
+      "sha256": "cd803e73816b1cb9d7e06ec6b168bbc37f3bca05d8885dea1898a4f85d7a013a"
+    },
+    {
+      "start": "0x412ed68",
+      "end": "0x412ed9c",
+      "purpose": "gesture/press selection retains but drag initiation skipped",
+      "sha256": "b9ec2a4ae154cbbe63c563b5e419377a1aa96fcc5c2c754c50a4a7c3407a8dd3"
+    },
+    {
+      "start": "0x412f01c",
+      "end": "0x412f084",
+      "purpose": "release skips source drag forwarding",
+      "sha256": "93e8ada9bdaae7ce6af2b10ee08f832adde0e2fb04327b2bb69cf98e3f30c92e"
+    },
+    {
+      "start": "0x412f2c4",
+      "end": "0x412f340",
+      "purpose": "source pointer-state forwarding mode guard",
+      "sha256": "31c014575c8bb2aa99539f94de6861d295bfb898e82b8689588dc9083663cef0"
+    },
+    {
+      "start": "0x412f77c",
+      "end": "0x412f7b0",
+      "purpose": "drag continuation returnsfalse",
+      "sha256": "dee92d45d8295d2fc6744a63bf5915b4dece9fb1f158cd8e6cdc50b1db534381"
+    },
+    {
+      "start": "0x412fa10",
+      "end": "0x412fa38",
+      "purpose": "other press/gesture drag initiation skipped",
+      "sha256": "bbad6e4c88a09ce3a2fa494574ebb97bb002eed5f15819f1dc9ef341648b9900"
+    },
+    {
+      "start": "0x4133c18",
+      "end": "0x4133d30",
+      "purpose": "actual row sizes and actualView+8px horizontal insets",
+      "sha256": "63ff7a1767441f55a8ff5cbf0ff4458108634d0e4cd340203a84667e31d2f682"
+    },
+    {
+      "start": "0x78a7ac0",
+      "end": "0x78a7b04",
+      "purpose": "positive SplitTabView metadata",
+      "sha256": "418b6299b9aff6ff417c741dda8acd976db2ef4e1f44d90e245222a25dc30820"
+    },
+    {
+      "start": "0x50394c",
+      "end": "0x503958",
+      "purpose": "original pinned metric58 immediate40 via root prior decode",
+      "sha256": "b58fec51ae5bbb3059c52138db374822a8ce306c04905f55900df796700eeb79"
+    }
+  ],
+  "prerequisite": "native-agent-session-tabs-leaf-lineage / model; no synthetic group state introduced"
+}
