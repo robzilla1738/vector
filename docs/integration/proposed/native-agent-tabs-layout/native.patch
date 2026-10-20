@@ -1,0 +1,101 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -21,12 +21,16 @@
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
+ #include "components/favicon/content/content_favicon_driver.h"
++#include "components/vector_icons/vector_icons.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "ui/base/base_window.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/color/color_id.h"
++#include "ui/gfx/font.h"
++#include "ui/gfx/font_list.h"
+ #include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/border.h"
+ #include "ui/views/bubble/bubble_dialog_delegate_view.h"
+ #include "ui/views/controls/button/checkbox.h"
+ #include "ui/views/controls/button/image_button.h"
+@@ -35,6 +39,7 @@
+ #include "ui/views/controls/label.h"
+ #include "ui/views/controls/scroll_view.h"
+ #include "ui/views/layout/box_layout.h"
++#include "ui/views/layout/flex_layout.h"
+ #include "ui/views/widget/widget.h"
+ 
+ namespace {
+@@ -109,16 +114,39 @@
+         browser_view && browser_view->tab_strip_view())
+       hover_lock_ = browser_view->tab_strip_view()->GetExpandOnHoverLock(
+           ExpandOnHoverLockType::kKeepCurrentState);
+-    SetTitle(u"Agent tabs");
++    SetAccessibleTitle(u"Agent Tabs");
++    SetShowTitle(false);
+     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+     SetShowCloseButton(true);
+     set_fixed_width(420);
+     set_close_on_deactivate(true);
+     auto contents = std::make_unique<views::View>();
+-    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
+-        views::BoxLayout::Orientation::kVertical, gfx::Insets(12), 8));
++    contents->SetLayoutManager(std::make_unique<views::FlexLayout>())
++        ->SetOrientation(views::LayoutOrientation::kVertical);
+     contents_ = SetContentsView(std::move(contents));
+-    error_ = contents_->AddChildView(std::make_unique<views::Label>());
++    auto* header = contents_->AddChildView(std::make_unique<views::View>());
++    header->SetBorder(
++        views::CreateEmptyBorder(gfx::Insets::TLBR(10, 12, 8, 12)));
++    header->SetLayoutManager(std::make_unique<views::FlexLayout>())
++        ->SetOrientation(views::LayoutOrientation::kVertical);
++    auto* title = header->AddChildView(
++        std::make_unique<views::Label>(u"Agent Tabs"));
++    title->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    title->SetFontList(title->font_list().Derive(
++        14 - title->font_list().GetFontSize(), gfx::Font::NORMAL,
++        gfx::Font::Weight::MEDIUM));
++    title->SetLineHeight(20);
++    auto* subtitle = header->AddChildView(std::make_unique<views::Label>(
++        u"Background tabs opened for work"));
++    subtitle->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    subtitle->SetFontList(subtitle->font_list().Derive(
++        12 - subtitle->font_list().GetFontSize(), gfx::Font::NORMAL,
++        gfx::Font::Weight::NORMAL));
++    subtitle->SetLineHeight(18);
++    auto* body = contents_->AddChildView(std::make_unique<views::View>());
++    body->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical, gfx::Insets(4), 8));
++    error_ = body->AddChildView(std::make_unique<views::Label>());
+     error_->SetMultiLine(true);
+     error_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+     error_->SetEnabledColor(ui::kColorAlertHighSeverity);
+@@ -129,9 +157,9 @@
+     rows->SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kVertical, gfx::Insets(), 8));
+     rows_ = scroll->SetContents(std::move(rows));
+-    contents_->AddChildView(std::move(scroll));
++    body->AddChildView(std::move(scroll));
+     rows_->AddChildView(std::make_unique<views::Label>(u"Loading owned tabs…"));
+-    contents_->AddChildView(std::make_unique<views::MdTextButton>(
++    body->AddChildView(std::make_unique<views::MdTextButton>(
+         base::BindRepeating(&AgentTabsBubble::Refresh,
+                             weak_factory_.GetWeakPtr()), u"Refresh"));
+     Refresh();
+@@ -234,10 +262,15 @@
+     input.Set("sessionId", session_id);
+     input.Set("targetId", tab.target_id);
+     input.Set("sessionTabId", tab.session_tab_id);
+-    row->AddChildView(std::make_unique<views::MdTextButton>(
++    auto close = views::CreateVectorImageButtonWithNativeTheme(
+         base::BindRepeating(&AgentTabsBubble::Mutate, weak_factory_.GetWeakPtr(),
+                             Operation::kClose, base::OwnedRef(std::move(input))),
+-        u"Close"));
++        vector_icons::kCloseIcon, 16);
++    close->SetPreferredSize(gfx::Size(22, 22));
++    close->SetTooltipText(u"Close tab");
++    close->GetViewAccessibility().SetName(u"Close tab");
++    row->AddChildView(std::move(close));
++    layout->set_cross_axis_alignment(views::LayoutAlignment::kCenter);
+   }
+   void Activate(const std::string& target_id) {
+     auto host = content::DevToolsAgentHost::GetForId(target_id);

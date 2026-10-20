@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/vector_icon_types.h",
+      "sha256": "270fd072d05b9af3a903e03ef6ec3990a365acd6f169bd176a4160f9732683f3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/vector_icons/close.icon",
+      "sha256": "2417c7f78708df6dd976a0324c50e565e62fda308fcc8a7975bb8b995ecd665c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/font.h",
+      "sha256": "ce573dc01e3574bf09f38a6d25506f12f7180e84767d6d77c549fcc25e90457a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/layout/box_layout.h",
+      "sha256": "fc7d206d7bba6aec2dfb77ffdafbb533bebfd9ce3926505973ba67788329fa87"
+    }
+  ],
+  "functions": [
+    {
+      "name": "PressRegion",
+      "rva": "0x4684c18",
+      "bytes": 3624,
+      "sha256": "5069d95a8f36fb004a85c0fc3a4da546a9dc554e7bbbe815711c0dceef1faa91"
+    },
+    {
+      "name": "RowsRegion",
+      "rva": "0x468761c",
+      "bytes": 3396,
+      "sha256": "61d23f3a1cce03255edb2a4c01b01eab059b385e5e9845fafaeacfdf9556ed84"
+    },
+    {
+      "name": "LabelStyle",
+      "rva": "0x4685a40",
+      "bytes": 388,
+      "sha256": "5c014ea1d0f1fff058c3bb2239d451e9dd0676ffdcafaed74b88e060903236ea"
+    },
+    {
+      "name": "ButtonRefresh",
+      "rva": "0x4685bc4",
+      "bytes": 692,
+      "sha256": "511bd00fe5573baafb834fdf75629707d2267aa2e67ef7c864059b0fe1375f4a"
+    },
+    {
+      "name": "HeaderInsets",
+      "rva": "0xdf47ab0",
+      "bytes": 16,
+      "sha256": "307c58f206f94afa8db0079064a4b586c5d2d61f31774117f2fb2cc846dab2ae"
+    },
+    {
+      "name": "HeaderTitle",
+      "rva": "0xd6e52e0",
+      "bytes": 20,
+      "sha256": "9d02bdaca864372b5d10c976efad2e9f163b894831f8973c4fb33a35a4c5988c"
+    },
+    {
+      "name": "HeaderSubtitle",
+      "rva": "0xd6e537a",
+      "bytes": 62,
+      "sha256": "8a8ff735d3db23092766388458d925f50be2fb7f168f4ff4811f093ab41d012f"
+    },
+    {
+      "name": "CloseTabLabel",
+      "rva": "0xdf88022",
+      "bytes": 18,
+      "sha256": "572cd12223a5e14a00ad7a10e52cc7f206b19c5256057594a1baf243cf512336"
+    },
+    {
+      "name": "CloseIconMetadata",
+      "rva": "0xe9d61c0",
+      "bytes": 24,
+      "sha256": "d8e7dbefcb6bdf1181ea86c2a10e0b8919edadb2653a9f03d9d95deb6f46b303"
+    },
+    {
+      "name": "CloseIconPath",
+      "rva": "0xd3f36e0",
+      "bytes": 552,
+      "sha256": "f20ead81757a9d9da4ec6808b127903e8ff3c6e6f600fba12249bbd01e8ad22b"
+    }
+  ]
+}

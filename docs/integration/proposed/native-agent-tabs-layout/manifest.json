@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-agent-tabs-counterpart148e51a23",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "149beb2dd100b124b176f86618584a037486ab3cf2a309dcab3d314a888fab74",
+      "outputSha256": "ba9a144cc6f0835936079714ddbc63fdca96a3959d44acd93cee12ed53c84e42"
+    }
+  ]
+}
