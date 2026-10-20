@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "applyAfter": "v455",
+  "files": [
+    {
+      "path": "chrome/browser/importer/BUILD.gn",
+      "baselineSha256": "562e975ab7b4a4e5e3be159dbfb6c1fb93938d9ae2b9ef16548a8821e894b0f4",
+      "outputSha256": "95f4fed3ff4070619a4c7fb3eb55a5684453e86706db2d45ac0b5aaac373886d"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "compositionSha256": "cf2ed070a08b0340c68017338a425afe7d145f97b88ef3afc04d812566eac028",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "composition": "v456",
+  "exitCode": 0,
+  "elapsedSeconds": 12.758935928344727,
+  "targets": {
+    "host": "obj/chrome/browser/importer/impl/external_process_importer_host.o",
+    "client": "obj/chrome/browser/importer/impl/external_process_importer_client.o",
+    "bridge": "obj/chrome/browser/importer/impl/in_process_importer_bridge.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/importer/impl/external_process_importer_host.o",
+    "obj/chrome/browser/importer/impl/external_process_importer_client.o",
+    "obj/chrome/browser/importer/impl/in_process_importer_bridge.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "runtimeAcceptance": false,
+  "noSourceProfileOrKeychainOperations": true,
+  "gnGeneration": {
+    "exitCode": 0,
+    "log": "out/native-integration/v456-gn-gen.log",
+    "elapsedMilliseconds": 36307
+  }
+}

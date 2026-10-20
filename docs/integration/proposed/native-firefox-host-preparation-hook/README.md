@@ -18,7 +18,7 @@ The actual public route starts at427acfc → Firefox migrator ctor4262bc0 / Star
 
 `/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04260740.c`
 
-It is the real cookies.sqlite/moz_cookies worker. Cookie preparation acknowledgment must include its actual destination completion, not a stub returning true. The public Firefox owner/real callback/destination remain to be mounted after their coherent port. This hook alone intentionally has no caller in current Aux.
+It is the real cookies.sqlite/moz_cookies worker. Further recovery of4264114..42643d8 distinguishes preparation acknowledgment from destination completion: after nonempty rows are enqueued, the original acknowledges preparation immediately; its separate cookie callbacks count accepted writes and gate the full owner’s completion. Empty rows complete the cookie phase successfully; worker failure acknowledges false. The public Firefox owner/real callback/destination remain to be mounted together, preserving both completion paths. This hook alone intentionally has no caller in current Aux.
 
 Password prerequisites remain distinct: original registry7821270/782130c produces0x4b (including PASSWORDS) on Mac; current155 Mac utility/password declaration remains disabled. Source observer42648b0 uses original host+11c/+114 to assess the actual password outcome. The exact result producer and original Mac utility/NSS owner are not yet recovered by this slice. They must be ported with real failure/completion semantics; copying numeric fields or setting them true is not an implementation. The full thin static input and hash, exact ready/mask/progress/cancel call chain and comparison with current155 are pinned in `native-firefox-public-import-owner-proof`.
 

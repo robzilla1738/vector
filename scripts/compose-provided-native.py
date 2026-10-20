@@ -479,6 +479,8 @@ steps.extend([
     ('native-import-job-contract/native.patch', 'native-import-source-parity-integration/manifest-v452.json'),
     ('native-browser-import-history-physical-source/native.patch', 'native-import-source-parity-integration/manifest-v453.json'),
     ('native-browser-import-absent-encrypted-stores/native.patch', 'native-import-source-parity-integration/manifest-v454.json'),
+    ('native-firefox-host-preparation-hook/native.patch', 'native-firefox-host-preparation-hook/manifest.json'),
+    ('native-firefox-host-build-deps/native.patch', 'native-firefox-host-build-deps/manifest.json'),
 ])
 
 if options.through:
