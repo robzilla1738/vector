@@ -1,0 +1,208 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4202ac4",
+      "end": "0x4202ebc",
+      "sha256": "d1d913ea155c8b154eae4179515e9348441a4dc0d1cd624db2304c5cf9cbb212",
+      "listing": "creator.asm",
+      "listingSha256": "173011097d1af4ffc4e1081d2793169b25e15c65481cf94e7ea6d8fd97b3ab2c"
+    },
+    {
+      "start": "0x4203838",
+      "end": "0x4203914",
+      "sha256": "521fa9e28bbe4baba848a3d6b8de2bf48479527552106971dd91133855d43feb",
+      "listing": "existing-owner.asm",
+      "listingSha256": "ddbd2221ea8cd0f5fa73469685e7cd87630cc4eea316fd929465428852e0e770"
+    },
+    {
+      "start": "0x458cc00",
+      "end": "0x458cf98",
+      "sha256": "a8af19170f0eb7cdc34af7e1100272a7a6a9bb4fa2906e1b6dc864237d955ed1",
+      "listing": "native-appearance.asm",
+      "listingSha256": "e8c18c221d094738f03f3cb5ccc9dcfd4795ad8d0e082f9eb760f731d5078838"
+    },
+    {
+      "start": "0x7b64ba0",
+      "end": "0x7b64c20",
+      "sha256": "a34bd90a8a8980dae144a19c3cb2cc6322ac2e067d61ac3f742bc24abc6d08a5",
+      "listing": "app-popup-factory.asm",
+      "listingSha256": "30160eb961c9aec9d059d339ab6692720f400d92c81f3eb86dd23fac493c3cb1"
+    },
+    {
+      "start": "0x455d1c0",
+      "end": "0x455d218",
+      "sha256": "295fa7dc7d8088ab52412a53690dc4efd56d1754797e8b29f7a72c847fb191b8",
+      "listing": "creation-flags-shared-proof.asm",
+      "listingSha256": "38ab75d1b98a6672092da27589765e2564cb1878f3156a3c60d5718d6e1fcf33"
+    },
+    {
+      "start": "0x35e8438",
+      "end": "0x35e84f0",
+      "sha256": "e597f0c56c74a44202c421af6c8998f083d3a9aab8481abfea14a2eade4aa2de",
+      "listing": "background-recipe.asm",
+      "listingSha256": "ae0a76ef19be8a15f0ea3e0c782e38587a0f2ac757ec2ca3562e0e13ea9dadbb"
+    },
+    {
+      "start": "0x7dc5120",
+      "end": "0x7dc5174",
+      "sha256": "e664813cff946dadc34ed86564e4ab4a23ec1c7b159c21f95e821f8051c1bc1f",
+      "listing": "actual-entry-binding.asm",
+      "listingSha256": "dabf1fd5aec1d4087892736869d2ffc609decb108699f3f27c65efdfe5a22eac"
+    },
+    {
+      "start": "0x8a546ec",
+      "end": "0x8a547c8",
+      "sha256": "4e5ed2dbd1a694070d7157ca65da1536f3234fe096173a7ad70c9ed973ae3de2",
+      "listing": "color-conversion.asm",
+      "listingSha256": "9b4f97b2025d4cdc8d1df676eb88fb4184779fca9566016e4824f033de5959eb"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xcf02924",
+      "hex": "61736964652d696d706f72742d64617461",
+      "encoding": "utf-8",
+      "text": "aside-import-data"
+    },
+    {
+      "address": "0xcf02936",
+      "hex": "6368726f6d653a2f2f61736964652d696d706f72742d646174612f",
+      "encoding": "utf-8",
+      "text": "chrome://aside-import-data/"
+    },
+    {
+      "address": "0xdaedd30",
+      "hex": "6f70656e42726f77736572496d706f727457696e646f77",
+      "encoding": "utf-8",
+      "text": "openBrowserImportWindow"
+    }
+  ],
+  "selectors": [
+    {
+      "address": "0x989f010",
+      "hex": "309901f010822f9100021fd6",
+      "name": "objc:styleMask"
+    },
+    {
+      "address": "0x989f01c",
+      "hex": "709901d01002019100021fd6",
+      "name": "objc:setStyleMask:"
+    },
+    {
+      "address": "0x989f028",
+      "hex": "709901d01082309100021fd6",
+      "name": "objc:collectionBehavior"
+    },
+    {
+      "address": "0x989f034",
+      "hex": "709901d01002319100021fd6",
+      "name": "objc:setCollectionBehavior:"
+    },
+    {
+      "address": "0xa131e70",
+      "hex": "9054019010820f9100021fd6",
+      "name": "objc:appearanceNamed:"
+    },
+    {
+      "address": "0xa131e7c",
+      "hex": "b05401901082189100021fd6",
+      "name": "objc:setAppearance:"
+    },
+    {
+      "address": "0x98aa61c",
+      "hex": "909801f010820c9100021fd6",
+      "name": "objc:setOpaque:"
+    },
+    {
+      "address": "0x8bab590",
+      "hex": "900002f010020d9100021fd6",
+      "name": "objc:setBackgroundColor:"
+    },
+    {
+      "address": "0x96b670c",
+      "hex": "50a801901002159100021fd6",
+      "name": "objc:contentView"
+    },
+    {
+      "address": "0xa131e88",
+      "hex": "705401b01082179100021fd6",
+      "name": "objc:setWantsLayer:"
+    },
+    {
+      "address": "0xa131e94",
+      "hex": "705401b010822d9100021fd6",
+      "name": "objc:CGColor"
+    },
+    {
+      "address": "0xa131ea0",
+      "hex": "705401b010021c9100021fd6",
+      "name": "objc:layer"
+    },
+    {
+      "address": "0x889e1d4",
+      "hex": "1019029010820b9100021fd6",
+      "name": "objc:superview"
+    },
+    {
+      "address": "0xb091034",
+      "hex": "70d900f01002289100021fd6",
+      "name": "objc:setTitle:"
+    },
+    {
+      "address": "0xa131e40",
+      "hex": "f05401901002079100021fd6",
+      "name": "objc:setTitleVisibility:"
+    },
+    {
+      "address": "0xa131e34",
+      "hex": "f054019010822c9100021fd6",
+      "name": "objc:setTitlebarAppearsTransparent:"
+    },
+    {
+      "address": "0xc550e74",
+      "hex": "1034009010023a9100021fd6",
+      "name": "objc:setMovableByWindowBackground:"
+    },
+    {
+      "address": "0x989f040",
+      "hex": "509901901082049100021fd6",
+      "name": "objc:standardWindowButton:"
+    },
+    {
+      "address": "0x889e108",
+      "hex": "101902901082169100021fd6",
+      "name": "objc:setHidden:"
+    },
+    {
+      "address": "0x989f04c",
+      "hex": "109901b01002249100021fd6",
+      "name": "objc:setEnabled:"
+    },
+    {
+      "address": "0xcbc14a0",
+      "hex": "410a01b0218843f930a300f0",
+      "name": "objc:sRGBColorSpace"
+    },
+    {
+      "address": "0xcbc8400",
+      "hex": "210a0190211c41f910a30090",
+      "name": "objc:colorWithColorSpace:components:count:"
+    }
+  ],
+  "data": [
+    {
+      "address": "0xe9102c0",
+      "hex": "f300000000000000d0b4bd0d00002000"
+    },
+    {
+      "address": "0xe029910",
+      "hex": "a203000000001080"
+    },
+    {
+      "address": "0xeb2f0f8",
+      "hex": "4301000000002080c807000000000000645a7e0d000020000000000000000000"
+    }
+  ]
+}

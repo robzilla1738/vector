@@ -1,0 +1,32 @@
+[
+  {
+    "path": "chrome/browser/ui/webui/settings/people_handler.h",
+    "before": "#include \"chrome/browser/profiles/profile_attributes_storage.h\"",
+    "after": "#include \"chrome/browser/profiles/profile_attributes_storage.h\"\n#include \"chrome/browser/buildflags.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/settings/people_handler.h",
+    "before": "  void HandleShowAccountSettingsUI(const base::ListValue& args);",
+    "after": "  void HandleShowAccountSettingsUI(const base::ListValue& args);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  void HandleOpenBrowserImportWindow(const base::ListValue& args);\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/settings/people_handler.cc",
+    "before": "#include \"chrome/browser/browser_process.h\"",
+    "after": "#include \"chrome/browser/browser_process.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/webui/aux_importer/import_standalone_window.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/settings/people_handler.cc",
+    "before": "  web_ui()->RegisterMessageCallback(\n      \"SetDatatype\",",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  web_ui()->RegisterMessageCallback(\n      \"openBrowserImportWindow\",\n      base::BindRepeating(&PeopleHandler::HandleOpenBrowserImportWindow,\n                          base::Unretained(this)));\n#endif\n  web_ui()->RegisterMessageCallback(\n      \"SetDatatype\",",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/settings/people_handler.cc",
+    "before": "void PeopleHandler::HandleSetDatatype(const base::ListValue& args) {",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\nvoid PeopleHandler::HandleOpenBrowserImportWindow(const base::ListValue& args) {\n  CHECK(args.empty());\n  auto* owner = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(\n      web_ui()->GetWebContents());\n  aux_importer::ShowStandaloneImporter(*profile_, owner);\n}\n#endif\n\nvoid PeopleHandler::HandleSetDatatype(const base::ListValue& args) {",
+    "count": 1
+  }
+]

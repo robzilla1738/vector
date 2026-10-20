@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_standalone_window.h",
+      "baselineSha256": null,
+      "outputSha256": "ee0a93651fd1c5378891445dc3310e85de645b311256cd741b9271ca66b8ba54"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_standalone_window.mm",
+      "baselineSha256": null,
+      "outputSha256": "2a21c2e70eccb0dd7969fcfddd15673d0d559afa7cfd2859824df1bbe0dd19d4"
+    },
+    {
+      "path": "chrome/browser/ui/webui/settings/people_handler.h",
+      "baselineSha256": "6f9be78b82caddb94daf045782eb1a33d717e96f6a88ee747ed1f9de07e5bdb3",
+      "outputSha256": "334050cf59fdb41e8ebd385a0b8ce22e4e0c854f516bcfca7f8a16be8c45557b"
+    },
+    {
+      "path": "chrome/browser/ui/webui/settings/people_handler.cc",
+      "baselineSha256": "1506c17c69c3f315b4c861a5ad69be5d295b785496c3cd5a9c0da1910d8ca69a",
+      "outputSha256": "841cbc4d1ec7af5a0a83000322068ad0f6f1e9d324cc4229334d2f2d2d7b0672"
+    }
+  ]
+}
