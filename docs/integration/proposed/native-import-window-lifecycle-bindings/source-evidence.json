@@ -1,0 +1,49 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x2e84c48",
+      "end": "0x2e84cf8",
+      "sha256": "798579e5f916270103fc289ab68751e1f1141b7a38424278ca0033afc04778ac",
+      "listing": "gate-factory.asm",
+      "listingSha256": "8b10dc34ca244792768167510d701ddbbcaa85f50229eefeee005bdee8141613"
+    },
+    {
+      "start": "0x458d2f0",
+      "end": "0x458d328",
+      "sha256": "0396bb6800a300249e18809a3836f102a813784dcaa98a9a283d1e71804ef6e4",
+      "listing": "gate-post-load.asm",
+      "listingSha256": "80e9a7828cf88916914bebe46afebd5a83855d7162359129c433d1446a1db70b"
+    },
+    {
+      "start": "0x2959bb0",
+      "end": "0x2959cc4",
+      "sha256": "04d0d821288151766f112bbf40d9136b0d39e22ded33aa3200fc6f648222ab4c",
+      "listing": "widget-close-now.asm",
+      "listingSha256": "4e14cd4d40eff91c4ef6e8fe399c1f3d9699de5fad11f21b7480704096a4642d"
+    },
+    {
+      "start": "0x28ad1d0",
+      "end": "0x28ad20c",
+      "sha256": "1833bef8183e1522b5f811a34a2a3967c91895c31c70e187f4fd7e1125607c94",
+      "listing": "delegate-widget-accessor.asm",
+      "listingSha256": "150d544a86adf41da64e20459ce81007b5fc7e5bc24ee7c4d093f476fed20937"
+    },
+    {
+      "start": "0x6f3328",
+      "end": "0x6f33cc",
+      "sha256": "b5ac9c9eba08e0a0a50710d20a1d9b7a61dbe3493c1577f9b984f1dd5b329482",
+      "listing": "native-delegate-resolution.asm",
+      "listingSha256": "b7da980abafe9b61f65747395f768d33d17949cdd7e378fa7777c662bb7b847f"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdad744a",
+      "hex": "41736964654163636f756e7450617373776f726447617465",
+      "encoding": "utf-8",
+      "text": "AsideAccountPasswordGate"
+    }
+  ]
+}
