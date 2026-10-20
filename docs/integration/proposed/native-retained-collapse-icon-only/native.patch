@@ -1,0 +1,46 @@
+--- a/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
++++ b/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
+@@ -10,11 +10,32 @@
+ #include "ui/actions/actions.h"
+ #include "ui/gfx/geometry/insets.h"
+ #include "ui/gfx/geometry/size.h"
++#include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/actions/action_view_controller.h"
+ #include "ui/views/view_tracker.h"
+ 
+ namespace aux {
+ namespace {
++class RetainedCollapseActionViewInterface final
++    : public ToolbarButtonActionViewInterface {
++ public:
++  explicit RetainedCollapseActionViewInterface(ToolbarButton* button)
++      : ToolbarButtonActionViewInterface(button), button_(button) {}
++
++  void ActionItemChangedImpl(actions::ActionItem* action) override {
++    // The supplied chip updates accessibility text, not a visible label.
++    views::ButtonActionViewInterface::ActionItemChangedImpl(action);
++    button_->SetTooltipText(action->GetTooltipText());
++    button_->GetViewAccessibility().SetName(action->GetText());
++    if (action->GetImage().IsVectorIcon()) {
++      button_->SetVectorIcon(*action->GetImage().GetVectorIcon().vector_icon());
++    }
++  }
++
++ private:
++  raw_ptr<ToolbarButton> button_;
++};
++
+ class ProfileRetainedCollapseButton final : public ToolbarChipButton {
+  public:
+   ProfileRetainedCollapseButton(BrowserWindowInterface& browser,
+@@ -26,6 +47,10 @@
+     SetMaxSize(gfx::Size(32, 32));
+     action_controller_.CreateActionViewRelationship(this,
+                                                    action.GetAsWeakPtr());
++  }
++  std::unique_ptr<views::ActionViewInterface> GetActionViewInterface()
++      override {
++    return std::make_unique<RetainedCollapseActionViewInterface>(this);
+   }
+   void OnMouseEntered(const ui::MouseEvent& event) override {
+     views::ViewTracker alive(this);

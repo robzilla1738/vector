@@ -1,0 +1,23 @@
+[
+  {
+    "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+    "name": "view-accessibility-api-include",
+    "count": 1,
+    "before": "#include \"ui/views/actions/action_view_controller.h\"\n",
+    "after": "#include \"ui/views/accessibility/view_accessibility.h\"\n#include \"ui/views/actions/action_view_controller.h\"\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+    "name": "original-icon-only-action-policy",
+    "count": 1,
+    "before": "namespace {\nclass ProfileRetainedCollapseButton",
+    "after": "namespace {\nclass RetainedCollapseActionViewInterface final\n    : public ToolbarButtonActionViewInterface {\n public:\n  explicit RetainedCollapseActionViewInterface(ToolbarButton* button)\n      : ToolbarButtonActionViewInterface(button), button_(button) {}\n\n  void ActionItemChangedImpl(actions::ActionItem* action) override {\n    // The supplied chip updates accessibility text, not a visible label.\n    views::ButtonActionViewInterface::ActionItemChangedImpl(action);\n    button_->SetTooltipText(action->GetTooltipText());\n    button_->GetViewAccessibility().SetName(action->GetText());\n    if (action->GetImage().IsVectorIcon()) {\n      button_->SetVectorIcon(*action->GetImage().GetVectorIcon().vector_icon());\n    }\n  }\n\n private:\n  raw_ptr<ToolbarButton> button_;\n};\n\nclass ProfileRetainedCollapseButton"
+  },
+  {
+    "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+    "name": "chip-specific-action-interface",
+    "count": 1,
+    "before": "  void OnMouseEntered(const ui::MouseEvent& event) override {",
+    "after": "  std::unique_ptr<views::ActionViewInterface> GetActionViewInterface()\n      override {\n    return std::make_unique<RetainedCollapseActionViewInterface>(this);\n  }\n  void OnMouseEntered(const ui::MouseEvent& event) override {"
+  }
+]
