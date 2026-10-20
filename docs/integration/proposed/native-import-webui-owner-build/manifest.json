@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "42b4475d056e051293b542afaae76d860df739fe39d9f1ea38d93eca56ddef7f",
+      "outputSha256": "a01290569e2ce67608a6746564324c4c074d97e6f5d3bcb195eba3e20f0ff580",
+      "anchors": [
+        {
+          "find": "\"safari_import.cc\", \"safari_import.h\",",
+          "replace": "\"safari_import.cc\", \"safari_import.h\", \"safari_webui_import.cc\", \"safari_webui_import.h\",",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

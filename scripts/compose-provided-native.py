@@ -518,6 +518,10 @@ steps.extend([
     ('native-import-standalone-creator/native.patch', 'native-import-standalone-creator/manifest.json'),
     ('native-import-standalone-build/native.patch', 'native-import-standalone-build/manifest.json'),
     ('native-import-settings-buildflag/native.patch', 'native-import-settings-buildflag/manifest.json'),
+    ('native-safari-webui-owner/native.patch', 'native-safari-webui-owner/manifest.json'),
+    ('native-safari-captured-window-lifecycle/native.patch', 'native-safari-captured-window-lifecycle/manifest.json'),
+    ('native-import-webui-handler/native.patch', 'native-import-webui-handler/manifest.json'),
+    ('native-import-webui-owner-build/native.patch', 'native-import-webui-owner-build/manifest.json'),
 ])
 
 if options.through:
