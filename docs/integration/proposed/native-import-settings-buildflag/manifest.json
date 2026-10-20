@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/settings/BUILD.gn",
+      "baselineSha256": "9582c1eba73f1c5e947d868433a23b63e57799259194d52d0a33795d15eaf7f3",
+      "outputSha256": "18d23400d03d0f7f163ca9eb6f22d11123f13c8965f3bf48bddfc74c85d25fce",
+      "anchors": [
+        {
+          "find": "import(\"//build/config/ozone.gni\")\n",
+          "replace": "import(\"//build/config/ozone.gni\")\nimport(\"//chrome/browser/buildflags.gni\")\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

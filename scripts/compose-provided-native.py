@@ -517,6 +517,7 @@ steps.extend([
     ('native-import-standalone-authority/native.patch', 'native-import-standalone-authority/manifest.json'),
     ('native-import-standalone-creator/native.patch', 'native-import-standalone-creator/manifest.json'),
     ('native-import-standalone-build/native.patch', 'native-import-standalone-build/manifest.json'),
+    ('native-import-settings-buildflag/native.patch', 'native-import-settings-buildflag/manifest.json'),
 ])
 
 if options.through:
