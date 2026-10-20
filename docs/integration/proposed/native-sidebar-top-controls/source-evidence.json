@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "constructor",
+      "start": "0x3555540",
+      "endExclusive": "0x3555b40",
+      "size": 1536,
+      "sourceBytesSha256": "3dd27f53efa83426d2c21a997374df45b789743fb390979e5189b843a288b4b0",
+      "listing": "constructor.asm",
+      "listingSha256": "9b68eedddbbbb9324a0953f306d3e7c442dcaa27946148d9f02b1f940d46f9d2"
+    },
+    {
+      "name": "combo-constructor",
+      "start": "0x4241c00",
+      "endExclusive": "0x4242398",
+      "size": 1944,
+      "sourceBytesSha256": "cc889db4e26de3966ca21699725d673cebbc2796b9696ff1b45444ff4b0744b5",
+      "listing": "combo-constructor.asm",
+      "listingSha256": "932ea7b95cfbdfde3e77555bb2b1d08754a3aacf8b48a12ab35dabb6fd57ad4e"
+    },
+    {
+      "name": "layout-delegate",
+      "start": "0x3479410",
+      "endExclusive": "0x3479480",
+      "size": 112,
+      "sourceBytesSha256": "1e7d95d0a8671368eb63e0e39fac49256e7b747671b38fccc59775ff41de24e4",
+      "listing": "layout-delegate.asm",
+      "listingSha256": "a4605c489e682e72c544245b13650713a8d6e39c1143e3ef25606ffcee8c327e"
+    },
+    {
+      "name": "leading-collapse",
+      "start": "0x347a450",
+      "endExclusive": "0x347a53c",
+      "size": 236,
+      "sourceBytesSha256": "f008834dd05822920b9c42101ad62d461cc1e6d412a1309a2eab6b7dd3ebc85c",
+      "listing": "leading-collapse.asm",
+      "listingSha256": "754e8e9bb0751104ecc877de633edd726680ff0e56e3e6bd3b7a0f86cbae71a8"
+    },
+    {
+      "name": "trailing-combo",
+      "start": "0x347a1e0",
+      "endExclusive": "0x347a2b8",
+      "size": 216,
+      "sourceBytesSha256": "77c1d9bb924d627e1246c386211585351f345c03c716e367edbfc8c0b3b67828",
+      "listing": "trailing-combo.asm",
+      "listingSha256": "ad272e96b319d8821edb67349ca7dceffa7946381262aa8c1d234c68dec19717"
+    },
+    {
+      "name": "metadata",
+      "start": "0x2db8e50",
+      "endExclusive": "0x2db8eb4",
+      "size": 100,
+      "sourceBytesSha256": "186f7a5390b8401a1a4e5d4291f491582cb5d43cbd526626b5f258abdc0d87e5",
+      "listing": "metadata.asm",
+      "listingSha256": "2de7cf0c94d5bcd906f396e249ad97024260829a053142a76e706a7d3b8c75a4"
+    }
+  ],
+  "data": [
+    {
+      "name": "layout-delegate-vtable",
+      "address": "0xe68d358",
+      "size": 8,
+      "hex": "1094470300001000",
+      "sha256": "3afb1a383e683516991068f6865b68a4388e9bbc00abb0af3ba3e84d15050c69"
+    },
+    {
+      "name": "metadata-name",
+      "address": "0xdb10f75",
+      "size": 29,
+      "hex": "566572746963616c5461625374726970546f70436f6e7461696e657200",
+      "sha256": "ed534ed933a34b18c2b62194a5cf44593245a57b48a15387f147d45551bc0e1f"
+    }
+  ],
+  "api": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc",
+      "snapshot": "combo-api155.cc",
+      "sha256": "38c5b10cfcd4ccb2c07cfe48e7446fd87f875e72d4c27fee95babc856b84ba92",
+      "authority": "actual155 integration API; unchanged by this proposal"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h",
+      "snapshot": "combo-api155.h",
+      "sha256": "57aae1b19bc741ab9ea26fb8e832e2914d0870f7e3055634de96ab6682be2ba4",
+      "authority": "actual155 integration API; unchanged by this proposal"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "snapshot": "provided-upstream-top-container.cc",
+      "sha256": "735c251ae3ce470d8103a7b509d8694eb6863bfb0db858ec35c83b22751173a9",
+      "authority": "owner-provided upstream source; not claimed as shipped fork bytes"
+    }
+  ],
+  "scope": "Static supplied-native constructor/mount/layout evidence only. No target execution or owner state. Incognito-specific mode controls and screenshot icon identity remain unproven."
+}

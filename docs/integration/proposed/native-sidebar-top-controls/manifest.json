@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "applyAfter": "actual394 frozen native inputs; apply only exact pinned source baselines after root build/package",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "baselineSha256": "0ffcafb6cc287cf83b2f0240e22dd763bb4ef0675a2fbf7ffa15f70da8e4b927",
+      "outputSha256": "c8b4f85e991e24eb4a5504a65b027e8dba8d1f9b1d54513a0769ce8083cf8684"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h",
+      "baselineSha256": "2afe4f30667faa56317e7f73105aa03602bcb09a2769da2dede1ecbb9664ce83",
+      "outputSha256": "e601175638f5eca4d750b4999c581636bd453617566de7e4a47f84ff654b8e8e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "ff8e847921ccb32cc3f7085a7a0eb0a1f971ad30421c4934ee7ecff035185bbd",
+      "outputSha256": "cc5c329fb5249746e8db50e5b14a51661cea2a68eb23d9b741b6325c16b59e62"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "9909cec362723725149348e1be435f092d115d7e46ab786edbdcbd69d03284d7",
+      "outputSha256": "3b942776a8b13834460874393ac6f1d9b65099eab9ad61e6b157a70c070546f0"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

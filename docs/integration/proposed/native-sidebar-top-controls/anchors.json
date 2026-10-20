@@ -1,0 +1,93 @@
+[
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-independent-owners-includes",
+    "count": 1,
+    "before": "#include \"chrome/browser/ui/views/frame/aux_sidebar_view.h\"\n#include \"chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h\"\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "restore-native-combo-mount",
+    "count": 1,
+    "before": "  // The Aux header contains agent activity and native controls. Tab search lives\n  // in the sidebar footer.\n  combo_button_->SetVisible(false);\n  aux_pill_ = AddChildView(std::make_unique<AuxAgentPill>(browser_));\n  aux_agent_tabs_ = AddChildView(CreateAuxAgentTabsButton(browser_));\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-pill-state",
+    "count": 1,
+    "before": "void VerticalTabStripTopContainer::SetAgentActive(bool active) {\n  if (aux_pill_active_ == active) {\n    return;\n  }\n  aux_pill_active_ = active;\n  InvalidateLayout();\n}\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-collapsed-extra-children",
+    "count": 1,
+    "before": "    layout.child_layouts.emplace_back(aux_pill_.get(), false, gfx::Rect());\n    if (aux_agent_tabs_ && aux_agent_tabs_->GetVisible()) {\n      const gfx::Size size = aux_agent_tabs_->GetPreferredSize();\n      layout.child_layouts.emplace_back(aux_agent_tabs_.get(), true,\n          gfx::Rect(std::max(0, (host_size.width() - size.width()) / 2),\n                    current_y, size.width(), size.height()));\n      current_y += size.height();\n    }\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-expanded-pill",
+    "count": 1,
+    "before": "    if (aux_pill_) {\n      const gfx::Size pref_size = aux_pill_->GetPreferredSize();\n      gfx::Rect bounds(left_alignment,\n                       std::max(0, y_baseline - pref_size.height() / 2),\n                       pref_size.width(), pref_size.height());\n      layout.child_layouts.emplace_back(aux_pill_.get(), aux_pill_active_, bounds);\n    }\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "restore-leading-collapse",
+    "count": 1,
+    "before": "      gfx::Rect bounds(host_size.width() - pref_size.width(),\n",
+    "after": "      gfx::Rect bounds(left_alignment,\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-expanded-extra-button",
+    "count": 1,
+    "before": "    if (aux_agent_tabs_ && aux_agent_tabs_->GetVisible()) {\n      const gfx::Size size = aux_agent_tabs_->GetPreferredSize();\n      const int activity_width = aux_pill_active_ && aux_pill_\n          ? aux_pill_->GetPreferredSize().width() + 8 : 0;\n      layout.child_layouts.emplace_back(aux_agent_tabs_.get(), true,\n          gfx::Rect(left_alignment + activity_width,\n                    std::max(0, y_baseline - size.height() / 2),\n                    size.width(), size.height()));\n    }\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+    "name": "remove-pill-caption-exclusion",
+    "count": 1,
+    "before": "  if (aux_pill_ && aux_pill_->GetVisible() && IsHitInView(aux_pill_, point)) {\n    return false;\n  }\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h",
+    "name": "remove-pill-public-api",
+    "count": 1,
+    "before": "  // Aside shows the agent pill in the header only while an agent is running.\n  void SetAgentActive(bool active);\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h",
+    "name": "remove-independent-members",
+    "count": 1,
+    "before": "  raw_ptr<views::View> aux_pill_ = nullptr;\n  raw_ptr<views::View> aux_agent_tabs_ = nullptr;\n  bool aux_pill_active_ = false;\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+    "name": "retire-running-pill-subscription",
+    "count": 1,
+    "before": "  aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(\n      &VerticalTabStripRegionView::OnAuxAgentActiveChanged,\n      base::Unretained(this)));\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+    "name": "retire-running-pill-forwarder",
+    "count": 1,
+    "before": "void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {\n  top_button_container_->SetAgentActive(active);\n}\n\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+    "name": "retire-running-pill-declaration",
+    "count": 1,
+    "before": "  void OnAuxAgentActiveChanged(bool active);\n",
+    "after": ""
+  }
+]
