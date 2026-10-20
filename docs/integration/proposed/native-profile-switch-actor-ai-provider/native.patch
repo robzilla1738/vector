@@ -1,0 +1,164 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -6,6 +6,8 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include "chrome/browser/actor/ui/actor_ui_window_controller.h"
++#include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+ #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
+ #include "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h"
+ #include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
+@@ -78,6 +80,8 @@
+     std::unique_ptr<tab_groups::SavedTabGroupModelListener::AuxProfileModelTransfer>
+         group_transfer;
+     bool target_shared_owners = false;
++    bool had_ai_mode_owner = false;
++    bool target_ai_mode_owner = false;
+     uint64_t group_session_generation = 0;
+     uint64_t group_update_generation = 0;
+     std::array<uint64_t, 2> cache_group_session_generations{};
+@@ -152,8 +156,7 @@
+       features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
+       features.glic_iph_controller_ ||
+       features.glic_split_button_controller_ || features.organizer_panel_controller_ ||
+-      features.actor_ui_window_controller_ || features.ai_overlay_dialog_controller_ ||
+-      features.ai_mode_page_action_controller_ ||
++      features.ai_overlay_dialog_controller_ ||
+       features.new_tab_footer_controller_ ||
+       features.ios_promo_controller_ ||
+       features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_;
+@@ -189,6 +192,12 @@
+       toast && toast->HasPendingToastWork()) {
+     return nullptr;
+   }
++  if ((features_->actor_ui_window_controller_ &&
++       !features_->actor_ui_window_controller_->CanRebindForAuxProfileSwitch()) ||
++      (features_->ai_mode_page_action_controller_ &&
++       !features_->ai_mode_page_action_controller_->CanRetireForAuxProfileSwitch())) {
++    return nullptr;
++  }
+   const std::array<BrowserWindowInterface*, 1> source_windows{&browser};
+   if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(
+           source_windows) ||
+@@ -216,6 +225,7 @@
+   }
+   auto plan = std::make_shared<Bindings>();
+   plan->target = target.GetWeakPtr();
++  plan->had_ai_mode_owner = bool(features_->ai_mode_page_action_controller_);
+   plan->view = view;
+   plan->toolbar = toolbar;
+   plan->location = location;
+@@ -283,6 +293,12 @@
+   }
+   for (auto* cache : {&previous_cache, &target_cache}) {
+     auto& features = cache->GetFeatures();
++    if (bool(features.actor_ui_window_controller_) !=
++            bool(features_->actor_ui_window_controller_) ||
++        (features.actor_ui_window_controller_ &&
++         !features.actor_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
++      return false;
++    }
+     if (bool(features.most_recent_shared_tab_update_store_) !=
+             bool(features.session_service_tab_group_sync_observer_) ||
+         (features.most_recent_shared_tab_update_store_ &&
+@@ -296,6 +312,8 @@
+   if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(windows)) {
+     return false;
+   }
++  original->target_ai_mode_owner =
++      bool(target_features.ai_mode_page_action_controller_);
+   original->target_shared_owners =
+       bool(target_features.most_recent_shared_tab_update_store_);
+   auto current = CollectReadyBindings(browser, *original->target);
+@@ -375,6 +393,22 @@
+       }
+     }
+   }
++  if (features_->ai_mode_page_action_controller_) {
++    features_->ai_mode_page_action_controller_->PrepareForAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++    features_->ai_mode_page_action_controller_.reset();
++    if (!alive()) {
++      return;
++    }
++  }
++  if (features_->actor_ui_window_controller_) {
++    features_->actor_ui_window_controller_->PrepareForAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++  }
+   if (features_->data_protection_ui_controller_) {
+     features_->data_protection_ui_controller_->PrepareForAuxProfileSwitch(target.get());
+     if (!alive()) {
+@@ -565,6 +599,12 @@
+   plan->view->RebindAuxProfileSwitch(plan->view_generation);
+   if (!alive()) {
+     return;
++  }
++  if (features_->actor_ui_window_controller_) {
++    features_->actor_ui_window_controller_->RebindForAuxProfileSwitch(target);
++    if (!alive()) {
++      return;
++    }
+   }
+   // Real action definitions/policies must exist before target toolbar/entries.
+   features_->browser_actions_->RebindAuxProfileSwitch(plan->actions_generation);
+@@ -833,6 +873,14 @@
+       return;
+     }
+   }
++  if (plan->target_ai_mode_owner) {
++    auto owner = omnibox::AiModePageActionController::CreatePreparedForAuxProfileSwitch(
++        browser, *target, *plan->location);
++    if (!alive()) {
++      return;
++    }
++    features_->ai_mode_page_action_controller_ = std::move(owner);
++  }
+ }
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Finish(
+@@ -907,6 +955,17 @@
+       return;
+     }
+   }
++  if (features_->actor_ui_window_controller_) {
++    features_->actor_ui_window_controller_->FinishForAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++  }
++  if (features_->ai_mode_page_action_controller_) {
++    // Its genuine config update may notify UI observers. Keep this the final
++    // private-owner effect after real tabs/edit model/profile services settle.
++    features_->ai_mode_page_action_controller_->FinishForAuxProfileSwitch();
++  }
+ }
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Abort(
+@@ -1104,6 +1163,21 @@
+     if (!alive()) {
+       return;
+     }
++  }
++  if (features_->actor_ui_window_controller_) {
++    features_->actor_ui_window_controller_->AbortForAuxProfileSwitch(browser.GetProfile());
++    if (!alive()) {
++      return;
++    }
++  }
++  if (plan->had_ai_mode_owner) {
++    auto owner = omnibox::AiModePageActionController::CreatePreparedForAuxProfileSwitch(
++        browser, *browser.GetProfile(), *plan->location);
++    if (!alive()) {
++      return;
++    }
++    features_->ai_mode_page_action_controller_ = std::move(owner);
++    features_->ai_mode_page_action_controller_->FinishForAuxProfileSwitch();
+   }
+ }
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::ResumeCacheMetadata(

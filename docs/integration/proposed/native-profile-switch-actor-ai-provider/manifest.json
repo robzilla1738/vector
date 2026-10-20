@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "6251e6f75 weak provider output",
+  "requiredOwnerProposals": [
+    "f4bf2dbde AiMode",
+    "e47f5aac9 Actor"
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "4b6539beb72e6e9f423d63768597df6f1f12a9091d9a1596f96f7fe375f501e5",
+      "outputSha256": "8ef46e28b7dc35826cf3893a1d2825e7bfb47432eef9a63062d230ebbd17dd7f"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
