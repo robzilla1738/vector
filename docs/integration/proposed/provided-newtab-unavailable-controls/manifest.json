@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "sourceVersion": "1.26.1016.1852",
+  "component": "agent",
+  "scope": "disconnected Ask toolbar only; no account/credential/inventory fabrication",
+  "files": [
+    {
+      "path": "assets/ask-omnibox-panel-DkxXbN8c.js",
+      "size": 4721,
+      "sourceSha256": "5517774f87c3a2ef72c95c5e6e8a6eb8c784497a1d17f61988d5903a165a69c1",
+      "outputSha256": "0b0e9e739d97f12ff8a9e495f100a5ccc71223be64c6e5253ccfa71b26e48fff",
+      "anchors": [
+        {
+          "kind": "integration",
+          "find": "import{A as P,F as I,",
+          "replace": "import{AuxUnavailableNewTabControls,A as P,F as I,",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "find": "return s===null?null:(0,e.jsx)(F,",
+          "replace": "return s===null?(0,e.jsx)(AuxUnavailableNewTabControls,{}):(0,e.jsx)(F,",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "find": "value:{accountId:n??0,browserProfile:null,mode:a}",
+          "replace": "value:{accountId:n,browserProfile:null,mode:a}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "size": 343178,
+      "sourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "outputSha256": "58c974e7a0ad29ad1b04aae3dffc52ae75c34859b5aaa4ae601aad2cf35d1617",
+      "anchors": [
+        {
+          "kind": "integration",
+          "find": "export{T1 as A,",
+          "replace": "function AuxUnavailableNewTabControls(){const unavailable=\"AI options are unavailable until this browser profile connects.\";return(0,a.jsx)(\"div\",{className:\"mx-auto min-h-12 w-full max-w-200 px-4\",children:(0,a.jsxs)(\"div\",{className:\"py-1\",children:[(0,a.jsx)(\"span\",{className:\"text-muted-foreground px-2 text-xs\",role:\"status\",children:\"Profile disconnected — AI options unavailable\"}),(0,a.jsxs)(uf,{className:\"py-1\",title:unavailable,\"data-aux-account-unavailable\":!0,children:[(0,a.jsxs)(Ts,{children:[(0,a.jsx)(J,{\"aria-label\":\"Composer options\",className:\"text-muted-foreground bg-transparent\",\"data-testid\":\"attachments-button\",size:\"icon-sm\",variant:\"secondary\",shape:\"pill\",disabled:!0,children:(0,a.jsx)(nl,{className:\"size-4\"})}),(0,a.jsx)(J,{className:\"text-muted-foreground\",variant:\"ghost\",size:\"sm\",shape:\"pill\",disabled:!0,children:(0,a.jsx)(ws,{project:null})}),(0,a.jsx)(oc,{mode:\"guard\",disabled:!0,render:(0,a.jsx)(J,{variant:\"ghost\",size:\"sm\",shape:\"pill\"})})]}),(0,a.jsxs)(Ts,{children:[(0,a.jsx)(ac,{model:{provider:\"\",modelId:\"Model unavailable\",fastMode:!1},showThinkingLevel:!1,disabled:!0}),(0,a.jsx)(ic,{label:\"Reasoning unavailable\",disabled:!0}),(0,a.jsx)(J,{\"aria-label\":\"Dictate\",className:\"transition-none text-muted-foreground\",disabled:!0,size:\"icon-sm\",shape:\"pill\",type:\"button\",variant:\"ghost\",children:(0,a.jsx)(au,{className:\"size-4\"})})]})]})]})})}export{AuxUnavailableNewTabControls,T1 as A,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/island-C0ouZ54e.js",
+      "size": 18559,
+      "sourceSha256": "6fa03ce1c54b5a5c3a6ed0439e63d08560c5715be8ff568afc8a07eee4a078e2",
+      "outputSha256": "6fa03ce1c54b5a5c3a6ed0439e63d08560c5715be8ff568afc8a07eee4a078e2",
+      "anchors": []
+    },
+    {
+      "path": "assets/queries-ldd77hNk.js",
+      "size": 73090,
+      "sourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "outputSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "anchors": []
+    },
+    {
+      "path": "assets/use-agent-settings-DiedG0R1.js",
+      "size": 7170,
+      "sourceSha256": "4acd8450d7c7c4d5ddbf6104192d2fd2d1a6eaf90564e12be3c0550e7bb83897",
+      "outputSha256": "4acd8450d7c7c4d5ddbf6104192d2fd2d1a6eaf90564e12be3c0550e7bb83897",
+      "anchors": []
+    },
+    {
+      "path": "assets/use-default-permission-mode-DKp05vFQ.js",
+      "size": 6117,
+      "sourceSha256": "291f3f3d14671581455d8909b713305374043389ec5eef9f21885ab523a9ecb9",
+      "outputSha256": "291f3f3d14671581455d8909b713305374043389ec5eef9f21885ab523a9ecb9",
+      "anchors": []
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "size": 122683,
+      "sourceSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+      "outputSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+      "anchors": []
+    },
+    {
+      "path": "assets/icons-C7UupG-g.js",
+      "size": 68912,
+      "sourceSha256": "31e51b68cf5f60d44936714763ab43f93c8ad6d7615f642c82a4b7daa7abf2f4",
+      "outputSha256": "31e51b68cf5f60d44936714763ab43f93c8ad6d7615f642c82a4b7daa7abf2f4",
+      "anchors": []
+    }
+  ]
+}
