@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "composition": "v498",
+  "packageRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local",
+  "planSha256": "ba5310d19afdd39cd0a44d39d845869981aa5af70032fc8468e39068504b75e4",
+  "planPath": "/Users/rcourson/Documents/Vibe/web/out/development-signing-plan-v498/development-review-plan.json",
+  "targets": [
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex",
+      "signer": "adhoc",
+      "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507",
+      "entitlements": {
+        "com.apple.security.app-sandbox": true
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "signer": "adhoc",
+      "sha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92",
+      "entitlements": {}
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "signer": "adhoc",
+      "sha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92",
+      "entitlements": {}
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "signer": "adhoc",
+      "sha256": "4fe2e05ec0cbd55f7b10f606158d93f70bec73b45bc6cce954ddf8b807a82d58",
+      "entitlements": {}
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app",
+      "signer": "adhoc",
+      "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369",
+      "entitlements": {
+        "com.apple.security.app-sandbox": true,
+        "com.apple.security.network.client": true
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "role": "cli-sea",
+      "signer": "development",
+      "sha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.cli",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ],
+        "com.apple.security.cs.allow-jit": true,
+        "com.apple.security.cs.allow-unsigned-executable-memory": true,
+        "com.apple.security.cs.disable-library-validation": true,
+        "com.apple.security.cs.allow-dyld-environment-variables": true
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app",
+      "signer": "adhoc",
+      "sha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c",
+      "entitlements": {
+        "com.apple.security.automation.apple-events": true,
+        "com.apple.security.personal-information.addressbook": true
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "role": "daemon",
+      "signer": "development",
+      "sha256": "a6ae987278679ba8dbde478b8f8c3b72d6911ae6da7a35611e0a36f526512ae9",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ],
+        "com.apple.security.cs.allow-jit": true,
+        "com.apple.security.cs.allow-unsigned-executable-memory": true,
+        "com.apple.security.cs.disable-library-validation": true,
+        "com.apple.security.cs.allow-dyld-environment-variables": true
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib",
+      "signer": "adhoc",
+      "sha256": "0cb7b98642dab352799b848b6f035e2a8251fb7ed6b54e0c15ee7a7cea325fd9",
+      "entitlements": {}
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app",
+      "role": "carrier",
+      "signer": "development",
+      "sha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      }
+    },
+    {
+      "path": "Aux.app",
+      "role": "browser",
+      "signer": "adhoc",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99",
+      "entitlements": {}
+    }
+  ],
+  "publicProfilesAuthenticated": 3,
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "authorization": "Owner explicitly authorized local signing to resolve the observed account startup failure on 2026-10-20. No release, owner profiles or unrelated OS grants.",
+  "signingPerformed": false,
+  "dpExecuted": false
+}

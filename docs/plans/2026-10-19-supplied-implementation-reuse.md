@@ -2,6 +2,8 @@
 
 Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reconstruction plan and instructions to independently recreate the product.
 
+On 2026-10-20 the owner explicitly authorized bounded local development signing to resolve the real account startup failure. That exception is implemented for the copied v498 development app and previously approved disposable Aux scope; see `docs/acceptance/provided-v498-local-auth-repair.json`. It does not authorize release, owner-profile access or unrelated OS grants. Broader no-signing statements below retain their ordinary-development scope outside this repair.
+
 ## Goal
 
 Reuse the implementation supplied by the owner, preserve its UI and behavior, and change its branding, assets and identifiers to Aux. Deliver the faithful local Aux browser, including the supplied daemon, Agent/Vault UI, CLI, helpers and runtimes as needed. Adapt that implementation to Aux Chromium instead of replacing it with approximate screens or behavior.

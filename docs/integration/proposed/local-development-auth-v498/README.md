@@ -1,0 +1,13 @@
+# V498 local development authentication repair
+
+The owner explicitly authorized local signing after the observed normal-window account failure on2026-10-20. The exact copied build, original inputs, public profiles, entitlements and eleven target preimages are bound by the summary and its full untracked signing plan. The existing v32/v416 evidence was not used as current signing proof.
+
+The three Apple Development roles are the supplied daemon SEA, CLI SEA and fixed native carrier. Eight enclosing/auxiliary targets receive the reviewed ad hoc signatures. The current executor verified all signatures, the actual certificate/team/group, fresh authenticated public provisioning profiles and preservation of all untargeted files. No profile creation, device registration, release or notarization ran.
+
+The copied package’s development layout now selects `provided-sea`. Its prior `provided-node-development` choice would run unchanged Node with a different application/Keychain identity, despite signing the daemon app. The packager now makes this selection for explicit development authority layouts, and the current copied candidate’s before/after marker and package-report changes are recorded before signing. Ordinary packaging defaults are unchanged. Five focused package checks passed; no native rebuild was needed for this metadata correction.
+
+The real original daemon, CLI and carrier then verified the same authority in the previously approved disposable Aux scope. This was a verify operation against its existing scoped installation, not replacement key generation or owner-item access. The signed normal browser was launched only afterward, with its HOME/Foundation home and profile in that scope, and the acceptance flag confined to that child environment. The separate Agent inbox Keychain flag remains unset. The actual daemon image is the supplied signed SEA, health is ready and the real UI shows Sign in to Aux. The prior account and native-signer errors do not occur in its recorded startup log.
+
+The app remains open for the owner. Cloud sign-in has not been performed by the agent; owner browser profiles and unrelated OS grants remain untouched. The installed app is unchanged. This proves the bounded startup repair, not complete UI/functional parity or all Muse acceptance.
+
+Actual evidence: `docs/acceptance/provided-v498-local-auth-repair.json`. Full exact-byte signing, profile, scoped-authority and launch receipts remain under `out/native-integration/` and `out/development-signing-plan-v498/`. The unsigned package report is a historical pre-sign input; the signed receipt is authoritative for final signed bytes.

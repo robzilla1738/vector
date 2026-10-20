@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "composition": "v498",
+  "observedAt": "2026-10-20T14:42:12.319458+00:00",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app",
+  "browserPid": 55101,
+  "daemonPid": 55269,
+  "originalSignedDaemonImageObserved": true,
+  "signingReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v498-development-signing-receipt.json",
+    "sha256": "b6c0499f58b7c5fa489608d3eed3b4c82ee648b6568874f4d9bfc34b336f5ef4"
+  },
+  "signingStatus": "signed-and-verified",
+  "signedTargets": 11,
+  "developmentSignedRoles": [
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "team": "9F2JXY8TCK",
+      "certificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90"
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "team": "9F2JXY8TCK",
+      "certificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90"
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app",
+      "team": "9F2JXY8TCK",
+      "certificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90"
+    }
+  ],
+  "untargetedLeavesPreserved": true,
+  "sharedAuthority": {
+    "operation": "verify",
+    "hosts": [
+      {
+        "host": "daemon",
+        "ok": true,
+        "defaultGroupVerified": true
+      },
+      {
+        "host": "carrier",
+        "ok": true,
+        "defaultGroupVerified": null
+      },
+      {
+        "host": "cli",
+        "ok": true,
+        "defaultGroupVerified": true
+      }
+    ]
+  },
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "normalProfile": true,
+  "incognito": false,
+  "observedRoute": "main.html#/onboarding/splash",
+  "observedUI": "Sign in to Aux; email and Google sign-in controls; original account error absent",
+  "observedStartupLogErrorCounts": {
+    "Unable to resolve Chromium profile account.": 0,
+    "Provided native execution has not been accepted": 0,
+    "Installation signing key missing or unsafe": 0
+  },
+  "daemonHealth": {
+    "service": "aside-daemon",
+    "version": "1.26.1016.1852",
+    "ready": true,
+    "pid": 55269
+  },
+  "accountStartupResolved": true,
+  "cloudSignInCompleted": false,
+  "leftRunning": true,
+  "ownerBrowserProfilesAccessed": false,
+  "unrelatedKeychainItemsAccessed": false,
+  "installedAppChanged": false,
+  "releasePerformed": false,
+  "notarizationPerformed": false,
+  "fullParityAccepted": false
+}
