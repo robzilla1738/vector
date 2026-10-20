@@ -1,0 +1,171 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -369,7 +369,7 @@
+                                        vector_icons::kCloseIcon, color, 16));
+     }
+   }
+-  void OnPaint(gfx::Canvas* canvas) override {
++  void PaintButtonContents(gfx::Canvas* canvas) override {
+     if (!GetColorProvider()) {
+       return;
+     }
+@@ -463,7 +463,7 @@
+     views::Button::OnBlur();
+     SchedulePaint();
+   }
+-  void OnPaint(gfx::Canvas* canvas) override {
++  void PaintButtonContents(gfx::Canvas* canvas) override {
+     if (!GetColorProvider()) {
+       return;
+     }
+@@ -478,15 +478,14 @@
+ BEGIN_METADATA(AgentTabsCommandRow)
+ END_METADATA
+ 
+-class AgentTabsBubble : public views::BubbleDialogDelegateView,
++class AgentTabsBubble : public views::BubbleDialogDelegate,
+                         public TabStripModelObserver {
+-  METADATA_HEADER(AgentTabsBubble, views::BubbleDialogDelegateView)
+  public:
+   AgentTabsBubble(BrowserWindowInterface* browser,
+                   views::View* anchor,
+                   tab_groups::TabGroupId group,
+                   base::WeakPtr<TabStrip> tab_strip)
+-      : views::BubbleDialogDelegateView(anchor, views::BubbleBorder::TOP_LEFT),
++      : views::BubbleDialogDelegate(anchor, views::BubbleBorder::TOP_LEFT),
+         model_(browser->GetTabStripModel()),
+         group_(group),
+         tab_strip_(tab_strip) {
+@@ -495,9 +494,10 @@
+     set_margins(gfx::Insets());
+     set_corner_radius(10);
+     set_fixed_width(225);
+-    SetLayoutManager(std::make_unique<views::FlexLayout>())
++    contents_ = SetContentsView(std::make_unique<views::View>());
++    contents_->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+-    auto* header = AddChildView(std::make_unique<views::View>());
++    auto* header = contents_->AddChildView(std::make_unique<views::View>());
+     header->SetBorder(
+         views::CreateEmptyBorder(gfx::Insets::TLBR(10, 12, 8, 12)));
+     header->SetLayoutManager(std::make_unique<views::FlexLayout>())
+@@ -508,12 +508,12 @@
+                                    gfx::Font::Weight::NORMAL, 18,
+                                    AgentTabsColor::kSidebarMutedForeground));
+     AddSeparator();
+-    rows_ = AddChildView(std::make_unique<views::View>());
++    rows_ = contents_->AddChildView(std::make_unique<views::View>());
+     rows_->SetBorder(views::CreateEmptyBorder(gfx::Insets(4)));
+     rows_->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+     AddSeparator();
+-    auto* footer = AddChildView(std::make_unique<views::View>());
++    auto* footer = contents_->AddChildView(std::make_unique<views::View>());
+     footer->SetBorder(views::CreateEmptyBorder(gfx::Insets(4)));
+     footer->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+@@ -529,9 +529,11 @@
+                                       AgentTabsColor::kPrimaryForeground));
+     close_all->GetViewAccessibility().SetName(u"Close all");
+     footer->AddChildView(std::move(close_all));
+-    observation_.Observe(model_);
++    model_->AddObserver(this);
+     Refresh();
+   }
++
++  ~AgentTabsBubble() override { TabStripModelObserver::StopObservingAll(this); }
+ 
+   void OnTabStripModelChanged(TabStripModel*,
+                               const TabStripModelChange&,
+@@ -551,7 +553,6 @@
+     Refresh();
+   }
+   void OnTabStripModelDestroyed(TabStripModel*) override {
+-    observation_.Reset();
+     rows_->RemoveAllChildViews();
+     model_ = nullptr;
+     CloseBubble();
+@@ -559,7 +560,8 @@
+ 
+  private:
+   void AddSeparator() {
+-    auto* separator = AddChildView(std::make_unique<AgentTabsSeparator>());
++    auto* separator =
++        contents_->AddChildView(std::make_unique<AgentTabsSeparator>());
+     separator->SetOrientation(views::Separator::Orientation::kHorizontal);
+     separator->SetBorder(
+         views::CreateEmptyBorder(gfx::Insets::TLBR(0, 4, 0, 4)));
+@@ -597,12 +599,9 @@
+   raw_ptr<TabStripModel> model_;
+   const tab_groups::TabGroupId group_;
+   const base::WeakPtr<TabStrip> tab_strip_;
++  raw_ptr<views::View> contents_ = nullptr;
+   raw_ptr<views::View> rows_ = nullptr;
+-  base::ScopedObservation<TabStripModel, TabStripModelObserver> observation_{
+-      this};
+-};
+-BEGIN_METADATA(AgentTabsBubble)
+-END_METADATA
++};
+ 
+ class AgentTabsButton : public views::Button, public TabStripModelObserver {
+   METADATA_HEADER(AgentTabsButton, views::Button)
+@@ -633,7 +632,7 @@
+     count_->SetProperty(views::kMarginsKey, gfx::Insets());
+     SetTooltipText(u"Background tabs Aux opened");
+     GetViewAccessibility().SetName(u"Agent Tabs");
+-    observation_.Observe(model_);
++    model_->AddObserver(this);
+     Refresh();
+   }
+   gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
+@@ -647,7 +646,7 @@
+           ResolveColor(this, AgentTabsColor::kSecondaryForeground), 16));
+     }
+   }
+-  void OnPaint(gfx::Canvas* canvas) override {
++  void PaintButtonContents(gfx::Canvas* canvas) override {
+     if (!GetColorProvider()) {
+       return;
+     }
+@@ -669,7 +668,10 @@
+     border.Inset(0.5f);
+     canvas->DrawRoundRect(border, 10, flags);
+   }
+-  ~AgentTabsButton() override { CloseBubble(); }
++  ~AgentTabsButton() override {
++    TabStripModelObserver::StopObservingAll(this);
++    CloseBubble();
++  }
+   void OnTabStripModelChanged(TabStripModel*,
+                               const TabStripModelChange&,
+                               const TabStripSelectionChange&) override {
+@@ -677,7 +679,6 @@
+   }
+   void OnTabGroupChanged(const TabGroupChange&) override { Refresh(); }
+   void OnTabStripModelDestroyed(TabStripModel*) override {
+-    observation_.Reset();
+     model_ = nullptr;
+     group_.reset();
+     SetVisible(false);
+@@ -719,8 +720,9 @@
+     }
+     auto bubble = std::make_unique<AgentTabsBubble>(browser_.get(), this,
+                                                     *group_, tab_strip_);
+-    auto* widget =
+-        views::BubbleDialogDelegateView::CreateBubble(std::move(bubble));
++    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(bubble),
++        views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
+     widget_ = widget->GetWeakPtr();
+     AgentTabsBubbleOwners().push_back({browser_, widget_});
+     widget->Show();
+@@ -732,8 +734,6 @@
+   raw_ptr<views::ImageView> icon_ = nullptr;
+   std::optional<tab_groups::TabGroupId> group_;
+   base::WeakPtr<views::Widget> widget_;
+-  base::ScopedObservation<TabStripModel, TabStripModelObserver> observation_{
+-      this};
+ };
+ BEGIN_METADATA(AgentTabsButton)
+ END_METADATA

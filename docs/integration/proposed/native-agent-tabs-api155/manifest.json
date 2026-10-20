@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "actual native158 agent-tabs-paint4e38104c",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "4e38104c8543ee251115dd22b1a9e1ad39aec16540dd582c5910359f5468fffd",
+      "outputSha256": "cec4c93f17b7114785008ceef687d9062ae5780264ca3a2ab1b18a6cd4f53324"
+    }
+  ]
+}

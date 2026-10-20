@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/button/button.h",
+      "sha256": "5a618f1103c36a35d25c600a003f4d4a31129125736d887976187d4db2e0b6b9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/button/button.cc",
+      "sha256": "4e0f6e8121599691365ef0313764f1ef2dec0340847fa464f818ffe66f8c30d8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "9d6ce8bc398ef0953aa0e61bf98d31ae8aec3ff8d562d29ffe6bb2a69096e2be"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.cc",
+      "sha256": "2d1ccad8af47371df687a6f701327568c8dc91d90e10259a26ca3492df42ea43"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_dialog_delegate_view.h",
+      "sha256": "fbd5a619c66ca5cfb952492c83027ff351155648a0d3cb058dd3689b7b7a7612"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_dialog_delegate_view.cc",
+      "sha256": "4725e9170a04a56f6c0fff4de205385075b937a0de976ff707e976aca9abc82d"
+    }
+  ]
+}
