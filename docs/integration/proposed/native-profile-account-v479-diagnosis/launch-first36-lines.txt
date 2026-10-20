@@ -1,0 +1,36 @@
+[90m2026-10-20 08:49:03.906[0m [31mALERT[0m [Installation] native helper unavailable; daemon auth challenge exchange may fail
+[86200:19119152:1020/084904.387344:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[90m2026-10-20 08:49:04.436[0m [33mWARN [0m [Main] Computer Use runtime app could not be refreshed error=Error: Command failed: /usr/bin/codesign --verify --strict /private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-lXMYpS/home/runtime-computer-use/Aux Computer Use.update.app
+/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-lXMYpS/home/runtime-computer-use/Aux Computer Use.update.app: invalid Info.plist (plist or signature have been modified)
+In architecture: arm64
+
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:509:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at Socket.<anonymous> (node:internal/child_process:497:11)
+    at Socket.emit (node:events:509:20)
+    at Pipe.<anonymous> (node:net:355:12)
+[86200:19119152:1020/084904.731970:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084905.404429:ERROR:CONSOLE:11765] "[Remix] Failed to sync content script registration. Error: Unable to resolve Chromium profile account.", source: chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/background.js (11765)
+[86200:19119152:1020/084905.405844:ERROR:CONSOLE:56241] "Uncaught (in promise) Error: Unable to resolve Chromium profile account.", source: chrome-extension://nbpghnminpifekjbgjefioajhiilbfla/background.js (56241)
+[86200:19119152:1020/084905.405941:ERROR:CONSOLE:56873] "Uncaught (in promise) Error: Unable to resolve Chromium profile account.", source: chrome-extension://nbpghnminpifekjbgjefioajhiilbfla/background.js (56873)
+[86200:19119152:1020/084905.405959:ERROR:CONSOLE:56241] "Uncaught (in promise) Error: Unable to resolve Chromium profile account.", source: chrome-extension://nbpghnminpifekjbgjefioajhiilbfla/background.js (56241)
+[86200:19119152:1020/084905.405971:ERROR:CONSOLE:56029] "Uncaught (in promise) Error: Unable to resolve Chromium profile account.", source: chrome-extension://nbpghnminpifekjbgjefioajhiilbfla/background.js (56029)
+[86200:19119152:1020/084905.736511:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084906.739964:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084907.742245:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084908.744526:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084909.747050:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119611:1020/084910.668327:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
+[86200:19119152:1020/084910.748546:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084911.750256:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084912.752176:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084913.754386:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084914.756893:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084915.758399:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084916.760824:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084917.763311:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084918.765385:ERROR:chrome/browser/aux/browser_platform.cc:86] Installation signing key missing or unsafe
+[86200:19119152:1020/084919.307693:ERROR:CONSOLE:8] "Error: Unable to resolve Chromium profile account.", source: chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/assets/client-CkJ8L9YQ.js (8)

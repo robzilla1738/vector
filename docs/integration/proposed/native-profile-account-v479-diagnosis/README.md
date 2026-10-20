@@ -1,0 +1,13 @@
+# V479 regular profile-account failure
+
+Root's supplied observation explicitly records runtimeAcceptance=false, the actual Agent main.html#/onboarding/splash route and “Unable to resolve Chromium profile account.” Its first36 log lines begin with original daemon helper-unavailable, then native signer-null warnings, then Agent/Vault account failures. This audit did not touch the running preview, read its profile/home/environment or perform auth/OS operations.
+
+No new native bootstrap defect was found. Current getProfileContext already matches original4274bb4: immediate saved UUID, actual path, display-order index and only nonempty/nonnegative bound prefs. Original410347c's saved-ID/persisted-UUID helper is present. Fresh defaults are correctly account_id=-1 and empty user; browser_prefs invokes actual gate preference registration. The private API base checks extension entitlement/context without imposing an authenticated Vault gate on this immediate object.
+
+Original1852 Agent supports this legacy object: absent bindingVersion bypasses the newer bound-account shortcut, then real accounts.ensureProfileAccount receives the UUID/path/index. Original daemon accepts that legacy route through AccountRegistry.resolveProfileAccount and ensureAccountBootstrapped. No fabricated native account ID/localOnly/bootstrap value or invented optional API/event is required.
+
+The request uses actual Lt.fetchDaemon and the real native challenge signer. Its catch maps signing/authorization failure through generic Ti/Ci account error; the displayed text is not a specific registry diagnosis. Current RunCarrier returns unavailable before carrier/key operations without external acceptance; original-addon wrapper also refuses before native loading. Supervisor maps that null to its generic “Installation signing key missing or unsafe”, which does not prove a key lookup occurred. Provided acceptance=false plus helper/signer failures explains this failure consistently with v257. Generic text alone cannot uniquely identify every possible cause.
+
+No patch is justified: opening the boundary, inventing an account, replacing crypto or bypassing auth would not fix a demonstrated initialization mismatch. Actual account/onboarding remains blocked by the known native authorization boundary. Compilation is not account acceptance.
+
+source-evidence.json pins native/original context implementations, unchanged1852 Agent/daemon excerpts, original UI inventory hash, provided observation copy, bounded log excerpt and wrapper. The growing log is not whole-file pinned. No process, profile, credential, Keychain, signing, provisioning or runtime API was accessed.

@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativePins": [
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_common/aux_api.cc",
+      "sha256": "a03e70605ddee33accb3d61454016116eb86ebd8b5bdbdab05efe2ef88d55fdb"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "sha256": "0c07e1ff9669aeb6dfb65662890e343237dbdf1c4c109347ffe364093f58f81e"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "sha256": "feb0323fdc736e792f1630356c4ee4983975343c297928b2ebae54a442c28fc5"
+    },
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "60f54a9109b84a9ffb0ef3ca6f9fe131b0aef0f06ec273228e61ce5bec5d1e57"
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "sha256": "2801bc2549dc464975c4ff7094dee1c18d55ccdc080ca1aeca2a7242b05ef9f8"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "9c4cdf9ab2c166235d5467996853e32ae8e5bef70b1018971bff485376fdf594"
+    }
+  ],
+  "original": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0410347c.c",
+      "sha256": "77f95f97ab94d49e568ead91c5312e855b245c43fd10f80c5f0bdd7a8d6b38c0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04274bb4.c",
+      "sha256": "694867c2c028a913ffee8769a3f7c29df72804c87ed4f269dcf0a50bcd03c6b0"
+    }
+  ],
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/queries-ldd77hNk.js",
+      "sha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "anchors": [
+        {
+          "find": "function pe(e)",
+          "count": 1,
+          "offset": 27943,
+          "length": 650,
+          "text": "function pe(e){return(e?.bindingVersion??0)>=1}function de(e){return e.chromiumProfileId||e.profileId}async function Dr(e,t){if(!pe(e))return;const r=e.asideUserId||e.boundUserId;if(e.localOnly||!r)return-1;const n=e.boundAccountId;if(n===void 0||!Number.isInteger(n)||n<0)throw new Ve(\"The account connected to this profile is unavailable. Sign in again.\");const i=await t(n);if(!i||i.id!==n||i.userId!==r)throw new Ve(\"The account connected to this profile changed. Sign in again.\");return n}function Nr(){const e=new Error(\"Operation aborted\");return e.name=\"AbortError\",e}async function vt(e,t={}){const r=t.signal??void 0;if(!r)return await e();",
+          "sha256": "58e33133250dbadd76d0ae4832ed415836bdea5421f28d0bc18c7cec96e7ed12"
+        },
+        {
+          "find": "async function Dr(e,t)",
+          "count": 1,
+          "offset": 28045,
+          "length": 650,
+          "text": "async function Dr(e,t){if(!pe(e))return;const r=e.asideUserId||e.boundUserId;if(e.localOnly||!r)return-1;const n=e.boundAccountId;if(n===void 0||!Number.isInteger(n)||n<0)throw new Ve(\"The account connected to this profile is unavailable. Sign in again.\");const i=await t(n);if(!i||i.id!==n||i.userId!==r)throw new Ve(\"The account connected to this profile changed. Sign in again.\");return n}function Nr(){const e=new Error(\"Operation aborted\");return e.name=\"AbortError\",e}async function vt(e,t={}){const r=t.signal??void 0;if(!r)return await e();const n=()=>t.createAbortError?.()??Nr();if(r.aborted)throw await t.onAbort?.(),n();let i;const o=new ",
+          "sha256": "a07d04f285ee2bf9b8ffce91dbde0f1ccc4367912bbde7e32ae57e25a12d39b5"
+        },
+        {
+          "find": "async function ce()",
+          "count": 1,
+          "offset": 68354,
+          "length": 650,
+          "text": "async function ce(){const e=typeof chrome?.asideAccount?.setProfileAccount==\"function\";try{const t=await vt(async()=>chrome?.asideAccount?.getProfileContext?.(),{signal:AbortSignal.timeout(wi),createAbortError:()=>new Error(\"chrome.asideAccount.getProfileContext timed out\")});if(e&&(!t||!de(t)))throw new Error(\"Unable to identify the current browser profile. Reopen Aside and try again.\");return t&&de(t)?t:void 0}catch(t){if(Ri(t),t instanceof Error&&t.message.includes(\"timed out\"))throw new Error(\"Unable to identify the current browser profile. Reopen Aside and try again.\",{cause:t});if(e)throw t;return}}async function Ue(){return Ft.get(ce)}",
+          "sha256": "d11775f04c3411959ab4faa7c544ad1012f673c19cdd22d06e8d3f1d1d1f0b25"
+        },
+        {
+          "find": "async function _i(e,t=De)",
+          "count": 1,
+          "offset": 69182,
+          "length": 650,
+          "text": "async function _i(e,t=De){try{return await _r(()=>F.accounts.ensureProfileAccount.mutate(e),{retries:t,delay:r=>250*2**r})}catch(r){let n=r;if(Si(r))try{return await F.accounts.resolveProfileAccountByProfile.query(e)}catch(o){n=o}const i=Ci(n);throw Ii(e,i,n),i}}async function Kt(e=De){const t=R,r=await Ue();if(_(t),!r)return null;const n=await Dr(r,o=>F.accounts.get.query({accountId:o}));if(_(t),n!==void 0&&n!==-1)return{accountId:n,browserProfile:r};const i=await xt.get(async()=>{const o=await _i(r,e);if(n===-1&&(o.mode!==\"local\"||o.userId))throw new Error(\"Unable to resolve this profile's local account.\");return{accountId:o.id,browserProfi",
+          "sha256": "9fbb17d20a31ab69ec79dbaaf75639d170071cad89dbedae5a112fe1fdff52ce"
+        },
+        {
+          "find": "function Ti(e)",
+          "count": 1,
+          "offset": 66930,
+          "length": 650,
+          "text": "function Ti(e){const t=B(e);return mt(e)?Or:t.includes(\"ENOSPC\")||t.includes(\"no space left on device\")?Ut:t.includes(\"ELOCKED\")||t.includes(\"Lock file is already being held\")?Mt:Ei}function Ci(e){const t=new Error(Ti(e),{cause:e});return t.message===\"Aside can't connect to its local service. Restart Aside and try again.\"?t.toastDescription=Pr:t.message===Ut?t.toastDescription=Oi:t.message===Mt&&(t.toastDescription=Pi),t}function Ii(e,t,r){chrome?.extension?.inIncognitoContext!==!0&&F.analytics.captureException.mutate({accountId:0,name:t.name,message:t.message,stack:t.stack,properties:{app:\"agent-manager\",source:\"profile_account_resolve\",caus",
+          "sha256": "6d070c375bda0cad1ef6811967afed940c0a5e6ebf551e2f0c1747c33190703c"
+        },
+        {
+          "find": "async function li(e)",
+          "count": 1,
+          "offset": 62658,
+          "length": 650,
+          "text": "async function li(e){const t=typeof chrome>\"u\"?void 0:chrome.asideAccount;if(!t?.signDaemonAuthChallenge)throw new Error(\"Aside daemon Authorization requires chrome.asideAccount.signDaemonAuthChallenge\");return(await vt(async()=>t.signDaemonAuthChallenge(e),{signal:AbortSignal.timeout(ui),createAbortError:()=>new Error(\"chrome.asideAccount.signDaemonAuthChallenge timed out\")})).signedChallenge}var Lt=ri({clientKind:oi,daemonUrl:Nt,signChallenge:async({challenge:e})=>{if(!(!(\"ServiceWorkerGlobalScope\"in globalThis)&&typeof chrome<\"u\"&&!chrome.asideAccount?.signDaemonAuthChallenge&&chrome.runtime?.sendMessage))return li(e);const t=await chrome.",
+          "sha256": "8f75e55f765a64cdb77895c176feb808185a5e1538888a06da3dff1e480f332b"
+        },
+        {
+          "find": "var Lt=ri(",
+          "count": 1,
+          "offset": 63055,
+          "length": 650,
+          "text": "var Lt=ri({clientKind:oi,daemonUrl:Nt,signChallenge:async({challenge:e})=>{if(!(!(\"ServiceWorkerGlobalScope\"in globalThis)&&typeof chrome<\"u\"&&!chrome.asideAccount?.signDaemonAuthChallenge&&chrome.runtime?.sendMessage))return li(e);const t=await chrome.runtime.sendMessage({type:ci,challenge:e});if(!t?.ok)throw new Error(t?.error??\"Background daemon auth signing is unavailable\");return t.signedChallenge},storageCache:ti({key:si,ttlMs:ai}),viteEnv:{BASE_URL:\"/\",DEV:!1,MODE:\"production\",PROD:!0,SSR:!1,TSS_INLINE_CSS_ENABLED:\"false\",VITE_ASIDE_DAEMON_AUTH_TOKEN:\"\",VITE_DEPLOYMENT_ENVIRONMENT:\"extension\"}}),j=Lt.fetchDaemon,Vi=Lt.connectWebsocketT",
+          "sha256": "79265656f662b3bba1931257182b17bd41ec3cd38304880a6cbac8f278953c96"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "anchors": [
+        {
+          "find": "async function ensureProfileAccount(Cn)",
+          "count": 1,
+          "offset": 11691613,
+          "length": 900,
+          "text": "async function ensureProfileAccount(Cn){if((Cn.bindingVersion??0)>=1){let ei=Cn.asideUserId??Cn.boundUserId;if(Cn.localOnly||!ei){let ei=AccountRegistry.resolveProfileAccount({profileId:Cn.chromiumProfileId??Cn.profileId,profilePath:Cn.profilePath,profileIndex:Cn.profileIndex,localOnly:!0});return await ensureAccountBootstrapped(ei),ei}let ti=Cn.boundAccountId===void 0?void 0:AccountRegistry.getAccount(Cn.boundAccountId);if(!ti||ti.userId!==ei)throw new TRPCError({code:`PRECONDITION_FAILED`,message:`This Chromium profile has no connected account.`});return ti}let ei=AccountRegistry.resolveProfileAccount(Cn);return await ensureAccountBootstrapped(ei),ei}var deviceCodeUiProcedure,accountsRouter,init_routes$25=__esmMin((()=>{init_dist$25(),init_zod(),init_accounts(),init_token_refresh(),init_bootstrap(),init_start_context_awareness(),init_daemon_auth$1(),init_api_client(),init_authorization",
+          "sha256": "1f426f177921d351ee9783a7ee7cb8cf7b286b0f8525b56c25c719c771c2d396"
+        },
+        {
+          "find": "ensureProfileAccount:publicProcedure",
+          "count": 1,
+          "offset": 11696283,
+          "length": 650,
+          "text": "ensureProfileAccount:publicProcedure.input(chromiumProfileContextSchema).mutation(({input:Cn})=>ensureProfileAccount(Cn)),resolveProfileAccount:publicProcedure.input(chromiumProfileContextSchema).mutation(({input:Cn})=>ensureProfileAccount(Cn)),resolveProfileAccountByProfile:publicProcedure.input(chromiumProfileContextSchema).query(({input:Cn})=>ensureProfileAccount(Cn)),setCurrent:publicProcedure.input(object({accountId:number$2().int().nonnegative()})).mutation(({input:Cn})=>(AccountRegistry.setCurrentAccountId(Cn.accountId),reconcileContextAwareness(Cn.accountId),{accountId:Cn.accountId})),add:publicProcedure.input(object({name:string$3(),",
+          "sha256": "4b965c65a320cadc5b6ac2de2448eed6fd582f8d0d6be19c38a125cf807f9496"
+        },
+        {
+          "find": "async function verifyDaemonAuthHttpRequest(Cn)",
+          "count": 1,
+          "offset": 2904522,
+          "length": 650,
+          "text": "async function verifyDaemonAuthHttpRequest(Cn){let ei=Cn.headers.get(`authorization`);if(ei?.startsWith(`AsideDaemonSessionToken `)){let ti=ei.slice(24).trim();return await verifyDaemonSessionToken(ti)||await verifyDaemonDevAuthToken(ti,Cn)}for(let ei of Cn.headers.get(`sec-websocket-protocol`)?.split(`,`)??[]){let ti=ei.trim();if(ti.startsWith(WEBSOCKET_PROTOCOL_PREFIX)){let ei=ti.slice(18);return await verifyDaemonSessionToken(ei)||await verifyDaemonDevAuthToken(ei,Cn)}}return null}function pruneExpiredDaemonAuthChallenges(Cn=Date.now()){for(let[ei,ti]of challenges)ti.expiresAt<=Cn&&challenges.delete(ei)}function makeRoomForDaemonAuthChalle",
+          "sha256": "df2dff1d156a199566c41bd21f55d50cb43020586e4434fd6e71eeb34dea1e4d"
+        }
+      ]
+    }
+  ],
+  "observation": {
+    "origin": "/Users/rcourson/Documents/Vibe/web/docs/acceptance/provided-v479-normal-preview.json",
+    "copy": "observation.json",
+    "sha256": "3ba60209bf491652fa5b1cf17acceb965d20a52c52352047005bc7a2a878decc"
+  },
+  "logExcerpt": {
+    "origin": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v479-normal-preview.log",
+    "range": "first36Lines",
+    "copy": "launch-first36-lines.txt",
+    "sha256": "b0680e80f7093ff8bc12624da89392f6055febc05f6f196b3d10de1c9556ed31",
+    "fullLiveLogNotPinned": true
+  },
+  "wrapper": {
+    "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-native.cjs",
+    "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+  }
+}
