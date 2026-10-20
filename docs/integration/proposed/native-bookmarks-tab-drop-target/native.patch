@@ -1,0 +1,226 @@
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h
+@@ -9,6 +9,7 @@
+ #include <string>
+ #include <vector>
+ #include "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_target.h"
+ #include "chrome/browser/ui/views/frame/aux_bookmark_drag_callbacks.h"
+ #include "components/tabs/public/tab_interface.h"
+ #include "ui/views/controls/scroll_view.h"
+@@ -26,7 +27,8 @@
+ namespace aux {
+ // The supplied VerticalTabBookmarksView, adapted to Chromium155's public
+ // TabInterface and observation APIs. The genuine region owns its callbacks.
+-class VerticalTabBookmarksView final : public views::ScrollView {
++class VerticalTabBookmarksView final : public views::ScrollView,
++                                      public TabDragTarget {
+   METADATA_HEADER(VerticalTabBookmarksView, views::ScrollView)
+  public:
+   VerticalTabBookmarksView(BrowserWindowInterface* browser,
+@@ -68,6 +70,15 @@
+   const std::u16string& drag_title() const;
+   const bookmarks::BookmarkNode* dragged_node() const;
+   void CancelDrag();
++  // Original secondary interface at+4f8. Ordinary row dragging and external
++  // saved-entry insertion remain distinct from this native controller path.
++  void OnTabDragEntered() override;
++  TabDragContext* OnTabDragUpdated(DragController&, const gfx::Point&) override;
++  void OnTabDragExited(const gfx::Point&) override;
++  void OnTabDragEnded() override;
++  bool CanDropTab() override;
++  void HandleTabDrop(DragController&) override;
++  base::CallbackListSubscription RegisterWillDestroyCallback(base::OnceClosure) override;
+   // Chromium155 rebinds a BWI during same-window profile transfer. Retire this
+   // original profile-bound owner before that boundary; create a fresh owner
+   // with the genuine target BookmarkModel/TabStripModel afterward.
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
+@@ -13,6 +13,10 @@
+ #include <vector>
+ 
+ #include "base/functional/bind.h"
++#include "base/callback_list.h"
++#include "base/uuid.h"
++#include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
++#include "content/public/browser/web_contents.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/raw_ref.h"
+@@ -254,6 +258,10 @@
+     rebuilding_ = false;
+   }
+   void Rebuild(bool animate);
++  void ClearNativeTabDrop();
++  TabDragContext* UpdateNativeTabDrop(TabDragTarget::DragController&,
++                                     const gfx::Point&);
++  void CommitNativeTabDrop();
+   void BuildChildren(
+       const Node*,
+       int,
+@@ -532,6 +540,14 @@
+   raw_ptr<const Node> external_parent_ = nullptr;
+   size_t external_index_ = 0;
+   raw_ptr<const Node> external_folder_ = nullptr;
++  // Original7c8/7d0/848/7a8..7b8; not row drag or saved external snapshot.
++  bool native_drop_active_ = false;
++  GURL native_drop_url_;
++  std::u16string native_drop_title_;
++  std::optional<int64_t> native_drop_folder_;
++  base::Uuid native_drop_folder_uuid_;
++  size_t native_drop_index_ = 0;
++  base::OnceClosureList native_target_destroying_;
+   bool projection_active_ = false, projection_detached_ = false;
+   gfx::Point projection_point_;
+   std::u16string projection_title_;
+@@ -733,6 +749,93 @@
+   return current && current->uuid() == uuid ? current : nullptr;
+ }
+ 
++// Original461ec30: reset native payload/destination/row indicators and hint.
++void VerticalTabBookmarksView::Impl::ClearNativeTabDrop() {
++  if (retired_) return;  // Original7c9 destructor/retirement guard.
++  native_drop_active_ = false;
++  native_drop_url_ = GURL(); native_drop_title_.clear();
++  native_drop_folder_.reset(); native_drop_folder_uuid_ = base::Uuid();
++  native_drop_index_ = 0;
++  ClearIndicators();
++  SetProjection(false, {}, {}, false);
++}
++TabDragContext* VerticalTabBookmarksView::Impl::UpdateNativeTabDrop(
++    TabDragTarget::DragController& controller, const gfx::Point& point) {
++  if (!ScopeCurrent()) return nullptr;
++  native_drop_active_ = false;
++  native_drop_url_ = GURL(); native_drop_title_.clear();
++  native_drop_folder_.reset(); native_drop_folder_uuid_ = base::Uuid();
++  native_drop_index_ = 0;
++  ClearIndicators();
++  const auto& data = controller.GetSessionData();
++  const auto count = std::ranges::count_if(data.tab_drag_data_, [](const auto& entry) {
++    return entry.view_type == TabSlotView::ViewType::kTab;
++  });
++  content::WebContents* contents = nullptr;
++  if (count == 1 && data.source_view_index_ < data.tab_drag_data_.size())
++    contents = data.tab_drag_data_[data.source_view_index_].contents.get();
++  if (contents) {
++    native_drop_title_ = contents->GetTitle();
++    GURL url = contents->GetVisibleURL();
++    if (!url.is_valid()) url = contents->GetLastCommittedURL();
++    if (native_drop_title_.empty() && url.is_valid())
++      native_drop_title_ = base::UTF8ToUTF16(url.has_host() ? url.host() : url.spec());
++    if (view_->GetVisible() && view_->GetBoundsInScreen().Contains(point) &&
++        bookmark_model_ && bookmark_model_->loaded() && url.is_valid()) {
++      native_drop_active_ = true;
++      native_drop_url_ = std::move(url);
++    }
++  }
++  const auto alive = weak_.GetWeakPtr();
++  if (!SetProjection(native_drop_active_ && !native_drop_title_.empty(),
++                     native_drop_active_ ? point : gfx::Point(),
++                     native_drop_active_ ? native_drop_title_ : std::u16string(), false))
++    return nullptr;
++  if (!alive || !ScopeCurrent()) return nullptr;
++  if (native_drop_active_ && !rows_.empty()) {
++    const auto local = views::View::ConvertPointFromScreen(contents_, point);
++    // Actual461f0e8..461f21c uses actual visible folder rows, not URL matching.
++    for (const auto* node : visible_) {
++      auto row = rows_.find(node);
++      if (!node->is_folder() || row == rows_.end() ||
++          !row->second->bounds().Contains(local)) continue;
++      native_drop_folder_ = node->id();
++      native_drop_folder_uuid_ = node->uuid();
++      native_drop_index_ = node->children().size();
++      row->second->SetDropIndicator(1);
++      break;
++    }
++  }
++  // Original461f21c returns controller+28: its genuine attached context,
++  // never manufactures a different context or reparents/closes a tab.
++  return const_cast<TabDragContext*>(controller.GetAttachedContext());
++}
++void VerticalTabBookmarksView::Impl::CommitNativeTabDrop() {
++  if (!ScopeCurrent()) return;
++  const bool active = native_drop_active_;
++  const GURL url = native_drop_url_;
++  auto title = native_drop_title_;
++  const auto folder_id = native_drop_folder_;
++  const auto folder_uuid = native_drop_folder_uuid_;
++  const size_t captured_index = native_drop_index_;
++  const auto alive = weak_.GetWeakPtr();
++  ClearNativeTabDrop();  // Original461f878..461f994 before actual AddURL.
++  if (!alive || !ScopeCurrent() || !active || !url.is_valid() ||
++      !bookmark_model_ || !bookmark_model_->loaded()) return;
++  const Node* parent = folder_id ? Find(*folder_id) : nullptr;
++  const bool explicit_parent = parent && parent->uuid() == folder_uuid && parent->is_folder();
++  if (!explicit_parent) parent = DefaultExternalParent();
++  if (!parent || !parent->is_folder()) return;
++  const size_t index = explicit_parent ? std::min(captured_index, parent->children().size())
++                                       : parent->children().size();
++  if (title.empty()) title = base::UTF8ToUTF16(url.has_host() ? url.host() : url.spec());
++  const Node* created = bookmark_model_->AddURL(parent, index, title, url);
++  if (!alive || !ScopeCurrent() || !created) return;
++  // Original4613354 ->461becc plus actualactivatedcallback, same as saved input.
++  QueueNavigation(*created);
++  if (activated_) activated_.Run();
++}
++
+ void VerticalTabBookmarksView::Impl::UpdateFavicon(VerticalBookmarkRowView& row,
+                                                    const Node& node) {
+   if (node.is_folder() || !bookmark_model_) {
+@@ -789,6 +892,9 @@
+   // Original rebuild4611b84..1c00 clears the external snapshot/destination;
+   // model notifications must never retain node identities through deletion.
+   ClearExternalInsertion(false);
++  const auto native_alive = weak_.GetWeakPtr();
++  ClearNativeTabDrop();
++  if (!native_alive) return;
+   HideBookmarkHoverCard();
+   if (!dragging_) {
+     drag_node_ = nullptr;
+@@ -1629,7 +1735,9 @@
+     tabs::VerticalTabStripStateController* state)
+     : views::ScrollView(views::ScrollView::ScrollWithLayers::kEnabled),
+       impl_(std::make_unique<Impl>(*this, *browser, *model, hover, state)) {}
+-VerticalTabBookmarksView::~VerticalTabBookmarksView() = default;
++VerticalTabBookmarksView::~VerticalTabBookmarksView() {
++  impl_->native_target_destroying_.Notify();
++}
+ void VerticalTabBookmarksView::SetProjectionChangedCallback(
+     BookmarkDragProjectionChangedCallback callback) {
+   impl_->projection_changed_ = std::move(callback);
+@@ -1747,10 +1855,35 @@
+ void VerticalTabBookmarksView::CancelDrag() {
+   impl_->ClearDrag(true, true);
+ }
++void VerticalTabBookmarksView::OnTabDragEntered() { impl_->ClearNativeTabDrop(); }
++TabDragContext* VerticalTabBookmarksView::OnTabDragUpdated(
++    DragController& controller, const gfx::Point& point) {
++  return impl_->UpdateNativeTabDrop(controller, point);
++}
++void VerticalTabBookmarksView::OnTabDragExited(const gfx::Point&) {
++  impl_->ClearNativeTabDrop();
++}
++void VerticalTabBookmarksView::OnTabDragEnded() { impl_->ClearNativeTabDrop(); }
++bool VerticalTabBookmarksView::CanDropTab() {
++  return impl_->ScopeCurrent() && impl_->native_drop_active_;
++}
++void VerticalTabBookmarksView::HandleTabDrop(DragController&) {
++  impl_->CommitNativeTabDrop();
++}
++base::CallbackListSubscription VerticalTabBookmarksView::RegisterWillDestroyCallback(
++    base::OnceClosure callback) {
++  return impl_->native_target_destroying_.Add(std::move(callback));
++}
+ void VerticalTabBookmarksView::RetireForProfileChange() {
+   if (impl_->retired_)
+     return;
+   impl_->retired_ = true;
++  const auto alive = impl_->weak_.GetWeakPtr();
++  impl_->native_target_destroying_.Notify();
++  if (!alive) return;
++  impl_->native_drop_active_ = false;
++  impl_->native_drop_url_ = GURL(); impl_->native_drop_title_.clear();
++  impl_->native_drop_folder_.reset();
+   impl_->weak_.InvalidateWeakPtrs();
+   impl_->projection_changed_.Reset();
+   impl_->begin_drag_.Reset();

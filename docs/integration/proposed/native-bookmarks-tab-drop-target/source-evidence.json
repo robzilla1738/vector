@@ -1,0 +1,41 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "secondary-ctor",
+      "start": "0x460f608",
+      "stopExclusive": "0x460f700",
+      "bytesSha256": "35a1e85d43922e598f3dec181e924d972ec8a00e0cad98274e8871818f819f25",
+      "asmSha256": "814824d6bcc3f84e95807e7404a0ef3ff7b917a97f4598c9301f51824545e328"
+    },
+    {
+      "name": "retirement-flag",
+      "start": "0x46103a0",
+      "stopExclusive": "0x46103ec",
+      "bytesSha256": "e321a4b665ec97879884565a0b95f95d3eddbc524d1f5e840155f6b8ba5a331c",
+      "asmSha256": "b8b84a618be009507ae120e1ed512313db86153bd4914b11f80f572f41b05763"
+    },
+    {
+      "name": "native-drop-lifecycle",
+      "start": "0x461ec30",
+      "stopExclusive": "0x461fcf0",
+      "bytesSha256": "ebb38bf6cc1e7c519ecb268e83198c185f7be797b0ef384d8bd5b6e3bf628f53",
+      "asmSha256": "f4d0d68549326de91bf97795c9062a75deb616bcef16290bd0a040104fa0d389"
+    },
+    {
+      "name": "native-add-bookmark",
+      "start": "0x4613354",
+      "stopExclusive": "0x461356c",
+      "bytesSha256": "78e382b0cbba88ed12057658377ed6214247902abadf0a4b617a0c074843ba4a",
+      "asmSha256": "c876321c46969c6b6b2e67556b7b51044af244c8c82a235f1ea38bf913d4cf4c"
+    }
+  ],
+  "vtable": {
+    "address": "0xe720bc8",
+    "bytes": 80,
+    "sha256": "c2c0e4b5630dba199148914cfd2446cd99225040e84345c8d763888f5089c358"
+  }
+}

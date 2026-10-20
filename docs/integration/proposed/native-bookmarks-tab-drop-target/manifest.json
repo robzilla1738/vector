@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "baselineSha256": "83165fa0978918cf77df5f593611e8076c6d1ae56cc81e51b480b9493bd1816c",
+      "outputSha256": "720a73541708876583a8bfc6950a7dc26cb5fa70fc799baa4f48d1b6fb3d5878"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "baselineSha256": "f8072900cc719c7b8f65a8a18a7a1701a58994ff822c1419fd2c488b10a95cd1",
+      "outputSha256": "003c537cd2c9244d9589b413335fc7d4617cd726b9f3847351819fea2b5fb638"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
