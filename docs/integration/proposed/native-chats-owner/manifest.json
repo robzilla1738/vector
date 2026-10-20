@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "base": "new Chats native files, no existing shared source delta; requires commonsection/model/clip and actual asyncauth278",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "218df6f9cc2de7e391c1bcd79026d09d1f7971821e216ba67fc26dc4082c9850"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+      "baselineSha256": null,
+      "outputSha256": "e0a72d12aed54226414fac8b221652cd9ebca1f64e98bf26bee012a1ca1c3867"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_row.h",
+      "baselineSha256": null,
+      "outputSha256": "07f384f108e92ccf0e681b8ed3649672ac5d36fbd7eb1cac7431586b5f565946"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "baselineSha256": null,
+      "outputSha256": "1bf10988c4f22d7a6acb2de9f29940f25bbcf15eff785ec6082520c717bd5e6e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.h",
+      "baselineSha256": null,
+      "outputSha256": "6d0fc4df4f4728931dce52ab2b6e5fbd9cfed38435de48dd8986c677ed768950"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

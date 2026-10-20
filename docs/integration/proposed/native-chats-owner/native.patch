@@ -1,0 +1,757 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chat_icons.inc
+@@ -0,0 +1,111 @@
++// Supplied 90-element path at 0xd3e1834.
++constexpr gfx::PathElement kPinPath[] = {
++    gfx::CANVAS_DIMENSIONS, 18.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 7.69785023f, 14.7591f,
++    gfx::LINE_TO, 6.0f, 13.0613003f,
++    gfx::LINE_TO, 3.53032994f, 15.5310001f,
++    gfx::CUBIC_TO, 3.23744011f, 15.8239002f, 2.76255989f, 15.8239002f, 2.46967006f, 15.5310001f,
++    gfx::CUBIC_TO, 2.17677999f, 15.2381001f, 2.17677999f, 14.7631998f, 2.46967006f, 14.4702997f,
++    gfx::LINE_TO, 4.93934011f, 12.0007f,
++    gfx::LINE_TO, 3.2414999f, 10.3028402f,
++    gfx::CUBIC_TO, 1.44297004f, 8.5042696f, 2.55815005f, 5.42408991f, 5.09120989f, 5.19380999f,
++    gfx::LINE_TO, 7.35297012f, 4.98820019f,
++    gfx::CUBIC_TO, 7.85421991f, 4.94262981f, 8.29926968f, 4.64868021f, 8.53785038f, 4.20551014f,
++    gfx::LINE_TO, 9.15592957f, 3.05767989f,
++    gfx::CUBIC_TO, 10.1086502f, 1.28830004f, 12.4976997f, 0.937669992f, 13.9187002f, 2.35865998f,
++    gfx::LINE_TO, 15.6420002f, 4.08198977f,
++    gfx::CUBIC_TO, 17.0629997f, 5.50298023f, 16.7122993f, 7.89196014f, 14.9429998f, 8.84469032f,
++    gfx::LINE_TO, 13.7951002f, 9.46277046f,
++    gfx::CUBIC_TO, 13.3519001f, 9.70141983f, 13.0579996f, 10.14639f, 13.0123997f, 10.6476898f,
++    gfx::LINE_TO, 12.8067999f, 12.9095001f,
++    gfx::CUBIC_TO, 12.5764999f, 15.4425001f, 9.49635029f, 16.5576992f, 7.69785023f, 14.7591f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPinReps[] = {{kPinPath}};
++const gfx::VectorIcon kPinIcon(kPinReps, 1, "kAuxChatPinIcon");
++// Supplied 102-element path at 0xd3dc4cc.
++constexpr gfx::PathElement kErrorPath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 8.0f, 1.33000004f,
++    gfx::CUBIC_TO, 11.6800003f, 1.33000004f, 14.6700001f, 4.32000017f, 14.6700001f, 8.0f,
++    gfx::CUBIC_TO, 14.6700001f, 11.6800003f, 11.6800003f, 14.6700001f, 8.0f, 14.6700001f,
++    gfx::CUBIC_TO, 4.32000017f, 14.6700001f, 1.33000004f, 11.6800003f, 1.33000004f, 8.0f,
++    gfx::CUBIC_TO, 1.33000004f, 4.32000017f, 4.32000017f, 1.33000004f, 8.0f, 1.33000004f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 9.72999954f,
++    gfx::CUBIC_TO, 7.55999994f, 9.72999954f, 7.19999981f, 10.0900002f, 7.19999981f, 10.5299997f,
++    gfx::CUBIC_TO, 7.19999981f, 10.9700003f, 7.55999994f, 11.3299999f, 8.0f, 11.3299999f,
++    gfx::CUBIC_TO, 8.43999958f, 11.3299999f, 8.80000019f, 10.9700003f, 8.80000019f, 10.5299997f,
++    gfx::CUBIC_TO, 8.80000019f, 10.0900002f, 8.43999958f, 9.72999954f, 8.0f, 9.72999954f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 4.67000008f,
++    gfx::CUBIC_TO, 7.63000011f, 4.67000008f, 7.32999992f, 4.96999979f, 7.32999992f, 5.32999992f,
++    gfx::V_LINE_TO, 8.0f,
++    gfx::CUBIC_TO, 7.32999992f, 8.36999989f, 7.63000011f, 8.67000008f, 8.0f, 8.67000008f,
++    gfx::CUBIC_TO, 8.36999989f, 8.67000008f, 8.67000008f, 8.36999989f, 8.67000008f, 8.0f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 8.67000008f, 4.96999979f, 8.36999989f, 4.67000008f, 8.0f, 4.67000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kErrorReps[] = {{kErrorPath}};
++const gfx::VectorIcon kErrorIcon(kErrorReps, 1, "kAuxChatErrorIcon");
++// Supplied 249-element path at 0xd3d7a78.
++constexpr gfx::PathElement kArchivePath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 14.0f, 2.0f,
++    gfx::CUBIC_TO, 14.3699999f, 2.0f, 14.6700001f, 2.29999995f, 14.6700001f, 2.67000008f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 14.6700001f, 5.65999985f, 14.4399996f, 5.92000008f, 14.1300001f, 5.98999977f,
++    gfx::LINE_TO, 14.0f, 6.0f,
++    gfx::V_LINE_TO, 10.1300001f,
++    gfx::CUBIC_TO, 14.0f, 10.6800003f, 14.0f, 11.1300001f, 13.9700003f, 11.5f,
++    gfx::CUBIC_TO, 13.9399996f, 11.8800001f, 13.8699999f, 12.2200003f, 13.71f, 12.54f,
++    gfx::CUBIC_TO, 13.4499998f, 13.0500002f, 13.0500002f, 13.4499998f, 12.54f, 13.71f,
++    gfx::CUBIC_TO, 12.2200003f, 13.8699999f, 11.8800001f, 13.9399996f, 11.5f, 13.9700003f,
++    gfx::CUBIC_TO, 11.1300001f, 14.0f, 10.6800003f, 14.0f, 10.1300001f, 14.0f,
++    gfx::H_LINE_TO, 5.86999989f,
++    gfx::CUBIC_TO, 5.32000017f, 14.0f, 4.86999989f, 14.0f, 4.5f, 13.9700003f,
++    gfx::CUBIC_TO, 4.11999989f, 13.9399996f, 3.77999997f, 13.8699999f, 3.46000004f, 13.71f,
++    gfx::CUBIC_TO, 2.95000005f, 13.4499998f, 2.54999995f, 13.0500002f, 2.28999996f, 12.54f,
++    gfx::CUBIC_TO, 2.13000011f, 12.2200003f, 2.05999994f, 11.8800001f, 2.02999997f, 11.5f,
++    gfx::CUBIC_TO, 2.0f, 11.1300001f, 2.0f, 10.6800003f, 2.0f, 10.1300001f,
++    gfx::V_LINE_TO, 6.0f,
++    gfx::CUBIC_TO, 1.63f, 6.0f, 1.33000004f, 5.69999981f, 1.33000004f, 5.32999992f,
++    gfx::V_LINE_TO, 2.67000008f,
++    gfx::CUBIC_TO, 1.33000004f, 2.29999995f, 1.63f, 2.0f, 2.0f, 2.0f,
++    gfx::H_LINE_TO, 14.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 3.32999992f, 10.1300001f,
++    gfx::CUBIC_TO, 3.32999992f, 10.6999998f, 3.32999992f, 11.0900002f, 3.3599999f, 11.3900003f,
++    gfx::CUBIC_TO, 3.38000011f, 11.6800003f, 3.43000007f, 11.8299999f, 3.48000002f, 11.9399996f,
++    gfx::CUBIC_TO, 3.6099999f, 12.1899996f, 3.80999994f, 12.3900003f, 4.05999994f, 12.5200005f,
++    gfx::CUBIC_TO, 4.17000008f, 12.5699997f, 4.32000017f, 12.6199999f, 4.61000013f, 12.6400003f,
++    gfx::CUBIC_TO, 4.90999985f, 12.6700001f, 5.30000019f, 12.6700001f, 5.86999989f, 12.6700001f,
++    gfx::H_LINE_TO, 10.1300001f,
++    gfx::CUBIC_TO, 10.6999998f, 12.6700001f, 11.0900002f, 12.6700001f, 11.3900003f, 12.6400003f,
++    gfx::CUBIC_TO, 11.6800003f, 12.6199999f, 11.8299999f, 12.5699997f, 11.9399996f, 12.5200005f,
++    gfx::CUBIC_TO, 12.1899996f, 12.3900003f, 12.3900003f, 12.1899996f, 12.5200005f, 11.9399996f,
++    gfx::CUBIC_TO, 12.5699997f, 11.8299999f, 12.6199999f, 11.6800003f, 12.6400003f, 11.3900003f,
++    gfx::CUBIC_TO, 12.6700001f, 11.0900002f, 12.6700001f, 10.6999998f, 12.6700001f, 10.1300001f,
++    gfx::V_LINE_TO, 6.0f,
++    gfx::H_LINE_TO, 3.32999992f,
++    gfx::V_LINE_TO, 10.1300001f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 9.32999992f, 7.32999992f,
++    gfx::CUBIC_TO, 9.69999981f, 7.32999992f, 10.0f, 7.63000011f, 10.0f, 8.0f,
++    gfx::CUBIC_TO, 10.0f, 8.36999989f, 9.69999981f, 8.67000008f, 9.32999992f, 8.67000008f,
++    gfx::H_LINE_TO, 6.67000008f,
++    gfx::CUBIC_TO, 6.30000019f, 8.67000008f, 6.0f, 8.36999989f, 6.0f, 8.0f,
++    gfx::CUBIC_TO, 6.0f, 7.63000011f, 6.30000019f, 7.32999992f, 6.67000008f, 7.32999992f,
++    gfx::H_LINE_TO, 9.32999992f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 2.67000008f, 4.67000008f,
++    gfx::H_LINE_TO, 13.3299999f,
++    gfx::V_LINE_TO, 3.32999992f,
++    gfx::H_LINE_TO, 2.67000008f,
++    gfx::V_LINE_TO, 4.67000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kArchiveReps[] = {{kArchivePath}};
++const gfx::VectorIcon kArchiveIcon(kArchiveReps, 1, "kAuxChatArchiveIcon");
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chat_row.cc
+@@ -0,0 +1,259 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_chat_row.h"
++
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/notreached.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "cc/paint/paint_flags.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/events/event.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/font_list.h"
++#include "ui/gfx/paint_throbber.h"
++#include "ui/gfx/vector_icon_types.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/background.h"
++#include "ui/views/border.h"
++#include "ui/views/controls/button/button_controller.h"
++#include "ui/views/controls/button/image_button.h"
++#include "ui/views/controls/image_view.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++namespace {
++#include "chrome/browser/ui/views/frame/aux_chat_icons.inc"
++
++SkColor Color(const views::View& view, int role) {
++  const bool dark = view.GetWidget() && view.GetWidget()->GetColorMode() ==
++      ui::ColorProviderKey::ColorMode::kDark;
++  // Original035e6d40 private mixer, including task-only roles277..279.
++  switch (role) {
++    case 214: return dark ? 0x14fafafa : 0xffffffff;
++    case 221: return dark ? 0xd9fafafa : 0xd90a0a0a;
++    case 222: case 236: return dark ? 0x8cfafafa : 0x8c0a0a0a;
++    case 225: return dark ? 0xa6fafafa : 0xb80a0a0a;
++    case 226: return dark ? 0x73fafafa : 0x730a0a0a;
++    case 247: return dark ? 0x14fafafa : 0x140a0a0a;
++    case 274: return 0xfffb7171;
++    case 277: return 0x1a16a34a;
++    case 278: return dark ? 0xff22c55e : 0xff16a34a;
++    case 279: return dark ? 0xff38b6f6 : 0xff0284c7;
++  }
++  NOTREACHED();
++}
++
++class ChatThrobber final : public views::View {
++  METADATA_HEADER(ChatThrobber, views::View)
++ public:
++  ChatThrobber() {
++    SetCanProcessEventsWithinSubtree(false);
++    SetPreferredSize(gfx::Size(24, 24));
++  }
++ protected:
++  void AddedToWidget() override { views::View::AddedToWidget(); Update(); }
++  void RemovedFromWidget() override { timer_.Stop(); views::View::RemovedFromWidget(); }
++  void VisibilityChanged(views::View* from, bool visible) override {
++    views::View::VisibilityChanged(from, visible);
++    Update();
++  }
++  void OnPaint(gfx::Canvas* canvas) override {
++    gfx::Rect bounds = GetLocalBounds();
++    bounds.ClampToCenteredSize(gfx::Size(16, 16));
++    gfx::PaintThrobberSpinning(canvas, bounds, Color(*this, 221),
++        timer_.IsRunning() ? base::TimeTicks::Now() - started_
++                           : base::Microseconds(550000), 1.5f);
++  }
++ private:
++  void Update() {
++    if (!GetWidget() || !IsDrawn()) { timer_.Stop(); return; }
++    if (timer_.IsRunning()) return;
++    started_ = base::TimeTicks::Now();
++    // Original4674c48: 33000us, only attached+drawn, reset on resume.
++    timer_.Start(FROM_HERE, base::Microseconds(33000), this,
++                 &ChatThrobber::SchedulePaint);
++    SchedulePaint();
++  }
++  base::TimeTicks started_;
++  base::RepeatingTimer timer_;
++};
++BEGIN_METADATA(ChatThrobber)
++END_METADATA
++
++class ChatUnreadDot final : public views::View {
++  METADATA_HEADER(ChatUnreadDot, views::View)
++ public:
++  ChatUnreadDot() {
++    SetCanProcessEventsWithinSubtree(false);
++    SetPreferredSize(gfx::Size(24, 24));
++  }
++ protected:
++  void OnPaint(gfx::Canvas* canvas) override {
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(Color(*this, 279));
++    // Original4674ed0 literaldf42980: center + (-4,-4,4,4).
++    canvas->DrawCircle(gfx::PointF(width() * .5f, height() * .5f), 4, flags);
++  }
++};
++BEGIN_METADATA(ChatUnreadDot)
++END_METADATA
++
++class ChatBadge final : public views::Label {
++  METADATA_HEADER(ChatBadge, views::Label)
++ public:
++  explicit ChatBadge(std::u16string title) : views::Label(title) {
++    SetCanProcessEventsWithinSubtree(false);
++    SetAutoColorReadabilityEnabled(false);
++    SetSubpixelRenderingEnabled(false);
++    SetHorizontalAlignment(gfx::ALIGN_CENTER);
++    const gfx::FontList font;
++    SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL,
++                           gfx::Font::Weight::MEDIUM));
++    SetLineHeight(14);
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(2, 8)));
++  }
++ protected:
++  void OnThemeChanged() override {
++    views::Label::OnThemeChanged();
++    SetEnabledColor(Color(*this, 278));
++    SetBackground(views::CreateRoundedRectBackground(Color(*this, 277), 999));
++  }
++};
++BEGIN_METADATA(ChatBadge)
++END_METADATA
++}  // namespace
++
++AuxChatRow::AuxChatRow(Chat chat, Action selected, Action rename, Action archive,
++                       Context context, bool show_all)
++    : views::Button(base::BindRepeating(&AuxChatRow::Pressed,
++                                        base::Unretained(this))),
++      chat_(std::move(chat)), selected_(std::move(selected)),
++      rename_(std::move(rename)), archive_(std::move(archive)),
++      context_(std::move(context)), show_all_(show_all) {
++  button_controller()->set_notify_action(views::ButtonController::NotifyAction::kOnRelease);
++  SetNotifyEnterExitOnChild(true);
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(6, 8)));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
++  pin_ = AddChildView(std::make_unique<views::ImageView>());
++  pin_->SetCanProcessEventsWithinSubtree(false);
++  pin_->SetPreferredSize(gfx::Size(16, 16));
++  pin_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 4));
++  label_ = AddChildView(std::make_unique<views::Label>(chat_.title));
++  label_->SetCanProcessEventsWithinSubtree(false);
++  label_->SetAutoColorReadabilityEnabled(false);
++  label_->SetSubpixelRenderingEnabled(false);
++  label_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
++  label_->SetElideBehavior(gfx::FADE_TAIL);
++  const gfx::FontList font;
++  label_->SetFontList(font.Derive(14 - font.GetFontSize(), gfx::Font::NORMAL,
++                                 gfx::Font::Weight::NORMAL));
++  layout->SetFlexForView(label_, 1);
++  auto* controls = AddChildView(std::make_unique<views::View>());
++  auto* controls_layout = controls->SetLayoutManager(
++      std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kHorizontal));
++  controls_layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
++  if (!show_all_) {
++    switch (chat_.status) {
++      case ChatStatus::kRunning:
++        status_ = controls->AddChildView(std::make_unique<ChatThrobber>()); break;
++      case ChatStatus::kFinishedUnread:
++        status_ = controls->AddChildView(std::make_unique<ChatUnreadDot>()); break;
++      case ChatStatus::kAwaitingApproval:
++        status_ = controls->AddChildView(std::make_unique<ChatBadge>(u"Awaiting approval")); break;
++      case ChatStatus::kAwaitingAnswer:
++        status_ = controls->AddChildView(std::make_unique<ChatBadge>(u"Awaiting answer")); break;
++      case ChatStatus::kError: {
++        auto error = std::make_unique<views::ImageView>();
++        error->SetCanProcessEventsWithinSubtree(false);
++        error->SetPreferredSize(gfx::Size(24, 24));
++        status_ = controls->AddChildView(std::move(error)); break;
++      }
++      case ChatStatus::kIdle: case ChatStatus::kAwaitingInboxEvents: break;
++    }
++    archive_button_ = controls->AddChildView(std::make_unique<views::ImageButton>(
++        base::BindRepeating(&AuxChatRow::Archive, base::Unretained(this))));
++    archive_button_->SetPreferredSize(gfx::Size(24, 24));
++    archive_button_->SetTooltipText(u"Archive Chat");
++    archive_button_->GetViewAccessibility().SetName(u"Archive Chat");
++  }
++  GetViewAccessibility().SetName(chat_.title);
++  Refresh();
++}
++AuxChatRow::~AuxChatRow() = default;
++gfx::Size AuxChatRow::CalculatePreferredSize(const views::SizeBounds& available) const {
++  auto result = views::Button::CalculatePreferredSize(available);
++  result.set_height(32);
++  return result;
++}
++void AuxChatRow::Pressed(const ui::Event& event) {
++  const std::string id = chat_.id;
++  auto action = !show_all_ && event.IsMouseEvent() &&
++      (event.flags() & (ui::EF_IS_DOUBLE_CLICK | ui::EF_IS_TRIPLE_CLICK))
++      ? rename_ : selected_;
++  if (action) action.Run(id);
++}
++void AuxChatRow::Archive() {
++  const std::string id = chat_.id;
++  auto action = archive_;
++  if (action) action.Run(id);
++}
++bool AuxChatRow::OnMousePressed(const ui::MouseEvent& event) {
++  if (!show_all_ && context_ &&
++      (event.flags() & ui::EF_MOUSE_BUTTON) == ui::EF_RIGHT_MOUSE_BUTTON) {
++    auto callback = context_;
++    Chat copy = chat_;
++    callback.Run(this, std::move(copy), event);
++    return true;
++  }
++  return views::Button::OnMousePressed(event);
++}
++void AuxChatRow::SetSelected(bool selected) {
++  if (is_selected_ == selected) return;
++  is_selected_ = selected;
++  Refresh();
++}
++void AuxChatRow::StateChanged(ButtonState old_state) {
++  views::Button::StateChanged(old_state);
++  Refresh();
++}
++void AuxChatRow::OnThemeChanged() {
++  views::Button::OnThemeChanged();
++  Refresh();
++}
++void AuxChatRow::Refresh() {
++  const bool hover = GetState() == STATE_HOVERED || GetState() == STATE_PRESSED;
++  pin_->SetVisible(chat_.pinned && !show_all_);
++  pin_->SetImage(ui::ImageModel::FromVectorIcon(kPinIcon, Color(*this, 236), 16));
++  label_->SetEnabledColor(Color(*this, show_all_ ? 222 : is_selected_ ? 221 : 225));
++  if (status_) {
++    status_->SetVisible(!hover);
++    if (chat_.status == ChatStatus::kError)
++      static_cast<views::ImageView*>(status_.get())->SetImage(
++          ui::ImageModel::FromVectorIcon(kErrorIcon, Color(*this, 274), 16));
++  }
++  if (archive_button_) {
++    archive_button_->SetVisible(hover);
++    for (auto state : {STATE_NORMAL, STATE_HOVERED, STATE_PRESSED})
++      archive_button_->SetImageModel(state,
++          ui::ImageModel::FromVectorIcon(kArchiveIcon, Color(*this, 226), 16));
++  }
++  SchedulePaint();
++}
++void AuxChatRow::OnPaintBackground(gfx::Canvas* canvas) {
++  if (!is_selected_ && GetState() == STATE_NORMAL) return;
++  cc::PaintFlags flags;
++  flags.setAntiAlias(true);
++  flags.setColor(Color(*this, is_selected_ ? 214 : 247));
++  canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
++}
++BEGIN_METADATA(AuxChatRow)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chat_row.h
+@@ -0,0 +1,48 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHAT_ROW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHAT_ROW_H_
++
++#include "base/functional/callback.h"
++#include "chrome/browser/ui/views/frame/aux_chats_model.h"
++#include "ui/base/metadata/metadata_header_macros.h"
++#include "ui/views/controls/button/button.h"
++
++namespace views { class ImageButton; class ImageView; class Label; }
++namespace aux {
++// Original AsideTaskRowButton4671570: press selects, repeated mouse press
++// settles the first selection and renames, hover action archives.
++class AuxChatRow final : public views::Button {
++  METADATA_HEADER(AuxChatRow, views::Button)
++ public:
++  using Action = base::RepeatingCallback<void(const std::string&)>;
++  using Context = base::RepeatingCallback<void(views::View*, Chat,
++                                               const ui::MouseEvent&)>;
++  AuxChatRow(Chat chat, Action selected, Action rename, Action archive,
++             Context context, bool show_all = false);
++  ~AuxChatRow() override;
++  const Chat& chat() const { return chat_; }
++  void SetSelected(bool selected);
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override;
++  bool OnMousePressed(const ui::MouseEvent&) override;
++ protected:
++  void OnThemeChanged() override;
++  void OnPaintBackground(gfx::Canvas*) override;
++  void StateChanged(ButtonState old_state) override;
++ private:
++  void Pressed(const ui::Event&);
++  void Archive();
++  void Refresh();
++  Chat chat_;
++  Action selected_;
++  Action rename_;
++  Action archive_;
++  Context context_;
++  bool show_all_;
++  bool is_selected_ = false;
++  raw_ptr<views::Label> label_ = nullptr;
++  raw_ptr<views::ImageView> pin_ = nullptr;
++  raw_ptr<views::View> status_ = nullptr;
++  raw_ptr<views::ImageButton> archive_button_ = nullptr;
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_transport.cc
+@@ -0,0 +1,253 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_chats_transport.h"
++
++#include <utility>
++#include "base/environment.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/escape.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/storage_partition.h"
++#include "extensions/browser/extension_registry.h"
++#include "net/base/url_util.h"
++#include "net/http/http_response_headers.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++
++namespace aux {
++namespace {
++constexpr auto kPollInterval = base::Seconds(1);
++constexpr auto kRequestTimeout = base::Seconds(3);
++constexpr size_t kChatsResponseLimit = 0x40000;  // Original463dd90.
++constexpr size_t kActionResponseLimit = 0x10000;  // Original463bd4c/463c3a0.
++constexpr auto kTraffic = net::DefineNetworkTrafficAnnotation("aux_native_chats", R"(
++  semantics {
++    sender: "Aux native Chats section"
++    description: "Reads the supplied account Chats projection and executes explicit native chat actions."
++    trigger: "Installed Agent native section is active or the user chooses a chat action."
++    data: "Local installation authorization, account/session identity and explicit action input."
++    destination: LOCAL
++  }
++  policy {
++    cookies_allowed: NO
++    setting: "The native Chats section follows the actual browser profile."
++    policy_exception_justification: "Authenticated local daemon only."
++  })");
++bool AgentInstalled(Profile* profile) {
++  const auto* registry = profile ? extensions::ExtensionRegistry::Get(profile) : nullptr;
++  return registry && registry->GetExtensionById(kAgentExtensionId,
++      extensions::ExtensionRegistry::EVERYTHING);
++}
++std::optional<int> PrefAccount(Profile* profile) {
++  if (!profile || profile->IsOffTheRecord()) return std::nullopt;
++  const auto* prefs = profile->GetPrefs();
++  const auto* pref = prefs ? prefs->FindPreference("aside.account_id") : nullptr;
++  const auto id = pref ? pref->GetValue()->GetIfInt() : std::nullopt;
++  return id && *id >= 0 ? id : std::nullopt;
++}
++std::optional<int> RegistryAccount(base::FilePath home) {
++  // Original41035c0 fallback reads current registry account. Never return/log
++  // session credentials or use the owner's Aside home as a fallback.
++  auto registry = ReadPrivateAccountRegistry(home);
++  if (!registry) return std::nullopt;
++  const auto id = registry->FindInt("currentAccountId");
++  return id && *id >= 0 ? id : std::optional<int>(0);
++}
++GURL RequestURL(std::string path, int account) {
++  unsigned port = 21520;
++  if (auto text = base::Environment::Create()->GetVar("AUX_PORT")) {
++    if (!base::StringToUint(*text, &port) || port == 0 || port > 65535) return GURL();
++  }
++  return net::AppendQueryParameter(GURL("http://127.0.0.1:" +
++      base::NumberToString(port) + path), "accountId", base::NumberToString(account));
++}
++}  // namespace
++AuxChatsTransport::AuxChatsTransport(BrowserWindowInterface& browser, Updated updated)
++    : browser_(browser.GetWeakPtr()), updated_(std::move(updated)) {}
++AuxChatsTransport::~AuxChatsTransport() { Stop(); }
++bool AuxChatsTransport::ScopeCurrent() const {
++  return running_ && browser_ && profile_ &&
++      browser_->GetProfile() == profile_.get() && profile_->GetPath() == profile_path_ &&
++      AgentInstalled(profile_.get());
++}
++void AuxChatsTransport::Start() {
++  if (running_) return;
++  if (!browser_) return;
++  auto* profile = browser_->GetProfile();
++  if (!profile || !AgentInstalled(profile)) return;
++  profile_ = profile->GetWeakPtr();
++  profile_path_ = profile->GetPath();
++  running_ = true;
++  Refresh();
++}
++void AuxChatsTransport::Stop() {
++  running_ = false;
++  timer_.Stop();
++  weak_.InvalidateWeakPtrs();
++  requests_.clear();
++  poll_pending_ = false;
++  profile_.reset();
++  account_id_.reset();
++}
++void AuxChatsTransport::ResolveAccount(AccountDone done) {
++  if (!ScopeCurrent()) return;
++  if (auto id = PrefAccount(profile_.get())) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++        base::BindOnce(std::move(done), id));
++    return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++      {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&RegistryAccount, StateHome()), std::move(done));
++}
++void AuxChatsTransport::Refresh() {
++  if (!ScopeCurrent() || poll_pending_) return;
++  timer_.Stop();
++  poll_pending_ = true;
++  ResolveAccount(base::BindOnce(&AuxChatsTransport::PollAccount, weak_.GetWeakPtr()));
++}
++void AuxChatsTransport::PollAccount(std::optional<int> account) {
++  if (!ScopeCurrent()) return;
++  if (!account) { PollFinished(); return; }
++  account_id_ = account;
++  BrowserPlatform::Get().RequestDaemonAuthorization(false,
++      base::BindOnce(&AuxChatsTransport::PollAuthorized, weak_.GetWeakPtr(), *account, false));
++}
++void AuxChatsTransport::PollAuthorized(int account, bool retried,
++                                      std::optional<std::string> token) {
++  if (!ScopeCurrent()) return;
++  if (!token || token->empty()) { PollFinished(); return; }
++  ResolveAccount(base::BindOnce(
++      [](base::WeakPtr<AuxChatsTransport> self, int account, bool retried,
++         std::string token, std::optional<int> current) {
++        if (!self || !self->ScopeCurrent()) return;
++        if (current != account) { self->PollFinished(); return; }
++        self->Load("/session/for-chrome/chats", account, std::move(token), std::nullopt,
++            base::BindOnce(&AuxChatsTransport::PollLoaded, self, account, retried));
++      }, weak_.GetWeakPtr(), account, retried, std::move(*token)));
++}
++void AuxChatsTransport::PollLoaded(int account, bool retried, int status,
++                                  std::optional<std::string> body) {
++  if (!ScopeCurrent()) return;
++  if (status == 401 && !retried) {
++    BrowserPlatform::Get().RequestDaemonAuthorization(true,
++        base::BindOnce(&AuxChatsTransport::PollAuthorized, weak_.GetWeakPtr(), account, true));
++    return;
++  }
++  auto rows = body && status == 200 ? ParseChatsResponse(*body) : std::nullopt;
++  if (!rows) { PollFinished(); return; }
++  ResolveAccount(base::BindOnce(
++      [](base::WeakPtr<AuxChatsTransport> self, int account, std::vector<Chat> rows,
++         std::optional<int> current) {
++        if (!self || !self->ScopeCurrent()) return;
++        if (current == account && self->account_id_ == account) {
++          self->updated_.Run(rows);
++          if (!self) return;
++        }
++        self->PollFinished();
++      }, weak_.GetWeakPtr(), account, std::move(*rows)));
++}
++void AuxChatsTransport::PollFinished() { poll_pending_ = false; Schedule(); }
++void AuxChatsTransport::Schedule() {
++  if (ScopeCurrent()) timer_.Start(FROM_HERE, kPollInterval, this, &AuxChatsTransport::Refresh);
++}
++void AuxChatsTransport::PerformAction(std::string session, std::string action,
++                                     base::DictValue input, ActionDone done) {
++  if (!ScopeCurrent() || session.empty() || action.empty()) {
++    std::move(done).Run({}); return;
++  }
++  ResolveAccount(base::BindOnce(
++      [](base::WeakPtr<AuxChatsTransport> self, std::string session, std::string action,
++         base::DictValue input, ActionDone done, std::optional<int> account) {
++        if (!self || !self->ScopeCurrent()) return;
++        if (!account) { std::move(done).Run({}); return; }
++        BrowserPlatform::Get().RequestDaemonAuthorization(false,
++            base::BindOnce(&AuxChatsTransport::ActionAuthorized, self, *account,
++                std::move(session), std::move(action), std::move(input), std::move(done)));
++      }, weak_.GetWeakPtr(), std::move(session), std::move(action),
++      std::move(input), std::move(done)));
++}
++void AuxChatsTransport::ActionAuthorized(int account, std::string session,
++    std::string action, base::DictValue input, ActionDone done,
++    std::optional<std::string> token) {
++  if (!ScopeCurrent()) return;
++  if (!token || token->empty()) { std::move(done).Run({}); return; }
++  ResolveAccount(base::BindOnce(
++      [](base::WeakPtr<AuxChatsTransport> self, int account, std::string session,
++         std::string action, base::DictValue input, ActionDone done, std::string token,
++         std::optional<int> current) {
++        if (!self || !self->ScopeCurrent()) return;
++        if (current != account) { std::move(done).Run({}); return; }
++        std::string path = "/session/for-chrome/" +
++            base::EscapeAllExceptUnreserved(session) + "/" +
++            base::EscapeAllExceptUnreserved(action);
++        if (action == "resolve-popover-action") {
++          path = "/session/for-chrome/resolve-popover-action";
++          input.Set("sessionId", session);
++        }
++        auto json = base::WriteJson(input);
++        if (!json) { std::move(done).Run({}); return; }
++        self->Load(std::move(path), account, std::move(token), std::move(json),
++            base::BindOnce(
++                [](base::WeakPtr<AuxChatsTransport> self, int account, ActionDone done,
++                   int status, std::optional<std::string> body) {
++                  if (!self || !self->ScopeCurrent()) return;
++                  auto result = ActionResult{status, body ? base::JSONReader::Read(*body, base::JSON_PARSE_RFC)
++                                                         : std::nullopt};
++                  self->ResolveAccount(base::BindOnce(
++                      [](base::WeakPtr<AuxChatsTransport> self, int account,
++                         ActionDone done, ActionResult result, std::optional<int> current) {
++                        if (!self || !self->ScopeCurrent()) return;
++                        if (current != account) result = {};
++                        std::move(done).Run(std::move(result));
++                        if (self) self->Refresh();
++                      }, self, account, std::move(done), std::move(result)));
++                }, self, account, std::move(done)));
++      }, weak_.GetWeakPtr(), account, std::move(session), std::move(action),
++      std::move(input), std::move(done), std::move(*token)));
++}
++void AuxChatsTransport::Load(std::string path, int account, std::string authorization,
++                             std::optional<std::string> input, Loaded loaded) {
++  const auto url = RequestURL(std::move(path), account);
++  if (!url.is_valid()) { std::move(loaded).Run(0, std::nullopt); return; }
++  const size_t response_limit = input ? kActionResponseLimit : kChatsResponseLimit;
++  auto request = std::make_unique<network::ResourceRequest>();
++  request->url = url;
++  request->method = input ? "POST" : "GET";
++  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++  request->redirect_mode = network::mojom::RedirectMode::kError;
++  request->headers.SetHeader("Authorization", authorization);
++  auto loader = network::SimpleURLLoader::Create(std::move(request), kTraffic);
++  loader->SetTimeoutDuration(kRequestTimeout);
++  loader->SetAllowHttpErrorResults(true);
++  if (input) loader->AttachStringForUpload(*input, "application/json");
++  const auto id = ++next_request_;
++  auto* raw = loader.get();
++  requests_.emplace(id, std::move(loader));
++  raw->DownloadToString(profile_->GetDefaultStoragePartition()
++      ->GetURLLoaderFactoryForBrowserProcess().get(),
++      base::BindOnce(
++          [](base::WeakPtr<AuxChatsTransport> self, uint64_t id, Loaded loaded,
++             std::optional<std::string> body) {
++            if (!self || !self->ScopeCurrent()) return;
++            auto request = self->requests_.find(id);
++            if (request == self->requests_.end()) return;
++            const auto* info = request->second->ResponseInfo();
++            const int status = info && info->headers ? info->headers->response_code() : 0;
++            self->requests_.erase(request);
++            std::move(loaded).Run(status, std::move(body));
++          }, weak_.GetWeakPtr(), id, std::move(loaded)), response_limit);
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_transport.h
+@@ -0,0 +1,71 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_TRANSPORT_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_TRANSPORT_H_
++
++#include <map>
++#include <memory>
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/ui/views/frame/aux_chats_model.h"
++
++class BrowserWindowInterface;
++class Profile;
++namespace network { class SimpleURLLoader; }
++namespace aux {
++// Original region463db48/463dd90/463e350 owns one polling request, plus actual
++// action requests. Its lifetime follows the real same-window profile owner.
++class AuxChatsTransport {
++ public:
++  using Updated = base::RepeatingCallback<void(const std::vector<Chat>&)>;
++  struct ActionResult {
++    int status = 0;
++    std::optional<base::Value> body;
++    bool ok() const { return status == 200; }
++  };
++  using ActionDone = base::OnceCallback<void(ActionResult)>;
++  explicit AuxChatsTransport(BrowserWindowInterface& browser, Updated updated);
++  ~AuxChatsTransport();
++  void Start();
++  void Stop();
++  void Refresh();
++  // Captures actual current account/profile before auth and rechecks on reply.
++  void PerformAction(std::string session, std::string action,
++                     base::DictValue input, ActionDone done);
++  bool running() const { return running_; }
++  std::optional<int> account_id() const { return account_id_; }
++ private:
++  using AccountDone = base::OnceCallback<void(std::optional<int>)>;
++  using Loaded = base::OnceCallback<void(int, std::optional<std::string>)>;
++  bool ScopeCurrent() const;
++  void ResolveAccount(AccountDone done);
++  void PollAccount(std::optional<int> account);
++  void PollAuthorized(int account, bool retried, std::optional<std::string> token);
++  void PollLoaded(int account, bool retried, int status,
++                  std::optional<std::string> body);
++  void PollFinished();
++  void Schedule();
++  void ActionAuthorized(int account, std::string session, std::string action,
++                        base::DictValue input, ActionDone done,
++                        std::optional<std::string> token);
++  void Load(std::string path, int account, std::string authorization,
++            std::optional<std::string> input, Loaded loaded);
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  base::WeakPtr<Profile> profile_;
++  base::FilePath profile_path_;
++  Updated updated_;
++  bool running_ = false;
++  bool poll_pending_ = false;
++  std::optional<int> account_id_;
++  base::OneShotTimer timer_;
++  uint64_t next_request_ = 0;
++  std::map<uint64_t, std::unique_ptr<network::SimpleURLLoader>> requests_;
++  base::WeakPtrFactory<AuxChatsTransport> weak_{this};
++};
++}  // namespace aux
++#endif

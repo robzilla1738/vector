@@ -1,0 +1,84 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "row",
+      "start": "0x4671570",
+      "stopExclusive": "0x4673a40",
+      "bytesSha256": "c6c3334a01f79af7709e8f03e43f89c10f739096db8512c306ef64ff8ed7a1c7",
+      "asmSha256": "e83d2b78b9089a721f09b97f0478dfee6d5e6d2262afc788e0021aacc176ba2b"
+    },
+    {
+      "name": "indicators",
+      "start": "0x46743e0",
+      "stopExclusive": "0x4675290",
+      "bytesSha256": "d594a1cd107e918df10e503a85fc172be605348ce1df7af7c4d5b98c2939cbbe",
+      "asmSha256": "09a56c9171eb7285eaedb77e254d132ff2ba9e93ca9294a930a5d78093534244"
+    },
+    {
+      "name": "mixer-task",
+      "start": "0x35e9c24",
+      "stopExclusive": "0x35ea0b4",
+      "bytesSha256": "cb58313fed1f354819b7cdd99fd923592215e3dc0b88f3dcbc64caee8e79aa8e",
+      "asmSha256": "871077d8a343d32c94887e819bd58822e643e1544eb129ba3cb3ea29a5b7ba6b"
+    },
+    {
+      "name": "mixer-text",
+      "start": "0x35e7650",
+      "stopExclusive": "0x35e7724",
+      "bytesSha256": "62182479af4bd4fd1f6eb411c4ea94ddfdfbba29e94ea8c7b904faa14102aa4d",
+      "asmSha256": "a51f2ec5740dc6cb98b6d0cbfb882ea90edce0dfa9191ccff914bb6b4a9c7f2f"
+    },
+    {
+      "name": "button-default",
+      "start": "0x136e810",
+      "stopExclusive": "0x136e870",
+      "bytesSha256": "c708bdf68f1ccf29a338e5e3fdfa5f3c32057aafcab66bb88c072baf354d0d4f",
+      "asmSha256": "b667f62e7fa0273743b533e12574f131f74d79b2c9f43a0f04ac5593cce9b9d2"
+    },
+    {
+      "name": "poll",
+      "start": "0x463db48",
+      "stopExclusive": "0x463e32c",
+      "bytesSha256": "23a1631fb6be6c9bb398cad6fcf04ed657fd1f31ba31fce140b00d11576eb4a8",
+      "asmSha256": "0fb526a056fd03ce3725ff5703d3612d097f43e93a858cb985abcc4484b80b7e"
+    },
+    {
+      "name": "action",
+      "start": "0x463bd4c",
+      "stopExclusive": "0x463cb30",
+      "bytesSha256": "9751838a1b274af1d72f0db9fc67bc9bb6691cadd366eef235aa01e180ba5305",
+      "asmSha256": "ee83b35e673f5d418c43feaa66cd4492b558c1b11bed849e346240a3a3597249"
+    },
+    {
+      "name": "token-invalidation",
+      "start": "0x415d554",
+      "stopExclusive": "0x415d5d0",
+      "bytesSha256": "a78d0b79069065c17926f34d11b7148363b6cae0137c8ac620d545de91b08a5f",
+      "asmSha256": "467e05bb3907d7d5507eb27651a282c63d64bae94f4ca0d17e782e7caa449024"
+    }
+  ],
+  "icons": [
+    {
+      "name": "Pin",
+      "address": "0xd3e1834",
+      "elements": 90,
+      "sha256": "b4ffa746bce9676752da3666143273e394c21d9c7709566f887ce32f5e965948"
+    },
+    {
+      "name": "Error",
+      "address": "0xd3dc4cc",
+      "elements": 102,
+      "sha256": "7c5fc4a160928537d20daeaf7961ec3ccde4f7eea72659da8e153f69d288d600"
+    },
+    {
+      "name": "Archive",
+      "address": "0xd3d7a78",
+      "elements": 249,
+      "sha256": "0bdf5643002105fd9f06ec4311d380f61953dcf897ab90ccfc39261b0ade4d50"
+    }
+  ]
+}
