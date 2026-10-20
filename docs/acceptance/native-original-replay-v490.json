@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "composition": "v490",
+  "steps": 493,
+  "sourceOutputs": 642,
+  "artworkOutputs": 23,
+  "allSourceOutputsMatch": true,
+  "allArtworkOutputsMatch": true,
+  "compositionSha256": "7e3105485545a6de249b85d3714c585268d5d42e5c976ca2024d73fbc3ba231c",
+  "originalReplayManifestSha256": "a1d9621a08f908d62490671ff80d1aea417a245e33230c7087088903d2b3276d",
+  "compiled": false,
+  "runtimeAcceptance": false
+}
