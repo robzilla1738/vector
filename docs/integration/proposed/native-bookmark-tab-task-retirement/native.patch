@@ -1,0 +1,34 @@
+--- a/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h
+@@ -34,6 +34,10 @@
+                  const bookmarks::BookmarkModel* bookmark_model,
+                  bool suppress_missing_node_invalidation);
+ 
++  // Genuine task binding retires only an existing cached bookmark binding.
++  // Clear userdata and persist the original session tombstones as well.
++  void RemoveForTab(tabs::TabInterface* tab);
++
+   const std::map<tabs::TabHandle, BookmarkTabRepresentation>& entries() const {
+     return associations_;
+   }
+--- a/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc
+@@ -103,6 +103,18 @@
+   Persist(*tab, found->second);
+ }
+ 
++void BookmarkTabAssociations::RemoveForTab(tabs::TabInterface* tab) {
++  if (!tab)
++    return;
++  const auto found = associations_.find(tab->GetHandle());
++  if (found == associations_.end())
++    return;
++  associations_.erase(found);
++  if (tab->GetContents())
++    ClearBookmarkTabRepresentation(tab->GetContents());
++  PersistClear(*tab);
++}
++
+ void BookmarkTabAssociations::Persist(
+     tabs::TabInterface& tab,
+     const BookmarkTabRepresentation& representation) {

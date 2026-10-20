@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "task-binding-retirement",
+      "rva": "0x464eafc",
+      "bytes": 48,
+      "sha256": "03f4cccd1211ead53235f0aa4fee771457a1622ae3e654d16067a9e1a1776350",
+      "assemblySha256": "d8a695a2b7bac1dcbb73bec368f9f774efa8dee5e3fdb56f770ee284b634e323"
+    },
+    {
+      "name": "live-clear",
+      "rva": "0x464ef84",
+      "bytes": 312,
+      "sha256": "349da1b0638d02fc41bdf06962496a9dff16bee34f6eb016481060fecb109c28",
+      "assemblySha256": "537c59ba0012544f6eae9d37809356b7b66f61ab596d95015b5ae51a8b6f9821"
+    }
+  ],
+  "literals": [],
+  "inputs": []
+}

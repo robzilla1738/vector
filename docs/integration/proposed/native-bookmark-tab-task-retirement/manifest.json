@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "native-bookmark-tab-associations actual297/309 unchanged",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h",
+      "baselineSha256": "e4325f9d21b46ab0743db0fdf2fff1524981300621ea7f65adac14748a0ef0f5",
+      "outputSha256": "4162cf9528b56fcc959c93c179857c9b5ad54d61ea5da30314ed6d9e5a051c1e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc",
+      "baselineSha256": "04327bccf374e095609d3862a659e16e6510555fbadb897871afbacf05f9e94a",
+      "outputSha256": "f64da97801b4d4aada7df033ceb161f62514bb0fb72a0deccea0b9dd32550431",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
