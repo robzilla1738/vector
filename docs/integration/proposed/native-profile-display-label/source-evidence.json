@@ -1,0 +1,93 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "original-display-label.txt",
+      "start": "0x40fde94",
+      "stop": "0x40fe36c",
+      "bytesSha256": "ddcdc4f26ed0ab705c03d569ac33b019f95aa330954d1b2341477ae1a44d070c",
+      "extractSha256": "74cba85ffdc2865d9cfc2dcd1ad2b2ce84ac95189550970fe5a4aed0cc5108ed"
+    },
+    {
+      "file": "original-name-getters.txt",
+      "start": "0x2208380",
+      "stop": "0x22086c0",
+      "bytesSha256": "1f3f0198576d9c3f3b0a2c11b2813816b89e38c8c05727acaa920586c30bc8c0",
+      "extractSha256": "6cf06a3ae32069e5d5e4a5131e58f36a963de2f52c90beea0c59ea3d2beb0045"
+    },
+    {
+      "file": "original-local-name-getter.txt",
+      "start": "0x415a908",
+      "stop": "0x415a988",
+      "bytesSha256": "a8f54b5eb192b22014830bae0fe031ed8efcccb97888bc1ab7aee17bbc34d79f",
+      "extractSha256": "cc1f7178f001a6207edd4c53d61536cfecae29d04d7970145bbdbba2363579b5"
+    },
+    {
+      "file": "original-preview-label-caller.txt",
+      "start": "0x46547f0",
+      "stop": "0x46548a0",
+      "bytesSha256": "b7787b45062a3cfe7418888d8bd2b8eb9c7a042c8b027951fb00e280fc2a977c",
+      "extractSha256": "37a29d66b39e24adbd318c0d09f7151f6c842e014472ab375db17c3593d47049"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xceea4da",
+      "bytes": "61736964652e6163636f756e745f646973706c61795f6e616d6500"
+    },
+    {
+      "rva": "0xceea4ca",
+      "bytes": "500072006f00660069006c0065000000"
+    },
+    {
+      "rva": "0xcefb67b",
+      "bytes": "757365725f6e616d6500"
+    },
+    {
+      "rva": "0xdf793e2",
+      "bytes": "200028000000"
+    },
+    {
+      "rva": "0xdf793e8",
+      "bytes": "29000000"
+    },
+    {
+      "rva": "0xcefb420",
+      "bytes": "676169615f676976656e5f6e616d6500"
+    },
+    {
+      "rva": "0xcefb403",
+      "bytes": "676169615f6e616d6500"
+    },
+    {
+      "rva": "0xcefb40d",
+      "bytes": "6f6964635f6964656e746974795f6e616d6500"
+    },
+    {
+      "rva": "0xcefb36b",
+      "bytes": "656e74657270726973655f6c6162656c00"
+    },
+    {
+      "rva": "0xcefb640",
+      "bytes": "6e616d6500"
+    }
+  ],
+  "currentInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_attributes_entry.cc",
+      "sha256": "f7730b23906724ee8021bd3c891804883caec4ed7c9522e6143250fd566403c6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile.h",
+      "sha256": "dc1ff74874ce73db6eeb579ed9b5a85a3226387ce3a4172eb814336562634485"
+    }
+  ],
+  "reaEvidence": "ev_2c0e99d11b2149b5e0c144d9e40383fa2caff758f3338ab45bcf5676fca13f41",
+  "limits": [
+    "No profile load, mutation or runtime observation.",
+    "Visible-profile count must come from the original real filtered roster.",
+    "Preference registration/write semantics remain the integrator-owned supplied contract."
+  ]
+}

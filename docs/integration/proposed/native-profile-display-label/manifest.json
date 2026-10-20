@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "two new sources absent from applied170",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.cc",
+      "baselineSha256": null,
+      "outputSha256": "3fb5ace05d2f8ee1fefdc01b64692397c657a5b821aa5d83e9f4f81eb00d93f9"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.h",
+      "baselineSha256": null,
+      "outputSha256": "b70445a0b89ada76b597ca6e5dc6e10646361f680c656693ad304743051448b9"
+    }
+  ],
+  "compiled": false,
+  "uiTriggerInstalled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

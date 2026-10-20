@@ -1,0 +1,76 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/profiles/aux_profile_display_label.cc
+@@ -0,0 +1,51 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/profiles/aux_profile_display_label.h"
++
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "components/prefs/pref_service.h"
++
++namespace aux {
++std::u16string ProfileDisplayLabel(const ProfileAttributesEntry* entry,
++                                   const Profile* loaded_profile,
++                                   size_t visible_profile_count) {
++  if (!entry) {
++    return u"Profile";
++  }
++  if (visible_profile_count <= 1) {
++    const std::u16string name = entry->GetName();
++    return name.empty() ? u"Profile" : name;
++  }
++
++  std::u16string primary;
++  if (loaded_profile && !loaded_profile->IsOffTheRecord()) {
++    const PrefService* prefs = loaded_profile->GetPrefs();
++    if (prefs && prefs->FindPreference(kAccountDisplayName)) {
++      primary = base::UTF8ToUTF16(prefs->GetString(kAccountDisplayName));
++    }
++  }
++  if (primary.empty()) {
++    // Actual155 getter retains supplied given-name -> GAIA -> OIDC fallback.
++    primary = entry->GetGAIANameToDisplay();
++    if (primary.empty()) {
++      primary = entry->GetUserName();
++    }
++    if (primary.empty()) {
++      primary = entry->GetLocalProfileName();
++    }
++  }
++  std::u16string local = entry->GetLocalProfileName();
++  if (local.empty()) {
++    local = entry->GetName();
++  }
++  if (primary.empty()) {
++    return local.empty() ? u"Profile" : local;
++  }
++  if (local.empty() || base::EqualsCaseInsensitiveASCII(primary, local)) {
++    return primary;
++  }
++  return primary + u" (" + local + u")";
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/profiles/aux_profile_display_label.h
+@@ -0,0 +1,19 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_PROFILES_AUX_PROFILE_DISPLAY_LABEL_H_
++#define CHROME_BROWSER_UI_VIEWS_PROFILES_AUX_PROFILE_DISPLAY_LABEL_H_
++
++#include <cstddef>
++#include <string>
++
++class Profile;
++class ProfileAttributesEntry;
++namespace aux {
++// Preserved supplied internal preference, scoped by actual Aux profile prefs.
++inline constexpr char kAccountDisplayName[] = "aside.account_display_name";
++// Original040fde94, shared by the actual profile menu and preview page.
++// `loaded_profile` may be null; this function never loads a profile.
++std::u16string ProfileDisplayLabel(const ProfileAttributesEntry* entry,
++                                   const Profile* loaded_profile,
++                                   size_t visible_profile_count);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_PROFILES_AUX_PROFILE_DISPLAY_LABEL_H_
