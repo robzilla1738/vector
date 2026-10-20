@@ -1,0 +1,32 @@
+{
+  "exitCode": 0,
+  "elapsedSeconds": 81.51157689094543,
+  "targets": {
+    "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.cc": "obj/chrome/browser/ui/ui/aux_profile_preview_capture_cache.o",
+    "chrome/browser/ui/tabs/pinned_tab_service.cc": "obj/chrome/browser/ui/tabs/impl/pinned_tab_service.o",
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.cc": "obj/chrome/browser/ui/ui/aux_profile_page_indicator_dot_button.o",
+    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "chrome/browser/aux/profile_gate_prefs.cc": "obj/chrome/browser/aux/profile_gate_prefs/profile_gate_prefs.o",
+    "chrome/browser/aux/account_profile_prefs.cc": "obj/chrome/browser/aux/profile_gate_prefs/account_profile_prefs.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_profile_preview_capture_cache.o",
+    "obj/chrome/browser/ui/tabs/impl/pinned_tab_service.o",
+    "obj/chrome/browser/ui/ui/aux_profile_page_indicator_dot_button.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/aux/profile_gate_prefs/profile_gate_prefs.o",
+    "obj/chrome/browser/aux/profile_gate_prefs/account_profile_prefs.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "logSha256": "72d0973b1d6e434a80406a999343093e68a7e5088bb195cef30316f37119b0ac",
+  "runtimeAcceptance": false,
+  "uiParityAcceptance": false
+}
