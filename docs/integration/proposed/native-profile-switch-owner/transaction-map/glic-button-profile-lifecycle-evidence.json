@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "current135 read-only real source subscriptions/delegates",
+  "files": [
+    {
+      "path": "chrome/browser/glic/public/glic_enabling.cc",
+      "sha256": "de0b8a62c93aa1f3bba95a5f3b31d413658da23346035ebb7bc2ac0a9b9c0187"
+    },
+    {
+      "path": "chrome/browser/glic/service/glic_instance_coordinator_impl.cc",
+      "sha256": "4088b1683ef463652c2e61545474ade9621238796b197fe251eff0d381c3b94e"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_controller.cc",
+      "sha256": "24737d2389b9a638a871247b1a2789666886cd8c5ee1dc89b86046f4e5c9a75d"
+    },
+    {
+      "path": "components/prefs/pref_change_registrar.cc",
+      "sha256": "9d4c1459f0929b063c558106713566d4c7c59d9e42288125f191a8792e104fb5"
+    },
+    {
+      "path": "chrome/browser/glic/public/glic_keyed_service.h",
+      "sha256": "fc396ff7dd595e71620e45ec0e3e76b39d5dc9602450b318fe02ff0bf384146a"
+    }
+  ],
+  "sharedSourceModified": false,
+  "ownerStateAccessed": false
+}

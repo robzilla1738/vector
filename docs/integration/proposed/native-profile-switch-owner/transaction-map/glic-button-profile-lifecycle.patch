@@ -1,0 +1,203 @@
+--- a/chrome/browser/glic/browser_ui/glic_button_controller.h
++++ b/chrome/browser/glic/browser_ui/glic_button_controller.h
+@@ -8,6 +8,7 @@
+ #include <vector>
+ 
+ #include "base/callback_list.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
+@@ -48,8 +49,22 @@
+ 
+   void UpdateButton();
+ 
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(GlicKeyedService& service);
++  void FinishForAuxProfileSwitch();
++  void AbortForAuxProfileSwitch(Profile* source_profile);
++
+  private:
+   void CallOnBoth(base::RepeatingCallback<void(GlicSplitButtonDelegate&)> fn);
++  void BindAuxProfileSources();
++  base::ScopedClosureRunner EnterAuxCallback();
++  void LeaveAuxCallback();
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_profile_switch_rebound_ = false;
++  int aux_callback_depth_ = 0;
++  base::WeakPtr<Profile> aux_source_profile_;
++  base::WeakPtr<GlicKeyedService> aux_source_service_;
+ 
+   raw_ptr<Profile> profile_;
+   raw_ref<BrowserWindowInterface> browser_;
+--- a/chrome/browser/glic/browser_ui/glic_button_controller.cc
++++ b/chrome/browser/glic/browser_ui/glic_button_controller.cc
+@@ -5,6 +5,9 @@
+ #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
+ 
+ #include "base/functional/bind.h"
++#include "base/check_op.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "content/public/browser/web_contents.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
+ #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
+@@ -45,11 +48,15 @@
+   // Set initial button state.
+   UpdateButton();
+ 
++  BindAuxProfileSources();
++}
++
++void GlicButtonController::BindAuxProfileSources() {
+   // Observe for changes in preferences and panel state events.
+   pref_registrar_.Init(profile_->GetPrefs());
+ 
+   auto update_callback = base::BindRepeating(
+-      &GlicButtonController::UpdateButton, base::Unretained(this));
++      &GlicButtonController::UpdateButton, weak_ptr_factory_.GetWeakPtr());
+ 
+   pref_registrar_.Add(glic::prefs::kGlicPinnedToTabstrip, update_callback);
+   subscriptions_.push_back(
+@@ -61,13 +68,110 @@
+ 
+ GlicButtonController::~GlicButtonController() = default;
+ 
++bool GlicButtonController::CanPrepareForAuxProfileSwitch() const {
++  return !aux_profile_switch_prepared_ && !aux_callback_depth_ &&
++         From(&browser_.get()) == this &&
++         browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         profile_ && profile_->IsRegularProfile() &&
++         browser_->GetProfile() == profile_ &&
++         GlicSplitButtonController::From(&browser_.get()) == split_button_controller_ &&
++         browser_->GetTabStripModel()->profile() == profile_ &&
++         glic_keyed_service_ && glic_keyed_service_->profile() == profile_ &&
++         glic_keyed_service_ == GlicKeyedService::Get(profile_) &&
++         pref_registrar_.prefs() == profile_->GetPrefs() &&
++         subscriptions_.size() == 2 &&
++         !glic_keyed_service_->IsPanelShowingForBrowser(*browser_);
++}
++
++void GlicButtonController::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_source_profile_ = profile_->GetWeakPtr();
++  aux_source_service_ = glic_keyed_service_->GetWeakPtr();
++  aux_profile_switch_prepared_ = true;
++  aux_profile_switch_rebound_ = false;
++  pref_registrar_.Reset();
++  subscriptions_.clear();
++}
++
++void GlicButtonController::RebindForAuxProfileSwitch(GlicKeyedService& service) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_profile_switch_rebound_);
++  CHECK(!aux_callback_depth_);
++  CHECK(service.profile());
++  CHECK(service.profile()->IsRegularProfile());
++  CHECK_EQ(browser_->GetProfile(), service.profile());
++  CHECK_EQ(GlicKeyedService::Get(service.profile()), &service);
++  CHECK_EQ(browser_->GetTabStripModel()->profile(), service.profile());
++  CHECK(browser_->GetTabStripModel()->empty());
++  CHECK(!pref_registrar_.prefs());
++  CHECK(subscriptions_.empty());
++  profile_ = service.profile();
++  glic_keyed_service_ = &service;
++  BindAuxProfileSources();
++  aux_profile_switch_rebound_ = true;
++}
++
++void GlicButtonController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_profile_switch_rebound_);
++  CHECK(!aux_callback_depth_);
++  CHECK_EQ(browser_->GetProfile(), profile_);
++  CHECK_EQ(glic_keyed_service_->profile(), profile_);
++  CHECK_EQ(pref_registrar_.prefs(), profile_->GetPrefs());
++  aux_profile_switch_prepared_ = false;
++  aux_profile_switch_rebound_ = false;
++  aux_source_profile_.reset();
++  aux_source_service_.reset();
++  // Last effect: the unchanged delegate update may close this real window.
++  UpdateButton();
++}
++
++void GlicButtonController::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_profile_switch_rebound_);
++  CHECK(!aux_callback_depth_);
++  CHECK(aux_source_profile_);
++  CHECK(aux_source_service_);
++  CHECK_EQ(source_profile, aux_source_profile_.get());
++  CHECK_EQ(profile_, source_profile);
++  CHECK_EQ(glic_keyed_service_, aux_source_service_.get());
++  CHECK_EQ(GlicKeyedService::Get(source_profile), glic_keyed_service_);
++  CHECK_EQ(browser_->GetProfile(), source_profile);
++  auto* model = browser_->GetTabStripModel();
++  CHECK_EQ(model->profile(), source_profile);
++  for (int index = 0; index < model->count(); ++index) {
++    CHECK_EQ(model->GetWebContentsAt(index)->GetBrowserContext(), source_profile);
++  }
++  CHECK(!pref_registrar_.prefs());
++  CHECK(subscriptions_.empty());
++  BindAuxProfileSources();
++  aux_profile_switch_prepared_ = false;
++  aux_source_profile_.reset();
++  aux_source_service_.reset();
++  // Preserve source services and apply their genuine current state only.
++  UpdateButton();
++}
++
++base::ScopedClosureRunner GlicButtonController::EnterAuxCallback() {
++  ++aux_callback_depth_;
++  return base::ScopedClosureRunner(base::BindOnce(
++      &GlicButtonController::LeaveAuxCallback, weak_ptr_factory_.GetWeakPtr()));
++}
++
++void GlicButtonController::LeaveAuxCallback() {
++  CHECK_GT(aux_callback_depth_, 0);
++  --aux_callback_depth_;
++}
++
+ void GlicButtonController::SetHorizontalTabsDelegate(
+     GlicSplitButtonDelegate* delegate) {
++  auto callback_scope = EnterAuxCallback();
+   split_button_controller_->SetHorizontalTabsDelegate(delegate);
+ }
+ 
+ void GlicButtonController::SetVerticalTabsDelegate(
+     GlicSplitButtonDelegate* delegate) {
++  auto callback_scope = EnterAuxCallback();
+   split_button_controller_->SetVerticalTabsDelegate(delegate);
+ }
+ 
+@@ -76,6 +180,11 @@
+ }
+ 
+ void GlicButtonController::UpdateButton() {
++  auto callback_scope = EnterAuxCallback();
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  const auto alive = weak_ptr_factory_.GetWeakPtr();
+   // Attempt to record startup metrics when the button controller is first
+   // created, no-op if startup metrics have already been measured.
+   // Note that this will not record metrics for profiles that are not eligible
+@@ -83,6 +192,9 @@
+   // never have a GlicButtonController created. Recording metrics for those
+   // cases is handled by GlicProfileManager instead.
+   glic_keyed_service_->enabling().MaybeRecordStartupMetrics();
++  if (!alive) {
++    return;
++  }
+ 
+   const bool should_show_button = GlicEnabling::ShouldShowGlicButton(profile_);
+   const bool is_pinned_to_tabstrip =
+@@ -107,6 +219,7 @@
+ 
+ void GlicButtonController::CallOnBoth(
+     base::RepeatingCallback<void(GlicSplitButtonDelegate&)> fn) {
++  auto callback_scope = EnterAuxCallback();
+   split_button_controller_->CallOnBoth(fn);
+ }
+ 

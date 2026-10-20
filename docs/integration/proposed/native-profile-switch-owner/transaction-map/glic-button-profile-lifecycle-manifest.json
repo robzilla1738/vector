@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied v135 unchanged GlicButtonController source",
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_button_controller.h",
+      "baselineSha256": "4ecc3ff388240010bbabf12681549a8d2e180d79ff5957252500f48d00039381",
+      "outputSha256": "891d99e2ffea691494bdeb53e1b3d4e59165a4dbaf1aa3f93d8021b8ac914fc7"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_button_controller.cc",
+      "baselineSha256": "199823e7482ed1cbd12f3ff26f2e447635a4df6d23af4a6f9cb44c52e9ec411e",
+      "outputSha256": "be573cfe114c29a4a22831f750e93d66ab9c9e7907008a8e0204ecd745973085"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
