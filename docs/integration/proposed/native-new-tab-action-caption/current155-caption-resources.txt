@@ -1,0 +1,6 @@
+        <message name="IDS_NEW_TAB" desc="The text label of a menu item for opening a new tab">
+          New &amp;tab
+        </message>
+      <message name="IDS_ACCNAME_NEWTAB" desc="The accessible name for the New Tab (+) button.">
+        New Tab
+      </message>

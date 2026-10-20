@@ -1,0 +1,25 @@
+{
+  "originalSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "originalAction": "3785cd0 action11;3785cf0 loadsresource277 for actualtext,3785d6c loads277 fortooltip, cleanhelper1d255a0 thenactualActionItem setters1d25408/1d25270",
+  "originalButton": "4244ce8 calls ButtonActionViewInterface thencopiesactualActionItem string+d0 intoSetText, finallySetEnabled(true); nofixedcaption/caseoperation",
+  "originalInitial": "4243134 loadsresource261 New tab beforeactualactionrelationship; finalvisiblecaptioncomesfromaction11, notctorfallback",
+  "originalLocale": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/pak/locale-en-full.txt",
+    "sha256": "9ab7eda51ed0ef5f2bd7c37a5dbc30174cb89172651da96b6d9156cecbe4169e",
+    "261": "New tab",
+    "277": "New &Tab"
+  },
+  "current155": {
+    "resourceFile": "chrome/app/generated_resources.grd",
+    "sha256": "e7027a71d4d9fb7bda8266468d7096e34b15c9fe9f8b94d4827e5438f95c9d1c",
+    "IDS_NEW_TAB": "New &tab",
+    "IDS_ACCNAME_NEWTAB": "New Tab",
+    "producer": "BrowserActions actualkActionNewTab text/tooltip useIDS_NEW_TAB; onlyAuxbranchmustpreservesuppliedcapitalT",
+    "button": "AuxVerticalNewTabActionInterface retains genuineitemGetText/forceEnabled andsuppliedplusicon; unchanged"
+  },
+  "scope": "Oneactualproducer, realcommand/callback/imageandnonAuxbranchunchanged; noglobalGRD/menu/stringoverride,nohardcodedEnglishorcaseconversion",
+  "limitations": [
+    "Englishsourcecaptionparitysource-backed; no claimidenticaleverylocale catalogs",
+    "No nativecompile/runtime/ownerdataoperation"
+  ]
+}

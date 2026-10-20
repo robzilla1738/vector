@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "baselineSha256": "e68e4c8fba81c39a383666c70a1c13974d9502c90b03e80f15d246308a5c4da9",
+      "outputSha256": "ade924789c9a6dbfa23057fc86aa2929e991d6b4f0a73ab00aee5d365afc703a"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

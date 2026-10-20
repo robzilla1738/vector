@@ -1,0 +1,23 @@
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -1236,10 +1236,20 @@
+               },
+               bwi))
+           .SetActionId(kActionNewTab)
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++          // Supplied action11 uses resource277 ("New &Tab") for both fields.
++          // 155's menu resource lowercases "tab"; use its actual localized
++          // "New Tab" caption while retaining the real ActionItem producer.
++          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
++              l10n_util::GetStringUTF16(IDS_ACCNAME_NEWTAB)))
++          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
++              l10n_util::GetStringUTF16(IDS_ACCNAME_NEWTAB)))
++#else
+           .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
+           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
++#endif
+           .SetImage(ui::ImageModel::FromVectorIcon(
+               features::IsRoundedIconsEnabled()
+                   ? vector_icons::kAddWeight500CustomIcon
