@@ -1,0 +1,158 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -150,6 +150,8 @@
+ #include "ui/menus/simple_menu_model.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/background.h"
++#include "ui/views/controls/button/label_button.h"
++#include "components/url_formatter/elide_url.h"
+ #include "ui/views/border.h"
+ #include "ui/views/button_drag_utils.h"
+ #include "ui/views/controls/button/image_button.h"
+@@ -455,11 +457,30 @@
+       AddChildView(std::move(omnibox_additional_text_view));
+   omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
+ 
++  aux_resting_origin_view_ = AddChildView(std::make_unique<views::LabelButton>(
++      base::BindRepeating([this]() {
++        // Never map a click on the shortened origin onto URL text offsets.
++        aux_resting_origin_view_->SetVisible(false);
++        aux_page_title_view_->SetVisible(false);
++        omnibox_view_->SetAuxRestingPresentation(false);
++        FocusLocation(true, false);
++        SelectAll();
++        InvalidateLayout();
++      }), std::u16string()));
++  aux_resting_origin_view_->label()->SetFontList(font_list);
++  aux_resting_origin_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  aux_resting_origin_view_->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
++  aux_resting_origin_view_->SetEnabledTextColors(kColorOmniboxText);
++  aux_resting_origin_view_->SetFocusBehavior(views::View::FocusBehavior::NEVER);
++  aux_resting_origin_view_->GetViewAccessibility().SetIsIgnored(true);
++  aux_resting_origin_view_->SetVisible(false);
++
+   // Read-only resting page context. The real omnibox remains the URL editor
+   // and retains its existing mouse/context-menu, focus and security behavior.
+   aux_page_title_view_ = AddChildView(std::make_unique<views::Label>(
+       std::u16string(), CONTEXT_OMNIBOX_PRIMARY, views::style::STYLE_PRIMARY));
+   aux_page_title_view_->SetFontList(font_list);
++  aux_resting_origin_view_->label()->SetFontList(font_list);
+   aux_page_title_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   aux_page_title_view_->SetElideBehavior(gfx::ELIDE_TAIL);
+   aux_page_title_view_->SetAutoColorReadabilityEnabled(false);
+@@ -801,6 +822,14 @@
+   aux_page_title_view_->SetText(
+       show_page_title ? u"  |  " + contents->GetTitle() : std::u16string());
+   aux_page_title_view_->SetVisible(show_page_title);
++  aux_resting_origin_view_->SetText(
++      show_page_title
++          ? url_formatter::FormatUrlForSecurityDisplay(
++                contents->GetLastCommittedURL(),
++                url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS)
++          : std::u16string());
++  aux_resting_origin_view_->SetVisible(show_page_title);
++  omnibox_view_->SetAuxRestingPresentation(show_page_title);
+ 
+   selected_keyword_view_->SetVisible(false);
+ 
+@@ -987,7 +1016,10 @@
+   trailing_decorations.LayoutPass2(&entry_width);
+ 
+   // Compute widths needed for location bar.
+-  int location_needed_width = omnibox_view_->GetUnelidedTextWidth();
++  int location_needed_width = aux_resting_origin_view_->GetVisible()
++      ? gfx::GetStringWidth(aux_resting_origin_view_->GetText(),
++                            omnibox_view_->GetFontList())
++      : omnibox_view_->GetUnelidedTextWidth();
+ 
+   int available_width = entry_width - location_needed_width;
+   // The bounds must be wide enough for all the decorations to fit, so if
+@@ -1001,6 +1033,10 @@
+   // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
+   // the rounded ends.
+   location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
++  // The presentation owner covers the URL/title area for intentional editing
++  // clicks. The underlying full URL field stays focusable and accessible.
++  if (aux_resting_origin_view_->GetVisible())
++    aux_resting_origin_view_->SetBoundsRect(location_bounds);
+ 
+   if (!ime_inline_autocomplete_view_->GetVisible() &&
+       !omnibox_additional_text_view_->GetVisible() &&
+@@ -2100,6 +2136,12 @@
+ }
+ 
+ void LocationBarView::OnOmniboxFocused() {
++  if (aux_resting_origin_view_) {
++    aux_resting_origin_view_->SetVisible(false);
++    aux_page_title_view_->SetVisible(false);
++    omnibox_view_->SetAuxRestingPresentation(false);
++    InvalidateLayout();
++  }
+   if (views::FocusRing::Get(this)) {
+     views::FocusRing::Get(this)->Refresh();
+   }
+@@ -2160,6 +2202,7 @@
+   ime_inline_autocomplete_view_->SetFontList(font_list);
+   omnibox_additional_text_view_->SetFontList(font_list);
+   aux_page_title_view_->SetFontList(font_list);
++  aux_resting_origin_view_->label()->SetFontList(font_list);
+   selected_keyword_view_->SetFontList(font_list);
+   for (ContentSettingImageView* view : content_setting_views_) {
+     view->SetFontList(font_list);
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -79,6 +79,7 @@
+ namespace views {
+ class ImageButton;
+ class Label;
++class LabelButton;
+ }  // namespace views
+ 
+ /////////////////////////////////////////////////////////////////////////////
+@@ -596,6 +597,7 @@
+ 
+   // Noneditable page title shown beside the real URL only while at rest.
+   raw_ptr<views::Label> aux_page_title_view_ = nullptr;
++  raw_ptr<views::LabelButton> aux_resting_origin_view_ = nullptr;
+ 
+   // The following views are used to provide hints and remind the user as to
+   // what is going in the edit. They are all added a children of the
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+@@ -742,6 +742,12 @@
+ }
+ 
+ void OmniboxViewViews::OnPaint(gfx::Canvas* canvas) {
++  // Only the pixels are substituted. The editor retains its full text,
++  // accessibility value and focus/selection/navigation ownership.
++  if (aux_resting_presentation_ && !HasFocus() &&
++      !controller()->edit_model()->user_input_in_progress()) {
++    return;
++  }
+   // The metric below is a critical user journey to avoid impact we exclude
+   // free-d memory from additional safety checks.
+   // TODO(crbug.com/478634529): Optimize and remove if possible.
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.h
+@@ -132,6 +132,13 @@
+   // that it can be restored during a later call to Update().
+   void SaveStateToTab(content::WebContents* tab);
+ 
++  void SetAuxRestingPresentation(bool resting) {
++    if (aux_resting_presentation_ == resting)
++      return;
++    aux_resting_presentation_ = resting;
++    SchedulePaint();
++  }
++
+   // Called when the window's active tab changes.
+   void OnTabChanged(content::WebContents* web_contents);
+ 
+@@ -230,6 +237,7 @@
+                           const gfx::Range& range);
+ 
+  private:
++  bool aux_resting_presentation_ = false;
+   friend class TestingOmniboxView;
+   FRIEND_TEST_ALL_PREFIXES(OmniboxPopupViewViewsTest, EmitAccessibilityEvents);
+   // TODO(tommycli): Remove the rest of these friends after porting these

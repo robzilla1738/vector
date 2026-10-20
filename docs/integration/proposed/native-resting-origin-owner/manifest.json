@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "7c0237cf4ac57886305777ff9271a82e3c1014439556bbc7ee5c7f8ff2126b03",
+      "outputSha256": "ef601e67b59d7080f31319563f9d4746aea71a4a8ead2df1c31e3d848eb11a34"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "baselineSha256": "86d7cfd39a60f031b4205f41d3286cbc9712a68066ee5ea0b628a780dc84e034",
+      "outputSha256": "a5a7624b50234a03a82b6eb1aa692e7d6799b923c9f3b0f6c441c1c93d68f33e"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "baselineSha256": "f3f87054ad92cafb888dee29cd2df9c93fe173bf5d335ca0c6dc3826e7896817",
+      "outputSha256": "3ba379319b6e8d918e8593aa6e38874cec8cc6a3f3981f29aadfccb3c51938f5"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.h",
+      "baselineSha256": "3d4f802037f7e01c46de22f6eb5d23915c339e48a6faafdaf7cc0dacbf3cc216",
+      "outputSha256": "73552cc6fe84669c2424ef4e9f151973dc0efda9a078ace5a224c5e01ba9bc67"
+    }
+  ]
+}

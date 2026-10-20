@@ -1,0 +1,9 @@
+# Dedicated resting origin presentation
+
+Observed supplied Aside HTTP(S) pages show host | title, including deep paths; focus shows full URL. This minimal155 adapter adds a nonfocusable readonly LabelButton presentation over the real URL editor, plus the prior title label. Origin uses Chromium's security-display formatter, retaining safe IDN formatting and nondefault port. The actual editor text/model/accessibility value is untouched; only its resting paint is suppressed.
+
+Clicking the presentation explicitly restores and focuses the genuine editor and selects all, never maps shortened-text coordinates to full-URL offsets. Cmd+L/native focus synchronously hides both presentation labels and restores paint. The paint guard independently refuses suppression whenever editor focus or user input exists. Existing HTTP(S)/normal-window/nonediting/IME/popup guards apply, with no spoofed backend/data. Site-information and permission/security controls remain separate and unchanged. The title is live active WebContents data, constrained by available space. Presentation is ignored by accessibility, leaving the genuine full-URL editor accessible.
+
+This is screenshot/interaction-grounded integration, not recovered original C++ owner. Full visual security-icon removal, exact separator stroke and original origin-title hover behavior are not asserted. No owners/profiles/credentials touched.
+
+Pins actual root-applied542 (includes prior flat/title patches). Count-checked mutation and patch dry-run only; no shared source edit/build. Integrator acceptance: deep HTTPS URL shows origin+title; click title and Cmd+L each show/select full URL; Escape restores presentation; tab switch updates both; copy in focused editor preserves complete URL; siteinfo still opens; narrow viewport and keyboard focus remain usable.
