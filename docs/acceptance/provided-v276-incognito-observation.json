@@ -50,5 +50,12 @@
     },
     "temporaryStateRetained": true,
     "detachedDescendantsFullyProven": false
+  },
+  "referenceLimit": {
+    "inventory": "docs/acceptance/historical-static-reference-images.json",
+    "reference": "09 Browser shell profiles and libraries/146-browser-sidebar-restored.png",
+    "finding": "Historical original expanded sidebar has bottom profile/search controls and top mode controls. Current candidate top profile/search placement differs. Removing the independent footer does not establish original control placement or full footer parity.",
+    "versionThemeScaleProven": false,
+    "personalReferenceContentCopiedToProduct": false
   }
 }
