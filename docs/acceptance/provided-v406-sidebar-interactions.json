@@ -1,0 +1,198 @@
+{
+  "processProof": [
+    {
+      "pid": 34422,
+      "launcher": 34417,
+      "lineage": [
+        34422,
+        34418,
+        34417,
+        34415,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v406-local/Aux.app/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v406-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    34422
+  ],
+  "windows": [
+    {
+      "pid": 34422,
+      "windowId": 32537,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32536,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32535,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32533,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32531,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32540,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32539,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32538,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32532,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 34422,
+      "windowId": 32534,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v406",
+  "profile": "disposable incognito profile",
+  "interactionTool": "mcp__cua_repl",
+  "appSelection": "Exact candidate path after verified live executable/launcher lineage; bundle-ID selection refused as ambiguous before any action.",
+  "actions": [
+    {
+      "action": "Right-click actual native sidebar scroll area",
+      "observedMenu": [
+        "New Tab",
+        "Reopen Closed Tab (disabled)",
+        "Bookmark All Tabs\u2026 (disabled)",
+        "Name Window\u2026",
+        "Show Tabs Horizontally",
+        "Collapse Tabs",
+        "Turn off Auto Expanding Tabs",
+        "Task Manager"
+      ]
+    },
+    {
+      "action": "Click native menu Collapse Tabs",
+      "observed": "Sidebar body/footer AX elements removed; both collapse action labels become Expand Tabs."
+    },
+    {
+      "action": "Click actual sidebar Expand Tabs button",
+      "observed": "Bookmarks/Chats/Tabs/body/footer return; labels become Collapse Tabs."
+    },
+    {
+      "action": "Click actual native fullscreen button",
+      "observed": "Toolbar reparented into fullscreen container; CUA screenshot shows recognizable sidebar Collapse icon and complete right-side toolbar."
+    }
+  ],
+  "scope": "Direct UI observation confirms menu and collapse/expand only; does not prove all menu commands or complete parity.",
+  "launcherPid": 34417,
+  "guardianPid": 34418,
+  "browserPid": 34422,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-CyytaG",
+  "installedAppChanged": false,
+  "ownerProfileUsed": false,
+  "fullUiParityAccepted": false
+}
