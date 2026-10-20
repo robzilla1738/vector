@@ -1,0 +1,94 @@
+{
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x42502d8",
+      "endExclusive": "0x4250878",
+      "sha256": "decedff1f4da5962c68c1d95fb4bc5681acc8a9d6508e3e080cfa7f3c722b5e3",
+      "assembly": "evidence/failure-ready-client.asm",
+      "assemblySha256": "a026f9d4265287a9a437f26d77b7082df1237dde9c75bd5a07c00079541a646f"
+    },
+    {
+      "start": "0x4250a14",
+      "endExclusive": "0x4251b94",
+      "sha256": "674c38c15d4914d75ff0cb0a378b10135a7b53c6fc5ea25afc0fa822b5033512",
+      "assembly": "evidence/selection-reserve-initialize-failure.asm",
+      "assemblySha256": "91de161f54825f6b418ab0ee92d043583f0d39778d802a65de4b76b7e241b47b"
+    },
+    {
+      "start": "0x4251b94",
+      "endExclusive": "0x4252130",
+      "sha256": "4d34970ea0b0254cbd89193964978faac16fbc2d5160be6b18faabcec0f59b4f",
+      "assembly": "evidence/four-way-terminal.asm",
+      "assemblySha256": "18d1e4d66bf35653f86a226631fe1ae88dc47d8cbedd832890eef910d560e16f"
+    },
+    {
+      "start": "0x458d4ec",
+      "endExclusive": "0x458d5b0",
+      "sha256": "6cd16eca5ac787399025238840e2b09f9da53dc5577d68b485d5916e286518c6",
+      "assembly": "evidence/invalid-warning.asm",
+      "assemblySha256": "0323d5dfb5b4ecca72bb99b7589df41ba7af8c18930add26cbc831f945c10395"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xdf7a378",
+      "text": "Safari",
+      "encoding": "utf-16le",
+      "lengthBytes": 12,
+      "sha256": "f54f6d2f5b4bb4ad31de57467a84e85b7ba9280b3d0ccb0b203653c594c868fb"
+    },
+    {
+      "offset": "0xdf7a396",
+      "text": "Invalid Safari ZIP File",
+      "encoding": "utf-16le",
+      "lengthBytes": 46,
+      "sha256": "ba83d3c6447c68d4ccb41fec10769105c19873cbdf4dca3ae3f5c490390be83d"
+    },
+    {
+      "offset": "0xcf08046",
+      "text": "This is not a valid Safari data ZIP file.",
+      "encoding": "utf-16le",
+      "lengthBytes": 82,
+      "sha256": "f3dbed6e32198432ab9c5426453c7fd77b2d23a098c0e6ff731b54574db777d6"
+    },
+    {
+      "offset": "0xdb1f190",
+      "text": "safari-import-invalid-file",
+      "encoding": "utf-8",
+      "lengthBytes": 26,
+      "sha256": "3d685d1a63eb9a8be7839794d780011fc4d3c864935248339fccf5da30d97bb2"
+    },
+    {
+      "offset": "0xdb1f150",
+      "text": "browser-import-started",
+      "encoding": "utf-8",
+      "lengthBytes": 22,
+      "sha256": "52b5e24dc76dc5f823e2ecd52f140f3a6ece28d872cd0458e125025d3cb0eee6"
+    },
+    {
+      "offset": "0xdb1f1c7",
+      "text": "browser-import-succeeded",
+      "encoding": "utf-8",
+      "lengthBytes": 24,
+      "sha256": "a6fa85407ba41a84e43eedd4ff2bb035e76261bb4edd7bdd544b27aa0bd92c2d"
+    },
+    {
+      "offset": "0xd7e972e",
+      "text": "OK",
+      "encoding": "utf-8",
+      "lengthBytes": 2,
+      "sha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3"
+    }
+  ],
+  "notes": [
+    "The supplied binary is static implementation input; no program/database/profile/Keychain execution.",
+    "42502d8 snapshots commit byte+88 before owner reset: false routes4250e40, true4251420.",
+    "4250f3c tail-return to warning is exclusive of4250f40 WebUI invalid-file fallback.",
+    "4251a24 destructor destroys native client/presenter but does not remove reserved target.",
+    "4251b94 requires commit and all4 imported flags before completion; no-window/newmode fallback directly opens profile."
+  ]
+}

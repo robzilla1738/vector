@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.cc",
+      "baselineSha256": "34383b2fa141a0c22db9e4f7c529530c46abffa0ef653e4992fee2987fe7611c",
+      "outputSha256": "0a4d17f3951d59e4add2650b0d46e5aa4bea91cefff8c31c68e6ca568fc94e83",
+      "anchors": [
+        {
+          "find": "  void Cancel() {",
+          "count": 1
+        },
+        {
+          "find": "    directory_ = std::move(dir);\n    auto* profile",
+          "count": 1
+        },
+        {
+          "find": "    Publish(\"running\");\n    importer_->PrepareImport(directory_->GetPath().AppendASCII(\"safari-export.zip\"),\n                             bookmarks_only_);",
+          "count": 1
+        },
+        {
+          "find": "    current_kind_.clear();\n    Publish(\"cancelled\");\n    ClearOwners();",
+          "count": 1
+        },
+        {
+          "find": "    current_kind_ = kKinds[kind];\n    Publish(\"running\");",
+          "count": 2
+        },
+        {
+          "find": "    progress_ = 0.5;\n    Publish(\"running\");\n    importer_->CompleteImport",
+          "count": 1
+        },
+        {
+          "find": "void SafariImport::Cancel() { impl_->Cancel(); }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.h",
+      "baselineSha256": "1cfdaae5f6c7031cd440a7d43320e366e0f1f53f3c93afb03aa81ef90c45fa6d",
+      "outputSha256": "7b34af1182705399af55ad513a94ae15acd2942b9d1f88257aaadaf70532d05e",
+      "anchors": [
+        {
+          "find": "class Profile;",
+          "count": 1
+        },
+        {
+          "find": "  void Start(std::string archive);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_webui_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "9987551a7b1698fd0cb6a96e7e5c123c155b19b9438e6b733d491d81866f9ed5",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_webui_import.h",
+      "baselineSha256": null,
+      "outputSha256": "f0b1276d42fa444b8694924929ac9b109e36116f118c8a8ef3852b06d71e12fe",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_completion_choice.h",
+      "baselineSha256": "bdba152c190f4172675b68bb0cb4a09828d6f427fc604f68c7cdc17dcf9ba025",
+      "outputSha256": "4345c2e39180205616045f2d1591da7959118fb7f404cd8f57ab7ec6b6e08bd8",
+      "anchors": [
+        {
+          "find": "void ShowCurrentProfileImportCompleted(const std::u16string& browser_name);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_completion_choice.mm",
+      "baselineSha256": "a70b315b71f81be01e9a0dfc76417338edb2d75aa47d6b3dbc87a76081d3c6c7",
+      "outputSha256": "abf9b0da8cd3ac601ddcb091630b8d719bcd2bf9e2b85ecc7fda35e1aae18a09",
+      "anchors": [
+        {
+          "find": "}  // namespace aux_importer",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "307304be2d387294194efe1d59d630594db03b29bd512037d19e04145b6c3815"
+}

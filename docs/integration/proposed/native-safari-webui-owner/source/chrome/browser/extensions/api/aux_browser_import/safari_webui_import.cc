@@ -1,0 +1,185 @@
+// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
+// Supplied4250a14..4252038: reserve/initialize, real Safari client, two terminal paths.
+#include "chrome/browser/extensions/api/aux_browser_import/safari_webui_import.h"
+#include <utility>
+#include "base/check.h"
+#include "base/files/file_util.h"
+#include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
+#include "base/task/single_thread_task_runner.h"
+#include "base/task/thread_pool.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_attributes_init_params.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+#include "chrome/browser/ui/webui/aux_importer/import_profile_metadata.h"
+#include "chrome/browser/ui/webui/aux_importer/import_completion_choice.h"
+
+namespace aux_import {
+class SafariWebUIImport::Impl {
+ public:
+  Impl(Profile* profile, SafariImport::Update update)
+      : captured_profile_(profile->GetWeakPtr()), update_(std::move(update)) {}
+  // Original4251a24 retires the client, but does not delete a reserved target.
+  ~Impl() { stopped_ = true; importer_.reset(); }
+  void Start(TargetMode mode, const base::FilePath& path, WebUILifecycle lifecycle) {
+    if (started_ || stopped_) return;
+    CHECK(lifecycle.retire_owner);
+    CHECK(lifecycle.has_owner_window);
+    CHECK(mode != TargetMode::kNewProfile || lifecycle.open_profile);
+    started_ = true;
+    mode_ = mode;
+    archive_ = path;
+    lifecycle_ = std::move(lifecycle);
+    if (!captured_profile_) { Fail(); return; }
+    if (mode_ == TargetMode::kCurrentProfile) {
+      Initialize(captured_profile_.get());
+      return;
+    }
+    auto* manager = g_browser_process->profile_manager();
+    if (!manager) { Fail(); return; }
+    // Original4250bcc..4250df8 reserves attributes before CreateProfileAsync.
+    target_ = manager->GenerateNextProfileDirectoryPath();
+    auto& storage = manager->GetProfileAttributesStorage();
+    ProfileAttributesInitParams attributes;
+    attributes.profile_path = target_;
+    attributes.profile_name = u"Safari";
+    attributes.icon_index = storage.ChooseAvatarIconIndexForNewProfile();
+    auto self = weak_.GetWeakPtr();
+    storage.AddProfile(std::move(attributes));
+    if (!self || stopped_) return;
+    manager->CreateProfileAsync(target_, base::BindOnce(
+        &Impl::TargetInitialized, weak_.GetWeakPtr()), {});
+  }
+  void Cancel() {
+    if (stopped_) return;
+    stopped_ = true;
+    weak_.InvalidateWeakPtrs();
+    // Owner retirement is not an invented rollback of already imported data.
+    if (importer_) importer_->Cancel();
+    importer_.reset();
+    keep_alive_.reset();
+  }
+ private:
+  void TargetInitialized(Profile* profile) {
+    if (stopped_) return;
+    if (!profile) { Fail(); return; }
+    auto* manager = g_browser_process->profile_manager();
+    if (!manager) { Fail(); return; }
+    auto self = weak_.GetWeakPtr();
+    // Safari4251694 has no Chromium theme/reset-record/GAIA-photo branch.
+    aux_importer::SetInitializedImportProfileName(*profile, *manager, u"Safari");
+    if (self && !stopped_) Initialize(profile);
+  }
+  void Initialize(Profile* profile) {
+    keep_alive_ = ScopedProfileKeepAlive::TryAcquire(
+        profile, ProfileKeepAliveOrigin::kAuxBrowserImport);
+    if (!keep_alive_) { Fail(); return; }
+    importer_ = std::make_unique<SafariImport>(profile, false,
+        base::BindRepeating(&Impl::Updated, weak_.GetWeakPtr()));
+    // Actual client publishes running only after all required native owners
+    // exist, immediately before PrepareImport (42518c0 source event).
+    importer_->StartFilePath(archive_);
+  }
+  void Updated(std::string state, std::string kind, double progress,
+               std::string error) {
+    if (stopped_) return;
+    if (state == "running") {
+      preparation_started_ = true;
+      update_.Run(std::move(state), std::move(kind), progress, std::move(error));
+      return;
+    }
+    const bool succeeded = state == "succeeded";
+    const bool committed = importer_ && importer_->commit_started();
+    // Do not delete the SafariImport while its real client callback is on-stack.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&Impl::Settled, weak_.GetWeakPtr(),
+                                 succeeded, committed, std::move(error)));
+  }
+  void Settled(bool succeeded, bool committed, std::string error) {
+    if (stopped_) return;
+    importer_.reset();
+    keep_alive_.reset();
+    if (!succeeded) {
+      if (committed || !preparation_started_) { Fail(); return; }
+      // Original42502d8 branches to4250e40 before CompleteImport. It leaves
+      // reserved attributes/path intact; deletion here would change behavior.
+      stopped_ = true;
+      auto update = update_;
+      auto warning = std::move(lifecycle_.invalid_archive);
+      // Original4250f3c tail-returns after native warning; fallback event is
+      // exclusive (4250f40), not a second notification of that same warning.
+      if (warning && std::move(warning).Run()) return;
+      update.Run("invalid-file", "", 0, std::move(error));
+      return;
+    }
+    stopped_ = true;
+    const auto mode = mode_;
+    auto path = target_;
+    auto retire = std::move(lifecycle_.retire_owner);
+    auto open = std::move(lifecycle_.open_profile);
+    auto present = std::move(lifecycle_.has_owner_window);
+    auto update = update_;
+    // Completion is an independent task: real Widget retirement may delete the
+    // Handler and this coordinator. No raw owner is accessed after retirement.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(
+          [](TargetMode mode, base::FilePath path, base::OnceClosure retire,
+             OpenProfile open, base::RepeatingCallback<bool()> present,
+             SafariImport::Update update) {
+            if (!present.Run()) {
+              if (mode == TargetMode::kNewProfile)
+                std::move(open).Run(path);
+            } else {
+              std::move(retire).Run();
+              if (mode == TargetMode::kCurrentProfile) {
+                aux_importer::ShowCurrentProfileImportCompleted(u"Safari");
+              } else {
+                aux_importer::ShowNewProfileImportCompleted(u"Safari",
+                    base::BindOnce(std::move(open), std::move(path)));
+              }
+            }
+            update.Run("succeeded", "", 1, "");
+          }, mode, std::move(path), std::move(retire), std::move(open),
+          std::move(present), std::move(update)));
+  }
+  void Fail() {
+    if (stopped_) return;
+    stopped_ = true;
+    importer_.reset();
+    keep_alive_.reset();
+    // Original4251420 only deletes the path this owner actually reserved.
+    auto update = update_;
+    if (!target_.empty()) {
+      auto path = std::exchange(target_, {});
+      if (auto* manager = g_browser_process->profile_manager())
+        manager->GetProfileAttributesStorage().RemoveProfile(path);
+      base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()},
+          base::BindOnce([](base::FilePath path) {
+            base::DeletePathRecursively(path);
+          }, std::move(path)));
+    }
+    update.Run("failed", "", 0, "Safari import failed");
+  }
+  base::WeakPtr<Profile> captured_profile_;
+  SafariImport::Update update_;
+  TargetMode mode_ = TargetMode::kCurrentProfile;
+  WebUILifecycle lifecycle_;
+  bool started_ = false, stopped_ = false, preparation_started_ = false;
+  base::FilePath archive_, target_;
+  std::unique_ptr<ScopedProfileKeepAlive> keep_alive_;
+  std::unique_ptr<SafariImport> importer_;
+  base::WeakPtrFactory<Impl> weak_{this};
+};
+SafariWebUIImport::SafariWebUIImport(Profile* profile, SafariImport::Update update)
+    : impl_(std::make_unique<Impl>(profile, std::move(update))) {}
+SafariWebUIImport::~SafariWebUIImport() = default;
+void SafariWebUIImport::Start(TargetMode mode, const base::FilePath& path,
+                             WebUILifecycle lifecycle) {
+  impl_->Start(mode, path, std::move(lifecycle));
+}
+void SafariWebUIImport::Cancel() { impl_->Cancel(); }
+}  // namespace aux_import
