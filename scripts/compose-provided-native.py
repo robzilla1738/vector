@@ -440,6 +440,7 @@ steps.extend([
     ('native-notification-inbox-key-bridge/native.patch', 'native-notification-inbox-key-bridge/manifest.json'),
     ('native-notification-inbox-pipeline/native.patch', 'native-notification-inbox-pipeline/manifest.json'),
     ('native-notification-inbox-build-deps/native.patch', 'native-notification-inbox-build-deps/manifest.json'),
+    ('native-notification-permission-observer/native.patch', 'native-notification-permission-observer/manifest.json'),
 ])
 
 if options.through:
