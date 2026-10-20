@@ -1,0 +1,36 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "originalReaderEvidence": "../account-gate-popup/evidence/04100b88.c",
+  "newArtifacts": [
+    {
+      "path": "evidence/bootstrap-complete-evidence.json",
+      "sha256": "af07a0fd234758cc0057e2e4633af37baaed90574296ae4f3f95e3ce11b1a186"
+    },
+    {
+      "path": "evidence/bootstrap-policies-evidence.json",
+      "sha256": "767455a7dbfbfa333e56e38c9c7f82910fe2dab587824278b540e15fbc182c71"
+    },
+    {
+      "path": "evidence/bootstrap-record-parser.txt",
+      "sha256": "3fbf5de199e668ca2be5cf30b6907d54725ddd7efc7af074a06e90dda05d212e"
+    },
+    {
+      "path": "evidence/equality-predicate.txt",
+      "sha256": "b8b58d944eade235c97b4df2df683ee953105a796e3606eda1ac7520db5bbe76"
+    },
+    {
+      "path": "evidence/legacy-state.txt",
+      "sha256": "45b0fc340500174d3e43a4a77774085a83602b85612266e3e27a6f7270a42c15"
+    },
+    {
+      "path": "evidence/path-normalization.txt",
+      "sha256": "77bd475f02af165ecb1699ea51803be2fe0811f1941aa7ed5123b0508fbd2a49"
+    }
+  ],
+  "checks": {
+    "newFileReplayAndHashes": true,
+    "nativeCompile": false,
+    "sourceFixturesExecuted": false,
+    "sharedWrites": false
+  }
+}

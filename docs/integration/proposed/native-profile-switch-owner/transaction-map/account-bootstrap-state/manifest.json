@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "new source files; does not alter current gate or security client",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_bootstrap_state.cc",
+      "baselineSha256": null,
+      "outputSha256": "040da3b1b0bf5ea7a15f06945ec1c9c3927cc9df3c9a36b752f403a5ca073b89"
+    },
+    {
+      "path": "chrome/browser/aux/account_bootstrap_state.h",
+      "baselineSha256": null,
+      "outputSha256": "6e1e546bfedc035182d04f152ad47bce437b6ccc9970806c8b0a25d977d9193a"
+    },
+    {
+      "path": "chrome/browser/aux/account_bootstrap_state_unittest.cc",
+      "baselineSha256": null,
+      "outputSha256": "941b41c27dd34d66b8ad73a09ebeb4f8b630ff515f6007cd16c9d62f83163e96"
+    }
+  ],
+  "compiled": false,
+  "testsExecuted": false,
+  "runtimeAcceptance": false
+}
