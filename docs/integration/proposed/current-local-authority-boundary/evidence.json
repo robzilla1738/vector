@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "kind": "read-only-current-authority-boundary",
+  "files": [
+    {
+      "role": "historical-signed-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "size": 158228480,
+      "sha256": "7b90186469ffcda287cdd3a31f7c6ab9f8f9ea55ee75332471f657f12e210da6"
+    },
+    {
+      "role": "historical-signed-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Info.plist",
+      "size": 888,
+      "sha256": "da6fd514d9f922df9e8585e2aa9943984f21d50a84077a3cfa4101cc940cd4e4"
+    },
+    {
+      "role": "historical-signed-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs",
+      "size": 2771,
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "role": "historical-signed-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "size": 12134392,
+      "sha256": "a12c54e7e74e63f04e9399931710dba07a59fbbd19f98ecceb39ea285d131b53"
+    },
+    {
+      "role": "current-staged-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "size": 158228336,
+      "sha256": "ad43ed1bed5b491955fb7ea7a69e2eec62be73706416a4e9b0a6a9e9c0b97608"
+    },
+    {
+      "role": "current-staged-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/apps/daemon/Aux Daemon.app/Contents/Info.plist",
+      "size": 888,
+      "sha256": "da6fd514d9f922df9e8585e2aa9943984f21d50a84077a3cfa4101cc940cd4e4"
+    },
+    {
+      "role": "current-staged-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs",
+      "size": 2771,
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "role": "current-staged-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "size": 12133699,
+      "sha256": "13722f1922f633796b7fc334301318339ee0b10b05b264802e6bacb48aaff635"
+    }
+  ],
+  "sea": {
+    "historicalCodeSha256": "6549409a85a872cf0a5cf2ef22d3c75fdd1b47a0fc988ddf85c1d53894e763b5",
+    "currentCodeSha256": "93084eb7eebf911b473d791e796f5d8ad740bc8befa5527a8adb0205d42a9dd0",
+    "changedRegions": [
+      {
+        "before": "0",
+        "after": "1",
+        "currentContext": "bleChangePasswordPrompt:!0,autoCopyTotp:!0,neverSaveDomains:[],useBuiltinPasswordManager:!1,allowAutofillOnHttp:!1,disableInIncognito:!1,equivalentDomains:[[`apple.com`,`icloud.com`],[`google.com`,`youtube.com`,`gmail.com`],[`micr"
+      },
+      {
+        "before": "",
+        "after": ",useBuiltinPasswordManager:!1",
+        "currentContext": "sArray(Cn)}function mergeSettingsWithDefaults(Cn,ei){let ti={...DEFAULT_APP_SETTINGS,...Cn,useBuiltinPasswordManager:!1},ni=appSettingsSchema.safeParse(ti)"
+      },
+      {
+        "before": "Cn.incognito?null:new PasswordManagerRepl(ei,ai,Cn.agentSessionId)",
+        "after": "null",
+        "currentContext": "return ii},li=Cn.channelEnabled?new ChannelRepl(ei,Cn.agentSessionId):null,ui=null,di=process.platform===`darwin`&&!Cn.incognito?new ImessageRepl({owner:ii,canSend:Cn.canSendMessages??!0,resolveAttachmentPath:ci}):null"
+      },
+      {
+        "before": "Cn.session.incognito?ei.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name)):ei;if(Cn.session.incognito||!ti.some(Cn=>Cn.name===`password-manager`))return ti;let ni=settings(Cn.accountId).get(`externalPasswordManagers`).map(Cn=>Cn.provider),ri=await prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),ti,ni);try{let{accounts:ei,connections:ri}=PwmAccountRegistry.list(),ii=ei.filter(({id:ei})=>ri.some(ti=>ti.profileId===`app-account:${Cn.accountId}`&&ti.pwmAccountId===ei)),ai=await Promise.allSettled(ii.map(({id:Cn})=>getPasswordManagerSettings(Cn))),oi=ai.flatMap(Cn=>Cn.status===`fulfilled`?[Cn.value]:[]),si=oi.length&&ai.every(Cn=>Cn.status===`fulfilled`)&&oi.every(Cn=>Cn.useBuiltinPasswordManager===!1)?ti.filter(Cn=>Cn.name!==`password-manager`):ti;return prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),si,ni)}catch(Cn){return logger.warn(`[Skills] Password Manager preferences unavailable`,{error:Cn}),ri}",
+        "after": "ei.filter(Cn=>Cn.name!==`password-manager`);if(Cn.session.incognito)return ti.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name));let ni=settings(Cn.accountId).get(`externalPasswordManagers`).map(Cn=>Cn.provider);return prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),ti,ni)",
+        "currentContext": "return ii.length>0?[...ii,...ei]:ei}async function resolveSessionSkills(Cn,ei){let ti=ei.filter(Cn=>Cn.name!==`password-manager`);if(Cn.session.incognito)return ti.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name));let ni"
+      }
+    ]
+  },
+  "historicalResourceSeal": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/_CodeSignature/CodeResources",
+    "sha256": "a08948073dc23868d835f8da55cd93beac51425c1018919a28b72eec2d00de44",
+    "sealedRemovedImporterLeaves": [
+      "Applications/Aux Password Importer.app/Contents/Info.plist",
+      "Applications/Aux Password Importer.app/Contents/MacOS/aux-password-importer",
+      "Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/Info.plist",
+      "Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aux-password-importer-provider",
+      "Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/_CodeSignature/CodeResources",
+      "Applications/Aux Password Importer.app/Contents/Resources/AppIcon.icns",
+      "Applications/Aux Password Importer.app/Contents/Resources/Aux.icns",
+      "Applications/Aux Password Importer.app/Contents/_CodeSignature/CodeResources"
+    ]
+  },
+  "existingPublicProfile": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/embedded.provisionprofile",
+    "sha256": "faa4760e2746dcea329ad272390a33d9960c3419bb8b991654a35ac5b7ee1a6d",
+    "expiration": "2027-10-19T22:30:39Z",
+    "platform": [
+      "OSX"
+    ],
+    "claims": {
+      "com.apple.application-identifier": "9F2JXY8TCK.*",
+      "keychain-access-groups": [
+        "9F2JXY8TCK.*"
+      ],
+      "com.apple.developer.team-identifier": "9F2JXY8TCK"
+    },
+    "historicalCertificatePresent": true,
+    "freshCmsTrustOrDeviceValidationPerformed": false
+  },
+  "sources": [
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a"
+    },
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "path": "scripts/lib/provided-package.mjs",
+      "sha256": "650fb0721107ebecef85f0d603f6097e319de7ca93c1c6b6ffb55ce84b7fde17"
+    },
+    {
+      "path": "scripts/lib/provided-assembly.mjs",
+      "sha256": "d677b010ad01c135a1e5b2e4201f1f41df5a5e11768e63c93373e18b20bedd06"
+    },
+    {
+      "path": "docs/acceptance/provided-v498-local-auth-repair.json",
+      "sha256": "5345feac1b43e0b57e4b3bbe75b3840e4808244dde489a814cbdf74d539e20fb"
+    },
+    {
+      "path": "out/native-integration/v498-development-dp-report.json",
+      "sha256": "72d9d0473e947e2ff1bc742241b08d761fddf036c116289ef5d8698bb29abf06"
+    }
+  ],
+  "signingPerformed": false,
+  "runtimeExecuted": false,
+  "keychainOperationsPerformed": false,
+  "ownerProfileRead": false,
+  "newProvisioningRequiredInPrinciple": false,
+  "newSigningAuthorizationRequired": true
+}
