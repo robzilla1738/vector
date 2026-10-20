@@ -60,6 +60,23 @@ export async function verifyPackageInventory(directory, entries) {
   if (observed.length !== entries.length) throw new Error('Package inventory contains missing leaves');
 }
 
+/** Retire only the identified independent payload from an already verified copy. */
+export async function retireCopiedIndependentRuntime(app, entries) {
+  const relative = 'Contents/Resources/aux-runtime', directory = join(app, relative);
+  let stat;
+  try { stat = await lstat(directory); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Retired runtime must be a real copied directory');
+  const files = entries.filter(entry => entry.path.startsWith(`${relative}/`));
+  const identityPath = `${relative}/package.json`, identityEntry = files.find(entry => entry.path === identityPath);
+  if (identityEntry?.type !== 'file') throw new Error('Retired runtime package identity is not inventoried');
+  await pinnedFile(join(app, identityPath), identityEntry.sha256);
+  const identity = JSON.parse(await readFile(join(app, identityPath), 'utf8'));
+  if (identity.name !== '@aux/runtime' || identity.version !== '0.1.0') throw new Error('Unrecognized runtime in retired resource location');
+  await rm(directory, { recursive: true });
+  return { root: relative, packageName: identity.name, packageVersion: identity.version, files };
+}
+
 export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false }) {
   if (typeof developmentDpLayout !== 'boolean') throw new Error('Explicit boolean development layout required');
   stageRoot = await root(resolve(stageRoot));
@@ -114,6 +131,11 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const app = join(temporary, 'Aux.app');
     await cp(seed, app, { recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE });
     await verifyPackageInventory(app, native.appFiles);
+    const retiredIndependentRuntime = await retireCopiedIndependentRuntime(app, native.appFiles);
+    const retainedNativeFiles = retiredIndependentRuntime
+      ? native.appFiles.filter(entry => !entry.path.startsWith(`${retiredIndependentRuntime.root}/`))
+      : native.appFiles;
+    await verifyPackageInventory(app, retainedNativeFiles);
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
@@ -160,7 +182,8 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       app: 'Aux.app', finalApp: assembled.finalApp,
       nativeReceiptSha256: hash(nativeRaw), compositionSha256: hash(compositionRaw), boundaryReceiptSha256: hash(boundaryRaw),
       preservationAudit: audit.stdout.trim(),
-      nativeFiles: native.appFiles.length, suppliedResources: assembled.files.length, additions,
+      nativeFiles: retainedNativeFiles.length, nativeInputFiles: native.appFiles.length,
+      retiredIndependentRuntime, suppliedResources: assembled.files.length, additions,
       sourceRoots: sources,
       cliSea: `${cliExecutable}-sea`,
       developmentDpLayout, layoutChanges,

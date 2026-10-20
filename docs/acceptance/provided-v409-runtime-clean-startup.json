@@ -1,0 +1,186 @@
+{
+  "processProof": [
+    {
+      "pid": 43638,
+      "launcher": 43636,
+      "lineage": [
+        43638,
+        43637,
+        43636,
+        43632,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v409-runtime-clean-local/Aux.app/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v409-runtime-clean-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    43638
+  ],
+  "windows": [
+    {
+      "pid": 43638,
+      "windowId": 32660,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32659,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32658,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32657,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32655,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32656,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32654,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32652,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 439.0,
+        "y": 40.0,
+        "width": 610.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32653,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 439.0,
+        "y": 40.0,
+        "width": 610.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 43638,
+      "windowId": 32651,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v409",
+  "packaging": "retired independent runtime omitted",
+  "nativeInputFiles": 563,
+  "retiredRuntimeLeaves": 145,
+  "retainedNativeLeaves": 418,
+  "suppliedResources": 10803,
+  "profile": "disposable incognito profile",
+  "daemonHealth": {
+    "service": "aside-daemon",
+    "version": "1.26.1016.1852",
+    "ready": true,
+    "pid": 43661,
+    "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v409-runtime-clean-local/Aux.app/Contents/Resources/aux/agent-runtime/node/bin/node"
+  },
+  "observed": [
+    "Owned native browser has an onscreen about:blank window.",
+    "Real supplied daemon reports ready with matchingservice/version and its bundled supplied Node executable.",
+    "Retired independent runtime absent; suppliedruntime and originalnativebuildseed retained."
+  ],
+  "launcherPid": 43636,
+  "guardianPid": 43637,
+  "browserPid": 43638,
+  "daemonPid": 43661,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-YhXzE6",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false,
+  "nativeRuntimeAcceptance": false
+}

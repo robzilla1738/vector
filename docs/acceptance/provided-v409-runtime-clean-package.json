@@ -1,0 +1,937 @@
+{
+  "version": 1,
+  "implementation": "supplied",
+  "productionReady": false,
+  "signed": false,
+  "app": "Aux.app",
+  "finalApp": "/Users/rcourson/Applications/Aux.app",
+  "nativeReceiptSha256": "80d9504950a58189095529d3dea33b1fe4797f57ee1110c98202d1a1135fe8a8",
+  "compositionSha256": "27a2de54e9b8fdf15413d25335733312afe9626a8be90cc9e9c3dbf752ea693c",
+  "boundaryReceiptSha256": "27d1b37434d2ca0bdb3d1bf19cf3f1330a817fe143d8d6dc54d297c1d16cc6a6",
+  "preservationAudit": "Preservation verified: 1138 unchanged UI files; 123 explicitly changed; 7 stylesheets preserve layout; 160 app resource records.\nDistribution preservation: 9346 runtime files and 19 memory files, with declared relocations only.\nHelper preservation: 11 files with 44 exact binary patch ranges and current Aux artwork.\nProduction ready: false. This audit verifies recorded preservation, not native integration or runtime/UI acceptance.",
+  "nativeFiles": 418,
+  "nativeInputFiles": 563,
+  "retiredIndependentRuntime": {
+    "root": "Contents/Resources/aux-runtime",
+    "packageName": "@aux/runtime",
+    "packageVersion": "0.1.0",
+    "files": [
+      {
+        "path": "Contents/Resources/aux-runtime/LICENSE_NODE.txt",
+        "type": "file",
+        "sha256": "6b85ee1983d01fa2cdcdd5d1a3053c6221fae41d6a54e43b416bf35969fc4128",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/THIRD-PARTY-NOTICES.txt",
+        "type": "file",
+        "sha256": "a3b004416c69a562b554a81f3bf6049a255ab6ab307d2eff40cc75981b18c141",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/aux-runtime-identity.json",
+        "type": "file",
+        "sha256": "3d2c49009995394fdf3a07fd839560d0438f0f897924ff95e8b4a4246d9cc915",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/agent-client-install-BPVWRARO.js",
+        "type": "file",
+        "sha256": "36e9de11580d46cf11ebef57fca331f755604cd50bca34d30580c652849ae770",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/agent-policy-OLD6GRCW.js",
+        "type": "file",
+        "sha256": "14b0e8ccd882d71d3078eceb4216eb84303c432c748d8720eea70637e419e80c",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/auth-A32JGXDL.js",
+        "type": "file",
+        "sha256": "ddc06766bc2cfbcba21818b201ff977b465374a67c37f5c94e137b64df69538e",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/build-DBIPMNB4.js",
+        "type": "file",
+        "sha256": "6cbcd5b4f055eda28625d5d5b4aa2869320cf86237887d85bb69ac0e005450e1",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/channel-discord-PGIOULZM.js",
+        "type": "file",
+        "sha256": "423180fcb0dcb24153aa3d39db7653f6abf4759c1f22e7b7e561e1ff512cbcba",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/channel-slack-OKX24QNK.js",
+        "type": "file",
+        "sha256": "93c77258880e44c4637250710e08bbdda76cb424a8f54a7251ce431e9a361eb9",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/channel-telegram-N46RPLO2.js",
+        "type": "file",
+        "sha256": "90d10d2df9f4c51ef8c39152e8fddc4f2be94ed90879824ae0037d5d47f6d6e9",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-357DHYYG.js",
+        "type": "file",
+        "sha256": "6d77af4a91d3b4ac6057b2440b46f9fbbba53c505d0ec199cf7c41b133a9e879",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-4HZ7OZXI.js",
+        "type": "file",
+        "sha256": "9516d0b7dc7fb5f96526f6d48159a5dd3372a6dc9ee360e04f2361a825477573",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-4IX3VLK3.js",
+        "type": "file",
+        "sha256": "0ed3ad3273083f0e00b3df933d6af04c93f3e8d3b3e3eb51940338f418fd5d37",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-4QCBMK5H.js",
+        "type": "file",
+        "sha256": "8ac3802a541e34050cd4cacd7645c6d2027c748c74adc8e959f30ca383cab844",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-52UDEAIE.js",
+        "type": "file",
+        "sha256": "2a81bdcf3fd7e1cce3ae3fce97707083d33fe8913fabdd16f4dad7f04a2a141f",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-55C3R7IE.js",
+        "type": "file",
+        "sha256": "dffdb588b3fc712dbed6a886218287b8d8e33875d1df02ec8832b826db01645f",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-63JJDTCB.js",
+        "type": "file",
+        "sha256": "e443c498197a61516c0f8bb285f9708c0171a9716b667c61a5c677edd2067bbb",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-6Y64B2QH.js",
+        "type": "file",
+        "sha256": "a5efc6dafa1288b35f03a5575e630ec3a857dffc996a104e7651b809fe79c53a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-7C7AGKN7.js",
+        "type": "file",
+        "sha256": "0ef9870acd1df90eadc8bf036de24426ab8e2fa97b775789ddf37bc57f92b2d6",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-AWCZLYYS.js",
+        "type": "file",
+        "sha256": "63545ea9fdc455e601a160c16e524d8df8fba9a1912c94211b962c32dbf008a6",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-BCJKZZIB.js",
+        "type": "file",
+        "sha256": "67f545b2d1435aa9d5f108d73581e9220650c27394038d6bfad9a1bc5eb9ac33",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-CLF72B5N.js",
+        "type": "file",
+        "sha256": "b6ba4d9711d6f42e9ee5dd8b98ef2bcbd196e403a8d7627aa128adfeb7b03e44",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-DKUYHNA5.js",
+        "type": "file",
+        "sha256": "334911540be989419e05130772783d2f5766527bb6b28ebe1339919ebdafac8a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-DRLFULGG.js",
+        "type": "file",
+        "sha256": "56a246ff39a252cb8f86104cbe4b013d7e1e1145d8b5a60ba30efbf848cb53b5",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-ENYJCDSD.js",
+        "type": "file",
+        "sha256": "b96b935bee9eabf3098a8803aeec25d9dcaa4beab8daf71f5ba397a681280d4c",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-GHPRUA2Y.js",
+        "type": "file",
+        "sha256": "413e26fd889b387e81c439ac5150883bda2bf583e19fcad047c9e81a95af93ab",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-GQODAVR7.js",
+        "type": "file",
+        "sha256": "c7e23f5b88dd99ef6b9fb2820d66ae20b3e7e44a96e23b9701365fac98789743",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-HM5SW5SV.js",
+        "type": "file",
+        "sha256": "78906ad510cb9da2735a772da8c074737f0ee61723068696dc396bcd6ff5cb9c",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-KIZ2I2XQ.js",
+        "type": "file",
+        "sha256": "0ebc336e7d075e60b98aa017d25ded570239e93043729b6175c644713246c979",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-KZ5PHKTV.js",
+        "type": "file",
+        "sha256": "b87e519179cd7d05be5955aa9507876e082e14eb498aafb4a2519371f6e5bd46",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-L2RXSZSW.js",
+        "type": "file",
+        "sha256": "c797de5411e148b5eab052e5f609e3562411c46246b898bf77008b40ecd6debb",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-L2SDAGNG.js",
+        "type": "file",
+        "sha256": "790a4234c3a7a8e63e468639eb43424b405645743c00723a44b2caa76f68cd18",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-L76CSFGN.js",
+        "type": "file",
+        "sha256": "2c805749a05ae16bb8184eab614eae7fec471998fcf3fed400826c1421ac6791",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-LB4M3W7P.js",
+        "type": "file",
+        "sha256": "55b2a79a1c773ac70de74d96f0f46e6c1af583c3744a5fbbd455a1899ce1ca04",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-NQWRFHJ5.js",
+        "type": "file",
+        "sha256": "986ac312f406c956297cc3aae7156a26880627dcaf32b488bccf4a624b8bd741",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-QF23TJH7.js",
+        "type": "file",
+        "sha256": "c1ccebe1912ce993a990d81cc6a729fc544d7463ad203dd02591cc8270377cf0",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-QGRARAWW.js",
+        "type": "file",
+        "sha256": "a262535c52908234801b55e2b95ed9696398e97060a5f9372d220c384866245a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-QHWI26OV.js",
+        "type": "file",
+        "sha256": "47b76fd564fde8e4d1fc28d275093a259f05bc43f677004e3eba40122a516551",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-TPFWZTQ6.js",
+        "type": "file",
+        "sha256": "93b4c0f3e81cb5dad72045fd7cad076e1ce043dd0c94c7620ecc893f8251d38a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-UKB5HKB7.js",
+        "type": "file",
+        "sha256": "be9f53872eabaf9bec02d41ed7d0f7fa99ed6e0be8cb25bfda924ba5886a7b86",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-W7O3ERZG.js",
+        "type": "file",
+        "sha256": "47b76fd564fde8e4d1fc28d275093a259f05bc43f677004e3eba40122a516551",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-XAPMFVCZ.js",
+        "type": "file",
+        "sha256": "003ad0a8d0fe8418d92ed7fd57ab4994e885c7bcd0c53903591c1f7d6f67a23d",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-XQKHM2VP.js",
+        "type": "file",
+        "sha256": "d21ad72a7034f568b2f7bc241ac69495942c19dbfc29e32975d633129cb69cd8",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-YIGSJSI7.js",
+        "type": "file",
+        "sha256": "2d8cee46f31eaccc2c438169561953d52b715726ffdaa6b09d8fcd73cbdeb7f7",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-ZRG7WS5H.js",
+        "type": "file",
+        "sha256": "c5685d2922966cd2a3a1b6e719ea0a24ab478b63998973c6f134312f750ab1e1",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/chunk-ZXYXQSUX.js",
+        "type": "file",
+        "sha256": "e489d2493c7ff35d65a4eb15cedcc0688d6a01652d87d1bafc7dd6e712c5f410",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/cli-install-X5CPQDBH.js",
+        "type": "file",
+        "sha256": "a4b2f9f149e8d273d6a17b4c0de7ae73e9afabcf1fb25a358f6bc68c5e2c9c45",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/cloud-run-admission-DSOB7AK6.js",
+        "type": "file",
+        "sha256": "40a8743961e1e1501c2ab57f47cc506a3c37b511601de85fafc13d6032607706",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/cloud-settings-EOC25FDB.js",
+        "type": "file",
+        "sha256": "ef206470c568ea00c9a2b45ec13dc55bdfcc2bc37b964ed96bace16ccd8ec5f7",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/copilot-services-QIAYYS6R.js",
+        "type": "file",
+        "sha256": "a562635d4fd382b1f5ba1e3f29a8b25e1252320aa573a29317080894e454a987",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-225ZUYP6.js",
+        "type": "file",
+        "sha256": "536501e178b09d1df0fb6785af4f19acf2cc33ad1715a83cc334ee7f81806dc5",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-26SXQFJD.js",
+        "type": "file",
+        "sha256": "2433a4d5975b08e31b9cb7c50c3685644b4d33452d2583abdb088c7e159b40e5",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-3MCV3OD2.js",
+        "type": "file",
+        "sha256": "dcb0ef025a85cff49cb5ec6fb56cde7dc5efb43499e00ebd0ec79eed7019dbc1",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-4CQHULMH.js",
+        "type": "file",
+        "sha256": "17ba9d4d1eb87d883985ce171813b6ade0ff836393f73dc333e318cb69355e7f",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-4Y7LSPJK.js",
+        "type": "file",
+        "sha256": "7bcb9a08c4ac535d75c748283b3b2df994f9f8411a5ca6d14765d52362f2244a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-7X6BYUUY.js",
+        "type": "file",
+        "sha256": "d3dea7e3183083f2ac4ef522a42ae35ff30a5b9faacbee5137d7b62873644dc0",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-BFRZSPSO.js",
+        "type": "file",
+        "sha256": "af51f4d63e43148d0b71cf204c4a8245c92f29a2d19020fc7efa1e1fc265b7d2",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-DMLIGJKW.js",
+        "type": "file",
+        "sha256": "3b6c7e8723b6ce2254e110536716cfb10cbe74cdcfe1ff3321194430281cfd0a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-EBWFO5HJ.js",
+        "type": "file",
+        "sha256": "640328334a70902806b5f047d8edcf2bda50584fe33c7343ce07fc0d2ed354c4",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-SLTG7XHS.js",
+        "type": "file",
+        "sha256": "99083e58dcde5786f5d22955f0234a5c82cf199b0a426bcc6865056ee9d11212",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/dist-UN3MK3D2.js",
+        "type": "file",
+        "sha256": "f4f902512642991ad19165946d3c6f8dabfc371ae820f9d1f7863ce4358a5470",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/emscripten-module-372OLS5K.js",
+        "type": "file",
+        "sha256": "b2249cec130c326d67b52b0d09845d04e8b07959b5ca555c7051606b0e943be2",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/emscripten-module.wasm",
+        "type": "file",
+        "sha256": "98d27ff5e8babbca4b28a7b9242f554cd51e758498d90b00638a4b1b36b6f463",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/excel-W24QKCV6.js",
+        "type": "file",
+        "sha256": "fc3220c9b48ada96d8350cba823662eae5f68ec7517dea691e93ded3f6492211",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/ffi-YGMAYFSX.js",
+        "type": "file",
+        "sha256": "13768eb2ef2c64ccfd193273583848da61f723ed4ebf593ed926ff9966bd2f5f",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/ffiRuntimeHost-AES7VFRZ.js",
+        "type": "file",
+        "sha256": "ebd6f91b3a746ad773eade2b4cbdf98b9f5e732ca26fca78af04f15098ac1020",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/index.min-6TTZT3FV.js",
+        "type": "file",
+        "sha256": "600615963495ed47546e3a0a81830cd5e0208d60bde2b1810cece3456d7fa6bc",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/interpreter-2A3SYG7X.js",
+        "type": "file",
+        "sha256": "d1b4abcf13678fc8454c55c8333ff76b8e123d155448009e49e71047328bd050",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/module-6F3E5H7Y-54RUBJQY.js",
+        "type": "file",
+        "sha256": "7e9f8b52c4d6c620df0cc49c084040c3b38e17a69ff5d9980406c6e07487be6e",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/module-asyncify-R6PWJ6ZV-HE4C67F2.js",
+        "type": "file",
+        "sha256": "16d481cd0e4bf63ea72dabada2cc69e87d70b57eecf340ab3d600387bdd66a8e",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/playwright-page-OQFH6PG3.js",
+        "type": "file",
+        "sha256": "9e5105497694c9c6ded2322cabf334c8a28b8d4f690205fc320d619b21defb36",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/pptxgen.es-CLXDR2LH.js",
+        "type": "file",
+        "sha256": "3fefd117f3e267c2629bb21314d3bc3abec2abb7fd4c7d0b766ae1de9a9469c1",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/presentation-result-TT5ZPDRY.js",
+        "type": "file",
+        "sha256": "6e3c76f3d5a1e66a5709bc81f86aa8e18392dfeea6ea92c95dd3c16a9e588773",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/rich-document-DGG5R2GB.js",
+        "type": "file",
+        "sha256": "6bd82a68651f505d5819057a84530b55b12fb21805e075f311bbffad0fbcd109",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/token-ILF72H4W.js",
+        "type": "file",
+        "sha256": "c39924e44472a8f6b36920ebe9a8b92a1d392ee8ae2409cf9bff311129c58ad0",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/token-util-XX7RGTYM.js",
+        "type": "file",
+        "sha256": "51c7b5f28f68930b23d3391c57dab3f433aa3b1e5fc7c398009e26d9a6ac6937",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/vega.module-K4GUP7VT.js",
+        "type": "file",
+        "sha256": "f0a0eae27561412248cc6967e7eb54aa09b9f00d3fe7805fd8248a0ff52b4fd5",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/vercel-sandbox-executor-KR2HYY74.js",
+        "type": "file",
+        "sha256": "8d1ab4cec6ff6da4a8e1fe7369e40f74890bcc48ae917d9f13d2d116832d3052",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/webapi-SNENJSJQ.js",
+        "type": "file",
+        "sha256": "bcd8885fe8d9b908ec89131b2dfc40d4494196335886024616a09f4e1e49c069",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/wrapper-3A2OHFKS.js",
+        "type": "file",
+        "sha256": "0fa6a9d5fe533e556c8fb9314da263d2356abc43bde3ce9a52b88123be95ebce",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/chunks/zod-A7MO2MXS.js",
+        "type": "file",
+        "sha256": "e9517d4795cfef76dcc7d7c538b3e51462714c73755a9e14c3e1b83557ceee17",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/cli.js",
+        "type": "file",
+        "sha256": "767d2d81815aa95712e6a3d2390522a4daa524db1da9bbb08c3802c8348a6061",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/cloud-files/worker.mjs",
+        "type": "file",
+        "sha256": "34316da6bd4fba950bfdd8cc53b8e10952ca9faa692f0951413d2af51b1b73cb",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/cloud-process/worker.mjs",
+        "type": "file",
+        "sha256": "8e68438372932bc9dca9c840985f1881c929bcdc0275a9c3968529df741dc399",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/cloud-repl/THIRD-PARTY-NOTICES.txt",
+        "type": "file",
+        "sha256": "11e722fb4515ac34b0c3262a29ed4334585ebdb073ba8e6289e6af136c67c6fd",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/cloud-repl/worker.mjs",
+        "type": "file",
+        "sha256": "2df0b22b8a822eef316c8f17a2b4b842c8ae393172f315d7a075f3778305249b",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/copilot-install-worker.js",
+        "type": "file",
+        "sha256": "d3672b09899968d271354e56ec22059a711f12ddb36d94922cb0796ea3fe2391",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/filesystem-worker.js",
+        "type": "file",
+        "sha256": "09930920d28c66de3185dedf089cff53b3449556c2bdc9bece78a97204c78dac",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/main.js",
+        "type": "file",
+        "sha256": "94e2b22d428c039dd0bef297fff60e01c9782713ba419f86bd06f175faa44241",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/mcp.js",
+        "type": "file",
+        "sha256": "5011b6ac8e92316dea9b4c40204ebd5a921cf00dd0f7faa99a69e228fb96e666",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/dist/privacy-checkpoint-worker.js",
+        "type": "file",
+        "sha256": "09d48b02b87d9d1fdc6734863bec05829a3be68cb4f439ca58dc0211a58571cf",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/package.json",
+        "type": "file",
+        "sha256": "8bbe23ad506cfb38868b9e184f85bca7b0333fe980ef336e0b29954845c2c9d9",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/packages/aux-core/aux.package.json",
+        "type": "file",
+        "sha256": "97cf8e297e74a80dfd9500453d3328187f1282685b1e29e6ff0c310dcbdb2537",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/packages/aux-core/skills/coding/SKILL.md",
+        "type": "file",
+        "sha256": "3a5a30894fd723eb50dc5e8231fb78dff16a1289bba67097f9a07a6beb8f5dd6",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/runtime-size.json",
+        "type": "file",
+        "sha256": "e3842ef716b950182608be84ac6037989c51d0e74956a3726bdbb9c8abf60b82",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/icu/icudt78l.dat",
+        "type": "file",
+        "sha256": "ef9bbeee661fac0da8d642a38ad993461ae6b2afdd6877d64ca0e935463a2aad",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/icu/identity.json",
+        "type": "file",
+        "sha256": "f6ca3a8b3a8e5ae71b8e78cb594a4a3830ff0a0fd69c4015de6c8c5a9f176489",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/LICENSE",
+        "type": "file",
+        "sha256": "45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/NOTICE",
+        "type": "file",
+        "sha256": "6d602191187b35b9b01d2cffa01c8469c2c8d9de8a96f1bf868e0f264f51c81d",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/ThirdPartyNotices.txt",
+        "type": "file",
+        "sha256": "a549d329bad8806fe279f0ecae0fc0270dec7e7c2dc8ec10f90e394f7c32b144",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/install_media_pack.ps1",
+        "type": "file",
+        "sha256": "bc20f049badf021e3a53bdb4156603caa5ef482c9a9a251f927605e676a44171",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/install_webkit_wsl.ps1",
+        "type": "file",
+        "sha256": "bc61beda37a808eef27d39ce684baa792f6d17737a25a432b1a84d3b591ab815",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_linux.sh",
+        "type": "file",
+        "sha256": "dc8c22b9dde76583cece2857575b88094299615f3136a3c598149710c45dee3a",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_mac.sh",
+        "type": "file",
+        "sha256": "a92eaeb4ebcf5633a4e9c981481e14c80764fc81b6fcbc0565398e50ff319433",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_win.ps1",
+        "type": "file",
+        "sha256": "b6d9e44742feafb98d5edc56fa20042949973cf30d141a1c5b4fb384096967c5",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_linux.sh",
+        "type": "file",
+        "sha256": "dc72ab3567a4ce43bd8353d4ecf41f1d9c03e870169367cd3ed9043aabf67dd1",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_mac.sh",
+        "type": "file",
+        "sha256": "bb43a96c192a6cc81524ade0264686fff7809c019a89f7db0a9849635879c3be",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_win.ps1",
+        "type": "file",
+        "sha256": "3d96c4e2f4ebbb3fad44cf3ba58d9cf90af1c9fb3073e3b27d45a74cf005515b",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_linux.sh",
+        "type": "file",
+        "sha256": "10b26f35dbc2000b94edf1172d803a29c5873a4eb8d523afbc687997b642767e",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_mac.sh",
+        "type": "file",
+        "sha256": "0036d738bc90d686100d81f328ba0003bf07863f5500b792c8da391d149750fa",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_win.ps1",
+        "type": "file",
+        "sha256": "b173c378a59f0cc38033cee702de1f44f09276c9b2270d1a650ebe66ee312433",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_linux.sh",
+        "type": "file",
+        "sha256": "00e4947e7a4f8339c6db09c87976d808583c07f9179e4aa7694d88614b82fe95",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_mac.sh",
+        "type": "file",
+        "sha256": "6f899e3b311f742c24ca37ff9e32298e8290514ffc14bf588cc51556a29da4c0",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_win.ps1",
+        "type": "file",
+        "sha256": "46f7f98c81cb0abe687d7f4a5afea9b897a38d2a6dd6f6662fbd847f7a22bd51",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_linux.sh",
+        "type": "file",
+        "sha256": "ec0a31a5f09c565e108473a1850895a4458ab00c713ac1de3aa2001912e4668f",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_mac.sh",
+        "type": "file",
+        "sha256": "3af1e893527ff2257aa2dbc3b259a053b92f45c3eadb13e38eba46e87902655d",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_win.ps1",
+        "type": "file",
+        "sha256": "40bb5fcbfcebbbe2ce43c6e736e7c5deefc5be03b6e9c6914423c06ec1f591be",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/browsers.json",
+        "type": "file",
+        "sha256": "545d52f8382c391e605562c330e9c1c534a16045898203037a49bb8bd769a946",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/index.js",
+        "type": "file",
+        "sha256": "a58fb2cec4293e7dcf73c58a179898a4f3986666451a19da4e731fa3af63265b",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/index.mjs",
+        "type": "file",
+        "sha256": "3d36e2132d3c8b62397d23f0bb4177336aaee503203ae2a2c90fbeb5bf3317dd",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/bootstrap.js",
+        "type": "file",
+        "sha256": "c5f7db04ab45b692e7ca4e3877ee8fdb8a4bd8c037b7be3ec518b4a0c6a39641",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/coreBundle.js",
+        "type": "file",
+        "sha256": "a0ea045e1dcf6278cfffad3aaf496956e4207a9701fd0a01681a12b7f1e392ce",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/cliDaemon.js",
+        "type": "file",
+        "sha256": "72d032596b49fb8d0bed9f7c341c6b3503f93eaa318cf2dec6aa724ab56b154a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/dashboardApp.js",
+        "type": "file",
+        "sha256": "be63f1ef54213b381db4e6463879b88b460f71b9e5223c7e6de2914cf2918e2b",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/mcp.js",
+        "type": "file",
+        "sha256": "3188920278e347dac91f741036830eb604b3f67a8d620ceb2274e2aa0c429f58",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/oopBrowserDownload.js",
+        "type": "file",
+        "sha256": "b0637c19ede52e669d3f64e908408869bcf65f54a1a9c15160b135f1665a9ecd",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/package.js",
+        "type": "file",
+        "sha256": "4008899f6e434126fd88a0e32f7d77a11ee02e94c0550e24c0993ec32aad3d25",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/server/chromium/appIcon.png",
+        "type": "file",
+        "sha256": "6ba994f05c5cf18e22d9b6bef9898fbdec6ad4d4d77f5187d0609cb42d72d01e",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/server/electron/loader.js",
+        "type": "file",
+        "sha256": "a3ce2ef3704ac371ff8a3eebe1b6d8276eaa36c386a0670e88421ba06087951a",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/serverRegistry.js",
+        "type": "file",
+        "sha256": "bc055146b95a9c592d48c671b4f32f29fa7fca31b2608954aa653170dc9b4517",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/serverRegistry.js.LICENSE",
+        "type": "file",
+        "sha256": "3098a6efcbc11752cbdf6075fa65480f5470f78c8d981fab9c0796dc9a41cefe",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/utilsBundle.js",
+        "type": "file",
+        "sha256": "6dc35c898857bc7f3dde90bb413c95f58e5304860be92de5173ee8d11edde240",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/utilsBundle.js.LICENSE",
+        "type": "file",
+        "sha256": "2495f30be29620d54b58339821eda0ebabdfb6ee9b09455f7285a06fd46fb9f3",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/webp_codec.LICENSE",
+        "type": "file",
+        "sha256": "995c7ee35aceb7666829b7a501ca89c0864e12b493c1174b155774ab1e03d831",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/webp_codec.wasm",
+        "type": "file",
+        "sha256": "164cd9583a3e4d081f767d3b41ff0a730443dc7535fcc5caff83561463384b79",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/lib/xdg-open",
+        "type": "file",
+        "sha256": "7d759d54f0d4ce1beeb34ee62c587985b5042374e8de237b0dcb8cd47aa698cf",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/playwright-core/package.json",
+        "type": "file",
+        "sha256": "f061c58427e47e843e26d201f0a57076c734e57c734ecbbd87d4a23b7a20db9b",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/resvg-js/LICENSE",
+        "type": "file",
+        "sha256": "4b89d4518bd135ab4ee154a7bce722246b57a98c3d7efc1a09409898160c2bd1",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/resvg-js/index.js",
+        "type": "file",
+        "sha256": "b670803d88b380b0610edf743d8b74dcc132d9e2aa6aaa04cfaa06b2fcad397d",
+        "mode": 493
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/resvg-js/js-binding.js",
+        "type": "file",
+        "sha256": "d5fbe3b7450d1e393ea9856e86e16465d25be8743cae7db03e2f3249aed61e56",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/resvg-js/package.json",
+        "type": "file",
+        "sha256": "2669617af27d91b0dfc0828cc2190ba87b8d8ea6e4cf08619a23784a2f1d8c95",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/resvg-js/resvgjs.darwin-arm64.node",
+        "type": "file",
+        "sha256": "0f5288bc516ad6e30e9df0a660edf44d05ddb528beaf2eba10291ae6822bba78",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/rrule-temporal/LICENSE",
+        "type": "file",
+        "sha256": "6b422a0727346da4fdfee9369e2af9d73f93536bfc0f174cc84c82e30f9e79f2",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/rrule-temporal/TEMPORAL-SPEC-LICENSE",
+        "type": "file",
+        "sha256": "fea66f1be8df22727cd9750a85865270949107151b6414986c23ebe1929f66b3",
+        "mode": 420
+      },
+      {
+        "path": "Contents/Resources/aux-runtime/vendor/rrule-temporal/index.cjs",
+        "type": "file",
+        "sha256": "e8a68211abb0237ea0ab7d04aa4711cd5baf6303873473feb1f31f6656391881",
+        "mode": 420
+      }
+    ]
+  },
+  "suppliedResources": 10803,
+  "additions": [
+    {
+      "path": "native/aux-native-carrier",
+      "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6",
+      "mode": 493
+    },
+    {
+      "path": "native/libaux-native-boundary.dylib",
+      "sha256": "af00da675eb2e8d31dbded96b136c0fd09fbb89e49d92dd6ef33132a22434f8d",
+      "mode": 493
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "sha256": "7d871f039b7b7f7eedce2a954e8b217470e38e8ae1e0a434cfafc708e4b20971",
+      "mode": 493
+    },
+    {
+      "path": "apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "sha256": "7d871f039b7b7f7eedce2a954e8b217470e38e8ae1e0a434cfafc708e4b20971",
+      "mode": 493
+    },
+    {
+      "path": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "8662609f5da6c32b77e2124a848b1e91bda1b42ef2ac7b1bc2e300ee9c48addd",
+      "mode": 493
+    }
+  ],
+  "sourceRoots": [
+    "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/Aux.app",
+    "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-v409",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-native-role-current",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-native-role-current",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-native-role-current",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-native-role-current",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-native-role-current"
+  ],
+  "cliSea": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+  "developmentDpLayout": false,
+  "layoutChanges": [],
+  "localDevelopmentOnly": true,
+  "remaining": [
+    "Guarded original-native loading and common Aux authority",
+    "Disposable packaged UI/runtime and functional acceptance"
+  ]
+}
