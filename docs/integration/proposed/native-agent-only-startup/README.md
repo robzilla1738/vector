@@ -1,0 +1,1 @@
+The v508 launch exposed three BrowserPlatform checks still requiring Agent plus Vault. Require the single validated Agent component consistently at start, re-entry and profile registration, matching ReadBundledComponents and RegisterBundledComponents. This fixes the observed startup failure without relaxing manifest/identity checks.

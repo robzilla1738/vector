@@ -1,0 +1,29 @@
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -21,7 +21,7 @@
+ bool BrowserPlatform::Start(
+     scoped_refptr<network::SharedURLLoaderFactory> factory) {
+   if (supervisor_) {
+-    return components_.size() == 2;
++    return components_.size() == 1;
+   }
+   auto paths = BundlePaths::FromBrowserExecutable();
+   if (!paths) {
+@@ -45,7 +45,7 @@
+           },
+           base::Unretained(this), components_loop.QuitClosure()));
+   components_loop.Run();
+-  if (components_.size() != 2) {
++  if (components_.size() != 1) {
+     LOG(ERROR) << "Aux bundled extension resources are missing or invalid";
+     return false;
+   }
+@@ -184,7 +184,7 @@
+ bool BrowserPlatform::RegisterProfileComponents(
+     base::RepeatingCallback<std::string(base::DictValue, const base::FilePath&)>
+         installer) {
+-  if (components_.size() != 2) {
++  if (components_.size() != 1) {
+     return false;
+   }
+   std::vector<ComponentManifest> copy;

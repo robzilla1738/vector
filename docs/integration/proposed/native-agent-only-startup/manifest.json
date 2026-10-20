@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "ebf07c2a85ff659cc1f8312a260b286b75c0cb3441beb49a05bec8c0e385ea2d",
+      "outputSha256": "1702c640c136ee471c07bfad947c75bc3672ed0ca2e4ed4a2021d12857457695"
+    }
+  ]
+}
