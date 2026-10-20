@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator.cc",
+      "baselineSha256": "4888af3fb61c8a4aa1cfb360b72d433dea9a7f8a4c481bfc8d733b45d90c30fe",
+      "outputSha256": "cd343f64883dc6fb4a90da39ac69e0cf3270ca8250b1021b748e43f52e9aa082"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Supplied Agent sidepanel native host
+
+The actual supplied extension action already opens `sidepanel.html` through `chrome.sidePanel.open({windowId})` (staged background.js:11806). Parent observed this working in regular disposable Aux, showing the genuine reconnecting UI. Native account authentication is a separate content-readiness failure; this patch neither bypasses it nor invokes the full-page New Chat account route.
+
+The reference shows the supplied New chat header beside the browser toolbar. Chromium155 currently gives every extension a content-height panel and an additional native extension title/pin/close header. This proposal selects the existing toolbar-height layout and suppresses the duplicate native header only for `aux::kAgentExtensionId`. Other extensions retain their default host, including their native close/pin controls. The renderer, extension action, active-tab context, sessions and account handling remain unchanged.
+
+This is a platform host adaptation based on observed supplied behavior, not a claim to have copied original C++. Existing BrowserViewTabbedLayoutImpl explicitly forces the top container above `kContent` entries and otherwise reserves the toolbar-height panel; the geometry lane confirmed this path. The existing SidePanelCoordinator honors `should_show_header()` when showing an entry. No private layout class or replacement chat UI is added.
+
+Verification: patch applies to the exact native preimage; manifest pins the before/after bytes. No native checkout edit, compilation, signing or runtime action by this lane. Integrator should build and observe Agent action opening, genuine panel header after daemon readiness, active-page context, close/reopen and an ordinary third-party panel. The global extension panel close/pinning controller may still show a toolbar affordance and has not been modified. Real chat remains dependent on the daemon/account boundary.

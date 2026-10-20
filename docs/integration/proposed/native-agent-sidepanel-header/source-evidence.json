@@ -1,0 +1,18 @@
+{
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "sha256": "5944987c97e9939acc64fd67665db909b47d196f81243ae8c50f1fcecc4e8b72"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/side_panel/side_panel_entry.h",
+      "sha256": "0db43dcc62d89016605d3ce1a6fb2765f4e67d5b6357f6a347810fce2a0ed571"
+    }
+  ],
+  "observed_reference": "Owner screenshot 0c8b6947-87e6-4d73-b459-4f8d617f05e6: right panel starts alongside toolbar, supplied New chat header; parent observed actual Aside. Owner screenshot remains uncommitted.",
+  "classification": "Chromium155 native host adaptation preserving supplied Agent renderer. Not an original C++ source copy."
+}
