@@ -1,0 +1,135 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "windows": [
+    {
+      "path": "profile-scroll-gates-original.txt",
+      "start": "0x464c418",
+      "end": "0x464c780",
+      "sha256": "33e304f160af5a4022d6bbf01ed7c7a41fd01fc81a4ae6a40c581b4530516158"
+    },
+    {
+      "path": "profile-scroll-state-original.txt",
+      "start": "0x464c780",
+      "end": "0x464cbd0",
+      "sha256": "107c0e00ef9e4d48b3b2c32a00d761d10f014ba5fe65ebcfe0c4daf0bc7d1b0a"
+    },
+    {
+      "path": "profile-scroll-end-original.txt",
+      "start": "0x4657570",
+      "end": "0x4657660",
+      "sha256": "95e6ca81a32c2f3012b2bed137eeeaaeb87a2a0aabf1640026d7a49d8d61166e"
+    },
+    {
+      "path": "profile-adjacent-selection-original.txt",
+      "start": "0x4657810",
+      "end": "0x4657a84",
+      "sha256": "aae780469c4cd2b91066c11d3a9e526fcf6efc955b1c184691abe50cb3aa48a1"
+    },
+    {
+      "path": "profile-gesture-order-original.txt",
+      "start": "0x46518d8",
+      "end": "0x4651c10",
+      "sha256": "ce11b4c175004f2a4a11c341150e24c187c66532a0847abc93f615314b36a31f"
+    },
+    {
+      "path": "profile-explicit-selection-original.txt",
+      "start": "0x46520e4",
+      "end": "0x4652368",
+      "sha256": "47d74a43df254eba679411faa5bbe28e3c60e0ae699a600fde3871b425793cdd"
+    },
+    {
+      "path": "profile-mouse-input-original.txt",
+      "start": "0x464c280",
+      "end": "0x464c418",
+      "sha256": "89bdeed881391d95f8aacfadcf5c9bbaed55d8dac4eaee12cbe719e7e2ebf14a"
+    },
+    {
+      "path": "profile-cell-binding-original.txt",
+      "start": "0x4631a98",
+      "end": "0x4631b78",
+      "sha256": "499753543b80c4270029e4ec93129c5b640c5ef065343883159f3990173edd26"
+    }
+  ],
+  "constants": [
+    {
+      "name": "epsilon",
+      "address": "0xdf506ec",
+      "bytes": "6f12833a",
+      "float32": 0.0010000000474974513
+    },
+    {
+      "name": "edgeMultiplier",
+      "address": "0xdf51900",
+      "bytes": "295c8f3e",
+      "float32": 0.2800000011920929
+    },
+    {
+      "name": "edgeMax",
+      "address": "0xdf50b34",
+      "bytes": "0ad7233e",
+      "float32": 0.1599999964237213
+    },
+    {
+      "name": "edgeMin",
+      "address": "0xdf51334",
+      "bytes": "0ad723be",
+      "float32": -0.1599999964237213
+    }
+  ],
+  "featureGuards": [
+    {
+      "address": "0xebaa638",
+      "nameAddress": "0xda3a8e4",
+      "name": "VerticalTabs"
+    },
+    {
+      "address": "0xebaa648",
+      "nameAddress": "0xda3a8f2",
+      "name": "VerticalTabsLaunch"
+    }
+  ],
+  "currentSource": [
+    {
+      "path": "ui/events/event.h",
+      "sha256": "2beb783f717f170cc53c404ed1be4f40b8301b53cf58f6094356acf76d7b9c78"
+    },
+    {
+      "path": "ui/events/event_constants.h",
+      "sha256": "faafc4e6950a16876bd631f5fd63faf8464ca2e51013e0c384c53378a85d7139"
+    },
+    {
+      "path": "ui/events/types/event_type.h",
+      "sha256": "ae3cd593be1eca7da9c786aed2cf6900f616dd06e61e163108378ed48c0da8f2"
+    },
+    {
+      "path": "ui/events/event.cc",
+      "sha256": "5fb0a9d4b1ddaf994f674d5806676c766bebc3ae9a93a48bdafc6ae0e332171c"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "sha256": "e7ee344afa32713a03236ee7b02bcaff8e0eba44490549ee1e1aaa872d68804b"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.cc",
+      "sha256": "f7730b23906724ee8021bd3c891804883caec4ed7c9522e6143250fd566403c6"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.cc",
+      "sha256": "a86a1b2f7531e5b63de6ef17c4fe05f5509c815b5ffbd437e649230f265560f2"
+    }
+  ],
+  "directSelectionCalls": [
+    "0x46521bc explicit path ->4655e40",
+    "0x4657a18 adjacent path ->4655e40"
+  ],
+  "scrollFlow": "464c418 wrapper ->464c540 eligibility ->464c780 actualscroll ->4657570 release ->46579c4 direction ->4657810 ordered adjacent path ->4655e40",
+  "limits": [
+    "Owner field names for hover/collapse/animation gates not guessed; raw offsets preserved in prose/disassembly.",
+    "Concrete profile-cell view class not independently identified by constructor metadata; callback shape and actual target proven.",
+    "Current155 event APIs map ordering/values; no original target or owner state was executed."
+  ],
+  "sharedSourceModified": false,
+  "targetExecuted": false,
+  "ownerDataRead": false
+}

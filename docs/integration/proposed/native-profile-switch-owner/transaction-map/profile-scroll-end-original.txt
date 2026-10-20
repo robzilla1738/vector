@@ -1,0 +1,66 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4657570: d10103ff     	sub	sp, sp, #0x40
+ 4657574: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 4657578: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 465757c: 9100c3fd     	add	x29, sp, #0x30
+ 4657580: aa0003f3     	mov	x19, x0
+ 4657584: 39686008     	ldrb	w8, [x0, #0xa18]
+ 4657588: 34000248     	cbz	w8, 0x46575d0 <_ChromeMain+0x4652334>
+ 465758c: bd4a1260     	ldr	s0, [x19, #0xa10]
+ 4657590: 1e20c001     	fabs	s1, s0
+ 4657594: bd41c262     	ldr	s2, [x19, #0x1c0]
+ 4657598: 5e21d843     	scvtf	s3, s2
+ 465759c: 1e2e1002     	fmov	s2, #1.00000000
+ 46575a0: 1e226863     	fmaxnm	s3, s3, s2
+ 46575a4: 1e2c1004     	fmov	s4, #0.50000000
+ 46575a8: 1e240863     	fmul	s3, s3, s4
+ 46575ac: 1e232020     	fcmp	s1, s3
+ 46575b0: 5400010b     	b.lt	0x46575d0 <_ChromeMain+0x4652334>
+ 46575b4: bd4a1663     	ldr	s3, [x19, #0xa14]
+ 46575b8: 1e20c063     	fabs	s3, s3
+ 46575bc: 1e2f1004     	fmov	s4, #1.50000000
+ 46575c0: 1e240863     	fmul	s3, s3, s4
+ 46575c4: 1e226862     	fmaxnm	s2, s3, s2
+ 46575c8: 1e222020     	fcmp	s1, s2
+ 46575cc: 5400010c     	b.gt	0x46575ec <_ChromeMain+0x4652350>
+ 46575d0: 3928627f     	strb	wzr, [x19, #0xa18]
+ 46575d4: f9050a7f     	str	xzr, [x19, #0xa10]
+ 46575d8: aa1303e0     	mov	x0, x19
+ 46575dc: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 46575e0: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 46575e4: 910103ff     	add	sp, sp, #0x40
+ 46575e8: 1400001e     	b	0x4657660 <_ChromeMain+0x46523c4>
+ 46575ec: 91284268     	add	x8, x19, #0xa10
+ 46575f0: 1e202008     	fcmp	s0, #0.0
+ 46575f4: 12800009     	mov	w9, #-0x1               ; =-1
+ 46575f8: 1a9f5534     	csinc	w20, w9, wzr, pl
+ 46575fc: 3900211f     	strb	wzr, [x8, #0x8]
+ 4657600: f900011f     	str	xzr, [x8]
+ 4657604: 910003e8     	mov	x8, sp
+ 4657608: aa1303e0     	mov	x0, x19
+ 465760c: aa1403e1     	mov	x1, x20
+ 4657610: 94000080     	bl	0x4657810 <_ChromeMain+0x4652574>
+ 4657614: 394063e8     	ldrb	w8, [sp, #0x18]
+ 4657618: 35000088     	cbnz	w8, 0x4657628 <_ChromeMain+0x465238c>
+ 465761c: aa1303e0     	mov	x0, x19
+ 4657620: 94000010     	bl	0x4657660 <_ChromeMain+0x46523c4>
+ 4657624: 14000006     	b	0x465763c <_ChromeMain+0x46523a0>
+ 4657628: 39c05fe8     	ldrsb	w8, [sp, #0x17]
+ 465762c: 37f80108     	tbnz	w8, #0x1f, 0x465764c <_ChromeMain+0x46523b0>
+ 4657630: aa1303e0     	mov	x0, x19
+ 4657634: aa1403e1     	mov	x1, x20
+ 4657638: 940000e3     	bl	0x46579c4 <_ChromeMain+0x4652728>
+ 465763c: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 4657640: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 4657644: 910103ff     	add	sp, sp, #0x40
+ 4657648: d65f03c0     	ret
+ 465764c: f94003e0     	ldr	x0, [sp]
+ 4657650: f9400be8     	ldr	x8, [sp, #0x10]
+ 4657654: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 4657658: 96e6c618     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 465765c: 17fffff5     	b	0x4657630 <_ChromeMain+0x4652394>
