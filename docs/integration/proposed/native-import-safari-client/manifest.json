@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "reason": "Replace public Safari independent per-category reader with supplied native client and actual155 SafariDataImporter.",
+  "requires": [
+    "native-import-safari-owner/manifest.json",
+    "native-import-safari-bookmarks-only/manifest.json"
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "2b3b956d6015a97aea2b01aa4a9eafae30f57abb560eaf4f8e1c93bc4dca0922",
+      "outputSha256": "725193708e9cdc8c9bd8ed372af59e268620d35112908a2d5bd91d46eb1498db",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_browser_import/safari_archive.h\"",
+          "replace": "#include \"chrome/browser/extensions/api/aux_browser_import/safari_import.h\"",
+          "count": 1
+        },
+        {
+          "find": "  bool firefox = false, cancelled = false;",
+          "replace": "  bool firefox = false, cancelled = false;\n  bool safari_bookmarks_only = false;\n  std::unique_ptr<SafariImport> safari_import;",
+          "count": 1
+        },
+        {
+          "find": "        job.cancelled = true;\n        job.rows.clear();",
+          "replace": "        job.cancelled = true;\n        if (job.safari_import) {\n          job.safari_import->Cancel();\n          std::move(reply).Run(base::Value(), \"\");\n          return;\n        }\n        job.rows.clear();",
+          "count": 1
+        },
+        {
+          "find": "    constexpr size_t limit = 16 * 1024 * 1024;\n    if (data->is_blob() && !data->GetBlob().empty() &&\n        data->GetBlob().size() <= limit) {",
+          "replace": "    if (data->is_blob() && !data->GetBlob().empty()) {",
+          "count": 1
+        },
+        {
+          "find": "    } else if (data->is_list() && !data->GetList().empty() &&\n               data->GetList().size() <= limit) {",
+          "replace": "    } else if (internal_categories && data->is_list() &&\n               !data->GetList().empty()) {",
+          "count": 1
+        },
+        {
+          "find": "      error(\"Safari ZIP data must be nonempty binary data up to16MiB\");",
+          "replace": "      error(\"Safari import requires safariArchive.data\");",
+          "count": 1
+        },
+        {
+          "find": "  job->firefox = source->FindBool(\"nativeFirefox\").value_or(false);",
+          "replace": "  job->safari_bookmarks_only = has_kinds ||\n      (internal_categories && categories->size() == 1 &&\n       (*categories)[0].is_string() && (*categories)[0].GetString() == \"bookmarks\");\n  job->firefox = source->FindBool(\"nativeFirefox\").value_or(false);",
+          "count": 1
+        },
+        {
+          "find": "  job->state.Set(\"status\", \"queued\");",
+          "replace": "  job->state.Set(\"status\", \"queued\");\n  if (*source_id == \"safari\") job->state.Set(\"progress\", 0.0);",
+          "count": 1
+        },
+        {
+          "find": "  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();",
+          "replace": "  // The retired recovery WebUI alias must not expand a partial request into\n  // the supplied full Safari flow. Original supports full or bookmarks only.\n  if (job->source == \"safari\" && internal_categories &&\n      !job->safari_bookmarks_only && job->categories.size() != 4) {\n    error(\"Safari supports full import or bookmarks only\");\n    return;\n  }\n  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();",
+          "count": 1
+        },
+        {
+          "find": "  if (job.category == job.categories.size()) {",
+          "replace": "  if (job.source == \"safari\") {\n    if (!job.safari_import) {\n      job.safari_import = std::make_unique<SafariImport>(\n          profile_.get(), job.safari_bookmarks_only,\n          base::BindRepeating(&ImportService::DidUpdateSafari,\n                              weak_.GetWeakPtr(), id));\n      job.safari_import->Start(std::move(job.archive));\n    }\n    return;\n  }\n  if (job.category == job.categories.size()) {",
+          "count": 1
+        },
+        {
+          "find": "  if (job.source == \"safari\") {\n    base::ThreadPool::PostTaskAndReplyWithResult(\n        FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&ReadSafariArchive, job.archive,\n                       job.categories[job.category]),\n        base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));\n    return;\n  }\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "void ImportService::DidStageChromium(",
+          "replace": "void ImportService::DidUpdateSafari(std::string id, std::string state,\n                                    std::string current_data_kind,\n                                    double progress, std::string error) {\n  if (!profile_ || !jobs_.contains(id)) return;\n  auto& job = *jobs_.at(id);\n  if (job.cancelled && state != \"cancelled\") return;\n  job.state.Set(\"status\", std::move(state));\n  job.state.Set(\"progress\", progress);\n  if (current_data_kind.empty()) job.state.Remove(\"currentDataKind\");\n  else job.state.Set(\"currentDataKind\", std::move(current_data_kind));\n  if (error.empty()) job.state.Remove(\"error\");\n  else job.state.Set(\"error\", std::move(error));\n  Emit(job);\n}\nvoid ImportService::DidStageChromium(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "d01a7d90c9fccfbda804bd14e6d4ddbb447511f7bbae1207aa717ef2ab4abb71",
+      "outputSha256": "b7c50afa21536bdc440672b34db4d7cdf2c71dc538722f28bfa2fea559f9ace4",
+      "anchors": [
+        {
+          "find": "  void DidStageChromium(std::string id, base::DictValue);",
+          "replace": "  void DidStageChromium(std::string id, base::DictValue);\n  void DidUpdateSafari(std::string id, std::string state,\n                       std::string current_data_kind, double progress,\n                       std::string error);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "c50b71a40b03442ea36da922db92d5a3ca8c103a75354ca6321ea808a8b13ea0",
+      "outputSha256": "da505b871acfef2dc7a738226b2577bf1b4e6d4f1eced63f66ba811d961f25e6",
+      "anchors": [
+        {
+          "find": "                               .Append(\"passwords\"));\n  if (fixture || InstalledSourceApplication(\"safari\"))",
+          "replace": "                               .Append(\"passwords\")\n                               .Append(\"paymentCards\"));\n  if (fixture || InstalledSourceApplication(\"safari\"))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.h",
+      "baselineSha256": null,
+      "outputSha256": "1cfdaae5f6c7031cd440a7d43320e366e0f1f53f3c93afb03aa81ef90c45fa6d"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "34383b2fa141a0c22db9e4f7c529530c46abffa0ef653e4992fee2987fe7611c"
+    }
+  ],
+  "requiredGnChanges": {
+    "aux_browser_import.sources": [
+      "safari_import.cc",
+      "safari_import.h"
+    ],
+    "aux_browser_import.deps": [
+      "//chrome/browser:browser_process",
+      "//chrome/browser/affiliations",
+      "//chrome/browser/autofill",
+      "//chrome/browser/reading_list",
+      "//chrome/browser/sync",
+      "//components/autofill/core/browser",
+      "//components/password_manager/core/browser/ui",
+      "//components/user_data_importer/content",
+      "//components/user_data_importer/utility:safari_data_importer"
+    ]
+  }
+}

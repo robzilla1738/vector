@@ -1,0 +1,115 @@
+{
+  "sourceEvidence": "../native-import-safari-owner/evidence.json",
+  "componentRequirement": "../native-import-safari-bookmarks-only/manifest.json",
+  "sourceFrameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "additionalSlices": [
+    {
+      "file": "cancel.bin",
+      "start": "0x4278788",
+      "endExclusive": "0x4278934",
+      "sha256": "79dbc4cd3a902067d3b8ffe1533ea208329668ecebfee2b502400967d4c6d65e"
+    },
+    {
+      "file": "total-failure.bin",
+      "start": "0x4278934",
+      "endExclusive": "0x4278b20",
+      "sha256": "783ffa94743ce8c3eb4360432a23351412dd1c0517df720da32536875d60b5f9"
+    }
+  ],
+  "genuine155HeadersAndTargets": [
+    {
+      "path": "chrome/browser/profiles/profile.h",
+      "sha256": "dc1ff74874ce73db6eeb579ed9b5a85a3226387ce3a4172eb814336562634485"
+    },
+    {
+      "path": "chrome/browser/autofill/personal_data_manager_factory.h",
+      "sha256": "79ca3dd519e169b3b3b80877cdee2854b61bf61d4cb79731ade2d531199fd0e6"
+    },
+    {
+      "path": "components/autofill/core/browser/data_manager/personal_data_manager.h",
+      "sha256": "6212f0f416a31b217b90b83b31244a31e5a1fd0db32c826567db7813ab7f29bc"
+    },
+    {
+      "path": "chrome/browser/bookmarks/bookmark_model_factory.h",
+      "sha256": "6229c2e22eeb4eb30d9c8f07c5abebe18461b4e46e791fc51641bcd21cd98baa"
+    },
+    {
+      "path": "chrome/browser/reading_list/reading_list_model_factory.h",
+      "sha256": "e916f89d66f5c7ec48309e0a18b01be3ed2acedb3f056341867c16fc5cd82b95"
+    },
+    {
+      "path": "chrome/browser/history/history_service_factory.h",
+      "sha256": "91b260bf0e20dc9bd0d9cc6952ba5bd4f07559cc91a903420a67fb1370ed5d19"
+    },
+    {
+      "path": "chrome/browser/sync/sync_service_factory.h",
+      "sha256": "f65aa016dd06e283ad066a61d55102d298811a7f0e576d0ef2f3d28ca572dc98"
+    },
+    {
+      "path": "chrome/browser/password_manager/factories/profile_password_store_factory.h",
+      "sha256": "246c0fb968e9db6838d501e3d222d6baeee4abafbf772fbe5b6c12b103554b43"
+    },
+    {
+      "path": "chrome/browser/password_manager/factories/account_password_store_factory.h",
+      "sha256": "264a52ef86b97d19684ac2e57bbcfa8776c9331dcd5f2ee229c64e3cc654ab89"
+    },
+    {
+      "path": "components/keyed_service/core/service_access_type.h",
+      "sha256": "868af2a9086981f09e777d7deda5e73e3902ecff261f1d6e93da1d62629c80f8"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/saved_passwords_presenter.h",
+      "sha256": "c96965660d6b0603257036ee0cdb270da0dcb3be351a138dcc002d9ff0d8c01d"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/saved_passwords_presenter.cc",
+      "sha256": "6aea26abf32ba39a2d5609c2741a2766a50117b651fb8914b1fb08ac24fa913c"
+    },
+    {
+      "path": "components/password_manager/core/browser/import/import_results.h",
+      "sha256": "af280c195beed2158a6f927a070b3ef7cce02e399ee54bc4e7dadfccd8e41d2d"
+    },
+    {
+      "path": "chrome/browser/browser_process.h",
+      "sha256": "de9a884a0d435b38a3f2e508da9e63b76de358fb9717d3eb1fff21e38b55d227"
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "sha256": "699fd76e3019c3a5dc3a298c7477c16f9b0df2935d873b8522b0bd9437eff347"
+    },
+    {
+      "path": "chrome/browser/affiliations/BUILD.gn",
+      "sha256": "ed4e1a0ffb19734e3c1484a87b7dd97c0055a303b979da97bccbb19873cb11ad"
+    },
+    {
+      "path": "chrome/browser/autofill/BUILD.gn",
+      "sha256": "4cfd68428ae8f91bf1eda3cf5c50e335a4901f35a2ef9a295beb93f8cb81374e"
+    },
+    {
+      "path": "chrome/browser/reading_list/BUILD.gn",
+      "sha256": "dc46d6b0c2cfe2d2835ffc9b912315e76cab1365353a97b7fcdf9b41b1df74db"
+    },
+    {
+      "path": "chrome/browser/sync/BUILD.gn",
+      "sha256": "e62ade02563f2cb3031c3f3ffdb61b44a6509a63786b6ad1fe98996938dcbe55"
+    },
+    {
+      "path": "components/autofill/core/browser/BUILD.gn",
+      "sha256": "7199a3e938bdb1fd992bc539b209d32cf85b1bcc5794cb0f41844cb0399b9f09"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/BUILD.gn",
+      "sha256": "41fad7b9f99aa13c094fbd9853118f6e3dba42dfe5f66361658d4253e920844f"
+    },
+    {
+      "path": "components/user_data_importer/content/BUILD.gn",
+      "sha256": "478c2496c3c4a3da71dbc86cf57c294b0b4ccd4a3de632f949590e975bcb5bd5"
+    }
+  ],
+  "lifetimeAdaptation": "Actual155 real importer/models owned by captured Profile; new facade owned by ImportService Job until job/service retirement. No fake present/load gate or current-window lookup.",
+  "remainingVerification": [
+    "Integrator must add exact GN dependencies/sources and compile actual155 output.",
+    "Disposable actual UI/archive observations including payment-card behavior and account/profile password conflicts remain unperformed.",
+    "Source outer caller does not call SavedPasswordsPresenter::Init separately; constructor/pipeline reused without a speculative initialization wait. Real conflict/cache observation remains necessary before runtime acceptance."
+  ]
+}
