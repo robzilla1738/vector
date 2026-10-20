@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "saved-leaf-bindings",
+      "rva": "0x37e0bd8",
+      "bytes": 252,
+      "sha256": "0a30d19af489069c6e639ce4dd705d3b995983cb6d1a8087c99e0818f67b6a3f",
+      "assemblySha256": "ac9c2ab55bdc46450a60efd13c3c0e366757568dc9740177f4217a50cf1b0181"
+    },
+    {
+      "name": "external-insertion",
+      "rva": "0x4612384",
+      "bytes": 2664,
+      "sha256": "2999353b4cf5de30d3ca0c7662519118b00153bb02724803c471e8bcf5c13bce",
+      "assemblySha256": "9c574dbbe2f0594634ae2b4641ddc288e1558e1a6db99d3b4cc3861a65b2ba97"
+    },
+    {
+      "name": "default-commit-clear-add",
+      "rva": "0x4612dec",
+      "bytes": 1920,
+      "sha256": "a85ea4a25a56836e2eea32d05934e6ea31e77c22a348ccd0e2f614d153ff7e07",
+      "assemblySha256": "7b4d2a8519d6a3c93db0ed5ac89e1c6b270f12a997a89247194282a5f5574686"
+    },
+    {
+      "name": "saved-pin-callbacks",
+      "rva": "0x462b5c0",
+      "bytes": 2620,
+      "sha256": "97bcf6128f01fffb167cd4d5cd86b14de287d2e60a02b55da2c56fc7f9b7c92a",
+      "assemblySha256": "5af907155d48ccc4c917e2289ae909d9124bad0665e8ac0171516cd99faa8a5b"
+    }
+  ],
+  "literals": [],
+  "data": [
+    {
+      "name": "transport-feature",
+      "rva": "0xec2b288",
+      "bytes": 24,
+      "hex": "fd29cb0d000020000100000000000000212acb0d00002000",
+      "sha256": "b935aa2b077f41b3877107e70f37503e809de357bc79e195f50fdbc3c7bfecc7"
+    }
+  ],
+  "apiInputs": [
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_model.h",
+      "snapshotPath": "evidence/api/components/bookmarks/browser/bookmark_model.h",
+      "sha256": "81f8febe1ed65148c1221d8e9ef61aa7160a1a54694570ff978fbd6342d55075"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_node.h",
+      "snapshotPath": "evidence/api/components/bookmarks/browser/bookmark_node.h",
+      "sha256": "199c93ce8549d834b6289f6e7b04bfb184f5e720026d00cb0557783b7c4c5bff"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_model.cc",
+      "snapshotPath": "evidence/api/components/bookmarks/browser/bookmark_model.cc",
+      "sha256": "b4000f65b8039c4cb4199e8c12907f9387bbccfb632ce97d03261dfb475ae5e0"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "sha256": "44bac58082b7f739fd65e632ae739887c907923c17c5c0d29b915bda4233a03e"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "sha256": "4a9504e9c91f86a03b19afd92ad5493fb476bd0ca7c1900b265cd15aefa487c5"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/animation/bounds_animator.h",
+      "snapshotPath": "evidence/api/ui/views/animation/bounds_animator.h",
+      "sha256": "65a2e4aa80c9c0578993e0b1edc9611f81270ca1b13039f6598b8b1e99a4784c"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view_tracker.h",
+      "snapshotPath": "evidence/api/ui/views/view_tracker.h",
+      "sha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/037dfc80.c",
+      "sha256": "3e2f860db024cec514cb608ab55e53b5f28e1fc6c06b67273015d5cd3d5c7fc3"
+    }
+  ]
+}

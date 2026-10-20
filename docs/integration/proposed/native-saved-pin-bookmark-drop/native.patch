@@ -1,0 +1,432 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc
+@@ -0,0 +1,73 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h"
++
++#include <algorithm>
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h"
++#include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/views/view_tracker.h"
++
++namespace aux {
++bool ConvertSavedPinToBookmark(BrowserWindowInterface& browser,
++                               VerticalPinnedTabEntriesView& saved_pins,
++                               VerticalTabBookmarksView& bookmarks,
++                               const PinnedTabEntry& entry,
++                               std::optional<tabs::TabHandle> associated_tab,
++                               bool remove_without_insertion) {
++  if (!entry.url.is_valid())
++    return false;
++  auto* const model = browser.GetTabStripModel();
++  auto* const profile = browser.GetProfile();
++  if (!model || !profile)
++    return false;
++  const auto browser_alive = browser.GetWeakPtr();
++  views::ViewTracker bookmarks_alive(&bookmarks);
++  views::ViewTracker pins_alive(&saved_pins);
++  // Source callbacks/observers may retire this window's profile-bound owners.
++  // Snapshot data before AddURL and revalidate after every notifying mutation.
++  const GURL url = entry.url;
++  const std::u16string title = entry.title;
++  const auto current = [&] {
++    return browser_alive && bookmarks_alive.view() && pins_alive.view() &&
++           browser_alive->GetProfile() == profile &&
++           browser_alive->GetTabStripModel() == model;
++  };
++  if (!remove_without_insertion) {
++    const bool created =
++        bookmarks.CommitExternalBookmark(url, title) != nullptr;
++    if (!current() || !created)
++      return false;
++  }
++  // Original462bac4..b68/462bd28..b90: only the exact optional live handle,
++  // searched again in the actual current model. URL equality grants no
++  // authority.
++  if (associated_tab && associated_tab->Get()) {
++    auto* tab = associated_tab->Get();
++    const int index = model->GetIndexOfTab(tab);
++    if (index >= 0 && tab->GetContents() &&
++        tab->GetContents()->GetBrowserContext() == profile &&
++        model->IsTabPinned(index)) {
++      model->SetTabPinned(index, false);
++      if (!current())
++        return false;
++    }
++  }
++  // Actual source41d4f20 removes only the first exact saved URL. A genuine
++  // failed AddURL above leaves both the saved entry and pinned live tab intact.
++  RemoveFirstPinnedTabEntry(*profile->GetPrefs(), url);
++  if (!current())
++    return false;
++  saved_pins.RefreshAfterSavedEntryChange();
++  if (!current())
++    return false;
++  if (!remove_without_insertion)
++    return true;
++  const auto entries = ReadPinnedTabEntries(*profile->GetPrefs());
++  return std::ranges::none_of(entries, [&url](const PinnedTabEntry& saved) {
++    return saved.url == url;
++  });
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SAVED_PIN_BOOKMARK_CONVERSION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SAVED_PIN_BOOKMARK_CONVERSION_H_
++
++#include <optional>
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++#include "components/tabs/public/tab_interface.h"
++
++class BrowserWindowInterface;
++class VerticalPinnedTabEntriesView;
++namespace aux {
++class VerticalTabBookmarksView;
++// Actual original saved-entry finish462ba98. The real region supplies its6c0
++// remove-without-insertion state; this helper does not infer a destination.
++// Never adds a bookmark in that branch. Normal insertion must create a genuine
++// BookmarkNode before unpin/removal. Neither branch closes any browser tab.
++bool ConvertSavedPinToBookmark(BrowserWindowInterface&,
++                               VerticalPinnedTabEntriesView&,
++                               VerticalTabBookmarksView&,
++                               const PinnedTabEntry&,
++                               std::optional<tabs::TabHandle> associated_tab,
++                               bool remove_without_insertion);
++}  // namespace aux
++#endif
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
+@@ -263,6 +263,12 @@
+   void UpdateFavicon(VerticalBookmarkRowView&, const Node&);
+   void UpdateHeight();
+   void RestoreDragRows(bool animate);
++  const Node* DefaultExternalParent() const;
++  std::optional<gfx::Rect> UpdateExternalInsertion(
++      const GURL&,
++      const gfx::Point& screen_point);
++  void ClearExternalInsertion(bool animate);
++  const Node* CommitExternalBookmark(const GURL&, std::u16string title);
+   void QueueNavigation(const Node& node) {
+     if (!node.is_url() || !node.url().is_valid())
+       return;
+@@ -397,7 +403,10 @@
+     if (found != rows_.end())
+       UpdateFavicon(*found->second, *node);
+   }
+-  void ExtensiveBookmarkChangesBeginning() override { extensive_ = true; }
++  void ExtensiveBookmarkChangesBeginning() override {
++    ClearExternalInsertion(false);
++    extensive_ = true;
++  }
+   void ExtensiveBookmarkChangesEnded() override {
+     extensive_ = false;
+     RequestRebuild(false);
+@@ -432,7 +441,8 @@
+     MaybeClearPreferredHeight();
+   }
+   void MaybeClearPreferredHeight() {
+-    if (!bounds_animating_ && !height_animating_ && !dragging_) {
++    if (!bounds_animating_ && !height_animating_ && !dragging_ &&
++        !external_insertion_) {
+       contents_->SetPreferredSize(std::nullopt);
+       contents_->InvalidateLayout();
+       view_->PreferredSizeChanged();
+@@ -515,6 +525,13 @@
+   size_t drop_index_ = 0;
+   raw_ptr<const Node> feedback_parent_ = nullptr;
+   std::optional<size_t> feedback_index_;
++  // Source743/748/768/778/780/788, separate from internal row drag742.
++  bool external_insertion_ = false;
++  std::map<const Node*, gfx::Rect> external_bounds_;
++  std::optional<size_t> external_gap_;
++  raw_ptr<const Node> external_parent_ = nullptr;
++  size_t external_index_ = 0;
++  raw_ptr<const Node> external_folder_ = nullptr;
+   bool projection_active_ = false, projection_detached_ = false;
+   gfx::Point projection_point_;
+   std::u16string projection_title_;
+@@ -527,6 +544,194 @@
+       bookmark_observation_{this};
+   base::WeakPtrFactory<Impl> weak_{this};
+ };
++
++// Original4612dec: visible roots in local-bar/other/mobile, then account
++// order; if none are visible, first non-null root in that same order. Chromium
++// 155's account getters enforce the same transport-feature invariant
++// themselves.
++const Node* VerticalTabBookmarksView::Impl::DefaultExternalParent() const {
++  if (!ScopeCurrent() || !bookmark_model_ || !bookmark_model_->loaded())
++    return nullptr;
++  const auto roots = Roots(*bookmark_model_);
++  for (const auto* node : roots)
++    if (node && node->IsVisible())
++      return node;
++  for (const auto* node : roots)
++    if (node)
++      return node;
++  return nullptr;
++}
++
++std::optional<gfx::Rect>
++VerticalTabBookmarksView::Impl::UpdateExternalInsertion(
++    const GURL& url,
++    const gfx::Point& screen_point) {
++  // Original4612384: actual model/visibility/bounds, no URL-based ownership.
++  if (!ScopeCurrent() || !url.is_valid() || !bookmark_model_ ||
++      !bookmark_model_->loaded() || !view_->GetVisible() ||
++      !view_->GetBoundsInScreen().Contains(screen_point)) {
++    ClearExternalInsertion(true);
++    return std::nullopt;
++  }
++  if (!external_insertion_) {
++    bounds_->Complete();
++    external_bounds_.clear();
++    for (const auto* node : visible_)
++      if (auto row = rows_.find(node); row != rows_.end())
++        external_bounds_.emplace(node, row->second->bounds());
++    external_insertion_ = true;
++    external_gap_.reset();
++    external_folder_ = nullptr;
++  }
++  if (external_folder_) {
++    if (auto row = rows_.find(external_folder_); row != rows_.end())
++      row->second->SetDropIndicator(0);
++    external_folder_ = nullptr;
++  }
++  gfx::Point point = screen_point;
++  views::View::ConvertPointFromScreen(contents_, &point);
++  size_t insertion = visible_.size();
++  const Node* parent = nullptr;
++  size_t index = 0;
++  for (size_t i = 0; i < visible_.size(); ++i) {
++    const auto* node = visible_[i];
++    auto snapshot = external_bounds_.find(node);
++    if (snapshot == external_bounds_.end())
++      continue;
++    const gfx::Rect& rect = snapshot->second;
++    if (insertion == visible_.size() && point.y() < rect.CenterPoint().y())
++      insertion = i;
++    // Full frozen folder row bounds, not indentation or moving hit bounds.
++    if (node->is_folder() && rect.Contains(point)) {
++      parent = node;
++      index = 0;
++      insertion = i + 1;
++      if (auto row = rows_.find(node); row != rows_.end()) {
++        row->second->SetDropIndicator(1);
++        external_folder_ = node;
++      }
++      break;
++    }
++  }
++  if (!parent && insertion < visible_.size()) {
++    const auto* next = visible_[insertion];
++    parent = next->parent();
++    if (parent)
++      index = parent->GetIndexOf(next).value_or(parent->children().size());
++  } else if (!parent && !visible_.empty()) {
++    const auto* last = visible_.back();
++    parent = last->parent();
++    if (parent)
++      index = parent->GetIndexOf(last).value_or(parent->children().size()) + 1;
++  }
++  if (!parent) {
++    parent = DefaultExternalParent();
++    if (parent)
++      index = parent->children().size();
++  }
++  if (!parent || !parent->is_folder()) {
++    ClearExternalInsertion(true);
++    return std::nullopt;
++  }
++  external_parent_ = parent;
++  external_index_ = std::min(index, parent->children().size());
++  insertion = std::min(insertion, visible_.size());
++  if (external_gap_ != insertion) {
++    const size_t begin =
++        external_gap_ ? std::min(*external_gap_, insertion) : insertion;
++    const size_t end =
++        external_gap_ ? std::max(*external_gap_, insertion) : visible_.size();
++    external_gap_ = insertion;
++    for (size_t i = begin; i < end; ++i) {
++      const auto* node = visible_[i];
++      auto row = rows_.find(node);
++      auto snapshot = external_bounds_.find(node);
++      if (row == rows_.end() || snapshot == external_bounds_.end())
++        continue;
++      gfx::Rect target = snapshot->second;
++      if (i >= insertion)
++        target.Offset(0, 36);  // Original46129b4: row32 + spacing4.
++      bounds_->SetTargetBounds(row->second, target);
++    }
++    bounds_animating_ = bounds_->IsAnimating();
++    contents_->SchedulePaint();
++  }
++  gfx::Rect target(8, 1, std::max(0, contents_->width() - 16), 32);
++  if (insertion < visible_.size() &&
++      external_bounds_.contains(visible_[insertion])) {
++    target = external_bounds_.at(visible_[insertion]);
++  } else if (!visible_.empty() && external_bounds_.contains(visible_.back())) {
++    target = external_bounds_.at(visible_.back());
++    target.set_y(target.bottom() + 4);
++  }
++  if (auto depth = depths_.find(parent); depth != depths_.end())
++    target.Inset(gfx::Insets::TLBR(0, (depth->second + 1) * 14, 0, 0));
++  gfx::Point origin = target.origin();
++  views::View::ConvertPointToScreen(contents_, &origin);
++  return gfx::Rect(origin, target.size());
++}
++
++void VerticalTabBookmarksView::Impl::ClearExternalInsertion(bool animate) {
++  if (!external_insertion_)
++    return;
++  external_insertion_ = false;
++  external_gap_.reset();
++  external_parent_ = nullptr;
++  external_folder_ = nullptr;
++  external_index_ = 0;
++  ClearIndicators();
++  for (const auto& [node, rect] : external_bounds_) {
++    auto row = rows_.find(node);
++    if (row == rows_.end())
++      continue;
++    if (animate)
++      bounds_->SetTargetBounds(row->second, rect);
++    else {
++      bounds_->StopAnimatingView(row->second);
++      row->second->SetBoundsRect(rect);
++    }
++  }
++  bounds_animating_ = animate && bounds_->IsAnimating();
++  external_bounds_.clear();
++  contents_->SchedulePaint();
++}
++
++const Node* VerticalTabBookmarksView::Impl::CommitExternalBookmark(
++    const GURL& url,
++    std::u16string title) {
++  // Original4613074 clears projection before AddURL. Missing/invalid explicit
++  // destination uses original4612dec's default and appends to it.
++  const Node* parent = external_insertion_ ? external_parent_.get() : nullptr;
++  const bool explicit_destination = parent && parent->is_folder();
++  size_t index = external_index_;
++  ClearExternalInsertion(false);
++  if (!ScopeCurrent() || !bookmark_model_ || !bookmark_model_->loaded() ||
++      !url.is_valid())
++    return nullptr;
++  if (!explicit_destination)
++    parent = DefaultExternalParent();
++  if (!parent || !parent->is_folder())
++    return nullptr;
++  index = explicit_destination ? std::min(index, parent->children().size())
++                               : parent->children().size();
++  if (title.empty())
++    title = base::UTF8ToUTF16(url.has_host() ? url.host() : url.spec());
++  const auto alive = weak_.GetWeakPtr();
++  const Node* created = bookmark_model_->AddURL(parent, index, title, url);
++  if (!alive || !created)
++    return nullptr;
++  // Real model observers may reenter in155. Reacquire the new node after the
++  // source pending-navigation/activated callback, never return a retired owner.
++  const int64_t id = created->id();
++  const auto uuid = created->uuid();
++  QueueNavigation(*created);
++  if (activated_)
++    activated_.Run();
++  if (!alive || !ScopeCurrent())
++    return nullptr;
++  const Node* current = Find(id);
++  return current && current->uuid() == uuid ? current : nullptr;
++}
+ 
+ void VerticalTabBookmarksView::Impl::UpdateFavicon(VerticalBookmarkRowView& row,
+                                                    const Node& node) {
+@@ -581,6 +786,9 @@
+   }
+ }
+ void VerticalTabBookmarksView::Impl::Rebuild(bool animate) {
++  // Original rebuild4611b84..1c00 clears the external snapshot/destination;
++  // model notifications must never retain node identities through deletion.
++  ClearExternalInsertion(false);
+   HideBookmarkHoverCard();
+   if (!dragging_) {
+     drag_node_ = nullptr;
+@@ -1503,6 +1711,21 @@
+   pending.erase(it);
+   return true;
+ }
++std::optional<gfx::Rect>
++VerticalTabBookmarksView::UpdateExternalBookmarkInsertion(
++    const GURL& url,
++    const std::u16string&,
++    const gfx::Point& screen_point) {
++  return impl_->UpdateExternalInsertion(url, screen_point);
++}
++void VerticalTabBookmarksView::ClearExternalBookmarkInsertion(bool animate) {
++  impl_->ClearExternalInsertion(animate);
++}
++const Node* VerticalTabBookmarksView::CommitExternalBookmark(
++    const GURL& url,
++    std::u16string title) {
++  return impl_->CommitExternalBookmark(url, std::move(title));
++}
+ bool VerticalTabBookmarksView::drag_projection_active() const {
+   return impl_->projection_active_;
+ }
+@@ -1533,6 +1756,7 @@
+   impl_->contents_changed_.Reset();
+   impl_->activated_.Reset();
+   impl_->ClearDrag(false, false);
++  impl_->ClearExternalInsertion(false);
+   impl_->HideBookmarkHoverCard();
+   ++impl_->folder_menu_.generation;
+   ++impl_->url_menu_.generation;
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h
+@@ -52,6 +52,15 @@
+       const bookmarks::BookmarkNode&) const;
+   // Original pending-navigation queue461becc/46142cc, distinct from ownership.
+   bool TakePendingNavigation(const GURL&, BookmarkTabRepresentation*);
++  // Genuine saved-entry callbacks462b5c0/462ba98. Coordinates are SCREEN.
++  // Independent from a Bookmark row's internal drag and live-tab ownership.
++  std::optional<gfx::Rect> UpdateExternalBookmarkInsertion(
++      const GURL&,
++      const std::u16string&,
++      const gfx::Point& screen_point);
++  void ClearExternalBookmarkInsertion(bool animate);
++  const bookmarks::BookmarkNode* CommitExternalBookmark(const GURL&,
++                                                        std::u16string title);
+   bool drag_projection_active() const;
+   bool drag_projection_detached() const;
+   const gfx::Point& drag_screen_point() const;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -534,6 +534,10 @@
+                      },
+                      weak_factory_.GetWeakPtr()));
+ }
++void VerticalPinnedTabEntriesView::RefreshAfterSavedEntryChange() {
++  Refresh();
++}
++
+ void VerticalPinnedTabEntriesView::Refresh() {
+   if (paused_ || !model_)
+     return;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -71,6 +71,9 @@
+   void SetDropInsertion(std::optional<size_t> index);
+   std::optional<size_t> drop_insertion() const { return drop_insertion_; }
+   bool CommitDroppedEntry(const GURL& url, const std::u16string& title);
++
++  // Original462ba98 calls the existing source refresh after saved-pref removal.
++  void RefreshAfterSavedEntryChange();
+ 
+   void SetCompactPresentation(bool compact);
+   void SetLayoutWidthOverride(std::optional<int> width);

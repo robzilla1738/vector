@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "applyAfter": "native343 actual owner330+328 correction / saved-pin leaf336",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc",
+      "baselineSha256": null,
+      "outputSha256": "25b4c20d69a1009c15ae17aae94620bd9a58c3501177de2f58fc5cc1ded5b627",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h",
+      "baselineSha256": null,
+      "outputSha256": "867e74f3964d1515b51e33d9fe0507f20a2a552cd468d9e9688c45146a5f4ed5",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "baselineSha256": "17c6b33c0e5dd18b754353177579ba1237850569249d470c4ef1dba42c4bb7a9",
+      "outputSha256": "a8d1203a79ed9950477b8ea7e960d7d15de44d12eb6b34257a144695889ccd94",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "baselineSha256": "3db81dfaacd1b07da4080c2ca670dfd299d2498d9476b29f01e5ba2a38b7df7c",
+      "outputSha256": "fd8e919d968163fa595372ebfba078709066608b3b8ce29b9ebbdaa7d72d1c91",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "3fd67df86d94755e24dd94588048acad2527733bb51f5305474c8b83097c9b39",
+      "outputSha256": "6c32eb65c1ea329692c1b7bc52fbc4edac720d09467dcfdb529ce53cc9065267",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "0445b264555f3460ba0d74a62a7263fb37681fb539a158b1d8c9175ccf0c60af",
+      "outputSha256": "1037f4f0d6b57ead8933e9330c48c24588b83d92ec66d9c1cf496ee949ba921d",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
