@@ -13,6 +13,7 @@ import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
 import { transformProvidedPasswordManagerScope } from './lib/provided-password-manager-scope.mjs';
 import { transformProvidedUiBoundary } from './lib/provided-ui-boundary.mjs';
+import { transformProvidedNewTabUnavailableControls } from './lib/provided-newtab-unavailable-controls.mjs';
 import { transformProvidedNativeUi, unresolvedNativeCapabilities } from '../vendor/provided/native-ui-compat.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -52,7 +53,8 @@ try {
     const scope = transformProvidedPasswordManagerScope(input);
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
-    return { text: boundary.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors] };
+    const controls = transformProvidedNewTabUnavailableControls({ ...input, text: boundary.text });
+    return { text: controls.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);

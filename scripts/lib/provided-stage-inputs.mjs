@@ -9,6 +9,7 @@ export const providedStageInputs = Object.freeze([
   'scripts/lib/aux-mark.mjs',
   'scripts/lib/provided-wire.mjs',
   'scripts/lib/provided-ui-boundary.mjs',
+  'scripts/lib/provided-newtab-unavailable-controls.mjs',
   'scripts/lib/provided-password-manager-scope.mjs',
   'vendor/provided/native-ui-compat.mjs',
 ]);
