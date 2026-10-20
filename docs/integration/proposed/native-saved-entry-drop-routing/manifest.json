@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "5022cf002 exact standalone owner outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h",
+      "baselineSha256": "1713bcdf65255af65665f6050e2f364339675d3a40c5ade7f77fe7ff4b8267e9",
+      "outputSha256": "89b939be8395ab6726b3da2a76d37b6d60b42655b183c7119092f06d3545d1a8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc",
+      "baselineSha256": "bb042dcfb51cbfd20b4d3bbf8eb3f29ceea66bcdcfdc940c273e6007c95f9ee0",
+      "outputSha256": "b5f3350dc0676b79bbf094c9a1f37ad43718f87ecd207640e33c138ddd2656d0"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}

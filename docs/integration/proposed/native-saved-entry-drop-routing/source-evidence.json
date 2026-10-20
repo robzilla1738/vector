@@ -1,0 +1,36 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "saved-routing",
+      "start": "0x465a3c0",
+      "stopExclusive": "0x465ab88",
+      "bytesSha256": "0768fa16c1ad3fe90208b352f84809d21a67ea5ad72f7af7c7e7810dfae4e768",
+      "asmSha256": "9825c020a5e7069b65c5b188a81a2ff2a547849bdc23d3d2ff5f9886a5e5e18c"
+    },
+    {
+      "name": "visible-bounds",
+      "start": "0x89ef60",
+      "stopExclusive": "0x89f24c",
+      "bytesSha256": "16ea14bfeb7cc237be40bfa901818b78d349d499cd3ce14376104a1caf7a3e8b",
+      "asmSha256": "f751f7409740f7e1d151fab7bbb01fe488ee0e1cd0971370d6b141db011ec185"
+    },
+    {
+      "name": "metric-dispatch",
+      "start": "0x5038c0",
+      "stopExclusive": "0x5039b8",
+      "bytesSha256": "5840f1a3137925a0ee21ad5e0746d55b6a7337be3adb3902bdd2f30d889813b7",
+      "asmSha256": "ac9d01182916c4a8297ab82f6e0fa08e8363d17c1eb8773bb3beea1f27a35739"
+    }
+  ],
+  "constants": [
+    {
+      "address": "0xced82ac",
+      "bytes": 4,
+      "sha256": "77913d3ecba98ac1df4ff2e13419a210afd95ff0f742012da98fcdfbc2ba9e30"
+    }
+  ]
+}

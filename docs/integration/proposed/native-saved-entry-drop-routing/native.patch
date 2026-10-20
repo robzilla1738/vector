@@ -1,0 +1,94 @@
+--- a/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h
++++ b/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h
+@@ -12,6 +12,7 @@
+ #include "ui/views/view_tracker.h"
+ #include "url/gurl.h"
+ class BrowserWindowInterface;
++class BaseTabStripRegionView;
+ class Profile;
+ class ExpandOnHoverLock;
+ class PinnedTabContainerView;
+@@ -21,6 +22,13 @@
+ namespace aux {
+ class CrossSectionDragPreview;
+ class ProfilePreviewAdmission;
++enum class SavedEntryDropRoute { kNone, kSavedEntries, kUnpinnedTopBand };
++// Source465a498..465ab38, after the real publication guard. The top-band
++// result MUST return the actual unpinned target before the native52px path.
++SavedEntryDropRoute GetSavedEntryDropRoute(TabDragContext*,
++    const VerticalPinnedTabEntriesView&, BaseTabStripRegionView&,
++    const views::ScrollView*, const gfx::Point& point_in_screen);
++
+ // Original region6b0/e508f60: separate from the saved-entry View6a8.
+ // Own in AuxSidebarBody and retire BEFORE any native collection/leaf teardown.
+ class SavedEntryDropTarget final : public TabDragTarget {
+--- a/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
++++ b/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
+@@ -7,6 +7,8 @@
+ #include "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
++#include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
+ #include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_drag_handler.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_view.h"
+@@ -20,6 +22,58 @@
+ #include "ui/views/view_utils.h"
+ #include "ui/gfx/geometry/insets.h"
+ namespace aux {
++SavedEntryDropRoute GetSavedEntryDropRoute(TabDragContext* context,
++    const VerticalPinnedTabEntriesView& saved, BaseTabStripRegionView& region,
++    const views::ScrollView* outer, const gfx::Point& point) {
++  if (!context || (!region.GetPinnedTabsContainer() &&
++                   !region.GetUnpinnedTabsContainer()))
++    return SavedEntryDropRoute::kNone;
++  const auto* drag = context->GetDragController();
++  if (!drag || !drag->active() || drag->attached_context() != context)
++    return SavedEntryDropRoute::kNone;
++  const auto& data = drag->GetSessionData();
++  const bool any_pinned = std::ranges::any_of(data.tab_drag_data_,
++      [](const auto& entry) { return entry.pinned; });
++  // Original465a884: source89ef60 is View::GetVisibleBounds(), not preferred
++  // size. A scrolled contents origin offers the real unpinned top-edge target.
++  // Original metric57 dispatch is30 (ced81c8[57] ->5039b0);155's enum is34.
++  if (outer && outer->contents() && !any_pinned &&
++      outer->contents()->GetVisibleBounds().y() >= 1 &&
++      region.GetUnpinnedTabsContainer()) {
++    const auto bounds = outer->GetBoundsInScreen();
++    const gfx::Rect top_band(bounds.x(), bounds.y(), bounds.width(), 30 / 2);
++    if (top_band.Contains(point)) return SavedEntryDropRoute::kUnpinnedTopBand;
++  }
++  // Original465a5f8/465a998 and duplicate465a540/465aae0 tails.
++  if (data.tab_drag_data_.empty() || any_pinned || data.group_header_id())
++    return SavedEntryDropRoute::kNone;
++  auto* model = context->GetTabStripModel();
++  if (!model) return SavedEntryDropRoute::kNone;
++  bool found = false;
++  for (const auto& entry : data.tab_drag_data_) {
++    if (!entry.contents) continue;
++    const int index = model->GetIndexOfWebContents(entry.contents);
++    if (index == TabStripModel::kNoTab || model->GetTabAtIndex(index)->GetGroup())
++      return SavedEntryDropRoute::kNone;
++    found = true;
++  }
++  if (!found) return SavedEntryDropRoute::kNone;
++  if (saved.GetVisible() && saved.GetBoundsInScreen().Contains(point))
++    return SavedEntryDropRoute::kSavedEntries;
++  // Original465a530..53c: nonempty entries cannot route outside their visible
++  // screen bounds. Only the empty saved owner receives the fallback rectangle.
++  if (saved.HasSavedEntries() || !outer) return SavedEntryDropRoute::kNone;
++  gfx::Rect fallback;
++  if (auto* pinned = region.GetPinnedTabsContainer())
++    fallback = GetAuxEmptyPinnedDropBounds(region, outer, *pinned);
++  else {
++    const auto bounds = region.GetBoundsInScreen();
++    fallback = gfx::Rect(bounds.x(), outer->GetBoundsInScreen().y(),
++                         bounds.width(), 40 + 12);
++  }
++  return fallback.Contains(point) ? SavedEntryDropRoute::kSavedEntries
++                                  : SavedEntryDropRoute::kNone;
++}
+ SavedEntryDropTarget::SavedEntryDropTarget(BrowserWindowInterface& browser,
+     views::View& region, VerticalPinnedTabEntriesView& pins,
+     PinnedTabContainerView& physical, views::ScrollView& outer,
