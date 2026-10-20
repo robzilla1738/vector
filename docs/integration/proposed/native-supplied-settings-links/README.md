@@ -1,0 +1,19 @@
+# Supplied Settings browser-internal links
+
+Actual native533 and pinned Agent1.26.1016.1852 are the inputs. This proposal changes only native URL compatibility; no packaged UI, markup, CSS, typography, attribution, account state or service result is changed.
+
+The supplied `chrome-link-Bxy4lIOR.js` passes `to` directly to `chrome.tabs.create({url:e})`. General Settings uses `aside://credits/`, Appearance uses `aside://settings/appearance`, and Privacy uses `aside://settings/content`, `aside://settings/security`, `aside://history/`, and `aside://adblock-internals`. All six original strings and source file hashes are pinned in `source-evidence.json`. There is no frontend scheme conversion. Root observed the original literal links in the actual533 supplied Settings UI; Cmd+, already opens the correct real `/main.html#/u/0/settings/general` account route.
+
+Current native registers `aux` as a standard scheme and handles only its adblock/import-data aliases. It does not register or handle the supplied `aside` scheme. Existing Chromium WebUI configurations register Credits, History and Settings, and the current Aux adblock alias already resolves to `chrome://aux-adblock-internals`. The proposed compatibility branch preserves the supplied link bytes and maps those six targets to their real current native owners. Existing `aux://import-data` remains unchanged.
+
+The common client registers the legacy scheme on Mac for host parsing, alongside its existing Aux scheme registration. Actual navigation rewriting remains inside the existing Aux-browser build guard; the additional supplied builtins are Mac-only. No common-to-browser buildflags dependency is introduced. Rewrites reject username/password/port components and accept only the exact supplied Settings paths, root Credits/History paths and existing native adblock target. Other hosts and settings paths are not given a generic privileged rewrite. Supplied public wire commands and cryptographic domains are untouched.
+
+`manifest.json` contains one counted anchor per file, complete baseline/output hashes and actual533 preimages. `native.patch` applies to those exact preimages. `verify.py` replays both anchors and patch without accessing the native checkout or executing supplied JS. Root owns native application, compilation and actual click observation. No real profile, credentials, Keychain, browser runtime, native build or signing was accessed for this proposal.
+
+## Pass1 bounded adjacent findings
+
+The supplied keyboard-customization capability gate is intentional: `use-shortcut-capture-DGr8Ws5Z.js` requires all four methods (`getKeyboardShortcuts`, `setKeyboardShortcut`, `resetKeyboardShortcut`, `setShortcutHandlingSuspended`). Its fallback deliberately allows only the Mini popup setter and tells other callers to update Aside. Root also observed disabled controls in the current Aside reference. This proposal does not invent support or enable controls without a real native owner.
+
+Current New Chat and Settings use `aux_chat_navigation.cc`'s real authenticated `accounts.ensureProfileAccount` result; exact returned account IDs, including zero, select supplied `main.html` routes. Profile-menu Settings forwards to that same resolver. Supplied background New Chat/session creation opens `sidepanel.html` with the actual returned session ID through `chrome.sidePanel`, rather than an independently rendered chat page. None of these entrypoints needs a guessed route replacement in this slice. Actual model/reasoning/project selection, session creation and resize/reopen remain root's live scenarios, not static acceptance claims.
+
+The owner-excluded password-import claim in General Settings is a separate concrete supplied-resource change. It is not silently folded into this native-only patch, because changing that resource requires a fresh signed resource baseline rather than reusing the exact527 cache.

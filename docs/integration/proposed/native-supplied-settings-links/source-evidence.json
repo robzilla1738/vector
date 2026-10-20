@@ -1,0 +1,30 @@
+{
+  "component": "Agent1.26.1016.1852",
+  "files": [
+    {
+      "path": "assets/chrome-link-Bxy4lIOR.js",
+      "sha256": "1bec10fb867a9168b4b76fe1c7472bf8eeaed3940ff1c5523469997de5e872c3",
+      "size": 817
+    },
+    {
+      "path": "assets/general-3dgRbrRk.js",
+      "sha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "size": 597022
+    },
+    {
+      "path": "assets/appearance-Ceuw3-j6.js",
+      "sha256": "5d6795dc6c007d961e8960cc41e6825634be81da00d023e179647bc22e20f318",
+      "size": 20862
+    },
+    {
+      "path": "assets/privacy-BeEEt9Qu.js",
+      "sha256": "b69101623284eed5fb8c7a108489861f7dc65cd9c4885584992624c1f883556c",
+      "size": 30724
+    },
+    {
+      "path": "assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "sha256": "4223c21368db248316b71f434dafa996af0def37f2db26fc9d80caf19e2cad7c",
+      "size": 5183
+    }
+  ]
+}

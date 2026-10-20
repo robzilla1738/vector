@@ -1,0 +1,29 @@
+{
+  "baseline": "actual-native-v533",
+  "files": [
+    {
+      "path": "chrome/common/chrome_content_client.cc",
+      "baselineSha256": "12a07605f41c7ed113c0d0a21080fecb0cb039d66c48b57acb8f5d85d7f5a437",
+      "outputSha256": "b2b0e805529733c5ef8f858f5beae31bf881e9ca3db0b2e9a60863c5ddae64ae",
+      "anchors": [
+        {
+          "find": "  schemes->secure_schemes.push_back(\"aux\");",
+          "replace": "  schemes->secure_schemes.push_back(\"aux\");\n#if BUILDFLAG(IS_MAC)\n  // Supplied Agent settings retain these browser-internal links. Register the\n  // legacy scheme for host parsing; only explicit Aux browser aliases resolve.\n  schemes->standard_schemes.push_back(\"aside\");\n  schemes->secure_schemes.push_back(\"aside\");\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "baselineSha256": "c9ded0fc3e03c762867bced5d6545d0cf0b0a252d90a8f6b352b5b65a7a52ddf",
+      "outputSha256": "0161c04a28dedf184c19f43d0d3a727affaa5843594abf7213c1e700c65dd948",
+      "anchors": [
+        {
+          "find": "  handler->AddHandlerPair([](GURL* url, content::BrowserContext*) { if (!url->SchemeIs(\"aux\") || (url->host() != \"adblock-internals\" && url->host() != \"import-data\")) return false; GURL::Replacements rewrite; rewrite.SetSchemeStr(\"chrome\"); rewrite.SetHostStr(url->host() == \"import-data\" ? \"aux-import-data\" : \"aux-adblock-internals\"); *url = url->ReplaceComponents(rewrite); return true; }, BrowserURLHandler::null_handler());",
+          "replace": "  handler->AddHandlerPair(\n      [](GURL* url, content::BrowserContext*) {\n        const bool aux_scheme = url->SchemeIs(\"aux\");\n#if BUILDFLAG(IS_MAC)\n        const bool supplied_scheme = url->SchemeIs(\"aside\");\n#else\n        const bool supplied_scheme = false;\n#endif\n        if ((!aux_scheme && !supplied_scheme) || url->has_username() ||\n            url->has_password() || url->has_port()) {\n          return false;\n        }\n        std::string target_host;\n        if (url->host() == \"adblock-internals\") {\n          target_host = \"aux-adblock-internals\";\n        } else if (aux_scheme && url->host() == \"import-data\") {\n          target_host = \"aux-import-data\";\n#if BUILDFLAG(IS_MAC)\n        } else if ((url->host() == \"credits\" || url->host() == \"history\") &&\n                   url->path_piece() == \"/\") {\n          target_host = url->host();\n        } else if (url->host() == \"settings\" &&\n                   (url->path_piece() == \"/appearance\" ||\n                    url->path_piece() == \"/content\" ||\n                    url->path_piece() == \"/security\")) {\n          target_host = \"settings\";\n#endif\n        } else {\n          return false;\n        }\n        GURL::Replacements rewrite;\n        rewrite.SetSchemeStr(\"chrome\");\n        rewrite.SetHostStr(target_host);\n        *url = url->ReplaceComponents(rewrite);\n        return true;\n      },\n      BrowserURLHandler::null_handler());",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

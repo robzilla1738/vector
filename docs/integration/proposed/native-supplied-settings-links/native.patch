@@ -1,0 +1,62 @@
+--- a/chrome/common/chrome_content_client.cc
++++ b/chrome/common/chrome_content_client.cc
+@@ -203,6 +203,12 @@
+ void ChromeContentClient::AddAdditionalSchemes(Schemes* schemes) {
+   schemes->standard_schemes.push_back("aux");
+   schemes->secure_schemes.push_back("aux");
++#if BUILDFLAG(IS_MAC)
++  // Supplied Agent settings retain these browser-internal links. Register the
++  // legacy scheme for host parsing; only explicit Aux browser aliases resolve.
++  schemes->standard_schemes.push_back("aside");
++  schemes->secure_schemes.push_back("aside");
++#endif
+ #if BUILDFLAG(ENABLE_AUX_RESULT_SCHEME)
+   // Every result document receives an opaque origin. Never add this scheme to
+   // WebStorage, service worker, CORS, or CSP-bypass registries.
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -5166,7 +5166,43 @@
+ void ChromeContentBrowserClient::BrowserURLHandlerCreated(
+     BrowserURLHandler* handler) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+-  handler->AddHandlerPair([](GURL* url, content::BrowserContext*) { if (!url->SchemeIs("aux") || (url->host() != "adblock-internals" && url->host() != "import-data")) return false; GURL::Replacements rewrite; rewrite.SetSchemeStr("chrome"); rewrite.SetHostStr(url->host() == "import-data" ? "aux-import-data" : "aux-adblock-internals"); *url = url->ReplaceComponents(rewrite); return true; }, BrowserURLHandler::null_handler());
++  handler->AddHandlerPair(
++      [](GURL* url, content::BrowserContext*) {
++        const bool aux_scheme = url->SchemeIs("aux");
++#if BUILDFLAG(IS_MAC)
++        const bool supplied_scheme = url->SchemeIs("aside");
++#else
++        const bool supplied_scheme = false;
++#endif
++        if ((!aux_scheme && !supplied_scheme) || url->has_username() ||
++            url->has_password() || url->has_port()) {
++          return false;
++        }
++        std::string target_host;
++        if (url->host() == "adblock-internals") {
++          target_host = "aux-adblock-internals";
++        } else if (aux_scheme && url->host() == "import-data") {
++          target_host = "aux-import-data";
++#if BUILDFLAG(IS_MAC)
++        } else if ((url->host() == "credits" || url->host() == "history") &&
++                   url->path_piece() == "/") {
++          target_host = url->host();
++        } else if (url->host() == "settings" &&
++                   (url->path_piece() == "/appearance" ||
++                    url->path_piece() == "/content" ||
++                    url->path_piece() == "/security")) {
++          target_host = "settings";
++#endif
++        } else {
++          return false;
++        }
++        GURL::Replacements rewrite;
++        rewrite.SetSchemeStr("chrome");
++        rewrite.SetHostStr(target_host);
++        *url = url->ReplaceComponents(rewrite);
++        return true;
++      },
++      BrowserURLHandler::null_handler());
+ #endif
+   // The group policy NTP URL handler must be registered before the other NTP
+   // URL handlers below. Also register it before the "parts" handlers, so the
