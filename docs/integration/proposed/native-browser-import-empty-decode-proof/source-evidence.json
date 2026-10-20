@@ -1,0 +1,24 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "input-output-and-attempt.asm",
+      "start": "0x425b314",
+      "endExclusive": "0x425b3ac",
+      "bytesSha256": "6ba729c498161cc6dce19a5801623f27416db69a3a6dea89216bdaee3bd066b3",
+      "sha256": "8f33a296c88d8eda6c6ed1d5edb719e35947c66dcd4b4d1a26cc0683bdb90707"
+    },
+    {
+      "file": "success-count-and-form.asm",
+      "start": "0x425b800",
+      "endExclusive": "0x425b850",
+      "bytesSha256": "8d351d500846ec520c783118a8a2b39541c52057c94bf12a09f219dc9c662475",
+      "sha256": "adf94e4e31bc428397e2a1437bdf738d455d972716b740f74e228eb4a16d381f"
+    }
+  ],
+  "nativeChanges": [],
+  "runtimeOperations": []
+}
