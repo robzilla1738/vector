@@ -13,7 +13,7 @@ Both original password and cookie derivation sites use `saltysalt`, 1003 iterati
 ## Evidence
 
 - `selectors.asm`: 426abd0..426b0e8, exact service/account branches and vtable+0x58 call.
-- `key-caller.asm`: 425957c..4259690, original source eligibility/Local State conditions before the helper. This patch does not claim to port those missing full-owner conditions.
+- `key-caller.asm`: 425957c..4259690, original source eligibility/encrypted-database presence conditions before the helper. The bounded 4259690 helper checks Login Data, Login Data For Account, Cookies and Network/Cookies; the full-owner eligibility/copy lifecycle is not claimed ported by this selector slice.
 - `query.asm`, `read.asm`: actual original KeychainV2 query and read/result path. Original query constructor is 8918fdc; virtual read is 8919474. Compare pinned current Chromium `crypto/apple/keychain_v2.mm` `MakeGenericPasswordQuery` / `FindGenericPassword`; exact same service/account query shape.
 - `password-derivation.asm`, `cookie-derivation.asm`, `v10.asm`: shared derivation/decryption constants and branches; no family-specific replacement format is invented.
 - `source-evidence.json`: full original arm64 hash, every bounded raw byte hash, current helper/API and discovery source hashes.
