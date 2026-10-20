@@ -1,0 +1,76 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "special-setter",
+      "start": "0x4134400",
+      "stopExclusive": "0x413447c",
+      "bytesSha256": "70d633b3f6fda74a808ad26c9a275b77249bd864067f059f11c431be817bc9d7",
+      "asmSha256": "a46afd14abf2ba5c1194ca6dd278c454dddf65af1095bfe5d6bb702db5559970"
+    },
+    {
+      "name": "snap-predicate",
+      "start": "0x4134620",
+      "stopExclusive": "0x413469c",
+      "bytesSha256": "fad58da7f390a374a7b414ce212830793df60d721dfa9d48d54cfd0454c30c54",
+      "asmSha256": "67986f675bdd1d18c28762239c5cd5d5cb20e7e8d6820779666f68b0c9ede3ee"
+    },
+    {
+      "name": "vertical-layout",
+      "start": "0x4135080",
+      "stopExclusive": "0x4135570",
+      "bytesSha256": "d3f174e04b7deac92a96ea11a9a9778f4dd3ed80499ce829da934a5c34bafa59",
+      "asmSha256": "6bcf884883f3130e598e31d92f2d92a202dee9af5f35f964165952c5fbe27c2e"
+    },
+    {
+      "name": "vertical-minimum",
+      "start": "0x4135580",
+      "stopExclusive": "0x4135714",
+      "bytesSha256": "9ddf445c8b6ce76454c29f8c4b81c5425c790a0440e09c672a417785865da8a4",
+      "asmSha256": "0c3cf58346f07fa8661275531216e75fee0c360b744170f28515e3d40fd6081b"
+    },
+    {
+      "name": "contents-scroll-oracle",
+      "start": "0x3161a40",
+      "stopExclusive": "0x3161afc",
+      "bytesSha256": "df1af1be7585932f4453c9dc3fa704c831afe5f0b45e2b54699fc06c4fe15b82",
+      "asmSha256": "9573e12381469f3a6113fcac4063c1ed5d0902113715fdc8374120af8acfa8c1"
+    },
+    {
+      "name": "scroll-ancestor-walk",
+      "start": "0x41290b0",
+      "stopExclusive": "0x4129128",
+      "bytesSha256": "f2f1726953c0e1e601cece9b6e91faf2b23b47c2a9d2e5da98a5c15bfc8ba60d",
+      "asmSha256": "d0e10cd307d875f2d7d575723aba338c62eac3c53d440482274d768368de6a61"
+    },
+    {
+      "name": "split-metadata",
+      "start": "0x78a0550",
+      "stopExclusive": "0x78a05a0",
+      "bytesSha256": "36368e2a6330c79c7a7000516b5cbc6821bf8661147692c32f95097f18769bb8",
+      "asmSha256": "0305056c32a1ad3d9c1ca950d493361992ee94d68448c5feb565bd970277d55b"
+    },
+    {
+      "name": "visibility-oracle",
+      "start": "0x78af854",
+      "stopExclusive": "0x78af8f8",
+      "bytesSha256": "6b6f828e44d67d150741db4cabf2523645ae3798cb767d0e415d58861d078058",
+      "asmSha256": "c86ac821d264a758ba98d63b39b8392400925b403151a44bef7c7a291edb24b9"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xda9b9a7",
+      "text": "SplitTabView",
+      "bytesSha256": "6123165a71a0d2ff4e275fb184535596908bc540257a8d1441d6e46e99d24981"
+    },
+    {
+      "address": "0xdd448f6",
+      "text": "../../ui/views/controls/scroll_view.h",
+      "bytesSha256": "c0a548d4369f646f92e9fdedcb686925307863564a8e03b9dd92f984b4f59681"
+    }
+  ]
+}

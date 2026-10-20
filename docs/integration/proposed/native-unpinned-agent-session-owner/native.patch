@@ -1,0 +1,139 @@
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h
+@@ -59,6 +59,14 @@
+   // ignoring any active tab closing mode override.
+   int GetUnconstrainedPreferredWidth() const;
+ 
++  // The supplied Agent aggregate is a genuine child of this container, outside
++  // the physical tab-collection tree. The caller reparents it before setting it
++  // and clears this association before removing it.
++  void SetAgentSessionTabsView(views::View* view);
++  views::View* agent_session_tabs_view() const {
++    return agent_session_tabs_view_;
++  }
++
+   // Sets the main-axis space allocated for this container during TabStripView
+   // layout passes.
+   void SetAvailableSpace(views::SizeBound space) { available_space_ = space; }
+@@ -82,6 +90,7 @@
+   void ResetCollectionNode();
+ 
+   raw_ptr<TabCollectionNode> collection_node_;
++  raw_ptr<views::View> agent_session_tabs_view_ = nullptr;
+ 
+   // The available main-axis space allocated by TabStripViewLayout.
+   views::SizeBound available_space_;
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc
+@@ -110,7 +110,15 @@
+                      base::Unretained(this)));
+ }
+ 
+-UnpinnedTabContainerView::~UnpinnedTabContainerView() = default;
++UnpinnedTabContainerView::~UnpinnedTabContainerView() {
++  agent_session_tabs_view_ = nullptr;
++}
++
++void UnpinnedTabContainerView::SetAgentSessionTabsView(views::View* view) {
++  CHECK(!view || view->parent() == this);
++  agent_session_tabs_view_ = view;
++  InvalidateLayout();
++}
+ 
+ 
+ std::optional<BrowserRootView::DropIndex>
+@@ -213,7 +221,8 @@
+ 
+ bool UnpinnedTabContainerView::ShouldSnapToTarget(
+     const views::View& child_view) const {
+-  return views::IsViewClass<SplitTabView>(&child_view);
++  return &child_view == agent_session_tabs_view_ ||
++         views::IsViewClass<SplitTabView>(&child_view);
+ }
+ 
+ std::optional<views::SizeBound>
+@@ -261,8 +270,15 @@
+ }
+ 
+ views::ScrollView* UnpinnedTabContainerView::GetScrollViewForContainer() const {
+-  return views::ScrollView::GetScrollViewForContents(
+-      const_cast<UnpinnedTabContainerView*>(this));
++  // External mode nests this container beneath the shared body scroll view.
++  // Preserve the supplied ancestor walk around the real contents oracle.
++  for (auto* view = const_cast<UnpinnedTabContainerView*>(this); view;
++       view = view->parent()) {
++    if (auto* scroll_view = views::ScrollView::GetScrollViewForContents(view)) {
++      return scroll_view;
++    }
++  }
++  return nullptr;
+ }
+ 
+ void UnpinnedTabContainerView::UpdateTargetLayoutForDrag(
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+@@ -216,11 +216,14 @@
+   std::optional<tab_groups::TabGroupId> focused_group_id =
+       GetFocusedGroupId(tab_container_view);
+ 
+-  const auto children =
+-      tab_container_view->collection_node_->GetDirectChildren();
++  auto children = tab_container_view->collection_node_->GetDirectChildren();
++  if (auto* agent_tabs = tab_container_view->agent_session_tabs_view()) {
++    children.insert(children.begin(), agent_tabs);
++  }
+ 
+   int width = 0;
+-  int height = 0;
++  int height = 1;
++  int visible_children = 0;
+   int dragged_view_bottom = 0;
+   auto collapse_state = tab_container_view->GetTabStripCollapseState();
+ 
+@@ -270,13 +273,12 @@
+                        horizontal_padding);
+     }
+     layouts.child_layouts.emplace_back(child, true, bounds);
+-    height += bounds.height() + kTabVerticalPadding;
++    height += bounds.height() + 4;
++    ++visible_children;
+     width = std::max(width, bounds.width() + bounds.x());
+   }
+ 
+-  if (height > 0) {
+-    height -= kTabVerticalPadding;
+-  }
++  height = visible_children ? height + 4 : 0;
+ 
+   if (tab_container_view->IsHandlingDrag()) {
+     dragged_view_bottom = tab_container_view->GetDraggingViewsBounds().bottom();
+@@ -327,13 +329,18 @@
+ gfx::Size UnpinnedTabContainerViewLayout::CalculateVerticalMinimumSize(
+     const UnpinnedTabContainerView* tab_container_view) const {
+   if (!tab_container_view->collection_node_) {
+-    return gfx::Size();
++    return gfx::Size(
++        GetLayoutConstant(LayoutConstant::kVerticalTabMinWidth), 0);
+   }
+ 
+   std::optional<tab_groups::TabGroupId> focused_group_id =
+       GetFocusedGroupId(tab_container_view);
+ 
+-  int num_children = 0;
++  const auto* agent_tabs = tab_container_view->agent_session_tabs_view();
++  int num_children = agent_tabs && agent_tabs->GetVisible() &&
++                             !focused_group_id.has_value()
++                         ? 1
++                         : 0;
+   for (const auto* child :
+        tab_container_view->collection_node_->GetDirectChildren()) {
+     bool should_show = true;
+@@ -352,7 +359,7 @@
+   const int min_height =
+       base::ClampCeil(GetLayoutConstant(LayoutConstant::kVerticalTabHeight) *
+                       std::min(1.5f, static_cast<float>(num_children))) +
+-      (num_children > 1 ? kTabVerticalPadding : 0);
++      (num_children > 1 ? 4 : 0) + (num_children > 0 ? 1 : 0);
+   return gfx::Size(GetLayoutConstant(LayoutConstant::kVerticalTabMinWidth),
+                    min_height);
+ }

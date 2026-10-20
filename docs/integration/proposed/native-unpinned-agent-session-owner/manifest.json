@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "actual shared native Unpinned files before external-scroll root proposal (no overlap)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h",
+      "baselineSha256": "af00869517c823dd586c071d189ee1f32d188470005ca2175aa0d85c0527b37f",
+      "outputSha256": "2ea86864500e3ad0b4762f9fea19911a1ebce8ccbab3cfb11a30993ba437098a"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc",
+      "baselineSha256": "91918b233cd09250e22c6e8e0a54012183910d598ce66833b407fa2854fc6b1e",
+      "outputSha256": "a8bd7247eaadec7eeb20d840ceb9fd6e3491f9a69133b8dd5c6d1b58b77726f5"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc",
+      "baselineSha256": "7531777741d1ecbee97ce09fb048a3ceef7c9947326da9b661bfdbbef8a5a7d2",
+      "outputSha256": "4c64a3aa4f8669f32af714bb9872b3b90ac1ae1ecef716efd58c340a5068aff1"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
