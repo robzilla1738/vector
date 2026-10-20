@@ -1,0 +1,12 @@
+--- a/chrome/browser/ui/startup/startup_browser_creator_impl.cc
++++ b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+@@ -274,8 +274,7 @@
+           }
+           const auto* registry = extensions::ExtensionRegistry::Get(target.get());
+           return registry &&
+-                 registry->ready_extensions().Contains(aux::kAgentExtensionId) &&
+-                 registry->ready_extensions().Contains(aux::kVaultExtensionId);
++                 registry->ready_extensions().Contains(aux::kAgentExtensionId);
+         }, weak_profile));
+     if (!ready || !weak_profile || weak_profile->ShutdownStarted()) {
+       profile_ = nullptr;

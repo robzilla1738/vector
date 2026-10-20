@@ -1,0 +1,1 @@
+Require Agent readiness only in the initial regular-profile browser launch. The removed Vault cannot become ready. Retains live-profile and actual Agent ready-extension checks, with no synthetic preferences or account state.

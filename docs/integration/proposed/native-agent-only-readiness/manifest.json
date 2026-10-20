@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "baselineSha256": "282fb4eb6424e9a1b3bf393c92a6524c3b31c0dec79e16ae550a5ca0058ae1d6",
+      "outputSha256": "d003b9548d0278be739b0c4c6f3ab9ab0bcd2cfcf19a701174c99a55748bb2c7"
+    }
+  ]
+}
