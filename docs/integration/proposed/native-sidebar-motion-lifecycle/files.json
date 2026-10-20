@@ -1,0 +1,30 @@
+{
+  "baseComposition": "v522",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "baselineSha256": "6e709bfdd3ae373a784ee6fe3c38067c8b3acd123828673f4b563f54f08a6ad8",
+      "outputSha256": "233722b90112c4db681b0d2900c85aaaf23ba01516e594594dd668e101502d64"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.cc",
+      "baselineSha256": "d3a6b4f72b0a3eb27c3b21cb6f4e2df53058b3d30ae1fa1e05ed17a5ef322205",
+      "outputSha256": "aa1e8a5e3c91032cd5fbbd5f82478612c11456ff6ff66a385e542505141fbef5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "3b942776a8b13834460874393ac6f1d9b65099eab9ad61e6b157a70c070546f0",
+      "outputSha256": "6e6504b22ae60b6e812b2a56c76173957ddf8ac2c480224152335bfed32766be"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "c0e5476dfab5d00969728670b40823c7444978a86d82361cc4d546be18613495",
+      "outputSha256": "7f87aa5419222d18cdb464ae6b0e7daa0e021c84c3d41fec0bc0131b95d82f3a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "801064cc5fa925705b0a5c964a01e54302fc32aa8644870d7b3a5d7fb2391c1f",
+      "outputSha256": "dcaa8e35629125b895a2db19d61ac82dfaaca71c30e10c305a52961731917918"
+    }
+  ]
+}

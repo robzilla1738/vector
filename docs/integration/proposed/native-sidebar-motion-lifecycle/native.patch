@@ -1,0 +1,119 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
+@@ -32,6 +32,8 @@
+     // Genuine top-container/layout/pinned-leaf effects remain region-owned.
+     virtual void RetentionAcquired() = 0;
+     virtual void HoverExpandedChanged(bool expanded) = 0;
++    virtual void StartCollapseMotion(bool collapsed) = 0;
++    virtual void ClearFrameAnimation() = 0;
+     virtual void CollapseTransitionStarted() = 0;
+     virtual void CollapseTransitionProgressed() = 0;
+     virtual void CollapseTransitionSettled(bool completed) = 0;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_admission.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_admission.cc
+@@ -191,6 +191,11 @@
+     delegate_->ResetExpandOnHoverTimers();
+     if (!weak)
+       return;
++    // Original 46496f0..4649704 cancels the frame group with clear=true.
++    // A Reset would preserve the settled hover width instead.
++    delegate_->ClearFrameAnimation();
++    if (!weak)
++      return;
+     collapse_.Reset(1);
+     if (!weak)
+       return;
+@@ -212,6 +217,9 @@
+     collapse_.Hide();
+   else
+     collapse_.Show();
++  // Original 46494ec..46495c4 starts the frame motion after the region slide.
++  if (weak)
++    delegate_->StartCollapseMotion(collapsed);
+   if (weak)
+     delegate_->CollapseStateChanged(collapsed);
+ }
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -323,6 +323,8 @@
+   void UpdateExpandOnHover(std::optional<bool>) override;
+   void RetentionAcquired() override;
+   void HoverExpandedChanged(bool) override;
++  void StartCollapseMotion(bool) override;
++  void ClearFrameAnimation() override;
+   void CollapseTransitionStarted() override;
+   void CollapseTransitionProgressed() override;
+   void CollapseTransitionSettled(bool) override;
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -319,8 +319,8 @@
+     const BrowserAnimationController* controller,
+     BrowserAnimationUpdate status) {
+   if (aux_profile_preview_admission_) {
+-    // Collapse is owned by its recovered SlideAnimation. This subscription
+-    // drives only the original controller-based hover motion (4650c50..c8c).
++    // The recovered SlideAnimation owns region width and admission. The
++    // frame controller owns its companion collapse and hover transitions.
+     if (status == BrowserAnimationUpdate::kStarted)
+       hover_card_animation_lock_ = hover_card_controller()->GetHoverCardHideLock();
+     else if (status == BrowserAnimationUpdate::kEnded ||
+@@ -996,11 +996,10 @@
+   // Pre-set the animation values to the appropriate state.
+   auto* const animation_controller =
+       BrowserAnimationController::From(browser_view()->browser());
+-  if (!aux_profile_preview_admission_)
+-    animation_controller->Reset(TabStripAnimations::kVerticalTabStrip,
+-                                target_collapse_state_.collapsed
+-                                    ? TabStripAnimations::kCollapse
+-                                    : TabStripAnimations::kExpand);
++  animation_controller->Reset(TabStripAnimations::kVerticalTabStrip,
++                              target_collapse_state_.collapsed
++                                  ? TabStripAnimations::kCollapse
++                                  : TabStripAnimations::kExpand);
+ 
+   on_animation_update_subscription_ = animation_controller->Subscribe(
+       TabStripAnimations::kVerticalTabStrip,
+@@ -1584,6 +1583,16 @@
+   aux_profile_pager_held_visibility_.reset();
+   if (aux_profile_header_)
+     aux_profile_header_->SetHeldChildBounds(std::nullopt);
++}
++void VerticalTabStripRegionView::StartCollapseMotion(bool collapsed) {
++  BrowserAnimationController::From(browser_view()->browser())
++      ->Start(TabStripAnimations::kVerticalTabStrip,
++              collapsed ? TabStripAnimations::kCollapse
++                        : TabStripAnimations::kExpand);
++}
++void VerticalTabStripRegionView::ClearFrameAnimation() {
++  BrowserAnimationController::From(browser_view()->browser())
++      ->Clear(TabStripAnimations::kVerticalTabStrip);
+ }
+ void VerticalTabStripRegionView::CollapseTransitionStarted() {
+   if (tab_strip_view())
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -629,13 +629,20 @@
+   animation.bottom_corner = *controller->GetCurrentValue(
+       TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kBottomCorner);
+ 
+-  // Aux's recovered region owns collapse/hover/retention. It intentionally does
+-  // not start BrowserAnimationController motions, whose default is collapsed.
+-  // Project the live owner into the typed layout instead of reading that stale
+-  // default (which otherwise places the toolbar above an expanded sidebar).
++  // The recovered region slide owns admission and reserved width; its companion
++  // frame controller owns hover interpolation. Persisted values alone cannot
++  // admit an overlay once the original retained lifecycle has been cleared.
+   if (const auto* region = views().vertical_tab_strip_region_view.get()) {
+     if (const auto* admission = region->GetAuxProfilePreviewAdmission()) {
+       const double expanded = admission->collapse_value();
++      const bool hover_motion =
++          animation.current_motion == TabStripAnimations::kExpandOnHover ||
++          animation.current_motion == TabStripAnimations::kCollapseOnHover;
++      if (!admission->retained() && !admission->hover_expanded() &&
++          !hover_motion) {
++        animation.expand_on_hover_width = 0.0;
++        animation.expand_on_hover_opacity = 0.0;
++      }
+       const bool overlay = animation.expand_on_hover_width > 0.0 ||
+                            admission->hover_expanded() || admission->retained();
+       animation.current_motion = BrowserAnimationMotion();
