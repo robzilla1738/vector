@@ -1,0 +1,81 @@
+{
+  "packs": [
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/aside_resources.pak",
+      "sha256": "9154366230e25e68f061fee32b5fb6cb5d3fd4074354f791b1dedd9dea59f362",
+      "bytes": 894194
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/resources.pak",
+      "sha256": "d171d77d3c946a22e76d9a5b399a5381f9da704bee09d5f1561f93ca9ba1d728",
+      "bytes": 19749271
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/chrome_100_percent.pak",
+      "sha256": "dfbd0d60b9a4a74358bccc8dd3a8372a13382fec2bb65299616fb1e6948a2021",
+      "bytes": 680674
+    },
+    {
+      "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/chrome_200_percent.pak",
+      "sha256": "cb00b307179f26b39338b7f0de7ae484c263d0e03f6f81b84863d2cd5f902f68",
+      "bytes": 1362238
+    }
+  ],
+  "settingsResource": {
+    "id": 21027,
+    "start": 10014661,
+    "end": 10361401,
+    "codec": "brotli",
+    "rawSha256": "3422739b3edb9c02bf55a142d8ec654c04c243fd6795c7797f9cd6f07a800074",
+    "decodedSha256": "b1facdd16a053295e95f871f53693f58d0dbbe9e7e9ef70327cc62d5764c5c5b"
+  },
+  "snippets": [
+    {
+      "offset": 1119610,
+      "bytes": 73,
+      "sha256": "125bd293d0373e2001b4c125549047b5a9fe9cbb5f938aac6d1b2acdd6edbfd3",
+      "file": "button-target.txt"
+    },
+    {
+      "offset": 1117551,
+      "bytes": 86,
+      "sha256": "8855e2ee51e160ec2a203db433791dcb7de2b20cb2fbcba7b74c99ef29a16bba",
+      "file": "route-dialog.txt"
+    }
+  ],
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x7dc3690",
+      "end": "0x7dc3730",
+      "sha256": "f862e2bf59d81bebb4ec26620d6792b89d3c0d91802ac84e8f8309ee4b60c4c8",
+      "listing": "original-import-dialog-registration.asm",
+      "listingSha256": "0768226e78a2729a4a31344dcf0e03b1ebbe32d12097a0e12c888abf57b71da5"
+    },
+    {
+      "start": "0x7dc3794",
+      "end": "0x7dc38c4",
+      "sha256": "d2a4a5dad71280029dea9fd1e330a8e6f5b936b4a63f2d38fcb763ebc6159499",
+      "listing": "original-import-dialog-initialize.asm",
+      "listingSha256": "54a3aef426fe704ed083399dc45fcfc032dbf18d2f3efa33dba9ba2504cfa81e"
+    },
+    {
+      "start": "0x7dc3e7c",
+      "end": "0x7dc4084",
+      "sha256": "e79a5f8954befd55fa79103a4be8ed9d8c64d1703327e81371c5499c9eaff6de",
+      "listing": "original-import-dialog-profile-reply.asm",
+      "listingSha256": "4c1f2d40343be5bb1ff562788829548f1043b2fae902b7c3ff4f52c9f766e50c"
+    }
+  ],
+  "currentNativeInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/resources/settings/people_page/people_page.ts",
+      "sha256": "bde80867f4f28a66ee3ae54d25577b6c22273a7a5209fd83c7543c7fc37055a4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui/settings/import_data_handler.cc",
+      "sha256": "57d86a896eee76cdc289838b8b92df73b779c7a30073b3dcb0e02ca7f4ed7df6"
+    }
+  ]
+}

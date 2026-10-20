@@ -1,0 +1,1 @@
+onImportDataClick_(){Router.getInstance().navigateTo(routes.IMPORT_DATA)}
