@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { assembleProvidedResources } from './provided-assembly.mjs';
 import { nativePackagingManifest } from '../../vendor/provided/native-packaging-manifest.mjs';
 import { xmlPlist } from '../../vendor/provided/prepare-development-dp.mjs';
+import { resolveProvidedSourceSnapshot } from './provided-source-snapshot.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const execute = promisify(execFile);
@@ -77,7 +78,7 @@ export async function retireCopiedIndependentRuntime(app, entries) {
   return { root: relative, packageName: identity.name, packageVersion: identity.version, files };
 }
 
-export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false }) {
+export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false, sourceSnapshotRoot }) {
   if (typeof developmentDpLayout !== 'boolean') throw new Error('Explicit boolean development layout required');
   stageRoot = await root(resolve(stageRoot));
   compositionRoot = await root(resolve(compositionRoot));
@@ -123,9 +124,10 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     artifacts.set(name, item);
   }
   for (const name of ['aux-native-carrier', 'libaux-native-boundary.dylib', 'aux-native-guard.node', 'aux-cli-launcher']) if (!artifacts.has(name)) throw new Error(`Missing boundary build artifact: ${name}`);
-  const sources = [stageRoot, seed, compositionRoot, ...[...artifacts.values()].map(item => dirname(item.path))];
+  const sourceSnapshot = await resolveProvidedSourceSnapshot({ snapshotRoot: sourceSnapshotRoot, repositoryRoot: repository });
+  const sources = [stageRoot, seed, compositionRoot, ...[...artifacts.values()].map(item => dirname(item.path)), ...(sourceSnapshot ? [sourceSnapshot.root] : [])];
   if (sources.some(source => inside(source, outputRoot) || inside(outputRoot, source))) throw new Error('Package sources and output overlap');
-  const audit = await execute(process.execPath, [join(repository, 'scripts/check-provided.mjs'), stageRoot], { cwd: repository, maxBuffer: 1024 * 1024 });
+  const audit = await execute(process.execPath, [join(repository, 'scripts/check-provided.mjs'), stageRoot, ...(sourceSnapshot ? ['--source-snapshot', sourceSnapshot.root] : [])], { cwd: repository, maxBuffer: 1024 * 1024 });
   const temporary = await mkdtemp(join(dirname(outputRoot), '.provided-package-'));
   try {
     const app = join(temporary, 'Aux.app');
@@ -177,6 +179,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     // must not publish a mixed candidate as the recorded native artifact.
     await verifyPackageInventory(seed, native.appFiles);
     for (const item of artifacts.values()) await pinnedFile(item.path, item.sha256);
+    if (sourceSnapshot) await pinnedFile(sourceSnapshot.manifestPath, sourceSnapshot.manifestSha256);
     const report = {
       version: 1, implementation: 'supplied', productionReady: false, signed: false,
       app: 'Aux.app', finalApp: assembled.finalApp,
@@ -185,6 +188,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       nativeFiles: retainedNativeFiles.length, nativeInputFiles: native.appFiles.length,
       retiredIndependentRuntime, suppliedResources: assembled.files.length, additions,
       sourceRoots: sources,
+      ...(sourceSnapshot ? { sourceSnapshot: { root: sourceSnapshot.root, manifestSha256: sourceSnapshot.manifestSha256, roots: sourceSnapshot.roots } } : {}),
       cliSea: `${cliExecutable}-sea`,
       developmentDpLayout, layoutChanges,
       localDevelopmentOnly: true,
