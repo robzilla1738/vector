@@ -1,0 +1,10 @@
+{
+  "baseline": "v520 plus native-hidden-sidebar-visibility (v521 staged)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "de33101609256e2ba72b35607ae2e9c9001ff89d0e89649e2bd4ba19cde123e6",
+      "outputSha256": "801064cc5fa925705b0a5c964a01e54302fc32aa8644870d7b3a5d7fb2391c1f"
+    }
+  ]
+}

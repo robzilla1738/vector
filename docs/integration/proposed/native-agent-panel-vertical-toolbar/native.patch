@@ -1,0 +1,40 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -27,6 +27,12 @@
+ #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
+ #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/side_panel/side_panel_ui.h"
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/component_bootstrap.h"
++#endif
+ #include "chrome/browser/ui/views/frame/custom_corners.h"
+ #include "chrome/browser/ui/views/frame/custom_corners_background.h"
+ #include "chrome/browser/ui/views/frame/custom_floating_corner.h"
+@@ -382,6 +388,24 @@
+   // Start with some preliminary values.
+   layout.force_top_container_to_top =
+       layout_data_->tab_strip_type != TabStripType::kHorizontal;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // The supplied Agent panel shares the toolbar row in vertical-tab windows.
++  // Other panel entries keep Chromium's default vertical-tab layout policy.
++  if (layout_data_->tab_strip_type == TabStripType::kVertical &&
++      views().side_panel &&
++      views().side_panel->GetCurrentEntryType() == SidePanelType::kToolbar) {
++    if (auto* browser_view =
++            views::AsViewClass<BrowserView>(views().browser_view.get())) {
++      auto* side_panel_ui = SidePanelUI::From(browser_view->browser());
++      if (side_panel_ui && side_panel_ui->IsSidePanelEntryShowing(
++              SidePanelEntryKey(SidePanelEntryId::kExtension,
++                                aux::kAgentExtensionId))) {
++        layout.force_top_container_to_top = false;
++      }
++    }
++  }
++#endif
+ 
+   layout.is_split_view = delegate().IsActiveTabSplit();
+ 
