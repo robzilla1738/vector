@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual261; single supplied Agent identity correction",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/settings_overridden_params_providers.cc",
+      "baselineSha256": "b17a2bf2eec5a0e6c3a860c73ae11977196fef60feded053d031473d2dac6b0d",
+      "outputSha256": "e8f098cb59d9c3706c55cd8d81ea78ad7fbea3e179a05a2b8c8983a438d0451c",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-ntp-override-probe-identity/baseline/chrome/browser/ui/extensions/settings_overridden_params_providers.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

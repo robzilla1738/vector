@@ -1,0 +1,140 @@
+{
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc",
+      "sha256": "95cbe49f6c6456b1ef13b2313b942ff9fc79224e101dfd8c81b788f9589016c7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/component_bootstrap.cc",
+      "sha256": "20f3ee3904ec22f12cf335190ba99d375f45ed4bae0d656a85b8db9e244ed997"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/component_bootstrap.h",
+      "sha256": "712bd86de1bbed01daed81bf630b10c51a42dceedf84657ccfbf63c8aec22131"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/ntp_prerender_service.cc",
+      "sha256": "d9d476ea4becbee2d3aed2b15c365b3f54408010191de6fdcc4b9b925b208bfa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "sha256": "282fb4eb6424e9a1b3bf393c92a6524c3b31c0dec79e16ae550a5ca0058ae1d6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/chrome_extension_system.cc",
+      "sha256": "3531d6c2ffeb393d5527e786d625851cd8ae261e2ccdc9babecce7e19bd10167"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_registrar.cc",
+      "sha256": "12e078d3f71b70ad739be68cb512f42d2cf52afb06760144e2bcb35069f6a4f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/extension_url_overrides_registrar.cc",
+      "sha256": "e79971ea078cbfadeb4b63cffb74a7d6321fa738a2d081254694a4b23292b507"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/extension_url_overrides.cc",
+      "sha256": "41a9732a8a72121384c4563c4054338ccd3d5bdfa7668e3f675ddc1e2f0e0dff"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/chrome_content_browser_client_extensions_part.cc",
+      "sha256": "d67b05e029a5827051a2ba4620192749973ffb9acb03030b70f8b6dbca9831d7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_content_browser_client.cc",
+      "sha256": "c9ded0fc3e03c762867bced5d6545d0cf0b0a252d90a8f6b352b5b65a7a52ddf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/browser_url_handler_impl.cc",
+      "sha256": "0b6a3783f6416e336faa39ba6ef6f0f6dcc7fa6544b0a45143284279457f594a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/webui_config_map.cc",
+      "sha256": "617002e215cba5a30a6ecd1fb196b7ac1cafc298abbbac42a400f51bc8584636"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui/ntp/new_tab_ui.cc",
+      "sha256": "e2ba5a17932cc1eb6eeabbded6bdcf126633d0175aa86ce60f8eee7df526bf87"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/extensions/settings_api_bubble_helpers.cc",
+      "sha256": "fd6ade8ca2482cb109f329213a1f2fbf86b65caf5bf246130059eb46a3eabcc5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/extensions/settings_overridden_params_providers.cc",
+      "sha256": "b17a2bf2eec5a0e6c3a860c73ae11977196fef60feded053d031473d2dac6b0d"
+    }
+  ],
+  "anchors": [
+    {
+      "path": "chrome/browser/extensions/chrome_extension_system.cc",
+      "find": "RegisterProfileComponents",
+      "effect": "Registers supplied Agent/Vault manifests through actual ComponentLoader::Add before default component registration."
+    },
+    {
+      "path": "extensions/browser/extension_registrar.cc",
+      "find": "registry_->TriggerOnLoaded(extension);",
+      "effect": "OnExtensionLoaded observers run before registry AddReady/TriggerOnReady."
+    },
+    {
+      "path": "chrome/browser/extensions/extension_url_overrides_registrar.cc",
+      "find": "RegisterOrActivateChromeURLOverrides",
+      "effect": "Synchronous OnExtensionLoaded observer registers actual manifest overrides."
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "find": "registry->ready_extensions().Contains(aux::kAgentExtensionId)",
+      "effect": "Initial regular Launch waits actual Agent/Vault ready registry before DetermineURLsAndLaunch."
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "find": "startup_deadline_ = base::TimeTicks::Now() + base::Seconds(10);",
+      "effect": "Source port uses original10second/250ms readiness: extensionsready and healthy, or timeout with extensionsready. Does not turn missingauth into success."
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "find": "ExtensionUrlOverrides::HandleChromeURLOverride(&url, profile)",
+      "effect": "Prerender eligibility resolves rawnewtab to exact enabledAgent URL and matchesmanifest override before hidden StartPrerendering."
+    },
+    {
+      "path": "chrome/browser/ui/extensions/settings_api_bubble_helpers.cc",
+      "find": "if (ntp_url != active_url)",
+      "effect": "MaybeShowExtensionControlledNewTabPage only reaches GetNtpOverriddenParams with an extension-scheme visible entry equal to actual rewrittennewtab."
+    },
+    {
+      "path": "chrome/browser/ui/extensions/settings_overridden_params_providers.cc",
+      "find": "if (extension->id() == \"fjdhphbdlfjogobdofoaagnlnkoibdge\")",
+      "effect": "Stale exemption misses actual AuxAgent and continues into GetPossibleRewrites(rawnewtab)."
+    },
+    {
+      "path": "content/browser/browser_url_handler_impl.cc",
+      "find": "GURL mutable_url(url);",
+      "effect": "GetPossibleRewrites passes a fresh original URL to EVERY handler, whereas RewriteURLIfNecessary stops at first success."
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "find": "WebUIConfigMap::GetInstance().GetConfig(browser_context,",
+      "effect": "Later WebUI rewrite handler probes config even when another independent handler produced extensionrewrite."
+    },
+    {
+      "path": "content/public/browser/webui_config_map.cc",
+      "find": "config->IsWebUIEnabled(browser_context)",
+      "effect": "Probe invokes actual NewTabUIConfig regularprofile check."
+    },
+    {
+      "path": "chrome/browser/ui/webui/ntp/new_tab_ui.cc",
+      "find": "Requested load of chrome://newtab/ for incorrect",
+      "effect": "Regularprofile returnsfalse/logs by design; this is a config eligibility check, not itself a committednavigation."
+    }
+  ],
+  "originalPrerenderEvidence": {
+    "artifact": "docs/integration/proposed/native-ntp-preloader/eligibility-arm64.txt",
+    "effect": "Original042b14c0 resolves chrome://newtab override and requires actual Agent host +manifestmatch; current implementation preserves this order."
+  },
+  "ownedObservation": {
+    "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v257-browser-disposable-launch.log",
+    "warningTimestamp": "23:08:13.604876",
+    "suppliedNewtabScriptTimestamp": "23:08:14.239237",
+    "limit": "No runtime stack or committed-navigation trace was captured. Source demonstrates a concrete non-navigation probe capable of this warning; timing alone does not prove a race or uniquely attribute the log."
+  }
+}

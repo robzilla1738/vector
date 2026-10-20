@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
++++ b/chrome/browser/ui/extensions/settings_overridden_params_providers.cc
+@@ -407,7 +407,7 @@
+     return std::nullopt;
+   }
+   // The Aux agent manager owns the new tab page by design.
+-  if (extension->id() == "fjdhphbdlfjogobdofoaagnlnkoibdge") {
++  if (extension->id() == "gokkffaiccpmoeodpmeamcjajcagjmkm") {
+     return std::nullopt;
+   }
+ 
