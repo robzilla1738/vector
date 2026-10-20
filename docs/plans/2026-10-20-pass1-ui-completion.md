@@ -21,10 +21,10 @@ flowchart LR
 | B | verified | Root: preserved533 and exact runtime cache | Recoverable prior app/source |
 | S | integrated | frame_style: sidebar rows/icons/footer source owners | Matched alignment, controls, actual status integration |
 | F | integrated | frame_geometry: toolbar/external frame/material/hover | Seamless correct surfaces, no rail, correct floating lifecycle |
-| C | integrating | l4_ui: supplied chat/settings routes/bindings | Real settings and chat actions reachable, state retained |
+| C | integrated | l4_ui: supplied chat/settings routes/bindings | Real settings and chat actions reachable, state retained |
 | O | active | Root: desktop observations; no owner data copying | Capture corresponding states and concrete discrepancies |
-| I | active | Root: shared native composition/stage | Compatible exact patches, no independent redesign |
-| V | pending | Root: serialized native build and package | Matching successful receipt, existing scoped authority reused |
+| I | integrated | Root: shared native composition/stage | Compatible exact patches, no independent redesign |
+| V | building | Root: serialized native build and package | Matching successful receipt, existing scoped authority reused |
 | A | pending | Root: focused actual app journeys | Sidebar, toolbar, hover, chat and settings evaluated against reference; gaps explicit |
 
 Parallel work uses separate worktrees and returns pinned proposals; workers never modify shared native checkout or run builds. Native build/packaging is the serial bottleneck. No numeric time estimate is justified before discovery. Integration waits for related corrections, not isolated icon changes. After focused compile/build, compare actual app; repeat only for concrete observed failures. Real AI tasks/provider services, import, password-manager compatibility and distribution are later passes. Do not mark entire pass accepted while in-scope behavior remains broken or unexplained.
@@ -36,3 +36,9 @@ Actual533/Aside desktop capture pair uses Example Domain at identical display sc
 Actual Sidebar footer zap/dot is the original multi-profile pager, so the one-profile disposable preview must not fabricate it. Most keyboard customization controls are also disabled in the current Aside reference and pinned1852 gates them on native API availability. Those are documented capability/version differences, not falsely enabled controls. Models menu in533 already opens with real choices; no AI task submitted. CmdE was actually broken in533 while AltShiftB opened the actual supplied panel, and Aside CmdE visibly toggles it.
 
 Settings import descriptions are now a counted two-anchor source adaptation saying bookmarks, matching the shipped native importer and owner password-manager exclusion. Existing eight signed helper targets stay byte-identical; the local reuse workflow now admits only exact reviewed UI/provenance hashes, verifies all other resource bytes/modes/links and final signatures, and reports changed UI resources honestly. Six focused source/boundary checks pass; no broad regression suite or new Apple signing/Keychain operation.
+
+## Combined build in progress
+
+Native542 restores the genuine bundled Agent toolbar action;543 adds the read-only resting origin without shortening or replacing the real URL editor. Native544 makes Agent panel layout and resize measurements use its actual zero border while retaining stock borders for ordinary panels. Native545 repairs the three concrete155 compile incompatibilities found in the first combined build: callback binding, protected LabelButton access and non-const WebContents title access. The corrected combined build is in progress; packaging and real-app acceptance remain pending.
+
+Settings links now use the six counted Aux internal URLs, with compatible legacy aliases retained at the native boundary. The final supplied stage is `out/provided-reuse-pass1`. Existing authority reuse admits only explicitly reviewed UI and provenance hashes; eight signed helpers remain unchanged. This is not evidence of a completed build or current app acceptance.

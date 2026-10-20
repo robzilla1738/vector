@@ -2,6 +2,14 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Combined UI pass — build in progress, 2026-10-20
+
+The sidebar, toolbar, native material, hover retention, chat entry points and Settings corrections are integrated through native545. The first combined compile exposed three Chromium155 API incompatibilities; the exact repair is integrated and the corrected build is running. The currently open app is still the preserved v533 baseline. The new pass is not yet built, packaged or accepted against the actual Aside app.
+
+Actual baseline observation established the filled external omnibox, page separator and panel inset/tint discrepancies. The integrated changes address these, restore the genuine Agent toolbar action and Command-E panel toggle, retain the complete editable URL behind a separate resting origin/title presentation, and keep pinned context menus inside the sidebar expansion lifecycle. Settings retains the supplied UI and now uses Aux internal links and an accurate bookmarks-only import description. Six focused source/boundary checks passed; final native build and real UI checks remain pending.
+
+Correction to the historical v533 gap list: the footer lightning/dot control belongs to the supplied multi-profile pager, so its absence in a one-profile preview is expected. The panel's earlier extra native 80% tint was also incorrect; the current source removes it while retaining the supplied full-page tint. Neither source correction is presented as current visual acceptance. See `docs/plans/2026-10-20-pass1-ui-completion.md`.
+
 ## Sidebar icon follow-up — 2026-10-20
 
 v533 is built, packaged, locally sealed and open in the approved disposable normal profile (observed PID55703). The New Tab row now uses a theme-colored canonical two-path Aux vector without the black app-icon tile. The plus renders at12px inside the existing16px layout slot, correcting the actual155 ImageView stretch without shifting its label. This is a visual platform adaptation: the recovered constructor itself also specified a16px ImageView, so it must not be described as a literal original12px slot.
