@@ -1,0 +1,229 @@
+{
+  "processProof": [
+    {
+      "pid": 19347,
+      "launcher": 19345,
+      "lineage": [
+        19347,
+        19346,
+        19345,
+        19343,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/X/dev.aux.browser.code_sign_clone/code_sign_clone.PQwiBG/Aux.app.bundle/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v401-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    19347
+  ],
+  "windows": [
+    {
+      "pid": 19347,
+      "windowId": 32457,
+      "title": "",
+      "onscreen": true,
+      "layer": 999,
+      "bounds": {
+        "x": 680.0,
+        "y": 45.0,
+        "width": 368.0,
+        "height": 50.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32441,
+      "title": "",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 33.0,
+        "width": 1728.0,
+        "height": 115.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32438,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32437,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32436,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32435,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32430,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 131.0,
+        "y": -94.0,
+        "width": 1424.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32429,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 33.0,
+        "width": 1728.0,
+        "height": 1084.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32434,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32433,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32432,
+      "title": "",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": -79.0,
+        "width": 1728.0,
+        "height": 47.0
+      }
+    },
+    {
+      "pid": 19347,
+      "windowId": 32431,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 131.0,
+        "y": -94.0,
+        "width": 1424.0,
+        "height": 88.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v401",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "profile": "disposable incognito profile",
+  "fullscreenRequestedBySourceSupportedFlag": true,
+  "observed": [
+    "Main window bounds0,33,1728,1084",
+    "Native body/footer visible",
+    "Top Collapse/combo controls absent from capture; navigation extends across sidebar in this fullscreen state"
+  ],
+  "correctiveSourceNotInThisObservedBuild": [
+    "v404 restores supplied external top-container sidebar inset and child-local normalization",
+    "v405 restores actual empty vertical combo selection; prior stock Tab Search restoration was not faithful"
+  ],
+  "historicalReferenceWindowAndCaptureModeProven": false,
+  "screenshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v401-fullscreen-window.png",
+  "screenshotSha256": "3929f95a19ffedc8c1a32cdfb6cf311f045b97c88c304cc8c09e2f96e5ef5f95",
+  "contextMenuAttempt": {
+    "pid": 19347,
+    "lineage": [
+      19347,
+      19346,
+      19345,
+      19343,
+      70622,
+      70558
+    ],
+    "postEventAccessAlreadyGranted": true,
+    "requestedNewPermission": false,
+    "point": {
+      "x": 100,
+      "y": 800
+    },
+    "event": "right-click owned disposable sidebar blank area",
+    "sent": true
+  },
+  "contextMenuAttemptResult": "No menu visible in owned-window snapshots; injected event delivery not independently confirmed. No menu functionality acceptance or proven regression claimed.",
+  "launcherPid": 19345,
+  "guardianPid": 19346,
+  "browserPid": 19347,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-Jfy5KS",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false
+}

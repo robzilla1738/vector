@@ -426,6 +426,10 @@ steps.extend([
     ('native-profile-preview-fallback-geometry/native.patch', 'native-profile-preview-fallback-geometry/manifest.json'),
     ('native-bootstrap-draggable-regions/native.patch', 'native-bootstrap-draggable-regions/manifest.json'),
     ('native-sidebar-system-menu-content/native.patch', 'native-sidebar-system-menu-content/manifest.json'),
+    ('native-popup-window-chrome/native.patch', 'native-popup-window-chrome/manifest.json'),
+    ('native-popup-window-chrome-button-adaptation/native.patch', 'native-popup-window-chrome-button-adaptation/manifest.json'),
+    ('native-immersive-sidebar-inset/native.patch', 'native-immersive-sidebar-inset/manifest.json'),
+    ('native-sidebar-combo-source-selection/native.patch', 'native-sidebar-combo-source-selection/manifest.json'),
 ])
 
 if options.through:

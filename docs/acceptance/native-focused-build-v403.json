@@ -1,0 +1,22 @@
+{
+  "composition": "v403",
+  "exitCode": 0,
+  "elapsedSeconds": 43.6706862449646,
+  "targets": {
+    "browser_native_widget_mac": "obj/chrome/browser/ui/ui/browser_native_widget_mac.o",
+    "browser_native_widget_window_mac": "obj/components/remote_cocoa/app_shim/app_shim/browser_native_widget_window_mac.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/browser_native_widget_mac.o",
+    "obj/components/remote_cocoa/app_shim/app_shim/browser_native_widget_window_mac.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}
