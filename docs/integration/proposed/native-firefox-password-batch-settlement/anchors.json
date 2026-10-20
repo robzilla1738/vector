@@ -1,0 +1,92 @@
+[
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "before": "#include <memory>",
+    "after": "#include <memory>\n#include <optional>",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "before": "  void SetAuxPreparationCallback(AuxPreparationCallback callback);",
+    "after": "  void SetAuxPreparationCallback(AuxPreparationCallback callback);\n  struct AuxPasswordImportResult {\n    bool succeeded;\n    uint32_t count;\n  };\n  const std::optional<AuxPasswordImportResult>& aux_password_import_result() const {\n    return aux_password_import_result_;\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "before": "  AuxPreparationCallback aux_preparation_;",
+    "after": "  friend class ExternalProcessImporterClient;\n  void SetAuxPasswordImportResult(bool succeeded, uint32_t count) {\n    aux_password_import_result_ = AuxPasswordImportResult{succeeded, count};\n  }\n  std::optional<AuxPasswordImportResult> aux_password_import_result_;\n  AuxPreparationCallback aux_preparation_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/profile_writer.h",
+    "before": "#include \"base/memory/raw_ptr.h\"",
+    "after": "#include \"base/functional/callback.h\"\n#include \"base/memory/raw_ptr.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/profile_writer.h",
+    "before": "  virtual void AddPasswordForm(const password_manager::PasswordForm& form);",
+    "after": "  virtual void AddPasswordForm(const password_manager::PasswordForm& form);\n  // Supplied Firefox batch: completes after the real store's async AddLogins.\n  void AddFirefoxPasswordForms(\n      const std::vector<password_manager::PasswordForm>& forms,\n      base::OnceCallback<void(bool)> completion);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/profile_writer.cc",
+    "before": "#include \"base/strings/string_number_conversions.h\"",
+    "after": "#include \"base/functional/bind.h\"\n#include \"base/strings/string_number_conversions.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/profile_writer.cc",
+    "before": "void ProfileWriter::AddHistoryPage(",
+    "after": "void ProfileWriter::AddFirefoxPasswordForms(\n    const std::vector<password_manager::PasswordForm>& forms,\n    base::OnceCallback<void(bool)> completion) {\n  if (forms.empty()) {\n    std::move(completion).Run(true);\n    return;\n  }\n  const PrefService* prefs = profile_->GetPrefs();\n  if (prefs->IsManagedPreference(password_manager::prefs::kCredentialsEnableService) &&\n      !prefs->GetBoolean(password_manager::prefs::kCredentialsEnableService)) {\n    std::move(completion).Run(false);\n    return;\n  }\n  auto store = ProfilePasswordStoreFactory::GetForProfile(\n      profile_, ServiceAccessType::EXPLICIT_ACCESS);\n  if (!store) {\n    std::move(completion).Run(false);\n    return;\n  }\n  std::vector<password_manager::StoredCredential> converted;\n  converted.reserve(forms.size());\n  for (const auto& form : forms)\n    converted.push_back(password_manager::FromPasswordForm(form));\n  store->AddLogins(std::move(converted), base::BindOnce(\n      [](scoped_refptr<password_manager::PasswordStoreInterface> store,\n         base::OnceCallback<void(bool)> completion) {\n        std::move(completion).Run(\n            store->GetError() == password_manager::ActionableError::kNoError);\n      }, store, std::move(completion)));\n}\n\nvoid ProfileWriter::AddHistoryPage(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/in_process_importer_bridge.h",
+    "before": "  void SetAutofillFormData(",
+    "after": "  void SetFirefoxPasswordForms(\n      const std::vector<user_data_importer::ImportedPasswordForm>& forms,\n      base::OnceCallback<void(bool)> completion);\n\n  void SetAutofillFormData(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/in_process_importer_bridge.cc",
+    "before": "void InProcessImporterBridge::SetAutofillFormData(",
+    "after": "void InProcessImporterBridge::SetFirefoxPasswordForms(\n    const std::vector<user_data_importer::ImportedPasswordForm>& forms,\n    base::OnceCallback<void(bool)> completion) {\n  std::vector<password_manager::PasswordForm> converted;\n  converted.reserve(forms.size());\n  for (const auto& form : forms)\n    converted.push_back(ConvertImportedPasswordForm(form));\n  writer_->AddFirefoxPasswordForms(converted, std::move(completion));\n}\n\nvoid InProcessImporterBridge::SetAutofillFormData(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.h",
+    "before": "#include \"build/build_config.h\"",
+    "after": "#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.h",
+    "before": "  // Invoked if the ProfileImport service process crashes.",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  void OnFirefoxPasswordBatchComplete(bool succeeded);\n  void PublishFirefoxPasswordResult(bool succeeded, uint32_t count);\n  std::vector<user_data_importer::ImportedPasswordForm> firefox_password_forms_;\n  bool firefox_password_result_received_ = false;\n  bool firefox_password_result_succeeded_ = false;\n  uint32_t firefox_password_count_ = 0;\n  bool firefox_password_batch_pending_ = false;\n  bool import_finished_received_ = false;\n#endif\n\n  // Invoked if the ProfileImport service process crashes.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.cc",
+    "before": "  Cleanup();\n}\n\nvoid ExternalProcessImporterClient::OnImportItemStart(",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  import_finished_received_ = true;\n  if (firefox_password_batch_pending_)\n    return;\n#endif\n  Cleanup();\n}\n\nvoid ExternalProcessImporterClient::OnImportItemStart(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.cc",
+    "before": "  bridge_->NotifyItemEnded(import_item);\n  profile_import_->ReportImportItemFinished(import_item);",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  scoped_refptr<ExternalProcessImporterClient> keep_alive(this);\n  if (import_item == user_data_importer::PASSWORDS &&\n      source_profile_.importer_type == user_data_importer::TYPE_FIREFOX) {\n    if (!firefox_password_result_received_ ||\n        !firefox_password_result_succeeded_ ||\n        firefox_password_forms_.size() != firefox_password_count_) {\n      PublishFirefoxPasswordResult(false,\n          base::checked_cast<uint32_t>(firefox_password_forms_.size()));\n    } else if (firefox_password_count_ == 0) {\n      PublishFirefoxPasswordResult(true, 0);\n    } else {\n      firefox_password_batch_pending_ = true;\n      auto forms = std::move(firefox_password_forms_);\n      bridge_->SetFirefoxPasswordForms(forms, base::BindOnce(\n          &ExternalProcessImporterClient::OnFirefoxPasswordBatchComplete,\n          base::RetainedRef(this)));\n      return;\n    }\n  }\n#endif\n  bridge_->NotifyItemEnded(import_item);\n  if (!cancelled_ && profile_import_)\n    profile_import_->ReportImportItemFinished(import_item);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.cc",
+    "before": "  bridge_->SetPasswordForm(form);\n}\n\nvoid ExternalProcessImporterClient::OnKeywordsImportReady(",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (source_profile_.importer_type == user_data_importer::TYPE_FIREFOX) {\n    firefox_password_forms_.push_back(form);\n    return;\n  }\n#endif\n  bridge_->SetPasswordForm(form);\n}\n\nvoid ExternalProcessImporterClient::OnFirefoxPasswordImportResult(\n    bool succeeded, uint32_t count) {\n  if (cancelled_)\n    return;\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  firefox_password_result_received_ = true;\n  firefox_password_result_succeeded_ = succeeded;\n  firefox_password_count_ = count;\n#endif\n}\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\nvoid ExternalProcessImporterClient::PublishFirefoxPasswordResult(\n    bool succeeded, uint32_t count) {\n  if (process_importer_host_)\n    process_importer_host_->SetAuxPasswordImportResult(succeeded, count);\n}\n\nvoid ExternalProcessImporterClient::OnFirefoxPasswordBatchComplete(\n    bool succeeded) {\n  if (cancelled_)\n    return;\n  firefox_password_batch_pending_ = false;\n  PublishFirefoxPasswordResult(succeeded, firefox_password_count_);\n  if (process_importer_host_)\n    bridge_->NotifyItemEnded(user_data_importer::PASSWORDS);\n  if (cancelled_)\n    return;\n  if (profile_import_)\n    profile_import_->ReportImportItemFinished(user_data_importer::PASSWORDS);\n  if (import_finished_received_)\n    Cleanup();\n}\n#endif\n\nvoid ExternalProcessImporterClient::OnKeywordsImportReady(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.cc",
+    "before": "#include \"base/logging.h\"",
+    "after": "#include \"base/logging.h\"\n#include \"base/numerics/safe_conversions.h\"",
+    "count": 1
+  }
+]

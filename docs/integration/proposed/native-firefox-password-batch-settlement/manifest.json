@@ -1,0 +1,39 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.h",
+      "baselineSha256": "00ebc7c4474b5e50da39b95fecd80359c0c1b255786dd6c41fabfbc11859c36c",
+      "outputSha256": "5e7aa2cd540595912fbf6871c170d7c631234ff42d1d36d3a51c02c45e7244ee"
+    },
+    {
+      "path": "chrome/browser/importer/profile_writer.h",
+      "baselineSha256": "c2cd54841a317389939c68f55bb9d7df0606c83254efcc028b9d37572f44883a",
+      "outputSha256": "5e8dd8fec390decbd84c698fd4e46a2cb1c4db3aa7ba207f4e5cddb8bc8778e6"
+    },
+    {
+      "path": "chrome/browser/importer/profile_writer.cc",
+      "baselineSha256": "5249df6cd7434a8d242107962e3ee3117ccfd8c85bb1c4af658ae3ab19e018af",
+      "outputSha256": "adfc3599f851da4fc48dc2dedc26cbda5812a1bd5d3ba13cc3955bfd0b1d47c6"
+    },
+    {
+      "path": "chrome/browser/importer/in_process_importer_bridge.h",
+      "baselineSha256": "34dc6fdd824070c2009a61826d19a681ebebfe22e1ef8dfa64507b3a828b7c7d",
+      "outputSha256": "c24b9585f4d2e16037a96125ddd216a9e8f51e19bd85ddfd2271422bfef7d6f8"
+    },
+    {
+      "path": "chrome/browser/importer/in_process_importer_bridge.cc",
+      "baselineSha256": "d05ac55df8143832bbcd8f3384dbb3de145a866bf09c771c94999dfd14bf6557",
+      "outputSha256": "16d9c399cbd324bdb3e70724040e3d514789d688b01b2fa9162d5939c400f307"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_client.h",
+      "baselineSha256": "65bc658a44c8b0f2d47e76a1f4bc591c207561ff07b8799ed3e601f6588bf9df",
+      "outputSha256": "09a21abeaffe3d7d771b5765ccbd2bbc6f662bf94cc2df471b08bcc2960c19a1"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_client.cc",
+      "baselineSha256": "d72d65c64cd4858264b2a8bb515a182cb54a4e3aac746f01e0d80ec0d4fc4aa2",
+      "outputSha256": "57959004261a594e3d20ecbe095884c8f2b522fcbb5f6fa0daad2ab29fc099f2"
+    }
+  ]
+}
