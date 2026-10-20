@@ -1,0 +1,13 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -237,7 +237,9 @@
+                     (*categories)[0].GetString() != "bookmarks")) ||
+       (has_categories &&
+        (!categories || categories->empty() || categories->size() > 6))) {
+-    error("Choose a source and an unambiguous supported data-kind list");
++    error(internal_categories
++              ? "Choose a source and an unambiguous supported data-kind list"
++              : "Invalid import options");
+     return;
+   }
+   const base::DictValue *source = nullptr, *selected = nullptr;

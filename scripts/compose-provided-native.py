@@ -443,6 +443,7 @@ steps.extend([
     ('native-notification-permission-observer/native.patch', 'native-notification-permission-observer/manifest.json'),
     ('native-browser-import-explicit-kinds/native.patch', 'native-browser-import-explicit-kinds/manifest.json'),
     ('native-browser-import-safe-storage/native.patch', 'native-browser-import-safe-storage/manifest.json'),
+    ('native-browser-import-validation-errors/native.patch', 'native-browser-import-validation-errors/manifest.json'),
 ])
 
 if options.through:

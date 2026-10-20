@@ -1,0 +1,16 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "literal": {
+    "address": "0xcf0a347",
+    "length": 22,
+    "hex": "496e76616c696420696d706f7274206f7074696f6e73",
+    "text": "Invalid import options",
+    "sha256": "7affbda86f5f9526b9014fd82d176fc3bc522d5af598efef2222d37fadf87a21"
+  },
+  "caller": "4276a08..4276a4c",
+  "existingCallerEvidence": "../native-browser-import-explicit-kinds/explicit-data-kinds.asm",
+  "callerListingSha256": "2fb474b40f6f56ee668023c3351057b92b60128a1a15566160ce4fdb291bce4a"
+}

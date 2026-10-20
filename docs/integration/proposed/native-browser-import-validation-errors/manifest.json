@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "applyAfter": "v418",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "bb49509e0c610d3856920dd7b7021420a98c0db744dd58930af14603c92890d1",
+      "outputSha256": "9acdaba6e85c4801c500e195abf98b6e044aca499c36c330834528e50fb175a9"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
