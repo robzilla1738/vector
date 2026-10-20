@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual333 section/common components; bdb8def36 bulk transport; generic native confirmation prerequisite fromL4",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_view.h",
+      "baselineSha256": "bc94373b0c8d746ceb84decee42e76215a5bc45c1e7331bdaded7109472acaaf",
+      "outputSha256": "5185b02a317834483caa3354976cf725afc8fe3066be02cebd1e75367014e81a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_view.cc",
+      "baselineSha256": "e311295c2214dbb476542efb28cf948a19d44c772fc65510397771bd0adeb06c",
+      "outputSha256": "eb22535a74af1c52971e484d4bf828ebb8782a117e5f560df37f2704e2456e6c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.h",
+      "baselineSha256": "8d2c043524fa7607d3cbe14c14d6110193a7286488b76a357067b54a0b7fe416",
+      "outputSha256": "44e0fae4a42d6e0dba51de9e985d550027b63b9e9aff1ca884046bc6dcc0991f"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "baselineSha256": "edd4dc7dd1a8a1145315b346dea91353e43af8bc505d21ffac7a96fa88217ce9",
+      "outputSha256": "5ab62d3ef3e1e94aec68908906bda041615a8e2846a4ba41d8b7e4bda2328e66"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.h",
+      "baselineSha256": null,
+      "outputSha256": "6d19e05352050738e82826d5693d97608279ca2171ae04a4cc3c974d78873339"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_header_actions.cc",
+      "baselineSha256": null,
+      "outputSha256": "68cb7463b3439da6dfc03051b726ed87d12b99e37aeb3301ed04cd14a4309edb"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

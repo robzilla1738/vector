@@ -1,0 +1,80 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "header-menu-open",
+      "start": "0x462fb38",
+      "stopExclusive": "0x4630098",
+      "bytesSha256": "e52433a3402d15b91267d8ba20ccf207f27f1b89d99bef839fd41d985469db14",
+      "asmSha256": "d4ad8276b2d8b7c2c93a9cb0b4d0c3a8df872120146e50274805cd76347e104f"
+    },
+    {
+      "name": "header-enable",
+      "start": "0x463981c",
+      "stopExclusive": "0x4639878",
+      "bytesSha256": "c3e2dece1925f4d202e1c648a968371f02d0d25db235b737a89068079ee8fc8c",
+      "asmSha256": "b574602a66a9d87ca2a6f462ee95f903de810316f37eb83c64a6f472b32b3609"
+    },
+    {
+      "name": "header-menu-close",
+      "start": "0x46398c8",
+      "stopExclusive": "0x4639ec8",
+      "bytesSha256": "d6c2d4f1e75189db1968f2c01d3d45a2d194c1fa0288d8e38a7399d7f4bb74f8",
+      "asmSha256": "ff38776900d9a2dfbc02c00d67d92e1cc538f9bfb8cbb393d2d55e6aa956a863"
+    },
+    {
+      "name": "archive-accepted",
+      "start": "0x466fb20",
+      "stopExclusive": "0x466fc84",
+      "bytesSha256": "f69bca896afe6fda0ea3cb26140acc66c30447350c092a3a8fcb7679592ccd19",
+      "asmSha256": "27513ae174d936d9c567025ce43cf49a83329a2543116f862198fd3fcd14830f"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdf87b64",
+      "units": 16,
+      "value": "Mark all as read",
+      "sha256": "a6e8ee74aae2b8519870e27c0cc932137e8551d3c8f4e705b100d182f455595c"
+    },
+    {
+      "address": "0xdf87b86",
+      "units": 17,
+      "value": "Archive all chats",
+      "sha256": "ef40b519b5002b769e8eb78e664a7181c89ee4f69a949f103e815edcc015d91d"
+    },
+    {
+      "address": "0xdf87baa",
+      "units": 14,
+      "value": "Show all chats",
+      "sha256": "a0f73356368b5450dc8d985871444cfbb811c24831e287da928a863af742c5ca"
+    },
+    {
+      "address": "0xdf87d40",
+      "units": 18,
+      "value": "Archive all chats?",
+      "sha256": "f94b3c218b7ee51d9b589108590f4e8b9702cd8891de304ae08175689fc256e2"
+    },
+    {
+      "address": "0xdf87d66",
+      "units": 28,
+      "value": "This will archive all chats.",
+      "sha256": "29c1a923190b03cb5daf0b4032b205378d2fcbbade51ed00855d09c3338fb1f0"
+    },
+    {
+      "address": "0xdf87c96",
+      "units": 7,
+      "value": "Archive",
+      "sha256": "bd2b1c9f5d56f5fb0115c416ff9d659116a43d5dd0d9f7741e5e724f6db69eeb"
+    },
+    {
+      "address": "0xdf87c34",
+      "units": 6,
+      "value": "Cancel",
+      "sha256": "767443dfcd2f384409ac330fdf5f77c102d0401a163b5ad083b7b308350320c6"
+    }
+  ]
+}
