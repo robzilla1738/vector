@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "base": "actual188 presentation outputs; roleaccessor635c7c499 region output; two new owner sources",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc",
+      "baselineSha256": "5608ffd28991d22bd044c00e3a6da894ae81e8eef042cea7fb9ea2a9abba222b",
+      "outputSha256": "270e6235cf0919d1f470d402d8594cb4b81e36e180fc68c473cd81ca0f6c37d0",
+      "baselineSource": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.h",
+      "baselineSha256": "abef429ec02443f4a64a82b46548f8acfe46e75660fa891f324c461359f0b488",
+      "outputSha256": "e55bc1d0342a69fb06abb1d33e3796a608b4facbb29be13e347fda4ee9c32be1",
+      "baselineSource": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_preview_presentation.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": null,
+      "outputSha256": "ea97d7f4c81ee791c830c6cf5054ddeda23c0b0f121fe41ec1d5938c2e114ef6",
+      "baselineSource": null
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+      "baselineSha256": null,
+      "outputSha256": "65d7c63c7e1ca5aad1ebdd2e55e1d1bc52b26d38cb65122fc2ef42150d0375a9",
+      "baselineSource": null
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "b4d2261ffda598520f82251b88d8291cd10ddb2a5162ebd0372861c895caa5a3",
+      "outputSha256": "a60199ce5498255211e6acb6b6de4f93ae1f4aea30ddd8c3758e60fd3da31f4d",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-roles/port/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "fe0536a7fb1de630cc586d3f86f44eee0481e571cd5396154edb7c911ac504e8",
+      "outputSha256": "987689d249c23d8de03157cce758a97c7946a1e2fbd6a187fc2b096f95a1c9bb",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-roles/port/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "inputTriggerInstalled": false
+}

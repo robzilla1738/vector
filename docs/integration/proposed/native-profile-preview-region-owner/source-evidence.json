@@ -1,0 +1,63 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "page-cache-factory.asm",
+      "start": "0x465352c",
+      "stop": "0x4653600",
+      "bytesSha256": "1679d80ba5e914ea5b8d11d4ed47851e51377cfde9acd7723f8590493b9a6c6c",
+      "extractSha256": "f1c40d3f40da191c7f85280d78d50c1829d69f353b46d9d673fc1b61b62f9f3b"
+    },
+    {
+      "file": "fallback-label-avatar-bookmarks.asm",
+      "start": "0x465484c",
+      "stop": "0x4654e90",
+      "bytesSha256": "d682ad5291f3f091225146b5d8fa270f1ac7927b165ee76b1b45da651b8d6b72",
+      "extractSha256": "e4210af9a62747f6e60c6a2359dfc4bd30d447f8c230fc6692815e2763f74b7a"
+    },
+    {
+      "file": "other-window-admission.asm",
+      "start": "0x4655d50",
+      "stop": "0x4655e28",
+      "bytesSha256": "81afad7b2589625575c5ff6fc06eb8f323cbfa28e284a226f371768a74787535",
+      "extractSha256": "e32320515413f7829759432884dbb14f9ab1ecbcf8c6ca292483d5bd8d28b1a6"
+    },
+    {
+      "file": "other-window-visitor.asm",
+      "start": "0x46835d8",
+      "stop": "0x4683734",
+      "bytesSha256": "ab78b3dfbd9b24db804fb8e4f5c3cb7f38dde8471b2682b952cc25f0bda7d38a",
+      "extractSha256": "3fe0eb34944015525bca01e9bbcc40b1d35c38d6208660a460ad15e35aca3432"
+    },
+    {
+      "file": "cache-lookup-create.asm",
+      "start": "0x4657cc0",
+      "stop": "0x4657d70",
+      "bytesSha256": "352ec512a6a850c63537492aaf718657000d086d406083bb63c5d2c435d34aae",
+      "extractSha256": "7c6d1e9464b8b5dadc4b1ed482ee8b59a4a22bd592b9c77e7e0ede92150dc47e"
+    },
+    {
+      "file": "live-or-fallback-commit.asm",
+      "start": "0x4655ff8",
+      "stop": "0x4656290",
+      "bytesSha256": "5447d7ebdd645eab70c7e74191ef43c7afcdb038fc0c7498ba45400daebf432e",
+      "extractSha256": "41fb611edc95d96b9e8fbff753c7ae578331255ff701abb956972ac47609468c"
+    },
+    {
+      "file": "restore-before-dispatch.asm",
+      "start": "0x465841c",
+      "stop": "0x4658578",
+      "bytesSha256": "a763852ff06a826ce22a495c29c44d1162bcfb5dfa1e0e60cd2e1f3196a53df7",
+      "extractSha256": "f3f0e7837df5d4ca4761ad08908bdf5437c8840f059e7fe696f9ebc09dd30f3d"
+    }
+  ],
+  "remaining": [
+    "Exact original input admission/progress animation not connected by this slice.",
+    "Actual source header/search rectangle projection is not represented by current155 independent Sidebar; page retains original default-geometry branch.",
+    "Original cached captured-image producer not yet wired; no surrogate screenshot introduced.",
+    "Original proactive unloaded-target prewarming not yet wired; real fallback immediate-load commit is preserved.",
+    "No compile/runtime/UI acceptance."
+  ]
+}

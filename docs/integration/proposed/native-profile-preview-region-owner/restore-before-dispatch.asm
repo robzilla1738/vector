@@ -1,0 +1,93 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 465841c: a9bc5ff8     	stp	x24, x23, [sp, #-0x40]!
+ 4658420: a90157f6     	stp	x22, x21, [sp, #0x10]
+ 4658424: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 4658428: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 465842c: 9100c3fd     	add	x29, sp, #0x30
+ 4658430: aa0203f4     	mov	x20, x2
+ 4658434: aa0103f3     	mov	x19, x1
+ 4658438: aa0003f5     	mov	x21, x0
+ 465843c: f942f416     	ldr	x22, [x0, #0x5e8]
+ 4658440: b40002b6     	cbz	x22, 0x4658494 <_ChromeMain+0x46531f8>
+ 4658444: f94002c8     	ldr	x8, [x22]
+ 4658448: f9402d08     	ldr	x8, [x8, #0x58]
+ 465844c: aa1603e0     	mov	x0, x22
+ 4658450: d63f0100     	blr	x8
+ 4658454: aa0003f7     	mov	x23, x0
+ 4658458: 94009772     	bl	0x467e220 <_ChromeMain+0x4678f84>
+ 465845c: f10002ff     	cmp	x23, #0x0
+ 4658460: 1a9f07e8     	cset	w8, ne
+ 4658464: eb0002ff     	cmp	x23, x0
+ 4658468: fa401ae4     	ccmp	x23, #0x0, #0x4, ne
+ 465846c: 540000c0     	b.eq	0x4658484 <_ChromeMain+0x46531e8>
+ 4658470: f94026f7     	ldr	x23, [x23, #0x48]
+ 4658474: f10002ff     	cmp	x23, #0x0
+ 4658478: 1a9f07e8     	cset	w8, ne
+ 465847c: fa4012e4     	ccmp	x23, x0, #0x4, ne
+ 4658480: 54ffff81     	b.ne	0x4658470 <_ChromeMain+0x46531d4>
+ 4658484: 34000088     	cbz	w8, 0x4658494 <_ChromeMain+0x46531f8>
+ 4658488: aa1603e0     	mov	x0, x22
+ 465848c: 52800001     	mov	w1, #0x0                ; =0
+ 4658490: 94000024     	bl	0x4658520 <_ChromeMain+0x4653284>
+ 4658494: f9422ea8     	ldr	x8, [x21, #0x458]
+ 4658498: f9429d16     	ldr	x22, [x8, #0x538]
+ 465849c: f94a06b7     	ldr	x23, [x21, #0x1408]
+ 46584a0: b40000d7     	cbz	x23, 0x46584b8 <_ChromeMain+0x465321c>
+ 46584a4: 52800028     	mov	w8, #0x1                ; =1
+ 46584a8: b82802e8     	ldadd	w8, w8, [x23]
+ 46584ac: 12b00009     	mov	w9, #0x7fffffff         ; =2147483647
+ 46584b0: 6b09011f     	cmp	w8, w9
+ 46584b4: 54000300     	b.eq	0x4658514 <_ChromeMain+0x4653278>
+ 46584b8: f94a0ab5     	ldr	x21, [x21, #0x1410]
+ 46584bc: 52800800     	mov	w0, #0x40               ; =64
+ 46584c0: 96e6dbaa     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 46584c4: aa0003e2     	mov	x2, x0
+ 46584c8: 52800028     	mov	w8, #0x1                ; =1
+ 46584cc: 10127b29     	adr	x9, 0x467d430 <_ChromeMain+0x4678194>
+ 46584d0: d503201f     	nop
+ 46584d4: d0ffd36a     	adrp	x10, 0x40c6000 <_ChromeMain+0x40c0d64>
+ 46584d8: 9125014a     	add	x10, x10, #0x940
+ 46584dc: b9000008     	str	w8, [x0]
+ 46584e0: a900a809     	stp	x9, x10, [x0, #0x8]
+ 46584e4: b0fef828     	adrp	x8, 0x255d000 <_ChromeMain+0x2557d64>
+ 46584e8: 912c0108     	add	x8, x8, #0xb00
+ 46584ec: f9000c08     	str	x8, [x0, #0x18]
+ 46584f0: a902d417     	stp	x23, x21, [x0, #0x28]
+ 46584f4: 3900e014     	strb	w20, [x0, #0x38]
+ 46584f8: aa1603e0     	mov	x0, x22
+ 46584fc: aa1303e1     	mov	x1, x19
+ 4658500: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 4658504: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 4658508: a94157f6     	ldp	x22, x21, [sp, #0x10]
+ 465850c: a8c45ff8     	ldp	x24, x23, [sp], #0x40
+ 4658510: 17ea98a5     	b	0x40fe7a4 <_ChromeMain+0x40f9508>
+ 4658514: d4200000     	brk	#0
+ 4658518: d4400000     	hlt	#0
+ 465851c: d4200020     	brk	#0x1
+ 4658520: d101c3ff     	sub	sp, sp, #0x70
+ 4658524: a90267fa     	stp	x26, x25, [sp, #0x20]
+ 4658528: a9035ff8     	stp	x24, x23, [sp, #0x30]
+ 465852c: a90457f6     	stp	x22, x21, [sp, #0x40]
+ 4658530: a9054ff4     	stp	x20, x19, [sp, #0x50]
+ 4658534: a9067bfd     	stp	x29, x30, [sp, #0x60]
+ 4658538: 910183fd     	add	x29, sp, #0x60
+ 465853c: aa0003f3     	mov	x19, x0
+ 4658540: f941dc08     	ldr	x8, [x0, #0x3b8]
+ 4658544: b50005e8     	cbnz	x8, 0x4658600 <_ChromeMain+0x4653364>
+ 4658548: f9419660     	ldr	x0, [x19, #0x328]
+ 465854c: b40004c0     	cbz	x0, 0x46585e4 <_ChromeMain+0x4653348>
+ 4658550: f9400008     	ldr	x8, [x0]
+ 4658554: f9405102     	ldr	x2, [x8, #0xa0]
+ 4658558: 52800001     	mov	w1, #0x0                ; =0
+ 465855c: a9467bfd     	ldp	x29, x30, [sp, #0x60]
+ 4658560: a9454ff4     	ldp	x20, x19, [sp, #0x50]
+ 4658564: a94457f6     	ldp	x22, x21, [sp, #0x40]
+ 4658568: a9435ff8     	ldp	x24, x23, [sp, #0x30]
+ 465856c: a94267fa     	ldp	x26, x25, [sp, #0x20]
+ 4658570: 9101c3ff     	add	sp, sp, #0x70
+ 4658574: d61f0040     	br	x2

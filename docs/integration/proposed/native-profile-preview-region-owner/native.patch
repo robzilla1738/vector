@@ -1,0 +1,448 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
+@@ -146,6 +146,25 @@
+   return true;
+ }
+ 
++bool ProfilePreviewPresentation::BindFallback(views::View& page,
++                                                int direction) {
++  Reset(true);
++  auto* owner = owner_.view();
++  if (!owner || (direction != -1 && direction != 1) ||
++      !owner->Contains(&page) || page.GetWidget() != owner->GetWidget()) {
++    return false;
++  }
++  ProfilePreviewSurfaces source;
++  for (size_t i = 0; i < source.size(); ++i) {
++    source[i] = source_[i].view();
++  }
++  page.SetBoundsRect(PreviewBounds(*owner, source, top_boundary_.view()));
++  page_.SetView(&page);
++  direction_ = direction;
++  page.SetVisible(true);
++  return true;
++}
++
+ void ProfilePreviewPresentation::Update(float progress) {
+   auto* owner = owner_.view();
+   if (!owner) {
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_presentation.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_presentation.h
+@@ -45,6 +45,9 @@
+                    views::View& page,
+                    views::View& live_host,
+                    int direction);
++  // Original actual metadata-only page while target cache/load is absent.
++  // It is still a genuine region-owned page, not a fabricated live borrow.
++  bool BindFallback(views::View& page, int direction);
+   void Update(float progress);
+   void Reset(bool invalidate_before_restore);
+ 
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -0,0 +1,252 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
++
++#include <memory>
++#include <utility>
++#include <vector>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_avatar_icon_util.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/aux_profile_preview_data.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/unload_controller.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_page.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/profiles/aux_profile_display_label.h"
++#include "components/bookmarks/browser/bookmark_model.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "ui/views/view.h"
++#include "ui/views/view_utils.h"
++
++namespace aux {
++namespace {
++// Original4655d50/46835d8: do not create a hidden preview cache when the
++// target already has another genuine nonclosing normal window. Existing owned
++// caches take precedence in the caller, exactly as original4657cd0.
++bool HasOtherNormalWindow(BrowserWindowInterface& source, Profile& target) {
++  auto* collection = ProfileBrowserCollection::GetForProfile(
++      target.GetOriginalProfile());
++  bool found = false;
++  if (collection) {
++    collection->ForEach([&](BrowserWindowInterface* candidate) {
++      auto* init = candidate ? BrowserInitState::From(candidate) : nullptr;
++      auto* unload = candidate ? UnloadController::From(candidate) : nullptr;
++      if (!candidate || candidate == &source || !init || !unload ||
++          init->is_aux_profile_switch_cache() ||
++          unload->is_attempting_to_close_browser() ||
++          candidate->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++          !candidate->GetProfile() ||
++          candidate->GetProfile()->GetOriginalProfile()->GetPath() !=
++              target.GetOriginalProfile()->GetPath()) {
++        return true;
++      }
++      found = true;
++      return false;
++    });
++  }
++  return found;
++}
++
++std::vector<std::u16string> BookmarkTitles(Profile* loaded) {
++  std::vector<std::u16string> result;
++  auto* model = loaded ? BookmarkModelFactory::GetForBrowserContext(
++                             loaded->GetOriginalProfile()) : nullptr;
++  if (!model || !model->loaded() || !model->bookmark_bar_node()) {
++    return result;
++  }
++  for (const auto& node : model->bookmark_bar_node()->children()) {
++    if (result.size() == 4) {
++      break;
++    }
++    if (node) {
++      result.push_back(node->GetTitle());
++    }
++  }
++  return result;
++}
++}  // namespace
++
++ProfilePreviewRegionOwner::ProfilePreviewRegionOwner(
++    Browser& browser, VerticalTabStripRegionView& region)
++    : browser_(browser.GetWeakPtr()), region_(&region),
++      presentation_(region, region.GetAuxProfilePreviewSurfaces(),
++                    region.GetAuxProfilePreviewTopBoundary()),
++      request_(browser, presentation_.borrowed_views()) {}
++
++ProfilePreviewRegionOwner::~ProfilePreviewRegionOwner() {
++  request_.CancelPendingPreviewCommit();
++  presentation_.Reset(false);
++}
++
++ProfilePagePreviewPageView* ProfilePreviewRegionOwner::GetPage(
++    const base::FilePath& target) {
++  auto* region = region_.view();
++  if (!region || target.empty()) {
++    return nullptr;
++  }
++  if (auto found = pages_.find(target); found != pages_.end()) {
++    if (auto* page = views::AsViewClass<ProfilePagePreviewPageView>(
++            found->second.view())) {
++      return page;
++    }
++    pages_.erase(found);
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  auto owned = std::make_unique<ProfilePagePreviewPageView>();
++  views::ViewTracker page_lifetime(owned.get());
++  auto* page = region->AddChildView(std::move(owned));
++  if (!alive || !page_lifetime.view()) {
++    return nullptr;
++  }
++  pages_.try_emplace(target, page);
++  return page;
++}
++
++bool ProfilePreviewRegionOwner::Begin(const base::FilePath& target,
++                                      int direction) {
++  auto* source = browser_.get();
++  auto* region = views::AsViewClass<VerticalTabStripRegionView>(region_.view());
++  if (committing_ || !source || !region || target.empty() ||
++      (direction != -1 && direction != 1) || !g_browser_process ||
++      !g_browser_process->profile_manager() || !source->GetProfile() ||
++      source->GetProfile()->IsOffTheRecord() ||
++      source->GetProfile()->GetOriginalProfile()->GetPath() == target) {
++    return false;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  request_.CancelPendingPreviewCommit();
++  presentation_.Reset(true);
++  if (!alive) {
++    return false;
++  }
++  auto* manager = g_browser_process->profile_manager();
++  auto* loaded = manager->GetProfileByPath(target);
++  auto& storage = manager->GetProfileAttributesStorage();
++  auto* entry = storage.GetProfileAttributesWithPath(target);
++  size_t roster_size = 0;
++  for (auto* candidate : storage.GetAllProfilesAttributesSortedForDisplay()) {
++    if (candidate && !candidate->IsOmitted()) {
++      ++roster_size;
++    }
++  }
++  auto* page = GetPage(target);
++  if (!page) {
++    return false;
++  }
++  gfx::ImageSkia avatar;
++  if (entry && entry->GetAvatarIconIndex() != profiles::GetPlaceholderAvatarIndex()) {
++    avatar = entry->GetAvatarIcon(20).AsImageSkia();
++  }
++  views::ViewTracker page_lifetime(page);
++  page->SetProfile(ProfileDisplayLabel(entry, loaded, roster_size), avatar);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  auto tabs = GetProfilePreviewData(*source, target).tabs;
++  auto bookmarks = BookmarkTitles(loaded);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  page->SetFallbackData(std::move(tabs), std::move(bookmarks));
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  // Original4654740 can render the real metadata fallback while the target
++  // profile/cache is not ready; it does not fabricate a borrowed live view.
++  bool live = false;
++  if (loaded) {
++    auto* cache = FindProfileSwitchWorkspace(source, target);
++    if (!cache && !HasOtherNormalWindow(*source, *loaded)) {
++      cache = GetOrCreateProfileSwitchWorkspace(source, loaded, false);
++    }
++    if (!alive || !page_lifetime.view() || !browser_) {
++      return false;
++    }
++    auto* view = cache ? BrowserView::GetBrowserViewForBrowser(cache) : nullptr;
++    auto* target_region = view ? view->vertical_tab_strip_region_view() : nullptr;
++    if (target_region && target_region != region) {
++      views::ViewTracker target_lifetime(target_region);
++      target_region->SetSize(region->size());
++      if (!alive || !target_lifetime.view() || !page_lifetime.view()) {
++        return false;
++      }
++      target_region->DeprecatedLayoutImmediately();
++      if (!alive || !target_lifetime.view() || !page_lifetime.view()) {
++        return false;
++      }
++      live = presentation_.BindPreview(
++          *target_region, target_region->GetAuxProfilePreviewSurfaces(),
++          target_region->GetAuxProfilePreviewTopBoundary(), *page,
++          *page->live_host(), direction);
++    }
++  }
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  page->ShowLiveContent(live);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  if (!live && !presentation_.BindFallback(*page, direction)) {
++    return false;
++  }
++  target_ = target;
++  return true;
++}
++
++void ProfilePreviewRegionOwner::Update(float progress) {
++  presentation_.Update(progress);
++}
++void ProfilePreviewRegionOwner::OnPreviewFrame() {
++  request_.OnPreviewFrame();
++}
++bool ProfilePreviewRegionOwner::Commit(
++    ProfileSwitchRequest::Completion completion) {
++  CHECK(completion);
++  if (committing_ || target_.empty() || !browser_ || !region_.view()) {
++    return false;
++  }
++  committing_ = true;
++  auto done = base::BindOnce(&ProfilePreviewRegionOwner::Complete,
++      weak_factory_.GetWeakPtr(), std::move(completion));
++  if (presentation_.borrowed_views().empty()) {
++    // Original4656178..46561fc: metadata-only/non-live path dispatches the
++    // actual asynchronous load immediately; loaded Profile is not success.
++    request_.Start(target_, std::move(done));
++  } else {
++    // Original4656258 plus actual frame settlement retains the live preview
++    // until its real frame owner schedules the50ms generation-bound handoff.
++    request_.QueuePreviewCommit(target_, std::move(done));
++  }
++  return true;
++}
++void ProfilePreviewRegionOwner::Complete(
++    ProfileSwitchRequest::Completion completion, Browser* result) {
++  committing_ = false;
++  target_.clear();
++  auto sender = browser_;
++  presentation_.Reset(false);
++  // Reset or completion may close this actual owner. No member access follows
++  // reset, and original completion never returns a destroyed sender Browser.
++  std::move(completion).Run(sender ? result : nullptr);
++}
++void ProfilePreviewRegionOwner::Cancel() {
++  if (committing_) {
++    return;
++  }
++  request_.CancelPendingPreviewCommit();
++  presentation_.Reset(false);
++  target_.clear();
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
+@@ -0,0 +1,48 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_REGION_OWNER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_REGION_OWNER_H_
++
++#include <map>
++
++#include "base/files/file_path.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_presentation.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_request.h"
++#include "ui/views/view_tracker.h"
++
++class Browser;
++class VerticalTabStripRegionView;
++namespace aux {
++class ProfilePagePreviewPageView;
++
++// Real same-region page/cache/presentation/request owner. The original input
++// controller supplies direction/progress and actual frame settlement; this
++// class does not synthesize gestures, screenshots, windows or success.
++class ProfilePreviewRegionOwner {
++ public:
++  ProfilePreviewRegionOwner(Browser& browser, VerticalTabStripRegionView& region);
++  ~ProfilePreviewRegionOwner();
++  ProfilePreviewRegionOwner(const ProfilePreviewRegionOwner&) = delete;
++  ProfilePreviewRegionOwner& operator=(const ProfilePreviewRegionOwner&) = delete;
++
++  bool Begin(const base::FilePath& target, int direction);
++  void Update(float progress);
++  void OnPreviewFrame();
++  bool Commit(ProfileSwitchRequest::Completion completion);
++  void Cancel();
++
++ private:
++  ProfilePagePreviewPageView* GetPage(const base::FilePath& target);
++  void Complete(ProfileSwitchRequest::Completion completion, Browser* result);
++
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  views::ViewTracker region_;
++  ProfilePreviewPresentation presentation_;
++  ProfileSwitchRequest request_;
++  std::map<base::FilePath, views::ViewTracker> pages_;
++  base::FilePath target_;
++  bool committing_ = false;
++  base::WeakPtrFactory<ProfilePreviewRegionOwner> weak_factory_{this};
++};
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_REGION_OWNER_H_
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++
++#include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+@@ -791,6 +793,39 @@
+   return top_button_container_;
+ }
+ 
++bool VerticalTabStripRegionView::BeginAuxProfilePreview(
++    const base::FilePath& target, int direction) {
++  if (!tab_strip_view() || !browser_view() || !browser_view()->browser()) {
++    return false;
++  }
++  if (!aux_profile_preview_owner_) {
++    aux_profile_preview_owner_ = std::make_unique<aux::ProfilePreviewRegionOwner>(
++        *browser_view()->browser(), *this);
++  }
++  return aux_profile_preview_owner_->Begin(target, direction);
++}
++
++void VerticalTabStripRegionView::UpdateAuxProfilePreview(float progress) {
++  if (aux_profile_preview_owner_) {
++    aux_profile_preview_owner_->Update(progress);
++  }
++}
++void VerticalTabStripRegionView::OnAuxProfilePreviewFrame() {
++  if (aux_profile_preview_owner_) {
++    aux_profile_preview_owner_->OnPreviewFrame();
++  }
++}
++bool VerticalTabStripRegionView::CommitAuxProfilePreview(
++    base::OnceCallback<void(Browser*)> completion) {
++  return aux_profile_preview_owner_ &&
++      aux_profile_preview_owner_->Commit(std::move(completion));
++}
++void VerticalTabStripRegionView::CancelAuxProfilePreview() {
++  if (aux_profile_preview_owner_) {
++    aux_profile_preview_owner_->Cancel();
++  }
++}
++
+ void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+   top_button_container_->SetAgentActive(active);
+   aux_footer_->SetAgentActive(active);
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -6,10 +6,13 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+ 
+ #include <array>
++#include <memory>
+ #include <optional>
+ #include <cstdint>
+ 
+ #include "base/callback_list.h"
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
+ #include "base/containers/flat_set.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/time/time.h"
+@@ -33,6 +36,11 @@
+ #include "ui/views/controls/resize_area_delegate.h"
+ #include "ui/views/focus/focus_manager.h"
+ 
++class Browser;
++namespace aux {
++class ProfilePreviewRegionOwner;
++}
++
+ class AuxSidebarFooter;
+ class AuxSidebarView;
+ class BrowserView;
+@@ -97,6 +105,14 @@
+   // Exact original five role members, projected through155 live ownership.
+   std::array<views::View*, 5> GetAuxProfilePreviewSurfaces() const;
+   views::View* GetAuxProfilePreviewTopBoundary() const;
++  // Genuine original page owner. The source input controller, not these
++  // methods, owns exact gesture admission, progress and frame timing.
++  bool BeginAuxProfilePreview(const base::FilePath& target, int direction);
++  void UpdateAuxProfilePreview(float progress);
++  void OnAuxProfilePreviewFrame();
++  bool CommitAuxProfilePreview(base::OnceCallback<void(Browser*)> completion);
++  void CancelAuxProfilePreview();
++
+ 
+ 
+   TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen) override;
+@@ -331,6 +347,7 @@
+   base::OneShotTimer mouse_exit_timer_;
+ 
+   base::CallbackListSubscription paint_as_active_subscription_;
++  std::unique_ptr<aux::ProfilePreviewRegionOwner> aux_profile_preview_owner_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
