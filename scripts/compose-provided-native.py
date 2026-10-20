@@ -522,6 +522,7 @@ steps.extend([
     ('native-safari-captured-window-lifecycle/native.patch', 'native-safari-captured-window-lifecycle/manifest.json'),
     ('native-import-webui-handler/native.patch', 'native-import-webui-handler/manifest.json'),
     ('native-import-webui-owner-build/native.patch', 'native-import-webui-owner-build/manifest.json'),
+    ('native-import-safari-selection-capture/native.patch', 'native-import-safari-selection-capture/manifest.json'),
 ])
 
 if options.through:
