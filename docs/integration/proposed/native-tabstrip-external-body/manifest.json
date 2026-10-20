@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h",
+      "baselineSha256": "d49929bf36f7e222a39ed5d9989054e9b974f926120745af4f09c6ae1614b03e",
+      "outputSha256": "ad6a166e9267b4a8a95c02882cd9941201c91ca6d708ccf74e2a09b5786de2dd"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_utils.cc",
+      "baselineSha256": "fe7166d822c6b130fa1793caf675c020641feb6800238819be3357ce3cb0ef24",
+      "outputSha256": "d0a90c3830c65b7d903dd3c8c7f8819f226e4e6424707ff4571faf69f2e2f11a"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "baselineSha256": "11adcc521c5930609e5ab6cabf3c5194814756ac5344df4a375f77af790f8594",
+      "outputSha256": "ae46214cb96d7fa5975f78ee48c3a8991e9b23a7d012b344482260b449db4a73"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "baselineSha256": "182b073a8f376658307a86e251a28ae534afc757eb7d9b6c701dbf8996f377ee",
+      "outputSha256": "81bdd956b4866f1a7e28dd5ed43f7a6c3cccfea71e6642f025e8db03655c52bb"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc",
+      "baselineSha256": "060e47dcd08e6da754fe71147bc2d528aed1bed0ced78cd416d418d32d70ce40",
+      "outputSha256": "0821b68dc71926192cbcba93ce956697c52bed3965279905f8977b93f9ae1645"
+    }
+  ]
+}

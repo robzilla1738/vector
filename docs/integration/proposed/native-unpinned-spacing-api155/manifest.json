@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc",
+      "baselineSha256": "250bebfbb6b5930e467e6427529d4e2cc79cb8874fa4360706e42e33eb503bba",
+      "outputSha256": "79559ac067d87730cf2e6e2e971b8d7166e19eae8eacea1e9965648f3785f8bf"
+    }
+  ]
+}

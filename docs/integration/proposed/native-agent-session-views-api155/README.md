@@ -1,0 +1,3 @@
+# Actual155 aggregate/child API adaptations
+
+The367 focused compiler exposed four integration boundaries. Actual ChildViews is an iterable projection, so materialize its genuine View pointers in order before prepending the real special Agent child. Declare the parent-walk variable as View* so actual ancestors can be assigned. Register AgentSessionGroupView metadata for155 Add/RemoveChildView type checks. Finally expose a narrow common TabView forwarder to its real private OnTabStateChanged entry, preserving the supplied aggregate refresh without recreating native state updates. Original proposals remain immutable; no mock node, fake group or replacement renderer is introduced.

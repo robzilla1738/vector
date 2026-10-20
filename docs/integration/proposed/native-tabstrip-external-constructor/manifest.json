@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "baselineSha256": "81bdd956b4866f1a7e28dd5ed43f7a6c3cccfea71e6642f025e8db03655c52bb",
+      "outputSha256": "3603d527a821578114159770cea8ba89a0252dc27f0c9b935dae4326e8f1771a"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "baselineSha256": "85361582f76c5d94472a5bb716b35655e0dc82c1e27124d6f37387f4ee844070",
+      "outputSha256": "a39b439425885b1e78e0f8b2b3f6e08e42b2d14fa95da8c6a89bc490b02b5077"
+    }
+  ]
+}

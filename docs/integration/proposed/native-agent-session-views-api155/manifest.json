@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc",
+      "baselineSha256": "4c64a3aa4f8669f32af714bb9872b3b90ac1ae1ecef716efd58c340a5068aff1",
+      "outputSha256": "250bebfbb6b5930e467e6427529d4e2cc79cb8874fa4360706e42e33eb503bba"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc",
+      "baselineSha256": "a8bd7247eaadec7eeb20d840ceb9fd6e3491f9a69133b8dd5c6d1b58b77726f5",
+      "outputSha256": "9468f0979de9dd95092b1f205a4ef5fb8cc7033df343ae847ae84eabb2454e48"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_view.h",
+      "baselineSha256": "0c9f7ca91a1de4483b18bb35743d4a659ef0c2eb5f6ffb6f988f5365daee0f7c",
+      "outputSha256": "5fd6353fe61021a103b058cdd79ba11f9f9f20a05a425b0c283e5f1f01511456"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc",
+      "baselineSha256": "002d639ded81ef9f743659f9c275ab18ac7df2e991b9090d096d7dfc24c9bc5c",
+      "outputSha256": "7764a0310aa1535bdfed3811b5466b10dfb1a3f673be1e6c9a273382dc11ba42"
+    }
+  ]
+}

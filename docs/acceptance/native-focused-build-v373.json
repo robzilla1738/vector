@@ -1,0 +1,134 @@
+{
+  "composition": "v373",
+  "originalReplay": {
+    "steps": 376,
+    "sources": 535,
+    "actualNativeSourcesMatch": true,
+    "actualArtworkMatches": 23,
+    "seed": "out/native-original-replay-v373"
+  },
+  "focusedBuilds": [
+    {
+      "composition": "v360",
+      "exitCode": 0,
+      "elapsedSeconds": 19.003883123397827,
+      "targets": {
+        "agent_data_source": "obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o",
+        "agent_group_header": "obj/chrome/browser/ui/views/tabs/common/impl/tab_group_header_view.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_group_header_view.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v369",
+      "exitCode": 0,
+      "elapsedSeconds": 9.655379056930542,
+      "targets": {
+        "tab_strip_external_body": "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+        "tab_strip_external_layout": "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view_layout.o",
+        "pinned_owner_lookup": "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_utils.o",
+        "new_tab_button": "obj/chrome/browser/ui/ui/aux_vertical_new_tab_button.o",
+        "agent_tabs_view": "obj/chrome/browser/ui/ui/aux_agent_session_tabs_view.o",
+        "unpinned_owner": "obj/chrome/browser/ui/views/tabs/common/impl/unpinned_tab_container_view.o",
+        "unpinned_layout": "obj/chrome/browser/ui/views/tabs/common/impl/unpinned_tab_container_view_layout.o",
+        "agent_data_observers": "obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view_layout.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_utils.o",
+        "obj/chrome/browser/ui/ui/aux_vertical_new_tab_button.o",
+        "obj/chrome/browser/ui/ui/aux_agent_session_tabs_view.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/unpinned_tab_container_view.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/unpinned_tab_container_view_layout.o",
+        "obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v370",
+      "exitCode": 0,
+      "elapsedSeconds": 12.76871395111084,
+      "targets": {
+        "external_constructor": "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+        "real_collection_factory": "obj/chrome/browser/ui/views/tabs/common/impl/tab_collection_node.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+        "obj/chrome/browser/ui/views/tabs/common/impl/tab_collection_node.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v372",
+      "exitCode": 0,
+      "elapsedSeconds": 9.196813106536865,
+      "targets": {
+        "shared_contents": "obj/chrome/browser/ui/ui/aux_sidebar_contents_view.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_sidebar_contents_view.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v373",
+      "exitCode": 0,
+      "elapsedSeconds": 6.8164732456207275,
+      "targets": {
+        "outer_scrollbar_thumb": "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_scroll_bar.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_scroll_bar.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    }
+  ],
+  "latestFullBrowser": "v277",
+  "genuineSidebarMounted": false,
+  "fullBrowserOrUIAccepted": false,
+  "nativeSigningProvisioningOrReleasePerformed": false
+}

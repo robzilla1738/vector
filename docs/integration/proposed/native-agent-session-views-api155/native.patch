@@ -1,0 +1,64 @@
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+@@ -216,7 +216,9 @@
+   std::optional<tab_groups::TabGroupId> focused_group_id =
+       GetFocusedGroupId(tab_container_view);
+ 
+-  auto children = tab_container_view->collection_node_->GetDirectChildren();
++  std::vector<views::View*> children;
++  for (auto* child : tab_container_view->collection_node_->GetDirectChildren())
++    children.push_back(child);
+   if (auto* agent_tabs = tab_container_view->agent_session_tabs_view()) {
+     children.insert(children.begin(), agent_tabs);
+   }
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.cc
+@@ -272,7 +272,7 @@
+ views::ScrollView* UnpinnedTabContainerView::GetScrollViewForContainer() const {
+   // External mode nests this container beneath the shared body scroll view.
+   // Preserve the supplied ancestor walk around the real contents oracle.
+-  for (auto* view = const_cast<UnpinnedTabContainerView*>(this); view;
++  for (views::View* view = const_cast<UnpinnedTabContainerView*>(this); view;
+        view = view->parent()) {
+     if (auto* scroll_view = views::ScrollView::GetScrollViewForContents(view)) {
+       return scroll_view;
+--- a/chrome/browser/ui/views/tabs/common/tab_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_view.h
+@@ -101,6 +101,8 @@
+   SkPath GetPath() const;
+ 
+   const TabCollectionNode* collection_node() const { return collection_node_; }
++  // Supplied aggregate owner refreshes the genuine common tab state entry.
++  void RefreshAgentSessionTabState() { OnTabStateChanged(); }
+   TabStyleViews* tab_styling() { return tab_styling_.get(); }
+   const TabStyleViews* tab_styling() const { return tab_styling_.get(); }
+   float radial_highlight_opacity() { return radial_highlight_opacity_; }
+--- a/chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc
+@@ -35,6 +35,7 @@
+ class AgentSessionGroupView final : public views::View,
+                                     public TabGroupHeaderView::Delegate,
+                                     public gfx::AnimationDelegate {
++  METADATA_HEADER(AgentSessionGroupView, views::View)
+  public:
+   AgentSessionGroupView(TabStripView&, TabHoverCardController&,
+                         base::RepeatingClosure toggle,
+@@ -77,6 +78,9 @@
+   gfx::SlideAnimation animation_{this};
+   base::WeakPtrFactory<AgentSessionGroupView> weak_{this};
+ };
++BEGIN_METADATA(AgentSessionGroupView)
++END_METADATA
++
+ AgentSessionGroupView::AgentSessionGroupView(
+     TabStripView& strip, TabHoverCardController& hover,
+     base::RepeatingClosure toggle, base::RepeatingClosure changed, bool collapsed)
+@@ -152,7 +156,7 @@
+   InvalidateLayout(); PreferredSizeChanged();
+ }
+ void AgentSessionGroupView::ActiveTabChanged() {
+-  for (auto& [handle, row] : rows_) row->OnTabStateChanged();
++  for (auto& [handle, row] : rows_) row->RefreshAgentSessionTabState();
+ }
+ gfx::Size AgentSessionGroupView::CalculatePreferredSize(
+     const views::SizeBounds& available) const {

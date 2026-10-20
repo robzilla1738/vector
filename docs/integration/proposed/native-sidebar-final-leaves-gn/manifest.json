@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "70dc6676b3375a0b0a198b86d8954f5b236b454a0c3137596b0a64ed9bf8d296",
+      "outputSha256": "b3b9bf75e2b4d195d7217fedcce1ed4a73fb7a0e0c0f1220ff26a23c00160a8b"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "evidence_id": "ev_83f6861f4827ed94e5fbeb0cc15d269ada34eaea4ab350e861d8a8eda029ffa0",
+  "subject": {
+    "name": "tabstrip-original-41277dc.raw",
+    "digest": {
+      "sha256": "e78e3f020cfeeffa38252c950f9c98ae75eeafd9a62737b9b5f650c51442d17c"
+    },
+    "local_path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/tabstrip-original-41277dc.raw",
+    "format": "raw-binary",
+    "architecture": "arm64"
+  },
+  "analysis_profile": {
+    "provider": {
+      "id": "rea-workflow",
+      "name": "REA composed investigation workflow",
+      "version": "1"
+    },
+    "parameters": {
+      "upstream_analysis_profile": {
+        "provider": {
+          "id": "ghidra",
+          "name": "Ghidra",
+          "version": "12.1.4"
+        },
+        "parameters": {
+          "target_kind": "executable",
+          "target_format": "raw-binary",
+          "architecture": "arm64",
+          "available_architectures": [
+            "arm64"
+          ],
+          "import_mode": "ephemeral-source-immutable",
+          "annotation_policy": "atomic-function-entry-metadata-v1",
+          "load_image_observations": "source-mappings-entry-context-v2",
+          "function_body_evidence": "complete-inclusive-ranges-v1",
+          "function_references": "complete-body-and-entry-reference-manager-v2",
+          "call_relationship_coverage": "function-body-call-coverage-v5",
+          "function_dossier_coverage": "observed-facets-and-call-relationships-v1",
+          "string_inventory_evidence": "defined-data-coverage-v1",
+          "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+          "procedure_file_offset_resolution": "address-first-unique-target-source-mapping-v2",
+          "instruction_flow_evidence": "decoded-return-pcode-v1",
+          "instruction_references": "exact-address-incoming-without-synthetic-entry-v2",
+          "function_boundary_observations": "ghidra-function-boundary-limitations-v4",
+          "no_return_repair": "returning-imports-decoded-return-v2",
+          "process_launch": "inspected-jvm-launch-support-v1",
+          "load_image_evidence": "independent-raw-mapping-context-v4",
+          "jump_table_evidence": "typed-case-default-blocks-v1",
+          "decompiler_jump_loads": true,
+          "loader": "BinaryLoader",
+          "language_id": "AARCH64:LE:64:v8A",
+          "compiler_spec_id": "default",
+          "language_selection": "caller-supplied-v1",
+          "entry_point": "0x41277dc",
+          "entry_seed": "external-entry-and-function-before-analysis-v1",
+          "analyzer_preset": "ghidra-default"
+        },
+        "digest": "f1bc79564124c5ae1dba7c7b477633ef3f5d607d2bf9597acc0f4a81779af30f"
+      },
+      "source_limitations": "provider-operation-caveats-v1",
+      "workflow_revision": 3
+    },
+    "digest": "217bf208b41998b7b4a56c78c461673b0fe4b0939d16749286c31c7e42e4a8f6"
+  },
+  "item": {
+    "address": "0x41277dc",
+    "procedure": {
+      "status": "resolved",
+      "address": "0x41277dc",
+      "name": "entry"
+    },
+    "status": "ok",
+    "pseudocode": "\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\n\nlong * entry(ulong param_1,long *param_2)\n\n{\n  code *pcVar1;\n  bool bVar2;\n  long lVar3;\n  long lVar4;\n  undefined8 uVar5;\n  ulong uVar6;\n  long lVar7;\n  long lVar8;\n  long lVar9;\n  long lVar10;\n  \n  if (param_2 != (long *)0x0) {\n    lVar3 = (**(code **)(*param_2 + 0x58))(param_2);\n    lVar4 = func_0x078af2c4();\n    bVar2 = lVar3 != 0;\n    if (lVar3 != lVar4 && lVar3 != 0) {\n      do {\n        lVar3 = *(long *)(lVar3 + 0x48);\n        bVar2 = lVar3 != 0;\n      } while (bVar2 && lVar3 != lVar4);\n    }\n    if (bVar2) {\n      if (((ulong)param_2 & 0xfffffffc00000000) == _DAT_0ebb2088) {\n        func_0x000142fc(param_2);\n      }\n      if ((*(ulong *)(param_1 + 0x360) & 0xfffffffc00000000) == _DAT_0ebb2088) {\n        func_0x00022a3c();\n      }\n      *(long **)(param_1 + 0x360) = param_2;\n      if (*(char *)(param_1 + 0x369) == '\\0') {\n        uVar5 = *(undefined8 *)(param_1 + 0x358);\nLAB_041278ac:\n        func_0x0a6a4fc0(uVar5,param_2);\n        return param_2;\n      }\n      if (*(char *)((long)param_2 + 0x169) != '\\0') {\n                    /* WARNING: Does not return */\n        pcVar1 = (code *)SoftwareBreakpoint(0,0x4127a48);\n        (*pcVar1)();\n      }\n    }\n    else {\n      lVar3 = (**(code **)(*param_2 + 0x58))(param_2);\n      lVar4 = func_0x0789e0f0();\n      bVar2 = lVar3 != 0;\n      if (lVar3 != lVar4 && lVar3 != 0) {\n        do {\n          lVar3 = *(long *)(lVar3 + 0x48);\n          bVar2 = lVar3 != 0;\n        } while (bVar2 && lVar3 != lVar4);\n      }\n      if (!bVar2) goto LAB_04127a38;\n      if (((ulong)param_2 & 0xfffffffc00000000) == _DAT_0ebb2088) {\n        func_0x000142fc(param_2);\n      }\n      if ((*(ulong *)(param_1 + 0x338) & 0xfffffffc00000000) == _DAT_0ebb2088) {\n        func_0x00022a3c();\n      }\n      *(long **)(param_1 + 0x338) = param_2;\n      if ((param_1 & 0xfffffffc00000000) == _DAT_0ebb2088) {\n        func_0x000142fc(param_1);\n      }\n      if ((param_2[0xae] & 0xfffffffc00000000U) == _DAT_0ebb2088) {\n        func_0x00022a3c();\n      }\n      param_2[0xae] = param_1;\n      if (*(char *)(param_1 + 0x369) == '\\0') {\n        uVar5 = *(undefined8 *)(param_1 + 0x330);\n        goto LAB_041278ac;\n      }\n      lVar3 = *(long *)(param_1 + 0x340);\n      if (lVar3 != 0) {\n        if (*(char *)((long)param_2 + 0x169) != '\\0') {\n                    /* WARNING: Does not return */\n          pcVar1 = (code *)SoftwareBreakpoint(0,0x4127a54);\n          (*pcVar1)();\n        }\n        func_0x007793fc(lVar3,param_2,*(undefined8 *)(lVar3 + 0x198));\n        lVar3 = *(long *)(param_1 + 0x340);\n        if (lVar3 == 0) {\n          return param_2;\n        }\n        lVar4 = *(long *)(param_1 + 0x338);\n        if (lVar4 == 0) {\n          return param_2;\n        }\n        if (lVar3 != *(long *)(lVar4 + 0x188)) {\n          return param_2;\n        }\n        lVar7 = *(long *)(param_1 + 0x348);\n        if (lVar7 == 0) {\n          return param_2;\n        }\n        if (lVar3 != *(long *)(lVar7 + 0x188)) {\n          return param_2;\n        }\n        lVar8 = *(long *)(lVar3 + 0x198) * 8;\n        if (lVar8 == 0) {\n          return param_2;\n        }\n        lVar10 = 0;\n        do {\n          lVar9 = *(long *)(*(long *)(lVar3 + 400) + lVar10);\n          if (lVar9 == lVar7) {\n            uVar6 = lVar10 >> 3;\n            goto LAB_041279f8;\n          }\n          lVar10 = lVar10 + 8;\n        } while (lVar8 - lVar10 != 0);\n        uVar6 = 0;\nLAB_041279f8:\n        lVar10 = 0;\n        do {\n          if (*(long *)(*(long *)(lVar3 + 400) + lVar10) == lVar4) {\n            if ((ulong)(lVar10 >> 3) < uVar6 || lVar9 != lVar7) {\n              return param_2;\n            }\n            func_0x0364f578();\n            return param_2;\n          }\n          lVar10 = lVar10 + 8;\n        } while (lVar8 - lVar10 != 0);\n        return param_2;\n      }\n      if (*(char *)((long)param_2 + 0x169) != '\\0') {\n                    /* WARNING: Does not return */\n        pcVar1 = (code *)SoftwareBreakpoint(0,0x4127a60);\n        (*pcVar1)();\n      }\n    }\n    func_0x007793fc(param_1,param_2,*(undefined8 *)(param_1 + 0x198));\n    return param_2;\n  }\nLAB_04127a38:\n                    /* WARNING: Does not return */\n  pcVar1 = (code *)SoftwareBreakpoint(0,0x4127a3c);\n  (*pcVar1)();\n}\n\n"
+  },
+  "limitations": [
+    "Bounded raw8532-byte range; external callees not loaded.",
+    "Only first entry auto-created; other requested entries absent, not inferred."
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0xc75ee80",
+      "endExclusive": "0xc75f0d8",
+      "sha256": "2b1770712d2c7aae823725f5f453dfcc43650d0d737f99e59551a92f9c213532"
+    },
+    {
+      "start": "0x464ccfc",
+      "endExclusive": "0x464d3f0",
+      "sha256": "10626faf61a3f719d49eff03243815721c136af373828042240f523501859ef8"
+    },
+    {
+      "start": "0x41277dc",
+      "endExclusive": "0x4127c34",
+      "sha256": "976cc1f569ac19033f7e84b03af94df6fd593d184cab0b621abf3d16388cf445"
+    },
+    {
+      "start": "0x4129628",
+      "endExclusive": "0x4129930",
+      "sha256": "79c428ac7b64ff4235b4668b04a820a28056af231c63d200be5341589c128011"
+    },
+    {
+      "start": "0x4128e00",
+      "endExclusive": "0x41294a0",
+      "sha256": "a8a5c427d907a0886adb805f5ed585f5ab91175c03be537ae1847dc8b96b8fd8"
+    },
+    {
+      "start": "0x4129e00",
+      "endExclusive": "0x412a6c0",
+      "sha256": "8ce34195068b51967e945ce649a7e4bc59ecdbd57c08b126690480d42db60cc5"
+    },
+    {
+      "start": "0x4125380",
+      "endExclusive": "0x4125444",
+      "sha256": "4e11722a2660e52679d056ffbebe996ff31ad89378da23efab9b9404b416a22f"
+    },
+    {
+      "start": "0xe7230b8",
+      "endExclusive": "0xe7230c8",
+      "sha256": "d7c03f170292f3a7517f2850a8bdc912c95e927697372078e85354147c07b29a"
+    },
+    {
+      "start": "0xced82bc",
+      "endExclusive": "0xced82c8",
+      "sha256": "8dfbdf851a764cac6727d4aec7f70c142800c809c7c70fd8185ea0cc92936dbb"
+    },
+    {
+      "start": "0x503914",
+      "endExclusive": "0x50392c",
+      "sha256": "b4926b64b622ece4645a5fe1f6e16657991634f163cac8f0d51a9d9ba429d56e"
+    }
+  ],
+  "files": [
+    {
+      "path": "evidence/original-base-set-tabstrip-parent.asm",
+      "sha256": "062f9cf48f8b52066c25dfd515b3a98d80b0d56f634fc404657587cfe85dcc95"
+    },
+    {
+      "path": "evidence/original-region-tabstrip-mount.asm",
+      "sha256": "c2cb791e57f782197cf356fb9b659259502ac8a1468ba04bf0da9bb015cf038d"
+    },
+    {
+      "path": "evidence/original-tabstrip-external-scroll.asm",
+      "sha256": "a3783b9b43736f9aacffe33b2d7b436508289a0a44957e4090750ef6bf90a130"
+    },
+    {
+      "path": "evidence/original-unpinned-session-insertion.asm",
+      "sha256": "168345a2af72ee75b94bb56007a38d47349137e9568c43c1b620c11c292ea4ea"
+    },
+    {
+      "path": "evidence/original-tabstrip-ancestor-owner.asm",
+      "sha256": "12df31ee80d373dd1885c2849110b002a77c9db901469de91c930bbe7eeaccd2"
+    },
+    {
+      "path": "evidence/original-tabstrip-constructor.asm",
+      "sha256": "2cf30b337d955ef54b9e395e63fbf1789c3247926b7543a8de2c541e006ca532"
+    },
+    {
+      "path": "evidence/original-tabstrip-remove-contents.asm",
+      "sha256": "0d4823a0dfe1cf61f4707e199fb11052728e0066203321d7689a9c853aba8089"
+    },
+    {
+      "path": "evidence/original-tabstrip-scroll-routing.asm",
+      "sha256": "dfd4828be3f36715382f9850e292903c7666adff6a4fefea79aa6ed329c0b14b"
+    },
+    {
+      "path": "evidence/original-tabstrip-layout-dispatch.asm",
+      "sha256": "3c5effed606bdacfc16ad23548ced9f22d2d3ef71afaba4863646cd0f90734d3"
+    },
+    {
+      "path": "evidence/original-tabstrip-vertical-layout.asm",
+      "sha256": "a76da2ddd8713809d4b6c780467ad6bd2d234b8cba9dca6e0a3e37b77260cea1"
+    },
+    {
+      "path": "evidence/original-layout-constant-switch.asm",
+      "sha256": "cd7b0809b093e97b6fd4537ecc0eb7b924052c6077da7456e1cc2360f34e8266"
+    },
+    {
+      "path": "evidence/add-contents-rea.json",
+      "sha256": "1a1fd05a66ba6dabcd1e4b82091171fcae39036eb15410f622223f712e9a6584"
+    }
+  ],
+  "mountProof": {
+    "baseVirtualSlot": "0x4e8",
+    "regionMethod": "0x464ccfc",
+    "clearMethod": "0x464d1e0",
+    "realTabStripParent": "region680 Tabs contents",
+    "realAgentParent": "actual TabStripView360 UnpinnedTabContainerView after temporary construction parent",
+    "pinnedPlacement": "actual region before shared outer5b0 scroll view"
+  },
+  "externalLayout": "Original4129f3c: native unpinned preferred height unconstrained by viewport, source separator metric63=8, hide both internal scroll views.",
+  "lifetime": "Original412930c..946c binds originalTabStripView weak state+3c8;155 inner-only Unretained callbacks must become WeakPtr callbacks when scheduled on external scroll owner."
+}

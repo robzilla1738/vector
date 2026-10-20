@@ -1,0 +1,23 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
+@@ -59,9 +59,9 @@
+ }
+ 
+ views::ScrollView* NearestScrollView(views::View* view) {
+-  // Supplied41290b0..0e4 walks all actual ancestors, including the view itself.
++  // Supplied41290b0..0e4 walks actual parents around the native contents oracle.
+   for (auto* ancestor = view; ancestor; ancestor = ancestor->parent()) {
+-    if (auto* scroll = views::AsViewClass<views::ScrollView>(ancestor))
++    if (auto* scroll = views::ScrollView::GetScrollViewForContents(ancestor))
+       return scroll;
+   }
+   return nullptr;
+@@ -513,7 +513,7 @@
+ void TabStripView::SetExternalScrollMode(bool external) {
+   if (external_scroll_mode_ == external) return;
+   external_scroll_mode_ = external;
+-  for (auto* scroll : {pinned_tabs_scroll_view_, unpinned_tabs_scroll_view_}) {
++  for (auto* scroll : {pinned_tabs_scroll_view_.get(), unpinned_tabs_scroll_view_.get()}) {
+     if (!scroll) continue;
+     if (external) {
+       scroll->SetHorizontalScrollBarMode(views::ScrollView::ScrollBarMode::kDisabled);

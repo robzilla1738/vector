@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1160,6 +1160,10 @@
+       "views/frame/aux_agent_session_tabs_model.h",
+       "views/frame/aux_agent_session_tabs_source.cc",
+       "views/frame/aux_agent_session_tabs_source.h",
++      "views/frame/aux_agent_session_tabs_view.cc",
++      "views/frame/aux_agent_session_tabs_view.h",
++      "views/frame/aux_vertical_new_tab_button.cc",
++      "views/frame/aux_vertical_new_tab_button.h",
+       "views/frame/aux_new_chat_view.cc",
+       "views/frame/aux_new_chat_view.h",
+       "views/frame/aux_new_chat_icon.inc",

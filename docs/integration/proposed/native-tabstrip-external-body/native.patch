@@ -1,0 +1,367 @@
+--- a/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h
++++ b/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h
+@@ -15,6 +15,7 @@
+ #include "ui/views/view.h"
+ 
+ class TabCollectionNode;
++class TabStripView;
+ 
+ // The view class that represents the pinned tab region for the
+ // tab strip. It manages the layout of all the pinned tabs and serves
+@@ -31,6 +32,11 @@
+   PinnedTabContainerView(const PinnedTabContainerView&) = delete;
+   PinnedTabContainerView& operator=(const PinnedTabContainerView&) = delete;
+   ~PinnedTabContainerView() override;
++
++  // Original+570: pinned views can live beside the external body instead of
++  // under TabStripView. Preserve their genuine collection owner for helpers.
++  void SetTabStripViewOwner(TabStripView* owner) { tab_strip_view_owner_ = owner; }
++  TabStripView* tab_strip_view_owner() const { return tab_strip_view_owner_; }
+ 
+   // LayoutDelegate:
+   views::ProposedLayout CalculateProposedLayout(
+@@ -50,6 +56,7 @@
+       const gfx::Point& loc_in_container);
+ 
+  private:
++  raw_ptr<TabStripView> tab_strip_view_owner_ = nullptr;
+   // DraggedTabsContainer:
+   views::ScrollView* GetScrollViewForContainer() const override;
+   void UpdateTargetLayoutForDrag(
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_utils.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_utils.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_utils.h"
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h"
++#include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
+ #include "ui/views/view.h"
+ #include "ui/views/view_utils.h"
+@@ -32,6 +33,12 @@
+     if (auto* tab_strip = views::AsViewClass<TabStripView>(v)) {
+       return tab_strip;
+     }
++    // Original41253d8..420 checks the real pinned container's owner when the
++    // source region has moved it outside the scrolling TabStripView subtree.
++    if (auto* pins = views::AsViewClass<PinnedTabContainerView>(v);
++        pins && pins->tab_strip_view_owner()) {
++      return pins->tab_strip_view_owner();
++    }
+   }
+   return nullptr;
+ }
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
+@@ -58,6 +58,15 @@
+          collection_node->orientation() == TabStripOrientation::kVertical;
+ }
+ 
++views::ScrollView* NearestScrollView(views::View* view) {
++  // Supplied41290b0..0e4 walks all actual ancestors, including the view itself.
++  for (auto* ancestor = view; ancestor; ancestor = ancestor->parent()) {
++    if (auto* scroll = views::AsViewClass<views::ScrollView>(ancestor))
++      return scroll;
++  }
++  return nullptr;
++}
++
+ }  // namespace
+ 
+ class TabStripView::TargetViewsTracker : public views::ViewObserver {
+@@ -409,8 +418,8 @@
+ }
+ 
+ void TabStripView::ScrollToFitViews(views::View* view1, views::View* view2) {
+-  views::View* primary_view = (view1 && Contains(view1)) ? view1 : nullptr;
+-  views::View* secondary_view = (view2 && Contains(view2)) ? view2 : nullptr;
++  views::View* primary_view = ContainsRepresentedTabView(view1) ? view1 : nullptr;
++  views::View* secondary_view = ContainsRepresentedTabView(view2) ? view2 : nullptr;
+   if (!primary_view && !secondary_view) {
+     return;
+   }
+@@ -418,11 +427,38 @@
+   // If a scroll request is active, restore normal overflow visuals and clear
+   // pending callbacks before servicing the new target views.
+   if (!target_views_tracker_->empty()) {
+-    EnableOverflowVisuals(pinned_tabs_scroll_view_);
+-    EnableOverflowVisuals(unpinned_tabs_scroll_view_);
++    if (external_scroll_mode_) {
++      auto* first = NearestScrollView(target_views_tracker_->primary_view());
++      auto* second = NearestScrollView(target_views_tracker_->secondary_view());
++      if (first) EnableOverflowVisuals(first);
++      if (second && second != first) EnableOverflowVisuals(second);
++    } else {
++      EnableOverflowVisuals(pinned_tabs_scroll_view_);
++      EnableOverflowVisuals(unpinned_tabs_scroll_view_);
++    }
+   }
+ 
+   target_views_tracker_->SetViews(primary_view, secondary_view);
++
++  if (external_scroll_mode_) {
++    auto* first = NearestScrollView(primary_view);
++    auto* second = NearestScrollView(secondary_view);
++    // Source41292e8/2f8 removes a target with no actual scroll ancestor. Pinned
++    // tabs outside the body need no synthetic scroll container or fake bounds.
++    if (primary_view && !first)
++      target_views_tracker_->RemoveView(primary_view);
++    if (secondary_view && !second)
++      target_views_tracker_->RemoveView(secondary_view);
++    if (first)
++      first->RegisterPostLayoutCallback(base::BindRepeating(
++          &TabStripView::EnsureViewsVisibleInViewportPostLayout,
++          weak_factory_.GetWeakPtr()));
++    if (second && second != first)
++      second->RegisterPostLayoutCallback(base::BindRepeating(
++          &TabStripView::EnsureViewsVisibleInViewportPostLayout,
++          weak_factory_.GetWeakPtr()));
++    return;
++  }
+ 
+   bool has_pinned = false;
+   bool has_unpinned = false;
+@@ -444,12 +480,12 @@
+   if (has_pinned) {
+     pinned_tabs_scroll_view_->RegisterPostLayoutCallback(base::BindRepeating(
+         &TabStripView::EnsureViewsVisibleInViewportPostLayout,
+-        base::Unretained(this)));
++        weak_factory_.GetWeakPtr()));
+   }
+   if (has_unpinned) {
+     unpinned_tabs_scroll_view_->RegisterPostLayoutCallback(base::BindRepeating(
+         &TabStripView::EnsureViewsVisibleInViewportPostLayout,
+-        base::Unretained(this)));
++        weak_factory_.GetWeakPtr()));
+   }
+ }
+ 
+@@ -464,7 +500,54 @@
+ }
+ 
+ bool TabStripView::IsFocusInTabStrip() {
+-  return GetFocusManager() && Contains(GetFocusManager()->GetFocusedView());
++  return GetFocusManager() &&
++         ContainsRepresentedTabView(GetFocusManager()->GetFocusedView());
++}
++
++bool TabStripView::ContainsRepresentedTabView(const views::View* view) const {
++  return view && (Contains(view) ||
++      (external_scroll_mode_ && pinned_tabs_container_view_ &&
++       pinned_tabs_container_view_->Contains(view)));
++}
++
++void TabStripView::SetExternalScrollMode(bool external) {
++  if (external_scroll_mode_ == external) return;
++  external_scroll_mode_ = external;
++  for (auto* scroll : {pinned_tabs_scroll_view_, unpinned_tabs_scroll_view_}) {
++    if (!scroll) continue;
++    if (external) {
++      scroll->SetHorizontalScrollBarMode(views::ScrollView::ScrollBarMode::kDisabled);
++      scroll->SetVerticalScrollBarMode(views::ScrollView::ScrollBarMode::kDisabled);
++    }
++    scroll->SetVisible(!external);
++    if (!external) EnableOverflowVisuals(scroll);
++  }
++  InvalidateLayout();
++}
++
++void TabStripView::OrderExternalPinnedContainer() {
++  if (!external_pinned_parent_ || !external_scroll_view_ ||
++      !pinned_tabs_container_view_ ||
++      pinned_tabs_container_view_->parent() != external_pinned_parent_ ||
++      external_scroll_view_->parent() != external_pinned_parent_) return;
++  const auto pin = external_pinned_parent_->GetIndexOf(pinned_tabs_container_view_);
++  const auto scroll = external_pinned_parent_->GetIndexOf(external_scroll_view_);
++  if (pin && scroll && *pin >= *scroll)
++    external_pinned_parent_->ReorderChildView(pinned_tabs_container_view_, *scroll);
++}
++
++void TabStripView::SetExternalParents(views::View* pinned_parent,
++                                     views::ScrollView* outer_scroll) {
++  external_pinned_parent_ = pinned_parent;
++  external_scroll_view_ = outer_scroll;
++  if (external_scroll_mode_ && pinned_tabs_container_view_) {
++    views::View* parent = pinned_parent ? pinned_parent : this;
++    if (pinned_tabs_container_view_->parent() != parent)
++      parent->AddChildView(pinned_tabs_container_view_.get());
++    OrderExternalPinnedContainer();
++    parent->InvalidateLayout();
++  }
++  InvalidateLayout();
+ }
+ 
+ views::View* TabStripView::GetPrimaryScrollTargetForTesting() const {
+@@ -566,6 +649,7 @@
+   if (auto* container =
+           views::AsViewClass<UnpinnedTabContainerView>(view.get())) {
+     unpinned_tabs_container_view_ = container;
++    if (external_scroll_mode_) return AddChildView(std::move(view));
+     return unpinned_tabs_scroll_view_->SetContents(std::move(view));
+   }
+   // `view` should only ever be UnpinnedTabContainerView or
+@@ -573,17 +657,33 @@
+   auto* container = views::AsViewClass<PinnedTabContainerView>(view.get());
+   CHECK(container);
+   pinned_tabs_container_view_ = container;
++  container->SetTabStripViewOwner(this);
++  if (external_scroll_mode_) {
++    auto* parent = external_pinned_parent_ ? external_pinned_parent_.get() : this;
++    auto* result = parent->AddChildView(std::move(view));
++    OrderExternalPinnedContainer();
++    return result;
++  }
+   return pinned_tabs_scroll_view_->SetContents(std::move(view));
+ }
+ 
+ void TabStripView::RemoveScrollViewContents(views::View* view) {
+   if (views::IsViewClass<UnpinnedTabContainerView>(view)) {
+     unpinned_tabs_container_view_ = nullptr;
++    if (external_scroll_mode_ && view->parent() == this) {
++      RemoveChildViewT(view);
++      return;
++    }
+     unpinned_tabs_scroll_view_->SetContents(nullptr);
+     return;
+   }
+   if (views::IsViewClass<PinnedTabContainerView>(view)) {
++    pinned_tabs_container_view_->SetTabStripViewOwner(nullptr);
+     pinned_tabs_container_view_ = nullptr;
++    if (external_scroll_mode_ && view->parent()) {
++      view->parent()->RemoveChildViewT(view);
++      return;
++    }
+     pinned_tabs_scroll_view_->SetContents(nullptr);
+     return;
+   }
+@@ -631,6 +731,7 @@
+ }
+ 
+ void TabStripView::ResetCollectionNode() {
++  weak_factory_.InvalidateWeakPtrs();
+   collection_node_ = nullptr;
+   if (tab_scroll_button_container_) {
+     tab_scroll_button_container_->SetScrollView(nullptr);
+@@ -668,7 +769,7 @@
+ 
+   for (views::View* view : {target_views_tracker_->primary_view(),
+                             target_views_tracker_->secondary_view()}) {
+-    if (view && Contains(view) && scroll_view->contents()->Contains(view)) {
++    if (ContainsRepresentedTabView(view) && scroll_view->contents()->Contains(view)) {
+       gfx::Rect view_bounds = GetBoundsInScrollViewContents(view, scroll_view);
+       if (!has_valid_views) {
+         combined_bounds = view_bounds;
+@@ -701,7 +802,7 @@
+       DisableOverflowVisuals(scroll_view);
+       target_views_tracker_->SetOnReachedTargetSizeCallback(
+           base::BindOnce(&TabStripView::EnsureViewsVisibleInViewportPostLayout,
+-                         base::Unretained(this), scroll_view));
++                         weak_factory_.GetWeakPtr(), scroll_view));
+     } else {
+       // Always exit with overflow visuals enabled.
+       EnableOverflowVisuals(scroll_view);
+@@ -756,7 +857,7 @@
+     scroll_view->ScrollByOffset(scroll_offset);
+     scroll_view->RegisterPostLayoutCallback(base::BindRepeating(
+         &TabStripView::EnsureViewsVisibleInViewportPostLayout,
+-        base::Unretained(this)));
++        weak_factory_.GetWeakPtr()));
+     scroll_view->InvalidateLayout();
+   } else {
+     // Request a final scroll to ensure the tracked views are moved beyond the
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_TABS_COMMON_TAB_STRIP_VIEW_H_
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/tabs/public/tab_interface.h"
+@@ -47,6 +48,15 @@
+ 
+   // Actual retained collection used by original region4642670 recursion.
+   TabCollectionNode* collection_node() const { return collection_node_; }
++
++  // Supplied4129628/41297a0: the region owns the shared scrolling body.
++  // Set mode in the root-view factory before its collection children attach.
++  void SetExternalScrollMode(bool external);
++  void SetExternalParents(views::View* pinned_parent,
++                          views::ScrollView* outer_scroll);
++  views::ScrollView* external_scroll_view() const {
++    return external_scroll_view_;
++  }
+ 
+   PinnedTabContainerView* GetPinnedTabsContainer() const;
+   UnpinnedTabContainerView* GetUnpinnedTabsContainer() const;
+@@ -117,6 +127,8 @@
+   void RemoveScrollViewContents(views::View* view);
+   void SetScrollViewProperties(views::ScrollView* scroll_view);
+   void ResetCollectionNode();
++  bool ContainsRepresentedTabView(const views::View* view) const;
++  void OrderExternalPinnedContainer();
+ 
+   // Invoked after layout has been invoked for target views' associated
+   // ScrollView. Performs a best-effort attempt to ensure target views are
+@@ -153,6 +165,9 @@
+   raw_ptr<views::Separator> tabs_separator_ = nullptr;
+   raw_ptr<views::ScrollView> unpinned_tabs_scroll_view_ = nullptr;
+   raw_ptr<UnpinnedTabContainerView> unpinned_tabs_container_view_ = nullptr;
++  bool external_scroll_mode_ = false;
++  raw_ptr<views::View> external_pinned_parent_ = nullptr;
++  raw_ptr<views::ScrollView> external_scroll_view_ = nullptr;
+   raw_ptr<TabScrollButtonContainer> tab_scroll_button_container_ = nullptr;
+   bool is_collapsed_ = false;
+ 
+@@ -176,6 +191,8 @@
+ 
+   base::ScopedObservation<views::Widget, views::WidgetObserver>
+       widget_observation_{this};
++  // Original+3c8 lifetime: the external scroll body can outlive this view.
++  base::WeakPtrFactory<TabStripView> weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TABS_COMMON_TAB_STRIP_VIEW_H_
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
+@@ -224,6 +224,39 @@
+     return layouts;
+   }
+ 
++  if (tab_strip_view->external_scroll_mode_) {
++    // Supplied4129f3c..a1e8: one unconstrained unpinned column in the region's
++    // shared body, with the actual pinned container hosted outside that body.
++    const int width = size_bounds.width().value();
++    auto* unpinned = tab_strip_view->GetUnpinnedTabsContainer();
++    auto* pinned = tab_strip_view->GetPinnedTabsContainer();
++    const int unpinned_height = unpinned
++        ? unpinned->GetPreferredSize(views::SizeBounds(width, {})).height() : 0;
++    const auto pinned_size = pinned ? pinned->GetPreferredSize() : gfx::Size();
++    const bool separator_visible = is_collapsed && pinned_size.width() > 0 &&
++        pinned_size.height() > 0 && unpinned_height > 0;
++    // Original layout constant63, independently decoded to8px.155's
++    // horizontal padding is12px and must not silently replace this metric.
++    constexpr int kExternalSeparatorPadding = 8;
++    layouts.child_layouts.emplace_back(pinned_tabs_scroll_view, false, gfx::Rect());
++    gfx::Rect separator_bounds;
++    int y = 0;
++    if (separator_visible) {
++      separator_bounds = gfx::Rect(kExternalSeparatorPadding, 0,
++          std::max(0, width - 2 * kExternalSeparatorPadding),
++          tabs_separator->GetPreferredSize().height());
++      y = separator_bounds.height() + kExternalSeparatorPadding;
++    }
++    layouts.child_layouts.emplace_back(tabs_separator, separator_visible,
++                                       separator_bounds);
++    layouts.child_layouts.emplace_back(unpinned_tabs_scroll_view, false, gfx::Rect());
++    if (unpinned)
++      layouts.child_layouts.emplace_back(unpinned, unpinned->GetVisible(),
++          gfx::Rect(0, y, width, unpinned_height));
++    layouts.host_size = gfx::Size(width, y + unpinned_height);
++    return layouts;
++  }
++
+   const int region_horizontal_padding =
+       GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
+ 

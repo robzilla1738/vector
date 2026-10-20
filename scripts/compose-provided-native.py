@@ -382,6 +382,22 @@ steps.extend([
     ('native-tabs-actions/native.patch', 'native-tabs-actions/manifest.json'),
     ('native-tabs-assembly-gn/native.patch', 'native-tabs-assembly-gn/manifest.json'),
     ('native-tabs-actions-api155/native.patch', 'native-tabs-actions-api155/manifest.json'),
+    ('native-agent-session-tabs-source/native.patch', 'native-agent-session-tabs-source/manifest.json'),
+    ('native-agent-session-tabs-source-gn/native.patch', 'native-agent-session-tabs-source-gn/manifest.json'),
+    ('native-agent-session-header/native.patch', 'native-agent-session-header/manifest.json'),
+    ('native-tabstrip-external-body/native.patch', 'native-tabstrip-external-body/manifest.json'),
+    ('native-tabstrip-external-body-api155/native.patch', 'native-tabstrip-external-body-api155/manifest.json'),
+    ('native-vertical-new-tab-button/native.patch', 'native-vertical-new-tab-button/manifest.json'),
+    ('native-agent-session-tabs-view/native.patch', 'native-agent-session-tabs-view/manifest.json'),
+    ('native-sidebar-final-leaves-gn/native.patch', 'native-sidebar-final-leaves-gn/manifest.json'),
+    ('native-unpinned-agent-session-owner/native.patch', 'native-unpinned-agent-session-owner/manifest.json'),
+    ('native-agent-session-tabs-observers/native.patch', 'native-agent-session-tabs-observers/manifest.json'),
+    ('native-agent-session-views-api155/native.patch', 'native-agent-session-views-api155/manifest.json'),
+    ('native-unpinned-spacing-api155/native.patch', 'native-unpinned-spacing-api155/manifest.json'),
+    ('native-tabstrip-external-constructor/native.patch', 'native-tabstrip-external-constructor/manifest.json'),
+    ('native-sidebar-scroll-contents/native.patch', 'native-sidebar-scroll-contents/manifest.json'),
+    ('native-sidebar-scroll-contents-gn/native.patch', 'native-sidebar-scroll-contents-gn/manifest.json'),
+    ('native-sidebar-scrollbar-thumb/native.patch', 'native-sidebar-scrollbar-thumb/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,31 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.h
+@@ -39,7 +39,8 @@
+   METADATA_HEADER(TabStripView, views::View)
+ 
+  public:
+-  explicit TabStripView(TabCollectionNode* collection_node);
++  explicit TabStripView(TabCollectionNode* collection_node,
++                        bool external_scroll = false);
+   TabStripView(const TabStripView&) = delete;
+   TabStripView& operator=(const TabStripView&) = delete;
+   ~TabStripView() override;
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
+@@ -185,7 +185,7 @@
+       observations_{this};
+ };
+ 
+-TabStripView::TabStripView(TabCollectionNode* collection_node)
++TabStripView::TabStripView(TabCollectionNode* collection_node, bool external_scroll)
+     : collection_node_(collection_node),
+       target_views_tracker_(std::make_unique<TargetViewsTracker>(
+           collection_node->orientation())) {
+@@ -223,6 +223,7 @@
+         views::ScrollView::ScrollWithLayers::kEnabled));
+   }
+   SetScrollViewProperties(unpinned_tabs_scroll_view_);
++  SetExternalScrollMode(external_scroll);
+ 
+   if (!IsVerticalOrientation(collection_node_)) {
+     unpinned_tab_scroll_type_recorder_ =

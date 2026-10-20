@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "baselineSha256": "ae46214cb96d7fa5975f78ee48c3a8991e9b23a7d012b344482260b449db4a73",
+      "outputSha256": "85361582f76c5d94472a5bb716b35655e0dc82c1e27124d6f37387f4ee844070"
+    }
+  ]
+}

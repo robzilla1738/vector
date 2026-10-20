@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+@@ -24,10 +24,6 @@
+ #include "ui/views/view.h"
+ #include "ui/views/view_utils.h"
+ 
+-namespace {
+-constexpr int kTabVerticalPadding = 2;
+-}  // namespace
+-
+ UnpinnedTabContainerViewLayout::UnpinnedTabContainerViewLayout(
+     TabStripOrientation orientation)
+     : orientation_(orientation) {}
