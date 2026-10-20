@@ -1,0 +1,25 @@
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "extensions/common/constants.h"
+ #include "ui/native_theme/native_theme.h"
+ #include "ui/views/view_utils.h"
+@@ -131,9 +132,12 @@
+     // stacking the upstream toolbar, top-container and main-region mattes.
+     const auto* tab =
+         browser_view->browser()->GetTabStripModel()->GetActiveWebContents();
++    // WebContents exposes the virtual chrome://newtab URL. Match the actual
++    // committed primary document so the supplied override is recognized.
++    const auto* frame = tab ? tab->GetPrimaryMainFrame() : nullptr;
+     const bool supplied_page =
+-        tab && tab->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
+-        tab->GetLastCommittedURL().host() == aux::kAgentExtensionId;
++        frame && frame->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
++        frame->GetLastCommittedURL().host() == aux::kAgentExtensionId;
+     if (theme_choice == ThemeChoice::kToolbarTheme && supplied_page &&
+         view->GetNativeTheme()->preferred_contrast() !=
+             ui::NativeTheme::PreferredContrast::kMore) {
