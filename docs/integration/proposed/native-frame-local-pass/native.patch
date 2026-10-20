@@ -1,0 +1,217 @@
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
+@@ -21,9 +21,15 @@
+ #if !BUILDFLAG(IS_ANDROID)
+ namespace {
+ 
+-bool IsProcessOverheadExperimentActive() {
+-  return base::FeatureList::IsEnabled(
++bool IsWebUIToolbarSupported() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Aux's supplied frame, profile switching and extension controls are native
++  // Views. Upstream field trials must not replace only parts of that toolbar.
++  return false;
++#else
++  return !base::FeatureList::IsEnabled(
+       features::kWebUIToolbarProcessOverheadExperiment);
++#endif
+ }
+ 
+ }  // namespace
+@@ -399,77 +405,77 @@
+ BASE_FEATURE(kWebUIMediaButton, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ bool IsWebUIReloadButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIReloadButton));
+ }
+ 
+ bool IsWebUIHomeButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIHomeButton));
+ }
+ 
+ bool IsWebUIBatterySaverButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIBatterySaverButton));
+ }
+ 
+ bool IsWebUIAppMenuButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIAppMenuButton));
+ }
+ 
+ bool IsWebUIBackForwardButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIBackForwardButton));
+ }
+ 
+ bool IsWebUIPinnedToolbarActionsEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIPinnedToolbarActions));
+ }
+ 
+ bool IsWebUIExtensionsContainerEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIExtensionsContainer));
+ }
+ 
+ bool IsWebUISplitTabsButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUISplitTabsButton));
+ }
+ 
+ bool IsWebUIAvatarButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIAvatarButton));
+ }
+ 
+ bool IsWebUIMediaButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUIMediaButton));
+ }
+ 
+ bool IsWebUIPerformanceInterventionButtonEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(
+@@ -477,7 +483,7 @@
+ }
+ 
+ bool IsWebUILocationBarEnabled() {
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+           base::FeatureList::IsEnabled(features::kWebUILocationBar));
+@@ -487,7 +493,7 @@
+   // Checking IsProcessOverheadExperimentActive() and features::kInitialWebUI
+   // first is a minor optimization, since all other methods return false, if the
+   // first is enabled or the second is disabled.
+-  return !IsProcessOverheadExperimentActive() &&
++  return IsWebUIToolbarSupported() &&
+          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+          (IsWebUIReloadButtonEnabled() || IsWebUISplitTabsButtonEnabled() ||
+           IsWebUIHomeButtonEnabled() || IsWebUILocationBarEnabled() ||
+@@ -502,7 +508,7 @@
+ bool IsWebUIToolbarFullyEnabled() {
+   // The first block is an optimization, and is not needed for correctness.
+   return (base::FeatureList::IsEnabled(features::kWebUIToolbar) &&
+-          !IsProcessOverheadExperimentActive() &&
++          IsWebUIToolbarSupported() &&
+           base::FeatureList::IsEnabled(features::kInitialWebUI)) ||
+          (IsWebUIReloadButtonEnabled() && IsWebUISplitTabsButtonEnabled() &&
+           IsWebUIHomeButtonEnabled() && IsWebUILocationBarEnabled() &&
+--- a/chrome/browser/ui/views/frame/aux_section_view.cc
++++ b/chrome/browser/ui/views/frame/aux_section_view.cc
+@@ -44,7 +44,11 @@
+       : views::Button(base::BindRepeating(
+             &AuxSectionHeaderButton::RunPrimary, base::Unretained(this))),
+         primary_(std::move(primary)), secondary_(std::move(secondary)) {
+-    SetEnabled(!primary_.is_null());
++    // Chromium 155 propagates a disabled View to every descendant. Tabs has
++    // no primary action but owns the real Tidy/Clear accessory buttons.
++    SetEnabled(!primary_.is_null() || accessory != nullptr);
++    if (primary_.is_null())
++      SetFocusBehavior(FocusBehavior::NEVER);
+     SetNotifyEnterExitOnChild(true);
+     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(4, 8)));
+--- a/chrome/browser/ui/views/frame/aux_section_clip_view.cc
++++ b/chrome/browser/ui/views/frame/aux_section_clip_view.cc
+@@ -47,6 +47,9 @@
+   preferred_child_size_.reset();
+   layout_child_size_.reset();
+   if (!content_height_) InvalidateLayout();
++  // With no animated height override, the section's preferred height comes
++  // from this child. Propagate changes to the outer sidebar layout/cache.
++  if (!preferred_height_) PreferredSizeChanged();
+ }
+ void AuxSectionClipView::ViewHierarchyChanged(
+     const views::ViewHierarchyChangedDetails& details) {
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -21,6 +21,7 @@
+ #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+ #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/command_updater.h"
+ #include "chrome/browser/page_info/merchant_trust_service_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -524,6 +525,11 @@
+ 
+ // static
+ int LocationBarView::ComputeBorderRadius(gfx::Size size) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The supplied address field uses a small rounded rectangle, including its
++  // focused outline, rather than Chromium's maximum-radius pill.
++  return std::min(8, size.height() / 2);
++#endif
+   return ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+       views::Emphasis::kMaximum, size);
+ }
+@@ -1368,7 +1374,7 @@
+ }
+ 
+ gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
+-  const int border_radius = height() / 2;
++  const int border_radius = GetBorderRadius();
+   gfx::Rect bounds_without_endcaps(GetLocalBounds());
+   bounds_without_endcaps.Inset(gfx::Insets::VH(0, border_radius));
+   return bounds_without_endcaps;
+--- a/chrome/browser/ui/layout_constants.cc
++++ b/chrome/browser/ui/layout_constants.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "base/notreached.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/tabs/features.h"
+ #include "chrome/browser/ui/ui_features.h"
+ #include "components/omnibox/common/omnibox_features.h"
+@@ -235,7 +236,12 @@
+       }
+ 
+     case TOOLBAR_INTERIOR_MARGIN:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++      // Supplied desktop frame: a 34px control in a 42px toolbar row.
++      return touch_ui ? gfx::Insets::VH(4, 0) : gfx::Insets::VH(4, 6);
++#else
+       return touch_ui ? gfx::Insets::VH(4, 0) : gfx::Insets::VH(6, 6);
++#endif
+ 
+     case WEBUI_TAB_STRIP_TOOLBAR_INTERIOR_MARGIN:
+       return gfx::Insets::VH(4, 0);
