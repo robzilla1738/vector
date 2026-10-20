@@ -35,6 +35,6 @@ CDP verifies its original raw32-byte challenge, without the HTTP domain prefix. 
 
 ## Evidence and delivery
 
-Commit coherent slices to local main; do not push, use hosted Actions, Developer ID sign, notarize or release. Local ad hoc signing of copied candidates is allowed. Serialize native builds with `scripts/native-build.py`, preserve owner checkout changes and use disposable profiles with `--use-mock-keychain`.
+Commit coherent slices to local main; do not push, use hosted Actions, sign, provision, notarize or release during current development. Earlier scoped signing evidence is historical. Serialize native builds with `scripts/native-build.py`, preserve owner checkout changes and use disposable profiles with `--use-mock-keychain`.
 
-Use actual preservation, compiled-artifact, signing and disposable behavior evidence. A source hash check or diagnostic does not establish functional/UI parity. AI acceptance uses only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`, with test credentials removed afterward. Current achieved work and remaining gaps belong in [STATUS](../STATUS.md).
+Use actual preservation, compiled-artifact and disposable behavior evidence. A source hash check or diagnostic does not establish functional/UI parity. AI acceptance uses only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`, with test credentials removed afterward. Current achieved work and remaining gaps belong in [STATUS](../STATUS.md).
