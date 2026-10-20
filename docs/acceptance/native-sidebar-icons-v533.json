@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "candidate": "v533",
+  "fullParity": false,
+  "nativeBuildPassed": true,
+  "packagePassed": true,
+  "reuseReceipt": "out/current-local-authority-v533-reuse/reuse-receipt.json",
+  "reuseReceiptSha256": "6807ce83a841343e2de4df708df0341fd6d360ce224d3c0a1c9955235cad4e05",
+  "scopedBrowserPid": 55703,
+  "normalWindow": true,
+  "observed": [
+    "neutral canonical Aux new-tab icon without boxed backing",
+    "12px plus retained within16px layout slot",
+    "model menu opens with real catalog",
+    "new tab opens",
+    "collapse without rail and re-expansion",
+    "supplied sidepanel opens with current-page context and composer"
+  ],
+  "aiRequestSent": false,
+  "credentialsRead": false,
+  "screenshots": [
+    "out/material-authority-pass/aux-v533-ask.png",
+    "out/material-authority-pass/aux-v533-sidepanel.png"
+  ],
+  "reference": "out/material-authority-pass/aside-current-ask.png",
+  "remaining": [
+    "NewTab row parent alignment",
+    "footer status integration",
+    "external-page frame and toolbar geometry",
+    "complete blur/material equivalence"
+  ],
+  "verificationScope": "Focused native build and actual UI observation; no broad test suite or repeated handoff inventory scan."
+}
