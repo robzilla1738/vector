@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "panel-call",
+      "rva": "0x4573250",
+      "bytes": 68,
+      "sha256": "605c46c0eee50842e64d7656fa5f3f24fd0a26d413349b6ca6bea79e91f71423"
+    },
+    {
+      "name": "panel-constructor",
+      "rva": "0x4578b0c",
+      "bytes": 300,
+      "sha256": "cae355415953f85f7ad73453a6a5deb492c568dc706f8c0096fdd1e202d5c8d5"
+    },
+    {
+      "name": "panel-metadata",
+      "rva": "0x4579508",
+      "bytes": 256,
+      "sha256": "9a9e142d97c4e00d8e93174730402b5f81801b5ee7224f0572d79d69252c7ac2"
+    },
+    {
+      "name": "panel-preferred-size",
+      "rva": "0x4579608",
+      "bytes": 48,
+      "sha256": "73f1aaa6d90760611205d35a7b6fc091d8d9307c73e87ea68b7aee49ef258358"
+    },
+    {
+      "name": "caption-constructor",
+      "rva": "0x4578c40",
+      "bytes": 312,
+      "sha256": "534673c02d29081bb83acfa00e01c9c610303ab9b1c82d59c1c4f29dd29c05d9"
+    },
+    {
+      "name": "muted-foreground-mixer",
+      "rva": "0x35e7724",
+      "bytes": 24,
+      "sha256": "f8410506624a82a0c69c06ab301157fcf99e9d4030b182cd2eb33c49516a4ffe"
+    }
+  ],
+  "colorNames": [
+    {
+      "id": 226,
+      "name": "kColorAsideSidebarMutedForeground",
+      "nameRva": "0xdbdb2b3",
+      "entryRva": "0xe9101b0"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/views/window/dialog_client_view.cc",
+      "sha256": "55e6445071dcd50eeeb8f4633600fa96fcd8cde30a046452f4d933b77d583878"
+    },
+    {
+      "path": "ui/gfx/font.h",
+      "sha256": "ce573dc01e3574bf09f38a6d25506f12f7180e84767d6d77c549fcc25e90457a"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "native-profile-menu-rows e125d4550 exact output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "8fda78c3ebe0cee34d57acb15af7b9475a75e4191e1f09731faa2463d07670bd",
+      "outputSha256": "0649b6dd3c080197d3c20052f34a9cdd606e939e1734c72fdbe5e580ad2d9a65"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

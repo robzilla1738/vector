@@ -1,0 +1,104 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -533,7 +533,7 @@
+ BEGIN_METADATA(AuxPinnedGrid)
+ END_METADATA
+ 
+-constexpr int kMenuWidth = 252;
++constexpr int kProfileMenuWidth = 240;
+ constexpr int kMenuRowIcon = 16;
+ constexpr int kCommandEditProfile = 100;
+ constexpr int kCommandDeleteProfile = 101;
+@@ -542,8 +542,8 @@
+ constexpr int kCommandTabUnpin = 112;
+ constexpr int kCommandTabClose = 113;
+ 
+-// Supplied private roles221/222/248, resolved against this actual window.
+-enum class ProfileMenuColor { kForeground, kSecondary, kHover };
++// Supplied private roles221/222/226/248, resolved against this actual window.
++enum class ProfileMenuColor { kForeground, kSecondary, kMuted, kHover };
+ 
+ SkColor ResolveProfileMenuColor(const views::View* view,
+                                 ProfileMenuColor role) {
+@@ -555,18 +555,22 @@
+       return dark ? 0xd9fafafa : 0xd90a0a0a;
+     case ProfileMenuColor::kSecondary:
+       return dark ? 0x8cfafafa : 0x8c0a0a0a;
++    case ProfileMenuColor::kMuted:
++      return dark ? 0x73fafafa : 0x730a0a0a;
+     case ProfileMenuColor::kHover:
+       return dark ? 0x1afafafa : 0x140a0a0a;
+   }
+ }
+ 
+-void StyleProfileMenuLabel(views::Label* label, int size) {
++void StyleProfileMenuLabel(
++    views::Label* label,
++    int size,
++    gfx::Font::Weight weight = gfx::Font::Weight::NORMAL) {
+   label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   label->SetElideBehavior(gfx::ELIDE_TAIL);
+   label->SetAutoColorReadabilityEnabled(false);
+-  label->SetFontList(
+-      label->font_list().Derive(size - label->font_list().GetFontSize(),
+-                                gfx::Font::NORMAL, gfx::Font::Weight::NORMAL));
++  label->SetFontList(label->font_list().Derive(
++      size - label->font_list().GetFontSize(), gfx::Font::NORMAL, weight));
+   label->SetLineHeight(size == 12 ? 16 : 20);
+   label->SetCanProcessEventsWithinSubtree(false);
+ }
+@@ -686,6 +690,29 @@
+ BEGIN_METADATA(AuxMenuRow)
+ END_METADATA
+ 
++class AuxProfileMenuCaption : public views::Label {
++  METADATA_HEADER(AuxProfileMenuCaption, views::Label)
++
++ public:
++  explicit AuxProfileMenuCaption(const std::u16string& text)
++      : views::Label(text) {
++    StyleProfileMenuLabel(this, 12, gfx::Font::Weight::MEDIUM);
++    SetPreferredSize(gfx::Size(0, 24));
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(0, 6, 0, 6)));
++    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 4, 0, 4));
++    SetEnabledColor(ResolveProfileMenuColor(this, ProfileMenuColor::kMuted));
++  }
++
++ protected:
++  void OnThemeChanged() override {
++    views::Label::OnThemeChanged();
++    SetEnabledColor(ResolveProfileMenuColor(this, ProfileMenuColor::kMuted));
++  }
++};
++
++BEGIN_METADATA(AuxProfileMenuCaption)
++END_METADATA
++
+ gfx::ImageSkia ProfileAvatar(ProfileAttributesEntry* entry, int size) {
+   return profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(size * 2), size,
+                                       size, profiles::SHAPE_CIRCLE)
+@@ -738,8 +765,8 @@
+         browser_(browser), sender_(browser->GetWeakPtr()) {
+     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+     SetShowCloseButton(false);
+-    set_margins(gfx::Insets::VH(6, 6));
+-    set_fixed_width(kMenuWidth);
++    set_margins(gfx::Insets::VH(4, 4));
++    set_fixed_width(kProfileMenuWidth);
+     auto contents = std::make_unique<views::View>();
+     contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kVertical));
+@@ -778,12 +805,7 @@
+ 
+  private:
+   void Build() {
+-    auto title = std::make_unique<views::Label>(
+-        u"Profiles", views::style::CONTEXT_LABEL, views::style::STYLE_BODY_5);
+-    title->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
+-    title->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+-    title->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(2, 8, 4, 8)));
+-    contents_->AddChildView(std::move(title));
++    contents_->AddChildView(std::make_unique<AuxProfileMenuCaption>(u"Profiles"));
+ 
+     const base::FilePath current = browser_->GetProfile()->GetPath();
+     for (ProfileAttributesEntry* entry : AllProfiles()) {

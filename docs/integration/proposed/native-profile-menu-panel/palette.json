@@ -1,0 +1,12 @@
+[
+  {
+    "role": "kSidebarMutedForeground",
+    "id": 226,
+    "rva": "0x35e7724",
+    "bytes": 24,
+    "resultRegister": 23,
+    "dark": "0x73fafafa",
+    "light": "0x730a0a0a",
+    "seedRegister23": null
+  }
+]
