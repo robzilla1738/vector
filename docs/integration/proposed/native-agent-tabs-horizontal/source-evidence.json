@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/036d6d84.c",
+      "sha256": "af8a104dc531bbb80aa53accdfd22f9018309095f31ec8f51fde1eda4c165a94"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045da08c.c",
+      "sha256": "a1ab3d8c7cdafa51f8424e39c5a30fd886e7dcc6f213d7fed80a57393e9b818a"
+    }
+  ],
+  "functions": [
+    {
+      "name": "old initialize/mount",
+      "rva": "0x45d77e0",
+      "bytes": 952,
+      "sha256": "c5fc90c67ac2c62306be2890297dcf96946eee1d9297f3190719bf4a135638b3"
+    },
+    {
+      "name": "new strip-set/mount",
+      "rva": "0x45deeb0",
+      "bytes": 1412,
+      "sha256": "4a962d8f2830e844440ebb7a513e0d0ab9fe503a34f0b5d68eefccebe38f515a"
+    },
+    {
+      "name": "new metadata initializer",
+      "rva": "0xc77af60",
+      "bytes": 96,
+      "sha256": "c3bf539adab5146b664501e8d58c03692028ea98a413205edcf6b420fe8616bd"
+    },
+    {
+      "name": "old metadata factory",
+      "rva": "0x2c0f298",
+      "bytes": 200,
+      "sha256": "efd30300049baaf2c8b55c2019f220ce053ef149c1560d7a46457295b0ff9184"
+    },
+    {
+      "name": "button context assignment",
+      "rva": "0x4684520",
+      "bytes": 108,
+      "sha256": "a300c34784d1ccb19ff8f796b41ed5577bf200528be27c03dc9fbdddf3756c51"
+    },
+    {
+      "name": "bubble context transfer",
+      "rva": "0x4684ce0",
+      "bytes": 204,
+      "sha256": "ec734f23a60f52505e2550b90546e51ff8ec33251e94058bc3a410fc36a4a597"
+    },
+    {
+      "name": "original visibility predicate",
+      "rva": "0x4685bc4",
+      "bytes": 692,
+      "sha256": "511bd00fe5573baafb834fdf75629707d2267aa2e67ef7c864059b0fe1375f4a"
+    }
+  ],
+  "metadata": [
+    {
+      "constructor": "036d6d84",
+      "primaryVptr": "0e714e50",
+      "metadataFactory": "02c0f298",
+      "nameRva": "0deca8cd",
+      "name": "HorizontalTabStripRegionViewOld",
+      "mountMethod": "045d77e0",
+      "mountVtableOffset": "418",
+      "callRva": "045d78f0"
+    },
+    {
+      "constructor": "045da08c",
+      "primaryVptr": "0e7155b0",
+      "metadataFactory": "0c779834",
+      "metadataInitializer": "0c77af60",
+      "nameRva": "0deca8ed",
+      "name": "HorizontalTabStripRegionViewNew",
+      "mountMethod": "045deeb0",
+      "mountVtableOffset": "4e8",
+      "callRva": "045df220"
+    }
+  ]
+}

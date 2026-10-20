@@ -1,0 +1,19 @@
+# Supplied horizontal agent-tabs mounts
+
+This incremental proposal restores the two real horizontal mounts of the supplied native `AsideAgentTabsButton`. It preserves the existing guarded Aux action/feed implementation; it does not claim to complete the native group model, count, visibility or row behavior.
+
+The original Old constructor `036d6d84` installs primary vptr `0e714e50`; its metadata resolves to `HorizontalTabStripRegionViewOld`, and slot418 points to `045d77e0`. That method initializes the actual legacy strip/controller, sets its initialized byte, then creates the agent button at `045d78f0`. Original New constructor `045da08c` installs `0e7155b0`; its metadata initializer `0c77af60` names `HorizontalTabStripRegionViewNew`, and slot4e8 points to `045deeb0`, the strip-set callback containing the second mount at `045df220`. Both metadata paths identify `chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h`. The retained decompiles, complete binary hashes and bounded instruction spans are pinned in source-evidence.json.
+
+Both call sites require an actual normal Browser (`type+60 == 0`). They insert the new control immediately before the frame grab handle (Old+4a8, New+568), set cross-axis center, margins TLBR(0,0,0,8), and preferred/preferred FlexSpecification order3. There are no independently chosen dimensions in this patch. The actual155 Old InitializeTabStrip and New OnTabStripViewSet receive those mounts with an idempotent per-view guard. Their explicit155 z-order vectors include the new child, and their destructors retire it while the strip context still exists. No GN change is required: all four files and the button implementation already belong to chrome/browser/ui.
+
+## Nullable strip context is not bubble geometry
+
+Original x3 at the Old call is its real TabStrip (parent+468); New passes literal null. The button stores that context at+500, transfers it to bubble+7c0, and later rows+570. The actual bubble's geometric anchor is the pressed button (`04684cf4`), not x3. This proposal adds the nullable TabStrip parameter and carries that exact distinction into the retained bubble using155 TabStrip::AsWeakPtr, preventing a dangling retained context if the physical strip is destroyed. It never substitutes a different strip for null or uses this value as the bubble anchor. Its downstream original row use is still pending; the explicitly unused context member documents that boundary rather than inventing an effect. Existing vertical callers retain their previous null context.
+
+## Integration and remaining differences
+
+Apply after native-agent-tabs-layout (`82042ed14`); the other three baselines were copied from the current shared tree without modifying it. manifest.json gives exact baseline and output SHA256 for all four files. Apply native.patch only after matching those baselines; root composes and compiles.
+
+Original Refresh `04685bc4` checks the real first native group whose group+b8 pointed byte+11 bit0 is set, obtains its actual native tab range and hides/closes the button when absent/empty. Its concrete flag producer remains unresolved. No title-based ownership inference is introduced. The retained scoped feed and verified close/action checks remain unchanged, and count/visibility still differ from the supplied button. This patch also does not remove the independently added vertical mount, which is outside this recovered horizontal slice. Original exact width/colors/hover and close-all behavior remain separate recovery work.
+
+Run `python3 docs/integration/proposed/native-agent-tabs-horizontal/verify.py` from this worktree. It checks input/byte-range hashes, metadata/vtable chains, both exact calls/nullability, the original margin constant and exact four-file patch replay. This is static verification; no native build, shortcut, window, OS grant, source execution or product acceptance occurred.

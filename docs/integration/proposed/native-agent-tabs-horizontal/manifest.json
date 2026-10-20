@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-agent-tabs-layout82042ed14; other inputs actual shared horizontal strip at capture",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "baselineSha256": "55517679a4d7ee98bef5f9869bd88c7b4928f9f6de5b7efdc7f9e95405ab951f",
+      "outputSha256": "3edb745e0030066df9eccc698daab18ffac1170f8db12e456c178b2f69fad016"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h",
+      "baselineSha256": "5a747658ab57adaf7652a1726790011c1984fbc63286b9b91dd4a1a4fd595b04",
+      "outputSha256": "b16cb5d3f64338420d32923bb4e7efc496c8962cd049a0b7af3b3be2397219eb"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "ba9a144cc6f0835936079714ddbc63fdca96a3959d44acd93cee12ed53c84e42",
+      "outputSha256": "2994673b0d23d9758c4f84c132b02c84a5f69aaf11725c0237190a7669f0ae4a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h",
+      "baselineSha256": "b537bf81635c495cc4f7ade0aed12e2ad1cd1e41880e05bd87afc33323189221",
+      "outputSha256": "e24a3d376c14e57e19da38e0b6fb672a67fbda6a081e5105269a2f520fbef88e"
+    }
+  ]
+}
