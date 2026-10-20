@@ -1,0 +1,196 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -279,9 +279,13 @@
+             views::AsViewClass<BrowserView>(views().browser_view.get())) {
+       const auto* tab = browser_view->GetActiveWebContents();
+       const auto* frame = tab ? tab->GetPrimaryMainFrame() : nullptr;
+-      if (frame &&
++      const bool supplied_page = frame &&
+           frame->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
+-          frame->GetLastCommittedURL().host() == aux::kAgentExtensionId) {
++          frame->GetLastCommittedURL().host() == aux::kAgentExtensionId;
++      const bool external_page = BUILDFLAG(IS_MAC) && frame &&
++          frame->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++          layout_data_->tab_strip_type == TabStripType::kVertical;
++      if (supplied_page || external_page) {
+         info.multi_contents_separator = false;
+         info.top_container_separator = false;
+         info.adjust_for_missing_separator = false;
+@@ -521,6 +525,16 @@
+     // Add additional padding.
+     layout.side_panel_padding =
+         GetLayoutConstant(LayoutConstant::kSidePanelInset);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (layout_data_->tab_strip_type == TabStripType::kVertical) {
++      auto* browser_view = views::AsViewClass<BrowserView>(views().browser_view.get());
++      auto* panel_ui = browser_view ? SidePanelUI::From(browser_view->browser()) : nullptr;
++      if (panel_ui && panel_ui->IsSidePanelEntryShowing(SidePanelEntryKey(
++              SidePanelEntryId::kExtension, aux::kAgentExtensionId))) {
++        layout.side_panel_padding = 0;
++      }
++    }
++#endif
+ 
+     // See if the toolbar-height side panel can fit next to the toolbar. If not,
+     // it is forced into content height.
+@@ -1385,6 +1399,14 @@
+         content_corners.set_lower_left(radius);
+       }
+     }
++    if (BUILDFLAG(IS_MAC) &&
++        layout_data_->window_state == WindowState::kNormal &&
++        layout_data_->tab_strip_type == TabStripType::kVertical &&
++        views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()) {
++      const int radius = GetLayoutConstant(LayoutConstant::kToolbarCornerRadius);
++      content_corners.set_lower_left(radius);
++      content_corners.set_lower_right(radius);
++    }
+     views().multi_contents_view->SetBackgroundRadii(content_corners);
+   }
+ 
+@@ -1625,7 +1647,10 @@
+         GetVerticalTabStripCollapsedState() !=
+             VerticalTabStripCollapsedState::kCollapsed ||
+         params.leading_exclusion.IsEmpty();
+-    if (!vertical_tab_strip_reaches_top) {
++    const bool supplied_window_material =
++        BUILDFLAG(IS_MAC) && views().vertical_tab_strip_region_view &&
++        views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission();
++    if (!vertical_tab_strip_reaches_top || supplied_window_material) {
+       corners[CornerOrientation::kTopLeading] =
+           background->GetWindowCorner(/*upper=*/true);
+     }
+@@ -1923,6 +1948,15 @@
+       break;
+     }
+     case TabStripType::kVertical: {
++      // The supplied desktop frame rounds the page/toolbar surface beside the
++      // sidebar too. Use its existing window-corner geometry on both painters.
++      if (BUILDFLAG(IS_MAC) &&
++          layout_data_->window_state == WindowState::kNormal &&
++          views().vertical_tab_strip_region_view &&
++          views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()) {
++        toolbar_corners[CornerOrientation::kTopLeading] =
++            toolbar_background->GetWindowCorner(/*upper=*/true);
++      }
+       // Curve trailing corner when it becomes the top trailing corner of the
+       // browser.
+       if (layout_data_->window_state == WindowState::kNormal &&
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -145,10 +145,8 @@
+         !view->GetWidget()->GetCustomTheme() &&
+         view->GetNativeTheme()->preferred_contrast() !=
+             ui::NativeTheme::PreferredContrast::kMore) {
+-      // Same single 80% tint used by the supplied normal Agent page; the
+-      // sidepanel body is transparent and leaves that native backing to us.
+-      canvas->DrawColor(SkColorSetA(
+-          view->GetColorProvider()->GetColor(kColorToolbar), 204));
++      // The supplied side panel exposes the same native material as the
++      // sidebar. Only the full-page Agent surface owns the 80% page tint.
+       return;
+     }
+ #endif
+--- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
+@@ -13,6 +13,12 @@
+ #include "base/functional/callback.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "ui/views/border.h"
++#endif
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -293,6 +299,14 @@
+             &*browser_, side_panel_toolbar_pinning_controller_.get(), entry)));
+   } else {
+     side_panel->RemoveHeaderView();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (entry->key() == SidePanelEntryKey(SidePanelEntryId::kExtension,
++                                        aux::kAgentExtensionId)) {
++      // The supplied panel extends to the window edges; it does not inherit
++      // Chromium's nine-pixel content border after removing its native header.
++      side_panel->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
++    }
++#endif
+   }
+   auto* content_wrapper = side_panel->GetContentParentView();
+   DCHECK(content_wrapper);
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -143,7 +143,7 @@
+     // Supplied normal Agent pages paint --web-content-background at 80% over
+     // the native material. Give the toolbar row one matching tint, rather than
+     // stacking the upstream toolbar, top-container and main-region mattes.
+-    const auto* tab =
++    auto* tab =
+         browser_view->browser()->GetTabStripModel()->GetActiveWebContents();
+     // WebContents exposes the virtual chrome://newtab URL. Match the actual
+     // committed primary document so the supplied override is recognized.
+@@ -160,6 +160,23 @@
+       }
+       color = SkColorSetA(color, 204);  // Supplied CSS 80%, not a sampled color.
+     }
++#if BUILDFLAG(IS_MAC)
++    // The supplied external-page toolbar follows its active document backdrop.
++    // Read the real CSS background, not a fixed color sampled from a reference.
++    if (theme_choice == ThemeChoice::kToolbarTheme && frame &&
++        frame->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++        browser_view->ShouldDrawVerticalTabStrip() &&
++        !view->GetWidget()->GetCustomTheme() &&
++        view->GetNativeTheme()->preferred_contrast() !=
++            ui::NativeTheme::PreferredContrast::kMore &&
++        (view == browser_view->toolbar() ||
++         view == browser_view->top_container())) {
++      if (const auto page_background = tab->GetBackgroundColor();
++          page_background && SkColorGetA(*page_background) == SK_AlphaOPAQUE) {
++        color = *page_background;
++      }
++    }
++#endif
+ #endif
+     canvas->DrawColor(color);
+   }
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -732,6 +732,7 @@
+ 
+   // content::WebContentsObserver:
+   void TitleWasSet(content::NavigationEntry* entry) override;
++  void OnBackgroundColorChanged() override;
+   void DidFinishNavigation(
+       content::NavigationHandle* navigation_handle) override;
+ 
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -2032,6 +2032,7 @@
+   }
+ 
+   WebContentsObserver::Observe(new_contents);
++  OnBackgroundColorChanged();
+ 
+   // If |contents_web_view| already has the correct WebContents, we can save
+   // some work.  This also prevents extra events from being reported by the
+@@ -3064,6 +3065,17 @@
+   // MacOS does not need views window scrim. We use sheets to show window modals
+   // (-[NSWindow beginSheet:]), which natively draw a scrim.
+   window_scrim_view_->SetVisible(visible);
++#endif
++}
++
++void BrowserView::OnBackgroundColorChanged() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Repaint the native surface when the active renderer supplies its CSS color.
++  if (ShouldDrawVerticalTabStrip() && top_container_) {
++    top_container_->SchedulePaint();
++    if (toolbar_)
++      toolbar_->SchedulePaint();
++  }
+ #endif
+ }
+ 
