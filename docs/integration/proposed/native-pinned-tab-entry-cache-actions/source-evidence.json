@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "cache-request-and-dedup",
+      "rva": "0x4605a28",
+      "fileOffset": 73423400,
+      "bytes": 96,
+      "sha256": "5bf04b609e895f81c1e8f552f5d2ced8f04f5dab7f5c3d288166615a941fb41c"
+    },
+    {
+      "name": "cache-request-service-callback",
+      "rva": "0x460588c",
+      "fileOffset": 73422988,
+      "bytes": 328,
+      "sha256": "57832b3a4555ba33a2acd2d8a32d72bb85d80d64df0a811694f536bbe21fe428"
+    },
+    {
+      "name": "cache-lookup",
+      "rva": "0x4607648",
+      "fileOffset": 73430600,
+      "bytes": 344,
+      "sha256": "e3ba34d1c93d6cb699fb4ce47d9eb759215b0b472f9a50495855aa87eabfb8d7"
+    },
+    {
+      "name": "gurl-spec-accessor",
+      "rva": "0x66ca88",
+      "fileOffset": 6736520,
+      "bytes": 124,
+      "sha256": "6f18ae35e4e5db53477e7f07cd526c0249704e703e65ed6f51d2848b2f94dc35"
+    },
+    {
+      "name": "cache-receive-callback",
+      "rva": "0x460a3e0",
+      "fileOffset": 73442272,
+      "bytes": 488,
+      "sha256": "850383e34d5ef9c71443a6612c6e4679248aea46fa70631c0ba0b944acacd9c8"
+    },
+    {
+      "name": "live-favicon-cache",
+      "rva": "0x4605d2c",
+      "fileOffset": 73424172,
+      "bytes": 200,
+      "sha256": "9777e0396ee7e607bfd8f8cd8dc5338e873f62da7ad16f0566d538f3555d3f9c"
+    },
+    {
+      "name": "entry-visible-data-and-accessibility",
+      "rva": "0x46078c0",
+      "fileOffset": 73431232,
+      "bytes": 460,
+      "sha256": "6b0e682ef1912adf1157eeeaf1df2c15a6b36d4da9a43f49dfe2195d3f61c3c6"
+    },
+    {
+      "name": "entry-title-fallback",
+      "rva": "0x4609668",
+      "fileOffset": 73438824,
+      "bytes": 224,
+      "sha256": "f705c5712b33e39f4d5af5e8f5832c183518f066d95fe15fc2547d7f72efd4a0"
+    },
+    {
+      "name": "entry-keyboard",
+      "rva": "0x460d1c4",
+      "fileOffset": 73454020,
+      "bytes": 72,
+      "sha256": "1a91c6937756f20aa482a1aea0fa46c5fa92cd6bf7d6cd9edbb55d8dd67a7695"
+    },
+    {
+      "name": "entry-tooltip",
+      "rva": "0x460d20c",
+      "fileOffset": 73454092,
+      "bytes": 80,
+      "sha256": "1c6a66e29a3f6af3cdf77a3b4ee898790364a9e30e21747b41d9ec229ca54e1f"
+    },
+    {
+      "name": "entry-context-menu",
+      "rva": "0x460abe4",
+      "fileOffset": 73444324,
+      "bytes": 684,
+      "sha256": "11820fde028722adf1ff645a295c37be1debc2cc48c60cdb13e13332fe05fee0"
+    },
+    {
+      "name": "favicon-service-page-image",
+      "rva": "0x2a5f790",
+      "fileOffset": 44431248,
+      "bytes": 192,
+      "sha256": "c5896223bd94744a6c085f967067e053108e0b38d6bcae0153934f2eb42b2e38"
+    }
+  ],
+  "findings": {
+    "cacheKey": "66ca88 returns address of spec_ unchanged for valid URL; actual fullURLspec, not host.",
+    "cacheProducer": "4605928..59d0 gets actual profile FaviconService (access0 EXPLICIT_ACCESS), inserts URL into pending390, requests page image2a5f790 with tracker3c0 and weak callback460a3e0.",
+    "callback": "460a3e0 removes pending; nonempty actualgfxImage inserted cache378; only nonempty result triggers46051e4 refresh. Empty result permits retry on a later unrelated refresh.",
+    "live": "4605d2c..df4 only caches live ImageModel image variant with real nonempty image backing; placeholders do not replace last genuine image.",
+    "accessibility": "4607964..7998 sets original role9=button and real displayedtitle name. Current155 uses semantic ax::mojom::Role::kButton.",
+    "actions": "460d1c4 accepts Space/Return only and calls real activation460a228. 460ac00..48 live association routes genuine tab context controller4124990; noassociation builds only Unpin item command1 at460ad34..48. Existing menu path preserved.",
+    "tooltip": "460d20c empty if localdrag3fa or parentdrag510; otherwise base actual tooltip text. Displaytitle46078c0 begins savedtitle/host/spec helper4609668 then replaces with nonempty genuine live TabData title.",
+    "platformAdaptation": "Current155 leaf holds its owned dragged child stable while refreshing saved pref data is deferred. refresh_after_drag records actual favicon/model refresh and schedules it after release instead of silently losing it. This is a bounded integration adaptation, not proof original deferred its whole rebuild."
+  }
+}

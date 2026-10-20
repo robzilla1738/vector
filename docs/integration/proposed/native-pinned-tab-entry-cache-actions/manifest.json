@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-hover-color 86328066a outputs; two leaf files only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "b7c35f6e67a02265f29c0a8b2bbf165ebac5b89cf4e97ba82ae834ff95fe7449",
+      "outputSha256": "745b25cebf770722bc464aee637a6a78a9aeec90c47a11b8755860de9dcbb422"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "be94c1872b4cb163495a779da68b82a6ba746401e51af59764d0773c183b6632",
+      "outputSha256": "9534d452123b91778e7c8a4a5a532c4136fb776104fcadb68de1c7d7ae4952c4"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Root actual region drag callback/preview mounting remains separate integration.",
+    "Source-specific live tab identity/Agent-group matching remains the existing root-owned aux_pinned_tab_entry_identity action helper.",
+    "Current155 stable-child drag port defers whole pref/model refresh until release; source original rebuilding/reuse during active drag is not established equivalent by this slice.",
+    "Native compilation and disposable real icon/menu/accessibility/drag observation required."
+  ]
+}
