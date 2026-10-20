@@ -1,0 +1,60 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -486,7 +486,15 @@
+ source_set("browser_ui_prefs") {
+   public = [ "browser_ui_prefs.h" ]
+   sources = [ "browser_ui_prefs.cc" ]
+-  deps = [
++  if (enable_aux_browser && is_mac) {
++    public += [ "tabs/aux_pinned_tab_entries.h" ]
++    sources += [ "tabs/aux_pinned_tab_entries.cc" ]
++    deps = [ "//url" ]
++  } else {
++    deps = []
++  }
++  deps += [
++    "//chrome/browser:buildflags",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/ui:ui_features",
+     "//chrome/browser/upgrade_detector",
+@@ -1110,6 +1118,8 @@
+     sources += [
+       "views/frame/aux_profile_switch_request.cc",
+       "views/frame/aux_profile_switch_request.h",
++      "views/frame/aux_profile_search_button.cc",
++      "views/frame/aux_profile_search_button.h",
+       "views/frame/aux_profile_preview_presentation.cc",
+       "views/frame/aux_profile_preview_presentation.h",
+       "views/profiles/profile_monogram_avatar_view.cc",
+--- a/chrome/browser/ui/browser_ui_prefs.cc
++++ b/chrome/browser/ui/browser_ui_prefs.cc
+@@ -10,6 +10,7 @@
+ #include "base/numerics/safe_conversions.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/ui_features.h"
+ #include "chrome/browser/upgrade_detector/upgrade_detector.h"
+@@ -24,6 +25,10 @@
+ #include "media/media_buildflags.h"
+ #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++#endif
++
+ #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+ #include "chrome/browser/win/installer_downloader/installer_downloader_pref_names.h"
+ #endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+@@ -111,6 +116,10 @@
+ }
+ 
+ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::RegisterPinnedTabEntriesPrefs(registry);
++#endif
++
+ #if BUILDFLAG(IS_ANDROID)
+   const uint32_t pref_registration_flags = PrefRegistry::NO_REGISTRATION_FLAGS;
+ #else

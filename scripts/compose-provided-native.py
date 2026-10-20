@@ -201,6 +201,9 @@ steps.extend([
     ('native-profile-monogram-avatar/build-registration/native.patch', 'native-profile-monogram-avatar/build-registration/manifest.json'),
     ('native-profile-preview-coordinates/native.patch', 'native-profile-preview-coordinates/manifest.json'),
     ('native-profile-preview-api155/native.patch', 'native-profile-preview-api155/manifest.json'),
+    ('native-pinned-tab-entry-model/native.patch', 'native-pinned-tab-entry-model/manifest.json'),
+    ('native-profile-search-button/native.patch', 'native-profile-search-button/manifest.json'),
+    ('native-profile-reuse-dependency-registration/native.patch', 'native-profile-reuse-dependency-registration/manifest.json'),
 ])
 
 if options.through:
