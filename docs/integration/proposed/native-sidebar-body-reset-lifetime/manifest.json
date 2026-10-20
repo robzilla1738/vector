@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "916e3dcce54b839c903a17aa00ee7fa8d14c32d77645b5b803966c8a051a53d7",
+      "outputSha256": "0a40158339dfb0dc143abc9dc6599e056f99617524e7ad1866d980196fc67185"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "616a5bbf1a3bc2a1b4bb98b4d622b10cd519d532f71519c1eda345570276e31d",
+      "outputSha256": "1722cf847d2a0d1924566599a19d3d37b6659a1540e69828382a925315c84a10"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "scope": "Current155 genuine-body lifetime adaptation only; no sharedrootcollection observer/protocol changes, no newframework/GN."
+}

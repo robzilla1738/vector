@@ -1,0 +1,30 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -107,6 +107,10 @@
+       delete;
+   ~VerticalTabStripRegionView() override;
+ 
++  // Retire source-bound body children before the root collection destroys
++  // their genuine unpinned container during a live tab-strip reset.
++  void ResetTabStrip() override;
++
+   // The real region owns the actual sidebar/footer; retain these views and
+   // their callback lists across the supplied same-window transaction.
+   bool CanRebindForAuxProfileSwitch(Profile* target) const;
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -297,6 +297,14 @@
+   state_controller_->SetDelegate(nullptr);
+ }
+ 
++void VerticalTabStripRegionView::ResetTabStrip() {
++  // RootTabCollectionNode::Reset deinitializes collection children before the
++  // later OnTabStripViewWillClear hook. Unmount while those real views and
++  // controllers still exist; the later clear hook remains idempotent.
++  aux_sidebar_->Unmount();
++  BaseTabStripRegionView::ResetTabStrip();
++}
++
+ bool VerticalTabStripRegionView::IsAnimatingSize() const {
+   if (aux_profile_preview_admission_)
+     return aux_profile_preview_admission_->collapse_animating();

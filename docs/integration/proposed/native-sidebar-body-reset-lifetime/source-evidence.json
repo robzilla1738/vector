@@ -1,0 +1,39 @@
+{
+  "sourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "sha256": "f31b68f28aa55e8c7087c377ffb0a977b0eb3b7905378aed5d984a803661eb97"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/base_tab_strip_region_view.cc",
+      "sha256": "74476b2d47cd6c95ce769c62d59505b978fd4655429c54090f538976e17e5b7d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "ee5b20d6171131b87688cc696b9cefe9cb4fd465117b4adb3e96434b5f348a7e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc",
+      "sha256": "b75f25bda129c7aa78b854db0b04f0bd4bbd7b7a0f7ff71aab25cf42f79a41df"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_collection_node.cc",
+      "sha256": "580c080146ad71ff6c6d602b78063e0165b93b0189289e354da92660ba62242d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "sha256": "3dcfec9432aa4601729998fb61a169ffef291f6180047b5c92659e7aef1b26b4"
+    }
+  ],
+  "chain": [
+    "BrowserView::ResetTabStrip invokes verticalregion.ResetTabStrip (currentBrowserView.cc1625).",
+    "BaseTabStripRegionView::ResetTabStrip invokes root_node_->Reset before clearing controllers/hover owner.",
+    "RootTabCollectionNode::Reset calls Deinitialize BEFORE remove_node_view_from_parent_.",
+    "TabCollectionNode::RemoveChild recursivelydeinitializes and destroys node/container views, includingactualUnpinned childAgentSessionTabsView.",
+    "Later BaseTabStripRegionView::ClearTabStripView invokes Vertical.OnTabStripViewWillClear thenBody.Unmount; oldorder letsBodyRetire dereferencerawagent_ afterthatgenuinechildhasalreadydied.",
+    "DerivedReset nowUnmounts first: bodyRetire cancelsactualactors, removesactualAgentchild, movesactualPinned/TabStripViewbacktoregion, thenclearsownedcontents.",
+    "BaseReset stillperformsexactnormalcollection/controller/hoverteardown; laterOnWillClear.Unmountisidempotent.",
+    "NormalderivedregiondestructoralreadyUnmounts before child/controllerdestruction and remains unchanged."
+  ],
+  "classification": "Concrete reachable static lifetime flaw, not an observed runtime crash; no target/runtimeexecutionperformed."
+}
