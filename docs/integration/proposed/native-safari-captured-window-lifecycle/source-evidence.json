@@ -1,0 +1,47 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4250e40",
+      "end": "0x4251084",
+      "sha256": "db5bff94d5ff4d5fc33af0ace29026f613ca2ca3335c923523cb80cafedbcfba",
+      "listing": "invalid-exclusive-window-event.asm",
+      "listingSha256": "64cad7b04ff4aa551f0e0700ee439f531a34b098e5797a208a0b7e7f0a51a39b"
+    },
+    {
+      "start": "0x458d4ec",
+      "end": "0x458d5b0",
+      "sha256": "6cd16eca5ac787399025238840e2b09f9da53dc5577d68b485d5916e286518c6",
+      "listing": "native-warning.asm",
+      "listingSha256": "0323d5dfb5b4ecca72bb99b7589df41ba7af8c18930add26cbc831f945c10395"
+    },
+    {
+      "start": "0x4251b94",
+      "end": "0x4251ecc",
+      "sha256": "dd8cd94b78ad7e917b29d86f990ae2177f8852c6057cf917f4e1705e59dea599",
+      "listing": "completion-owner-presence.asm",
+      "listingSha256": "dc41d2413e4cd1b00e93c666e6c710c3505a2929d769832a045289715628ff0c"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1f190",
+      "hex": "7361666172692d696d706f72742d696e76616c69642d66696c65",
+      "encoding": "utf-8",
+      "text": "safari-import-invalid-file"
+    },
+    {
+      "address": "0xcf0809a",
+      "hex": "54686973206973206e6f7420612076616c6964205361666172692064617461205a49502066696c652e",
+      "encoding": "utf-8",
+      "text": "This is not a valid Safari data ZIP file."
+    },
+    {
+      "address": "0xd97e794",
+      "hex": "63722e77656255494c697374656e657243616c6c6261636b",
+      "encoding": "utf-8",
+      "text": "cr.webUIListenerCallback"
+    }
+  ]
+}

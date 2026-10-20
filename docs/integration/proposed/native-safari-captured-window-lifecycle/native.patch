@@ -1,0 +1,59 @@
+diff --git a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
+--- a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
++++ b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h
+@@ -18,6 +18,14 @@
+ // capture helpers return empty for ordinary browser tabs. Owners must reject
+ // that context before starting work, rather than accepting an absent lifecycle.
+ bool IsStandaloneImportOwner(content::WebContents& contents);
++// Capture the actual initiating owner once; presence is registry/context/native
++// identity, not visibility or an invented successful account/profile state.
++base::RepeatingCallback<bool()> CaptureImportOwnerPresence(
++    content::WebContents& contents);
++// True only after the real native warning is displayed. False requires the
++// caller's actual weak WebUI invalid-file event; the two branches are exclusive.
++base::OnceCallback<bool()> CaptureSafariInvalidArchiveWarning(
++    content::WebContents& contents);
+ base::RepeatingCallback<void(bool)> CaptureImportWindowControls(
+     content::WebContents& contents);
+ 
+diff --git a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
+--- a/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
++++ b/chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm
+@@ -11,6 +11,7 @@
+ #include "base/functional/bind.h"
+ #include "chrome/browser/profiles/profile_window.h"
+ #include "chrome/browser/aux/profile_gate.h"
++#include "chrome/browser/ui/webui/aux_importer/import_completion_choice.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/browser_init_state.h"
+@@ -42,6 +43,29 @@
+              owner.GetNativeNSWindow();
+ }
+ }  // namespace
++base::RepeatingCallback<bool()> CaptureImportOwnerPresence(
++    content::WebContents& contents) {
++  return base::BindRepeating(
++      [](base::WeakPtr<content::WebContents> contents, gfx::NativeWindow owner) {
++        return owner.GetNativeNSWindow() &&
++               RetainsStandaloneOwner(contents, owner);
++      },
++      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());
++}
++
++base::OnceCallback<bool()> CaptureSafariInvalidArchiveWarning(
++    content::WebContents& contents) {
++  return base::BindOnce(
++      [](base::RepeatingCallback<bool()> owner_present) {
++        if (!owner_present.Run()) {
++          return false;
++        }
++        ShowSafariInvalidArchive();
++        return true;
++      },
++      CaptureImportOwnerPresence(contents));
++}
++
+ base::RepeatingCallback<void(bool)> CaptureImportWindowControls(
+     content::WebContents& contents) {
+   if (!IsStandaloneImportOwner(contents)) {

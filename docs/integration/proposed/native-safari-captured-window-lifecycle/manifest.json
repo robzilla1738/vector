@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h",
+      "baselineSha256": "46229a7fdb5ca2ae1c3209cb515c54c355d961a37392409a08b638b2fe9e90ea",
+      "outputSha256": "c93d78c7371a0c21eb7d5982868eaf5afb183b475ea1381cf5e15c460778c9ca"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+      "baselineSha256": "d1b205f0b05d4e32ef3be941beda4a2826548d6bf729368572376be19c29a97c",
+      "outputSha256": "103ac030d0e782ae9445a8f8679b71ca3af7e8b0c070bc60a2bd0c83597cbf64"
+    }
+  ]
+}

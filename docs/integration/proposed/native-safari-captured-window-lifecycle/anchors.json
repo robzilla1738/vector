@@ -1,0 +1,20 @@
+[
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h",
+    "before": "bool IsStandaloneImportOwner(content::WebContents& contents);",
+    "after": "bool IsStandaloneImportOwner(content::WebContents& contents);\n// Capture the actual initiating owner once; presence is registry/context/native\n// identity, not visibility or an invented successful account/profile state.\nbase::RepeatingCallback<bool()> CaptureImportOwnerPresence(\n    content::WebContents& contents);\n// True only after the real native warning is displayed. False requires the\n// caller's actual weak WebUI invalid-file event; the two branches are exclusive.\nbase::OnceCallback<bool()> CaptureSafariInvalidArchiveWarning(\n    content::WebContents& contents);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "#include \"chrome/browser/aux/profile_gate.h\"",
+    "after": "#include \"chrome/browser/aux/profile_gate.h\"\n#include \"chrome/browser/ui/webui/aux_importer/import_completion_choice.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm",
+    "before": "base::RepeatingCallback<void(bool)> CaptureImportWindowControls(",
+    "after": "base::RepeatingCallback<bool()> CaptureImportOwnerPresence(\n    content::WebContents& contents) {\n  return base::BindRepeating(\n      [](base::WeakPtr<content::WebContents> contents, gfx::NativeWindow owner) {\n        return owner.GetNativeNSWindow() &&\n               RetainsStandaloneOwner(contents, owner);\n      },\n      contents.GetWeakPtr(), contents.GetTopLevelNativeWindow());\n}\n\nbase::OnceCallback<bool()> CaptureSafariInvalidArchiveWarning(\n    content::WebContents& contents) {\n  return base::BindOnce(\n      [](base::RepeatingCallback<bool()> owner_present) {\n        if (!owner_present.Run()) {\n          return false;\n        }\n        ShowSafariInvalidArchive();\n        return true;\n      },\n      CaptureImportOwnerPresence(contents));\n}\n\nbase::RepeatingCallback<void(bool)> CaptureImportWindowControls(",
+    "count": 1
+  }
+]
