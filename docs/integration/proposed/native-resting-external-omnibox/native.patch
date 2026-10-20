@@ -1,0 +1,18 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -1404,9 +1404,12 @@
+   SkColor hovered =
+       color_provider->GetColor(kColorLocationBarBackgroundHovered);
+ 
+-  if (!is_caret_visible && !input_in_progress &&
+-      !GetLocationBarModel()->ShouldDisplayURL()) {
+-    // Aside draws the new tab page omnibox flat until it is hovered.
++  if (!is_caret_visible && !input_in_progress && !high_contrast &&
++      ((!is_popup_mode_ && browser_ &&
++        browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL) ||
++       !GetLocationBarModel()->ShouldDisplayURL())) {
++    // Supplied normal-window resting chrome is flat for external pages too.
++    // Keep the existing hover/focus/input and security-chip behavior.
+     normal = SK_ColorTRANSPARENT;
+   }
+ 

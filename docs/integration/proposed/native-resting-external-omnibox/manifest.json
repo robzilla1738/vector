@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "ae577b734b6f3bf250c2113c2ed65b8d272fce47c4ced737089aedf8bb7a1bf0",
+      "outputSha256": "45b280fb377e73c9d3756262a0abe2b5d0e3eb9f72a24358626bb93c178562d3"
+    }
+  ]
+}
