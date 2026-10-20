@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual255 search after155observercorrection",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "baselineSha256": "949d611e4d75ddd950689758729075a35a7e40831bdc215c65161872021063c5",
+      "outputSha256": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-search-contents-155/baseline/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

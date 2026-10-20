@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -399,7 +399,7 @@
+     observed_model_ = nullptr;
+     TabStripModelObserver::StopObservingAll(this);
+   }
+-  AuxTabSearchContentsView* Contents() const {
++  AuxTabSearchContentsView* Contents() {
+     return views::AsViewClass<AuxTabSearchContentsView>(contents_.view());
+   }
+   gfx::Rect CenteredBounds() const {
