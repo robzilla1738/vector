@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "profile-identity c3a130418 output",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "099a438e17b13fd89ce2a1169b9e1be6956b60586e89f1ed5dcf2a8a51527c48",
+      "outputSha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

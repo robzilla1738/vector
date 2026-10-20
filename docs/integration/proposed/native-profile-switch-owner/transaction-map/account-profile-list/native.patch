@@ -1,0 +1,29 @@
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -177,6 +177,26 @@
+         base::BindOnce(&AuxAccountFunction::DidSign, base::RetainedRef(this)));
+     return RespondLater();
+   }
++  if (method == "auxAccount.getProfiles") {
++    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
++    auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++    if (!manager) return RespondNow(Error("Profile manager is unavailable"));
++    base::ListValue profiles;
++    int index = 0;
++    const auto current_path = profile()->GetOriginalProfile()->GetPath();
++    for (auto* entry : manager->GetProfileAttributesStorage()
++                            .GetAllProfilesAttributesSortedForDisplay()) {
++      const int entry_index = index++;
++      if (entry->IsOmitted()) continue;
++      base::DictValue row;
++      row.Set("profileIndex", entry_index);
++      row.Set("name", base::UTF16ToUTF8(entry->GetName()));
++      row.Set("isCurrent", entry->GetPath() == current_path);
++      row.Set("isLocked", entry->IsSigninRequired());
++      profiles.Append(std::move(row));
++    }
++    return RespondNow(WithArguments(std::move(profiles)));
++  }
+   if (method == "auxAccount.getProfileContext") {
+     if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
+     auto* current = profile()->GetOriginalProfile();
