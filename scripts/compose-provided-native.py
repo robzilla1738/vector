@@ -190,6 +190,8 @@ steps.extend([
     ('native-daemon-startup-budget/native.patch', 'native-daemon-startup-budget/manifest.json'),
     ('native-agent-tabs-paint/native.patch', 'native-agent-tabs-paint/manifest.json'),
     ('native-profile-switch-glic-weak-order/native.patch', 'native-profile-switch-glic-weak-order/manifest.json'),
+    ('native-agent-tabs-api155/native.patch', 'native-agent-tabs-api155/manifest.json'),
+    ('native-provided-node-development/native.patch', 'native-provided-node-development/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "composition": "v161",
+  "sourceOutputs": 334,
+  "artworkTargets": 23,
+  "originalReplaySteps": 170,
+  "originalReplayOutputsMatch": true,
+  "compositionSha256": "04b5777b7fb02afc35ee91a2347950c5ab4b2ca175df7a318af9e5cc85ff14bc",
+  "originalReplaySha256": "0ce7c2ca8039f2792070830f50bd8abc5a10d99e45cb9f1dd82b25880694464a",
+  "focusedBuilds": [
+    {
+      "path": "out/native-integration/v158-focused-build.json",
+      "sha256": "6e31bddfd4143fe67cbb4686094674d0d5beeb369c9c253b680997a8f05de524",
+      "exitCode": 1,
+      "elapsedSeconds": 36.32701277732849,
+      "targets": {
+        "chrome/browser/actor/ui/actor_ui_tab_controller.cc": "obj/chrome/browser/actor/ui/ui/actor_ui_tab_controller.o",
+        "chrome/browser/actor/ui/handoff_button_controller.cc": "obj/chrome/browser/actor/ui/ui/handoff_button_controller.o",
+        "chrome/browser/actor/ui/actor_ui_window_controller.cc": "obj/chrome/browser/actor/ui/window_controller_impl/actor_ui_window_controller.o",
+        "chrome/browser/actor/ui/actor_overlay_web_view.cc": "obj/chrome/browser/actor/ui/actor_overlay_web_view/actor_overlay_web_view.o",
+        "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc": "obj/chrome/browser/actor/ui/task_list_bubble/ui_impl/actor_task_list_bubble.o",
+        "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.cc": "obj/chrome/browser/actor/ui/task_list_bubble/controller_impl/actor_task_list_bubble_controller.o",
+        "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_actor_nudge_controller.o",
+        "chrome/browser/glic/browser_ui/glic_button_controller.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_button_controller.o",
+        "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_nudge_controller_impl.o",
+        "chrome/browser/glic/browser_ui/glic_split_button_controller.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_split_button_controller.o",
+        "chrome/browser/glic/browser_ui/glic_split_button_delegate.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_split_button_delegate.o",
+        "chrome/browser/glic/browser_ui/glic_iph_controller.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_iph_controller.o",
+        "chrome/browser/ui/views/frame/aux_profile_switch_request.cc": "obj/chrome/browser/ui/ui/aux_profile_switch_request.o",
+        "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc": "obj/chrome/browser/ui/ui/horizontal_tab_strip_region_view.o",
+        "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc": "obj/chrome/browser/ui/ui/aux_agent_tabs_bubble.o",
+        "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+        "chrome/browser/ui/tabs/tab_strip_model.cc": "obj/chrome/browser/ui/tabs/tab_strip_impl/tab_strip_model.o",
+        "chrome/browser/ui/omnibox/ai_mode_page_action_controller.cc": "obj/chrome/browser/ui/omnibox/impl/ai_mode_page_action_controller.o",
+        "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc": "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o",
+        "chrome/browser/ui/views/tabs/tab_strip_action_container.cc": "obj/chrome/browser/ui/views/tabs/tab_strip_impl/tab_strip_action_container.o",
+        "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc": "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_top_container.o",
+        "chrome/browser/ui/views/toolbar/toolbar_view.cc": "obj/chrome/browser/ui/views/toolbar/impl/toolbar_view.o",
+        "chrome/browser/aux/daemon_supervisor.cc": "obj/chrome/browser/aux/platform/daemon_supervisor.o",
+        "content/browser/devtools/devtools_agent_host_impl.cc": "obj/content/browser/browser/devtools_agent_host_impl.o",
+        "content/browser/devtools/devtools_http_handler.cc": "obj/content/browser/browser/devtools_http_handler.o"
+      }
+    },
+    {
+      "path": "out/native-integration/v159-focused-build.json",
+      "sha256": "512a9117393df4ec1618a0ab6a36af0c97bb21a8e34b490013bdcf1bf9027d66",
+      "exitCode": 0,
+      "elapsedSeconds": 9.923074007034302,
+      "targets": {
+        "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_nudge_controller_impl.o",
+        "chrome/browser/glic/browser_ui/glic_split_button_controller.cc": "obj/chrome/browser/glic/browser_ui/impl/glic_split_button_controller.o"
+      }
+    },
+    {
+      "path": "out/native-integration/v160-focused-build.json",
+      "sha256": "543cf36be7a7f7a0e647a2a46b53d2f1158575ea9230cdeeddf9ebedd5e96e97",
+      "exitCode": 0,
+      "elapsedSeconds": 9.620061874389648,
+      "targets": {
+        "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc": "obj/chrome/browser/ui/ui/aux_agent_tabs_bubble.o"
+      }
+    },
+    {
+      "path": "out/native-integration/v161-focused-build.json",
+      "sha256": "58e8af3ffd2fb0192bf8146061fad69e475b8f2843c5ff7f00328708f0dea0ab",
+      "exitCode": 0,
+      "elapsedSeconds": 36.22372102737427,
+      "targets": {
+        "chrome/browser/aux/daemon_supervisor.cc": "obj/chrome/browser/aux/platform/daemon_supervisor.o"
+      }
+    }
+  ],
+  "distinctChangedUnitsVerified": 25,
+  "latestDaemonUnitVerified": true,
+  "fullBuild": "running; no successful v161 receipt yet",
+  "runtimeAccepted": false,
+  "uiParityAccepted": false
+}

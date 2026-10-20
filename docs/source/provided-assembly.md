@@ -1,5 +1,7 @@
 # Supplied resource assembly
 
+Local stages now also contain the pinned supplied daemon JavaScript and its original WASM assets under the daemon app’s `Resources/node-development/`. The assembler records the fixed `provided-node-development` runtime mode. Matching native startup runs that exact implementation with the unchanged bundled Node and the original two Node arguments; the source guard, daemon contracts and authority requirements remain intact. This avoids executing a modified SEA during local development. The extraction checks do not establish native authority or runtime acceptance.
+
 Current scope is local development with 1:1 supplied UI and behavior. Signing, provisioning, notarization and release preparation are outside this workflow. Signing commands and earlier entitlement investigations below are historical tooling references, not next steps or development acceptance requirements.
 
 Run `node scripts/assemble-provided.mjs --stage out/provided-reuse --output out/provided-resources` after staging and the preservation audit. The output must be a new directory. No native app, executable or owner data is launched, signed, replaced or installed by this command.

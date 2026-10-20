@@ -1,0 +1,56 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -44,14 +44,20 @@
+     return base::Process();
+   }
+   base::FilePath executable = paths.daemon_executable;
+-  if (!valid(executable)) {
+-    if (!allow_fallback || !valid(paths.node) || !valid(paths.daemon_script)) {
+-      return base::Process();
+-    }
++  if (allow_fallback) {
++    // Explicit development mode runs the supplied code, never the retired
++    // independent daemon. Missing resources are an actual launch failure.
+     executable = paths.node;
++  }
++  if (!valid(executable) ||
++      (executable == paths.node && !valid(paths.daemon_script))) {
++    return base::Process();
+   }
+   base::CommandLine command(executable);
+   if (executable == paths.node) {
++    // Exact Node execution arguments from the supplied daemon SEA tail.
++    command.AppendArg("--disable-sigusr1");
++    command.AppendArg("--use-system-ca");
+     command.AppendArgPath(paths.daemon_script);
+   }
+   base::LaunchOptions options;
+@@ -127,9 +133,27 @@
+   paths.daemon_executable = paths.root.AppendASCII(
+       "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon");
+   paths.node = paths.root.AppendASCII("agent-runtime/node/bin/node");
+-  paths.daemon_script = paths.root.AppendASCII("apps/daemon/dist/index.js");
++  paths.daemon_script = paths.root.AppendASCII(
++      "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs");
+   paths.agent_extension = paths.root.AppendASCII("apps/extension/dist");
+   paths.vault_extension = paths.root.AppendASCII("apps/vault/dist");
++  std::string marker;
++  if (!base::ReadFileToString(paths.root.AppendASCII("bundle.json"), &marker)) {
++    return std::nullopt;
++  }
++  auto bundle = base::JSONReader::ReadDict(marker, base::JSON_PARSE_RFC);
++  if (!bundle || bundle->FindInt("version") != 1 ||
++      !bundle->FindString("implementation") ||
++      *bundle->FindString("implementation") != "supplied") {
++    return std::nullopt;
++  }
++  if (const auto* runtime = bundle->FindString("daemonRuntime")) {
++    if (*runtime == "provided-node-development") {
++      paths.daemon_executable = paths.node;
++    } else if (*runtime != "provided-sea") {
++      return std::nullopt;
++    }
++  }
+   return paths;
+ }
+ DaemonSupervisor::DaemonSupervisor(

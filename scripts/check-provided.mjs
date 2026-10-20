@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
+import { buildDaemonNodeDevelopment } from '../vendor/provided/daemon-node-development.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -92,6 +93,13 @@ for (const component of ['daemon', 'cli']) {
   if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
+  const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary) : null;
+  const developmentFiles = new Map((development?.files ?? []).map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
+  if (development && JSON.stringify(report.nodeDevelopment) !== JSON.stringify(development.manifest)) throw new Error('Restage current supplied daemon development code/assets');
+  if (report.files.filter(file => file.generatedBy).length !== developmentFiles.size) throw new Error('Missing or unexpected generated daemon development resources');
+  for (const [path, expected] of developmentFiles) {
+    if (!report.files.some(file => file.path === path && file.added === true && file.generatedBy === 'vendor/provided/daemon-node-development.mjs' && file.outputSha256 === hash(expected.bytes) && file.outputMode === expected.mode)) throw new Error('Missing source-pinned daemon development resource');
+  }
   for (const file of [...report.files, ...report.removed]) {
     if (!safe(file.path)) throw new Error('Unsafe app resource path');
     const source = file.sourcePath ?? file.path;
@@ -100,6 +108,10 @@ for (const component of ['daemon', 'cli']) {
       sources.delete(source);
     }
     if (file.outputSha256 && hash(await readFile(join(root, file.path))) !== file.outputSha256) throw new Error('App resource output hash mismatch');
+    if (file.generatedBy) {
+      const expected = developmentFiles.get(file.path);
+      if (!expected || file.generatedBy !== 'vendor/provided/daemon-node-development.mjs' || !file.added || hash(expected.bytes) !== file.outputSha256 || file.outputMode !== expected.mode) throw new Error('Unexpected generated daemon development resource');
+    }
     if (file.repositorySource) {
       const name = file.path.split('/').at(-1);
       if (!file.added || !providedIntegrationFiles[component].includes(name) || file.path !== `Contents/Resources/native/${name}`) throw new Error('Unexpected fixed integration seam');

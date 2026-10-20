@@ -108,7 +108,10 @@ if (options.noBrowser) {
   if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o022) || canonicalBoundary !== boundary) throw new Error('Fixed packaged native boundary required.');
   for (const key of Object.keys(env)) if (key.startsWith('DYLD_')) delete env[key];
   env.DYLD_INSERT_LIBRARIES = boundary;
-  const daemon = await start(join(resources, 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'), [], env);
+  const developmentNode = supplied.daemonRuntime === 'provided-node-development';
+  const daemon = await start(
+    join(resources, developmentNode ? 'agent-runtime/node/bin/node' : 'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'),
+    developmentNode ? ['--disable-sigusr1', '--use-system-ca', join(resources, 'apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs')] : [], env);
   if (stopping) return;
   let ready = false;
   for (let attempt = 0; attempt < 120 && !stopping; attempt++) {

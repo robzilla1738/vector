@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "ee78d0af635d0f75ea5f4aa457841e27093fd84f018153dd4d66b55934c6aa04",
+      "outputSha256": "f2a1c7de79f27e67d7d307f321adbfac9881f16d602183ad46a4fe6048cbce9c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

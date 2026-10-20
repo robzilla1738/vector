@@ -1,0 +1,5 @@
+# Select exact supplied daemon JS for local development
+
+The assembled local bundle explicitly declares `daemonRuntime:provided-node-development`. Native startup resolves that one fixed enum to the existing unchanged bundled Node plus the pinned generated supplied daemon script inside its actual app Resources. It preserves both original SEA Node arguments and rejects unknown modes/missing resources. Legacy supplied bundles without the marker retain SEA selection. The existing explicit development flag selects the same exact supplied script, never the retired independent dist entrypoint. The daemon implementation, original guarded native addon, real child health/PID checks, authentication, runtime acceptance and private home stay unchanged.
+
+This is a self-contained packaging adaptation for the observed modified SEA launch failure, not a replacement backend or authority. Actual compile and Node-host runtime behavior remain pending. No signing, provisioning or Keychain operation is authorized or performed by this patch.

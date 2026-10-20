@@ -6,6 +6,7 @@ import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adaptDaemonBinary } from '../../vendor/provided/daemon-adapter.mjs';
+import { buildDaemonNodeDevelopment } from '../../vendor/provided/daemon-node-development.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
 import { runtimeSourcePinsBytes } from '../../vendor/provided/runtime-pins.mjs';
@@ -86,23 +87,24 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   await mkdir(dirname(destination), { recursive: true });
   const temporary = await mkdtemp(join(dirname(destination), '.provided-apps-'));
-  const report = { version: 1, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Local ad hoc signing and native/runtime acceptance required'], components: {} };
+  const report = { version: 1, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Guarded native/runtime and packaged acceptance required'], components: {} };
   try {
     for (const [component, target] of Object.entries(targets)) {
       const app = join(temporary, component, target.app), files = [], removed = [];
-      let executable;
+      let executable, nodeDevelopment;
       for (const file of actual.components[component].files) {
         const source = await readFile(join(sourceRoots[component], file.path));
         if (hash(source) !== file.sha256) throw new Error('Static app input changed during staging');
         // Original signatures/profiles cannot authenticate modified local Aux artifacts.
         if (/(?:^|\/)_CodeSignature\/|(?:^|\/)CodeResources$|(?:^|\/)embedded\.provisionprofile$/.test(file.path)) {
-          removed.push({ path: file.path, sha256: file.sha256, reason: 'Local rebranding requires fresh ad hoc signature' });
+          removed.push({ path: file.path, sha256: file.sha256, reason: 'Original signatures cannot authenticate modified local artifacts' });
           continue;
         }
         const path = outputPath(file.path, target), kinds = [];
         let output = source;
         if (file.path === `Contents/MacOS/${target.sourceExecutable}`) {
           executable = target.adapt(source);
+          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source);
           output = executable.binary;
           kinds.push('identity', 'integration');
         } else if (file.path.endsWith('/Info.plist')) {
@@ -140,6 +142,18 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         await writeFile(join(app, path), bytes, { mode: 0o644 });
         files.push({ path, repositorySource, ...(generatedFrom ? { generatedFrom } : {}), outputSha256: hash(bytes), changeKinds: ['integration'], added: true });
       }
+      if (nodeDevelopment) {
+        const prefix = `apps/${component}/${target.app}/`;
+        for (const generated of nodeDevelopment.files) {
+          if (!generated.path.startsWith(prefix)) throw new Error('Unexpected daemon development resource');
+          const path = generated.path.slice(prefix.length);
+          const destination = join(app, path);
+          await mkdir(dirname(destination), { recursive: true });
+          await writeFile(destination, generated.bytes, { mode: generated.mode, flag: 'wx' });
+          files.push({ path, outputSha256: hash(generated.bytes), outputMode: generated.mode,
+            generatedBy: 'vendor/provided/daemon-node-development.mjs', changeKinds: ['integration'], added: true });
+        }
+      }
       for (const file of files.filter((entry) => entry.path.endsWith('/Info.plist'))) {
         const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', join(app, file.path)], { encoding: 'utf8' }));
         if (typeof plist.CFBundleExecutable !== 'string' || !/^[A-Za-z0-9_.-]+$/.test(plist.CFBundleExecutable)) throw new Error('Invalid staged bundle executable declaration');
@@ -147,6 +161,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         if (!binary.isFile() || binary.isSymbolicLink() || !(binary.mode & 0o111)) throw new Error('Staged bundle executable declaration does not resolve to executable code');
       }
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
+        ...(nodeDevelopment ? { nodeDevelopment: nodeDevelopment.manifest } : {}),
         executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets } };
     }
     await writeFile(join(temporary, 'manifest.json'), `${JSON.stringify(report, null, 2)}\n`);
