@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "5162a486e input output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+      "baselineSha256": "72d845c726d86b9ca7a4a2576e5e73a8d39941c5ee16a7cb396fe96eefc4e77f",
+      "outputSha256": "3d95c6c8936ed835665f799a158e42f6061af1574c65e9479bf461963f05fb6a",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-input-registration/port/chrome/browser/ui/views/frame/aux_profile_preview_input.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

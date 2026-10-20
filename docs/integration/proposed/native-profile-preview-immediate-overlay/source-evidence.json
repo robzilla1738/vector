@@ -1,0 +1,13 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "extracts": [
+    {
+      "file": "immediate-retirement.asm",
+      "start": "0x465618c",
+      "stop": "0x46561d8",
+      "bytesSha256": "b827ad36bf04bbb08a8e1e81c3aa2df2247792b075edccf74d27b9897d82a429",
+      "extractSha256": "894383c2b81fa94f99bb8a08cf2322ce93c5bfa4965838bbd57ac15dff3ce285"
+    }
+  ]
+}

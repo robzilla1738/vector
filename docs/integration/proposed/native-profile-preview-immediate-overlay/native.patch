@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
+@@ -336,6 +336,13 @@
+     return false;
+   }
+   crossfading_ = crossfading;
++  if (!settle) {
++    // Original465618c..61d4 retires source capture before immediate dispatch.
++    ApplyContents(ContentsEffect::kClear);
++    if (!alive || !preview_) {
++      return false;
++    }
++  }
+   if (!preview_->Commit(base::BindOnce(&ProfilePreviewInput::OnCommitted,
+                                      weak_factory_.GetWeakPtr()))) {
+     if (alive) {
