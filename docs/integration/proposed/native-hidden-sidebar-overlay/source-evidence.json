@@ -1,0 +1,14 @@
+{
+  "frameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "sourcePath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "listings": [
+    {
+      "path": "original-frame-layout.asm",
+      "sha256": "246283418e57605a4d841032bff163380cf8462561038de3fb04a5ec51c7b852"
+    },
+    {
+      "path": "original-frame-layout-tail.asm",
+      "sha256": "b3a7dbe12b8ef7729a6e12b0955bc8d35f4594fbfd8554ed9a964d789dc6a068"
+    }
+  ]
+}

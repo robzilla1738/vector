@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v516",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "cc5c329fb5249746e8db50e5b14a51661cea2a68eb23d9b741b6325c16b59e62",
+      "outputSha256": "f4c9e2a1fb7a2f522c2b5a5a24cb28a6975a69dcc9777b4513410ebb4771cf2b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "5944987c97e9939acc64fd67665db909b47d196f81243ae8c50f1fcecc4e8b72",
+      "outputSha256": "94db1a5ae12d533bd1b595b4b699d77d43c007656246265f59dcb5b12f91ee41"
+    }
+  ]
+}

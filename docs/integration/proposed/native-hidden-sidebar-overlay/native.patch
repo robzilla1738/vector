@@ -1,0 +1,166 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -518,7 +518,7 @@
+ gfx::Size VerticalTabStripRegionView::GetMinimumSize() const {
+   auto min_size = BaseTabStripRegionView::GetMinimumSize();
+   min_size.set_width((state_controller_->IsCollapsed() || IsAnimatingSize())
+-                         ? kCollapsedWidth
++                         ? (aux_profile_preview_admission_ ? 0 : kCollapsedWidth)
+                          : kUncollapsedMinWidth);
+   return min_size;
+ }
+@@ -528,16 +528,14 @@
+   auto size = BaseTabStripRegionView::CalculatePreferredSize(available_size);
+   if (aux_profile_preview_admission_) {
+     const auto& admission = *aux_profile_preview_admission_;
+-    const double value = target_collapse_state_.collapsed &&
+-                                 (admission.hover_expanded() || admission.retained())
+-                             ? 1.0 : admission.collapse_value();
+-    const int target = admission.retained()
+-                           ? std::max(280, uncollapsed_width())
+-                           : uncollapsed_width();
+-    const int amount = std::max(0, target - kCollapsedWidth);
+-    size.set_width(kCollapsedWidth + static_cast<int>(
+-        target_collapse_state_.collapsed ? std::ceil(amount * value)
+-                                        : std::floor(amount * value)));
++    // Supplied collapse width is slide_value * target width. A collapsed
++    // sidebar reserves no rail; retained hover width belongs to frame overlay
++    // geometry, not the horizontal content allocator.
++    const double value = admission.collapse_value();
++    size.set_width(static_cast<int>(
++        target_collapse_state_.collapsed
++            ? std::ceil(uncollapsed_width() * value)
++            : std::floor(uncollapsed_width() * value)));
+     return size;
+   }
+   const auto* controller =
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -625,10 +625,13 @@
+       // Preserve the typed layout's .25/.75 geometry checkpoints, driven by
+       // the existing recovered SlideAnimation rather than a second clock.
+       const double top_progress = std::clamp((expanded - 0.25) / 0.5, 0.0, 1.0);
+-      animation.top_offset = admission->retained()
+-                                 ? 0
+-                                 : base::ClampRound(leading_exclusion_height *
+-                                                    (1.0 - top_progress));
++      const int toolbar_bottom = delegate().IsToolbarVisible()
++          ? GetBoundsWithExclusion(layout_data_->revised_params,
++                                   views().toolbar).height()
++          : 0;
++      animation.top_offset = base::ClampRound(
++          std::max(leading_exclusion_height, toolbar_bottom) *
++          (1.0 - top_progress));
+       const double flat_corner = std::max(top_corner_collapsed_state, 0.0);
+       animation.top_corner =
+           expanded < 0.25
+@@ -840,6 +843,19 @@
+       int vertical_tab_strip_width =
+           horizontal_layout.vertical_tab_strip_width +
+           vertical_tab_strip_hover_width;
++      const auto* admission = views().vertical_tab_strip_region_view
++                                  ->GetAuxProfilePreviewAdmission();
++      if (admission) {
++        const int target = admission->retained()
++            ? std::max(280, views().vertical_tab_strip_region_view->uncollapsed_width())
++            : views().vertical_tab_strip_region_view->uncollapsed_width();
++        vertical_tab_strip_width = horizontal_layout.vertical_tab_strip_width +
++            base::ClampRound(std::max(0, target -
++                horizontal_layout.vertical_tab_strip_width) *
++                vertical_tab_strip_animation.expand_on_hover_width);
++        if (admission->retained())
++          vertical_tab_strip_width = target;
++      }
+ 
+       // The overall width during an expand must change monotonically.
+       if (vertical_tab_strip_animation.current_motion ==
+@@ -867,6 +883,18 @@
+                     params.visual_client_area.height() -
+                         vertical_tab_strip_animation.top_offset);
+ 
++      if (admission && admission->retained()) {
++        // Original45e9368..9438: retained sidebar slides from the edge into
++        // an eight-pixel inset overlay, without reserving content width.
++        const int hidden_offset = base::ClampRound(
++            (vertical_tab_strip_width + 8) *
++            (1.0 - std::clamp(vertical_tab_strip_animation.expand_on_hover_width,
++                              0.0, 1.0)));
++        vertical_tab_strip_bounds.Offset(8 - hidden_offset, 8);
++        vertical_tab_strip_bounds.set_height(
++            std::max(0, vertical_tab_strip_bounds.height() - 16));
++      }
++
+       if (layout_data_->window_state == WindowState::kFullscreenWithToolbar &&
+           layout_data_->separator_info.adjust_for_missing_separator) {
+         vertical_tab_strip_bounds.Inset(
+@@ -885,7 +913,8 @@
+             vertical_tab_strip_animation.current_motion ==
+                 TabStripAnimations::kCollapse;
+         unclipped_contents_region.Inset(gfx::Insets::TLBR(
+-            0, VerticalTabStripRegionView::kCollapsedWidth, 0, 0));
++            0, admission ? 0 : VerticalTabStripRegionView::kCollapsedWidth,
++            0, 0));
+       } else {
+         unclipped_contents_region.Inset(gfx::Insets::TLBR(
+             0, horizontal_layout.vertical_tab_strip_width, 0, 0));
+@@ -912,6 +941,7 @@
+     gfx::Rect corner_bounds;
+     const bool top_corner_visible =
+         layout_data_->tab_strip_type == TabStripType::kVertical &&
++        !vertical_tab_strip_bounds.IsEmpty() &&
+         vertical_tab_strip_animation.top_corner > 0.0;
+ 
+     // The top corner is drawn when the tabstrip goes all the way to the top.
+@@ -935,6 +965,7 @@
+     gfx::Rect corner_bounds;
+     const bool bottom_corner_visible =
+         layout_data_->tab_strip_type == TabStripType::kVertical &&
++        !vertical_tab_strip_bounds.IsEmpty() &&
+         vertical_tab_strip_animation.bottom_corner > 0.0;
+     if (bottom_corner_visible) {
+       auto preferred =
+@@ -1584,6 +1615,12 @@
+                                                   1.0f);
+   if (layout_data_->tab_strip_type == TabStripType::kVertical) {
+     side_panel_start = views().vertical_tab_strip_region_view->bounds().right();
++    const auto* admission = views().vertical_tab_strip_region_view
++                                ->GetAuxProfilePreviewAdmission();
++    if (admission) {
++      side_panel_start = params.visual_client_area.x() +
++                        layout_data_->horizontal_layout.vertical_tab_strip_width;
++    }
+ 
+     // Vertical tabstrip goes all the way to the top of the window if it is not
+     // collapsed or there are no caption buttons on the leading edge.
+@@ -1652,6 +1689,23 @@
+                            vertical_tabs_bottom_corner_amount);
+       vertical_tabs_corners[CornerOrientation::kBottomTrailing].radius =
+           vertical_tabs_bottom_corner_size;
++    }
++
++    if (admission && admission->retained()) {
++      // The supplied retained branch rounds all four corners using the native
++      // window's radius (45eb4c4..45eb5b0), not just the trailing two.
++      auto retained_corner = vertical_tabs_background->GetWindowCorner(true);
++      retained_corner.type = CustomCornersBackground::CornerType::kRounded;
++      if (retained_corner.radius.value_or(0) <= 0)
++        retained_corner.radius = vertical_tabs_background->default_radius();
++      for (const auto corner : {CornerOrientation::kTopLeading,
++                                CornerOrientation::kTopTrailing,
++                                CornerOrientation::kBottomLeading,
++                                CornerOrientation::kBottomTrailing}) {
++        vertical_tabs_corners[corner] = retained_corner;
++      }
++      vertical_tabs_bottom_corner_size = retained_corner.radius.value_or(
++          vertical_tabs_background->default_radius());
+     }
+ 
+     vertical_tabs_background->SetCorners(vertical_tabs_corners);
+@@ -1709,6 +1763,7 @@
+     };
+     // Vertical tab strip always draws trailing edge.
+     vertical_tabs_outline.trailing = true;
++    vertical_tabs_outline.leading = admission && admission->retained();
+     // Top edge is drawn when the tabstrip is not flush with the edge of the
+     // screen, or with a visual element that provides a natural border.
+     if (animation.expand_on_hover_width > 0.0 || animation.top_corner < 0.0 ||
