@@ -1,0 +1,24 @@
+{
+  "composition": "v278",
+  "exitCode": 0,
+  "elapsedSeconds": 40.40188479423523,
+  "targets": {
+    "daemon_authorization": "obj/chrome/browser/aux/platform/daemon_supervisor.o",
+    "browser_authorization": "obj/chrome/browser/aux/platform/browser_platform.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/aux/platform/daemon_supervisor.o",
+    "obj/chrome/browser/aux/platform/browser_platform.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserOrRuntimeAccepted": false,
+  "scope": "Existing real daemon authorization cache/force-refresh seam; Chats consumer not yet mounted. No signing, challenge execution or Keychain call performed."
+}
