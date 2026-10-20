@@ -1,0 +1,31 @@
+{
+  "frameworkPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "frameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "files": [
+    {
+      "file": "current-tab-strip-animations.cc",
+      "sourcePath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/animations/tab_strip_animations.cc",
+      "sha256": "baa6e8afb79a67dc0d4585d82b48c87449a12db17324c32f191d01a78f0e1976"
+    },
+    {
+      "file": "current-tween.h",
+      "sourcePath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/tween.h",
+      "sha256": "cc375d29f09935d7b09dedc5fa225b3c3f58183b680823f9a4cee17d038e5c94"
+    },
+    {
+      "file": "original-hover-generator.asm",
+      "range": "0x7704800..0x7704c80",
+      "sha256": "ae25feb90892095ad445e73679746218962fe5657763d1bea3b8b5748f5ded85"
+    },
+    {
+      "file": "original-motion-names.bin",
+      "range": "0xda870bc..0xda870fc",
+      "sha256": "36e1780e7fef07eefbd00ddcc8e4f368edda9363790dd96c6f8908c9f2fa979e"
+    },
+    {
+      "file": "original-motion-registration.asm",
+      "range": "0x2a70d68..0x2a70df4",
+      "sha256": "d7faaddeafe633a3a12d4344a797e29e316c8297a01b43aa635f84f2e6a713c3"
+    }
+  ]
+}
