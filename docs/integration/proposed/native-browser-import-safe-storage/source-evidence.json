@@ -1,0 +1,80 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "selectors.asm",
+      "start": "0x426abd0",
+      "endExclusive": "0x426b0e8",
+      "bytesSha256": "5dcca9778070b9fcecf512c00ea1e4f5cb33cd641afe2350dfdab4ae37056f75",
+      "sha256": "02e044afb856a6e280e61ab82716c5748d35d805dbd7daf93869498a7af9614d"
+    },
+    {
+      "file": "query.asm",
+      "start": "0x8918fdc",
+      "endExclusive": "0x8919118",
+      "bytesSha256": "c8a08acbac0e804f80055ef566729510c5c1662bb4941fd0633d392e83072b35",
+      "sha256": "36497e9d3967f643782294e99167c4c6abb576885692247069df43283402742f"
+    },
+    {
+      "file": "read.asm",
+      "start": "0x8919474",
+      "endExclusive": "0x89195c0",
+      "bytesSha256": "399b30b09022062d27dc71f4df91efe0dddd53b8f4159f55957bce66a63b4e41",
+      "sha256": "8b0674d0a45d6936991642a4b34acd65cc599ebe96b847184268ef2e5c6ea033"
+    },
+    {
+      "file": "key-caller.asm",
+      "start": "0x425957c",
+      "endExclusive": "0x4259690",
+      "bytesSha256": "2b706f16ce2d12bd8966ced9d4ef6a8a2f53c42ab74ff5bbbbf536bd39e8dcb4",
+      "sha256": "46e8ba3ba99f5ec54d028236acf049959b971323b48c8263af6d1fb0eb18c12b"
+    },
+    {
+      "file": "password-derivation.asm",
+      "start": "0x4254a48",
+      "endExclusive": "0x4254ac4",
+      "bytesSha256": "36b8e5f878833159199fd746a177abd2c9961c2a9651a0ef302924b12b14513f",
+      "sha256": "4a9311490945493860e18438cd7da53ef65fd0ec397531271dece16c540aa80b"
+    },
+    {
+      "file": "cookie-derivation.asm",
+      "start": "0x4256ecc",
+      "endExclusive": "0x4256f4c",
+      "bytesSha256": "aa7b6d7e042df4fbec43d0caf3f301f1e9ab215dc98c0d41a1154da5515a0019",
+      "sha256": "70dc309eb537ce7b17a466334d02fec5ad03f540c4d19108226cad9437b5498e"
+    },
+    {
+      "file": "v10.asm",
+      "start": "0x425cda0",
+      "endExclusive": "0x425cf50",
+      "bytesSha256": "37ef4c2b6684a4798f23d79959b8ca0d1f961f229c543d02c914bec8bb38b064",
+      "sha256": "e8103cba1c544e766761a2f7cf2b4be3652faf6183a9a6b6749c4890f1945f3e"
+    }
+  ],
+  "literalTable": {
+    "start": "0xcf08102",
+    "endExclusive": "0xcf08200",
+    "bytesSha256": "f9585ffb06caf84526b01ba29d4d15544427a6007428bf4dd0e0875b6ba0d40e"
+  },
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/crypto/apple/keychain_v2.h",
+      "sha256": "1e71d235db80dd7f8d5e3d61f7cbfd6b8834d47c4537df8a7e845ddf676ee8c4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/crypto/apple/keychain_v2.mm",
+      "sha256": "dd959a1ba64772e742912238491bedeb47fe5570a31860593bf6d32cd5468cef"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "sha256": "b0ff5b29014b6da7b3fcd00845b532bf5a9ac79ceb7c4981a21603b7939c5c3c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "sha256": "bf21cf5985b31bd39f50e646e32de5b914e55da64a2dcccb470acfce303ab21f"
+    }
+  ]
+}

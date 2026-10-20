@@ -1,0 +1,79 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+@@ -1,5 +1,5 @@
+ // Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
+-// Public Chromium macOS v10 encryption format; no reference implementation.
++// Supplied importer Safe Storage selectors; Chromium macOS v10 encryption.
+ #include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
+ 
+ #import <AppKit/AppKit.h>
+@@ -9,15 +9,40 @@
+ #import <Security/Security.h>
+ #include <string.h>
+ 
++#include "crypto/apple/keychain_v2.h"
+ #include "third_party/boringssl/src/include/openssl/mem.h"
+ namespace aux_import {
+ namespace {
+-const char* Service(std::string_view source) {
+-  if (source == "chrome") {
+-    return "Chrome Safe Storage";
++// Original 426abd0 supplies both selectors to KeychainV2::FindGenericPassword.
++// Keep the separate historical Edge path until its original migrator is known.
++struct SafeStorageSelectors {
++  const char* service;
++  const char* account;
++};
++std::optional<SafeStorageSelectors> SuppliedSelectors(std::string_view source) {
++  if (source == "arc") {
++    return SafeStorageSelectors{"Arc Safe Storage", "Arc"};
+   }
+   if (source == "brave") {
+-    return "Brave Safe Storage";
++    return SafeStorageSelectors{"Brave Safe Storage", "Brave"};
++  }
++  if (source == "chrome") {
++    return SafeStorageSelectors{"Chrome Safe Storage", "Chrome"};
++  }
++  if (source == "comet") {
++    return SafeStorageSelectors{"Comet Safe Storage", "Comet"};
++  }
++  if (source == "dia") {
++    return SafeStorageSelectors{"Dia Safe Storage", "Dia"};
++  }
++  if (source == "helium") {
++    return SafeStorageSelectors{"Helium Storage Key", "Helium"};
++  }
++  return std::nullopt;
++}
++const char* Service(std::string_view source) {
++  if (auto selectors = SuppliedSelectors(source)) {
++    return selectors->service;
+   }
+   if (source == "edge") {
+     return "Microsoft Edge Safe Storage";
+@@ -84,6 +109,24 @@
+ std::optional<SourceKey> AuthorizeSourceKey(std::string_view source,
+                                             std::string& error) {
+   @autoreleasepool {
++    if (auto selectors = SuppliedSelectors(source)) {
++      auto password = crypto::apple::KeychainV2::GetInstance().FindGenericPassword(
++          selectors->service, selectors->account);
++      if (!password.has_value()) {
++        error = "Source Safe Storage permission was denied or its credential is "
++                "unavailable";
++        return {};
++      }
++      if (password->empty() || password->size() > 4096) {
++        OPENSSL_cleanse(password->data(), password->size());
++        error = "Source Safe Storage credential is invalid";
++        return {};
++      }
++      auto key = DeriveSourceKey(std::string_view(
++          reinterpret_cast<const char*>(password->data()), password->size()));
++      OPENSSL_cleanse(password->data(), password->size());
++      return key;
++    }
+     const auto* service = Service(source);
+     if (!service) {
+       error = "Source Safe Storage format is not supported";

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+      "baselineSha256": "8eca3e4b433f848154ecd9a5c5fa696d071bf2dd4c0987ce1bea9a4ed3feb36f",
+      "outputSha256": "b07f68d238926fab29d448556d2c6e841460d6a8c9cb6c026116e47b55b5bbb7"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
