@@ -153,6 +153,13 @@ steps.extend([
     ('native-popup-focus-transfer/native.patch', 'native-popup-focus-transfer/manifest.json'),
     ('native-fidelity-integration-build-registration/native.patch', 'native-fidelity-integration-build-registration/manifest.json'),
     ('native-profile-switch-provider/buildflag-import/native.patch', 'native-profile-switch-provider/buildflag-import/manifest.json'),
+    ('native-profile-switch-target-eligibility/native.patch', 'native-profile-switch-target-eligibility/manifest.json'),
+    ('native-profile-switch-findbar/native.patch', 'native-profile-switch-findbar/manifest.json'),
+    ('native-agent-tabs-counterpart/native.patch', 'native-agent-tabs-counterpart/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/shared-tab-profile-lifecycle.patch', 'native-profile-switch-owner/transaction-map/shared-tab-profile-lifecycle-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/sync-model-profile-transfer.patch', 'native-profile-switch-owner/transaction-map/sync-model-profile-transfer-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/sync-cohort-validation.patch', 'native-profile-switch-owner/transaction-map/sync-cohort-validation-manifest.json'),
+    ('native-profile-switch-data-protection/native.patch', 'native-profile-switch-data-protection/manifest.json'),
 ])
 
 if options.through:
