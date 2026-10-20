@@ -36,8 +36,13 @@ function regular(file, limit = 512 * 1024 * 1024) {
 function json(file) { return JSON.parse(regular(file)); }
 function expectedJson(file, expected) { const b = regular(file); if (!/^[a-f0-9]{64}$/.test(expected ?? '') || hash(b) !== expected) throw Error('Explicit reviewed metadata hash mismatch'); return JSON.parse(b); }
 function plist(file) { const p = spawnSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '--', '-'], { input: regular(file), encoding: 'utf8', timeout: 10000, maxBuffer: 1048576 }); if (p.status !== 0) throw Error('Copied plist unreadable'); return JSON.parse(p.stdout); }
-export function orderedDevelopmentTargets(targets) {
-  if (targets.length !== 11 || targets.filter(t => t.signer === 'adhoc').length !== 8 || targets.filter(t => t.signer === 'development').length !== 3 || new Set(targets.map(t => t.path)).size !== 11 || targets.some(t => !developmentTargets.some(d => d.path === t.path && d.signer === t.signer))) throw Error('Exact eight ad hoc and three development targets required');
+export function developmentTargetDefinitions(passwordManagerExcluded = false) {
+  if (typeof passwordManagerExcluded !== 'boolean') throw Error('Explicit password-manager topology required');
+  return passwordManagerExcluded ? developmentTargets.filter(target => !target.path.startsWith(importer)) : developmentTargets;
+}
+export function orderedDevelopmentTargets(targets, { passwordManagerExcluded = false } = {}) {
+  const definitions = developmentTargetDefinitions(passwordManagerExcluded), count = definitions.length;
+  if (targets.length !== count || targets.filter(t => t.signer === 'adhoc').length !== count - 3 || targets.filter(t => t.signer === 'development').length !== 3 || new Set(targets.map(t => t.path)).size !== count || targets.some(t => !definitions.some(d => d.path === t.path && d.signer === t.signer))) throw Error('Exact reviewed ad hoc and three development targets required');
   return [...targets].sort((a, b) => b.path.split('/').length - a.path.split('/').length || (a.kind === 'macho' ? 0 : 1) - (b.kind === 'macho' ? 0 : 1) || a.path.localeCompare(b.path));
 }
 export function developmentCapabilities(def, observation, proposal, browserReview) {
@@ -88,8 +93,8 @@ function snapshot(directory) {
   walk(directory); return files;
 }
 export function planDevelopmentDp(request) {
-  const { preparationPath, preparationSha256, boundaryReceiptPath, packageRoot, output, now, testMacIdentifier, browserReview, profileReports = [], allowAppleTrustNetwork = false } = request;
-  if (typeof allowAppleTrustNetwork !== 'boolean') throw Error('Explicit Boolean trust network mode required');
+  const { preparationPath, preparationSha256, boundaryReceiptPath, packageRoot, output, now, testMacIdentifier, browserReview, profileReports = [], allowAppleTrustNetwork = false, passwordManagerExcluded = false } = request;
+  if (typeof allowAppleTrustNetwork !== 'boolean' || typeof passwordManagerExcluded !== 'boolean') throw Error('Explicit Boolean trust/topology mode required');
   if (!Number.isFinite(Date.parse(now)) || Math.abs(Date.now() - Date.parse(now)) > 60000 || typeof testMacIdentifier !== 'string' || !testMacIdentifier) throw Error('Current review time and reviewed test Mac required');
   const proposalPath = path.join(root, 'docs/integration/proposed/development-dp-signing/proposal.json'), proposalBytes = regular(proposalPath), proposal = JSON.parse(proposalBytes), proposalSha256 = hash(proposalBytes);
   if (proposal.signingAuthorized !== false || proposal.provisioningOperationsAuthorized !== false || proposal.dpExecutionAuthorizedByThisProposal !== false || proposal.proposedDpHosts.length !== 3) throw Error('Fixed unauthorized development proposal required');
@@ -111,7 +116,8 @@ export function planDevelopmentDp(request) {
     const live = new Map(inventory.map(f => [f.path, f]));
     assertPreparedOverlayInventory(prep.inventory, inventory);
     for (const role of ['daemon', 'cli']) if (live.get(`${prefix}/apps/${role}/Aux ${role === 'daemon' ? 'Daemon' : 'CLI'}.app/Contents/Resources/native/provided-native.node`)?.sha256 !== bindings[role].sha256) throw Error('Original role binding changed');
-    for (const d of developmentTargets) {
+    if (passwordManagerExcluded && inventory.some(file => file.path.startsWith(importer + '/'))) throw Error('Excluded password importer is present');
+    for (const d of developmentTargetDefinitions(passwordManagerExcluded)) {
       const def = d.role === 'browser' ? { ...d, executable: browserReview?.executable } : d;
       if (d.role === 'browser' && !/^Contents\/MacOS\/[A-Za-z0-9._ -]+$/.test(def.executable ?? '')) throw Error('Reviewed browser executable required');
       const codeRelative = def.executable ? def.path + '/' + def.executable : def.path, file = path.join(packageRoot, codeRelative), bytes = regular(file);
@@ -135,7 +141,7 @@ export function planDevelopmentDp(request) {
       }
       targets.push(step);
     }
-    targets = orderedDevelopmentTargets(targets);
+    targets = orderedDevelopmentTargets(targets, { passwordManagerExcluded });
     if (JSON.stringify(snapshot(packageRoot)) !== JSON.stringify(inventory)) throw Error('Package changed during inspection');
   }
   if (profileReports.length && (!packageRoot || new Set(profileReports.map(r => r.role)).size !== profileReports.length || profileReports.some(r => !['daemon', 'cli-sea', 'carrier'].includes(r.role)))) throw Error('Unreviewed CMS report role');
@@ -148,7 +154,7 @@ export function planDevelopmentDp(request) {
     artifacts.push({ path: entitlementsFile, sha256: hash(regular(entitlementsFile)) });
     step.prospectiveCodesign = { tool: '/usr/bin/codesign', args: ['--force', '--sign', step.signer === 'adhoc' ? '-' : proposal.identityInspection.publicCertificateSha1, '--timestamp=none', ...(step.preserveRuntime ? ['--options', 'runtime'] : []), '--entitlements', entitlementsFile, path.join(packageRoot, step.path)], authorized: false, executed: false };
   }
-  const plan = { version: 1, kind: 'development-diagnostic-signing-review-only', createdAt: now, allowAppleTrustNetwork, proposalSha256, preparationSha256, boundaryReceiptSha256: hash(receiptBytes), packageRoot: packageRoot ?? null, targetTopology: developmentTargets, targets, inventory, artifacts, blocked, postSigningGate: { expectedDevelopmentCertificateSha1: proposal.identityInspection.publicCertificateSha1, expectedTeam: proposal.identityInspection.teamId, expectedFirstAndOnlyGroup: proposal.proposedFirstAndOnlySharedGroup, inspectActualLeafCertificate: true, placeholderAutomaticSelectorIsNotIdentityProof: true, exactPostSignCodeProfileEntitlementsAndPreservedInventoryReceiptRequired: true, implementedByThisGenerator: false }, signingAuthorized: false, dpExecutionAuthorized: false, signingPerformed: false, nativeExecuted: false, defaultAdhocChanged: false, diagnostic: { home: proposal.exactExistingDisposableHome, scope: proposal.exactScope, sharedGroup: proposal.proposedFirstAndOnlySharedGroup, hosts: proposal.proposedDpHosts.map(h => ({ role: h.role, executable: `${prefix}/${h.proposedBundleRelativeToAuxRoot}/${h.proposedMainExecutable}`, allowedOriginalCommands: ['install-status', 'get-public-keys', 'cdp-sign'], initialize: h.role === 'daemon' ? 'Only once after exact fresh-row baseline and explicit new preview approval; existing marker must verify/refuse' : 'Never' })), carrierPath: `${prefix}/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier`, cliLaunch: `${cli}/Contents/MacOS/aux-cli`, executionImplemented: false, oldApprovalPreviewReusable: false, prerequisites: ['Exact signed artifact hashes and profile gate current at execution', 'Actual Aux-only group enforcement/default-group inspect with original selectors', 'Exact-scope helper receipt/group review; existing helper cannot be silently reused as development authority', 'New explicit human-approved preview; preserve prior stage/home; no unseen family/biometric/UI grants'] } };
+  const plan = { version: 1, kind: 'development-diagnostic-signing-review-only', createdAt: now, allowAppleTrustNetwork, proposalSha256, preparationSha256, boundaryReceiptSha256: hash(receiptBytes), packageRoot: packageRoot ?? null, passwordManagerExcluded, targetTopology: developmentTargetDefinitions(passwordManagerExcluded), targets, inventory, artifacts, blocked, postSigningGate: { expectedDevelopmentCertificateSha1: proposal.identityInspection.publicCertificateSha1, expectedTeam: proposal.identityInspection.teamId, expectedFirstAndOnlyGroup: proposal.proposedFirstAndOnlySharedGroup, inspectActualLeafCertificate: true, placeholderAutomaticSelectorIsNotIdentityProof: true, exactPostSignCodeProfileEntitlementsAndPreservedInventoryReceiptRequired: true, implementedByThisGenerator: false }, signingAuthorized: false, dpExecutionAuthorized: false, signingPerformed: false, nativeExecuted: false, defaultAdhocChanged: false, diagnostic: { home: proposal.exactExistingDisposableHome, scope: proposal.exactScope, sharedGroup: proposal.proposedFirstAndOnlySharedGroup, hosts: proposal.proposedDpHosts.map(h => ({ role: h.role, executable: `${prefix}/${h.proposedBundleRelativeToAuxRoot}/${h.proposedMainExecutable}`, allowedOriginalCommands: ['install-status', 'get-public-keys', 'cdp-sign'], initialize: h.role === 'daemon' ? 'Only once after exact fresh-row baseline and explicit new preview approval; existing marker must verify/refuse' : 'Never' })), carrierPath: `${prefix}/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier`, cliLaunch: `${cli}/Contents/MacOS/aux-cli`, executionImplemented: false, oldApprovalPreviewReusable: false, prerequisites: ['Exact signed artifact hashes and profile gate current at execution', 'Actual Aux-only group enforcement/default-group inspect with original selectors', 'Exact-scope helper receipt/group review; existing helper cannot be silently reused as development authority', 'New explicit human-approved preview; preserve prior stage/home; no unseen family/biometric/UI grants'] } };
   const bytes = JSON.stringify(plan, null, 2) + '\n'; fs.writeFileSync(path.join(out, 'development-review-plan.json'), bytes, { flag: 'wx', mode: 0o600 });
   return { output: out, planSha256: hash(bytes), signingPerformed: false, nativeExecuted: false, actualTargetCount: targets.length, blocked };
 }

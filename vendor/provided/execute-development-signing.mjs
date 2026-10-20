@@ -7,7 +7,7 @@ import { createHash, X509Certificate } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { developmentTargets, orderedDevelopmentTargets, developmentCapabilities, checkProfileReport } from './plan-development-dp.mjs';
+import { developmentTargetDefinitions, orderedDevelopmentTargets, developmentCapabilities, checkProfileReport } from './plan-development-dp.mjs';
 import { inspectSigningCode } from '../../scripts/lib/provided-signing-policy.mjs';
 import { authenticateDevelopmentProfile } from './authenticate-development-profile.mjs';
 const { bindings } = createRequire(import.meta.url)('./native-role-pins.cjs');
@@ -48,15 +48,16 @@ export function signingChanges(before, after, targets) {
   return changes;
 }
 export function validateDevelopmentSigningPlan(plan, proposal) {
-  if (plan.version !== 1 || plan.kind !== 'development-diagnostic-signing-review-only' || plan.signingAuthorized !== false || plan.dpExecutionAuthorized !== false || plan.signingPerformed !== false || plan.defaultAdhocChanged !== false || !plan.packageRoot || !Array.isArray(plan.inventory) || plan.inventory.length === 0 || plan.targets.length !== 11 || plan.artifacts.length !== 11) throw Error('complete-development-plan-required');
+  if (plan.version !== 1 || plan.kind !== 'development-diagnostic-signing-review-only' || plan.signingAuthorized !== false || plan.dpExecutionAuthorized !== false || plan.signingPerformed !== false || plan.defaultAdhocChanged !== false || !plan.packageRoot || !Array.isArray(plan.inventory) || plan.inventory.length === 0 || plan.targets.length !== developmentTargetDefinitions(plan.passwordManagerExcluded ?? false).length || plan.artifacts.length !== plan.targets.length) throw Error('complete-development-plan-required');
   const group = proposal.identityInspection.teamId + '.dev.aux.dp.' + proposal.exactScope;
   if (proposal.exactScope !== hash(proposal.exactExistingDisposableHome) || proposal.proposedFirstAndOnlySharedGroup !== group || plan.postSigningGate.expectedDevelopmentCertificateSha1 !== proposal.identityInspection.publicCertificateSha1 || plan.postSigningGate.expectedTeam !== proposal.identityInspection.teamId || plan.postSigningGate.expectedFirstAndOnlyGroup !== group || plan.diagnostic.scope !== proposal.exactScope || plan.diagnostic.home !== proposal.exactExistingDisposableHome) throw Error('proposal-authority-mismatch');
-  if (stable(orderedDevelopmentTargets(plan.targets).map(t => t.path)) !== stable(plan.targets.map(t => t.path))) throw Error('signing-order-mismatch');
+  if (stable(orderedDevelopmentTargets(plan.targets, { passwordManagerExcluded: plan.passwordManagerExcluded ?? false }).map(t => t.path)) !== stable(plan.targets.map(t => t.path))) throw Error('signing-order-mismatch');
   const paths = new Set();
   for (const f of plan.inventory) { relative(f.path); if (paths.has(f.path)) throw Error('duplicate-inventory-path'); paths.add(f.path); }
   const files = new Map(plan.inventory.map(f => [f.path, f]));
+  if (plan.passwordManagerExcluded && plan.inventory.some(file => file.path.startsWith('Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/'))) throw Error('excluded-password-importer-present');
   for (const t of plan.targets) {
-    const d = developmentTargets.find(d => d.path === t.path);
+    const d = developmentTargetDefinitions(plan.passwordManagerExcluded ?? false).find(d => d.path === t.path);
     if (!d || t.kind !== d.kind || t.signer !== d.signer || t.role !== d.role || t.authorized !== false || (d.executable ? t.executable !== d.executable : d.kind === 'macho' && t.executable !== undefined)) throw Error('unreviewed-target');
     if (d.role === 'browser' && !/^Contents\/MacOS\/[A-Za-z0-9._ -]+$/.test(t.executable ?? '')) throw Error('unreviewed-browser-main');
     const code = t.kind === 'bundle' ? t.path + '/' + t.executable : t.path;
@@ -108,7 +109,7 @@ export function executeDevelopmentSigning({ planPath, planSha256, receiptPath, m
   if (packageReport.implementation !== 'supplied' || packageReport.signed !== false || !packageReport.sourceRoots?.length) throw Error('unsigned-supplied-copy-required');
   for (const p of packageReport.sourceRoots) { const source = fs.realpathSync(p); if (source === packageRoot || source.startsWith(packageRoot + '/') || packageRoot.startsWith(source + '/')) throw Error('copy-overlaps-source'); }
   const artifacts = new Map(plan.artifacts.map(a => [a.path, a.sha256]));
-  if (artifacts.size !== 11) throw Error('duplicate-entitlement-artifact');
+  if (artifacts.size !== plan.targets.length) throw Error('duplicate-entitlement-artifact');
   function staticStep(step, index) {
     const code = path.join(packageRoot, step.codeRelative); pin(code, step.sha256);
     if (stable({ ...inspectSigningCode(code), sha256: step.sha256 }) !== stable(step.observed)) throw Error('pre-sign-observation-changed');
@@ -122,11 +123,11 @@ export function executeDevelopmentSigning({ planPath, planSha256, receiptPath, m
   for (const t of plan.targets.filter(t => t.signer === 'development')) pin(path.join(packageRoot, t.path, 'Contents/embedded.provisionprofile'), t.profile.sha256);
   const sources = signingSourcePaths.map(p => ({ path: p, sha256: hash(regular(path.join(repository, p))) }));
   function checkSources() { for (const p of sources) pin(path.join(repository, p.path), p.sha256); }
-  const base = { version: 1, implementation: 'exact-development-signing', planPath, planSha256, proposalSha256: plan.proposalSha256, packageRoot, mode, sources, dpExecuted: false, productLaunched: false, defaultAdhocChanged: false, allowAppleTrustNetwork, packageReportIsHistoricalInput: true, initialSnapshotSha256: hash(stable(initial)), expectedDevelopmentLeafSha1: proposal.identityInspection.publicCertificateSha1, expectedTeam: proposal.identityInspection.teamId, expectedGroup: proposal.proposedFirstAndOnlySharedGroup };
+  const base = { version: 1, implementation: 'exact-development-signing', planPath, planSha256, proposalSha256: plan.proposalSha256, packageRoot, mode, sources, dpExecuted: false, productLaunched: false, defaultAdhocChanged: false, allowAppleTrustNetwork, packageReportIsHistoricalInput: true, passwordManagerExcluded: plan.passwordManagerExcluded ?? false, initialSnapshotSha256: hash(stable(initial)), expectedDevelopmentLeafSha1: proposal.identityInspection.publicCertificateSha1, expectedTeam: proposal.identityInspection.teamId, expectedGroup: proposal.proposedFirstAndOnlySharedGroup };
   const receiptFd = fs.openSync(receiptPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
   function write(value) { const bytes = JSON.stringify({ ...base, ...value }, null, 2) + '\n'; fs.ftruncateSync(receiptFd, 0); fs.writeSync(receiptFd, bytes, 0, 'utf8'); fs.fsyncSync(receiptFd); }
   write({ status: 'preflight-in-progress', signingAttempted: false, signed: false, productionReady: false });
-  if (mode === 'verify-only') { const result = { status: 'static-plan-verified-no-signing', signingAttempted: false, cmsReauthenticated: false, signed: false, productionReady: false, targetCount: 11 }; write(result); fs.closeSync(receiptFd); return { ...base, ...result }; }
+  if (mode === 'verify-only') { const result = { status: 'static-plan-verified-no-signing', signingAttempted: false, cmsReauthenticated: false, signed: false, productionReady: false, targetCount: plan.targets.length }; write(result); fs.closeSync(receiptFd); return { ...base, ...result }; }
   let workspace, live = initial, sequence, lastProgress = null, attempted = false, certificateSequence = 0;
   const cmsProofs = [];
   function authenticate(step) {
@@ -192,11 +193,12 @@ export function executeDevelopmentSigning({ planPath, planSha256, receiptPath, m
  * CMS proofs are from the pinned executor receipt; this never invokes hosts. */
 export function verifySignedDevelopmentReceipt({ receiptPath, receiptSha256 }) {
   const receipt = JSON.parse(pin(receiptPath, receiptSha256));
-  if (receipt.version !== 1 || receipt.implementation !== 'exact-development-signing' || receipt.status !== 'signed-and-verified' || receipt.mode !== 'sign' || receipt.signed !== true || receipt.signingAttempted !== true || receipt.packageMayBePartiallySigned !== false || receipt.untargetedLeavesPreserved !== true || receipt.dpExecuted !== false || receipt.productLaunched !== false || receipt.finalProofs?.length !== 11) throw Error('verified-signing-success-receipt-required');
+  if (receipt.version !== 1 || receipt.implementation !== 'exact-development-signing' || receipt.status !== 'signed-and-verified' || receipt.mode !== 'sign' || receipt.signed !== true || receipt.signingAttempted !== true || receipt.packageMayBePartiallySigned !== false || receipt.untargetedLeavesPreserved !== true || receipt.dpExecuted !== false || receipt.productLaunched !== false || receipt.finalProofs?.length !== developmentTargetDefinitions(receipt.passwordManagerExcluded ?? false).length) throw Error('verified-signing-success-receipt-required');
   const plan = JSON.parse(pin(receipt.planPath, receipt.planSha256));
   const proposalBytes = regular(path.join(repository, 'docs/integration/proposed/development-dp-signing/proposal.json')), proposal = JSON.parse(proposalBytes);
   if (hash(proposalBytes) !== receipt.proposalSha256 || receipt.proposalSha256 !== plan.proposalSha256 || receipt.packageRoot !== plan.packageRoot || receipt.allowAppleTrustNetwork !== plan.allowAppleTrustNetwork) throw Error('signed-receipt-proposal-plan-mismatch');
   validateDevelopmentSigningPlan(plan, proposal);
+  if ((receipt.passwordManagerExcluded ?? false) !== (plan.passwordManagerExcluded ?? false)) throw Error('signed-receipt-topology-mismatch');
   if (!Array.isArray(receipt.sources) || receipt.sources.length !== signingSourcePaths.length || new Set(receipt.sources.map(s => s.path)).size !== signingSourcePaths.length || receipt.sources.some(s => !signingSourcePaths.includes(s.path)) || receipt.expectedDevelopmentLeafSha1 !== proposal.identityInspection.publicCertificateSha1 || receipt.expectedTeam !== proposal.identityInspection.teamId || receipt.expectedGroup !== proposal.proposedFirstAndOnlySharedGroup) throw Error('signed-receipt-source-authority-mismatch');
   for (const source of receipt.sources) pin(path.join(repository, relative(source.path)), source.sha256);
   const current = developmentSnapshot(receipt.packageRoot);
