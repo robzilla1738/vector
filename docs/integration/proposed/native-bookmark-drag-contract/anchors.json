@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.h",
+    "before": "  void SetFavicon(ui::ImageModel image, bool has_favicon);",
+    "after": "  void SetFavicon(ui::ImageModel image, bool has_favicon);\n  ui::ImageModel GetDragImageModel() const;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc",
+    "before": "void VerticalBookmarkRowView::SetDepth(int depth) {",
+    "after": "ui::ImageModel VerticalBookmarkRowView::GetDragImageModel() const {\n  return image_->GetImageModel();\n}\n\nvoid VerticalBookmarkRowView::SetDepth(int depth) {",
+    "count": 1
+  }
+]

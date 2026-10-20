@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "callback-setters",
+      "rva": "0x4612080",
+      "bytes": 960,
+      "sha256": "79cda3ace63a8c847db9ab83fcb22f25bbf9b3b5f6a37fe94e81b505c5effeb9",
+      "assemblySha256": "fe07abee0d784bd74a818eb59f045d9b66c1cb0a18e4e5027333344d6b53abd1"
+    },
+    {
+      "name": "begin-during-drag",
+      "rva": "0x4619134",
+      "bytes": 172,
+      "sha256": "c2647e12ec5bb91ce70cfd5cd57f1e539cb366cf6bc3435869f3bc59751ecaaf",
+      "assemblySha256": "f3082838c06a498e7c039dc471f0375147aed74b734b603b1e4759ce0ffd48e2"
+    },
+    {
+      "name": "begin-during-release",
+      "rva": "0x461a078",
+      "bytes": 152,
+      "sha256": "ae3e19b815ded5cd624f92376bf383ef4a45a3044797f86fd14bd5ba07408c47",
+      "assemblySha256": "546a7d64a20e88e5a7aef65cc77570e776a1afe97957064051c7bce2401dd415"
+    },
+    {
+      "name": "region-begin",
+      "rva": "0x462d1c0",
+      "bytes": 1056,
+      "sha256": "1cd9db48efbc5e50dc4174ab36d0d5e18a03f78fad1b6a481bb4398acf57f7a4",
+      "assemblySha256": "00036c9ed1c24ca6c27c4d62ed464cba1efc7e822cea435021c22be84a275139"
+    },
+    {
+      "name": "event-screen-point",
+      "rva": "0x461baec",
+      "bytes": 288,
+      "sha256": "d5da20c01f243283dfc1287838f259cd762e32422662630caa98f6b52fb7b343",
+      "assemblySha256": "291f2fc0b2e9fac016bb48adfd28938a5939eb1442ed306eec9c3fc6b63c5d4a"
+    },
+    {
+      "name": "image-model-copy",
+      "rva": "0x6bed5c",
+      "bytes": 344,
+      "sha256": "f8a0a85217112cb204d0e8fc0b31494e311993a65c479303f51b85d38fe33878",
+      "assemblySha256": "6fa495aff43db650579c123cfb9a59bb3c2a0d96e66864d930fb9045153ec604"
+    },
+    {
+      "name": "row-screen-bounds",
+      "rva": "0x1427574",
+      "bytes": 252,
+      "sha256": "c52a1772c49eaf43224400313c4a3444f3025003a28035f6b0505fd75b95d795",
+      "assemblySha256": "bb8d85a7d11df09b09c4a26cce913d89b16a197e600af0238e09b34a2786fd32"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/image_view.h",
+      "sha256": "c1ac045f9556c6eb62d33602066a9216c3ab6bc168e7f3d155a170e8dba2a2e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/models/image_model.h",
+      "sha256": "2b0235eb40af265bafd34d1839f3cb67eb40fec84f781a856184ea1792efda5f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/geometry/rect.h",
+      "sha256": "76fac1435f7dcb774fbdb2370460464ed2394681e0a41daf0863c237e234dcdc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/geometry/point.h",
+      "sha256": "2709bb9856e648cf0269fe81c7a898a8d1175d41cc82ea9fb44f8ccf16d6644b"
+    }
+  ],
+  "literals": []
+}

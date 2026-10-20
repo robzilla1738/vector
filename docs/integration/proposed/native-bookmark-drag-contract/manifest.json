@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "applyAfter": "actual289 native-sidebar-rows-api155; no region/GN/owner mount",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_callbacks.h",
+      "baselineSha256": null,
+      "outputSha256": "b836b407b0f02f78918ab411685231773da96cae2868147a16c3d9fa7a0d6654",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc",
+      "baselineSha256": "735ff2d15f7acd8c8ed97e1e5300497d4f926a4894e2723356cce7ae74e8a110",
+      "outputSha256": "8d9f87f673d48bc1ebc378dd87ac0156e91c0142d973856068e506a7db46a7b3",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.h",
+      "baselineSha256": "066800e79bbe37c4bf24ec67551a3e0fae45e511cb10eb7e14aec76ca90f61e4",
+      "outputSha256": "3677fe37a2778d8931d32947f8098cea50f23ec1c6ac018123e0385c66ff53eb",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
