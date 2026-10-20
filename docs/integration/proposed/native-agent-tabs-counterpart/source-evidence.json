@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0468727c.c",
+      "sha256": "e5caa8947973820e5e2a671cfef3debe936d85213ed7dab516e346c202396346"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04688b08.c",
+      "sha256": "7a0f9a49ec52d89056b4e7f0bfd37906d826cbd711875eea40f1c84befb4d810"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/046890d0.c",
+      "sha256": "09c47d484b6c7de7b5a52327bc77015dc78c610b0e064307bd1b2de19033f6ee"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04689dd8.c",
+      "sha256": "77c1413b599fdf510a320a9cc09e95706a695ddb712c1e7787de4c960ab9e777"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04625d00.c",
+      "sha256": "9494ee5becc754dae93deec164af1d01a5e652ccbd4702f1075ec629ea7ece82"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/046271b0.c",
+      "sha256": "75d75a9a65117d68ea4cc5316c13387be946eeca19fccf282231deba209bb682"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/046289c8.c",
+      "sha256": "7b83cc293689c36fdf1ba96708f720d6f3522c6aca7e536ca6ab50ca6ccf5ab1"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04628d90.c",
+      "sha256": "3419694bd9cdb8447cfab5bbade9adab01aab4b0e5bec1ac9f54809d6ee5064b"
+    }
+  ],
+  "functions": [
+    {
+      "name": "ButtonConstructor",
+      "rva": "0x4684340",
+      "bytes": 2264,
+      "sha256": "e19608d937ec643717f020e760b4ef10a285f1a7c94fcec72009721df0e7ca44"
+    },
+    {
+      "name": "ButtonPress",
+      "rva": "0x4684c18",
+      "bytes": 3624,
+      "sha256": "5069d95a8f36fb004a85c0fc3a4da546a9dc554e7bbbe815711c0dceef1faa91"
+    },
+    {
+      "name": "ButtonMetadata",
+      "rva": "0x468727c",
+      "bytes": 252,
+      "sha256": "acd1d71b4e1bd315ea852fc77fa10cd2cfa23b9daa7569ec2b1a2bcc4875ef9c"
+    },
+    {
+      "name": "BubbleMetadata",
+      "rva": "0x4689dd8",
+      "bytes": 208,
+      "sha256": "56aaaf007d5ceff70b1990889409e4d06ddf2f2d4b7a37e434722ec77822f088"
+    },
+    {
+      "name": "FirstNativeMount",
+      "rva": "0x45d78a0",
+      "bytes": 84,
+      "sha256": "f343128b7e399bf7b49ee8a4d7657b98759430e3d3a374fb1973dfc8949f80e2"
+    },
+    {
+      "name": "SecondNativeMount",
+      "rva": "0x45df1d4",
+      "bytes": 80,
+      "sha256": "b99bcdbd5810e38b48d582b4dd64238badcf5237dff0bdebb50dc3a87791ab7e"
+    },
+    {
+      "name": "SessionPanelMount",
+      "rva": "0x37e3a34",
+      "bytes": 80,
+      "sha256": "379c1951b1696ff6cf37eb6f3ef9011fe565862bba73c86e1d1cbad7d3d12c61"
+    },
+    {
+      "name": "CloseWithReasonPrefix",
+      "rva": "0x2c1d388",
+      "bytes": 84,
+      "sha256": "7b96fcaa0e3795bd53039c7a3ba1f679fa41d0b1f6421b88c9ec58a89384f08e"
+    },
+    {
+      "name": "ButtonMetadataVtableSlot",
+      "rva": "0xe732f48",
+      "bytes": 8,
+      "sha256": "57b414b2f5581c23a691c89177d7b604f07a8f691fe7cb80ebb308bb0fe15013"
+    }
+  ],
+  "agent1852": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/background.js",
+      "sha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "anchors": [
+        {
+          "find": "var sr = \"Agent Tabs\";",
+          "count": 1,
+          "offset": 261799,
+          "context": "{\n  return e !== null && typeof e == \"object\" && !Array.isArray(e);\n}\nvar sr = \"Agent Tabs\";\nasync function qa(e, t = {}) {\n  t.signal?.throwIfAborted();\n  const r = await chrome.tabs.get(e).catch(() => {\n  });\n  if (!r || r.groupId < 0) return !1;\n  const n = await chrome.tabGroups.get(r.groupId).catch(() => {\n  });\n  if (n?.title !== \"Agent Tabs\") return !1;\n  const o = await chrome.tabs.get(e).catch(() => {\n  });\n  return t.signal?.throwIfAborted(), o?.groupId !== n.id || t.skipIfActive && o.active ? !1 : (await chrome.tabs.remove(e), !0);\n}\nfunction J(e) {\n  if (!e?.aborted) return;\n  const t = /* @__PURE__ */ new Error(\"Chrome tab command aborted\");\n  throw t.name = \"AbortError\", t;\n}\nvar yi = (e) => {\n  try {\n    const t = new URL(e);\n    return t.hash = \"\", t.toString();\n  } catch {\n    return e;\n  }\n}, wi = (e) => {\n  try {\n    const t = new URL(e);\n    return `${t.origin}${t.pathname}${t.search}`;\n"
+        },
+        {
+          "find": "async function $i(e) {",
+          "count": 1,
+          "offset": 289885,
+          "context": ".error ?? \"Password manager extension command failed\");\n  return i;\n}\nasync function $i(e) {\n  const t = await chrome.tabs.get(e);\n  if (typeof t.windowId != \"number\") throw new Error(`No window found for tab ${e}`);\n  const [r] = await chrome.tabGroups.query({\n    title: sr,\n    windowId: t.windowId\n  });\n  if (typeof r?.id == \"number\")\n    return await chrome.tabs.group({\n      groupId: r.id,\n      tabIds: e\n    }), await chrome.tabGroups.update(r.id, { title: sr }), r.id;\n  const n = await chrome.tabs.group({\n    tabIds: e,\n    createProperties: { windowId: t.windowId }\n  });\n  return await chrome.tabGroups.update(n, { title: sr }), n;\n}\nvar gy = (e, t, r) => ({\n  active: !!e.active,\n  faviconUrl: e.favIconUrl || \"\",\n  id: `tab:${t}`,\n  targetId: t,\n  title: e.title?.trim() || e.url || e.pendingUrl || \"about:blank\",\n  url: e.url ?? e.pendingUrl ?? \"\",\n  windowId: e.windowId,\n  focusedWindow: r !== void 0"
+        },
+        {
+          "find": "case \"Aside.createAgentTab\": {",
+          "count": 1,
+          "offset": 292795,
+          "context": ".params.url,\n        windowId: n\n      }), { success: !0 };\n    }\n    case \"Aside.createAgentTab\": {\n      if (!r) throw new Error(\"Browser route is required to create an agent tab\");\n      const n = await Di(r, e.params.anchorTargetId), o = await chrome.tabs.create({\n        active: !1,\n        url: e.params.url,\n        windowId: n\n      });\n      if (o.id === void 0) throw new Error(`Failed to create Chrome tab for ${e.params.url}`);\n      const i = o.id;\n      return await Ci(() => $i(i)).catch((s) => {\n        console.warn(\"[extension-bridge] createAgentTab: failed to group new agent tab\", s);\n      }), {\n        tabId: i,\n        targetId: await Mi([i]),\n        windowId: n\n      };\n    }\n    case \"Aside.resolveBindingWindow\":\n      return await Xv(Mi);\n    case \"Aside.searchHistory\": {\n      const { query: n, ...o } = e.params;\n      return { items: (await chrome.history.search({\n        text: n,\n   "
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "anchors": [
+        {
+          "find": "sessions.tabs.list.queryOptions({sessionId:n.id,accountId:r}",
+          "count": 1,
+          "offset": 30125,
+          "context": "etKey:n.id})&&e,i=wc({projectId:n.projectId,enabled:o}),{data:c}=Fe(s.sessions.tabs.list.queryOptions({sessionId:n.id,accountId:r},{enabled:o&&t&&!!n.id})),l=c??vu,u=(0,g.useMemo)(()=>({...pu(l,n.activeTabTargetId),accountId:r}),[r,n.activeTabTargetId,l]);return(0,g.useMemo)(()=>({sessionBrowserState:u,skillMention:i}),[u,i])},Cu=({className:e,children:t,mode:n,onModeChange:r})=>{const{fileInputRef:s,disabled:o,handleDirectories:i,handleFileChange:c}=At(),l=async()=>{try{const u=await Js({method:\"Aside.pickDirectory\",params:{prompt:\"Attach a folder to this chat\"}});if(u.status===\"cancelled\")return;if(u.status===\"unavailable\"||!u.path){de.error(\"Folder picker is not available on this device.\");return}i([u.path])}catch(u){de.error(\"There was an error opening the folder picker.\"),console.error(u)}};return(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(\"input\",{accept:Hl,className:\"hidden\",disabled:o,multiple:!0,onC"
+        }
+      ]
+    }
+  ]
+}

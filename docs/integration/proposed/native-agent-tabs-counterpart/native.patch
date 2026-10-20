@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -315,6 +315,13 @@
+         if (!owner) {
+           return;
+         }
++        for (const auto& existing : AgentTabsBubbleOwners()) {
++          if (existing.browser.get() == owner.get()) {
++            existing.widget->CloseWithReason(
++                views::Widget::ClosedReason::kUnspecified);
++            return;
++          }
++        }
+         auto bubble = std::make_unique<AgentTabsBubble>(owner.get(), anchor);
+         auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
+             std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);

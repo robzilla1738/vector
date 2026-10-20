@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "ab9ce3a1e2238eac1c7d68778ef7501a1270944d8da1e95ddb5d8b34fdc39913",
+      "outputSha256": "149beb2dd100b124b176f86618584a037486ab3cf2a309dcab3d314a888fab74"
+    }
+  ]
+}
