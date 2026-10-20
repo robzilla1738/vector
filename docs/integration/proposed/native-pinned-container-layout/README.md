@@ -1,0 +1,15 @@
+# Genuine native pinned-container layout
+
+The retired independent branch hid every real pinned child and forced vertical minimum size to zero because the independent sidebar drew separate tiles. It also left an unsupported three-column cap. This proposal restores the actual supplied native pinned model/view layout; the saved-entry preference leaf remains a separate source-backed owner, not a replacement for real native pins.
+
+Original4111340 uses actual collection children and genuine drag visual data. It lays out up to **four columns**, with **6px gaps**, and caps bounded widths below151px at two columns. A collapsed expand-on-hover strip has one column. It balances row capacity to avoid a trailing singleton, or chooses an exactly divisible narrower row when that does not increase the row count. Actual split children double the source32px minimum width. Bounded width first removes source8px horizontal padding and is limited to the actual nearest scroll viewport. The final host still reports the caller's bounded width, preserving rounding/resize behavior. Real drag offsets, hidden/floating entries and RTL adjustment remain the native mechanisms.
+
+Original+580 reserves a real empty drop-target rectangle: bounded width (or32px unbounded) by40px. Parent's genuine4645400 producer gets public `SetShowEmptyPlaceholder(bool)` with source dedupe/layout/preferred-size effects. Minimum size returns32px wide and at most one expanded or1.5 nonexpanded rows, using40px heights and6px gaps (two nonexpanded tabs therefore63px minimum). Normal horizontal layout is retained.
+
+Source41121c0 honors the actual owning TabStripView's displayed collapsed flag before the controller state. The root-authorized readonly `is_collapsed()` getter and existing real external-owner pointer preserve temporary preview-expanded state without inventing another controller. The source drop dispatch uses that same effective state.
+
+One additional leaf correction is necessary: original4133c58 uses pinned metric58=40 for both ordinary and Agent-session rows. Current155 still used32 for normal pinned rows. The narrow TabViewVerticalLayout change fixes only pinned height; ordinary unpinned geometry remains unchanged. Original signed layout table positively maps58→40,59→32,61→8; no155 numeric enum alias is assumed.
+
+Original suppression+581 is a distinct read branch. Constructor789d39c positively zeros both580 and581, but no active581 producer has been recovered. This proposal does not invent a true producer/API for that unknown path. Root/parent retain source-derived whole-container visibility from4645400; no URL/pref inference or new per-child filtering is added. Existing native drop helpers remain real, with source effective-state dispatch; full original drag/drop acceptance is not claimed by this layout slice.
+
+Four native files: PinnedTabContainerView h/cc, the readonly TabStripView h getter, and the narrow common tab vertical-layout height correction. No shared native/region/GN edits occurred here. Source byte pins and independent patch replay pass; root compile and complete genuine body/UI observation remain pending.

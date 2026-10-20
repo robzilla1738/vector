@@ -1,0 +1,356 @@
+--- a/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.cc
++++ b/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.cc
+@@ -4,6 +4,11 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ 
++#include <algorithm>
++#include <cmath>
++#include <vector>
++
++#include "base/check.h"
+ #include "base/i18n/rtl.h"
+ #include "chrome/browser/ui/layout_constants.h"
+ #include "chrome/browser/ui/tabs/features.h"
+@@ -15,6 +20,8 @@
+ #include "chrome/browser/ui/views/tabs/common/tab_drag_handler.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_view.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_utils.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/gfx/geometry/rect.h"
+@@ -28,8 +35,11 @@
+ 
+ namespace {
+ constexpr int kTabPadding = 4;
+-// Aside lays pinned tabs out as a three-column tile grid.
+-constexpr int kAuxPinnedTilesPerRow = 3;
++// Original pinned layout4111340: six-DIP gaps and at most four columns.
++constexpr int kProvidedPinnedGap = 6;
++constexpr int kProvidedPinnedMinWidth = 32;
++constexpr int kProvidedPinnedHeight = 40;
++constexpr int kProvidedPinnedHorizontalPadding = 8;
+ }  // namespace
+ 
+ PinnedTabContainerView::PinnedTabContainerView(
+@@ -82,22 +92,17 @@
+ 
+ views::ProposedLayout PinnedTabContainerView::CalculateProposedLayout(
+     const views::SizeBounds& size_bounds) const {
++  if (!collection_node_) return {};
+   if (collection_node_ &&
+       collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+     return CalculateHorizontalLayout(size_bounds);
+   }
+-  // Pinned tabs are drawn as tiles by the Aux sidebar, like Aside's pinned
+-  // tile grid, so the vertical strip keeps this container empty.
+-  views::ProposedLayout hidden;
+-  for (auto* child : collection_node_ ? collection_node_->GetDirectChildren()
+-                                      : TabCollectionNode::ChildViews()) {
+-    hidden.child_layouts.emplace_back(child, false, gfx::Rect());
+-  }
+-  return hidden;
++  return CalculateVerticalLayout(size_bounds);
+ }
+ 
+ gfx::Size PinnedTabContainerView::GetMinimumSize() const {
+-  if (!collection_node_ || collection_node_->GetDirectChildren().empty()) {
++  if (!collection_node_ ||
++      (collection_node_->GetDirectChildren().empty() && !show_empty_placeholder_)) {
+     return gfx::Size();
+   }
+ 
+@@ -123,8 +128,15 @@
+     return gfx::Size(min_width, TabStyle::Get()->GetStandardHeight());
+   }
+ 
+-  // Aux draws pinned tabs in its own sidebar tiles.
+-  return gfx::Size();
++  const int count = std::max(
++      static_cast<int>(collection_node_->GetDirectChildren().size()),
++      show_empty_placeholder_ ? 1 : 0);
++  const double rows = std::min(static_cast<double>(count),
++      GetEffectiveCollapseState() == tabs::VerticalTabStripCollapseState::kExpanded
++          ? 1.0 : 1.5);
++  return gfx::Size(kProvidedPinnedMinWidth,
++      static_cast<int>(std::ceil(rows * kProvidedPinnedHeight +
++          std::max(rows - 1.0, 0.0) * kProvidedPinnedGap)));
+ }
+ 
+ bool PinnedTabContainerView::IsDragging() const {
+@@ -168,7 +180,7 @@
+       return index;
+     }
+   } else {
+-    auto collapse_state = GetTabStripCollapseState();
++    auto collapse_state = GetEffectiveCollapseState();
+     if (collapse_state != tabs::VerticalTabStripCollapseState::kExpanded) {
+       if (auto index = GetLinkDropIndexForCollapsed(loc_in_container)) {
+         return index;
+@@ -369,116 +381,118 @@
+   return layouts;
+ }
+ 
++void PinnedTabContainerView::SetShowEmptyPlaceholder(bool show) {
++  if (show_empty_placeholder_ == show) return;
++  show_empty_placeholder_ = show;
++  InvalidateLayout();
++  PreferredSizeChanged();
++}
++
++tabs::VerticalTabStripCollapseState
++PinnedTabContainerView::GetEffectiveCollapseState() const {
++  const auto* strip = tab_strip_view_owner_
++      ? tab_strip_view_owner_.get()
++      : GetTabStripView(const_cast<PinnedTabContainerView*>(this));
++  if (strip && !strip->is_collapsed())
++    return tabs::VerticalTabStripCollapseState::kExpanded;
++  return GetTabStripCollapseState();
++}
++
+ views::ProposedLayout PinnedTabContainerView::CalculateVerticalLayout(
+     const views::SizeBounds& size_bounds) const {
+-  views::ProposedLayout layouts;
++  views::ProposedLayout layout;
+   const auto children = collection_node_ ? collection_node_->GetDirectChildren()
+                                          : TabCollectionNode::ChildViews();
+-
+-  int total_width = 0;
+-  int total_height = 0;
+-
+-  int x = 0;
+-  int y = 0;
+-  int children_on_row = children.size();
+-
+-  if (children_on_row == 0) {
+-    layouts.host_size = gfx::Size(0, 0);
+-    return layouts;
+-  }
+-
+-  // Child width will be uniform and match the largest child's width.
+-  bool contains_split = false;
+-  for (const auto& i : collection_node_->children()) {
+-    if (i->type() == TabCollectionNode::Type::SPLIT) {
+-      contains_split = true;
+-    }
+-  }
+-  int child_width = GetLayoutConstant(LayoutConstant::kVerticalTabMinWidth) *
+-                    (contains_split ? 2 : 1);
+-
+-  // If the width is bounded, calculate how many children can fit on a row.
+-  // Since all children are allocated the same width this will be the same for
+-  // every row.
+-  if (size_bounds.width().is_bounded() && size_bounds.width().value() > 0) {
+-    auto collapse_state = GetTabStripCollapseState();
+-
+-    // Apply horizontal padding immediately at start of collapse animation by
+-    // including collapsing state.
+-    int available_width =
+-        size_bounds.width().value() -
+-        GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
+-
+-    // When we are in collapsed state, only one child should be shown per row.
+-    // During collapse animation and other cases, fit as many as possible.
+-    children_on_row =
+-        tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&
+-                collapse_state ==
+-                    tabs::VerticalTabStripCollapseState::kCollapsed
+-            ? 1
+-            : std::min(
+-                  {children_on_row, kAuxPinnedTilesPerRow,
+-                   static_cast<int>(std::floor((available_width - child_width) /
+-                                               (child_width + kTabPadding)) +
+-                                    1)});
+-
+-    // Allocate extra space to the tabs.
+-    available_width -=
+-        (children_on_row * child_width) + (kTabPadding * (children_on_row - 1));
+-    child_width += std::floor(available_width / children_on_row);
+-  }
+-
+-  int row_index = 0;
++  if (children.empty()) {
++    if (show_empty_placeholder_) {
++      layout.host_size = gfx::Size(
++          std::max(size_bounds.width().value_or(kProvidedPinnedMinWidth), 0),
++          kProvidedPinnedHeight);
++    }
++    return layout;
++  }
++  const int count = static_cast<int>(children.size());
++  const bool has_split = std::ranges::any_of(collection_node_->children(),
++      [](const auto& node) { return node->type() == TabCollectionNode::Type::SPLIT; });
++  const int min_width = kProvidedPinnedMinWidth * (has_split ? 2 : 1);
++  int columns = std::min(count, 4);
++  int available_width = columns * (min_width + kProvidedPinnedGap) - kProvidedPinnedGap;
++  if (size_bounds.width().is_bounded()) {
++    available_width = std::max(
++        size_bounds.width().value() - kProvidedPinnedHorizontalPadding, 0);
++    // Original41115fc..1638 limits the grid to its actual scroll viewport.
++    for (auto* ancestor = parent(); ancestor; ancestor = ancestor->parent()) {
++      auto* scroll = views::AsViewClass<views::ScrollView>(ancestor);
++      if (!scroll) continue;
++      const auto visible = scroll->GetVisibleRect();
++      if (!visible.IsEmpty()) {
++        gfx::Point origin = bounds().origin();
++        views::View::ConvertPointToTarget(parent(), scroll, &origin);
++        available_width = std::min(available_width,
++            std::max(visible.right() - origin.x(), 0));
++      }
++      break;
++    }
++    if (tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&
++        GetEffectiveCollapseState() == tabs::VerticalTabStripCollapseState::kCollapsed) {
++      columns = 1;
++    } else {
++      columns = std::min({count, 4, std::max(1,
++          (available_width + kProvidedPinnedGap) /
++              (std::max(min_width, kProvidedPinnedHeight) + kProvidedPinnedGap))});
++      if (size_bounds.width().value() < 151) columns = std::min(columns, 2);
++    }
++  }
++  columns = std::clamp(columns, 1, count);
++  // Original4111694..1724 removes a trailing singleton, or chooses an exactly
++  // divisible narrower row when it does not add another row.
++  const auto rows_for = [count](int width) { return (count + width - 1) / width; };
++  if (columns < count && columns >= 3 &&
++      (count % columns == 1 ||
++       (rows_for(columns - 1) == rows_for(columns) && count % (columns - 1) == 0))) {
++    --columns;
++  }
++  std::vector<int> row_counts;
++  for (int remaining = count; remaining > 0; remaining -= columns)
++    row_counts.push_back(std::min(remaining, columns));
++  const int child_width = size_bounds.width().is_bounded()
++      ? std::max((available_width - kProvidedPinnedGap * (row_counts.front() - 1)) /
++                     row_counts.front(), 0)
++      : min_width;
++  int x = 0, y = 0, row_height = 0, row_index = 0, column = 0;
++  int total_width = 0, total_height = 0;
+   for (auto* child : children) {
+-    gfx::Rect bounds =
+-        gfx::Rect(child->GetPreferredSize(views::SizeBounds(child_width, {})));
++    gfx::Rect bounds(child->GetPreferredSize(views::SizeBounds(child_width, {})));
+     bounds.set_width(child_width);
+-
+-    auto drag_data = GetVisualDataForDraggedView(*child);
+-    const bool should_show_child = !(drag_data && drag_data->should_hide);
+-    if (!should_show_child) {
+-      layouts.child_layouts.emplace_back(child, false, gfx::Rect());
++    const auto drag = GetVisualDataForDraggedView(*child);
++    if (drag && drag->should_hide) {
++      layout.child_layouts.emplace_back(child, false, gfx::Rect());
+       continue;
+     }
+-
+-    bounds.set_y(drag_data ? drag_data->offset.y() : y);
+-    int child_x = drag_data ? drag_data->offset.x() : x;
+-    if (drag_data && base::i18n::IsRTL()) {
++    bounds.set_y(drag ? drag->offset.y() : y);
++    int child_x = drag ? drag->offset.x() : x;
++    if (drag && base::i18n::IsRTL()) {
++      CHECK(size_bounds.width().is_bounded());
+       child_x = size_bounds.width().value() - child_x - child_width;
+     }
+     bounds.set_x(child_x);
+-
+-    if (row_index != 0) {
+-      bounds.set_x(bounds.x() + kTabPadding);
+-    }
+-
+-    if (!drag_data || !drag_data->should_float) {
+-      if (row_index != 0) {
+-        x += kTabPadding;
++    if (!drag || !drag->should_float) {
++      row_height = std::max(row_height, bounds.height());
++      total_width = std::max(total_width, x + bounds.width());
++      total_height = std::max(total_height, y + row_height);
++      if (++column >= row_counts[row_index]) {
++        y += row_height + kProvidedPinnedGap;
++        x = 0; column = 0; row_height = 0;
++        if (row_index + 1 < static_cast<int>(row_counts.size())) ++row_index;
++      } else {
++        x += bounds.width() + kProvidedPinnedGap;
+       }
+-      x += bounds.width();
+-      total_width = std::max(total_width, x);
+-      total_height = std::max(total_height, (y + bounds.height()));
+-
+-      row_index++;
+-      if (row_index >= children_on_row) {
+-        y = total_height + kTabPadding;
+-        row_index = 0;
+-        x = 0;
+-      }
+-    }
+-
+-    layouts.child_layouts.emplace_back(child, true, bounds);
+-  }
+-
+-  // Make sure we snap to bounded width if defined. This is necessary as the
+-  // `child_width` calculation above rounds width down and this can result in
+-  // off-by-one width calculations when the number of children on a row changes.
+-  // Changes in host width can be interpreted as a resize and animations may
+-  // otherwise snap to target.
+-  layouts.host_size =
+-      gfx::Size(size_bounds.width().value_or(total_width), total_height);
+-  return layouts;
++    }
++    layout.child_layouts.emplace_back(child, true, bounds);
++  }
++  layout.host_size = gfx::Size(
++      size_bounds.width().value_or(total_width), total_height);
++  return layout;
+ }
+ 
+ BEGIN_METADATA(PinnedTabContainerView)
+--- a/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h
++++ b/chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h
+@@ -38,6 +38,9 @@
+   void SetTabStripViewOwner(TabStripView* owner) { tab_strip_view_owner_ = owner; }
+   TabStripView* tab_strip_view_owner() const { return tab_strip_view_owner_; }
+ 
++  // Original+580 empty drop-target placeholder; producer is region4645400.
++  void SetShowEmptyPlaceholder(bool show);
++
+   // LayoutDelegate:
+   views::ProposedLayout CalculateProposedLayout(
+       const views::SizeBounds& size_bounds) const override;
+@@ -56,6 +59,8 @@
+       const gfx::Point& loc_in_container);
+ 
+  private:
++  tabs::VerticalTabStripCollapseState GetEffectiveCollapseState() const;
++  bool show_empty_placeholder_ = false;
+   raw_ptr<TabStripView> tab_strip_view_owner_ = nullptr;
+   // DraggedTabsContainer:
+   views::ScrollView* GetScrollViewForContainer() const override;
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.h
+@@ -72,6 +72,7 @@
+   }
+ 
+   void SetCollapsedState(bool is_collapsed);
++  bool is_collapsed() const { return is_collapsed_; }
+   void SetIsAnimatingSize(bool is_animating);
+ 
+   bool IsPositionInWindowCaption(const gfx::Point& point);
+--- a/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc
+@@ -50,11 +50,9 @@
+       VerticalTabStripRegionView::kUncollapsedMaxWidth);
+   // Original4133c58..3ce0: session rows use32px, or the original pinned
+   // metric58 (40px). Do not borrow155numeric layout IDs.
+-  const int height = TabView().is_agent_session_tab_
+-      ? (TabView().pinned_ ? 40 : 32)
+-      : GetLayoutConstant(
+-            TabView().pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
+-                              : LayoutConstant::kVerticalTabHeight);
++  const int height = TabView().pinned_ ? 40
++      : (TabView().is_agent_session_tab_ ? 32
++          : GetLayoutConstant(LayoutConstant::kVerticalTabHeight));
+   views::ProposedLayout layouts;
+   layouts.host_size = gfx::Size(width, height);
+ 

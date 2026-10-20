@@ -1,0 +1,87 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4111340",
+      "end": "0x4111c00",
+      "sha256": "83f33bef757f89e813fffa08d267e0205aff17c6311926f7046de570f55c3e22",
+      "meaning": "Genuinepinnedlayout:actualnodes,empty580,cap4/gap6/narrow151/balancedrows/dragfloat/RTL/viewportclamp"
+    },
+    {
+      "start": "0x4111c00",
+      "end": "0x4111e8c",
+      "sha256": "072c31c1d18a41ca681192b73cd7e2378d1ef4dc680b2d6bb4d18ad92d4030a5",
+      "meaning": "Genuineminimumsize horizontalactualtabs/vertical1or1.5rows/placeholder"
+    },
+    {
+      "start": "0x41120dc",
+      "end": "0x411226c",
+      "sha256": "a4fd0f409e7453030284be68f7f150e19955ff70193fb9fd314704887d9732b4",
+      "meaning": "Actualdropdispatch and effectivecollapsehelper respectsowningTabStripViewcollapsedflag"
+    },
+    {
+      "start": "0x789d1ec",
+      "end": "0x789d3b0",
+      "sha256": "d63e6b3fa7be26fc2fa17ec98441fbfd17ba97cfb58a85970f90eb0cbfd9f2e3",
+      "meaning": "Originalconstructorprimarymetadata and explicitstrhzero580initializesplaceholder580+suppression581false"
+    },
+    {
+      "start": "0x4133c58",
+      "end": "0x4133d30",
+      "sha256": "83d3458b4203ec52d857f717db0fc4fe6c678dab45f2ce5e48102135c5dd6575",
+      "meaning": "SourcecommonTabViewpinnedheightmetric58 appliesbothordinaryandsessionmode"
+    },
+    {
+      "start": "0x503904",
+      "end": "0x503958",
+      "sha256": "cb4a4f87142f73259e5cea94b4320a5b650e7a8137a57ea7ec99389d54869896",
+      "meaning": "SourceLayoutmetricdispatch and immediate32/40/8returnbodies"
+    },
+    {
+      "start": "0xced82b0",
+      "end": "0xced82c0",
+      "sha256": "614ae3f6da31aecf0502f6c5f2ca6bd20c99f82f46ed4100c3f46bf696e53459",
+      "meaning": "Signedtable58/59entries metric58->50394c40,59->50393c32"
+    },
+    {
+      "start": "0xced82bc",
+      "end": "0xced82c0",
+      "sha256": "097328e8c957de2428283954f6a1ee8ff7ad7def12e100a600178407f5decf24",
+      "meaning": "Signedtable61entry->5039248"
+    },
+    {
+      "start": "0x789e1b0",
+      "end": "0x789e1f4",
+      "sha256": "ae961abcd69b7faaa6ee55e328608dc801526f4ac824dac88ca51da9fc43d5bf",
+      "meaning": "GenuinePinnedTabContainerViewmetadata/class/header"
+    }
+  ],
+  "boundedDecompilation": "out/pinned-layout-recovery/layout-snapshot.json from raw4111340..411226c; incomplete externalcalls crosscheckedboundedLLVM. No fullframeworkimport/execution.",
+  "metricMapping": {
+    "tableBase": "0xced81c8",
+    "targetBase": "0x503914",
+    "58": {
+      "entry": "0xced82b0",
+      "target": "0x50394c",
+      "value": 40
+    },
+    "59": {
+      "entry": "0xced82b4",
+      "target": "0x50393c",
+      "value": 32
+    },
+    "61": {
+      "entry": "0xced82bc",
+      "target": "0x503924",
+      "value": 8
+    }
+  },
+  "sourceSemantics": [
+    "SourceactualcapacityMath usesmax4 and6gap; incomingboundedwidth<151caps2; originalbalancedrowpass reducescapacityiftrailingone orsame-rowcountwithexactdivisibility.",
+    "Originalhostboundedwidth retained evenwhenfloorroundedchildwidthleavessparepixels.",
+    "Actualdraggedrowoffset/float/hide/RTL preserved through genuine currentDraggedTabsContainer API.",
+    "Actualsamevisibleordinarynativepinheight40 fromsourcecommonTabView originalpinnedmetric; normalunpinnedheightnotchanged.",
+    "No original581activewriter established; sourceconstructorzerosboth580/581, sothisportdoesnotinventabehavioralproducer."
+  ]
+}

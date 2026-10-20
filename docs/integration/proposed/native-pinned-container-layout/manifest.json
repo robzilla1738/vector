@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.cc",
+      "baselineSha256": "aa63ed8d21c559a4556fbd2e2f6f6ecfb4cae80881fc125dd10b611f24714fc7",
+      "outputSha256": "07abed4cdf9e3b46e6008271847a35264e8e1b08b6e8d9614ee4768e433dea9e"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h",
+      "baselineSha256": "ad6a166e9267b4a8a95c02882cd9941201c91ca6d708ccf74e2a09b5786de2dd",
+      "outputSha256": "8fffbaed7027fb373684bed76ce62280b83b21d1375f7b61e145b57c424188a5"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "baselineSha256": "3603d527a821578114159770cea8ba89a0252dc27f0c9b935dae4326e8f1771a",
+      "outputSha256": "5deda08f82675f4bc6c448d61c0c7d84f958c8b3acf6a2d73852f88a377fc6a4"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc",
+      "baselineSha256": "74a8e023921d7a50d519b401d49bd01e387a79db4898ef2f71a03b47eb0b7f68",
+      "outputSha256": "b11e5e5b73c84e53d4ad6783ab63e8ca0aae8efb362f80a9a5ddccc27047634f"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "integration": {
+    "placeholder": "Parent genuine4645400 presentation producer calls SetShowEmptyPlaceholder(bool).",
+    "visibility": "Parent source actualsaved-entry predicate controls wholePinnedcontainer; thisportdoesnotinventper-tabURLorpreffilters.",
+    "getter": "Root-authorized exactTabStripView.is_collapsed() read-onlygetter preserves original41121c0 effective state duringactualpreview."
+  },
+  "remainingGaps": [
+    "Original581suppressionreadbranch haspositivefalseconstructorinit but noactiveproducerrecovered; no fabricated setter/trueproducer added.",
+    "Existing actual155 drag/drop helper implementation preserved, with sourceeffectivecollapse dispatch; no fulloriginaldropalgorithm acceptance claimed.",
+    "Rootfocusedcompile and genuinecompletebody/UI acceptance remain pending."
+  ]
+}
