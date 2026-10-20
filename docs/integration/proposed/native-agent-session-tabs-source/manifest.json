@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.h",
+      "baselineSha256": "dc84616ea5fed4ffe3a3d3361c56b0e4576b6dc6f640641c0b854cb683a738e9",
+      "outputSha256": "d451db4eec3cdb9fd7cb18f0d6dc15c39e748f167da10b0860be7b8a551b636c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.cc",
+      "baselineSha256": null,
+      "outputSha256": "07134bf38ac110091b219b2fbd80eb8a0c6875eaf15b922121ec19df13105114"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.h",
+      "baselineSha256": null,
+      "outputSha256": "ba828b5433dd9ebf8da1c73c8726cc2c689bf4f7916959f515a783e1f81f48a6"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "integration": {
+    "uiSources": [
+      "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.cc"
+    ],
+    "dependencies": [
+      "//chrome/browser/aux:browser_platform (use existing actual target)",
+      "AgentSessionTabsModel and aux_chat_navigation actual compiled helpers",
+      "content/browser DevToolsAgentHost; network SimpleURLLoader existing UI dependencies"
+    ]
+  },
+  "remainingGaps": [
+    "Visual owner and real TabStripView mount must land together before filtering represented tabs from ordinary view.",
+    "Original +42f retired snapshot writer remains unproven; Retire cancels this active data owner and does not claim snapshot visibility.",
+    "Root owns GN dependency selection and focused native compilation."
+  ]
+}

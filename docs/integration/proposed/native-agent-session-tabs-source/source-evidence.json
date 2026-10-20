@@ -1,0 +1,48 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4625d00",
+      "end": "0x4625fb4",
+      "sha256": "e43b3b7c9b4a5cec71d60f9444ac0319e9b3e4452385402a24a51f46943087fc",
+      "meaning": "constructor and initial 250ms poll"
+    },
+    {
+      "start": "0x4625fb4",
+      "end": "0x4626ac0",
+      "sha256": "5b8e2b975c623eb348e4c3364c4710b0a27986a6e6e5b0c855de0e8feb7b4782",
+      "meaning": "actual Browser transaction/cache guards, profile/account binding and marked targets"
+    },
+    {
+      "start": "0x4626ac0",
+      "end": "0x4626f6c",
+      "sha256": "1186a39aa33dd805eb8b49c5b1042fd45df0e5db2f18a3cd95e4c89ffc650256",
+      "meaning": "scope, target and real session ancestry membership"
+    },
+    {
+      "start": "0x4626f6c",
+      "end": "0x46271b0",
+      "sha256": "4fbdc025b7544fad55170c4022846f5f4677973806fec745aa5b0f9ab5917fe3",
+      "meaning": "stable surviving handle order"
+    },
+    {
+      "start": "0x46289c8",
+      "end": "0x4628d90",
+      "sha256": "c03ed57021b6d7f6bbdd08ca41a608c55a01ba986c3b49780e20941af85b39c1",
+      "meaning": "finish and two second retry"
+    },
+    {
+      "start": "0x4628d90",
+      "end": "0x4629f08",
+      "sha256": "98608e996fc40a2902bd7f0a99c7c022364a17484f4898c8cd34ae400e576690",
+      "meaning": "bounded actual authenticated request"
+    }
+  ],
+  "source": "Supplied AsideAgentSessionTabsView original; exact sessions.list and sessions.tabs.resolveByTarget wires retained.",
+  "adaptations": [
+    "Actual Chromium155 BrowserWindowInterface/Profile weak lifetime boundaries.",
+    "Existing BrowserPlatform RequestDaemonAuthorization(force) is reused; a401 forces actual refresh on the next original2s retry, never an immediate synthetic successful authorization.",
+    "No filter-only visual mount; original464ccfc later reparents5d0 into the real unpinned container, resolving its original4125380 ancestry query."
+  ]
+}
