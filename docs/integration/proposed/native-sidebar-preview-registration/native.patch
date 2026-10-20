@@ -1,0 +1,28 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1122,6 +1122,15 @@
+       "views/frame/aux_profile_search_button.h",
+       "views/frame/aux_profile_preview_presentation.cc",
+       "views/frame/aux_profile_preview_presentation.h",
++      "aux_profile_preview_data.cc",
++      "aux_profile_preview_data.h",
++      "views/frame/aux_profile_preview_page.cc",
++      "views/frame/aux_profile_preview_page.h",
++      "views/frame/aux_profile_preview_icons.inc",
++      "views/tabs/vertical/aux_pinned_tab_entry_actions.cc",
++      "views/tabs/vertical/aux_pinned_tab_entry_actions.h",
++      "views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
++      "views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+       "views/profiles/profile_monogram_avatar_view.cc",
+       "views/profiles/profile_monogram_avatar_view.h",
+       "views/profiles/aux_profile_display_label.cc",
+--- a/chrome/browser/ui/views/tabs/common/BUILD.gn
++++ b/chrome/browser/ui/views/tabs/common/BUILD.gn
+@@ -90,6 +90,7 @@
+     "//base:i18n",
+     "//cc/paint",
+     "//chrome/app/theme:theme_resources",
++    "//chrome/browser:buildflags",
+     "//chrome/browser:primitives",
+     "//chrome/browser/dictation",
+     "//chrome/browser/glic",

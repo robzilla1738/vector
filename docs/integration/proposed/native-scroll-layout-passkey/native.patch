@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
+@@ -336,7 +336,7 @@
+ 
+ void VerticalTabStripScrollView::Layout(PassKey key) {
+   auto weak = weak_factory_.GetWeakPtr();
+-  views::ScrollView::Layout(key);
++  LayoutSuperclass<views::ScrollView>(this);
+   if (!weak) {
+     return;
+   }

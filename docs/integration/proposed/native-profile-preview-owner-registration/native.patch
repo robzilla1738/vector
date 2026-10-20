@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1123,6 +1123,8 @@
+       "aux_profile_preview_data.h",
+       "views/frame/aux_profile_preview_page.cc",
+       "views/frame/aux_profile_preview_page.h",
++      "views/frame/aux_profile_preview_region_owner.cc",
++      "views/frame/aux_profile_preview_region_owner.h",
+       "views/frame/aux_profile_preview_icons.inc",
+       "views/tabs/vertical/aux_pinned_tab_entry_actions.cc",
+       "views/tabs/vertical/aux_pinned_tab_entry_actions.h",

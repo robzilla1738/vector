@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ assert(is_win || is_mac || is_linux || is_chromeos || is_android)
+ 
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ 
+ # Shared supplied preference model and one actual WebContents saved identity.

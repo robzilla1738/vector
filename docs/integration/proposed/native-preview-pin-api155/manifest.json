@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "baselineSha256": "e986b50d157a91c144279da28dd054f708e1124a7e224b50f15028eba1068265",
+      "outputSha256": "9521855d72f9a09adaec96fa58adf1a153a6127fe45b88ee6d4a879acbcf11bd"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "fe9971a84a8a650717211369a678d90cb031ea28f76dcdc6f965654e14d3ce1d",
+      "outputSha256": "fa4780cdd30c9a1eaeaf7f9cd97304b47acbafea18f171e40016e8b9d8c0283b"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "6cf1ede57d31e66dd114179a555ff3424fb6b9e25c598f337a719269e958eeb5",
+      "outputSha256": "376fd7244198f599f631427401c073df51aba175f13bc637d02ff026983c1d6a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+      "baselineSha256": "2a68fb79d3fd62c867486a2338bf21bde26b74b5289b260809c377299f761fa3",
+      "outputSha256": "623f0913883b95f7edefa3dcec044d6a9a3f0260b6fe157350974164f6448a1d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": "a18861b526c411673dd19583f2a04206e890c930ae99c7e11c7eaeb300fda656",
+      "outputSha256": "25a1964179e8fbb6daf4dc569abf444d9f37cc037ecadd0eedf244f7000bd1a5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "baselineSha256": "733ed68d734a8dc1c0505f601fbcb144c4f98f6fe946b26f5d7879c628144d44",
+      "outputSha256": "e1dc3c4e2ff941946aef2f8939add87aee94b87ab55d092680467c6ae56d083d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": "60d8f421340bd28e5dceb1adb700a7d9dfb5c88df0598dfc291a74a4873fe393",
+      "outputSha256": "6232c34ceaa6c548e5b522073e716dc8e896bcf8b705822ba915656368aaa1c6"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

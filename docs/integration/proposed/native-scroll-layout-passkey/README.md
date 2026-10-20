@@ -1,0 +1,1 @@
+Actual v189 custom-scroll compilation rejects copying Chromium155 View::NonCopyablePassKey. Call the documented inherited LayoutSuperclass<views::ScrollView>(this) helper from Layout. This invokes the same real base layout with a View-owned key, preserving the subsequent weak lifetime check and elastic reset. The preview page passed v189; only this object needs recompilation.

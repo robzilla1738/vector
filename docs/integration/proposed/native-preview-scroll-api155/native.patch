@@ -1,0 +1,31 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
+@@ -69,7 +69,7 @@
+                     int foreground,
+                     bool selected,
+                     bool section)
+-      : views::Button(base::DoNothing()), icon_(icon),
++      : views::Button(base::RepeatingClosure(base::DoNothing())), icon_(icon),
+         foreground_(foreground), selected_(selected),
+         height_(section ? 28 : 34) {
+     SetFocusBehavior(FocusBehavior::NEVER);
+@@ -177,7 +177,7 @@
+   disclosure_ = header_->AddChildView(std::make_unique<views::ImageView>());
+   disclosure_->SetImageSize(gfx::Size(12, 12));
+   search_ = fallback_->AddChildView(
+-      std::make_unique<ProfileSearchButton>(base::DoNothing()));
++      std::make_unique<ProfileSearchButton>(base::RepeatingClosure(base::DoNothing())));
+   scroll_ = fallback_->AddChildView(std::make_unique<views::ScrollView>());
+   auto rows = std::make_unique<views::View>();
+   auto* rows_layout = rows->SetLayoutManager(
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
+@@ -15,7 +15,7 @@
+ #include "ui/events/event.h"
+ #include "ui/gfx/animation/animation.h"
+ #include "ui/gfx/geometry/point_f.h"
+-#include "ui/gfx/transform.h"
++#include "ui/gfx/geometry/transform.h"
+ #include "ui/views/widget/widget.h"
+ 
+ namespace {

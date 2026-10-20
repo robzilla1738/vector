@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc",
+      "baselineSha256": "6f896ffe1693ab99801b2809e316ca5bb1c1df4e13cc488697b95ffac3916513",
+      "outputSha256": "02691a4de119ffbbe000dae99366f3427f24cd291b9aa5d2b00c037668de0b54"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

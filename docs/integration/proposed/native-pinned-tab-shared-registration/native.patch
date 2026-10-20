@@ -1,0 +1,75 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -487,13 +487,9 @@
+   public = [ "browser_ui_prefs.h" ]
+   sources = [ "browser_ui_prefs.cc" ]
+   if (enable_aux_browser && is_mac) {
+-    public += [ "tabs/aux_pinned_tab_entries.h" ]
+-    sources += [ "tabs/aux_pinned_tab_entries.cc" ]
+-    deps = [ "//url" ]
+-  } else {
+-    deps = []
+-  }
+-  deps += [
++    public_deps = [ "//chrome/browser/ui/tabs:aux_pinned_tab_entries" ]
++  }
++  deps = [
+     "//chrome/browser:buildflags",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/ui:ui_features",
+@@ -1114,6 +1110,7 @@
+     deps += [
+       "//base:i18n",
+       "//chrome/browser/extensions/api/aux_mini_popup",
++      "//chrome/browser/ui/tabs:aux_pinned_tab_entries",
+     ]
+     sources += [
+       "views/frame/aux_profile_switch_request.cc",
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -5,6 +5,26 @@
+ assert(is_win || is_mac || is_linux || is_chromeos || is_android)
+ 
+ import("//chrome/common/features.gni")
++
++# Shared supplied preference model and one actual WebContents saved identity.
++# Keep this below profile services and Views to avoid a prefs/tabs/UI cycle.
++if (enable_aux_browser && is_mac) {
++  source_set("aux_pinned_tab_entries") {
++    sources = [
++      "aux_pinned_tab_entries.cc",
++      "aux_pinned_tab_entries.h",
++      "aux_pinned_tab_entry_identity.cc",
++      "aux_pinned_tab_entry_identity.h",
++    ]
++    deps = [
++      "//base",
++      "//components/pref_registry",
++      "//components/prefs",
++      "//content/public/browser",
++      "//url",
++    ]
++  }
++}
+ 
+ # This is the public interface for tabs in a desktop browser. Most features in
+ # //chrome/browser depend on this interface, and thus to prevent circular
+@@ -441,6 +461,7 @@
+     }
+ 
+     public_deps = [
++      "//chrome/browser:buildflags",
+       ":features",
+       ":page_context_eligibility_helper",
+       ":tab_enums",
+@@ -674,6 +695,10 @@
+         "//chrome/browser/ui/views/web_apps:protocol_handler_picker_coordinator",
+       ]
+     }
++    if (enable_aux_browser && is_mac) {
++      deps += [ ":aux_pinned_tab_entries" ]
++    }
++
+   }
+ 
+   # This is a separate component to avoid possible circular deps.

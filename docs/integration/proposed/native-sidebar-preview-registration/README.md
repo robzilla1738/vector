@@ -1,0 +1,1 @@
+Register supplied persistent pinned leaf/actions and real native preview page/data in enabledAuxMac UI only. The original custom vertical unpinned ScrollView is registered by its own patch; common implementation gets the generated browser buildflags header dependency. Actual profile preview owner/input wiring and full pinned drag/menu/reconciliation fidelity remain separate.

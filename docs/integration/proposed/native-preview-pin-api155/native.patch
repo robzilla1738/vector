@@ -1,0 +1,90 @@
+--- a/chrome/browser/ui/tabs/pinned_tab_service.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
+@@ -154,9 +154,9 @@
+     if (auto remembered = pinned_entry_urls_.find(handle);
+         remembered != pinned_entry_urls_.end())
+       url = remembered->second;
+-    else if (auto remembered = aux::GetRememberedPinnedTabEntryUrl(*contents);
+-             remembered && remembered->is_valid())
+-      url = *remembered;
++    else if (auto saved_url = aux::GetRememberedPinnedTabEntryUrl(*contents);
++             saved_url && saved_url->is_valid())
++      url = *saved_url;
+     else
+       url = contents->GetVisibleURL();
+     pinned_entry_urls_.erase(handle);
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -69,7 +69,7 @@
+   void Refresh();
+   void Activate(size_t index);
+   void Close(size_t index);
+-  void ShowContextMenu(size_t index, const gfx::Point& point);
++  void ShowEntryContextMenu(size_t index, const gfx::Point& point);
+   void CancelContextMenu();
+   bool IsCommandIdEnabled(int command_id) const override;
+   void ExecuteCommand(int command_id, int event_flags) override;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -154,7 +154,7 @@
+     if (event.IsOnlyRightMouseButton()) {
+       gfx::Point point = event.location();
+       views::View::ConvertPointToScreen(this, &point);
+-      owner_->ShowContextMenu(index_, point);
++      owner_->ShowEntryContextMenu(index_, point);
+       return true;
+     }
+     if (!event.IsOnlyLeftMouseButton() && !event.IsOnlyMiddleMouseButton())
+@@ -339,7 +339,7 @@
+   if (auto live = aux::FindPinnedTabEntry(*model_, entries_[index].saved.url))
+     model_->CloseWebContentsAt(*live, CLOSE_USER_GESTURE);
+ }
+-void VerticalPinnedTabEntriesView::ShowContextMenu(size_t index,
++void VerticalPinnedTabEntriesView::ShowEntryContextMenu(size_t index,
+                                                    const gfx::Point& point) {
+   if (paused_ || !model_ || !GetWidget() || index >= entries_.size())
+     return;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
+@@ -23,7 +23,7 @@
+ // class does not synthesize gestures, screenshots, windows or success.
+ class ProfilePreviewRegionOwner {
+  public:
+-  ProfilePreviewRegionOwner(Browser& browser, VerticalTabStripRegionView& region);
++  ProfilePreviewRegionOwner(BrowserWindowInterface& browser, VerticalTabStripRegionView& region);
+   ~ProfilePreviewRegionOwner();
+   ProfilePreviewRegionOwner(const ProfilePreviewRegionOwner&) = delete;
+   ProfilePreviewRegionOwner& operator=(const ProfilePreviewRegionOwner&) = delete;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -78,7 +78,7 @@
+ }  // namespace
+ 
+ ProfilePreviewRegionOwner::ProfilePreviewRegionOwner(
+-    Browser& browser, VerticalTabStripRegionView& region)
++    BrowserWindowInterface& browser, VerticalTabStripRegionView& region)
+     : browser_(browser.GetWeakPtr()), region_(&region),
+       presentation_(region, region.GetAuxProfilePreviewSurfaces(),
+                     region.GetAuxProfilePreviewTopBoundary()),
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.h
+@@ -23,7 +23,7 @@
+ class ProfileSwitchRequest {
+  public:
+   using Completion = base::OnceCallback<void(Browser*)>;
+-  ProfileSwitchRequest(Browser& sender, ProfilePreviewViews& preview);
++  ProfileSwitchRequest(BrowserWindowInterface& sender, ProfilePreviewViews& preview);
+   ~ProfileSwitchRequest();
+   ProfileSwitchRequest(const ProfileSwitchRequest&) = delete;
+   ProfileSwitchRequest& operator=(const ProfileSwitchRequest&) = delete;
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -15,7 +15,7 @@
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
+ 
+ namespace aux {
+-ProfileSwitchRequest::ProfileSwitchRequest(Browser& sender,
++ProfileSwitchRequest::ProfileSwitchRequest(BrowserWindowInterface& sender,
+                                          ProfilePreviewViews& preview)
+     : sender_(sender.GetWeakPtr()), preview_(preview) {}
+ 

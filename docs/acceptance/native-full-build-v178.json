@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "composition": "v178",
+  "receiptSha256": "ad8592210df9803ec20c37f72672a0be0b1a6bac5d862b88d88045a668e3e1d7",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "nativeLeaves": 563,
+  "logSha256": "2bc0d15f5e0744c392f0caa9f40ed50da345db1f449c76eecc122aa2b8b7d97c",
+  "browserLaunched": false,
+  "knownSourceDefect": "Duplicate pinned_tabs registration; corrected in staged179 before any browserlaunch",
+  "runtimeAccepted": false,
+  "uiParityAccepted": false
+}
