@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-paint-to-layer",
+      "rva": "0x1c1588c",
+      "bytes": 168,
+      "sha256": "9b84484439917d5f8ab1a10af18fe2004db50e4e5b7cbf56277805f338dfaaea"
+    },
+    {
+      "name": "original-focus-behavior",
+      "rva": "0x15377dc",
+      "bytes": 208,
+      "sha256": "9a116978a31cbc9394973ac6597b042fe1d36bdb62b5fcc67c9993289e0ef263"
+    },
+    {
+      "name": "original-leaf-update",
+      "rva": "0x46078c0",
+      "bytes": 688,
+      "sha256": "dc92faa647337601e9f3b928a7d785754484226273f63dd0760a3748f198d196"
+    },
+    {
+      "name": "original-preferred-size",
+      "rva": "0x46080e0",
+      "bytes": 148,
+      "sha256": "d4ad782c2fefa8af97c9cf6bd822003c5860a19e3b9231dfdaf8d16193ac731d"
+    },
+    {
+      "name": "original-entry-bounds",
+      "rva": "0x4608230",
+      "bytes": 256,
+      "sha256": "75530ffd3b337b0ab0bb02295ce9ff8b5ae6fcfd03d3c6bd7bebcef9fa47f5ae"
+    },
+    {
+      "name": "original-columns",
+      "rva": "0x4608d00",
+      "bytes": 352,
+      "sha256": "e4803c85579f8955a0d5d38841a411664171ee9faac2dc3c962a835e3fd71530"
+    },
+    {
+      "name": "original-hover-key",
+      "rva": "0x460d030",
+      "bytes": 476,
+      "sha256": "28c22f137f7a9bee9f5d7232413733ebaffa7d168925521aa04ccd40bc2f0ff9"
+    },
+    {
+      "name": "original-leaf-paint",
+      "rva": "0x460d780",
+      "bytes": 488,
+      "sha256": "cfc0130c6528851912daf687ee05b6e46ed2d3ebbfb329d9ff1eaea86089f18e"
+    },
+    {
+      "name": "original-press",
+      "rva": "0x460a9e8",
+      "bytes": 388,
+      "sha256": "5d3ed0fb0220445195df9e4252aa571234a8d69e4f95cba2d5bee2c45a5e15b6"
+    },
+    {
+      "name": "original-release",
+      "rva": "0x460cc88",
+      "bytes": 304,
+      "sha256": "a0fc9c87e1e5c85072399d9f4d7d06b7595674694cb6bda0a23c3bfc86a5b469"
+    },
+    {
+      "name": "original-width-override",
+      "rva": "0x4606480",
+      "bytes": 144,
+      "sha256": "f66cafe9aa34116ec8546a0999a7d0a8ec469acc52b199bd900d8b520329ddab"
+    },
+    {
+      "name": "original-parent-compact-inputs",
+      "rva": "0x464a8c0",
+      "bytes": 320,
+      "sha256": "41ca257e2d70d2ebe0224251838edbe14675ce22cafea9e3e9bf79681b7c67ad"
+    },
+    {
+      "name": "original-parent-compact-write",
+      "rva": "0x464b2ac",
+      "bytes": 172,
+      "sha256": "3883a35bd9a6fd57ddcf4187badca17c065d41ef335d291d7fae2a355aa51b1b"
+    },
+    {
+      "name": "original-hover-palette",
+      "rva": "0x35e7c84",
+      "bytes": 192,
+      "sha256": "e3bb5fcec7044132280ec5812e26eb3a7eae882277fd0381e90f722fa5579eaa"
+    },
+    {
+      "name": "original-live-association",
+      "rva": "0x4605ccc",
+      "bytes": 136,
+      "sha256": "eadb4e066d81ce435a0723e0ca23f162bb27dd74d6e78f985996a7b343f16a9b"
+    },
+    {
+      "name": "actual pinned Globe path",
+      "rva": "0xce79914",
+      "bytes": 1208,
+      "sha256": "49ab027dbdd19eafb6f2d10896207243cf9139ee33d472996ee6becf85de2221"
+    },
+    {
+      "name": "actual pinned Globe descriptor",
+      "rva": "0xe82cef8",
+      "bytes": 40,
+      "sha256": "375abbbf29a75256482e1bb4eb5f31d4b653daf76927c65a193607ab59da807f"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/controls/image_view.h",
+      "sha256": "c1ac045f9556c6eb62d33602066a9216c3ab6bc168e7f3d155a170e8dba2a2e3"
+    },
+    {
+      "path": "ui/views/controls/image_view_base.h",
+      "sha256": "220d0097e0b0ddfb0da74c8373255ba465ca3e5c32e45003fb6b15344019e9bb"
+    },
+    {
+      "path": "ui/views/layout/layout_types.h",
+      "sha256": "536d7fe94a4b3b4693964e71ffe1d958cff477474548c487a3e5cfd227ac2b73"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    },
+    {
+      "path": "components/prefs/pref_change_registrar.h",
+      "sha256": "4a0f8d27a8ef8165c033341ff6bc8d81386a26d52a67078885cf72b9ce2a2e01"
+    },
+    {
+      "path": "components/prefs/pref_change_registrar.cc",
+      "sha256": "9d4c1459f0929b063c558106713566d4c7c59d9e42288125f191a8792e104fb5"
+    },
+    {
+      "path": "ui/gfx/vector_icon_types.h",
+      "sha256": "270fd072d05b9af3a903e03ef6ec3990a365acd6f169bd176a4160f9732683f3"
+    },
+    {
+      "path": "cc/paint/paint_flags.h",
+      "sha256": "3a282eb84403048419ebf3491ed8b4730ea25ae26b40cac25bb3a4cd641b1281"
+    },
+    {
+      "path": "ui/gfx/canvas.h",
+      "sha256": "7f497d934fb4c28dc868d5a320dde173a1741f6a5268a0232d1884ed82a3b7a1"
+    },
+    {
+      "path": "ui/compositor/layer_type.h",
+      "sha256": "38da33acf36589735f90d2c9619efb7188d1eae86c8be98213d6fc5495fb1619"
+    },
+    {
+      "path": "ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "chrome/browser/ui/tab_ui_helper.h",
+      "sha256": "d6815ee432454a2914d56d00002abc57ab4144e28a0cf17b17ac7c4dfd3d8535"
+    }
+  ]
+}

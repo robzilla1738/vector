@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "applyAfter": "actual native170 + staged171\u2013173 saved-pin model; actions d80f28b1c; sidebar current169 output retained",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": null,
+      "outputSha256": "dfa673d47e3ad8e35d87a13726d34719863a21f3c936bf2491b331145a086bfe",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "85f1f5654159e1112fc47a41b1b35550abc897b26f2e9bf246d910ce123bfa44",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "afbe08e56dbe2afce6776c8454a6cdc8a850ddb8787d03734e5ec01ee0129a62",
+      "outputSha256": "22b8724e1bda007f91504e831579668f582165e86c8478efdd315dddcdacacc4",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "6e2060cb59adf3abdaade5eda904f512ba4623b828d7118b2a3fbbba238de174",
+      "outputSha256": "1cd22262cdcc09e1b0609e6b5a11d6effcbb7eda80f6ae8757889afb19bef846",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "0649b6dd3c080197d3c20052f34a9cdd606e939e1734c72fdbe5e580ad2d9a65",
+      "outputSha256": "f8470ca3ae96134a3a64799da7463e1eee16438ad0b3daf7f0af13a9d97f1330",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "uiMountedByProposal": true,
+  "remainingGaps": [
+    "drag reorder/drop and native drag ghost",
+    "right-click saved-entry context menu",
+    "actual custom active RGB accent source",
+    "hover-card controller seam",
+    "actual region compact/temporary-width animation writer not yet ported"
+  ]
+}
