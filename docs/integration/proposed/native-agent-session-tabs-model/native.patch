@@ -1,0 +1,175 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.cc
+@@ -0,0 +1,86 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h"
++
++#include <set>
++#include <utility>
++#include "base/json/json_reader.h"
++
++namespace aux {
++base::DictValue AgentSessionTabsModel::ListInput(int account_id) {
++  return base::DictValue().Set("accountId", account_id)
++      .Set("ephemeral", "include").Set("archived", "include")
++      .Set("parent", "all");
++}
++
++std::optional<AgentSessionTabsModel::Sessions>
++AgentSessionTabsModel::ParseSessions(std::string_view response) {
++  auto envelope = base::JSONReader::Read(response, base::JSON_PARSE_RFC);
++  if (!envelope || !envelope->is_dict()) return std::nullopt;
++  const auto* rows = envelope->GetDict().FindListByDottedPath("result.data");
++  if (!rows) return std::nullopt;
++  Sessions sessions;
++  for (const auto& value : *rows) {
++    const auto* row = value.GetIfDict();
++    if (!row) continue;
++    const auto* id = row->FindString("id");
++    if (!id || id->empty()) continue;
++    Session session;
++    if (const auto* parent = row->FindString("parentId"))
++      session.parent_id = *parent;
++    if (const auto* trigger = row->FindDict("trigger")) {
++      const auto* type = trigger->FindString("type");
++      const auto* source = trigger->FindString("source");
++      const auto* client = trigger->FindString("client");
++      session.user_cli = type && *type == "user" &&
++          ((source && *source == "cli") || (client && *client == "cli"));
++    }
++    // Original ordered-map insertion retains the first duplicate session ID.
++    sessions.try_emplace(*id, std::move(session));
++  }
++  return sessions;
++}
++
++std::optional<AgentSessionTabsModel::Targets>
++AgentSessionTabsModel::ParseTargets(
++    std::string_view response, std::span<const std::string> target_ids) {
++  auto envelope = base::JSONReader::Read(response, base::JSON_PARSE_RFC);
++  if (!envelope || !envelope->is_list()) return std::nullopt;
++  const auto& rows = envelope->GetList();
++  if (rows.size() != target_ids.size()) return std::nullopt;
++  Targets targets;
++  for (size_t i = 0; i < rows.size(); ++i) {
++    const auto* row = rows[i].GetIfDict();
++    if (!row) return std::nullopt;
++    const auto* data = row->FindByDottedPath("result.data");
++    if (!data) return std::nullopt;
++    if (const auto* object = data->GetIfDict()) {
++      if (const auto* id = object->FindString("sessionId"))
++        targets.insert_or_assign(target_ids[i], *id);
++    }
++  }
++  return targets;
++}
++
++void AgentSessionTabsModel::Replace(Sessions sessions, Targets targets) {
++  sessions_ = std::move(sessions);
++  targets_ = std::move(targets);
++}
++void AgentSessionTabsModel::Clear() {
++  sessions_.clear();
++  targets_.clear();
++}
++std::optional<std::string> AgentSessionTabsModel::RootForTarget(
++    std::string_view target_id) const {
++  auto target = targets_.find(target_id);
++  if (target == targets_.end()) return std::nullopt;
++  std::string session = target->second;
++  std::set<std::string> visited;
++  while (!session.empty() && visited.insert(session).second) {
++    const auto found = sessions_.find(session);
++    if (found == sessions_.end()) return std::nullopt;
++    if (found->second.user_cli) return session;
++    session = found->second.parent_id;
++  }
++  return std::nullopt;
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h
+@@ -0,0 +1,38 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_AGENT_SESSION_TABS_MODEL_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_AGENT_SESSION_TABS_MODEL_H_
++
++#include <map>
++#include <optional>
++#include <span>
++#include <string>
++#include <string_view>
++#include "base/values.h"
++
++namespace aux {
++// Original AsideAgentSessionTabsView +370 and +388. These records describe
++// supplied sessions, not native-created-tab ownership or arbitrary URL matches.
++class AgentSessionTabsModel {
++ public:
++  struct Session {
++    std::string parent_id;
++    bool user_cli = false;
++  };
++  using Sessions = std::map<std::string, Session, std::less<>>;
++  using Targets = std::map<std::string, std::string, std::less<>>;
++  static base::DictValue ListInput(int account_id);
++  static std::optional<Sessions> ParseSessions(std::string_view response);
++  // A batch has exactly one result per requested target. Successful null data
++  // means no association; a missing result.data or malformed envelope fails
++  // the batch. Caller accumulates chunks of at most 32 before replacing state.
++  static std::optional<Targets> ParseTargets(
++      std::string_view response, std::span<const std::string> target_ids);
++  void Replace(Sessions sessions, Targets targets);
++  void Clear();
++  std::optional<std::string> RootForTarget(std::string_view target_id) const;
++ private:
++  Sessions sessions_;
++  Targets targets_;
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_model_probe.cc
+@@ -0,0 +1,42 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h"
++#include <array>
++#include "base/check.h"
++
++int main() {
++  using Model = aux::AgentSessionTabsModel;
++  auto sessions = Model::ParseSessions(R"({"result":{"data":[
++    {"id":"root","trigger":{"type":"user","source":"cli"}},
++    {"id":"child","parentId":"root"},
++    {"id":"client","trigger":{"type":"user","client":"cli"}},
++    {"id":"wrong-type","trigger":{"type":"routine","source":"cli"}},
++    {"id":"cycle-a","parentId":"cycle-b"},
++    {"id":"cycle-b","parentId":"cycle-a"},
++    {"id":"root","trigger":{"type":"routine"}}
++  ]}})");
++  CHECK(sessions);
++  const std::array<std::string, 5> targets = {"t1", "t2", "t3", "t4", "t5"};
++  auto resolved = Model::ParseTargets(R"([
++    {"result":{"data":{"sessionId":"child"}}},
++    {"result":{"data":{"sessionId":"client"}}},
++    {"result":{"data":{"sessionId":"wrong-type"}}},
++    {"result":{"data":{"sessionId":"cycle-a"}}},
++    {"result":{"data":null}}
++  ])", targets);
++  CHECK(resolved);
++  Model model;
++  model.Replace(std::move(*sessions), std::move(*resolved));
++  CHECK(model.RootForTarget("t1") == "root");
++  CHECK(model.RootForTarget("t2") == "client");
++  CHECK(!model.RootForTarget("t3"));
++  CHECK(!model.RootForTarget("t4"));
++  CHECK(!model.RootForTarget("t5"));
++  CHECK(!Model::ParseSessions("{}"));
++  CHECK(!Model::ParseTargets("[]", targets));
++  CHECK(!Model::ParseTargets(R"([{"error":{}}])",
++      std::span<const std::string>(targets).first(1)));
++  CHECK(Model::ListInput(3).FindString("ephemeral") &&
++        *Model::ListInput(3).FindString("ephemeral") == "include");
++  model.Clear();
++  CHECK(!model.RootForTarget("t1"));
++}

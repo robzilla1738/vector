@@ -1,0 +1,37 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4625d00",
+      "end": "0x4625fac",
+      "purpose": "ctor / first250ms timer",
+      "sha256": "d94f1284007da3a4abcfdeb25039920a7d91724b1b1b003fc1d90a5f8a3d6987"
+    },
+    {
+      "start": "0x4626ac0",
+      "end": "0x4626f6c",
+      "purpose": "actualgroup+target ancestry filter",
+      "sha256": "1186a39aa33dd805eb8b49c5b1042fd45df0e5db2f18a3cd95e4c89ffc650256"
+    },
+    {
+      "start": "0x4628ad8",
+      "end": "0x4628d90",
+      "purpose": "auth response scope check / actualsessions.list input",
+      "sha256": "245f3183719c46c43aa99b6a195aeb8e5a749c678c6942c5bc5ac0ad084717ff"
+    },
+    {
+      "start": "0x4629268",
+      "end": "0x4629dd8",
+      "purpose": "batch32 parser / actual trigger conditions",
+      "sha256": "45b154e175741f94368ad1d6f6e8fcbd469fa44ce3d14f2d08a7031d27f32e95"
+    },
+    {
+      "start": "0x46289c8",
+      "end": "0x4628ad8",
+      "purpose": "FinishPoll2s timer",
+      "sha256": "152232f5902b95b739b106f098811e6ffec0ccb891c478e215d73e13f6e1d3bd"
+    }
+  ],
+  "decompilation": "Supplied04629268.c + bounded raw owner fragment REA snapshot out/agent-session-tabs-recovery/snapshot.json; exactlysame immutable inputbytes."
+}

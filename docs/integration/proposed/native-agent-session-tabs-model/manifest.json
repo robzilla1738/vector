@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.cc",
+      "baselineSha256": null,
+      "outputSha256": "b281c1aa2c69e7bd33f3e20a94bdbd03883b1efe83f62bbb788ffb4d85eafc6e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h",
+      "baselineSha256": null,
+      "outputSha256": "a1e43ce221901616fceb1ea8b547640710f13bb635a4411443bc20bc3114cf8b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_model_probe.cc",
+      "baselineSha256": null,
+      "outputSha256": "81bec15cc4a6dd2c531178b34b463dfe5ff2a0042a18750f31d90900919d3285"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Actual5d0 authenticated poll/view owner and genuine TabView/group-header factory are next slice; do not mount filtering alone before represented rows exist.",
+    "Root GN and focused pure-model probe compile/execute not performed in this source-only lane."
+  ]
+}
