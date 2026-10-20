@@ -62,6 +62,14 @@ export function transformProvidedNativeUi({ component, path, text }) {
     // Current native MiniPopup has a distinct permission; the supplied actor uses it.
     replace('"dev.aux.ext.private.browserPreferences"', '"dev.aux.ext.private.browserPreferences",\n    "dev.aux.ext.private.miniPopup"', 'integration');
   }
+  if (component === 'agent' && path === 'assets/extension-main-Dz1-AsCT.js') {
+    // The browser's local workspace resolves its real profile/account first.
+    // A bare main.html must open the supplied composer rather than hosted login.
+    const rootRoute = 'const t=It()?"/u/$userId/sidepanel":vt()?"/u/$userId/minipopup":null;';
+    if (text.split(rootRoute).length - 1 !== 1)
+      throw new Error('Supplied default workspace route changed');
+    replace(rootRoute, 'const t=It()?"/u/$userId/sidepanel":vt()?"/u/$userId/minipopup":"/u/$userId/tasks/new";', 'integration');
+  }
   // Supplied Aside.* commands and authentication wire names remain unchanged.
   for (const scheme of ['http', 'https', 'ws', 'wss']) {
     for (const host of ['127.0.0.1', 'localhost']) {

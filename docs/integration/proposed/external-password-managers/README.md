@@ -11,3 +11,9 @@ Native component-extension loading, startup gates, first-party save/autofill pro
 ## Rebuild from the frozen source
 
 `stage-provided.mjs --source-snapshot /absolute/project/path/out/provided-source-snapshot-1.26.1016.1852 --output /absolute/project/path/out/fresh-stage --app-path /absolute/final/Aux.app` validates all seven frozen source inventories with the existing snapshot validator before staging. This avoids relying on the installed Aside version. Both snapshot and stage must satisfy the existing workspace/canonical-path checks. Run the normal preservation audit against the same explicit snapshot before packaging.
+
+## Local browser route trace
+
+The pinned `extension-main-Dz1-AsCT.js` already admits the real local account on explicit `/u/<id>/tasks/new` and settings routes. Its profile/account resolver and authentication are retained. A narrow native UI adaptation changes bare `main.html` routing from hosted sign-in to the supplied new-chat component, using the same actual account resolver already used by sidepanel/minipopup entrypoints; no completed-onboarding or authenticated-cloud state is set.
+
+Settings must load `main.html#/u/<id>/settings/general`. Supplied `newtab.html` has the static new-tab editor and React slots, not the main extension router/root, so adding a settings hash to it cannot mount Settings. The matching native route fix is required.
