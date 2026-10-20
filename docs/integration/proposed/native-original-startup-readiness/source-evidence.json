@@ -1,0 +1,122 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "functions": [
+    {
+      "start": "0x4183b1c",
+      "bytes": 456,
+      "sha256": "da882f6d9231ee1a68c712121e3bee493c17052886341698d411e44e66ca06a0",
+      "assembly": "original-04183b1c.asm",
+      "assemblySha256": "8a3d58d66e57176866b6da4e5d44defc20b68931a8a5cd1d12ea1c1bc8b05342"
+    },
+    {
+      "start": "0x42a111c",
+      "bytes": 1072,
+      "sha256": "091fbff31c396723c36714128e5efbb058809d88af69b2ce709bd9c6e5941e59",
+      "assembly": "original-042a111c.asm",
+      "assemblySha256": "757642bc7a97f95e16607c8734650f4111b2296a01247ebfcf7d27c3abb32f0f"
+    },
+    {
+      "start": "0x42a155c",
+      "bytes": 1120,
+      "sha256": "84f61e35a1b20227774f24e08a0af43292020e10d90e1cc6b78812818d00cd48",
+      "assembly": "original-042a155c.asm",
+      "assemblySha256": "e67b32d7159097c868c71627d7ea20a901abf6b4ab956984981660d6e5b52620"
+    },
+    {
+      "start": "0x42a5a28",
+      "bytes": 1244,
+      "sha256": "e2e69a1599239ac951c0780f942f7dc487c16057210ac6e40e306824a9f5520a",
+      "assembly": "original-042a5a28.asm",
+      "assemblySha256": "7b93bfc03ecc34ab740ac974dc7de62eafc106f6a2b08f0bf81e6366620e2af8"
+    },
+    {
+      "start": "0x42ac060",
+      "bytes": 524,
+      "sha256": "3b03db01655a4ff35c5c4b6496bab4740b6a58ed1f1e9d88ac138203daa66422",
+      "assembly": "original-042ac060.asm",
+      "assemblySha256": "f5420f09e5719184e0e0eb37fad5eb3bee3da11962e596b8f0a9bc8813d29bf7"
+    },
+    {
+      "start": "0x42ac274",
+      "bytes": 576,
+      "sha256": "f3d884c7f381204ee6772da47ff95c95a5c76625af7fe0058e6b6ae3fb65fc9c",
+      "assembly": "original-042ac274.asm",
+      "assemblySha256": "235fe3d84b8dc3305a7c36116741fe2ac208eb4406a05b09602e7d74a54d8d10"
+    },
+    {
+      "start": "0x42abc18",
+      "bytes": 644,
+      "sha256": "7ec8694b8b62309f708a176f40da174d15ff42c763bba785db9321ec48b799c8",
+      "assembly": "original-042abc18.asm",
+      "assemblySha256": "140866327f176277e364015dab5e30424c153861841160f8574602abf380243f"
+    },
+    {
+      "start": "0x42abe9c",
+      "bytes": 452,
+      "sha256": "402b163c7b7fe425f47ed33d9c0f51ad02110aa9cc7ea5ef25743e25b0fedf80",
+      "assembly": "original-042abe9c.asm",
+      "assemblySha256": "e5f31a94baedfee8ff2bee913fd96e35821f892e5d2da0b02e284ea79358597f"
+    },
+    {
+      "start": "0x41815c0",
+      "bytes": 440,
+      "sha256": "9a9388b25ce4cb7aa3668874a843121ce531e0b8264ac62619afdd9897773bb9",
+      "assembly": "original-041815c0.asm",
+      "assemblySha256": "cfd72d86794137429fc18789621d14d596bf622bcbef35b44adff9de848fecb2"
+    },
+    {
+      "start": "0x16a186c",
+      "bytes": 360,
+      "sha256": "b1fdf101055f207575905b15d6e202d6178f29ecb634d68a89ced0ee20544fec",
+      "assembly": "original-016a186c.asm",
+      "assemblySha256": "596344fa67b4c276ae192589e0fd838cd477bb236e4d688eb47856bb14abc72d"
+    },
+    {
+      "start": "0xf15110",
+      "bytes": 336,
+      "sha256": "f82f1a3aa91b5301473303c2658e5cfb1fdd2314adb42b71eaf603690b9bed98",
+      "assembly": "original-00f15110.asm",
+      "assemblySha256": "e81b0bdf31dd6978ce3e047c890d2355971e7216ee81d19c6c7e24b7621e772c"
+    },
+    {
+      "start": "0x2c81db8",
+      "bytes": 40,
+      "sha256": "969b4b0ad086e7be66c505431d5aa106df8dd6ce2e317b6e08b727b75baecb49",
+      "assembly": "original-02c81db8.asm",
+      "assemblySha256": "3bee2fe49d2ee6606cb94e56a238eca4e1676f51eed3cbc7931869510f9d08cc"
+    },
+    {
+      "start": "0x2c81de0",
+      "bytes": 176,
+      "sha256": "496b40ae24191ecafb035a1ff3673ff47665b5d182ea1b59a9b68cfb57b31b87",
+      "assembly": "original-02c81de0.asm",
+      "assemblySha256": "8666a760e8cffaf01fe78c39ca61d0621e1121a52545b3724cd68396ec63b414"
+    }
+  ],
+  "originalExtensionIds": [
+    {
+      "rva": "0xce4896a",
+      "value": "clcdgiameigmljcbkkcbjiljinmfkncl"
+    },
+    {
+      "rva": "0xce48949",
+      "value": "fjdhphbdlfjogobdofoaagnlnkoibdge"
+    }
+  ],
+  "observations": [
+    "WaitForAsideReadiness is called by StartupBrowserCreatorImpl launch after assigning profile; second RequestStartupReadinessGate only when process_startup is true",
+    "RequestStartupReadinessGate sets state1 and deadline now+10000000 microseconds",
+    "CheckStartupReadiness polls250000 microseconds and permits success when both extensions ready plus healthy, or when extension readiness is true on timeout",
+    "Extensions missing on timeout transition state3 and callbacks false; success transition2 and callbacks true",
+    "Actual readiness resolves named ExtensionRegistry factory16a186c and checks both IDs in map at0x80. Factory vtablee109478+0x80 resolves BuildService2c81db8, allocating216bytes and calling constructor2c81de0. Constructor initializes six24byte maps at8/0x20/0x38/0x50/0x68/0x80. Matching upstream fieldorder identifies the sixth as ready_extensions.",
+    "Profile regular-type predicate reads actual SupportsUserData browser profile type0, matching current profile_metrics API"
+  ],
+  "limitations": [
+    "Static recovery, not runtime evidence",
+    "Fixed bundled source replaces component updater activation in localdevelopment; no hosted update work",
+    "Original account/password gate remains separate and still blocks normal browsing while locked or unconfigured",
+    "Public-key authentication and CDP still require actual original authority; this change grants no runtime acceptance",
+    "CDP listener late recovery after key-load failure remains unverified"
+  ]
+}

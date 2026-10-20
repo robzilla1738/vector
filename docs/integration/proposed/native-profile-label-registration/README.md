@@ -1,0 +1,1 @@
+Register the supplied shared profile display-label helper only in enabledAuxMac native UI. This changes build registration, not menu/page callers. Exact display-name preference registration remains a separate original-source check.

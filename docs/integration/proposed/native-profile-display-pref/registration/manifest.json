@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_ui_prefs.cc",
+      "baselineSha256": "e284f9fec9f74dd1631bd443cfc4c985ff5e4689d66d28e7e6da83e61d452d22",
+      "outputSha256": "3d133cfa576d11cc60d2b00438c4004d59e72977512c44fa300890ffd3484290"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

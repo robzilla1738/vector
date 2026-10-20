@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "composition": "v170",
+  "nativeReceiptSha256": "943aadf69891e9668d973e9ec30783cb0e84ddea726cdb1ea2dd0e3680bad0ba",
+  "fullBuildExitCode": 0,
+  "completedSteps": 962,
+  "elapsedSeconds": 974.76,
+  "generatedKeyProbePassed": true,
+  "logSha256": "c132199f5adc48436362b56435e094c6d08a3b5549deb41c5a27486327facba1",
+  "signingExecuted": false,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false
+}

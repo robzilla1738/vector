@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1124,6 +1124,8 @@
+       "views/frame/aux_profile_preview_presentation.h",
+       "views/profiles/profile_monogram_avatar_view.cc",
+       "views/profiles/profile_monogram_avatar_view.h",
++      "views/profiles/aux_profile_display_label.cc",
++      "views/profiles/aux_profile_display_label.h",
+     ]
+   }
+ 

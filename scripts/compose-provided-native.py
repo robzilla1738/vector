@@ -204,6 +204,11 @@ steps.extend([
     ('native-pinned-tab-entry-model/native.patch', 'native-pinned-tab-entry-model/manifest.json'),
     ('native-profile-search-button/native.patch', 'native-profile-search-button/manifest.json'),
     ('native-profile-reuse-dependency-registration/native.patch', 'native-profile-reuse-dependency-registration/manifest.json'),
+    ('native-pinned-tab-entry-registration/native.patch', 'native-pinned-tab-entry-registration/manifest.json'),
+    ('native-profile-display-label/native.patch', 'native-profile-display-label/manifest.json'),
+    ('native-profile-label-registration/native.patch', 'native-profile-label-registration/manifest.json'),
+    ('native-original-startup-readiness/native.patch', 'native-original-startup-readiness/manifest.json'),
+    ('native-profile-display-pref/registration/native.patch', 'native-profile-display-pref/registration/manifest.json'),
 ])
 
 if options.through:
