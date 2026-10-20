@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc",
+      "baselineSha256": "c546a0901e8b92d8a08c4b1d502ef69c56312cab9f7aba394fe3257c5d6ed182",
+      "outputSha256": "b932a601c94eab1c83c015981fe80050e5327380b62f9e1773a84c7a3b7876a9"
+    }
+  ]
+}

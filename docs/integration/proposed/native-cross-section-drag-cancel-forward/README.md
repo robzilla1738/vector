@@ -1,0 +1,1 @@
+Full v385 link identified missing public Cancel definition, already declared in the source-backed coordinator header. Forward to the implemented real Impl::Cancel, preserving its capture/presentation cleanup. No replacement handler. Full linking/runtime acceptance remain pending.

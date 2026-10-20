@@ -410,6 +410,7 @@ steps.extend([
     ('native-empty-pinned-drop-producer/native.patch', 'native-empty-pinned-drop-producer/manifest.json'),
     ('native-sidebar-body-reset-lifetime/native.patch', 'native-sidebar-body-reset-lifetime/manifest.json'),
     ('native-empty-pinned-drop-wiring/native.patch', 'native-empty-pinned-drop-wiring/manifest.json'),
+    ('native-cross-section-drag-cancel-forward/native.patch', 'native-cross-section-drag-cancel-forward/manifest.json'),
 ])
 
 if options.through:

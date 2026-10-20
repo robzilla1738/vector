@@ -1,0 +1,12 @@
+--- a/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
++++ b/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
+@@ -396,6 +396,9 @@
+                                    preview,
+                                    delegate)) {}
+ CrossSectionDragCoordinator::~CrossSectionDragCoordinator() = default;
++void CrossSectionDragCoordinator::Cancel() {
++  impl_->Cancel();
++}
+ void CrossSectionDragCoordinator::Retire() {
+   impl_->Retire();
+ }
