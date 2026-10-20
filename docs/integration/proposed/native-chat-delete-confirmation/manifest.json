@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+      "baselineSha256": "6df36dbdea51719c285b7c45d8bf7a2470410e70f4a9ed798f394297253c05dc",
+      "outputSha256": "233cde3a03b20d03e614a00aad7d280ef548c9168f76475d71a5ac7ce692b6bd"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}

@@ -1,0 +1,43 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_actions.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_actions.cc
+@@ -16,6 +16,7 @@
+ #include "ui/base/base_window.h"
+ #include "chrome/browser/ui/tabs/aux_chat_tab_association.h"
+ #include "chrome/browser/ui/views/frame/aux_chats_transport.h"
++#include "chrome/browser/ui/views/frame/aux_bookmark_confirmation.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+ #include "components/constrained_window/constrained_window_views.h"
+@@ -201,18 +202,20 @@
+ }
+ void AuxChatActions::ConfirmDelete(std::string id) {
+   if (!ScopeCurrent()) return;
+-  auto model = ui::DialogModel::Builder()
+-      .SetInternalName("AuxDeleteChat")
+-      .SetTitle(u"Delete chat?")
+-      .AddParagraph(ui::DialogModelLabel(u"This will permanently delete this chat and its messages."))
+-      .AddOkButton(base::BindOnce([](base::WeakPtr<AuxChatActions> self, std::string id) {
+-        if (self && self->ScopeCurrent())
+-          self->transport_->PerformAction(id, "delete", {}, base::DoNothing());
+-      }, weak_.GetWeakPtr(), std::move(id)),
+-          ui::DialogModel::Button::Params().SetLabel(u"Delete"))
+-      .AddCancelButton(base::DoNothing(), ui::DialogModel::Button::Params().SetLabel(u"Cancel"))
+-      .Build();
+-  constrained_window::ShowBrowserModal(std::move(model), browser_->GetWindow()->GetNativeWindow());
++  ShowAuxNativeConfirmation(
++      browser_->GetWindow()->GetNativeWindow(), u"Delete chat?",
++      u"This will permanently delete this chat and its messages.",
++      u"Delete", u"Cancel",
++      base::BindOnce(
++          [](base::WeakPtr<AuxChatActions> self, std::string id,
++             bool accepted) {
++            // Original466f8d0 accepts only the native confirmation result1.
++            // Retiring the actual profile owner invalidates this action.
++            if (accepted && self && self->ScopeCurrent() && !id.empty())
++              self->transport_->PerformAction(id, "delete", {},
++                                              base::DoNothing());
++          },
++          weak_.GetWeakPtr(), std::move(id)));
+ }
+ void AuxChatActions::Bookmark(const std::string& id) {
+   if (!ScopeCurrent()) return;

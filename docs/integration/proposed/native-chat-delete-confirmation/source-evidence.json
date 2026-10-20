@@ -1,0 +1,51 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "delete-caller.asm",
+      "start": "0x463a8b4",
+      "endExclusive": "0x463a984",
+      "bytesSha256": "5f8e60ebac2bc55534a80ad2a8532aec67923031cd3636829e2f94bbbc66b2a8",
+      "assemblySha256": "8c0c150860e4e2394a4b424d9c8250f329b9068b1b41d831f0b0a6610a420e57"
+    },
+    {
+      "file": "delete-completion.asm",
+      "start": "0x466f8d0",
+      "endExclusive": "0x466fb04",
+      "bytesSha256": "5dbf3e3e719858fa584d18687eb842065dd82181ef221afb379551e366939179",
+      "assemblySha256": "e22e03c1cf7273f9f0e47da9597aca095960858bbf63f9804a9fb0087aaccf62"
+    },
+    {
+      "file": "confirmation-wrapper.asm",
+      "start": "0x4216dfc",
+      "endExclusive": "0x4216f40",
+      "bytesSha256": "5a0195dd94e9a00af8a457691e7c14b285cf8ba46614fbdfdf44db0b8b401815",
+      "assemblySha256": "26ddecc7cac46043b8108f86fd20fde298dbf70851273c6a54b3324cccaf5335"
+    }
+  ],
+  "utf16Labels": {
+    "0xdf87ca6": "Delete chat?",
+    "0xdf87cc0": "This will permanently delete this chat and its messages.",
+    "0xdf87d32": "Delete",
+    "0xdf87c34": "Cancel"
+  },
+  "decompile": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/046398c8.c",
+    "sha256": "510a1514e84f8ab47b0e374c64fe06b9f791407278c09abe0b48aad265d81e6d",
+    "lineStart": 389,
+    "lineEnd": 420
+  },
+  "unchangedConfirmationPrimitive": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation.h",
+      "sha256": "e941bcaf014886afa7525351b8762cf586f1a42a4dbdfd075b45eaa58e964a4e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+      "sha256": "e50fc39c755c3609c1a4169ea74d980729031fdccf6470fb0c653036849d579b"
+    }
+  ]
+}
