@@ -1,0 +1,21 @@
+{
+  "upstream": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.cc",
+      "sha256": "2d1ccad8af47371df687a6f701327568c8dc91d90e10259a26ca3492df42ea43"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_preview_retention.h",
+      "sha256": "7022bb6ee0eeaf01f720dc43f66e8ccbf87c694c7d00d57e8dedb6ac4d16fbaa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_preview_retention.cc",
+      "sha256": "4d19c2c1084926bffbd0c835dc5a287d8378e7d9485fbd431f1d4d83e7377e93"
+    }
+  ],
+  "reason": "Chromium155 TabStripModelObserver owns observed-model registration and deletes unsupported base::ScopedObservation. Actual applied242 retention already uses AddObserver/StopObservingAll with exact model pointer. No source behavior change."
+}

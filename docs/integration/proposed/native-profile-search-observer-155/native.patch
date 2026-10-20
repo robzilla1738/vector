@@ -1,0 +1,90 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -12,7 +12,6 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_multi_source_observation.h"
+-#include "base/scoped_observation.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -279,7 +278,9 @@
+     // Original types descriptor d6e3e34 is exactly {kKeyPressed}.
+     monitor_ = views::EventMonitor::CreateApplicationMonitor(
+         this, parent_->GetNativeWindow(), {ui::EventType::kKeyPressed});
+-    model_.Observe(browser->GetTabStripModel());
++    observed_model_ = browser->GetTabStripModel();
++    if (observed_model_)
++      observed_model_->AddObserver(this);
+     if (animate) {
+       phase_ = Phase::kShowing;
+       animation_.SetDuration(base::Milliseconds(120));
+@@ -292,7 +293,7 @@
+       return;
+     visible_ = false;
+     monitor_.reset();
+-    model_.Reset();
++    StopModelObservation();
+     if (auto* contents = Contents())
+       contents->SetContentsVisible(false);
+     animation_.Stop();
+@@ -364,7 +365,7 @@
+     }
+     if (widget == widget_.get()) {
+       monitor_.reset();
+-      model_.Reset();
++      StopModelObservation();
+       animation_.Stop();
+       phase_ = Phase::kNone;
+       visible_ = false;
+@@ -377,21 +378,27 @@
+       const TabStripModelChange& change,
+       const TabStripSelectionChange& selection) override {
+     // Original45a2014: active contents change or real insertion closes it.
+-    if (visible_ && model_.IsObservingSource(model) &&
++    if (visible_ && observed_model_ == model &&
+         (selection.active_tab_changed() ||
+          change.type() == TabStripModelChange::kInserted)) {
+       Hide();
+     }
+   }
+   void OnTabStripModelDestroyed(TabStripModel* model) override {
+-    if (model_.IsObservingSource(model)) {
+-      model_.Reset();
+-      Hide();
+-    }
++    if (observed_model_ != model)
++      return;
++    //155's base observer has already removed the destroyed model from its
++    // own registry before delivering this callback. Retire the SAME source.
++    observed_model_ = nullptr;
++    Hide();
+   }
+ 
+  private:
+   enum class Phase { kNone, kShowing, kHiding };
++  void StopModelObservation() {
++    observed_model_ = nullptr;
++    TabStripModelObserver::StopObservingAll(this);
++  }
+   AuxTabSearchContentsView* Contents() const {
+     return views::AsViewClass<AuxTabSearchContentsView>(contents_.view());
+   }
+@@ -446,7 +453,7 @@
+   }
+   void RetireWidget() {
+     monitor_.reset();
+-    model_.Reset();
++    StopModelObservation();
+     animation_.Stop();
+     phase_ = Phase::kNone;
+     visible_ = false;
+@@ -468,7 +475,7 @@
+   views::ViewTracker contents_;
+   base::ScopedMultiSourceObservation<views::Widget, views::WidgetObserver>
+       widgets_{this};
+-  base::ScopedObservation<TabStripModel, TabStripModelObserver> model_{this};
++  raw_ptr<TabStripModel> observed_model_ = nullptr;
+   std::unique_ptr<views::EventMonitor> monitor_;
+   gfx::LinearAnimation animation_{this};
+   Phase phase_ = Phase::kNone;
