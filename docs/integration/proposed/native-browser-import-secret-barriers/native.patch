@@ -1,0 +1,281 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.h
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -29,6 +29,9 @@
+   void DidParseBookmarks(std::string id,
+                          user_data_importer::BookmarkParser::ParsedBookmarks);
+   void FailJob(std::string id, std::string error);
++  void ApplyChromiumSecrets(std::string id);
++  void DidCompleteChromiumSecrets(std::string id, bool passwords);
++  void MaybeCompleteChromiumSecrets(std::string id);
+   void ApplySecret(std::string id);
+   void DidWriteSecret(std::string id, bool accepted, bool skipped = false);
+   void ApplyHistory(std::string id);
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -3,6 +3,7 @@
+ 
+ #include <algorithm>
+ 
++#include "base/barrier_closure.h"
+ #include "base/functional/bind.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+@@ -69,6 +70,104 @@
+                    : base::Time::FromDeltaSinceWindowsEpoch(micros);
+ }
+ }  // namespace
++namespace {
++std::optional<password_manager::StoredCredential> PrepareChromiumPassword(
++    const base::DictValue& row) {
++  const auto* secret = row.FindString("secret");
++  if (!secret) {
++    return std::nullopt;
++  }
++  password_manager::StoredCredential form;
++  form.url = GURL(*row.FindString("url"));
++  form.action = GURL(*row.FindString("action"));
++  form.signon_realm = *row.FindString("realm");
++  if (!form.url.SchemeIsHTTPOrHTTPS() ||
++      !GURL(form.signon_realm).SchemeIsHTTPOrHTTPS()) {
++    return std::nullopt;
++  }
++  const auto scheme = row.FindInt("scheme").value_or(-1);
++  if (scheme < 0 || scheme > 4) {
++    return std::nullopt;
++  }
++  form.scheme = static_cast<password_manager::PasswordForm::Scheme>(scheme);
++  form.username_element =
++      base::UTF8ToUTF16(*row.FindString("usernameElement"));
++  form.username_value = base::UTF8ToUTF16(*row.FindString("username"));
++  form.password_element =
++      base::UTF8ToUTF16(*row.FindString("passwordElement"));
++  form.password_value =
++      password_manager::PasswordString(base::UTF8ToUTF16(*secret));
++  form.date_created = Timestamp(row, "created", false);
++  form.date_last_used = Timestamp(row, "used", false);
++  form.date_password_modified = Timestamp(row, "modified", false);
++  form.times_used_in_html_form = row.FindInt("timesUsed").value_or(0);
++  form.blocked_by_user = row.FindBool("blocked").value_or(false);
++  if (const auto* note = row.FindString("note"); note && !note->empty()) {
++    form.SetPasswordNote(base::UTF8ToUTF16(*note));
++  }
++  return std::move(form);
++}
++std::unique_ptr<net::CanonicalCookie> PrepareChromiumCookie(
++    const base::DictValue& row, GURL& source, bool& skipped) {
++  skipped = false;
++  const auto* secret = row.FindString("secret");
++  if (!secret) {
++    return nullptr;
++  }
++  std::string host = *row.FindString("host");
++  if (host.starts_with('.')) {
++    host.erase(0, 1);
++  }
++  const bool secure = row.FindBool("secure").value_or(false);
++  source = GURL(std::string(secure ? "https://" : "http://") + host + "/");
++  auto partition = net::CookiePartitionKey::FromStorage(
++      *row.FindString("partition"), row.FindBool("crossSite").value_or(false));
++  const int same_site = row.FindInt("sameSite").value_or(-2),
++            priority = row.FindInt("priority").value_or(-1);
++  if (!source.is_valid() || !partition.has_value() || same_site < -1 ||
++      same_site > 2 || priority < 0 || priority > 2) {
++    return nullptr;
++  }
++  auto expiry = Timestamp(row, "expires", false);
++  if (*row.FindString("expires") == "0") {
++    expiry = base::Time();
++  }
++  if (!expiry.is_null() && expiry <= base::Time::Now()) {
++    skipped = true;
++    return nullptr;
++  }
++  const int source_scheme = row.FindInt("sourceScheme").value_or(-1),
++            source_port = row.FindInt("sourcePort").value_or(-2),
++            source_type = row.FindInt("sourceType").value_or(0);
++  if (source_scheme < 0 || source_scheme > 2 || source_port < -1 ||
++      source_port > 65535 || source_type < 1 || source_type > 3 ||
++      row.FindString("name")->size() + secret->size() > 4096 ||
++      host.size() > 253 || row.FindString("path")->size() > 1024) {
++    return nullptr;
++  }
++  source = GURL(std::string(source_scheme == 2 || (source_scheme == 0 && secure)
++                                ? "https://"
++                                : "http://") +
++                host +
++                (source_port >= 0 ? ":" + base::NumberToString(source_port)
++                                  : std::string()) +
++                "/");
++  if (!source.is_valid()) {
++    return nullptr;
++  }
++  auto cookie = net::CanonicalCookie::FromStorage(
++      *row.FindString("name"), *secret, *row.FindString("host"),
++      *row.FindString("path"), Timestamp(row, "created", false), expiry,
++      Timestamp(row, "accessed", false), Timestamp(row, "updated", false),
++      secure, row.FindBool("httpOnly").value_or(false),
++      static_cast<net::CookieSameSite>(same_site),
++      static_cast<net::CookiePriority>(priority), std::move(partition.value()),
++      static_cast<net::CookieSourceScheme>(source_scheme), source_port,
++      static_cast<net::CookieSourceType>(source_type),
++      net::CanonicalCookieFromStorageCallSite::kSqlitePersistentCookieStore);
++  return cookie;
++}
++}  // namespace
+ class SecretLookup final : public password_manager::PasswordStoreConsumer {
+  public:
+   SecretLookup(scoped_refptr<password_manager::PasswordStoreInterface> store,
+@@ -131,6 +230,9 @@
+   base::ListValue rows;
+   base::ListValue snapshots;
+   bool chromium_staged = false;
++  bool chromium_secrets_started = false;
++  bool chromium_secrets_completed = false;
++  bool chromium_passwords_done = false, chromium_cookies_done = false;
+   std::unique_ptr<SecretLookup> secret_lookup;
+ };
+ ImportService* ImportService::Get(Profile* profile) {
+@@ -441,6 +543,12 @@
+           base::BindOnce(&ReadChromiumMigrationSnapshot, job.path, job.source,
+                          job.categories),
+           base::BindOnce(&ImportService::DidStageChromium, weak_.GetWeakPtr(), id));
++    } else if (job.extension != "native-import-webui" &&
++               (job.categories[job.category] == "passwords" ||
++                job.categories[job.category] == "cookies")) {
++      if (!job.chromium_secrets_started) {
++        ApplyChromiumSecrets(id);
++      }
+     } else {
+       auto data = std::move(job.snapshots[job.category].GetDict());
+       DidRead(id, std::move(data));
+@@ -735,6 +843,130 @@
+   }
+   DidRead(id, base::DictValue().Set("bookmarks", std::move(rows)));
+ }
++void ImportService::ApplyChromiumSecrets(std::string id) {
++  if (!profile_ || !jobs_.contains(id) || jobs_.at(id)->cancelled) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  std::vector<password_manager::StoredCredential> passwords;
++  using PreparedCookie = std::pair<std::unique_ptr<net::CanonicalCookie>, GURL>;
++  std::vector<PreparedCookie> cookies;
++  for (size_t index = job.category; index < job.categories.size(); ++index) {
++    const auto& kind = job.categories[index];
++    if (kind != "passwords" && kind != "cookies") {
++      FailJob(id, "Source destination order changed");
++      return;
++    }
++    auto& snapshot = job.snapshots[index].GetDict();
++    auto* rows = snapshot.FindList(kind);
++    if (!rows) {
++      FailJob(id, "Source encrypted snapshot is incomplete");
++      return;
++    }
++    for (auto& value : *rows) {
++      auto& row = value.GetDict();
++      if (kind == "passwords") {
++        auto form = PrepareChromiumPassword(row);
++        if (!form) {
++          FailJob(id, "Source password could not enter the destination store");
++          return;
++        }
++        passwords.push_back(std::move(*form));
++      } else {
++        GURL source;
++        bool skipped = false;
++        auto cookie = PrepareChromiumCookie(row, source, skipped);
++        if (skipped) {
++          continue;
++        }
++        if (!cookie) {
++          FailJob(id, "Source cookie could not enter the destination store");
++          return;
++        }
++        cookies.emplace_back(std::move(cookie), std::move(source));
++      }
++      row.Remove("secret");
++    }
++  }
++  scoped_refptr<password_manager::PasswordStoreInterface> store;
++  if (!passwords.empty()) {
++    store = ProfilePasswordStoreFactory::GetForProfile(
++        profile_.get(), ServiceAccessType::EXPLICIT_ACCESS);
++    if (!store ||
++        !profile_->GetPrefs()->GetBoolean(
++            password_manager::prefs::kCredentialsEnableService) ||
++        store->GetError() != password_manager::ActionableError::kNoError) {
++      FailJob(id, "Destination password store is unavailable");
++      return;
++    }
++  }
++  job.chromium_secrets_started = true;
++  job.chromium_passwords_done = passwords.empty();
++  job.chromium_cookies_done = cookies.empty();
++  if (!cookies.empty()) {
++    auto barrier = base::BarrierClosure(
++        cookies.size(),
++        base::BindOnce(&ImportService::DidCompleteChromiumSecrets,
++                       weak_.GetWeakPtr(), id, false));
++    auto* manager = profile_->GetDefaultStoragePartition()
++                        ->GetCookieManagerForBrowserProcess();
++    for (auto& [cookie, source] : cookies) {
++      manager->SetCanonicalCookie(
++          *cookie, source, net::CookieOptions::MakeAllInclusive(),
++          base::BindOnce(
++              [](base::WeakPtr<ImportService> self, std::string id,
++                 base::RepeatingClosure barrier, net::CookieAccessResult result) {
++                if (self && self->profile_ && self->jobs_.contains(id) &&
++                    !self->jobs_.at(id)->cancelled && result.status.IsInclude()) {
++                  ++self->jobs_.at(id)->imported;
++                }
++                // Supplied425f838 completes its barrier regardless of result.
++                barrier.Run();
++              }, weak_.GetWeakPtr(), id, barrier));
++    }
++  }
++  if (!passwords.empty()) {
++    // Exact supplied destination batch; no independent per-login lookup/skip.
++    store->AddLogins(
++        std::move(passwords),
++        base::BindOnce(
++            [](base::WeakPtr<ImportService> self, std::string id,
++               scoped_refptr<password_manager::PasswordStoreInterface> /*store*/) {
++              if (self) {
++                self->DidCompleteChromiumSecrets(id, true);
++              }
++            }, weak_.GetWeakPtr(), id, store));
++    return;
++  }
++  MaybeCompleteChromiumSecrets(id);
++}
++void ImportService::DidCompleteChromiumSecrets(std::string id, bool passwords) {
++  if (!profile_ || !jobs_.contains(id) || jobs_.at(id)->cancelled) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (passwords) {
++    job.chromium_passwords_done = true;
++  } else {
++    job.chromium_cookies_done = true;
++  }
++  MaybeCompleteChromiumSecrets(id);
++}
++void ImportService::MaybeCompleteChromiumSecrets(std::string id) {
++  if (!profile_ || !jobs_.contains(id) || jobs_.at(id)->cancelled) {
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  if (job.chromium_secrets_completed || !job.chromium_passwords_done ||
++      !job.chromium_cookies_done) {
++    return;
++  }
++  job.chromium_secrets_completed = true;
++  job.category = job.categories.size();
++  job.snapshots.clear();
++  job.state.Set("completed", static_cast<int>(job.category));
++  Next(id);
++}
+ void ImportService::ApplySecret(std::string id) {
+   if (!profile_ || !jobs_.contains(id)) {
+     return;

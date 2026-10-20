@@ -1,0 +1,47 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "destination-start.asm",
+      "start": "0x4258840",
+      "endExclusive": "0x4258b68",
+      "bytesSha256": "f0414ef01ca46c45f92d932820e538841f48b010d5cb6444b8f04ecd614e9d3f",
+      "sha256": "393be4f75f14329031b3c0565178fa660e893e0d977d5fd061cecfe631e98460"
+    },
+    {
+      "file": "joined-completion.asm",
+      "start": "0x4258c60",
+      "endExclusive": "0x4258cec",
+      "bytesSha256": "57cfa2b4060a4b34fba3a00b64669de14519902100c9a591059ef9df083e8bcf",
+      "sha256": "c61b76244abe666191aee5b74a1d1da99d91c7781cc7daee41ff8ede5c063cd1"
+    },
+    {
+      "file": "cookie-barrier-callback.asm",
+      "start": "0x425f838",
+      "endExclusive": "0x425f8e8",
+      "bytesSha256": "5f3d0b26fab2860d401f559358bc21a118e0c408ce14fb7d8d3d5fcf1963c707",
+      "sha256": "5b696601295d03fad1bba25fc784b26f801dfd659067e72bee033610ac97c905"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04258618.c",
+      "sha256": "8bb09c41e36a79db9f3f1e255046d150dda4675bbd3464b0db0ceda31d5c1291"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04258c80.c",
+      "sha256": "0b6d82f26d17f98715552e9ced8ba4a59678d1382659f9970ff39b65ad8b7cd4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/password_manager/core/browser/password_store/password_store_interface.h",
+      "sha256": "354894dba0fdab491b760972dc6eabe5c4d4666b37fbde0ef921d8367684fc18"
+    }
+  ],
+  "parents": {
+    "serviceCc": "9b8bc6024 history output",
+    "serviceH": "d2c144467 staging output"
+  }
+}

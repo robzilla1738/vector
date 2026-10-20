@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "f4ce73b238e5fc34e5097d7922b5d03bd49fae234d3d1ae91627a92a2a90d9ce",
+      "outputSha256": "d01a7d90c9fccfbda804bd14e6d4ddbb447511f7bbae1207aa717ef2ab4abb71"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "0121d01255c064699c98628c8c18372239edb5be762929e7601a26bd33bf73f4",
+      "outputSha256": "0c1a100f7335d46210ac8c7aa61b278223de9f195153956658f3f16bfc4c92e6"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
