@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "scripts/check-provided.mjs",
+      "baselineSha256": "ce7fd02d967d01be7dc2eb5f977f0ebfa067c1f56539587b4450b8735305d6cc",
+      "outputSha256": "c3bc368a9e330b3c2141ed43a89cbadfb47d6832826b269210e1b64d88efef5e"
+    }
+  ]
+}

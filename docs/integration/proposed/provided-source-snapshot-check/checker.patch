@@ -1,0 +1,63 @@
+--- a/scripts/check-provided.mjs
++++ b/scripts/check-provided.mjs
+@@ -6,12 +6,15 @@
+ import { fileURLToPath } from 'node:url';
+ import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
+ import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
++import { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
+ import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
+ import { buildDaemonNodeDevelopment } from '../vendor/provided/daemon-node-development.mjs';
+ import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
+ import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
+ const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+-const output = resolve(process.argv[2] ?? join(repository, 'out/provided-reuse'));
++const checkOptions = parseProvidedCheckArguments(process.argv.slice(2), join(repository, 'out/provided-reuse'));
++const output = checkOptions.output;
++const sourceSnapshot = await resolveProvidedSourceSnapshot({ snapshotRoot: checkOptions.sourceSnapshotRoot, repositoryRoot: repository });
+ const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+ const json = async (path) => JSON.parse(await readFile(path, 'utf8'));
+ const safe = (path) => typeof path === 'string' && path && !path.startsWith('/') && !path.split('/').some((part) => ['', '.', '..'].includes(part));
+@@ -55,7 +58,7 @@
+   for (const input of pinned.files) {
+     const file = bySource.get(input.path);
+     if (!file || file.sourceSha256 !== input.sourceSha256) throw new Error('UI source pin mismatch');
+-    const source = await readFile(join(pinned.inputRoot, input.path)), bytes = await readFile(join(root, file.path));
++    const source = await readFile(join(sourceSnapshot?.roots[component] ?? pinned.inputRoot, input.path)), bytes = await readFile(join(root, file.path));
+     if (hash(source) !== input.sourceSha256 || hash(bytes) !== file.outputSha256) throw new Error(`Preservation hash mismatch: ${component}/${file.path}`);
+     if (source.equals(bytes)) unchanged++;
+     else {
+@@ -87,7 +90,7 @@
+     if (!report.files.some((file) => file.path === `Contents/Resources/native/${name}` && file.repositorySource === expected.repositorySource && file.generatedFrom === expected.generatedFrom)) throw new Error('Restage: fixed native/runtime/memory integration seam is missing');
+   }
+   const root = join(output, 'apps', report.app);
+-  const binary = await readFile(join(providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
++  const binary = await readFile(join(sourceSnapshot?.roots[component] ?? providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
+   const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
+   const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode);
+   if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
+@@ -152,7 +155,7 @@
+         const bytes = await readFile(path);
+         if (hash(bytes) !== file.outputSha256) throw new Error('Distribution output changed');
+         if (file.anchors?.length) {
+-          let text = (await readFile(join(pinned.inputRoot, file.path))).toString('utf8');
++          let text = (await readFile(join(sourceSnapshot?.roots[component] ?? pinned.inputRoot, file.path))).toString('utf8');
+           if (hash(text) !== original.sourceSha256) throw new Error('Relocated distribution source changed');
+           for (const anchor of file.anchors) {
+             if (!anchor.find || text.split(anchor.find).length - 1 !== anchor.count) throw new Error('Distribution relocation count mismatch');
+@@ -185,7 +188,7 @@
+   const pinned = helperSources.get(file.sourcePath);
+   if (!pinned || pinned.sha256 !== file.sourceSha256 || file.outputMode !== pinned.mode) throw new Error('Helper source pin mismatch');
+   helperSources.delete(file.sourcePath);
+-  const source = await readFile(join(helperPins.inputRoot, file.sourcePath)), bytes = await readFile(join(helperRoot, file.path));
++  const source = await readFile(join(sourceSnapshot?.roots.computerUse ?? helperPins.inputRoot, file.sourcePath)), bytes = await readFile(join(helperRoot, file.path));
+   if (hash(source) !== pinned.sha256 || hash(bytes) !== file.outputSha256 || ((await lstat(join(helperRoot, file.path))).mode & 0o777) !== pinned.mode) throw new Error('Helper preservation hash or mode mismatch');
+   if (file.sourcePath === 'Contents/MacOS/aside-computer-use') {
+     const replayed = Buffer.from(source);
+@@ -210,6 +213,7 @@
+   } else if (!source.equals(bytes)) throw new Error('Unreported helper resource change');
+ }
+ if (helperSources.size) throw new Error('Omitted helper source resources');
++if (sourceSnapshot) console.log(`Frozen sources verified: ${sourceSnapshot.manifestPath}; SHA256 ${sourceSnapshot.manifestSha256}.`);
+ console.log(`Preservation verified: ${unchanged} unchanged UI files; ${changed} explicitly changed; ${css} stylesheets preserve layout; ${appFiles} app resource records.`);
+ console.log(`Distribution preservation: ${runtimeFiles} runtime files and ${memoryFiles} memory files, with declared relocations only.`);
+ console.log(`Helper preservation: ${helper.files.length} files with ${helper.binary.patches.length} exact binary patch ranges and current Aux artwork.`);

@@ -1,0 +1,44 @@
+[
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "const output = resolve(process.argv[2] ?? join(repository, 'out/provided-reuse'));",
+    "after": "const checkOptions = parseProvidedCheckArguments(process.argv.slice(2), join(repository, 'out/provided-reuse'));\nconst output = checkOptions.output;\nconst sourceSnapshot = await resolveProvidedSourceSnapshot({ snapshotRoot: checkOptions.sourceSnapshotRoot, repositoryRoot: repository });",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "import { providedStageInputs } from './lib/provided-stage-inputs.mjs';",
+    "after": "import { providedStageInputs } from './lib/provided-stage-inputs.mjs';\nimport { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "join(pinned.inputRoot, input.path)",
+    "after": "join(sourceSnapshot?.roots[component] ?? pinned.inputRoot, input.path)",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "join(providedAppRoots[component],",
+    "after": "join(sourceSnapshot?.roots[component] ?? providedAppRoots[component],",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "join(pinned.inputRoot, file.path)",
+    "after": "join(sourceSnapshot?.roots[component] ?? pinned.inputRoot, file.path)",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "join(helperPins.inputRoot, file.sourcePath)",
+    "after": "join(sourceSnapshot?.roots.computerUse ?? helperPins.inputRoot, file.sourcePath)",
+    "count": 1
+  },
+  {
+    "path": "scripts/check-provided.mjs",
+    "before": "console.log(`Preservation verified:",
+    "after": "if (sourceSnapshot) console.log(`Frozen sources verified: ${sourceSnapshot.manifestPath}; SHA256 ${sourceSnapshot.manifestSha256}.`);\nconsole.log(`Preservation verified:",
+    "count": 1
+  }
+]
