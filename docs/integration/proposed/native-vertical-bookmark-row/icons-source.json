@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Folder",
+    "originalName": "kAsideBookmarkFolderIcon",
+    "descriptorRva": "0xe9d4ac8",
+    "representationRva": "0xe9d4ab8",
+    "pathRva": "0xd3d8f5c",
+    "elements": 101,
+    "sha256": "e2a49178bbdb0536939b7e86349ce0847d37d00c7b4bac401b0a3e101547c608"
+  },
+  {
+    "name": "Page",
+    "originalName": "kGlobeIcon",
+    "descriptorRva": "0xe82cf08",
+    "representationRva": "0xe82cef8",
+    "pathRva": "0xce79914",
+    "elements": 302,
+    "sha256": "49ab027dbdd19eafb6f2d10896207243cf9139ee33d472996ee6becf85de2221"
+  }
+]

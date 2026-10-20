@@ -1,0 +1,44 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h",
+    "name": "foreground-enum",
+    "before": "enum class Foreground { kSecondary, kMuted };  // Original roles222/226.",
+    "after": "enum class Foreground { kSecondary, kMuted, kPrimary };  // Roles222/226/221.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h",
+    "name": "foreground-setter",
+    "before": "  void SetExpanded(bool expanded);",
+    "after": "  void SetExpanded(bool expanded);\n  void SetForeground(Foreground foreground);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h",
+    "name": "image-helper",
+    "before": "  void AnimationProgressed(const gfx::Animation*) override;",
+    "after": "  void AnimationProgressed(const gfx::Animation*) override;\n  void UpdateImage();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+    "name": "foreground-setter",
+    "before": "void AuxTabExpandChevronView::OnPaint(gfx::Canvas* canvas) {",
+    "after": "void AuxTabExpandChevronView::SetForeground(Foreground foreground) {\n  if (foreground_ == foreground) return;\n  foreground_ = foreground;\n  UpdateImage();\n}\nvoid AuxTabExpandChevronView::OnPaint(gfx::Canvas* canvas) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+    "name": "shared-image-update",
+    "before": "  views::ImageView::OnThemeChanged();\n  if (!GetWidget()) return;",
+    "after": "  views::ImageView::OnThemeChanged();\n  UpdateImage();\n}\nvoid AuxTabExpandChevronView::UpdateImage() {\n  if (!GetWidget()) return;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+    "name": "primary-color",
+    "before": "  const SkColor color = foreground_ == Foreground::kMuted\n      ? (dark ? 0x73fafafa : 0x730a0a0a)\n      : (dark ? 0x8cfafafa : 0x8c0a0a0a);",
+    "after": "  const SkColor color = foreground_ == Foreground::kPrimary\n      ? (dark ? 0xd9fafafa : 0xd90a0a0a)\n      : foreground_ == Foreground::kMuted\n          ? (dark ? 0x73fafafa : 0x730a0a0a)\n          : (dark ? 0x8cfafafa : 0x8c0a0a0a);",
+    "count": 1
+  }
+]

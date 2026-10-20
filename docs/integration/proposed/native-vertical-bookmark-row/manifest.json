@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "applyAfter": "commonchevron4b982 applied283; no region edits; requires original hover proof c8c520178/2599f713f",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+      "baselineSha256": "c54de54bb6d33c6f2ec95add940a6b029e7a23082b6a5ec50977b55d4f4d3b74",
+      "outputSha256": "aaf63f1883697bb794ad73129cfc06e6d7019bee3e98b860d6571e542f424474",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h",
+      "baselineSha256": "9df0f3444b2320ca62c874c23078d0b25d792d085705bcf2fc0b8ba6b23ed16e",
+      "outputSha256": "834271bdc37a0b8c855fa5b016c1e53873cec070dd8648107597781ea8c6c568",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "080d028425e6b9df8baef5cae323dc030879e468970627544f688f35609c024f",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "15b3575c182f00f8e9ff94bb7bbbaeca0130674cdd8c33525a49d0861eea03d8",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.h",
+      "baselineSha256": null,
+      "outputSha256": "066800e79bbe37c4bf24ec67551a3e0fae45e511cb10eb7e14aec76ca90f61e4",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "ownerImplemented": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

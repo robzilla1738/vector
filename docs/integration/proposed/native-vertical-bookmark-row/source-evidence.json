@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor",
+      "rva": "0x4624100",
+      "bytes": 3108,
+      "sha256": "ffa7b24173d55162691264540ade9eba1ecec357f331cb39c7663cee75698442",
+      "assemblySha256": "a6be522251fddc3e5dac15b127a6b396e3a7c6df68457335038a3ce723030bdd"
+    },
+    {
+      "name": "layout",
+      "rva": "0x4620488",
+      "bytes": 276,
+      "sha256": "b986fa58ef518bb207fca81030a59f0be905fcf29fd50699bfa100e6e7db2088",
+      "assemblySha256": "b1a6155642a016ccd3fdd14bf6136351781a20623c201f2306ced8a6cf410023"
+    },
+    {
+      "name": "press",
+      "rva": "0x462059c",
+      "bytes": 484,
+      "sha256": "c92514bd5621f2a4ae01460beb0181d0dd7609efd35de232893b3c574b9d199b",
+      "assemblySha256": "c21efb94ce3254dd28a7028f2e0c6e8670eccfbfd659eeb14d6890d0245a7a93"
+    },
+    {
+      "name": "drag",
+      "rva": "0x4620780",
+      "bytes": 176,
+      "sha256": "185b51cb6f86e910497270b62106b1193caa2b96e33744a9aecf042d1bdd08fb",
+      "assemblySha256": "ce876af57a78203e8b4d0e6b1da524faebfe1ba55388e1a582b5c6c661afce44"
+    },
+    {
+      "name": "release",
+      "rva": "0x4620830",
+      "bytes": 704,
+      "sha256": "b00535bbe3da7462b5b74153ee862bf3a27e9553c20766844f37755243435f32",
+      "assemblySha256": "2a7fa76131e04fa492dab6bf3b4349dc844ed4e3bc39fc59fa8c0949562e13ec"
+    },
+    {
+      "name": "capture-lost",
+      "rva": "0x4620af0",
+      "bytes": 632,
+      "sha256": "f3e2eaf1dade744d9781a5e73246402d3ff928f95e1f46c04d241691051f8d3a",
+      "assemblySha256": "c147230c83c9a46914908270f99ebf49caa79b7174322baf3c9a626fd033de25"
+    },
+    {
+      "name": "enter",
+      "rva": "0x4620d68",
+      "bytes": 284,
+      "sha256": "705ae996bb2f14a77d165a317ad6aa5a4378ff499e41764872a11cdcc4188264",
+      "assemblySha256": "82e83dcdb16ce6446148f78ea4abdc78f31009c88ccedeefbe6d839c20f425f2"
+    },
+    {
+      "name": "exit",
+      "rva": "0x4620e84",
+      "bytes": 48,
+      "sha256": "237163aaa9ae9e14d71b8d2687c836c64e4c1096f8f07413a99ab3b09bec2caa",
+      "assemblySha256": "0f2ebd6cd9613f2829dc5882bea8d098ef29d721d838d6c569806f4aa2991b48"
+    },
+    {
+      "name": "key",
+      "rva": "0x4620eb4",
+      "bytes": 176,
+      "sha256": "6cedfe6e55c6f257e6308ebce3faf48d66f45db183b2063adcc9b9276ce55ad0",
+      "assemblySha256": "9a69493d70f941350e69bd2828d05f8652a2b67e9c3c257c314f5f8d6eb89a4a"
+    },
+    {
+      "name": "bounds",
+      "rva": "0x4620f64",
+      "bytes": 52,
+      "sha256": "4702efd5d91ada2c0133f018fd6fc2c14393722491066996cce67bebfa0189e3",
+      "assemblySha256": "dc8dc77f8c446063a2769eacfd966d7565776681623ed217274c8e7f87d276a4"
+    },
+    {
+      "name": "paint",
+      "rva": "0x4620f98",
+      "bytes": 476,
+      "sha256": "b36225f83089e3630464828299951e90ca558f236dfcb3aa15de21087dd5bbf7",
+      "assemblySha256": "e36ebbfda668921e3a9c1a6d68b58ea0dfc5ffe3e7310f70d7998c86a411ea26"
+    },
+    {
+      "name": "background",
+      "rva": "0x4621174",
+      "bytes": 916,
+      "sha256": "dc08c2d00c3bff63d92f1447175cc0625358c60d62d1748c3b5a304b52b642a9",
+      "assemblySha256": "d255ee850c0f43c02e38f80f03066aad7a3fe359bb9c12b4e253ecc32c915b9e"
+    },
+    {
+      "name": "layout-state",
+      "rva": "0x4623b6c",
+      "bytes": 468,
+      "sha256": "13ae6a90eaf66b3127c36e73339cfbfa98b71c56bb39392e989d0662bd22ff65",
+      "assemblySha256": "9c03a6ccff7ff8131fb1b2ed7ac233bacc89cbcd08f6fd52e5507f409898f825"
+    },
+    {
+      "name": "accessories",
+      "rva": "0x4623d40",
+      "bytes": 384,
+      "sha256": "d1bb819332eb00d9fff76984b120bf4a28aa238df8794d9041cbacbdc367f0a2",
+      "assemblySha256": "fa662d592739bc087388de4f5f4806d621645e751b074036c1b4ee576177d820"
+    },
+    {
+      "name": "colors",
+      "rva": "0x4623ec0",
+      "bytes": 292,
+      "sha256": "987f625d717c1d34eb5be4c622775eea76f7af04d948d82d94e72553fcdc6817",
+      "assemblySha256": "6c94cc3a98ca4df33d29708ce730a87bc6ec8042242013abb5b3ebd89bb15866"
+    },
+    {
+      "name": "glyphs",
+      "rva": "0x4623fe4",
+      "bytes": 284,
+      "sha256": "2481eaee06c85f107455fd0e4b4f2e7b7423c4e22bf4164d2f01ce302db024c5",
+      "assemblySha256": "7ec299fd514b5a4c57a2885025ce8f02233dacb5ec6ce77e03289c48cd751d3c"
+    },
+    {
+      "name": "layer",
+      "rva": "0x46227a0",
+      "bytes": 880,
+      "sha256": "910b4b1e36c4160b97a2dc9c0c1d123fd18ac42c69dc778d25ad9bbbf0c85b5d",
+      "assemblySha256": "e81bd614bf9b7a085be1d3b8e93339bd6c6cd80ceae3ce39237c418d66040fbe"
+    },
+    {
+      "name": "title",
+      "rva": "0x461bda0",
+      "bytes": 300,
+      "sha256": "e455fc5af7194b33beb72a2e8c4848981edbb6b93b5f37d1931b43ed2294c7ac",
+      "assemblySha256": "9aec8c0ec43bbc623837e6b82475dd3edb6b1d3318889a51e9115d3c48203b17"
+    },
+    {
+      "name": "close-forward",
+      "rva": "0x4624d6c",
+      "bytes": 152,
+      "sha256": "212cd8621bbff287b86a761ccb7e71aaa655270ea3c74ca640e56bd626ea8833",
+      "assemblySha256": "16a8714954c8b9d7bd56a54e392b6bf34cc1d8f2bde6e97a9283ee1f28bd58ac"
+    },
+    {
+      "name": "widget-paint-as-active",
+      "rva": "0x87b6c8",
+      "bytes": 104,
+      "sha256": "377305d06a7bc71d93f33c3abb1b02029c5e042da24c3dc985378e7f1bd46998",
+      "assemblySha256": "82824af91f48477ba844107a18a486f36acbec3e97308ceb2e8ee825fdf533fd"
+    },
+    {
+      "name": "constant-arrow",
+      "rva": "0x3f512c0",
+      "bytes": 8,
+      "sha256": "866b82fb6649dcf0f7873c61006d47004b1074ea9b382227c4ab724c93f547f7",
+      "assemblySha256": "ca56f18f31ab471e030273bfc387088ad99cf5d61f16b652deb144254585f695"
+    },
+    {
+      "name": "palette-225",
+      "rva": "0x35e7650",
+      "bytes": 24,
+      "sha256": "a18b6c13ef4f12cfb2f934b40685db61485495e33aaf729ea1a777e79483da32",
+      "assemblySha256": "dd8961262e437e240d6e01ad2c242f3156f089cc17dd660f3a8bb4295a96082b"
+    },
+    {
+      "name": "palette-228",
+      "rva": "0x35e78b4",
+      "bytes": 24,
+      "sha256": "e1c18e45aa9808cce866957f6c7bbef7c50dd1a93929a18b3909f0495b13faad",
+      "assemblySha256": "7e2d8c29537d61564bc16a503aafd5787565997661a43e6d7df74a461eb3f61f"
+    },
+    {
+      "name": "palette-219",
+      "rva": "0x35e7174",
+      "bytes": 20,
+      "sha256": "93ea73cfcc67a8501369f1d41215db63993dd0f3ce02437d88b2533e678683ee",
+      "assemblySha256": "9096f3f5700e0731a2662af42a7b2aabe2bdf72bb5c3d4eef8fb3b37d60be977"
+    },
+    {
+      "name": "palette-221",
+      "rva": "0x35e730c",
+      "bytes": 24,
+      "sha256": "a12f8c07b2e6151d2770c7ca9521ae63447c6ab35c9471145edb1d282a3e2492",
+      "assemblySha256": "ea4bd93e3314d91da98cd195b902424a18b5187ec29a8baef03d469fa8a57978"
+    },
+    {
+      "name": "palette-222",
+      "rva": "0x35e73e0",
+      "bytes": 24,
+      "sha256": "c139d9fe9cb23c83941e4590092d5f85005e03b1fdf283ff0fea3b9760441415",
+      "assemblySha256": "0a337e427e3c40aba25a4cd8c49fd958f083b35fd2b437bc01aeb32df3a59ace"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/tab/tab_close_button.h",
+      "sha256": "a3a7f78702adf7603890e9e5be2fe3060567856b8a4c9d7a1bd583333b140170"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_style.h",
+      "sha256": "6bbd47eb8e76514e4188d24f57be69b36a501e0ee8171f848578a3886201e936"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/hovercard/hover_card_anchor_target.h",
+      "sha256": "fca8d030b21a967c03ddc23473e38e08f67ee62b268a64236d90dd4215033c9a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/label.h",
+      "sha256": "7f8698cff76eaf02aa43111662661d9970744f1a720a1a20adefcc5d6c521f58"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/style/typography.h",
+      "sha256": "43064e26043d635390c1b5de3d6375a06a48c505c1b5996d94d818966bf0d7ab"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/compositor/layer.h",
+      "sha256": "258cb515412791d94943e616249418f5a25fb380997eaa0d2ae178660856477b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/compositor/layer.cc",
+      "sha256": "d257d0ba114e9ba6e2bc4b5414b8eb00af448a9a03b3c7dd0c0adda4556f104c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_border.h",
+      "sha256": "68b271850ea6ae625ad8e7b7fdd467929497eb36b2a454d1627a50669627cdb5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/accessibility/ax_enums.mojom",
+      "sha256": "1718103f83d96dba73f53e4593b37312251e423b2bcc0f5d7a9f99c11e9687ee"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/widget/widget.cc",
+      "sha256": "79d330de81f5cd78b8afdeb32d6569530b343f0913e9a17e707c1fb4e85f0524"
+    }
+  ],
+  "insets": [
+    {
+      "rva": "0xdf40a90",
+      "value": [
+        0,
+        0,
+        0,
+        4
+      ]
+    },
+    {
+      "rva": "0xdf3e700",
+      "value": [
+        0,
+        4,
+        0,
+        0
+      ]
+    }
+  ],
+  "arrow": {
+    "secondaryVtable": "0xe7212d0",
+    "slot": 72,
+    "target": "0x3f512c0",
+    "value": 4,
+    "sourceProof": "root native-bookmark-hover-anchor c8c520178/2599f713f"
+  },
+  "palettePrerequisite": "../native-agent-tabs-paint/source-evidence.json"
+}
