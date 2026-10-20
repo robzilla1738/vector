@@ -1,0 +1,30 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+@@ -2,6 +2,9 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/import_webui.h"
+ 
+ #include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
++#include "third_party/skia/include/core/SkColor.h"
+ #include "base/memory/ref_counted_memory.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -62,6 +65,17 @@
+     : content::WebUIController(web_ui) {
+   auto* source = content::WebUIDataSource::CreateAndAdd(
+       web_ui->GetWebContents()->GetBrowserContext(), "aux-import-data");
++  // Supplied424e0c0 calls42653d0 for installed app IDs only. Do not read
++  // browser profiles merely to render the original available-browser list.
++  base::ListValue installed;
++  for (const char* id : {"chrome", "brave", "safari", "firefox", "arc",
++                         "atlas", "comet", "dia", "helium"}) {
++    if (InstalledSourceApplication(id)) installed.Append(id);
++  }
++  source->AddString("installedBrowsers", base::WriteJson(installed).value());
++  source->UseStringsJs();
++  web_ui->GetWebContents()->SetPageBaseBackgroundColor(
++      SkColorSetRGB(0x18, 0x18, 0x1b));
+   source->OverrideContentSecurityPolicy(
+       network::mojom::CSPDirectiveName::StyleSrc,
+       "style-src 'self' 'unsafe-inline';");

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "efa0fc5e122bc60e73ce24f23616c7f719a0711257453fb61d41e0808f23b551",
+      "outputSha256": "d05bd310939173080c81e416a86e70ee4ad8ff9c05c846af9024fa14222f323d",
+      "anchors": [
+        {
+          "find": "\"import_webui.cc\", \"import_webui.h\"",
+          "replace": "\"import_webui.cc\", \"import_webui.h\", \"import_webui_resources.h\", \"//chrome/browser/ui/webui/aux_importer/import_target_chooser.h\", \"//chrome/browser/ui/webui/aux_importer/import_target_chooser.mm\"",
+          "count": 1
+        },
+        {
+          "find": " public_deps = [ \":headers\" ]\n",
+          "replace": " public_deps = [ \":headers\" ]\n frameworks = [ \"AppKit.framework\" ]\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "originalConstructor": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0424e0c0.c",
+    "sha256": "327db73849265bd970d0a944ec1d3166b5cb31b92a42dad0107e1a893fcb6604"
+  },
+  "registryEvidence": {
+    "path": "docs/integration/proposed/native-browser-import-registry/source-evidence.json",
+    "sha256": "f0723cfd9068d7f226acc5b5cac8c0ecc0812fe5b1468d001d93d9a7aa3a2d2a"
+  },
+  "scope": "Static projection of actual installed application registry; no browser-profile discovery or fake installed IDs. Original HTML/JS resources and message routing are separate proposals."
+}

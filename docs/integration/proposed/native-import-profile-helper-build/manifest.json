@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "eb8452daf7fc90c737c6375deaeba317148e638114d5dd1ba9d84b346c6e9cdb",
+      "outputSha256": "d178ad75a569baccc5bad1f864d3d45dabfc3bcc4ea0ec32954753eebce74949",
+      "anchors": [
+        {
+          "find": "\"firefox_import.cc\", \"firefox_import.h\",",
+          "replace": "\"firefox_import.cc\", \"firefox_import.h\", \"chromium_profile_clone.cc\", \"chromium_profile_clone.h\", \"//chrome/browser/ui/webui/aux_importer/import_profile_metadata.h\", \"//chrome/browser/ui/webui/aux_importer/import_profile_metadata.cc\", \"//chrome/browser/ui/webui/aux_importer/import_completion_choice.h\", \"//chrome/browser/ui/webui/aux_importer/import_completion_choice.mm\",",
+          "count": 1
+        },
+        {
+          "find": "\"//chrome/browser/profiles:profile\",",
+          "replace": "\"//chrome/browser/profiles:profile\", \"//chrome/browser/profiles\", \"//chrome/browser/profiles:profile_manager\", \"//chrome/browser/prefs\", \"//chrome/browser/themes\", \"//services/preferences/public/cpp/tracked\",",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

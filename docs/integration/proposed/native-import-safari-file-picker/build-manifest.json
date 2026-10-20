@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "components/user_data_importer/utility/BUILD.gn",
+      "baselineSha256": "8f6f231c10a7e5ea0dc1d59377f698a46810b065377d13f0f66dc359dfd8cfec",
+      "outputSha256": "b71c90c145190cb659b953d36c11e3e06c24a20aa2689473fe028da75291f84a",
+      "anchors": [
+        {
+          "find": "    \"safari_data_import_client.h\",\n",
+          "replace": "    \"safari_data_import_client.h\",\n    \"safari_archive_validator.cc\",\n    \"safari_archive_validator.h\",\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "d05bd310939173080c81e416a86e70ee4ad8ff9c05c846af9024fa14222f323d",
+      "outputSha256": "eb8452daf7fc90c737c6375deaeba317148e638114d5dd1ba9d84b346c6e9cdb",
+      "anchors": [
+        {
+          "find": "\"import_webui_resources.h\",",
+          "replace": "\"import_webui_resources.h\", \"//chrome/browser/ui/webui/aux_importer/safari_archive_picker.h\", \"//chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc\",",
+          "count": 1
+        },
+        {
+          "find": "\"//ui/base\", \"//url\"",
+          "replace": "\"//ui/base\", \"//ui/shell_dialogs\", \"//chrome/browser/ui/select_file_policy\", \"//url\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

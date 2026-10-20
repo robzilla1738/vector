@@ -1,0 +1,40 @@
+{
+  "composition": "v478",
+  "compositionSha256": "5d1e07a55e2a74e8f1ed8cbc8f745d2517451da94f7cb749e711ab75c362b085",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "gnCommand": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/gn",
+    "gen",
+    "out/AuxFast"
+  ],
+  "gnExitCode": 0,
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_profile_clone.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_profile_metadata.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_completion_choice.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_archive_picker.o",
+    "obj/components/user_data_importer/utility/safari_data_importer/safari_archive_validator.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_profile_clone.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_profile_metadata.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_completion_choice.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_archive_picker.o",
+    "obj/components/user_data_importer/utility/safari_data_importer/safari_archive_validator.o"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 26.36837100982666,
+  "totalElapsedSeconds": 75.55816388130188,
+  "runtimeAcceptance": false
+}

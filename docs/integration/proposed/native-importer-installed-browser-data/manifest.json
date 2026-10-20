@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "baselineSha256": "d96fa5a3ea251fee4d9211292b5b7cc57591f307e60968b7db636a46d2d77d67",
+      "outputSha256": "dddfebdccbc900691ec1d5bc7969cea77ade2a7f5760370296f25d8b23101fcf",
+      "anchors": [
+        {
+          "find": "#include \"base/functional/bind.h\"\n",
+          "replace": "#include \"base/functional/bind.h\"\n#include \"base/json/json_writer.h\"\n#include \"chrome/browser/extensions/api/aux_browser_import/source_crypto.h\"\n#include \"third_party/skia/include/core/SkColor.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "      web_ui->GetWebContents()->GetBrowserContext(), \"aux-import-data\");\n",
+          "replace": "      web_ui->GetWebContents()->GetBrowserContext(), \"aux-import-data\");\n  // Supplied424e0c0 calls42653d0 for installed app IDs only. Do not read\n  // browser profiles merely to render the original available-browser list.\n  base::ListValue installed;\n  for (const char* id : {\"chrome\", \"brave\", \"safari\", \"firefox\", \"arc\",\n                         \"atlas\", \"comet\", \"dia\", \"helium\"}) {\n    if (InstalledSourceApplication(id)) installed.Append(id);\n  }\n  source->AddString(\"installedBrowsers\", base::WriteJson(installed).value());\n  source->UseStringsJs();\n  web_ui->GetWebContents()->SetPageBaseBackgroundColor(\n      SkColorSetRGB(0x18, 0x18, 0x1b));\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

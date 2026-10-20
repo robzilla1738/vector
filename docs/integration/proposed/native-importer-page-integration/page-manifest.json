@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "proposalManifestSha256": "988262d686289562eb4dd650831c5e7deedc70fd3092d9f601527d4398967b97",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "baselineSha256": "dddfebdccbc900691ec1d5bc7969cea77ade2a7f5760370296f25d8b23101fcf",
+      "outputSha256": "2ed632316e492ae44ab9208b54da1c5ef213a80a4cd94d4d1178deaa0dc3e0e4",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_browser_import/import_service.h\"\n",
+          "replace": "#include \"chrome/browser/extensions/api/aux_browser_import/import_service.h\"\n#include \"chrome/browser/extensions/api/aux_browser_import/import_webui_resources.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "constexpr char kHTML[] =\n    R\"HTML(<!doctype html><meta charset=utf-8><title>Import browser data into Aux</title><style>body{font:16px system-ui;max-width:760px;margin:10vh auto;padding:24px;color-scheme:light dark}select,button{font:inherit;padding:10px;margin:8px 0}label{display:block;margin:12px 0}pre{white-space:pre-wrap}#error{color:#d33}fieldset{border:1px solid #8885;margin:16px 0}</style><h1>Import browser data</h1><p>Select a browser profile and the data you want to bring into this Aux profile. Source data is read from a consistent snapshot and is never changed.</p><label>Browser <select id=source></select></label><label>Profile <select id=profile></select></label><fieldset><legend>Available categories</legend><div id=categories></div></fieldset><label id=archiveLabel hidden>Safari ZIP <input id=archive type=file accept=\".zip,application/zip\"></label><p id=notice></p><label><input id=consent type=checkbox>I authorize reading the selected source profile and adding these categories to Aux.</label><button id=start>Start import</button><button id=cancel disabled>Cancel remaining work</button><button id=refresh>Refresh sources</button><p id=error role=alert></p><pre id=progress aria-live=polite></pre><script src=index.js></script>)HTML\";\nconstexpr char kJS[] =\n    R\"JS('use strict';const $=id=>document.getElementById(id),pending=new Map;let seq=0,sources=[],job=null;window.cr={webUIResponse:(id,ok,value)=>{const request=pending.get(id);if(request){pending.delete(id);ok?request.resolve(value):request.reject(Error(value))}}};function call(method,args=[]){return new Promise((resolve,reject)=>{const id='import-'+(++seq);pending.set(id,{resolve,reject});chrome.send('auxImport',[id,method,args])})}async function action(fn){$('error').textContent='';try{await fn()}catch(error){$('error').textContent=error.message}}\n function choose(){const source=sources.find(x=>x.id===$('source').value);$('profile').replaceChildren();$('categories').replaceChildren();$('consent').checked=false;if(!source)return;$('archiveLabel').hidden=source.id!=='safari';for(const profile of source.profiles){const option=document.createElement('option');option.value=profile.id;option.textContent=profile.name;$('profile').append(option)}for(const category of source.categories??[]){const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.value=category;check.checked=true;label.append(check,document.createTextNode(' '+category));$('categories').append(label)}$('notice').textContent=source.unsupportedReason??'Passwords, cookies, extensions and archive formats appear here only when their authorized native migrator is available.';$('start').disabled=!source.installed||!source.profiles.length||!(source.categories??[]).length;}\n async function refresh(){sources=await call('getImportSources');$('source').replaceChildren();for(const source of sources){const option=document.createElement('option');option.value=source.id;option.textContent=source.name+(source.installed?'':' \u2014 not installed');option.disabled=!source.installed;$('source').append(option)}const first=sources.find(x=>x.installed&&x.profiles.length);if(first)$('source').value=first.id;choose()}\n async function poll(){if(!job)return;const progress=await call('getImportProgress',[job]);$('progress').textContent=JSON.stringify(progress,null,2);const running=progress.status==='running'||progress.status==='queued';$('cancel').disabled=!running;$('start').disabled=running;if(running)setTimeout(()=>action(poll),300)}\n $('archive').onchange=()=>$('consent').checked=false;$('source').onchange=choose;$('profile').onchange=()=>$('consent').checked=false;$('refresh').onclick=()=>action(refresh);$('start').onclick=()=>action(async()=>{if(!$('consent').checked)throw Error('Authorize the selected source before starting.');const categories=[...$('categories').querySelectorAll('input:checked')].map(x=>x.value);if(!categories.length)throw Error('Select at least one category.');const options={sourceId:$('source').value,sourceProfileId:$('profile').value,categories};if(options.sourceId==='safari'){const file=$('archive').files[0];if(!file||!file.size||file.size>16*1024*1024)throw Error('Choose a Safari ZIP up to16MiB.');options.safariArchive={fileName:file.name,data:Array.from(new Uint8Array(await file.arrayBuffer()))};}const result=await call('startImport',[options]);job=result.jobId;await poll()});$('cancel').onclick=()=>action(async()=>{if(job){await call('cancelImport',[job]);await poll()}});action(refresh);\n)JS\";\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "        return path.empty() || path == \"index.html\" || path == \"index.js\";",
+          "replace": "        return HasSuppliedImporterResource(path);",
+          "count": 1
+        },
+        {
+          "find": "            std::move(callback).Run(\n                base::MakeRefCounted<base::RefCountedString>(\n                    path == \"index.js\" ? kJS : kHTML));",
+          "replace": "            auto resource = GetSuppliedImporterResource(path);\n            if (!resource) {\n              std::move(callback).Run(nullptr);\n              return;\n            }\n            std::move(callback).Run(\n                base::MakeRefCounted<base::RefCountedString>(\n                    std::move(*resource)));",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

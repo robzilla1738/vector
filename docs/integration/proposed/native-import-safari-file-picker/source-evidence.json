@@ -1,0 +1,53 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "name": "file-selection",
+      "start": "0x42500d0",
+      "end": "0x42502bc",
+      "sha256": "fa342954dccdd8fda8189b235568abbf3b3ab2ef714cff531006ff448dda05ee",
+      "listingSha256": "96d2bac6a157d8c91f4a432b4400ee690c7d405905f67dc29290da884561fd75"
+    },
+    {
+      "name": "zip-validation",
+      "start": "0x4250878",
+      "end": "0x4250a14",
+      "sha256": "01b385858658d32c5fbe4083c05b4c9c9acdd36cb3f31e318b55e6e216223c68",
+      "listingSha256": "31d0e6de19fda68bf618477b264a350e1503d612edd1a8bdfa5d6e89cd1d6ba1"
+    },
+    {
+      "name": "dialog-presentation",
+      "start": "0x42522c0",
+      "end": "0x4252634",
+      "sha256": "0f4934f885e0aabac8d4ccc1d3e6c91eda2298757ee1ca7dab40359d63b2b925",
+      "listingSha256": "8469387ee743891b90b85373809037182660e95fefc1bf3b939530605f7290a0"
+    }
+  ],
+  "nativeInputs": [
+    {
+      "path": "components/user_data_importer/utility/parsing_ffi/lib.rs",
+      "sha256": "216cb97d5b8d7afbd0567a099cccd7cf2068ab303e4597ddc222af7154b5d07c"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "sha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7"
+    },
+    {
+      "path": "chrome/browser/ui/webui/settings/import_data_handler.cc",
+      "sha256": "57d86a896eee76cdc289838b8b92df73b779c7a30073b3dcb0e02ca7f4ed7df6"
+    },
+    {
+      "path": "ui/shell_dialogs/selected_file_info.h",
+      "sha256": "f1ac124d4c22149cee0bbc61fa26eb7e92ea8b518dd1bc0967fde2c1443b49e4"
+    }
+  ],
+  "claims": {
+    "validator": "Original probes Rust unzip FileType 0(Bookmarks),3(SafariHistory),1(Passwords), short-circuit; original error/empty path fail. Same155 Rust archive implementation is called directly.",
+    "picker": "Original one retained SelectFileDialog, zip extension, type5(openfile), empty title/path/default extension, index0 and nativewindow parent; selected resetsdialog then weak workerreply; cancellation only clearsdialog."
+  },
+  "limitations": [
+    "No actual dialog/archive/profile/import/Keychain operation ran.",
+    "Whole WebUI handler/newtarget lifecycle remains separate; source helper completion is not product acceptance."
+  ]
+}

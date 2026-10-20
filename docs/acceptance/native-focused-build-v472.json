@@ -1,0 +1,34 @@
+{
+  "composition": "v472",
+  "compositionSha256": "74c28d74281960bf68e42b3403d59f97560e860ba0d891ba927e8c7fe849bd55",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "gnCommand": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/gn",
+    "gen",
+    "out/AuxFast"
+  ],
+  "gnExitCode": 0,
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_webui.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_target_chooser.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_webui.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_target_chooser.o"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 22.78551697731018,
+  "totalElapsedSeconds": 67.11892199516296,
+  "runtimeAcceptance": false
+}

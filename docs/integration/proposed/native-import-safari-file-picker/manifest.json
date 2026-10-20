@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc",
+      "baselineSha256": null,
+      "outputSha256": "3a95f74180a5e739418cd671438707b79b21c2652785eea408fcaa22e4cd9a08"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/safari_archive_picker.h",
+      "baselineSha256": null,
+      "outputSha256": "ff45d80a5d59d43b883f331eab6237d2172676d18d2590dd0b04195435436c1f"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_archive_validator.cc",
+      "baselineSha256": null,
+      "outputSha256": "2deeb8a0c6ad8fcc407b81687583ba227d0d58b56574150948e9fa6ee479eda8"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_archive_validator.h",
+      "baselineSha256": null,
+      "outputSha256": "8f7ec9d3e5f62e5cb52f1e59ddfb21d2d2a719535b01d66a63a393aa7ae29dcd"
+    }
+  ]
+}

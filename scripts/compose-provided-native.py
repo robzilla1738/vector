@@ -492,6 +492,17 @@ steps.extend([
     ('native-firefox-service-owner-integration/native.patch', 'native-firefox-service-owner-integration/manifest.json'),
     ('native-firefox-owner-build-deps/native.patch', 'native-firefox-owner-build-deps/manifest.json'),
     ('native-firefox-nss-build-adaptation/native.patch', 'native-firefox-nss-build-adaptation/manifest.json'),
+    ('native-importer-installed-browser-data/native.patch', 'native-importer-installed-browser-data/manifest.json'),
+    ('native-import-target-chooser/native.patch', 'native-import-target-chooser/manifest.json'),
+    ('native-import-webui-resources/native.patch', 'native-import-webui-resources/manifest.json'),
+    ('native-importer-page-integration/page.patch', 'native-importer-page-integration/page-manifest.json'),
+    ('native-importer-page-integration/build.patch', 'native-importer-page-integration/build-manifest.json'),
+    ('native-import-safari-file-picker/native.patch', 'native-import-safari-file-picker/manifest.json'),
+    ('native-import-safari-file-picker/build.patch', 'native-import-safari-file-picker/build-manifest.json'),
+    ('native-chromium-new-target-clone/native.patch', 'native-chromium-new-target-clone/manifest.json'),
+    ('native-import-initialized-profile/native.patch', 'native-import-initialized-profile/manifest.json'),
+    ('native-import-completion-choice/native.patch', 'native-import-completion-choice/manifest.json'),
+    ('native-import-profile-helper-build/native.patch', 'native-import-profile-helper-build/manifest.json'),
 ])
 
 if options.through:
