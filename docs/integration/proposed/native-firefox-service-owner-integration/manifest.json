@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "actual456 service files; requires coherent FirefoxImport owner/cookie/password proposals first",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "64f9148e2176998446027a9905cce32e445d4108f09cf54bbebf4e868b1c4687",
+      "outputSha256": "4908f3d55ad864c0a390fef315b66e50cdb530ee167fef8af300db13f6e185f0"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "b7c50afa21536bdc440672b34db4d7cdf2c71dc538722f28bfa2fea559f9ace4",
+      "outputSha256": "0f0b40e409a6f6917b64e28435f8d6f29919d3b1b4de66ff9f9e2336e30d95ab"
+    }
+  ],
+  "compiled": false,
+  "applied": false,
+  "runtimeAcceptance": false
+}

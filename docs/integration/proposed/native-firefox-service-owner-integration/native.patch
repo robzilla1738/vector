@@ -1,0 +1,72 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/extension_import.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/encrypted_source_bytes.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/safari_import.h"
++#include "chrome/browser/extensions/api/aux_browser_import/firefox_import.h"
+ #include "chrome/browser/history/history_service_factory.h"
+ #include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -365,6 +366,7 @@
+   bool firefox = false, cancelled = false;
+   bool safari_bookmarks_only = false;
+   std::unique_ptr<SafariImport> safari_import;
++  std::unique_ptr<FirefoxImport> firefox_import;
+   base::FilePath path;
+   std::vector<std::string> categories;
+   size_t category = 0, row = 0;
+@@ -468,6 +470,11 @@
+         job.cancelled = true;
+         if (job.safari_import) {
+           job.safari_import->Cancel();
++          std::move(reply).Run(base::Value(), "");
++          return;
++        }
++        if (job.firefox_import) {
++          job.firefox_import->Cancel();
+           std::move(reply).Run(base::Value(), "");
+           return;
+         }
+@@ -673,9 +680,20 @@
+     if (!job.safari_import) {
+       job.safari_import = std::make_unique<SafariImport>(
+           profile_.get(), job.safari_bookmarks_only,
+-          base::BindRepeating(&ImportService::DidUpdateSafari,
++          base::BindRepeating(&ImportService::DidUpdateNativeImport,
+                               weak_.GetWeakPtr(), id));
+       job.safari_import->Start(std::move(job.archive));
++    }
++    return;
++  }
++  if (job.firefox && job.extension != "native-import-webui") {
++    if (!job.firefox_import) {
++      job.firefox_import = std::make_unique<FirefoxImport>(
++          profile_.get(), std::optional<base::FilePath>(job.path),
++          job.safari_bookmarks_only,
++          base::BindRepeating(&ImportService::DidUpdateNativeImport,
++                              weak_.GetWeakPtr(), id));
++      job.firefox_import->Start();
+     }
+     return;
+   }
+@@ -744,7 +762,7 @@
+                      job.categories[job.category]),
+       base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));
+ }
+-void ImportService::DidUpdateSafari(std::string id, std::string state,
++void ImportService::DidUpdateNativeImport(std::string id, std::string state,
+                                     std::string current_data_kind,
+                                     double progress, std::string error) {
+   if (!profile_ || !jobs_.contains(id)) return;
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.h
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -25,7 +25,7 @@
+   void DidDiscover(Reply reply, base::ListValue);
+   void Next(std::string id);
+   void DidStageChromium(std::string id, base::DictValue);
+-  void DidUpdateSafari(std::string id, std::string state,
++  void DidUpdateNativeImport(std::string id, std::string state,
+                        std::string current_data_kind, double progress,
+                        std::string error);
+   void DidRead(std::string id, base::DictValue);

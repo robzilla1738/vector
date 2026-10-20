@@ -1,0 +1,38 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "#include \"chrome/browser/extensions/api/aux_browser_import/safari_import.h\"",
+    "replace": "#include \"chrome/browser/extensions/api/aux_browser_import/safari_import.h\"\n#include \"chrome/browser/extensions/api/aux_browser_import/firefox_import.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "  std::unique_ptr<SafariImport> safari_import;",
+    "replace": "  std::unique_ptr<SafariImport> safari_import;\n  std::unique_ptr<FirefoxImport> firefox_import;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "        job.rows.clear();",
+    "replace": "        if (job.firefox_import) {\n          job.firefox_import->Cancel();\n          std::move(reply).Run(base::Value(), \"\");\n          return;\n        }\n        job.rows.clear();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "DidUpdateSafari",
+    "replace": "DidUpdateNativeImport",
+    "count": 2
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+    "find": "DidUpdateSafari",
+    "replace": "DidUpdateNativeImport",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "  if (job.category == job.categories.size()) {",
+    "replace": "  if (job.firefox && job.extension != \"native-import-webui\") {\n    if (!job.firefox_import) {\n      job.firefox_import = std::make_unique<FirefoxImport>(\n          profile_.get(), std::optional<base::FilePath>(job.path),\n          job.safari_bookmarks_only,\n          base::BindRepeating(&ImportService::DidUpdateNativeImport,\n                              weak_.GetWeakPtr(), id));\n      job.firefox_import->Start();\n    }\n    return;\n  }\n  if (job.category == job.categories.size()) {",
+    "count": 1
+  }
+]
