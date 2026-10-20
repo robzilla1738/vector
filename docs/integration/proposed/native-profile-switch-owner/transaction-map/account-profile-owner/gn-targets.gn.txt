@@ -1,0 +1,38 @@
+# Root-owned GN delta; do not paste into pure profile_state/profile_gate targets.
+# profile_gate_prefs already compiles actual account_profile_prefs.cc/h.
+source_set("account_profile_source") {
+  sources = [ "account_profile_source.cc", "account_profile_source.h" ]
+  public_deps = [ "//base" ]
+  deps = [ ":account_bootstrap_state" ]
+}
+source_set("account_profile_updater") {
+  sources = [ "account_profile_updater.cc", "account_profile_updater.h",
+              "account_profile_avatar.cc", "account_profile_avatar.h" ]
+  public_deps = [ "//base", "//chrome/browser/profiles:profile",
+                  "//components/keyed_service/content" ]
+  deps = [
+    ":account_profile_source", ":platform", ":profile_gate_prefs",
+    ":profile_identity", ":profile_state",
+    "//chrome/browser:browser_process", "//chrome/browser/image_fetcher",
+    "//chrome/browser/net", "//chrome/browser/profiles",
+    "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_util", "//chrome/browser/sync:factories",
+    "//components/image_fetcher/core", "//components/keyed_service/core",
+    "//components/prefs", "//components/sync/base", "//components/sync/service",
+    "//content/public/browser", "//google_apis/gaia", "//net",
+    "//services/network/public/cpp", "//ui/gfx", "//url",
+  ]
+}
+# chrome/browser/profiles/BUILD.gn profiles_extra_parts_impl (only when
+# enable_aux_browser): deps += [ "//chrome/browser/aux:account_profile_updater" ]
+# Also add //chrome/browser:buildflags if not already a direct dependency there.
+# Existing :misc owns profile_key.cc; its new getter needs no extra source/dep.
+# Existing :platform owns browser_platform.cc/h; callback_list belongs to base.
+# :account_bootstrap_state owns the modified actual evaluator source, unchanged
+# pure-base dependencies. :profile_state keeps L4's protected reader only.
+# No :profile_manager_impl dependency and no UI owner dependency introduced.
+executable("account_profile_source_probe") {
+  testonly = true
+  sources = [ "account_profile_source_probe.cc" ]
+  deps = [ ":account_profile_source", "//base" ]
+}

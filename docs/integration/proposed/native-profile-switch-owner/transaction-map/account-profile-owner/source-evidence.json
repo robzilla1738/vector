@@ -1,0 +1,120 @@
+{
+  "originalFrameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "pins": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/02e84b1c.c",
+      "sha256": "c8297b15afef602839edf5378ad60fd9e4e3246bdf8ca9be72aa2aa89d2107d5"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04100b88.c",
+      "sha256": "703baff4a4c95fcff3f8fd752edec80bd9b96d1a115cae7848990cd81e55f096"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415ebd0.c",
+      "sha256": "dc300b10f3402bb88fab372dc205a723cd209df444e0b22a85c2f0f7e04906fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415f2f4.c",
+      "sha256": "9742f948609490517c19365b160901d0a1b457173c987439245944ddf44bd197"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415fec0.c",
+      "sha256": "858bd63cee82bfe5d260cf5fc328229d036f09c59ebd3db8fed213d24174498a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04160ce0.c",
+      "sha256": "e0876e9c27147d9d37a0b7a4d21057f605a363886253514a091463355477558e"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0410374c.c",
+      "sha256": "b3b916e477d932e91039be07d0ca8953439006b44cfc40224e680b8a668e4c02"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103854.c",
+      "sha256": "a5381152878c62bdee70df03f04e9e654e718cb928c9c22ddb2f1fd9e539baf1"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103c38.c",
+      "sha256": "40067abdb84564c8d7426baaf635f22ecd20e4d62f76784c785d4b0151dbf1c0"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "c99733b59493118b246bb19f96552ff85caf004e7bb884a17196bef6234c8502"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.h",
+      "sha256": "9832c3b5bf5baf17f4f7cff6b5341b65e9a9e1219580061be1fe1ee7fd21b0ae"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.cc",
+      "sha256": "c39a7415c545a28c3ae704afa521f984186adcf5a1188e4d313831bb19fb9b6a"
+    },
+    {
+      "path": "chrome/browser/image_fetcher/image_fetcher_service_factory.h",
+      "sha256": "7bb6e97d19e0dae217298c16d570f344b3cd4de9e29c7ace4518b724394d55fa"
+    },
+    {
+      "path": "components/image_fetcher/core/image_fetcher_service.h",
+      "sha256": "8b04a147cec79228b6066669730979a8f64b2d668a9fe817359d4f6f63a47ca2"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "sha256": "9f7742e44937b918ec00c91694d6071e4485d990236c4bbf4cf0bf2e66b9e550"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage.h",
+      "sha256": "8123fe72170c6c958ccdc3a049f556c8757f625e5b0306d0603f255ef9bb4f66"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_observer.h",
+      "sha256": "798930db369924dea163b7f1855688abe7899614b31d715fa6239251c195a241"
+    },
+    {
+      "path": "components/sync/service/sync_prefs.h",
+      "sha256": "476c5bdecb78776090de68c23ce7064f35b740cac06a2f2d621219819ba7502e"
+    },
+    {
+      "path": "components/sync/service/sync_user_settings.h",
+      "sha256": "06c0e0665ea010d13d4ea4d09b7232021aa3281dd3c9fa0ff0a74a25cc4d295d"
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "sha256": "adfc94ede8a34bf7a5c89d51c788eeac0b04c8d20bbaf0fa5c55c396c7eace92"
+    },
+    {
+      "path": "chrome/browser/sync/BUILD.gn",
+      "sha256": "e62ade02563f2cb3031c3f3ffdb61b44a6509a63786b6ad1fe98996938dcbe55"
+    },
+    {
+      "path": "chrome/browser/image_fetcher/BUILD.gn",
+      "sha256": "277e4483eca53220b168049aa8c03fdbcda177c42bccb6bebbcd129b94fa35b3"
+    }
+  ],
+  "originalEffects": {
+    "415e7e8": "Actual keyed service ctor: Profile/storage observations, persisted attributes restore, true-admitted initial worker refresh.",
+    "415ebd0": "Coalesced in-flight/queued/OR-ed binding admission; weak worker reply.",
+    "4160ce0": "Actual account selection/legacy bootstrap/metadata/POST/avatar/sync effects; copied decompile already pinned in prior producer slice.",
+    "415f2f4": "Actual ProfileKey prefs readiness/ImageFetcherService image request, URL/cache guards.",
+    "415f828/415fcfc": "Owned-avatar clear and actual image completion; bounded source excerpts copied below.",
+    "41603e4/4160630": "Real sync token/setup/cached-passphrase effects; new bounded raw evidence.",
+    "415eea4": "Storage OnProfileWillBeRemoved actual fixed-profile delete POST.",
+    "415f260": "Actual Profile initialization retries cached image URL only.",
+    "02e84b1c/4162d34": "Original eager regular-original-profile factory; raw selection/vtable evidence included."
+  },
+  "current155Adaptations": [
+    "Existing protected pure-base registry reader reused, no second file opener.",
+    "Capture Profile prefs/loaded claims on reply UI sequence after actual worker read.",
+    "Factory real SyncService shutdown dependency; current155 image fetcher public config API.",
+    "Weak-safe actual attributes mutation callbacks and watcher generation acknowledgement.",
+    "Narrow supervisor authorization availability subscription; never kReady/health-as-auth.",
+    "No invented optional extension producer API/event."
+  ],
+  "verification": {
+    "exactPatchReplay": true,
+    "sourceOutputCount": 14,
+    "syntheticProjectionProbe": "delivered uncompiled/unrun; seven synthetic selection scenarios",
+    "nativeCompile": false,
+    "nativeRuntime": false,
+    "actualNetworkOrOS": false
+  }
+}

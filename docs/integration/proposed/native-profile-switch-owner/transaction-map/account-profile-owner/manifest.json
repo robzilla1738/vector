@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "base": "Actual frozen native files at source read; after c1ae7a703/2c828f80f and L4 protected registry reader7821771b8 (now present in native source). Root owns GN integration.",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_bootstrap_state.cc",
+      "baselineSha256": "040da3b1b0bf5ea7a15f06945ec1c9c3927cc9df3c9a36b752f403a5ca073b89",
+      "outputSha256": "2d4dd52989898f1e93fde59bc20937a4f3d5fcf13b2836c3ab94a771947b6606"
+    },
+    {
+      "path": "chrome/browser/aux/account_bootstrap_state.h",
+      "baselineSha256": "6e1e546bfedc035182d04f152ad47bce437b6ccc9970806c8b0a25d977d9193a",
+      "outputSha256": "06734242878fbffc8791977b1b73add572a7b36d4af106a61e0a7c3603ef82ff"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_avatar.cc",
+      "baselineSha256": null,
+      "outputSha256": "3e9c4e148076d2ec4c6e1dd26c1d93558eeaf3ef2fae567590eb8b2e257df71a"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_avatar.h",
+      "baselineSha256": null,
+      "outputSha256": "2bc56b09a90b0f93e5644f245e1f9ad5754ef1fa3ecbf22b07d77727272a0745"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_source.cc",
+      "baselineSha256": null,
+      "outputSha256": "5b8dfdd0e54b6f76bc67ec67ba004859f5b44bc5d91da2511d5f9078b8570390"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_source.h",
+      "baselineSha256": null,
+      "outputSha256": "6ae70b66812f8f9d3d0f91d0be7fe3c99cfe621764e1869de015e071d0e5f7d2"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_source_probe.cc",
+      "baselineSha256": null,
+      "outputSha256": "276f265c2e093dd75b6a3cf4d7142ee63b3b00cc27b6ede86f99087879a47739"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": null,
+      "outputSha256": "262ad8da4335c7e13eee37f43dc77002abba411f2b478e05ab6569fdcdc128b3"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_updater.h",
+      "baselineSha256": null,
+      "outputSha256": "bcbbdda4a6a4113f891582f2071dfc8854fe4e569c3d15d0adbd5be7e8839caf"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "20ad863d39c7588f5975f5b58c49dd9acd545524a35548c94ed376bcfe83c926",
+      "outputSha256": "95cbe49f6c6456b1ef13b2313b942ff9fc79224e101dfd8c81b788f9589016c7"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "baselineSha256": "b004038b28ebecb451094b504e23f998d46884ee36e50c625fd87dd0d89973d4",
+      "outputSha256": "393d4d8fd0da4ac5cf8d13d9ec713a7b60124eeef2993920a9a02b0f5535c2c3"
+    },
+    {
+      "path": "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
+      "baselineSha256": "77666099ef37758e6506852fc9ba2045578c824ad42a9fff8628a05a5df504a8",
+      "outputSha256": "665aa1a1c78f6f3d7ad50b0ae87d6055863298c18a39b58ff08b01dba9835d35"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_key.cc",
+      "baselineSha256": "060bed341ebe942c679cfc6617a2f34e18b00b7a14dfbb19367f2969c3fae941",
+      "outputSha256": "1e1fc7f9e5fafad1461d7127b368a307563039ed80ce50d4c21a5000f20eafb7"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_key.h",
+      "baselineSha256": "c9ed884b7cc8e368940a1be4a581408fded3788e2b0647648cbc756501d0f692",
+      "outputSha256": "84fb48fe7786b3a4e1eee508939a42fae05f8eb73b546b11e07e2b5e7099418e"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

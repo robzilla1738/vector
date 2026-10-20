@@ -1,0 +1,993 @@
+--- a/chrome/browser/aux/account_bootstrap_state.cc
++++ b/chrome/browser/aux/account_bootstrap_state.cc
+@@ -186,11 +186,7 @@
+   }
+   return LegacyComplete(state, id, path, user);
+ }
+-}  // namespace
+-
+-std::optional<bool> EvaluateAccountBootstrapState(
+-    const base::Value& accounts, std::string_view profile_id,
+-    const base::FilePath& profile_path, std::string_view account_user_id) {
++std::optional<Dict> NormalizeAccountsState(const base::Value& accounts) {
+   const auto* parsed = accounts.GetIfDict();
+   if (!parsed) return std::nullopt;
+   Dict projected = parsed->Clone();
+@@ -222,7 +218,16 @@
+       }
+     }
+   }
+-  const auto* state = &projected;
++  return projected;
++}
++}  // namespace
++
++std::optional<bool> EvaluateAccountBootstrapState(
++    const base::Value& accounts, std::string_view profile_id,
++    const base::FilePath& profile_path, std::string_view account_user_id) {
++  auto projected = NormalizeAccountsState(accounts);
++  if (!projected) return std::nullopt;
++  const auto* state = &*projected;
+   if (Complete(*state, profile_id, profile_path.value(), account_user_id)) return true;
+   if (profile_path.empty()) return false;
+   const auto normalized = profile_path.StripTrailingSeparators();
+@@ -243,6 +248,13 @@
+   }
+   return false;
+ }
++std::optional<bool> EvaluateLegacyAccountBootstrapState(
++    const base::Value& accounts, std::string_view profile_id,
++    const base::FilePath& profile_path, std::string_view account_user_id) {
++  auto state = NormalizeAccountsState(accounts);
++  if (!state) return std::nullopt;
++  return LegacyComplete(*state, profile_id, profile_path.value(), account_user_id);
++}
+ std::optional<bool> ReadAccountBootstrapState(
+     const base::FilePath& home, std::string profile_id,
+     base::FilePath profile_path, std::string account_user_id) {
+--- a/chrome/browser/aux/account_bootstrap_state.h
++++ b/chrome/browser/aux/account_bootstrap_state.h
+@@ -19,6 +19,11 @@
+     std::string_view profile_id,
+     const base::FilePath& profile_path,
+     std::string_view account_user_id);
++// Original updater's legacy per-profile bootstrap predicate, deliberately
++// separate from explicit account onboarding/global-completion admission.
++std::optional<bool> EvaluateLegacyAccountBootstrapState(
++    const base::Value& accounts, std::string_view profile_id,
++    const base::FilePath& profile_path, std::string_view account_user_id);
+ std::optional<bool> ReadAccountBootstrapState(
+     const base::FilePath& home,
+     std::string profile_id,
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_avatar.cc
+@@ -0,0 +1,137 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Supplied415ea30/415f2f4/415f828/415fab4/415fb9c/415fcfc using current155
++// actual profile attributes and ImageFetcherService, never a UI substitute.
++#include "chrome/browser/aux/account_profile_avatar.h"
++#include "chrome/browser/aux/account_profile_prefs.h"
++#include "base/functional/bind.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/image_fetcher/image_fetcher_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_key.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "components/image_fetcher/core/image_fetcher.h"
++#include "components/image_fetcher/core/image_fetcher_service.h"
++#include "components/image_fetcher/core/request_metadata.h"
++#include "components/prefs/pref_service.h"
++#include "google_apis/gaia/gaia_id.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "ui/gfx/image/image.h"
++#include "url/gurl.h"
++#include <utility>
++namespace aux {
++namespace {
++constexpr auto kAvatarAnnotation = net::DefineNetworkTrafficAnnotation(
++    "aux_account_profile_avatar",
++    R"(semantics {sender:"Aux browser profile" description:"Fetch the actual signed-in account's provided profile image for native profile attributes." trigger:"The real native account-state updater observes a changed account image URL." data:"Image URL from the actual account metadata; no daemon session/Vault credentials." destination:WEBSITE} policy {cookies_allowed:NO setting:"Native account profile image follows the user's actual account metadata." policy_exception_justification:"Preserved account profile presentation."})");
++}  // namespace
++AccountProfileAvatar::AccountProfileAvatar(Profile* profile,
++                                           ProfileAttributesStorage* storage)
++    : profile_(profile), storage_(storage) {}
++AccountProfileAvatar::~AccountProfileAvatar() = default;
++void AccountProfileAvatar::Shutdown() {
++  weak_.InvalidateWeakPtrs();
++  requested_url_.clear();
++  profile_ = nullptr;
++  storage_ = nullptr;
++}
++ProfileAttributesEntry* AccountProfileAvatar::Entry() const {
++  return profile_ && storage_
++      ? storage_->GetProfileAttributesWithPath(profile_->GetPath()) : nullptr;
++}
++void AccountProfileAvatar::SetAccountAttributes(const std::string& name,
++                                                const std::string& email) {
++  auto weak = weak_.GetWeakPtr();
++  if (auto* entry = Entry())
++    entry->SetLocalProfileName(entry->GetLocalProfileName(), true);
++  if (!weak) return;
++  if (auto* entry = Entry()) entry->SetGAIAName(base::UTF8ToUTF16(name));
++  if (!weak) return;
++  if (auto* entry = Entry()) entry->SetGAIAGivenName(std::u16string());
++  if (!weak) return;
++  // Original does not fabricate a Google identity or Sync consent.
++  if (auto* entry = Entry())
++    entry->SetAuthInfo(GaiaId(), base::UTF8ToUTF16(email), false);
++}
++void AccountProfileAvatar::ClearAccountAttributes() {
++  auto weak = weak_.GetWeakPtr();
++  if (auto* entry = Entry()) entry->SetGAIAName(std::u16string());
++  if (!weak) return;
++  if (auto* entry = Entry()) entry->SetGAIAGivenName(std::u16string());
++  if (!weak) return;
++  if (auto* entry = Entry()) entry->SetAuthInfo(GaiaId(), std::u16string(), false);
++}
++void AccountProfileAvatar::RestoreFromPrefs() {
++  if (!profile_) return;
++  auto* prefs = profile_->GetPrefs();
++  const auto email = prefs->FindPreference("aside.account_email")
++      ? prefs->GetString("aside.account_email") : std::string();
++  if (!HasAccountProfileSession(prefs) || email.empty()) {
++    auto weak = weak_.GetWeakPtr();
++    ClearOwnedPicture();
++    if (!weak) return;
++    ClearAccountAttributes();
++    return;
++  }
++  auto weak = weak_.GetWeakPtr();
++  SetAccountAttributes(GetAccountProfileDisplayName(prefs).value_or(email), email);
++  if (!weak) return;
++  Refresh(GetAccountProfilePictureUrl(prefs).value_or(std::string()));
++}
++void AccountProfileAvatar::ClearOwnedPicture() {
++  auto* entry = profile_ && storage_
++      ? storage_->GetProfileAttributesWithPath(profile_->GetPath()) : nullptr;
++  if (!entry) { requested_url_.clear(); return; }
++  const auto last = entry->GetLastDownloadedGAIAPictureUrlWithSize();
++  const auto saved = GetAccountProfilePictureUrl(profile_->GetPrefs());
++  const bool owned = (saved && !saved->empty() && last == *saved) ||
++      (!requested_url_.empty() && (last.empty() || last == requested_url_));
++  requested_url_.clear();
++  if (!owned) return;
++  auto weak = weak_.GetWeakPtr();
++  entry->SetIsUsingGAIAPicture(false);
++  if (!weak || !requested_url_.empty()) return;
++  if (auto* current = Entry()) current->SetGAIAPicture(std::string(), gfx::Image());
++}
++void AccountProfileAvatar::RetryPending() {
++  if (requested_url_.empty()) return;
++  const auto url = requested_url_;
++  Refresh(url);
++}
++void AccountProfileAvatar::Refresh(const std::string& picture_url) {
++  requested_url_ = picture_url;
++  auto* entry = profile_ && storage_
++      ? storage_->GetProfileAttributesWithPath(profile_->GetPath()) : nullptr;
++  if (!entry) return;
++  const GURL url(picture_url);
++  if (picture_url.empty() || !url.is_valid()) { ClearOwnedPicture(); return; }
++  auto weak = weak_.GetWeakPtr();
++  entry->SetIsUsingGAIAPicture(true);
++  if (!weak || requested_url_ != picture_url) return;
++  entry = Entry();
++  if (!entry) return;
++  if (entry->GetLastDownloadedGAIAPictureUrlWithSize() == picture_url &&
++      (entry->GetGAIAPicture() || storage_->IsGAIAPictureLoaded(
++          storage_->StorageKeyFromProfilePath(profile_->GetPath())))) return;
++  auto* key = profile_->GetProfileKey();
++  auto* service = key && key->HasPrefs()
++      ? ImageFetcherServiceFactory::GetForKey(key) : nullptr;
++  auto* fetcher = service ? service->GetImageFetcher(
++      image_fetcher::ImageFetcherConfig::kNetworkOnly) : nullptr;
++  if (!fetcher) return;
++  image_fetcher::ImageFetcherParams params(kAvatarAnnotation, "AuxProfileAvatar");
++  fetcher->FetchImage(url, base::BindOnce(&AccountProfileAvatar::DidFetch,
++      weak_.GetWeakPtr(), picture_url), std::move(params));
++}
++void AccountProfileAvatar::DidFetch(
++    std::string url, const gfx::Image& image,
++    const image_fetcher::RequestMetadata&) {
++  if (!profile_ || !storage_ || requested_url_ != url) return;
++  auto* entry = storage_->GetProfileAttributesWithPath(profile_->GetPath());
++  if (!entry) return;
++  auto weak = weak_.GetWeakPtr();
++  entry->SetGAIAPicture(image.IsEmpty() ? std::string() : url, image);
++  if (!weak || requested_url_ != url) return;
++  if (auto* current = Entry()) current->SetIsUsingGAIAPicture(!image.IsEmpty());
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_avatar.h
+@@ -0,0 +1,36 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_ACCOUNT_PROFILE_AVATAR_H_
++#define CHROME_BROWSER_AUX_ACCOUNT_PROFILE_AVATAR_H_
++#include <string>
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++class Profile;
++class ProfileAttributesStorage;
++class ProfileAttributesEntry;
++namespace gfx { class Image; }
++namespace image_fetcher { struct RequestMetadata; }
++namespace aux {
++// Private real account-updater owner. No replacement profile image/view and no
++// permission grant. Actual entry identity is the loaded profile's fixed path.
++class AccountProfileAvatar {
++ public:
++  AccountProfileAvatar(Profile* profile, ProfileAttributesStorage* storage);
++  ~AccountProfileAvatar();
++  void Shutdown();
++  void Refresh(const std::string& picture_url);
++  void RetryPending();
++  void ClearOwnedPicture();
++  void SetAccountAttributes(const std::string& name, const std::string& email);
++  void ClearAccountAttributes();
++  void RestoreFromPrefs();
++ private:
++  ProfileAttributesEntry* Entry() const;
++  void DidFetch(std::string url, const gfx::Image& image,
++                const image_fetcher::RequestMetadata& metadata);
++  raw_ptr<Profile> profile_;
++  raw_ptr<ProfileAttributesStorage> storage_;
++  std::string requested_url_;
++  base::WeakPtrFactory<AccountProfileAvatar> weak_{this};
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_source.cc
+@@ -0,0 +1,134 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Original4160ce0 selection +40ff8dc/40ff964/40ff848, without UI effects.
++#include "chrome/browser/aux/account_profile_source.h"
++#include "chrome/browser/aux/account_bootstrap_state.h"
++#include "base/strings/string_number_conversions.h"
++#include <utility>
++namespace aux {
++namespace {
++using Dict = base::DictValue;
++std::string Text(const Dict* row, const char* key) {
++  const auto* value = row ? row->FindString(key) : nullptr;
++  return value ? *value : std::string();
++}
++bool HasSession(const Dict& state, int id) {
++  const auto* sessions = state.FindDict("sessions");
++  const auto* row = sessions ? sessions->FindDict(base::NumberToString(id)) : nullptr;
++  return !Text(row, "accessToken").empty() && !Text(row, "refreshToken").empty();
++}
++bool AnySession(const Dict& state) {
++  const auto* rows = state.FindDict("sessions");
++  if (!rows) return false;
++  for (const auto [key, value] : *rows) {
++    const auto* row = value.GetIfDict();
++    if (!Text(row, "accessToken").empty() && !Text(row, "refreshToken").empty()) return true;
++  }
++  return false;
++}
++const Dict* FindAccount(const Dict& state, std::optional<int> id,
++                        const std::string& user = {}) {
++  const auto* rows = state.FindList("accounts");
++  if (!rows) return nullptr;
++  for (const auto& value : *rows) {
++    const auto* row = value.GetIfDict();
++    if (!row || !row->FindInt("id")) continue;
++    if (id ? row->FindInt("id") == id : !user.empty() && Text(row, "userId") == user) return row;
++  }
++  return nullptr;
++}
++bool Authenticated(const Dict& state, const Dict* row) {
++  return row && row->FindInt("id") &&
++      (HasSession(state, *row->FindInt("id")) || Text(row, "authStatus") == "paused");
++}
++const Dict* SelectedAccount(const Dict& state) {
++  const auto* row = FindAccount(state, state.FindInt("currentAccountId").value_or(0));
++  if (row && (Authenticated(state, row) || !AnySession(state))) return row;
++  const auto* rows = state.FindList("accounts");
++  if (rows) for (const auto& value : *rows)
++    if (const auto* candidate = value.GetIfDict(); Authenticated(state, candidate)) return candidate;
++  return nullptr;
++}
++const Dict* CloudBinding(const Dict& state, const AccountProfileSourceInput& input) {
++  const auto* rows = state.FindDict("profileBindings");
++  if (!rows) return nullptr;
++  if (!input.profile_id.empty()) {
++    const auto* row = rows->FindDict(input.profile_id);
++    if (!Text(row, "userId").empty()) return row;
++  }
++  if (!input.profile_path.empty()) for (const auto [key, value] : *rows) {
++    const auto* row = value.GetIfDict();
++    if (!key.empty() && !Text(row, "userId").empty() &&
++        Text(row, "profilePath") == input.profile_path.value()) return row;
++  }
++  return nullptr;
++}
++bool ClaimedElsewhere(const Dict& state, const AccountProfileSourceInput& input,
++                      const std::string& user, int id) {
++  if (const auto* rows = state.FindDict("profileBindings"))
++    for (const auto [key, value] : *rows) {
++      const auto* row = value.GetIfDict();
++      if (key.empty() || Text(row, "userId").empty()) continue;
++      if (Text(row, "userId") == user || (id >= 0 && row->FindInt("accountId") == id)) return true;
++    }
++  for (const auto& claim : input.loaded_claims) {
++    if (claim.profile_path == input.profile_path) continue;
++    if ((!claim.user_id.empty() && claim.user_id == user) ||
++        (id >= 0 && claim.account_id == id)) return true;
++  }
++  return false;
++}
++}  // namespace
++std::optional<AccountProfileProjection> ProjectAccountProfileSource(
++    const base::Value& value, const AccountProfileSourceInput& input) {
++  const auto* state = value.GetIfDict();
++  if (!state) return std::nullopt;
++  AccountProfileProjection result;
++  result.global_onboarding_complete = EvaluateAccountBootstrapState(
++      value, input.profile_id, input.profile_path, input.stored_user_id).value_or(false);
++  const auto* binding = CloudBinding(*state, input);
++  auto user = binding ? Text(binding, "userId") : input.stored_user_id;
++  if (user.empty() && input.stored_account_id && *input.stored_account_id >= 0)
++    user = Text(FindAccount(*state, input.stored_account_id), "userId");
++  const auto* selected = SelectedAccount(*state);
++  if (input.allow_binding && input.is_last_used_loaded_profile && selected &&
++      Authenticated(*state, selected) && user.empty() &&
++      !Text(selected, "email").empty() && !Text(selected, "userId").empty() &&
++      !ClaimedElsewhere(*state, input, Text(selected, "userId"), *selected->FindInt("id"))) {
++    user = Text(selected, "userId");
++    result.auto_bound = true;
++  }
++  const auto* account = user.empty() ? nullptr : FindAccount(*state, std::nullopt, user);
++  const bool disconnected_unclaimed = account && !binding && !Authenticated(*state, account);
++  if (disconnected_unclaimed) account = nullptr;
++  // Missing real selected account never falls back to another current account.
++  if (!account) {
++    result.bootstrap_complete = (user.empty() || disconnected_unclaimed) && EvaluateLegacyAccountBootstrapState(
++        value, input.profile_id, input.profile_path, {}).value_or(false);
++    return result;
++  }
++  result.clear_binding = false;
++  AccountProfileRecord record;
++  record.id = *account->FindInt("id");
++  record.user_id = user;
++  record.name = Text(account, "name");
++  record.email = Text(account, "email");
++  record.picture_url = Text(account, "profileUrl");
++  record.has_persisted_session = HasSession(*state, record.id);
++  record.auth_paused = Text(account, "authStatus") == "paused";
++  result.bootstrap_complete = EvaluateLegacyAccountBootstrapState(
++      value, input.profile_id, input.profile_path, user).value_or(false);
++  if (!input.profile_id.empty() && !record.user_id.empty() &&
++      (!binding || Text(binding, "userId") != record.user_id ||
++       binding->FindInt("accountId") != record.id ||
++       Text(binding, "profilePath") != input.profile_path.value())) {
++    Dict request;
++    request.Set("profileId", input.profile_id);
++    request.Set("userId", record.user_id);
++    if (record.id >= 0) request.Set("accountId", record.id);
++    if (!input.profile_path.empty()) request.Set("profilePath", input.profile_path.value());
++    result.binding_to_persist = std::move(request);
++  }
++  result.account = std::move(record);
++  return result;
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_source.h
+@@ -0,0 +1,45 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_ACCOUNT_PROFILE_SOURCE_H_
++#define CHROME_BROWSER_AUX_ACCOUNT_PROFILE_SOURCE_H_
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/files/file_path.h"
++#include "base/values.h"
++namespace aux {
++struct AccountProfileClaim {
++  base::FilePath profile_path;
++  std::string user_id;
++  std::optional<int> account_id;
++};
++struct AccountProfileSourceInput {
++  base::FilePath profile_path;
++  std::string profile_id;
++  std::string stored_user_id;
++  std::optional<int> stored_account_id;
++  bool allow_binding = false;
++  bool is_last_used_loaded_profile = false;
++  std::vector<AccountProfileClaim> loaded_claims;
++};
++struct AccountProfileRecord {
++  int id = -1;
++  std::string user_id, name, email, picture_url;
++  bool has_persisted_session = false;
++  bool auth_paused = false;
++};
++struct AccountProfileProjection {
++  bool global_onboarding_complete = false;
++  bool bootstrap_complete = false;
++  bool clear_binding = true;
++  bool auto_bound = false;
++  std::optional<AccountProfileRecord> account;
++  // Only actual daemon-bound public metadata. Native owner adds the real index
++  // and actual authenticated loopback request; this object grants no authority.
++  std::optional<base::DictValue> binding_to_persist;
++};
++// Pure source selection. No token values, file contents or mutable registry
++// escape in the result. An unavailable/malformed file stays unavailable.
++std::optional<AccountProfileProjection> ProjectAccountProfileSource(
++    const base::Value& state, const AccountProfileSourceInput& input);
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_source_probe.cc
+@@ -0,0 +1,55 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Synthetic source-projection checks only. No files/Profile/daemon/network/OS.
++#include "chrome/browser/aux/account_profile_source.h"
++#include <utility>
++#include "base/check.h"
++#include "base/json/json_reader.h"
++int main() {
++  auto state = base::JSONReader::Read(R"({
++    "currentAccountId":7,
++    "accounts":[{"id":7,"userId":"fixture-user","name":"Fixture",
++                 "email":"fixture@example.invalid","profileUrl":""}],
++    "sessions":{"7":{"accessToken":"synthetic-presence-only",
++                        "refreshToken":"synthetic-presence-only"}},
++    "profileBindings":{}
++  })", base::JSON_PARSE_RFC);
++  CHECK(state);
++  aux::AccountProfileSourceInput input;
++  input.profile_path = base::FilePath("/disposable/Profile");
++  input.profile_id = "fixture-profile";
++  input.allow_binding = true;
++  input.is_last_used_loaded_profile = true;
++  auto chosen = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(chosen && chosen->auto_bound && !chosen->clear_binding);
++  CHECK(chosen->account && chosen->account->id == 7);
++  CHECK(chosen->binding_to_persist);
++  input.is_last_used_loaded_profile = false;
++  auto not_last = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(not_last && not_last->clear_binding && !not_last->auto_bound);
++  input.is_last_used_loaded_profile = true;
++  input.loaded_claims.push_back({base::FilePath("/disposable/Other"),
++                                  "fixture-user", 7});
++  auto claimed = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(claimed && claimed->clear_binding && !claimed->auto_bound);
++  input.loaded_claims.clear();
++  input.stored_user_id = "missing-user";
++  auto missing = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(missing && missing->clear_binding && !missing->bootstrap_complete);
++  input.stored_user_id = "fixture-user";
++  state->GetDict().Set("sessions", base::DictValue());
++  auto disconnected_unclaimed = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(disconnected_unclaimed && disconnected_unclaimed->clear_binding);
++  base::DictValue binding;
++  binding.Set("userId", "fixture-user");
++  binding.Set("accountId", 7);
++  binding.Set("profilePath", "/disposable/Profile");
++  base::DictValue bindings;
++  bindings.Set("fixture-profile", std::move(binding));
++  state->GetDict().Set("profileBindings", std::move(bindings));
++  auto disconnected_bound = aux::ProjectAccountProfileSource(*state, input);
++  CHECK(disconnected_bound && !disconnected_bound->clear_binding);
++  CHECK(disconnected_bound->account &&
++        !disconnected_bound->account->has_persisted_session &&
++        !disconnected_bound->account->auth_paused);
++  CHECK(!aux::ProjectAccountProfileSource(base::Value(), input));
++}
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -0,0 +1,381 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Original AsideProfileAttributesUpdater415e7e8/4160ce0, current155 ownership.
++#include "chrome/browser/aux/account_profile_updater.h"
++#include <cstdint>
++#include <optional>
++#include <utility>
++#include "base/environment.h"
++#include "base/callback_list.h"
++#include "base/files/file_path_watcher.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/ref_counted.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/bind_post_task.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/threading/sequence_bound.h"
++#include "base/time/time.h"
++#include "chrome/browser/aux/account_profile_avatar.h"
++#include "chrome/browser/aux/account_profile_prefs.h"
++#include "chrome/browser/aux/account_profile_source.h"
++#include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/net/system_network_context_manager.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_attributes_storage_observer.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/sync/sync_service_factory.h"
++#include "components/keyed_service/core/keyed_service.h"
++#include "components/prefs/pref_service.h"
++#include "components/sync/base/pref_names.h"
++#include "components/sync/service/sync_prefs.h"
++#include "components/sync/service/sync_service.h"
++#include "components/sync/service/sync_user_settings.h"
++#include "google_apis/gaia/gaia_id.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "url/gurl.h"
++namespace aux {
++namespace {
++constexpr char kUser[] = "aside.account_user_id";
++constexpr char kAccount[] = "aside.account_id";
++constexpr char kBootstrap[] = "aside.bootstrap_complete";
++constexpr char kOnboarding[] = "aside.onboarding_completed";
++constexpr auto kBindingAnnotation = net::DefineNetworkTrafficAnnotation(
++    "aux_native_account_profile_binding",
++    R"(semantics {sender:"Aux account profile updater" description:"Preserve the real native profile-to-account metadata binding in the local supplied daemon." trigger:"Actual account metadata changes or actual profile removal." data:"Canonical profile ID/path, optional native display-order index and actual selected user/account ID. Installation authorization authenticates the local request. No Vault values." destination:LOCAL} policy {cookies_allowed:NO setting:"Follows actual local browser profile/account binding." policy_exception_justification:"Browser-owned authenticated loopback daemon only."})");
++// Self-owned requests may finish after actual profile removal. They never
++// capture a Profile, mutate a deleted profile or fabricate a successful result.
++class BindingRequest : public base::RefCounted<BindingRequest> {
++ public:
++  static void Start(const char* path, base::DictValue input) {
++    const std::string authorization = BrowserPlatform::Get().authorization();
++    if ((!authorization.starts_with("AsideDaemonSessionToken ") ||
++         authorization.size() <= sizeof("AsideDaemonSessionToken ") - 1) ||
++        !g_browser_process->system_network_context_manager()) return;
++    unsigned port = 21520;
++    if (auto text = base::Environment::Create()->GetVar("AUX_PORT"); text) {
++      if (!base::StringToUint(*text, &port) || !port || port > 65535) return;
++    }
++    auto body = base::WriteJson(input);
++    if (!body) return;
++    auto factory = g_browser_process->system_network_context_manager()
++                       ->GetSharedURLLoaderFactory();
++    if (!factory) return;
++    auto request = base::MakeRefCounted<BindingRequest>();
++    auto resource = std::make_unique<network::ResourceRequest>();
++    resource->url = GURL("http://127.0.0.1:" + base::NumberToString(port) + path);
++    resource->method = "POST";
++    resource->credentials_mode = network::mojom::CredentialsMode::kOmit;
++    resource->redirect_mode = network::mojom::RedirectMode::kError;
++    resource->headers.SetHeader("Authorization", authorization);
++    request->loader_ = network::SimpleURLLoader::Create(
++        std::move(resource), kBindingAnnotation);
++    request->loader_->AttachStringForUpload(*body, "application/json");
++    request->loader_->SetTimeoutDuration(base::Seconds(10));
++    request->loader_->DownloadToString(factory.get(), base::BindOnce(
++        &BindingRequest::Complete, request), 65536);
++  }
++  BindingRequest() = default;
++ private:
++  friend class base::RefCounted<BindingRequest>;
++  ~BindingRequest() = default;
++  void Complete(std::optional<std::string>) { loader_.reset(); }
++  std::unique_ptr<network::SimpleURLLoader> loader_;
++};
++class AccountRegistryWatcher {
++ public:
++  AccountRegistryWatcher(base::FilePath path,
++                         base::RepeatingCallback<void(bool)> changed)
++      : changed_(std::move(changed)) {
++    // Failed installation does not recursively retry/spin. The actual next
++    // refresh can install a replacement watch, matching415fec0/41602e8.
++    installed_ = watcher_.Watch(path, base::FilePathWatcher::Type::kNonRecursive,
++        base::BindRepeating(&AccountRegistryWatcher::Changed,
++                            base::Unretained(this)));
++  }
++  bool installed() const { return installed_; }
++ private:
++  void Changed(const base::FilePath&, bool error) { changed_.Run(error); }
++  base::FilePathWatcher watcher_;
++  base::RepeatingCallback<void(bool)> changed_;
++  bool installed_ = false;
++};
++}  // namespace
++class AccountProfileUpdater final : public KeyedService,
++                                    public ProfileObserver,
++                                    public ProfileAttributesStorageObserver {
++ public:
++  AccountProfileUpdater(Profile* profile, ProfileAttributesStorage* storage)
++      : profile_(profile), path_(profile->GetPath()), avatar_(profile, storage) {
++    profile_observation_.Observe(profile);
++    storage_observation_.Observe(storage);
++    authorization_subscription_ = BrowserPlatform::Get().ObserveDaemonAuthorization(
++        base::BindRepeating(&AccountProfileUpdater::Refresh, weak_.GetWeakPtr(), true));
++    // Add() never invokes during construction. The initial real read also
++    // covers a late subscription when authorization already exists.
++    auto weak = weak_.GetWeakPtr();
++    avatar_.RestoreFromPrefs();
++    if (weak) Refresh(true);
++  }
++  ~AccountProfileUpdater() override = default;
++  void Shutdown() override {
++    weak_.InvalidateWeakPtrs();
++    authorization_subscription_ = {};
++    profile_observation_.Reset();
++    storage_observation_.Reset();
++    ++watch_generation_;
++    watcher_.Reset();
++    avatar_.Shutdown();
++    profile_ = nullptr;
++  }
++  void Refresh(bool allow_binding) {
++    if (!profile_) return;
++    if (reading_) {
++      queued_ = true;
++      queued_allow_binding_ |= allow_binding;
++      return;
++    }
++    reading_ = true;
++    const auto home = StateHome();
++    if (home.empty()) {
++      DidRead(allow_binding, std::nullopt);
++      return;
++    }
++    if (watcher_.is_null()) StartWatch(home);
++    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
++        base::BindOnce(&ReadPrivateAccountRegistry, home),
++        base::BindOnce(&AccountProfileUpdater::DidRead, weak_.GetWeakPtr(),
++                       allow_binding));
++  }
++ private:
++  std::optional<AccountProfileSourceInput> CaptureSourceInput(bool allow_binding) {
++    auto weak = weak_.GetWeakPtr();
++    AccountProfileSourceInput input;
++    input.profile_path = path_;
++    input.profile_id = GetProfileId(profile_);
++    if (!weak) return std::nullopt;
++    auto* prefs = profile_->GetPrefs();
++    input.stored_user_id = prefs->GetString(kUser);
++    const int id = prefs->GetInteger(kAccount);
++    if (id >= 0) input.stored_account_id = id;
++    input.allow_binding = allow_binding;
++    input.is_last_used_loaded_profile =
++        ProfileManager::GetLastUsedProfileIfLoaded() == profile_;
++    auto* manager = g_browser_process->profile_manager();
++    if (manager) for (auto* loaded : manager->GetLoadedProfiles()) {
++      if (loaded->IsOffTheRecord()) continue;
++      auto* other = loaded->GetPrefs();
++      AccountProfileClaim claim;
++      claim.profile_path = loaded->GetPath();
++      claim.user_id = other->GetString(kUser);
++      const int account = other->GetInteger(kAccount);
++      if (account >= 0) claim.account_id = account;
++      input.loaded_claims.push_back(std::move(claim));
++    }
++    return input;
++  }
++  void StartWatch(const base::FilePath& home) {
++    const uint64_t generation = ++watch_generation_;
++    watcher_ = base::SequenceBound<AccountRegistryWatcher>(
++        base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}),
++        home.AppendASCII("accounts.json"),
++        base::BindPostTask(base::SingleThreadTaskRunner::GetCurrentDefault(),
++            base::BindRepeating(&AccountProfileUpdater::RegistryChanged,
++                                weak_.GetWeakPtr())));
++    watcher_.AsyncCall(&AccountRegistryWatcher::installed).Then(base::BindOnce(
++        &AccountProfileUpdater::WatchInstalled, weak_.GetWeakPtr(), generation));
++  }
++  void WatchInstalled(uint64_t generation, bool installed) {
++    if (generation == watch_generation_ && !installed) watcher_.Reset();
++  }
++  void RegistryChanged(bool error) {
++    if (error) {
++      ++watch_generation_;
++      watcher_.Reset();
++    }
++    Refresh(true);
++  }
++  void OnProfileInitializationComplete(Profile* profile) override {
++    if (profile == profile_) avatar_.RetryPending();
++  }
++  void OnProfileWillBeDestroyed(Profile* profile) override {
++    if (profile == profile_) Shutdown();
++  }
++  void OnProfileWillBeRemoved(const base::FilePath& path) override {
++    if (path != path_ || !profile_) return;
++    base::DictValue input;
++    const auto& id = profile_->GetPrefs()->GetString("aside.profile_id");
++    if (!id.empty()) input.Set("profileId", id);
++    if (!path_.empty()) input.Set("profilePath", path_.value());
++    BindingRequest::Start("/accounts/profile-binding/delete", std::move(input));
++  }
++  void ResetSyncForAccount() {
++    auto weak = weak_.GetWeakPtr();
++    auto* prefs = profile_->GetPrefs();
++    syncer::SyncPrefs sync(prefs);
++    const auto user = prefs->GetString(kUser);
++    if (!user.empty()) sync.ClearEncryptionBootstrapTokenForAccount(GaiaId(user));
++    else prefs->ClearPref(syncer::prefs::kSyncEncryptionBootstrapToken);
++    if (!weak) return;
++    if (sync.IsInitialSyncFeatureSetupComplete())
++      prefs->SetDict(syncer::prefs::kSyncEncryptionBootstrapTokenPerAccount,
++                     base::DictValue());
++    if (!weak) return;
++    sync.ClearCachedPassphraseType();
++  }
++  void CompleteSyncSetup() {
++    auto* service = SyncServiceFactory::GetForProfile(profile_);
++    if (service) {
++      auto* settings = service->GetUserSettings();
++      if (!settings->IsInitialSyncFeatureSetupComplete())
++        settings->SetInitialSyncFeatureSetupComplete();
++    } else {
++      syncer::SyncPrefs sync(profile_->GetPrefs());
++      if (!sync.IsInitialSyncFeatureSetupComplete())
++        sync.SetInitialSyncFeatureSetupComplete();
++    }
++  }
++  void DidRead(bool allow_binding, std::optional<base::DictValue> state) {
++    if (!profile_) return;
++    reading_ = false;
++    auto weak = weak_.GetWeakPtr();
++    if (state) {
++      auto input = CaptureSourceInput(allow_binding);
++      if (!weak || !input) return;
++      auto projection = ProjectAccountProfileSource(
++          base::Value(std::move(*state)), *input);
++      if (projection) Apply(std::move(*projection));
++      else avatar_.RestoreFromPrefs();
++    } else avatar_.RestoreFromPrefs();
++    if (!weak || !queued_) return;
++    queued_ = false;
++    const bool allow = std::exchange(queued_allow_binding_, false);
++    Refresh(allow);
++  }
++  bool ApplyAccountPreferences(const AccountProfileRecord& account, bool present) {
++    auto weak = weak_.GetWeakPtr();
++    auto* prefs = profile_->GetPrefs();
++    SetAccountProfileBinding(prefs, account.user_id,
++        account.id >= 0 ? std::optional<int>(account.id) : std::nullopt);
++    if (!weak) return false;
++    if (present && account.auth_paused) SetAccountProfileAuthPaused(prefs, true);
++    if (!weak) return false;
++    SetAccountProfileEmail(prefs, present ? account.email : std::string(),
++                           present && account.has_persisted_session);
++    if (!weak) return false;
++    if (!present || !account.auth_paused) SetAccountProfileAuthPaused(prefs, false);
++    if (!weak) return false;
++    SetAccountProfileDisplay(prefs, present ? account.name : std::string(),
++                            present ? account.picture_url : std::string());
++    return !!weak;
++  }
++  void Apply(AccountProfileProjection source) {
++    auto weak = weak_.GetWeakPtr();
++    auto* prefs = profile_->GetPrefs();
++    if (source.global_onboarding_complete)
++      g_browser_process->local_state()->SetBoolean(kOnboarding, true);
++    if (!weak) return;
++    // Original auto-binding writes actual account preference presentation and
++    // setup state before the common per-profile bootstrap branch; the common
++    // authenticated branch below may visit the same unchanged prefs again.
++    if (source.auto_bound) {
++      if (!ApplyAccountPreferences(*source.account, true)) return;
++      CompleteSyncSetup();
++      if (!weak) return;
++    }
++    const bool was_complete = prefs->GetBoolean(kBootstrap);
++    prefs->SetBoolean(kBootstrap, source.bootstrap_complete);
++    if (!weak) return;
++    if (was_complete && !source.bootstrap_complete) ResetSyncForAccount();
++    if (!weak) return;
++    if (source.clear_binding) {
++      avatar_.ClearOwnedPicture();
++      if (!weak) return;
++      // Original clear branch also resets source SyncPrefs independently of
++      // whether bootstrap had just transitioned true->false (4160ce0+82c).
++      ResetSyncForAccount();
++      if (!weak) return;
++      ClearAccountProfileBinding(prefs);
++      if (!weak) return;
++      avatar_.ClearAccountAttributes();
++      return;
++    }
++    const auto& account = *source.account;
++    if (source.binding_to_persist) {
++      if (auto index = GetProfileIndex(profile_))
++        source.binding_to_persist->Set("profileIndex", *index);
++      BindingRequest::Start("/accounts/profile-binding",
++                            std::move(*source.binding_to_persist));
++    }
++    if (!weak) return;
++    const bool present = (account.has_persisted_session || account.auth_paused) &&
++                          !account.email.empty();
++    if (!present) {
++      // Original clears only its old owned image before clearing the saved
++      // account image URL; reversing this loses the ownership proof.
++      avatar_.ClearOwnedPicture();
++      if (!weak || !ApplyAccountPreferences(account, false)) return;
++      avatar_.ClearAccountAttributes();
++      return;
++    }
++    if (!ApplyAccountPreferences(account, true)) return;
++    avatar_.SetAccountAttributes(account.name.empty() ? account.email : account.name,
++                                  account.email);
++    if (!weak) return;
++    avatar_.Refresh(account.picture_url);
++    if (!weak) return;
++    CompleteSyncSetup();
++  }
++  raw_ptr<Profile> profile_;
++  const base::FilePath path_;
++  AccountProfileAvatar avatar_;
++  base::CallbackListSubscription authorization_subscription_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::ScopedObservation<ProfileAttributesStorage,
++      ProfileAttributesStorageObserver> storage_observation_{this};
++  base::SequenceBound<AccountRegistryWatcher> watcher_;
++  uint64_t watch_generation_ = 0;
++  bool reading_ = false;
++  bool queued_ = false;
++  bool queued_allow_binding_ = false;
++  base::WeakPtrFactory<AccountProfileUpdater> weak_{this};
++};
++AccountProfileUpdaterFactory::AccountProfileUpdaterFactory()
++    : ProfileKeyedServiceFactory("AuxProfileAttributesUpdater",
++        ProfileSelections::Builder()
++            .WithRegular(ProfileSelection::kOriginalOnly).Build()) {
++  DependsOn(SyncServiceFactory::GetInstance());
++}
++AccountProfileUpdaterFactory::~AccountProfileUpdaterFactory() = default;
++AccountProfileUpdaterFactory* AccountProfileUpdaterFactory::GetInstance() {
++  static base::NoDestructor<AccountProfileUpdaterFactory> instance;
++  return instance.get();
++}
++AccountProfileUpdater* AccountProfileUpdaterFactory::GetForProfile(Profile* profile) {
++  return static_cast<AccountProfileUpdater*>(
++      GetInstance()->GetServiceForBrowserContext(profile, true));
++}
++std::unique_ptr<KeyedService>
++AccountProfileUpdaterFactory::BuildServiceInstanceForBrowserContext(
++    content::BrowserContext* context) const {
++  auto* manager = g_browser_process->profile_manager();
++  if (!manager) return nullptr;
++  return std::make_unique<AccountProfileUpdater>(
++      Profile::FromBrowserContext(context), &manager->GetProfileAttributesStorage());
++}
++bool AccountProfileUpdaterFactory::ServiceIsCreatedWithBrowserContext() const {
++  return true;
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/aux/account_profile_updater.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_ACCOUNT_PROFILE_UPDATER_H_
++#define CHROME_BROWSER_AUX_ACCOUNT_PROFILE_UPDATER_H_
++#include <memory>
++#include "base/no_destructor.h"
++#include "chrome/browser/profiles/profile_keyed_service_factory.h"
++class Profile;
++namespace aux {
++class AccountProfileUpdater;
++class AccountProfileUpdaterFactory final : public ProfileKeyedServiceFactory {
++ public:
++  static AccountProfileUpdaterFactory* GetInstance();
++  static AccountProfileUpdater* GetForProfile(Profile* profile);
++ private:
++  friend base::NoDestructor<AccountProfileUpdaterFactory>;
++  AccountProfileUpdaterFactory();
++  ~AccountProfileUpdaterFactory() override;
++  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
++      content::BrowserContext* context) const override;
++  bool ServiceIsCreatedWithBrowserContext() const override;
++};
++}  // namespace aux
++#endif
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -66,11 +66,21 @@
+   supervisor_->Start();
+   return true;
+ }
++base::CallbackListSubscription BrowserPlatform::ObserveDaemonAuthorization(
++    base::RepeatingClosure callback) {
++  return authorization_observers_.Add(std::move(callback));
++}
+ void BrowserPlatform::DidChangeDaemonState(DaemonSupervisor::State state,
+                                           std::string error) {
+   if (state == DaemonSupervisor::State::kFailed) {
+     LOG(ERROR) << error;
+   }
++  const bool authorized = state == DaemonSupervisor::State::kReady &&
++      authorization().starts_with("AsideDaemonSessionToken ") &&
++      authorization().size() > sizeof("AsideDaemonSessionToken ") - 1;
++  const bool became_authorized = authorized && !authorization_was_available_;
++  authorization_was_available_ = authorized;
++  if (became_authorized) authorization_observers_.Notify();
+   if (state != DaemonSupervisor::State::kReady || public_key_ || loading_key_) {
+     return;
+   }
+--- a/chrome/browser/aux/browser_platform.h
++++ b/chrome/browser/aux/browser_platform.h
+@@ -6,6 +6,7 @@
+ #include <vector>
+ 
+ #include "base/no_destructor.h"
++#include "base/callback_list.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+@@ -24,6 +25,10 @@
+                                           const base::FilePath&)> installer);
+   CdpRequestFilter CreateBrowserCdpFilter(uint16_t port) const;
+   const std::string& authorization() const;
++  // UI sequence. Add never calls inline; caller may inspect authorization()
++  // after subscribing to cover an already-authenticated supervisor.
++  base::CallbackListSubscription ObserveDaemonAuthorization(
++      base::RepeatingClosure callback);
+ 
+  private:
+   friend class base::NoDestructor<BrowserPlatform>;
+@@ -38,6 +43,8 @@
+   base::TimeTicks startup_deadline_;
+   base::RepeatingTimer startup_timer_;
+   bool loading_key_ = false;
++  bool authorization_was_available_ = false;
++  base::RepeatingClosureList authorization_observers_;
+   std::unique_ptr<DaemonSupervisor> supervisor_;
+   std::vector<ComponentManifest> components_;
+   std::optional<crypto::keypair::PublicKey> public_key_;
+--- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
++++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+@@ -53,6 +53,9 @@
+ #include "chrome/browser/browser_actuator/browser_actuator_service_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/account_profile_updater.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #endif
+@@ -731,6 +734,9 @@
+   // ---------------------------------------------------------------------------
+   // Common factory registrations (Please keep this list ordered without taking
+   // into consideration buildflags, repeating buildflags is ok):
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux::AccountProfileUpdaterFactory::GetInstance();
++#endif
+   AboutSigninInternalsFactory::GetInstance();
+   AboutThisSiteServiceFactory::GetInstance();
+   AcceptLanguagesServiceFactory::GetInstance();
+--- a/chrome/browser/profiles/profile_key.cc
++++ b/chrome/browser/profiles/profile_key.cc
+@@ -22,6 +22,10 @@
+   if (original_key_)
+     return original_key_;
+   return this;
++}
++
++bool ProfileKey::HasPrefs() const {
++  return prefs_ != nullptr;
+ }
+ 
+ PrefService* ProfileKey::GetPrefs() {
+--- a/chrome/browser/profiles/profile_key.h
++++ b/chrome/browser/profiles/profile_key.h
+@@ -32,6 +32,8 @@
+   // Profile-specific APIs needed in reduced mode:
+   ProfileKey* GetOriginalKey();
+   PrefService* GetPrefs();
++  // Non-mutating readiness query matching the supplied avatar owner guard.
++  bool HasPrefs() const;
+   void SetPrefs(PrefService* prefs);
+ 
+   // Gets a pointer to a ProtoDatabaseProvider, this instance is owned by

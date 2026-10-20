@@ -1,0 +1,20 @@
+{
+  "frameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "selectionBytes": {
+    "address": "0xdf39a30",
+    "bytesHex": "01000000000000000000000000000000"
+  },
+  "factoryVtable": {
+    "address": "0xe1ee4d0",
+    "createdWithBrowserContextEntry": {
+      "offset": "0x78",
+      "encodedHex": "409e200000001000",
+      "low36Address": "0x209e40"
+    },
+    "buildEntry": {
+      "offset": "0x80",
+      "encodedHex": "342d160400001000",
+      "low36Address": "0x4162d34"
+    }
+  }
+}
