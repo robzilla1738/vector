@@ -1,0 +1,209 @@
+--- a/chrome/browser/aux/ntp_prerender_service.cc
++++ b/chrome/browser/aux/ntp_prerender_service.cc
+@@ -39,6 +39,8 @@
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "extensions/common/extension.h"
+ #include "extensions/common/constants.h"
+ #include "extensions/common/manifest_handlers/chrome_url_overrides_handler.h"
+ #include "net/http/http_request_headers.h"
+@@ -144,11 +146,16 @@
+ class NtpPrerenderService final : public base::SupportsUserData::Data,
+                                   public ProfileObserver,
+                                   public BrowserCollectionObserver,
++                                  public extensions::ExtensionRegistryObserver,
+                                   public content::PrerenderHandle::Observer {
+  public:
+   explicit NtpPrerenderService(Profile* profile)
+       : profile_(profile->GetWeakPtr()) {
+     profile_observation_.Observe(profile);
++    auto* registry = extensions::ExtensionRegistry::Get(profile);
++    extension_observation_.Observe(registry);
++    profile->GetPrefs()->SetBoolean("aside.account_password_extension_available",
++        registry->enabled_extensions().Contains(kAgentExtensionId));
+     browser_observation_.Observe(
+         ProfileBrowserCollection::GetForProfile(profile));
+     preferences_.Init(profile->GetPrefs());
+@@ -235,6 +242,21 @@
+     Schedule(browser, base::TimeDelta());
+     return result;
+   }
++  void OnExtensionLoaded(content::BrowserContext*,
++                         const extensions::Extension* extension) override {
++    if (profile_ && extension->id() == kAgentExtensionId) {
++      profile_->GetPrefs()->SetBoolean("aside.account_password_extension_available", true);
++      PreferenceChanged();
++    }
++  }
++  void OnExtensionUnloaded(content::BrowserContext*,
++                           const extensions::Extension* extension,
++                           extensions::UnloadedExtensionReason) override {
++    if (profile_ && extension->id() == kAgentExtensionId) {
++      profile_->GetPrefs()->SetBoolean("aside.account_password_extension_available", false);
++      PreferenceChanged();
++    }
++  }
+   void OnBrowserActivated(BrowserWindowInterface* browser) override {
+     Schedule(browser, kScheduleDelay);
+   }
+@@ -243,6 +265,7 @@
+     preferences_.RemoveAll();
+     browser_observation_.Reset();
+     profile_observation_.Reset();
++    extension_observation_.Reset();
+     close_subscription_ = {};
+     source_.reset();
+     profile_.reset();
+@@ -340,6 +363,9 @@
+   GURL url_;
+   gfx::Size size_;
+   base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                         extensions::ExtensionRegistryObserver>
++      extension_observation_{this};
+   base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
+       browser_observation_{this};
+   base::WeakPtrFactory<NtpPrerenderService> weak_{this};
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -138,17 +138,6 @@
+   size_t index_ = 0;
+ };
+ 
+-bool GateRoute(const GURL& url) {
+-  if (url.host() != aux::kAgentExtensionId &&
+-      url.host() != aux::kVaultExtensionId) {
+-    return false;
+-  }
+-  if (url.host() == aux::kVaultExtensionId) return url.path() == "/popup.html";
+-  return url.path() == "/main.html" &&
+-         (url.ref().empty() || url.ref() == "/" ||
+-          url.ref().starts_with("/auth/") ||
+-          url.ref().starts_with("/onboarding/"));
+-}
+ }  // namespace
+ base::ListValue ReadAuxProfileSecurity(base::FilePath home,
+                                        base::ListValue profiles) {
+@@ -238,8 +227,7 @@
+       return RespondNow(Error("Profile route is not allowed"));
+     }
+     if (url.SchemeIs("chrome-extension") &&
+-        url.host() != aux::kAgentExtensionId &&
+-        url.host() != aux::kVaultExtensionId) {
++        url.host() != aux::kAgentExtensionId) {
+       return RespondNow(Error("Extension route is not allowed"));
+     }
+     bool found = false;
+@@ -253,15 +241,21 @@
+     if (!found) {
+       return RespondNow(Error("Profile is not registered"));
+     }
+-    base::ListValue selected;
+-    for (auto& value : profiles) {
+-      const auto* candidate = value.GetDict().FindString("profilePath");
+-      if (candidate && *candidate == *path) selected.Append(std::move(value));
+-    }
+-    FetchAuxProfileSecurity(aux::StateHome(), std::move(selected),
+-        base::BindOnce(&AuxAccountFunction::DidCheckRoute,
+-                       base::RetainedRef(this), base::FilePath(*path), url));
+-    return RespondLater();
++    // Opening a registered browser profile is not a Vault-unlock operation.
++    // The exact native path/ID and allowed destination were validated above;
++    // the supplied Agent resolves its actual account and authenticates RPCs.
++    if (profile()->IsOffTheRecord()) {
++      return RespondNow(Error("Cross-profile routes are unavailable in private browsing"));
++    }
++    auto* target_profile =
++        g_browser_process->profile_manager()->GetProfileByPath(base::FilePath(*path));
++    if (!target_profile) {
++      return RespondNow(Error("Selected profile is not loaded"));
++    }
++    NavigateParams navigation(target_profile, url, ui::PAGE_TRANSITION_LINK);
++    navigation.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    Navigate(&navigation);
++    return RespondNow(WithArguments(navigation.navigated_or_inserted_contents != nullptr));
+   }
+   if (!args().empty()) {
+     return RespondNow(Error("This method takes no arguments"));
+@@ -308,37 +302,4 @@
+   }
+   Respond(Error("Calling profile is no longer registered"));
+ }
+-void AuxAccountFunction::DidCheckRoute(base::FilePath path,
+-                                       GURL url,
+-                                       base::ListValue profiles) {
+-  if (!browser_context() || !g_browser_process ||
+-      !g_browser_process->profile_manager()) {
+-    Respond(Error("Profile is no longer available"));
+-    return;
+-  }
+-  bool unlocked = false;
+-  for (const auto& value : profiles) {
+-    if (value.GetDict().FindString("profilePath") &&
+-        *value.GetDict().FindString("profilePath") == path.value()) {
+-      unlocked = !value.GetDict().FindBool("isLocked").value_or(true);
+-    }
+-  }
+-  if (!unlocked && !GateRoute(url)) {
+-    Respond(WithArguments(false));
+-    return;
+-  }
+-  auto* target = g_browser_process->profile_manager()->GetProfileByPath(path);
+-  if (!target) {
+-    Respond(Error("Selected profile is not loaded"));
+-    return;
+-  }
+-  if (profile()->IsOffTheRecord()) {
+-    Respond(Error("Cross-profile routes are unavailable in private browsing"));
+-    return;
+-  }
+-  NavigateParams navigation(target, url, ui::PAGE_TRANSITION_LINK);
+-  navigation.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+-  Navigate(&navigation);
+-  Respond(WithArguments(navigation.navigated_or_inserted_contents != nullptr));
+-}
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.h
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.h
+@@ -19,7 +19,6 @@
+  private:
+   void DidReadProfiles(base::ListValue profiles);
+   void DidSign(std::optional<std::string> signature);
+-  void DidCheckRoute(base::FilePath path, GURL url, base::ListValue profiles);
+ };
+ #define AUX_ACCOUNT_FUNCTION(Class, Method, Histogram) \
+   class Class final : public AuxAccountFunction {      \
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -260,23 +260,12 @@
+   }
+   void ShowFor(Profile* profile) {
+     BindProfile(profile);
+-    const uint64_t generation = ++generation_;
+-    FetchAuxProfileSecurity(
+-        aux::StateHome(), ProfileIdentity(profile),
+-        base::BindOnce(
+-            [](uint64_t generation, base::WeakPtr<Profile> profile,
+-               base::ListValue) {
+-              auto& manager = Get();
+-              if (manager.generation_ != generation || !profile ||
+-                  manager.profile_.get() != profile.get()) {
+-                return;
+-              }
+-              // The supplied popup resolves real account/security state in its
+-              // own surface; neither lock state selects the main-page entry.
+-              manager.Show();
+-            },
+-            generation, profile->GetWeakPtr()));
+-  }
++    ++generation_;
++    // The supplied popup resolves its account itself. A discarded Vault status
++    // request must not delay a local tool that no longer has a built-in vault.
++    Show();
++  }
++
+   void Show() {
+     const GURL url("chrome-extension://" + std::string(aux::kAgentExtensionId) +
+                    "/minipopup.html#/");

@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": "d08340c65478129b0f7f80df4f6a0a230861baacc6aeb29fb6b2d502c454faa0",
+      "outputSha256": "60ab01e3eb21ee50c9cf516889c5926450c298b82bc387e58244f2cd401f1b3e"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4",
+      "outputSha256": "3e149d60dd46ea5d1ffbb68c9d819eeb05d450f786693bcb249e6a31278e113b"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.h",
+      "baselineSha256": "a682a979784c0235aa6dd3cd5277d9cc324da57824d74341aebcdd2c3e28044a",
+      "outputSha256": "075c061c65ef53af23ef252e12053d5660d3f9c954f05b7923cb4de092718b1f"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "9701e2a0c8b5a53acf4a5c14c55e276726be804c290edd56b9cb9ae733e0f289",
+      "outputSha256": "3bf369f590eced2b53545dced70a85d823c1938fd87914c557a9f48b250dfdbc"
+    }
+  ]
+}
