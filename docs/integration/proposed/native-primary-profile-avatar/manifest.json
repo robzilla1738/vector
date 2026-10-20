@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "bc1d43975 native-primary-menu-api155 / root264; renderer unchanged actual264",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "11f56f57307bb42d639a9a7c33b1e4c2dcab080ebf87dabf73d5dd654c09397c",
+      "outputSha256": "1356b3e0c2a481c50eb24c1372b10013906b869041856528e274e7c08ff135cb",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h",
+      "baselineSha256": "933d4670de8453a64f45f41ad7efe2d93e983668abde871c8e9731d1d755d319",
+      "outputSha256": "35a069311a38fcf0185f121c96c3fffad64fe2d7ff7454111f8ee57a9b14aba8",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "baselineSha256": "ab7b138373adc8b5ac3c3db850a8d045dc9e8bd93f8ebf98777a4a292a44bb7c",
+      "outputSha256": "41fa975a4cae6e2815b9d63431143b2b7b66ad40e1d2c5bfd9c0b2553c75f3f1",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

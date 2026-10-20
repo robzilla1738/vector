@@ -1,0 +1,181 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -20,18 +20,18 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/values.h"
++#include "build/build_config.h"
+ #include "cc/paint/paint_flags.h"
+-#include "build/build_config.h"
+-#include "chrome/browser/buildflags.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_gate.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/aux/profile_security_client.h"
+-#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/favicon/favicon_service_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+@@ -47,10 +47,12 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/views/frame/aux_icon_picker.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
+-#include "chrome/browser/ui/views/profiles/aux_profile_display_label.h"
+ #include "chrome/browser/ui/views/frame/aux_task_review_bubble.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
++#include "chrome/browser/ui/views/profiles/aux_profile_display_label.h"
++#include "chrome/browser/ui/views/profiles/profile_monogram_avatar_view.h"
+ #include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
+ #include "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h"
+ #include "chrome/browser/ui/views/tabs/dragging/tab_drag_target.h"
+@@ -66,11 +68,11 @@
+ #include "components/tabs/public/tab_context_menu_command.h"
+ #include "components/tabs/public/tab_interface.h"
+ #include "components/vector_icons/vector_icons.h"
++#include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_contents.h"
+-#include "content/public/browser/storage_partition.h"
+-#include "ui/base/base_window.h"
+ #include "third_party/skia/include/core/SkPathBuilder.h"
+ #include "ui/base/accelerators/accelerator.h"
++#include "ui/base/base_window.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+@@ -626,6 +628,26 @@
+     UpdateColors();
+   }
+ 
++  // Supplied4579dec creates the original monogram leaf only for the current
++  // header's genuine monogram state. Other rows retain their actual image.
++  void SetProfileAvatar(const ui::ImageModel& image,
++                        bool show_monogram,
++                        std::u16string_view name) {
++    preserve_source_image_ = true;
++    source_icon_ = image;
++    icon_view_->SetImage(image);
++    if (!show_monogram) {
++      return;
++    }
++    icon_view_->SetVisible(false);
++    auto monogram = std::make_unique<ProfileMonogramAvatarView>(name);
++    monogram->SetDiameter(16);
++    monogram->SetFontSize(12);
++    monogram->SetCanProcessEventsWithinSubtree(false);
++    monogram->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
++    AddChildViewAt(std::move(monogram), 0);
++  }
++
+   void SetSubmenuCallback(base::RepeatingClosure callback) {
+     submenu_callback_ = std::move(callback);
+     SetCallback(submenu_callback_);
+@@ -690,13 +712,14 @@
+ 
+  private:
+   base::RepeatingClosure submenu_callback_;
++  bool preserve_source_image_ = false;
+ 
+   void UpdateColors() {
+     label_->SetEnabledColor(
+         ResolveProfileMenuColor(this, ProfileMenuColor::kForeground));
+     const SkColor secondary =
+         ResolveProfileMenuColor(this, ProfileMenuColor::kSecondary);
+-    if (source_icon_.IsVectorIcon()) {
++    if (!preserve_source_image_ && source_icon_.IsVectorIcon()) {
+       const auto icon = source_icon_.GetVectorIcon();
+       icon_view_->SetImage(ui::ImageModel::FromVectorIcon(
+           *icon.vector_icon(), secondary, kMenuRowIcon, icon.badge_icon()));
+@@ -761,11 +784,13 @@
+       .AsImageSkia();
+ }
+ 
+-ui::ImageModel MenuAvatar(ProfileAttributesEntry* entry) {
+-  ui::ImageModel chosen = AuxProfileIconImage(entry->GetPath(), kMenuRowIcon);
+-  return chosen.IsEmpty()
+-             ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon))
+-             : chosen;
++ui::ImageModel PrimaryRegistryAvatar(ProfileAttributesEntry* entry) {
++  // Supplied457415c/457417c: actual entry image20, high-res allowed, circle20.
++  profiles::PlaceholderAvatarIconParams params;
++  params.has_padding = false;
++  return ui::ImageModel::FromImage(profiles::GetSizedAvatarIcon(
++      entry->GetAvatarIcon(20, /*use_high_res_file=*/true, params), 20, 20,
++      profiles::SHAPE_CIRCLE));
+ }
+ 
+ std::vector<ProfileAttributesEntry*> AllProfiles() {
+@@ -1006,15 +1031,27 @@
+ 
+     const base::FilePath current = browser_->GetProfile()->GetPath();
+     const auto entries = PrimaryProfileRoster();
++    aux::VerticalTabSidebarProfileButton::MenuAvatarPresentation presentation;
++    if (const auto* source =
++            views::AsViewClass<aux::VerticalTabSidebarProfileButton>(
++                GetAnchorView())) {
++      presentation = source->CaptureMenuAvatarPresentation();
++    }
+     for (ProfileAttributesEntry* entry : entries) {
+       const base::FilePath path = entry->GetPath();
++      const auto label = aux::ProfileDisplayLabel(
++          entry, g_browser_process->profile_manager()->GetProfileByPath(path),
++          entries.size());
++      auto image = PrimaryRegistryAvatar(entry);
++      if (path == current && !presentation.image.IsEmpty()) {
++        image = presentation.image;
++      }
+       auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(
+           base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this),
+                               path),
+-          MenuAvatar(entry),
+-          aux::ProfileDisplayLabel(
+-              entry, g_browser_process->profile_manager()->GetProfileByPath(path),
+-              entries.size())));
++          image, label));
++      row->SetProfileAvatar(
++          image, path == current && presentation.show_monogram, label);
+       if (path == current) {
+         row->AddTrailingIcon(kCheckIcon);
+       }
+--- a/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h
+@@ -31,6 +31,13 @@
+  public:
+   explicit VerticalTabSidebarProfileButton(PressedCallback callback);
+   ~VerticalTabSidebarProfileButton() override;
++
++  struct MenuAvatarPresentation {
++    ui::ImageModel image;
++    bool show_monogram = false;
++  };
++  // Original465d7e0 captures the actual rendered avatar at press time.
++  MenuAvatarPresentation CaptureMenuAvatarPresentation() const;
+ 
+   void SetDisplayName(std::u16string_view name, bool auth_paused);
+   void SetAvatarImage(ui::ImageModel image, int diameter,
+--- a/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc
+@@ -106,6 +106,16 @@
+   SetTooltipText(accessible);
+   UpdateMode();
+ }
++VerticalTabSidebarProfileButton::MenuAvatarPresentation
++VerticalTabSidebarProfileButton::CaptureMenuAvatarPresentation() const {
++  MenuAvatarPresentation result;
++  result.show_monogram = monogram_->GetVisible();
++  if (!result.show_monogram && image_->GetVisible()) {
++    result.image = image_->GetImageModel();
++  }
++  return result;
++}
++
+ void VerticalTabSidebarProfileButton::SetAvatarImage(
+     ui::ImageModel image, int diameter, bool show_monogram, bool profile_image) {
+   avatar_diameter_ = std::max(0, diameter);

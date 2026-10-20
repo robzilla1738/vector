@@ -1,0 +1,53 @@
+{
+  "chrome/browser/ui/views/frame/aux_sidebar_view.cc": [
+    {
+      "before": "#include \"chrome/browser/ui/views/frame/aux_icon_picker.h\"",
+      "after": "#include \"chrome/browser/ui/views/frame/aux_icon_picker.h\"\n#include \"chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h\"\n#include \"chrome/browser/ui/views/profiles/profile_monogram_avatar_view.h\"",
+      "count": 1
+    },
+    {
+      "before": "  void SetSubmenuCallback(base::RepeatingClosure callback) {",
+      "after": "  // Supplied4579dec creates the original monogram leaf only for the current\n  // header's genuine monogram state. Other rows retain their actual image.\n  void SetProfileAvatar(const ui::ImageModel& image,\n                         bool show_monogram,\n                         std::u16string_view name) {\n    preserve_source_image_ = true;\n    source_icon_ = image;\n    icon_view_->SetImage(image);\n    if (!show_monogram)\n      return;\n    icon_view_->SetVisible(false);\n    auto monogram = std::make_unique<ProfileMonogramAvatarView>(name);\n    monogram->SetDiameter(16);\n    monogram->SetFontSize(12);\n    monogram->SetCanProcessEventsWithinSubtree(false);\n    monogram->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));\n    AddChildViewAt(std::move(monogram), 0);\n  }\n\n  void SetSubmenuCallback(base::RepeatingClosure callback) {",
+      "count": 1
+    },
+    {
+      "before": "  base::RepeatingClosure submenu_callback_;\n\n  void UpdateColors()",
+      "after": "  base::RepeatingClosure submenu_callback_;\n  bool preserve_source_image_ = false;\n\n  void UpdateColors()",
+      "count": 1
+    },
+    {
+      "before": "    if (source_icon_.IsVectorIcon()) {",
+      "after": "    if (!preserve_source_image_ && source_icon_.IsVectorIcon()) {",
+      "count": 1
+    },
+    {
+      "before": "ui::ImageModel MenuAvatar(ProfileAttributesEntry* entry) {\n  ui::ImageModel chosen = AuxProfileIconImage(entry->GetPath(), kMenuRowIcon);\n  return chosen.IsEmpty()\n             ? ui::ImageModel::FromImageSkia(ProfileAvatar(entry, kMenuRowIcon))\n             : chosen;\n}",
+      "after": "ui::ImageModel PrimaryRegistryAvatar(ProfileAttributesEntry* entry) {\n  // Supplied457415c/457417c: actual entry image20, high-res allowed, circle20.\n  profiles::PlaceholderAvatarIconParams params;\n  params.has_padding = false;\n  return ui::ImageModel::FromImage(profiles::GetSizedAvatarIcon(\n      entry->GetAvatarIcon(20, /*use_high_res_file=*/true, params), 20, 20,\n      profiles::SHAPE_CIRCLE));\n}",
+      "count": 1
+    },
+    {
+      "before": "    const auto entries = PrimaryProfileRoster();\n    for (ProfileAttributesEntry* entry : entries) {",
+      "after": "    const auto entries = PrimaryProfileRoster();\n    aux::VerticalTabSidebarProfileButton::MenuAvatarPresentation presentation;\n    if (const auto* source = views::AsViewClass<aux::VerticalTabSidebarProfileButton>(\n            GetAnchorView()))\n      presentation = source->CaptureMenuAvatarPresentation();\n    for (ProfileAttributesEntry* entry : entries) {",
+      "count": 1
+    },
+    {
+      "before": "      auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(\n          base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this),\n                              path),\n          MenuAvatar(entry),\n          aux::ProfileDisplayLabel(\n              entry, g_browser_process->profile_manager()->GetProfileByPath(path),\n              entries.size())));",
+      "after": "      const auto label = aux::ProfileDisplayLabel(\n          entry, g_browser_process->profile_manager()->GetProfileByPath(path),\n          entries.size());\n      auto image = PrimaryRegistryAvatar(entry);\n      if (path == current && !presentation.image.IsEmpty())\n        image = presentation.image;\n      auto* row = contents_->AddChildView(std::make_unique<AuxMenuRow>(\n          base::BindRepeating(&AuxProfileMenu::SwitchTo, base::Unretained(this), path),\n          image, label));\n      row->SetProfileAvatar(image, path == current && presentation.show_monogram, label);",
+      "count": 1
+    }
+  ],
+  "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h": [
+    {
+      "before": "  void SetDisplayName(std::u16string_view name, bool auth_paused);",
+      "after": "  struct MenuAvatarPresentation {\n    ui::ImageModel image;\n    bool show_monogram = false;\n  };\n  // Original465d7e0 captures the actual rendered avatar at press time.\n  MenuAvatarPresentation CaptureMenuAvatarPresentation() const;\n\n  void SetDisplayName(std::u16string_view name, bool auth_paused);",
+      "count": 1
+    }
+  ],
+  "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": [
+    {
+      "before": "void VerticalTabSidebarProfileButton::SetAvatarImage(",
+      "after": "VerticalTabSidebarProfileButton::MenuAvatarPresentation\nVerticalTabSidebarProfileButton::CaptureMenuAvatarPresentation() const {\n  MenuAvatarPresentation result;\n  result.show_monogram = monogram_->GetVisible();\n  if (!result.show_monogram && image_->GetVisible())\n    result.image = image_->GetImageModel();\n  return result;\n}\n\nvoid VerticalTabSidebarProfileButton::SetAvatarImage(",
+      "count": 1
+    }
+  ]
+}
