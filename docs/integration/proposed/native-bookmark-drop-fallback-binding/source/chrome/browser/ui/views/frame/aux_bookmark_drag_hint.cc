@@ -1,0 +1,216 @@
+// Copyright 2026 The Aux Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+#include "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h"
+
+#include <algorithm>
+#include <utility>
+
+#include "base/memory/raw_ptr.h"
+#include "base/numerics/clamped_math.h"
+#include "cc/paint/paint_flags.h"
+#include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+#include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+#include "components/bookmarks/browser/bookmark_node.h"
+#include "ui/color/color_provider_key.h"
+#include "ui/display/screen.h"
+#include "ui/display/display.h"
+#include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/gfx/canvas.h"
+#include "ui/gfx/font_list.h"
+#include "ui/gfx/shadow_value.h"
+#include "ui/gfx/skia_paint_util.h"
+#include "ui/views/border.h"
+#include "ui/views/controls/label.h"
+#include "ui/views/widget/widget.h"
+
+namespace aux {
+gfx::Rect BookmarkPinnedDropFallbackBounds(
+    const views::View& region, const views::View* outer_scroll_body,
+    const PinnedTabContainerView* pinned_container) {
+  if (!outer_scroll_body)
+    return gfx::Rect();
+  const gfx::Rect region_bounds = region.GetBoundsInScreen();
+  int top = outer_scroll_body->GetBoundsInScreen().y();
+  if (pinned_container && pinned_container->GetVisible() &&
+      !pinned_container->size().IsEmpty()) {
+    top = base::ClampSub(pinned_container->GetBoundsInScreen().y(), 4);
+  }
+  // Original layout switch index0x3a resolves50394c to40, plus12. Current155
+  // kVerticalTabPinnedHeight is32 and must not replace the supplied value.
+  return gfx::Rect(region_bounds.x(), top, region_bounds.width(), 52);
+}
+BookmarkPinnedDropProjection UpdateBookmarkPinnedDropProjection(
+    const bookmarks::BookmarkNode* node,
+    const ProfilePreviewAdmission& admission, int actual_region_width,
+    VerticalPinnedTabEntriesView& entries, const gfx::Point& screen_point,
+    const gfx::Rect& actual_empty_fallback_bounds) {
+  if (!node || !node->is_url())
+    return {};
+  if (!admission.AdmitsProfilePreview(actual_region_width)) {
+    entries.SetDropInsertion(std::nullopt);
+    return {};
+  }
+  const bool inside = entries.GetVisible() && entries.GetWidget() &&
+                      entries.GetBoundsInScreen().Contains(screen_point);
+  if (inside) {
+    const auto bounds = entries.UpdateDropInsertion(screen_point);
+    return {bounds.has_value(), node, bounds};
+  }
+  if (!entries.children().empty() ||
+      !actual_empty_fallback_bounds.Contains(screen_point)) {
+    entries.SetDropInsertion(std::nullopt);
+    return {};
+  }
+  gfx::Rect target = actual_empty_fallback_bounds;
+  target.Inset(gfx::Insets::TLBR(4, 8, 8, 8));
+  entries.SetDropInsertion(entries.drop_insertion().value_or(0));
+  return {true, node, target};
+}
+
+class BookmarkDragHint::Contents final : public views::View {
+  METADATA_HEADER(Contents, views::View)
+ public:
+  Contents() {
+    SetCanProcessEventsWithinSubtree(false);
+    label_ = AddChildView(std::make_unique<views::Label>());
+    label_->SetFontList(gfx::FontList("Geist, 12px"));
+    label_->SetHorizontalAlignment(gfx::ALIGN_CENTER);
+    label_->SetMultiLine(true);
+    label_->SetLineHeight(16);
+    label_->SetAutoColorReadabilityEnabled(false);
+    label_->SetSubpixelRenderingEnabled(false);
+    label_->SetEnabledColor(SkColor{0xff16a34a});
+    label_->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(4, 10)));
+  }
+  void SetText(const std::u16string& text) {
+    if (label_->GetText() != text)
+      label_->SetText(text);
+  }
+  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
+    gfx::Size size = label_->GetPreferredSize();
+    size.Enlarge(16, 16);
+    return size;
+  }
+  void Layout(PassKey) override {
+    gfx::Rect bounds = GetLocalBounds();
+    bounds.Inset(8);
+    label_->SetBoundsRect(bounds);
+  }
+  void OnPaintBackground(gfx::Canvas* canvas) override {
+    if (!GetWidget())
+      return;
+    const bool dark = GetWidget()->GetColorMode() ==
+                     ui::ColorProviderKey::ColorMode::kDark;
+    gfx::RectF bounds(GetLocalBounds());
+    bounds.Inset(8);
+    cc::PaintFlags fill;
+    fill.setAntiAlias(true);
+    fill.setColor(dark ? 0xff18181b : 0xfffafafa);
+    fill.setLooper(gfx::CreateShadowDrawLooper(
+        {gfx::ShadowValue(gfx::Vector2d(0, 3), 6, 0x1a000000)}));
+    canvas->DrawRoundRect(bounds, 8, fill);
+    bounds.Inset(0.25f);
+    cc::PaintFlags border;
+    border.setAntiAlias(true);
+    border.setStyle(cc::PaintFlags::kStroke_Style);
+    border.setStrokeWidth(0.5f);
+    border.setColor(dark ? 0x26fafafa : 0x1a0a0a0a);
+    canvas->DrawRoundRect(bounds, 8, border);
+  }
+ private:
+  raw_ptr<views::Label> label_ = nullptr;
+};
+
+BEGIN_METADATA(BookmarkDragHint, Contents)
+END_METADATA
+
+BookmarkDragHint::BookmarkDragHint(views::View& owner) {
+  owner_.SetView(&owner);
+}
+BookmarkDragHint::~BookmarkDragHint() = default;
+std::u16string BookmarkDragHint::Text(bool detached,
+                                    const std::u16string& title) {
+  if (title.empty())
+    return detached ? u"Remove bookmark" : u"Add bookmark";
+  return (detached ? u"Remove bookmark: " : u"Add to bookmarks: ") + title;
+}
+gfx::Rect BookmarkDragHint::Bounds(const gfx::Point& point,
+                                  const gfx::Size& size,
+                                  const gfx::Rect& work_area) {
+  const int x = base::ClampAdd(point.x(), 4);
+  int y = base::ClampAdd(point.y(), 4);
+  if (base::ClampAdd(y, size.height()) > work_area.bottom())
+    y = base::ClampSub(base::ClampSub(point.y(), size.height()), 4);
+  return gfx::Rect(
+      std::clamp(x, work_area.x(),
+                 std::max(work_area.x(),
+                          base::ClampSub(work_area.right(), size.width()))),
+      std::clamp(y, work_area.y(),
+                 std::max(work_area.y(),
+                          base::ClampSub(work_area.bottom(), size.height()))),
+      size.width(), size.height());
+}
+bool BookmarkDragHint::EnsureWidget() {
+  if (widget_)
+    return true;
+  auto* owner = owner_.view();
+  if (!owner || !owner->GetWidget())
+    return false;
+  auto weak = weak_factory_.GetWeakPtr();
+  auto widget = std::make_unique<views::Widget>();
+  views::Widget::InitParams params(views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+                                  views::Widget::InitParams::TYPE_DRAG);
+  params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
+  params.activatable = views::Widget::InitParams::Activatable::kNo;
+  params.accept_events = false;
+  params.shadow_type = views::Widget::InitParams::ShadowType::kNone;
+  params.context = owner->GetWidget()->GetNativeWindow();
+  params.name = "BookmarkDragPreview";
+  widget->Init(std::move(params));
+  if (!weak)
+    return false;
+  widget->SetContentsView(std::make_unique<Contents>());
+  if (!weak)
+    return false;
+  widget_ = std::move(widget);
+  return true;
+}
+void BookmarkDragHint::Update(bool active, bool detached,
+                              const std::u16string& title,
+                              const gfx::Point& screen_point) {
+  if (!active) {
+    Hide();
+    return;
+  }
+  auto weak = weak_factory_.GetWeakPtr();
+  if (!EnsureWidget() || !weak)
+    return;
+  auto* owner = owner_.view();
+  auto* screen = display::Screen::Get();
+  if (!owner || !owner->GetWidget() || !screen) {
+    Hide();
+    return;
+  }
+  widget_->SetColorModeOverride(owner->GetWidget()->GetColorMode());
+  if (!weak)
+    return;
+  auto* contents = static_cast<Contents*>(widget_->GetContentsView());
+  contents->SetText(Text(detached, title));
+  if (!weak)
+    return;
+  const gfx::Rect bounds = Bounds(
+      screen_point, contents->GetPreferredSize(),
+      screen->GetDisplayNearestPoint(screen_point).work_area());
+  if (widget_->GetWindowBoundsInScreen() != bounds)
+    widget_->SetBounds(bounds);
+  if (weak)
+    widget_->ShowInactive();
+}
+void BookmarkDragHint::Hide() {
+  if (widget_)
+    widget_->Hide();
+}
+}  // namespace aux

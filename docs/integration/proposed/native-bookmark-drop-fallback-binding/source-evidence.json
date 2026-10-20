@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "region-actual-tabstrip-assignment",
+      "rva": "0xc75ee84",
+      "fileOffset": 209055364,
+      "bytes": 180,
+      "sha256": "741282f35ea3084d89eef1090f1b45d0cc1ac11218cccf26aa86ffe5c2314352"
+    },
+    {
+      "name": "tabstrip-metadata",
+      "rva": "0x78abd18",
+      "fileOffset": 126532888,
+      "bytes": 72,
+      "sha256": "7609e8f442296e31bfae437edaea7e5a44d45a85bf96338488f217ef774ff45d"
+    },
+    {
+      "name": "tabstrip-metadata-name",
+      "rva": "0x78abef4",
+      "fileOffset": 126533364,
+      "bytes": 96,
+      "sha256": "20683e7f342b445b600a7a8c0b970d020debd106e357659bd37078b9af169601"
+    },
+    {
+      "name": "tabstrip-actual-constructor",
+      "rva": "0x4127d28",
+      "fileOffset": 68320552,
+      "bytes": 256,
+      "sha256": "3af800a623a9751654fbfb889a9ad253b818008bf4be5c48364a572a0954f26c"
+    },
+    {
+      "name": "actual-pinned-container-assignment",
+      "rva": "0x41278c0",
+      "fileOffset": 68319424,
+      "bytes": 172,
+      "sha256": "d288b3273fc895fb566226dc8a50fbb9b4c13ba9a95c03b1bb84ce86954a5453"
+    },
+    {
+      "name": "pinned-container-metadata",
+      "rva": "0x789e0f0",
+      "fileOffset": 126476528,
+      "bytes": 76,
+      "sha256": "73f12b68907aec4f3076b7a4f1831b00a6de5eb7ce6228dc45a65b0b57d912b0"
+    },
+    {
+      "name": "pinned-container-metadata-name",
+      "rva": "0x789e1b0",
+      "fileOffset": 126476720,
+      "bytes": 96,
+      "sha256": "988007855d066687eb4dc34099118c8946544dbbe264ca11f3c0983241da535c"
+    },
+    {
+      "name": "actual-fallback-producer",
+      "rva": "0x464d3f0",
+      "fileOffset": 73716720,
+      "bytes": 192,
+      "sha256": "bd36f9049f5f7c3f113e245ec567be358a888d39907df849e07b15676434076e"
+    },
+    {
+      "name": "literal-tabstrip-name",
+      "rva": "0xda9be7f",
+      "fileOffset": 229228159,
+      "bytes": 13,
+      "sha256": "f9d3eed8d52964bf46b9a7eda69af2ac815510e47cd057c553b52fdb390d78cc"
+    },
+    {
+      "name": "literal-tabstrip-source-path",
+      "rva": "0xda9be8c",
+      "fileOffset": 229228172,
+      "bytes": 59,
+      "sha256": "a11b42cb36a95a041c79b6296db10f9d88ae32d5faf61c9afcbad09f0d356d1f"
+    },
+    {
+      "name": "literal-pinned-name",
+      "rva": "0xda9b94a",
+      "fileOffset": 229226826,
+      "bytes": 23,
+      "sha256": "19e44178183f7c0747dd2e3c367f7a5c2499fcb3317f43584acaf60f16a1913b"
+    },
+    {
+      "name": "literal-pinned-source-path",
+      "rva": "0xda9b961",
+      "fileOffset": 229226849,
+      "bytes": 70,
+      "sha256": "d58f6a3157b3c8857995fef0d3cb2cd764cbf27d0c816c231da0b02fd781f852"
+    },
+    {
+      "name": "tabstrip-primary-metadata-slot",
+      "rva": "0xe5a5848",
+      "fileOffset": 240801864,
+      "bytes": 8,
+      "sha256": "3f296f9d355279e96586bb928cfb44c867afb44c059efc5564ca3952662366e8"
+    }
+  ],
+  "proof": [
+    "c75eea0 reads actual incomingviewmetadata virtual+58, validates against78abd18 via ancestry, thenstoresregion+478 atc75ef18.",
+    "78abd18 initializes metadata through78abef4; literalda9be7f=TabStripView andsourcepathda9be8c=chrome/browser/ui/views/tabs/common/tab_strip_view.h.",
+    "ActualTabStripView ctor4127d28 storesprimarye5a57f0; itsmetadata virtual+58 points78abd60\u219278abd18.",
+    "41278c0 reads actual incoming childmetadata, validates against789e0f0 via ancestry, thenstoresactualTabStripView+338 at4127938.",
+    "789e0f0 initializesmetadata789e1b0 withliteralda9b94a=PinnedTabContainerView andsourcepathda9b961=chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h.",
+    "464d3f0 reads exactregion478\u2192child338, actualvisible/nonempty screenY-4. Current155 publicBaseTabStripRegionView::GetPinnedTabsContainer delegatesactualTabStripView::GetPinnedTabsContainer. No inferredNewTabButton/Unpinnedcontainer mapping."
+  ]
+}

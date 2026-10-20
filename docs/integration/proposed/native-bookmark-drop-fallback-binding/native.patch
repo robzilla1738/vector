@@ -1,0 +1,55 @@
+--- a/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc
++++ b/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc
+@@ -10,6 +10,7 @@
+ #include "base/numerics/clamped_math.h"
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+ #include "ui/color/color_provider_key.h"
+@@ -28,14 +29,14 @@
+ namespace aux {
+ gfx::Rect BookmarkPinnedDropFallbackBounds(
+     const views::View& region, const views::View* outer_scroll_body,
+-    const views::View* lower_content_boundary) {
++    const PinnedTabContainerView* pinned_container) {
+   if (!outer_scroll_body)
+     return gfx::Rect();
+   const gfx::Rect region_bounds = region.GetBoundsInScreen();
+   int top = outer_scroll_body->GetBoundsInScreen().y();
+-  if (lower_content_boundary && lower_content_boundary->GetVisible() &&
+-      !lower_content_boundary->size().IsEmpty()) {
+-    top = base::ClampSub(lower_content_boundary->GetBoundsInScreen().y(), 4);
++  if (pinned_container && pinned_container->GetVisible() &&
++      !pinned_container->size().IsEmpty()) {
++    top = base::ClampSub(pinned_container->GetBoundsInScreen().y(), 4);
+   }
+   // Original layout switch index0x3a resolves50394c to40, plus12. Current155
+   // kVerticalTabPinnedHeight is32 and must not replace the supplied value.
+--- a/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h
++++ b/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h
+@@ -15,6 +15,7 @@
+ #include "ui/views/view_tracker.h"
+ 
+ class VerticalPinnedTabEntriesView;
++class PinnedTabContainerView;
+ namespace bookmarks {
+ class BookmarkNode;
+ }
+@@ -29,12 +30,11 @@
+   raw_ptr<const bookmarks::BookmarkNode> candidate = nullptr;
+   std::optional<gfx::Rect> target_bounds;
+ };
+-// These are the actual 464d3f0 producer views: region, outer custom scroll5b0
+-// and optional visible/nonempty lower-content boundary(+478 child+338).
+-// This function does not guess which current view represents that boundary.
++// Actual 464d3f0 producer views: region, custom outer scroll5b0 and
++// optional real live PinnedTabContainerView, proven +478 child+338.
+ gfx::Rect BookmarkPinnedDropFallbackBounds(
+     const views::View& region, const views::View* outer_scroll_body,
+-    const views::View* lower_content_boundary);
++    const PinnedTabContainerView* pinned_container);
+ BookmarkPinnedDropProjection UpdateBookmarkPinnedDropProjection(
+     const bookmarks::BookmarkNode* node,
+     const ProfilePreviewAdmission& admission, int actual_region_width,

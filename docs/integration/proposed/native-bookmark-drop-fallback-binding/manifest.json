@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "applyAfter": "native-bookmark-drag-hint 0ee971e79; root rebase preserves336 ClampSub explicit API spelling",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "baselineSha256": "9428b4161dee7aaf72d5a2bd84a437b78a67c24277165474780ebdeb006e8d0c",
+      "outputSha256": "ec7e8f4aa0f4390ef440ff75d252a4b5e2a11d9ca28b955cfc7acd5b8f26cd0a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h",
+      "baselineSha256": "33b422c785e83be587b4083a3a3221e33455cf57bf36a07024b4fe3cdee45ece",
+      "outputSha256": "0585a8523b506b24b71a5687b1c8be4ef58ea15a9d9d4fcf76008dce72ae7b83"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Rootactualoutercustomscrollbody5b0 mount/getter and region/GN integration remainrootowned.",
+    "Actual336native APIfix .RawValue orintcast mustremainwhenrebaselining thisdisjointsignaturefollowup.",
+    "Native focused compile and disposable drag/hint observation remainrequired."
+  ]
+}
