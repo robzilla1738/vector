@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "b9506730eb2b2d8c032e6e6e5299e6f663ac2d26f78a5545cb0d934a18a82a75",
+      "outputSha256": "ed74b57e44c7de3aa0e0114145010a58abb5ac804f827b868a8f6d9ae0f609c6"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "0395367feeebdc2cd63b68ae9813cb0ffe1f97738a175aff6085482f7b4d6aae",
+      "outputSha256": "ae577b734b6f3bf250c2113c2ed65b8d272fce47c4ced737089aedf8bb7a1bf0"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_icon_view.cc",
+      "baselineSha256": "376725e39a201a0c64ff39455f22611df20eda6851f0f36e6f7e4d4200a283a7",
+      "outputSha256": "1fc71f34928083600190dbc1a97e35e8d47e2a577bd52ba4bfea0542d0329577"
+    }
+  ]
+}

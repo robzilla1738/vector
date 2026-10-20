@@ -1,0 +1,95 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -32,6 +32,10 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "extensions/common/constants.h"
++#include "ui/native_theme/native_theme.h"
+ #endif
+ #include "chrome/browser/ui/views/frame/custom_corners.h"
+ #include "chrome/browser/ui/views/frame/custom_corners_background.h"
+@@ -264,6 +268,27 @@
+           info.shadow_box && would_have_separator;
+       break;
+   }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // A transparent separator still reserves a pixel exposing untinted native
++  // material between the supplied page and its matching toolbar tint.
++  if (!has_infobar && !is_split_view &&
++      views().browser_view->GetNativeTheme()->preferred_contrast() !=
++          ui::NativeTheme::PreferredContrast::kMore) {
++    if (auto* browser_view =
++            views::AsViewClass<BrowserView>(views().browser_view.get())) {
++      const auto* tab = browser_view->GetActiveWebContents();
++      const auto* frame = tab ? tab->GetPrimaryMainFrame() : nullptr;
++      if (frame &&
++          frame->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
++          frame->GetLastCommittedURL().host() == aux::kAgentExtensionId) {
++        info.multi_contents_separator = false;
++        info.top_container_separator = false;
++        info.adjust_for_missing_separator = false;
++      }
++    }
++  }
++#endif
+ 
+   return info;
+ }
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -108,6 +108,7 @@
+ #include "components/omnibox/browser/omnibox_prefs.h"
+ #include "components/omnibox/browser/page_classification_functions.h"
+ #include "components/omnibox/browser/vector_icons.h"
++#include "components/vector_icons/vector_icons.h"
+ #include "components/omnibox/common/input_state.h"
+ #include "components/omnibox/common/omnibox_feature_configs.h"
+ #include "components/omnibox/common/omnibox_features.h"
+@@ -2336,6 +2337,21 @@
+     return GetOmniboxController()->edit_model()->GetAddContextIcon(dip_size);
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!GetLocationBarModel()->ShouldDisplayURL() &&
++      !GetOmniboxController()->edit_model()->is_caret_visible() &&
++      !GetOmniboxController()->edit_model()->user_input_in_progress() &&
++      !ShouldShowKeywordBubble()) {
++    // The supplied resting address bar uses the ordinary search glyph rather
++    // than the default provider's branded favicon.
++    return ui::ImageModel::FromVectorIcon(
++        features::IsRoundedIconsEnabled()
++            ? vector_icons::kSearchIcon
++            : vector_icons::kSearchChromeRefreshOldIcon,
++        location_icon_view_->GetForegroundColor(), dip_size);
++  }
++#endif
++
+   return omnibox_view_
+              ? omnibox_view_->GetIcon(
+                    dip_size, location_icon_view_->GetForegroundColor(),
+--- a/chrome/browser/ui/views/location_bar/location_icon_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_icon_view.cc
+@@ -10,6 +10,7 @@
+ #include "base/trace_event/trace_event.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/extensions/extension_ui_util.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+@@ -377,6 +378,11 @@
+   // level.
+   UpdateLabelColors();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Keep the empty address bar's search glyph unfilled over the shared tint.
++  force_hide_background |=
++      !delegate_->GetLocationBarModel()->ShouldDisplayURL() && GetText().empty();
++#endif
+   if (force_hide_background) {
+     SetBackgroundColor(SK_ColorTRANSPARENT);
+   }
