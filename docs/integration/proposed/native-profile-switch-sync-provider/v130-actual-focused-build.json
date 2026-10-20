@@ -1,0 +1,32 @@
+{
+  "composition": "out/native-reuse-composition-v130",
+  "compositionSha256": "753c138c6fcadfc046f1464eb0df887145e93a1c47e981548f565e004addb190",
+  "sourceOutputs": 295,
+  "artworkTargets": 23,
+  "originalReplay": {
+    "steps": 140,
+    "allSourceOutputsMatch": true
+  },
+  "focusedBuild": {
+    "exitCode": 0,
+    "elapsedSeconds": 21.30243420600891,
+    "targets": {
+      "browser_window_features_aux_profile_switch": "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o",
+      "-j",
+      "10",
+      "-k",
+      "0"
+    ]
+  },
+  "fullBrowserLink": false,
+  "runtimeOrVisualAcceptance": false,
+  "signingPerformed": false
+}

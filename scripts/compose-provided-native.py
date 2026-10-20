@@ -161,6 +161,12 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/sync-cohort-validation.patch', 'native-profile-switch-owner/transaction-map/sync-cohort-validation-manifest.json'),
     ('native-profile-switch-data-protection/native.patch', 'native-profile-switch-data-protection/manifest.json'),
     ('native-agent-tabs-layout/native.patch', 'native-agent-tabs-layout/manifest.json'),
+    ('native-profile-switch-sync-provider/native.patch', 'native-profile-switch-sync-provider/manifest.json'),
+    ('native-profile-switch-cache-metadata/native.patch', 'native-profile-switch-cache-metadata/manifest.json'),
+    ('native-agent-tabs-horizontal/native.patch', 'native-agent-tabs-horizontal/manifest.json'),
+    ('native-profile-switch-close-deferral/native.patch', 'native-profile-switch-close-deferral/manifest.json'),
+    ('native-profile-switch-provider-weak/native.patch', 'native-profile-switch-provider-weak/manifest.json'),
+    ('native-profile-switch-close-deferral/browser-type-include/native.patch', 'native-profile-switch-close-deferral/browser-type-include/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,1 @@
+V134 compiled five objects and rejected BrowserView because only BrowserWindowInterface and a forward declaration of Browser were visible. Include the actual Browser definition for the checked desktop cast and narrow close-deferral method. No behavior change.

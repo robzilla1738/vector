@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "b4eb841fbc0788a312e218caddfdb429fd3b3a02363f6bf37ed63aceab6263c9",
+      "outputSha256": "a276922b1de561999dfe469b1901718e81c6d98174a5818286521e3ecd039bea"
+    }
+  ],
+  "compiled": false
+}
