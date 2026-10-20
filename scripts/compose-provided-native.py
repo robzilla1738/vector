@@ -422,6 +422,10 @@ steps.extend([
     ('native-new-tab-action-caption/native.patch', 'native-new-tab-action-caption/manifest.json'),
     ('native-chat-delete-confirmation/native.patch', 'native-chat-delete-confirmation/manifest.json'),
     ('native-sidebar-top-controls/native.patch', 'native-sidebar-top-controls/manifest.json'),
+    ('native-sidebar-context-menu-admission/native.patch', 'native-sidebar-context-menu-admission/manifest.json'),
+    ('native-profile-preview-fallback-geometry/native.patch', 'native-profile-preview-fallback-geometry/manifest.json'),
+    ('native-bootstrap-draggable-regions/native.patch', 'native-bootstrap-draggable-regions/manifest.json'),
+    ('native-sidebar-system-menu-content/native.patch', 'native-sidebar-system-menu-content/manifest.json'),
 ])
 
 if options.through:

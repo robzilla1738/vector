@@ -1,0 +1,182 @@
+{
+  "processProof": [
+    {
+      "pid": 14020,
+      "launcher": 14017,
+      "lineage": [
+        14020,
+        14018,
+        14017,
+        14015,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/X/dev.aux.browser.code_sign_clone/code_sign_clone.coRd0P/Aux.app.bundle/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v397-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    14020
+  ],
+  "windows": [
+    {
+      "pid": 14020,
+      "windowId": 32423,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32422,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32421,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32420,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32419,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32418,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32417,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32416,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32415,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 14020,
+      "windowId": 32414,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v397",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "profile": "disposable incognito profile",
+  "observed": [
+    "Genuine Bookmarks/Chats/Tabs body and bottom profile/search controls",
+    "New Tab caption uses supplied capitalization",
+    "Restored native tab-group/search combo and Collapse control visible"
+  ],
+  "unresolved": [
+    "Top-control identity/layout comparison requires source mode predicates and matching window/titlebar state; reference capture state/version not established",
+    "Normal-profile account/Vault/authentication acceptance remains unavailable (v394 normal observation)",
+    "Native Delete sheet and drag/drop behavior not exercised in this run"
+  ],
+  "screenshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v397-incognito-window.png",
+  "screenshotSha256": "d8e7c24b163790fcd5779fa6e4ffd06390de6d4c1f285267460444df1b623ac5",
+  "launcherPid": 14017,
+  "guardianPid": 14018,
+  "browserPid": 14020,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-k30r0t",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false
+}

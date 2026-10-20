@@ -1,0 +1,26 @@
+{
+  "composition": "v401",
+  "exitCode": 0,
+  "elapsedSeconds": 49.31864619255066,
+  "targets": {
+    "browser": "obj/chrome/browser/ui/ui/browser.o",
+    "browser_view": "obj/chrome/browser/ui/ui/browser_view.o",
+    "browser_web_contents_delegate": "obj/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate/browser_web_contents_delegate.o",
+    "system_menu_model_builder": "obj/chrome/browser/ui/views/frame/system_menu_model_builder_impl/system_menu_model_builder.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/browser.o",
+    "obj/chrome/browser/ui/ui/browser_view.o",
+    "obj/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate/browser_web_contents_delegate.o",
+    "obj/chrome/browser/ui/views/frame/system_menu_model_builder_impl/system_menu_model_builder.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}
