@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "bookmark representation69320d580 (actual285), new files only; no GN/region edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc",
+      "baselineSha256": null,
+      "outputSha256": "04327bccf374e095609d3862a659e16e6510555fbadb897871afbacf05f9e94a",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h",
+      "baselineSha256": null,
+      "outputSha256": "e4325f9d21b46ab0743db0fdf2fff1524981300621ea7f65adac14748a0ef0f5",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "import",
+      "rva": "0x4645e90",
+      "bytes": 1500,
+      "sha256": "23d5d6b28f6dcc9c577a7cd29abd66f5537cc507ee336e507030979d58450a03",
+      "assemblySha256": "e0cfe35c3bbf27f10923fe43d7d5c2d871eaa04ee57e8cd367e46f6eb3e6e2b3"
+    },
+    {
+      "name": "reconcile",
+      "rva": "0x4646f58",
+      "bytes": 612,
+      "sha256": "1d2d1c0e2827826fcf83607f4d7fb6261f5a79e64658af3c6c208c60d7607999",
+      "assemblySha256": "72fd74222872a101e31b594df893b4abae598f4588b2386aa2f6ecd7f0716008"
+    },
+    {
+      "name": "live-persist",
+      "rva": "0x464ffb8",
+      "bytes": 288,
+      "sha256": "653079ccadb4498f292369550e2b75146c7423fd9461435116b74d8ea4cbb9d4",
+      "assemblySha256": "d96ca91d5a6a943514cfaf2dfc53ccef1fa6130707f362c03045b1f735684e89"
+    },
+    {
+      "name": "live-clear",
+      "rva": "0x464ef84",
+      "bytes": 312,
+      "sha256": "349da1b0638d02fc41bdf06962496a9dff16bee34f6eb016481060fecb109c28",
+      "assemblySha256": "790b43736b093c5708c67b36d7d11b6849e453696f2b27023f8c3feb27bb1829"
+    },
+    {
+      "name": "find-bookmark",
+      "rva": "0x4614538",
+      "bytes": 552,
+      "sha256": "10e1a71b09546a8603b784c2331b846b120d81ee4bf08738baffd8d1ead15402",
+      "assemblySha256": "99fe26635cd8bc76f9720f454b76ac7b2ec7642f9bd4d7f825004e1e63629840"
+    },
+    {
+      "name": "recursive-find",
+      "rva": "0x461b5bc",
+      "bytes": 96,
+      "sha256": "0d2226fcb4db7ecb1b9ed4da6fc79b5cffc04cf15ec784e42fa01851e708c061",
+      "assemblySha256": "12aca3c91282dd3cbefecadc769e6b8caf57a3a332b6130aba3bb328c84a1c7f"
+    },
+    {
+      "name": "factory",
+      "rva": "0x108d1d0",
+      "bytes": 156,
+      "sha256": "3af8d39a00b17cfda2b3f3ae82f03682f8ef93c9425ae182c345e9d520192b95",
+      "assemblySha256": "a7bc4020e47dd7f3a255c10c2bc27f962ced830ed6be579f35cd42627a3422b5"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service.h",
+      "sha256": "d9d93669e6fb4ea8b8ddb9a78f48504639477b93cb0a0d31307025cabe6678b5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service_factory.h",
+      "sha256": "1c9eb82e373ac79d42f3d9add8432e832de161f2bb09a82ca470594de100b004"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_window/public/browser_window_interface.h",
+      "sha256": "97dc7e368b29bd43bb0ce24bcbc2b9795b842bbdeb68aa58a2cfc85e20024c4a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_utils.h",
+      "sha256": "fc7e06f274a27de763ca85866bde40e2448e8ed203167fe6d7c5ed872b9cd8c7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_model.h",
+      "sha256": "81f8febe1ed65148c1221d8e9ef61aa7160a1a54694570ff978fbd6342d55075"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/tabs/public/tab_interface.h",
+      "sha256": "481ef95faafeac585e8589032f44c272af7904d2ec2b96ffaa71e04a21db8987"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/tabs/public/supports_handles.h",
+      "sha256": "b5324805b10b7802b6a4055dd12a35941fba29db02b56ad968404d1d5448c218"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sessions/content/session_tab_helper.h",
+      "sha256": "bdcdf3411b24343aeb7a9fd78a102d24dbce600b67b607b14c7d58612cbf5488"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xd6e17ac",
+      "value": "bookmark_tab_representation_node_id"
+    },
+    {
+      "rva": "0xd6e17d0",
+      "value": "bookmark_tab_representation_host"
+    },
+    {
+      "rva": "0xd7e8634",
+      "value": "0"
+    }
+  ]
+}
