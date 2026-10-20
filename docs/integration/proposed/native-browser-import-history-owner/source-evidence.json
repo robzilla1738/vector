@@ -1,0 +1,56 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "history-query-and-filter.asm",
+      "start": "0x4254640",
+      "endExclusive": "0x42546a0",
+      "bytesSha256": "4b29861a753967a405354572ea46427993845e7d8dd09749792b5dc280750ab8",
+      "sha256": "c4f9a22d03888abaa3e3e1a12f19e3c6573dba538f203b6b8985ee811cd0d0b7"
+    },
+    {
+      "file": "history-row-fields.asm",
+      "start": "0x4254fc4",
+      "endExclusive": "0x42551e8",
+      "bytesSha256": "244fc90b10c78bd7ede0522d86dee30e77e933086c51631e81ec312617ec0197",
+      "sha256": "cc6cb34636e8f657db9bfd4768cfea52885826f88ef8cbaabaf1d6af82bde169"
+    },
+    {
+      "file": "history-destination.asm",
+      "start": "0x4258964",
+      "endExclusive": "0x4258980",
+      "bytesSha256": "710af3bd8804d860bc8a96e6a89af54091a4394ad44fe6a1895bb13bfd603736",
+      "sha256": "796adcae9182d861fa9297eda2b02a13661eb0c2ee14cd97ca389a92d8175118"
+    },
+    {
+      "file": "native-profile-writer.asm",
+      "start": "0x7822c94",
+      "endExclusive": "0x7822cd4",
+      "bytesSha256": "29ffab513e7f3bc2589ea3c6a2ff5cb905cb4bbdcbe2eeede8a26c0e02a96b74",
+      "sha256": "a2a71e1a40a2b73d689863a375e0c161591170a6c617f373b59346b6ab1de524"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/importer/profile_writer.cc",
+      "sha256": "5249df6cd7434a8d242107962e3ee3117ccfd8c85bb1c4af658ae3ab19e018af"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/history/core/browser/url_row.h",
+      "sha256": "af7d93e38b70d97fc281376ab01fc9c7208b351043953068f39e9ec15754e225"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/history/core/browser/history_types.h",
+      "sha256": "e064581964b55f43ea2663c28fbfd0d6d75cc78dfbb644e4f27590a06b4eb731"
+    }
+  ],
+  "literal": {
+    "address": "0xdb1f4ad",
+    "endExclusive": "0xdb1f4fc",
+    "bytesSha256": "68f54e2cfee55e05fa731ec8d9059ae93424b26f6a096084a34fcac85fb97254"
+  },
+  "parent": "d2c144467 full staging output"
+}

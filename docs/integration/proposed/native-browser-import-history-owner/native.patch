@@ -1,0 +1,95 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -499,10 +499,8 @@
+                   "p.url,p.title,v.visit_date,v.visit_type,p.visit_count,p."
+                   "typed FROM moz_historyvisits v JOIN moz_places p ON "
+                   "p.id=v.place_id ORDER BY v.visit_date LIMIT 200001"
+-                : "SELECT "
+-                  "u.url,u.title,v.visit_time,v.transition,u.visit_count,u."
+-                  "typed_count FROM visits v JOIN urls u ON u.id=v.url ORDER "
+-                  "BY v.visit_time LIMIT 200001";
++                : "SELECT url,title,visit_count,typed_count,last_visit_time,"
++                  "hidden FROM urls LIMIT 200001";
+     auto statement = Prepare(db.get(), query);
+     if (!statement) {
+       return error("Source history schema lacks required columns");
+@@ -524,11 +522,19 @@
+       }
+       visit.Set("url", url);
+       visit.Set("title", title);
+-      visit.Set("timeMicros",
+-                base::NumberToString(sqlite3_column_int64(statement.get(), 2)));
+-      visit.Set("transition", sqlite3_column_int(statement.get(), 3));
+-      visit.Set("visitCount", sqlite3_column_int(statement.get(), 4));
+-      visit.Set("typedCount", sqlite3_column_int(statement.get(), 5));
++      visit.Set("timeMicros", base::NumberToString(
++                                  sqlite3_column_int64(statement.get(),
++                                                       firefox ? 2 : 4)));
++      if (firefox) {
++        visit.Set("transition", sqlite3_column_int(statement.get(), 3));
++      } else {
++        visit.Set("chromiumSummary", true);
++        visit.Set("hidden", !!sqlite3_column_int(statement.get(), 5));
++      }
++      visit.Set("visitCount",
++                sqlite3_column_int(statement.get(), firefox ? 4 : 2));
++      visit.Set("typedCount",
++                sqlite3_column_int(statement.get(), firefox ? 5 : 3));
+       visit.Set("unixTime", firefox);
+       visits.Append(std::move(visit));
+     }
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -929,15 +929,39 @@
+     Emit(job);
+     return;
+   }
+-  size_t end = std::min(job.row + 200, job.rows.size());
++  const bool chromium_summary = !job.rows.empty() &&
++      job.rows.front().GetDict().FindBool("chromiumSummary").value_or(false);
++  // Original ProfileWriter::AddHistoryPage submits its URLRows as one batch.
++  const size_t end = chromium_summary
++                         ? job.rows.size()
++                         : std::min(job.row + 200, job.rows.size());
++  history::URLRows pages;
+   for (; job.row < end; ++job.row) {
+     const auto& row = job.rows[job.row].GetDict();
+     const auto* url = row.FindString("url");
+-    if (!url || !GURL(*url).SchemeIsHTTPOrHTTPS()) {
++    const GURL source_url(url ? *url : std::string());
++    if (!source_url.is_valid() ||
++        (chromium_summary
++             ? (source_url.SchemeIs("chrome") ||
++                source_url.SchemeIs("chrome-extension") ||
++                source_url.SchemeIs("devtools"))
++             : !source_url.SchemeIsHTTPOrHTTPS())) {
+       continue;
+     }
+     const bool unix_time = row.FindBool("unixTime").value_or(false);
+     const auto time = Timestamp(row, "timeMicros", unix_time);
++    if (chromium_summary) {
++      history::URLRow page(source_url);
++      const auto* title = row.FindString("title");
++      page.set_title(base::UTF8ToUTF16(title ? *title : std::string()));
++      page.set_visit_count(row.FindInt("visitCount").value_or(0));
++      page.set_typed_count(row.FindInt("typedCount").value_or(0));
++      page.set_last_visit(time);
++      page.set_hidden(row.FindBool("hidden").value_or(false));
++      pages.push_back(std::move(page));
++      ++job.imported;
++      continue;
++    }
+     if (row.FindBool("summaryOnly").value_or(false)) {
+       const auto* title = row.FindString("title");
+       history->AddPageWithDetails(
+@@ -962,6 +986,10 @@
+     }
+     ++job.imported;
+   }
++  if (!pages.empty()) {
++    // Exact native destination primitive used by supplied ProfileWriter.
++    history->AddPagesWithDetails(pages, history::SOURCE_BROWSED);
++  }
+   if (job.row < job.rows.size()) {
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE,
