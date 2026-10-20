@@ -1,0 +1,68 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "cookie-admission.asm",
+      "start": "0x425a480",
+      "endExclusive": "0x425a858",
+      "bytesSha256": "edcd47e1d29a204a94152b906c78c422dc4a4b0c7a5c82551244e2c1f4ea0065",
+      "sha256": "59d33bcf10d2e004714e204e7140c83e27b0766204245c1a3c2fa87680fe63c6"
+    },
+    {
+      "file": "cookie-status-tail.asm",
+      "start": "0x425b064",
+      "endExclusive": "0x425b06c",
+      "bytesSha256": "49bb875f3c9157ab868b6ce9152e849daef80c3dcdec575cc5d040ceaa922701",
+      "sha256": "788e2bf2a3d009af6e4a8f7dda8c8aa5fdaf9940f6b855456315a0c821907a15"
+    },
+    {
+      "file": "password-admission.asm",
+      "start": "0x425b288",
+      "endExclusive": "0x425b318",
+      "bytesSha256": "4984ce194b5065b12508a1c75c69db49ff210c431546b4bb13f428a57f0aae1d",
+      "sha256": "68bdf3e883110d0e5bc16d9e4e49ccbbb324e1287ff6ad3548f1728e8bcf612c"
+    },
+    {
+      "file": "password-store-and-sql-failure.asm",
+      "start": "0x425b4fc",
+      "endExclusive": "0x425b5d4",
+      "bytesSha256": "71672efdf584e497bb390dcf37256fbeea5c22194a7f7826b838a4e76339c328",
+      "sha256": "53b38e902a16c114ba8abff5dbb4bd30620d4851b6da1cba0469c81ddb485e00"
+    },
+    {
+      "file": "password-aggregate.asm",
+      "start": "0x425b78c",
+      "endExclusive": "0x425b7a0",
+      "bytesSha256": "513209c9d37f79752b700a9bc546ca7971f7070386e44da0486fa4d870975557",
+      "sha256": "0621917c9dcae7cafd5c36ecde52d9b107c93985ed7796d0fd83baebfa384765"
+    },
+    {
+      "file": "worker-bool-consumer.asm",
+      "start": "0x4254af8",
+      "endExclusive": "0x4254b4c",
+      "bytesSha256": "edce10b2bc7dda9c150bc64c38decea3ce726c739c7560d3fd193e78e5d639b7",
+      "sha256": "79dcbbc084dbf53fd9b700a431604e695a8e455c0838e006399407a7d55c6fa1"
+    },
+    {
+      "file": "password-path-loop.asm",
+      "start": "0x425b5a4",
+      "endExclusive": "0x425b5d4",
+      "bytesSha256": "5b094c299ab118819d6f6f6d82a85e4f73340ab44dd4637a0fdad31ccc4e5fcb",
+      "sha256": "afaddd2c29f795cd71a5b70fbed84026f3032076dafb384e5b474ff829882954"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/statement.cc",
+      "sha256": "2abc884d52d25d9f4e727ac7c4b7b90d79ee81327773679031efe3eba1dfc5d6"
+    }
+  ],
+  "parent": "3c87170e6 physical snapshot output"
+}

@@ -1,0 +1,23 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -720,6 +720,10 @@
+     if (!base::PathExists(path)) {
+       path = profile.AppendASCII("Cookies");
+     }
++    if (!base::PathExists(path)) {
++      result.Set("cookies", base::ListValue());
++      return result;
++    }
+     paths.push_back(std::move(path));
+   } else {
+     for (const char* name : {"Login Data", "Login Data For Account"}) {
+@@ -729,7 +733,8 @@
+       }
+     }
+     if (paths.empty()) {
+-      return fail("Selected source database is unavailable");
++      result.Set("passwords", base::ListValue());
++      return result;
+     }
+   }
+   base::ListValue rows;
