@@ -39,7 +39,7 @@ test('assembly retains immutable runtime bytes, executable mode and internal rel
   assert.equal((await lstat(join(runtime, 'runtime'))).mode & 0o777, 0o755);
   assert.equal(await readlink(join(runtime, 'current')), 'runtime');
   assert.equal(report.productionReady, false);
-  assert.deepEqual(report.excludedProducts, ['vault']);
+  assert.deepEqual(report.excludedProducts, ['vault', 'password-importer']);
   await assert.rejects(lstat(join(options.outputRoot, 'apps/vault')), { code: 'ENOENT' });
   await assert.rejects(assembleProvidedResources(options), /already exists/);
 });
@@ -63,4 +63,21 @@ test('assembly rejects a symlink that escapes its staged distribution', async (t
   await writeFile(manifestPath, JSON.stringify(manifest));
   await assert.rejects(assembleProvidedResources(options), /link changed or escapes/);
   await assert.rejects(lstat(options.outputRoot), { code: 'ENOENT' });
+});
+
+
+test('assembly verifies but omits the built-in credential importer and provider bundle', async (t) => {
+  const options = await fixture(t), path = 'Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aux-password-importer-provider';
+  const bytes = Buffer.from('static importer fixture'), sha = createHash('sha256').update(bytes).digest('hex');
+  const source = join(options.stageRoot, 'apps/daemon/Aux Daemon.app', path);
+  await mkdir(join(source, '..'), { recursive: true });
+  await writeFile(source, bytes, { mode: 0o755 });
+  const manifestPath = join(options.stageRoot, 'apps/manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath));
+  manifest.components.daemon.files.push({ path, outputSha256: sha, outputMode: 0o755 });
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  const report = await assembleProvidedResources(options);
+  assert.equal(report.excludedFiles.length, 1);
+  await assert.rejects(lstat(join(options.outputRoot, 'apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app')), { code: 'ENOENT' });
+  assert.equal(await readFile(source, 'utf8'), bytes.toString());
 });

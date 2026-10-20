@@ -19,3 +19,5 @@ The pinned `extension-main-Dz1-AsCT.js` already admits the real local account on
 Settings must load `main.html#/u/<id>/settings/general`. Supplied `newtab.html` has the static new-tab editor and React slots, not the main extension router/root, so adding a settings hash to it cannot mount Settings. The matching native route fix is required.
 
 When a genuine local account has no available models, the supplied composer now directs the user to its existing model/provider settings instead of hosted sign-in. It uses the original connection notice component and leaves model availability and authentication untouched. Paused cloud accounts retain their existing sign-in notice.
+
+The assembler also verifies but omits the nested `Aux Password Importer.app` and credential-provider extension. The daemon resolves its path lazily; only explicit Apple credential-import operations require that bundle and report missing output when absent. No installation-auth or normal startup helper uses it. Excluded leaf hashes remain in the assembly receipt, and the stage/provenance is unchanged.

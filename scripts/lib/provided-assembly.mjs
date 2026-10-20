@@ -74,7 +74,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp: stack.finalApp,
     brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
-    excludedProducts: ['vault'], passwordManager: 'external-extensions',
+    excludedProducts: ['vault', 'password-importer'], excludedFiles: [], passwordManager: 'external-extensions',
     localDevelopmentOnly: true, daemonRuntime: apps.components.daemon.nodeDevelopment ? 'provided-node-development' : 'provided-sea',
     blockers: [...new Set([...stack.blockers, 'Compiled native guard/carrier and reviewed Chromium integration', 'Disposable packaged UI/runtime acceptance'])],
   };
@@ -97,6 +97,16 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
         const source = join(sourceRoot, file.path), target = join(destination, file.path), stat = await lstat(source);
         const mode = file.outputMode ?? file.mode ?? (stat.mode & 0o777);
         if ((stat.mode & 0o777) !== mode) throw new Error(`Staged resource mode changed: ${file.path}`);
+        if (component.source === 'apps/daemon/Aux Daemon.app' &&
+            file.path.startsWith('Contents/Applications/Aux Password Importer.app/')) {
+          // Retain and verify the complete immutable stage inventory while omitting
+          // the credential-import product and its provider extension from delivery.
+          if (!stat.isFile() || stat.isSymbolicLink() || !/^[a-f0-9]{64}$/.test(file.outputSha256) ||
+              await digest(source) !== file.outputSha256)
+            throw new Error(`Excluded password importer resource changed: ${file.path}`);
+          report.excludedFiles.push({ source: join(component.source, file.path), sha256: file.outputSha256, reason: 'Excluded built-in password manager product' });
+          return;
+        }
         await mkdir(dirname(target), { recursive: true });
         if (file.type === 'directory') {
           if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Staged directory changed');
