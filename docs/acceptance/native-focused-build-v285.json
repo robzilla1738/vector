@@ -1,0 +1,37 @@
+{
+  "composition": "v285",
+  "exitCode": 0,
+  "elapsedSeconds": 13.56820797920227,
+  "targets": {
+    "bookmark_representation": "obj/chrome/browser/ui/tabs/aux_bookmark_tab_representation/aux_bookmark_tab_representation.o",
+    "session_snapshot": "obj/chrome/browser/sessions/impl/session_service.o",
+    "closed_tab_snapshot": "obj/chrome/browser/ui/ui/browser_live_tab_context.o",
+    "tab_restore": "obj/chrome/browser/ui/browser_tabrestore_impl/browser_tabrestore.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/tabs/aux_bookmark_tab_representation/aux_bookmark_tab_representation.o",
+    "obj/chrome/browser/sessions/impl/session_service.o",
+    "obj/chrome/browser/ui/ui/browser_live_tab_context.o",
+    "obj/chrome/browser/ui/browser_tabrestore_impl/browser_tabrestore.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserOrUIAccepted": false,
+  "originalReplay": {
+    "matchedSources": 456,
+    "steps": 288
+  },
+  "buildGeneration": {
+    "targets": 36082,
+    "files": 5013,
+    "passed": true
+  },
+  "liveBookmarkRowOwnerMounted": false
+}
