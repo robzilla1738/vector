@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "kind": "source-only ordered provider owner readiness; no UI trigger",
+  "actualProvider": {
+    "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+    "sha256": "4b6539beb72e6e9f423d63768597df6f1f12a9091d9a1596f96f7fe375f501e5",
+    "outputOf": "6251e6f75 applied v134"
+  },
+  "requiredNextOrder": [
+    {
+      "commit": "f4bf2dbde",
+      "patch": "docs/integration/proposed/native-profile-switch-owner/transaction-map/ai-mode-private-profile-owner.patch",
+      "sha256": "0fa6f09ae13e9bc6ddb3d9a3464c840d279e48d94b1b2a6fcbcc4d8536156c1e"
+    },
+    {
+      "commit": "e47f5aac9",
+      "patch": "docs/integration/proposed/native-profile-switch-owner/transaction-map/actor-profile-lifecycle.patch",
+      "sha256": "839ea70de3b7278f89d7e238d763cee1a97f328d9dabc5fb339df354af819b2e"
+    },
+    {
+      "commit": "bb76c3ad7",
+      "patch": "docs/integration/proposed/native-profile-switch-actor-ai-provider/native.patch",
+      "sha256": "0ebc7a8bb7b0d7ebf10fc8c22d3754ecb3b9ff68f19a2d50bdbafb4a5531bd3c"
+    }
+  ],
+  "originalScopeEvidence": {
+    "commit": "973bdb2a0",
+    "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-original-scope-evidence.json",
+    "sha256": "c65439d123a77bcc997577c70ce9cfe19588a7d7f287a8a231eada50b136fb7e"
+  },
+  "remainingDefaultPresentBlockers": [
+    "glic_iph_controller_",
+    "glic_split_button_controller_"
+  ],
+  "remainingConditionalGuards": [
+    "breadcrumb_manager_browser_agent_",
+    "comments_side_panel_coordinator_",
+    "contextual_tasks_browser_controller_",
+    "organizer_panel_controller_",
+    "ai_overlay_dialog_controller_",
+    "new_tab_footer_controller_",
+    "ios_promo_controller_",
+    "recent_activity_bubble_coordinator_",
+    "shared_tab_group_feedback_controller_"
+  ],
+  "sourceEvidence": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "25e78be7a93ff1046eca5ee49545aeec964eb1dd0bbf6079544f3bbc44cd03a9"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.cc",
+      "sha256": "d5557fe3a3a63b5f9b7c17bc71bf675e9dd0c6a4f3af9be3b3deb074d8de4500"
+    },
+    {
+      "path": "components/data_sharing/public/features.cc",
+      "sha256": "f875b1f546d46a10e1f469d522843dd6c4da07d5d60ae08de58d6e656a7ded03"
+    },
+    {
+      "path": "components/collaboration/public/features.cc",
+      "sha256": "379bdcfccd4c4ce2e17fe5f09ef21b83fc41862b74cf8759716d055cb2c08f1b"
+    },
+    {
+      "path": "components/search/ntp_features.cc",
+      "sha256": "e4e7fda6864d39883f5e786c883d89f6e6193f617cdbbf28f0f144f1aae3b32e"
+    },
+    {
+      "path": "components/contextual_tasks/public/features.cc",
+      "sha256": "ca6831f0bafb51eb4b844abfcdeba62c968d1ef003bc52191a932dd70a80bc8d"
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.cc",
+      "sha256": "78785cf282b47c49a8d170ae20c4dc6a5206c4cb6fa17c9068901d5cc269b755"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.cc",
+      "sha256": "73c5ac4d2a70746d043e4c072c5c4477db2b0aa9723f832e0c6fa81c74f33667"
+    },
+    {
+      "path": "components/breadcrumbs/core/breadcrumbs_status.cc",
+      "sha256": "631ed50e171cdf67fe40d5c4c49fe0796c8bf5d1dea093dbfc00a85a819b7be9"
+    }
+  ],
+  "runtimeEligibilityProven": false,
+  "forcedNativeDestructionAccepted": false,
+  "sharedSourceModified": false
+}
