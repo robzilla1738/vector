@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_completion_choice.h",
+      "baselineSha256": null,
+      "outputSha256": "bdba152c190f4172675b68bb0cb4a09828d6f427fc604f68c7cdc17dcf9ba025"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_completion_choice.mm",
+      "baselineSha256": null,
+      "outputSha256": "a70b315b71f81be01e9a0dfc76417338edb2d75aa47d6b3dbc87a76081d3c6c7"
+    }
+  ]
+}

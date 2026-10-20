@@ -1,0 +1,96 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x458d0b4",
+      "end": "0x458d5b0",
+      "sha256": "f334d7f5e9e60fde851f76316870516cc70cb4959019cea56e520d44366fab40",
+      "listing": "chooser.asm",
+      "listingSha256": "d9db8e89fe7c5bdfa44b50a1d8a84ae104bb1369f5d859446266fc2f697d804f"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdf87532",
+      "text": " migration completed.",
+      "encoding": "utf-16le",
+      "hex": "20006d006900670072006100740069006f006e00200063006f006d0070006c0065007400650064002e00"
+    },
+    {
+      "address": "0xdf8755e",
+      "text": "Your data was migrated from ",
+      "encoding": "utf-16le",
+      "hex": "59006f007500720020006400610074006100200077006100730020006d0069006700720061007400650064002000660072006f006d002000"
+    },
+    {
+      "address": "0xdf87598",
+      "text": ". Do you want to open the migrated profile now?",
+      "encoding": "utf-16le",
+      "hex": "2e00200044006f00200079006f0075002000770061006e007400200074006f0020006f00700065006e00200074006800650020006d0069006700720061007400650064002000700072006f00660069006c00650020006e006f0077003f00"
+    },
+    {
+      "address": "0xdf875f8",
+      "text": " import completed.",
+      "encoding": "utf-16le",
+      "hex": "200069006d0070006f0072007400200063006f006d0070006c0065007400650064002e00"
+    },
+    {
+      "address": "0xdf8761e",
+      "text": "Your data was imported from ",
+      "encoding": "utf-16le",
+      "hex": "59006f0075007200200064006100740061002000770061007300200069006d0070006f0072007400650064002000660072006f006d002000"
+    },
+    {
+      "address": "0xdf87658",
+      "text": ".",
+      "encoding": "utf-16le",
+      "hex": "2e00"
+    },
+    {
+      "address": "0xdec7790",
+      "text": "Open Profile",
+      "encoding": "utf-8",
+      "hex": "4f70656e2050726f66696c65"
+    },
+    {
+      "address": "0xdec779d",
+      "text": "Not Now",
+      "encoding": "utf-8",
+      "hex": "4e6f74204e6f77"
+    },
+    {
+      "address": "0xd7e972e",
+      "text": "OK",
+      "encoding": "utf-8",
+      "hex": "4f4b"
+    }
+  ],
+  "selectors": [
+    {
+      "address": "0xc1512cc",
+      "hex": "b05300b01002119100021fd6",
+      "decoded": "objc:setAlertStyle:"
+    },
+    {
+      "address": "0xc1512b4",
+      "hex": "905300b01002259100021fd6",
+      "decoded": "objc:setMessageText:"
+    },
+    {
+      "address": "0xc1512c0",
+      "hex": "905300b01082259100021fd6",
+      "decoded": "objc:setInformativeText:"
+    },
+    {
+      "address": "0xc1512d8",
+      "hex": "905300b01002269100021fd6",
+      "decoded": "objc:addButtonWithTitle:"
+    },
+    {
+      "address": "0xc15129c",
+      "hex": "905300b01082269100021fd6",
+      "decoded": "objc:runModal"
+    }
+  ]
+}
