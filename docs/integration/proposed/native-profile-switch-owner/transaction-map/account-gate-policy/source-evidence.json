@@ -1,0 +1,33 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "originalGateEvidence": "../account-gate-popup/evidence/",
+  "accountStateEvidence": "../account-bootstrap-state/evidence/",
+  "producerSourceFiles": [
+    {
+      "path": "evidence/02cc35c0.c",
+      "sha256": "0eb6d95ef08665cba4efca5b6fda7d07632f8ce2e174e5359e7a5b00366caa47"
+    },
+    {
+      "path": "evidence/034e3f1c.c",
+      "sha256": "d378e7d60899280869ee07cab133814720404b3b365e2c4448f6eb4e8cb0a792"
+    },
+    {
+      "path": "evidence/0415ebd0.c",
+      "sha256": "dc300b10f3402bb88fab372dc205a723cd209df444e0b22a85c2f0f7e04906fe"
+    },
+    {
+      "path": "evidence/0415fec0.c",
+      "sha256": "858bd63cee82bfe5d260cf5fc328229d036f09c59ebd3db8fed213d24174498a"
+    },
+    {
+      "path": "evidence/04160ce0.c",
+      "sha256": "e0876e9c27147d9d37a0b7a4d21057f605a363886253514a091463355477558e"
+    }
+  ],
+  "checks": {
+    "incrementalReplayAndOutputHashes": true,
+    "nativeCompile": false,
+    "sharedNativeWrites": false,
+    "runtimeAcceptance": false
+  }
+}

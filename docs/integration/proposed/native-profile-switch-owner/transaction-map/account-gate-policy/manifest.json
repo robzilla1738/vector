@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "base": "4673344f4 popup output; requires003e27761 account bootstrap reader",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "8144ac1b9e5b4fec8c4de4ff99658918dc8167362802cf4ad30561ba8c552343",
+      "outputSha256": "1ceef32eb9012da20eb93966e659e4a45be77dcdbc6497e47a83f2816382d796"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "066f577c028113d4bfd168eb26f6e30fdbbd9e157a1df4736046c18697234317",
+      "outputSha256": "6d8c72e99f222ec2a3d582c2fcf15b4d3364011ca6cb292eded9930f3170afcc"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
