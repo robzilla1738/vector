@@ -302,6 +302,7 @@ steps.extend([
     ('native-bottom-sync-gn/native.patch', 'native-bottom-sync-gn/manifest.json'),
     ('native-bottom-sync-profile-rebind/native.patch', 'native-bottom-sync-profile-rebind/manifest.json'),
     ('native-profile-header-bottom-placement/native.patch', 'native-profile-header-bottom-placement/manifest.json'),
+    ('native-daemon-authorization-refresh/native.patch', 'native-daemon-authorization-refresh/manifest.json'),
 ])
 
 if options.through:

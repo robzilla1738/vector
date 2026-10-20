@@ -1,0 +1,156 @@
+--- a/chrome/browser/aux/daemon_supervisor.h
++++ b/chrome/browser/aux/daemon_supervisor.h
+@@ -4,6 +4,7 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <vector>
+ 
+ #include "base/files/file_path.h"
+ #include "base/functional/callback.h"
+@@ -33,6 +34,8 @@
+     kStopping
+   };
+   using StateCallback = base::RepeatingCallback<void(State, std::string)>;
++  using AuthorizationCallback =
++      base::OnceCallback<void(std::optional<std::string>)>;
+   DaemonSupervisor(BundlePaths paths,
+                    base::FilePath home,
+                    uint16_t port,
+@@ -48,6 +51,9 @@
+   State state() const { return state_; }
+   bool healthy() const { return healthy_; }
+   const std::string& authorization() const { return authorization_; }
++  // UI sequence; completion is always posted. Force invalidates the cached
++  // token and joins or starts the same real installation challenge/session.
++  void RequestAuthorization(bool force, AuthorizationCallback callback);
+ 
+  private:
+   void SetState(State state, std::string error = {});
+@@ -55,6 +61,7 @@
+   void Poll();
+   void DidReadHealth(std::optional<std::string> body);
+   void Authenticate();
++  void CompleteAuthorizationRequests(std::optional<std::string> result);
+   void DidReadChallenge(std::optional<std::string> body);
+   void DidSignChallenge(std::string id, std::optional<std::string> signature);
+   void DidReadSession(std::optional<std::string> body);
+@@ -76,6 +83,7 @@
+   base::Time process_created_;
+   base::TimeTicks activation_deadline_, token_expires_;
+   std::string authorization_;
++  std::vector<AuthorizationCallback> authorization_waiters_;
+   std::unique_ptr<network::SimpleURLLoader> loader_;
+   base::OneShotTimer timer_;
+   base::OnceClosure shutdown_done_;
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -1,6 +1,8 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ // Native lifecycle: docs/spec/native/platform.md P1/P2, daemon/core.md.
+ #include "chrome/browser/aux/daemon_supervisor.h"
++
++#include "base/task/sequenced_task_runner.h"
+ 
+ #include "build/build_config.h"
+ #if BUILDFLAG(IS_POSIX)
+@@ -177,6 +179,14 @@
+               << " " << error;
+   }
+   state_ = state;
++  if (state == State::kReady) {
++    CompleteAuthorizationRequests(authorization_.empty()
++                                      ? std::nullopt
++                                      : std::make_optional(authorization_));
++  } else if (state == State::kFailed || state == State::kStopping ||
++             state == State::kStopped) {
++    CompleteAuthorizationRequests(std::nullopt);
++  }
+   changed_.Run(state, std::move(error));
+ }
+ void DaemonSupervisor::Start() {
+@@ -306,6 +316,44 @@
+   timer_.Start(FROM_HERE, base::Milliseconds(250), this,
+                &DaemonSupervisor::Poll);
+ }
++void DaemonSupervisor::CompleteAuthorizationRequests(
++    std::optional<std::string> result) {
++  auto waiters = std::move(authorization_waiters_);
++  authorization_waiters_.clear();
++  for (auto& waiter : waiters) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(waiter), result));
++  }
++}
++void DaemonSupervisor::RequestAuthorization(bool force,
++                                            AuthorizationCallback callback) {
++  if (force) {
++    authorization_.clear();
++    token_expires_ = base::TimeTicks();
++  }
++  if (!healthy_ || !process_.IsValid() || state_ == State::kStopping ||
++      state_ == State::kStopped) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
++    return;
++  }
++  if (state_ != State::kAuthenticating && !force &&
++      !authorization_.empty() && token_expires_ > base::TimeTicks::Now()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback),
++                                 std::make_optional(authorization_)));
++    return;
++  }
++  authorization_waiters_.push_back(std::move(callback));
++  if (state_ == State::kAuthenticating) {
++    return;
++  }
++  // The supervisor has one loader: cancel a pending health poll before its
++  // actual challenge/session exchange; never overlap two exchanges.
++  timer_.Stop();
++  loader_.reset();
++  Authenticate();
++}
+ void DaemonSupervisor::Authenticate() {
+   SetState(State::kAuthenticating);
+   Request(
+--- a/chrome/browser/aux/browser_platform.h
++++ b/chrome/browser/aux/browser_platform.h
+@@ -25,6 +25,11 @@
+                                           const base::FilePath&)> installer);
+   CdpRequestFilter CreateBrowserCdpFilter(uint16_t port) const;
+   const std::string& authorization() const;
++  using DaemonAuthorizationCallback = DaemonSupervisor::AuthorizationCallback;
++  // UI sequence. Asynchronous actual authorization, with optional cache
++  // invalidation for the supplied one-time401 retry.
++  void RequestDaemonAuthorization(bool force,
++                                  DaemonAuthorizationCallback callback);
+   // UI sequence. Add never calls inline; caller may inspect authorization()
+   // after subscribing to cover an already-authenticated supervisor.
+   base::CallbackListSubscription ObserveDaemonAuthorization(
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -9,6 +9,7 @@
+ #include "base/run_loop.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/task/thread_pool.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ namespace aux {
+ BrowserPlatform::BrowserPlatform() = default;
+@@ -66,6 +67,15 @@
+   supervisor_->Start();
+   return true;
+ }
++void BrowserPlatform::RequestDaemonAuthorization(
++    bool force, DaemonAuthorizationCallback callback) {
++  if (!supervisor_) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
++    return;
++  }
++  supervisor_->RequestAuthorization(force, std::move(callback));
++}
+ base::CallbackListSubscription BrowserPlatform::ObserveDaemonAuthorization(
+     base::RepeatingClosure callback) {
+   return authorization_observers_.Add(std::move(callback));

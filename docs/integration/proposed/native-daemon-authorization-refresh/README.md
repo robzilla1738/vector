@@ -1,0 +1,5 @@
+# Actual daemon authorization refresh seam
+
+UI-sequence RequestDaemonAuthorization(force, OnceCallback<void(optional<string>)>) exposes the existing supervisor challenge/session for supplied Chats one-time401 invalidation/retry. All results are asynchronously posted. A current unexpired token can satisfy an ordinary request; forced requests invalidate cached authorization and coalesce with an existing exchange, or stop/cancel the health poll before starting the existing real challenge/session. No second loader/exchange or alternate authority is created.
+
+Queued callers complete on real ready/failure/stopping/stopped state. Absent/unhealthy/stopping supervisor fails with nullopt; it never synthesizes a token or healthy state. Queue is detached before completion tasks/observer notifications, so reentrant callers cannot be consumed as part of a previous generation. Existing challenge signing, session type validation, native gate, profile/home/daemon isolation and protocol bytes are unchanged. No challenge/helper/Keychain operation was performed to author this source proposal. Actual native compile and runtime retry acceptance remain pending.

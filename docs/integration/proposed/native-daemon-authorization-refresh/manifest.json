@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "baselineSha256": "3c3177386af93b27d71b37729be9bed1d7bfc559c63e8d429725aa2bb1b9504b",
+      "outputSha256": "db0bf4f7bdf3ac8c2810e4b6e0aec3f39ab054a60bc755a4296c391e0351ae57"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "c99733b59493118b246bb19f96552ff85caf004e7bb884a17196bef6234c8502",
+      "outputSha256": "9c4cdf9ab2c166235d5467996853e32ae8e5bef70b1018971bff485376fdf594"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "baselineSha256": "393d4d8fd0da4ac5cf8d13d9ec713a7b60124eeef2993920a9a02b0f5535c2c3",
+      "outputSha256": "68dfcd1eaadfe144e9b6312ec129d7020981749f66f4e1b501b96802b0b56dc3"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "95cbe49f6c6456b1ef13b2313b942ff9fc79224e101dfd8c81b788f9589016c7",
+      "outputSha256": "ebf07c2a85ff659cc1f8312a260b286b75c0cb3441beb49a05bec8c0e385ea2d"
+    }
+  ],
+  "compiled": false,
+  "applied": false
+}
