@@ -49,11 +49,22 @@ export const platformEdits = [
   edit('hosted sharing unavailable locally', 'https://share.aside.com', 'http://127.0.0.1:9/aux-unavailable/share', 1),
 ];
 
+
+// Owner-directed product exception: no built-in Vault. Keep installation and
+// provider authentication intact, and retain external-manager integration.
+export const passwordManagerScopeEdits = [
+  edit('disable built-in password manager default', 'useBuiltinPasswordManager:!0', 'useBuiltinPasswordManager:!1', 1),
+  edit('disable built-in password manager in persisted settings', 'let ti={...DEFAULT_APP_SETTINGS,...Cn},ni=appSettingsSchema.safeParse(ti)', 'let ti={...DEFAULT_APP_SETTINGS,...Cn,useBuiltinPasswordManager:!1},ni=appSettingsSchema.safeParse(ti)', 1),
+  edit('omit built-in password manager REPL', 'ui=Cn.incognito?null:new PasswordManagerRepl(ei,ai,Cn.agentSessionId)', 'ui=null', 1),
+  edit('exclude Vault skills and retain external manager skills', "async function resolveSessionSkills(Cn,ei){let ti=Cn.session.incognito?ei.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name)):ei;if(Cn.session.incognito||!ti.some(Cn=>Cn.name===`password-manager`))return ti;let ni=settings(Cn.accountId).get(`externalPasswordManagers`).map(Cn=>Cn.provider),ri=await prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),ti,ni);try{let{accounts:ei,connections:ri}=PwmAccountRegistry.list(),ii=ei.filter(({id:ei})=>ri.some(ti=>ti.profileId===`app-account:${Cn.accountId}`&&ti.pwmAccountId===ei)),ai=await Promise.allSettled(ii.map(({id:Cn})=>getPasswordManagerSettings(Cn))),oi=ai.flatMap(Cn=>Cn.status===`fulfilled`?[Cn.value]:[]),si=oi.length&&ai.every(Cn=>Cn.status===`fulfilled`)&&oi.every(Cn=>Cn.useBuiltinPasswordManager===!1)?ti.filter(Cn=>Cn.name!==`password-manager`):ti;return prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),si,ni)}catch(Cn){return logger.warn(`[Skills] Password Manager preferences unavailable`,{error:Cn}),ri}}",
+    'async function resolveSessionSkills(Cn,ei){let ti=ei.filter(Cn=>Cn.name!==`password-manager`);if(Cn.session.incognito)return ti.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name));let ni=settings(Cn.accountId).get(`externalPasswordManagers`).map(Cn=>Cn.provider);return prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),ti,ni)}', 1),
+];
+
 export function adaptDaemonCode(original) {
   if (sha(original) !== DAEMON_CODE_SHA256) throw new Error('Supplied daemon code hash mismatch');
   let code = original;
   const applied = [];
-  for (const e of [...identityEdits, ...platformEdits]) {
+  for (const e of [...identityEdits, ...platformEdits, ...passwordManagerScopeEdits]) {
     const count = code.split(e.from).length - 1;
     if (count !== e.count) throw new Error(`${e.name}: expected ${e.count}, got ${count}`);
     code = code.split(e.from).join(e.to);
