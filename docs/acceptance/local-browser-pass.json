@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "scope": "Local browser, external password managers, Chat/Settings and frame parity",
+  "sourceStage": "out/provided-reuse-local-browser-pass",
+  "candidate": "out/provided-candidate-local-browser-pass/Aux.app",
+  "implementation": [
+    "Vault extension and password importer excluded from assembly",
+    "Password settings and password-import onboarding removed",
+    "Built-in Vault REPL/skill excluded; external manager APIs retained",
+    "Local browser visibility independent of Vault/cloud onboarding",
+    "Chat and Settings use authenticated actual account resolution and main.html routes",
+    "Native toolbar pinned; compact address geometry; sidebar controls and collapse visibility repaired",
+    "Prerender delegate and crash-restore fallback repaired",
+    "All BrowserPlatform startup and registration checks require only the validated Agent component"
+  ],
+  "build": {
+    "composition": "v510",
+    "exitCode": 0,
+    "generatedKeyProbePassed": true,
+    "receipt": "out/native-integration/native-full-build-v510.json",
+    "receiptSha256": "40dd40a06953232bb008c6168dd207a810d8e932bd51d853362e8e727b898ae2"
+  },
+  "runtime": {
+    "status": "Regular browser window observed; core browser checks passed; daemon-backed routes blocked",
+    "composition": "v510",
+    "normalProfile": true,
+    "incognito": false,
+    "observed": [
+      "Supplied new-tab page with Aux mark",
+      "Native address bar and Bookmarks/Chats/Tabs sidebar",
+      "URL entry navigated to example.com",
+      "Sidebar collapse and expansion via native controls"
+    ],
+    "authentication": "Unsigned install helper SecItemAdd -34018: required entitlement absent",
+    "chat": "New Chat did not navigate; actual account resolution unavailable",
+    "settings": "Cmd+, displays Aux navigation unavailable: could not resolve profile with local service",
+    "modelTask": "Not run: daemon unavailable; no AI test credential installed",
+    "uiTool": "Intermittent CUA attachment timeouts; final dismiss/new-tab action not confirmed",
+    "launchRecord": "out/native-integration/local-browser-pass-launcher.json",
+    "log": "out/native-integration/local-browser-pass-reopen.log"
+  },
+  "ownerProfileAccessed": false,
+  "fullParityAccepted": false,
+  "verificationScope": [
+    "Focused pinned transforms and resource assembly tests",
+    "Combined v510 native build and generated-key probe",
+    "Packaged regular disposable browser observation",
+    "URL navigation and sidebar collapse/expand",
+    "Chat/Settings entrypoint observation"
+  ],
+  "deferred": [
+    "complete visual surface matrix",
+    "hosted services",
+    "third-party password-manager desktop integration",
+    "comprehensive imports, Computer Use and notifications",
+    "Daemon-backed Chat and Settings acceptance under current no-signing rule",
+    "Full sidebar/frame geometry and both-theme visual parity"
+  ],
+  "signing": {
+    "performed": false,
+    "reason": "Latest user-provided AGENTS instructions prohibit signing during development. Prior signed-copy evidence is not acceptance for this candidate."
+  },
+  "priorLaunchFinding": "v508 exited because BrowserPlatform still required two extensions after Vault exclusion; v509 corrects all three checks.",
+  "package": {
+    "receipt": "out/provided-candidate-local-browser-pass/package.json",
+    "sha256": "9dbc974abcbc80908117e1dcfebf7c33c647565dabd66a794b8c12668075dd80",
+    "suppliedResources": 10751,
+    "nativeLeaves": 418,
+    "signed": false
+  }
+}

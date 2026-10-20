@@ -2,11 +2,19 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Local browser implementation pass — 2026-10-20
+
+The current pass removes the shipped Vault extension/importer and built-in password UI/tooling, removes Vault/cloud setup as a condition for showing the browser, resolves actual local accounts for supplied Chat/Settings routes, and repairs native toolbar/address/sidebar behavior. The default Settings shortcut now follows the same supplied Agent route as the profile menu. Prerender and crash-restore anchors have narrow native fixes.
+
+The combined v510 build and generated-key probe passed. Packaging includes 10,751 supplied resources and 418 native leaves. Actual launch exposed and fixed both the BrowserPlatform two-component checks and the initial-window Vault readiness requirement. The regular disposable window now displays the supplied Aux new-tab page, native toolbar/address bar and vertical Bookmarks/Chats/Tabs sidebar. URL navigation and sidebar collapse/expand were observed working.
+
+Chat and account-backed Settings are not accepted: the unsigned daemon fails installation-key initialization with `SecItemAdd -34018` (missing entitlement), and Settings reports that the profile cannot be resolved. No model task ran or AI test credential was installed. The latest user-supplied workspace instructions prohibit signing, so this pass did not execute signing. Full visual parity and third-party password-manager desktop compatibility remain unverified. Evidence: `docs/acceptance/local-browser-pass.json`. Reopen the disposable preview with `out/Open Aux Preview.command`; the installed app was not replaced.
+
 ## Latest scope change — external password managers
 
 Owner direction, 2026-10-20: exclude the built-in Vault/password manager from Aux. Users bring existing password managers such as 1Password through browser extensions. Historical Vault implementation and acceptance notes below no longer define required product scope.
 
-Status: direction recorded; runtime removal is not yet implemented. Pending: remove Vault product surfaces/bundling, decouple normal browser and agent startup from Vault setup/unlock while preserving installation authentication and secure provider credentials, and verify third-party extension installation/autofill plus applicable desktop-app/native messaging. No owner credentials or profiles were modified.
+Status: the local-browser pass excludes Vault and its nested importer from assembly, removes password settings/import onboarding and the built-in REPL/skill, disables built-in save/fill, and decouples browser/agent startup from Vault setup. Installation authentication and provider credential protection remain. Third-party extension installation/autofill and desktop companion/native messaging still require verification. No owner credentials or profiles were modified.
 
 ## Current acceptance gates
 

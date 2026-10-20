@@ -14,7 +14,7 @@ Implementation follow-up:
 - Preserve ordinary third-party extension installation and autofill; verify representative password-manager extension behavior in a disposable profile. Verify desktop companion/native messaging separately where supported by the vendor.
 - Do not import or migrate user passwords into Aux. Do not delete existing credentials or owner profiles.
 
-These are pending implementation and compatibility checks, not completed features. Browser UI and agent parity remain the priority.
+The local-browser pass implements Vault product removal, startup decoupling, supplied local Chat/Settings routes and native frame repairs. Runtime verification and third-party password-manager compatibility remain separate acceptance gates; see `docs/acceptance/local-browser-pass.json`. Browser UI and agent parity remain the priority.
 
 ## Goal
 

@@ -6,7 +6,7 @@ The owner excludes the supplied Vault product from Aux. `provided-assembly.mjs` 
 
 These exact, count-checked edits apply before native adaptations and branding. Seven real pinned Agent chunks were transformed, replay-checked and parsed successfully. The focused resource assembly tests pass, including absence of `apps/vault` in output.
 
-Native component-extension loading, startup gates, first-party save/autofill prompts and agent tool exposure require the matching native/daemon changes from this implementation pass. Shared auth/provider crypto must remain. Third-party extension autofill and desktop companion integration still require actual observation; this patch does not claim those work.
+The matching native/daemon changes now remove Vault from component-extension loading and startup gates, disable first-party save/autofill, and omit the built-in password-manager REPL and skill. Shared auth/provider crypto must remain. Third-party extension autofill and desktop companion integration still require actual observation; this patch does not claim those work.
 
 ## Rebuild from the frozen source
 
