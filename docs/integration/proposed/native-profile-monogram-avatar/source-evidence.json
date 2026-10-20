@@ -1,0 +1,111 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "original-first-grapheme.txt",
+      "start": "0x4587780",
+      "stop": "0x4587940",
+      "bytesSha256": "8dbd80915ba5844c54e4ec7a29a8b99970e318320fe1001cb318d7ccfe360d0c",
+      "extractSha256": "60d4d8dbe3f5062e9630c9f515ecb1997cab4415794d8d3b86b826e7580ecdda"
+    },
+    {
+      "file": "original-ascii-uppercase.txt",
+      "start": "0x87eef20",
+      "stop": "0x87eef88",
+      "bytesSha256": "87a6cc66f655034aa5aa98fad022e0e6f68b16840b4986b606e7b3df816f4043",
+      "extractSha256": "9f93ede3a463ee6572196b2b4686d9595e63be14b5e151a72dd01d85405154e6"
+    },
+    {
+      "file": "original-preferred-size.txt",
+      "start": "0x45882c0",
+      "stop": "0x4588300",
+      "bytesSha256": "2f81b207b54ec5a1f779a305b326b9f978758cbe65be799882d13f63d4661791",
+      "extractSha256": "b49c4218365cca581c7c1acb343c6932f241948ded1c43943858f4a34a500c54"
+    },
+    {
+      "file": "original-paint.txt",
+      "start": "0x4588300",
+      "stop": "0x45885f8",
+      "bytesSha256": "e22bed670aaa8d1ed8d096e78309b2042df0325811c53568c37c408542b64102",
+      "extractSha256": "5d4c750b16b66b158479a3ea78ca76cac6f9dea5631a2c9d5c6a2135e40fe0a8"
+    },
+    {
+      "file": "original-metadata.txt",
+      "start": "0x45885f8",
+      "stop": "0x4588704",
+      "bytesSha256": "8003ab3a8912a3db93ba642f3cf4dbe448a19e819810dfb20a29b185a92f3f67",
+      "extractSha256": "ddc16e0ed5842d97ed18138c4e84ba3266211a1d354de21e172634a0f082736c"
+    },
+    {
+      "file": "original-foreground-expression.txt",
+      "start": "0x35e9264",
+      "stop": "0x35e927c",
+      "bytesSha256": "6abc27b1abf9bae7d6a31c19723a846b66d42aa8842fd300a131ae4e468013a3",
+      "extractSha256": "a562112ebcc9d01effbb46adcb0ced58f5bee5bd4a057856164e0431218920af"
+    },
+    {
+      "file": "original-foreground-binding.txt",
+      "start": "0x35e92a0",
+      "stop": "0x35e9320",
+      "bytesSha256": "5fc33d7497628f7238fc9d3914706f65da9984dde10be5ce0855ce17ab5cc234",
+      "extractSha256": "cb320790a00b706ece88ddcf85d2b8293bf0718f59c170c7430838f82031cba6"
+    },
+    {
+      "file": "original-background-expression.txt",
+      "start": "0x35e73e0",
+      "stop": "0x35e73f8",
+      "bytesSha256": "c139d9fe9cb23c83941e4590092d5f85005e03b1fdf283ff0fea3b9760441415",
+      "extractSha256": "3a11af4e40dc9f6de8528d25383eee8134a2aae2569f51efed9e4d87c06d94de"
+    }
+  ],
+  "defaultColors": {
+    "dataRva": "0xdf478b0",
+    "bytes": "0601000000000000de00000000000000",
+    "foreground": 262,
+    "background": 222
+  },
+  "colorNames": [
+    {
+      "id": 222,
+      "entryRva": "0xe910170",
+      "name": "kColorAsideSurfaceSecondaryForeground"
+    },
+    {
+      "id": 262,
+      "entryRva": "0xe9103f0",
+      "name": "kColorAsideControlProminentForeground"
+    }
+  ],
+  "colorExpressions": [
+    {
+      "rva": "0x35e73e0",
+      "bytes": 24,
+      "resultRegister": 27,
+      "seedRegister23": null,
+      "light": "0x8c0a0a0a",
+      "dark": "0x8cfafafa"
+    },
+    {
+      "rva": "0x35e9264",
+      "bytes": 24,
+      "resultRegister": 21,
+      "seedRegister23": null,
+      "light": "0xd9fafafa",
+      "dark": "0xd90a0a0a"
+    }
+  ],
+  "metadata": {
+    "vtable": "0xe6db090",
+    "slot58": "0x4588700",
+    "target": "0x45885f8",
+    "nameRva": "0xdec64e9"
+  },
+  "reaPaintEvidence": "ev_efc9d686a527505e00c46c953fd209582424753697bdc0d4ca01844836e61c9b",
+  "limits": [
+    "C++ setter names are platform adapter API, not recovered original declarations.",
+    "Default semantic mixer recovered; forced/high-contrast override parity unverified.",
+    "No original preview page or menu wiring in this dependency."
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "two new sources absent from applied161; no existing native file mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_monogram_avatar_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "825d0cbf5b7d1743b8008620ad3eb0647441b71ebc53cd1c3b93c09a03868be5"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/profile_monogram_avatar_view.h",
+      "baselineSha256": null,
+      "outputSha256": "71c281de5a816583c017c2757e9535f558c7d8473a6e91d8ec34c5b3aadeeabe"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiTriggerInstalled": false
+}
