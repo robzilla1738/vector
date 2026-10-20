@@ -251,6 +251,11 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/account-profile-list/native.patch', 'native-profile-switch-owner/transaction-map/account-profile-list/manifest.json'),
     ('native-profile-switch-owner/transaction-map/profile-identity-optional-pref/native.patch', 'native-profile-switch-owner/transaction-map/profile-identity-optional-pref/manifest.json'),
     ('native-profile-preview-admission/native.patch', 'native-profile-preview-admission/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/account-gate-source-ownership/native.patch', 'native-profile-switch-owner/transaction-map/account-gate-source-ownership/manifest.json'),
+    ('native-profile-source-registration/native.patch', 'native-profile-source-registration/manifest.json'),
+    ('native-profile-preview-region-hover/native.patch', 'native-profile-preview-region-hover/manifest.json'),
+    ('native-profile-page-indicator/native.patch', 'native-profile-page-indicator/manifest.json'),
+    ('native-profile-pager-registration/native.patch', 'native-profile-pager-registration/manifest.json'),
 ])
 
 if options.through:
