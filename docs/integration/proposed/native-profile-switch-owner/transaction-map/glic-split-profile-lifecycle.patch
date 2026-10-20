@@ -1,0 +1,210 @@
+--- a/chrome/browser/glic/browser_ui/glic_split_button_controller.h
++++ b/chrome/browser/glic/browser_ui/glic_split_button_controller.h
+@@ -9,12 +9,14 @@
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/functional/callback_helpers.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/glic/host/glic.mojom.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class ActorTaskListBubbleController;
+ class BrowserWindowInterface;
++class Profile;
+ 
+ namespace glic {
+ 
+@@ -47,6 +49,12 @@
+ 
+   void OnGlicButtonClicked();
+ 
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(GlicKeyedService& service);
++  void FinishForAuxProfileSwitch();
++  void AbortForAuxProfileSwitch(Profile* source);
++
+   virtual GlicSplitButtonDelegate* GetActiveDelegate();
+   void CallOnBoth(base::RepeatingCallback<void(GlicSplitButtonDelegate&)> fn);
+ 
+@@ -61,6 +69,11 @@
+ 
+  private:
+   bool IsToolbarButton() const;
++  base::ScopedClosureRunner EnterAuxProfileCallback();
++  raw_ptr<Profile> aux_source_profile_ = nullptr;
++  int aux_callback_depth_ = 0;
++  bool aux_profile_switch_prepared_ = false;
++
+   mojom::InvocationSource GetInvocationSource(
+       GlicSplitButtonDelegate& delegate) const;
+ 
+@@ -78,6 +91,7 @@
+   ui::ScopedUnownedUserData<GlicSplitButtonController>
+       scoped_unowned_user_data_;
+ 
++  base::WeakPtrFactory<GlicSplitButtonController> aux_mutation_weak_factory_{this};
+   base::WeakPtrFactory<GlicSplitButtonController> weak_factory_{this};
+ };
+ 
+--- a/chrome/browser/glic/browser_ui/glic_split_button_controller.cc
++++ b/chrome/browser/glic/browser_ui/glic_split_button_controller.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
++
++#include "base/check_op.h"
+ 
+ #include <optional>
+ #include <string>
+@@ -69,6 +71,124 @@
+ 
+ GlicSplitButtonController::~GlicSplitButtonController() = default;
+ 
++base::ScopedClosureRunner GlicSplitButtonController::EnterAuxProfileCallback() {
++  ++aux_callback_depth_;
++  return base::ScopedClosureRunner(base::BindOnce(
++      [](base::WeakPtr<GlicSplitButtonController> self) {
++        if (self) {
++          --self->aux_callback_depth_;
++        }
++      }, aux_mutation_weak_factory_.GetWeakPtr()));
++}
++
++
++
++bool GlicSplitButtonController::CanPrepareForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ || !glic_service_ ||
++      glic_service_->profile() != browser_->GetProfile() ||
++      glic_service_->IsPanelShowingForBrowser(*browser_) ||
++      !glic_button_controller_->CanPrepareForAuxProfileSwitch() ||
++      !static_cast<GlicNudgeControllerImpl*>(glic_nudge_controller_.get())
++           ->CanPrepareForAuxProfileSwitch() ||
++      (glic_actor_nudge_controller_ &&
++       !glic_actor_nudge_controller_->CanPrepareForAuxProfileSwitch()) ||
++      (actor_task_list_bubble_controller_ &&
++       !actor_task_list_bubble_controller_->CanPrepareForAuxProfileSwitch())) {
++    return false;
++  }
++  for (auto* delegate : {horizontal_tabs_delegate_.get(),
++                         vertical_tabs_delegate_.get()}) {
++    if (delegate && (!delegate->CanRebindActorBubbleForAuxProfileSwitch() ||
++                     delegate->GetIsShowingGlicNudge() ||
++                     delegate->GetIsShowingGlicActorTaskIconNudge() ||
++                     delegate->IsActorTaskListBubbleShowing())) {
++      return false;
++    }
++  }
++  return true;
++}
++
++void GlicSplitButtonController::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_source_profile_ = browser_->GetProfile();
++  aux_profile_switch_prepared_ = true;
++  glic_button_controller_->PrepareForAuxProfileSwitch();
++  static_cast<GlicNudgeControllerImpl*>(glic_nudge_controller_.get())
++      ->PrepareForAuxProfileSwitch();
++  if (glic_actor_nudge_controller_) {
++    glic_actor_nudge_controller_->PrepareForAuxProfileSwitch();
++  }
++  if (actor_task_list_bubble_controller_) {
++    actor_task_list_bubble_controller_->PrepareForAuxProfileSwitch();
++  }
++}
++
++void GlicSplitButtonController::RebindForAuxProfileSwitch(
++    GlicKeyedService& service) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK_EQ(service.profile(), browser_->GetProfile());
++  glic_service_ = &service;
++  glic_button_controller_->RebindForAuxProfileSwitch(service);
++  if (glic_actor_nudge_controller_) {
++    glic_actor_nudge_controller_->RebindForAuxProfileSwitch(service.profile());
++  }
++  if (actor_task_list_bubble_controller_) {
++    actor_task_list_bubble_controller_->RebindForAuxProfileSwitch(service.profile());
++  }
++  auto leave = EnterAuxProfileCallback();
++  auto weak = aux_mutation_weak_factory_.GetWeakPtr();
++  if (horizontal_tabs_delegate_) {
++    CHECK(horizontal_tabs_delegate_->CanRebindActorBubbleForAuxProfileSwitch());
++    horizontal_tabs_delegate_->RebindActorBubbleForAuxProfileSwitch(service.profile());
++  }
++  if (weak && vertical_tabs_delegate_) {
++    CHECK(vertical_tabs_delegate_->CanRebindActorBubbleForAuxProfileSwitch());
++    vertical_tabs_delegate_->RebindActorBubbleForAuxProfileSwitch(service.profile());
++  }
++}
++
++void GlicSplitButtonController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK_EQ(glic_service_->profile(), browser_->GetProfile());
++  aux_profile_switch_prepared_ = false;
++  aux_source_profile_ = nullptr;
++  auto leave = EnterAuxProfileCallback();
++  auto weak = aux_mutation_weak_factory_.GetWeakPtr();
++  static_cast<GlicNudgeControllerImpl*>(glic_nudge_controller_.get())
++      ->FinishForAuxProfileSwitch();
++  if (actor_task_list_bubble_controller_) {
++    actor_task_list_bubble_controller_->FinishForAuxProfileSwitch();
++  }
++  if (weak && glic_actor_nudge_controller_) {
++    glic_actor_nudge_controller_->FinishForAuxProfileSwitch();
++  }
++  if (weak) {
++    glic_button_controller_->FinishForAuxProfileSwitch();
++  }
++}
++
++void GlicSplitButtonController::AbortForAuxProfileSwitch(Profile* source) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK_EQ(aux_source_profile_, source);
++  CHECK_EQ(source, browser_->GetProfile());
++  CHECK_EQ(glic_service_->profile(), source);
++  aux_profile_switch_prepared_ = false;
++  aux_source_profile_ = nullptr;
++  auto leave = EnterAuxProfileCallback();
++  auto weak = aux_mutation_weak_factory_.GetWeakPtr();
++  static_cast<GlicNudgeControllerImpl*>(glic_nudge_controller_.get())
++      ->FinishForAuxProfileSwitch();
++  if (actor_task_list_bubble_controller_) {
++    actor_task_list_bubble_controller_->AbortForAuxProfileSwitch(source);
++  }
++  if (weak && glic_actor_nudge_controller_) {
++    glic_actor_nudge_controller_->AbortForAuxProfileSwitch(source);
++  }
++  if (weak) {
++    glic_button_controller_->AbortForAuxProfileSwitch(source);
++  }
++}
++
+ void GlicSplitButtonController::SetHorizontalTabsDelegate(
+     GlicSplitButtonDelegate* delegate) {
+   horizontal_tabs_delegate_ = delegate;
+@@ -82,6 +202,8 @@
+ }
+ 
+ void GlicSplitButtonController::OnGlicButtonClicked() {
++  CHECK(!aux_profile_switch_prepared_);
++  auto aux_leave = EnterAuxProfileCallback();
+   auto* delegate = GetActiveDelegate();
+   if (!delegate) {
+     // TODO(crbug.com/511309088): This should not be reachable.
+@@ -126,10 +248,13 @@
+ 
+ void GlicSplitButtonController::CallOnBoth(
+     base::RepeatingCallback<void(GlicSplitButtonDelegate&)> fn) {
++  auto leave = EnterAuxProfileCallback();
++  auto weak = aux_mutation_weak_factory_.GetWeakPtr();
+   if (horizontal_tabs_delegate_) {
+     fn.Run(*horizontal_tabs_delegate_);
+   }
+-  if (vertical_tabs_delegate_) {
++  // A real delegate may synchronously close the owning window.
++  if (weak && vertical_tabs_delegate_) {
+     fn.Run(*vertical_tabs_delegate_);
+   }
+ }

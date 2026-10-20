@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied135 outer Glic Split controller; depends on private-graph/dormant-bubble/button proposals",
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_controller.h",
+      "baselineSha256": "99ae4ed5c87dfe9c4718185dab918230608df98f35c1ec2180d7a039e89c9c9b",
+      "outputSha256": "a01d680d34dc92fd8019aa632005c8adf8e40c7703af5a5e3df629aa1ed40d44"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_controller.cc",
+      "baselineSha256": "24737d2389b9a638a871247b1a2789666886cd8c5ee1dc89b86046f4e5c9a75d",
+      "outputSha256": "8b125cb003ff1bf778bbda6df9da353f3f7b31dd3be0fb9dec8b04ae6f2aa169"
+    }
+  ],
+  "sourceModified": false,
+  "compiled": false,
+  "runtimeTested": false,
+  "patchReplayVerified": true
+}

@@ -1,0 +1,11 @@
+# Stable outer Glic split-button profile lifecycle
+
+Source-only actual135 two-file proposal, hash-pinned and replay verified. Depends on `glic-private-graph-profile`, `glic-dormant-bubble-profile`, and the parent's `glic-button-profile-lifecycle`. No shared writes/build or runtime proof.
+
+Exact APIs: `CanPrepareForAuxProfileSwitch`, `PrepareForAuxProfileSwitch`, `RebindForAuxProfileSwitch(GlicKeyedService&)`, `FinishForAuxProfileSwitch`, and `AbortForAuxProfileSwitch(Profile*)`. Same outer controller, view/delegate pointers, public WeakPtrs, userdata, nudge controller, button controller, actor nudge and bubble controller all survive. No whole Init, profile UI replacement, fabricated icon state, task stop, panel close or nudge dismissal.
+
+Can checks genuine service/profile, no open panel, all real private owners cold, and BOTH actual horizontal/vertical view delegates' complete bubble widget destruction plus no nudge/bubble state. Unknown delegates refuse. Prepare after all checks detaches only real profile subscriptions and captures source. Commit Rebind occurs with real identity/model target and empty model as the button hook requires; changes the actual service/profile sources and dormant real bubble map bindings. Finish after actual target tabs are inserted resubscribes bubble, refreshes actual actor state using its existing non-showing path, then runs the real button refresh. Source Abort is allowed only before identity commit, with actual source collections restored, and resubscribes genuine source owners without changing dormant bubble profile.
+
+`CallOnBoth` now checks lifetime after the first real delegate callback before accessing the second delegate. Other introduced depth scopes use destruction-safe weak leaves. Every finish/abort step that invokes real UI callbacks checks owner survival before the next step.
+
+Provider integration must retain actual target Glic eligibility and service identity checks using the target cache. This adapter covers existing eligible source/target owners; mismatched absent/present eligibility must remain a truthful refusal until the real existing delegate attachment/visibility behavior is integrated. It does not invent a service or enable a profile-switch UI trigger. Actor rows/queued flow deliberately block; no fake empty state is created.

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual applied135 private Glic nudge and Actor bubble controller graph",
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h",
+      "baselineSha256": "6ba9885aed0af24f170fec2a8d52140e69db98ce6338e5b82f2439348062f23f",
+      "outputSha256": "9fbc586f6d93481fbc59cd1c1a7c3a815141db67187f532d3ec3d50b3eb5bc98"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.cc",
+      "baselineSha256": "e307aa03cfd5429b243391bf34fb32c62aa56ec594ba56c7a6e61c7013b05f9e",
+      "outputSha256": "2683e337c83874bd40dd79569e0e372ed64c19739e806323dc6ab2fe186ff8ff"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h",
+      "baselineSha256": "fe1f68b542249dd324b6f204df4cee128dc2e8b76d57788ba8d2920e8ee62bd6",
+      "outputSha256": "180c40d7ae37afdcca72b598af82ea6258b07dccc53f5d8b216cca4f4f12eef0"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.cc",
+      "baselineSha256": "38ed2d81da7fffc931bafa8d5bc204a01e390245844e1912b553c66902cdb944",
+      "outputSha256": "12be24506123d5886d80c654ab0fb57ec61e9e0c653e3be9b810fa17f51231cd"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h",
+      "baselineSha256": "cf9e2f88c87384b40e2eb0a653ddb90f8ef6c3e43241f40ccda4acd9d3408542",
+      "outputSha256": "25dd61afd67599de0f2eb535027f765ceac081d2671ecc5591fadc301f637b6f"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.cc",
+      "baselineSha256": "07facdc717964106178cac5f4520c2c118c13690cd103440d923129314d557b4",
+      "outputSha256": "e3462b010e482ef990674a38973982437b8875a62bba8fcce00d61d902e8f9d5"
+    }
+  ],
+  "sourceModified": false,
+  "compiled": false,
+  "runtimeTested": false,
+  "patchReplayVerified": true
+}
