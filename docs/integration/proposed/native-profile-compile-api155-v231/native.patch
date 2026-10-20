@@ -1,0 +1,62 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.cc
+@@ -46,7 +46,7 @@
+   }
+   auto rect = child->bounds();
+   // Current155 has genuine nested children; preserve actual owner coordinates.
+-  views::View::ConvertRectToTarget(child->parent(), &region, &rect);
++  rect = views::View::ConvertRectToTarget(child->parent(), &region, rect);
+   return bounds.Contains(rect);
+ }
+ }  // namespace
+@@ -119,7 +119,7 @@
+     return;
+   }
+   auto bounds = geometry->bounds;
+-  views::View::ConvertRectToTarget(region, root, &bounds);
++  bounds = views::View::ConvertRectToTarget(region, root, bounds);
+   bounds.Intersect(root->GetLocalBounds());
+   if (bounds.IsEmpty()) {
+     return;
+--- a/chrome/browser/ui/tabs/pinned_tab_service.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
+@@ -338,7 +338,7 @@
+     if (!matches[i])
+       continue;
+     auto* tab = handles[i].Get();
+-    if (!tab || !model->GetIndexOfTab(tab).has_value() || !tab->IsPinned())
++    if (!tab || model->GetIndexOfTab(tab) == TabStripModel::kNoTab || !tab->IsPinned())
+       continue;
+     auto* contents = tab->GetContents();
+     if (!contents || contents->GetBrowserContext() != profile_)
+@@ -351,7 +351,7 @@
+   }
+   // Source dispatches kAll only after all matching identities are installed.
+   for (auto handle : changed) {
+-    if (auto* tab = handle.Get(); tab && model->GetIndexOfTab(tab).has_value())
++    if (auto* tab = handle.Get(); tab && model->GetIndexOfTab(tab) != TabStripModel::kNoTab)
+       model->NotifyTabChanged(tab, TabChangeType::kAll);
+   }
+ }
+--- a/chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.cc
+@@ -167,7 +167,7 @@
+   }
+   flags.setColor(foreground);
+   // Original df47a90 is SkRect ltrb(-3,-3,3,3), not a 6px offset.
+-  canvas->DrawOval(gfx::RectF(width() / 2 - 3, height() / 2 - 3, 6, 6), flags);
++  canvas->DrawCircle(gfx::Point(width() / 2, height() / 2), 3, flags);
+ }
+ 
+ BEGIN_METADATA(ProfilePageIndicatorDotButton)
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -134,7 +134,7 @@
+             if (!browser) return;
+             if (authorization != aux::BrowserPlatform::Get().authorization() ||
+                 !state.allows_browsing() || !state.account_id) {
+-              aux::CanShowBrowser(browser->GetProfile()->GetOriginalProfile());
++              aux::CanShowBrowser(browser.get());
+               chrome::ShowWarningMessageBoxAsync(
+                   browser->GetWindow()->GetNativeWindow(),
+                   u"Aux navigation unavailable",

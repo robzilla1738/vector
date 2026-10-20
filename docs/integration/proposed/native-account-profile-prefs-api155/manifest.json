@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Applied v229; preserves corrected Chromium155 include",
+  "sourceProposalManifestSha256": "9c4c5a839ef3e138cc7af56e670883bf83d956439c3af02ed0607f4166da088a",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_prefs.h",
+      "baselineSha256": null,
+      "outputSha256": "8145166b2b5404edca828e8c2f8bfa02638a3c84ccda4e87bf0006a7d4b1bff1"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_prefs.cc",
+      "baselineSha256": null,
+      "outputSha256": "39a4c0022405383ca76871597a69d6e5fd92c30beaf1685923f790e7e47b8881"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "a9c951f611d87d1c180a6b79cc0d3cd6c1ba23bdeab1aac363fcf8839a7c6edb",
+      "outputSha256": "d0f9cc3408230b2f74e1026e6794704a44caf72c09e4ccdc166b8294b78246da"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

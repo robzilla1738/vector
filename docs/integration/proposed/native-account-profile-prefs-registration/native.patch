@@ -1,0 +1,11 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -63,7 +63,7 @@
+ }
+ 
+ source_set("profile_gate_prefs") {
+-  sources = [ "profile_gate_prefs.cc", "profile_gate_prefs.h" ]
++  sources = [ "profile_gate_prefs.cc", "profile_gate_prefs.h", "account_profile_prefs.cc", "account_profile_prefs.h" ]
+   deps = [ "//components/prefs", "//components/pref_registry" ]
+ }
+ 
