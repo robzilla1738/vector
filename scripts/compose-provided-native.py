@@ -430,6 +430,7 @@ steps.extend([
     ('native-popup-window-chrome-button-adaptation/native.patch', 'native-popup-window-chrome-button-adaptation/manifest.json'),
     ('native-immersive-sidebar-inset/native.patch', 'native-immersive-sidebar-inset/manifest.json'),
     ('native-sidebar-combo-source-selection/native.patch', 'native-sidebar-combo-source-selection/manifest.json'),
+    ('native-immersive-overlay-host/native.patch', 'native-immersive-overlay-host/manifest.json'),
 ])
 
 if options.through:
