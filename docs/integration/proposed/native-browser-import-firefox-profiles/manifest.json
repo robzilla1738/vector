@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "applyAfter": "c3f2f883d Chromium profile admission; unrelated root reader hunks can rebase independently",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "a8c04ccebaa2ac1bc8e23d53eafa4da8c35ec5671c28945e11416c7f8d8e1166",
+      "outputSha256": "ccd75fdf22181e1d0b202e6052c532828d2527d1dd0af7ec904913ac1360842b"
+    }
+  ],
+  "requiredDependencies": [
+    "//chrome/common:ini_parser",
+    "//chrome/common/importer"
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

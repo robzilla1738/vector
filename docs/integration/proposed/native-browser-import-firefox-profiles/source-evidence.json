@@ -1,0 +1,87 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4276264",
+      "end": "0x4276460",
+      "sha256": "df72e53625e13e786d24c2ee1bb2c3aa3ac357a5bf7065a5649b83da94d93c84",
+      "listing": "api-firefox-profiles.asm",
+      "listingSha256": "5e85df30fa3a66bfbf5f8e33154109dba7a335bc8966aa933e1cab884555f418"
+    },
+    {
+      "start": "0x71f0cc8",
+      "end": "0x71f1288",
+      "sha256": "175d292690b14d804cfabacddb21f648f84451d3e2373b7150f903f13fa95ca4",
+      "listing": "firefox-ini-details.asm",
+      "listingSha256": "65ad51973933a4ac2e0927d387f9bcecdb515cd485a8d33e8945f189f1c42034"
+    },
+    {
+      "start": "0x71f2958",
+      "end": "0x71f2a24",
+      "sha256": "f6bc7ccffb5ff246b4e884f36f41cff4bcdc62ba2da4a74541cff87a689baa45",
+      "listing": "firefox-ini-path.asm",
+      "listingSha256": "83e6efda91257dfde06e1e59f2c7b0421fc1ea7c9786cc53dd13747cba0bdd4d"
+    },
+    {
+      "start": "0x21239c0",
+      "end": "0x2123aa4",
+      "sha256": "91705dcf1def21aeb3f55d2ce8088a2ef2917951f868ead3fab0010a0f9e79c2",
+      "listing": "directory-exists.asm",
+      "listingSha256": "71e8f614046e3a0856ac9be7f69641919289d4ed663398393fc06495218e148a"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xda254ea",
+      "hex": "50726f66696c65256400",
+      "text": "Profile%d\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xda254f4",
+      "hex": "2e5061746800",
+      "text": ".Path\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xda254fa",
+      "hex": "2e4e616d6500",
+      "text": ".Name\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xda2564e",
+      "hex": "2e497352656c617469766500",
+      "text": ".IsRelative\u0000",
+      "encoding": "utf-8"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "chrome/common/importer/firefox_importer_utils.cc",
+      "sha256": "52f44ccbebec34c9162249be5aa76de47752395796c43a44d9d8b14cc1ba41c0",
+      "copy": "upstream/chrome/common/importer/firefox_importer_utils.cc"
+    },
+    {
+      "path": "chrome/common/importer/firefox_importer_utils.h",
+      "sha256": "f979a302ebfd8bd7412705b1f26286c66ee138547933db8eba59f8ae0b333123",
+      "copy": "upstream/chrome/common/importer/firefox_importer_utils.h"
+    },
+    {
+      "path": "chrome/common/importer/firefox_importer_utils_mac.mm",
+      "sha256": "377560ecbd295ff10afd894444768e7bd02750d1683be973ae1f66327b7369d5",
+      "copy": "upstream/chrome/common/importer/firefox_importer_utils_mac.mm"
+    },
+    {
+      "path": "chrome/common/ini_parser.cc",
+      "sha256": "0beaeb2ce4d25f6fa84fafa8a210daafce218d7f4f22c7916c5f4bc432f4865b",
+      "copy": "upstream/chrome/common/ini_parser.cc"
+    },
+    {
+      "path": "chrome/common/ini_parser.h",
+      "sha256": "8273364bacacc8f736bc22d46f32b70c47985cc48270a60b8f52aa14bce5e79b",
+      "copy": "upstream/chrome/common/ini_parser.h"
+    }
+  ]
+}

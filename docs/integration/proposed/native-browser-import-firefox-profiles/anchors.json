@@ -1,0 +1,37 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "genuine-firefox-helper-dependencies",
+    "count": 1,
+    "before": "#include \"base/strings/string_util.h\"\n#include \"base/threading/platform_thread.h\"\n#include \"base/time/time.h\"",
+    "after": "#include \"base/strings/string_util.h\"\n#include \"base/strings/utf_string_conversions.h\"\n#include \"base/threading/platform_thread.h\"\n#include \"base/time/time.h\"\n#include \"chrome/common/importer/firefox_importer_utils.h\"\n#include \"chrome/common/ini_parser.h\""
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "source-home-aware-genuine-ini-discovery",
+    "count": 1,
+    "before": "}  // namespace\nbase::ListValue DiscoverSources() {",
+    "after": "// Original71f0cc8 reads profiles.ini and delegates to the shared Firefox\n// importer. Resolve its relative paths against this explicit source INI before\n// invoking the dictionary helper, whose normal GetProfilesINI() is global.\n// This is a source-home adaptation, not a different profile selection policy.\nbase::ListValue DiscoverFirefoxProfiles(const base::FilePath& support,\n                                       const base::FilePath* fixture_home) {\n  auto ini = support.AppendASCII(\"Firefox/profiles.ini\");\n  if (!base::PathExists(ini)) {\n    ini = base::FilePath();\n  }\n  if (fixture_home && !ini.empty()) {\n    const auto resolved = base::MakeAbsoluteFilePath(ini);\n    if (resolved.empty() || !fixture_home->IsParent(resolved)) {\n      return {};\n    }\n  }\n  std::string content;\n  base::ReadFileToString(ini, &content);\n  DictionaryValueINIParser parser;\n  parser.Parse(content);\n  auto dictionary = parser.root().Clone();\n  for (int index = 0;; ++index) {\n    const auto profile = \"Profile\" + base::NumberToString(index);\n    if (!dictionary.Find(profile)) {\n      break;\n    }\n    const auto* relative =\n        dictionary.FindStringByDottedPath(profile + \".IsRelative\");\n    const auto* path = dictionary.FindStringByDottedPath(profile + \".Path\");\n    if (relative && *relative == \"1\" && path) {\n      const auto resolved =\n          ini.DirName().Append(base::FilePath::FromUTF8Unsafe(*path));\n      dictionary.SetByDottedPath(profile + \".Path\", resolved.value());\n      dictionary.SetByDottedPath(profile + \".IsRelative\", \"0\");\n    }\n  }\n  base::ListValue profiles;\n  for (const auto& details : GetFirefoxDetailsFromDictionary(dictionary, {})) {\n    if (fixture_home) {\n      // The explicit disposable fixture boundary must never follow custom INI\n      // paths into the owner's source profile. This is fixture-only policy.\n      if (!details.path.IsAbsolute() || details.path.ReferencesParent() ||\n          !fixture_home->IsParent(details.path)) {\n        continue;\n      }\n      const auto resolved = base::MakeAbsoluteFilePath(details.path);\n      if (resolved.empty() || !fixture_home->IsParent(resolved)) {\n        continue;\n      }\n    }\n    if (!base::DirectoryExists(details.path)) {\n      continue;\n    }\n    profiles.Append(base::DictValue()\n                        .Set(\"id\", details.path.value())\n                        .Set(\"name\", details.name.empty()\n                                         ? \"Default\"\n                                         : base::UTF16ToUTF8(details.name))\n                        .Set(\"nativePath\", details.path.value()));\n  }\n  return profiles;\n}\n}  // namespace\nbase::ListValue DiscoverSources() {"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "firefox-registry-does-not-require-profiles-directory",
+    "count": 1,
+    "before": "    const bool available =\n        base::DirectoryExists(directory) &&\n        (!fixture || (!canonical.empty() && home->IsParent(canonical)));",
+    "after": "    const bool available =\n        family.firefox ||\n        (base::DirectoryExists(directory) &&\n         (!fixture || (!canonical.empty() && home->IsParent(canonical))));"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "preserve-explicit-fixture-root",
+    "count": 1,
+    "before": "      directory = canonical;\n      source.Set(\"unsupportedReason\",",
+    "after": "      if (!family.firefox) {\n        directory = canonical;\n      }\n      source.Set(\"unsupportedReason\","
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "reuse-ini-profiles-not-directory-scan",
+    "count": 1,
+    "before": "      base::FileEnumerator directories(directory, false,\n                                       base::FileEnumerator::DIRECTORIES);\n      for (auto path = directories.Next();\n           !path.empty() && profiles.size() < 128; path = directories.Next()) {\n        if (!base::IsLink(path) &&\n            base::PathExists(path.AppendASCII(\"places.sqlite\"))) {\n          profiles.Append(base::DictValue()\n                              .Set(\"id\", path.BaseName().value())\n                              .Set(\"name\", path.BaseName().value())\n                              .Set(\"nativePath\", path.value()));\n        }\n      }",
+    "after": "      profiles = DiscoverFirefoxProfiles(support, fixture ? &*home : nullptr);"
+  }
+]
