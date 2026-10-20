@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2870,6 +2870,7 @@
+       "views/frame/aux_tab_switcher.h",
+       "views/frame/aux_sidebar_view.h",
+       "views/frame/aux_profile_indicator_context_icons.inc",
++      "views/frame/aux_primary_profile_menu_icons.inc",
+       "views/frame/vertical_tab_strip_region_view.cc",
+       "views/frame/vertical_tab_strip_region_view.h",
+       "views/tab_search_bubble_host.cc",

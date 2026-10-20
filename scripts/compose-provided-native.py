@@ -287,6 +287,8 @@ steps.extend([
     ('native-profile-indicator-api155/native.patch', 'native-profile-indicator-api155/manifest.json'),
     ('native-profile-search-action-binding/native.patch', 'native-profile-search-action-binding/manifest.json'),
     ('native-profile-search-interface/native.patch', 'native-profile-search-interface/manifest.json'),
+    ('native-primary-profile-menu/native.patch', 'native-primary-profile-menu/manifest.json'),
+    ('native-primary-profile-menu-registration/native.patch', 'native-primary-profile-menu-registration/manifest.json'),
 ])
 
 if options.through:

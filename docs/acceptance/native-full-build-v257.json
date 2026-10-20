@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "composition": "v257",
+  "receiptSha256": "0491f7578e2e46bea30b81951818eaf9cacb765f37c270fa7814a6af4f81be2c",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "buildSteps": 374,
+  "elapsed": "9m04.55s",
+  "nativeLeaves": 563,
+  "logSha256": "137373c783144c9c8fd78f377ad446baa5bf00df686ee050400ba79a14669af8",
+  "browserLaunched": false,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false,
+  "change": "Mount original profile header/pager/admission, targeted context/icon picker, retained search, eager account updater and actual Chromium155 APIs"
+}
