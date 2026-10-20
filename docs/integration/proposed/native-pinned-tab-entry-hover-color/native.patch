@@ -1,0 +1,305 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -49,6 +49,17 @@
+ #include "ui/views/controls/image_view.h"
+ #include "ui/views/controls/menu/menu_runner.h"
+ #include "ui/views/widget/widget.h"
++
++#include "chrome/browser/ui/tabs/tab_data.h"
++#include "chrome/browser/ui/views/tabs/hovercard/hover_card_anchor_target.h"
++#include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
++#include "chrome/browser/ui/views/tabs/tab_slot_controller.h"
++#include "third_party/skia/include/core/SkPath.h"
++#include "ui/gfx/color_analysis.h"
++#include "ui/gfx/color_utils.h"
++#include "ui/gfx/shadow_value.h"
++#include "ui/gfx/skia_paint_util.h"
++#include "ui/gfx/skia_util.h"
+ 
+ namespace {
+ constexpr int kEntryHeight = 40;
+@@ -118,14 +129,34 @@
+   return view.GetWidget()->GetColorMode() ==
+          ui::ColorProviderKey::ColorMode::kDark;
+ }
++std::optional<SkColor> FaviconAccent(const ui::ImageModel& image) {
++  if (!image.IsImage())
++    return std::nullopt;
++  const gfx::Image source = image.GetImage();
++  const SkBitmap* bitmap = source.ToSkBitmap();
++  if (!bitmap || bitmap->width() < 1 || bitmap->height() < 1)
++    return std::nullopt;
++  auto swatches = color_utils::CalculateColorSwatches(
++      *bitmap, 8, gfx::Rect(bitmap->width(), bitmap->height()),
++      base::BindRepeating([](const SkColor& color) {
++        if (SkColorGetA(color) < 128)
++          return false;
++        color_utils::HSL hsl;
++        color_utils::SkColorToHSL(color, &hsl);
++        return hsl.s >= 0.18 && hsl.l >= 0.12 && hsl.l <= 0.88;
++      }));
++  return swatches.empty() ? std::nullopt
++                          : std::make_optional(swatches.front().color);
++}
+ }  // namespace
+ 
+ class VerticalPinnedTabEntriesView::EntryView : public views::View,
+-                                                public gfx::AnimationDelegate {
++                                                public gfx::AnimationDelegate,
++                                                public HoverCardAnchorTarget {
+   METADATA_HEADER(EntryView, views::View)
+  public:
+   EntryView(VerticalPinnedTabEntriesView* owner, size_t index)
+-      : owner_(owner), index_(index), slide_(base::Milliseconds(140), 60, this) {
++      : HoverCardAnchorTarget(this), owner_(owner), index_(index), slide_(base::Milliseconds(140), 60, this) {
+     SetUseDefaultFillLayout(true);
+     SetPreferredSize(gfx::Size(kEntryHeight, kEntryHeight));
+     SetPaintToLayer(ui::LAYER_TEXTURED);
+@@ -140,7 +171,8 @@
+     if (index_ >= owner_->entries_.size())
+       return;
+     const auto& entry = owner_->entries_[index_];
+-    SetTooltipText(entry.title);
++    SetTooltipText(owner_->IsEntryDragInProgress() ? std::u16string()
++                                                  : entry.title);
+     GetViewAccessibility().SetName(entry.title);
+     if (!entry.image.IsEmpty()) {
+       icon_->SetImage(entry.image);
+@@ -161,7 +193,26 @@
+     views::View::AddedToWidget();
+     Update();
+   }
++  bool NeedsToShowThumbnail() const override {
++    return index_ < owner_->entries_.size() &&
++           !owner_->entries_[index_].active;
++  }
++  bool IsValidHoverCardTarget() const override {
++    return !owner_->paused_ && !owner_->IsEntryDragInProgress() &&
++           owner_->model_ && index_ < owner_->entries_.size() &&
++           aux::FindPinnedTabEntry(*owner_->model_,
++                                  owner_->entries_[index_].saved.url).has_value();
++  }
++  views::BubbleAnchor GetAnchor() override { return this; }
++  views::BubbleBorder::Arrow GetAnchorPosition() const override {
++    return views::BubbleBorder::LEFT_TOP;
++  }
+   bool OnMousePressed(const ui::MouseEvent& event) override {
++    auto alive = weak_factory_.GetWeakPtr();
++    owner_->hover_card_controller_->UpdateHoverCard(
++        nullptr, TabSlotController::HoverCardUpdateType::kEvent);
++    if (!alive)
++      return true;
+     if (event.IsOnlyRightMouseButton()) {
+       gfx::Point point = event.location();
+       views::View::ConvertPointToScreen(this, &point);
+@@ -295,10 +346,22 @@
+   void OnMouseEntered(const ui::MouseEvent&) override {
+     hovered_ = true;
+     SchedulePaint();
++    HoverCardAnchorTarget* target = nullptr;
++    if (IsValidHoverCardTarget()) {
++      const int live = *aux::FindPinnedTabEntry(
++          *owner_->model_, owner_->entries_[index_].saved.url);
++      SetHoverCardDataFrom(
++          tabs::TabData::FromTabInterface(owner_->model_->GetTabAtIndex(live)));
++      target = this;
++    }
++    owner_->hover_card_controller_->UpdateHoverCard(
++        target, TabSlotController::HoverCardUpdateType::kHover);
+   }
+   void OnMouseExited(const ui::MouseEvent&) override {
+     hovered_ = false;
+     SchedulePaint();
++    owner_->hover_card_controller_->UpdateHoverCard(
++        nullptr, TabSlotController::HoverCardUpdateType::kHover);
+   }
+   bool OnKeyPressed(const ui::KeyEvent& event) override {
+     if (event.key_code() != ui::VKEY_SPACE &&
+@@ -307,7 +370,7 @@
+     owner_->Activate(index_);
+     return true;
+   }
+-  void OnPaint(gfx::Canvas* canvas) override {
++  void OnPaintBackground(gfx::Canvas* canvas) override {
+     if (!GetWidget() || !GetColorProvider() ||
+         index_ >= owner_->entries_.size())
+       return;
+@@ -321,12 +384,47 @@
+     // Original0460d780 uses two filled paths, not an invented inset border.
+     canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
+     if (active) {
+-      flags.setColor(dark ? 0x33fafafa : 0x330a0a0a);
++      flags.setColor((owner_->entries_[index_].accent.value_or(
++                          dark ? 0x33fafafa : 0x260a0a0a) & 0x00ffffff) |
++                     0x33000000);
+       canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
+     } else if (hovered_) {
+       flags.setColor(dark ? 0x33ffffff : 0x59ffffff);
+       canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
+     }
++  }
++
++  void OnPaint(gfx::Canvas* canvas) override {
++    views::View::OnPaint(canvas);
++    if (!GetWidget() || index_ >= owner_->entries_.size())
++      return;
++    const auto& entry = owner_->entries_[index_];
++    const bool dark = IsDark(*this);
++    const gfx::RectF bounds(GetLocalBounds());
++    const SkPath path = SkPath::RRect(gfx::RectFToSkRect(bounds), 10, 10);
++    canvas->Save();
++    gfx::RectF shadow_bounds(bounds);
++    shadow_bounds.Outset(8);
++    canvas->ClipRect(shadow_bounds);
++    canvas->ClipPath(path, true, SkClipOp::kDifference);
++    cc::PaintFlags shadow;
++    shadow.setAntiAlias(true);
++    shadow.setLooper(gfx::CreateShadowDrawLooper(
++        {gfx::ShadowValue(gfx::Vector2d(0, 3), 5, 0x0d000000)}));
++    canvas->DrawPath(path, shadow);
++    canvas->Restore();
++    const float width = entry.active ? 2.f : 0.5f;
++    cc::PaintFlags border;
++    border.setAntiAlias(true);
++    border.setStyle(cc::PaintFlags::kStroke_Style);
++    border.setStrokeWidth(width);
++    border.setColor(entry.active
++        ? ((entry.accent.value_or(dark ? 0x33fafafa : 0x260a0a0a) &
++            0x00ffffff) | 0x66000000)
++        : (dark ? 0x26fafafa : 0x260a0a0a));
++    gfx::RectF stroke(bounds);
++    stroke.Inset(width / 2);
++    canvas->DrawRoundRect(stroke, 10 - width / 2, border);
+   }
+ 
+  private:
+@@ -347,9 +445,11 @@
+ END_METADATA
+ 
+ VerticalPinnedTabEntriesView::VerticalPinnedTabEntriesView(
+-    BrowserWindowInterface* browser)
+-    : browser_(browser) {
++    BrowserWindowInterface* browser,
++    TabHoverCardController* hover_card_controller)
++    : browser_(browser), hover_card_controller_(hover_card_controller) {
+   CHECK(browser_);
++  CHECK(hover_card_controller_);
+   SetVisible(false);
+   BindProfile();
+ }
+@@ -373,6 +473,10 @@
+ }
+ void VerticalPinnedTabEntriesView::PauseForProfileSwitch() {
+   auto weak = weak_factory_.GetWeakPtr();
++  hover_card_controller_->UpdateHoverCard(
++      nullptr, TabSlotController::HoverCardUpdateType::kEvent);
++  if (!weak)
++    return;
+   CancelEntryDrag();
+   if (!weak)
+     return;
+@@ -457,6 +561,7 @@
+       }
+       entry.active = *entry.live_index == model_->active_index();
+     }
++    entry.accent = FaviconAccent(entry.image);
+     entries.push_back(std::move(entry));
+   }
+   if (children().size() != entries.size()) {
+@@ -520,14 +625,25 @@
+   size_t index = child - children().begin();
+   if (index >= entries_.size())
+     return;
++  auto weak = weak_factory_.GetWeakPtr();
+   if (!dragging_view_) {
++    hover_card_controller_->UpdateHoverCard(
++        nullptr, TabSlotController::HoverCardUpdateType::kEvent);
++    if (!weak)
++      return;
+     dragging_view_ = view;
++    for (views::View* child : children()) {
++      child->SetTooltipText(std::u16string());
++      if (!weak)
++        return;
++    }
+     reorder_dirty_ = false;
+   }
+   if (dragging_view_ != view)
+     return;
+   const Entry& entry = entries_[index];
+-  EntryDragData data{entry.saved, entry.title, entry.image, std::nullopt};
++  EntryDragData data{entry.saved, entry.title, entry.image, std::nullopt,
++                     entry.accent};
+   if (auto live = aux::FindPinnedTabEntry(*model_, entry.saved.url))
+     data.live_tab = model_->GetTabAtIndex(*live)->GetHandle();
+   const gfx::Rect local_bounds(pointer - grab_offset.OffsetFromOrigin(),
+@@ -536,7 +652,6 @@
+   gfx::Point screen_point = pointer;
+   views::View::ConvertRectToScreen(this, &screen_bounds);
+   views::View::ConvertPointToScreen(this, &screen_point);
+-  auto weak = weak_factory_.GetWeakPtr();
+   const auto update = drag_update_;
+   std::optional<gfx::Rect> routed;
+   if (update)
+@@ -652,6 +767,9 @@
+     if (!weak)
+       return;
+     entry->StopDropAnimation();
++    if (!weak)
++      return;
++    entry->Update();
+     if (!weak)
+       return;
+     entry->layer()->SetOpacity(1);
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -18,6 +18,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "third_party/skia/include/core/SkColor.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/menus/simple_menu_model.h"
+@@ -25,6 +26,7 @@
+ 
+ class BrowserWindowInterface;
+ class TabStripModel;
++class TabHoverCardController;
+ class TabContextMenuController;
+ class ExpandOnHoverLock;
+ namespace views {
+@@ -38,7 +40,8 @@
+                                      public ui::SimpleMenuModel::Delegate {
+   METADATA_HEADER(VerticalPinnedTabEntriesView, views::View)
+  public:
+-  explicit VerticalPinnedTabEntriesView(BrowserWindowInterface* browser);
++  VerticalPinnedTabEntriesView(BrowserWindowInterface* browser,
++                               TabHoverCardController* hover_card_controller);
+   ~VerticalPinnedTabEntriesView() override;
+ 
+   struct EntryDragData {
+@@ -46,6 +49,7 @@
+     std::u16string title;
+     ui::ImageModel image;
+     std::optional<tabs::TabHandle> live_tab;
++    std::optional<SkColor> accent;
+   };
+   using EntryDragUpdate = base::RepeatingCallback<std::optional<gfx::Rect>(
+       const EntryDragData&, const gfx::Rect&, const gfx::Point&)>;
+@@ -89,6 +93,7 @@
+     std::optional<int> live_index;
+     std::u16string title;
+     ui::ImageModel image;
++    std::optional<SkColor> accent;
+     bool active = false;
+   };
+   void BindProfile();
+@@ -113,6 +118,7 @@
+   size_t SlotCount() const;
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
++  const raw_ptr<TabHoverCardController> hover_card_controller_;
+   raw_ptr<TabStripModel> model_ = nullptr;
+   PrefChangeRegistrar pref_changes_;
+   std::vector<base::CallbackListSubscription> ui_changes_;

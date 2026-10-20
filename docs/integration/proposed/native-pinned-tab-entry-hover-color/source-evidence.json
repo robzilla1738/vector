@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "favicon-swatch-production",
+      "rva": "0x4605e10",
+      "fileOffset": 73424400,
+      "bytes": 240,
+      "sha256": "f25bf503599e0969728ea04628011750f38cd663543135a9a1e088fc40274adb"
+    },
+    {
+      "name": "favicon-swatch-filter",
+      "rva": "0x45e4ac0",
+      "fileOffset": 73288384,
+      "bytes": 112,
+      "sha256": "d029633135fa070f2ee9893c3bda9600b59d984a0f50b965474c23d7080e1a5f"
+    },
+    {
+      "name": "entry-hover-enter-exit",
+      "rva": "0x460d030",
+      "fileOffset": 73453616,
+      "bytes": 476,
+      "sha256": "28c22f137f7a9bee9f5d7232413733ebaffa7d168925521aa04ccd40bc2f0ff9"
+    },
+    {
+      "name": "entry-paint",
+      "rva": "0x460d25c",
+      "fileOffset": 73454172,
+      "bytes": 1316,
+      "sha256": "ef3c9f456188d413f2058bd43a41bd56cc257983b8bbb716bc89b6c58dfeda52"
+    },
+    {
+      "name": "entry-background",
+      "rva": "0x460d780",
+      "fileOffset": 73455488,
+      "bytes": 976,
+      "sha256": "31b8b84392248bb2c6e317cf24dfa42f061c50e62f02f6a0253742820bd1e6c6"
+    },
+    {
+      "name": "hover-target-validity",
+      "rva": "0x460db50",
+      "fileOffset": 73456464,
+      "bytes": 192,
+      "sha256": "2df554cd37dce615b08219bae9c30b1759e7417f0b3a93bfe883cf0214729f9f"
+    },
+    {
+      "name": "hover-secondary-vtable",
+      "rva": "0xe7201a0",
+      "fileOffset": 242352544,
+      "bytes": 80,
+      "sha256": "716dbef920d2b56e807b3f79bab5fb9d71679214ddfd3869eca926e38f53fbf0"
+    },
+    {
+      "name": "hover-left-top",
+      "rva": "0x3f512c0",
+      "fileOffset": 66392768,
+      "bytes": 8,
+      "sha256": "866b82fb6649dcf0f7873c61006d47004b1074ea9b382227c4ab724c93f547f7"
+    },
+    {
+      "name": "shadow-helper",
+      "rva": "0x41271b0",
+      "fileOffset": 68317616,
+      "bytes": 560,
+      "sha256": "7157f8e36611d1e37ec8d8916f132b2790964384727deaec167296c2e1486571"
+    },
+    {
+      "name": "palette-231",
+      "rva": "0x35e7b10",
+      "fileOffset": 56523536,
+      "bytes": 160,
+      "sha256": "f5ca7a6a2a71d2834d997e4aa990c9c8352b6cf8af20cbbd0393bd8886b1966c"
+    },
+    {
+      "name": "palette-235",
+      "rva": "0x35e7e10",
+      "fileOffset": 56524304,
+      "bytes": 184,
+      "sha256": "603a89d82427d58561e4dd6bac994732cd7ac4fb1e62ccaa43543e511a30e80d"
+    }
+  ],
+  "semantics": {
+    "accent": "record+258 optional RGB; +25c engaged; +260 active. Eight full-bitmap swatches; alpha>=128, saturation>=.18, lightness .12..88; first surviving swatch.",
+    "paint": "View::OnPaint invokes background first; then external-only shadow(offset0,3 blur5 role231), stroke .5 role235 or active2 with accent/fallback RGB alpha66. Active background RGB alpha33.",
+    "palette": "role231=0d000000 both modes; role235=dark26fafafa/light260a0a0a. No current155 numeric ID substitution.",
+    "hover": "original +350 actual controller; only actual associated live tab supplies TabData. NeedsThumbnail=!active; invalid during drag. Secondary addresspoint e7201a0+48 points3f512c0 returning4 (LEFT_TOP).",
+    "lifetime": "No controller call in leaf/entry destructor. Controller owns view observation. Enter/exit/press/drag/pause use real UpdateHoverCard; outgoing callbacks weak-check destruction."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-drag 4b624daba outputs; leaf files only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "9e9df6b186467218f647e2e4d39a62fbe46ab528aeb1767a107467be43c6278d",
+      "outputSha256": "b7c35f6e67a02265f29c0a8b2bbf165ebac5b89cf4e97ba82ae834ff95fe7449"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "86a344aa7280d519c091a1f40e6b0ed97a4fc7ce8a88b9a3fdd98c2adf72d375",
+      "outputSha256": "be94c1872b4cb163495a779da68b82a6ba746401e51af59764d0773c183b6632"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Root must pass actual region hover_card_controller() to required leaf constructor.",
+    "Root real region outgoing drag/preview callbacks remain separate owner integration.",
+    "Existing model/icon-cache and command branches are not all re-audited by this paint/hover slice. No full-leaf parity claim.",
+    "Native focused compile and disposable pointer/hover/drag observation remain required."
+  ]
+}
