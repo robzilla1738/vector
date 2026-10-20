@@ -1,0 +1,139 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -507,7 +507,6 @@
+   pending_icons_.clear();
+   weak_factory_.InvalidateWeakPtrs();
+   refresh_pending_ = false;
+-  refresh_after_drag_ = false;
+   ui_changes_.clear();
+   pref_changes_.Reset();
+   TabStripModelObserver::StopObservingAll(this);
+@@ -538,10 +537,6 @@
+ void VerticalPinnedTabEntriesView::Refresh() {
+   if (paused_ || !model_)
+     return;
+-  if (dragging_view_) {
+-    refresh_after_drag_ = true;
+-    return;
+-  }
+   ui_changes_.clear();
+   auto saved = aux::ReadPinnedTabEntries(*browser_->GetProfile()->GetPrefs());
+   std::vector<Entry> entries;
+@@ -579,15 +574,58 @@
+     entry.accent = FaviconAccent(entry.image);
+     entries.push_back(std::move(entry));
+   }
+-  if (children().size() != entries.size()) {
++  const bool reuse_rows = children().size() == entries_.size() &&
++      entries.size() == entries_.size() &&
++      std::ranges::equal(entries_, entries, {},
++                         [](const Entry& entry) { return entry.saved.url; },
++                         [](const Entry& entry) { return entry.saved.url; });
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!reuse_rows) {
++    // A changed ordered URL roster replaces the actual rows. The original
++    // capture-loss cleanup is posted; detach our raw row alias before removal.
++    if (dragging_view_) {
++      EntryView* captured = std::exchange(dragging_view_, nullptr);
++      rebuild_drag_cleanup_pending_ = true;
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE,
++          base::BindOnce(&VerticalPinnedTabEntriesView::CancelEntryDrag,
++                         weak));
++      captured->CancelPress();
++      if (!weak)
++        return;
++    }
++    for (views::View* child : children()) {
++      static_cast<EntryView*>(child)->CancelPress();
++      if (!weak)
++        return;
++      static_cast<EntryView*>(child)->StopDropAnimation();
++      if (!weak)
++        return;
++    }
++    entries_ = std::move(entries);
+     RemoveAllChildViews();
++    if (!weak)
++      return;
++    for (size_t i = 0; i < entries_.size(); ++i) {
++      AddChildView(std::make_unique<EntryView>(this, i));
++      if (!weak)
++        return;
++    }
++    if (drag_ghost_entry_ && !entries_.empty())
++      drag_ghost_entry_->SetIndex(0);
++  } else {
+     entries_ = std::move(entries);
+-    for (size_t i = 0; i < entries_.size(); ++i)
+-      AddChildView(std::make_unique<EntryView>(this, i));
+-  } else
+-    entries_ = std::move(entries);
+-  for (views::View* child : children())
++  }
++  for (views::View* child : children()) {
+     static_cast<EntryView*>(child)->Update();
++    if (!weak)
++      return;
++  }
++  if (drag_ghost_entry_ && !entries_.empty()) {
++    drag_ghost_entry_->Update();
++    if (!weak)
++      return;
++  }
+   if (drop_insertion_)
+     drop_insertion_ = std::min(*drop_insertion_, entries_.size());
+   SetVisible(SlotCount() != 0);
+@@ -660,7 +698,8 @@
+ }
+ void VerticalPinnedTabEntriesView::DragEntry(
+     EntryView* view, const gfx::Point& pointer, const gfx::Point& grab_offset) {
+-  if (paused_ || !model_ || !GetWidget())
++  if (paused_ || !model_ || !GetWidget() ||
++      rebuild_drag_cleanup_pending_)
+     return;
+   const auto child = std::ranges::find(children(), view);
+   if (child == children().end())
+@@ -796,6 +835,7 @@
+ }
+ void VerticalPinnedTabEntriesView::ResetEntryDrag() {
+   dragging_view_ = nullptr;
++  rebuild_drag_cleanup_pending_ = false;
+   drag_data_.reset();
+   drag_region_bounds_.reset();
+   reorder_dirty_ = false;
+@@ -820,11 +860,9 @@
+       return;
+   }
+   SchedulePaint();
+-  if (std::exchange(refresh_after_drag_, false))
+-    ScheduleRefresh();
+ }
+ void VerticalPinnedTabEntriesView::CancelEntryDrag() {
+-  const bool had_drag = dragging_view_ != nullptr;
++  const bool had_drag = IsEntryDragInProgress();
+   const auto cleanup = drag_cleanup_;
+   auto weak = weak_factory_.GetWeakPtr();
+   ResetEntryDrag();
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -61,7 +61,9 @@
+   void SetEntryDragCallbacks(EntryDragUpdate update, EntryDragFinish finish,
+                              base::RepeatingClosure cleanup);
+   void CancelEntryDrag();
+-  bool IsEntryDragInProgress() const { return dragging_view_ != nullptr; }
++  bool IsEntryDragInProgress() const {
++    return dragging_view_ != nullptr || rebuild_drag_cleanup_pending_;
++  }
+ 
+   // Original screen-space bookmark/tab drop projection. The region owns the
+   // real drag payload and deletes a bookmark only after a successful commit.
+@@ -148,7 +150,7 @@
+   std::optional<int> width_override_;
+   bool paused_ = false;
+   bool refresh_pending_ = false;
+-  bool refresh_after_drag_ = false;
++  bool rebuild_drag_cleanup_pending_ = false;
+   base::WeakPtrFactory<VerticalPinnedTabEntriesView> weak_factory_{this};
+ };
+ 

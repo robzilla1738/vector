@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-cache-actions 7b75b176d outputs; root rebase preserves309 spelling fixes",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "745b25cebf770722bc464aee637a6a78a9aeec90c47a11b8755860de9dcbb422",
+      "outputSha256": "3ba8a01883d6ed1168fd0631f102f880cc5491067a89d438dcb87504687e6abf"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "9534d452123b91778e7c8a4a5a532c4136fb776104fcadb68de1c7d7ae4952c4",
+      "outputSha256": "0445b264555f3460ba0d74a62a7263fb37681fb539a158b1d8c9175ccf0c60af"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Root actual region drag callback/preview mounting remains separate integration.",
+    "Native focused compile and disposable active-capture/data/pref-change observation remain required.",
+    "Original implementation captures drag state by integer fields; current155 raw row alias detachment/pending weak cleanup is the documented necessary ownership adaptation, not original pointer layout reuse."
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "refresh-admission",
+      "rva": "0x46051e4",
+      "fileOffset": 73421284,
+      "bytes": 124,
+      "sha256": "3037939bbbd4e0abe176f18aa84a7cb2ec433d21866fcb99abfe2974b11d69c7"
+    },
+    {
+      "name": "row-reuse-identity",
+      "rva": "0x4605404",
+      "fileOffset": 73421828,
+      "bytes": 212,
+      "sha256": "02bed8410241b584fbf75efa85396a06b1628f553efd771c0cf96572673f8c93"
+    },
+    {
+      "name": "replace-or-reuse",
+      "rva": "0x46055a8",
+      "fileOffset": 73422248,
+      "bytes": 192,
+      "sha256": "8c079cd5f16b7a239bd3f55c991a6b567a207991581245f5d467b8f75cb5e2bd"
+    },
+    {
+      "name": "rebuild-trampoline",
+      "rva": "0xc604534",
+      "fileOffset": 207635764,
+      "bytes": 12,
+      "sha256": "91387b0810095078b441cb480ddac14114dd70612c5bde55b6fd858e0656bcf4"
+    },
+    {
+      "name": "actual-recreate-rows",
+      "rva": "0xc785524",
+      "fileOffset": 209212708,
+      "bytes": 216,
+      "sha256": "455f67712778deae5b2c1fc840220e8d694388b5fe04ef956dda93cd2cd6442c"
+    },
+    {
+      "name": "stop-row-animations",
+      "rva": "0xc78512c",
+      "fileOffset": 209211692,
+      "bytes": 200,
+      "sha256": "d33e9a37a7da85ac8b37ec4e5298e37d6efbabaa540d04a8e0bc84932b766e1e"
+    },
+    {
+      "name": "remove-children-trampoline",
+      "rva": "0xcb8d9cc",
+      "fileOffset": 213440972,
+      "bytes": 12,
+      "sha256": "37ee70ca54cc6d906b43cbfd85d473f643347db7fe9eff3dbbaef9f6efa768e2"
+    },
+    {
+      "name": "actual-remove-all-children",
+      "rva": "0x1e51518",
+      "fileOffset": 31790360,
+      "bytes": 80,
+      "sha256": "d2f78c65ba9c3d906ad5aad07f210b0c0b84a869035bd6090ab7c31bfe1134c2"
+    },
+    {
+      "name": "capture-lost-posted",
+      "rva": "0x460ce54",
+      "fileOffset": 73453140,
+      "bytes": 476,
+      "sha256": "0adaf3386f78142766d9ad1e04e8ede56ddda86cb57bf1322673979baf19de91"
+    },
+    {
+      "name": "posted-active-drag-cleanup",
+      "rva": "0x460f1f8",
+      "fileOffset": 73462264,
+      "bytes": 296,
+      "sha256": "0f7bbad7b8280e9c2e525d82891c955edbdd670af055bbc3a587cc35eb734db1"
+    },
+    {
+      "name": "fallback-globe-selection",
+      "rva": "0x4607a2c",
+      "fileOffset": 73431596,
+      "bytes": 76,
+      "sha256": "fd788bc62923800ad2ffdc4f9538442243311d6555bbaaeaf182b2e6bed9db9b"
+    },
+    {
+      "name": "actual-globe-path-302-scalars",
+      "rva": "0xce79914",
+      "fileOffset": 216504596,
+      "bytes": 1208,
+      "sha256": "49ab027dbdd19eafb6f2d10896207243cf9139ee33d472996ee6becf85de2221"
+    }
+  ],
+  "findings": {
+    "admission": "46051e4 checks actual browser only, reads real pinned_tabs immediately. No leafdrag510 rejection/defer.",
+    "reuse": "4605404 compares actualchildcount198 to oldentrycount368; 4605420 compares newcount;460546c..54d4 compares each ordered URLspec byte string. If all match w22=1, calls Update on actualexisting children and ghost4605618..5658; otherwise c604534\u2192c785524 rebuild.",
+    "structural": "c785524 first stops actual row animationmap throughc78512c, calls realRemoveAllChildViews throughcb8d9cc\u21921e51518, recreates every real EntryView through460ee60 and updates, prepares hiddenghost at index0 ifnonempty then resets ghostindex0/update. No URL keyed visual-row reuse.",
+    "capture": "460ce54 clearsactualpress/dragbytes and posts weak activecleanup460f1f8 ratherthanperformingprefswrite. Current155 raw dragging alias is detached before actual row removal, capture released, and actual existing CancelEntryDrag posted; pendingstate preserves drag admission/tooltipuntilcleanup. No deferred model/pref refresh or fake pointer identity remains.",
+    "globe": "Original fallback4607a48..60 selects descriptore82cf08. Existing port uses original e82cf08\u2192e82cef8\u2192ce79914 302scalars(24canvas rendered16), hash49ab027dbdd19eafb6f2d10896207243cf9139ee33d472996ee6becf85de2221. It is not stock155 globe substitution. Sourcefoundation native-pinned-tab-entry-view README and bookmark-row icons-source independentlypin sameglyph."
+  }
+}
