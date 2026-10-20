@@ -1,0 +1,582 @@
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1164,6 +1164,10 @@
+       "views/frame/aux_agent_session_tabs_view.h",
+       "views/frame/aux_sidebar_contents_view.cc",
+       "views/frame/aux_sidebar_contents_view.h",
++      "views/frame/aux_sidebar_body.cc",
++      "views/frame/aux_sidebar_body.h",
++      "views/frame/aux_sidebar_presentation.cc",
++      "views/frame/aux_sidebar_presentation.h",
+       "views/frame/aux_sidebar_projection.cc",
+       "views/frame/aux_sidebar_projection.h",
+       "views/frame/aux_cross_section_drag_coordinator.cc",
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_body.cc b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -0,0 +1,220 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_sidebar_body.h"
++#include <algorithm>
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/prefs/pref_service.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.h"
++#include "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h"
++#include "chrome/browser/ui/views/frame/aux_bookmarks_section.h"
++#include "chrome/browser/ui/views/frame/aux_chats_controller.h"
++#include "chrome/browser/ui/views/frame/aux_chats_section.h"
++#include "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.h"
++#include "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_projection.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
++#include "chrome/browser/ui/views/frame/aux_tabs_actions.h"
++#include "chrome/browser/ui/views/frame/aux_tabs_section.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_new_tab_button.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/browser_widget.h"
++#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
++#include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
++#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/gfx/geometry/point_conversions.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/layout/flex_layout.h"
++#include "ui/views/view_class_properties.h"
++namespace aux {
++AuxSidebarBody::AuxSidebarBody(BrowserWindowInterface& browser,
++    VerticalTabStripRegionView& region,
++    tabs::VerticalTabStripStateController& state, TabHoverCardController& hover,
++    VerticalPinnedTabEntriesView& saved, base::RepeatingClosure new_tab)
++    : browser_(&browser), region_(&region), state_(&state), hover_(&hover),
++      saved_(&saved), before_new_tab_(std::move(new_tab)) {
++  ConfigureSidebarContentsScrollView(*this);
++  auto bar = std::make_unique<VerticalTabStripScrollBar>(state_);
++  bar->SetThumbVisible(false);
++  SetVerticalScrollBar(std::move(bar));
++}
++AuxSidebarBody::~AuxSidebarBody() { Unmount(); }
++void AuxSidebarBody::SetRunningChangedCallback(base::RepeatingCallback<void(bool)> cb) {
++  running_ = std::move(cb);
++}
++void AuxSidebarBody::Mount(TabStripView& strip) {
++  CHECK(!strip_ || strip_ == &strip);
++  strip_ = &strip;
++  if (!paused_ && !body_) Build();
++}
++void AuxSidebarBody::Build() {
++  CHECK(strip_ && !body_ && !retiring_);
++  auto* model = browser_->GetTabStripModel();
++  CHECK(model && strip_->collection_node());
++  auto changed = base::BindRepeating(&AuxSidebarBody::Changed, weak_.GetWeakPtr());
++  body_ = SetContents(std::make_unique<SidebarContentsView>(
++      base::BindRepeating(&AuxSidebarBody::RightClick, weak_.GetWeakPtr())));
++  associations_ = std::make_unique<BookmarkTabAssociations>(*browser_);
++  auto bookmarks = std::make_unique<VerticalTabBookmarksView>(browser_, model, hover_, state_);
++  bookmarks_ = body_->AddChildView(std::make_unique<AuxBookmarksSection>(
++      *browser_->GetProfile()->GetPrefs(), std::move(bookmarks),
++      AuxBookmarksSection::Actions{
++        base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body, bool enabled) {
++          if (!body) return;
++          if (!enabled && body->drag_) body->drag_->Cancel();
++          body->Changed();
++        }, weak_.GetWeakPtr()), changed}));
++  chats_ = std::make_unique<AuxChatsController>(*browser_, *associations_,
++                                               std::u16string(), changed);
++  chats_section_ = body_->AddChildView(chats_->TakeSection());
++  divider_ = body_->AddChildView(std::make_unique<AuxSectionDivider>());
++  tabs_ = body_->AddChildView(std::make_unique<AuxTabsSection>(AuxTabsSection::Actions{
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
++        if (body && body->actions_) body->actions_->Tidy();
++      }, weak_.GetWeakPtr()),
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
++        if (body && body->actions_) body->actions_->Clear();
++      }, weak_.GetWeakPtr())}));
++  actions_ = std::make_unique<AuxTabsActions>(*browser_,
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
++        return body && body->tabs_ && body->tabs_->tidy_button()->GetEnabled();
++      }, weak_.GetWeakPtr()),
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body, bool busy) {
++        if (body && body->tabs_) body->tabs_->SetTidyBusy(busy);
++      }, weak_.GetWeakPtr()));
++  auto* tabs_contents = tabs_->contents();
++  new_tab_ = tabs_contents->AddChildView(std::make_unique<AuxVerticalNewTabButton>(*browser_));
++  new_tab_subscription_ = new_tab_->AddBeforeInvokeCallback(before_new_tab_);
++  // Source464ccfc: actual native collection root under Tabs, external pinned
++  // container under region, Agent5d0 under the actual unpinned collection.
++  tabs_contents->AddChildView(strip_.get());
++  strip_->SetExternalScrollMode(true);
++  strip_->SetExternalParents(region_, this);
++  auto* unpinned = strip_->GetUnpinnedTabsContainer();
++  CHECK(unpinned);
++  agent_ = unpinned->AddChildView(std::make_unique<AgentSessionTabsView>(
++      *browser_, *model, *hover_,
++      base::BindRepeating(&AuxSidebarBody::QueueProjectionRefresh, weak_.GetWeakPtr())));
++  unpinned->SetAgentSessionTabsView(agent_);
++  projection_ = std::make_unique<AuxSidebarProjection>(*browser_, *associations_,
++      *bookmarks_->bookmarks_view(), *chats_, *saved_, *hover_, *agent_,
++      *strip_->collection_node(), changed);
++  preview_ = region_->AddChildView(std::make_unique<CrossSectionDragPreview>());
++  preview_->SetProperty(views::kViewIgnoredByLayoutKey, true);
++  CHECK(region_->GetAuxProfilePreviewAdmission());
++  drag_ = std::make_unique<CrossSectionDragCoordinator>(*browser_, *region_,
++      *bookmarks_, *saved_, *this, strip_->GetPinnedTabsContainer(),
++      *region_->GetAuxProfilePreviewAdmission(), *preview_, *region_);
++  bookmarks_->bookmarks_view()->SetActivatedCallback(base::BindRepeating(
++      [](base::WeakPtr<AuxSidebarBody> body) {
++        if (body && body->projection_) body->projection_->Refresh();
++      }, weak_.GetWeakPtr()));
++  bookmarks_->bookmarks_view()->SetContentsChangedCallback(base::BindRepeating(
++      [](base::WeakPtr<AuxSidebarBody> body, bool present) {
++        if (!body) return;
++        body->bookmark_has_contents_ = present;
++        body->ApplyPresentation();
++      }, weak_.GetWeakPtr()));
++  ApplyPresentation();
++  chats_->Start();
++  agent_->Refresh();
++  projection_->Start();
++  Changed();
++}
++void AuxSidebarBody::Retire() {
++  if (retiring_ || !body_) return;
++  retiring_ = true;
++  if (drag_) drag_->Retire();
++  drag_.reset();
++  if (projection_) projection_->Retire();
++  projection_.reset();
++  if (actions_) actions_->Retire();
++  actions_.reset();
++  if (chats_) chats_->Retire();
++  chats_.reset();
++  if (bookmarks_) bookmarks_->RetireForProfileChange();
++  if (agent_) {
++    agent_->Retire();
++    auto* unpinned = strip_->GetUnpinnedTabsContainer();
++    CHECK(unpinned && agent_->parent() == unpinned);
++    unpinned->SetAgentSessionTabsView(nullptr);
++    unpinned->RemoveChildViewT(agent_.get());
++    agent_ = nullptr;
++  }
++  if (strip_) {
++    strip_->SetExternalParents(nullptr, nullptr);
++    // BaseTabStripRegionView clears/deletes only its direct owned child.
++    if (strip_->parent() != region_) region_->AddChildView(strip_.get());
++  }
++  new_tab_subscription_ = {};
++  associations_.reset();
++  if (preview_) { region_->RemoveChildViewT(preview_.get()); preview_ = nullptr; }
++  bookmarks_ = nullptr; chats_section_ = nullptr; divider_ = nullptr;
++  tabs_ = nullptr; new_tab_ = nullptr; bookmark_has_contents_ = false;
++  body_ = nullptr;
++  SetContents(std::unique_ptr<views::View>());
++  if (running_) running_.Run(false);
++  retiring_ = false;
++}
++void AuxSidebarBody::Unmount() { Retire(); strip_ = nullptr; }
++void AuxSidebarBody::ApplyPresentation() {
++  if (!body_ || !tabs_ || retiring_) return;
++  const auto* admission = region_->GetAuxProfilePreviewAdmission();
++  if (!admission) return;
++  const auto presentation = CalculateSidebarSectionPresentation(*admission,
++      region_->width(), chats_->agent_installed(),
++      browser_->GetProfile()->GetPrefs()->GetBoolean(kBookmarksSectionEnabledPref),
++      bookmark_has_contents_);
++  bookmarks_->SetVisible(presentation.bookmarks_visible);
++  chats_section_->SetVisible(presentation.chats_visible);
++  divider_->SetVisible(presentation.divider_visible);
++  tabs_->SetVisible(presentation.content_visible);
++  new_tab_->SetVisible(presentation.content_visible);
++  new_tab_->SetCompact(presentation.compact);
++  bookmarks_->bookmarks_view()->SetCompact(presentation.compact);
++  agent_->SetExternalVisibility(presentation.content_visible);
++}
++void AuxSidebarBody::QueueProjectionRefresh() {
++  if (projection_) projection_->QueueRefresh();
++  Changed();
++}
++bool AuxSidebarBody::CanRebindForAuxProfileSwitch(Profile* target) const {
++  return target && !paused_ && !retiring_;
++}
++uint64_t AuxSidebarBody::BeginAuxProfileSwitch(Profile* target) {
++  CHECK(CanRebindForAuxProfileSwitch(target));
++  paused_ = true;
++  Retire();
++  return ++generation_;
++}
++void AuxSidebarBody::RebindAuxProfileSwitch() { CHECK(paused_); }
++void AuxSidebarBody::EndAuxProfileSwitch(uint64_t generation) {
++  CHECK(paused_ && generation == generation_);
++  paused_ = false;
++  if (strip_ && !body_) Build();
++}
++void AuxSidebarBody::Changed() {
++  if (retiring_ || paused_) return;
++  if (running_ && chats_) running_.Run(std::ranges::any_of(chats_->chats(),
++      [](const Chat& chat) { return chat.status == ChatStatus::kRunning; }));
++  ApplyPresentation();
++  region_->RefreshAuxPinnedPresentation();
++  InvalidateLayout();
++  PreferredSizeChanged();
++}
++void AuxSidebarBody::RightClick(views::View* source, const ui::MouseEvent& event) {
++  auto point = gfx::ToFlooredPoint(event.location_f());
++  views::View::ConvertPointToScreen(source, &point);
++  BrowserView::GetBrowserViewForBrowser(browser_)->browser_widget()->ShowContextMenuForViewImpl(
++      source, point, ui::mojom::MenuSourceType::kMouse);
++}
++BEGIN_METADATA(AuxSidebarBody)
++END_METADATA
++}  // namespace aux
+diff --git a/chrome/browser/ui/views/frame/aux_sidebar_body.h b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+@@ -0,0 +1,82 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_BODY_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SIDEBAR_BODY_H_
++#include <cstdint>
++#include <memory>
++#include "base/callback_list.h"
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h"
++class BrowserWindowInterface;
++class Profile;
++class TabStripView;
++class VerticalTabStripRegionView;
++class VerticalPinnedTabEntriesView;
++class TabHoverCardController;
++namespace tabs { class VerticalTabStripStateController; }
++namespace aux {
++class AuxBookmarksSection;
++class AuxChatsController;
++class AuxChatsSection;
++class AuxTabsSection;
++class AuxTabsActions;
++class AuxVerticalNewTabButton;
++class AgentSessionTabsView;
++class BookmarkTabAssociations;
++class AuxSidebarProjection;
++class CrossSectionDragCoordinator;
++class CrossSectionDragPreview;
++class SidebarContentsView;
++class AuxSectionDivider;
++// Mounts supplied owners under original shared scroll5b0/contents5c0. It does
++// not render replacement rows or synthesize model/backend state.
++class AuxSidebarBody final : public VerticalTabStripScrollView {
++ METADATA_HEADER(AuxSidebarBody, VerticalTabStripScrollView)
++ public:
++  AuxSidebarBody(BrowserWindowInterface&, VerticalTabStripRegionView&,
++                 tabs::VerticalTabStripStateController&, TabHoverCardController&,
++                 VerticalPinnedTabEntriesView&, base::RepeatingClosure new_tab);
++  ~AuxSidebarBody() override;
++  void Mount(TabStripView&);
++  void Unmount();
++  void ApplyPresentation();
++  void QueueProjectionRefresh();
++  bool CanRebindForAuxProfileSwitch(Profile*) const;
++  uint64_t BeginAuxProfileSwitch(Profile*);
++  void RebindAuxProfileSwitch();
++  void EndAuxProfileSwitch(uint64_t);
++  void SetRunningChangedCallback(base::RepeatingCallback<void(bool)> cb);
++ private:
++  void Build();
++  void Retire();
++  void Changed();
++  void RightClick(views::View*, const ui::MouseEvent&);
++  raw_ptr<BrowserWindowInterface> browser_;
++  raw_ptr<VerticalTabStripRegionView> region_;
++  raw_ptr<tabs::VerticalTabStripStateController> state_;
++  raw_ptr<TabHoverCardController> hover_;
++  raw_ptr<VerticalPinnedTabEntriesView> saved_;
++  raw_ptr<TabStripView> strip_ = nullptr;
++  raw_ptr<SidebarContentsView> body_ = nullptr;
++  raw_ptr<AuxBookmarksSection> bookmarks_ = nullptr;
++  raw_ptr<AuxChatsSection> chats_section_ = nullptr;
++  raw_ptr<AuxSectionDivider> divider_ = nullptr;
++  raw_ptr<AuxTabsSection> tabs_ = nullptr;
++  raw_ptr<AuxVerticalNewTabButton> new_tab_ = nullptr;
++  raw_ptr<AgentSessionTabsView> agent_ = nullptr;
++  raw_ptr<CrossSectionDragPreview> preview_ = nullptr;
++  std::unique_ptr<BookmarkTabAssociations> associations_;
++  std::unique_ptr<AuxChatsController> chats_;
++  std::unique_ptr<AuxTabsActions> actions_;
++  std::unique_ptr<AuxSidebarProjection> projection_;
++  std::unique_ptr<CrossSectionDragCoordinator> drag_;
++  base::RepeatingClosure before_new_tab_;
++  base::RepeatingCallback<void(bool)> running_;
++  base::CallbackListSubscription new_tab_subscription_;
++  uint64_t generation_ = 0;
++  bool paused_ = false, retiring_ = false, bookmark_has_contents_ = false;
++  base::WeakPtrFactory<AuxSidebarBody> weak_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -17,6 +17,8 @@
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_body.h"
++#include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
+ #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -170,9 +172,11 @@
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
+   aux_sidebar_ = AddChildView(
+-      std::make_unique<AuxSidebarView>(browser_view->browser()));
+-  aux_sidebar_->SetProperty(
+-      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++      std::make_unique<aux::AuxSidebarBody>(*browser_view->browser(), *this,
++          *state_controller_, *hover_card_controller(), *pinned_tab_entries_,
++          base::BindRepeating(&VerticalTabStripRegionView::RecordNewTabButtonPressed,
++                              base::Unretained(this))));
++  aux_sidebar_->SetProperty(views::kMarginsKey, gfx::Insets());
+ 
+   aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(
+       &VerticalTabStripRegionView::OnAuxAgentActiveChanged,
+@@ -274,6 +278,8 @@
+ }
+ 
+ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
++  // Real profile/model-bound actors retire before admission/child ownership.
++  aux_sidebar_->Unmount();
+   aux_preview_weak_factory_.InvalidateWeakPtrs();
+   RetireAuxProfilePreviewInput();
+   aux_profile_preview_capture_.reset();
+@@ -467,6 +473,8 @@
+ }
+ 
+ void VerticalTabStripRegionView::Layout(PassKey) {
++  aux_sidebar_->ApplyPresentation();
++  RefreshAuxPinnedPresentation();
+   LayoutSuperclass<views::AccessiblePaneView>(this);
+ 
+   // Manually position the resize area as it overlaps views handled by the flex
+@@ -858,10 +866,11 @@
+ }
+ 
+ void VerticalTabStripRegionView::EndAuxProfileSwitch(uint64_t generation) {
+-  aux_sidebar_->EndAuxProfileSwitch(generation);
++  CHECK(pinned_profile_switch_generation_ == generation);
+   if (pinned_profile_switch_generation_ == generation) {
+     pinned_profile_switch_generation_.reset();
+     pinned_tab_entries_->RebindAfterProfileSwitch();
++    aux_sidebar_->EndAuxProfileSwitch(generation);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+     bottom_button_container_->RebindAfterAuxProfileSwitch();
+ #endif
+@@ -883,7 +892,7 @@
+   // genuine vertical scrolling surface, bottom container, bare spacer.
+   return {pinned_tab_entries_.get(),
+           strip ? strip->GetPinnedTabsContainer() : nullptr,
+-          strip ? strip->unpinned_tabs_scroll_view() : nullptr,
++          aux_sidebar_.get(),
+           bottom_button_container_.get(), gemini_button_.get()};
+ }
+ 
+@@ -925,24 +934,34 @@
+   }
+ }
+ 
++void VerticalTabStripRegionView::RefreshAuxPinnedPresentation() {
++  auto* strip = tab_strip_view();
++  if (!strip || !strip->GetPinnedTabsContainer() || !aux_profile_preview_admission_)
++    return;
++  auto& pinned = *strip->GetPinnedTabsContainer();
++  aux::ApplyAuxPinnedPresentation(pinned, aux::CalculateAuxPinnedPresentation(
++      *tab_strip_model(), pinned, pinned_tab_entries_,
++      *aux_profile_preview_admission_, width(), aux_empty_pinned_drop_active_));
++}
++std::unique_ptr<ExpandOnHoverLock>
++VerticalTabStripRegionView::AcquireDragExpansionLock() {
++  return GetExpandOnHoverLock(ExpandOnHoverLockType::kKeepExpanded);
++}
++void VerticalTabStripRegionView::SavedPinConversionCompleted() {
++  aux_sidebar_->QueueProjectionRefresh();
++  RefreshAuxPinnedPresentation();
++  InvalidateLayout();
++}
++void VerticalTabStripRegionView::BookmarkConversionCompleted() {
++  RefreshAuxPinnedPresentation();
++  InvalidateLayout();
++}
+ void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+   top_button_container_->SetAgentActive(active);
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewSet() {
+-  tab_strip_view()->SetProperty(
+-      views::kFlexBehaviorKey,
+-      views::FlexSpecification(views::LayoutOrientation::kVertical,
+-                               views::MinimumFlexSizeRule::kScaleToMinimum,
+-                               views::MaximumFlexSizeRule::kUnbounded)
+-          .WithWeight(1));
+-  tab_strip_view()->SetProperty(
+-      views::kMarginsKey,
+-      gfx::Insets::TLBR(
+-          0, 0,
+-          GetLayoutConstant(
+-              LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
+-          0));
++  tab_strip_view()->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(4, 0, 5, 0));
+ 
+   // Pre-set the animation values to the appropriate state.
+   auto* const animation_controller =
+@@ -965,15 +984,14 @@
+               &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
+               base::Unretained(this)));
+ 
+-  std::optional<size_t> sidebar_index = GetIndexOf(aux_sidebar_);
+-  CHECK(sidebar_index.has_value());
+-  ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
++  aux_sidebar_->Mount(*tab_strip_view());
+ 
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
+   InitializeAuxProfilePreview();
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
++  aux_sidebar_->Unmount();
+   RetireAuxProfilePreviewInput();
+   aux_profile_preview_owner_.reset();
+   aux_profile_preview_capture_.reset();
+@@ -1001,7 +1019,7 @@
+                            resize_area_->is_resizing());
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+-  aux_sidebar_->SetVisible(!collapsed);
++  aux_sidebar_->ApplyPresentation();
+   top_button_separator_->SetVisible(collapsed);
+   bottom_button_container_->SetVisible(collapsed);
+ 
+@@ -1575,7 +1593,7 @@
+   top_button_container_->SetAuxProfilePreviewPresentation(
+       compact, admission->retained());
+   pinned_tab_entries_->SetCompactPresentation(compact);
+-  aux_sidebar_->SetVisible(!compact);
++  aux_sidebar_->ApplyPresentation();
+   top_button_separator_->SetVisible(compact);
+   bottom_button_container_->SetVisible(compact);
+   resize_area_width_ = compact ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+@@ -1634,7 +1652,7 @@
+       aux_profile_header_->parent() != this) {
+     return std::nullopt;
+   }
+-  auto* scroll = tab_strip_view()->unpinned_tabs_scroll_view();
++  auto* scroll = aux_sidebar_.get();
+   if (!scroll || !Contains(scroll))
+     return std::nullopt;
+   auto bounds = GetLocalBounds();
+@@ -1650,8 +1668,7 @@
+   if (!aux_profile_header_ || !tab_strip_view() ||
+       aux_profile_preview_input_ || !aux_profile_preview_admission_)
+     return;
+-  auto* scroll = views::AsViewClass<VerticalTabStripScrollView>(
+-      tab_strip_view()->unpinned_tabs_scroll_view());
++  auto* scroll = aux_sidebar_.get();
+   CHECK(scroll);
+   auto& browser = *browser_view()->browser();
+   aux_profile_preview_capture_ =
+@@ -1688,9 +1705,5 @@
+ 
+ TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
+     const gfx::Point& point_in_screen) {
+-  if (aux_sidebar_) {
+-    if (auto* target = aux_sidebar_->GetPinnedTabDragTarget(point_in_screen))
+-      return target;
+-  }
+   return BaseTabStripRegionView::GetTabDragTarget(point_in_screen);
+ }
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -17,6 +17,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h"
+ #include "ui/gfx/image/image_skia.h"
+ #include "base/time/time.h"
+@@ -42,6 +43,7 @@
+ 
+ class Browser;
+ namespace aux {
++class AuxSidebarBody;
+ class ProfilePreviewRegionOwner;
+ class ProfilePreviewAdmission;
+ class ProfilePreviewRetention;
+@@ -78,7 +80,8 @@
+       public views::ResizeAreaDelegate,
+       public OmniboxTabHelper::Observer,
+       public tabs::VerticalTabStripStateController::Delegate,
+-      public aux::ProfilePreviewAdmission::Delegate {
++      public aux::ProfilePreviewAdmission::Delegate,
++      public aux::CrossSectionDragCoordinator::Delegate {
+   METADATA_HEADER(VerticalTabStripRegionView, BaseTabStripRegionView)
+ 
+  public:
+@@ -111,6 +114,10 @@
+   void RebindAuxProfileSwitch();
+   void EndAuxProfileSwitch(uint64_t generation);
+ 
++  void RefreshAuxPinnedPresentation();
++  std::unique_ptr<ExpandOnHoverLock> AcquireDragExpansionLock() override;
++  void SavedPinConversionCompleted() override;
++  void BookmarkConversionCompleted() override;
+   views::View* GetPinnedTabEntriesViewForAuxProfilePreview();
+   // Exact original five role members, projected through155 live ownership.
+   std::array<views::View*, 5> GetAuxProfilePreviewSurfaces() const;
+@@ -330,7 +337,9 @@
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
+   raw_ptr<VerticalPinnedTabEntriesView> pinned_tab_entries_ = nullptr;
+   std::optional<uint64_t> pinned_profile_switch_generation_;
+-  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
++  raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;
++  // Original source839 starts clear; actual native drag producer owns changes.
++  bool aux_empty_pinned_drop_active_ = false;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
+diff --git a/chrome/browser/ui/views/tabs/common/tab_collection_node.cc b/chrome/browser/ui/views/tabs/common/tab_collection_node.cc
+--- a/chrome/browser/ui/views/tabs/common/tab_collection_node.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_collection_node.cc
+@@ -8,6 +8,8 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/notreached.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/common/split_tab_view.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_group_view.h"
+@@ -99,7 +101,12 @@
+     TabCollectionNode* node_for_view) {
+   switch (node_for_view->type()) {
+     case Type::TABSTRIP:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++      return std::make_unique<TabStripView>(node_for_view,
++          node_for_view->orientation() == TabStripOrientation::kVertical);
++#else
+       return std::make_unique<TabStripView>(node_for_view);
++#endif
+     case Type::PINNED:
+       return std::make_unique<PinnedTabContainerView>(node_for_view);
+     case Type::UNPINNED:

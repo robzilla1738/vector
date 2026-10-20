@@ -404,6 +404,9 @@ steps.extend([
     ('native-cross-section-drag-api155/native.patch', 'native-cross-section-drag-api155/manifest.json'),
     ('native-external-tab-caption/native.patch', 'native-external-tab-caption/manifest.json'),
     ('native-cross-section-drag-const155/native.patch', 'native-cross-section-drag-const155/manifest.json'),
+    ('native-pinned-container-layout/native.patch', 'native-pinned-container-layout/manifest.json'),
+    ('native-sidebar-section-presentation/native.patch', 'native-sidebar-section-presentation/manifest.json'),
+    ('native-sidebar-body-mount/native.patch', 'native-sidebar-body-mount/manifest.json'),
 ])
 
 if options.through:

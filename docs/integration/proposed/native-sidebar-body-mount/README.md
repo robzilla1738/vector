@@ -1,7 +1,8 @@
 # Complete supplied sidebar mount — active integration
 
 This is the remaining integration work after the compiled source owners. It is
-not applied or claimed as UI acceptance. Root owns the new body, shared region,
+applied and focused-compiled in v382, with full original-source replay. Actual
+packaged UI acceptance remains pending. Root owns the new body, shared region,
 factory/GN edits, packaging and actual disposable observation.
 
 Use the actual `VerticalTabStripScrollView` as the new body's base, preserving
@@ -46,3 +47,15 @@ After the full coherent mount compiles, build/package one matching full local
 candidate and observe actual sidebar layout and interactions before claiming
 fidelity. Compilation, source replay and empty-profile screenshots cannot prove
 the normal-profile/Vault/auth/functional acceptance gates.
+
+## Applied v382 evidence
+
+The supplied body now replaces the independent instance in the actual region.
+All six targeted body/presentation/region/factory/pinned/layout objects compile.
+The full385-step original replay matches545 native sources and23 artwork targets.
+Actual saved-pin rebinding precedes the fresh projection, and the genuine inner
+activation callback publishes the actual pending-navigation projection.
+Original outer margins are zero; Tabs strip child uses source TLBR(4,0,5,0).
+The actual empty-pinned drop latch is initialized clear, as supplied; its native
+drag producer remains unconnected at this boundary. Compilation does not prove
+visual or behavior parity. No signing, provisioning or release work occurred.
