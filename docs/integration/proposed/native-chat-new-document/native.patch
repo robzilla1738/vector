@@ -1,0 +1,30 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.h
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.h
+@@ -3,10 +3,12 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHAT_NAVIGATION_H_
+ class BrowserWindowInterface;
+ class Profile;
++namespace content { class WebContents; }
+ namespace aux {
+ // Original nonnegative account pref, then stored display-order profile index,
+ // then zero. This route selection is not an authorization or Vault bypass.
+ int ChatAccountForProfile(Profile& profile);
++bool IsNewChatDocument(content::WebContents&, Profile&);
+ bool CanOpenNewChat(BrowserWindowInterface& browser);
+ void OpenNewChat(BrowserWindowInterface& browser);
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -54,6 +54,12 @@
+   }
+   return 0;
+ }
++bool IsNewChatDocument(content::WebContents& contents, Profile& profile) {
++  const GURL target(std::string("chrome-extension://") + kAgentExtensionId +
++      "/main.html#/u/" + std::to_string(ChatAccountForProfile(profile)) +
++      "/tasks/new");
++  return target.is_valid() && MatchesTarget(&contents, target);
++}
+ bool CanOpenNewChat(BrowserWindowInterface& browser) {
+   auto* registry = extensions::ExtensionRegistry::Get(browser.GetProfile());
+   return browser.GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&

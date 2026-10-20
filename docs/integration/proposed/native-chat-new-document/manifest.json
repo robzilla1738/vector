@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "af5d74606 navigation module outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.h",
+      "baselineSha256": "f9d736c3d78d2e2f6aa0c2a41d2a2a3231800d2c1be3cd38d4dac9e7135d0fd6",
+      "outputSha256": "ecdeb03f7f74d6378cb40fc7e496f62e8c490662f0e63a3374ed7882a6ab390a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "4890cc5cfe357c5b86ba452b8404cb7f9088c1baf6c0857b00c452b660c4bcb3",
+      "outputSha256": "3f9e49d312a297496c1f03b615ed7361bdba55fe1f84b7a33f937541e1dd457d"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

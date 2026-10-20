@@ -1,0 +1,15 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "new-chat-tab",
+      "start": "0x464d718",
+      "stopExclusive": "0x464df0c",
+      "bytesSha256": "04898e53078fa1d2c59ca3d4a96f2e459b1aac1943944bf1ede8f04e587a2450",
+      "asmSha256": "1951b90f4959eff14d1529978b32e2bca1b8eb0ddf2564c10717d6b7baf50c0d"
+    }
+  ]
+}
