@@ -1,0 +1,46 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4657d98: f94002e8     	ldr	x8, [x23]
+ 4657d9c: b4ffff88     	cbz	x8, 0x4657d8c <_ChromeMain+0x4652af0>
+ 4657da0: f9400515     	ldr	x21, [x8, #0x8]
+ 4657da4: b4ffff55     	cbz	x21, 0x4657d8c <_ChromeMain+0x4652af0>
+ 4657da8: f9419680     	ldr	x0, [x20, #0x328]
+ 4657dac: f940cc02     	ldr	x2, [x0, #0x198]
+ 4657db0: aa1503e1     	mov	x1, x21
+ 4657db4: 97048592     	bl	0x7793fc <_ChromeMain+0x774160>
+ 4657db8: 3940a2e1     	ldrb	w1, [x23, #0x28]
+ 4657dbc: f94002a8     	ldr	x8, [x21]
+ 4657dc0: f9405108     	ldr	x8, [x8, #0xa0]
+ 4657dc4: aa1503e0     	mov	x0, x21
+ 4657dc8: d63f0100     	blr	x8
+ 4657dcc: f9400ee8     	ldr	x8, [x23, #0x18]
+ 4657dd0: 1e270100     	fmov	s0, w8
+ 4657dd4: d360fd09     	lsr	x9, x8, #32
+ 4657dd8: 910082ea     	add	x10, x23, #0x20
+ 4657ddc: b943ca8b     	ldr	w11, [x20, #0x3c8]
+ 4657de0: 4b0b03eb     	neg	w11, w11
+ 4657de4: 2b0b0129     	adds	w9, w9, w11
+ 4657de8: 131f7d2b     	asr	w11, w9, #31
+ 4657dec: 5201016b     	eor	w11, w11, #0x80000000
+ 4657df0: 1a896169     	csel	w9, w11, w9, vs
+ 4657df4: 4d40cd41     	ld1r.2d	{ v1 }, [x10]
+ 4657df8: 3dc007e2     	ldr	q2, [sp, #0x10]
+ 4657dfc: 6ee24421     	ushl.2d	v1, v1, v2
+ 4657e00: 4e0c1d20     	mov.s	v0[1], w9
+ 4657e04: 0ea12821     	xtn.2s	v1, v1
+ 4657e08: 0ea10c01     	sqadd.2s	v1, v0, v1
+ 4657e0c: 0ea02c20     	sqsub.2s	v0, v1, v0
+ 4657e10: 0e0c3c0a     	mov.s	w10, v0[1]
+ 4657e14: 1e26000b     	fmov	w11, s0
+ 4657e18: 0aab7d6b     	bic	w11, w11, w11, asr #31
+ 4657e1c: 0aaa7d4a     	bic	w10, w10, w10, asr #31
+ 4657e20: aa0a816a     	orr	x10, x11, x10, lsl #32
+ 4657e24: b3607d28     	bfi	x8, x9, #32, #32
+ 4657e28: a903abe8     	stp	x8, x10, [sp, #0x38]
+ 4657e2c: 9100e3e1     	add	x1, sp, #0x38
+ 4657e30: aa1503e0     	mov	x0, x21
+ 4657e34: 97093357     	bl	0x8a4b90 <_ChromeMain+0x89f8f4>

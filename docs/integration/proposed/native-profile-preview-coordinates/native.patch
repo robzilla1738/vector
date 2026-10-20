@@ -1,0 +1,86 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc
+@@ -22,6 +22,17 @@
+   transform.Translate(x, 0);
+   view.layer()->SetTransform(transform);
+   view.layer()->SetOpacity(opacity);
++}
++// Original vertical tabs use an external parent (TabStripView369/340), so
++// their saved rectangles already share region coordinates. Chromium155 keeps
++// its pinned container inside a ScrollView. Adapt that topology through the
++// actual parent hierarchy, without including the leaf's transition transform.
++gfx::Rect BoundsInOwner(const views::View& owner, const views::View& surface) {
++  if (&surface == &owner || !owner.Contains(&surface) || !surface.parent()) {
++    return {};
++  }
++  return views::View::ConvertRectToTarget(surface.parent(), &owner,
++                                        surface.bounds());
+ }
+ }  // namespace
+ 
+@@ -42,26 +53,32 @@
+     const views::View& owner, ProfilePreviewSurfaces surfaces,
+     const views::View* top_boundary) {
+   // Original4640600 uses the actual five role-bound child rectangles. These
+-  // are owner-layout coordinates, not screen or full BrowserView bounds.
++  // are region-layout coordinates, not screen or full BrowserView bounds.
++  // Project155 nested parents into the original region coordinate system.
+   gfx::Rect combined;
+   bool found = false;
+   for (auto* surface : surfaces) {
+     if (!surface || !surface->GetVisible() || surface->bounds().IsEmpty()) {
+       continue;
+     }
++    const gfx::Rect bounds = BoundsInOwner(owner, *surface);
++    if (bounds.IsEmpty()) {
++      continue;
++    }
+     if (found) {
+-      combined.Union(surface->bounds());
++      combined.Union(bounds);
+     } else {
+-      combined = surface->bounds();
++      combined = bounds;
+       found = true;
+     }
+   }
+   if (!found) {
+     return owner.GetLocalBounds();
+   }
+-  const int boundary = top_boundary && !top_boundary->bounds().IsEmpty()
+-                           ? top_boundary->bounds().bottom()
+-                           : combined.y();
++  const gfx::Rect boundary_bounds =
++      top_boundary ? BoundsInOwner(owner, *top_boundary) : gfx::Rect();
++  const int boundary = boundary_bounds.IsEmpty() ? combined.y()
++                                               : boundary_bounds.bottom();
+   const int top = std::clamp(boundary, 0, std::max(owner.height(), 0));
+   return gfx::Rect(0, top, std::max(owner.width(), 0),
+                    std::max(owner.height() - top, 0));
+@@ -106,13 +123,19 @@
+   // Original4657d98..4657e34 preserves each genuine child rectangle and
+   // offsets its Y by the cached region's computed preview top. No screenshot
+   // or reconstruction of its tabs/bookmarks/tasks replaces these live Views.
+-  for (auto* surface : target) {
+-    if (!surface || !surface->parent()) {
+-      continue;
+-    }
+-    gfx::Rect bounds = surface->bounds();
+-    bounds.Offset(0, -target_top);
+-    borrowed_.Borrow(surface, &live_host, bounds);
++  // Snapshot every presentation rectangle before reparenting any surface.
++  // Borrow separately retains each real parent's original raw rectangle/index.
++  std::array<gfx::Rect, 5> bounds;
++  for (size_t i = 0; i < target.size(); ++i) {
++    if (target[i]) {
++      bounds[i] = BoundsInOwner(target_owner, *target[i]);
++      bounds[i].Offset(0, -target_top);
++    }
++  }
++  for (size_t i = 0; i < target.size(); ++i) {
++    if (target[i]) {
++      borrowed_.Borrow(target[i], &live_host, bounds[i]);
++    }
+   }
+   if (borrowed_.empty()) {
+     return false;

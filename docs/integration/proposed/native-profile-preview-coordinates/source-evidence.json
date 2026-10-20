@@ -1,0 +1,52 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "extracts": [
+    {
+      "file": "original-external-parent.txt",
+      "start": "0x41278c0",
+      "stop": "0x4127a38",
+      "bytesSha256": "d3ae64d7cbff37964ca14ba02a9e7dd703b02c03c70db9db4e661132ed884ed7",
+      "extractSha256": "6080ac2670b5ebd03c09b880ead108699b3ba8c80bbc1229dc674609a1bfb358"
+    },
+    {
+      "file": "original-constructor-bool.txt",
+      "start": "0x4127d28",
+      "stop": "0x4127e20",
+      "bytesSha256": "e4c399fbe62f3633ed51f625dc29e042d1006b59bc91f3c48b232ab58dbd7416",
+      "extractSha256": "3f11292e01de1371d3bc782cc5cb7474d926cdfc846c3a0d47f6677b3ef28a39"
+    },
+    {
+      "file": "original-raw-union.txt",
+      "start": "0x4640600",
+      "stop": "0x46407f8",
+      "bytesSha256": "578fbed6c23d1b4a47243321996681062e5580500c3d5989fa8336056046f1f0",
+      "extractSha256": "6b91d09388ef0b1c99144b5a7fb2d06b0c12a5148d3e75d800a2fe939de828d4"
+    },
+    {
+      "file": "original-record-bounds.txt",
+      "start": "0x4657f50",
+      "stop": "0x4657fe8",
+      "bytesSha256": "62a8d00432bb6664f1f98b664a3d81cd7ad041c97f5a804846d915ab235089a8",
+      "extractSha256": "4e0235af8aa1001016abd77feaed1dcc11188f44b1a1617beedf8070719ab30e"
+    },
+    {
+      "file": "original-present-bounds.txt",
+      "start": "0x4657d98",
+      "stop": "0x4657e38",
+      "bytesSha256": "4912d31314e58395fc5f7fe1dc4c78554aa60f6082de915341edf5925e15560a",
+      "extractSha256": "d4799b0ff8c522a9229755f1d783b2387726362be3bd814f4f8f38a96360f72f"
+    }
+  ],
+  "currentInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "sha256": "d9a9e3882d159501fc34e04b4e33158d9db0d351abdba297456e1ababc1d17a4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    }
+  ],
+  "adaptation": "Convert actual155 parent coordinates to region coordinates; retain leaf rawbounds for original restore."
+}
