@@ -1,0 +1,51 @@
+{
+  "composition": "v255",
+  "exitCode": 1,
+  "elapsedSeconds": 47.11788320541382,
+  "targets": {
+    "account_profile_updater": "obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o",
+    "profile_attributes_entry": "obj/chrome/browser/profiles/profile_util_impl/profile_attributes_entry.o",
+    "profile_indicator_icon": "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "sidebar_context": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "search_owner": "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o",
+    "browser_dispatch": "obj/chrome/browser/ui/ui/browser_view.o",
+    "region_mount": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "top_container": "obj/chrome/browser/ui/ui/top_container_view.o",
+    "region_owner": "obj/chrome/browser/ui/ui/aux_profile_preview_region_owner.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o",
+    "obj/chrome/browser/profiles/profile_util_impl/profile_attributes_entry.o",
+    "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o",
+    "obj/chrome/browser/ui/ui/browser_view.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "obj/chrome/browser/ui/ui/top_container_view.o",
+    "obj/chrome/browser/ui/ui/aux_profile_preview_region_owner.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "successfulTargets": [
+    "account_profile_updater",
+    "profile_attributes_entry",
+    "browser_dispatch",
+    "region_mount",
+    "top_container",
+    "region_owner"
+  ],
+  "failedTargets": [
+    "profile_indicator_icon",
+    "sidebar_context",
+    "search_owner"
+  ],
+  "fixesVerifiedBy": "docs/acceptance/native-focused-build-v257.json",
+  "runtimeParity": false
+}

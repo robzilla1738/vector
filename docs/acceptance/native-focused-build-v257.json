@@ -1,0 +1,32 @@
+{
+  "composition": "v257",
+  "exitCode": 0,
+  "elapsedSeconds": 20.523603916168213,
+  "targets": {
+    "profile_indicator_icon": "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "sidebar_context": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "search_owner": "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "priorFocusedBuild": "docs/acceptance/native-focused-build-v255.json",
+  "fullBrowserCompiled": false,
+  "runtimeParity": false,
+  "originalReplay": {
+    "steps": 263,
+    "sourceOutputs": 435,
+    "allOutputsMatched": true
+  }
+}
