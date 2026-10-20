@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/chrome_pages.cc",
+      "baselineSha256": "23574c7f53193ceaded3d50057c103f7831338ab85dcde43ab34580fb38b7f6e",
+      "outputSha256": "ec92f65cdb38951db91f327f81f2c456bac6c049d3181eee3e62e39d9cb20666"
+    }
+  ]
+}

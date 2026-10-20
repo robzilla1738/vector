@@ -1,0 +1,32 @@
+--- a/chrome/browser/ui/chrome_pages.cc
++++ b/chrome/browser/ui/chrome_pages.cc
+@@ -565,7 +565,7 @@
+   // Aux uses the user's chosen password-manager extension.
+   ShowExtensions(bwi);
+   return;
+-#endif
++#else
+   base::RecordAction(UserMetricsAction("Options_ShowPasswordManager"));
+   // This code is necessary to fix a bug (crbug.com/40269361) during Password
+   // Manager Shortcut tutorial flow.
+@@ -581,6 +581,7 @@
+   }
+   ShowSingletonTabIgnorePathOverwriteNTP(bwi,
+                                          GURL(kChromeUIPasswordManagerURL));
++#endif
+ }
+ 
+ void ShowPasswordManagerSettings(BrowserWindowInterface* bwi) {
+@@ -588,10 +589,11 @@
+   // Aux uses the user's chosen password-manager extension.
+   ShowExtensions(bwi);
+   return;
+-#endif
++#else
+   base::RecordAction(UserMetricsAction("Options_ShowPasswordManagerSettings"));
+   ShowSingletonTabIgnorePathOverwriteNTP(
+       bwi, GURL(kChromeUIPasswordManagerSettingsURL));
++#endif
+ }
+ 
+ void ShowPasswordDetailsPage(BrowserWindowInterface* browser,
