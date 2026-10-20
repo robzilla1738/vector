@@ -16,4 +16,4 @@ for (let index = 2; index < process.argv.length; index++) {
 if (Object.values(names).some(key => !options[key])) throw new Error('All five package inputs are required');
 const report = await packageProvidedApp(options);
 console.log(`Assembled ${report.suppliedResources} supplied resources and ${report.nativeFiles} native leaves into ${options.outputRoot}/Aux.app`);
-console.log('Unsigned candidate only; native loading, signing and packaged acceptance remain required.');
+console.log('Local development candidate; native loading and packaged UI/behavior acceptance remain unverified.');

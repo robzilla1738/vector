@@ -1,5 +1,7 @@
 # Supplied resource assembly
 
+Current scope is local development with 1:1 supplied UI and behavior. Signing, provisioning, notarization and release preparation are outside this workflow. Signing commands and earlier entitlement investigations below are historical tooling references, not next steps or development acceptance requirements.
+
 Run `node scripts/assemble-provided.mjs --stage out/provided-reuse --output out/provided-resources` after staging and the preservation audit. The output must be a new directory. No native app, executable or owner data is launched, signed, replaced or installed by this command.
 
 The assembler copies only manifest-listed files and contained relative links, checks every regular file's SHA256 before and after copying, preserves declared modes, rejects unreported leaves, and publishes the new tree only after successful assembly. It refuses source/output overlap and noncanonical/symlink roots. A failure removes only its private temporary directory. It does not replace the separate source-pinning/replay audit: run `check:provided` for that evidence.

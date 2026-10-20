@@ -164,7 +164,8 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       sourceRoots: sources,
       cliSea: `${cliExecutable}-sea`,
       developmentDpLayout, layoutChanges,
-      remaining: [developmentDpLayout ? 'Authenticated profiles and separate inside-out development signing plan; default ad hoc signer is incompatible' : 'Explicit inside-out ad hoc signing', 'Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
+      localDevelopmentOnly: true,
+      remaining: ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
     };
     await writeFile(join(temporary, 'package.json'), JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
     await absent(outputRoot);
