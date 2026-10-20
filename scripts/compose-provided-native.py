@@ -398,6 +398,12 @@ steps.extend([
     ('native-sidebar-scroll-contents/native.patch', 'native-sidebar-scroll-contents/manifest.json'),
     ('native-sidebar-scroll-contents-gn/native.patch', 'native-sidebar-scroll-contents-gn/manifest.json'),
     ('native-sidebar-scrollbar-thumb/native.patch', 'native-sidebar-scrollbar-thumb/manifest.json'),
+    ('native-sidebar-bookmark-projection/native.patch', 'native-sidebar-bookmark-projection/manifest.json'),
+    ('native-cross-section-drag-coordinator/native.patch', 'native-cross-section-drag-coordinator/manifest.json'),
+    ('native-sidebar-coordinators-gn/native.patch', 'native-sidebar-coordinators-gn/manifest.json'),
+    ('native-cross-section-drag-api155/native.patch', 'native-cross-section-drag-api155/manifest.json'),
+    ('native-external-tab-caption/native.patch', 'native-external-tab-caption/manifest.json'),
+    ('native-cross-section-drag-const155/native.patch', 'native-cross-section-drag-const155/manifest.json'),
 ])
 
 if options.through:

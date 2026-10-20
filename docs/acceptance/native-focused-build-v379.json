@@ -1,0 +1,35 @@
+{
+  "composition": "v379",
+  "sources": 539,
+  "actualNativeSourcesMatch": true,
+  "focusedBuild": {
+    "composition": "v379",
+    "exitCode": 0,
+    "elapsedSeconds": 17.181058168411255,
+    "targets": {
+      "tabstrip_caption": "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+      "aux_sidebar_projection": "obj/chrome/browser/ui/ui/aux_sidebar_projection.o",
+      "aux_cross_section_drag_coordinator": "obj/chrome/browser/ui/ui/aux_cross_section_drag_coordinator.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/views/tabs/common/impl/tab_strip_view.o",
+      "obj/chrome/browser/ui/ui/aux_sidebar_projection.o",
+      "obj/chrome/browser/ui/ui/aux_cross_section_drag_coordinator.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "originalReplayThrough": "v373",
+  "incrementalFollowupsVerified": true,
+  "genuineSidebarMounted": false,
+  "latestFullBrowser": "v277",
+  "UIAccepted": false,
+  "signingProvisioningOrReleasePerformed": false
+}
