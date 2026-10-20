@@ -1,0 +1,30 @@
+{
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/native-profile-pager-owner/evidence/parent-constructor.asm",
+      "sha256": "ee41152af77e0101c147f8347ca80431a77267b3444f7778b2eef25e59dafddb"
+    },
+    {
+      "path": "docs/integration/proposed/native-profile-preview-scroll-mount/original-mount.asm",
+      "sha256": "fea4ee1c812738b0c0a36396f20ef537387764b51328150671f91c1e841f2015"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/037dfc80.c",
+      "sha256": "3e2f860db024cec514cb608ab55e53b5f28e1fc6c06b67273015d5cd3d5c7fc3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-profile-header-bottom-placement/original-scroll-flex.asm",
+      "sha256": "6b1f456c6336b6e4f78fd081e96f0f87f69324143d4736806e535f8918a5e7d1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/layout/flex_layout_types.h",
+      "sha256": "195ee05b43a41363a87c91676d18e89365e43fedd435a96454b91dcf38c7757a"
+    }
+  ],
+  "originalTopology": [
+    "Scroll parent+5b0 added to region before profile parent+5a8; profile parent added37e3d18 after body construction and before BottomContainer+6f0.",
+    "Original scroll FlexSpecification(orientation1,min3,max2,adjustfalse,crossmin5) has weight1. Actual155 enums confirm vertical/scaleToMinimum/unbounded/preferred."
+  ],
+  "scope": "Relocate same existing profile/search/pager parent below same actual live tab body; preserve existing body until genuine replacement. No new footer or action.",
+  "runtimeAccepted": false
+}

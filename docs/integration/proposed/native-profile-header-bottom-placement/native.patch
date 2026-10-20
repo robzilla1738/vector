@@ -1,0 +1,61 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -163,8 +163,22 @@
+   top_button_separator_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
+-  // Original +5a8 parent, in the actual region between top controls and
+-  // saved entries. All actions retain their genuine native owners.
++  pinned_tab_entries_ = AddChildView(
++      std::make_unique<VerticalPinnedTabEntriesView>(browser_view->browser()));
++  pinned_tab_entries_->SetProperty(
++      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++
++  aux_sidebar_ = AddChildView(
++      std::make_unique<AuxSidebarView>(browser_view->browser()));
++  aux_sidebar_->SetProperty(
++      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
++
++  aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(
++      &VerticalTabStripRegionView::OnAuxAgentActiveChanged,
++      base::Unretained(this)));
++
++  // Original +5a8 parent follows the expanding scroll/body (+5b0).
++  // Keep the genuine profile/pager/search owner below the live tab body.
+   aux_profile_header_ = AddChildView(
+       std::make_unique<aux::VerticalTabSidebarProfileHeader>(
+           *browser_view,
+@@ -197,20 +211,6 @@
+                 return region && region->AuxProfilePreviewIdle();
+               }, aux_preview_weak_factory_.GetWeakPtr())));
+ 
+-  pinned_tab_entries_ = AddChildView(
+-      std::make_unique<VerticalPinnedTabEntriesView>(browser_view->browser()));
+-  pinned_tab_entries_->SetProperty(
+-      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+-
+-  aux_sidebar_ = AddChildView(
+-      std::make_unique<AuxSidebarView>(browser_view->browser()));
+-  aux_sidebar_->SetProperty(
+-      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+-
+-  aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(
+-      &VerticalTabStripRegionView::OnAuxAgentActiveChanged,
+-      base::Unretained(this)));
+-
+   bottom_button_container_ =
+       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
+           state_controller_, root_action_item, browser_view->browser(),
+@@ -931,8 +931,10 @@
+ void VerticalTabStripRegionView::OnTabStripViewSet() {
+   tab_strip_view()->SetProperty(
+       views::kFlexBehaviorKey,
+-      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+-                               views::MaximumFlexSizeRule::kPreferred));
++      views::FlexSpecification(views::LayoutOrientation::kVertical,
++                               views::MinimumFlexSizeRule::kScaleToMinimum,
++                               views::MaximumFlexSizeRule::kUnbounded)
++          .WithWeight(1));
+   tab_strip_view()->SetProperty(
+       views::kMarginsKey,
+       gfx::Insets::TLBR(
