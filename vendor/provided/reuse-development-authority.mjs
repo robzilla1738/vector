@@ -29,9 +29,24 @@ function assertSameInventory(expected, actual, message) {
   const sorted = values => [...values].sort((a, b) => a.path.localeCompare(b.path, 'en'));
   if (stable(sorted(expected)) !== stable(sorted(actual))) throw Error(message);
 }
-export function assertFreshResourceBaseline(cache, fresh, nextFinalApp) {
+export function bundleExclusionOrderProof(before, after) {
+  const parse = bytes => {
+    const value = JSON.parse(bytes);
+    if (!Array.isArray(value.excludedFiles) || value.excludedFiles.some(row => !row || typeof row !== 'object' || Array.isArray(row) || stable(Object.keys(row).sort()) !== stable(['reason', 'sha256', 'source']) || typeof row.source !== 'string' || !/^[a-f0-9]{64}$/.test(row.sha256) || typeof row.reason !== 'string') || new Set(value.excludedFiles.map(row => row.source)).size !== value.excludedFiles.length) throw Error('Exact unique exclusion records required');
+    return { ...value, excludedFiles: [...value.excludedFiles].sort((a, b) => a.source.localeCompare(b.source, 'en')) };
+  };
+  if (stable(parse(before)) !== stable(parse(after))) throw Error('Bundle changed beyond exclusion record order');
+  return { field: 'excludedFiles', equivalence: 'identical-unique-records-order-only', beforeSha256: hash(before), afterSha256: hash(after) };
+}
+export function assertFreshResourceBaseline(cache, fresh, nextFinalApp, metadataProof = null) {
   if (typeof nextFinalApp !== 'string' || nextFinalApp !== cache.finalApp) throw Error('Final app/runtime relocation path changed');
-  assertSameInventory(cache.unsignedResources, fresh, 'Fresh supplied resource payload changed; do not reuse historical authority tree');
+  let expected = cache.unsignedResources;
+  if (metadataProof) {
+    const bundle = prefix + '/bundle.json', before = expected.find(leaf => leaf.path === bundle), after = fresh.find(leaf => leaf.path === bundle);
+    if (metadataProof.field !== 'excludedFiles' || metadataProof.equivalence !== 'identical-unique-records-order-only' || !before || !after || before.link || after.link || before.mode !== after.mode || before.sha256 !== metadataProof.beforeSha256 || after.sha256 !== metadataProof.afterSha256) throw Error('Bundle exclusion order proof mismatch');
+    expected = expected.map(leaf => leaf.path === bundle ? { ...leaf, sha256: metadataProof.afterSha256 } : leaf);
+  }
+  assertSameInventory(expected, fresh, 'Fresh supplied resource payload changed; do not reuse historical authority tree');
 }
 function verifyRetainedSignatures(root, targets) {
   const expected = developmentTargetDefinitions(true).filter(target => target.path.startsWith(prefix + '/'));
@@ -97,9 +112,16 @@ export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRo
   const report = pinnedJson(path.join(packageRoot, 'package.json'), packageReportSha256);
   if (report.implementation !== 'supplied' || report.signed !== false || report.developmentDpLayout !== true || report.boundaryReceiptSha256 !== cache.boundaryReceiptSha256) throw Error('Matching current native-boundary development package required');
   const before = developmentSnapshot(packageRoot);
-  assertFreshResourceBaseline(cache, resources(before), report.finalApp);
+  const oldBundle = cache.unsignedResources.find(leaf => leaf.path === prefix + '/bundle.json'), newBundle = before.find(leaf => leaf.path === prefix + '/bundle.json');
+  let resourceMetadataCompatibility = null;
+  if (oldBundle?.sha256 !== newBundle?.sha256) {
+    const previous = regular(path.join(root, 'bundle.json')), current = regular(path.join(packageRoot, prefix, 'bundle.json'));
+    resourceMetadataCompatibility = bundleExclusionOrderProof(previous, current);
+    if (resourceMetadataCompatibility.beforeSha256 !== oldBundle?.sha256 || resourceMetadataCompatibility.afterSha256 !== newBundle?.sha256) throw Error('Bundle metadata changed during comparison');
+  }
+  assertFreshResourceBaseline(cache, resources(before), report.finalApp, resourceMetadataCompatibility);
   output = freshOutput(output, [packageRoot, path.dirname(cachePath), scope.policy.core.home]);
-  const plan = { version: 1, kind: 'exact-native-descendant-authority-reuse', cachePath, cacheSha256, cachedResourceRoot: root, packageRoot, packageReportSha256, finalApp: report.finalApp, before, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, scope: cache.scope, authorizedOperation: 'copy-exact-signed-resources-and-adhoc-outer-only', appleSigningAllowed: false, keychainOperationsAllowed: false, output };
+  const plan = { version: 1, kind: 'exact-native-descendant-authority-reuse', cachePath, cacheSha256, cachedResourceRoot: root, packageRoot, packageReportSha256, finalApp: report.finalApp, before, resourceMetadataCompatibility, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, scope: cache.scope, authorizedOperation: 'copy-exact-signed-resources-and-adhoc-outer-only', appleSigningAllowed: false, keychainOperationsAllowed: false, output };
   const planPath = path.join(output, 'reuse-plan.json'); writeNew(planPath, plan);
   return { planPath, planSha256: sha(planPath), packageMutated: false, appleSigningPerformed: false, keychainOperationsPerformed: false };
 }
@@ -136,7 +158,7 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
   verifyRetainedSignatures(target, cache.retainedTargets);
   const after = developmentSnapshot(plan.packageRoot), changes = signingChanges(copied, after, [{ path: 'Aux.app', kind: 'bundle', codeRelative: 'Aux.app/Contents/MacOS/Aux' }]);
   assertSameInventory(cache.signedResources, resources(after), 'Inherited helper/resource bytes changed during outer seal');
-  const receipt = { version: 1, implementation: 'inherited-development-authority-native-reseal', sourceSha256: sha(fileURLToPath(import.meta.url)), status: 'signed-and-verified', packageRoot: plan.packageRoot, packageReportSha256: plan.packageReportSha256, packageReportIsHistoricalUnsignedInput: true, planPath, planSha256, cachePath: plan.cachePath, cacheSha256: plan.cacheSha256, scope: cache.scope, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, retainedHelperSignaturesVerified: 8, nativeSignaturesVerified: [...nativeTargets].sort(), parentAppleSignaturesReused: true, appleSigningPerformed: false, adhocSignedTargets: ['Aux.app'], keychainOperationsPerformed: false, authorityProofInherited: true, providedResourcesByteIdentical: true, untargetedLeavesPreserved: true, changes, finalInventory: after, finalSnapshotSha256: hash(stable(after)), productLaunched: false, accountStartupVerified: false, aiRequestVerified: false };
+  const receipt = { version: 1, implementation: 'inherited-development-authority-native-reseal', sourceSha256: sha(fileURLToPath(import.meta.url)), status: 'signed-and-verified', packageRoot: plan.packageRoot, packageReportSha256: plan.packageReportSha256, packageReportIsHistoricalUnsignedInput: true, planPath, planSha256, cachePath: plan.cachePath, cacheSha256: plan.cacheSha256, scope: cache.scope, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, retainedHelperSignaturesVerified: 8, nativeSignaturesVerified: [...nativeTargets].sort(), parentAppleSignaturesReused: true, appleSigningPerformed: false, adhocSignedTargets: ['Aux.app'], keychainOperationsPerformed: false, authorityProofInherited: true, providedResourcesByteIdentical: true, resourceMetadataCompatibility: plan.resourceMetadataCompatibility, untargetedLeavesPreserved: true, changes, finalInventory: after, finalSnapshotSha256: hash(stable(after)), productLaunched: false, accountStartupVerified: false, aiRequestVerified: false };
   const receiptPath = path.join(plan.output, 'reuse-receipt.json'); writeNew(receiptPath, receipt);
   return { receiptPath, receiptSha256: sha(receiptPath), status: receipt.status, appleSigningPerformed: false, keychainOperationsPerformed: false };
 }
