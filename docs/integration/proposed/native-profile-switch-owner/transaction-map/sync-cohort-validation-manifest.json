@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "exact staged output of 500ed64f1 sync-model-profile-transfer",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc",
+      "baselineSha256": "263080093573eacdde50aeeab31a99c992808789b0b104177ecae7b3c659aee1",
+      "outputSha256": "fee01608b907deb7d43a50b5062547b5f353f2405386921f54e9d2300bdf79ce"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

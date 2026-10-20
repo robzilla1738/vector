@@ -1,0 +1,44 @@
+--- a/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
+@@ -511,6 +511,7 @@
+     return false;
+   }
+   base::flat_set<BrowserWindowInterface*> seen;
++  base::flat_set<TabGroupId> seen_groups;
+   for (auto* window : windows) {
+     if (!window || !seen.insert(window).second ||
+         window->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+@@ -521,6 +522,13 @@
+     auto* model = window->GetTabStripModel();
+     if (!model || model->profile() != window->GetProfile()) {
+       return false;
++    }
++    if (model->SupportsTabGroups()) {
++      for (auto group : model->group_model()->ListTabGroups()) {
++        if (!seen_groups.insert(group).second) {
++          return false;
++        }
++      }
+     }
+     auto* service = TabGroupSyncServiceFactory::GetForProfile(model->profile());
+     if (!service) {
+@@ -688,13 +696,18 @@
+       if (!actual_model) {
+         return false;
+       }
++      auto* actual_window = SavedTabGroupUtils::GetBrowserWithTabGroupId(group.id);
++      if (!actual_window || actual_window->GetProfile() != listener->profile_ ||
++          actual_window->GetTabStripModel() != actual_model) {
++        return false;
++      }
+       auto tabs = actual_model->GetTabsAtIndices(
+           actual_model->group_model()->GetTabGroup(group.id)->ListTabs().ToIntVector());
+       if (tabs.size() != group.tabs.size()) {
+         return false;
+       }
+       for (auto* tab : tabs) {
+-        if (!std::ranges::contains(group.tabs, tab->GetHandle())) {
++        if (std::ranges::find(group.tabs, tab->GetHandle()) == group.tabs.end()) {
+           return false;
+         }
+       }
