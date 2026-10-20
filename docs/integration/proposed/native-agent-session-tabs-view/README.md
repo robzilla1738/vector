@@ -1,0 +1,15 @@
+# Genuine region5d0 Agent session-tabs view
+
+This source-only port joins the actual authenticated source/model to the supplied visual owner. It creates the original single **Agent Tabs** aggregate using real current collection nodes, genuine common `TabView(node,true)`, the common header's supplied agent presentation, actual `TabGroupData`, real count and hovercards. It never fabricates a physical TabGroup/ID or substitutes the native agent-owned-tabs bubble.
+
+Original46272bc reuses rows when their actual node is unchanged, replaces invalidated/different nodes, preserves real ordered handles, and builds every represented tab's actual title/URL/crash/URL-display metadata. The source-proven aggregate delegate does not expose group edit/reorder/drag; actual row selection/close/context/audio and hover remain the genuine common TabView/controller behavior. Source node destruction/selection/data subscriptions remain native.
+
+Original geometry is retained: header32px; rows start(16,36), width(max(width−22,0)),4px gaps. Preferred height is32+round((4+sum(rowheight+4))*animation fraction). Collapse uses the actual SlideAnimation with180ms rich/zero reduced motion. Collapsing rows remain painted while their fraction is positive but stop processing subtree events immediately; this is separate from their actual visibility. The layer clips collapsing contents without an opaque fill.
+
+`aux::AgentSessionTabsView(BrowserWindowInterface&,TabStripModel&,TabHoverCardController&,RepeatingClosure changed)` provides const `RepresentsTab`, `ActiveTabChanged`, `SetExternalVisibility`, `Refresh`, and `Retire`. Changes are coalesced through weak posted Refresh as original46271b0. Root/parent must mount this actual view under the real unpinned container and register it with that container's genuine special-child owner, then call Refresh (original464ccfc). `GetTabStripView` deliberately returns null before the real mount. It obtains genuine nodes from that ancestor's real retained collection; there is no invented root adapter or default-success factory.
+
+Required predecessor proposals: model+root special-member stylefix; source9dcab8c06; commonTabView modeec0925226; common header3f0765dce. Root owns source registration/GN and complete body/ordinary-filter mount; do not enable classification without the represented replacement rows.
+
+Explicit limits: no native compilation or runtime UI observation here. The original alternate PinnedTabContainerView+570 nearest-strip shortcut is not newly ported; the proven original5d0 unpinned mount has a genuine TabStripView ancestor. Original+42f stopped snapshot producer is still unproven, so `Retire` is real asynchronous cancellation and does not assert snapshot-mode admission. No profile/network/Keychain operation was executed by verification.
+
+`python3 verify.py` independently replays the two new source files and checks original bounded byte pins. Current155 source pins document the real event-property/collection contracts rather than numeric153 field reuse.

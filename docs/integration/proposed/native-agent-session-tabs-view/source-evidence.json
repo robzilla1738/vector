@@ -1,0 +1,70 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x46271b0",
+      "end": "0x46272bc",
+      "sha256": "d2ae4da538395a3d9b3686b05375af39d190f87e5bc3b6078193a085ce941425",
+      "meaning": "weak coalesced deferredRefresh"
+    },
+    {
+      "start": "0x46272bc",
+      "end": "0x4628534",
+      "sha256": "6ce8b17d5cff37fa4a3644130559f942000122ced95abfb70956b4937da49fc3",
+      "meaning": "actual aggregate creation, real handle rows/node reuse and agent data"
+    },
+    {
+      "start": "0x4628534",
+      "end": "0x46289c8",
+      "sha256": "ecd21a38ccbdb656ff726cab8b82cf8947550aa53e7daf949d1bb8fdb54b04b2",
+      "meaning": "sourcecollapse and active-tab updates"
+    },
+    {
+      "start": "0x462a1c4",
+      "end": "0x462a3fc",
+      "sha256": "c15d5799a6eaaeb422408af15bf3adfa699fd9e7065b7676550bca6707ca1bad",
+      "meaning": "actualmanualbounds/preferredsize/collapsefraction"
+    },
+    {
+      "start": "0x462a490",
+      "end": "0x462a550",
+      "sha256": "49bddfabd14aef23324685af4c092ee4170cca6991a80c6cf869d89acf4223ef",
+      "meaning": "actuallocalizedcount and animationinvalidate"
+    },
+    {
+      "start": "0x462a7c8",
+      "end": "0x462a870",
+      "sha256": "9aefb69eb8c9c3d3517bcc80e9f7c60bece28abd4dee1042bb7adab21064248d",
+      "meaning": "realcollapse callback and localized countdelegate"
+    }
+  ],
+  "current155SourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_strip_utils.cc",
+      "sha256": "fe7166d822c6b130fa1793caf675c020641feb6800238819be3357ce3cb0ef24"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_collection_node.h",
+      "sha256": "bf0d8d0612c608b920ea8f0f9438696125996dc6d30f9e6bd6f186c7a73af4f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_group_data.h",
+      "sha256": "7016a50d5f891e0de390574aba5a588701d157a220c13e0812bc5622e99384e6"
+    }
+  ],
+  "eventGateProof": "Original vectorchildren190/198/1a0 followediteratingbyte1a8 theneventgate1a9. Source462a278..298 mutatesgate andproperty-onlynotify independently of virtualSetVisible. Actual155 samefieldsequence and SetCanProcessEventsWithinSubtree singleproperty-onlynotify; SetEnabled instead propagatesenabledsubtree andpaint.",
+  "sourceAdaptations": [
+    "No physicalTabGroup is synthesized; source aggregate delegate editor/drag absent, current155 GetTabGroup unreachable explicitNOTREACHED. Realdata/count/hover scope retained.",
+    "Current155 real node/view/controller and selection/data subscriptions replace originalsame commonTabView153 machinery.",
+    "Sourceparentmount supplies actualTabStrip ancestor; GetTabStripView returnsnull beforethat stage."
+  ]
+}

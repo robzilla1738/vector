@@ -1,0 +1,354 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc
+@@ -0,0 +1,299 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.h"
++#include <algorithm>
++#include <cmath>
++#include <map>
++#include <set>
++#include <utility>
++#include <vector>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/notreached.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/ui/tabs/tab_data.h"
++#include "chrome/browser/ui/tabs/tab_group_data.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.h"
++#include "chrome/browser/ui/views/tabs/common/tab_collection_node.h"
++#include "chrome/browser/ui/views/tabs/common/tab_group_header_view.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_utils.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
++#include "chrome/browser/ui/views/tabs/common/tab_view.h"
++#include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
++#include "chrome/grit/generated_resources.h"
++#include "components/tabs/public/tab_interface.h"
++#include "ui/base/l10n/l10n_util.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/compositor/layer.h"
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/slide_animation.h"
++#include "ui/views/view_utils.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++class AgentSessionGroupView final : public views::View,
++                                    public TabGroupHeaderView::Delegate,
++                                    public gfx::AnimationDelegate {
++ public:
++  AgentSessionGroupView(TabStripView&, TabHoverCardController&,
++                        base::RepeatingClosure toggle,
++                        base::RepeatingClosure changed, bool collapsed);
++  ~AgentSessionGroupView() override;
++  void Update(const std::vector<TabCollectionNode*>& nodes, bool collapsed);
++  void ActiveTabChanged();
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override;
++  void Layout(PassKey) override;
++  // This is an aggregate of real tabs, never a fabricated physical TabGroup.
++  void ToggleCollapsedState(ToggleTabGroupCollapsedStateOrigin) override;
++  std::unique_ptr<views::Widget> ShowGroupEditorBubble(bool) override;
++  std::u16string GetGroupContentString() const override;
++  bool IsValid() const override;
++  void InitHeaderDrag(const ui::LocatedEvent&) override;
++  bool ContinueHeaderDrag(const ui::LocatedEvent&) override;
++  void CancelHeaderDrag() override;
++  const TabGroup& GetTabGroup() const override;
++  const tabs::TabGroupData& GetTabGroupData() const override;
++  void UpdateHoverCard(int) const override;
++  void HideHoverCard(int) const override;
++  bool IsFocusInTabStrip() override;
++  std::unique_ptr<ExpandOnHoverLock> AcquireExpandOnHoverLock() override;
++  void ShiftGroupUp() override;
++  void ShiftGroupDown() override;
++  bool IsGroupFocused() const override;
++  HorizontalTabClosingHelper* GetTabClosingHelper() const override;
++  void AnimationProgressed(const gfx::Animation*) override;
++  void AnimationEnded(const gfx::Animation*) override;
++ private:
++  const raw_ref<TabStripView> strip_;
++  const raw_ref<TabHoverCardController> hover_;
++  base::RepeatingClosure toggle_;
++  base::RepeatingClosure changed_;
++  tabs::TabGroupData data_;
++  raw_ptr<TabGroupHeaderView> header_ = nullptr;
++  std::map<tabs::TabHandle, raw_ptr<TabView>> rows_;
++  std::vector<tabs::TabHandle> order_;
++  bool collapsed_;
++  gfx::SlideAnimation animation_{this};
++  base::WeakPtrFactory<AgentSessionGroupView> weak_{this};
++};
++AgentSessionGroupView::AgentSessionGroupView(
++    TabStripView& strip, TabHoverCardController& hover,
++    base::RepeatingClosure toggle, base::RepeatingClosure changed, bool collapsed)
++    : strip_(strip), hover_(hover), toggle_(std::move(toggle)),
++      changed_(std::move(changed)), collapsed_(collapsed) {
++  CHECK(toggle_); CHECK(changed_);
++  SetPaintToLayer();
++  layer()->SetFillsBoundsOpaquely(false);
++  layer()->SetMasksToBounds(true);
++  data_.visual_data = tab_groups::TabGroupVisualData(
++      u"Agent Tabs", tab_groups::TabGroupColorId::kGrey, collapsed);
++  data_.visual_data.SetIsAgentGroup(true);
++  header_ = AddChildView(std::make_unique<TabGroupHeaderView>(
++      *this, TabStripOrientation::kVertical,
++      strip_->collection_node()->GetController()->GetStateController(),
++      &data_.visual_data));
++  animation_.SetSlideDuration(gfx::Animation::ShouldRenderRichAnimation()
++      ? base::Milliseconds(180) : base::TimeDelta());
++  animation_.Reset(collapsed ? 0.0 : 1.0);
++}
++AgentSessionGroupView::~AgentSessionGroupView() = default;
++void AgentSessionGroupView::Update(const std::vector<TabCollectionNode*>& nodes,
++                                   bool collapsed) {
++  std::set<tabs::TabHandle> keep;
++  std::vector<tabs::TabHandle> order;
++  for (auto* node : nodes) {
++    CHECK(node); CHECK(node->type() == TabCollectionNode::Type::TAB);
++    const auto* tab = std::get<tabs::ConstDanglingUntriagedTabInterface>(node->GetNodeData()).get();
++    const auto handle = tab->GetHandle();
++    keep.insert(handle); order.push_back(handle);
++    auto found = rows_.find(handle);
++    if (found != rows_.end() && found->second->collection_node() != node) {
++      RemoveChildViewT(found->second.get());
++      rows_.erase(found); found = rows_.end();
++    }
++    if (found == rows_.end())
++      rows_.emplace(handle, AddChildView(std::make_unique<TabView>(node, true)));
++  }
++  for (auto it = rows_.begin(); it != rows_.end();) {
++    if (keep.contains(it->first)) { ++it; continue; }
++    RemoveChildViewT(it->second.get());
++    it = rows_.erase(it);
++  }
++  order_ = std::move(order);
++  data_.tab_data.clear();
++  for (size_t i = 0; i < order_.size(); ++i) {
++    auto* row = rows_.at(order_[i]).get();
++    ReorderChildView(row, i + 1);
++    {  // Original46272bc populates actual data for every represented tab.
++      auto real = tabs::TabData::FromTabInterface(
++          const_cast<tabs::TabInterface*>(row->GetTabInterface()));
++      tabs::TabGroupTabData value;
++      value.title = real.title;
++      value.last_committed_url = real.last_committed_url;
++      value.visible_url = real.visible_url;
++      value.should_display_url = real.should_display_url;
++      value.is_crashed = real.is_crashed;
++      data_.tab_data.push_back(std::move(value));
++    }
++  }
++  data_.num_tabs_in_group = static_cast<int>(order_.size());
++  data_.visual_data = tab_groups::TabGroupVisualData(
++      u"Agent Tabs", tab_groups::TabGroupColorId::kGrey, collapsed);
++  data_.visual_data.SetIsAgentGroup(true);
++  auto alive = weak_.GetWeakPtr();
++  header_->OnDataChanged(data_);
++  if (!alive) return;
++  if (collapsed_ != collapsed) {
++    collapsed_ = collapsed;
++    if (collapsed) animation_.Hide(); else animation_.Show();
++    if (!alive) return;
++  }
++  InvalidateLayout(); PreferredSizeChanged();
++}
++void AgentSessionGroupView::ActiveTabChanged() {
++  for (auto& [handle, row] : rows_) row->OnTabStateChanged();
++}
++gfx::Size AgentSessionGroupView::CalculatePreferredSize(
++    const views::SizeBounds& available) const {
++  int width = header_->GetPreferredSize(available).width();
++  int body = 4;
++  for (auto handle : order_) {
++    const auto size = rows_.at(handle)->GetPreferredSize(available);
++    width = std::max(width, size.width() + 22);
++    body += std::max(size.height(), 0) + 4;
++  }
++  return gfx::Size(width, 32 + std::lround(body * animation_.GetCurrentValue()));
++}
++void AgentSessionGroupView::Layout(PassKey) {
++  header_->SetBounds(0, 0, std::max(width(), 0), 32);
++  int y = 36;
++  for (auto handle : order_) {
++    auto* row = rows_.at(handle).get();
++    const int height = std::max(row->GetPreferredSize(
++        views::SizeBounds(std::max(width() - 22, 0), {})).height(), 0);
++    row->SetBounds(16, y, std::max(width() - 22, 0), height);
++    row->SetVisible(!collapsed_ || animation_.GetCurrentValue() > 0.0);
++    // Original462a278..298: property-only event-subtree gate, separate
++    // from visibility; keep collapsing rows noninteractive while animating.
++    row->SetCanProcessEventsWithinSubtree(!collapsed_);
++    y += height + 4;
++  }
++}
++void AgentSessionGroupView::ToggleCollapsedState(ToggleTabGroupCollapsedStateOrigin) {
++  toggle_.Run();
++}
++std::unique_ptr<views::Widget> AgentSessionGroupView::ShowGroupEditorBubble(bool) {
++  return nullptr;  // Original aggregate delegate has no physical group editor.
++}
++std::u16string AgentSessionGroupView::GetGroupContentString() const {
++  return l10n_util::GetPluralStringFUTF16(
++      IDS_TAB_GROUPS_UNNAMED_GROUP_HOVER_CARD_HEADER, data_.num_tabs_in_group);
++}
++bool AgentSessionGroupView::IsValid() const { return true; }
++void AgentSessionGroupView::InitHeaderDrag(const ui::LocatedEvent&) {}
++bool AgentSessionGroupView::ContinueHeaderDrag(const ui::LocatedEvent&) { return false; }
++void AgentSessionGroupView::CancelHeaderDrag() {}
++const TabGroup& AgentSessionGroupView::GetTabGroup() const {
++  NOTREACHED() << "An Agent aggregate has no physical TabGroup";
++}
++const tabs::TabGroupData& AgentSessionGroupView::GetTabGroupData() const { return data_; }
++void AgentSessionGroupView::UpdateHoverCard(int reason) const {
++  hover_->UpdateHoverCard(header_, static_cast<TabSlotController::HoverCardUpdateType>(reason));
++}
++void AgentSessionGroupView::HideHoverCard(int reason) const {
++  hover_->UpdateHoverCard(nullptr, static_cast<TabSlotController::HoverCardUpdateType>(reason));
++}
++bool AgentSessionGroupView::IsFocusInTabStrip() { return strip_->IsFocusInTabStrip(); }
++std::unique_ptr<ExpandOnHoverLock> AgentSessionGroupView::AcquireExpandOnHoverLock() {
++  return nullptr;  // Source aggregate delegate supplies no expand lock.
++}
++void AgentSessionGroupView::ShiftGroupUp() {}
++void AgentSessionGroupView::ShiftGroupDown() {}
++bool AgentSessionGroupView::IsGroupFocused() const { return false; }
++HorizontalTabClosingHelper* AgentSessionGroupView::GetTabClosingHelper() const { return nullptr; }
++void AgentSessionGroupView::AnimationProgressed(const gfx::Animation*) {
++  InvalidateLayout(); PreferredSizeChanged(); changed_.Run();
++}
++void AgentSessionGroupView::AnimationEnded(const gfx::Animation* animation) {
++  AnimationProgressed(animation);
++}
++AgentSessionTabsView::AgentSessionTabsView(
++    BrowserWindowInterface& browser, TabStripModel& tabs,
++    TabHoverCardController& hover, base::RepeatingClosure changed)
++    : hover_(hover), changed_(std::move(changed)) {
++  CHECK(changed_);
++  source_ = std::make_unique<AgentSessionTabsSource>(browser, tabs,
++      base::BindRepeating(&AgentSessionTabsView::QueueRefresh, weak_.GetWeakPtr()));
++  SetVisible(false);
++  source_->Start();
++}
++AgentSessionTabsView::~AgentSessionTabsView() = default;
++bool AgentSessionTabsView::RepresentsTab(const tabs::TabInterface& tab) const {
++  return !retired_ && source_->RepresentsTab(tab);
++}
++void AgentSessionTabsView::ActiveTabChanged(const tabs::TabInterface*) {
++  if (group_) group_->ActiveTabChanged();
++}
++void AgentSessionTabsView::Retire() {
++  retired_ = true;
++  source_->Retire();
++  weak_.InvalidateWeakPtrs();
++  refresh_pending_ = false;
++}
++void AgentSessionTabsView::QueueRefresh() {
++  if (retired_ || refresh_pending_) return;
++  refresh_pending_ = true;
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++      base::BindOnce(&AgentSessionTabsView::Refresh, weak_.GetWeakPtr()));
++}
++void AgentSessionTabsView::Refresh() {
++  refresh_pending_ = false;
++  if (retired_) return;
++  auto* strip = GetTabStripView(this);
++  if (!strip || !strip->collection_node()) return;
++  std::vector<TabCollectionNode*> nodes;
++  for (auto handle : source_->order()) {
++    if (auto* node = strip->collection_node()->GetNodeForHandle(handle))
++      nodes.push_back(node);
++  }
++  if (nodes.empty()) {
++    if (group_) {
++      auto* old = group_.get();
++      group_ = nullptr;
++      RemoveChildViewT(old);
++    }
++  } else {
++    if (!group_) group_ = AddChildView(std::make_unique<AgentSessionGroupView>(
++        *strip, *hover_,
++        base::BindRepeating(&AgentSessionTabsView::ToggleCollapsed, weak_.GetWeakPtr()),
++        base::BindRepeating(&AgentSessionTabsView::LayoutChanged, weak_.GetWeakPtr()), collapsed_));
++    auto alive = weak_.GetWeakPtr();
++    group_->Update(nodes, collapsed_);
++    if (!alive) return;
++  }
++  auto alive = weak_.GetWeakPtr();
++  SetVisible(external_visibility_ && group_);
++  if (alive) LayoutChanged();
++}
++void AgentSessionTabsView::ToggleCollapsed() {
++  collapsed_ = !collapsed_;
++  Refresh();
++}
++void AgentSessionTabsView::LayoutChanged() {
++  InvalidateLayout(); PreferredSizeChanged(); changed_.Run();
++}
++void AgentSessionTabsView::SetExternalVisibility(bool visible) {
++  external_visibility_ = visible;
++  SetVisible(visible && group_);
++}
++gfx::Size AgentSessionTabsView::CalculatePreferredSize(const views::SizeBounds& bounds) const {
++  return group_ ? group_->GetPreferredSize(bounds) : gfx::Size();
++}
++void AgentSessionTabsView::Layout(PassKey) {
++  if (group_) group_->SetBoundsRect(GetLocalBounds());
++}
++void AgentSessionTabsView::AddedToWidget() { QueueRefresh(); }
++BEGIN_METADATA(AgentSessionTabsView)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_view.h
+@@ -0,0 +1,49 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_AGENT_SESSION_TABS_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_AGENT_SESSION_TABS_VIEW_H_
++#include <memory>
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
++#include "ui/base/metadata/metadata_header_macros.h"
++#include "ui/views/view.h"
++class BrowserWindowInterface;
++class TabStripModel;
++class TabHoverCardController;
++namespace tabs { class TabInterface; }
++namespace aux {
++class AgentSessionTabsSource;
++class AgentSessionGroupView;
++// Genuine original region5d0. Must be parented by the actual unpinned container
++// beneath TabStripView before Refresh can create real collection-node rows.
++class AgentSessionTabsView final : public views::View {
++  METADATA_HEADER(AgentSessionTabsView, views::View)
++ public:
++  AgentSessionTabsView(BrowserWindowInterface&, TabStripModel&,
++                       TabHoverCardController&, base::RepeatingClosure changed);
++  ~AgentSessionTabsView() override;
++  bool RepresentsTab(const tabs::TabInterface&) const;
++  void ActiveTabChanged(const tabs::TabInterface*);
++  void Retire();
++  void Refresh();
++  void SetExternalVisibility(bool visible);
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override;
++  void Layout(PassKey) override;
++  void AddedToWidget() override;
++ private:
++  void QueueRefresh();
++  void ToggleCollapsed();
++  void LayoutChanged();
++  const raw_ref<TabHoverCardController> hover_;
++  base::RepeatingClosure changed_;
++  std::unique_ptr<AgentSessionTabsSource> source_;
++  raw_ptr<AgentSessionGroupView> group_ = nullptr;
++  bool collapsed_ = false;
++  bool external_visibility_ = true;
++  bool refresh_pending_ = false;
++  bool retired_ = false;
++  base::WeakPtrFactory<AgentSessionTabsView> weak_{this};
++};
++}  // namespace aux
++#endif

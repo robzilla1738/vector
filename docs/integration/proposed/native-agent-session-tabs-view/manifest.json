@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "002d639ded81ef9f743659f9c275ab18ac7df2e991b9090d096d7dfc24c9bc5c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.h",
+      "baselineSha256": null,
+      "outputSha256": "3179d2cbbedfbfa1255d38bb3a511ad2330a82960a4352753b0b8324027997c6"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "dependencies": [
+    "native-agent-session-tabs-model with root out-of-line stylefix",
+    "native-agent-session-tabs-source9dcab8c06",
+    "native-agent-session-tab-modeec0925226",
+    "native-agent-session-header3f0765dce",
+    "Root actual464ccfc external TabStripView mount and parent genuine Unpinned specialchild"
+  ],
+  "integration": {
+    "uiSources": [
+      "chrome/browser/ui/views/frame/aux_agent_session_tabs_view.cc"
+    ],
+    "constructor": "aux::AgentSessionTabsView(BrowserWindowInterface&,TabStripModel&,TabHoverCardController&,base::RepeatingClosure changed)",
+    "public": [
+      "RepresentsTab(const tabs::TabInterface&) const",
+      "ActiveTabChanged(const tabs::TabInterface*)",
+      "Refresh() after actualparent mount",
+      "SetExternalVisibility(bool)",
+      "Retire() before actualowner retirement"
+    ],
+    "mount": "Move into actual UnpinnedTabContainerView under genuine TabStripView as original464ccfc, register specialchild and callRefresh. No injected root/factory or fabricated ancestry."
+  },
+  "remainingGaps": [
+    "Root registration/focused compile and real complete body mount are unperformed in this lane.",
+    "Original alternate PinnedTabContainerView+570 nearest-TabStrip shortcut is not newly added here; required source unpinned mount has real TabStripView ancestor.",
+    "Original stopped-snapshot+42f writer remains unproven; this class provides cancellationRetire without inventing frozen snapshot admission."
+  ]
+}
