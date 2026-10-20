@@ -1,0 +1,19 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 46576d0: 39286a7f     	strb	wzr, [x19, #0xa1a]
+ 46576d4: 39692268     	ldrb	w8, [x19, #0xa48]
+ 46576d8: 34000088     	cbz	w8, 0x46576e8 <_ChromeMain+0x465244c>
+ 46576dc: 39e91e68     	ldrsb	w8, [x19, #0xa47]
+ 46576e0: 37fffee8     	tbnz	w8, #0x1f, 0x46576bc <_ChromeMain+0x4652420>
+ 46576e4: 3929227f     	strb	wzr, [x19, #0xa48]
+ 46576e8: f9452a68     	ldr	x8, [x19, #0xa50]
+ 46576ec: 91000508     	add	x8, x8, #0x1
+ 46576f0: f9052a68     	str	x8, [x19, #0xa50]
+ 46576f4: 91296260     	add	x0, x19, #0xa58
+ 46576f8: 97035c08     	bl	0x72e718 <_ChromeMain+0x72947c>
+ 46576fc: f9456274     	ldr	x20, [x19, #0xac0]
+ 4657700: b50001d4     	cbnz	x20, 0x4657738 <_ChromeMain+0x465249c>

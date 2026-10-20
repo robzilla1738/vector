@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "new native UI-owned source adapter; original algorithms465841c/4658888/40fe7a4",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": null,
+      "outputSha256": "eb54aa31d0942091c8c8596e0dec1d2e5fc020e37625940d6736c7e720cd0998"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "baselineSha256": null,
+      "outputSha256": "3298eee2023fab88dca4fca9f41bd5747d10c78b598c9bdd650be03000ae46c8"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiTriggerInstalled": false
+}

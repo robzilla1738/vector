@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "suppliedBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "boundedEvidence": [
+    {
+      "path": "owner-entry-original.txt",
+      "start": "0x465841c",
+      "stop": "0x4658520",
+      "sha256": "0cd76d6ab358331888f6fd76f2f1ab0345df64a30bf3e7144bb80b5f9a1be369"
+    },
+    {
+      "path": "preview-settle-generation-original.txt",
+      "start": "0x464b560",
+      "stop": "0x464b5fc",
+      "sha256": "a5e927f2c20d15c7ad7b882517dcea7b2cb47cc19cdf46b539d382241d5d32b6"
+    },
+    {
+      "path": "preview-commit-original.txt",
+      "start": "0x4658888",
+      "stop": "0x4658914",
+      "sha256": "e783bb759eb90aa0a34b1f12ace4c0e3beb5b400d93f3990d985df0e6a480e6b"
+    },
+    {
+      "path": "owner-completion-original.txt",
+      "start": "0x467d430",
+      "stop": "0x467d75c",
+      "sha256": "20b6a0d608c9c0b40c129b7048ff3020819c7950500df788e3d8965de4d247ea"
+    },
+    {
+      "path": "preview-cancel-original.txt",
+      "start": "0x46576d0",
+      "stop": "0x4657704",
+      "sha256": "fd8f47b43cb7ba8ea49b76968337deb01f1f848557cc3a368c1d7161a9fd3702"
+    },
+    {
+      "path": "selection-pending-original.txt",
+      "start": "0x4655e40",
+      "stop": "0x4655ed0",
+      "sha256": "112e63c988ee3f70c98259eecd24f56dfae8af1cfa051208f84f2c9158cfdf32"
+    }
+  ],
+  "current155Sources": [
+    {
+      "path": "chrome/browser/profiles/profile_window.h",
+      "sha256": "eb6bcdebe0e54c16719fa95c1415a1d47fe9066e99a7fd378ebd1d234d376e66"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_window.cc",
+      "sha256": "040cf1f7cbef8a39210c2822aab3cb852f411d96bb7623387344d19dd64ea5be"
+    },
+    {
+      "path": "ui/base/base_window.h",
+      "sha256": "ff1fa34347d9844e69a782a2a5cb8c73e49c48135c06ce272ec2c32b6cf1d46f"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "sha256": "42807bc4a7abe8819837a3faa2b206b85b6d88823c0482fc666edbcd0a9bc8ea"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.cc",
+      "sha256": "579e0a39eabd63717e6857ae27d45eed08826e3997eb1cbf8a532c21ad8cf607"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.h",
+      "sha256": "03ba431485e17b771be4628caa68fe14fa194da536a70d1c518c7cb73cc62ace"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.cc",
+      "sha256": "a86a1b2f7531e5b63de6ef17c4fe05f5509c815b5ffbd437e649230f265560f2"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "sha256": "1537d21c2b9a3f617e3a7632d0fe880255c22ca44a64d26f01af4e87db4ab2ca"
+    }
+  ],
+  "executedTarget": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
