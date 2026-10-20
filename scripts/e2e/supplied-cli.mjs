@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
+import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from '../../vendor/provided/native-diagnostic-hook.mjs';
 
 export const CLI_SOURCE_SHA256 = '013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62';
 const entrypoint = `buildProgram(actions, CLI_VERSION).parseAsync(process.argv).catch((error) => {\n\tconsole.error(error instanceof Error && error.message ? error.message : String(error));\n\tprocess.exit(1);\n});`;
@@ -12,7 +13,7 @@ export function exposeHelpers(source) {
   assert.equal(source.split(entrypoint).length - 1, 1, 'CLI entrypoint count drift');
   assert.equal(source.split('export {  };').length - 1, 1, 'CLI export count drift');
   return source.replace(entrypoint, '').replace('export {  };',
-    'export { createDaemonClient, createChatClient, createExecSession, resolveAccount, flushLogDump, DAEMON_BASE_URL };');
+    'export { createDaemonClient, createChatClient, createExecSession, resolveAccount, flushLogDump, daemonAuthorizer, DAEMON_BASE_URL };');
 }
 export async function loadSuppliedCli(sourcePath, directory, adapterUrl) {
   const original = await readFile(sourcePath, 'utf8');
@@ -23,8 +24,10 @@ export async function loadSuppliedCli(sourcePath, directory, adapterUrl) {
   // helpers after it runs, retaining every supplied helper body verbatim.
   assert.equal(adapted.split(entrypoint).length - 1, 1);
   assert.equal(adapted.split('export {  };').length - 1, 1);
-  const module = adapted.replace(entrypoint, '').replace('export {  };',
-    'export { createDaemonClient, createChatClient, createExecSession, resolveAccount, flushLogDump, DAEMON_BASE_URL };');
+  const dispatch = `if(${nativeDiagnosticPredicate}){await ${nativeDiagnosticExpression};}else ${entrypoint}`;
+  assert.equal(adapted.split(dispatch).length - 1, 1, 'CLI diagnostic dispatch count drift');
+  const module = adapted.replace(dispatch, '').replace('export {  };',
+    'export { createDaemonClient, createChatClient, createExecSession, resolveAccount, flushLogDump, daemonAuthorizer, DAEMON_BASE_URL };');
   const path = join(directory, 'supplied-cli-helpers.mjs');
   await writeFile(path, module, { mode: 0o600, flag: 'wx' });
   return import(pathToFileURL(path).href);
