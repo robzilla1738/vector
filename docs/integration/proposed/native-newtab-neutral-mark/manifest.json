@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/tab_data.cc",
+      "baselineSha256": "5a0a9ff0a628e24836e657de2954bf00ea8e9a2392822faa28cbeedf43a3ae68",
+      "outputSha256": "98439c667aaefb28274d1f6f526cdc15923a1798b565b60a2ebc7bf3c5a57d6c"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_new_tab_mark.inc",
+      "baselineSha256": null,
+      "outputSha256": "eff95978642a06d3092c86fcf3927c04755043ffdebb0f0fc85d97b45773d9a2"
+    }
+  ]
+}

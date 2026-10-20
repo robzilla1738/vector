@@ -1,0 +1,90 @@
+--- a/chrome/browser/ui/tabs/tab_data.cc
++++ b/chrome/browser/ui/tabs/tab_data.cc
+@@ -9,7 +9,9 @@
+ #include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/scoped_refptr.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/collaboration/messaging/messaging_backend_service_factory.h"
++#include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
+ #include "chrome/browser/ui/tab_ui_helper.h"
+ #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
+@@ -23,9 +25,15 @@
+ #include "components/collaboration/public/messaging/messaging_backend_service.h"
+ #include "components/tabs/public/tab_alert.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ 
++#include "ui/gfx/vector_icon_types.h"
++
+ namespace tabs {
++namespace {
++#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
++}  // namespace
+ 
+ TabData TabData::FromTabInterface(tabs::TabInterface* tab_interface) {
+   TabUIHelper* const tab_ui_helper = TabUIHelper::From(tab_interface);
+@@ -41,6 +49,19 @@
+       tab_interface->IsPinned() || tab_ui_helper->ShouldDisplayFavicon();
+   tab_data.is_monochrome_favicon = tab_ui_helper->IsMonochromeFavicon();
+   tab_data.favicon = tab_ui_helper->GetFavicon();
++  // The supplied new-tab row uses a neutral product glyph, not boxed app
++  // artwork. Match the actual document because chrome://newtab is virtual.
++  if (const auto* frame = tab_interface->GetContents()->GetPrimaryMainFrame()) {
++    const GURL& document = frame->GetLastCommittedURL();
++    if (document.SchemeIs("chrome-extension") &&
++        document.host() == aux::kAgentExtensionId &&
++        document.path() == "/newtab.html") {
++      tab_data.favicon = ui::ImageModel::FromVectorIcon(
++          kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16);
++      tab_data.should_themify_favicon = false;
++      tab_data.is_monochrome_favicon = false;
++    }
++  }
+   tab_data.should_hide_throbber = tab_ui_helper->ShouldHideThrobber();
+   tab_data.is_crashed = tab_ui_helper->IsCrashed();
+   tab_data.should_display_url = tab_ui_helper->ShouldDisplayURL();
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_new_tab_mark.inc
+@@ -0,0 +1,39 @@
++// Generated from the owner canonical assets/brand/arch-mark.svg.
++// Both paths and the complete 1024 viewBox are preserved (80 * 12.8).
++// Transparent, theme-colored tab artwork; no application-icon backing.
++// clang-format off
++constexpr gfx::PathElement kAuxNewTabMarkPath[] = {
++    gfx::CANVAS_DIMENSIONS, 80.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 40.02f, 10.25f,
++    gfx::CUBIC_TO, 22.57f, 10.25f, 8.68f, 25.58f, 8.68f, 43.52f,
++    gfx::V_LINE_TO, 64.52f,
++    gfx::CUBIC_TO, 8.68f, 66.99f, 11.19f, 67.96f, 13.28f, 66.62f,
++    gfx::CUBIC_TO, 20.49f, 61.14f, 25.26f, 51.02f, 25.26f, 41.08f,
++    gfx::V_LINE_TO, 40.27f,
++    gfx::CUBIC_TO, 25.26f, 31.86f, 32.20f, 25.54f, 39.99f, 25.54f,
++    gfx::CUBIC_TO, 47.79f, 25.54f, 54.69f, 32.23f, 54.69f, 40.27f,
++    gfx::V_LINE_TO, 41.08f,
++    gfx::CUBIC_TO, 54.69f, 51.39f, 59.58f, 61.16f, 66.68f, 66.61f,
++    gfx::CUBIC_TO, 68.75f, 67.99f, 71.24f, 67.00f, 71.24f, 64.61f,
++    gfx::LINE_TO, 71.09f, 44.15f,
++    gfx::CUBIC_TO, 71.09f, 25.09f, 57.48f, 10.25f, 40.02f, 10.25f,
++    gfx::CLOSE,
++    gfx::NEW_PATH,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 50.38f, 52.49f,
++    gfx::LINE_TO, 42.94f, 40.40f,
++    gfx::CUBIC_TO, 42.32f, 39.32f, 41.15f, 38.73f, 39.95f, 38.73f,
++    gfx::CUBIC_TO, 38.75f, 38.73f, 37.58f, 39.44f, 36.94f, 40.50f,
++    gfx::LINE_TO, 29.59f, 52.52f,
++    gfx::CUBIC_TO, 28.89f, 53.72f, 29.24f, 55.39f, 30.43f, 56.31f,
++    gfx::CUBIC_TO, 31.57f, 57.11f, 33.17f, 56.81f, 34.21f, 55.93f,
++    gfx::CUBIC_TO, 36.08f, 54.31f, 37.94f, 53.13f, 39.92f, 53.13f,
++    gfx::CUBIC_TO, 42.03f, 53.13f, 43.99f, 54.37f, 45.80f, 55.93f,
++    gfx::CUBIC_TO, 46.89f, 56.81f, 48.37f, 57.11f, 49.58f, 56.36f,
++    gfx::CUBIC_TO, 50.82f, 55.55f, 51.08f, 53.80f, 50.38f, 52.49f,
++    gfx::CLOSE,
++};
++// clang-format on
++constexpr gfx::VectorIconRep kAuxNewTabMarkRep[] = {{kAuxNewTabMarkPath}};
++constexpr gfx::VectorIcon kAuxNewTabMarkIcon(kAuxNewTabMarkRep, 1, "AuxNewTabMark");

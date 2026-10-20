@@ -1,0 +1,9 @@
+{
+  "canonicalLogo": {
+    "path": "assets/brand/arch-mark.svg",
+    "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+    "paths": 2
+  },
+  "observation": "Supplied live Aside new-tab row displays neutral product mark without app-icon tile; Aux current uses black boxed extension favicon. Replacing original product mark with canonical Aux geometry is branding adaptation, not recovered original logo reuse.",
+  "preserved": "12px NewTab plus already exact supplied path e82bd28/ce66658; not changed. No fake footer status added."
+}
