@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "bookmarks",
+      "rva": "0x4574630",
+      "bytes": 524,
+      "sha256": "4625588288f789db52df5bff34d73d285ebeb7cc56ceed63e9264dad78199ff4",
+      "assemblySha256": "f9f2f0d41483d351d32c7696ba94fa5bf53d968e7aa4f04733b21c94f2b2aa1a"
+    },
+    {
+      "name": "command-retirement",
+      "rva": "0x4570ef8",
+      "bytes": 76,
+      "sha256": "5049d6b8568c701ece7d3f8a132fc619608e39d45e3cfefcebfd758598a0ed8e",
+      "assemblySha256": "3602230d799e4a2a5f23e597250365c4ffbdaeacfe5fa05d53c19bc68f152880"
+    },
+    {
+      "name": "submenu-row",
+      "rva": "0x457903c",
+      "bytes": 740,
+      "sha256": "0bc926677556cbd22422284bbb2c246ffbe52a33361014d03bf91699925512dd",
+      "assemblySha256": "814dfbb1e7ff5e9c2dc7012b05403387c558830e106cd90416a096a5e3b71675"
+    },
+    {
+      "name": "mouse-move-enter-exit",
+      "rva": "0x457b49c",
+      "bytes": 588,
+      "sha256": "e15651e1aaf91c874272d0ab13e8f173c1622faf7abafa10884ac69e94797775",
+      "assemblySha256": "be9a60de9db8da9f5688578bd748d7f9ac5da21e817ae08945e19b6ffc8cb934"
+    },
+    {
+      "name": "primary-glyph-callers",
+      "rva": "0x45734f0",
+      "bytes": 1424,
+      "sha256": "f23c85669cbf8391d9cdaba0cefdccb01c8bb8299204028457857a30bc9c92db",
+      "assemblySha256": "ae1cc9a1c267cae75589bdd23f14f5c0d0b73675c05ce6942587d027bcc1b3fa"
+    },
+    {
+      "name": "kind-dispatch",
+      "rva": "0x4574428",
+      "bytes": 184,
+      "sha256": "fb058eeb37bfea5b958babf103aeab0ce1e28a7df82f30b3f58e0b7134f0a36f",
+      "assemblySha256": "47512027c0a73c965b11f949160d1e069360083aeb2ec5b28f2558a68ac43e47"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/views/controls/button/button_controller.h",
+      "sha256": "947e0d3d49368647487cee2d882140016804390725a6a577921d96d1da7d24da"
+    },
+    {
+      "path": "ui/views/controls/button/button.h",
+      "sha256": "5a618f1103c36a35d25c600a003f4d4a31129125736d887976187d4db2e0b6b9"
+    },
+    {
+      "path": "ui/views/controls/button/button.cc",
+      "sha256": "4e0f6e8121599691365ef0313764f1ef2dec0340847fa464f818ffe66f8c30d8"
+    },
+    {
+      "path": "chrome/app/chrome_command_ids.h",
+      "sha256": "b22a3e56b8a2b35011681020128528525cba36b0815a4694abf480ec861563f3"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+[
+  {
+    "identifier": "kPrimaryAllBookmarksIcon0",
+    "descriptorRva": "0xe82c2b0",
+    "representationRva": "0xe82c2a0",
+    "pathRva": "0xce6ccb8",
+    "elements": 198,
+    "sha256": "26190c69bb9f49e29f85099fb9b3153cb42054b21b68b6bc5619ac67b0c692ce"
+  },
+  {
+    "identifier": "kPrimaryNewTabIcon0",
+    "descriptorRva": "0xe82bd00",
+    "representationRva": "0xe82bce0",
+    "pathRva": "0xce663e8",
+    "elements": 78,
+    "sha256": "c931085988c7a19362d7421e35ce17579dd84d4568adfc3f7c23c62ba52c8abc"
+  },
+  {
+    "identifier": "kPrimaryNewTabIcon1",
+    "descriptorRva": "0xe82bd00",
+    "representationRva": "0xe82bcf0",
+    "pathRva": "0xce66520",
+    "elements": 78,
+    "sha256": "6e34885b7acbb6704bd13fedaeea3a778024b2bd10b6cdb0ae38b14609204e32"
+  },
+  {
+    "identifier": "kPrimaryNewProfileIcon0",
+    "descriptorRva": "0xe82c020",
+    "representationRva": "0xe82c010",
+    "pathRva": "0xce69a2c",
+    "elements": 190,
+    "sha256": "da23d5656261c2f6c9c1d00ce002b45a23b591a12f2bf5db00a9c93c34d4f711"
+  },
+  {
+    "identifier": "kPrimaryBookmarksIcon0",
+    "descriptorRva": "0xe82bd50",
+    "representationRva": "0xe82bd40",
+    "pathRva": "0xce66790",
+    "elements": 90,
+    "sha256": "6e89f31704dfff3184e17def02f8f3a39fff881f14cd32c7f843bd72b4e91ba4"
+  },
+  {
+    "identifier": "kPrimaryDownloadsIcon0",
+    "descriptorRva": "0xe82be68",
+    "representationRva": "0xe82be58",
+    "pathRva": "0xce6739c",
+    "elements": 107,
+    "sha256": "2aa5767a2005cbcbfd1cd8cc8f7f07160f0b657d1cdc58b85bca4d7e30757285"
+  },
+  {
+    "identifier": "kPrimaryExtensionsIcon0",
+    "descriptorRva": "0xe9d4f88",
+    "representationRva": "0xe9d4f68",
+    "pathRva": "0xd3dc8d4",
+    "elements": 182,
+    "sha256": "7a266c1a4963f64d4d885af336daffab3f9bc484dcabfd1fe69a4ceb21a3f6ac"
+  },
+  {
+    "identifier": "kPrimaryExtensionsIcon1",
+    "descriptorRva": "0xe9d4f88",
+    "representationRva": "0xe9d4f78",
+    "pathRva": "0xd3dcbac",
+    "elements": 182,
+    "sha256": "c77c6c96b458282cd22c3e1cbafaec2ff7a55fe10b2bcf5b98257f19416ac587"
+  },
+  {
+    "identifier": "kPrimaryHistoryIcon0",
+    "descriptorRva": "0xe82beb8",
+    "representationRva": "0xe82bea8",
+    "pathRva": "0xce676f4",
+    "elements": 168,
+    "sha256": "5a26916cf16bee97e5a956f6e9fa56b87933b3f35c3d6d26b39579722f7d7601"
+  },
+  {
+    "identifier": "kPrimaryDevelopersIcon0",
+    "descriptorRva": "0xe82be18",
+    "representationRva": "0xe82be08",
+    "pathRva": "0xce66f80",
+    "elements": 156,
+    "sha256": "c78e5c765e5ed6d15e3941864d9798be9c34669228d09602bab0fd7282f62957"
+  },
+  {
+    "identifier": "kPrimaryIncognitoIcon0",
+    "descriptorRva": "0xe82bf08",
+    "representationRva": "0xe82bef8",
+    "pathRva": "0xce67ecc",
+    "elements": 242,
+    "sha256": "a69bfffcfce5ed82b703c5d23628bb73a0d4ff5df87e114d0dbab9102398aebd"
+  }
+]

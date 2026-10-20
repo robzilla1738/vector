@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "applyAfter": "82b5c927f native-primary-profile-menu",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "873f6822f1f16745166d2b8bda0abdf75c0b3e4944445d315c9edecc921658a1",
+      "outputSha256": "a242f455a6eeea4cc3d411172ac80bc43db38ca2250219e61daf7d1ce64bc862",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_primary_profile_menu_icons.inc",
+      "baselineSha256": "f6104a55b7ec399208abef2ebe29cfce415ef3cb3dbfbeedabaa1a010116d14d",
+      "outputSha256": "342dade4829972bc8697a3b75cbf576fea6a5a8247d72c8759a77d196b49fc92",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,97 @@
+[
+  {
+    "before": "  void AddTrailingIcon(const gfx::VectorIcon& icon) {",
+    "after": "  void SetSubmenuCallback(base::RepeatingClosure callback) {\n    submenu_callback_ = std::move(callback);\n    SetCallback(submenu_callback_);\n  }\n\n  void AddTrailingIcon(const gfx::VectorIcon& icon) {",
+    "count": 1
+  },
+  {
+    "before": "class AuxMenuRow : public views::Button {\n  METADATA_HEADER(AuxMenuRow, views::Button)\n\n public:\n  AuxMenuRow(PressedCallback callback,\n             const ui::ImageModel& icon,\n             const std::u16string& text)\n      : views::Button(std::move(callback)), source_icon_(icon) {\n    SetPreferredSize(gfx::Size(0, 32));\n    SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(0, 8, 0, 8)));\n    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 4, 0, 4));\n    SetNotifyEnterExitOnChild(true);\n    SetLayoutManager(std::make_unique<views::FlexLayout>())\n        ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);\n    auto icon_view = std::make_unique<views::ImageView>(icon);\n    icon_view->SetImageSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));\n    icon_view->SetPreferredSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));\n    icon_view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));\n    icon_view->SetCanProcessEventsWithinSubtree(false);\n    icon_view_ = AddChildView(std::move(icon_view));\n    auto label = std::make_unique<views::Label>(text);\n    StyleProfileMenuLabel(label.get(), 14);\n    label->SetProperty(\n        views::kFlexBehaviorKey,\n        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,\n                                 views::MaximumFlexSizeRule::kUnbounded));\n    label_ = AddChildView(std::move(label));\n    GetViewAccessibility().SetName(text);\n    SetFocusBehavior(FocusBehavior::ALWAYS);\n    UpdateColors();\n  }\n\n  void SetSubmenuCallback(base::RepeatingClosure callback) {\n    submenu_callback_ = std::move(callback);\n    SetCallback(submenu_callback_);\n  }\n\n  void AddTrailingIcon(const gfx::VectorIcon& icon) {\n    trailing_icon_ = &icon;\n    auto view = std::make_unique<views::ImageView>();\n    view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));\n    view->SetCanProcessEventsWithinSubtree(false);\n    trailing_icon_view_ = AddChildView(std::move(view));\n    UpdateColors();\n  }\n\n  void AddTrailingText(const std::u16string& text) {\n    auto label = std::make_unique<views::Label>(text);\n    StyleProfileMenuLabel(label.get(), 12);\n    label->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));\n    trailing_text_ = AddChildView(std::move(label));\n    UpdateColors();\n  }\n\n  views::ImageButton* AddTrailingButton(const gfx::VectorIcon& icon,\n                                        PressedCallback callback,\n                                        const std::u16string& name) {\n    auto button = views::CreateVectorImageButton(std::move(callback));\n    button->SetImageModel(\n        views::Button::STATE_NORMAL,\n        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle, 14));\n    button->GetViewAccessibility().SetName(name);\n    button->SetTooltipText(name);\n    views::InstallCircleHighlightPathGenerator(button.get());\n    return AddChildView(std::move(button));\n  }\n\n protected:\n  void StateChanged(views::Button::ButtonState old_state) override {\n    views::Button::StateChanged(old_state);\n    UpdateBackground();\n  }\n\n  void OnThemeChanged() override {\n    views::Button::OnThemeChanged();\n    UpdateColors();\n  }\n\n private:\n  void UpdateColors() {\n    label_->SetEnabledColor(\n        ResolveProfileMenuColor(this, ProfileMenuColor::kForeground));\n    const SkColor secondary =\n        ResolveProfileMenuColor(this, ProfileMenuColor::kSecondary);\n    if (source_icon_.IsVectorIcon()) {\n      const auto icon = source_icon_.GetVectorIcon();\n      icon_view_->SetImage(ui::ImageModel::FromVectorIcon(\n          *icon.vector_icon(), secondary, kMenuRowIcon, icon.badge_icon()));\n    }\n    if (trailing_icon_view_) {\n      trailing_icon_view_->SetImage(\n          ui::ImageModel::FromVectorIcon(*trailing_icon_, secondary, 16));\n    }\n    if (trailing_text_) {\n      trailing_text_->SetEnabledColor(secondary);\n    }\n    UpdateBackground();\n  }\n\n  void UpdateBackground() {\n    const bool hovered = GetState() == views::Button::STATE_HOVERED ||\n                         GetState() == views::Button::STATE_PRESSED;\n    SetBackground(\n        hovered\n            ? views::CreateRoundedRectBackground(\n                  ResolveProfileMenuColor(this, ProfileMenuColor::kHover), 6)\n            : nullptr);\n  }\n\n  const ui::ImageModel source_icon_;\n  raw_ptr<views::ImageView> icon_view_ = nullptr;\n  raw_ptr<views::Label> label_ = nullptr;\n  raw_ptr<views::ImageView> trailing_icon_view_ = nullptr;\n  raw_ptr<const gfx::VectorIcon> trailing_icon_ = nullptr;\n  raw_ptr<views::Label> trailing_text_ = nullptr;\n};\n\n",
+    "after": "class AuxMenuRow : public views::Button {\n  METADATA_HEADER(AuxMenuRow, views::Button)\n\n public:\n  AuxMenuRow(PressedCallback callback,\n             const ui::ImageModel& icon,\n             const std::u16string& text)\n      : views::Button(std::move(callback)), source_icon_(icon) {\n    SetPreferredSize(gfx::Size(0, 32));\n    SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(0, 8, 0, 8)));\n    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 4, 0, 4));\n    SetNotifyEnterExitOnChild(true);\n    SetLayoutManager(std::make_unique<views::FlexLayout>())\n        ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);\n    auto icon_view = std::make_unique<views::ImageView>(icon);\n    icon_view->SetImageSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));\n    icon_view->SetPreferredSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));\n    icon_view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));\n    icon_view->SetCanProcessEventsWithinSubtree(false);\n    icon_view_ = AddChildView(std::move(icon_view));\n    auto label = std::make_unique<views::Label>(text);\n    StyleProfileMenuLabel(label.get(), 14);\n    label->SetProperty(\n        views::kFlexBehaviorKey,\n        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,\n                                 views::MaximumFlexSizeRule::kUnbounded));\n    label_ = AddChildView(std::move(label));\n    GetViewAccessibility().SetName(text);\n    SetFocusBehavior(FocusBehavior::ALWAYS);\n    UpdateColors();\n  }\n\n  void SetSubmenuCallback(base::RepeatingClosure callback) {\n    submenu_callback_ = std::move(callback);\n    SetCallback(submenu_callback_);\n  }\n\n  void AddTrailingIcon(const gfx::VectorIcon& icon) {\n    trailing_icon_ = &icon;\n    auto view = std::make_unique<views::ImageView>();\n    view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));\n    view->SetCanProcessEventsWithinSubtree(false);\n    trailing_icon_view_ = AddChildView(std::move(view));\n    UpdateColors();\n  }\n\n  void AddTrailingText(const std::u16string& text) {\n    auto label = std::make_unique<views::Label>(text);\n    StyleProfileMenuLabel(label.get(), 12);\n    label->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));\n    trailing_text_ = AddChildView(std::move(label));\n    UpdateColors();\n  }\n\n  views::ImageButton* AddTrailingButton(const gfx::VectorIcon& icon,\n                                        PressedCallback callback,\n                                        const std::u16string& name) {\n    auto button = views::CreateVectorImageButton(std::move(callback));\n    button->SetImageModel(\n        views::Button::STATE_NORMAL,\n        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle, 14));\n    button->GetViewAccessibility().SetName(name);\n    button->SetTooltipText(name);\n    views::InstallCircleHighlightPathGenerator(button.get());\n    return AddChildView(std::move(button));\n  }\n\n protected:\n  void OnMouseMoved(const ui::MouseEvent& event) override {\n    views::Button::OnMouseMoved(event);\n    auto callback = submenu_callback_;\n    if (callback)\n      callback.Run();\n  }\n\n  void OnMouseEntered(const ui::MouseEvent& event) override {\n    views::Button::OnMouseEntered(event);\n    auto callback = submenu_callback_;\n    if (callback)\n      callback.Run();\n  }\n\n  void StateChanged(views::Button::ButtonState old_state) override {\n    views::Button::StateChanged(old_state);\n    UpdateBackground();\n  }\n\n  void OnThemeChanged() override {\n    views::Button::OnThemeChanged();\n    UpdateColors();\n  }\n\n private:\n  void UpdateColors() {\n    label_->SetEnabledColor(\n        ResolveProfileMenuColor(this, ProfileMenuColor::kForeground));\n    const SkColor secondary =\n        ResolveProfileMenuColor(this, ProfileMenuColor::kSecondary);\n    if (source_icon_.IsVectorIcon()) {\n      const auto icon = source_icon_.GetVectorIcon();\n      icon_view_->SetImage(ui::ImageModel::FromVectorIcon(\n          *icon.vector_icon(), secondary, kMenuRowIcon, icon.badge_icon()));\n    }\n    if (trailing_icon_view_) {\n      trailing_icon_view_->SetImage(\n          ui::ImageModel::FromVectorIcon(*trailing_icon_, secondary, 16));\n    }\n    if (trailing_text_) {\n      trailing_text_->SetEnabledColor(secondary);\n    }\n    UpdateBackground();\n  }\n\n  void UpdateBackground() {\n    const bool hovered = GetState() == views::Button::STATE_HOVERED ||\n                         GetState() == views::Button::STATE_PRESSED;\n    SetBackground(\n        hovered\n            ? views::CreateRoundedRectBackground(\n                  ResolveProfileMenuColor(this, ProfileMenuColor::kHover), 6)\n            : nullptr);\n  }\n\n  const ui::ImageModel source_icon_;\n  raw_ptr<views::ImageView> icon_view_ = nullptr;\n  raw_ptr<views::Label> label_ = nullptr;\n  raw_ptr<views::ImageView> trailing_icon_view_ = nullptr;\n  raw_ptr<const gfx::VectorIcon> trailing_icon_ = nullptr;\n  raw_ptr<views::Label> trailing_text_ = nullptr;\n};\n\n",
+    "count": 1
+  },
+  {
+    "before": "  void UpdateColors() {\n    label_->SetEnabledColor(",
+    "after": "  base::RepeatingClosure submenu_callback_;\n\n  void UpdateColors() {\n    label_->SetEnabledColor(",
+    "count": 1
+  },
+  {
+    "before": "  void ExecuteCommand(int command_id, int event_flags) override {\n    switch (command_id) {\n      case IDC_OPTIONS:\n        OpenAgentRoute(browser_, \"/settings/general\");\n        break;\n      default:\n        chrome::ExecuteCommand(browser_, command_id);\n        break;\n    }\n    GetWidget()->Close();\n  }\n",
+    "after": "  void ExecuteCommand(int command_id, int event_flags) override {\n    // Supplied4570ef8 retires the coordinator before invoking the command.\n    pending_switch_ = base::BindOnce(\n        [](base::WeakPtr<BrowserWindowInterface> sender, int command) {\n          if (!sender)\n            return;\n          if (command == IDC_OPTIONS)\n            OpenAgentRoute(sender.get(), \"/settings/general\");\n          else\n            chrome::ExecuteCommand(sender.get(), command);\n        }, sender_, command_id);\n    contents_->SetEnabled(false);\n    GetWidget()->Close();\n  }\n",
+    "count": 1
+  },
+  {
+    "before": "    row->SetCallback(base::BindRepeating(&AuxProfileMenu::ShowSubmenu,\n                                         base::Unretained(this),\n                                         base::Unretained(row), submenu));\n",
+    "after": "    auto show = base::BindRepeating(&AuxProfileMenu::ShowSubmenu,\n                                    base::Unretained(this),\n                                    base::Unretained(row), submenu);\n    if (submenu == kSubmenuBookmarks)\n      row->SetSubmenuCallback(show);\n    else\n      row->SetCallback(show);\n",
+    "count": 1
+  },
+  {
+    "before": "  void ShowSubmenu(views::View* row, Submenu submenu) {\n    menu_model_",
+    "after": "  void ShowSubmenu(views::View* row, Submenu submenu) {\n    if (submenu == kSubmenuBookmarks) {\n      ShowBookmarksSubmenu(row);\n      return;\n    }\n    menu_model_",
+    "count": 1
+  },
+  {
+    "before": "      case kSubmenuBookmarks:\n        menu_model_->AddItem(IDC_BOOKMARK_THIS_TAB, u\"Bookmark This Tab\");\n        menu_model_->AddItem(IDC_BOOKMARK_ALL_TABS, u\"Bookmark All Tabs\");\n        menu_model_->AddItem(IDC_SHOW_BOOKMARK_MANAGER, u\"Bookmark Manager\");\n        break;",
+    "after": "      case kSubmenuBookmarks:\n        return;",
+    "count": 1
+  },
+  {
+    "before": "  void ShowProfileActions(views::View* anchor, const base::FilePath& path) {\n    if (profile_actions_)",
+    "after": "  void ShowProfileActions(views::View* anchor, const base::FilePath& path) {\n    submenu_anchor_ = anchor;\n    if (profile_actions_)",
+    "count": 1
+  },
+  {
+    "before": "  base::WeakPtr<views::Widget> profile_actions_;\n",
+    "after": "  base::WeakPtr<views::Widget> profile_actions_;\n  raw_ptr<views::View> submenu_anchor_ = nullptr;\n",
+    "count": 1
+  },
+  {
+    "before": "  void ShowProfileActions(views::View* anchor,",
+    "after": "  // Full supplied kind1,4574630..457483c: fixed300px, two command rows.\n  void ShowBookmarksSubmenu(views::View* anchor) {\n    if (profile_actions_ && profile_actions_->IsVisible() && submenu_anchor_ == anchor)\n      return;\n    if (profile_actions_)\n      profile_actions_->CloseNow();\n    submenu_anchor_ = anchor;\n    auto menu = std::make_unique<views::BubbleDialogDelegate>(\n        anchor, views::BubbleBorder::LEFT_TOP);\n    menu->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));\n    menu->SetShowCloseButton(false);\n    menu->set_margins(gfx::Insets::VH(4, 4));\n    menu->set_fixed_width(300);\n    menu->RegisterWindowClosingCallback(base::BindOnce(\n        [](std::unique_ptr<views::BubbleDialogDelegate::CloseOnDeactivatePin>) {},\n        PreventCloseOnDeactivate()));\n    auto contents = std::make_unique<views::View>();\n    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(\n        views::BoxLayout::Orientation::kVertical));\n    contents->AddChildView(std::make_unique<AuxMenuRow>(\n        base::BindRepeating(&AuxProfileMenu::ExecuteCommand, base::Unretained(this),\n                            IDC_SHOW_BOOKMARK_MANAGER, 0),\n        ui::ImageModel::FromVectorIcon(kPrimaryAllBookmarksIcon,\n                                       ui::kColorSysOnSurface, 16),\n        u\"All bookmarks\"));\n    contents->AddChildView(std::make_unique<AuxMenuRow>(\n        base::BindRepeating(&AuxProfileMenu::ExecuteCommand, base::Unretained(this),\n                            IDC_BOOKMARK_THIS_TAB, 0),\n        ui::ImageModel::FromVectorIcon(kPrimaryNewTabIcon,\n                                       ui::kColorSysOnSurface, 16),\n        u\"Bookmark this tab\"));\n    menu->SetContentsView(std::move(contents));\n    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(\n        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);\n    profile_actions_ = widget->GetWeakPtr();\n    widget->Show();\n  }\n\n  void ShowProfileActions(views::View* anchor,",
+    "count": 1
+  },
+  {
+    "before": "kBookmarkManagerIcon, u\"Bookmarks\"",
+    "after": "kPrimaryBookmarksIcon, u\"Bookmarks\"",
+    "count": 1
+  },
+  {
+    "before": "vector_icons::kDownloadIcon, u\"Downloads\"",
+    "after": "kPrimaryDownloadsIcon, u\"Downloads\"",
+    "count": 1
+  },
+  {
+    "before": "vector_icons::kExtensionFilledIcon, u\"Extensions\"",
+    "after": "kPrimaryExtensionsIcon, u\"Extensions\"",
+    "count": 1
+  },
+  {
+    "before": "vector_icons::kHistoryIcon, u\"History\"",
+    "after": "kPrimaryHistoryIcon, u\"History\"",
+    "count": 1
+  },
+  {
+    "before": "vector_icons::kCodeIcon, u\"Developers\"",
+    "after": "kPrimaryDevelopersIcon, u\"Developers\"",
+    "count": 1
+  },
+  {
+    "before": "kSettingsIcon, u\"Settings\", IDC_OPTIONS",
+    "after": "kIndicatorSettingsIcon, u\"Settings\", IDC_OPTIONS",
+    "count": 1
+  },
+  {
+    "before": "kAddIcon, u\"New Tab\", IDC_NEW_TAB",
+    "after": "kPrimaryNewTabIcon, u\"New Tab\", IDC_NEW_TAB",
+    "count": 1
+  },
+  {
+    "before": "kIncognitoIcon, u\"Incognito Window\"",
+    "after": "kPrimaryIncognitoIcon, u\"Incognito Window\"",
+    "count": 1
+  },
+  {
+    "before": "ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorSysOnSurfaceSubtle,\n                                         kMenuRowIcon),\n          u\"New profile\"",
+    "after": "ui::ImageModel::FromVectorIcon(kPrimaryNewProfileIcon, ui::kColorSysOnSurfaceSubtle,\n                                         kMenuRowIcon),\n          u\"New profile\"",
+    "count": 1
+  }
+]

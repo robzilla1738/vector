@@ -1,0 +1,625 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -626,6 +626,11 @@
+     UpdateColors();
+   }
+ 
++  void SetSubmenuCallback(base::RepeatingClosure callback) {
++    submenu_callback_ = std::move(callback);
++    SetCallback(submenu_callback_);
++  }
++
+   void AddTrailingIcon(const gfx::VectorIcon& icon) {
+     trailing_icon_ = &icon;
+     auto view = std::make_unique<views::ImageView>();
+@@ -657,6 +662,22 @@
+   }
+ 
+  protected:
++  void OnMouseMoved(const ui::MouseEvent& event) override {
++    views::Button::OnMouseMoved(event);
++    auto callback = submenu_callback_;
++    if (callback) {
++      callback.Run();
++    }
++  }
++
++  void OnMouseEntered(const ui::MouseEvent& event) override {
++    views::Button::OnMouseEntered(event);
++    auto callback = submenu_callback_;
++    if (callback) {
++      callback.Run();
++    }
++  }
++
+   void StateChanged(views::Button::ButtonState old_state) override {
+     views::Button::StateChanged(old_state);
+     UpdateBackground();
+@@ -668,6 +689,8 @@
+   }
+ 
+  private:
++  base::RepeatingClosure submenu_callback_;
++
+   void UpdateColors() {
+     label_->SetEnabledColor(
+         ResolveProfileMenuColor(this, ProfileMenuColor::kForeground));
+@@ -962,14 +985,20 @@
+ 
+   // ui::SimpleMenuModel::Delegate:
+   void ExecuteCommand(int command_id, int event_flags) override {
+-    switch (command_id) {
+-      case IDC_OPTIONS:
+-        OpenAgentRoute(browser_, "/settings/general");
+-        break;
+-      default:
+-        chrome::ExecuteCommand(browser_, command_id);
+-        break;
+-    }
++    // Supplied4570ef8 retires the coordinator before invoking the command.
++    pending_switch_ = base::BindOnce(
++        [](base::WeakPtr<BrowserWindowInterface> sender, int command) {
++          if (!sender) {
++            return;
++          }
++          if (command == IDC_OPTIONS) {
++            OpenAgentRoute(sender.get(), "/settings/general");
++          } else {
++            chrome::ExecuteCommand(sender.get(), command);
++          }
++        },
++        sender_, command_id);
++    contents_->SetEnabled(false);
+     GetWidget()->Close();
+   }
+ 
+@@ -1002,23 +1031,23 @@
+       contents_->AddChildView(std::make_unique<AuxMenuRow>(
+           base::BindRepeating(&AuxProfileMenu::NewProfile,
+                               base::Unretained(this)),
+-          ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorSysOnSurfaceSubtle,
++          ui::ImageModel::FromVectorIcon(kPrimaryNewProfileIcon,
++                                         ui::kColorSysOnSurfaceSubtle,
+                                          kMenuRowIcon),
+           u"New profile"));
+     }
+     contents_->AddChildView(std::make_unique<views::Separator>());
+ 
+-    AddSubmenuRow(kBookmarkManagerIcon, u"Bookmarks", kSubmenuBookmarks);
+-    AddSubmenuRow(vector_icons::kDownloadIcon, u"Downloads", kSubmenuDownloads);
+-    AddSubmenuRow(vector_icons::kExtensionFilledIcon, u"Extensions",
+-                  kSubmenuExtensions);
+-    AddSubmenuRow(vector_icons::kHistoryIcon, u"History", kSubmenuHistory);
+-    AddSubmenuRow(vector_icons::kCodeIcon, u"Developers", kSubmenuDevelopers);
+-    AddCommandRow(kSettingsIcon, u"Settings", IDC_OPTIONS, u"\u2318,");
++    AddSubmenuRow(kPrimaryBookmarksIcon, u"Bookmarks", kSubmenuBookmarks);
++    AddSubmenuRow(kPrimaryDownloadsIcon, u"Downloads", kSubmenuDownloads);
++    AddSubmenuRow(kPrimaryExtensionsIcon, u"Extensions", kSubmenuExtensions);
++    AddSubmenuRow(kPrimaryHistoryIcon, u"History", kSubmenuHistory);
++    AddSubmenuRow(kPrimaryDevelopersIcon, u"Developers", kSubmenuDevelopers);
++    AddCommandRow(kIndicatorSettingsIcon, u"Settings", IDC_OPTIONS, u"\u2318,");
+     contents_->AddChildView(std::make_unique<views::Separator>());
+-    AddCommandRow(kAddIcon, u"New Tab", IDC_NEW_TAB, u"\u2318T");
+-    AddCommandRow(kIncognitoIcon, u"Incognito Window", IDC_NEW_INCOGNITO_WINDOW,
+-                  u"\u21E7\u2318N");
++    AddCommandRow(kPrimaryNewTabIcon, u"New Tab", IDC_NEW_TAB, u"\u2318T");
++    AddCommandRow(kPrimaryIncognitoIcon, u"Incognito Window",
++                  IDC_NEW_INCOGNITO_WINDOW, u"\u21E7\u2318N");
+   }
+ 
+   enum Submenu {
+@@ -1050,9 +1079,14 @@
+         ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle,
+                                        kMenuRowIcon),
+         text));
+-    row->SetCallback(base::BindRepeating(&AuxProfileMenu::ShowSubmenu,
+-                                         base::Unretained(this),
+-                                         base::Unretained(row), submenu));
++    auto show = base::BindRepeating(&AuxProfileMenu::ShowSubmenu,
++                                    base::Unretained(this),
++                                    base::Unretained(row), submenu);
++    if (submenu == kSubmenuBookmarks) {
++      row->SetSubmenuCallback(show);
++    } else {
++      row->SetCallback(show);
++    }
+     row->AddTrailingIcon(kChevronRightIcon);
+   }
+ 
+@@ -1070,13 +1104,14 @@
+   }
+ 
+   void ShowSubmenu(views::View* row, Submenu submenu) {
++    if (submenu == kSubmenuBookmarks) {
++      ShowBookmarksSubmenu(row);
++      return;
++    }
+     menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
+     switch (submenu) {
+       case kSubmenuBookmarks:
+-        menu_model_->AddItem(IDC_BOOKMARK_THIS_TAB, u"Bookmark This Tab");
+-        menu_model_->AddItem(IDC_BOOKMARK_ALL_TABS, u"Bookmark All Tabs");
+-        menu_model_->AddItem(IDC_SHOW_BOOKMARK_MANAGER, u"Bookmark Manager");
+-        break;
++        return;
+       case kSubmenuDownloads:
+         menu_model_->AddItem(IDC_SHOW_DOWNLOADS, u"Show All Downloads");
+         break;
+@@ -1098,7 +1133,51 @@
+     RunMenu(row, /*to_the_right=*/true);
+   }
+ 
++  // Full supplied kind1,4574630..457483c: fixed300px, two command rows.
++  void ShowBookmarksSubmenu(views::View* anchor) {
++    if (profile_actions_ && profile_actions_->IsVisible() &&
++        submenu_anchor_ == anchor) {
++      return;
++    }
++    if (profile_actions_) {
++      profile_actions_->CloseNow();
++    }
++    submenu_anchor_ = anchor;
++    auto menu = std::make_unique<views::BubbleDialogDelegate>(
++        anchor, views::BubbleBorder::LEFT_TOP);
++    menu->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    menu->SetShowCloseButton(false);
++    menu->set_margins(gfx::Insets::VH(4, 4));
++    menu->set_fixed_width(300);
++    menu->RegisterWindowClosingCallback(base::BindOnce(
++        [](std::unique_ptr<views::BubbleDialogDelegate::CloseOnDeactivatePin>) {
++        },
++        PreventCloseOnDeactivate()));
++    auto contents = std::make_unique<views::View>();
++    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical));
++    contents->AddChildView(std::make_unique<AuxMenuRow>(
++        base::BindRepeating(&AuxProfileMenu::ExecuteCommand,
++                            base::Unretained(this), IDC_SHOW_BOOKMARK_MANAGER,
++                            0),
++        ui::ImageModel::FromVectorIcon(kPrimaryAllBookmarksIcon,
++                                       ui::kColorSysOnSurface, 16),
++        u"All bookmarks"));
++    contents->AddChildView(std::make_unique<AuxMenuRow>(
++        base::BindRepeating(&AuxProfileMenu::ExecuteCommand,
++                            base::Unretained(this), IDC_BOOKMARK_THIS_TAB, 0),
++        ui::ImageModel::FromVectorIcon(kPrimaryNewTabIcon,
++                                       ui::kColorSysOnSurface, 16),
++        u"Bookmark this tab"));
++    menu->SetContentsView(std::move(contents));
++    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++    profile_actions_ = widget->GetWeakPtr();
++    widget->Show();
++  }
++
+   void ShowProfileActions(views::View* anchor, const base::FilePath& path) {
++    submenu_anchor_ = anchor;
+     if (profile_actions_) {
+       profile_actions_->CloseNow();
+     }
+@@ -1174,6 +1253,7 @@
+   raw_ptr<views::View> contents_ = nullptr;
+   base::FilePath action_profile_;
+   base::WeakPtr<views::Widget> profile_actions_;
++  raw_ptr<views::View> submenu_anchor_ = nullptr;
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
+   base::OnceClosure pending_switch_;
+--- a/chrome/browser/ui/views/frame/aux_primary_profile_menu_icons.inc
++++ b/chrome/browser/ui/views/frame/aux_primary_profile_menu_icons.inc
+@@ -113,4 +113,415 @@
+ };
+ const gfx::VectorIconRep kPrimaryDeleteIconReps[] = {{kPrimaryDeleteIcon0Path},{kPrimaryDeleteIcon1Path}};
+ const gfx::VectorIcon kPrimaryDeleteIcon(kPrimaryDeleteIconReps, 2, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryAllBookmarksIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 20.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 3.5f, 14.5f,
++    gfx::R_V_LINE_TO, -9.0f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 0.0f, 1.5f,
++    gfx::R_ARC_TO, 1.45000005f, 1.45000005f, 0.0f, 0.0f, 1.0f, -1.04999995f, -0.439999998f,
++    gfx::CUBIC_TO, 2.1500001f, 15.2700005f, 2.0f, 14.9099998f, 2.0f, 14.5f,
++    gfx::V_LINE_TO, 5.48999977f,
++    gfx::R_CUBIC_TO, 0.0f, -0.409999996f, 0.150000006f, -0.75999999f, 0.439999998f, -1.04999995f,
++    gfx::ARC_TO, 1.44000006f, 1.44000006f, 0.0f, 0.0f, 1.0f, 3.5f, 4.0f,
++    gfx::H_LINE_TO, 8.0f,
++    gfx::R_LINE_TO, 2.0f, 2.0f,
++    gfx::R_H_LINE_TO, 6.5f,
++    gfx::R_CUBIC_TO, 0.409999996f, 0.0f, 0.769999981f, 0.150000006f, 1.05999994f, 0.439999998f,
++    gfx::R_CUBIC_TO, 0.289999992f, 0.289999992f, 0.439999998f, 0.649999976f, 0.439999998f, 1.05999994f,
++    gfx::R_V_LINE_TO, 2.19000006f,
++    gfx::R_ARC_TO, 2.82999992f, 2.82999992f, 0.0f, 0.0f, 0.0f, -0.74000001f, -0.180000007f,
++    gfx::R_ARC_TO, 1.91999996f, 1.91999996f, 0.0f, 0.0f, 0.0f, -0.75999999f, 0.0599999987f,
++    gfx::V_LINE_TO, 7.5f,
++    gfx::H_LINE_TO, 9.38000011f,
++    gfx::R_LINE_TO, -2.0f, -2.0f,
++    gfx::H_LINE_TO, 3.5f,
++    gfx::R_V_LINE_TO, 9.0f,
++    gfx::R_H_LINE_TO, 7.51999998f,
++    gfx::R_LINE_TO, -0.519999981f, 0.519999981f,
++    gfx::V_LINE_TO, 16.0f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 8.5f, 2.0f,
++    gfx::R_V_LINE_TO, -2.3499999f,
++    gfx::R_LINE_TO, 4.38000011f, -4.3499999f,
++    gfx::R_ARC_TO, 0.839999974f, 0.839999974f, 0.0f, 0.0f, 1.0f, 0.340000004f, -0.219999999f,
++    gfx::R_CUBIC_TO, 0.129999995f, -0.0500000007f, 0.25f, -0.0700000003f, 0.370000005f, -0.0700000003f,
++    gfx::R_ARC_TO, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.720000029f, 0.289999992f,
++    gfx::R_LINE_TO, 0.910000026f, 0.939999998f,
++    gfx::R_CUBIC_TO, 0.0900000036f, 0.100000001f, 0.159999996f, 0.209999993f, 0.219999999f, 0.340000004f,
++    gfx::R_ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 0.00999999978f, 0.74000001f,
++    gfx::R_ARC_TO, 0.810000002f, 0.810000002f, 0.0f, 0.0f, 1.0f, -0.219999999f, 0.340000004f,
++    gfx::LINE_TO, 14.3599997f, 18.0f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 6.0f, -5.05999994f,
++    gfx::LINE_TO, 17.0599995f, 12.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 13.0f, 17.0f,
++    gfx::R_H_LINE_TO, 0.939999998f,
++    gfx::R_LINE_TO, 2.3900001f, -2.3900001f,
++    gfx::R_LINE_TO, -0.460000008f, -0.479999989f,
++    gfx::R_LINE_TO, -0.460000008f, -0.460000008f,
++    gfx::LINE_TO, 13.0f, 16.0599995f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 2.88000011f, -2.86999989f,
++    gfx::R_LINE_TO, -0.460000008f, -0.460000008f,
++    gfx::R_LINE_TO, 0.910000026f, 0.939999998f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryAllBookmarksIconReps[] = {{kPrimaryAllBookmarksIcon0Path}};
++const gfx::VectorIcon kPrimaryAllBookmarksIcon(kPrimaryAllBookmarksIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryNewTabIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 20.0f,
++    gfx::MOVE_TO, 10.0f, 2.5f,
++    gfx::CUBIC_TO, 10.46f, 2.5f, 10.8299999f, 2.86999989f, 10.8299999f, 3.32999992f,
++    gfx::V_LINE_TO, 9.17000008f,
++    gfx::H_LINE_TO, 16.6700001f,
++    gfx::CUBIC_TO, 17.1299992f, 9.17000008f, 17.5f, 9.53999996f, 17.5f, 10.0f,
++    gfx::CUBIC_TO, 17.5f, 10.46f, 17.1299992f, 10.8299999f, 16.6700001f, 10.8299999f,
++    gfx::H_LINE_TO, 10.8299999f,
++    gfx::V_LINE_TO, 16.6700001f,
++    gfx::CUBIC_TO, 10.8299999f, 17.1299992f, 10.46f, 17.5f, 10.0f, 17.5f,
++    gfx::CUBIC_TO, 9.53999996f, 17.5f, 9.17000008f, 17.1299992f, 9.17000008f, 16.6700001f,
++    gfx::V_LINE_TO, 10.8299999f,
++    gfx::H_LINE_TO, 3.32999992f,
++    gfx::CUBIC_TO, 2.86999989f, 10.8299999f, 2.5f, 10.46f, 2.5f, 10.0f,
++    gfx::CUBIC_TO, 2.5f, 9.53999996f, 2.86999989f, 9.17000008f, 3.32999992f, 9.17000008f,
++    gfx::H_LINE_TO, 9.17000008f,
++    gfx::V_LINE_TO, 3.32999992f,
++    gfx::CUBIC_TO, 9.17000008f, 2.86999989f, 9.53999996f, 2.5f, 10.0f, 2.5f,
++    gfx::CLOSE,
++};
++constexpr gfx::PathElement kPrimaryNewTabIcon1Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 8.0f, 2.0f,
++    gfx::CUBIC_TO, 8.36999989f, 2.0f, 8.67000008f, 2.29999995f, 8.67000008f, 2.67000008f,
++    gfx::V_LINE_TO, 7.32999992f,
++    gfx::H_LINE_TO, 13.3299999f,
++    gfx::CUBIC_TO, 13.6999998f, 7.32999992f, 14.0f, 7.63000011f, 14.0f, 8.0f,
++    gfx::CUBIC_TO, 14.0f, 8.36999989f, 13.6999998f, 8.67000008f, 13.3299999f, 8.67000008f,
++    gfx::H_LINE_TO, 8.67000008f,
++    gfx::V_LINE_TO, 13.3299999f,
++    gfx::CUBIC_TO, 8.67000008f, 13.6999998f, 8.36999989f, 14.0f, 8.0f, 14.0f,
++    gfx::CUBIC_TO, 7.63000011f, 14.0f, 7.32999992f, 13.6999998f, 7.32999992f, 13.3299999f,
++    gfx::V_LINE_TO, 8.67000008f,
++    gfx::H_LINE_TO, 2.67000008f,
++    gfx::CUBIC_TO, 2.29999995f, 8.67000008f, 2.0f, 8.36999989f, 2.0f, 8.0f,
++    gfx::CUBIC_TO, 2.0f, 7.63000011f, 2.29999995f, 7.32999992f, 2.67000008f, 7.32999992f,
++    gfx::H_LINE_TO, 7.32999992f,
++    gfx::V_LINE_TO, 2.67000008f,
++    gfx::CUBIC_TO, 7.32999992f, 2.29999995f, 7.63000011f, 2.0f, 8.0f, 2.0f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryNewTabIconReps[] = {{kPrimaryNewTabIcon0Path},{kPrimaryNewTabIcon1Path}};
++const gfx::VectorIcon kPrimaryNewTabIcon(kPrimaryNewTabIconReps, 2, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryNewProfileIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 64.0f,
++    gfx::MOVE_TO, 32.0f, 0.0f,
++    gfx::CUBIC_TO, 49.6699982f, 0.0f, 64.0f, 14.3299999f, 64.0f, 32.0f,
++    gfx::CUBIC_TO, 64.0f, 41.6699982f, 59.7000008f, 50.3499985f, 52.9199982f, 56.2099991f,
++    gfx::CUBIC_TO, 47.3100014f, 61.0600014f, 39.9900017f, 64.0f, 32.0f, 64.0f,
++    gfx::CUBIC_TO, 24.0f, 64.0f, 16.6800003f, 61.0600014f, 11.0799999f, 56.2099991f,
++    gfx::CUBIC_TO, 4.30000019f, 50.3499985f, 0.0f, 41.6699982f, 0.0f, 32.0f,
++    gfx::CUBIC_TO, 0.0f, 14.3299999f, 14.3299999f, 0.0f, 32.0f, 0.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 32.0f, 48.0f,
++    gfx::CUBIC_TO, 26.2700005f, 48.0f, 21.4500008f, 50.0400009f, 17.8899994f, 53.3600006f,
++    gfx::CUBIC_TO, 21.9300003f, 56.0400009f, 26.7800007f, 57.5999985f, 32.0f, 57.5999985f,
++    gfx::CUBIC_TO, 37.2200012f, 57.5999985f, 42.0600014f, 56.0299988f, 46.1100006f, 53.3499985f,
++    gfx::CUBIC_TO, 42.5499992f, 50.0299988f, 37.7299995f, 48.0f, 32.0f, 48.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 32.0f, 6.4000001f,
++    gfx::CUBIC_TO, 17.8600006f, 6.4000001f, 6.4000001f, 17.8600006f, 6.4000001f, 32.0f,
++    gfx::CUBIC_TO, 6.4000001f, 38.6100006f, 8.89999962f, 44.6199989f, 13.0200005f, 49.1699982f,
++    gfx::CUBIC_TO, 17.7999992f, 44.4599991f, 24.3600006f, 41.5999985f, 32.0f, 41.5999985f,
++    gfx::CUBIC_TO, 39.6399994f, 41.5999985f, 46.1899986f, 44.4700012f, 50.9799995f, 49.1699982f,
++    gfx::CUBIC_TO, 55.0900002f, 44.6199989f, 57.5999985f, 38.6100006f, 57.5999985f, 32.0f,
++    gfx::CUBIC_TO, 57.5999985f, 17.8600006f, 46.1399994f, 6.4000001f, 32.0f, 6.4000001f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 32.0f, 12.8000002f,
++    gfx::CUBIC_TO, 39.0699997f, 12.8000002f, 44.7999992f, 18.5300007f, 44.7999992f, 25.6000004f,
++    gfx::CUBIC_TO, 44.7999992f, 32.6699982f, 39.0699997f, 38.4000015f, 32.0f, 38.4000015f,
++    gfx::CUBIC_TO, 24.9300003f, 38.4000015f, 19.2000008f, 32.6699982f, 19.2000008f, 25.6000004f,
++    gfx::CUBIC_TO, 19.2000008f, 18.5300007f, 24.9300003f, 12.8000002f, 32.0f, 12.8000002f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 32.0f, 19.2000008f,
++    gfx::CUBIC_TO, 28.4599991f, 19.2000008f, 25.6000004f, 22.0699997f, 25.6000004f, 25.6000004f,
++    gfx::CUBIC_TO, 25.6000004f, 29.1299992f, 28.4599991f, 32.0f, 32.0f, 32.0f,
++    gfx::CUBIC_TO, 35.5299988f, 32.0f, 38.4000015f, 29.1299992f, 38.4000015f, 25.6000004f,
++    gfx::CUBIC_TO, 38.4000015f, 22.0699997f, 35.5299988f, 19.2000008f, 32.0f, 19.2000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryNewProfileIconReps[] = {{kPrimaryNewProfileIcon0Path}};
++const gfx::VectorIcon kPrimaryNewProfileIcon(kPrimaryNewProfileIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryBookmarksIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 6.46999979f, 11.6000004f,
++    gfx::CUBIC_TO, 7.38999987f, 10.9499998f, 8.60999966f, 10.9499998f, 9.52999973f, 11.6000004f,
++    gfx::LINE_TO, 12.0f, 13.3299999f,
++    gfx::V_LINE_TO, 4.0f,
++    gfx::CUBIC_TO, 12.0f, 3.25999999f, 11.3999996f, 2.67000008f, 10.6700001f, 2.67000008f,
++    gfx::H_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 4.5999999f, 2.67000008f, 4.0f, 3.25999999f, 4.0f, 4.0f,
++    gfx::V_LINE_TO, 13.3299999f,
++    gfx::LINE_TO, 6.46999979f, 11.6000004f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 13.3299999f, 13.3299999f,
++    gfx::CUBIC_TO, 13.3299999f, 14.4099998f, 12.1199999f, 15.04f, 11.2299995f, 14.4200001f,
++    gfx::LINE_TO, 8.77000046f, 12.6899996f,
++    gfx::CUBIC_TO, 8.31000042f, 12.3599997f, 7.69000006f, 12.3599997f, 7.23000002f, 12.6899996f,
++    gfx::LINE_TO, 4.76999998f, 14.4200001f,
++    gfx::CUBIC_TO, 3.88000011f, 15.04f, 2.67000008f, 14.4099998f, 2.67000008f, 13.3299999f,
++    gfx::V_LINE_TO, 4.0f,
++    gfx::CUBIC_TO, 2.67000008f, 2.52999997f, 3.8599999f, 1.33000004f, 5.32999992f, 1.33000004f,
++    gfx::H_LINE_TO, 10.6700001f,
++    gfx::CUBIC_TO, 12.1400003f, 1.33000004f, 13.3299999f, 2.52999997f, 13.3299999f, 4.0f,
++    gfx::V_LINE_TO, 13.3299999f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryBookmarksIconReps[] = {{kPrimaryBookmarksIcon0Path}};
++const gfx::VectorIcon kPrimaryBookmarksIcon(kPrimaryBookmarksIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryDownloadsIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 2.67000008f, 14.0f,
++    gfx::CUBIC_TO, 2.67000008f, 14.3699999f, 2.97000003f, 14.6700001f, 3.32999992f, 14.6700001f,
++    gfx::H_LINE_TO, 12.6700001f,
++    gfx::CUBIC_TO, 13.0299997f, 14.6700001f, 13.3299999f, 14.3699999f, 13.3299999f, 14.0f,
++    gfx::CUBIC_TO, 13.3299999f, 13.6300001f, 13.0299997f, 13.3299999f, 12.6700001f, 13.3299999f,
++    gfx::H_LINE_TO, 3.32999992f,
++    gfx::CUBIC_TO, 2.97000003f, 13.3299999f, 2.67000008f, 13.6300001f, 2.67000008f, 14.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 6.82000017f, 11.4300003f,
++    gfx::CUBIC_TO, 7.46999979f, 12.0799999f, 8.52999973f, 12.0799999f, 9.18000031f, 11.4300003f,
++    gfx::LINE_TO, 11.3000002f, 9.30000019f,
++    gfx::CUBIC_TO, 11.5699997f, 9.03999996f, 11.5699997f, 8.61999989f, 11.3000002f, 8.35999966f,
++    gfx::CUBIC_TO, 11.04f, 8.10000038f, 10.6199999f, 8.10000038f, 10.3599997f, 8.35999966f,
++    gfx::LINE_TO, 8.67000008f, 10.0600004f,
++    gfx::V_LINE_TO, 2.0f,
++    gfx::CUBIC_TO, 8.67000008f, 1.63f, 8.36999989f, 1.33000004f, 8.0f, 1.33000004f,
++    gfx::CUBIC_TO, 7.63000011f, 1.33000004f, 7.32999992f, 1.63f, 7.32999992f, 2.0f,
++    gfx::V_LINE_TO, 10.0600004f,
++    gfx::LINE_TO, 5.63999987f, 8.35999966f,
++    gfx::CUBIC_TO, 5.38000011f, 8.10000038f, 4.96000004f, 8.10000038f, 4.69999981f, 8.35999966f,
++    gfx::CUBIC_TO, 4.42999983f, 8.61999989f, 4.42999983f, 9.03999996f, 4.69999981f, 9.30000019f,
++    gfx::LINE_TO, 6.82000017f, 11.4300003f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryDownloadsIconReps[] = {{kPrimaryDownloadsIcon0Path}};
++const gfx::VectorIcon kPrimaryDownloadsIcon(kPrimaryDownloadsIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryExtensionsIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 20.0f,
++    gfx::MOVE_TO, 15.8299999f, 6.67000008f,
++    gfx::CUBIC_TO, 15.8299999f, 5.75f, 15.0900002f, 5.0f, 14.1700001f, 5.0f,
++    gfx::H_LINE_TO, 12.0799999f,
++    gfx::CUBIC_TO, 11.6199999f, 5.0f, 11.25f, 4.63000011f, 11.25f, 4.17000008f,
++    gfx::V_LINE_TO, 3.75f,
++    gfx::CUBIC_TO, 11.25f, 3.05999994f, 10.6899996f, 2.5f, 10.0f, 2.5f,
++    gfx::CUBIC_TO, 9.31000042f, 2.5f, 8.75f, 3.05999994f, 8.75f, 3.75f,
++    gfx::V_LINE_TO, 4.17000008f,
++    gfx::CUBIC_TO, 8.75f, 4.63000011f, 8.38000011f, 5.0f, 7.92000008f, 5.0f,
++    gfx::H_LINE_TO, 5.82999992f,
++    gfx::CUBIC_TO, 4.90999985f, 5.0f, 4.17000008f, 5.75f, 4.17000008f, 6.67000008f,
++    gfx::V_LINE_TO, 13.3299999f,
++    gfx::CUBIC_TO, 4.17000008f, 14.25f, 4.90999985f, 15.0f, 5.82999992f, 15.0f,
++    gfx::H_LINE_TO, 14.1700001f,
++    gfx::CUBIC_TO, 15.0900002f, 15.0f, 15.8299999f, 14.25f, 15.8299999f, 13.3299999f,
++    gfx::V_LINE_TO, 12.8900003f,
++    gfx::CUBIC_TO, 14.4200001f, 12.6800003f, 13.3299999f, 11.4700003f, 13.3299999f, 10.0f,
++    gfx::CUBIC_TO, 13.3299999f, 8.52999973f, 14.4200001f, 7.30999994f, 15.8299999f, 7.11000013f,
++    gfx::V_LINE_TO, 6.67000008f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 17.5f, 7.92000008f,
++    gfx::CUBIC_TO, 17.5f, 8.38000011f, 17.1299992f, 8.75f, 16.6700001f, 8.75f,
++    gfx::H_LINE_TO, 16.25f,
++    gfx::CUBIC_TO, 15.5600004f, 8.75f, 15.0f, 9.31000042f, 15.0f, 10.0f,
++    gfx::CUBIC_TO, 15.0f, 10.6899996f, 15.5600004f, 11.25f, 16.25f, 11.25f,
++    gfx::H_LINE_TO, 16.6700001f,
++    gfx::CUBIC_TO, 17.1299992f, 11.25f, 17.5f, 11.6199999f, 17.5f, 12.0799999f,
++    gfx::V_LINE_TO, 13.3299999f,
++    gfx::CUBIC_TO, 17.5f, 15.1700001f, 16.0100002f, 16.6700001f, 14.1700001f, 16.6700001f,
++    gfx::H_LINE_TO, 5.82999992f,
++    gfx::CUBIC_TO, 3.99000001f, 16.6700001f, 2.5f, 15.1700001f, 2.5f, 13.3299999f,
++    gfx::V_LINE_TO, 6.67000008f,
++    gfx::CUBIC_TO, 2.5f, 4.82999992f, 3.99000001f, 3.32999992f, 5.82999992f, 3.32999992f,
++    gfx::H_LINE_TO, 7.11000013f,
++    gfx::CUBIC_TO, 7.32000017f, 1.91999996f, 8.52999973f, 0.829999983f, 10.0f, 0.829999983f,
++    gfx::CUBIC_TO, 11.4700003f, 0.829999983f, 12.6800003f, 1.91999996f, 12.8900003f, 3.32999992f,
++    gfx::H_LINE_TO, 14.1700001f,
++    gfx::CUBIC_TO, 16.0100002f, 3.32999992f, 17.5f, 4.82999992f, 17.5f, 6.67000008f,
++    gfx::V_LINE_TO, 7.92000008f,
++    gfx::CLOSE,
++};
++constexpr gfx::PathElement kPrimaryExtensionsIcon1Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 12.6700001f, 5.32999992f,
++    gfx::CUBIC_TO, 12.6700001f, 4.5999999f, 12.0699997f, 4.0f, 11.3299999f, 4.0f,
++    gfx::H_LINE_TO, 9.67000008f,
++    gfx::CUBIC_TO, 9.30000019f, 4.0f, 9.0f, 3.70000005f, 9.0f, 3.32999992f,
++    gfx::V_LINE_TO, 3.0f,
++    gfx::CUBIC_TO, 9.0f, 2.45000005f, 8.55000019f, 2.0f, 8.0f, 2.0f,
++    gfx::CUBIC_TO, 7.44999981f, 2.0f, 7.0f, 2.45000005f, 7.0f, 3.0f,
++    gfx::V_LINE_TO, 3.32999992f,
++    gfx::CUBIC_TO, 7.0f, 3.70000005f, 6.69999981f, 4.0f, 6.32999992f, 4.0f,
++    gfx::H_LINE_TO, 4.67000008f,
++    gfx::CUBIC_TO, 3.93000007f, 4.0f, 3.32999992f, 4.5999999f, 3.32999992f, 5.32999992f,
++    gfx::V_LINE_TO, 10.6700001f,
++    gfx::CUBIC_TO, 3.32999992f, 11.3999996f, 3.93000007f, 12.0f, 4.67000008f, 12.0f,
++    gfx::H_LINE_TO, 11.3299999f,
++    gfx::CUBIC_TO, 12.0699997f, 12.0f, 12.6700001f, 11.3999996f, 12.6700001f, 10.6700001f,
++    gfx::V_LINE_TO, 10.3100004f,
++    gfx::CUBIC_TO, 11.54f, 10.1499996f, 10.6700001f, 9.18000031f, 10.6700001f, 8.0f,
++    gfx::CUBIC_TO, 10.6700001f, 6.82000017f, 11.54f, 5.8499999f, 12.6700001f, 5.69000006f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 14.0f, 6.32999992f,
++    gfx::CUBIC_TO, 14.0f, 6.69999981f, 13.6999998f, 7.0f, 13.3299999f, 7.0f,
++    gfx::H_LINE_TO, 13.0f,
++    gfx::CUBIC_TO, 12.4499998f, 7.0f, 12.0f, 7.44999981f, 12.0f, 8.0f,
++    gfx::CUBIC_TO, 12.0f, 8.55000019f, 12.4499998f, 9.0f, 13.0f, 9.0f,
++    gfx::H_LINE_TO, 13.3299999f,
++    gfx::CUBIC_TO, 13.6999998f, 9.0f, 14.0f, 9.30000019f, 14.0f, 9.67000008f,
++    gfx::V_LINE_TO, 10.6700001f,
++    gfx::CUBIC_TO, 14.0f, 12.1400003f, 12.8100004f, 13.3299999f, 11.3299999f, 13.3299999f,
++    gfx::H_LINE_TO, 4.67000008f,
++    gfx::CUBIC_TO, 3.19000006f, 13.3299999f, 2.0f, 12.1400003f, 2.0f, 10.6700001f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 2.0f, 3.8599999f, 3.19000006f, 2.67000008f, 4.67000008f, 2.67000008f,
++    gfx::H_LINE_TO, 5.69000006f,
++    gfx::CUBIC_TO, 5.8499999f, 1.53999996f, 6.82000017f, 0.670000017f, 8.0f, 0.670000017f,
++    gfx::CUBIC_TO, 9.18000031f, 0.670000017f, 10.1499996f, 1.53999996f, 10.3100004f, 2.67000008f,
++    gfx::H_LINE_TO, 11.3299999f,
++    gfx::CUBIC_TO, 12.8100004f, 2.67000008f, 14.0f, 3.8599999f, 14.0f, 5.32999992f,
++    gfx::V_LINE_TO, 6.32999992f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryExtensionsIconReps[] = {{kPrimaryExtensionsIcon0Path},{kPrimaryExtensionsIcon1Path}};
++const gfx::VectorIcon kPrimaryExtensionsIcon(kPrimaryExtensionsIconReps, 2, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryHistoryIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 8.0f, 1.33000004f,
++    gfx::CUBIC_TO, 11.6800003f, 1.33000004f, 14.6700001f, 4.32000017f, 14.6700001f, 8.0f,
++    gfx::CUBIC_TO, 14.6700001f, 11.6800003f, 11.6800003f, 14.6700001f, 8.0f, 14.6700001f,
++    gfx::CUBIC_TO, 5.0999999f, 14.6700001f, 2.63000011f, 12.8100004f, 1.71000004f, 10.2200003f,
++    gfx::CUBIC_TO, 1.59000003f, 9.86999989f, 1.76999998f, 9.48999977f, 2.11999989f, 9.36999989f,
++    gfx::CUBIC_TO, 2.47000003f, 9.25f, 2.8499999f, 9.43000031f, 2.97000003f, 9.77999973f,
++    gfx::CUBIC_TO, 3.70000005f, 11.8500004f, 5.67999983f, 13.3299999f, 8.0f, 13.3299999f,
++    gfx::CUBIC_TO, 10.9499998f, 13.3299999f, 13.3299999f, 10.9499998f, 13.3299999f, 8.0f,
++    gfx::CUBIC_TO, 13.3299999f, 5.05000019f, 10.9499998f, 2.67000008f, 8.0f, 2.67000008f,
++    gfx::CUBIC_TO, 6.03000021f, 2.67000008f, 4.30999994f, 3.74000001f, 3.38000011f, 5.32999992f,
++    gfx::H_LINE_TO, 4.67000008f,
++    gfx::CUBIC_TO, 5.03999996f, 5.32999992f, 5.32999992f, 5.63000011f, 5.32999992f, 6.0f,
++    gfx::CUBIC_TO, 5.32999992f, 6.36999989f, 5.03999996f, 6.67000008f, 4.67000008f, 6.67000008f,
++    gfx::H_LINE_TO, 2.0f,
++    gfx::CUBIC_TO, 1.63f, 6.67000008f, 1.33000004f, 6.36999989f, 1.33000004f, 6.0f,
++    gfx::V_LINE_TO, 3.32999992f,
++    gfx::CUBIC_TO, 1.33000004f, 2.96000004f, 1.63f, 2.67000008f, 2.0f, 2.67000008f,
++    gfx::CUBIC_TO, 2.36999989f, 2.67000008f, 2.67000008f, 2.96000004f, 2.67000008f, 3.32999992f,
++    gfx::V_LINE_TO, 4.0f,
++    gfx::CUBIC_TO, 3.88000011f, 2.38000011f, 5.82000017f, 1.33000004f, 8.0f, 1.33000004f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 4.67000008f,
++    gfx::CUBIC_TO, 8.36999989f, 4.67000008f, 8.67000008f, 4.96000004f, 8.67000008f, 5.32999992f,
++    gfx::V_LINE_TO, 7.71999979f,
++    gfx::LINE_TO, 10.4700003f, 9.52999973f,
++    gfx::CUBIC_TO, 10.7299995f, 9.78999996f, 10.7299995f, 10.21f, 10.4700003f, 10.4700003f,
++    gfx::CUBIC_TO, 10.21f, 10.7299995f, 9.78999996f, 10.7299995f, 9.52999973f, 10.4700003f,
++    gfx::LINE_TO, 7.53000021f, 8.47000027f,
++    gfx::CUBIC_TO, 7.4000001f, 8.35000038f, 7.32999992f, 8.18000031f, 7.32999992f, 8.0f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 7.32999992f, 4.96000004f, 7.63000011f, 4.67000008f, 8.0f, 4.67000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryHistoryIconReps[] = {{kPrimaryHistoryIcon0Path}};
++const gfx::VectorIcon kPrimaryHistoryIcon(kPrimaryHistoryIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryDevelopersIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 8.68999958f, 2.50999999f,
++    gfx::CUBIC_TO, 8.77999973f, 2.1500001f, 9.14000034f, 1.92999995f, 9.48999977f, 2.01999998f,
++    gfx::CUBIC_TO, 9.85000038f, 2.1099999f, 10.0699997f, 2.47000003f, 9.97999954f, 2.82999992f,
++    gfx::LINE_TO, 7.30999994f, 13.4899998f,
++    gfx::CUBIC_TO, 7.21999979f, 13.8500004f, 6.86000013f, 14.0699997f, 6.51000023f, 13.9799995f,
++    gfx::CUBIC_TO, 6.1500001f, 13.8900003f, 5.92999983f, 13.5299997f, 6.01999998f, 13.1700001f,
++    gfx::LINE_TO, 8.68999958f, 2.50999999f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 3.55999994f, 4.84000015f,
++    gfx::CUBIC_TO, 3.82999992f, 4.59000015f, 4.25f, 4.61999989f, 4.5f, 4.88999987f,
++    gfx::CUBIC_TO, 4.73999977f, 5.17000008f, 4.71999979f, 5.59000015f, 4.44000006f, 5.82999992f,
++    gfx::LINE_TO, 3.11999989f, 7.0f,
++    gfx::CUBIC_TO, 2.52999997f, 7.53000021f, 2.52999997f, 8.47000027f, 3.11999989f, 9.0f,
++    gfx::LINE_TO, 4.44000006f, 10.1700001f,
++    gfx::CUBIC_TO, 4.71999979f, 10.4099998f, 4.73999977f, 10.8299999f, 4.5f, 11.1099997f,
++    gfx::CUBIC_TO, 4.25f, 11.3800001f, 3.82999992f, 11.4099998f, 3.55999994f, 11.1599998f,
++    gfx::LINE_TO, 2.24000001f, 9.98999977f,
++    gfx::CUBIC_TO, 1.04999995f, 8.93000031f, 1.04999995f, 7.07000017f, 2.24000001f, 6.01000023f,
++    gfx::LINE_TO, 3.55999994f, 4.84000015f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 11.5f, 4.88999987f,
++    gfx::CUBIC_TO, 11.75f, 4.61999989f, 12.1700001f, 4.59000015f, 12.4399996f, 4.84000015f,
++    gfx::LINE_TO, 13.7600002f, 6.01000023f,
++    gfx::CUBIC_TO, 14.9499998f, 7.07000017f, 14.9499998f, 8.93000031f, 13.7600002f, 9.98999977f,
++    gfx::LINE_TO, 12.4399996f, 11.1599998f,
++    gfx::CUBIC_TO, 12.1700001f, 11.4099998f, 11.75f, 11.3800001f, 11.5f, 11.1099997f,
++    gfx::CUBIC_TO, 11.2600002f, 10.8299999f, 11.2799997f, 10.4099998f, 11.5600004f, 10.1700001f,
++    gfx::LINE_TO, 12.8800001f, 9.0f,
++    gfx::CUBIC_TO, 13.4700003f, 8.47000027f, 13.4700003f, 7.53000021f, 12.8800001f, 7.0f,
++    gfx::LINE_TO, 11.5600004f, 5.82999992f,
++    gfx::CUBIC_TO, 11.2799997f, 5.59000015f, 11.2600002f, 5.17000008f, 11.5f, 4.88999987f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryDevelopersIconReps[] = {{kPrimaryDevelopersIcon0Path}};
++const gfx::VectorIcon kPrimaryDevelopersIcon(kPrimaryDevelopersIconReps, 1, "AuxPrimaryProfileMenu");
++constexpr gfx::PathElement kPrimaryIncognitoIcon0Path[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 12.6700001f, 11.3299999f,
++    gfx::CUBIC_TO, 12.6700001f, 10.6000004f, 12.0699997f, 10.0f, 11.3299999f, 10.0f,
++    gfx::CUBIC_TO, 10.6300001f, 10.0f, 10.0600004f, 10.54f, 10.0f, 11.2299995f,
++    gfx::CUBIC_TO, 10.0f, 11.2600002f, 10.0f, 11.3000002f, 10.0f, 11.3299999f,
++    gfx::CUBIC_TO, 10.0f, 12.0699997f, 10.6000004f, 12.6700001f, 11.3299999f, 12.6700001f,
++    gfx::CUBIC_TO, 12.0699997f, 12.6700001f, 12.6700001f, 12.0699997f, 12.6700001f, 11.3299999f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 10.2700005f, 2.0f,
++    gfx::CUBIC_TO, 11.5900002f, 2.0f, 12.7200003f, 2.98000002f, 12.9099998f, 4.28999996f,
++    gfx::LINE_TO, 13.2399998f, 6.67000008f,
++    gfx::H_LINE_TO, 14.0f,
++    gfx::CUBIC_TO, 14.3699999f, 6.67000008f, 14.6700001f, 6.96999979f, 14.6700001f, 7.32999992f,
++    gfx::CUBIC_TO, 14.6700001f, 7.69999981f, 14.3699999f, 8.0f, 14.0f, 8.0f,
++    gfx::H_LINE_TO, 2.0f,
++    gfx::CUBIC_TO, 1.63f, 8.0f, 1.33000004f, 7.69999981f, 1.33000004f, 7.32999992f,
++    gfx::CUBIC_TO, 1.33000004f, 6.96999979f, 1.63f, 6.67000008f, 2.0f, 6.67000008f,
++    gfx::H_LINE_TO, 2.75999999f,
++    gfx::LINE_TO, 3.0999999f, 4.28999996f,
++    gfx::CUBIC_TO, 3.27999997f, 2.98000002f, 4.40999985f, 2.0f, 5.73000002f, 2.0f,
++    gfx::H_LINE_TO, 10.2700005f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 5.73000002f, 3.32999992f,
++    gfx::CUBIC_TO, 5.07000017f, 3.32999992f, 4.51000023f, 3.81999993f, 4.40999985f, 4.48000002f,
++    gfx::LINE_TO, 4.0999999f, 6.67000008f,
++    gfx::H_LINE_TO, 11.8999996f,
++    gfx::LINE_TO, 11.5900002f, 4.48000002f,
++    gfx::CUBIC_TO, 11.4899998f, 3.81999993f, 10.9300003f, 3.32999992f, 10.2700005f, 3.32999992f,
++    gfx::H_LINE_TO, 5.73000002f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 3.32999992f, 11.3299999f,
++    gfx::CUBIC_TO, 3.32999992f, 12.0699997f, 3.93000007f, 12.6700001f, 4.67000008f, 12.6700001f,
++    gfx::CUBIC_TO, 5.4000001f, 12.6700001f, 6.0f, 12.0699997f, 6.0f, 11.3299999f,
++    gfx::CUBIC_TO, 6.0f, 11.3000002f, 6.0f, 11.2600002f, 6.0f, 11.2299995f,
++    gfx::CUBIC_TO, 5.94000006f, 10.54f, 5.36999989f, 10.0f, 4.67000008f, 10.0f,
++    gfx::CUBIC_TO, 3.93000007f, 10.0f, 3.32999992f, 10.6000004f, 3.32999992f, 11.3299999f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 14.0f, 11.3299999f,
++    gfx::CUBIC_TO, 14.0f, 12.8100004f, 12.8100004f, 14.0f, 11.3299999f, 14.0f,
++    gfx::CUBIC_TO, 9.92000008f, 14.0f, 8.77000046f, 12.8999996f, 8.67000008f, 11.5200005f,
++    gfx::CUBIC_TO, 8.26000023f, 11.2700005f, 7.73999977f, 11.2700005f, 7.32999992f, 11.5200005f,
++    gfx::CUBIC_TO, 7.23000002f, 12.8999996f, 6.07999992f, 14.0f, 4.67000008f, 14.0f,
++    gfx::CUBIC_TO, 3.19000006f, 14.0f, 2.0f, 12.8100004f, 2.0f, 11.3299999f,
++    gfx::CUBIC_TO, 2.0f, 9.85999966f, 3.19000006f, 8.67000008f, 4.67000008f, 8.67000008f,
++    gfx::CUBIC_TO, 5.71999979f, 8.67000008f, 6.63000011f, 9.27999973f, 7.07000017f, 10.1700001f,
++    gfx::CUBIC_TO, 7.67000008f, 9.93999958f, 8.32999992f, 9.93999958f, 8.93000031f, 10.1700001f,
++    gfx::CUBIC_TO, 9.36999989f, 9.27999973f, 10.2799997f, 8.67000008f, 11.3299999f, 8.67000008f,
++    gfx::CUBIC_TO, 12.8100004f, 8.67000008f, 14.0f, 9.85999966f, 14.0f, 11.3299999f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPrimaryIncognitoIconReps[] = {{kPrimaryIncognitoIcon0Path}};
++const gfx::VectorIcon kPrimaryIncognitoIcon(kPrimaryIncognitoIconReps, 1, "AuxPrimaryProfileMenu");
+ // clang-format on
