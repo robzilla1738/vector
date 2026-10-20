@@ -1,0 +1,53 @@
+{
+  "exitCode": 1,
+  "elapsedSeconds": 47.42790198326111,
+  "targets": {
+    "account_bootstrap_state": "obj/chrome/browser/aux/account_bootstrap_state/account_bootstrap_state.o",
+    "account_profile_source": "obj/chrome/browser/aux/account_profile_source/account_profile_source.o",
+    "account_profile_updater": "obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o",
+    "account_profile_avatar": "obj/chrome/browser/aux/account_profile_updater/account_profile_avatar.o",
+    "browser_platform": "obj/chrome/browser/aux/platform/browser_platform.o",
+    "profile_key": "obj/chrome/browser/profiles/misc/profile_key.o",
+    "eager_factory": "obj/chrome/browser/profiles/profiles_extra_parts_impl/chrome_browser_main_extra_parts_profiles.o",
+    "pure_probe": "account_profile_source_probe"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/aux/account_bootstrap_state/account_bootstrap_state.o",
+    "obj/chrome/browser/aux/account_profile_source/account_profile_source.o",
+    "obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o",
+    "obj/chrome/browser/aux/account_profile_updater/account_profile_avatar.o",
+    "obj/chrome/browser/aux/platform/browser_platform.o",
+    "obj/chrome/browser/profiles/misc/profile_key.o",
+    "obj/chrome/browser/profiles/profiles_extra_parts_impl/chrome_browser_main_extra_parts_profiles.o",
+    "account_profile_source_probe",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "actualComposition": "out/native-reuse-composition-v249",
+  "fullBrowserCompiled": false,
+  "scope": "Seven native object targets plus pure projection executable. Updater alone failed on two actual155 namespace names; all remaining targets compiled/linked.",
+  "failedSource": "chrome/browser/aux/account_profile_updater.cc",
+  "errors": [
+    "syncer::prefs::kSyncEncryptionBootstrapToken must use actual syncer::prefs::internal namespace",
+    "syncer::prefs::kSyncEncryptionBootstrapTokenPerAccount must use actual syncer::prefs::internal namespace"
+  ],
+  "pureProjectionProbe": {
+    "command": "python3 scripts/native-build.py ./out/AuxFast/account_profile_source_probe",
+    "exitCode": 0,
+    "syntheticScenarios": 7,
+    "actualProfileOrNetworkOperations": false
+  },
+  "originalReplay": {
+    "steps": 255,
+    "sourceOutputs": 433,
+    "allOutputsMatched": true
+  },
+  "runtimeParity": false
+}
