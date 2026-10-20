@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "candidate": "out/provided-candidate-v205-logo-local/Aux.app",
+  "nativeComposition": "v205",
+  "resourceStage": "out/provided-reuse-v206-logo",
+  "verifiedBrowserPid": 31531,
+  "ownedWindowId": 32275,
+  "actualObservation": "Canonical Aux arch logo displayed by supplied onboarding component; original layout and sign-in controls retained.",
+  "screenshot": "out/native-integration/v205-logo-setup-window.png",
+  "screenshotSha256": "d5d15fe4d01dc940895720a6f04f552e356e0e9a73d7138b753b219cac4b6486",
+  "credentialsEntered": false,
+  "browserExecutableAfterStop": null,
+  "auxListenerExitCode": 1,
+  "auxListenersAfterStop": "",
+  "temporaryStateRetained": true,
+  "fullParityAccepted": false
+}
