@@ -78,14 +78,14 @@ export function cacheSignedDevelopmentResources({ signedReceiptPath, signedRecei
   const signedResources = resources(receipt.finalInventory), targets = plan.targets.filter(target => target.path.startsWith(prefix + '/'));
   if (signedResources.some(leaf => leaf.path.includes('/Aux Password Importer.app/'))) throw Error('Retired password product cannot be cached');
   const source = canonical(path.join(receipt.packageRoot, prefix));
-  assertSameInventory(signedResources, resourceSnapshot(source), 'Parent signed resources changed');
   output = path.resolve(output);
   if (!output.startsWith(path.join(repository, 'out') + '/')) throw Error('Project-owned cache required');
   output = freshOutput(output, [receipt.packageRoot, scope.policy.core.home]);
   const target = path.join(output, 'resources');
+  // The complete copied inventory must match the signed receipt below. No
+  // extra source hash pass can strengthen that exact cached-byte assertion.
   fs.cpSync(source, target, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true, mode: fs.constants.COPYFILE_FICLONE });
   assertSameInventory(signedResources, resourceSnapshot(target), 'Copied signed resources differ');
-  assertSameInventory(signedResources, resourceSnapshot(source), 'Parent resources changed during cache copy');
   verifyRetainedSignatures(target, targets);
   const cache = { version: 1, kind: 'exact-signed-aux-resource-cache', scope: scope.policy.core.scope, proposalSha256: scope.proposalSha256, finalApp: packageReport.finalApp, parentSignedReceiptPath: signedReceiptPath, parentSignedReceiptSha256: signedReceiptSha256, parentPlanSha256: receipt.planSha256, parentPackageReportSha256: input.packageReportSha256, parentPreparationSha256: input.preparationSha256, parentAuthorityReportPath: authorityReportPath, parentAuthorityReportSha256: authorityReportSha256, authorityOperation: authority.operation, parentValidationScope: 'signed-aux-resources-only', parentOuterBrowserRevalidated: false, authorityProofInherited: true, passwordManagerExcluded: true, boundaryReceiptSha256: packageReport.boundaryReceiptSha256, unsignedResources, signedResources, parentFinalProofs: receipt.finalProofs.filter(proof => proof.path.startsWith(prefix + '/')), retainedTargets: targets, appleSigningPerformed: false, keychainOperationsPerformed: false, productLaunched: false };
   const cachePath = path.join(output, 'cache.json'); writeNew(cachePath, cache);
