@@ -1,0 +1,205 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -2,6 +2,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include <array>
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -32,6 +33,12 @@
+ #include "chrome/browser/ui/signin/signin_view_controller.h"
+ #include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h"
++#include "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h"
++#include "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h"
++#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h"
++#include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+ #include "chrome/browser/ui/toolbar/app_menu_icon_controller.h"
+ #include "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h"
+ #include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
+@@ -67,6 +74,11 @@
+     raw_ptr<AvatarToolbarButton> avatar;
+     raw_ptr<MediaToolbarButtonView> media;
+     raw_ptr<BrowserUserEducationInterfaceImpl> education;
++    std::unique_ptr<tab_groups::SavedTabGroupModelListener::AuxProfileModelTransfer>
++        group_transfer;
++    bool target_shared_owners = false;
++    uint64_t group_session_generation = 0;
++    uint64_t group_update_generation = 0;
+     uint64_t view_generation = 0;
+     uint64_t actions_generation = 0;
+     uint64_t location_generation = 0;
+@@ -115,10 +127,9 @@
+   return features.breadcrumb_manager_browser_agent_ ||
+       features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
+       features.glic_iph_controller_ ||
+-      features.glic_split_button_controller_ || features.most_recent_shared_tab_update_store_ ||
+-      features.session_service_tab_group_sync_observer_ || features.organizer_panel_controller_ ||
++      features.glic_split_button_controller_ || features.organizer_panel_controller_ ||
+       features.actor_ui_window_controller_ || features.ai_overlay_dialog_controller_ ||
+-      features.ai_mode_page_action_controller_ || features.data_protection_ui_controller_ ||
++      features.ai_mode_page_action_controller_ ||
+       features.new_tab_footer_controller_ ||
+       features.ios_promo_controller_ ||
+       features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_;
+@@ -152,6 +163,18 @@
+   }
+   if (auto* toast = ToastController::From(&browser);
+       toast && toast->HasPendingToastWork()) {
++    return nullptr;
++  }
++  const std::array<BrowserWindowInterface*, 1> source_windows{&browser};
++  if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(
++          source_windows) ||
++      bool(features_->most_recent_shared_tab_update_store_) !=
++          bool(features_->session_service_tab_group_sync_observer_) ||
++      (features_->most_recent_shared_tab_update_store_ &&
++       (!features_->most_recent_shared_tab_update_store_->CanBeginAuxProfileSwitch() ||
++        !features_->session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch())) ||
++      (features_->data_protection_ui_controller_ &&
++       !features_->data_protection_ui_controller_->CanPrepareForAuxProfileSwitch(&target))) {
+     return nullptr;
+   }
+   auto* view = BrowserView::GetBrowserViewForBrowser(&browser);
+@@ -227,6 +250,20 @@
+       HasUnportedProfileOwners(target_cache.GetFeatures())) {
+     return false;
+   }
++  auto& target_features = target_cache.GetFeatures();
++  if (bool(target_features.most_recent_shared_tab_update_store_) !=
++          bool(target_features.session_service_tab_group_sync_observer_) ||
++      browser.GetTabStripModel()->SupportsTabGroups() !=
++          target_cache.GetTabStripModel()->SupportsTabGroups()) {
++    return false;
++  }
++  const std::array<BrowserWindowInterface*, 3> windows{
++      &browser, &previous_cache, &target_cache};
++  if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(windows)) {
++    return false;
++  }
++  original->target_shared_owners =
++      bool(target_features.most_recent_shared_tab_update_store_);
+   auto current = CollectReadyBindings(browser, *original->target);
+   return current && current->view == original->view &&
+          current->toolbar == original->toolbar &&
+@@ -258,8 +295,23 @@
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Begin(
+     std::shared_ptr<Bindings> plan,
+-    base::WeakPtr<Profile> target, Browser&, Browser&, Browser&) {
++    base::WeakPtr<Profile> target, Browser& browser,
++    Browser& previous_cache, Browser& target_cache) {
+   CHECK(target);
++  const std::array<BrowserWindowInterface*, 3> windows{
++      &browser, &previous_cache, &target_cache};
++  plan->group_transfer =
++      tab_groups::SavedTabGroupModelListener::PrepareAuxProfileModelTransfer(windows);
++  CHECK(plan->group_transfer);
++  if (features_->most_recent_shared_tab_update_store_) {
++    plan->group_update_generation =
++        features_->most_recent_shared_tab_update_store_->BeginAuxProfileSwitch();
++    plan->group_session_generation =
++        features_->session_service_tab_group_sync_observer_->BeginAuxProfileSwitch();
++  }
++  if (features_->data_protection_ui_controller_) {
++    features_->data_protection_ui_controller_->PrepareForAuxProfileSwitch(target.get());
++  }
+   // All old-source observation/IPC is retired before identity. Source-tab
+   // services that need real detach notifications remain until empty commit.
+   // Core has just recoverably revalidated real clients/commands/widgets after
+@@ -352,7 +404,8 @@
+   features_->browser_actions_->RebindAuxProfileSwitch(plan->actions_generation);
+   plan->location->RebindAuxProfileSwitch(plan->location_generation);
+   plan->toolbar->RebindOwnedActionsForAuxProfileSwitch(target);
+-  features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  features_->pinned_toolbar_actions_ = static_cast<ToolbarButtonProvider*>(plan->toolbar.get())
++          ->GetPinnedToolbarActions();
+   if (features_->chrome_labs_coordinator_) {
+     features_->chrome_labs_coordinator_->RebindForAuxProfileSwitch(target);
+   }
+@@ -419,6 +472,36 @@
+     plan->toolbar->reload_button()->RebindForAuxProfileSwitch(target);
+   }
+   plan->education->RebindForAuxProfileSwitch(*plan->view);
++  // Use the target cache's genuinely constructed owner pair as eligibility
++  // evidence; preserve the same source owners whenever the target supports it.
++  if (!plan->target_shared_owners) {
++    features_->session_service_tab_group_sync_observer_.reset();
++    features_->most_recent_shared_tab_update_store_.reset();
++    plan->group_session_generation = 0;
++    plan->group_update_generation = 0;
++  } else {
++    CHECK(target->IsRegularProfile());
++    CHECK(browser.GetTabStripModel()->SupportsTabGroups());
++    CHECK(tab_groups::TabGroupSyncServiceFactory::GetForProfile(target));
++    if (!features_->most_recent_shared_tab_update_store_) {
++      features_->most_recent_shared_tab_update_store_ =
++          BrowserWindowFeatures::GetUserDataFactory()
++              .CreateInstance<tab_groups::MostRecentSharedTabUpdateStore>(
++                  browser, &browser);
++      features_->session_service_tab_group_sync_observer_ =
++          std::make_unique<tab_groups::SessionServiceTabGroupSyncObserver>(
++              target, browser.GetTabStripModel(), browser.GetSessionID());
++      plan->group_update_generation =
++          features_->most_recent_shared_tab_update_store_->BeginAuxProfileSwitch();
++      plan->group_session_generation =
++          features_->session_service_tab_group_sync_observer_->BeginAuxProfileSwitch();
++    }
++    features_->most_recent_shared_tab_update_store_->RebindAuxProfileSwitch(target);
++    features_->session_service_tab_group_sync_observer_->RebindAuxProfileSwitch(target);
++  }
++  if (features_->data_protection_ui_controller_) {
++    features_->data_protection_ui_controller_->RebindForAuxProfileSwitch();
++  }
+   if (features_->lens_overlay_entry_point_controller_) {
+     features_->lens_overlay_entry_point_controller_->RebindForAuxProfileSwitch(target);
+   }
+@@ -454,6 +537,18 @@
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Finish(
+     std::shared_ptr<Bindings> plan,
+     Browser&, Browser&, Browser&) {
++  CHECK(plan->group_transfer->CanFinish(false));
++  plan->group_transfer->Commit();
++  plan->group_transfer.reset();
++  if (features_->most_recent_shared_tab_update_store_) {
++    features_->session_service_tab_group_sync_observer_->EndAuxProfileSwitch(
++        plan->group_session_generation);
++    features_->most_recent_shared_tab_update_store_->EndAuxProfileSwitch(
++        plan->group_update_generation);
++  }
++  if (features_->data_protection_ui_controller_) {
++    features_->data_protection_ui_controller_->FinishForAuxProfileSwitch();
++  }
+   features_->FinishAuxPrivateProfileServices();
+   if (features_->context_highlight_window_feature_) {
+     features_->context_highlight_window_feature_->FinishForAuxProfileSwitch();
+@@ -472,11 +567,24 @@
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Abort(
+     std::shared_ptr<Bindings> plan,
+     Browser& browser, Browser&, Browser&) {
++  CHECK(plan->group_transfer->CanFinish(true));
++  plan->group_transfer->Abort();
++  plan->group_transfer.reset();
++  if (features_->most_recent_shared_tab_update_store_) {
++    features_->session_service_tab_group_sync_observer_->AbortAuxProfileSwitch(
++        plan->group_session_generation, browser.GetProfile());
++    features_->most_recent_shared_tab_update_store_->AbortAuxProfileSwitch(
++        plan->group_update_generation, browser.GetProfile());
++  }
++  if (features_->data_protection_ui_controller_) {
++    features_->data_protection_ui_controller_->AbortAuxProfileSwitch();
++  }
+   // Core has not committed identity. Genuine source tabs are already back.
+   // No target profile service was constructed; restore actual source only.
+   features_->browser_actions_->EndAuxProfileSwitch(plan->actions_generation);
+   plan->toolbar->AbortOwnedActionsForAuxProfileSwitch(browser.GetProfile());
+-  features_->pinned_toolbar_actions_ = plan->toolbar->GetPinnedToolbarActions();
++  features_->pinned_toolbar_actions_ = static_cast<ToolbarButtonProvider*>(plan->toolbar.get())
++          ->GetPinnedToolbarActions();
+   if (features_->chrome_labs_coordinator_) {
+     features_->chrome_labs_coordinator_->AbortForAuxProfileSwitch(browser.GetProfile());
+   }

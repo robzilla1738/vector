@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "b3d94c4ae immutable FindBar provider output; actual v128 before provider compiler fix",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "282e14313b89c4dc6c570adc8eb73e9f7416ab5aa18dda466704f6d14c4b4029",
+      "outputSha256": "3a358e493915c555d09c93841882d6dbdd97cf51441f06bd11cd37bcfffd2f20"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

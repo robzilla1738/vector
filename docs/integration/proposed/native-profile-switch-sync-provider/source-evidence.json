@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h",
+      "sha256": "6aa32027dd77f3f3f7da22d84c5282b91109fa37a7ad60c4fc718d8aea757041"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc",
+      "sha256": "fee01608b907deb7d43a50b5062547b5f353f2405386921f54e9d2300bdf79ce"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.h",
+      "sha256": "dfcc33db3d0e9fee07d2fb77016910fc26cbde0d24114bbf07f9f596966003c6"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/session_service_tab_group_sync_observer.cc",
+      "sha256": "8d62a2910c24cc05049e1b08a7edb43d624f67a513d72854d7c7e6f816d0553b"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h",
+      "sha256": "4ce07726601e01c176d0d5b3f7b795e780ed1c4e92400efc8ce9cc54629b29c2"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.cc",
+      "sha256": "6a8684caa5c371bf2496937944f8acd418cb089c2414ca7064f018e575be1760"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "25e78be7a93ff1046eca5ee49545aeec964eb1dd0bbf6079544f3bbc44cd03a9"
+    },
+    {
+      "path": "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h",
+      "sha256": "5c8655ba2511796f13b72329383cdcd873d44bcd1a081d33a9080f32104e50fd"
+    },
+    {
+      "path": "chrome/browser/enterprise/data_protection/data_protection_ui_controller.cc",
+      "sha256": "223b34ee6e8561eb546cdb0a479491ff82c4c0af7dea06607a10c5097187e9fe"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/toolbar_button_provider.h",
+      "sha256": "4f71687a0ad881bc453f0d21dd60746f7fb64d79437ade8e5c162191aeeb5a92"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "sha256": "97341b579860e6cc746ac6e93e6469f23e94ba769d5ad377179f282502a8fab0"
+    }
+  ],
+  "ownerStateAccessed": false
+}
