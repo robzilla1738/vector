@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "base": "actual applied135 source incl previously integrated Toolbar owner hooks",
+  "files": [
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h",
+      "baselineSha256": "6bd4b30606010679fd7f266c33b959a289f5b76bcbb04b8fc7521310874c0b85",
+      "outputSha256": "84e5cf69fcc175f2053636a1c283d7246e7c3e5c43057bc6e1d60f099f9f1ac8"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc",
+      "baselineSha256": "2074c0a82aa2439650aa52d36ac5aad2afc7bc67e0f185484df3e0b3e8b7c8d5",
+      "outputSha256": "44eb5d5439df8ff5fc3ad38abd63d22ef788dcca5604f50b83199a9655fc3d55"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_delegate.h",
+      "baselineSha256": "69e38bd239e1b6da91b4a40243cdfaf507951d42076dd1ce9683f7ed904cfdcc",
+      "outputSha256": "a31e8945c385faf5e191ed462c3834b023238b96812782986a987266b4c90ae4"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_delegate.cc",
+      "baselineSha256": "784965aafc8b5f5421620e14a883f37bde97290cb801e7d4e197792bb5d5dd51",
+      "outputSha256": "361aa7787d7c4dc2442946f5d0840fafa7cd7a691b09ab461a53376e640381de"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineSha256": "97341b579860e6cc746ac6e93e6469f23e94ba769d5ad377179f282502a8fab0",
+      "outputSha256": "5c444edaed9dfce7c63ba24441649595c6037ae87b5c1c4a693dfa793e716105"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "545ae4daef2f590efed3f46f528f1cb0cacb8cc9040b871650101c84d2236a54",
+      "outputSha256": "d114c7f38bbd9a1a950f6c2a8b5047c74bf102c2bf611af821f6bc92190779e8"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_action_container.h",
+      "baselineSha256": "9ceebcd0043ff4a860f71e1166b7099338849e696aa46e6b5e37dc7176717108",
+      "outputSha256": "6d5f974121b31b012c18a16292b44e7d73542a360d8ca0b852a55d55699a8a26"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_action_container.cc",
+      "baselineSha256": "44b05142a52dc97f526f725facb3061299cbbd0fc87c3144ee0fda5f0af37786",
+      "outputSha256": "811ec180f65254bb04bb97520307196d199ee592d6064488dcb43050344e45ab"
+    }
+  ],
+  "sourceModified": false,
+  "compiled": false,
+  "runtimeTested": false,
+  "patchReplayVerified": true
+}

@@ -1,0 +1,169 @@
+--- a/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h
++++ b/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h
+@@ -42,6 +42,9 @@
+   void Show(views::View* anchor_view);
+   void Close();
+   bool IsShowing() const;
++  // Closing-but-not-destroyed widgets still carry the genuine source profile.
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(Profile* profile);
+ 
+   views::Widget* widget() { return widget_; }
+ 
+--- a/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc
++++ b/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc
+@@ -10,6 +10,8 @@
+ #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
+ #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_row_button.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager.h"
++#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/models/dialog_model.h"
+@@ -120,6 +122,19 @@
+   return widget_ && widget_->IsVisible();
+ }
+ 
++bool ActorTaskListBubble::CanRebindForAuxProfileSwitch() const {
++  return !widget_ && !widget_observation_.IsObserving();
++}
++
++void ActorTaskListBubble::RebindForAuxProfileSwitch(Profile* profile) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK_EQ(profile, browser_->GetProfile());
++  auto* manager = glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
++  CHECK(manager);
++  profile_ = profile;
++  task_list_ = manager->actor_task_list_bubble_rows();
++}
++
+ void ActorTaskListBubble::OnWidgetDestroyed(views::Widget* widget) {
+   widget_observation_.Reset();
+   widget_ = nullptr;
+--- a/chrome/browser/glic/browser_ui/glic_split_button_delegate.h
++++ b/chrome/browser/glic/browser_ui/glic_split_button_delegate.h
+@@ -9,6 +9,8 @@
+ #include <string>
+ 
+ #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller_delegate.h"
++
++class Profile;
+ 
+ namespace glic {
+ 
+@@ -73,6 +75,10 @@
+   void ShowActorTaskListBubble() override;
+   void CloseActorTaskListBubble() override;
+   bool IsActorTaskListBubbleShowing() override;
++  // Default refuses unknown delegate owners; real view implementations validate
++  // actual widget destruction before changing their dormant private bubble.
++  virtual bool CanRebindActorBubbleForAuxProfileSwitch();
++  virtual void RebindActorBubbleForAuxProfileSwitch(Profile* profile);
+ 
+   // Methods related to glic button visibility and glic panel visibility
+ 
+--- a/chrome/browser/glic/browser_ui/glic_split_button_delegate.cc
++++ b/chrome/browser/glic/browser_ui/glic_split_button_delegate.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
++
++#include "base/notreached.h"
+ 
+ #include <utility>
+ 
+@@ -43,6 +45,12 @@
+ bool GlicSplitButtonDelegate::IsActorTaskListBubbleShowing() {
+   return false;
+ }
++bool GlicSplitButtonDelegate::CanRebindActorBubbleForAuxProfileSwitch() {
++  return false;
++}
++void GlicSplitButtonDelegate::RebindActorBubbleForAuxProfileSwitch(Profile*) {
++  NOTREACHED();
++}
+ void GlicSplitButtonDelegate::SetGlicShowState(bool show) {}
+ void GlicSplitButtonDelegate::SetGlicPanelIsOpen(bool open) {}
+ 
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -49,6 +49,7 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ class ActorTaskListBubble;
++class Profile;
+ class AvatarToolbarButton;
+ class AvatarToolbarButtonInterface;
+ class BatterySaverButton;
+@@ -282,6 +283,8 @@
+   void ShowActorTaskListBubble() override;
+   void CloseActorTaskListBubble() override;
+   bool IsActorTaskListBubbleShowing() override;
++  bool CanRebindActorBubbleForAuxProfileSwitch() override;
++  void RebindActorBubbleForAuxProfileSwitch(Profile* profile) override;
+ 
+   // Updates glic button parenting after hiding glic actor task icon.
+   void FinalizeHideGlicActorTaskIcon();
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -1140,6 +1140,18 @@
+   return actor_task_list_bubble_ && actor_task_list_bubble_->IsShowing();
+ }
+ 
++bool ToolbarView::CanRebindActorBubbleForAuxProfileSwitch() {
++  return !actor_task_list_bubble_ ||
++         actor_task_list_bubble_->CanRebindForAuxProfileSwitch();
++}
++
++void ToolbarView::RebindActorBubbleForAuxProfileSwitch(Profile* profile) {
++  CHECK(CanRebindActorBubbleForAuxProfileSwitch());
++  if (actor_task_list_bubble_) {
++    actor_task_list_bubble_->RebindForAuxProfileSwitch(profile);
++  }
++}
++
+ void ToolbarView::FinalizeHideGlicActorTaskIcon() {
+   if (!glic_button_ || !glic_actor_task_icon_ ||
+       !glic_actor_button_container_) {
+--- a/chrome/browser/ui/views/tabs/tab_strip_action_container.h
++++ b/chrome/browser/ui/views/tabs/tab_strip_action_container.h
+@@ -31,6 +31,7 @@
+ class GlicSplitButtonController;
+ }
+ class ActorTaskListBubble;
++class Profile;
+ class BrowserWindowInterface;
+ class GlicAndActorButtonsContainer;
+ class ScopedTabStripModalUI;
+@@ -136,6 +137,8 @@
+   void ShowActorTaskListBubble() override;
+   void CloseActorTaskListBubble() override;
+   bool IsActorTaskListBubbleShowing() override;
++  bool CanRebindActorBubbleForAuxProfileSwitch() override;
++  void RebindActorBubbleForAuxProfileSwitch(Profile* profile) override;
+ 
+   views::FlexLayoutView* glic_actor_button_container();
+   void ShowGlicActorNudge(const std::u16string& nudge_label);
+--- a/chrome/browser/ui/views/tabs/tab_strip_action_container.cc
++++ b/chrome/browser/ui/views/tabs/tab_strip_action_container.cc
+@@ -513,6 +513,18 @@
+   return actor_task_list_bubble_ && actor_task_list_bubble_->IsShowing();
+ }
+ 
++bool TabStripActionContainer::CanRebindActorBubbleForAuxProfileSwitch() {
++  return !actor_task_list_bubble_ ||
++         actor_task_list_bubble_->CanRebindForAuxProfileSwitch();
++}
++
++void TabStripActionContainer::RebindActorBubbleForAuxProfileSwitch(Profile* profile) {
++  CHECK(CanRebindActorBubbleForAuxProfileSwitch());
++  if (actor_task_list_bubble_) {
++    actor_task_list_bubble_->RebindForAuxProfileSwitch(profile);
++  }
++}
++
+ void TabStripActionContainer::ShowGlicActorNudge(
+     const std::u16string& nudge_label) {
+   if (!glic_button_ || !glic_actor_task_icon_) {
