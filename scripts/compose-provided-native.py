@@ -268,6 +268,26 @@ def restore_owned_wire_contracts(copy, report):
         target.write_text(text)
 
 
+def apply_runtime_cache(copy, report):
+    if report.get('runtimeCacheEdits'):
+        return
+    # Tools mutate npm/pip caches and bytecode. The bundled runtime is a seed;
+    # the supplied lazy installer provisions the owned mutable home cache.
+    target = copy / 'chrome/browser/aux/daemon_supervisor.cc'
+    text = target.read_text()
+    report['runtimeCacheEdits'] = []
+    for find, replace in [
+        ('// Supplied agent runtime supports this explicit immutable bundle root.', '// Supplied lazy installer provisions the private mutable runtime cache.'),
+        ('paths.root.AppendASCII("agent-runtime").value();', 'canonical_home.AppendASCII("runtime").value();'),
+        ('const base::FilePath runtime = paths.root.AppendASCII("agent-runtime");', 'const base::FilePath runtime = canonical_home.AppendASCII("runtime");'),
+    ]:
+        if text.count(find) != 1:
+            raise ValueError('Mutable runtime supervisor anchor drift')
+        text = text.replace(find, replace)
+        report['runtimeCacheEdits'].append({'path': 'chrome/browser/aux/daemon_supervisor.cc', 'find': find, 'replace': replace, 'count': 1})
+    target.write_text(text)
+
+
 brand_manifest = json.loads((proposals / 'native-branding-assets/manifest.json').read_text())
 if sha((repository / 'assets/brand/arch-mark.svg').read_bytes()) != brand_manifest['canonicalSvgSha256']:
     raise ValueError('Canonical branding changed after native replacements were proposed')
@@ -294,6 +314,8 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
         report['generatedKeyProbeTarget'] = '//chrome/browser/aux:auth_scheme_probe'
 
     for name, patch, metadata in patches:
+        if name == 'native-daemon-startup-budget/native.patch':
+            apply_runtime_cache(copy, report)
         # Follow-ups pin the applied v24 GN file, including this probe target.
         # Historical patches pin the earlier file without it.
         if name == 'native-preference-consumers/native.patch':
@@ -339,21 +361,7 @@ with tempfile.TemporaryDirectory(prefix='aux-native-compose-') as directory:
 
     if not report['wireEdits']:
         restore_owned_wire_contracts(copy, report)
-    # Tools mutate npm/pip caches and bytecode. The bundled runtime is a seed;
-    # the supplied lazy installer provisions the owned mutable home cache.
-    target = copy / 'chrome/browser/aux/daemon_supervisor.cc'
-    text = target.read_text()
-    report['runtimeCacheEdits'] = []
-    for find, replace in [
-        ('// Supplied agent runtime supports this explicit immutable bundle root.', '// Supplied lazy installer provisions the private mutable runtime cache.'),
-        ('paths.root.AppendASCII("agent-runtime").value();', 'canonical_home.AppendASCII("runtime").value();'),
-        ('const base::FilePath runtime = paths.root.AppendASCII("agent-runtime");', 'const base::FilePath runtime = canonical_home.AppendASCII("runtime");'),
-    ]:
-        if text.count(find) != 1:
-            raise ValueError('Mutable runtime supervisor anchor drift')
-        text = text.replace(find, replace)
-        report['runtimeCacheEdits'].append({'path': 'chrome/browser/aux/daemon_supervisor.cc', 'find': find, 'replace': replace, 'count': 1})
-    target.write_text(text)
+    apply_runtime_cache(copy, report)
     add_generated_key_probe()
     combined = []
     for path, before in sorted(baseline.items()):

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "composition": "v158",
+  "incrementalManifestSha256": "cd829feb40d6ca73bcc9ca658654359684c0b9c08e7b862d440cef46de0ce041",
+  "originalReplayManifestSha256": "48efdf8f7ca33ca9c72c4ec566568a3096b82b558e0576f174ebd1b374a3c78f",
+  "originalReplaySteps": 167,
+  "matchingSourceOutputs": 334,
+  "artworkTargets": 23,
+  "appliedToNative": true,
+  "applyReceiptSha256": "dcc62e1a8cf020df761bf2c1099b30f74aa7b62a52a4fc5fb1c995f569b5912f",
+  "backup": "out/native-reuse-composition-v158/native-before-apply-od9_9lj4",
+  "gnGenerationExitCode": 0,
+  "gnGenerationTargets": 36072,
+  "gnGenerationElapsedSeconds": 37.234,
+  "compiled": false,
+  "runtimeAccepted": false,
+  "changes": [
+    "Default Actor/AiMode/Glic profile owner cohorts",
+    "Authenticated native group marker/audio and actual agent-tabs UI, palette, painting and fixed geometry",
+    "Actual direct-menu same-Browser async dispatch after menu teardown",
+    "Bound existing startup retry budget without faking readiness"
+  ],
+  "remaining": [
+    "Focused actual object compilation and full link",
+    "Local supplied daemon startup and native authority",
+    "Original full profile preview owner and actual disposable UI/behavior acceptance"
+  ]
+}
