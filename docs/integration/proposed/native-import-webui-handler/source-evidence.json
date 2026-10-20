@@ -1,0 +1,144 @@
+{
+  "originalImage": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "suppliedJs": {
+    "path": "native-import-webui-resources/source/app.js",
+    "sha256": "f4003a4c4b8950d69f05d6ad13d978e66879b659d2a784f0f7c5b88dc5f063f7"
+  },
+  "ranges": [
+    {
+      "label": "Chromium message argument/target chooser",
+      "start": "0x424e820",
+      "endExclusive": "0x424edc8",
+      "sha256": "f87da2984512d5a05babf202fb412c9f67984f8456594d4d74c695811779b5d0"
+    },
+    {
+      "label": "Safari message noargs/target chooser",
+      "start": "0x424edc8",
+      "endExclusive": "0x424eea4",
+      "sha256": "f56a7c33e142883a9d8205c402ab0afc53e96137bcaaebd40d0afc770822e343"
+    },
+    {
+      "label": "Firefox message noargs/target chooser",
+      "start": "0x424eea4",
+      "endExclusive": "0x424ef74",
+      "sha256": "8d2d7f458513631dfb5e6984ef43c798803e86a18173299a52cefa832b518877"
+    },
+    {
+      "label": "captured target choice/discovery/profile picker",
+      "start": "0x424f554",
+      "endExclusive": "0x424f7d4",
+      "sha256": "884907c7c42b7a9f3af52a5393caf8322effca6fdfb803cf3d0dd203c5862553"
+    },
+    {
+      "label": "Chromium selected row/started event/Start mode",
+      "start": "0x80cc4d8",
+      "endExclusive": "0x80cc6f8",
+      "sha256": "9e8329d5c09f1f28d003244335e54cc7dd4725ba378efcf0385f31fc5a4e5ab0"
+    },
+    {
+      "label": "Firefox choice/started event",
+      "start": "0x42526c0",
+      "endExclusive": "0x4252abc",
+      "sha256": "d5edb6c9747b593960a3e8b18dc89562695661d8eab7efbb9018a15c5f5b68fd"
+    },
+    {
+      "label": "Safari actual started event",
+      "start": "0x42518c0",
+      "endExclusive": "0x4251a24",
+      "sha256": "f02acb375f00207ee15f8b086bd6c186af64830813923b87ad59f9eee71141b8"
+    },
+    {
+      "label": "Safari invalid event/text",
+      "start": "0x4250f40",
+      "endExclusive": "0x4251034",
+      "sha256": "75c3e8c5ae2d128d67e42fefa0c81dd900c40729f12f3d0f026a06dc134393fb"
+    }
+  ],
+  "eventStrings": [
+    {
+      "address": "0xdb1f150",
+      "value": "browser-import-started",
+      "sha256IncludingNul": "cc2ed5e631a819b46734d09b5e10b18b9d9d5a7299acf94cb6b595283ddc68e4"
+    },
+    {
+      "address": "0xdb1f190",
+      "value": "safari-import-invalid-file",
+      "sha256IncludingNul": "8e6994631a750a05cfa3f8a725009bfbc402e3afdda5ae24a0c6971f76bac54d"
+    },
+    {
+      "address": "0xdb1f1c7",
+      "value": "browser-import-succeeded",
+      "sha256IncludingNul": "0d1f634e77402c6e8b1a37473dec06ed720d89d424ff265d45eeb3ae0e48ef72"
+    },
+    {
+      "address": "0xcf0809a",
+      "value": "This is not a valid Safari data ZIP file.",
+      "sha256IncludingNul": "d6f1f1670d21fe67a000f8e42aa40f16264638ba498cfe160fc34b7261b23e2f"
+    },
+    {
+      "address": "0xcf08032",
+      "value": "firefox",
+      "sha256IncludingNul": "0c6a6373cf31de25c525313259b674ee3db0903e4b67155f48b9131261f0b8c6"
+    },
+    {
+      "address": "0xcf080c4",
+      "value": "safari",
+      "sha256IncludingNul": "3982ef9e6fef79a579c3b90f62ee3f7c3f120da05a78d60f7a24d614f233e550"
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "evidence/chromium-start-event.asm",
+      "sha256": "41eb8e64545769381a4cb239ff7d7ba88c4d1301e3bad5d8317840eaf68cff65"
+    },
+    {
+      "path": "evidence/firefox-start-event.asm",
+      "sha256": "fd4e084a0bdf5095a8d2f87d70e1661109399522fe893358e42742eb94a9eae7"
+    },
+    {
+      "path": "evidence/handlers.asm",
+      "sha256": "62f04843e8eac9b3d4c9674d9a85831912c1ecb5a1c9844b7795adbe7137dbca"
+    },
+    {
+      "path": "evidence/invalid-event.asm",
+      "sha256": "f97aeb6c2bb7cf4a66099f1692bca0ce1a589daf822b7e38a10c9f4c384edb7d"
+    },
+    {
+      "path": "evidence/safari-start-event.asm",
+      "sha256": "c6def8e6ca818ca86c00672e78f655e41bd787131485f85115ac943ba54c0164"
+    },
+    {
+      "path": "evidence/terminal-events.asm",
+      "sha256": "2c051a3a087b78b32afb0324f9a79fb8e413cc9e11a8eeb6a17aa8377432ef19"
+    }
+  ],
+  "dependencyApiPins": [
+    {
+      "path": "native-chromium-source-capture/source/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h",
+      "sha256": "d830b5ed5f3cb206b05f83834cea2d312366f3286a9c003bd46b37fe3547a5f1"
+    },
+    {
+      "path": "native-chromium-source-capture/source/chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.h",
+      "sha256": "d9fb2da6a0d420356f6726d53e1ded31af0024cc46f897b812c87fcdc09800fb"
+    },
+    {
+      "path": "native-firefox-new-target-owner/source/chrome/browser/extensions/api/aux_browser_import/firefox_import.h",
+      "sha256": "e8dcaeffe7492f2094036480b8e108e0068df41df83948f0a136a0897192ddb5"
+    },
+    {
+      "path": "native-import-target-chooser/source/chrome/browser/ui/webui/aux_importer/import_target_chooser.h",
+      "sha256": "58947ea96e3cac7d2298a29f98ca190ab3218b07e9fb8f245b5c26d02c4130fd"
+    },
+    {
+      "path": "native-import-safari-file-picker/source/chrome/browser/ui/webui/aux_importer/safari_archive_picker.h",
+      "sha256": "ff45d80a5d59d43b883f331eab6237d2172676d18d2590dd0b04195435436c1f"
+    },
+    {
+      "path": "native-import-autofill-owner/README.md",
+      "sha256": "bc12e976b2c387d394fa4737b0d4debeebf65c9d0683954fe1b11e4283c2d964"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "countedAnchorsAndOutputHashes": "PASS",
+  "disposableApplyCheckReplay": "PASS",
+  "sharedNativeUnchanged": true,
+  "buildRun": false,
+  "runtimeRun": false,
+  "ownerSourceDataRead": false,
+  "allHandlersRequireStandaloneOwner": true,
+  "noPolling": true,
+  "noCurrentProfileSubstitutionForMode0": true
+}
