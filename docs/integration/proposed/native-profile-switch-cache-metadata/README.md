@@ -1,0 +1,7 @@
+# Suspend actual cache metadata sinks
+
+Ordered after `5ce920edf` (`native-profile-switch-sync-provider`). This followup cold-checks the actual source/target cache metadata pairs, including their real shared-tab promo state, and suspends each cache's SessionServiceTabGroupSyncObserver and MostRecentSharedTabUpdateStore before collection effects. A saved-group model cohort alone does not suppress these separate service observations: SessionServiceTabGroupSyncObserver can write SetTabGroupMetadata directly to SessionService rather than through the core's paused SessionServiceBrowserHelper.
+
+Both cache windows retain their actual original Profile/model identity on commit and on rollback. Resume uses the existing explicitly source-validated metadata Abort methods against those unchanged profiles after real collections settle. It does not call the target-empty Rebind on a populated source cache, clear existing same-profile IDs, fabricate a profile rollback, create sync events or alter the visible owner's target rebind path. Existing method guards validate actual model/profile and every inserted WebContents context before reattaching the genuine service observer.
+
+The exact provider baseline/output hashes are recorded and isolated patch replay passed. Shared native source/build, owner state and network were untouched. Runtime acceptance remains pending, including the separate provider/core nested window-destruction lifetime correction. No UI trigger is enabled here.

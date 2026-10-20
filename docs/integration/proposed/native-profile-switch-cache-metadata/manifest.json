@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "5ce920edf provider cohort output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "3a358e493915c555d09c93841882d6dbdd97cf51441f06bd11cd37bcfffd2f20",
+      "outputSha256": "9df81ae881d6fdb582afaa83ebdc8caa9b7eb4030d1f06c6c23c4ea025a1ce8f"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

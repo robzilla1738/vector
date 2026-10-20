@@ -1,0 +1,100 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -79,6 +79,8 @@
+     bool target_shared_owners = false;
+     uint64_t group_session_generation = 0;
+     uint64_t group_update_generation = 0;
++    std::array<uint64_t, 2> cache_group_session_generations{};
++    std::array<uint64_t, 2> cache_group_update_generations{};
+     uint64_t view_generation = 0;
+     uint64_t actions_generation = 0;
+     uint64_t location_generation = 0;
+@@ -97,6 +99,7 @@
+   void Commit(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+   void Finish(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+   void Abort(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
++  void ResumeCacheMetadata(std::shared_ptr<Bindings>, Browser&, Browser&);
+   base::raw_ref<BrowserWindowFeatures> features_;
+   aux::ProfileSwitchTransaction transaction;
+ };
+@@ -257,6 +260,16 @@
+           target_cache.GetTabStripModel()->SupportsTabGroups()) {
+     return false;
+   }
++  for (auto* cache : {&previous_cache, &target_cache}) {
++    auto& features = cache->GetFeatures();
++    if (bool(features.most_recent_shared_tab_update_store_) !=
++            bool(features.session_service_tab_group_sync_observer_) ||
++        (features.most_recent_shared_tab_update_store_ &&
++         (!features.most_recent_shared_tab_update_store_->CanBeginAuxProfileSwitch() ||
++          !features.session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch()))) {
++      return false;
++    }
++  }
+   const std::array<BrowserWindowInterface*, 3> windows{
+       &browser, &previous_cache, &target_cache};
+   if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(windows)) {
+@@ -308,6 +321,16 @@
+         features_->most_recent_shared_tab_update_store_->BeginAuxProfileSwitch();
+     plan->group_session_generation =
+         features_->session_service_tab_group_sync_observer_->BeginAuxProfileSwitch();
++  }
++  const std::array<Browser*, 2> caches{&previous_cache, &target_cache};
++  for (size_t index = 0; index < caches.size(); ++index) {
++    auto& features = caches[index]->GetFeatures();
++    if (features.most_recent_shared_tab_update_store_) {
++      plan->cache_group_update_generations[index] =
++          features.most_recent_shared_tab_update_store_->BeginAuxProfileSwitch();
++      plan->cache_group_session_generations[index] =
++          features.session_service_tab_group_sync_observer_->BeginAuxProfileSwitch();
++    }
+   }
+   if (features_->data_protection_ui_controller_) {
+     features_->data_protection_ui_controller_->PrepareForAuxProfileSwitch(target.get());
+@@ -536,10 +559,11 @@
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Finish(
+     std::shared_ptr<Bindings> plan,
+-    Browser&, Browser&, Browser&) {
++    Browser&, Browser& previous_cache, Browser& target_cache) {
+   CHECK(plan->group_transfer->CanFinish(false));
+   plan->group_transfer->Commit();
+   plan->group_transfer.reset();
++  ResumeCacheMetadata(plan, previous_cache, target_cache);
+   if (features_->most_recent_shared_tab_update_store_) {
+     features_->session_service_tab_group_sync_observer_->EndAuxProfileSwitch(
+         plan->group_session_generation);
+@@ -566,10 +590,11 @@
+ 
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::Abort(
+     std::shared_ptr<Bindings> plan,
+-    Browser& browser, Browser&, Browser&) {
++    Browser& browser, Browser& previous_cache, Browser& target_cache) {
+   CHECK(plan->group_transfer->CanFinish(true));
+   plan->group_transfer->Abort();
+   plan->group_transfer.reset();
++  ResumeCacheMetadata(plan, previous_cache, target_cache);
+   if (features_->most_recent_shared_tab_update_store_) {
+     features_->session_service_tab_group_sync_observer_->AbortAuxProfileSwitch(
+         plan->group_session_generation, browser.GetProfile());
+@@ -654,4 +679,20 @@
+     features_->lens_overlay_entry_point_controller_->UpdateEntryPointsState(true);
+   }
+ }
++void BrowserWindowFeatures::AuxProfileSwitchProvider::ResumeCacheMetadata(
++    std::shared_ptr<Bindings> plan,
++    Browser& previous_cache, Browser& target_cache) {
++  const std::array<Browser*, 2> caches{&previous_cache, &target_cache};
++  for (size_t index = 0; index < caches.size(); ++index) {
++    auto& features = caches[index]->GetFeatures();
++    if (features.most_recent_shared_tab_update_store_) {
++      // Cache profile identities never changed. Restore their real same-profile
++      // service observations without the target-empty rebind or clearing IDs.
++      features.session_service_tab_group_sync_observer_->AbortAuxProfileSwitch(
++          plan->cache_group_session_generations[index], caches[index]->GetProfile());
++      features.most_recent_shared_tab_update_store_->AbortAuxProfileSwitch(
++          plan->cache_group_update_generations[index], caches[index]->GetProfile());
++    }
++  }
++}
+ #endif
