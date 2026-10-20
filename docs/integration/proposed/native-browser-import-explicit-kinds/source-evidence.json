@@ -1,0 +1,40 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x4276970",
+      "endExclusive": "0x4276a98",
+      "bytesSha256": "5be6c9c0bee2f5cf1e9a096f8bf85f8a4ca3a68a94e420793cc8fbdfc0867a64",
+      "file": "explicit-data-kinds.asm",
+      "sha256": "2fb474b40f6f56ee668023c3351057b92b60128a1a15566160ce4fdb291bce4a"
+    },
+    {
+      "start": "0x427682c",
+      "endExclusive": "0x4276904",
+      "bytesSha256": "96d16c73db23cfd431ab6afd410215c22546a55761c78bd2e3ea522c121b5977",
+      "file": "atlas-alias.asm",
+      "sha256": "ac140ca64efb234b6c304eab3dab331df631d54a34404a2800e5a20c91116155"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideBrowserImport.json",
+      "sha256": "6749876d48f66adf56d406b8a2344fb26f917106f0c883227d6593e9b0bf281c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "sha256": "d96fa5a3ea251fee4d9211292b5b7cc57591f307e60968b7db636a46d2d77d67"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc",
+      "sha256": "0f670a25085e6059b6b9d16ffe8e93bebd8ef0a2c64d342be9f6d718594c9e4b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "19e9f0b24cae91aa8dfc3df71240f3255b82cb8f24ee5f184efe2d2a17e3b92c"
+    }
+  ]
+}

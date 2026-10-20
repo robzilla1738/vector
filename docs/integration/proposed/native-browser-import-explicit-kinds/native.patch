@@ -1,0 +1,21 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -225,8 +225,17 @@
+   const bool has_categories = options.Find("categories") != nullptr;
+   const auto* categories = has_kinds ? options.FindList("dataKinds")
+                                    : options.FindList("categories");
++  // Supplied4276970..6a98 admits omission (full import) or exactly one
++  // explicit kind, bookmarks. Other explicit lists are not native capabilities.
++  // The old categories alias belongs only to the actual internal recovery
++  // WebUI caller; it is not part of the supplied extension API.
++  const bool internal_categories = extension == "native-import-webui";
+   if (!source_id || (has_kinds && has_categories) ||
+-      ((has_kinds || has_categories) &&
++      (has_categories && !internal_categories) ||
++      (has_kinds && (!categories || categories->size() != 1 ||
++                    !(*categories)[0].is_string() ||
++                    (*categories)[0].GetString() != "bookmarks")) ||
++      (has_categories &&
+        (!categories || categories->empty() || categories->size() > 6))) {
+     error("Choose a source and an unambiguous supported data-kind list");
+     return;
