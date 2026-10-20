@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/chrome_pages.cc",
+      "baselineSha256": "a2b88dc636b91c68adbe46a69095dffa325245b127420be378e3f8cabb64175c",
+      "outputSha256": "23574c7f53193ceaded3d50057c103f7831338ab85dcde43ab34580fb38b7f6e"
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "03c460dec7a5dcbd2c2e55962aba533fe28b0120b6013ef72d5118f24f480c4e",
+      "outputSha256": "859e6eba1d38fa61d21d61843761dd003b44a35df14ad2058ac1ff0cce7cdffa"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+--- a/chrome/browser/ui/chrome_pages.cc
++++ b/chrome/browser/ui/chrome_pages.cc
+@@ -20,6 +20,10 @@
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
++#endif
+ #include "chrome/browser/apps/app_service/app_service_proxy.h"
+ #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+@@ -464,6 +468,13 @@
+ }
+ 
+ void ShowSettings(BrowserWindowInterface* browser) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (browser && browser->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      !browser->GetProfile()->IsOffTheRecord()) {
++    aux::OpenAccountRoute(*browser, "/settings/general");
++    return;
++  }
++#endif
+   ShowSettingsSubPage(browser, std::string());
+ }
+ 
+@@ -550,6 +561,11 @@
+ }
+ 
+ void ShowPasswordManager(BrowserWindowInterface* bwi) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux uses the user's chosen password-manager extension.
++  ShowExtensions(bwi);
++  return;
++#endif
+   base::RecordAction(UserMetricsAction("Options_ShowPasswordManager"));
+   // This code is necessary to fix a bug (crbug.com/40269361) during Password
+   // Manager Shortcut tutorial flow.
+@@ -568,6 +584,11 @@
+ }
+ 
+ void ShowPasswordManagerSettings(BrowserWindowInterface* bwi) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux uses the user's chosen password-manager extension.
++  ShowExtensions(bwi);
++  return;
++#endif
+   base::RecordAction(UserMetricsAction("Options_ShowPasswordManagerSettings"));
+   ShowSingletonTabIgnorePathOverwriteNTP(
+       bwi, GURL(kChromeUIPasswordManagerSettingsURL));
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -1400,9 +1400,13 @@
+       ShowSearchEngineSettings(webui::GetBrowserForOpeningWebUi(browser_));
+       break;
+     case IDC_VIEW_PASSWORDS:
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++      ShowExtensions(webui::GetBrowserForOpeningWebUi(browser_));
++#else
+       NavigateToManagePasswordsPage(
+           webui::GetBrowserForOpeningWebUi(browser_),
+           password_manager::ManagePasswordsReferrer::kChromeMenuItem);
++#endif
+       break;
+     case IDC_CLEAR_BROWSING_DATA: {
+       if (profile()->IsIncognitoProfile()) {
