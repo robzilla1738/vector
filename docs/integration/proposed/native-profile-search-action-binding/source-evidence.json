@@ -1,0 +1,42 @@
+{
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "reader": "40c9570..40c97b4 complete; userdata key d6e3e58 read40c95b4, weak browser+18 selected40c967c; action enabled40c964c, positive-binding branch40c9654 closes sender40c96f0, activation40c9658, invocation40c9674",
+    "caller": "407a424 partial body through407a6b0: direct call407a608 passes target extension, sender WebContents, BrowserContext and error",
+    "close": "6947b54..6947c18 complete: Mac view close-event-tracking guard then delegate CloseContents(this); matches actual155 WebContentsImpl::Close"
+  },
+  "currentSources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/api/management/management_api.cc",
+      "sha256": "af4aa73876780a4cd83187eeb0d2ad5f014b61de3ab74d2071dec43a7896a0e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/tabsearch-3k_2hgil.js",
+      "sha256": "a988898d132dc507d84efe21f86184a67e62524381c69dbef645d2203d7988aa"
+    }
+  ],
+  "asm": [
+    {
+      "path": "resolver.asm",
+      "sha256": "015f8546073404b3f6c08b5a63493bc20c19c14f5face416528fb50c7fc83c59"
+    },
+    {
+      "path": "caller.asm",
+      "sha256": "5b684e8d8b757469f90fa86bb72492202e69e9dba0a074fa80c8fe30b54d8c97"
+    },
+    {
+      "path": "web-contents-close.asm",
+      "sha256": "c5ab3b87a11195166d7295e8b48a65723a69ea65a74274546f92a79918233f50"
+    }
+  ],
+  "scope": "ManagementLaunchExtensionFunction private component entitlement + enabled target lookup remain unchanged. SearchBrowserBinding weak browser and actual BrowserContext equality remain authoritative. No global browser resolver alteration."
+}

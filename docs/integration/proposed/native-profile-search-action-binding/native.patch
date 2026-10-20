@@ -1,0 +1,64 @@
+--- a/chrome/browser/extensions/api/management/chrome_management_api_delegate.cc
++++ b/chrome/browser/extensions/api/management/chrome_management_api_delegate.cc
+@@ -9,6 +9,10 @@
+ #include <utility>
+ 
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
++#endif
+ #include "chrome/browser/extensions/browser_window_util.h"
+ #include "chrome/browser/extensions/chrome_extension_function_details.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -51,8 +55,16 @@
+     *error = "Extension is unavailable in this browser mode";
+     return false;
+   }
+-  BrowserWindowInterface* browser = sender && sender->GetBrowserContext() == context
+-      ? browser_window_util::GetBrowserForTabContents(*sender) : nullptr;
++  BrowserWindowInterface* browser = nullptr;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied search contents retain their actual weak browser association;
++  // they are not tabs and must not resolve to another last-active window.
++  const bool from_profile_search = sender &&
++      sender->GetBrowserContext() == context &&
++      (browser = GetAuxProfileSearchBrowser(sender));
++#endif
++  if (!browser && sender && sender->GetBrowserContext() == context)
++    browser = browser_window_util::GetBrowserForTabContents(*sender);
+   if (!browser) browser = browser_window_util::GetLastActiveNormalBrowserWithProfile(
+       *profile, /*include_incognito_or_parent=*/false);
+   if (!browser || browser->GetProfile() != profile || !browser->GetWindow()) {
+@@ -69,6 +81,31 @@
+     *error = "Extension has no available action in the active tab";
+     return false;
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (from_profile_search) {
++    // Original 40c9654/40c96f0 closes the actual search sender before invoking
++    // its window's action. Close runs the real WebContents delegate lifecycle.
++    auto browser_weak = browser->GetWeakPtr();
++    sender->Close();
++    browser = browser_weak.get();
++    if (!browser || browser->GetProfile() != profile || !browser->GetWindow()) {
++      *error = "Search browser is no longer available";
++      return false;
++    }
++    // A close callback may retire views or change the active contents. Never
++    // retain the old action pointer across that callback boundary.
++    container = ExtensionsContainer::From(*browser);
++    action = container ? container->GetActionForId(extension->id()) : nullptr;
++    tab = browser->GetActiveTabInterface();
++    contents = container ? container->GetActiveWebContents() : nullptr;
++    if (!contents && tab) contents = tab->GetContents();
++    if (!action || !contents || contents->GetBrowserContext() != context ||
++        !action->IsEnabled(contents)) {
++      *error = "Extension has no available action in the active tab";
++      return false;
++    }
++  }
++#endif
+   browser->GetWindow()->Activate();
+   action->ExecuteUserAction(ToolbarActionViewModel::InvocationSource::kApi);
+   return true;  // The native action was invoked; no delivery/side-effect claim.

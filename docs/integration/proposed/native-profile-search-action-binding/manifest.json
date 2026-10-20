@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual257; management delegate unchanged by search owner integration",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/management/chrome_management_api_delegate.cc",
+      "baselineSha256": "8c5aa537fd655cfe89ef94195396e4dc50872cb97fed665b7765cd111242e61a",
+      "outputSha256": "f351388fbc586daa33b4fa80873d8b97ccb34bfdca6df536c8d0f232be23d70c",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-search-action-binding/baseline/chrome/browser/extensions/api/management/chrome_management_api_delegate.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
