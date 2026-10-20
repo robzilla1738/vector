@@ -1,0 +1,9 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "start": "0x37e0cd4",
+  "stop": "0x37e0e00",
+  "bytesSha256": "b022e042ea4f4c54053022d94e8395b30d923f23bc360c60e474dc9ffa9c7ef0",
+  "extractSha256": "fea4ee1c812738b0c0a36396f20ef537387764b51328150671f91c1e841f2015",
+  "platformAdaptation": "Original directregion+5b0 VerticalTabStripScrollView containing prior VerticalTabStripView; current155 actual unpinned surface is nested under TabStripView. Restore subclass there while keeping155 content/collection ownership, and convert real descendant coordinates in presentation."
+}

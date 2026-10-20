@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "actual sharednative170; after a78 customScrollView and d2dd layout optimization (disjoint existingfile)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "baselineSha256": "d9a9e3882d159501fc34e04b4e33158d9db0d351abdba297456e1ababc1d17a4",
+      "outputSha256": "11adcc521c5930609e5ab6cabf3c5194814756ac5344df4a375f77af790f8594"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

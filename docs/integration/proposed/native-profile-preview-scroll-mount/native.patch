@@ -1,0 +1,44 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
+@@ -9,6 +9,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/scoped_multi_source_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -30,6 +32,9 @@
+ #include "chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h"
+ #include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h"
++#endif
+ #include "chrome/common/pref_names.h"
+ #include "components/prefs/pref_service.h"
+ #include "components/tabs/public/tab_collection_types.h"
+@@ -194,8 +199,20 @@
+   auto tabs_separator = std::make_unique<views::Separator>();
+   tabs_separator_ = AddChildView(std::move(tabs_separator));
+ 
+-  unpinned_tabs_scroll_view_ = AddChildView(std::make_unique<views::ScrollView>(
+-      views::ScrollView::ScrollWithLayers::kEnabled));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied region+0x5b0 owns the real vertical unpinned scrolling surface.
++  //155 places that surface under TabStripView; retain its exact live contents
++  // and collection callbacks, restoring the original ScrollView subclass only
++  // for that surface. The pinned surface is a separate original preview role.
++  if (IsVerticalOrientation(collection_node_)) {
++    unpinned_tabs_scroll_view_ =
++        AddChildView(std::make_unique<VerticalTabStripScrollView>());
++  } else
++#endif
++  {
++    unpinned_tabs_scroll_view_ = AddChildView(std::make_unique<views::ScrollView>(
++        views::ScrollView::ScrollWithLayers::kEnabled));
++  }
+   SetScrollViewProperties(unpinned_tabs_scroll_view_);
+ 
+   if (!IsVerticalOrientation(collection_node_)) {
