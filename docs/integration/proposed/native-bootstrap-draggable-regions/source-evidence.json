@@ -1,0 +1,90 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "insert-producer.asm",
+      "start": "0x3355fd8",
+      "endExclusive": "0x33564a4",
+      "bytesSha256": "e4b1441fcfe76efd9f66fb4a0bb6457bc240099ded2d5946ffbd4f5184354123",
+      "assemblySha256": "e506aecd7867b67db437474258203d279b743a837b21fdc7ecfae752751c1adb"
+    },
+    {
+      "file": "detach-producer.asm",
+      "start": "0x33555b8",
+      "endExclusive": "0x335584c",
+      "bytesSha256": "d00201440706c596b56c5222b91b9dcf1b88e685bf18804c654233505cc2c74c",
+      "assemblySha256": "44faf13e9e37c701fd81b33407acb707ce80f086aaf9222ca0c677e1de4e7a68"
+    },
+    {
+      "file": "region-update.asm",
+      "start": "0x45b3000",
+      "endExclusive": "0x45b336c",
+      "bytesSha256": "8e6440ca58fe03c5a9b46241031d7d7684a9ad47c8e651aad9374b5f45155841",
+      "assemblySha256": "cfd19ee55dc54897efc2a2e3309cab86260c7599ef40dcc64ff313de2768d3c9"
+    },
+    {
+      "file": "region-hit.asm",
+      "start": "0x45b3380",
+      "endExclusive": "0x45b3610",
+      "bytesSha256": "723019bb4ab6aaec18b8448a11b8dd3aff147c26d9dacce689a90720d1f8be05",
+      "assemblySha256": "3332c4a49d64805696033e8e3df0179d0f7d71e636b706f58c66971ec282f29f"
+    },
+    {
+      "file": "native-input-route.asm",
+      "start": "0x45b6900",
+      "endExclusive": "0x45b74a4",
+      "bytesSha256": "539f3fae3276be599dda0fa840e55ed935f592ea66e659ad40bdad0b8e7378ee",
+      "assemblySha256": "10360c54ca7038e55dfdfe79b9778ce8c8bccd19267a79cd8a7a5e394834e122"
+    },
+    {
+      "file": "owned-widget-hit.asm",
+      "start": "0xc7716bc",
+      "endExclusive": "0xc7717f8",
+      "bytesSha256": "497c1169d53aae729af790b27d1c88a0947214bd6cbfb9351abd4e9674ed2d31",
+      "assemblySha256": "d274874f2be58868abadeee557663645378f63ab5992e4f5aafdaf1466bdf06f"
+    }
+  ],
+  "decompiles": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/03355fd8.c",
+      "sha256": "5a89dad35238d97285843168020ebf1300f48055bb95f67ec6932eaf97966ed8"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/033555b8.c",
+      "sha256": "f2ca63c0b37b542e12f8dabf780b1dc8a678b7fae0a7d1ebe07fd78850b0f60b"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045b3000.c",
+      "sha256": "759a65c6342db10c08e3bc1c2c2572b8b28f1517eb5877e466173d2bb54b1685"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045b3380.c",
+      "sha256": "569b0f63dfb276c6cf62f671c503925a5fc3d7200b2e64045668a7487de6acd3"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/045b6900.c",
+      "sha256": "dc6e8466c654db7a148eefeaabe3cf4ca650855003fc75e341048de81a078671"
+    }
+  ],
+  "literalMarkers": {
+    "0xced7399": "aside-account-password-popup",
+    "0xcefd7f6": "aside-extension-popup"
+  },
+  "nativeReadOnlyReferences": [
+    {
+      "path": "content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "chrome/browser/ui/web_applications/app_browser_controller.cc",
+      "sha256": "47aa457fa3699f56ebc86a19e68a10a923c14da9b3cc84e0aacc22f8b9500d6d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "ee5b20d6171131b87688cc696b9cefe9cb4fd465117b4adb3e96434b5f348a7e"
+    }
+  ]
+}

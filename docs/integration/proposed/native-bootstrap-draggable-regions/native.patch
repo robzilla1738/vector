@@ -1,0 +1,214 @@
+--- a/chrome/browser/ui/browser.cc
++++ b/chrome/browser/ui/browser.cc
+@@ -755,6 +755,10 @@
+   DUMP_WILL_BE_CHECK(!IsDeleteScheduled());
+ 
+   SetAsDelegate(contents, true);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  BrowserWebContentsDelegate::From(this)->AuxPopupTabMembershipChanged(contents,
++                                                                     true);
++#endif
+ 
+   // Disable pinch zooming in undocked dev tools window due to poor UX.
+   if (BrowserInitState::From(this)->create_params().app_name ==
+@@ -1013,6 +1017,10 @@
+     }
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  BrowserWebContentsDelegate::From(this)->AuxPopupTabMembershipChanged(contents,
++                                                                     false);
++#endif
+   SetAsDelegate(contents, false);
+   BrowserUiController::From(this)->RemoveScheduledUpdatesFor(contents);
+ 
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
+@@ -6,6 +6,8 @@
+ #define CHROME_BROWSER_UI_BROWSER_WEB_CONTENTS_DELEGATE_BROWSER_WEB_CONTENTS_DELEGATE_H_
+ 
+ #include "base/memory/raw_ref.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/timer/elapsed_timer.h"
+ #include "content/public/browser/file_select_listener.h"
+ #include "content/public/browser/web_contents_delegate.h"
+@@ -49,6 +51,12 @@
+   static BrowserWebContentsDelegate* From(BrowserWindowInterface* browser);
+   static const BrowserWebContentsDelegate* From(
+       const BrowserWindowInterface* browser);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Original Browser insertion/detach producer for supplied popup app regions.
++  void AuxPopupTabMembershipChanged(content::WebContents* contents,
++                                   bool inserted);
++#endif
+ 
+   // content::WebContentsDelegate:
+   content::PictureInPictureResult EnterPictureInPicture(
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -37,6 +37,7 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+ #include "chrome/browser/ui/exclusive_access/keyboard_lock_controller.h"
+@@ -1038,9 +1039,31 @@
+          (browser_->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP);
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void BrowserWebContentsDelegate::AuxPopupTabMembershipChanged(
++    content::WebContents* contents, bool inserted) {
++  const auto& app_name = BrowserInitState::From(&*browser_)->create_params().app_name;
++  if (app_name != "aux-account-password-popup" &&
++      app_name != "aux-extension-popup") {
++    return;
++  }
++  // Original3355fd8 enables the renderer producer on insertion;33555b8
++  // disables it before detaching. This is not a PWA display-mode feature.
++  contents->SetSupportsDraggableRegions(inserted);
++  if (!inserted) {
++    if (auto* view = BrowserView::GetBrowserViewForBrowser(&*browser_))
++      view->ClearAuxPopupDraggableRegions(contents);
++  }
++}
++#endif
++
+ void BrowserWebContentsDelegate::DraggableRegionsChanged(
+     const std::vector<blink::mojom::DraggableRegionPtr>& regions,
+     content::WebContents* contents) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (auto* view = BrowserView::GetBrowserViewForBrowser(&*browser_))
++    view->AuxPopupDraggableRegionsChanged(regions, contents);
++#endif
+   if (app_browser_controller_) {
+     app_browser_controller_->DraggableRegionsChanged(regions, contents);
+   }
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -59,6 +59,11 @@
+ #include "ui/base/mojom/window_show_state.mojom-forward.h"
+ #include "ui/base/pointer/touch_ui_controller.h"
+ #include "ui/gfx/native_ui_types.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "third_party/blink/public/mojom/page/draggable_region.mojom-forward.h"
++#include "third_party/skia/include/core/SkRegion.h"
++#endif
++
+ #include "ui/views/controls/button/button.h"
+ #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+ #include "ui/views/interaction/view_subregion_anchor.h"
+@@ -472,6 +477,13 @@
+ 
+   // Returns whether any of the features enabling draggable regions is enabled.
+   bool AreDraggableRegionsEnabled() const;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void AuxPopupDraggableRegionsChanged(
++      const std::vector<blink::mojom::DraggableRegionPtr>& regions,
++      content::WebContents* contents);
++  void ClearAuxPopupDraggableRegions(content::WebContents* contents);
++#endif
++
+ 
+   // Returns true when the window controls overlay should be displayed instead
+   // of a full titlebar. This is only supported for desktop web apps.
+@@ -1431,6 +1443,13 @@
+       tab_strip_web_apps_reparented_state_;
+ 
+   std::unique_ptr<NativePerformance> native_performance_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool IsPointInAuxPopupDraggableRegion(const gfx::Point& point);
++  // Original BrowserView810/818: region is valid only for its actual active WC.
++  base::WeakPtr<content::WebContents> aux_popup_draggable_contents_;
++  std::optional<SkRegion> aux_popup_draggable_region_;
++#endif
++
+   mutable base::WeakPtrFactory<BrowserView> weak_ptr_factory_{this};
+ };
+ 
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
++#endif
++
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+ #include "chrome/browser/aux/ntp_prerender_service.h"
+@@ -2877,6 +2881,52 @@
+   return IsWindowControlsOverlayEnabled() || IsUnframedModeEnabled();
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void BrowserView::AuxPopupDraggableRegionsChanged(
++    const std::vector<blink::mojom::DraggableRegionPtr>& regions,
++    content::WebContents* contents) {
++  const auto& app_name = BrowserInitState::From(browser())->create_params().app_name;
++  if ((app_name != "aux-account-password-popup" &&
++       app_name != "aux-extension-popup") ||
++      !contents || contents != GetActiveWebContents()) {
++    return;
++  }
++  SkRegion result;
++  for (const auto& region : regions) {
++    result.op(SkIRect::MakeLTRB(region->bounds.x(), region->bounds.y(),
++                              region->bounds.right(), region->bounds.bottom()),
++              region->draggable ? SkRegion::kUnion_Op
++                                : SkRegion::kDifference_Op);
++  }
++  aux_popup_draggable_contents_ = contents->GetWeakPtr();
++  aux_popup_draggable_region_ = std::move(result);
++}
++
++void BrowserView::ClearAuxPopupDraggableRegions(content::WebContents* contents) {
++  if (aux_popup_draggable_contents_.get() == contents) {
++    aux_popup_draggable_contents_.reset();
++    aux_popup_draggable_region_.reset();
++  }
++}
++
++bool BrowserView::IsPointInAuxPopupDraggableRegion(const gfx::Point& point) {
++  const auto& app_name = BrowserInitState::From(browser())->create_params().app_name;
++  if ((app_name != "aux-account-password-popup" &&
++       app_name != "aux-extension-popup") ||
++      !aux_popup_draggable_region_ ||
++      !aux_popup_draggable_contents_ ||
++      aux_popup_draggable_contents_.get() != GetActiveWebContents()) {
++    return false;
++  }
++  auto* contents_view = GetActiveContentsWebView();
++  if (!contents_view) return false;
++  gfx::Point in_contents(point);
++  views::View::ConvertPointToTarget(this, contents_view, &in_contents);
++  return contents_view->GetLocalBounds().Contains(in_contents) &&
++         aux_popup_draggable_region_->contains(in_contents.x(), in_contents.y());
++}
++#endif
++
+ void BrowserView::OnFocusBookmarksToolbar() {
+   if (bookmark_bar_view_ && bookmark_bar_view_->GetVisible() &&
+       bookmark_bar_view_->GetPreferredSize().height() != 0) {
+@@ -4569,6 +4619,15 @@
+ bool BrowserView::ShouldDescendIntoChildForEventHandling(
+     gfx::NativeView child,
+     const gfx::Point& location) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  gfx::Point in_browser(location);
++  views::View::ConvertPointToTarget(GetWidget()->GetRootView(), this, &in_browser);
++  if (IsPointInAuxPopupDraggableRegion(in_browser)) {
++    // Original45b6cac routes actual region hits to the native window while
++    // preserving genuine owned-widget input (alerts, prompts, find UI).
++    return WidgetOwnedByAnchorContainsPoint(in_browser);
++  }
++#endif
+   // Window for PWAs with window-controls-overlay display override should claim
+   // mouse events that fall within the draggable region.
+   web_app::AppBrowserController* controller =
