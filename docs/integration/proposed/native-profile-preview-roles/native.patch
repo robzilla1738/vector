@@ -1,0 +1,54 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+ 
++#include <array>
+ #include <optional>
+ #include <cstdint>
+ 
+@@ -93,6 +94,10 @@
+   void EndAuxProfileSwitch(uint64_t generation);
+ 
+   views::View* GetPinnedTabEntriesViewForAuxProfilePreview();
++  // Exact original five role members, projected through155 live ownership.
++  std::array<views::View*, 5> GetAuxProfilePreviewSurfaces() const;
++  views::View* GetAuxProfilePreviewTopBoundary() const;
++
+ 
+   TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen) override;
+ 
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -74,6 +74,7 @@
+ #include "ui/views/controls/button/label_button.h"
+ #include "ui/views/controls/focus_ring.h"
+ #include "ui/views/controls/resize_area.h"
++#include "ui/views/controls/scroll_view.h"
+ #include "ui/views/controls/separator.h"
+ #include "ui/views/focus/focus_manager.h"
+ #include "ui/views/interaction/element_tracker_views.h"
+@@ -774,6 +775,22 @@
+   return pinned_tab_entries_;
+ }
+ 
++std::array<views::View*, 5>
++VerticalTabStripRegionView::GetAuxProfilePreviewSurfaces() const {
++  auto* strip = tab_strip_view();
++  // Original4658294: custom saved entries, actual pinned live container,
++  // genuine vertical scrolling surface, bottom container, bare spacer.
++  return {pinned_tab_entries_.get(),
++          strip ? strip->GetPinnedTabsContainer() : nullptr,
++          strip ? strip->unpinned_tabs_scroll_view() : nullptr,
++          bottom_button_container_.get(), gemini_button_.get()};
++}
++
++views::View* VerticalTabStripRegionView::GetAuxProfilePreviewTopBoundary() const {
++  // Original4640768 uses region+0x590 (the real top container) bottom.
++  return top_button_container_;
++}
++
+ void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+   top_button_container_->SetAgentActive(active);
+   aux_footer_->SetAgentActive(active);

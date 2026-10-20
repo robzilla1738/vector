@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "base": "exact L4 mounted pinnedleaf d2d906e4e output; afteractualcustomscrollmount43e667d40",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "22b8724e1bda007f91504e831579668f582165e86c8478efdd315dddcdacacc4",
+      "outputSha256": "fe0536a7fb1de630cc586d3f86f44eee0481e571cd5396154edb7c911ac504e8",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-pinned-tab-entry-view/source/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "1cd22262cdcc09e1b0609e6b5a11d6effcbb7eda80f6ae8757889afb19bef846",
+      "outputSha256": "b4d2261ffda598520f82251b88d8291cd10ddb2a5162ebd0372861c895caa5a3",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-pinned-tab-entry-view/source/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
