@@ -1,0 +1,47 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -671,6 +671,7 @@
+   return result;
+ }
+ 
++namespace {
+ // Supplied encrypted readers use SQLite string lengths, without Text()'s
+ // inherited 8192-byte truncation. Native SQLite/allocation limits still apply.
+ std::string EncryptedSourceText(sqlite3_stmt* statement, int column) {
+@@ -679,10 +680,10 @@
+   return !value || size < 0 ? std::string()
+                            : std::string(reinterpret_cast<const char*>(value), size);
+ }
+-base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+-                                      std::string category,
+-                                      const SourceKey& key,
+-                                      bool private_bytes = false) {
++base::DictValue ReadEncryptedCategoryImpl(const base::FilePath& profile,
++                                          std::string category,
++                                          const SourceKey& key,
++                                          bool private_bytes) {
+   base::DictValue result;
+   auto fail = [&](const char* message) {
+     result.clear();
+@@ -896,6 +897,12 @@
+   result.Set(cookies ? "cookies" : "passwords", std::move(rows));
+   return result;
+ }
++}  // namespace
++base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
++                                      std::string category,
++                                      const SourceKey& key) {
++  return ReadEncryptedCategoryImpl(profile, std::move(category), key, false);
++}
+ base::DictValue ReadAuthorizedCategory(const base::FilePath& profile,
+                                        bool firefox,
+                                        std::string source,
+@@ -971,7 +978,7 @@
+         return base::DictValue().Set(
+             "error", "Source encrypted databases changed during snapshot");
+       }
+-      data = ReadEncryptedCategory(profile, category, *key, true);
++      data = ReadEncryptedCategoryImpl(profile, category, *key, true);
+     } else {
+       data = ReadCategory(profile, false, category);
+     }
