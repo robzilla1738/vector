@@ -2,6 +2,10 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Toolbar and native material repair — 2026-10-20
+
+v527 combines one supplied 80% Agent-page tint across the toolbar with removal of competing upstream glass/tint/opaque-frame layers. The real committed renderer URL is used behind the chrome://newtab alias. The supplied native material remains unchanged; the shared tint is a platform integration inferred from supplied CSS, not recovered original native source. Native build and generated-key probe passed; packaging, approved local signing and actual visual/account-backed control checks remain pending. Owner-confirmed hover lifecycle is preserved.
+
 ## Current scoped local-signing exception — 2026-10-20
 
 The owner explicitly approved local development signing of the current password-manager-free daemon and necessary fixed helpers for this build, using the existing identity and disposable Aux scope. This overrides the ordinary no-signing rule only for this repair. No provisioning, release, notarization or owner-profile access is authorized. Current execution and real AI-control acceptance remain pending.
