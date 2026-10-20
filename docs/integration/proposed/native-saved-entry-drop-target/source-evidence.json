@@ -1,0 +1,48 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "delegate",
+      "start": "0x465fd00",
+      "stopExclusive": "0x4660f34",
+      "bytesSha256": "6267f235cf1c1de3959082f5ae02d089ea689eee71fac6431c0ae7a56671747f",
+      "asmSha256": "ca407aa7a44b1ae97b63e95022b90cc31badd7efc815976e569ef4cd21b6bfb8"
+    },
+    {
+      "name": "context-pin-dragged",
+      "start": "0x4116b58",
+      "stopExclusive": "0x4116f84",
+      "bytesSha256": "3c5e1fb0c427ed471e182a43e15a4d286536768a35072428e0517422a406a758",
+      "asmSha256": "6aa83d01bad4d3a9222cda855df6634b587f712a325d55d8481fc9a17652b7db"
+    },
+    {
+      "name": "view-suppression",
+      "start": "0x4132e90",
+      "stopExclusive": "0x4133000",
+      "bytesSha256": "b17fea16514c267b366c33d7b6ec69864f20c3f47e2cd2534a2a42f3490bf404",
+      "asmSha256": "d7a19de5db56240f3cddffccf2ca8f227d3712118abade84d7c2b8dbc7d76bc6"
+    },
+    {
+      "name": "region-routing",
+      "start": "0x465a3c0",
+      "stopExclusive": "0x465ab88",
+      "bytesSha256": "0768fa16c1ad3fe90208b352f84809d21a67ea5ad72f7af7c7e7810dfae4e768",
+      "asmSha256": "9825c020a5e7069b65c5b188a81a2ff2a547849bdc23d3d2ff5f9886a5e5e18c"
+    },
+    {
+      "name": "leaf-insertion",
+      "start": "0x4606b20",
+      "stopExclusive": "0x4606ec8",
+      "bytesSha256": "b848a0254196bf50234d1dbcc1ddf053db289b0b7d1f372448e6dc92d39dfd94",
+      "asmSha256": "c7b649728a79506bfc2d43ca654b0808fe66c853c99ace1b4a38980f1d82f933"
+    }
+  ],
+  "targetVtable": {
+    "address": "0xe508f60",
+    "bytes": 80,
+    "sha256": "f7fc3cbfd65721854a425dd42975ebfd53262900b069b3d251208c911921807e"
+  }
+}

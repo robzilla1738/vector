@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h",
+      "baselineSha256": null,
+      "outputSha256": "1713bcdf65255af65665f6050e2f364339675d3a40c5ade7f77fe7ff4b8267e9"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc",
+      "baselineSha256": null,
+      "outputSha256": "bb042dcfb51cbfd20b4d3bbf8eb3f29ceea66bcdcfdc940c273e6007c95f9ee0"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "069256b4024ba568871bebf847c80f8a7d25918772eb519548dec77f8cfe9c56",
+      "outputSha256": "adc03135ca5341887d272fbd2eda4a002065814d1e8501c1040b575b88fe1f14"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.h",
+      "baselineSha256": "3c9cbacc91d78d56ab81e774ce0021fa2ca50b7f8c7dc602fa0ae5664bcae885",
+      "outputSha256": "9d944b3029763e441bc6979c58deba9c1482b095542c73b8a79cac8941690ca8"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false
+}
