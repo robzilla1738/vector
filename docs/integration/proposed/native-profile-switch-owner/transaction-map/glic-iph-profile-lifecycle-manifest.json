@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied155 Glic Iph source",
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_iph_controller.h",
+      "baselineSha256": "a92eea2a148e59af3cf7b36857e050cbbb0a4b817bf6ae460ad2349edee8324b",
+      "outputSha256": "ed2f652dfad3a38fdb10821b3e406b40fbf9cff2b748687c5bfad41fc1407274"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_iph_controller.cc",
+      "baselineSha256": "274084cf6d7c104d206bb39ab3ee89787af7e488c8e1553a19be55aaf06fc0ca",
+      "outputSha256": "3d6676205f87f9644d319fd083aeb1eaf6c94c22e1e46b6621b924aa5f2575e7"
+    }
+  ],
+  "sourceModified": false,
+  "compiled": false,
+  "runtimeTested": false,
+  "patchReplayVerified": true
+}

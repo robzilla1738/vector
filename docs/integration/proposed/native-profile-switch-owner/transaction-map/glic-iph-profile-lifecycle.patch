@@ -1,0 +1,154 @@
+--- a/chrome/browser/glic/browser_ui/glic_iph_controller.h
++++ b/chrome/browser/glic/browser_ui/glic_iph_controller.h
+@@ -6,12 +6,14 @@
+ #define CHROME_BROWSER_GLIC_BROWSER_UI_GLIC_IPH_CONTROLLER_H_
+ 
+ #include "base/memory/raw_ref.h"
++#include "base/memory/raw_ptr.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/glic/public/glic_keyed_service.h"
+ #include "components/user_education/common/feature_promo/feature_promo_result.h"
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ class BrowserWindowInterface;
++class Profile;
+ 
+ namespace glic {
+ 
+@@ -48,6 +50,14 @@
+ 
+   void MaybeShowPromoForTest() { MaybeShowPromo(); }
+ 
++  // Cold, non-yielding window profile transaction. Queued/active promos and
++  // result callbacks belong to their genuine source profile and are not closed.
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(GlicKeyedService& service);
++  void FinishAuxProfileSwitch();
++  void AbortAuxProfileSwitch();
++
+  private:
+   void MaybeShowPromo();
+ 
+@@ -58,7 +68,11 @@
+   bool show_cta_;
+ 
+   const raw_ref<BrowserWindowInterface> window_;
+-  const raw_ref<GlicKeyedService> glic_service_;
++  raw_ref<GlicKeyedService> glic_service_;
++  raw_ptr<Profile> aux_source_profile_ = nullptr;
++  bool aux_profile_switch_prepared_ = false;
++  int aux_pending_promo_results_ = 0;
++  int aux_callback_depth_ = 0;
+ 
+   // Limit how often we check to see if a promo can be shown; this prevents
+   // hammering the feature promo system constantly.
+--- a/chrome/browser/glic/browser_ui/glic_iph_controller.cc
++++ b/chrome/browser/glic/browser_ui/glic_iph_controller.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+ 
+ #include "base/time/time.h"
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/glic/glic_warming_checks.h"
+ #include "chrome/browser/glic/host/guest_util.h"
+ #include "chrome/browser/glic/public/features.h"
+@@ -63,7 +64,65 @@
+ 
+ GlicIphController::~GlicIphController() = default;
+ 
++bool GlicIphController::CanPrepareForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
++      aux_pending_promo_results_ || glic_service_->profile() != window_->GetProfile()) {
++    return false;
++  }
++  auto* education = BrowserUserEducationInterface::From(&*window_);
++  if (!education) {
++    return false;
++  }
++  for (const auto* feature : {&feature_engagement::kIPHGlicTryItFeature,
++                             &feature_engagement::kIPHGlicPromoFeature}) {
++    if (education->IsFeaturePromoQueued(*feature) ||
++        education->IsFeaturePromoActive(*feature)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++void GlicIphController::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_source_profile_ = window_->GetProfile();
++  aux_profile_switch_prepared_ = true;
++  // Keep the physical window's existing timer and cadence, including the
++  // genuine blocked-this-instance stopped state. A tick during prepare is
++  // ignored; neither a new timer episode nor a promo result is synthesized.
++}
++
++void GlicIphController::RebindForAuxProfileSwitch(GlicKeyedService& service) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK_EQ(service.profile(), window_->GetProfile());
++  CHECK_EQ(aux_pending_promo_results_, 0);
++  glic_service_ = service;
++}
++
++void GlicIphController::FinishAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK_EQ(glic_service_->profile(), window_->GetProfile());
++  aux_profile_switch_prepared_ = false;
++  aux_source_profile_ = nullptr;
++}
++
++void GlicIphController::AbortAuxProfileSwitch() {
++  // The owner only aborts before identity commit, after source tabs return.
++  CHECK_EQ(aux_source_profile_, window_->GetProfile());
++  FinishAuxProfileSwitch();
++}
++
+ void GlicIphController::MaybeShowPromo() {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner leave(base::BindOnce(
++      [](base::WeakPtr<GlicIphController> self) {
++        if (self) {
++          --self->aux_callback_depth_;
++        }
++      }, weak_ptr_factory_.GetWeakPtr()));
+   // Determine that there is a valid active tab we could show the promo for.
+   auto* const tab = window_->GetActiveTabInterface();
+   if (!tab) {
+@@ -88,12 +147,23 @@
+                 : feature_engagement::kIPHGlicPromoFeature);
+   params.show_promo_result_callback = base::BindOnce(
+       &GlicIphController::OnShowPromoResult, weak_ptr_factory_.GetWeakPtr());
++  ++aux_pending_promo_results_;
+   BrowserUserEducationInterface::From(&*window_)->MaybeShowFeaturePromo(
+       std::move(params));
+ }
+ 
+ void GlicIphController::OnShowPromoResult(
+     user_education::FeaturePromoResult result) {
++  CHECK_GT(aux_pending_promo_results_, 0);
++  --aux_pending_promo_results_;
++  ++aux_callback_depth_;
++  auto weak = weak_ptr_factory_.GetWeakPtr();
++  base::ScopedClosureRunner leave(base::BindOnce(
++      [](base::WeakPtr<GlicIphController> self) {
++        if (self) {
++          --self->aux_callback_depth_;
++        }
++      }, weak));
+   if (result) {
+     if (base::FeatureList::IsEnabled(features::kGlicWarmOnIph)) {
+       glic_service_->TryPreload(GlicWarmingTrigger::kIph);
+@@ -101,7 +171,7 @@
+   }
+   // If there's no chance a promo could be shown in this browser window, stop
+   // trying to check.
+-  if (result.is_blocked_this_instance()) {
++  if (weak && result.is_blocked_this_instance()) {
+     show_timer_.Stop();
+   }
+ }
