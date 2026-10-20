@@ -159,12 +159,12 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
   if (applyAuthorized !== true) throw Error('Explicit copied-package handoff required');
   const plan = pinnedJson(planPath, planSha256), { cache, root } = readCache(plan.cachePath, plan.cacheSha256);
   if (plan.kind !== 'exact-native-descendant-authority-reuse' || plan.authorizedOperation !== 'copy-exact-signed-resources-and-adhoc-outer-only' || plan.appleSigningAllowed !== false || plan.keychainOperationsAllowed !== false || root !== plan.cachedResourceRoot) throw Error('Exact native descendant plan required');
+  const reviewedNativeSeals = validateNativeBundleSealReview(nativeSealReview, plan.before);
   const target = path.join(plan.packageRoot, prefix), backup = path.join(plan.output, 'fresh-unsigned-resources');
   if (resumeOverlay) {
-    if (!nativeSealReview.length) throw Error('Explicit native bundle repair review required');
+    if (!reviewedNativeSeals.length) throw Error('Explicit native bundle repair review required');
     assertSameInventory(resources(plan.before), resourceSnapshot(backup), 'Fresh unsigned backup changed');
   } else {
-    if (nativeSealReview.length) throw Error('Native repair must use separately reviewed resume');
     assertSameInventory(plan.before, developmentSnapshot(plan.packageRoot), 'Fresh package changed after review');
     const staged = path.join(path.dirname(target), '.aux-signed-resource-reuse');
     if (fs.existsSync(staged) || fs.existsSync(backup)) throw Error('Resource staging or backup already exists');
@@ -181,7 +181,7 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
   // to silently change capabilities or native code.
   const tree = await inspectProvidedSigningTree(plan.packageRoot), nativeTargets = new Set(tree.bundles.filter(bundle => bundle !== 'Aux.app' && !bundle.startsWith(prefix + '/')));
   for (const file of tree.files) if (file.kind === 'macho' && file.path !== 'Aux.app/Contents/MacOS/Aux' && !file.path.startsWith(prefix + '/')) nativeTargets.add(file.path);
-  const nativeSeals = validateNativeBundleSealReview(nativeSealReview, copied);
+  const nativeSeals = reviewedNativeSeals;
   const entitlements = path.join(plan.output, 'outer-empty.entitlements.plist');
   fs.writeFileSync(entitlements, '<?xml version="1.0"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict/></plist>\n', { flag: 'wx', mode: 0o600 });
   for (const step of nativeSeals) {

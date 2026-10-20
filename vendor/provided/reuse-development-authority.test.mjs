@@ -30,7 +30,7 @@ test('only identical unique excludedFiles records may differ in bundle order', (
   assert.throws(() => bundleExclusionOrderProof(encode(rows), encode([{ ...rows[0], extra: true }, rows[1]])));
 });
 
-test('reviewed native resume permits only exact linker bundle bytes and signature directories', () => {
+test('reviewed native initial apply and resume permit only exact linker bundle bytes and signature directories', () => {
   const framework = 'Aux.app/Contents/Frameworks/Aux Framework.framework', version = framework + '/Versions/155.0.8059.85';
   const names = ['Aux Helper (Alerts)', 'Aux Helper (Aperitif Alerts)', 'Aux Helper (Aperitif GPU)', 'Aux Helper (Aperitif Renderer)', 'Aux Helper (Aperitif)', 'Aux Helper (GPU)', 'Aux Helper (Renderer)', 'Aux Helper'];
   const review = names.map(name => ({ path: version + '/Helpers/' + name + '.app', codeRelative: version + '/Helpers/' + name + '.app/Contents/MacOS/' + name, sha256: 'a'.repeat(64), flags: ['adhoc', 'linker-signed'], entitlements: {} }));
@@ -45,6 +45,9 @@ test('reviewed native resume permits only exact linker bundle bytes and signatur
   assert.throws(() => validateNativeBundleSealReview(review.map((step, i) => i ? step : { ...step, sha256: 'changed' }), before));
   for (const leafPath of [version + '/Libraries/original.dylib', 'Aux.app/Contents/Resources/aux/original.node']) assert.throws(() => nativeResealChanges(before, after.map(leaf => leaf.path === leafPath ? { ...leaf, sha256: 'changed' } : leaf), seals));
   assert.throws(() => nativeResealChanges(before, [...after, { path: version + '/unexpected', sha256: 'extra', mode: 0o644 }], seals));
+  const source = readFileSync(new URL('./reuse-development-authority.mjs', import.meta.url), 'utf8').split('export async function applyDevelopmentResourceReuse(')[1];
+  assert.ok(source.indexOf('validateNativeBundleSealReview(nativeSealReview, plan.before)') < source.indexOf('fs.cpSync(root, staged'));
+  assert.doesNotMatch(source, /Native repair must use separately reviewed resume/);
 });
 
 test('native-only utility never re-signs Apple helpers or runs a Keychain/provisioning/authority probe', () => {
