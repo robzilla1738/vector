@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "date": "2026-10-20",
+  "status": "v522 built, packaged and launched; rejected by live behavior",
+  "reference": {
+    "app": "Aside desktop app",
+    "observed": [
+      "Expanded sidebar reaches window top",
+      "Toolbar starts beside sidebar",
+      "Collapse control at trailing edge",
+      "Plain resting omnibox search glyph, hidden while editing"
+    ],
+    "localScreenshots": "out/frame-fidelity-pass/",
+    "ownerContentCopiedToAux": false,
+    "additionalOwnerScreenshots": [
+      "Fully hidden collapsed sidebar",
+      "Floating edge-hover sidebar overlay",
+      "Full-height Agent panel beside page toolbar"
+    ]
+  },
+  "changes": [
+    "Frame layout reads actual recovered sidebar collapse/hover/retention owner",
+    "Hidden-combo Collapse placement uses recovered trailing branch",
+    "35 extracted native dark/light color values restored",
+    "Focused omnibox hides plain search glyph",
+    "Crash recovery falls back to toolbar when stock menu is hidden",
+    "Follow-up: restore both original sidebar dividers",
+    "Follow-up: remove collapsed rail and recover floating edge-hover geometry",
+    "Follow-up: restore continuous hover animation dispatch",
+    "Follow-up: scope headerless full-height panel hosting to bundled Agent"
+  ],
+  "provenance": "Supplied packaged JS/CSS and recovered native functions adapted to Chromium155; original custom C++ unavailable",
+  "composition": "v522",
+  "signingPerformed": false,
+  "normalDisposableProfile": true,
+  "fullParityAccepted": false,
+  "remaining": [
+    "Daemon-backed Chat and Settings blocked by unsigned installation-helper entitlement",
+    "Both-theme and complete product surface parity not established",
+    "Third-party password-manager desktop/native messaging compatibility not established",
+    "Native material appearance varies with effective appearance/activation; complete appearance parity not accepted"
+  ],
+  "build": {
+    "receipt": "out/native-integration/native-full-build-v522.json",
+    "sha256": "4f0d2ae7a6e929f87290244a18a4b7cd2aed556cf1cb8e6296accfa13b66585a",
+    "passed": true,
+    "generatedKeyProbePassed": true
+  },
+  "runtimeV515": {
+    "observed": [
+      "Full-height expanded sidebar with adjacent toolbar",
+      "Collapse control at trailing edge",
+      "Collapse and expand via actual controls",
+      "Address-bar focus removes plain search glyph",
+      "Address-bar URL navigation succeeded",
+      "Agent action opens genuine sidepanel.html"
+    ],
+    "failures": [
+      "Collapsed sidebar retains incorrect fixed-width rail",
+      "Disabled colors rendered red due signed literals interpreted as color IDs",
+      "Stock Chromium panel header and content-only host differ from Aside",
+      "Supplied sidepanel stalls at Reconnecting to Aux because daemon cannot initialize installation key"
+    ],
+    "userAcceptance": false
+  },
+  "hoverTiming": {
+    "revealMs": 250,
+    "retractMs": 200,
+    "opacityMs": 100,
+    "matchesRecoveredConstants": true,
+    "evidence": "docs/integration/proposed/native-hover-timing-audit/",
+    "limit": "Original cubic evaluator control points not independently decoded"
+  },
+  "runtimeV520": {
+    "observed": [
+      "Normal disposable launch",
+      "Disabled navigation icons now neutral",
+      "Collapsed page occupies full window width",
+      "Bundled Agent no longer shows stock native panel header"
+    ],
+    "failures": [
+      "Empty collapsed region still paints overflow Expand control",
+      "Vertical-tab layout still forces Agent panel below toolbar",
+      "Chat remains blocked by installation helper entitlement"
+    ],
+    "hoverObservation": "CUA edge click did not trigger reveal; click may not emit native MouseMoved, so this is not a valid hover acceptance test",
+    "userAcceptance": false
+  },
+  "runtimeV522": {
+    "observed": [
+      "Regular disposable browser launched",
+      "Recovery notice displayed without prior anchor CHECK"
+    ],
+    "failures": [
+      "Collapsed sidebar remains as empty full-width panel",
+      "Ask mode missing account-gated composer options",
+      "Activation crash in GlassFrameService theme update"
+    ],
+    "userAcceptance": false
+  }
+}

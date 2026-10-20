@@ -2,6 +2,12 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Native frame fidelity pass — 2026-10-20
+
+Live Aside desktop inspection confirmed the frame topology and control placement. The integrated repairs connect frame geometry to the actual recovered sidebar collapse/hover/retention owner, restore the original hidden-combo trailing Collapse branch, use 35 extracted native dark/light color values, remove the resting search icon backing and hide that plain glyph while editing. Crash recovery now falls back to the toolbar when the stock menu is hidden.
+
+The first v515 preview fixed expanded topology but was not accepted: it retained a collapsed rail, omitted hover animation dispatch, showed a stock Chromium Agent panel header, and exposed a translucent-color type bug. Follow-up v520 combines unsigned SkColor values, both original dividers, zero reserved collapsed width, recovered inset overlay geometry and hover dispatch, and a bundled-Agent-only headerless full-height native host. The v520 native build and generated-key probe passed. The packaged v520 live check confirmed neutral navigation colors and removal of the stock Agent header, but found a zero-width subtree painting its Expand child and vertical-tab policy still forcing the panel below the toolbar. v522 built and packaged successfully, but live collapse still left an empty panel and a native activation/theme-change crash occurred. It is rejected as fidelity acceptance. The next pass repairs the full animation state lifecycle and traces the missing AI-options account gate. This section is not acceptance. Recovered motion constants match the existing controller: 250 ms reveal, 200 ms retract and 100 ms opacity segments; original cubic evaluator control points were not independently decoded. Source provenance remains explicit: packaged UI resources are reused, while custom native functions are faithful recovered-code ports adapted to Chromium155. The owner confirmed no other original native checkout is known and authorized proceeding with these materials. See `docs/acceptance/native-frame-fidelity-pass.json`.
+
 ## Local browser implementation pass — 2026-10-20
 
 The current pass removes the shipped Vault extension/importer and built-in password UI/tooling, removes Vault/cloud setup as a condition for showing the browser, resolves actual local accounts for supplied Chat/Settings routes, and repairs native toolbar/address/sidebar behavior. The default Settings shortcut now follows the same supplied Agent route as the profile menu. Prerender and crash-restore anchors have narrow native fixes.
@@ -16,7 +22,9 @@ Owner direction, 2026-10-20: exclude the built-in Vault/password manager from Au
 
 Status: the local-browser pass excludes Vault and its nested importer from assembly, removes password settings/import onboarding and the built-in REPL/skill, disables built-in save/fill, and decouples browser/agent startup from Vault setup. Installation authentication and provider credential protection remain. Third-party extension installation/autofill and desktop companion/native messaging still require verification. No owner credentials or profiles were modified.
 
-## Current acceptance gates
+## Historical signed v498 acceptance gates
+
+The following describes the earlier signed copy only; it does not establish readiness of the current unsigned v520 preview.
 
 The owner authorized local signing on 2026-10-20. The copied signed development app is now `out/provided-candidate-v498-development-local/Aux.app`, running in the previously approved disposable Aux scope with a regular browser profile. The account startup error is resolved; the actual window shows the supplied **Sign in to Aux** onboarding page. No cloud sign-in was completed by the agent.
 

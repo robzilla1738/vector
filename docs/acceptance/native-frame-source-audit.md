@@ -1,6 +1,6 @@
 # Native frame source audit — 2026-10-20
 
-The requested exact-source replacement is blocked by missing original custom native source. No replacement UI or new build was produced in this audit.
+Historical audit of available source. The owner subsequently authorized integrating the recovered native implementation and comparing the actual Aside desktop app. Original custom C++ remains unavailable, but is no longer a prerequisite for proceeding. See the active supplied-implementation plan and native-frame fidelity proposals. No replacement UI or build was produced during this earlier audit.
 
 ## Available inputs
 
@@ -16,6 +16,6 @@ The supplied new-tab capture shows the sidebar reaching the window top and toolb
 
 Comparison artifact: `out/frame-source-comparison/index.html`; current Aux screenshot: `out/frame-source-comparison/aux-current.png`. Reference: `/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/01 Home and composer/001-new-tab-default.png`.
 
-## Required input
+## Provenance limit
 
-Original Aside native Chromium checkout or its custom patch set, particularly browser/frame layout, vertical sidebar owners, toolbar, location bar and omnibox. Without it, further native work is a binary-evidence port/reconstruction and must not be represented as direct source reuse. The user explicitly requested no further approximation. Existing preview is unchanged.
+Original Aside native Chromium checkout or its custom patch set, particularly browser/frame layout, vertical sidebar owners, toolbar, location bar and omnibox. Without it, further native work is a binary-evidence port/reconstruction and must not be represented as direct source reuse. The owner accepts faithful ports of the recovered native behavior; do not present those ports as original custom C++ source. The prior unchanged-preview status applies only to this historical audit.
