@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "base": "actual native189 read-only source",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "cd120d90e51770f0a8ede793c6606e27ef4a868812ca8157b82550a7a2d31b08",
+      "outputSha256": "8144ac1b9e5b4fec8c4de4ff99658918dc8167362802cf4ad30561ba8c552343"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "d772116e81ab7751edf0eea846f6b114f9fdb60b24030b760155bb370e6dbf3b",
+      "outputSha256": "066f577c028113d4bfd168eb26f6e30fdbbd9e157a1df4736046c18697234317"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "a276922b1de561999dfe469b1901718e81c6d98174a5818286521e3ecd039bea",
+      "outputSha256": "256705b3fac45e3b799b6e823bdbc65c342889a8b645953086bf9c830eac665b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

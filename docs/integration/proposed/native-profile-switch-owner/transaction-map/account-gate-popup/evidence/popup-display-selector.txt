@@ -1,0 +1,43 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 417f37c: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ 417f380: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ 417f384: 910043fd     	add	x29, sp, #0x10
+ 417f388: aa0003f4     	mov	x20, x0
+ 417f38c: 52800020     	mov	w0, #0x1                ; =1
+ 417f390: b4000301     	cbz	x1, 0x417f3f0 <_ChromeMain+0x417a154>
+ 417f394: f9400288     	ldr	x8, [x20]
+ 417f398: b40002c8     	cbz	x8, 0x417f3f0 <_ChromeMain+0x417a154>
+ 417f39c: aa0103f3     	mov	x19, x1
+ 417f3a0: f9402029     	ldr	x9, [x1, #0x40]
+ 417f3a4: eb08013f     	cmp	x9, x8
+ 417f3a8: 54000241     	b.ne	0x417f3f0 <_ChromeMain+0x417a154>
+ 417f3ac: b0054aa1     	adrp	x1, 0xead4000 <dyld_stub_binder+0xead4000>
+ 417f3b0: 91314021     	add	x1, x1, #0xc50
+ 417f3b4: 91056260     	add	x0, x19, #0x158
+ 417f3b8: 96fe54bd     	bl	0x1146ac <_ChromeMain+0x10f410>
+ 417f3bc: 39452008     	ldrb	w8, [x0, #0x148]
+ 417f3c0: 37000168     	tbnz	w8, #0x0, 0x417f3ec <_ChromeMain+0x417a150>
+ 417f3c4: f9402a60     	ldr	x0, [x19, #0x50]
+ 417f3c8: b4000120     	cbz	x0, 0x417f3ec <_ChromeMain+0x417a150>
+ 417f3cc: f9400a88     	ldr	x8, [x20, #0x10]
+ 417f3d0: f9400109     	ldr	x9, [x8]
+ 417f3d4: b5000049     	cbnz	x9, 0x417f3dc <_ChromeMain+0x417a140>
+ 417f3d8: f9000113     	str	x19, [x8]
+ 417f3dc: f9400008     	ldr	x8, [x0]
+ 417f3e0: f9400108     	ldr	x8, [x8]
+ 417f3e4: d63f0100     	blr	x8
+ 417f3e8: 350000a0     	cbnz	w0, 0x417f3fc <_ChromeMain+0x417a160>
+ 417f3ec: 52800020     	mov	w0, #0x1                ; =1
+ 417f3f0: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ 417f3f4: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ 417f3f8: d65f03c0     	ret
+ 417f3fc: 52800000     	mov	w0, #0x0                ; =0
+ 417f400: f9400688     	ldr	x8, [x20, #0x8]
+ 417f404: f9000113     	str	x19, [x8]
+ 417f408: 17fffffa     	b	0x417f3f0 <_ChromeMain+0x417a154>
+ 417f40c: 17fffcff     	b	0x417e808 <_ChromeMain+0x417956c>

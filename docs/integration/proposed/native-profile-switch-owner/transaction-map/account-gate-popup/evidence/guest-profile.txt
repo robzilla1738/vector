@@ -1,0 +1,51 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 417b7a0: b4000400     	cbz	x0, 0x417b820 <_ChromeMain+0x4176584>
+ 417b7a4: d10103ff     	sub	sp, sp, #0x40
+ 417b7a8: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 417b7ac: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 417b7b0: 9100c3fd     	add	x29, sp, #0x30
+ 417b7b4: aa0003f3     	mov	x19, x0
+ 417b7b8: 52800008     	mov	w8, #0x0                ; =0
+ 417b7bc: 39412009     	ldrb	w9, [x0, #0x48]
+ 417b7c0: 37000409     	tbnz	w9, #0x0, 0x417b840 <_ChromeMain+0x41765a4>
+ 417b7c4: f0056b54     	adrp	x20, 0xeee6000 <dyld_stub_binder+0xeee6000>
+ 417b7c8: f9467e80     	ldr	x0, [x20, #0xcf8]
+ 417b7cc: b40003a0     	cbz	x0, 0x417b840 <_ChromeMain+0x41765a4>
+ 417b7d0: 976290ea     	bl	0x1a1fb78 <_ChromeMain+0x1a1a8dc>
+ 417b7d4: b4000340     	cbz	x0, 0x417b83c <_ChromeMain+0x41765a0>
+ 417b7d8: f9467e80     	ldr	x0, [x20, #0xcf8]
+ 417b7dc: 976290e7     	bl	0x1a1fb78 <_ChromeMain+0x1a1a8dc>
+ 417b7e0: 9762910c     	bl	0x1a1fc10 <_ChromeMain+0x1a1a974>
+ 417b7e4: aa0003f4     	mov	x20, x0
+ 417b7e8: f9400268     	ldr	x8, [x19]
+ 417b7ec: f9401909     	ldr	x9, [x8, #0x30]
+ 417b7f0: 910023e8     	add	x8, sp, #0x8
+ 417b7f4: aa1303e0     	mov	x0, x19
+ 417b7f8: d63f0120     	blr	x9
+ 417b7fc: 910023e1     	add	x1, sp, #0x8
+ 417b800: aa1403e0     	mov	x0, x20
+ 417b804: 9762913f     	bl	0x1a1fd00 <_ChromeMain+0x1a1aa64>
+ 417b808: aa0003f3     	mov	x19, x0
+ 417b80c: 39c07fe8     	ldrsb	w8, [sp, #0x1f]
+ 417b810: 37f800c8     	tbnz	w8, #0x1f, 0x417b828 <_ChromeMain+0x417658c>
+ 417b814: b4000153     	cbz	x19, 0x417b83c <_ChromeMain+0x41765a0>
+ 417b818: 39418268     	ldrb	w8, [x19, #0x60]
+ 417b81c: 14000009     	b	0x417b840 <_ChromeMain+0x41765a4>
+ 417b820: 52800008     	mov	w8, #0x0                ; =0
+ 417b824: 1400000a     	b	0x417b84c <_ChromeMain+0x41765b0>
+ 417b828: f94007e0     	ldr	x0, [sp, #0x8]
+ 417b82c: f9400fe8     	ldr	x8, [sp, #0x18]
+ 417b830: 9240f901     	and	x1, x8, #0x7fffffffffffffff
+ 417b834: 96fa35a1     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 417b838: b5ffff13     	cbnz	x19, 0x417b818 <_ChromeMain+0x417657c>
+ 417b83c: 52800008     	mov	w8, #0x0                ; =0
+ 417b840: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+ 417b844: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+ 417b848: 910103ff     	add	sp, sp, #0x40
+ 417b84c: 12000100     	and	w0, w8, #0x1
+ 417b850: d65f03c0     	ret

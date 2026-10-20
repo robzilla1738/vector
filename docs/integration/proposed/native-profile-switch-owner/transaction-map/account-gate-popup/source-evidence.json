@@ -1,0 +1,98 @@
+{
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "files": [
+    {
+      "path": "evidence/04100b88.c",
+      "sha256": "703baff4a4c95fcff3f8fd752edec80bd9b96d1a115cae7848990cd81e55f096"
+    },
+    {
+      "path": "evidence/0410347c.c",
+      "sha256": "77f95f97ab94d49e568ead91c5312e855b245c43fd10f80c5f0bdd7a8d6b38c0"
+    },
+    {
+      "path": "evidence/0410374c.c",
+      "sha256": "b3b916e477d932e91039be07d0ca8953439006b44cfc40224e680b8a668e4c02"
+    },
+    {
+      "path": "evidence/04103b7c.c",
+      "sha256": "48b0068c0f6e0c39dc1cd6d2f19734119238b8a7f029c3023030a49255b10fa6"
+    },
+    {
+      "path": "evidence/0417a7a0.c",
+      "sha256": "ceb3992b0f11372b9b9d05aefbbf907a80560e8892897ce222c8ce979e68e58c"
+    },
+    {
+      "path": "evidence/0417a8d8.c",
+      "sha256": "c591512a4ed69315646198791e0a43b213e3695b1f92be71896ed8133acdc4c4"
+    },
+    {
+      "path": "evidence/0417aad0.c",
+      "sha256": "b75427cd50d978282aea0a2e79c4d2c4cd571bd645a395f508309dd9651a48cd"
+    },
+    {
+      "path": "evidence/0417ad48.c",
+      "sha256": "6732f96e1fd9fe904f617f75ed6cc10a9aca87ff7afe05530f4aee69a6ce966c"
+    },
+    {
+      "path": "evidence/0417b2a0.c",
+      "sha256": "817e0a70ab0493273e9b404e88b64353012d93ce2663efceb97b6712d5b317e3"
+    },
+    {
+      "path": "evidence/0417bb1c.c",
+      "sha256": "48539964fd4ca626870d293de1af3912c65799e41c9d47a4be590e8af1f4c2a7"
+    },
+    {
+      "path": "evidence/0417c5c4.c",
+      "sha256": "976a4a62e42ab7095ca0c02a74715107278172079df23d54d0895eaab2418de0"
+    },
+    {
+      "path": "evidence/0417cb38.c",
+      "sha256": "7943eff78e813ff7f972182a4c94de0cebacd2aaf0b12fa7f5ab67b5e1f44883"
+    },
+    {
+      "path": "evidence/0417d9ec.c",
+      "sha256": "3a48296fdc9074ea93360d514dd576ef389ac620f23446385b86b7e1b947e2e3"
+    },
+    {
+      "path": "evidence/0417dcdc.c",
+      "sha256": "2127e6e8a746a006bda15c00662204b71deb29d9855e85d14130a764f6126af4"
+    },
+    {
+      "path": "evidence/bootstrap-account-resolution.txt",
+      "sha256": "f1311b1d4d921d262dc39551fd91e7866a3282c6b128038ed3a66838a4c62edb"
+    },
+    {
+      "path": "evidence/bootstrap-evaluate-rea.json",
+      "sha256": "0e97d1adc8aec9fafce2eb3d33aa55fad5bcabb95b671b9a85058cc21e664291"
+    },
+    {
+      "path": "evidence/bootstrap-worker.txt",
+      "sha256": "bc41a0ace7f783f16741d6dd8cb4e0679c01e7040123f98671b3aa4352f171db"
+    },
+    {
+      "path": "evidence/guest-profile.txt",
+      "sha256": "70c903d0f189b768797b375b9da38afefff20c78bb1e303a567b91a5f8b46616"
+    },
+    {
+      "path": "evidence/popup-display-selector.txt",
+      "sha256": "4011296c3071dfa7a85c60136eb323da1685936d6c665f7914e1b39f692cbf2b"
+    },
+    {
+      "path": "evidence/popup.txt",
+      "sha256": "f777ca8fad69b8f73a3e09a0bc3219310ac92a353daae5503ccceadc1a2df4d9"
+    }
+  ],
+  "checks": {
+    "disposableThreeFileReplay": true,
+    "sharedSourceWrite": false,
+    "nativeBuild": false,
+    "targetExecution": false
+  },
+  "limitations": [
+    "UI-only incremental proposal; complete original bootstrap account reader/admission policy is separate followup.",
+    "Original native153 gates are pinned to supplied binary; newer Agent1852 continuation must preserve actual supplied UI and failures."
+  ]
+}

@@ -1,0 +1,296 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -22,7 +22,6 @@
+ #include "chrome/browser/aux/profile_state.h"
+ #include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/browser_process.h"
+-#include "chrome/browser/lifetime/application_lifetime.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+@@ -30,6 +29,9 @@
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/profiles/profile_observer.h"
+ #include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/unload_controller.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/common/pref_names.h"
+@@ -46,18 +48,13 @@
+ #include "ui/base/base_window.h"
+ #include "ui/display/display.h"
+ #include "ui/display/screen.h"
+-#include "ui/views/controls/webview/webview.h"
+-#include "ui/views/widget/widget.h"
+-#include "ui/views/widget/widget_delegate.h"
+-#include "ui/views/widget/widget_observer.h"
+ namespace aux {
+ namespace {
+ constexpr auto kBindingAnnotation = net::DefineNetworkTrafficAnnotation(
+     "aux_profile_binding",
+     R"(semantics {sender:"Aux browser profile gate" description:"Bind the actual local Chromium profile to its independently managed local Aux account before allowing browser windows." trigger:"First window for a local profile." data:"Local profile identity/path/index and ephemeral installation authorization." destination:LOCAL} policy {cookies_allowed:NO setting:"Required local Aux profile setup." policy_exception_justification:"Local browser-owned daemon only."})");
+ class ProfileGate final : public ProfileObserver,
+-                          public extensions::ExtensionRegistryObserver,
+-                          public views::WidgetObserver {
++                          public extensions::ExtensionRegistryObserver {
+  public:
+   explicit ProfileGate(
+       Profile* profile,
+@@ -79,6 +76,12 @@
+     }
+   }
+   bool has_profile() const { return profile_ != nullptr; }
++  bool owns_bootstrap(BrowserWindowInterface* browser) const {
++    return browser && bootstrap_browser_.get() == browser && profile_ &&
++           browser->GetProfile() == profile_.get() &&
++           browser->GetType() == BrowserWindowInterface::TYPE_APP_POPUP &&
++           !UnloadController::From(browser)->is_attempting_to_close_browser();
++  }
+   bool allowed() const {
+     return allowed_ && profile_ &&
+            extensions::ExtensionRegistry::Get(profile_.get())
+@@ -206,31 +209,22 @@
+         extensions::ExtensionRegistry::Get(profile_.get())
+             ->enabled_extensions()
+             .Contains(kVaultExtensionId);
+-    const bool retain_setup = AwaitingVaultSetupCompletion(state);
+-    allowed_ = state.allows_browsing() && extension_ready && !retain_setup;
++    allowed_ = state.allows_browsing() && extension_ready;
+     if (!allowed_) {
+       ClearPreload();
+       for (auto* browser : GetAllBrowserWindowInterfaces()) {
+         if (browser->GetProfile()->GetOriginalProfile() ==
+-            profile_->GetOriginalProfile()) {
++                profile_->GetOriginalProfile() &&
++            browser->GetType() == BrowserWindowInterface::TYPE_NORMAL) {
+           browser->GetWindow()->Hide();
+         }
+       }
+-      if (extension_ready && !retain_setup) {
+-        if (state.bound && state.account_id && state.local_anonymous) {
+-          // Use the original integrated Vault actors, never the cloud sign-in
+-          // splash. Setup receives the actual current PWM UUID, not a guessed
+-          // account id or a synthetic bootstrap completion record.
+-          ShowBootstrap(!state.configured && !state.pwm_account_id.empty()
+-                            ? VaultSetupURL(state)
+-                            : VaultRoute("/popup/authentication"),
+-                        state.account_id);
+-        } else {
+-          // Preserve the existing cloud sign-in/onboarding criteria and route.
+-          ShowBootstrap(GURL("chrome-extension://" +
+-                             std::string(kAgentExtensionId) + "/main.html#/"),
+-                        state.account_id);
+-        }
++      if (extension_ready) {
++        // Supplied native bootstrap delegates the real onboarding journey to
++        // the Agent; native does not choose a Vault setup/unlock route.
++        ShowBootstrap(GURL("chrome-extension://" +
++                           std::string(kAgentExtensionId) +
++                           "/main.html#/onboarding/splash"), state.account_id);
+       }
+     } else {
+       CloseBootstrap();
+@@ -249,78 +243,69 @@
+                  base::BindOnce(state.bound ? &ProfileGate::Refresh : &ProfileGate::Bind,
+                                 weak_.GetWeakPtr()));
+   }
+-  GURL VaultRoute(const std::string& route) const {
+-    return GURL("chrome-extension://" + std::string(kVaultExtensionId) +
+-                "/popup.html#" + route);
+-  }
+-  GURL VaultSetupURL(const ProfileSecurityState& state) const {
+-    return VaultRoute("/setup?pwmAccountId=" + state.pwm_account_id);
+-  }
+-  bool AwaitingVaultSetupCompletion(const ProfileSecurityState& state) const {
+-    if (!state.bound || !state.account_id || !state.local_anonymous ||
+-        !bootstrap_contents_ || bootstrap_account_id_ != state.account_id ||
+-        !route_.starts_with(VaultRoute("/setup?pwmAccountId=").spec()) ||
+-        (!state.pwm_account_id.empty() && route_ != VaultSetupURL(state).spec())) {
+-      return false;
+-    }
+-    // auth.setup unlocks before recovery save/ack. Retain that original view
+-    // until its own Finish/Open Vault journey commits the actual ready route.
+-    // This is a view-lifecycle hold, never a persisted onboarding/auth flag.
+-    const auto& current = bootstrap_contents_->GetLastCommittedURL();
+-    const auto fragment = current.ref();
+-    const auto path = fragment.substr(0, fragment.find('?'));
+-    return current.host() != kVaultExtensionId ||
+-           current.path() != "/popup.html" ||
+-           (path != "/popup/vault" && path != "/popup/vault/");
+-  }
+   void ShowBootstrap(const GURL& url, std::optional<int> account_id) {
+-    const auto route = url.spec();
+-    if (widget_ && !widget_->IsClosed() && route_ == route &&
++    if (!profile_ || profile_->IsOffTheRecord()) {
++      return;
++    }
++    if (owns_bootstrap(bootstrap_browser_.get()) && route_ == url.spec() &&
+         bootstrap_account_id_ == account_id) {
+       return;
+     }
++    auto weak = weak_.GetWeakPtr();
+     CloseBootstrap();
+-    route_ = route;
++    if (!weak || !profile_) return;
++    // Original chooses the active same-profile window, otherwise the first
++    // nonclosing same-profile window, and centers in that display's work area.
++    BrowserWindowInterface* first = nullptr;
++    BrowserWindowInterface* active = nullptr;
++    for (auto* browser : GetAllBrowserWindowInterfaces()) {
++      if (browser->GetProfile() != profile_.get() ||
++          UnloadController::From(browser)->is_attempting_to_close_browser() ||
++          BrowserInitState::From(browser)->is_aux_profile_switch_cache()) {
++        continue;
++      }
++      if (!first) first = browser;
++      if (browser->GetWindow()->IsActive()) {
++        active = browser;
++        break;
++      }
++    }
++    auto* anchor = active ? active : first;
++    auto* screen = display::Screen::Get();
++    const auto area = (anchor
++        ? screen->GetDisplayNearestWindow(anchor->GetWindow()->GetNativeWindow())
++        : screen->GetPrimaryDisplay()).work_area();
++    gfx::Rect bounds(area.CenterPoint().x() - 450,
++                     area.CenterPoint().y() - 280, 900, 560);
++    bounds.AdjustToFit(area);
++    auto params = BrowserWindowCreateParams::CreateForAppPopup(
++        "aux-account-password-popup", true, bounds, profile_.get(), true);
++    params.omit_from_session_restore = true;
++    auto* browser = CreateBrowserWindow(std::move(params));
++    if (!weak || !browser) return;
++    bootstrap_browser_ = browser->GetWeakPtr();
++    route_ = url.spec();
+     bootstrap_account_id_ = account_id;
+-    delegate_ = std::make_unique<views::WidgetDelegate>();
+-    delegate_->SetTitle(u"Aux setup");
+-    auto webview = std::make_unique<views::WebView>(profile_.get());
+-    auto* contents = webview.get();
+-    delegate_->SetContentsView(std::move(webview));
+-    widget_ = std::make_unique<views::Widget>();
+-    views::Widget::InitParams params(
+-        views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+-        views::Widget::InitParams::TYPE_WINDOW);
+-    params.delegate = delegate_.get();
+-    widget_->Init(std::move(params));
+-    widget_->AddObserver(this);
+-    auto area = display::Screen::Get()->GetPrimaryDisplay().work_area();
+-    gfx::Size size(std::min(1040, area.width()), std::min(760, area.height()));
+-    gfx::Rect bounds(size);
+-    bounds.set_origin(gfx::Point(area.CenterPoint().x() - size.width() / 2,
+-                                 area.CenterPoint().y() - size.height() / 2));
+-    widget_->SetBounds(bounds);
+-    if (initialize_tab_) {
+-      initialize_tab_.Run(contents->GetWebContents());
+-    }
+-    bootstrap_contents_ = contents->GetWebContents()->GetWeakPtr();
+-    contents->LoadInitialURL(url);
+-    widget_->Show();
+-    contents->RequestFocus();
++    auto* contents = chrome::AddAndReturnTabAt(
++        browser, url, -1, true, std::nullopt, false,
++        NavigateParams::WindowAction::kNoAction);
++    if (!weak || !bootstrap_browser_) return;
++    if (!contents) {
++      CloseBootstrap();
++      return;
++    }
++    bootstrap_contents_ = contents->GetWeakPtr();
++    // Stock browser tab creation installs the actual extension observers.
++    browser->GetWindow()->Show();
+   }
+   void CloseBootstrap() {
++    auto browser = std::move(bootstrap_browser_);
+     bootstrap_contents_.reset();
+     bootstrap_account_id_.reset();
+-    if (widget_) {
+-      widget_->RemoveObserver(this);
+-      widget_.reset();
+-    }
+-    delegate_.reset();
+     route_.clear();
+-  }
+-  void OnWidgetClosing(views::Widget*) override {
+-    if (!allowed_) {
+-      chrome::AttemptUserExit();
++    if (browser &&
++        !UnloadController::From(browser.get())->is_attempting_to_close_browser()) {
++      browser->GetWindow()->Close();
+     }
+   }
+   void OnProfileWillBeDestroyed(Profile*) override {
+@@ -362,8 +347,7 @@
+   base::WeakPtr<content::WebContents> bootstrap_contents_;
+   std::unique_ptr<network::SimpleURLLoader> loader_;
+   base::OneShotTimer timer_;
+-  std::unique_ptr<views::WidgetDelegate> delegate_;
+-  std::unique_ptr<views::Widget> widget_;
++  base::WeakPtr<BrowserWindowInterface> bootstrap_browser_;
+   base::ScopedObservation<Profile, ProfileObserver> profile_observer_{this};
+   base::ScopedObservation<extensions::ExtensionRegistry,
+                           extensions::ExtensionRegistryObserver>
+@@ -380,9 +364,10 @@
+ }
+ }  // namespace
+ bool CanShowBrowser(
+-    Profile* profile,
++    BrowserWindowInterface* browser,
+     base::RepeatingCallback<void(content::WebContents*)> initialize_tab) {
+   auto& registry = Registry();
++  Profile* profile = browser ? browser->GetProfile() : nullptr;
+   if (registry.stopping || !profile) {
+     return false;
+   }
+@@ -392,7 +377,7 @@
+     gate = std::make_unique<ProfileGate>(original, std::move(initialize_tab));
+   }
+   gate->SetInitializer(std::move(initialize_tab));
+-  return gate->allowed();
++  return gate->owns_bootstrap(browser) || gate->allowed();
+ }
+ void ShutdownProfileGates() {
+   auto& registry = Registry();
+--- a/chrome/browser/aux/profile_gate.h
++++ b/chrome/browser/aux/profile_gate.h
+@@ -4,7 +4,7 @@
+ #include <memory>
+ 
+ #include "base/functional/callback.h"
+-class Profile;
++class BrowserWindowInterface;
+ class GURL;
+ namespace content {
+ class WebContents;
+@@ -13,7 +13,7 @@
+ // UI-sequence visibility guard. First call starts authenticated binding and an
+ // asynchronous account-state read; pending and invalid state deny visibility.
+ bool CanShowBrowser(
+-    Profile* profile,
++    BrowserWindowInterface* browser,
+     base::RepeatingCallback<void(content::WebContents*)> initialize_tab = {});
+ void ShutdownProfileGates();
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -1639,7 +1639,7 @@
+   // A cached workspace owns real tabs/Views but never becomes an OS window.
+   // Its role is fixed before registration, so setup polling cannot show it.
+   if (BrowserInitState::From(browser())->is_aux_profile_switch_cache()) return;
+-  if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
++  if (!aux::CanShowBrowser(browser(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
+   aux::ScheduleNtpPrerender(browser());
+ #endif
+   // Attempts to show closed windows should no-op.
+@@ -1711,7 +1711,7 @@
+   // A cached workspace owns real tabs/Views but never becomes an OS window.
+   // Its role is fixed before registration, so setup polling cannot show it.
+   if (BrowserInitState::From(browser())->is_aux_profile_switch_cache()) return;
+-  if (!aux::CanShowBrowser(browser_->GetProfile(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
++  if (!aux::CanShowBrowser(browser(), base::BindRepeating(&extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) return;
+   aux::ScheduleNtpPrerender(browser());
+ #endif
+   if (!browser_widget_->IsVisible()) {
