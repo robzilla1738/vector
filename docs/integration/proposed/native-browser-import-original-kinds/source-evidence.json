@@ -1,0 +1,56 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "priorEvidence": {
+    "path": "native-browser-import-discovery/source-evidence.json",
+    "sha256": "47d38476a0368348ea352bf9a4dbbf1d24532c34cda03d810cf31ed190ba6518"
+  },
+  "range": {
+    "start": "0x4275b40",
+    "end": "0x4276580",
+    "sha256": "52444d9e46e7a47cd65f17a2db304d85107ce09c869baa19c71fb2750d90306d",
+    "listing": "source-descriptors.asm",
+    "listingSha256": "97a1ce0f2a88e16f0ca37cd0a52bd17258f5e96733c963b1178e7d82b7d717a7"
+  },
+  "literals": [
+    {
+      "address": "0xd9cee99",
+      "text": "history"
+    },
+    {
+      "address": "0xda1f537",
+      "text": "bookmarks"
+    },
+    {
+      "address": "0xd9cf19f",
+      "text": "passwords"
+    },
+    {
+      "address": "0xd96e5c0",
+      "text": "cookies"
+    },
+    {
+      "address": "0xd8a9369",
+      "text": "autofill"
+    },
+    {
+      "address": "0xdb23434",
+      "text": "paymentCards"
+    }
+  ],
+  "commonKinds": [
+    "history",
+    "bookmarks",
+    "passwords",
+    "cookies",
+    "autofill"
+  ],
+  "safariKinds": [
+    "history",
+    "bookmarks",
+    "passwords",
+    "paymentCards"
+  ]
+}

@@ -1,0 +1,29 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -259,15 +259,18 @@
+       source.GetDict().Set("requiresFileImport", true);
+     else
+       source.GetDict().Remove("requiresFileImport");
+-    // Original4278274 exposes this list; the supplied settings picker calls
+-    // includes() on it. Advertise only real current migrator capabilities.
++    // Preserve the supplied descriptor, independently of this port's progress.
++    // Original4275f60 declares Safari's four kinds;4276460 declares the five
++    // Chromium/Firefox kinds. This array drives the actual supplied UI.
+     base::ListValue supported;
+-    if (const auto* categories = source.GetDict().FindList("categories")) {
+-      for (const char* kind : {"history", "bookmarks", "passwords", "cookies",
+-                               "autofill"}) {
+-        if (std::ranges::find(*categories, base::Value(kind)) != categories->end())
+-          supported.Append(kind);
+-      }
++    for (const char* kind : {"history", "bookmarks", "passwords"}) {
++      supported.Append(kind);
++    }
++    if (file_import) {
++      supported.Append("paymentCards");
++    } else {
++      supported.Append("cookies");
++      supported.Append("autofill");
+     }
+     source.GetDict().Set("supportedDataKinds", std::move(supported));
+     source.GetDict().Remove("nativeFirefox");

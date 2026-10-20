@@ -1,0 +1,9 @@
+# Preserve the original import data-kind descriptors
+
+The earlier discovery correction projected supportedDataKinds from the incomplete Aux reader inventory. That made the supplied UI show a narrower product. The owner's contract says the supplied implementation wins, including its descriptor behavior; capability declarations are not a replacement definition of the completion target.
+
+Original getSources4275b40 has separate Safari, Firefox and Chromium branches. Safari4275f60–4275fd4 appends history, bookmarks, passwords, paymentCards and calls descriptor4278274 with requiresFileImport=true. Firefox42763dc falls into the same common descriptor builder as Chromium:4276460–42764f4 appends history, bookmarks, passwords, cookies, autofill with requiresFileImport=false. The exact six static string pointers and containing original assembly range are pinned. This patch restores those exact public arrays. It preserves actual source/profile admission, Atlas identity, internal reader categories and the original bookmarks-only explicit-import gate.
+
+This does not fabricate data, a successful import or an implementation for missing readers. Actual mode1 Autofill behavior, Safari payment-card restoration, Firefox and other incomplete import paths still need their original owners recovered and verified. These remain unfinished fidelity requirements. The separate mode0 profile clone is not substituted for public mode1. No runtime, profile, Keychain or OS operation is performed.
+
+The one method-only patch is against the exact secret-barrier proposal output. The verifier pins original image bytes/literals and replays the patch in a disposable tree. Root must rebase whole-file metadata after any disjoint service proposal before applying it. Compilation and UI/runtime acceptance are separate.

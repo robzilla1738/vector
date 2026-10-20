@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "parent": "native-browser-import-secret-barriers",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "0c1a100f7335d46210ac8c7aa61b278223de9f195153956658f3f16bfc4c92e6",
+      "outputSha256": "d826f3064a8bdb13422904aff7f5410a243b862e1dd46b5ac4dd3c4c1842755b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
