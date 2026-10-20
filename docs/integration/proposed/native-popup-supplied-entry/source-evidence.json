@@ -1,0 +1,123 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4594700",
+      "end": "0x4594ad0",
+      "sha256": "74895f246f80eb44ab4f7e37c674766f1928f5ceb6051082cac42046e6907dd3",
+      "listing": "manager-singleton.asm",
+      "listingSha256": "8c7cdc7a96fe56f1f0810fc3535226d57d69631a91cc857583e9b75b098ea674"
+    },
+    {
+      "start": "0x4599e90",
+      "end": "0x459a04c",
+      "sha256": "679c5e636ed2a996ee78d78a40051a57f10ab95d263adbfce5ff91cfc67f5551",
+      "listing": "shortcut-registration.asm",
+      "listingSha256": "7fc476cea9cd732d6f2d61127ac68e21c9ee873fcc77b953394e3713da25aae2"
+    },
+    {
+      "start": "0x4599800",
+      "end": "0x4599948",
+      "sha256": "6e9f194e457f7d71e4782f32d8308fa6c5189d06605bf484ec6bab546ccf6aac",
+      "listing": "shortcut-dispatch.asm",
+      "listingSha256": "2864a1e4312abdef9bfb91a30bce1de60108154268d50e82e85790536a5f85b6"
+    },
+    {
+      "start": "0x459577c",
+      "end": "0x4596560",
+      "sha256": "5a66096c933f19e3452c366862760822de676cff3bb42258f358d6317ba1c870",
+      "listing": "complete-show.asm",
+      "listingSha256": "37aff77b52af32d348160e51aae6564f6384179cdec034fea62ee7e444500ec7"
+    },
+    {
+      "start": "0x459577c",
+      "end": "0x4595858",
+      "sha256": "e444b86b0069c91fc210df826023c23c3c8aafdf22a7d4258eeb155ae7e57585",
+      "listing": "creation-reuse-branch.asm",
+      "listingSha256": "e73a8d79a36175c29917710f41e9cbf3344d4a36dba2c88a3c02953ca3cfdf46"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdec9572",
+      "hex": "6d696e69706f7075702e68746d6c00",
+      "text": "minipopup.html\u0000"
+    }
+  ],
+  "vtable": [
+    {
+      "address": "0xe504650",
+      "raw": "0x10000004599800",
+      "target": "0x4599800"
+    }
+  ],
+  "uiInputs": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/minipopup.html",
+      "sha256": "52eeee71612a84c0502bf1c81f9365645002ad05dad1387750327288d2a6c715",
+      "anchors": [
+        {
+          "text": "data-aside-surface=\"mini-popup\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "anchors": [
+        {
+          "text": "const t=It()?\"/u/$userId/sidepanel\":vt()?\"/u/$userId/minipopup\":null;",
+          "count": 1
+        },
+        {
+          "text": "throw c({to:\"/auth/sign-in\"})",
+          "count": 1
+        },
+        {
+          "text": "errorComponent:a(At,\"errorComponent\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/routes-Dk2H77zL.js",
+      "sha256": "0c78908ac7880d00a5f5db4cf33d7f2b9cf76f3796defb7bbe8c691a8e51b3b1",
+      "anchors": [
+        {
+          "text": "import{r}from\"./error-tracking-B1YG2RRM.js\";var e=r;export{e as errorComponent}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/queries-ldd77hNk.js",
+      "sha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "anchors": [
+        {
+          "text": "async function Kt(e=De){",
+          "count": 1
+        },
+        {
+          "text": "async function st(){",
+          "count": 1
+        },
+        {
+          "text": "async function Me(e=De){",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b",
+      "anchors": [
+        {
+          "text": "\"namespace\":\"asideMiniPopup\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

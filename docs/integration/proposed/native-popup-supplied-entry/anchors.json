@@ -1,0 +1,23 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+    "name": "supplied-entry-independent-of-lock-state",
+    "count": 1,
+    "before": "              const bool locked =\n                  rows.empty() ||\n                  rows[0].GetDict().FindBool(\"isLocked\").value_or(true);\n              manager.Show(locked);\n",
+    "after": "              // The supplied popup resolves real account/security state in its\n              // own surface; neither lock state selects the main-page entry.\n              manager.Show();\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+    "name": "unnamed-security-result-still-awaited",
+    "count": 1,
+    "before": "               base::ListValue rows) {\n              auto& manager = Get();\n",
+    "after": "               base::ListValue) {\n              auto& manager = Get();\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+    "name": "exact-supplied-popup-entry",
+    "count": 1,
+    "before": "  void Show(bool locked) {\n    const GURL url(\"chrome-extension://\" + std::string(aux::kAgentExtensionId) +\n                   (locked ? \"/main.html#/\" : \"/minipopup.html#/\"));\n",
+    "after": "  void Show() {\n    const GURL url(\"chrome-extension://\" + std::string(aux::kAgentExtensionId) +\n                   \"/minipopup.html#/\");\n"
+  }
+]

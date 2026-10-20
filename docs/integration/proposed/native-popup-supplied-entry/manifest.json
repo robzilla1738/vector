@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "actual411; mini-popup source unchanged since409",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "d90980366a306c3071872c8ff43060690e1d299d84cc8b593712eef3dff1d503",
+      "outputSha256": "9701e2a0c8b5a53acf4a5c14c55e276726be804c290edd56b9cb9ae733e0f289"
+    }
+  ],
+  "kind": "Restore supplied mini-popup entry; retain actual security request and ownership checks",
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

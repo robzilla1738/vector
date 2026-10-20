@@ -1,0 +1,31 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -265,22 +265,21 @@
+         aux::StateHome(), ProfileIdentity(profile),
+         base::BindOnce(
+             [](uint64_t generation, base::WeakPtr<Profile> profile,
+-               base::ListValue rows) {
++               base::ListValue) {
+               auto& manager = Get();
+               if (manager.generation_ != generation || !profile ||
+                   manager.profile_.get() != profile.get()) {
+                 return;
+               }
+-              const bool locked =
+-                  rows.empty() ||
+-                  rows[0].GetDict().FindBool("isLocked").value_or(true);
+-              manager.Show(locked);
++              // The supplied popup resolves real account/security state in its
++              // own surface; neither lock state selects the main-page entry.
++              manager.Show();
+             },
+             generation, profile->GetWeakPtr()));
+   }
+-  void Show(bool locked) {
++  void Show() {
+     const GURL url("chrome-extension://" + std::string(aux::kAgentExtensionId) +
+-                   (locked ? "/main.html#/" : "/minipopup.html#/"));
++                   "/minipopup.html#/");
+     if (!widget_ || widget_->IsClosed()) {
+       DestroyWindows();
+       delegate_ = std::make_unique<views::WidgetDelegate>();
