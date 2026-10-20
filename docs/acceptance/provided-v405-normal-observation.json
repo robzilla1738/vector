@@ -1,0 +1,177 @@
+{
+  "processProof": [
+    {
+      "pid": 29437,
+      "launcher": 29432,
+      "lineage": [
+        29437,
+        29435,
+        29432,
+        29430,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v405-local/Aux.app/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v405-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    29437
+  ],
+  "windows": [
+    {
+      "pid": 29437,
+      "windowId": 32502,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32501,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32500,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32499,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32497,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32496,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32495,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 730.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32494,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 730.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32498,
+      "title": "Aux",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 414.0,
+        "y": 255.0,
+        "width": 900.0,
+        "height": 560.0
+      }
+    },
+    {
+      "pid": 29437,
+      "windowId": 32493,
+      "title": "about:blank",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v405",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "profile": "disposable normal profile",
+  "observed": [
+    "Account popup shows rounded window with hidden traffic lights.",
+    "Supplied error surface reports Unable to resolve Chromium profile account."
+  ],
+  "screenshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v405-normal-window.png",
+  "screenshotSha256": "40363dcc173c526cceb03acefd9e7c11c9d5f09bd2ee46fbbca859770406675d",
+  "launcherPid": 29432,
+  "guardianPid": 29435,
+  "browserPid": 29437,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-Hy2Jb3",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false,
+  "nativeRuntimeAcceptance": false
+}

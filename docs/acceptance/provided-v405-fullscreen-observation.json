@@ -1,0 +1,204 @@
+{
+  "processProof": [
+    {
+      "pid": 28974,
+      "launcher": 28971,
+      "lineage": [
+        28974,
+        28972,
+        28971,
+        28969,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v405-local/Aux.app/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v405-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    28974
+  ],
+  "windows": [
+    {
+      "pid": 28974,
+      "windowId": 32488,
+      "title": "",
+      "onscreen": false,
+      "layer": 999,
+      "bounds": {
+        "x": 680.0,
+        "y": 45.0,
+        "width": 368.0,
+        "height": 50.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32477,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32475,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32474,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32473,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32472,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32471,
+      "title": "",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": -79.0,
+        "width": 1446.0,
+        "height": 47.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32470,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 413.0,
+        "y": -94.0,
+        "width": 1142.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32469,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 413.0,
+        "y": -94.0,
+        "width": 1142.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32468,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 33.0,
+        "width": 1728.0,
+        "height": 1084.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32476,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 28974,
+      "windowId": 32480,
+      "title": "",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 33.0,
+        "width": 1728.0,
+        "height": 115.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v405",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "profile": "disposable incognito fullscreen profile",
+  "observed": [
+    "Navigation starts to the right of the sidebar after the supplied immersive inset change.",
+    "Right toolbar appears clipped in the main-window capture; native hosting bounds versus capture behavior requires source diagnosis.",
+    "The vertical combo no longer creates the stock Tab Search button, matching the supplied constructor selection."
+  ],
+  "screenshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v405-fullscreen-window.png",
+  "screenshotSha256": "c73e985f0b823c2c16df83d9d89af713c0d12b9cbc983367eaae1ea95098a0c8",
+  "launcherPid": 28971,
+  "guardianPid": 28972,
+  "browserPid": 28974,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-HoYUQH",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false,
+  "nativeRuntimeAcceptance": false
+}
