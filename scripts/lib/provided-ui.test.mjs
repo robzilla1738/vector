@@ -103,6 +103,17 @@ test('pinned supplied UI stages deterministically and rejects unreported adaptat
         ['--check', join(temporary, 'first', component, smallMarkPath)],
         { encoding: 'utf8' });
       assert.equal(smallSyntax.status, 0, smallSyntax.stderr);
+      if (component === 'agent') {
+        for (const path of ['assets/splash-D666ivBP.js', 'assets/tool-definition-registry-Cc6FCFb2.js', 'remix.js']) {
+          const target = join(temporary, 'first', component, path);
+          const output = await readFile(target, 'utf8');
+          assert.ok(!output.includes('M19.556 4.74023'));
+          for (const geometry of (await readAuxMark()).paths)
+            assert.ok(output.includes(JSON.stringify(geometry)));
+          const syntax = spawnSync(process.execPath, ['--check', target], { encoding: 'utf8' });
+          assert.equal(syntax.status, 0, syntax.stderr);
+        }
+      }
     }
     await assert.rejects(
       stageProvidedUi({

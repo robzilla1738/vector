@@ -24,6 +24,7 @@ const smallMarkFiles = {
   vault: 'assets/popup-MxHiJ2Et.js',
 };
 const smallMark = /(\(0,(\w+)\.jsx\)\("svg",\{viewBox:"0 0 24 24",fill:"none",xmlns:"http:\/\/www\.w3\.org\/2000\/svg",width:\w+,height:\w+,"aria-hidden":\w+,focusable:"false",\.\.\.\w+,)children:\(0,\2\.jsx\)\("path",\{fillRule:"evenodd",clipRule:"evenodd",d:"M12 0\.798752C18\.0061[^"\n]+",fill:"currentColor"\}\)/g;
+const wordmark = /(\w+=\w+=>\(0,(\w+)\.jsxs\)\("svg",\{width:108,height:40,viewBox:"0 0 108 40",fill:"none",xmlns:"http:\/\/www\.w3\.org\/2000\/svg",className:"-ml-1 h-9",\.\.\.\w+,children:)\[\(0,\2\.jsx\)\("path",\{fillRule:"evenodd",clipRule:"evenodd",d:"M19\.556 4\.74023[\s\S]*?\]\}\)/g;
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const extensionId = (key) =>
   createHash('sha256')
@@ -254,6 +255,52 @@ export async function stageProvidedUi({
               replace: `${match[1].replace('viewBox:"0 0 24 24"', 'viewBox:"0 0 1024 1024"')}children:${auxMarkReactChildren(match[2], mark, 1)}`,
               count: 1,
             };
+            text = apply(text, anchor);
+            anchors.push(anchor);
+          }
+          const brandEdits = [];
+          if (component === 'agent' && file.path === 'assets/splash-D666ivBP.js') {
+            const matches = [...text.matchAll(wordmark)];
+            if (matches.length !== 1) throw new Error('Supplied wordmark anchor changed');
+            const match = matches[0], runtime = match[2];
+            brandEdits.push({
+              find: match[0],
+              replace: `${match[1]}[(0,${runtime}.jsxs)("g",{transform:"scale(0.0390625)",children:${auxMarkReactChildren(runtime, mark, 1)}}),(0,${runtime}.jsx)("text",{x:44,y:29,className:"font-display",fontSize:28,fontWeight:450,fill:"currentColor",children:"Aux"})]})`,
+            });
+          }
+          if (component === 'agent' && ['assets/tool-definition-registry-Cc6FCFb2.js', 'remix.js'].includes(file.path)) {
+            const originalPath = text.match(/"M19\.556 4\.74023[^"\n]+"/g);
+            if (originalPath?.length !== 1) throw new Error(`Supplied embedded mark anchor changed: ${file.path}`);
+            brandEdits.push(
+              { find: originalPath[0], replace: JSON.stringify(mark.paths[0]) },
+              { find: '"4.74 4.74 29.63 30.52"', replace: '"0 0 1024 1024"' },
+            );
+            if (file.path === 'remix.js') {
+              const original = text.match(/function A\(\) \{[\s\S]*?\n\}/g);
+              if (original?.length !== 1) throw new Error('Supplied remix mark constructor changed');
+              brandEdits.push({ find: original[0], replace: `function A() {
+  const e = document.createElementNS(g, "svg");
+  e.setAttribute("width", "16"), e.setAttribute("height", "16"), e.setAttribute("viewBox", q), e.setAttribute("aria-hidden", "true"), e.setAttribute("focusable", "false");
+  const defs = document.createElementNS(g, "defs"), clip = document.createElementNS(g, "clipPath"), rect = document.createElementNS(g, "rect"), group = document.createElementNS(g, "g");
+  clip.setAttribute("id", ${JSON.stringify(mark.clipId)});
+  rect.setAttribute("width", ${JSON.stringify(String(mark.clipWidth))}), rect.setAttribute("height", ${JSON.stringify(String(mark.clipHeight))});
+  clip.append(rect), defs.append(clip);
+  group.setAttribute("transform", ${JSON.stringify(mark.transform)}), group.setAttribute("clip-path", ${JSON.stringify(`url(#${mark.clipId})`)});
+  for (const d of [M, ${JSON.stringify(mark.paths[1])}]) {
+    const path = document.createElementNS(g, "path");
+    path.setAttribute("fill", "currentColor"), path.setAttribute("d", d), group.append(path);
+  }
+  return e.append(defs, group), e;
+}` });
+            } else {
+              brandEdits.push({
+                find: 'children:(0,p.jsx)("path",{clipRule:"evenodd",d:Sp,fill:"currentColor",fillRule:"evenodd"})',
+                replace: `children:${auxMarkReactChildren('p', mark, 1)}`,
+              });
+            }
+          }
+          for (const edit of brandEdits) {
+            const anchor = { kind: 'branding', ...edit, count: 1 };
             text = apply(text, anchor);
             anchors.push(anchor);
           }
