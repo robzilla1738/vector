@@ -1,0 +1,50 @@
+--- a/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
++++ b/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
+@@ -50,8 +50,8 @@
+         pins_(&pins),
+         outer_scroll_(&outer_scroll),
+         live_pins_(live_pins),
++        preview_(&preview),
+         admission_(admission.GetWeakPtr()),
+-        preview_(&preview),
+         hint_(region) {
+     CHECK(profile_ && tab_model_ && Bookmarks());
+     CHECK(preview.parent() == &region);
+@@ -133,27 +133,30 @@
+   const bookmarks::BookmarkNode* candidate() const {
+     if (!Current() || !candidate_id_)
+       return nullptr;
+-    const auto* node = Bookmarks()->FindNode(*candidate_id_);
++    const auto* node =
++        static_cast<const VerticalTabBookmarksView*>(bookmarks_.view())
++            ->FindNode(*candidate_id_);
+     return node && node->uuid() == candidate_uuid_ ? node : nullptr;
+   }
+ 
+  private:
+   bool Current() const {
+     return !retired_ && browser_ && region_.view() && section_.view() &&
+-           Bookmarks() && Pins() && outer_scroll_.view() && preview_.view() &&
+-           admission_ && browser_->GetProfile() == profile_ &&
++           bookmarks_.view() && pins_.view() && outer_scroll_.view() &&
++           preview_.view() && admission_ &&
++           browser_->GetProfile() == profile_ &&
+            browser_->GetTabStripModel() == tab_model_;
+   }
+-  VerticalTabBookmarksView* Bookmarks() const {
++  VerticalTabBookmarksView* Bookmarks() {
+     return static_cast<VerticalTabBookmarksView*>(bookmarks_.view());
+   }
+-  VerticalPinnedTabEntriesView* Pins() const {
++  VerticalPinnedTabEntriesView* Pins() {
+     return static_cast<VerticalPinnedTabEntriesView*>(pins_.view());
+   }
+-  AuxBookmarksSection* Section() const {
++  AuxBookmarksSection* Section() {
+     return static_cast<AuxBookmarksSection*>(section_.view());
+   }
+-  CrossSectionDragPreview* Preview() const {
++  CrossSectionDragPreview* Preview() {
+     return static_cast<CrossSectionDragPreview*>(preview_.view());
+   }
+   void HidePreview() {

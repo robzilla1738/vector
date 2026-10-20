@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "actual377 nonvoid-adapted coordinator; exact current applied baseline",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc",
+      "baselineSha256": "e5ad4dd859b538905210ee4e4883960e40313cd14cb4d802a92e9e64e4b060d9",
+      "outputSha256": "c546a0901e8b92d8a08c4b1d502ef69c56312cab9f7aba394fe3257c5d6ed182",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,11 @@
+{
+  "nativeInputSha256": "e5ad4dd859b538905210ee4e4883960e40313cd14cb4d802a92e9e64e4b060d9",
+  "apiSha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692",
+  "buildLogSha256": "6c1eac73464619f54ac7570da502b476a5f7f93429c860e908a051c8dfd19178",
+  "changes": {
+    "initializerOrder": 1,
+    "readOnlyCandidateLookup": 1,
+    "readOnlySurvivalChecks": 1,
+    "mutableAccessorQualifiers": 4
+  }
+}
