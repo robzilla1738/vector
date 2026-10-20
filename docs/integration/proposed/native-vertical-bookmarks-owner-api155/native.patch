@@ -1,0 +1,289 @@
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
+@@ -15,6 +15,7 @@
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/strings/string_util.h"
+@@ -178,11 +179,11 @@
+             *browser.GetProfile()->GetPrefs(),
+             base::BindRepeating(&Impl::RequestRebuild, base::Unretained(this))),
+         height_animation_(this) {
+-    view_.SetUseContentsPreferredSize(true);
+-    view_.SetHorizontalScrollBarMode(
++    view_->SetUseContentsPreferredSize(true);
++    view_->SetHorizontalScrollBarMode(
+         views::ScrollView::ScrollBarMode::kDisabled);
+-    view_.SetBackgroundColor(std::nullopt);
+-    view_.SetVerticalScrollBar(
++    view_->SetBackgroundColor(std::nullopt);
++    view_->SetVerticalScrollBar(
+         std::make_unique<VerticalTabStripScrollBar>(state));
+     auto contents = std::make_unique<views::View>();
+     auto* layout =
+@@ -192,7 +193,7 @@
+     layout->set_cross_axis_alignment(
+         views::BoxLayout::CrossAxisAlignment::kStretch);
+     layout->SetCollapseMarginsSpacing(true);
+-    contents_ = view_.SetContents(std::move(contents));
++    contents_ = view_->SetContents(std::move(contents));
+     bounds_ = std::make_unique<views::BoundsAnimator>(contents_, true);
+     bounds_->set_tween_type(
+         gfx::Tween::Type::EASE_IN_OUT);  // Original quadratic source branch7.
+@@ -231,7 +232,7 @@
+     return nullptr;
+   }
+   bool ScopeCurrent() const {
+-    return !retired_ && browser_.GetProfile() == profile_;
++    return !retired_ && browser_->GetProfile() == profile_;
+   }
+   bool retired_ = false;
+   std::optional<int> LiveIndex(const Node& node) const;
+@@ -265,7 +266,8 @@
+   void QueueNavigation(const Node& node) {
+     if (!node.is_url() || !node.url().is_valid())
+       return;
+-    pending_navigation_.push_back({node.id(), node.url(), node.url().host()});
++    pending_navigation_.push_back(
++        {node.id(), node.url(), std::string(node.url().host())});
+   }
+   bool SetProjection(bool active,
+                      gfx::Point point,
+@@ -342,10 +344,10 @@
+   bool GetContextMenuAccelerator(int command,
+                                  ui::Accelerator* accelerator) override {
+     int browser_command;
+-    return view_.GetWidget() &&
++    return view_->GetWidget() &&
+            TabStripModel::ContextMenuCommandToBrowserCommand(
+-               command, &browser_command) &&
+-           view_.GetWidget()->GetAccelerator(browser_command, accelerator);
++               command, &browser_.get() command) &&
++           view_->GetWidget()->GetAccelerator(browser_command, accelerator);
+   }
+   MenuState folder_menu_, url_menu_;
+   std::unique_ptr<TabContextMenuController> tab_menu_;
+@@ -422,9 +424,9 @@
+   void OnBoundsAnimatorDone(views::BoundsAnimator* animator) override {
+     if (animator != bounds_.get())
+       return;
+-    for (auto* row : outgoing_)
++    for (const auto& row : outgoing_)
+       if (row->parent() == contents_)
+-        contents_->RemoveChildViewT(row);
++        contents_->RemoveChildViewT(row.get());
+     outgoing_.clear();
+     bounds_animating_ = false;
+     MaybeClearPreferredHeight();
+@@ -433,7 +435,7 @@
+     if (!bounds_animating_ && !height_animating_ && !dragging_) {
+       contents_->SetPreferredSize(std::nullopt);
+       contents_->InvalidateLayout();
+-      view_.PreferredSizeChanged();
++      view_->PreferredSizeChanged();
+     }
+   }
+   void BookmarkRowPressed(VerticalBookmarkRowView&,
+@@ -471,8 +473,8 @@
+                  : std::nullopt;
+   }
+ 
+-  VerticalTabBookmarksView& view_;
+-  BrowserWindowInterface& browser_;
++  const raw_ref<VerticalTabBookmarksView> view_;
++  const raw_ref<BrowserWindowInterface> browser_;
+   const raw_ptr<Profile> profile_;
+   raw_ptr<TabStripModel> tabs_;
+   raw_ptr<TabHoverCardController> hover_;
+@@ -614,7 +616,7 @@
+   }
+   const bool present = bookmark_model_ && bookmark_model_->loaded() &&
+                        (!rows_.empty() || !folders_only_);
+-  view_.SetVisible(present);
++  view_->SetVisible(present);
+   if (present != has_contents_) {
+     has_contents_ = present;
+     const auto weak = weak_.GetWeakPtr();
+@@ -631,7 +633,7 @@
+   contents_->DeprecatedLayoutImmediately();
+   if (!animate || old_bounds.empty()) {
+     contents_->InvalidateLayout();
+-    view_.PreferredSizeChanged();
++    view_->PreferredSizeChanged();
+     return;
+   }
+   bounds_animating_ = false;
+@@ -681,7 +683,7 @@
+     height_animation_.Show();
+   }
+   MaybeClearPreferredHeight();
+-  view_.PreferredSizeChanged();
++  view_->PreferredSizeChanged();
+   contents_->SchedulePaint();
+ }
+ void VerticalTabBookmarksView::Impl::UpdateHeight() {
+@@ -695,7 +697,7 @@
+       std::clamp(interpolated, 0.0, double(std::numeric_limits<int>::max())));
+   contents_->SetPreferredSize(gfx::Size(height_width_, height));
+   contents_->InvalidateLayout();
+-  view_.PreferredSizeChanged();
++  view_->PreferredSizeChanged();
+ }
+ std::optional<int> VerticalTabBookmarksView::Impl::LiveIndex(
+     const Node& node) const {
+@@ -777,7 +779,7 @@
+     }
+     disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+   }
+-  NavigateParams params(&browser_, node.url(),
++  NavigateParams params(&browser_.get(), node.url(),
+                         ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+   params.disposition = disposition;
+   params.window_action = NavigateParams::WindowAction::kShowWindow;
+@@ -850,7 +852,7 @@
+   valid_drop_ = false;
+   MaybeClearPreferredHeight();
+   contents_->InvalidateLayout();
+-  view_.PreferredSizeChanged();
++  view_->PreferredSizeChanged();
+   contents_->SchedulePaint();
+ }
+ void VerticalTabBookmarksView::Impl::ClearDrag(bool animate, bool finish) {
+@@ -1063,8 +1065,8 @@
+     finished_.Run();
+   if (!weak)
+     return true;
+-  const gfx::Point in_view = PointIn(row, view_, event);
+-  if (delta.x() > 18 && drag_node_->is_url() && in_view.x() >= view_.width()) {
++  const gfx::Point in_view = PointIn(row, view_.get(), event);
++  if (delta.x() > 18 && drag_node_->is_url() && in_view.x() >= view_->width()) {
+     ResetNonDraggedBounds();
+     SetProjection(true, ScreenPoint(row, event), Title(*drag_node_), true);
+     return true;
+@@ -1106,7 +1108,7 @@
+     return false;
+   }
+   const gfx::Point point = PointIn(row, *contents_, event);
+-  const gfx::Point in_view = PointIn(row, view_, event);
++  const gfx::Point in_view = PointIn(row, view_.get(), event);
+   bool accepted = false;
+   if (node->is_url() && begin_drag_) {
+     accepted =
+@@ -1129,7 +1131,7 @@
+   if (!weak)
+     return true;
+   if ((projection_detached || (point.x() > press_point_.x() + 18 &&
+-                               in_view.x() > view_.width() + 18)) &&
++                               in_view.x() > view_->width() + 18)) &&
+       node->is_url() && !node->is_permanent_node()) {
+     RestoreDragRows(false);
+     bookmark_model_->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser,
+@@ -1153,7 +1155,7 @@
+ bool VerticalTabBookmarksView::Impl::BookmarkRowContext(
+     VerticalBookmarkRowView& row,
+     const ui::MouseEvent& event) {
+-  if (!view_.GetWidget() || !ScopeCurrent())
++  if (!view_->GetWidget() || !ScopeCurrent())
+     return false;
+   HideBookmarkHoverCard();
+   const Node& node = row.node();
+@@ -1165,12 +1167,12 @@
+       tab_menu_ = std::make_unique<TabContextMenuController>(
+           tabs_->GetTabAtIndex(*index)->GetHandle(), this);
+       auto menu = std::make_unique<TabMenuModel>(
+-          tab_menu_.get(), TabMenuModelDelegate::From(&browser_), tabs_,
++          tab_menu_.get(), TabMenuModelDelegate::From(&browser_.get()), tabs_,
+           *index);
+       auto* raw = menu.get();
+       tab_menu_->LoadModel(std::move(menu), raw);
+       tab_menu_->RunMenuAt(point, ui::mojom::MenuSourceType::kMouse,
+-                           view_.GetWidget());
++                           view_->GetWidget());
+       return true;
+     }
+   const bool folder = node.is_folder();
+@@ -1202,7 +1204,7 @@
+       base::BindRepeating(&Impl::CloseMenu, weak_.GetWeakPtr(), folder,
+                           state.generation));
+   state.runner->RunMenuAt(
+-      view_.GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
++      view_->GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+       views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
+   return true;
+ }
+@@ -1230,7 +1232,7 @@
+ bool VerticalTabBookmarksView::Impl::Editable(const Node* node,
+                                               bool folder) const {
+   return ValidNode(node, folder) &&
+-         browser_.GetProfile()->GetPrefs()->GetBoolean(
++         browser_->GetProfile()->GetPrefs()->GetBoolean(
+              bookmarks::prefs::kEditBookmarksEnabled) &&
+          !bookmark_model_->client()->IsNodeManaged(node);
+ }
+@@ -1242,9 +1244,9 @@
+   std::vector<raw_ptr<const Node, VectorExperimental>> selection{node};
+   if (command == 102)
+     return bookmarks::IsOpenInIncognitoAllowed(selection,
+-                                               browser_.GetProfile());
++                                               browser_->GetProfile());
+   if (command == 105 &&
+-      IncognitoModePrefs::GetAvailability(browser_.GetProfile()->GetPrefs()) ==
++      IncognitoModePrefs::GetAvailability(browser_->GetProfile()->GetPrefs()) ==
+           policy::IncognitoModeAvailability::kForced)
+     return false;
+   if (command == 106 && tabs_ && tabs_->GetActiveTab() &&
+@@ -1280,7 +1282,7 @@
+     // Original461c2d0 -> BrowserImpl c6e16d8 constructs browser-initiated
+     // OpenURLParams with disposition1(CURRENT_TAB), transition0(LINK).
+     // It does not require the selected folder to still exist.
+-    NavigateParams params(&browser_, GURL("chrome://bookmarks/"),
++    NavigateParams params(&browser_.get(), GURL("chrome://bookmarks/"),
+                           ui::PAGE_TRANSITION_LINK);
+     params.disposition = WindowOpenDisposition::CURRENT_TAB;
+     Navigate(&params);
+@@ -1320,12 +1322,12 @@
+   constexpr std::array contexts = {bookmarks::kNone, bookmarks::kInGroup,
+                                    bookmarks::kNone, bookmarks::kNone,
+                                    bookmarks::kInSplit};
+-  bookmarks::OpenAllIfAllowed(&browser_, {node}, dispositions[command - 3],
+-                              contexts[command - 3]);
++  bookmarks::OpenAllIfAllowed(&browser_.get(), {node},
++                              dispositions[command - 3], contexts[command - 3]);
+ }
+ void VerticalTabBookmarksView::Impl::Edit(int64_t id, bool folder) {
+   const Node* node = Find(id);
+-  if (!ValidNode(node, folder) || !view_.GetWidget())
++  if (!ValidNode(node, folder) || !view_->GetWidget())
+     return;
+   auto delegate = std::make_unique<BookmarkEditDelegate>(
+       base::BindOnce(&Impl::AcceptEdit, weak_.GetWeakPtr(), id, folder));
+@@ -1347,7 +1349,7 @@
+         ui::DialogModelTextfield::Params().SetAccessibleName(u"URL"));
+   builder.SetInitiallyFocusedField(kBookmarkName);
+   constrained_window::ShowBrowserModal(builder.Build(),
+-                                       view_.GetWidget()->GetNativeWindow());
++                                       view_->GetWidget()->GetNativeWindow());
+ }
+ void VerticalTabBookmarksView::Impl::AcceptEdit(int64_t id,
+                                                 bool folder,
+@@ -1384,7 +1386,7 @@
+ }
+ void VerticalTabBookmarksView::Impl::Delete(int64_t id, bool folder) {
+   const Node* node = Find(id);
+-  if (!ValidNode(node, folder) || !view_.GetWidget())
++  if (!ValidNode(node, folder) || !view_->GetWidget())
+     return;
+   std::u16string body;
+   if (folder)
+@@ -1396,7 +1398,7 @@
+     body = node->GetTitle().empty() ? u"Delete this bookmark?"
+                                     : u"Delete \"" + node->GetTitle() + u"\"?";
+   ShowBookmarkDeleteConfirmation(
+-      view_.GetWidget()->GetNativeWindow(),
++      view_->GetWidget()->GetNativeWindow(),
+       folder ? u"Delete Folder" : u"Delete Bookmark", body,
+       base::BindOnce(&Impl::AcceptDelete, weak_.GetWeakPtr(), id, folder));
+ }
