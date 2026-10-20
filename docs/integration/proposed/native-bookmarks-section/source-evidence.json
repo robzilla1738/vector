@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor-inline",
+      "rva": "0x37e10a0",
+      "bytes": 1840,
+      "sha256": "2a1c91803b6d2073711724e73c510fc7a1fcd7e3ebfeda9eb5afaa6cebe0677e",
+      "assemblySha256": "d5a68e4011662fd1ec5b1e379a7e719808e2ae3fbc5766d430bf2ea98539d15f"
+    },
+    {
+      "name": "apply-expanded",
+      "rva": "0x46598b0",
+      "bytes": 520,
+      "sha256": "22d8952fd8638f0928617062f8681432383170e7f83479f8f2922ee5aa6d2488",
+      "assemblySha256": "884ff1b2d3303767923cbe2b67e1f2664bda5ee840369ab29802988234cc60b9"
+    },
+    {
+      "name": "preference-callbacks",
+      "rva": "0x4659ab8",
+      "bytes": 588,
+      "sha256": "a9adbe65f837085c6e4e2b916700a27c6653daca99004d66a48e4c10b25a1db6",
+      "assemblySha256": "a05a6ade9498a2219fd27d63cd865703225960ed76118f518104a418595dd3cf"
+    },
+    {
+      "name": "toggle",
+      "rva": "0x4661df8",
+      "bytes": 536,
+      "sha256": "38bd1cdb0188b0b578def33c7d5e6adc35313276ee09f8f1155d8b44f51ebe91",
+      "assemblySha256": "c8399dba203d9f9ebd44051aff5f25cfcaa72db329451b574fb2d6c9c730c78e"
+    },
+    {
+      "name": "animation-delegates-height",
+      "rva": "0x4664c00",
+      "bytes": 488,
+      "sha256": "54620970bf6a358283f69fbb283ca0967d2f3c3a9b8179cbb74f6fd5b5af9a05",
+      "assemblySha256": "70f7f4db7bdab993391ed538951627ceb9dd6dc9d9d328c1fd136dbf62dd3b01"
+    },
+    {
+      "name": "pref-write-callback",
+      "rva": "0x462c0a8",
+      "bytes": 224,
+      "sha256": "4c9a9f6f4fa96b456852e3e3da5dafb54a9cd1e6f11bc07f1b10f6659952e125",
+      "assemblySha256": "82a7ca8fbc9cd79ae016e8b2e1688afe78481b9d1771aa72b9ab30495f15b531"
+    },
+    {
+      "name": "pref-registration",
+      "rva": "0x34e3f1c",
+      "bytes": 1108,
+      "sha256": "794c3f83706108a68c902bae1efa0eada06419dafdabcb1bbad5df889506e7e6",
+      "assemblySha256": "88593ba81dadc0af6f59b4249959fdee073b215fe06d715a4570fbba8975733c"
+    },
+    {
+      "name": "pref-observation",
+      "rva": "0x4633e10",
+      "bytes": 1344,
+      "sha256": "581abadd10af48999e84fbec42ee93e3cade18b93abd7810cfa5ec691ffaafa0",
+      "assemblySha256": "44b7ca95b38d132a38528899b84f3ba66ba0b0cf0afa106d4b2d88a018b4ebb5"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xceea5bf",
+      "value": "aside.vertical_tabs.bookmarks_section_enabled"
+    },
+    {
+      "rva": "0xceea5ed",
+      "value": "aside.vertical_tabs.bookmarks_section_expanded"
+    }
+  ],
+  "data": [
+    {
+      "name": "contents-margin",
+      "rva": "0xdf3abf0",
+      "bytes": 16,
+      "hex": "03000000000000000000000000000000",
+      "sha256": "59d5966c96af7ecad5c9d2918d6582d102b2c67f6b765ea28ac24371ab4f93be"
+    },
+    {
+      "name": "animation-delegate-slots",
+      "rva": "0xe725278",
+      "bytes": 24,
+      "hex": "004c660400001000684c660400001000004c660400001000",
+      "sha256": "70e6b25546afd8a972c5847de15a534b38f9a2f5ed2957f283a3c0a3b465aeb1"
+    }
+  ],
+  "apiInputs": [
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_section_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_section_view.h",
+      "sha256": "bc94373b0c8d746ceb84decee42e76215a5bc45c1e7331bdaded7109472acaaf"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_section_clip_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_section_clip_view.h",
+      "sha256": "1605ec3e94d9f6fbc8f6494ba1cfef07af5c91b7eff859a31a8d18651ba2269e"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/animation_delegate.h",
+      "snapshotPath": "evidence/api/ui/gfx/animation/animation_delegate.h",
+      "sha256": "5d344a5f7d614acabbe7db6dd6f3b65ef5701b6adb15d9335830faf4fc90a3ae"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/slide_animation.h",
+      "snapshotPath": "evidence/api/ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    }
+  ],
+  "inputs": []
+}

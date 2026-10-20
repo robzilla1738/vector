@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "native-vertical-bookmarks-owner + api155327/328; shared AuxSectionView/Clip already compiled; new files only, root owns GN/prefs/mount",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "baselineSha256": null,
+      "newFile": true,
+      "outputSha256": "80622583909c4322b1554235488e9e959d52bdfd1d3a97476deffd1b11389885"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+      "baselineSha256": null,
+      "newFile": true,
+      "outputSha256": "1bc512b544a1f96201d4f0a66a3204ed48ff1a5d9afb2b9864aed86fd7e6d82b"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

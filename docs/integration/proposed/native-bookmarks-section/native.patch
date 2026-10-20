@@ -1,0 +1,243 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_bookmarks_section.h
+@@ -0,0 +1,69 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_BOOKMARKS_SECTION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_BOOKMARKS_SECTION_H_
++
++#include <memory>
++#include <optional>
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_section_view.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/slide_animation.h"
++
++class PrefService;
++namespace aux {
++class AuxSectionClipView;
++class VerticalTabBookmarksView;
++inline constexpr char kBookmarksSectionEnabledPref[] =
++    "aside.vertical_tabs.bookmarks_section_enabled";
++inline constexpr char kBookmarksSectionExpandedPref[] =
++    "aside.vertical_tabs.bookmarks_section_expanded";
++
++// Original region668 wrapper around the genuine inner BookmarksView6a0.
++// The region supplies its actual enabled-state cleanup and layout effects.
++// There is no source header secondary/context action or placeholder menu.
++class AuxBookmarksSection final : public AuxSectionView,
++                                  public gfx::AnimationDelegate {
++  METADATA_HEADER(AuxBookmarksSection, AuxSectionView)
++ public:
++  struct Actions {
++    base::RepeatingCallback<void(bool)> enabled_changed;
++    base::RepeatingClosure layout_changed;
++  };
++  // Both boolean prefs must already be registered true/flags0 by the real
++  // profile registration path. The inner owner has its separate list pref.
++  AuxBookmarksSection(PrefService& prefs,
++                      std::unique_ptr<VerticalTabBookmarksView> bookmarks,
++                      Actions actions);
++  ~AuxBookmarksSection() override;
++  VerticalTabBookmarksView* bookmarks_view() const { return bookmarks_; }
++  bool expanded() const { return expanded_; }
++  void RetireForProfileChange();
++
++ private:
++  void Toggle();
++  void EnabledPreferenceChanged();
++  void ExpandedPreferenceChanged();
++  void ApplyExpanded(bool expanded);
++  void ApplyHeight();
++  void AnimationProgressed(const gfx::Animation*) override;
++  void AnimationEnded(const gfx::Animation*) override;
++  void AnimationCanceled(const gfx::Animation*) override;
++  Actions actions_;
++  raw_ptr<PrefService> prefs_;
++  PrefChangeRegistrar pref_observer_;
++  raw_ptr<VerticalTabBookmarksView> bookmarks_ = nullptr;
++  raw_ptr<AuxSectionClipView> clip_ = nullptr;
++  bool expanded_ = true;
++  bool retired_ = false;
++  std::optional<int> frozen_natural_height_;
++  std::optional<int> preferred_height_;
++  gfx::SlideAnimation animation_{this};
++  base::WeakPtrFactory<AuxBookmarksSection> weak_{this};
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_bookmarks_section.cc
+@@ -0,0 +1,168 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/views/frame/aux_bookmarks_section.h"
++
++#include <algorithm>
++#include <cmath>
++#include <limits>
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++#include "chrome/browser/ui/views/frame/aux_section_clip_view.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h"
++#include "components/prefs/pref_service.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/views/view_class_properties.h"
++
++namespace aux {
++AuxBookmarksSection::AuxBookmarksSection(
++    PrefService& prefs,
++    std::unique_ptr<VerticalTabBookmarksView> bookmarks,
++    Actions actions)
++    : AuxSectionView(u"Bookmarks",
++                     true,
++                     base::BindRepeating(&AuxBookmarksSection::Toggle,
++                                         base::Unretained(this)),
++                     gfx::Insets::TLBR(4, 0, 8, 0)),
++      actions_(std::move(actions)),
++      prefs_(&prefs) {
++  CHECK(bookmarks && actions_.enabled_changed && actions_.layout_changed);
++  CHECK(prefs.FindPreference(kBookmarksSectionEnabledPref));
++  CHECK(prefs.FindPreference(kBookmarksSectionExpandedPref));
++  // Source37e1438: overwrite base contents' top margin with TLBR(3,0,0,0).
++  contents()->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(3, 0, 0, 0));
++  bookmarks_ = bookmarks.get();
++  clip_ = contents()->AddChildView(
++      std::make_unique<AuxSectionClipView>(std::move(bookmarks)));
++  clip_->SetProperty(views::kMarginsKey, gfx::Insets());
++  animation_.SetSlideDuration(gfx::Animation::ShouldRenderRichAnimation()
++                                  ? base::Milliseconds(180)
++                                  : base::TimeDelta());
++  ApplyExpanded(prefs.GetBoolean(kBookmarksSectionExpandedPref));
++  SetVisible(prefs.GetBoolean(kBookmarksSectionEnabledPref));
++  pref_observer_.Init(&prefs);
++  pref_observer_.Add(
++      kBookmarksSectionEnabledPref,
++      base::BindRepeating(&AuxBookmarksSection::EnabledPreferenceChanged,
++                          base::Unretained(this)));
++  pref_observer_.Add(
++      kBookmarksSectionExpandedPref,
++      base::BindRepeating(&AuxBookmarksSection::ExpandedPreferenceChanged,
++                          base::Unretained(this)));
++}
++AuxBookmarksSection::~AuxBookmarksSection() {
++  RetireForProfileChange();
++}
++void AuxBookmarksSection::Toggle() {
++  if (retired_ || !prefs_)
++    return;
++  expanded_ = !expanded_;
++  SetDisclosureOpen(expanded_);
++  // Original4661e50..f50 freezes the full child height, not the current
++  // animated preferred clip height. Each toggle remeasures the actual child,
++  // including a reversal after genuine bookmark/folder changes.
++  frozen_natural_height_ = bookmarks_->GetPreferredSize().height();
++  clip_->SetHeights(preferred_height_, frozen_natural_height_);
++  clip_->SetVisible(true);
++  if (expanded_)
++    animation_.Show();
++  else
++    animation_.Hide();
++  const auto weak = weak_.GetWeakPtr();
++  prefs_->SetBoolean(kBookmarksSectionExpandedPref, expanded_);
++  if (!weak)
++    return;
++  ApplyHeight();
++  auto changed = actions_.layout_changed;
++  changed.Run();
++}
++void AuxBookmarksSection::EnabledPreferenceChanged() {
++  if (retired_ || !prefs_)
++    return;
++  const bool enabled = prefs_->GetBoolean(kBookmarksSectionEnabledPref);
++  SetVisible(enabled);
++  // Original4659ab8 delegates disabled-state popup cleanup and real region
++  // ApplyLayout/PreferredSizeChanged effects. The wrapper invents no popup.
++  const auto weak = weak_.GetWeakPtr();
++  auto changed = actions_.enabled_changed;
++  changed.Run(enabled);
++  if (!weak)
++    return;
++  auto layout = actions_.layout_changed;
++  layout.Run();
++}
++void AuxBookmarksSection::ExpandedPreferenceChanged() {
++  if (retired_ || !prefs_)
++    return;
++  const bool expanded = prefs_->GetBoolean(kBookmarksSectionExpandedPref);
++  // Original4659c84 same-state guard is essential: our own pref write must
++  // not cancel the genuine animated toggle already in progress.
++  if (expanded == expanded_)
++    return;
++  ApplyExpanded(expanded);
++  auto changed = actions_.layout_changed;
++  changed.Run();
++}
++void AuxBookmarksSection::ApplyExpanded(bool expanded) {
++  // Original46598b0 is the nonanimated external-pref/initial application.
++  animation_.Stop();
++  frozen_natural_height_.reset();
++  preferred_height_.reset();
++  clip_->SetHeights(std::nullopt, std::nullopt);
++  expanded_ = expanded;
++  SetDisclosureOpen(expanded_);
++  animation_.Reset(expanded_ ? 1.0 : 0.0);
++  ApplyHeight();
++}
++void AuxBookmarksSection::ApplyHeight() {
++  if (retired_)
++    return;
++  // Original4664c94: completed expansion releases the preferred override so
++  // subsequent genuine model/folder changes can determine their own height.
++  if (expanded_ && !animation_.is_animating() &&
++      animation_.GetCurrentValue() == 1.0) {
++    preferred_height_.reset();
++    clip_->SetHeights(preferred_height_, frozen_natural_height_);
++    clip_->SetVisible(true);
++    return;
++  }
++  const int natural = frozen_natural_height_
++                          ? *frozen_natural_height_
++                          : bookmarks_->GetPreferredSize().height();
++  const double rounded =
++      std::round(double(natural) * animation_.GetCurrentValue());
++  const int height = static_cast<int>(
++      std::clamp(rounded, 0.0, double(std::numeric_limits<int>::max())));
++  preferred_height_ = height;
++  clip_->SetHeights(preferred_height_, frozen_natural_height_);
++  clip_->SetVisible(height > 0 || animation_.is_animating());
++}
++void AuxBookmarksSection::AnimationProgressed(const gfx::Animation*) {
++  ApplyHeight();
++}
++void AuxBookmarksSection::AnimationEnded(const gfx::Animation*) {
++  ApplyHeight();
++  // Original4664c00 (Ended and Canceled slots) releases both cached natural
++  // height and clip's explicit content height after applying the final frame.
++  frozen_natural_height_.reset();
++  clip_->SetHeights(preferred_height_, std::nullopt);
++}
++void AuxBookmarksSection::AnimationCanceled(const gfx::Animation* animation) {
++  AnimationEnded(animation);
++}
++void AuxBookmarksSection::RetireForProfileChange() {
++  if (retired_)
++    return;
++  retired_ = true;
++  weak_.InvalidateWeakPtrs();
++  pref_observer_.RemoveAll();
++  prefs_ = nullptr;
++  animation_.Stop();
++  bookmarks_->RetireForProfileChange();
++  SetVisible(false);
++}
++BEGIN_METADATA(AuxBookmarksSection)
++END_METADATA
++}  // namespace aux
