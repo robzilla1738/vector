@@ -119,6 +119,20 @@
       "bytes": 8,
       "sourceBytesSha256": "866b82fb6649dcf0f7873c61006d47004b1074ea9b382227c4ab724c93f547f7",
       "assemblySha256": "ca56f18f31ab471e030273bfc387088ad99cf5d61f16b652deb144254585f695"
+    },
+    {
+      "name": "bubble-metadata-getter",
+      "address": "0xc7a9660",
+      "bytes": 72,
+      "sourceBytesSha256": "1af616b5206f0728ef3a8e45716135bda1662f40c226509f3d384edf87755dc8",
+      "assemblySha256": "c9f39702f67cd347faab97b6bd8d83a84c0cfde85dad669f554546183dbd4d5b"
+    },
+    {
+      "name": "bubble-metadata-constructor",
+      "address": "0xc7aa8d8",
+      "bytes": 96,
+      "sourceBytesSha256": "be3895bd9d960edc977d3d496709ada3866cc5f87a8af64df59baf1ac547f46e",
+      "assemblySha256": "a25ce3b759e0635f1656e5a8c76fc48a54a4cdd9b7092ae67d0c66d977e780af"
     }
   ],
   "currentApi": {
@@ -127,5 +141,16 @@
     "VERTICAL": 4,
     "LEFT_TOP": 4
   },
-  "finding": "Original bookmark row secondary vtable +0x48 returns constant4; original bubble ctor calls that exact virtual and forwards the result as its arrow argument. Actual155 enum LEFT_TOP=4. Original interface was not limited to the first five overridden functions. No current orientation/collapse heuristic is needed."
+  "finding": "Original bookmark row secondary vtable +0x48 returns constant4; original bubble ctor calls that exact virtual and forwards the result as its arrow argument. Actual155 enum LEFT_TOP=4. Original interface was not limited to the first five overridden functions. No current orientation/collapse heuristic is needed.",
+  "bubbleMetadata": {
+    "primaryVtable": "0xe73e290",
+    "metadataVirtualSlot": "0x58",
+    "metadataVirtualTarget": "0xc7a96a4",
+    "metadataGetter": "0xc7a9660",
+    "metadataConstructor": "0xc7aa8d8",
+    "classLiteralAddress": "0xdecd820",
+    "classLiteral": "TabHoverCardBubbleView",
+    "classLiteralBytes": 22,
+    "classLiteralSha256": "854a26ea55c3931f5c64222671637ab04fe4f9b692d7b994ecc3e80a55668d2f"
+  }
 }
