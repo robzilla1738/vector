@@ -58,6 +58,13 @@
       "stop": "0x35e73f8",
       "bytesSha256": "c139d9fe9cb23c83941e4590092d5f85005e03b1fdf283ff0fea3b9760441415",
       "extractSha256": "3a11af4e40dc9f6de8528d25383eee8134a2aae2569f51efed9e4d87c06d94de"
+    },
+    {
+      "file": "original-preview-avatar-constructor.txt",
+      "start": "0x4653cc0",
+      "stop": "0x4653d70",
+      "bytesSha256": "f8c6c83442f916edd59cebc2a7bc04f0960297c5d79965ba5d454e1b6381cb5c",
+      "extractSha256": "d8ba274a754badc66bf0be0ecc2c2baf559d1fc60fdbc2b879aeaa91cab9fa4c"
     }
   ],
   "defaultColors": {

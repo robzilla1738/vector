@@ -1,0 +1,50 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4653cc0: 96e95e3c     	bl	0xab5b0 <_ChromeMain+0xa6314>
+ 4653cc4: aa0003f6     	mov	x22, x0
+ 4653cc8: a903ffff     	stp	xzr, xzr, [sp, #0x38]
+ 4653ccc: f9001bff     	str	xzr, [sp, #0x30]
+ 4653cd0: 97346d1c     	bl	0x136f140 <_ChromeMain+0x1369ea4>
+ 4653cd4: 90050448     	adrp	x8, 0xe6db000 <dyld_stub_binder+0xe6db000>
+ 4653cd8: 91024108     	add	x8, x8, #0x90
+ 4653cdc: 910fa109     	add	x9, x8, #0x3e8
+ 4653ce0: a9002408     	stp	x8, x9, [x0]
+ 4653ce4: 91104109     	add	x9, x8, #0x410
+ 4653ce8: f9000809     	str	x9, [x0, #0x10]
+ 4653cec: 91112109     	add	x9, x8, #0x448
+ 4653cf0: 9111e10a     	add	x10, x8, #0x478
+ 4653cf4: a906a809     	stp	x9, x10, [x0, #0x68]
+ 4653cf8: 91132109     	add	x9, x8, #0x4c8
+ 4653cfc: f9005809     	str	x9, [x0, #0xb0]
+ 4653d00: 9114a109     	add	x9, x8, #0x528
+ 4653d04: f9006c09     	str	x9, [x0, #0xd8]
+ 4653d08: 91156108     	add	x8, x8, #0x558
+ 4653d0c: aa0003f8     	mov	x24, x0
+ 4653d10: f80f8f08     	str	x8, [x24, #0xf8]!
+ 4653d14: 910c4008     	add	x8, x0, #0x310
+ 4653d18: 9100c3e0     	add	x0, sp, #0x30
+ 4653d1c: 97fcce99     	bl	0x4587780 <_ChromeMain+0x45824e4>
+ 4653d20: d2800288     	mov	x8, #0x14               ; =20
+ 4653d24: f2c00188     	movk	x8, #0xc, lsl #32
+ 4653d28: f90196c8     	str	x8, [x22, #0x328]
+ 4653d2c: 9004c7a8     	adrp	x8, 0xdf47000 <dyld_stub_binder+0xdf47000>
+ 4653d30: 3dc22d00     	ldr	q0, [x8, #0x8b0]
+ 4653d34: 3d80cec0     	str	q0, [x22, #0x330]
+ 4653d38: 3946a6c8     	ldrb	w8, [x22, #0x1a9]
+ 4653d3c: 340000a8     	cbz	w8, 0x4653d50 <_ChromeMain+0x464eab4>
+ 4653d40: 3906a6df     	strb	wzr, [x22, #0x1a9]
+ 4653d44: 9106a6c1     	add	x1, x22, #0x1a9
+ 4653d48: aa1803e0     	mov	x0, x24
+ 4653d4c: 972350a1     	bl	0xf27fd0 <_ChromeMain+0xf22d34>
+ 4653d50: 39c11fe8     	ldrsb	w8, [sp, #0x47]
+ 4653d54: 36f800a8     	tbz	w8, #0x1f, 0x4653d68 <_ChromeMain+0x464eacc>
+ 4653d58: f9401be0     	ldr	x0, [sp, #0x30]
+ 4653d5c: f94023e8     	ldr	x8, [sp, #0x40]
+ 4653d60: d37ff901     	lsl	x1, x8, #1
+ 4653d64: 96e6d455     	bl	0x8eb8 <_ChromeMain+0x3c1c>
+ 4653d68: 3945a6c8     	ldrb	w8, [x22, #0x169]
+ 4653d6c: 350048a8     	cbnz	w8, 0x4654680 <_ChromeMain+0x464f3e4>
