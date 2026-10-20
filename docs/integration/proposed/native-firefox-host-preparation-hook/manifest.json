@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "actual native454; host files unchanged from prior owner proof",
+  "files": [
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.h",
+      "baselineSha256": "74c95cdd1ded376aa26de47b996fb3306ab79e1767069f79394666b990a75c6b",
+      "outputSha256": "00ebc7c4474b5e50da39b95fecd80359c0c1b255786dd6c41fabfbc11859c36c"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.cc",
+      "baselineSha256": "8618e1ad9386570428ee991d13ebcd409d0a9e1ebc1da767ae0490971be11824",
+      "outputSha256": "18b279098715aea8c30f0812a2423dca5d48463538d70f343f15f15dc11941fa"
+    }
+  ],
+  "requiredDependencies": [
+    "//chrome/browser:buildflags (if not already available in importer target)"
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

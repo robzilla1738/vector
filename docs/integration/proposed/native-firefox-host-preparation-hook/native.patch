@@ -1,0 +1,123 @@
+--- a/chrome/browser/importer/external_process_importer_host.h
++++ b/chrome/browser/importer/external_process_importer_host.h
+@@ -9,10 +9,13 @@
+ 
+ #include <memory>
+ 
++#include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/importer/importer_progress_observer.h"
+ #include "chrome/browser/importer/profile_writer.h"
+ #include "components/bookmarks/browser/base_bookmark_model_observer.h"
+@@ -44,6 +47,14 @@
+       delete;
+ 
+   void Cancel();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied host+68: actual source preparation acknowledges before launching
++  // the utility process. The callback is consumed once; false ends the import.
++  using AuxPreparationCallback =
++      base::OnceCallback<void(base::OnceCallback<void(bool)>)>;
++  void SetAuxPreparationCallback(AuxPreparationCallback callback);
++#endif
+ 
+   // Starts the process of importing the settings and data depending on what the
+   // user selected.
+@@ -90,6 +101,10 @@
+   // will be called when the loading observer sees that model loading is
+   // complete.
+   virtual void LaunchImportIfReady();
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void OnAuxPreparationComplete(bool succeeded);
++#endif
+ 
+   // bookmarks::BaseBookmarkModelObserver:
+   void BookmarkModelLoaded(bool ids_reassigned) override;
+@@ -150,6 +165,12 @@
+   // True if source profile is readable.
+   bool is_source_readable_;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  AuxPreparationCallback aux_preparation_;
++  bool aux_preparation_started_ = false;
++  bool aux_preparation_complete_ = false;
++#endif
++
+   // Writes data from the importer back to the profile.
+   scoped_refptr<ProfileWriter> writer_;
+ 
+--- a/chrome/browser/importer/external_process_importer_host.cc
++++ b/chrome/browser/importer/external_process_importer_host.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/importer/external_process_importer_host.h"
+ 
+ #include <memory>
++#include <utility>
+ 
+ #include "base/functional/bind.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+@@ -32,6 +33,26 @@
+       items_(0),
+       cancelled_(false) {}
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void ExternalProcessImporterHost::SetAuxPreparationCallback(
++    AuxPreparationCallback callback) {
++  aux_preparation_ = std::move(callback);
++}
++
++void ExternalProcessImporterHost::OnAuxPreparationComplete(bool succeeded) {
++  // Original410665c: cancellation/destruction must not restart this host.
++  if (cancelled_) {
++    return;
++  }
++  if (!succeeded) {
++    NotifyImportEnded();  // Notifies and deletes this host, as in the original.
++    return;
++  }
++  aux_preparation_complete_ = true;
++  LaunchImportIfReady();
++}
++#endif
++
+ void ExternalProcessImporterHost::Cancel() {
+   cancelled_ = true;
+   // There is only a |client_| if the import was started.
+@@ -96,6 +117,30 @@
+       template_service_subscription_ || !is_source_readable_ || cancelled_) {
+     return;
+   }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Original41064cc prevents repeated ready notifications from creating a
++  // second client. Preparation is after the real loaded-model/source gates.
++  if (client_) {
++    return;
++  }
++  if (!aux_preparation_complete_) {
++    if (aux_preparation_started_) {
++      return;
++    }
++    aux_preparation_started_ = true;
++    if (aux_preparation_) {
++      // A synchronous acknowledgment may delete this host. Do not access any
++      // members after invoking the supplied preparation callback.
++      auto prepare = std::move(aux_preparation_);
++      std::move(prepare).Run(base::BindOnce(
++          &ExternalProcessImporterHost::OnAuxPreparationComplete,
++          weak_ptr_factory_.GetWeakPtr()));
++      return;
++    }
++    aux_preparation_complete_ = true;
++  }
++#endif
+ 
+   // This is the in-process half of the bridge, which catches data from the IPC
+   // pipe and feeds it to the ProfileWriter. The external process half of the

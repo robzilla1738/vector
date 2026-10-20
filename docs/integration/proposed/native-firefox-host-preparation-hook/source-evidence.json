@@ -1,0 +1,35 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4106480",
+      "end": "0x410667c",
+      "sha256": "68f4a51f07f4cab37facb5e904352b1d0b5dfe8d15206e4af9392bece42267eb",
+      "listing": "actual-prelaunch-and-completion.asm",
+      "listingSha256": "c473d7a3156a7ff72f50c8bc8bbd679b84dd6f13404334ddbc4282b5633eb5b2"
+    },
+    {
+      "start": "0x4263c40",
+      "end": "0x4263cd4",
+      "sha256": "a7194d5ed3fbdb52fdaed6cadc5501a2c2f42606001f66364deb758d7af8cca3",
+      "listing": "original-hook-install.asm",
+      "listingSha256": "e6604b1c9040bc334e42e3343adc0209b31fa803aa4ec4ea152b1f04a78defdd"
+    },
+    {
+      "start": "0x78205bc",
+      "end": "0x7820654",
+      "sha256": "3d217e3150f7dd7b9c359a1440a530d9bb0df9033303490263e70c6e050ef8d6",
+      "listing": "actual-host-cancel.asm",
+      "listingSha256": "ede2d5afb2ebacf9e650b393d1bb801714314843073251ee47fdee6f0761211a"
+    },
+    {
+      "start": "0x7820828",
+      "end": "0x7820930",
+      "sha256": "849c22ca132263b2af3183667df0ea7da9501782c3d6017eeae0554b12b11a01",
+      "listing": "actual-host-destruction.asm",
+      "listingSha256": "59cf34c8442b52a26dfd700a81d9f9e83b2186268b379bbf36c6b80130f16c12"
+    }
+  ],
+  "literals": []
+}

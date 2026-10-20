@@ -1,0 +1,58 @@
+[
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "name": "direct-guard-and-callback-dependencies",
+    "count": 1,
+    "before": "#include \"base/memory/raw_ptr.h\"",
+    "after": "#include \"base/functional/callback.h\"\n#include \"base/memory/raw_ptr.h\""
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "name": "source-platform-buildflags",
+    "count": 1,
+    "before": "#include \"chrome/browser/importer/importer_progress_observer.h\"",
+    "after": "#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/importer/importer_progress_observer.h\""
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "name": "actual-preparation-callback-api",
+    "count": 1,
+    "before": "  void Cancel();",
+    "after": "  void Cancel();\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // Supplied host+68: actual source preparation acknowledges before launching\n  // the utility process. The callback is consumed once; false ends the import.\n  using AuxPreparationCallback =\n      base::OnceCallback<void(base::OnceCallback<void(bool)>)>;\n  void SetAuxPreparationCallback(AuxPreparationCallback callback);\n#endif"
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "name": "source-completion-method",
+    "count": 1,
+    "before": "  virtual void LaunchImportIfReady();",
+    "after": "  virtual void LaunchImportIfReady();\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  void OnAuxPreparationComplete(bool succeeded);\n#endif"
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.h",
+    "name": "actual-once-preparation-state",
+    "count": 1,
+    "before": "  // True if source profile is readable.\n  bool is_source_readable_;",
+    "after": "  // True if source profile is readable.\n  bool is_source_readable_;\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  AuxPreparationCallback aux_preparation_;\n  bool aux_preparation_started_ = false;\n  bool aux_preparation_complete_ = false;\n#endif"
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.cc",
+    "name": "direct-move-dependency",
+    "count": 1,
+    "before": "#include <memory>",
+    "after": "#include <memory>\n#include <utility>"
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.cc",
+    "name": "source-hook-methods",
+    "count": 1,
+    "before": "void ExternalProcessImporterHost::Cancel() {",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\nvoid ExternalProcessImporterHost::SetAuxPreparationCallback(\n    AuxPreparationCallback callback) {\n  aux_preparation_ = std::move(callback);\n}\n\nvoid ExternalProcessImporterHost::OnAuxPreparationComplete(bool succeeded) {\n  // Original410665c: cancellation/destruction must not restart this host.\n  if (cancelled_) {\n    return;\n  }\n  if (!succeeded) {\n    NotifyImportEnded();  // Notifies and deletes this host, as in the original.\n    return;\n  }\n  aux_preparation_complete_ = true;\n  LaunchImportIfReady();\n}\n#endif\n\nvoid ExternalProcessImporterHost::Cancel() {"
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_host.cc",
+    "name": "original-prelaunch-gate-and-weak-once",
+    "count": 1,
+    "before": "  // This is the in-process half of the bridge, which catches data from the IPC",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // Original41064cc prevents repeated ready notifications from creating a\n  // second client. Preparation is after the real loaded-model/source gates.\n  if (client_) {\n    return;\n  }\n  if (!aux_preparation_complete_) {\n    if (aux_preparation_started_) {\n      return;\n    }\n    aux_preparation_started_ = true;\n    if (aux_preparation_) {\n      // A synchronous acknowledgment may delete this host. Do not access any\n      // members after invoking the supplied preparation callback.\n      auto prepare = std::move(aux_preparation_);\n      std::move(prepare).Run(base::BindOnce(\n          &ExternalProcessImporterHost::OnAuxPreparationComplete,\n          weak_ptr_factory_.GetWeakPtr()));\n      return;\n    }\n    aux_preparation_complete_ = true;\n  }\n#endif\n\n  // This is the in-process half of the bridge, which catches data from the IPC"
+  }
+]
