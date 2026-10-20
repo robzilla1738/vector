@@ -265,7 +265,7 @@ export async function stageProvidedUi({
             const match = matches[0], runtime = match[2];
             brandEdits.push({
               find: match[0],
-              replace: `${match[1]}[(0,${runtime}.jsxs)("g",{transform:"scale(0.0390625)",children:${auxMarkReactChildren(runtime, mark, 1)}}),(0,${runtime}.jsx)("text",{x:44,y:29,className:"font-display",fontSize:28,fontWeight:450,fill:"currentColor",children:"Aux"})]})`,
+              replace: `${match[1]}[(0,${runtime}.jsxs)("svg",{width:40,height:40,viewBox:"0 0 1024 1024",fill:"none",children:${auxMarkReactChildren(runtime, mark, 1)}}),(0,${runtime}.jsx)("text",{x:44,y:29,className:"font-display",fontSize:28,fontWeight:450,fill:"currentColor",children:"Aux"})]})`,
             });
           }
           if (component === 'agent' && ['assets/tool-definition-registry-Cc6FCFb2.js', 'remix.js'].includes(file.path)) {
