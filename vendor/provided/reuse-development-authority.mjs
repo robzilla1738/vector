@@ -1,0 +1,151 @@
+/** Preserve an exact previously verified signed Aux resource tree across a
+ * native-only rebuild. No Apple signing, DP calls, provisioning or launch. */
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { developmentSnapshot, verifySignedDevelopmentReceipt, signingChanges } from './execute-development-signing.mjs';
+import { fixedScope, regular, pinnedJson, freshOutput, prefix } from './development-dp-review.mjs';
+import { validateLaunchAuthorityReport } from './current-development-authority.mjs';
+import { inspectProvidedSigningTree } from '../../scripts/lib/provided-signing.mjs';
+import { developmentTargetDefinitions } from './plan-development-dp.mjs';
+import { inspectSigningCode } from '../../scripts/lib/provided-signing-policy.mjs';
+
+const repository = fileURLToPath(new URL('../../', import.meta.url));
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const sha = file => hash(regular(file));
+const stable = value => JSON.stringify(value, (_, item) => item && !Array.isArray(item) && typeof item === 'object' ? Object.fromEntries(Object.entries(item).sort()) : item);
+const writeNew = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+function canonical(directory) { if (!path.isAbsolute(directory) || fs.realpathSync(directory) !== directory || !fs.lstatSync(directory).isDirectory()) throw Error('Canonical copied directory required'); return directory; }
+function disjoint(a, b) { return a !== b && !a.startsWith(b + '/') && !b.startsWith(a + '/'); }
+function codesign(args) {
+  const result = spawnSync('/usr/bin/codesign', args, { env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' }, encoding: 'utf8', timeout: 120000, maxBuffer: 1048576 });
+  if (result.error || result.signal || result.status !== 0) throw Error('Static signature or explicit outer seal failed: ' + args.at(-1));
+}
+const withPrefix = inventory => inventory.map(leaf => ({ ...leaf, path: prefix + '/' + leaf.path }));
+const resources = inventory => inventory.filter(leaf => leaf.path.startsWith(prefix + '/'));
+function assertSameInventory(expected, actual, message) {
+  const sorted = values => [...values].sort((a, b) => a.path.localeCompare(b.path, 'en'));
+  if (stable(sorted(expected)) !== stable(sorted(actual))) throw Error(message);
+}
+export function assertFreshResourceBaseline(cache, fresh, nextFinalApp) {
+  if (typeof nextFinalApp !== 'string' || nextFinalApp !== cache.finalApp) throw Error('Final app/runtime relocation path changed');
+  assertSameInventory(cache.unsignedResources, fresh, 'Fresh supplied resource payload changed; do not reuse historical authority tree');
+}
+function verifyRetainedSignatures(root, targets) {
+  const expected = developmentTargetDefinitions(true).filter(target => target.path.startsWith(prefix + '/'));
+  if (targets.length !== 8 || new Set(targets.map(target => target.path)).size !== 8 || targets.some(target => !expected.some(definition => definition.path === target.path && definition.signer === target.signer))) throw Error('Exact retained eight-target topology required');
+  for (const target of targets) codesign(['--verify', '--strict', '--all-architectures', path.join(root, target.path.slice(prefix.length + 1))]);
+}
+function resourceSnapshot(root) { return withPrefix(developmentSnapshot(root)); }
+function readCache(cachePath, cacheSha256) {
+  const cache = pinnedJson(cachePath, cacheSha256), scope = fixedScope();
+  if (cache.version !== 1 || cache.kind !== 'exact-signed-aux-resource-cache' || cache.scope !== scope.policy.core.scope || cache.proposalSha256 !== scope.proposalSha256 || cache.passwordManagerExcluded !== true || cache.authorityOperation !== 'verify' || !cache.authorityProofInherited || cache.appleSigningPerformed !== false || cache.keychainOperationsPerformed !== false || cache.parentFinalProofs?.length !== 8) throw Error('Exact inherited authority cache required');
+  const root = canonical(path.join(path.dirname(cachePath), 'resources'));
+  assertSameInventory(cache.signedResources, resourceSnapshot(root), 'Cached signed resources changed');
+  verifyRetainedSignatures(root, cache.parentFinalProofs);
+  return { cache, root };
+}
+export function cacheSignedDevelopmentResources({ signedReceiptPath, signedReceiptSha256, authorityReportPath, authorityReportSha256, inputPath, inputSha256, output }) {
+  const scope = fixedScope(), receipt = verifySignedDevelopmentReceipt({ receiptPath: signedReceiptPath, receiptSha256: signedReceiptSha256 });
+  const authority = pinnedJson(authorityReportPath, authorityReportSha256), input = pinnedJson(inputPath, inputSha256), plan = pinnedJson(receipt.planPath, receipt.planSha256);
+  validateLaunchAuthorityReport(authority, signedReceiptSha256, scope.policy.core.scope);
+  if (receipt.passwordManagerExcluded !== true || plan.passwordManagerExcluded !== true || input.packageRoot !== receipt.packageRoot || input.preparationSha256 !== plan.preparationSha256) throw Error('Current verified nine-target parent required');
+  const prep = pinnedJson(input.preparationPath, input.preparationSha256);
+  if (prep.method !== 'current-completed-package-no-provisioning-project' || prep.resourceRoot !== path.join(receipt.packageRoot, prefix)) throw Error('Actual unsigned current preparation required');
+  const packageReportPath = path.join(receipt.packageRoot, 'package.json'), packageReport = pinnedJson(packageReportPath, input.packageReportSha256);
+  const unsignedResources = prep.inventory.map(leaf => {
+    if (!leaf.path.startsWith('Resources/aux/') || leaf.path.split('/').some(part => !part || part === '.' || part === '..')) throw Error('Unsafe parent resource leaf');
+    return { ...leaf, path: prefix + '/' + leaf.path.slice('Resources/aux/'.length) };
+  });
+  const signedResources = resources(receipt.finalInventory), targets = plan.targets.filter(target => target.path.startsWith(prefix + '/'));
+  if (signedResources.some(leaf => leaf.path.includes('/Aux Password Importer.app/'))) throw Error('Retired password product cannot be cached');
+  const source = canonical(path.join(receipt.packageRoot, prefix));
+  output = path.resolve(output);
+  if (!output.startsWith(path.join(repository, 'out') + '/')) throw Error('Project-owned cache required');
+  output = freshOutput(output, [receipt.packageRoot, scope.policy.core.home]);
+  const target = path.join(output, 'resources');
+  fs.cpSync(source, target, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true, mode: fs.constants.COPYFILE_FICLONE });
+  assertSameInventory(signedResources, resourceSnapshot(target), 'Copied signed resources differ');
+  assertSameInventory(signedResources, resourceSnapshot(source), 'Parent resources changed during cache copy');
+  verifyRetainedSignatures(target, targets);
+  const cache = { version: 1, kind: 'exact-signed-aux-resource-cache', scope: scope.policy.core.scope, proposalSha256: scope.proposalSha256, finalApp: packageReport.finalApp, parentSignedReceiptPath: signedReceiptPath, parentSignedReceiptSha256: signedReceiptSha256, parentPlanSha256: receipt.planSha256, parentPackageReportSha256: input.packageReportSha256, parentPreparationSha256: input.preparationSha256, parentAuthorityReportPath: authorityReportPath, parentAuthorityReportSha256: authorityReportSha256, authorityOperation: authority.operation, authorityProofInherited: true, passwordManagerExcluded: true, boundaryReceiptSha256: packageReport.boundaryReceiptSha256, unsignedResources, signedResources, parentFinalProofs: receipt.finalProofs.filter(proof => proof.path.startsWith(prefix + '/')), retainedTargets: targets, appleSigningPerformed: false, keychainOperationsPerformed: false, productLaunched: false };
+  const cachePath = path.join(output, 'cache.json'); writeNew(cachePath, cache);
+  return { cachePath, cacheSha256: sha(cachePath), signedResourceLeaves: signedResources.length, preservedNestedSignatures: 8, keychainOperationsPerformed: false, parentAppMutated: false };
+}
+export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRoot, packageReportSha256, output }) {
+  const { cache, root } = readCache(cachePath, cacheSha256), scope = fixedScope(); packageRoot = canonical(packageRoot);
+  if (!packageRoot.startsWith(path.join(repository, 'out') + '/') || !disjoint(packageRoot, path.dirname(cachePath))) throw Error('Fresh copied package separate from cache required');
+  const report = pinnedJson(path.join(packageRoot, 'package.json'), packageReportSha256);
+  if (report.implementation !== 'supplied' || report.signed !== false || report.developmentDpLayout !== true || report.boundaryReceiptSha256 !== cache.boundaryReceiptSha256) throw Error('Matching current native-boundary development package required');
+  const before = developmentSnapshot(packageRoot);
+  assertFreshResourceBaseline(cache, resources(before), report.finalApp);
+  output = freshOutput(output, [packageRoot, path.dirname(cachePath), scope.policy.core.home]);
+  const plan = { version: 1, kind: 'exact-native-descendant-authority-reuse', cachePath, cacheSha256, cachedResourceRoot: root, packageRoot, packageReportSha256, finalApp: report.finalApp, before, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, scope: cache.scope, authorizedOperation: 'copy-exact-signed-resources-and-adhoc-outer-only', appleSigningAllowed: false, keychainOperationsAllowed: false, output };
+  const planPath = path.join(output, 'reuse-plan.json'); writeNew(planPath, plan);
+  return { planPath, planSha256: sha(planPath), packageMutated: false, appleSigningPerformed: false, keychainOperationsPerformed: false };
+}
+export async function applyDevelopmentResourceReuse({ planPath, planSha256, applyAuthorized = false }) {
+  if (applyAuthorized !== true) throw Error('Explicit copied-package handoff required');
+  const plan = pinnedJson(planPath, planSha256), { cache, root } = readCache(plan.cachePath, plan.cacheSha256);
+  if (plan.kind !== 'exact-native-descendant-authority-reuse' || plan.authorizedOperation !== 'copy-exact-signed-resources-and-adhoc-outer-only' || plan.appleSigningAllowed !== false || plan.keychainOperationsAllowed !== false || root !== plan.cachedResourceRoot) throw Error('Exact native descendant plan required');
+  assertSameInventory(plan.before, developmentSnapshot(plan.packageRoot), 'Fresh package changed after review');
+  const target = path.join(plan.packageRoot, prefix), staged = path.join(path.dirname(target), '.aux-signed-resource-reuse');
+  if (fs.existsSync(staged)) throw Error('Staged reuse directory already exists');
+  fs.cpSync(root, staged, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true, mode: fs.constants.COPYFILE_FICLONE });
+  assertSameInventory(cache.signedResources, resourceSnapshot(staged), 'Staged retained resource copy changed');
+  verifyRetainedSignatures(staged, cache.retainedTargets);
+  // Preserve the exact fresh unsigned resource tree as review evidence; never
+  // modify the live parent app or cached helper bytes.
+  const backup = path.join(plan.output, 'fresh-unsigned-resources');
+  if (fs.existsSync(backup)) throw Error('Fresh resource backup already exists');
+  fs.renameSync(target, backup); fs.renameSync(staged, target);
+  const copied = developmentSnapshot(plan.packageRoot);
+  assertSameInventory(cache.signedResources, resources(copied), 'Retained resource overlay differs');
+  assertSameInventory(plan.before.filter(leaf => !leaf.path.startsWith(prefix + '/')), copied.filter(leaf => !leaf.path.startsWith(prefix + '/')), 'Overlay changed native browser inputs');
+  // Native build's own framework/helper signatures are retained, never blanket
+  // re-signed. Any invalid native signature is an explicit blocker, not a reason
+  // to silently change capabilities or native code.
+  const tree = await inspectProvidedSigningTree(plan.packageRoot), nativeTargets = new Set(tree.bundles.filter(bundle => bundle !== 'Aux.app' && !bundle.startsWith(prefix + '/')));
+  for (const file of tree.files) if (file.kind === 'macho' && file.path !== 'Aux.app/Contents/MacOS/Aux' && !file.path.startsWith(prefix + '/')) nativeTargets.add(file.path);
+  for (const relative of [...nativeTargets].sort()) codesign(['--verify', '--strict', '--all-architectures', path.join(plan.packageRoot, relative)]);
+  const main = path.join(plan.packageRoot, 'Aux.app/Contents/MacOS/Aux'), observed = inspectSigningCode(main);
+  if (Object.keys(observed.entitlements).length || observed.flags.some(flag => !['adhoc', 'linker-signed'].includes(flag))) throw Error('Outer browser capability policy requires review');
+  const entitlements = path.join(plan.output, 'outer-empty.entitlements.plist');
+  fs.writeFileSync(entitlements, '<?xml version="1.0"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict/></plist>\n', { flag: 'wx', mode: 0o600 });
+  codesign(['--force', '--sign', '-', '--timestamp=none', '--entitlements', entitlements, path.join(plan.packageRoot, 'Aux.app')]);
+  codesign(['--verify', '--strict', '--all-architectures', path.join(plan.packageRoot, 'Aux.app')]);
+  verifyRetainedSignatures(target, cache.retainedTargets);
+  const after = developmentSnapshot(plan.packageRoot), changes = signingChanges(copied, after, [{ path: 'Aux.app', kind: 'bundle', codeRelative: 'Aux.app/Contents/MacOS/Aux' }]);
+  assertSameInventory(cache.signedResources, resources(after), 'Inherited helper/resource bytes changed during outer seal');
+  const receipt = { version: 1, implementation: 'inherited-development-authority-native-reseal', sourceSha256: sha(fileURLToPath(import.meta.url)), status: 'signed-and-verified', packageRoot: plan.packageRoot, packageReportSha256: plan.packageReportSha256, packageReportIsHistoricalUnsignedInput: true, planPath, planSha256, cachePath: plan.cachePath, cacheSha256: plan.cacheSha256, scope: cache.scope, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, retainedHelperSignaturesVerified: 8, nativeSignaturesVerified: [...nativeTargets].sort(), parentAppleSignaturesReused: true, appleSigningPerformed: false, adhocSignedTargets: ['Aux.app'], keychainOperationsPerformed: false, authorityProofInherited: true, providedResourcesByteIdentical: true, untargetedLeavesPreserved: true, changes, finalInventory: after, finalSnapshotSha256: hash(stable(after)), productLaunched: false, accountStartupVerified: false, aiRequestVerified: false };
+  const receiptPath = path.join(plan.output, 'reuse-receipt.json'); writeNew(receiptPath, receipt);
+  return { receiptPath, receiptSha256: sha(receiptPath), status: receipt.status, appleSigningPerformed: false, keychainOperationsPerformed: false };
+}
+export function verifyReusedDevelopmentReceipt({ receiptPath, receiptSha256 }) {
+  const receipt = pinnedJson(receiptPath, receiptSha256), plan = pinnedJson(receipt.planPath, receipt.planSha256), { cache } = readCache(receipt.cachePath, receipt.cacheSha256);
+  if (receipt.version !== 1 || receipt.implementation !== 'inherited-development-authority-native-reseal' || receipt.status !== 'signed-and-verified' || receipt.sourceSha256 !== sha(fileURLToPath(import.meta.url)) || receipt.packageRoot !== plan.packageRoot || receipt.cacheSha256 !== plan.cacheSha256 || receipt.parentSignedReceiptSha256 !== cache.parentSignedReceiptSha256 || receipt.parentAuthorityReportSha256 !== cache.parentAuthorityReportSha256 || receipt.scope !== cache.scope || receipt.authorityProofInherited !== true || receipt.appleSigningPerformed !== false || receipt.keychainOperationsPerformed !== false || stable(receipt.adhocSignedTargets) !== stable(['Aux.app']) || receipt.providedResourcesByteIdentical !== true || receipt.untargetedLeavesPreserved !== true) throw Error('Exact inherited native reseal receipt required');
+  const current = developmentSnapshot(receipt.packageRoot);
+  assertSameInventory(receipt.finalInventory, current, 'Native descendant changed after sealing');
+  if (hash(stable(current)) !== receipt.finalSnapshotSha256) throw Error('Native descendant final snapshot mismatch');
+  assertSameInventory(cache.signedResources, resources(current), 'Inherited signed resources changed');
+  const expectedOverlay = [...plan.before.filter(leaf => !leaf.path.startsWith(prefix + '/')), ...cache.signedResources];
+  signingChanges(expectedOverlay, current, [{ path: 'Aux.app', kind: 'bundle', codeRelative: 'Aux.app/Contents/MacOS/Aux' }]);
+  codesign(['--verify', '--strict', '--all-architectures', path.join(receipt.packageRoot, 'Aux.app')]);
+  verifyRetainedSignatures(path.join(receipt.packageRoot, prefix), cache.retainedTargets);
+  const observed = inspectSigningCode(path.join(receipt.packageRoot, 'Aux.app/Contents/MacOS/Aux'));
+  if (Object.keys(observed.entitlements).length || stable(observed.flags) !== stable(['adhoc'])) throw Error('Native descendant outer signature differs');
+  return receipt;
+}
+export function writeReusedLaunchHandoff({ receiptPath, receiptSha256, output }) {
+  const receipt = verifyReusedDevelopmentReceipt({ receiptPath, receiptSha256 }), scope = fixedScope();
+  const app = path.join(receipt.packageRoot, 'Aux.app'), home = scope.policy.core.home, profile = path.join(home, 'preview-profile-local-browser-pass');
+  const handoff = { version: 1, kind: 'inherited-signed-preview-launch-handoff', app, home, profile, scope: receipt.scope, receiptPath, receiptSha256, parentSignedReceiptSha256: receipt.parentSignedReceiptSha256, parentAuthorityReportSha256: receipt.parentAuthorityReportSha256, authorityProofInherited: true, signedResourcesByteIdentical: true, packageReportIsHistoricalUnsignedInput: true, command: ['node','scripts/aux.mjs','--home',home,'--profile',profile,'--app',app,'--','--new-window','chrome://newtab/'], environment: { HOME: home, CFFIXED_USER_HOME: home, AUX_ENABLE_PROVIDED_NATIVE_CARRIER: '1', AUX_NATIVE_KEYCHAIN_SCOPE: receipt.scope }, removeEnvironment: ['AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN','AUX_PROVIDED_DP_PROBE','AUX_DP_PROBE_APPROVED','AUX_DP_PROBE_OPERATION','AUX_PROVIDED_NATIVE_LOAD_ONLY'], launched: false, accountStartupVerified: false, aiRequestVerified: false };
+  writeNew(path.resolve(output), handoff); return handoff;
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [mode, requestPath] = process.argv.slice(2), modes = { cache: cacheSignedDevelopmentResources, plan: planDevelopmentResourceReuse, apply: applyDevelopmentResourceReuse, verify: verifyReusedDevelopmentReceipt, handoff: writeReusedLaunchHandoff };
+  if (!modes[mode] || !requestPath || process.argv.length !== 4) throw Error('Usage: reuse-development-authority.mjs cache|plan|apply|verify|handoff explicit-request.json');
+  console.log(JSON.stringify(await modes[mode](pinnedJson(path.resolve(requestPath), sha(path.resolve(requestPath))))));
+}
