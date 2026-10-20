@@ -1,0 +1,69 @@
+--- a/chrome/browser/ui/views/frame/aux_new_chat_view.cc
++++ b/chrome/browser/ui/views/frame/aux_new_chat_view.cc
+@@ -19,6 +19,8 @@
+ #include "ui/views/controls/image_view.h"
+ #include "ui/views/controls/label.h"
+ #include "ui/views/layout/box_layout.h"
++#include "ui/views/layout/flex_layout.h"
++#include "ui/views/style/typography.h"
+ #include "ui/views/view_class_properties.h"
+ #include "ui/views/widget/widget.h"
+ namespace aux {
+@@ -49,6 +51,29 @@
+                            gfx::Font::Weight::NORMAL));
+     SetTooltipText(u"New Chat");
+     if (!shortcut_help.empty()) GetViewAccessibility().SetDescription(shortcut_help);
++    // Original4243388..340c: use the same base FlexLayout as VerticalNewTabButton.
++    SetLayoutManager(std::make_unique<views::FlexLayout>())
++        ->SetOrientation(views::LayoutOrientation::kHorizontal)
++        .SetDefault(views::kCrossAxisAlignmentKey, views::LayoutAlignment::kCenter)
++        .SetIgnoreDefaultMainAxisMargins(true);
++    image_container_view()->SetProperty(views::kMarginsKey,
++                                       gfx::Insets::TLBR(0, 0, 0, 8));
++    static_cast<views::ImageView*>(image_container_view())
++        ->SetImageSize(gfx::Size(16, 16));
++    label()->SetProperty(
++        views::kFlexBehaviorKey,
++        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
++                                 views::MaximumFlexSizeRule::kUnbounded));
++    if (!shortcut_help.empty()) {
++      // Original4244850: an actual, noninteractive sibling of the main label.
++      shortcut_ = AddChildView(std::make_unique<views::Label>(
++          shortcut_help, views::style::CONTEXT_LABEL, views::style::STYLE_PRIMARY));
++      shortcut_->SetCanProcessEventsWithinSubtree(false);
++      shortcut_->SetAutoColorReadabilityEnabled(false);
++      shortcut_->SetFontList(label()->font_list());
++      shortcut_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 4));
++      shortcut_->SetVisible(false);
++    }
+     views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 8);
+   }
+  protected:
+@@ -58,6 +83,18 @@
+     SetEnabledTextColors(color);
+     SetTextColor(STATE_DISABLED, color);
+     SetImageModel(STATE_NORMAL, ui::ImageModel::FromVectorIcon(kNewChatIcon, color, 16));
++    if (shortcut_) {
++      // Original4243cc4..cfc: role226 RGB with fixed alpha0x99.
++      shortcut_->SetEnabledColor(Dark(*this) ? 0x99fafafa : 0x990a0a0a);
++    }
++  }
++  void StateChanged(ButtonState old_state) override {
++    views::LabelButton::StateChanged(old_state);
++    if (shortcut_) {
++      // Original4243f74: expanded help appears in exactly these two states.
++      shortcut_->SetVisible(GetState() == STATE_HOVERED ||
++                            GetState() == STATE_PRESSED);
++    }
+   }
+   void OnPaintBackground(gfx::Canvas* canvas) override {
+     if (GetState() != STATE_HOVERED && GetState() != STATE_PRESSED) return;
+@@ -66,6 +103,8 @@
+     flags.setColor(Dark(*this) ? 0x14fafafa : 0x140a0a0a);
+     canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
+   }
++ private:
++  raw_ptr<views::Label> shortcut_ = nullptr;
+ };
+ BEGIN_METADATA(AuxNewChatNormalButton)
+ END_METADATA

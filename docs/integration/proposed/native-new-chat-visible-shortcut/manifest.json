@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_new_chat_view.cc",
+      "baselineSha256": "25e86caf4b8be1d86c17f8631a15c14788e98de149e47a738631481d7147ad8e",
+      "outputSha256": "6675348fa3a17a3524587402014cbe4d2cea80d4b64c719757cce1228492c31a"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

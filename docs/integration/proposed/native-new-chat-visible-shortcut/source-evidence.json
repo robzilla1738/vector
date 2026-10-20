@@ -1,0 +1,16 @@
+{
+  "originalSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "caller": "region37e220c..2254 calls4244850 only on normalNewChat base, after actual accelerator formatting",
+  "constructor": "4243388..340c horizontal FlexLayout; defaultcrosscenter1, ignoredefaultmainmargins1, imageMarginTLBR(0,0,0,8)",
+  "mainLabelFlex": "4243410..34ac descriptor df3ff60 bytes00000000020000000000000002000000; scaleToZero/unbounded, originalweight1",
+  "shortcutSetter": "4244850..4a44: empty noeffect; actual Label CONTEXT_LABEL5/STYLE_PRIMARY4096, noevents, noautocolorreadability, copyactualmainfont, marginsdf40c60=(0,8,0,4), SetVisible(false), AddChildView",
+  "state": "4243f74..4004: baseStateChanged then visible iff !compact630 && stateHOVERED1 orPRESSED2. SuppliednormalNewChat base initializescompactfalse at4242f90; currentnormalNewChat has no compact producer",
+  "palette": "35e7720..38 sets w23 dark73fafafa/light730a0a0a;35e77d4 bindsrole226;4244918 and4243cd8 replacealpha with99; no155numericColorId mapping",
+  "layout155": "Same exact basegraph alreadyported in actual AuxVerticalNewTabButton; reused actual155 FlexLayout/Label APIs, no manualguessedbounds",
+  "scope": [
+    "Only normalNewChat button changed",
+    "Actualclickedcallback, selectedtabrow, sourceNewChatglyph, body andGN unchanged",
+    "Producer still comes from569e0ad09 androotbody call",
+    "No nativecompile/renderedacceptance claimed"
+  ]
+}
