@@ -1,0 +1,92 @@
+{
+  "composition": "v357",
+  "originalReplay": {
+    "sources": 515,
+    "steps": 360,
+    "actualNativeSourcesMatch": true,
+    "actualArtworkMatches": 23,
+    "seed": "out/native-original-replay-v352",
+    "seedAddedOriginalPaths": [
+      {
+        "path": "chrome/browser/ui/views/tabs/common/tab_view.h",
+        "source": "native-agent-session-tab-mode/baseline",
+        "sha256": "77ec4787fcc62c722e5da86115918bd803a58dc38454b46c75bea15835ca8e4d"
+      },
+      {
+        "path": "chrome/browser/ui/views/tabs/common/tab_view.cc",
+        "source": "native-agent-session-tab-mode/baseline",
+        "sha256": "0a59d222b5fa74b4c7f69841795627d131c22c8afd38441ae2849713bac2932b"
+      },
+      {
+        "path": "chrome/browser/ui/views/tabs/common/tab_view_vertical_layout.cc",
+        "source": "native-agent-session-tab-mode/baseline",
+        "sha256": "6a8b9d30b02e7f5f8d39f1959e652438cf7d6f5542863d308aab7bac97fed1dd"
+      },
+      {
+        "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+        "source": "native-ordinary-tab-projection/baseline",
+        "sha256": "4978c806f6df03adcec8563f53dd506abd0f48daeac5bd17a663e9b87ea474e7"
+      }
+    ]
+  },
+  "focusedBuild": {
+    "composition": "v357",
+    "exitCode": 0,
+    "elapsedSeconds": 7.871464252471924,
+    "targets": {
+      "common_tab": "obj/chrome/browser/ui/views/tabs/common/impl/tab_view.o",
+      "vertical_tab_layout": "obj/chrome/browser/ui/views/tabs/common/impl/tab_view_vertical_layout.o",
+      "ordinary_projection": "obj/chrome/browser/ui/ui/aux_ordinary_tab_projection.o",
+      "tabs_section": "obj/chrome/browser/ui/ui/aux_tabs_section.o",
+      "tabs_actions": "obj/chrome/browser/ui/ui/aux_tabs_actions.o",
+      "saved_pin_representation": "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/views/tabs/common/impl/tab_view.o",
+      "obj/chrome/browser/ui/views/tabs/common/impl/tab_view_vertical_layout.o",
+      "obj/chrome/browser/ui/ui/aux_ordinary_tab_projection.o",
+      "obj/chrome/browser/ui/ui/aux_tabs_section.o",
+      "obj/chrome/browser/ui/ui/aux_tabs_actions.o",
+      "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "priorBuild": {
+    "composition": "v356",
+    "exitCode": 1,
+    "successfulTargets": [
+      "common TabView session mode",
+      "common vertical row layout",
+      "ordinary tab projection",
+      "Tabs section",
+      "saved-pin representation"
+    ],
+    "failedTarget": "Tabs actions missing explicit tab_enums.h; corrected and compiled in v357"
+  },
+  "gn": {
+    "composition": "v356",
+    "exitCode": 0,
+    "targets": 36083,
+    "files": 5013,
+    "logSha256": "5d9cdca105ca94ae04b1c71573d026564acbbe46aaf7beee1afdae1237216b2c"
+  },
+  "sourceVerification": {
+    "proposal": "native-tabs-actions",
+    "originalBytePinsAndLocaleMatch": true,
+    "independentNewFileReplay": true,
+    "realActionsExecuted": false
+  },
+  "latestFullBrowser": "v277",
+  "fullBrowserOrUIAccepted": false,
+  "genuineSidebarMounted": false,
+  "agentSessionFullOwnerComplete": false,
+  "nativeSigningProvisioningOrReleasePerformed": false
+}

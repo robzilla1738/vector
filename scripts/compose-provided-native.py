@@ -376,6 +376,12 @@ steps.extend([
     ('native-chats-controller/native.patch', 'native-chats-controller/manifest.json'),
     ('native-chats-controller-gn/native.patch', 'native-chats-controller-gn/manifest.json'),
     ('native-chats-controller-api155/native.patch', 'native-chats-controller-api155/manifest.json'),
+    ('native-agent-session-tab-mode/native.patch', 'native-agent-session-tab-mode/manifest.json'),
+    ('native-ordinary-tab-projection/native.patch', 'native-ordinary-tab-projection/manifest.json'),
+    ('native-tabs-section/native.patch', 'native-tabs-section/manifest.json'),
+    ('native-tabs-actions/native.patch', 'native-tabs-actions/manifest.json'),
+    ('native-tabs-assembly-gn/native.patch', 'native-tabs-assembly-gn/manifest.json'),
+    ('native-tabs-actions-api155/native.patch', 'native-tabs-actions-api155/manifest.json'),
 ])
 
 if options.through:

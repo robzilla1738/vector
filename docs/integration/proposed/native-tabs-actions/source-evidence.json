@@ -1,0 +1,51 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "name": "tidy",
+      "start": "0x4630098",
+      "endExclusive": "0x4630b48",
+      "bytesSha256": "9c3f66665ba5f322ab2c64c1f82b527a3979ef423600f394f0ed0daaf406becc",
+      "assemblySha256": "397b1cdb9c24351d8d58f6870bdf7d6cca6aec601819ee9244cd1cb0e0259448"
+    },
+    {
+      "name": "clear-confirmation",
+      "start": "0x4630b48",
+      "endExclusive": "0x4630edc",
+      "bytesSha256": "d8401cc1d55a084cfedd59604172149740ba38bc2d4bb3d98fe9712949c9aae1",
+      "assemblySha256": "fa1b8d046486aa860ba89a8ecbee312430d4552fe2e41f144b35fc049f86fbfd"
+    },
+    {
+      "name": "clear-accepted",
+      "start": "0x4679580",
+      "endExclusive": "0x46798ac",
+      "bytesSha256": "0e3bbedcddce0d28b66d8f052cd718176320f026dcd1ea7126d2941942b5b12a",
+      "assemblySha256": "93156ab341d47de579a179fd03724a1dca03271535324c5cda41998120d13fe9"
+    },
+    {
+      "name": "native-message-port",
+      "start": "0x467938c",
+      "endExclusive": "0x4679580",
+      "bytesSha256": "a3e51fb1c3cf4b678d7daff43212abaf6df05f023d239845720de3dfe7b6cb06",
+      "assemblySha256": "44c6ee73f4433308a26e1bada41c53d134e13b1f6449950121edeb92995f9e22"
+    }
+  ],
+  "locale": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/en.lproj/locale.pak",
+    "sha256": "b3e12b14fee821ba97f6efd73554d344c8c79791ef60e46c05029859853320c6",
+    "strings": {
+      "11312": "Clear tabs?",
+      "11313": "This will close all other tabs except AI tabs.",
+      "11314": "Clear"
+    }
+  },
+  "originalProtocol": "aside.verticalTabsTidy",
+  "messageFlags": {
+    "userGesture": false,
+    "privilegedContext": false,
+    "source": "Original4630990 stores zero halfword at sp+260 for both post-data flags before46309a0 PostMessage; decompile local_120=0"
+  },
+  "completion": "Original port ignores response body, moves completion before ClosePort and invokes it once after closing; destructor also consumes pending completion. Timer15s (region698 default15000000us).",
+  "clear": "After confirmation capture actual active document; remove its non-agent group; iterate real model backward, preserve that document and actual agent groups, honor IsTabClosable, close mask3."
+}

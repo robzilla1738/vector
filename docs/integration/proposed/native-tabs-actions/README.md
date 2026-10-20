@@ -1,0 +1,9 @@
+# Original Tabs Tidy and Clear actions
+
+Port region4630098/4630b48 and the original one-shot BrowserGeneratedExtensionMessagePort467938c. Both callbacks are required actual section callbacks: enabled reads the real Tidy button and busy updates its genuine spinner/accessory/AX state. The owner must retire before profile/body identity changes and recreate against the actual current browser.
+
+Tidy collects real tab count, active index, visible-or-committed URL and title. It sends original aside.verticalTabsTidy with native-app endpoint, one-time JSON channel, port1/opener and both message flags false to the actual enabled Aux Agent extension. The staged supplied Agent listener performs the real organization. Timeout15s, a response, disconnect/destruction and admission/serialization failure settle the busy state. Completion ignores response content exactly as source; no successful mock response or new organization implementation exists.
+
+Clear uses the existing original native NSAlert primitive and source locale11312/11313/11314. After actual acceptance it selects the then-active document, removes only its non-agent group, and walks the actual model backward. The actual TabStripModel::IsTabClosable and actual TabGroupFeatures::is_agent_group govern closure; no URL inference, pinned blanket exemption, force-close or beforeunload bypass is added. Close mask3 retains user gesture/history. Necessary155 lifetime adaptation weak-checks browser/profile and revalidates model/index after mutations.
+
+Original source bytes, bounded assembly and locale strings are pinned in source-evidence.json. New native source is unapplied/uncompiled/unmounted until the root composition/build records otherwise. No real tab closure, clipboard, profile, network, Keychain, signing or release operation was performed to author this proposal.

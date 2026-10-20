@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "baselineSha256": "5f8e0e8c32e2651c28c1efb9414c5dcdfde9850cefd064fabea3dbf2bc5cdaa8",
+      "outputSha256": "5a47def30f1091743749990bc45fefb4c9ba3370e061dd1405f53d67d3262375"
+    }
+  ]
+}

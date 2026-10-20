@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/views/frame/aux_tabs_actions.cc
++++ b/chrome/browser/ui/views/frame/aux_tabs_actions.cc
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_group_features.h"
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
