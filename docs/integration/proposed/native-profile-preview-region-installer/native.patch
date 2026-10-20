@@ -1,0 +1,720 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -269,6 +269,13 @@
+     return false;
+   }
+   page->ShowLiveContent(live);
++  if (!alive || !page_lifetime.view())
++    return false;
++  if (!live) {
++    const auto image = region->FindAuxProfilePreviewImage(target);
++    if (!image.isNull())
++      page->SetCapturedImage(image);
++  }
+   if (!alive || !page_lifetime.view()) {
+     return false;
+   }
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -6,15 +6,24 @@
+ 
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_retention.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_input.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h"
++#include "chrome/browser/ui/views/frame/aux_profile_search_button.h"
++#include "chrome/browser/ui/views/frame/aux_profile_page_indicator.h"
++#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h"
++#include "ui/views/view_utils.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
++#include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "components/prefs/pref_service.h"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <optional>
+ 
+ #include "base/callback_list.h"
+@@ -154,6 +163,40 @@
+   top_button_separator_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
++  // Original +5a8 parent, in the actual region between top controls and
++  // saved entries. All actions retain their genuine native owners.
++  aux_profile_header_ = AddChildView(
++      std::make_unique<aux::VerticalTabSidebarProfileHeader>(
++          *browser_view,
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region) {
++                if (region && region->aux_profile_header_)
++                  ShowAuxProfileMenu(region->browser_view()->browser(),
++                      region->aux_profile_header_->profile_button());
++              }, aux_preview_weak_factory_.GetWeakPtr()),
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region) {
++                if (region && region->aux_profile_header_)
++                  ToggleAuxProfileSearch(region->browser_view()->browser(),
++                      region->aux_profile_header_->search_button());
++              }, aux_preview_weak_factory_.GetWeakPtr()),
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region,
++                 const base::FilePath& target) {
++                return region && region->SelectAuxProfilePreview(target);
++              }, aux_preview_weak_factory_.GetWeakPtr()),
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region,
++                 views::View* anchor, const base::FilePath& path) {
++                if (region)
++                  ShowAuxProfileActions(region->browser_view()->browser(),
++                                        anchor, path);
++              }, aux_preview_weak_factory_.GetWeakPtr()),
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region) {
++                return region && region->AuxProfilePreviewIdle();
++              }, aux_preview_weak_factory_.GetWeakPtr())));
++
+   pinned_tab_entries_ = AddChildView(
+       std::make_unique<VerticalPinnedTabEntriesView>(browser_view->browser()));
+   pinned_tab_entries_->SetProperty(
+@@ -230,11 +273,21 @@
+         std::make_unique<VerticalTabStripFocusSwipeController>(this);
+   }
+ 
++  InstallAuxProfilePreviewAdmission(
++      std::make_unique<aux::ProfilePreviewAdmission>(
++          *this, target_collapse_state_.collapsed,
++          target_collapse_state_.uncollapsed_width));
+   SetNotifyEnterExitOnChild(true);
+   UpdateColors();
+ }
+ 
+ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
++  aux_preview_weak_factory_.InvalidateWeakPtrs();
++  RetireAuxProfilePreviewInput();
++  aux_profile_preview_capture_.reset();
++  aux_profile_preview_owner_.reset();
++  aux_profile_preview_retention_.reset();
++  aux_profile_preview_admission_.reset();
+   if (aux_profile_preview_retention_)
+     aux_profile_preview_retention_->Retire();
+   for (const auto& lock : hover_locks_) {
+@@ -247,6 +300,8 @@
+ }
+ 
+ bool VerticalTabStripRegionView::IsAnimatingSize() const {
++  if (aux_profile_preview_admission_)
++    return aux_profile_preview_admission_->collapse_animating();
+   return BrowserAnimationController::From(browser_view()->browser())
+       ->IsAnimating(TabStripAnimations::kVerticalTabStrip);
+ }
+@@ -391,6 +446,9 @@
+ 
+ void VerticalTabStripRegionView::AddedToWidget() {
+   BaseTabStripRegionView::AddedToWidget();
++  InitializeAuxProfilePreview();
++  if (aux_profile_preview_input_)
++    aux_profile_preview_input_->AttachToWidget();
+   if (aux_profile_preview_retention_)
+     aux_profile_preview_retention_->AttachToWidget();
+   paint_as_active_subscription_ =
+@@ -406,6 +464,8 @@
+ }
+ 
+ void VerticalTabStripRegionView::RemovedFromWidget() {
++  if (aux_profile_preview_input_)
++    aux_profile_preview_input_->DetachFromWidget();
+   if (aux_profile_preview_retention_)
+     aux_profile_preview_retention_->DetachFromWidget();
+   if (GetFocusManager()) {
+@@ -423,6 +483,10 @@
+                                         0, resize_area_width_,
+                                         bounds().height()));
+   shadow_frame_->SetBoundsRect(GetLocalBounds());
++  if (aux_profile_header_ && aux_profile_header_held_bounds_ &&
++      aux_profile_header_->parent() == this) {
++    aux_profile_header_->SetBoundsRect(*aux_profile_header_held_bounds_);
++  }
+ 
+   // Ensure that we update the drop arrow position so that it does not render in
+   // the collapsed state when expand on hover is active.
+@@ -451,6 +515,20 @@
+ gfx::Size VerticalTabStripRegionView::CalculatePreferredSize(
+     const views::SizeBounds& available_size) const {
+   auto size = BaseTabStripRegionView::CalculatePreferredSize(available_size);
++  if (aux_profile_preview_admission_) {
++    const auto& admission = *aux_profile_preview_admission_;
++    const double value = target_collapse_state_.collapsed &&
++                                 (admission.hover_expanded() || admission.retained())
++                             ? 1.0 : admission.collapse_value();
++    const int target = admission.retained()
++                           ? std::max(280, uncollapsed_width())
++                           : uncollapsed_width();
++    const int amount = std::max(0, target - kCollapsedWidth);
++    size.set_width(kCollapsedWidth + static_cast<int>(
++        target_collapse_state_.collapsed ? std::ceil(amount * value)
++                                        : std::floor(amount * value)));
++    return size;
++  }
+   const auto* controller =
+       BrowserAnimationController::From(browser_view()->browser());
+   const auto motion =
+@@ -679,6 +757,9 @@
+   }
+ 
+   target_collapse_state_ = new_state;
++  if (aux_profile_preview_admission_ && previously_collapsed == new_state.collapsed)
++    aux_profile_preview_admission_->SetCollapseState(
++        new_state.collapsed, new_state.uncollapsed_width);
+ 
+   if (previously_collapsed != target_collapse_state_.collapsed) {
+     state_controller_->RequestCollapse(target_collapse_state_.collapsed);
+@@ -695,6 +776,8 @@
+ }
+ 
+ bool VerticalTabStripRegionView::IsCollapsing() {
++  if (aux_profile_preview_admission_)
++    return target_collapse_state_.collapsed && IsAnimatingSize();
+   return BrowserAnimationController::From(browser_view()->browser())
+              ->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==
+          TabStripAnimations::kCollapse;
+@@ -716,6 +799,11 @@
+   if (!tab_strip_view()) {
+     return;
+   }
++  if (aux_profile_preview_admission_) {
++    aux_profile_preview_admission_->SetCollapseState(
++        collapse, target_collapse_state_.uncollapsed_width);
++    return;
++  }
+   const auto motion =
+       collapse ? TabStripAnimations::kCollapse : TabStripAnimations::kExpand;
+   BrowserAnimationController::From(browser_view()->browser())
+@@ -780,6 +868,10 @@
+   if (pinned_profile_switch_generation_ == generation) {
+     pinned_profile_switch_generation_.reset();
+     pinned_tab_entries_->RebindAfterProfileSwitch();
++    if (aux_profile_header_)
++      aux_profile_header_->RefreshNow();
++    if (aux_profile_preview_capture_)
++      aux_profile_preview_capture_->Request(base::Milliseconds(120));
+   }
+ }
+ 
+@@ -857,12 +949,14 @@
+   // Pre-set the animation values to the appropriate state.
+   auto* const animation_controller =
+       BrowserAnimationController::From(browser_view()->browser());
+-  animation_controller->Reset(TabStripAnimations::kVerticalTabStrip,
+-                              target_collapse_state_.collapsed
+-                                  ? TabStripAnimations::kCollapse
+-                                  : TabStripAnimations::kExpand);
+-
+-  on_animation_update_subscription_ = animation_controller->Subscribe(
++  if (!aux_profile_preview_admission_)
++    animation_controller->Reset(TabStripAnimations::kVerticalTabStrip,
++                                target_collapse_state_.collapsed
++                                    ? TabStripAnimations::kCollapse
++                                    : TabStripAnimations::kExpand);
++
++  if (!aux_profile_preview_admission_)
++    on_animation_update_subscription_ = animation_controller->Subscribe(
+       TabStripAnimations::kVerticalTabStrip,
+       base::BindRepeating(&VerticalTabStripRegionView::OnAnimationProgressed,
+                           base::Unretained(this)));
+@@ -878,9 +972,14 @@
+   ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
+ 
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
++  InitializeAuxProfilePreview();
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
++  RetireAuxProfilePreviewInput();
++  aux_profile_preview_owner_.reset();
++  aux_profile_preview_capture_.reset();
++  ReleaseAuxProfileHeaderGeometry();
+   on_animation_update_subscription_.reset();
+   expand_on_hover_enabled_changed_subscription_.reset();
+   omnibox_tab_helper_observation_.Reset();
+@@ -891,6 +990,10 @@
+ 
+ void VerticalTabStripRegionView::OnCollapseStateChanged(
+     tabs::VerticalTabStripCollapseState state) {
++  if (aux_profile_preview_admission_) {
++    ApplyRetainedLayout();
++    return;
++  }
+   // Apply padding immediately at the start of the animation by including
+   // the collapsing state.
+   bool collapsed = state != tabs::VerticalTabStripCollapseState::kExpanded;
+@@ -1354,6 +1457,236 @@
+   }
+ }
+ 
++// The SAME +940 timer and actual region's lock counters are used by both
++// retained release and expand-on-hover. No independent timer is installed.
++void VerticalTabStripRegionView::StopSharedHoverTimer() {
++  expand_on_hover_timer_.Stop();
++}
++bool VerticalTabStripRegionView::SharedHoverTimerIsRunning() const {
++  return expand_on_hover_timer_.IsRunning();
++}
++void VerticalTabStripRegionView::StartSharedHoverTimer(
++    base::TimeDelta delay, base::OnceClosure callback) {
++  expand_on_hover_timer_.Start(FROM_HERE, delay, std::move(callback));
++}
++bool VerticalTabStripRegionView::RetainedPointerInside() const {
++  return aux_profile_preview_retention_ &&
++         aux_profile_preview_retention_->RetainedPointerInside();
++}
++bool VerticalTabStripRegionView::KeepExpandedLocked() const {
++  return keep_expanded_lock_count_ > 0;
++}
++void VerticalTabStripRegionView::UpdateExpandOnHover(
++    std::optional<bool> hovered) {
++  UpdateExpandOnHoverState(hovered);
++}
++void VerticalTabStripRegionView::RetentionAcquired() {
++  // Original46505xx: retire the genuine caption exclusion geometry while the
++  // collapsed strip is retained over content, then recompute its real layout.
++  top_button_container_->SetToolbarHeightForLayout(0);
++  top_button_container_->SetCaptionButtonWidthForLayout(0);
++  top_button_container_->SetIsExitingExpandOnHoverForLayout(false);
++  top_button_container_->SetAuxProfilePreviewPresentation(
++      aux_profile_preview_admission_->VisuallyCollapsed(), true);
++}
++void VerticalTabStripRegionView::SetAuxProfilePreviewPinnedWidth() {
++  const int target = aux_profile_preview_admission_->retained()
++                         ? std::max(280, uncollapsed_width())
++                         : uncollapsed_width();
++  const auto* margins = pinned_tab_entries_->GetProperty(views::kMarginsKey);
++  pinned_tab_entries_->SetLayoutWidthOverride(
++      std::max(0, target - (margins ? margins->width() : 0)));
++}
++void VerticalTabStripRegionView::HoverExpandedChanged(bool expanded) {
++  SetAuxProfilePreviewPinnedWidth();
++  ApplyAuxProfileHoverExpansion(expanded);
++  ApplyRetainedLayout();
++}
++void VerticalTabStripRegionView::HoldAuxProfileHeaderGeometry() {
++  if (!aux_profile_header_ || aux_profile_header_holding_)
++    return;
++  aux_profile_header_holding_ = true;
++  auto* header = aux_profile_header_.get();
++  auto* profile = header->profile_button();
++  auto* pager = header->pager();
++  auto* search = header->search_button();
++  // Source7a4 is the hold request; source7a0 is separate valid geometry.
++  // Borrowed/hidden/unlaid-out leaves never become fabricated held bounds.
++  if (header->parent() != this || !header->GetVisible() ||
++      header->bounds().IsEmpty() || profile->parent() != header ||
++      !profile->GetVisible() || profile->bounds().IsEmpty() ||
++      search->parent() != header ||
++      (search->GetVisible() && search->bounds().IsEmpty()) ||
++      pager->parent() != header ||
++      (pager->GetVisible() && pager->bounds().IsEmpty())) {
++    return;
++  }
++  aux_profile_header_held_bounds_ = header->bounds();
++  aux_profile_pager_held_visibility_ = pager->GetVisible();
++  header->SetHeldChildBounds(
++      aux::VerticalTabSidebarProfileHeader::HeldChildBounds{
++          profile->bounds(), pager->bounds(), search->bounds()});
++}
++void VerticalTabStripRegionView::ReleaseAuxProfileHeaderGeometry() {
++  aux_profile_header_holding_ = false;
++  aux_profile_header_held_bounds_.reset();
++  aux_profile_pager_held_visibility_.reset();
++  if (aux_profile_header_)
++    aux_profile_header_->SetHeldChildBounds(std::nullopt);
++}
++void VerticalTabStripRegionView::CollapseTransitionStarted() {
++  if (tab_strip_view())
++    tab_strip_view()->SetIsAnimatingSize(true);
++  SetAuxProfilePreviewPinnedWidth();
++  HoldAuxProfileHeaderGeometry();
++}
++void VerticalTabStripRegionView::CollapseTransitionProgressed() {
++  if (tab_strip_view())
++    tab_strip_view()->SetIsAnimatingSize(true);
++  ApplyRetainedLayout();
++}
++void VerticalTabStripRegionView::CollapseTransitionSettled(bool completed) {
++  if (tab_strip_view())
++    tab_strip_view()->SetIsAnimatingSize(false);
++  pinned_tab_entries_->SetLayoutWidthOverride(std::nullopt);
++  ReleaseAuxProfileHeaderGeometry();
++  ApplyRetainedLayout();
++  auto alive = aux_preview_weak_factory_.GetWeakPtr();
++  if (completed) {
++    views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
++        kAnimationCompletedEvent, this);
++  }
++  if (alive && aux_profile_preview_capture_)
++    aux_profile_preview_capture_->Request(base::Milliseconds(120));
++}
++void VerticalTabStripRegionView::CollapseStateChanged(bool collapsed) {
++  // Update the genuine controller, not an auxiliary pref or guessed state.
++  auto alive = aux_preview_weak_factory_.GetWeakPtr();
++  if (update_state_controller_collapsed_callback_)
++    update_state_controller_collapsed_callback_.Run(collapsed);
++  if (alive)
++    ApplyRetainedLayout();
++}
++void VerticalTabStripRegionView::ApplyRetainedLayout() {
++  const auto* admission = aux_profile_preview_admission_.get();
++  if (!admission)
++    return;
++  const bool compact = admission->VisuallyCollapsed();
++  const bool narrow = !admission->AdmitsProfilePreview(width());
++  const bool animating = admission->collapse_animating() ||
++                         admission->expanding_from_collapsed();
++  top_button_container_->SetAuxProfilePreviewPresentation(
++      compact, admission->retained());
++  pinned_tab_entries_->SetCompactPresentation(compact);
++  aux_sidebar_->SetVisible(!compact);
++  aux_footer_->SetVisible(!compact);
++  top_button_separator_->SetVisible(compact);
++  bottom_button_container_->SetVisible(compact);
++  resize_area_width_ = compact ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
++  resize_area_->SetVisible(!target_collapse_state_.collapsed ||
++                           !state_controller_->IsExpandOnHoverEnabled() ||
++                           resize_area_->is_resizing());
++  if (aux_profile_header_) {
++    aux_profile_header_->SetVisible(aux_profile_header_holding_ || !narrow);
++    const bool label_suppressed = !target_collapse_state_.collapsed ||
++        (!admission->hover_expanded() && !admission->retained());
++    aux_profile_header_->SetPresentation(
++        compact, label_suppressed, std::nullopt, narrow,
++        aux_profile_header_held_bounds_
++            ? aux_profile_pager_held_visibility_ : std::nullopt);
++  }
++  if (tab_strip_view())
++    tab_strip_view()->SetCollapsedState(narrow && !animating);
++  InvalidateLayout();
++  browser_view()->InvalidateLayout();
++}
++
++views::View* VerticalTabStripRegionView::GetAuxProfileHeaderContainer() const {
++  return aux_profile_header_;
++}
++aux::VerticalTabSidebarProfileButton*
++VerticalTabStripRegionView::GetAuxSidebarProfileButton() const {
++  return aux_profile_header_ ? aux_profile_header_->profile_button() : nullptr;
++}
++aux::ProfileSearchButton*
++VerticalTabStripRegionView::GetAuxSidebarSearchButton() const {
++  return aux_profile_header_ ? aux_profile_header_->search_button() : nullptr;
++}
++bool VerticalTabStripRegionView::AdmitsAuxProfilePreview() const {
++  return browser_view() && browser_view()->ShouldDrawVerticalTabStrip() &&
++      aux_profile_preview_admission_ &&
++      aux_profile_preview_admission_->AdmitsProfilePreview(width()) &&
++      force_collapse_lock_count_ == 0;
++}
++bool VerticalTabStripRegionView::AuxProfilePreviewIdle() const {
++  return aux_profile_preview_input_ && aux_profile_preview_input_->idle();
++}
++bool VerticalTabStripRegionView::SelectAuxProfilePreview(
++    const base::FilePath& target) {
++  return aux_profile_preview_input_ &&
++         aux_profile_preview_input_->Select(target);
++}
++gfx::ImageSkia VerticalTabStripRegionView::FindAuxProfilePreviewImage(
++    const base::FilePath& path) const {
++  return aux_profile_preview_capture_ ? aux_profile_preview_capture_->Find(path)
++                                      : gfx::ImageSkia();
++}
++std::optional<aux::ProfilePreviewCaptureGeometry>
++VerticalTabStripRegionView::AuxProfilePreviewCaptureGeometry() const {
++  if (!AuxProfilePreviewIdle() || !AdmitsAuxProfilePreview() ||
++      !aux_profile_header_ || !tab_strip_view() ||
++      aux_profile_header_->parent() != this) {
++    return std::nullopt;
++  }
++  auto* scroll = tab_strip_view()->unpinned_tabs_scroll_view();
++  if (!scroll || !Contains(scroll))
++    return std::nullopt;
++  auto bounds = GetLocalBounds();
++  // Original4659080 capture starts below the real top-button container and
++  // contains the genuine header and scroll surfaces, not a sidebar stand-in.
++  bounds.Inset(gfx::Insets::TLBR(top_button_container_->bounds().bottom(),
++                               0, 0, 0));
++  return aux::ProfilePreviewCaptureGeometry{
++      bounds, aux_profile_header_.get(), scroll,
++      {bottom_button_container_.get(), tab_strip_view(), gemini_button_.get()}};
++}
++void VerticalTabStripRegionView::InitializeAuxProfilePreview() {
++  if (!aux_profile_header_ || !tab_strip_view() ||
++      aux_profile_preview_input_ || !aux_profile_preview_admission_)
++    return;
++  auto* scroll = views::AsViewClass<VerticalTabStripScrollView>(
++      tab_strip_view()->unpinned_tabs_scroll_view());
++  CHECK(scroll);
++  auto& browser = *browser_view()->browser();
++  aux_profile_preview_capture_ =
++      std::make_unique<aux::ProfilePreviewCaptureCache>(
++          browser, *this,
++          base::BindRepeating(
++              [](base::WeakPtr<VerticalTabStripRegionView> region)
++                  -> std::optional<aux::ProfilePreviewCaptureGeometry> {
++                return region ? region->AuxProfilePreviewCaptureGeometry()
++                              : std::nullopt;
++              }, aux_preview_weak_factory_.GetWeakPtr()));
++  if (!aux_profile_preview_owner_)
++    aux_profile_preview_owner_ =
++        std::make_unique<aux::ProfilePreviewRegionOwner>(browser, *this);
++  aux_profile_preview_input_ = std::make_unique<aux::ProfilePreviewInput>(
++      browser, *this, *scroll, *aux_profile_preview_owner_,
++      base::BindRepeating(
++          [](base::WeakPtr<VerticalTabStripRegionView> region) {
++            return region && region->AdmitsAuxProfilePreview();
++          }, aux_preview_weak_factory_.GetWeakPtr()));
++  if (GetWidget())
++    aux_profile_preview_input_->AttachToWidget();
++  ApplyRetainedLayout();
++  aux_profile_preview_capture_->Request(base::Milliseconds(120));
++}
++void VerticalTabStripRegionView::RetireAuxProfilePreviewInput() {
++  if (aux_profile_preview_input_)
++    aux_profile_preview_input_->DetachFromWidget();
++  aux_profile_preview_input_.reset();
++}
++
+ BEGIN_METADATA(VerticalTabStripRegionView)
+ END_METADATA
+ 
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -15,6 +15,10 @@
+ #include "base/functional/callback.h"
+ #include "base/containers/flat_set.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h"
++#include "ui/gfx/image/image_skia.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/ui/animation/browser_animation_types.h"
+@@ -41,6 +45,10 @@
+ class ProfilePreviewRegionOwner;
+ class ProfilePreviewAdmission;
+ class ProfilePreviewRetention;
++class ProfilePreviewInput;
++class VerticalTabSidebarProfileHeader;
++class VerticalTabSidebarProfileButton;
++class ProfileSearchButton;
+ }
+ 
+ class AuxSidebarFooter;
+@@ -70,7 +78,8 @@
+     : public BaseTabStripRegionView,
+       public views::ResizeAreaDelegate,
+       public OmniboxTabHelper::Observer,
+-      public tabs::VerticalTabStripStateController::Delegate {
++      public tabs::VerticalTabStripStateController::Delegate,
++      public aux::ProfilePreviewAdmission::Delegate {
+   METADATA_HEADER(VerticalTabStripRegionView, BaseTabStripRegionView)
+ 
+  public:
+@@ -113,6 +122,13 @@
+       std::unique_ptr<aux::ProfilePreviewAdmission> admission);
+   aux::ProfilePreviewAdmission* GetAuxProfilePreviewAdmission() const;
+   aux::ProfilePreviewRetention* GetAuxProfilePreviewRetention() const;
++  // Actual header parent and leaves, never the whole Sidebar substitute.
++  views::View* GetAuxProfileHeaderContainer() const;
++  aux::VerticalTabSidebarProfileButton* GetAuxSidebarProfileButton() const;
++  aux::ProfileSearchButton* GetAuxSidebarSearchButton() const;
++  bool SelectAuxProfilePreview(const base::FilePath& target);
++  bool AuxProfilePreviewIdle() const;
++  gfx::ImageSkia FindAuxProfilePreviewImage(const base::FilePath& path) const;
+   // Real delegate calls after setting actual pinned temporary width.
+   void ApplyAuxProfileHoverExpansion(bool expanded);
+ 
+@@ -272,7 +288,7 @@
+   void RestartExpandOnHoverTimer(const base::TimeDelta& delay);
+   void OnMouseVelocityHeuristicInterval();
+   void CalculateMouseVelocityForExpandOnHover();
+-  void ResetExpandOnHoverTimers();
++  void ResetExpandOnHoverTimers() override;
+   void AnimateExpandOnHover(bool expand);
+ 
+   void RegisterExpandOnHoverLock(VerticalTabStripExpandOnHoverLock* lock);
+@@ -286,6 +302,30 @@
+   void OnOmniboxPopupVisibilityChanged(bool is_open) override;
+ 
+   void OnActiveTabChanged(const tabs::TabInterface* active_tab) override;
++
++  // ProfilePreviewAdmission::Delegate. The original +940 timer is shared,
++  // not a second release timer or an independent animation controller.
++  void StopSharedHoverTimer() override;
++  bool SharedHoverTimerIsRunning() const override;
++  void StartSharedHoverTimer(base::TimeDelta, base::OnceClosure) override;
++  bool RetainedPointerInside() const override;
++  bool KeepExpandedLocked() const override;
++  void UpdateExpandOnHover(std::optional<bool>) override;
++  void RetentionAcquired() override;
++  void HoverExpandedChanged(bool) override;
++  void CollapseTransitionStarted() override;
++  void CollapseTransitionProgressed() override;
++  void CollapseTransitionSettled(bool) override;
++  void CollapseStateChanged(bool) override;
++  void ApplyRetainedLayout() override;
++  void InitializeAuxProfilePreview();
++  void RetireAuxProfilePreviewInput();
++  bool AdmitsAuxProfilePreview() const;
++  std::optional<aux::ProfilePreviewCaptureGeometry>
++      AuxProfilePreviewCaptureGeometry() const;
++  void SetAuxProfilePreviewPinnedWidth();
++  void HoldAuxProfileHeaderGeometry();
++  void ReleaseAuxProfileHeaderGeometry();
+ 
+   raw_ptr<VerticalTabStripTopContainer> top_button_container_ = nullptr;
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
+@@ -358,9 +398,16 @@
+   base::OneShotTimer mouse_exit_timer_;
+ 
+   base::CallbackListSubscription paint_as_active_subscription_;
++  raw_ptr<aux::VerticalTabSidebarProfileHeader> aux_profile_header_ = nullptr;
++  std::optional<gfx::Rect> aux_profile_header_held_bounds_;
++  std::optional<bool> aux_profile_pager_held_visibility_;
++  bool aux_profile_header_holding_ = false;
++  std::unique_ptr<aux::ProfilePreviewCaptureCache> aux_profile_preview_capture_;
+   std::unique_ptr<aux::ProfilePreviewRegionOwner> aux_profile_preview_owner_;
++  std::unique_ptr<aux::ProfilePreviewInput> aux_profile_preview_input_;
+   std::unique_ptr<aux::ProfilePreviewAdmission> aux_profile_preview_admission_;
+   std::unique_ptr<aux::ProfilePreviewRetention> aux_profile_preview_retention_;
++  base::WeakPtrFactory<VerticalTabStripRegionView> aux_preview_weak_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -90,11 +90,15 @@
+ 
+ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+     const views::SizeBounds& size_bounds) const {
++  // Retained flyover layout has no native caption exclusion (46505xx).
++  const int toolbar_height = aux_profile_retained_ ? 0 : toolbar_height_;
++  const int caption_button_width =
++      aux_profile_retained_ ? 0 : caption_button_width_;
+   views::ProposedLayout layout;
+   gfx::Size host_size =
+       gfx::Size(size_bounds.width().is_bounded() ? size_bounds.width().value()
+                                                  : parent()->width(),
+-                toolbar_height_);
++                toolbar_height);
+ 
+   // If we're trying to get the minimum size, it will ask for layout for size
+   // bounds {0, 0}, but overflow is based on available size.
+@@ -103,7 +107,8 @@
+           ? host_size.width()
+           : parent()->GetAvailableSize(this).width().value_or(0);
+ 
+-  const bool is_collapsed = state_controller_->IsCollapsed();
++  const bool is_collapsed =
++      aux_profile_compact_.value_or(state_controller_->IsCollapsed());
+ 
+   // Once the available width is below the collapse snap width, we update the
+   // orientation in order to have smooth transition during animation.
+@@ -133,8 +138,8 @@
+     // Because the collapsed state is set at the end of the transition, we need
+     // to ensure that the top container's button do not appear behind the
+     // caption buttons when they are leading.
+-    if (caption_button_width_ > 0) {
+-      current_y = std::max(current_y, toolbar_height_);
++    if (caption_button_width > 0) {
++      current_y = std::max(current_y, toolbar_height);
+     }
+ 
+     if (unfocus_button_ && unfocus_button_->GetVisible()) {
+@@ -209,7 +214,7 @@
+             pref_size.height() +
+             GetLayoutConstant(
+                 LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
+-      } else if (caption_button_width_ != 0) {
++      } else if (caption_button_width != 0) {
+         current_y += GetLayoutConstant(
+             LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
+       }
+@@ -233,7 +238,7 @@
+     const int left_alignment =
+         (wrapped_due_to_overflow || is_exiting_expand_on_hover_)
+             ? 0
+-            : caption_button_width_;
++            : caption_button_width;
+ 
+     int y_baseline = host_size.height() / 2;
+     // If there is not enough space for all of the buttons to be on the same
+@@ -242,7 +247,7 @@
+     if (wrapped_due_to_overflow) {
+       host_size.Enlarge(0,
+                         GetLayoutConstant(LayoutConstant::kBookmarkBarHeight));
+-      y_baseline = toolbar_height_ +
++      y_baseline = toolbar_height +
+                    (GetLayoutConstant(LayoutConstant::kBookmarkBarHeight) -
+                     GetLayoutConstant(
+                         LayoutConstant::kBookmarkBarButtonImageLabelPadding)) /
+@@ -297,7 +302,7 @@
+     int right_alignment = host_size.width();
+ 
+     bool wrap_during_animation =
+-        caption_button_width_ != 0 && available_width < GetPreferredWidth();
++        caption_button_width != 0 && available_width < GetPreferredWidth();
+ 
+     if (combo_button_) {
+       const gfx::Size pref_size = combo_button_->GetPreferredSizeForOrientation(
+@@ -435,6 +440,15 @@
+   }
+ }
+ 
++void VerticalTabStripTopContainer::SetAuxProfilePreviewPresentation(
++    bool compact, bool retained) {
++  if (aux_profile_compact_ == compact && aux_profile_retained_ == retained)
++    return;
++  aux_profile_compact_ = compact;
++  aux_profile_retained_ = retained;
++  InvalidateLayout();
++}
++
+ void VerticalTabStripTopContainer::SetToolbarHeightForLayout(
+     int toolbar_height) {
+   if (toolbar_height_ == toolbar_height) {
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+@@ -4,6 +4,8 @@
+ 
+ #ifndef CHROME_BROWSER_UI_VIEWS_TABS_VERTICAL_VERTICAL_TAB_STRIP_TOP_CONTAINER_H_
+ #define CHROME_BROWSER_UI_VIEWS_TABS_VERTICAL_VERTICAL_TAB_STRIP_TOP_CONTAINER_H_
++
++#include <optional>
+ 
+ #include "ui/menus/simple_menu_model.h"
+ #include "ui/views/context_menu_controller.h"
+@@ -87,6 +89,9 @@
+   void SetCaptionButtonWidthForLayout(int caption_button_width);
+   void SetIsExitingExpandOnHoverForLayout(bool is_exiting_expand_on_hover);
+   bool WillWrapDueToOverflow(int available_width) const;
++  // Original region-owned +3b0/+3b2 presentation, distinct from persisted
++  // collapse. The real top-container retains the same buttons and ownership.
++  void SetAuxProfilePreviewPresentation(bool compact, bool retained);
+ 
+  private:
+   void OnCollapseButtonContextMenuClosed();
+@@ -128,6 +133,9 @@
+   // within the wrapped state bounds when leading caption buttons are present.
+   bool is_exiting_expand_on_hover_ = false;
+ 
++  std::optional<bool> aux_profile_compact_;
++  bool aux_profile_retained_ = false;
++
+   // This is updated during layout calculation and then applied during layout.
+   mutable views::LayoutOrientation combo_button_orientation_ =
+       views::LayoutOrientation::kHorizontal;

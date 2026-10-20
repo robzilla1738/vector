@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "base": "77d7c4dec region outputs, actual frozen232 top-container and region-owner outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": "1b196e346440c7c2d5bbb69f798bd1759af0be07c6bdd9fbe0ec2bd234fe673b",
+      "outputSha256": "a3662030817a380de6521b981c004b8917ae81cab55919f7dacf9f744df340e0",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-installer/baseline/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "0c06b537378229facd7eba45d7af1b0e3567bb65be4ef95d49b2010b11d7a932",
+      "outputSha256": "5fc7cf055f5e30d31c2de90ee7ca77a7656e1f5c0e380c7ed4bd0e10896272ae",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-installer/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "6ba9fb6f0486855a5a13cf601583f3b30ba8ca804496255b37562a08945af80c",
+      "outputSha256": "32580cd7f5c9bc6088b60700132f7157c7c5f325adc5ce26fa0ff744929d7b4a",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-installer/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "baselineSha256": "eefc4adc6eec4d8a5011d66415fca90b9c6aa4d9e12c01d3a9c11a2fcfabfc85",
+      "outputSha256": "0ffcafb6cc287cf83b2f0240e22dd763bb4ef0675a2fbf7ffa15f70da8e4b927",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-installer/baseline/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h",
+      "baselineSha256": "8b02d8127c78849f7d999ca9d103132d53a8895e9cf9b9d4d9a5ab010cf10bfd",
+      "outputSha256": "2afe4f30667faa56317e7f73105aa03602bcb09a2769da2dede1ecbb9664ce83",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-installer/baseline/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "dependencies": [
+    "77d7c4dec retention producers",
+    "bb6122061 actual header/pager",
+    "root ToggleAuxProfileSearch actual source port",
+    "L4 ShowAuxProfileMenu and true kind7 ShowAuxProfileActions exports"
+  ]
+}

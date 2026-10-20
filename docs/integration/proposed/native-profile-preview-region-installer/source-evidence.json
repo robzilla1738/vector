@@ -1,0 +1,32 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "proofs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-admission/source-evidence.json",
+      "sha256": "cdb260c701397100af1123fa6de411a2cbe5afee5d67f737a6e822221af50f79"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/source-evidence.json",
+      "sha256": "ec5c887164210cbdccae03dc1147d3e0f0fb9b5a981bf1e3f92e4f244a2a2d0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-image-cache/source-evidence.json",
+      "sha256": "31d5849e58d24745af813b9340f0b30b62dcc02ea7cfdb41f7fd4d649e900e47"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-input/source-evidence.json",
+      "sha256": "3078667bf8dd16d469d1848617c2b83fabf8d2fcd434958847dd2d380392ae07"
+    }
+  ],
+  "sourceBindings": {
+    "timer": "actual +940 expand_on_hover_timer_,500msrelease/100mscheck owned byAdmission",
+    "collapse": "original cd0 SlideAnimation,450/350ms feature-controlled; original f78 latch and151px predicate",
+    "heldHeader": "4649348..46494a8 captures actual5a8/598/5e0/5a0 geometry; separate request7a4 and valid7a0",
+    "effects": "real pinned SetLayoutWidthOverride and real TabStripView::SetIsAnimatingSize propagate current scrollbars; exact new header compact/labels/pager visibility",
+    "topContainer": "actual region+590 compact3b0/retained3b2; retained acquisition zeroes actual caption exclusion, native caption setters retained",
+    "installer": "real OnTabStripViewSet/AddedToWidget boundary, exact VerticalTabStripScrollView; actual own-root pretargethandler + defaultpriority; Removed detaches",
+    "capture": "actual own-region native snapshot cache, no model or browser-page screenshot; real live view precedence, then nonempty actual captured target image, then metadata fallback",
+    "actions": "L4 actual menu and root original custom/stock search source ports remain required dependencies, never no-op or fabricated context"
+  }
+}
