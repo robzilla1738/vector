@@ -1,0 +1,108 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "coalesced scheduling",
+      "rva": "0x41d5e6c",
+      "bytes": 268,
+      "sha256": "42429833aec3b576b1a214d6ede5d07444e16e60947351e55b9273343b3640bb"
+    },
+    {
+      "name": "association",
+      "rva": "0x41d64d0",
+      "bytes": 3924,
+      "sha256": "ab7dd6adfe4166e9434feec8318080185fc2f45279b9cafc186b068b034029fa"
+    },
+    {
+      "name": "pref removed identity unpin task",
+      "rva": "0x41d8318",
+      "bytes": 1064,
+      "sha256": "1f38f10ae4c49b16e5289eaa54833031b1c8c595303fd1097fd2b3cb707257de"
+    },
+    {
+      "name": "batch SetTabsPinned",
+      "rva": "0x41e5da0",
+      "bytes": 720,
+      "sha256": "dab04ac72254451e32aec1919053adc9e26543a530305aee40f0b660ddbd14fc"
+    },
+    {
+      "name": "session metadata",
+      "rva": "0x41d81d0",
+      "bytes": 328,
+      "sha256": "987ce699cf6138e41711513296698fb7ac8a92062fc6a1a1ac9f83df28710585"
+    },
+    {
+      "name": "profile close guard pending",
+      "rva": "0x7adfd94",
+      "bytes": 140,
+      "sha256": "b24fbea11ee3ef843c00ca8779a150b10e4462be49b7c77b794c7c692b2cd530"
+    },
+    {
+      "name": "domain helper GURL wrapper",
+      "rva": "0xf72a30",
+      "bytes": 684,
+      "sha256": "41896b1d7b82bd31b4390c4ddb30ba2785755efe2164f52a089061fdaaabaca2"
+    },
+    {
+      "name": "native tab-change callback",
+      "rva": "0x41d78c0",
+      "bytes": 300,
+      "sha256": "ef5bc8b8b330fd66e7638d68a434fc5a03fc512a0b4ef10fe318501e01a067f3"
+    },
+    {
+      "name": "NotifyTabChanged native observer dispatch",
+      "rva": "0x15dae48",
+      "bytes": 404,
+      "sha256": "9a7da540f2a5c2a680fe6b698cb3d55b1cbcaae6442272ffe3800951b0cfefe9"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "7b467a5c7ae30f3d68b5a6f503a39f0800cc79915e598a6a36284c41c6498fcc"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_change_type.h",
+      "sha256": "a77abb8456683ef06653f619583be53f8d6337989d568e6997f4fe566d8ec998"
+    },
+    {
+      "path": "content/public/browser/navigation_entry.h",
+      "sha256": "ba546196671a9a0e51a2d15ae2cc2a4af57079de5bb1c0e45ea6250216f52c92"
+    },
+    {
+      "path": "content/public/browser/navigation_controller.h",
+      "sha256": "d8224150efb556df64c83aaabf4e8a4d6d010582b3e00198b49acd2d5113337d"
+    },
+    {
+      "path": "content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service.h",
+      "sha256": "d9d93669e6fb4ea8b8ddb9a78f48504639477b93cb0a0d31307025cabe6678b5"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service.cc",
+      "sha256": "c81c16800929ac618834b2e4f50174472dee726b4248899d360f358379fcc80d"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_factory.h",
+      "sha256": "1c9eb82e373ac79d42f3d9add8432e832de161f2bb09a82ca470594de100b004"
+    },
+    {
+      "path": "components/sessions/content/session_tab_helper.h",
+      "sha256": "bdcdf3411b24343aeb7a9fd78a102d24dbce600b67b607b14c7d58612cbf5488"
+    },
+    {
+      "path": "net/base/registry_controlled_domains/registry_controlled_domain.h",
+      "sha256": "cdc056fec1e4a34db72384267007bfd262d7830ccd2f8d01aaca8382a7fc31e4"
+    },
+    {
+      "path": "net/base/registry_controlled_domains/registry_controlled_domain.cc",
+      "sha256": "3e09184e44db80d710f7e88fde9d17a97b0f64c1233ea6b0c00582cc763e0e4b"
+    }
+  ]
+}

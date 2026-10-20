@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "applyAfter": "18588efb6 service/model exact outputs; model header current applied190/200; root201 shadow rename orders after this patch",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "baselineSha256": "3daf450f90b832813291081f51c71d9afd313c9621561283428a40407f00f7b0",
+      "outputSha256": "4a9504e9c91f86a03b19afd92ad5493fb476bd0ca7c1900b265cd15aefa487c5",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "baselineSha256": "cc7289acac68a106c77f4e6687e020c20dadc687ed1560415447c1ddb47a435c",
+      "outputSha256": "44bac58082b7f739fd65e632ae739887c907923c17c5c0d29b915bda4233a03e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries_unittest.cc",
+      "baselineSha256": "eea6d715bd751e42f507bc70c2a2ee54ae428c584cd70936c8a2ae9837d2c88e",
+      "outputSha256": "f0a2a36d8f92d132ce5e5d7d90f5954a192a20d21823b1116f9443f61c62913a",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "baselineSha256": "e986b50d157a91c144279da28dd054f708e1124a7e224b50f15028eba1068265",
+      "outputSha256": "138aa44373c9b5340799cc42f963cde959a403e0173a9ae2bd4fd8c74ce2d96b",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.h",
+      "baselineSha256": "1732d2abdce7729665f83fd1b617264de12b3853726f5efb780adcb3ca0c0d18",
+      "outputSha256": "08a2f997143e8a179e000f28f58caa6d750c815d1085e69d866a0a854763597a",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.h",
+      "baselineSha256": "9d6ce8bc398ef0953aa0e61bf98d31ae8aec3ff8d562d29ffe6bb2a69096e2be",
+      "outputSha256": "3c9cbacc91d78d56ab81e774ce0021fa2ca50b7f8c7dc602fa0ae5664bcae885",
+      "newFile": false
+    }
+  ],
+  "rootHooks": {
+    "modelDeps": [
+      "//net"
+    ],
+    "tabsDeps": [
+      "//chrome/browser/sessions",
+      "//components/sessions"
+    ],
+    "buildScope": "TabStripModel header narrow guarded friend invalidates its consumers; no new public virtual/API."
+  },
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "original7adfd94 profile-scoped active-close registry and completion callback; no equivalent exposed in current155, no surrogate added",
+    "actual session restore read of pinned_tab_entry_url not ported here",
+    "native drag/drop/ghost, hover card and compact parent presentation remain separate"
+  ]
+}
