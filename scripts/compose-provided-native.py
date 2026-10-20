@@ -285,6 +285,8 @@ steps.extend([
     ('native-profile-search-observer-155/native.patch', 'native-profile-search-observer-155/manifest.json'),
     ('native-profile-search-contents-155/native.patch', 'native-profile-search-contents-155/manifest.json'),
     ('native-profile-indicator-api155/native.patch', 'native-profile-indicator-api155/manifest.json'),
+    ('native-profile-search-action-binding/native.patch', 'native-profile-search-action-binding/manifest.json'),
+    ('native-profile-search-interface/native.patch', 'native-profile-search-interface/manifest.json'),
 ])
 
 if options.through:

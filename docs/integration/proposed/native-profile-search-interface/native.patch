@@ -1,0 +1,38 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -37,6 +37,14 @@
+   tag = "variant"
+   output_file = "webui_name_variants.h"
+   allow_list_name = "WebUIName"
++}
++
++# The implementation stays in :ui; extension actions use only this declaration.
++if (enable_aux_browser && is_mac) {
++  source_set("aux_profile_search_headers") {
++    public = [ "views/frame/aux_tab_search_bubble.h" ]
++    public_deps = [ "//base" ]
++  }
+ }
+ 
+ source_set("accelerator_utils_headers") {
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -6,6 +6,7 @@
+ import("//build/config/features.gni")
+ import("//build/config/ozone.gni")
+ import("//build/config/ui.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ import("//components/enterprise/buildflags/buildflags.gni")
+ import("//components/guest_view/buildflags/buildflags.gni")
+@@ -668,6 +669,10 @@
+   if (is_mac) {
+     deps += [ "//chrome/browser/mac" ]
+   }
++
++  if (enable_aux_browser && is_mac) {
++    deps += [ "//chrome/browser/ui:aux_profile_search_headers" ]
++  }
+   if (enable_spellcheck) {
+     deps += [ "//chrome/browser/spellchecker" ]
+   }
