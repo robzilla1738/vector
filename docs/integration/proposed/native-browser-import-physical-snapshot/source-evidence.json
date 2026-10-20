@@ -1,0 +1,86 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "cookie-copy-open-cleanup.asm",
+      "start": "0x425a500",
+      "endExclusive": "0x425a778",
+      "bytesSha256": "19e1808042e21f1763dd4938abddcfd3492a0ab693967636f88229e40cddaba3",
+      "sha256": "935dc37ca6a9a1ec62a70a2edeea1beeef05b1acdf8bfe73501f3495e05bd9ed"
+    },
+    {
+      "file": "password-copy-open.asm",
+      "start": "0x425b3f0",
+      "endExclusive": "0x425b5d4",
+      "bytesSha256": "629eafb29e9cc02f4874a7125fe729653b7edc4f7551b4d6f0bc8faf938ce376",
+      "sha256": "bf7fd15594c9cfcf846516d8fa1dd508c1a7260e548bded3a600bc46dcd03bc2"
+    },
+    {
+      "file": "create-temp-directory.asm",
+      "start": "0x30890d0",
+      "endExclusive": "0x3089224",
+      "bytesSha256": "dac74a6837d3a3547247d9979cd8db9bb4e32cd33bf032f9abe3456b77721260",
+      "sha256": "d8b78851ad5382d821ed1b07362743a2f43769bd4b8164169567f759fe5f54c3"
+    },
+    {
+      "file": "copy-file.asm",
+      "start": "0x880a9c0",
+      "endExclusive": "0x880aa80",
+      "bytesSha256": "12e2961e441fc6118fa2ec857c64b71e95e2de509b7925ad1372a2b3627c37a9",
+      "sha256": "44b498b69c5e50af9003103f06b18b63f726ee81488033288fddece3e5d1940e"
+    },
+    {
+      "file": "temp-remove.asm",
+      "start": "0x326df28",
+      "endExclusive": "0x326dfe8",
+      "bytesSha256": "f4a5444cc4363c09d6d8ed1e9b25ad1cf1e2e07c2d93cb27ae9a1ee17b4ff94f",
+      "sha256": "de63901a68727209fb5c0c341383c7cc6d3e50e175f98c02793b581a1cb5beb2"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/files/scoped_temp_dir.cc",
+      "sha256": "5378918ab453ba7469217e6dcb1cd2cd6e2071066ea82d11b420dfbfca702cdb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/files/file_util.h",
+      "sha256": "008da08c7df521695e33a3164b471e17ac1e55a64e38b0d82a9ab1c61fe2e8e2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/files/file_util_posix.cc",
+      "sha256": "8d416614ffd120590f7baf2a0ec3fb6953a2c2cdaf53eec4c0e5b974ad5660af"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/files/file_util_apple.mm",
+      "sha256": "35d9a98359b42574e1e43d54df8d067460dcc85470cbbfac4af4f6ce9379c995"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/database.h",
+      "sha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/database.cc",
+      "sha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/statement.h",
+      "sha256": "e1660a39b274de49586157eeab4f1529f8a5087d76deb75ff98b7fc0257b18d4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/statement.cc",
+      "sha256": "2abc884d52d25d9f4e727ac7c4b7b90d79ee81327773679031efe3eba1dfc5d6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/tools/metrics/histograms/metadata/sql/histograms.xml",
+      "sha256": "bb747c9ef75234a8cbe4a56275b82b793a6c91c605b8d32167ac9aaab18c73de"
+    }
+  ],
+  "parent": "003e5c3a8 public-reader wrapper output",
+  "literals": {
+    "0xd0ce5e3": "scoped_dir",
+    "0xd834a65": "Test"
+  }
+}
