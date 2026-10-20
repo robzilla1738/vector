@@ -1,0 +1,24 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_row.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_row.cc
+@@ -76,8 +76,8 @@
+     if (timer_.IsRunning()) return;
+     started_ = base::TimeTicks::Now();
+     // Original4674c48: 33000us, only attached+drawn, reset on resume.
+-    timer_.Start(FROM_HERE, base::Microseconds(33000), this,
+-                 &ChatThrobber::SchedulePaint);
++    timer_.Start(FROM_HERE, base::Microseconds(33000), static_cast<views::View*>(this),
++                 &views::View::SchedulePaint);
+     SchedulePaint();
+   }
+   base::TimeTicks started_;
+--- a/chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc
+@@ -95,7 +95,7 @@
+       views::BoxLayout::Orientation::kHorizontal));
+   layout_->set_cross_axis_alignment(
+       views::BoxLayout::CrossAxisAlignment::kCenter);
+-  layout_->set_collapse_margins_spacing(true);
++  layout_->SetCollapseMarginsSpacing(true);
+   image_ = AddChildView(std::make_unique<views::ImageView>());
+   image_->SetImageSize(gfx::Size(16, 16));
+   image_->SetCanProcessEventsWithinSubtree(false);

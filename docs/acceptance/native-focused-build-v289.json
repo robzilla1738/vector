@@ -1,0 +1,48 @@
+{
+  "composition": "v289",
+  "exitCode": 0,
+  "elapsedSeconds": 8.260091304779053,
+  "targets": {
+    "chat_row": "obj/chrome/browser/ui/ui/aux_chat_row.o",
+    "chats_transport": "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+    "bookmark_row": "obj/chrome/browser/ui/ui/aux_vertical_bookmark_row_view.o",
+    "chevron": "obj/chrome/browser/ui/ui/aux_tab_expand_chevron_view.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_chat_row.o",
+    "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+    "obj/chrome/browser/ui/ui/aux_vertical_bookmark_row_view.o",
+    "obj/chrome/browser/ui/ui/aux_tab_expand_chevron_view.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserOrUIAccepted": false,
+  "originalReplay": {
+    "matchedSources": 464,
+    "steps": 292
+  },
+  "buildGeneration": {
+    "targets": 36082,
+    "files": 5013,
+    "passed": true
+  },
+  "liveBookmarkOrChatsOwnerMounted": false,
+  "priorBuild": {
+    "composition": "v288",
+    "exitCode": 1,
+    "failures": [
+      "Inherited View::SchedulePaint receiver type mismatch",
+      "BoxLayout setter renamed in155"
+    ],
+    "resolvedBy": "native-sidebar-rows-api155"
+  },
+  "localOnly": true,
+  "signingOrReleasePerformed": false
+}

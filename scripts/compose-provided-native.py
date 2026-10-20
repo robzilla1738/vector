@@ -310,6 +310,10 @@ steps.extend([
     ('native-sidebar-shared-components-gn/native.patch', 'native-sidebar-shared-components-gn/manifest.json'),
     ('native-bookmark-tab-representation/native.patch', 'native-bookmark-tab-representation/manifest.json'),
     ('native-bookmark-tab-representation-gn/native.patch', 'native-bookmark-tab-representation-gn/manifest.json'),
+    ('native-chats-owner/native.patch', 'native-chats-owner/manifest.json'),
+    ('native-vertical-bookmark-row/native.patch', 'native-vertical-bookmark-row/manifest.json'),
+    ('native-sidebar-rows-gn/native.patch', 'native-sidebar-rows-gn/manifest.json'),
+    ('native-sidebar-rows-api155/native.patch', 'native-sidebar-rows-api155/manifest.json'),
 ])
 
 if options.through:

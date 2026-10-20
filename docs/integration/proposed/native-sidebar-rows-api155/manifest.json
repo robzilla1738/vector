@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+      "baselineSha256": "e0a72d12aed54226414fac8b221652cd9ebca1f64e98bf26bee012a1ca1c3867",
+      "outputSha256": "31595a0908ea4c2f0a4d2ffa51cffe9d4ae006af8cab291a59a16b09cedc3726"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc",
+      "baselineSha256": "15b3575c182f00f8e9ff94bb7bbbaeca0130674cdd8c33525a49d0861eea03d8",
+      "outputSha256": "735ff2d15f7acd8c8ed97e1e5300497d4f926a4894e2723356cce7ae74e8a110"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1136,6 +1136,14 @@
+       "views/frame/aux_section_icons.inc",
+       "views/frame/aux_section_clip_view.cc",
+       "views/frame/aux_section_clip_view.h",
++      "views/frame/aux_chat_row.cc",
++      "views/frame/aux_chat_row.h",
++      "views/frame/aux_chat_icons.inc",
++      "views/frame/aux_chats_transport.cc",
++      "views/frame/aux_chats_transport.h",
++      "views/frame/aux_vertical_bookmark_row_view.cc",
++      "views/frame/aux_vertical_bookmark_row_view.h",
++      "views/frame/aux_vertical_bookmark_row_icons.inc",
+       "views/frame/aux_chats_model.cc",
+       "views/frame/aux_chats_model.h",
+       "views/frame/aux_vertical_tab_bookmark_expansion.cc",
