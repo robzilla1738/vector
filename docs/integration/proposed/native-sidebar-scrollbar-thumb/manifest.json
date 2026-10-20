@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h",
+      "baselineSha256": "e6817416e9c4fd5107be9c02f21b9f5f25a44cbde3c7a7b022468d4c6468ac28",
+      "outputSha256": "fd79056cfd1b2baf4ae774e710f9457d60d3419142fdb812b761740a83c6bf24"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.cc",
+      "baselineSha256": "a6b09b988d3a70e6603489bf59ba5eee6fc5a4c8d7046a1c93d8b0a739f3a78a",
+      "outputSha256": "ffc2a3c4a07aa48671b7f264e8e12d07cfdb0c042816e6939098e11f3b5a7887"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "integration": "Root constructs existing VerticalTabStripScrollBar(real state_controller), calls SetThumbVisible(false), then installs it on genuine outer5b0. No sharedRoundedScrollBar/GN/region changes here.",
+  "remainingGaps": [
+    "Root focusedcompile and actualbody scrollbar observation remain unperformed."
+  ]
+}

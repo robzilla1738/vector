@@ -1,0 +1,65 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x37e0d98",
+      "end": "0x37e0df0",
+      "sha256": "68c7345df70c4c1c53f93be26b19b518fe9a1e42b223343193d7b1959ab3e916",
+      "meaning": "Originalactualouterbar construction(state848),dedupe409, realThumb+358SetVisible(false),InvalidateLayout andSchedulePaint beforeSetVerticalScrollBar"
+    },
+    {
+      "start": "0x7fb4934",
+      "end": "0x7fb49fc",
+      "sha256": "210b998a1f8da1ddde42a418ed4de8dbed28b0069404ad5418d488cf8c30c93a",
+      "meaning": "GenuineRoundedScrollBar constructs actualthumb and invokesSetThumb a6aa848"
+    },
+    {
+      "start": "0xa6aa848",
+      "end": "0xa6aa8c0",
+      "sha256": "1f4e41c6e7b666edec14ea9ce46a836487c33af6ac4a2ebb7efa91d220a6ecc4",
+      "meaning": "ActualSetThumb stores genuinechildatbase358 andsets its contextmenudelegate"
+    },
+    {
+      "start": "0x7fb6840",
+      "end": "0x7fb699c",
+      "sha256": "872171797224657413e28e8482b6441bec33ca16dfdc5fd584bd9c8a76d8ecec",
+      "meaning": "VerticalTabStripScrollBar408collapse/409defaulttrue and real collapseobserver"
+    },
+    {
+      "start": "0x7fb4d00",
+      "end": "0x7fb4d2c",
+      "sha256": "91918e5014e50f7a7ab6c29e500dff28f97b55ac66ea5a9e612f175a1e17bd75",
+      "meaning": "Actualbar thickness remains5or9 from genuine rightmarginvirtual, unrelated to409"
+    },
+    {
+      "start": "0x7fb6fe0",
+      "end": "0x7fb7044",
+      "sha256": "e31cc4c5d4e09ba4d37bd56a1655f209f2c34eadd454ddb85ab84dd89a131c6c",
+      "meaning": "Positiveoriginalclass/header metadata"
+    }
+  ],
+  "positiveLiterals": {
+    "0xdb10e11": "VerticalTabStripScrollBar",
+    "0xdb10e2b": "../../chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h"
+  },
+  "currentSourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/shared/rounded_scroll_bar.h",
+      "sha256": "b11d6ed55849a10b165ca0711ada56897fafebc3d584d66ff1e450f9fe323156"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/shared/rounded_scroll_bar.cc",
+      "sha256": "1a594e8ad8b71094eb1eaaae756c66839c3035d00d6f84177c8c3df89014b3ec"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scrollbar/scroll_bar.h",
+      "sha256": "d346c4160418622bc6fac80e050d1f28edb4a11b1352a6a3461a0e9809db6d3a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scrollbar/scroll_bar.cc",
+      "sha256": "138b9840534f1bb69321eb6279d661c6e9aefd871f87a21c6642a4a750c1e429"
+    }
+  ],
+  "scope": "No inferred SetVisible ontheouterbar, nooverlaymode substitute. Publicsetter nameiscurrent155 adaptation of originalinlineobservedeffects, notclaimoforiginalsymbolname."
+}

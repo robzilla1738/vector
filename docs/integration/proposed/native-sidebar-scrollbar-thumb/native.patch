@@ -1,0 +1,48 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h
+@@ -31,6 +31,10 @@
+ 
+   ~VerticalTabStripScrollBar() override;
+ 
++  // Original region outer-scroll mode changes only the real thumb visibility;
++  // keep the scrollbar itself, its scrolling behavior and thickness intact.
++  void SetThumbVisible(bool visible);
++
+   // tabs::RoundedScrollBar:
+   bool ShouldHaveRightMargin() const override;
+ 
+@@ -38,6 +42,7 @@
+   void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
+ 
+   bool tab_strip_collapsed_ = false;
++  bool thumb_visible_ = true;
+   base::CallbackListSubscription collapsed_state_changed_subscription_;
+ };
+ 
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.cc
+@@ -7,6 +7,7 @@
+ #include "base/functional/bind.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/views/controls/scrollbar/base_scroll_bar_thumb.h"
+ 
+ VerticalTabStripScrollBar::VerticalTabStripScrollBar(
+     tabs::VerticalTabStripStateController* state_controller)
+@@ -23,6 +24,16 @@
+ }
+ 
+ VerticalTabStripScrollBar::~VerticalTabStripScrollBar() = default;
++
++void VerticalTabStripScrollBar::SetThumbVisible(bool visible) {
++  if (thumb_visible_ == visible) {
++    return;
++  }
++  thumb_visible_ = visible;
++  GetThumb()->SetVisible(visible);
++  InvalidateLayout();
++  SchedulePaint();
++}
+ 
+ bool VerticalTabStripScrollBar::ShouldHaveRightMargin() const {
+   return !tab_strip_collapsed_;
