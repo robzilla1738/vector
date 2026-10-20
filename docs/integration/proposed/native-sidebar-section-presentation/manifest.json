@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "actual saved-pin header; new reusable presentation helper ordered after genuine live-pinned layout setter",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "b1e0cbf6854eee4765f68a2bb158cd22197cb9f74c81ea6ea1aeaac803075e55",
+      "outputSha256": "069256b4024ba568871bebf847c80f8a7d25918772eb519548dec77f8cfe9c56"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.h",
+      "baselineSha256": null,
+      "outputSha256": "bfc0235a6c0816c8e8d05b9e72a3426119fe144a33bf6dcd6f169433d96c8b06"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "baselineSha256": null,
+      "outputSha256": "305d02d1dbd12e50226d2e1b6fc6b835b54c88470e1e635b95b85258e7cf45b1"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

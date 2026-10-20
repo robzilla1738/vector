@@ -1,0 +1,94 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "divider-construction",
+      "start": "0x37e1944",
+      "stopExclusive": "0x37e1a30",
+      "bytesSha256": "8be6019568337894c4dfa29bc2cbbb39196432839432389e89756259346347ad",
+      "asmSha256": "0ee63af7a1a769d47f25e2e523b4bd563016eabd3f307961664716cb010dde93"
+    },
+    {
+      "name": "divider-metadata-paint",
+      "start": "0x4667274",
+      "stopExclusive": "0x466752c",
+      "bytesSha256": "1e3d936e4d85712cf8fdc39595aca8ab414b8043d26485d7802ff75027af4de2",
+      "asmSha256": "ee37d5214f81f853d4eaa2a06bf2d23cdd298e5a937be2e2d9088765b514b802"
+    },
+    {
+      "name": "pinned-presentation",
+      "start": "0x4645400",
+      "stopExclusive": "0x46456f0",
+      "bytesSha256": "bc5c8923d5b3212d581b3af17695fd861510f0c6dbae5e6e06a8179c8a0512bd",
+      "asmSha256": "84a647db1e459bb250743c0956bc6fc3ce554a4f9a71ab740bc71b2e084bd7fd"
+    },
+    {
+      "name": "section-presentation",
+      "start": "0x464a8c0",
+      "stopExclusive": "0x464b350",
+      "bytesSha256": "bcba92abab393f6cfbfed503185035459f8bb5dbbd40a736588886a535b532dd",
+      "asmSha256": "ae6d2581f234608039cc78220a6a0d738cf188c77160a3737e6b5ff1efacef48"
+    },
+    {
+      "name": "projection-post",
+      "start": "0x462c188",
+      "stopExclusive": "0x462c2c0",
+      "bytesSha256": "4570910f40da30c3827ff5e9e569a8f3627786322de6d693a0dafd0d52728695",
+      "asmSha256": "142febae3571b6e1444e61d1da4dd6506baf31cadb079d026ca2ab32a555edb6"
+    },
+    {
+      "name": "color229-expression",
+      "start": "0x35e7984",
+      "stopExclusive": "0x35e799c",
+      "bytesSha256": "59862f0fe5e4fad169788f04f71c9cf1adc474a6baee3b2afb6664c36712b23f",
+      "asmSha256": "5fbc0992f60929c62f6c0c83ea63f764adcf6887117523118548616076ba5dd1"
+    },
+    {
+      "name": "drag839-producer",
+      "start": "0x465a3c0",
+      "stopExclusive": "0x465ab88",
+      "bytesSha256": "0768fa16c1ad3fe90208b352f84809d21a67ea5ad72f7af7c7e7810dfae4e768",
+      "asmSha256": "9825c020a5e7069b65c5b188a81a2ff2a547849bdc23d3d2ff5f9886a5e5e18c"
+    },
+    {
+      "name": "empty-pinned-drop-bounds",
+      "start": "0x464d3f0",
+      "stopExclusive": "0x464d4b0",
+      "bytesSha256": "bd36f9049f5f7c3f113e245ec567be358a888d39907df849e07b15676434076e",
+      "asmSha256": "2b3516974fdff1731f6442112772433430265ff43250d273946848f829ae9c26"
+    }
+  ],
+  "constants": [
+    {
+      "name": "color-name229",
+      "address": "0xe9101e0",
+      "bytes": 16,
+      "bytesSha256": "f502d747833f6dbb0eb4418347322c8b536e4f16416cea56efa7e1863ba6dd19",
+      "hex": "e50000000000000011b3bd0d00002000"
+    },
+    {
+      "name": "color229-name",
+      "address": "0xdbdb311",
+      "bytes": 22,
+      "bytesSha256": "2bc9b3b7d7e97d64d1dd62d41e4eb606696f8927117a8e5b4cd7754b0e8d2a88",
+      "hex": "6b436f6c6f72417369646542617365426f7264657200"
+    },
+    {
+      "name": "pinned-flex-capture",
+      "address": "0xdf40060",
+      "bytes": 16,
+      "bytesSha256": "83b4202652da8c4b24a57c676619d95aad38701fb7b821baa443410636f2af77",
+      "hex": "05000000000000000500000000000000"
+    },
+    {
+      "name": "pinned-visible-margins",
+      "address": "0xdf47a50",
+      "bytes": 16,
+      "bytesSha256": "76c4ae7e52f7e24376e03fbd7c9e99723bc8969b67de2fee6cc32558db3f8b55",
+      "hex": "04000000080000000800000008000000"
+    }
+  ]
+}
