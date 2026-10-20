@@ -1,0 +1,102 @@
+{
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "boundedSlices": [
+    {
+      "name": "safari-start.bin",
+      "start": "0x4276580",
+      "endExclusive": "0x42774a8",
+      "sha256": "5a9deac904b87adfd71648352aae274f3370605abc1095597816eb5402b067b9"
+    },
+    {
+      "name": "safari-prepare.bin",
+      "start": "0x40ee4ac",
+      "endExclusive": "0x40ee9b0",
+      "sha256": "cff3fc811d326f0fa9bd256d30f429a47759b1200354b782447990db4808d1a4"
+    },
+    {
+      "name": "safari-onzip.bin",
+      "start": "0x40eeb84",
+      "endExclusive": "0x40ef57c",
+      "sha256": "68bfbb5130600878815428fbff29551187ba68917d2eff8322dd066257d30f26"
+    },
+    {
+      "name": "safari-complete.bin",
+      "start": "0x40ef57c",
+      "endExclusive": "0x40f06e8",
+      "sha256": "4a67f601f3111938d5da837ddb069d95d5890b7855e35ea135bef7499f454722"
+    },
+    {
+      "name": "0x4278b20.bin",
+      "start": "0x4278b20",
+      "endExclusive": "0x4278c54",
+      "sha256": "c55e0b207492bd089a6e46a0b7a6cccaa461a1d3516f105ec245529cbdda0c27"
+    },
+    {
+      "name": "0x4278d94.bin",
+      "start": "0x4278d94",
+      "endExclusive": "0x4279040",
+      "sha256": "1e6106521c1ba2df29b1df7c89c49c0ca3728b13954d0167b7f650f5b0ba1f4e"
+    },
+    {
+      "name": "cards-thunk.bin",
+      "start": "0x40f0cc8",
+      "endExclusive": "0x40f1118",
+      "sha256": "dc6d616fec325edf3046d18d5ab7cc68bf90afe82ffc45c05a6092a0fa7547e0"
+    }
+  ],
+  "chromium155StaticMapping": [
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.h",
+      "sha256": "10e4045b7e3e5b2479c6f65715bd6c17e8f8a31d42170c7fb3564c25def48a08"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "sha256": "1704cb730922b7ab0a00b6c75cfcb7a89f93c24f71afc074ae88a878ebfa175f"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_import_client.h",
+      "sha256": "56446426b49fe95f1a9abaf308c341aef4cae175f67b37942f053b2c180a94bd"
+    },
+    {
+      "path": "components/user_data_importer/utility/parsing_ffi/models.rs",
+      "sha256": "4076dd33fa3e252cd703a29c4604305c071f88ede8506dd03211e1f793520d87"
+    },
+    {
+      "path": "components/user_data_importer/utility/parsing_ffi/zip_archive.rs",
+      "sha256": "1b4f66982169e2396202608f39e27806ba6581fdfc04df2123c83f3cd8222aa2"
+    },
+    {
+      "path": "components/user_data_importer/utility/parsing_ffi/json.rs",
+      "sha256": "db1bc62ef6423e1c007ac95c5a7cee22b337e0f54088c8ac882cc3bc721d9e56"
+    },
+    {
+      "path": "components/user_data_importer/utility/parsing_ffi/utils.rs",
+      "sha256": "507309e96b86d7217a69c005825e5c5666bb79472f0147f9f3de9dd4f3d2fbe7"
+    },
+    {
+      "path": "components/user_data_importer/utility/bookmark_parser.h",
+      "sha256": "0547a1dda8d522285375f1d31c590e585b9946579618e676d3ac9f77b89bdbe2"
+    },
+    {
+      "path": "components/user_data_importer/content/content_bookmark_parser.cc",
+      "sha256": "851d530807f097d2416bb24780b37b57c8360113a5618e57f664b979e470aa59"
+    },
+    {
+      "path": "components/user_data_importer/utility/BUILD.gn",
+      "sha256": "8f6f231c10a7e5ea0dc1d59377f698a46810b065377d13f0f66dc359dfd8cfec"
+    }
+  ],
+  "suppliedWebUI": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/webui/aside-importer.js",
+    "sha256": "f4003a4c4b8950d69f05d6ad13d978e66879b659d2a784f0f7c5b88dc5f063f7"
+  },
+  "limitations": [
+    "Static source/instruction evidence only; no archive import or credential operations executed.",
+    "Ghidra raw slices lose data section/string/type/callee context and report truncation at some paths; exact instructions retained separately.",
+    "First attempted stage analysis seeded4279ee0 inside prologue; excluded from accepted evidence. Correct instruction entry4279ecc is retained in archive-stage.asm.",
+    "Only Safari admission correction is proposed in native.patch. Actual independent safari_archive parser remains until real importer owner port lands."
+  ]
+}

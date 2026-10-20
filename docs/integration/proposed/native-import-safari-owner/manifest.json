@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "reason": "Restore supplied Safari empty profile descriptor and optional profile/file-name admission; actual native importer owner remains separate pending port.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "701213d190aa6028e015fc9a47eef54809f10b83825e85e86b2cf8a37ac74cb4",
+      "outputSha256": "c50b71a40b03442ea36da922db92d5a3ca8c103a75354ca6321ea808a8b13ea0",
+      "anchors": [
+        {
+          "find": "  safari.Set(\"profiles\",\n             base::ListValue().Append(\n                 base::DictValue()\n                     .Set(\"id\", \"archive\")\n                     .Set(\"name\", \"All profiles in selected export\")));",
+          "replace": "  // Supplied4275f50 publishes no Safari profiles: the archive is the source.\n  safari.Set(\"profiles\", base::ListValue());",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "3d2777b74fb79cb94e6db13daf94f15996d3e475c7eb738854a7c04f564442b7",
+      "outputSha256": "2b3b956d6015a97aea2b01aa4a9eafae30f57abb560eaf4f8e1c93bc4dca0922",
+      "anchors": [
+        {
+          "find": "  if (!profile_id) {\n    error(\"Choose a source profile before importing\");",
+          "replace": "  if (!profile_id && *source_id != \"safari\") {\n    error(\"Choose a source profile before importing\");",
+          "count": 1
+        },
+        {
+          "find": "  if (source && source->FindBool(\"installed\").value_or(false)) {",
+          "replace": "  if (source && profile_id && source->FindBool(\"installed\").value_or(false)) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!source || !selected ||\n      (*source_id != \"safari\" && !selected->FindString(\"nativePath\"))) {",
+          "replace": "  if (!source || !source->FindBool(\"installed\").value_or(false) ||\n      (*source_id != \"safari\" &&\n       (!selected || !selected->FindString(\"nativePath\")))) {",
+          "count": 1
+        },
+        {
+          "find": "    const auto* name = archive ? archive->FindString(\"fileName\") : nullptr;\n    const auto* data = archive ? archive->Find(\"data\") : nullptr;\n    if (!name || name->size() > 255 || name->find('/') != name->npos ||\n        name->find('\\\\') != name->npos || name->find('\\0') != name->npos ||\n        !base::EndsWith(*name, \".zip\", base::CompareCase::INSENSITIVE_ASCII) ||\n        !data) {\n      error(\"Choose a Safari ZIP file before importing\");",
+          "replace": "    // Supplied4276b34 reads only the nonempty binary data; fileName is optional.\n    const auto* data = archive ? archive->Find(\"data\") : nullptr;\n    if (!data) {\n      error(\"Safari import requires safariArchive.data\");",
+          "count": 1
+        },
+        {
+          "find": "  job->source_profile = *profile_id;",
+          "replace": "  if (profile_id) job->source_profile = *profile_id;",
+          "count": 1
+        },
+        {
+          "find": "  job->state.Set(\"sourceProfileId\", *profile_id);",
+          "replace": "  if (profile_id && !profile_id->empty())\n    job->state.Set(\"sourceProfileId\", *profile_id);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
