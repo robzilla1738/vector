@@ -1,0 +1,103 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_webui.cc
+@@ -217,20 +217,21 @@
+   }
+   void ChoseSafariTarget(std::optional<Choice> choice) {
+     if (!choice || !Admit()) return;
+-    safari_choice_ = *choice;
+     if (!safari_picker_) {
+       safari_picker_ = std::make_unique<aux_importer::SafariArchivePicker>(
+-          base::BindRepeating(&Handler::SelectedSafariArchive, weak_.GetWeakPtr()),
++          aux_importer::SafariArchivePicker::Selected(),
+           base::BindRepeating(&Handler::InvalidSafariArchive, weak_.GetWeakPtr()));
+     }
+     auto* contents = web_ui()->GetWebContents();
+-    safari_picker_->Show(contents, contents->GetTopLevelNativeWindow());
++    safari_picker_->Show(contents, contents->GetTopLevelNativeWindow(),
++        base::BindRepeating(&Handler::SelectedSafariArchive, weak_.GetWeakPtr(),
++                            *choice));
+   }
+   void InvalidSafariArchive() {
+     if (Admit()) FireWebUIListener("safari-import-invalid-file",
+         "This is not a valid Safari data ZIP file.");
+   }
+-  void SelectedSafariArchive(base::FilePath path) {
++  void SelectedSafariArchive(Choice choice, base::FilePath path) {
+     if (busy_ || !Admit()) return;
+     SafariWebUIImport::WebUILifecycle lifecycle{
+         aux_importer::CaptureImportOwnerRetirement(*web_ui()->GetWebContents()),
+@@ -251,7 +252,7 @@
+         base::BindRepeating(&Handler::ImportState, weak_.GetWeakPtr(),
+                             std::string("safari")));
+     safari_started_ = false;
+-    safari_->Start(safari_choice_ == Choice::kNewProfile
++    safari_->Start(choice == Choice::kNewProfile
+                        ? SafariWebUIImport::TargetMode::kNewProfile
+                        : SafariWebUIImport::TargetMode::kCurrentProfile,
+                    path, std::move(lifecycle));
+@@ -282,7 +283,6 @@
+   base::WeakPtr<Profile> profile_;
+   bool busy_ = false;
+   bool safari_started_ = false;
+-  Choice safari_choice_ = Choice::kNewProfile;
+   std::unique_ptr<ChromiumNewTargetImport> new_target_;
+   std::unique_ptr<FirefoxImport> firefox_;
+   std::unique_ptr<SafariWebUIImport> safari_;
+--- a/chrome/browser/ui/webui/aux_importer/safari_archive_picker.h
++++ b/chrome/browser/ui/webui/aux_importer/safari_archive_picker.h
+@@ -20,11 +20,15 @@
+   SafariArchivePicker(Selected selected, base::RepeatingClosure invalid);
+   ~SafariArchivePicker() override;
+   void Show(content::WebContents* contents, gfx::NativeWindow parent);
++  // Capture the accepted dialog's continuation, including its target mode.
++  void Show(content::WebContents* contents, gfx::NativeWindow parent,
++            Selected selected);
+  private:
+   void FileSelected(const ui::SelectedFileInfo& file, int index) override;
+   void FileSelectionCanceled() override;
+-  void DidValidate(base::FilePath path, bool valid);
++  void DidValidate(Selected selected, base::FilePath path, bool valid);
+   Selected selected_;
++  Selected dialog_selected_;
+   base::RepeatingClosure invalid_;
+   scoped_refptr<ui::SelectFileDialog> dialog_;
+   base::WeakPtrFactory<SafariArchivePicker> weak_{this};
+--- a/chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc
++++ b/chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc
+@@ -18,8 +18,13 @@
+ }
+ void SafariArchivePicker::Show(content::WebContents* contents,
+                               gfx::NativeWindow parent) {
++  Show(contents, parent, selected_);
++}
++void SafariArchivePicker::Show(content::WebContents* contents,
++                              gfx::NativeWindow parent, Selected selected) {
+   // Original4252324 checks the one retained dialog before presenting another.
+   if (dialog_ || !contents || !parent) return;
++  dialog_selected_ = std::move(selected);
+   dialog_ = ui::SelectFileDialog::Create(
+       this, std::make_unique<ChromeSelectFilePolicy>(contents));
+   ui::SelectFileDialog::FileTypeInfo types;
+@@ -36,14 +41,19 @@
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+       base::BindOnce(&user_data_importer::IsSafariExportArchive, path),
+-      base::BindOnce(&SafariArchivePicker::DidValidate, weak_.GetWeakPtr(), path));
++      base::BindOnce(&SafariArchivePicker::DidValidate, weak_.GetWeakPtr(),
++                     std::move(dialog_selected_), path));
+ }
+ void SafariArchivePicker::FileSelectionCanceled() {
+   // Original4250288: no import-failed or invalid-file event on cancellation.
+   dialog_.reset();
++  dialog_selected_.Reset();
+ }
+-void SafariArchivePicker::DidValidate(base::FilePath path, bool valid) {
+-  if (valid) selected_.Run(std::move(path));
++void SafariArchivePicker::DidValidate(Selected selected, base::FilePath path,
++                                      bool valid) {
++  if (valid) {
++    if (selected) selected.Run(std::move(path));
++  }
+   else invalid_.Run();
+ }
+ }  // namespace aux_importer

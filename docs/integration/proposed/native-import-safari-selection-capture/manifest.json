@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "reason": "Preserve captured per-selection Safari target mode across retained dialog and async archive validation.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "baselineSha256": "c3339d56d419638721e4ab0519c2aa050ace68bbc5a4458ce9b9aedbdf01cff2",
+      "outputSha256": "e16525da309d6d34af554c9abf74493fe809d1672752a2d85b701ae41a8dfba8",
+      "anchors": [
+        {
+          "find": "    safari_choice_ = *choice;\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "          base::BindRepeating(&Handler::SelectedSafariArchive, weak_.GetWeakPtr()),",
+          "replace": "          aux_importer::SafariArchivePicker::Selected(),",
+          "count": 1
+        },
+        {
+          "find": "    safari_picker_->Show(contents, contents->GetTopLevelNativeWindow());",
+          "replace": "    safari_picker_->Show(contents, contents->GetTopLevelNativeWindow(),\n        base::BindRepeating(&Handler::SelectedSafariArchive, weak_.GetWeakPtr(),\n                            *choice));",
+          "count": 1
+        },
+        {
+          "find": "  void SelectedSafariArchive(base::FilePath path) {",
+          "replace": "  void SelectedSafariArchive(Choice choice, base::FilePath path) {",
+          "count": 1
+        },
+        {
+          "find": "    safari_->Start(safari_choice_ == Choice::kNewProfile",
+          "replace": "    safari_->Start(choice == Choice::kNewProfile",
+          "count": 1
+        },
+        {
+          "find": "  Choice safari_choice_ = Choice::kNewProfile;\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/safari_archive_picker.h",
+      "baselineSha256": "ff45d80a5d59d43b883f331eab6237d2172676d18d2590dd0b04195435436c1f",
+      "outputSha256": "49dbbaa226baa9603a322c373879cccfe4531fbe4eb23519ed4d007f7fa4272e",
+      "anchors": [
+        {
+          "find": "  void Show(content::WebContents* contents, gfx::NativeWindow parent);",
+          "replace": "  void Show(content::WebContents* contents, gfx::NativeWindow parent);\n  // Capture the accepted dialog's continuation, including its target mode.\n  void Show(content::WebContents* contents, gfx::NativeWindow parent,\n            Selected selected);",
+          "count": 1
+        },
+        {
+          "find": "  void DidValidate(base::FilePath path, bool valid);",
+          "replace": "  void DidValidate(Selected selected, base::FilePath path, bool valid);",
+          "count": 1
+        },
+        {
+          "find": "  Selected selected_;",
+          "replace": "  Selected selected_;\n  Selected dialog_selected_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc",
+      "baselineSha256": "3a95f74180a5e739418cd671438707b79b21c2652785eea408fcaa22e4cd9a08",
+      "outputSha256": "236362ef97ad285510ea1f30f59b11eb75b8bae8e6e58edb68bace351d6eeba0",
+      "anchors": [
+        {
+          "find": "  // Original4252324 checks the one retained dialog before presenting another.",
+          "replace": "  Show(contents, parent, selected_);\n}\nvoid SafariArchivePicker::Show(content::WebContents* contents,\n                              gfx::NativeWindow parent, Selected selected) {\n  // Original4252324 checks the one retained dialog before presenting another.",
+          "count": 1
+        },
+        {
+          "find": "  dialog_ = ui::SelectFileDialog::Create(",
+          "replace": "  dialog_selected_ = std::move(selected);\n  dialog_ = ui::SelectFileDialog::Create(",
+          "count": 1
+        },
+        {
+          "find": "base::BindOnce(&SafariArchivePicker::DidValidate, weak_.GetWeakPtr(), path)",
+          "replace": "base::BindOnce(&SafariArchivePicker::DidValidate, weak_.GetWeakPtr(),\n                     std::move(dialog_selected_), path)",
+          "count": 1
+        },
+        {
+          "find": "  // Original4250288: no import-failed or invalid-file event on cancellation.\n  dialog_.reset();",
+          "replace": "  // Original4250288: no import-failed or invalid-file event on cancellation.\n  dialog_.reset();\n  dialog_selected_.Reset();",
+          "count": 1
+        },
+        {
+          "find": "void SafariArchivePicker::DidValidate(base::FilePath path, bool valid) {\n  if (valid) selected_.Run(std::move(path));",
+          "replace": "void SafariArchivePicker::DidValidate(Selected selected, base::FilePath path,\n                                      bool valid) {\n  if (valid) {\n    if (selected) selected.Run(std::move(path));\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "mounted": false
+}

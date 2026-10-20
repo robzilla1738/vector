@@ -1,0 +1,10 @@
+{
+  "imageSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "range": {
+    "start": "0x42522c0",
+    "endExclusive": "0x42526c0",
+    "sha256": "3022a79e5a69e347a3fa232b8f3826bdd197c788aa46720150fb744a046df3c5"
+  },
+  "llvmSha256": "fe3843c94e3dd0a615551326fdff2c12088955d7e9e91625966d35a3ffbfe0e9",
+  "contract": "42522c0 retains selected target mode in the per-selection continuation passed to native file selection; 4252324 rejects an already retained dialog. Mode is not mutable shared Handler state."
+}
