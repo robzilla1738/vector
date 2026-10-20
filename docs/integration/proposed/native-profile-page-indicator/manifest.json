@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "applyAfter": "Standalone new supplied pager leaf. No existing source modified; owner/mount remains separate.",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.cc",
+      "baselineSha256": null,
+      "outputSha256": "1c80b5a8230289a31a6f8b7fccb3c25cfc407d3f1e8b36b0b655ff2248daa627",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.h",
+      "baselineSha256": null,
+      "outputSha256": "b6900ab1454c178fb05021a99c1103eabbf9808933793a684d76fcbc5161d0db",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "registration": [
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.cc",
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator_dot_button.h"
+  ],
+  "remainingGaps": [
+    "Actual pager roster/order owner, original icon selector456d980 and settlement lifecycle are not mounted by this leaf",
+    "Parent header/manual layout and original selection/context callbacks remain a separate proposal",
+    "Focused Chromium155 compile and disposable observation pending integrator"
+  ]
+}

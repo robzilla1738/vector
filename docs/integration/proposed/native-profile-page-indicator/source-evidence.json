@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "press",
+      "rva": "0x467be84",
+      "bytes": 288,
+      "sha256": "728624445364ab6158b310e20dc7abff33b9b668fd51672b61e52546940ec873",
+      "assemblySha256": "0454b25520a6441114d5d830ff85c0853344fb6c6c7d1b83165690a882eb5e71"
+    },
+    {
+      "name": "drag",
+      "rva": "0x467bfa4",
+      "bytes": 448,
+      "sha256": "e578a7adc214309fd62c53c74c5668c82ed819f1158d85a06025d04ece6bf9a4",
+      "assemblySha256": "2e1e6474bece05d5dfd712a8d3bc92449515cd2e5e7bbe586978a0a6f933c422"
+    },
+    {
+      "name": "release",
+      "rva": "0x467c164",
+      "bytes": 460,
+      "sha256": "9e71b6a1493521541be31ba297acf4eb395937f7eac545cf68573ce9a88e9d07",
+      "assemblySha256": "3a74f3b24cf1551344363eddccf8b75c6c3cd81bd698fe659c71384dcb402eb3"
+    },
+    {
+      "name": "capture-lost",
+      "rva": "0x467c330",
+      "bytes": 208,
+      "sha256": "43457cd836e327b638568bca4419b4d4c1ca5f9fcfc7e244ec54a5e0e8388f7d",
+      "assemblySha256": "6a93ec61a73883896b6a25f0831c93a3787e2131bd0af73cf8a8b10f396d1ae5"
+    },
+    {
+      "name": "paint",
+      "rva": "0x467c400",
+      "bytes": 1992,
+      "sha256": "dafd1282b71b13293243c88cf89f32b2837f941552c178aac4912f24f9737c2a",
+      "assemblySha256": "b051a019108ca8f74976ab025745ea79d423e28ca96459e7632ae376f05aaa85"
+    },
+    {
+      "name": "constructor-owner",
+      "rva": "0x4631bd0",
+      "bytes": 656,
+      "sha256": "4e22c468e87c19162c2b2403cbe547d082825c34ff066ca4a3420b0001ec0c97",
+      "assemblySha256": "aba2676cb949d0da0b9ce5c47cdb94ded45d67f3f89a606e99cc501d19f2ffb4"
+    },
+    {
+      "name": "paint-vector-icon",
+      "rva": "0x23d6ef8",
+      "bytes": 424,
+      "sha256": "0a5303539704e0f8d49d0ab236e8a0037a56979d93ed932d0810d8c626326fb2",
+      "assemblySha256": "d4e7ebec90ed7fed5bd09605632a5950940860afbd1215d707c730b54aa2b1a9"
+    },
+    {
+      "name": "palette-base",
+      "rva": "0x35e6d40",
+      "bytes": 2740,
+      "sha256": "33480004ce57240d421bc25389d1cb51dd6ea63e21c3aa1a46e6cb8fa19e68e4",
+      "assemblySha256": "af9f83d2855c1036284099121fedd7d785fe634cdd0c0bf049b2495b9e60fcd9"
+    },
+    {
+      "name": "palette-hover-alias",
+      "rva": "0x35e97ac",
+      "bytes": 188,
+      "sha256": "0a6d2d0c736dad62029f6d871d5faa86cffbd892f9dd4c1b836f94c1fcb9987a",
+      "assemblySha256": "b141b4ff198282de5d2e81a430c3db124cff4a14be5d9214233db8dd3809fbe3"
+    }
+  ],
+  "data": [
+    {
+      "name": "fallback-ellipse-ltrb",
+      "rva": "0xdf47a90",
+      "bytes": 16,
+      "sha256": "37d9895507da8261cb9220e9a9d78c5a43847969c999fe1573969221bb900dad"
+    },
+    {
+      "name": "class-name",
+      "rva": "0xdecc1d8",
+      "bytes": 30,
+      "sha256": "dbb5f6ac482cae6690874c9294941b6fe62b8865ec4e74ba5e9aa6c02f06ca01"
+    },
+    {
+      "name": "class-vtable",
+      "rva": "0xe72ccf0",
+      "bytes": 1088,
+      "sha256": "09babf59d02ad8825593a1bd63aa82580612b7f2854a3117cd18ce29b5033265"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/views/controls/button/button.h",
+      "sha256": "5a618f1103c36a35d25c600a003f4d4a31129125736d887976187d4db2e0b6b9"
+    },
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/gfx/paint_vector_icon.h",
+      "sha256": "8e9d9819abc21afcd225345eb0ae679731b909e6f23fc4c2dc04ce1f66c6a58d"
+    },
+    {
+      "path": "base/numerics/clamped_math.h",
+      "sha256": "1b3208a6f26d2b78508b94b940a17eb33c252a549bb0927cbcff2eeba41c3fad"
+    },
+    {
+      "path": "ui/gfx/geometry/point_conversions.h",
+      "sha256": "e9bf19dfea60858980d38e8483fd06943c734a00f16a7f06728302efeb1863e3"
+    }
+  ],
+  "paletteProof": "../native-agent-tabs-paint/source-evidence.json"
+}
