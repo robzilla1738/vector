@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc",
+      "baselineSha256": "bda6b36e95fb24cd3ffe06bb0044f4d8506b0aca801b2f29a4497295ae0a7756",
+      "outputSha256": "c5c6a1542546cdf8a1e87a622e40b7283c087496547713bdb2b6a5293932a5b3",
+      "anchors": [
+        {
+          "find": "DeriveSourceKey(*request.captured_source_password)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h",
+      "baselineSha256": "1c2cd8bb1f6b8e2eccb29a05db77acdd143d9809d03baf279d145ac438223a27",
+      "outputSha256": "10f355c40e0413a64c2706536fc053a1947ee616a56b62eafc02d9bb74999ab9",
+      "anchors": [
+        {
+          "find": "std::optional<std::string> captured_source_password;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc",
+      "baselineSha256": "57bac3d349cb5744c82a5a2ebb62055f2b959c09581ab9dc1b6a531d048d7bf9",
+      "outputSha256": "c341e20d1d3bf9b7f6aef2ce743f0a8798336ae81938acc12aa168841f30e02c",
+      "anchors": [
+        {
+          "find": "  // Original4253750 reserves a NEW directory and attributes BEFORE copying.",
+          "count": 1
+        },
+        {
+          "find": "std::move(selection.captured_source_password)};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h",
+      "baselineSha256": "cc75adb5b815810ca772bf8b08d194503c4dee3fd72d749ebae2f42873b18a8f",
+      "outputSha256": "d830b5ed5f3cb206b05f83834cea2d312366f3286a9c003bd46b37fe3547a5f1",
+      "anchors": [
+        {
+          "find": "struct ChromiumNewTargetSelection {",
+          "count": 1
+        },
+        {
+          "find": "  void Prepared(ChromiumCloneWorkerResult result);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.cc",
+      "baselineSha256": null,
+      "outputSha256": "7b6a5820913dc1ce9100bd41df4e16e5846faf579124d11f5e8f9f61807bfd74"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.h",
+      "baselineSha256": null,
+      "outputSha256": "d9fb2da6a0d420356f6726d53e1ded31af0024cc46f897b812c87fcdc09800fb"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto.h",
+      "baselineSha256": "62d8b3cee24245fae1cf01cd081ebc479071332715c5dda6766acde7a495f079",
+      "outputSha256": "7ca098730b5288357ac25e6efd50d5a5fe4b4758c3387a2126b9e3692304357c",
+      "anchors": [
+        {
+          "find": "#include <string_view>",
+          "count": 1
+        },
+        {
+          "find": "struct SourceKey :",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+      "baselineSha256": "fdd5242ce0f471cdcae22841cede9aaae974dcf0ed59efc74077c576df949940",
+      "outputSha256": "fee86b4b9bb0eaa54fc54ad2fec876e763dc3b865d5436265c57613c06b018d0",
+      "anchors": [
+        {
+          "find": "#include <string.h>",
+          "count": 1
+        },
+        {
+          "find": "SourceKey DeriveSourceKey(std::string_view password) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "b30075856ea0da2b66eb89e087a5a6a0ca99409591b03181301e8d4739dcb9cd",
+  "compiled": false,
+  "mounted": false,
+  "requires": [
+    "9477435e4 worker outputs",
+    "ff5e29787 coordinator outputs; root rebase any narrow compile adaptations",
+    "actualexisting source_crypto sixselector native provider"
+  ],
+  "dependencies": [
+    "add chromium_source_capture.cc to existing import target",
+    "source_crypto.h/mm modifications stay actual native macOS source provider; no new permission/keychain runtime test",
+    "existing //crypto and BoringSSL dependencies"
+  ]
+}

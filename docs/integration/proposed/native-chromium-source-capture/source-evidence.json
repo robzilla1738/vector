@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "capture-dispatch",
+      "start": "0x42530c0",
+      "endExclusive": "0x42534e8",
+      "sha256": "2e376e6d473205f483b9c863f14cb7a2a816947dc96609fe0effa2414277c469",
+      "assembly": "capture-dispatch.asm",
+      "assemblySha256": "65312378ad3dd36f6cc4edf9086664e1de176e5080e96483b6a6ab323a9ae1e6"
+    },
+    {
+      "name": "capture-reply-reserve",
+      "start": "0x42534e8",
+      "endExclusive": "0x4253b3c",
+      "sha256": "2e23f273eaccbe38dad5d3fd10cf90054c473965117f3dd34bfd6f0d9bfc11a5",
+      "assembly": "capture-reply-reserve.asm",
+      "assemblySha256": "56faa9ace6e06f1b9d476e4b8a1757d1dcd8d1504894fc5c4d0fb7f24062ab26"
+    },
+    {
+      "name": "provider-admission",
+      "start": "0x425957c",
+      "endExclusive": "0x4259690",
+      "sha256": "2b706f16ce2d12bd8966ced9d4ef6a8a2f53c42ab74ff5bbbbf536bd39e8dcb4",
+      "assembly": "provider-admission.asm",
+      "assemblySha256": "46e8ba3ba99f5ec54d028236acf049959b971323b48c8263af6d1fb0eb18c12b"
+    },
+    {
+      "name": "four-path-presence",
+      "start": "0x4259690",
+      "endExclusive": "0x4259984",
+      "sha256": "4d971d3a0f5dfe085a7c60ae3c5ff841d3f24ff301b26fc4c4171b67f695e95a",
+      "assembly": "four-path-presence.asm",
+      "assemblySha256": "7863fb80ad3b7891ab642735fb743eeffc99fefe2f8e83e4b5d3b88d2fa3886b"
+    },
+    {
+      "name": "provider",
+      "start": "0x426abd0",
+      "endExclusive": "0x426b100",
+      "sha256": "f044fe7fa080bd42984582d0b85104b3760f2c78724225db25d19aaa3346c508",
+      "assembly": "provider.asm",
+      "assemblySha256": "fcc18fd5c91125a237a7f52f5a956f44d8ce42dc4ec64a647397bd52ed787ad2"
+    },
+    {
+      "name": "worker-derivation",
+      "start": "0x4255868",
+      "endExclusive": "0x4257640",
+      "sha256": "d29edc8792b6b4d26c591d735134ab139fc0177249a2a5d5c71242f7cc615ed2",
+      "assembly": "worker-derivation.asm",
+      "assemblySha256": "d22f16973153e41721fd9faf2fa19698486a77bfd7aef071bf05d14d7ad3ac5d"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xcf08169",
+      "text": "Arc Safe Storage",
+      "sha256": "e8d947b258bf1bf72b654cc784480b7bac1146d315d486caa87b918a0c9d273e"
+    },
+    {
+      "offset": "0xcf0817a",
+      "text": "Brave Safe Storage",
+      "sha256": "dd17fbccfbfc4bc744e90d1f992d997eea273bd95f62b830c16885e8dcfaab2c"
+    },
+    {
+      "offset": "0xcf0818d",
+      "text": "Chrome Safe Storage",
+      "sha256": "da81add8d560bfa11c630fccc8c09c660a3c99541cc433e7bf87ecb21d27733e"
+    },
+    {
+      "offset": "0xcf081a1",
+      "text": "Comet Safe Storage",
+      "sha256": "6edd6e30f9d50b25957fa2b289607cff4631b61f06ec2a82b0263b543910ff77"
+    },
+    {
+      "offset": "0xcf081b4",
+      "text": "Dia Safe Storage",
+      "sha256": "7ba8dc4f7f05286a16884f1ce5adb42a02560417aa46f65733fd67d8fac9b5bd"
+    },
+    {
+      "offset": "0xcf081c5",
+      "text": "Helium Storage Key",
+      "sha256": "9ab58c56b91bf817eeb9f42d2f02ad0b65da87be424527a1535e66cad348e1f7"
+    },
+    {
+      "offset": "0xcf081d8",
+      "text": "Arc",
+      "sha256": "7291b1b6320fe0737cd6017f486e8ee4923dd8e8fd573d77fc6630f1e001e56b"
+    },
+    {
+      "offset": "0xcf081dc",
+      "text": "Brave",
+      "sha256": "e7d91391c151982552241e802cf3bf1cf34efee5f0e37141a371a5a91e99e2b8"
+    },
+    {
+      "offset": "0xcf081e2",
+      "text": "Chrome",
+      "sha256": "c4ef2ec214f90032f39dddfbfe51add7ef2c79da14fb2ccf14cb4c9ad15e5c9a"
+    },
+    {
+      "offset": "0xcf081e9",
+      "text": "Comet",
+      "sha256": "b8cdd253c1ad5a0ff74dae7dec596aa99ba7991f4ea13c055ee30f45754cc9a9"
+    },
+    {
+      "offset": "0xcf081ef",
+      "text": "Dia",
+      "sha256": "8ed570950d8312cd5ff48fa87190a333c151affaaaf3a9afc0da6629d88a9691"
+    },
+    {
+      "offset": "0xcf081f3",
+      "text": "Helium",
+      "sha256": "cf39361b66d906e58c5d2856ded73d3fa112d1add55a16bc4c6f8cb977399b70"
+    }
+  ],
+  "retained": [
+    {
+      "path": "original-042530c0.c",
+      "sha256": "62b8337a2832b11d2c0feafe4bae4614206401c01931d0aaba939f6a7066e0ca"
+    },
+    {
+      "path": "original-042534e8.c",
+      "sha256": "b6edefd2b936149e9f9aa19bfc5d3501bc38fd25485d05b7153f8f53408fb509"
+    }
+  ],
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativeApiPins": [
+    {
+      "path": "crypto/apple/keychain_v2.h",
+      "sha256": "1e71d235db80dd7f8d5e3d61f7cbfd6b8834d47c4537df8a7e845ddf676ee8c4"
+    },
+    {
+      "path": "third_party/boringssl/src/include/openssl/mem.h",
+      "sha256": "8f39170250bf899da0d2b3babffe593fb72ce73b64e50f076403e62b1763eff7"
+    }
+  ],
+  "semantics": {
+    "admission": "42595ac Atlas enum2 bypass; mode0 bound flag false; DirectoryExists21239c0 then four-path4259690 before provider426abd0",
+    "scheduling": "42530c0 posts provider callback425957c; reply42534e8 only then reserves target and posts4255868",
+    "provider": "426abd0 fixedsixpairs -> KeychainV2 FindGenericPassword with service/account; allotherkinds includingEdge returnabsent",
+    "empty": "426afe4 compareslength23 only forSSO; length0branch426aff8 ->426b030 ->presentflag426b048. No4096orUTF8filter.",
+    "bytes": "copy426b020 rawbyte loop fullvectorlength, embeddedNULpreserved",
+    "derivation": "original4255868 derives captured rawpassword using samePBKDF2 label/iterations; newmode0capture doesnotderive/requery",
+    "lifetime": "move-only vector-backedrawcapture; realBoringSSLcleanse destructor/overwrite, noSSO/copyableRPCstring. ExistingSourceKey unchanged.",
+    "mode1": "existing AuthorizeSourceKey/itslegacyadmission remainunchanged; newmode0capture owns original425957c boundary only"
+  }
+}

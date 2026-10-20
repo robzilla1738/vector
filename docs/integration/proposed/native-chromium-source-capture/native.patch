@@ -1,0 +1,248 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc
+@@ -213,7 +213,7 @@
+                      " encrypted data";
+       return result;
+     }
+-    key = DeriveSourceKey(*request.captured_source_password);
++    key = DeriveSourceKey(request.captured_source_password->view());
+   }
+   // Secret input is not retained in the worker receipt or any RPC/event.
+   request.captured_source_password.reset();
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h
+@@ -5,6 +5,7 @@
+ #include <string>
+ #include "base/files/file_path.h"
+ #include "base/values.h"
++#include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
+ 
+ namespace aux_import {
+ 
+@@ -21,7 +22,7 @@
+   std::u16string profile_name;
+   // Captured by the original pre-worker source-key owner. Absent is distinct
+   // from an admitted empty password. This worker never performs a new lookup.
+-  std::optional<std::string> captured_source_password;
++  std::optional<CapturedSourcePassword> captured_source_password;
+ };
+ 
+ struct ChromiumClonePhoto {
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc
+@@ -58,6 +58,18 @@
+   receipt_.reset();
+   profile_.reset();
+   keep_alive_.reset();
++  // Original425957c provider reply enters42534e8 BEFORE reserve/AddProfile.
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&CaptureChromiumNewTargetSource, std::move(selection)),
++      base::BindOnce(&ChromiumNewTargetImport::Captured, weak_.GetWeakPtr()));
++  return true;
++}
++
++void ChromiumNewTargetImport::Captured(ChromiumCapturedNewTargetSource captured) {
++  if (!running_)
++    return;
++  auto& selection = captured.selection;
+   // Original4253750 reserves a NEW directory and attributes BEFORE copying.
+   target_profile_ = manager_->GenerateNextProfileDirectoryPath();
+   profile_name_ = base::UTF8ToUTF16(SourceName(selection.source)) + u" - " +
+@@ -70,15 +82,14 @@
+   auto self = weak_.GetWeakPtr();
+   ChromiumCloneRequest request{selection.source,
+       std::move(selection.source_profile), target_profile_, profile_name_,
+-      std::move(selection.captured_source_password)};
++      std::move(captured.password)};
+   attributes.AddProfile(std::move(params));
+   if (!self)
+-    return true;  // The real UI owner retired; do not dispatch stale work.
++    return;  // The real UI owner retired; do not dispatch stale work.
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+       base::BindOnce(&PrepareChromiumNewTarget, std::move(request)),
+       base::BindOnce(&ChromiumNewTargetImport::Prepared, weak_.GetWeakPtr()));
+-  return true;
+ }
+ 
+ void ChromiumNewTargetImport::Prepared(ChromiumCloneWorkerResult result) {
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h
+@@ -7,16 +7,11 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h"
++#include "chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.h"
+ class Profile;
+ class ProfileManager;
+ class ScopedProfileKeepAlive;
+ namespace aux_import {
+-struct ChromiumNewTargetSelection {
+-  ChromiumCloneSource source;
+-  base::FilePath source_profile;
+-  std::u16string selected_profile_name;
+-  std::optional<std::string> captured_source_password;
+-};
+ struct ChromiumNewTargetCompletion {
+   bool success = false;
+   base::FilePath target_profile;
+@@ -37,6 +32,7 @@
+   bool Start(ChromiumNewTargetSelection selection, Completion completed);
+   bool running() const { return running_; }
+  private:
++  void Captured(ChromiumCapturedNewTargetSource captured);
+   void Prepared(ChromiumCloneWorkerResult result);
+   void Initialized(Profile* profile);
+   void RestoreSecrets();
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.cc
+@@ -0,0 +1,39 @@
++#include "chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.h"
++#include <utility>
++#include "base/files/file_util.h"
++namespace aux_import {
++namespace {
++const char* SourceId(ChromiumCloneSource source) {
++  switch (source) {
++    case ChromiumCloneSource::kArc: return "arc";
++    case ChromiumCloneSource::kBrave: return "brave";
++    case ChromiumCloneSource::kAtlas: return "atlas";
++    case ChromiumCloneSource::kChrome: return "chrome";
++    case ChromiumCloneSource::kComet: return "comet";
++    case ChromiumCloneSource::kDia: return "dia";
++    case ChromiumCloneSource::kEdge: return "edge";
++    case ChromiumCloneSource::kHelium: return "helium";
++  }
++}
++bool HasEncryptedData(const base::FilePath& path) {
++  return base::PathExists(path.AppendASCII("Login Data")) ||
++         base::PathExists(path.AppendASCII("Login Data For Account")) ||
++         base::PathExists(path.AppendASCII("Cookies")) ||
++         base::PathExists(path.AppendASCII("Network/Cookies"));
++}
++}  // namespace
++ChromiumCapturedNewTargetSource CaptureChromiumNewTargetSource(
++    ChromiumNewTargetSelection selection) {
++  ChromiumCapturedNewTargetSource captured{std::move(selection), std::nullopt};
++  const auto& input = captured.selection;
++  // Exact425957c mode0 branch: Atlas bypass FIRST, then directory+four paths.
++  // Failed lookup remains absent;4255868 performs its original key admission
++  // after the reply/reservation. Never invent a key or retry after the clone.
++  if (input.source != ChromiumCloneSource::kAtlas &&
++      base::DirectoryExists(input.source_profile) &&
++      HasEncryptedData(input.source_profile)) {
++    captured.password = CaptureSourcePassword(SourceId(input.source));
++  }
++  return captured;
++}
++}  // namespace aux_import
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.h
+@@ -0,0 +1,19 @@
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_CHROMIUM_SOURCE_CAPTURE_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_CHROMIUM_SOURCE_CAPTURE_H_
++#include "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h"
++namespace aux_import {
++// Real Handler input contains no credentials. Capture is the first MayBlock
++// phase, before a new target path/attributes or any copied-profile effects.
++struct ChromiumNewTargetSelection {
++  ChromiumCloneSource source;
++  base::FilePath source_profile;
++  std::u16string selected_profile_name;
++};
++struct ChromiumCapturedNewTargetSource {
++  ChromiumNewTargetSelection selection;
++  std::optional<CapturedSourcePassword> password;
++};
++ChromiumCapturedNewTargetSource CaptureChromiumNewTargetSource(
++    ChromiumNewTargetSelection selection);
++}  // namespace aux_import
++#endif
+--- a/chrome/browser/extensions/api/aux_browser_import/source_crypto.h
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto.h
+@@ -2,10 +2,32 @@
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SOURCE_CRYPTO_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_SOURCE_CRYPTO_H_
+ #include <array>
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ #include <string_view>
++#include <vector>
+ namespace aux_import {
++// Original pre-worker raw password, kept native and moved exactly once across
++// the provider reply/clone worker. No std::string SSO residue or copyable DTO.
++class CapturedSourcePassword {
++ public:
++  explicit CapturedSourcePassword(std::vector<uint8_t> bytes);
++  CapturedSourcePassword(CapturedSourcePassword&& other) noexcept;
++  CapturedSourcePassword& operator=(CapturedSourcePassword&& other) noexcept;
++  ~CapturedSourcePassword();
++  CapturedSourcePassword(const CapturedSourcePassword&) = delete;
++  CapturedSourcePassword& operator=(const CapturedSourcePassword&) = delete;
++  std::string_view view() const;
++ private:
++  std::vector<uint8_t> bytes_;
++};
++// Worker-only original426abd0 provider. The original successful-empty result
++// is present; absence is denied/unavailable/unsupported. No additional lookup
++// is performed by the clone worker. Does not use installation/destination keys.
++std::optional<CapturedSourcePassword> CaptureSourcePassword(
++    std::string_view source);
++
+ struct SourceKey : std::array<unsigned char, 16> {
+   ~SourceKey();
+ };
+--- a/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+@@ -8,6 +8,7 @@
+ #import <LocalAuthentication/LocalAuthentication.h>
+ #import <Security/Security.h>
+ #include <string.h>
++#include <utility>
+ 
+ #include "crypto/apple/keychain_v2.h"
+ #include "third_party/boringssl/src/include/openssl/mem.h"
+@@ -114,6 +115,41 @@
+     return false;
+   }
+ }
++CapturedSourcePassword::CapturedSourcePassword(std::vector<uint8_t> bytes)
++    : bytes_(std::move(bytes)) {}
++CapturedSourcePassword::CapturedSourcePassword(
++    CapturedSourcePassword&& other) noexcept = default;
++CapturedSourcePassword& CapturedSourcePassword::operator=(
++    CapturedSourcePassword&& other) noexcept {
++  if (this != &other) {
++    OPENSSL_cleanse(bytes_.data(), bytes_.size());
++    bytes_ = std::move(other.bytes_);
++  }
++  return *this;
++}
++CapturedSourcePassword::~CapturedSourcePassword() {
++  OPENSSL_cleanse(bytes_.data(), bytes_.size());
++}
++std::string_view CapturedSourcePassword::view() const {
++  return bytes_.empty() ? std::string_view("")
++      : std::string_view(reinterpret_cast<const char*>(bytes_.data()), bytes_.size());
++}
++std::optional<CapturedSourcePassword> CaptureSourcePassword(
++    std::string_view source) {
++  // Original426abd0 supports only its six exact service+account selectors.
++  // Atlas is skipped by the caller; Edge returns absent, no generic fallback.
++  auto selectors = SuppliedSelectors(source);
++  if (!selectors)
++    return std::nullopt;
++  auto password = crypto::apple::KeychainV2::GetInstance().FindGenericPassword(
++      selectors->service, selectors->account);
++  if (!password.has_value())
++    return std::nullopt;
++  // Source426afe0..426b048 admits every successful vector, including length0;
++  // there is no inherited independent 4096-byte or nonempty admission rule.
++  return CapturedSourcePassword(std::move(*password));
++}
++
+ SourceKey DeriveSourceKey(std::string_view password) {
+   SourceKey key{};
+   constexpr unsigned char salt[] = {'s', 'a', 'l', 't', 'y',
