@@ -1,0 +1,33 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -10,7 +10,6 @@
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/task/sequenced_task_runner.h"
+-#include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -32,7 +31,6 @@
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_tabs.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+-#include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
+ #include "ui/views/view_tracker.h"
+ #include "url/gurl.h"
+ 
+@@ -159,10 +157,10 @@
+   if (!bindings) {
+     return Result::kRejected;
+   }
+-  if (!CanShowBrowser(target, base::BindRepeating(
+-          &extensions::ChromeExtensionWebContentsObserver::CreateForWebContents))) {
+-    return Result::kAwaitingSecurity;
+-  }
++  // Supplied4559f80 does not run account bootstrap/Vault admission here.
++  // The physical browser still belongs to `previous` until identity transfer;
++  // treating it as the target would check the wrong actual profile. Original
++  // bootstrap visibility stays at real window-show/bootstrap owner entrypoints.
+   auto active_keep_alive = ScopedProfileKeepAlive::TryAcquire(
+       target, ProfileKeepAliveOrigin::kBrowserWindow);
+   if (!active_keep_alive) {

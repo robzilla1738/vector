@@ -1,0 +1,24 @@
+{
+  "originalTransaction": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04559f80.c",
+    "sha256": "aa281c5f7b93a7947ab805354cb9e0b293f7465656340b015f589ec2b08e9637",
+    "admissionExcerpt": "  qword *local_c0;\n  undefined8 uStack_b8;\n  ulong local_b0;\n  undefined8 *******local_a8;\n  ulong uStack_a0;\n  undefined8 local_98;\n  char *******local_90;\n  ulong uStack_88;\n  undefined8 local_80;\n  undefined8 *******local_78 [3];\n  \n  if ((((param_2 == (dword *)0x0) || ((*(byte *)(*(long *)(param_1 + 0x1a) + 0x48) & 1) != 0)) ||\n      (param_1[0x18] != 0)) || ((*(byte *)(param_1 + 0x3c) & 1) != 0)) {\nLAB_04559fc0:\n    if (param_3 != (int *)0x0) {\n      (**(code **)(param_3 + 2))(param_3,0);\n      LOAcquire();\n      iVar14 = *param_3;\n      *param_3 = iVar14 + -1;\n      LORelease();\n      if (iVar14 == 1) {\n                    /* WARNING: Could not recover jumptable at 0x0455a008. Too many branches */\n                    /* WARNING: Treating indirect jump as call */\n        (**(code **)(param_3 + 4))(param_3);\n        return;\n      }\n    }\n    return;\n  }\n  for (puVar32 = *(undefined8 **)(param_1 + 0x62); puVar32 != (undefined8 *)0x0;\n      puVar32 = (undefined8 *)*puVar32) {\n    while ((undefined **)puVar32[4] < (undefined **)0xead4c51) {\n      if ((undefined **)puVar32[4] == &PTR_s_UnloadController_kDataKeyImpl_0ead4c50) {\n        if ((dword *)puVar32 == param_1 + 0x62) goto LAB_0455a09c;\n        uVar38 = puVar32[5];\n        if ((uVar38 & 0xfffffffc00000000) == DAT_0ebb2088) {\n          FUN_000142fc(uVar38);\n        }\n        goto LAB_0455a0a0;\n      }\n      puVar32 = (undefined8 *)puVar32[1];\n      if (puVar32 == (undefined8 *)0x0) goto LAB_0455a09c;\n    }\n  }\nLAB_0455a09c:\n  uVar38 = 0;\nLAB_0455a0a0:\n  if ((uVar38 & 0xfffffffc00000000) == DAT_0ebb2088) {\n    FUN_00022a3c(uVar38);\n  }\n  if (((*(byte *)(uVar38 + 0x148) & 1) != 0) || (*(char *)(param_1 + 0x41) != '\\0'))\n  goto LAB_04559fc0;\n  (**(code **)(*(long *)param_2 + 0x148))();\n  plVar17 = *(long **)(param_1 + 0x1a);\n  (**(code **)(*plVar17 + 0x148))();\n  if ((dword *)plVar17 == param_2) {\nLAB_0455a140:\n    if (*(long **)(param_1 + 0x1e) != (long *)0x0) {\n      (**(code **)(**(long **)(param_1 + 0x1e) + 0x68))();\n    }\n    if (param_3 == (int *)0x0) {\n      return;\n    }\n    (**(code **)(param_3 + 2))(param_3,param_1);\n    LOAcquire();\n    iVar14 = *param_3;\n    *param_3 = iVar14 + -1;\n    LORelease();\n    if (iVar14 != 1) {\n      return;\n    }\n    (**(code **)(param_3 + 4))(param_3);\n    return;\n  }\n  (**(code **)(*plVar17 + 0x30))(&local_160);\n  (**(code **)(*(long *)param_2 + 0x30))(&local_c8,param_2);\n  ppdVar18 = &local_160;\n  FUN_010cc104(ppdVar18,&local_c8);\n  if ((char)uStack_149 < '\\0') {\n    FUN_00008eb8(local_160,CONCAT17((char)uStack_149,local_150) & 0x7fffffffffffffff);\n  }\n  if ((int)ppdVar18 != 0) goto LAB_0455a140;\n  if (((ulong)(param_1 + 0x41) & 0xfffffffc00000000) == DAT_0ebb2088) {\n    FUN_000142fc(param_1 + 0x41);\n  }\n  uVar6 = *(undefined1 *)(param_1 + 0x41);\n  *(undefined1 *)(param_1 + 0x41) = 1;\n  if (*(char *)((long)param_1 + 0x10d) != '\\0') {\n    *(undefined1 *)((long)param_1 + 0x10d) = 0;\n  }\n  *(undefined1 *)((long)param_1 + 0x10e) = 0;\n  if (param_1 != (dword *)0x0) {\n    lVar20 = *(long *)(*(long *)(param_1 + 0x68) + 0x390);",
+    "directGateCalls": [],
+    "sameWindowActivation": "virtual window+0x68 in equality success branch and successful transfer tail; see supplied body"
+  },
+  "originalFrameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "currentNativeBrowserView": {
+    "path": "chrome/browser/ui/views/frame/browser_view.cc",
+    "sha256": "256705b3fac45e3b799b6e823bdbc65c342889a8b645953086bf9c830eac665b",
+    "gateEntryPoints": [
+      "Show",
+      "ShowInactive"
+    ],
+    "ActivateCallsGate": false
+  },
+  "verification": {
+    "patchReplay": true,
+    "nativeCompile": false,
+    "nativeRuntime": false
+  }
+}

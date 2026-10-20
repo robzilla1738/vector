@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "Actual native232 terminal build input",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "450a7e9b1a13b3b70e6b222d86b20917732add13e5f18c54613bcc2badab8bce",
+      "outputSha256": "e964cd8170055591c81cc7424eaa191be8495da5ccd34385f6708a02925410c5"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
