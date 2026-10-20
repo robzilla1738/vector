@@ -1,0 +1,9 @@
+# Original cross-section drag preview
+
+Port the supplied `VerticalTabStripRegionView::CrossSectionDragPreview`, positively named by its original metadata, as a native Views leaf. Keep its source-derived content and state machine: ImageView16, Label context5/style4096, head alignment, fade tail, role225 foreground, transparent layers, no input, initially hidden. Original update4651140 changes title/image before presentation. The real region supplies source and destination rectangles converted to its coordinates.
+
+The original SlideAnimation uses170ms (zero with actual reduced-motion preference), curve11. This mapping is positively verified through original SlideAnimation AnimateToState21cfec0→Tween dispatch21cff80, signed table entry11 atd2263c0→21d005c, then CubicBezier constructor with decoded double constants0.4/0.2 and literal0/1. Chromium155's named `FAST_OUT_SLOW_IN` uses the same curve. No numeric enum correspondence is assumed.
+
+Tile morph0 centers the16px icon; row morph1 moves it to left8. Label begins at32, reserves8 trailing, uses current morph as actual layer opacity. Fill switches at0.5 between original roles218/214; border216 is inset0.5, stroke0.5, radius10. Actual private mixer bytes establish the color constants for each theme. Updating the target during the same morph direction preserves the running animation clock; changing direction restarts from actual current bounds/morph. Exit/drop retains and hides the leaf.
+
+The patch registers and compiles this leaf only. Real region drag admission, source/target geometry, saved-pin insertion, real bookmark move/tab pinning, hover-expansion locks and mounting remain owner integration. No dummy controllers or fake drag gesture are supplied. Static original recovery and a focused compile do not prove runtime parity.

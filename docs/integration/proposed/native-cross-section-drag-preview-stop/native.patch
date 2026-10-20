@@ -1,0 +1,12 @@
+--- a/chrome/browser/ui/views/frame/aux_cross_section_drag_preview.cc
++++ b/chrome/browser/ui/views/frame/aux_cross_section_drag_preview.cc
+@@ -80,7 +80,8 @@
+ }
+ 
+ void CrossSectionDragPreview::Hide() {
+-  // Original drop/exit hides the retained preview; it is not destroyed.
++  // Original462d53c/462d8a4 stops the live animation, then retains/hides.
++  animation_.Stop();
+   SetVisible(false);
+ }
+ 

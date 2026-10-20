@@ -1,0 +1,70 @@
+{
+  "composition": "v297",
+  "exitCode": 0,
+  "elapsedSeconds": 7.415950059890747,
+  "targets": {
+    "drag_preview": "obj/chrome/browser/ui/ui/aux_cross_section_drag_preview.o",
+    "bookmark_associations": "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+    "saved_pin_drop": "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+    "chats_section": "obj/chrome/browser/ui/ui/aux_chats_section.o",
+    "new_chat": "obj/chrome/browser/ui/ui/aux_new_chat_view.o",
+    "chat_row_focus": "obj/chrome/browser/ui/ui/aux_chat_row.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_cross_section_drag_preview.o",
+    "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+    "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+    "obj/chrome/browser/ui/ui/aux_chats_section.o",
+    "obj/chrome/browser/ui/ui/aux_new_chat_view.o",
+    "obj/chrome/browser/ui/ui/aux_chat_row.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "sixObjectBuildComposition": "v296",
+  "followupBuild": {
+    "composition": "v297",
+    "exitCode": 0,
+    "elapsedSeconds": 7.424264907836914,
+    "targets": {
+      "drag_preview": "obj/chrome/browser/ui/ui/aux_cross_section_drag_preview.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/ui/aux_cross_section_drag_preview.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "originalReplay": {
+    "matchedSources": 473,
+    "steps": 300
+  },
+  "buildGeneration": {
+    "targets": 36082,
+    "files": 5013,
+    "passed": true
+  },
+  "fullBrowserOrUIAccepted": false,
+  "genuineFullSidebarOwnersMounted": false,
+  "previousBuild": {
+    "composition": "v295",
+    "exitCode": 1,
+    "failure": "Moved PrefRegistrySyncable include",
+    "resolvedBy": "native-chats-section-api155"
+  },
+  "localOnly": true,
+  "signingOrReleasePerformed": false
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "bf037b426 immutable foundation output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+      "baselineSha256": "31595a0908ea4c2f0a4d2ffa51cffe9d4ae006af8cab291a59a16b09cedc3726",
+      "outputSha256": "ad03857af4e4cbcf01dc2090423be605170f8c0f4842b8f17a81c18ecc1bb99e"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "rebasedAfter": "native-sidebar-rows-api155; same focus-only patch, inherited SchedulePaint compatibility retained"
+}

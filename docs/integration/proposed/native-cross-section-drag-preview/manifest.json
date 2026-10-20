@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "99a2b2863a49cc0ebbe17415b0fb895e5e4fcf8c2090af4fbf0d3b2e4849585e",
+      "outputSha256": "4da202ee7eff2f4d6daf8904ef9be51f31d4fd888fa2319f55279bba24235f7e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.cc",
+      "baselineSha256": null,
+      "outputSha256": "07e92e441c70d47e84ed93f70675af315d1646f2de345a330f7c02920e0c9739"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h",
+      "baselineSha256": null,
+      "outputSha256": "15d056e91815115dfccff732b14310a141ff889e01fed40171f5bf28faad11df"
+    }
+  ]
+}

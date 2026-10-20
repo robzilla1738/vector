@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1138,6 +1138,13 @@
+       "views/frame/aux_section_clip_view.h",
+       "views/frame/aux_cross_section_drag_preview.cc",
+       "views/frame/aux_cross_section_drag_preview.h",
++      "views/frame/aux_bookmark_tab_associations.cc",
++      "views/frame/aux_bookmark_tab_associations.h",
++      "views/frame/aux_chats_section.cc",
++      "views/frame/aux_chats_section.h",
++      "views/frame/aux_new_chat_view.cc",
++      "views/frame/aux_new_chat_view.h",
++      "views/frame/aux_new_chat_icon.inc",
+       "views/frame/aux_chat_row.cc",
+       "views/frame/aux_chat_row.h",
+       "views/frame/aux_chat_icons.inc",

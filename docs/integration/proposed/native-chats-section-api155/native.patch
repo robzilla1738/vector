@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_chats_section.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_section.cc
+@@ -8,7 +8,7 @@
+ #include "chrome/browser/ui/views/frame/aux_new_chat_view.h"
+ #include "chrome/browser/ui/views/frame/aux_section_clip_view.h"
+ #include "components/prefs/pref_service.h"
+-#include "components/user_prefs/pref_registry_syncable.h"
++#include "components/pref_registry/pref_registry_syncable.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/views/controls/button/button.h"
+ #include "ui/views/layout/box_layout.h"

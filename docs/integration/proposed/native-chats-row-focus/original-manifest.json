@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "bf037b426 immutable foundation output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_row.cc",
+      "baselineSha256": "e0a72d12aed54226414fac8b221652cd9ebca1f64e98bf26bee012a1ca1c3867",
+      "outputSha256": "e2d612b3da29e0f2e9a2e8d62a93b5ef0822a56d89e23269ac343e9dd14188b3"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false
+}

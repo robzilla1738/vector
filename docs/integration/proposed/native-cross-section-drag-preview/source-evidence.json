@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "setup",
+      "address": "0x4634874",
+      "bytes": 1344,
+      "sourceBytesSha256": "f3ee53ad4de50ba10368c883b026868c644b9acd1126a68160f8ec2203685370",
+      "assemblySha256": "05c64d026d113aa86184f93cd8b0551b2852f84267e04e651bedfbf3a122da11"
+    },
+    {
+      "name": "update",
+      "address": "0x4651140",
+      "bytes": 1132,
+      "sourceBytesSha256": "a08a94bd76aa535170f5d8f3afe18746f55db91e93a928f5f2a13ef473cb6819",
+      "assemblySha256": "57292baf860793df3bb26ab717064532a545a9c61677956741c178cb69794ae7"
+    },
+    {
+      "name": "virtuals",
+      "address": "0x465ad90",
+      "bytes": 1836,
+      "sourceBytesSha256": "296c1f0b488cde4681cfd835e4cd413a3fb4ccdb3c5ae793d1af852c56d9ea76",
+      "assemblySha256": "3210a625d2dd46b4e24c63d8c86bbb750ad227a861ef3070747b41ef38af1d74"
+    },
+    {
+      "name": "metadata",
+      "address": "0x462b330",
+      "bytes": 264,
+      "sourceBytesSha256": "b10aa42cf2f911d803d2c6e8bc9121a4c0d9bd697b869314e5a0e07f980de1c7",
+      "assemblySha256": "434c3deaedd71cc9478c8ab0857300025607d6bff48b49a5af15df6f56342305"
+    },
+    {
+      "name": "slide-state",
+      "address": "0x21cfec0",
+      "bytes": 192,
+      "sourceBytesSha256": "4044bc280c038e678097ceb314eb311bac3db7da9d424006dac2985d7e1b5593",
+      "assemblySha256": "1efe454b5140d5790ee34c3eceaefdc66a8d8ca3d2ab81ceb113ae04ebcae129"
+    },
+    {
+      "name": "tween-dispatch",
+      "address": "0x21cff80",
+      "bytes": 360,
+      "sourceBytesSha256": "858302fb0e2410a2136fa86421dcfc595d590a64882c102c78dfe1ffa3628744",
+      "assemblySha256": "5ae110a2abccd55e104733789dc9cdfb596696c544eb5ac13ba42f8d8276b814"
+    },
+    {
+      "name": "palette",
+      "address": "0x35e6d40",
+      "bytes": 1076,
+      "sourceBytesSha256": "e005f5eb4b74e05f5ab616aca27035fbcc9f60a5b3a5002dc1cecbb4d9491d63",
+      "assemblySha256": "b123243a047f89c60798f9aee741eee918a505390fd7915fc889d6459882db0d"
+    },
+    {
+      "name": "region-callbacks",
+      "address": "0x462ce28",
+      "bytes": 2932,
+      "sourceBytesSha256": "8d0da4ec134af07df9c6a9ecbb5577d9bfaaef8d0fce6f9f1facd8ef0cd61b2f",
+      "assemblySha256": "59b1e37f1b49273f87744b5dd705c84ccdbc400811539e4f315f1bf1a312e198"
+    }
+  ],
+  "data": [
+    {
+      "name": "class-name",
+      "address": "0xdecba6c",
+      "bytes": 51,
+      "sha256": "f4974c5bfbd5bb626804d6cd68e226a64bf9a87cb7a3fe59c01e2f2d2729a23c"
+    },
+    {
+      "name": "class-header",
+      "address": "0xdecbb1e",
+      "bytes": 69,
+      "sha256": "d3303d34a4f2f8b0c314b0a3e2037378496aef709a020570414bc78640d7e232"
+    },
+    {
+      "name": "primary-vtable",
+      "address": "0xe7238d0",
+      "bytes": 1024,
+      "sha256": "a232f17c0bbc988a9494e3640f33574aeb4ae9a76c80ef4a2b507030e18159b6"
+    },
+    {
+      "name": "slide-vtable",
+      "address": "0xe2e1900",
+      "bytes": 112,
+      "sha256": "950a70bcc09f0b90f1cd404a12a20d7c83ef735174fe5fc392324c7fd6723e18"
+    },
+    {
+      "name": "tween-table",
+      "address": "0xd2263c0",
+      "bytes": 132,
+      "sha256": "de97761ea824928306bfc31b41c4d0baf05da0536137eaa375f6bfb5f5c9558e"
+    },
+    {
+      "name": "bezier-x1",
+      "address": "0xdf4c0d0",
+      "bytes": 8,
+      "sha256": "76ac2cde7665454a2feeeb3ff8bf3c4b85272509b98228dbc1e8f7a8c979a647"
+    },
+    {
+      "name": "bezier-x2",
+      "address": "0xdf4c978",
+      "bytes": 8,
+      "sha256": "ec361add5afbcdb8b62bf8daef0ed186d18714095ea66df0b460266669a7c753"
+    }
+  ],
+  "tween": {
+    "originalID": 11,
+    "tableIndexDestination": "0x21d005c",
+    "cubicBezier": [
+      0.4,
+      0,
+      0.2,
+      1
+    ],
+    "actual155": "gfx::Tween::FAST_OUT_SLOW_IN"
+  },
+  "morph": {
+    "toPinnedTile": 0,
+    "toBookmarkRow": 1,
+    "fillSwitchAt": 0.5,
+    "rowFillRole": 214,
+    "tileFillRole": 218,
+    "strokeRole": 216,
+    "strokeWidth": 0.5,
+    "strokeInset": 0.5,
+    "radius": 10
+  },
+  "regionBindings": {
+    "projectionChanged": "0x462ce28",
+    "beginUpdate": "0x462d1c0",
+    "drop": "0x462d5e0",
+    "finish": "0x462d8a4"
+  },
+  "mounted": false,
+  "limitations": [
+    "No actual drag gesture observed",
+    "Region mount, real source/target geometry, keep-expanded lock and actual bookmark/pinned conversion remain subsequent owner integration"
+  ]
+}

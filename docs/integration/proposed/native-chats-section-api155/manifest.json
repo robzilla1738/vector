@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "baselineSha256": "14a2c4e05c8254b29e035f55ee051a7e3e185225082131068c975222e3d58239",
+      "outputSha256": "9039d776eb6bb4265524fa13ece3a8b95efb8b603dc8a0db2d4854f4b6587039"
+    }
+  ]
+}

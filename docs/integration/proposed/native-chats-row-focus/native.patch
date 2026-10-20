@@ -1,0 +1,18 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_row.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_row.cc
+@@ -138,6 +138,7 @@
+       rename_(std::move(rename)), archive_(std::move(archive)),
+       context_(std::move(context)), show_all_(show_all) {
+   button_controller()->set_notify_action(views::ButtonController::NotifyAction::kOnRelease);
++  SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
+   SetNotifyEnterExitOnChild(true);
+   auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+       views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(6, 8)));
+@@ -180,6 +181,7 @@
+     }
+     archive_button_ = controls->AddChildView(std::make_unique<views::ImageButton>(
+         base::BindRepeating(&AuxChatRow::Archive, base::Unretained(this))));
++    archive_button_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+     archive_button_->SetPreferredSize(gfx::Size(24, 24));
+     archive_button_->SetTooltipText(u"Archive Chat");
+     archive_button_->GetViewAccessibility().SetName(u"Archive Chat");

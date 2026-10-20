@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.cc",
+      "baselineSha256": "07e92e441c70d47e84ed93f70675af315d1646f2de345a330f7c02920e0c9739",
+      "outputSha256": "2f4a2a2a5974928770fbf7b3e7af1b71346496d14b90f0c63056e6890bc286d1"
+    }
+  ]
+}

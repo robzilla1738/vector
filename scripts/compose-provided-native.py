@@ -314,6 +314,14 @@ steps.extend([
     ('native-vertical-bookmark-row/native.patch', 'native-vertical-bookmark-row/manifest.json'),
     ('native-sidebar-rows-gn/native.patch', 'native-sidebar-rows-gn/manifest.json'),
     ('native-sidebar-rows-api155/native.patch', 'native-sidebar-rows-api155/manifest.json'),
+    ('native-cross-section-drag-preview/native.patch', 'native-cross-section-drag-preview/manifest.json'),
+    ('native-bookmark-tab-associations/native.patch', 'native-bookmark-tab-associations/manifest.json'),
+    ('native-pinned-tab-entry-drop/native.patch', 'native-pinned-tab-entry-drop/manifest.json'),
+    ('native-chats-section/native.patch', 'native-chats-section/manifest.json'),
+    ('native-chats-row-focus/native.patch', 'native-chats-row-focus/manifest.json'),
+    ('native-sidebar-owners-gn/native.patch', 'native-sidebar-owners-gn/manifest.json'),
+    ('native-chats-section-api155/native.patch', 'native-chats-section-api155/manifest.json'),
+    ('native-cross-section-drag-preview-stop/native.patch', 'native-cross-section-drag-preview-stop/manifest.json'),
 ])
 
 if options.through:
