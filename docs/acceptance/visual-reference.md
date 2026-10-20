@@ -1,6 +1,12 @@
 # Visual reference evidence, 2026-10-19
 
-Status: **incomplete; zero accepted full-surface parity comparisons**. This document distinguishes measured target first paint from surfaces that could not be reached safely. See the reference provenance ledger for source versions. No shipped implementation was authored by this reference-only lane.
+Status: **incomplete; zero accepted full-surface parity comparisons**. The active task is direct implementation reuse with Aux branding. Earlier clean-room restrictions in the capture methodology are superseded by the [supplied implementation contract](../design/aside-contract.md). The unhosted captures below remain historical evidence with their original limitations.
+
+## Existing static native references
+
+The owner’s existing `~/Desktop/Aside UI Reference 2026-10-16` collection contains 182 images. All 182 decode successfully and match the image hashes in the earlier inventory. [The verified inventory](historical-static-reference-images.json) records their paths, hashes, decoded pixel dimensions and formats without copying images or personal reference content into the product. All images contain JPEG bytes despite their `.png` suffix; the earlier inventory’s PNG-header dimensions were invalid and must not be used.
+
+The collection includes 27 browser-shell/profile/library images, including a visible profile switcher and sidebar states. These existing static files can guide layout and interaction recovery without opening the owner’s live browser or profile. Exact component version, theme, scale and disposable-state provenance are not established for these historical captures. They are not newly accepted live parity comparisons. Aside’s supplied implementation remains authoritative; no personal account content from the captures belongs in product assets or fixtures.
 
 ## Version and isolation findings
 
@@ -46,7 +52,7 @@ At 1280×800 CSS pixels, without the optional native-sidebar slot, both themes g
 | Editable area |282|282|572|32|
 | Mode control group |864|282|134|32|
 
-These live-rendered measurements corroborate the existing newtab spec's static geometry. The card sits 48px below the brand slot. Its content has 10px insets. The mode group includes 134px total width, rather than merely adding two 64px option widths. These measurements cover the unhydrated frame only. No reference wording, icon paths, font files or implementation code belongs in product sources; the approved original copy, independently licensed fonts and Aux artwork remain required.
+These live-rendered measurements corroborate the existing newtab spec's static geometry. The card sits 48px below the brand slot. Its content has 10px insets. The mode group includes 134px total width, rather than merely adding two 64px option widths. These measurements cover the unhydrated frame only. The supplied wording, licensed fonts, CSS and implementation are authorized reuse inputs. Only branding, Aux artwork and necessary isolated identities/platform integration change under the active contract.
 
 At 390×800, both themes place the brand at 163,64 (64×64), the search region at 16,160 (358×100), the card at 48,160 (294×52), editor at 58,170 (130×32) and mode group at 198,170 (134×32). The shortcut hint is hidden. The static placeholder clips in the available editor area; this observation does not establish the post-hydration behavior.
 
@@ -63,7 +69,7 @@ Every item below needs a valid native-hosted reference capture and matching Aux 
 - Vault: disabled/checking/setup/recovery/locked/unlocked/failed, list/details/editors for each category, generator, autofill/save-update prompts, passkeys, import preview/errors and security settings.
 - Native shell: expanded/collapsed/hover/resized sidebar, pins/drag/bookmarks, task row/popover/tooltip, agent-tabs bubble, tab-search host, quick/held/cancel switcher, popup window/options, update indicator, profile menu/editor/icon grid, toolbar/internal URL, horizontal tab mode and reduced-transparency fallback.
 
-A full comparison also needs a documented policy for permitted original text/art/font substitutions: literal pixel equality across those areas is incompatible with the required clean-room replacements. Such regions must be explicitly reviewed or masked with a stated reason; no broad automatic mask is justified. The integrator must choose and record that policy before accepting thresholds.
+Comparisons must account for the authorized Aux product-name/logo/icon substitutions and actual fixture content. Supplied typography, layout and interactions should remain faithful; there is no clean-room text/font replacement requirement. Any comparison masks must identify the exact authorized difference and avoid concealing layout or behavior regressions.
 
 ## Comparison harness and current coverage
 

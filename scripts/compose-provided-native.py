@@ -167,6 +167,20 @@ steps.extend([
     ('native-profile-switch-close-deferral/native.patch', 'native-profile-switch-close-deferral/manifest.json'),
     ('native-profile-switch-provider-weak/native.patch', 'native-profile-switch-provider-weak/manifest.json'),
     ('native-profile-switch-close-deferral/browser-type-include/native.patch', 'native-profile-switch-close-deferral/browser-type-include/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/ai-mode-private-profile-owner.patch', 'native-profile-switch-owner/transaction-map/ai-mode-private-profile-owner-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/actor-profile-lifecycle.patch', 'native-profile-switch-owner/transaction-map/actor-profile-lifecycle-manifest.json'),
+    ('native-profile-switch-actor-ai-provider/native.patch', 'native-profile-switch-actor-ai-provider/manifest.json'),
+    ('native-agent-tabs-secure-page/native.patch', 'native-agent-tabs-secure-page/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-iph-profile-lifecycle.patch', 'native-profile-switch-owner/transaction-map/glic-iph-profile-lifecycle-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-dormant-bubble-profile.patch', 'native-profile-switch-owner/transaction-map/glic-dormant-bubble-profile-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-button-profile-lifecycle.patch', 'native-profile-switch-owner/transaction-map/glic-button-profile-lifecycle-manifest.json'),
+    ('native-profile-switch-glic-iph-provider/native.patch', 'native-profile-switch-glic-iph-provider/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-private-graph-profile.patch', 'native-profile-switch-owner/transaction-map/glic-private-graph-profile-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-split-profile-lifecycle.patch', 'native-profile-switch-owner/transaction-map/glic-split-profile-lifecycle-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/glic-check-op-dependencies.patch', 'native-profile-switch-owner/transaction-map/glic-check-op-dependencies-manifest.json'),
+    ('native-profile-switch-glic-split-provider/native.patch', 'native-profile-switch-glic-split-provider/manifest.json'),
+    ('native-agent-group-model/native.patch', 'native-agent-group-model/manifest.json'),
+    ('native-agent-group-model/build-registration/native.patch', 'native-agent-group-model/build-registration/manifest.json'),
 ])
 
 if options.through:

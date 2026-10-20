@@ -1,0 +1,1838 @@
+{
+  "evidenceClass": "historical-static-reference",
+  "captureRoot": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16",
+  "captureDateFromDirectory": "2026-10-16",
+  "verifiedAgainstInventorySha256": "ce713a31168f9840c0f4be56e296e8edc854e5b4182a961381aa96191a44a943",
+  "images": [
+    {
+      "path": "01 Home and composer/001-new-tab-default.png",
+      "sha256": "2b518230e2c1d351fcadf5cb3968a007d2fa4cbd228c27ead2c4ab44b0f2ceb9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/002-new-tab-profile-menu.png",
+      "sha256": "593741148df62fd659e59c5f60e8ae5fff8f76b2dcc77823a30a908bf0e3cfe6",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/003-new-tab-ask-composer.png",
+      "sha256": "c99b0244324c6c682e8671c8a64f5f50c3b27fe0bb53811cf1191dc18f247981",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/004-new-tab-routines.png",
+      "sha256": "665d5c8bae99d0807473ae77fb619a8fe2a71a4f159b526857c8ff38792488a9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/005-new-tab-suggested-tasks.png",
+      "sha256": "f1fe0025149cdd60d67c02177309b22b77a1b4400cc46159bb0d721d20559e64",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/006-composer-options-dropdown.png",
+      "sha256": "90b5ca810b74cd43a48d8ad4fcf1efcbd502eede9a6f5faf8f45cf71fe5ff037",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/007-composer-project-picker.png",
+      "sha256": "5115fdfb8d8f809dfd55eac8d9038a2d4df6a7d08dee455f13b520285483605b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/008-composer-permission-guard.png",
+      "sha256": "9d5481bd7efea072e969af406aed98deca9df3f293a4bbf3b343937acb912ba0",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/009-composer-model-picker.png",
+      "sha256": "c56bb8b5b575da02a994e376f949e595d5e02b838656b3776e86a7fa06ea6786",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/010-composer-model-provider-row-focused.png",
+      "sha256": "372a975664f1f87574435be855e59268333276de0138cf602c1339bca83e3d3b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/011-composer-aside-models-expanded.png",
+      "sha256": "c86053b3f7dc0f50c29fa20f2b07b6ccc0b03bd9c36056461adc6346b7a9cb86",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/012-composer-chatgpt-models-expanded.png",
+      "sha256": "a0253cd366ab85fabd770116df404e4aaeed1e8f9aa16c5afbe04dd55ecbb052",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/013-composer-reasoning-effort.png",
+      "sha256": "8eaeb5019d3db431f1215cd235e5eacc30c2e793e16821a60c5aa89e46e909ea",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "01 Home and composer/014-composer-context-mention.png",
+      "sha256": "a36f9c23e6eefb15ab872a5b8e639dd6486b7c9a400554f5cad5e8387f79ca20",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "01 Home and composer"
+    },
+    {
+      "path": "02 Personal settings/015-settings-general-top.png",
+      "sha256": "6f63ef11612e259a95918092cf615a6a644b224e30dd68155681cf5ed2ec4455",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/016-settings-search-engine-dropdown.png",
+      "sha256": "e00390c478a7d7014b99aad33cac616032a6d25bd06aa56ece99daf113373daf",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/017-settings-new-tab-mode-dropdown.png",
+      "sha256": "ff2cafff88ce51b41b26dd049e4783034bcf68231c1ca32b46bf5bfc31f0fdc4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/018-settings-language-configuration.png",
+      "sha256": "728f890b43857c384d34dd12e888c9e03e55ffa5a6311ffbdce9315c1a943eb8",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/019-settings-add-language-dropdown.png",
+      "sha256": "64a2bd347ebf2725147453100d0c8864c50655ce4a0e5bf3a6093902453168c5",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/020-settings-browser-import-dialog.png",
+      "sha256": "ca95f7417168d732676bd901c87193b5a225454db78adcf2270aa29a152f954d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/021-settings-import-browser-picker.png",
+      "sha256": "84c29e91bfd35ef4d75708ce64269100af47a6d807997c707afa6ddc2d14bd66",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/022-settings-general-about-section.png",
+      "sha256": "578f7886c50da6b4505d866f290f730613c5262b29e806e278d15fe5fd166322",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/023-settings-appearance-top.png",
+      "sha256": "aa25ec12a8f69de4234910ba2e13e9dd145269796757619905429323874ef0c1",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/024-appearance-theme-dropdown.png",
+      "sha256": "5fd203f4aa6ada9ee858aace60f21a1bbbf98d42dea645bff3f5ef0079488e4f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/025-appearance-zoom-dropdown.png",
+      "sha256": "e361f10b5ffd6333583507beb3cb24bbfb1ed4664f44013f80487eca148b25fb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/026-appearance-tab-position-dropdown.png",
+      "sha256": "12789f9b06ad17912872fab280e975fe35eb284275c36ea32dd6f3f635c51fd9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/027-appearance-sidebar-sections-dropdown.png",
+      "sha256": "63e2e43544d72ea44f788a9ad65d229dec007137b16ca19f5d43409573cae92d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/028-appearance-recent-chats-dropdown.png",
+      "sha256": "701732a2b903d667c06af31cc219bdcf7947b1645df66b4c7e3db70248778aae",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/029-appearance-tab-order-dropdown.png",
+      "sha256": "9ffc8614510be17b0fef9257e547b871a04c63b4fcb23156860de2d1c7c1694e",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/030-appearance-tidy-tabs-configuration.png",
+      "sha256": "98afb5adc713caac1544e9a9df8d68b65d8db529dc336f44a95dbd4345164fb4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/031-appearance-keyboard-shortcuts.png",
+      "sha256": "21d2ffeba2d0c9c74d433015ff4e5be5d6d03f1c38b0fd2c227a060f2b2d288e",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/032-settings-account.png",
+      "sha256": "c555d1d316e6bd3d551a39530c8bbac438d65999c72094122d26e84dd56e50ec",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/033-account-device-actions.png",
+      "sha256": "1c75e383e59fa394de46e457812e8acefa1e74fe764d7d5ca377cd6134a61e73",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/034-settings-plan-and-usage.png",
+      "sha256": "276ba9b63f115254b58b6d677b606c1d6186c80dbe196aea8407f0f463f411f2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/035-settings-plan-loaded.png",
+      "sha256": "6a15d2dcd34bfc35d357e06294f05fa4b147728ef31010e1b70511c962ce8ff4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/036-plan-selection-dialog.png",
+      "sha256": "a2501925aef3d2a0c3bc74c540b95336a2c7d91c431a7d1619894b2c728b5c81",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/037-plan-selection-yearly.png",
+      "sha256": "af485ccff895eafb544f85b1b40894593617f439e93d82bab716dec6111236ee",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/038-buy-credits-dialog.png",
+      "sha256": "d1908d7d932d34f4939c0a25e84bc160e01118dca5a46b07a242e965dd11eff2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/039-buy-credits-custom-input.png",
+      "sha256": "63614c54f2f872aeefbdefcdf04c2a392a4f1ee3fb1e2b9661a9b42987062d77",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/040-settings-security-privacy.png",
+      "sha256": "76d7d7da9fe9d9293cd652b41bdc1002859879d3ec9e3cc079c8e6f46075efd9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/041-security-adblock-filter-dialog.png",
+      "sha256": "022aedc97cb5c12c5b4ba9054c629994ba12840ab48e329afae78c60a4105450",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/042-security-filter-popover-dismissed.png",
+      "sha256": "1b760441c77fd4f55d864e0669e1dcb6383fea676a4e0a09274252988dea0d4b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/043-security-filter-actions-expanded.png",
+      "sha256": "e64e43b9edb784af668856eaa49cba3cc10faaf78e9176cc078d39b194e29091",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "02 Personal settings/044-security-cookie-policy-dropdown.png",
+      "sha256": "b4ce3f7fb0e6119451b8c52270563b1c0dfafb2fe7058ff7c91c6028792c3ee0",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "02 Personal settings"
+    },
+    {
+      "path": "03 Agents projects and models/045-settings-agents.png",
+      "sha256": "42732915e007ec220738b5634086294a1dab9067fef139380ee6e0249b86bcf4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/046-agents-notification-dropdown.png",
+      "sha256": "f6035d16e6056d016bae651ceb1f4ab7805bdf9a401a1b495d427c3f6e1e4f9b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/047-agents-default-permission-dropdown.png",
+      "sha256": "1434e0964244dd22ae17c1a9f11b146f7e57da2af501fc6ad8908ce0f1c01033",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/048-agents-followup-behavior-dropdown.png",
+      "sha256": "567f8f5ac1126fc39191795c68b1d913c49019e2d588808a09d042122c8fccfa",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/049-agents-tab-switch-dropdown.png",
+      "sha256": "211c95e6f15ef4e50665abadbc08e89213badf95f2b3b9a21494ea57fc3a454d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/050-agents-cleanup-tabs-dropdown.png",
+      "sha256": "cace300af25d73e8f5fc592b80b3f78e9c71fcc4dd256e25e88b9e1f3e75f29d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/051-agents-file-permissions-section.png",
+      "sha256": "e8f30369ab107752f46dc6844b9007d220906497866691ff892c6c0141991c9f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/052-agents-tool-permissions-section.png",
+      "sha256": "a3f7264a828469c0570e892b8f37658c46d689ae0ff96ffa56cdd7e0eb81c61b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/053-agents-add-rule-dialog.png",
+      "sha256": "5592906d0340d5a7bbb9e0f352fda4743ac9298c5f86248a450310816ac26340",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/054-agents-runtime-section.png",
+      "sha256": "3d63f43c42d60f0ce03d8f744fbeec58168d2a248c8732eeb0be06c930ab3cbc",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/055-settings-projects.png",
+      "sha256": "14e4210646b260d51d61481eafa733cbaa8f9f06b024685cbe6e2be979f7d2ae",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/056-project-create-dialog.png",
+      "sha256": "c4894974d938c4cf7794a8cc4ef1dfa1cb1b847f088e6be21387e44cbb72f033",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/057-project-icon-color-picker.png",
+      "sha256": "8bba446567c59668a54bdc7f4605c165a089f0f0fb8b49b4b2f08008f1bd9373",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/058-settings-models.png",
+      "sha256": "fd67f261a54642170596c2f47e20f313be7138d0fe58d11cb958fae47a4403b1",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/059-models-connect-provider-dialog.png",
+      "sha256": "ebc00daa937e198a597dfa4d1ce76129a480b57f9015e0aeb2eb404768b72a91",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/060-models-custom-provider-form.png",
+      "sha256": "0302b04f2f171544fdc591e9942cc0402330ea74e1b88a2b273092cbd2222102",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "03 Agents projects and models/061-models-image-generation-dropdown.png",
+      "sha256": "d74358a4090db9034fa9a7aef161573658cd213aea971a081030b2afcc4161a1",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "03 Agents projects and models"
+    },
+    {
+      "path": "04 Skills and MCPs/062-models-image-selector-dismissed.png",
+      "sha256": "3db9eedd6407dac19f28760caa917f46602a62053ea9ab87a3b175e6d18b7a21",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/063-settings-plugins-loaded.png",
+      "sha256": "fcf8ef9495e67a62f086e9aa17ad405201742d98b0e7df6fa2b726a5a4067293",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/064-plugins-system-skills.png",
+      "sha256": "57caa7cde8cc0e0b615a36f1e853fda736befef705e0c432aa4d43c39e38175c",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/065-plugins-password-manager-skills.png",
+      "sha256": "dbdb5415ffd2c0023b55643913df0549bbeb47ee831cb3fa252e2bfe4068939a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/066-plugins-import-actions.png",
+      "sha256": "ac142f27d723546827627561d82fb98a1026b7be53a415f24b43a2131381ed71",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/067-settings-mcps.png",
+      "sha256": "f934166f03ce2865a4c5e4294d5373276d760ea326bb1807063c0e29495c7854",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/068-mcp-connect-dialog.png",
+      "sha256": "733559d52d993963c4c694e66f34e406585d5fadc3dcaeb3c730a3b8ea2f08bb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/069-mcp-transport-dropdown.png",
+      "sha256": "22b9484d44961adcf5de7d839a0c542f0a49939982e2c5f5a212f03c05aa7c8e",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/070-mcp-authentication-dropdown.png",
+      "sha256": "e09edc8fe942ab1b6a357712eac4c66eb31e3d7cf4e0cf5b4ac87735c97cf298",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "04 Skills and MCPs/071-mcp-advanced-settings.png",
+      "sha256": "6a27d8741e4a3fcb7e2da467f7d13acefaaa55829f310ada651a967cd3ae9475",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "04 Skills and MCPs"
+    },
+    {
+      "path": "05 Memory context and passwords/072-settings-memory.png",
+      "sha256": "68c33b932700a456c8408740813819d974642ab7851a6974cf20ec91487cff19",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/073-memory-overview.png",
+      "sha256": "1410bcd57179f50d57361db998f334e74ab862fbd3db6fafcda9c4afb9ab3f83",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/074-memory-history.png",
+      "sha256": "0b0ee477a5e2429c63eeeab9914167e1bdd7f2934d0d54bc95bee27775baa2f1",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/075-memory-configuration.png",
+      "sha256": "c5ecfaa98d065ae0a950843815abe2002434c701bf57ae59a7cb89c3f197e488",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/076-memory-retention-dropdown.png",
+      "sha256": "e313e370cdba0d3a9289d95e8b40d49d4467e3b73e57f12580ffb36aa73f10d0",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/077-settings-context-awareness.png",
+      "sha256": "08878bb1c406ec13b4f6b9eb602ad64af652b73ead7b0be5725df475b3edc1bb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/078-settings-passwords.png",
+      "sha256": "d083974d3e5148c7b6b75b5f2696675e16ce0ceaa1977065f190b3555a067563",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/079-passwords-vault-getting-started.png",
+      "sha256": "e04511dab759f22a48842f87a1b231dc327892d60fb5a27941f5bdbc20dca4c2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/080-passwords-1password-menu.png",
+      "sha256": "330e44512294f9010ce2003bfc62d384f182058ba22f1a9e096d33db1dfb5469",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/081-passwords-external-manager-picker.png",
+      "sha256": "957a0bc9fad0dd4b60893eed9df398cba6a0efbbd1bf06a43b90f345f49a3ab5",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "05 Memory context and passwords/082-passwords-other-managers-expanded.png",
+      "sha256": "58fee1c255b65ea519242017d1bd4b91ea7961772808d80babf2ab3f397f0460",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "05 Memory context and passwords"
+    },
+    {
+      "path": "06 Routines and channels/083-settings-routines.png",
+      "sha256": "20f37257927b996eabafa682a79375b4010ee6ceb06e8636e4ade8a8e207b764",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/084-routine-create-form.png",
+      "sha256": "3c480f5ce3db0508792c8827b80062c7e22fe4c608a32a1391d6d4dc0f742030",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/085-routine-repeat-dropdown.png",
+      "sha256": "0222c8b825e76f4ea78f427fd17dbcec6f3692e48553733bd4ca12eab5d6c5bc",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/086-routine-time-picker.png",
+      "sha256": "3ae0732aea4f898b95ade1a41da1d95968e01a89f42a3f5356f05c3d47ff6e6d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/087-routine-advanced-form.png",
+      "sha256": "be3757f817ddb504fa7bcc44cc948ec6f6895a9b956f62dfc2b3317085cf7267",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/088-routine-type-dropdown.png",
+      "sha256": "dc3616aed0ff17d2cf164e4dc5f946011ab2b8039b72e39bc7f882ba4af00c19",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/089-routine-environment-dropdown.png",
+      "sha256": "842be39549b391491744cbd9052358d0e557dbb1ff0f7ba0d777e6739ced7f17",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/090-routine-permission-dropdown.png",
+      "sha256": "462679c531af6e7943044eb2ce7b7bd73dd04b8b441a4aac5da65039949e9cfc",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/091-settings-channels.png",
+      "sha256": "e1c0e659f235acc6852c24fb6cb6a11782dac1094f6c672d4dbc1cf34964b428",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/092-channels-add-menu.png",
+      "sha256": "fab2b21414b8f8b046322d0ded7ab48efa7b39ce13f28ae2cfa32081a7b3d227",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/093-channel-slack-settings.png",
+      "sha256": "67e5790d7adf98857002d0be9d423dee2d56a1ff607ed06052595f1e17ff1b3b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/094-channel-access-dropdown.png",
+      "sha256": "72b4570e939fba2d352c584e1034c5d696a09a911d8e9f14b6b26247494dec8b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/095-channel-followup-dropdown.png",
+      "sha256": "6bdbf44398cbf7ca592df76047162e047bfda5ca8324ad670f098aa25780a781",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "06 Routines and channels/096-channel-pairing-tab.png",
+      "sha256": "da0d3132758a83e75cdd92dc057c8ee1e7d93b9280decb84982ddd07e79a34fd",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "06 Routines and channels"
+    },
+    {
+      "path": "07 Developers lasso and archive/097-settings-developers.png",
+      "sha256": "3e336d56d1671694fe230e71a33ad10a071040a39450e2ace65de1759596afe9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/098-developers-cli-options-menu.png",
+      "sha256": "514ff99114d2d4565a0c0db7581fc9b09092ab728bf11d1d012cf10dd47224e0",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/099-developers-skill-install-menu.png",
+      "sha256": "fa569df3f60911286c5a20e1817ae8122be40b572104b04cd9eb469187491673",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/100-developers-mcp-setup-popover.png",
+      "sha256": "92ec06db6c3e9c3f9bd40bb54c36911f310c693ec964f8750a73db7eb99e453b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/101-developers-remote-control-popover.png",
+      "sha256": "66c44e329a56787772a74bcbdf21821042e0173415c146164dec010e8959c41e",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/102-developers-faqs-expanded.png",
+      "sha256": "789ee600b02d601e3af5d9ea88737f3feacc2876509349726393ed82f0c710c4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/103-settings-mini-popup.png",
+      "sha256": "6f11cf9bac8d73ff9d5aa8aaa06266e90f921517067f32f8f2ece5c858117ba2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/104-mini-popup-shortcut-attempt-settings-remain.png",
+      "sha256": "1d9d7a33f7d5855cc86b6fa1464c3592222f7a704e8e51258abd6cb2fc7a454c",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/105-settings-lasso.png",
+      "sha256": "b3a74f65907a2774c7b40d8eb3a119b599b715881e85bacf987a161423a66f02",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/106-lasso-hotkey-dropdown.png",
+      "sha256": "a43bb361a4ce176b6c069618983e6fb0f0a9841e1eb970463d6f4844403d512b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/107-lasso-add-shortcut-dialog.png",
+      "sha256": "cbdf0344e9499906ec2d63d0a71ccc57525bb9d2030ebe6dd825a3619eb8d5a4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/108-lasso-shortcut-action-dropdown.png",
+      "sha256": "21bc2c7006cb6299a57b1dcd34fc5c76fced262fb848d27a1eded925ca0a6187",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/109-settings-archived-chats.png",
+      "sha256": "d415260ebf4195498ee9a6a3f1a884187246bdd8026b39b10ede0c6831aeb86f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/110-feedback-menu.png",
+      "sha256": "a58f73b54ef3b7c2c6373bcd377544c98e33298f94bcb52521e589c2b82a1496",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "07 Developers lasso and archive/111-archived-chat-actions.png",
+      "sha256": "32fda8f49c9e723bcbc6e769ef3246c7b9b49a0a7d5ae542a76a33048a43c591",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "07 Developers lasso and archive"
+    },
+    {
+      "path": "08 Chats and activity/112-all-chats-page.png",
+      "sha256": "5b303a39decbe77670c47bb2e2e11c48d6b93c6883858f01388d8967e97e1e82",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/113-all-chats-loaded.png",
+      "sha256": "63b77fb0bc2d16f380b45eeeb2198a95c4bcd9fd64af53cdafb5a5a32205b172",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/114-chats-filter-dropdown.png",
+      "sha256": "32bfed57cd900bd302817a73040d99c62ac6f685b0ab7fd00207d71405469df5",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/115-chats-sort-dropdown.png",
+      "sha256": "ab4325429493238388820dc6bdd88c4df97847e52fd61eab3f437a3ffecb2422",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/116-chats-search-expanded.png",
+      "sha256": "3abbf0edea2a8b64fbb3ae153bd78da1eeaf33cca03e7d0b78a1a538567cd34d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/117-chats-card-view.png",
+      "sha256": "513f0de60bdaa42afae35bb7148548ab0eecac4cb155fa259d9e2fd0c5aead90",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/118-chat-detail-open.png",
+      "sha256": "9a6e99efa7b8947c04cfa34bc85b3337ef9f830722f105f2dadf1508db17da53",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/119-chat-header-actions.png",
+      "sha256": "93a6b29b4235f5a0899e829befa4aa8d9993ff5e73938f3e9214298a21f057b0",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/120-chat-share-popover.png",
+      "sha256": "fcdcca3126426a1ac6dfff44aa8627f6427f05632085ebc12227552f48a1e26a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/121-chat-sidebar-expanded.png",
+      "sha256": "552c32d5680c28367d5b75e5fc78ee73fe575db352e9bbf151c0a2d03fc2099a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/122-chat-sidepanel-add-menu-attempt.png",
+      "sha256": "0ba76e6d5943c0e5df7a5b02ad965bf1d951fb6ef72e110872dbd5bb0a6685de",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/123-chat-new-side-chat.png",
+      "sha256": "bf9943c56f0d7924af965e4cc22dce9b8528e1faf7ee938bc40d5abee1764de7",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/124-chat-work-log-expanded.png",
+      "sha256": "c808ff273087dfe062a5a2fbdf89da16ce99b59c42d6ab1d24cbd0e128fdd143",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/125-chat-citation-attempt-scrolled-transcript.png",
+      "sha256": "552d0f1b4b17e9d90d48f417bbed616a67df8535c686575c9c4775d3a6bb03b4",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/126-chat-inline-image-reference.png",
+      "sha256": "3f7b3b0e0585106f101bd325fbc425106619aa1e4dd91a599b612d52df171c0b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/127-browser-tab-search.png",
+      "sha256": "d8a761242cb0126b8d6553722145a6bfa3e09cb0c223c89537911656438a2495",
+      "format": "JPEG",
+      "pixelSize": [
+        1240,
+        680
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/128-browser-workspace-profile-menu-attempt.png",
+      "sha256": "9516c24e57e921e209ff571b8625d7e48ee335af3407781a914c8bdee96cdf22",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/129-browser-profile-actions-attempt.png",
+      "sha256": "4d3064f9950c41976aac91d7c9230b192b89540b4c6700caa6b404f2eaee51bd",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/130-browser-sidebar-collapsed.png",
+      "sha256": "e319504984975c4e606a151f01a966c9cff29614461ab6e5335275329d5f3b5a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/131-browser-sidebar-collapsed-clean.png",
+      "sha256": "d8ff2d8d546153b9d1f6e2cd1df85e7ace73a6cc43fd3c7cf61532136ee3977b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/132-browser-downloads-popover.png",
+      "sha256": "0b67cc38041a9c248a9cc3cfe088373420e226f3abdf296dd28888668318148d",
+      "format": "JPEG",
+      "pixelSize": [
+        640,
+        1088
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/133-browser-extensions-popover.png",
+      "sha256": "491ec4d579b49426dd6ca98423703e5b1093b3cc7d7afc635a3c48ec45665f5d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/134-browser-address-bar-focused.png",
+      "sha256": "2ecb565008c112ec835212a6456d11990bc60ca769879e285a78e36332a29541",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/135-browser-bookmark-all-tabs-dialog.png",
+      "sha256": "2ce3a5ba6fcc956eda049203c6ae39ff7f2665707ded2412d37a93a773364203",
+      "format": "JPEG",
+      "pixelSize": [
+        1024,
+        1172
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/146-browser-sidebar-restored.png",
+      "sha256": "d1ec02b2a108a57c45f3f43fda0ae3c43fd25388851d642437ad9d561d67c78d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/147-browser-tabs-section-hover.png",
+      "sha256": "d06a6b954d84a3a3118b71db40607686340a220ce4daa68f8b05fddaf9e7bbeb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/148-browser-bookmarks-section-hover.png",
+      "sha256": "13a8af47aac2866f271597168cf0e8930bf19a8f67a732580426534cb1f9485d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/149-browser-pinned-tab-hover.png",
+      "sha256": "50dd27c859e49529cb0ebb46936a685a146d0efafa8e328f7928b85b7652e91a",
+      "format": "JPEG",
+      "pixelSize": [
+        3404,
+        1966
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/150-browser-tab-context-inventory-with-window.png",
+      "sha256": "3246fd27e72c0e41e7abe15725337eb8aec607baa5f99a13a40d673fe6890d6c",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "08 Chats and activity/151-chat-first-work-log-expanded.png",
+      "sha256": "f83e05df4f6ff5a7436deaccee14641b0b41f09057a3d51283e4161b05820c07",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/152-chat-work-trace-visible.png",
+      "sha256": "c6d9095cf2410e6bb00d887a43b0a78ec995b89ebfd6a525dc4b99a2cf505389",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/153-chat-tool-activity-expanded.png",
+      "sha256": "5bb2c963241f768ce301c2736a8a0864ef3db20609be084d9d543ebb865bd899",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/154-chat-tool-call-details.png",
+      "sha256": "4db1eaa990990804341a727e9777feb5d363137aceb43f4ce09d52366dc1ca65",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/155-chat-new-empty.png",
+      "sha256": "29e7f862d177f1e9c0d5891e2e81d53ae04da2af7124f6067aac157c7d7effe3",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/156-chat-skill-mention-picker.png",
+      "sha256": "b5dfcd6efe3ebf43a9dea31ac75fcd0dde84436b7f0f0dfc6ad6432bcb9e121b",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "08 Chats and activity/157-chat-composer-options.png",
+      "sha256": "11bc588ea39a015d6be86303d9107cd742dfad6ea281d1d592fcd2fbcac5689a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "08 Chats and activity"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/158-browser-profile-open-error-dialog.png",
+      "sha256": "508ed8665b513f48f9fb59c7c5973cf5a8f96e8351f8327262564cff2ea86fa3",
+      "format": "JPEG",
+      "pixelSize": [
+        520,
+        416
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/159-browser-fresh-profile-onboarding.png",
+      "sha256": "bc05abfd30bdc9063d9ffd65815c30851007b0194ab24e3698768fb3bafb2917",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/160-browser-profile-edit-menu.png",
+      "sha256": "2bcc1999ddbb5bb3a990877d8eacb4fdc0ad7b066fb5af393efa46ff679886c9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/161-browser-profile-actions-current.png",
+      "sha256": "fb0322dad901aa642a9f0408c16053e99cf86bfc45f3fc60cd1ccff2b5a6473d",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/162-browser-profile-switcher-visible.png",
+      "sha256": "9fca4c785f6237e4c9107dbdccc605fb88ef4c575bf197957df67514a07686ca",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/163-browser-history-submenu.png",
+      "sha256": "d6318ee386efe6b458b587577b2e5fa6b042678e3c8a096d0495efb708905eb9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/164-browser-history-page.png",
+      "sha256": "863cd19b08c8f0c40b0c171ba439de0d0c0edfabb180adc545a6cf6326fd11cb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/165-history-group-view.png",
+      "sha256": "ac816982d754ce0218b73ea8196a54b4bcb4bad2ec7e3cc9a1ddea8dca278486",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/166-history-item-actions.png",
+      "sha256": "47bfb9c53ed9173f15c62a02a58bf7f248d05f2072179e26c8c8da508d8aedc9",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/167-browser-bookmarks-submenu.png",
+      "sha256": "2bb17bb6768f373a5582a8c63d8bcda65ade09129ce231bb9e972955b1ae1357",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/168-browser-bookmark-manager.png",
+      "sha256": "f5f504e878c88c13fc6b6f312f279bcb79701a0d9e88832cdf1464017a51daf1",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/169-bookmarks-organize-menu.png",
+      "sha256": "3691fdd8cb3879e5cbd007f6e2ef4028251997ddb339343af4dac6df4b1abfde",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "09 Browser shell profiles and libraries/170-bookmark-item-actions.png",
+      "sha256": "ad6a8122b8ac6f837fa44bbe7d6b63ab13efc9c0db46ea59fdc37f01a093945f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "09 Browser shell profiles and libraries"
+    },
+    {
+      "path": "11 Underlying browser settings/171-browser-advanced-security.png",
+      "sha256": "56458d948a00b7df3d92d5f9f18e963f84b353463f412fc581c0170f8926004f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/172-browser-settings-profile.png",
+      "sha256": "00a4214c12e3ddf89f7d670a90eb45efabf5ae80e9219797082dea3de6137c5f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/173-browser-settings-autofill.png",
+      "sha256": "6204770c0e053295bbd71dbde242ce91c9ef1b3da4d69a4de48ec728d3d1afe7",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/174-browser-settings-privacy.png",
+      "sha256": "97585da6340442d58cd954c71dba68469ae78adba2973348b2f654bb4cf51b8e",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/175-browser-settings-performance.png",
+      "sha256": "5a2e86bf2f8c87a90fcee1e1bb59878f1ec04a33000429e18993632fa9a9795c",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/176-browser-settings-appearance.png",
+      "sha256": "cd521fbb6818b439dfe3453240302412952585c7f23e2f0ea884bca73be20835",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/177-browser-settings-search-engine.png",
+      "sha256": "c96b8709eba83c55e4b5f65b2e3be35f9534cf0d8bb86fdedb3c941159e186af",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/178-browser-settings-default-browser.png",
+      "sha256": "e7c6c3ace6f61a5a8add906777807c936f3f325f6de955de23337b8fb77217eb",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/179-browser-settings-startup.png",
+      "sha256": "f4a378b32a032e579b00bfcb29e1408ca2da15d3a32d01d4fd9dce3002eb6d00",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/180-browser-settings-languages.png",
+      "sha256": "302c57b35570dc7a764db911695213f0d0f583df058b2eecb77067d7d07994d2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/181-browser-settings-downloads.png",
+      "sha256": "2ba185f746dc08b5472849ccf63e94d7c601cd543534512be90314c273635c75",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/182-browser-settings-accessibility.png",
+      "sha256": "fb9d8c2c99f39a608fdaf6507a6745f75a956ea6ad1c6214f1d6d0f6a8b1ba47",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/183-browser-settings-system.png",
+      "sha256": "a0596c48ef2fff286e7b2e07b7a26b8ee2935e88dddb5832fc19d37362d1a729",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/184-browser-settings-reset.png",
+      "sha256": "dc00fb9bd6f5ab057f2c91a3f094d770fa3b882712a23b2d8521b792fa2ceebd",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/185-browser-third-party-cookies.png",
+      "sha256": "051e70cf337be54acf29f41cd0e87e522a9605bc2e301437c35077e8b3bfedae",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/186-browser-site-settings-top.png",
+      "sha256": "a8507f658a3d078be6bfcabdc9113a6a27cf8fd63c3af334f5324b937e3c5f5f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/187-browser-location-permission-page.png",
+      "sha256": "028f5343309bd59b03c79f6d9c48047c1b5df75376959643ac1a7344290c00f2",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/188-browser-camera-permissions.png",
+      "sha256": "86efa9dbdb6b66fc34b53fb942d57c426e28089a7fc2a3436ebdce64896da89f",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/189-browser-microphone-permissions.png",
+      "sha256": "db26621c83b75c2cd5a24a55835ac6899decb58b83c1efa4c366cba0a51f2310",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/190-browser-notification-permissions.png",
+      "sha256": "44665ac8c4063653a2f9e9dd818bc533ef4d13f0e2c463f9d3f3432b67509bfa",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/191-browser-embedded-content-permissions.png",
+      "sha256": "7c6b5981188e930e9b3add80dcad1e0f76a2ceb62909b7a3e9322dd4d34af729",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    },
+    {
+      "path": "11 Underlying browser settings/192-browser-javascript-permissions.png",
+      "sha256": "7665e16dd795c8316520862fc7db8a25008313c7d560e907e4ed8953c057a16a",
+      "format": "JPEG",
+      "pixelSize": [
+        3424,
+        1978
+      ],
+      "category": "11 Underlying browser settings"
+    }
+  ],
+  "count": 182,
+  "formatCounts": {
+    "JPEG": 182
+  },
+  "limitations": [
+    "Version, theme, device scale and disposable-state provenance are not established by this inventory.",
+    "Existing images are design/source references, not accepted current Aux comparisons.",
+    "Personal content in reference pixels must not become product fixtures or assets.",
+    "Legacy actualPngSize/logicalReferenceSize fields are invalid for the JPEG files and are deliberately excluded."
+  ]
+}
