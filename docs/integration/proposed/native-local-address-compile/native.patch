@@ -1,0 +1,14 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -529,9 +529,10 @@
+   // The supplied address field uses a small rounded rectangle, including its
+   // focused outline, rather than Chromium's maximum-radius pill.
+   return std::min(8, size.height() / 2);
+-#endif
++#else
+   return ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+       views::Emphasis::kMaximum, size);
++#endif
+ }
+ 
+ // static
