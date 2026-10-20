@@ -1,0 +1,26 @@
+{
+  "composition": "v397",
+  "exitCode": 0,
+  "elapsedSeconds": 36.50624489784241,
+  "targets": {
+    "browser_actions": "obj/chrome/browser/ui/browser_actions_impl/browser_actions.o",
+    "aux_chat_actions": "obj/chrome/browser/ui/ui/aux_chat_actions.o",
+    "vertical_tab_strip_region_view": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "vertical_tab_strip_top_container": "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_top_container.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/browser_actions_impl/browser_actions.o",
+    "obj/chrome/browser/ui/ui/aux_chat_actions.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_top_container.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}

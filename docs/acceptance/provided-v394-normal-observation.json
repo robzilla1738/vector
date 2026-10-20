@@ -1,0 +1,179 @@
+{
+  "processProof": [
+    {
+      "pid": 9496,
+      "launcher": 9494,
+      "lineage": [
+        9496,
+        9495,
+        9494,
+        9492,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/X/dev.aux.browser.code_sign_clone/code_sign_clone.krs6fV/Aux.app.bundle/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v394-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    9496
+  ],
+  "windows": [
+    {
+      "pid": 9496,
+      "windowId": 32408,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32407,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32405,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32404,
+      "title": "Aux",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 414.0,
+        "y": 255.0,
+        "width": 900.0,
+        "height": 560.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32403,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32402,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32401,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 730.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32400,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 730.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32399,
+      "title": "about:blank",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    },
+    {
+      "pid": 9496,
+      "windowId": 32406,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v394",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "profile": "disposable normal profile",
+  "windowObserved": "Empty Aux onboarding window (900x560); normal about:blank browser window existed but was not onscreen",
+  "screenshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v394-normal-window.png",
+  "screenshotSha256": "b5fa8e6d9b300a80e59fe9bf3ac018e1fe0f62da4dd6ded24c83bf92752172cc",
+  "errors": [
+    "Unable to resolve Chromium profile account.",
+    "Native helper unavailable; installation challenge signing unavailable",
+    "Original Computer Use refresh verification rejected modified Info.plist"
+  ],
+  "authInterpretation": "Existing native-helper-availability-v257 source diagnosis explains intentional early refusal. This observation does not establish a Keychain lookup or missing key. No fabricated account/auth state was enabled.",
+  "launcherPid": 9494,
+  "knownGuardianPid": 9495,
+  "knownBrowserPid": 9496,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-2AsluG",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false
+}

@@ -419,6 +419,9 @@ steps.extend([
     ('native-bookmarks-tab-drop-target/native.patch', 'native-bookmarks-tab-drop-target/manifest.json'),
     ('native-sidebar-final-drop-shortcut-wiring/native.patch', 'native-sidebar-final-drop-shortcut-wiring/manifest.json'),
     ('native-sidebar-clamped-height-type/native.patch', 'native-sidebar-clamped-height-type/manifest.json'),
+    ('native-new-tab-action-caption/native.patch', 'native-new-tab-action-caption/manifest.json'),
+    ('native-chat-delete-confirmation/native.patch', 'native-chat-delete-confirmation/manifest.json'),
+    ('native-sidebar-top-controls/native.patch', 'native-sidebar-top-controls/manifest.json'),
 ])
 
 if options.through:
