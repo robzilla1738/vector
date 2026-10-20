@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "Chromium155 GN dependency adaptation",
+  "applyAfter": "native-notification-permission-contract",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_notification/BUILD.gn",
+      "baselineSha256": "e1ad8d3e55440c3ecda8693d4ebdfb86bf42a1a4ef86d529d7d9acb6b51ac017",
+      "outputSha256": "18dc3cfac3e5e61479b27e89dac46b3433468b6e96665dd786c4e50cf430b988"
+    }
+  ]
+}

@@ -434,6 +434,8 @@ steps.extend([
     ('native-retained-collapse-icon-only/native.patch', 'native-retained-collapse-icon-only/manifest.json'),
     ('native-retained-collapse-string-adaptation/native.patch', 'native-retained-collapse-string-adaptation/manifest.json'),
     ('native-retained-collapse-layout-insets/native.patch', 'native-retained-collapse-layout-insets/manifest.json'),
+    ('native-notification-permission-contract/native.patch', 'native-notification-permission-contract/manifest.json'),
+    ('native-notification-permission-build-deps/native.patch', 'native-notification-permission-build-deps/manifest.json'),
 ])
 
 if options.through:

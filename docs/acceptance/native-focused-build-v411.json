@@ -1,0 +1,22 @@
+{
+  "composition": "v411",
+  "exitCode": 0,
+  "elapsedSeconds": 50.83557915687561,
+  "targets": {
+    "aux_notification_api": "obj/chrome/browser/extensions/api/aux_notification/aux_notification/aux_notification_api.o",
+    "profile_gate_prefs": "obj/chrome/browser/aux/profile_gate_prefs/profile_gate_prefs.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_notification/aux_notification/aux_notification_api.o",
+    "obj/chrome/browser/aux/profile_gate_prefs/profile_gate_prefs.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}

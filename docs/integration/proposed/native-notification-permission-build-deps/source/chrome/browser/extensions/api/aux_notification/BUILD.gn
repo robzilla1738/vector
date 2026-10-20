@@ -1,0 +1,17 @@
+source_set("aux_notification") {
+  sources = [ "aux_notification_api.cc", "aux_notification_api.h" ]
+  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//content/public/browser" ]
+  deps = [
+    "//base",
+    "//chrome/browser/extensions",
+    "//chrome/browser/notifications",
+    "//components/prefs",
+    "//third_party/blink/public/common",
+    "//third_party/blink/public/mojom:mojom_platform_headers",
+  ]
+}
+
+source_set("headers") {
+ sources = [ "aux_notification_api.h" ]
+ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//content/public/browser" ]
+}
