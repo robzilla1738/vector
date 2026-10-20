@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "b78b7cc01 async-owner outputs; direct row c5e8bd47e",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "baselineSha256": "3298eee2023fab88dca4fca9f41bd5747d10c78b598c9bdd650be03000ae46c8",
+      "outputSha256": "733ed68d734a8dc1c0505f601fbcb144c4f98f6fe946b26f5d7879c628144d44"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": "eb54aa31d0942091c8c8596e0dec1d2e5fc020e37625940d6736c7e720cd0998",
+      "outputSha256": "60d8f421340bd28e5dceb1adb700a7d9dfb5c88df0598dfc291a74a4873fe393"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

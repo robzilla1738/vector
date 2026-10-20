@@ -1,0 +1,104 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.h
+@@ -27,6 +27,11 @@
+   ~ProfileSwitchRequest();
+   ProfileSwitchRequest(const ProfileSwitchRequest&) = delete;
+   ProfileSwitchRequest& operator=(const ProfileSwitchRequest&) = delete;
++
++  // Supplied040fe7a4: direct menu selections dispatch without preview state
++  // or a completion. The actual weak sender is captured before menu teardown.
++  static void Dispatch(base::WeakPtr<BrowserWindowInterface> sender,
++                       base::FilePath target, Completion completion = {});
+ 
+   // Completion receives the same actual sender only after real core success
+   // and activation. LoadProfileAsync can drop completion on null load failure.
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -38,30 +38,38 @@
+   if (!alive) {
+     return;
+   }
+-  auto* sender = sender_ ? static_cast<Browser*>(sender_.get()) : nullptr;
++  Dispatch(sender_, target, std::move(completion));
++}
++
++void ProfileSwitchRequest::Dispatch(
++    base::WeakPtr<BrowserWindowInterface> sender_weak,
++    base::FilePath target, Completion completion) {
++  auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+   auto* profile = sender ? sender->GetProfile() : nullptr;
+   if (target.empty() || !profile || !profile->IsRegularProfile() ||
+       sender->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+-    std::move(completion).Run(nullptr);
++    if (completion) {
++      std::move(completion).Run(nullptr);
++    }
+     return;
+   }
+   auto* state = BrowserInitState::From(sender);
+   if (!state || state->is_aux_profile_switch_cache()) {
+-    std::move(completion).Run(nullptr);
++    if (completion) {
++      std::move(completion).Run(nullptr);
++    }
+     return;
+   }
+-  auto sender_weak = sender_;
+   if (target == profile->GetOriginalProfile()->GetPath()) {
+     if (auto* window = BrowserWindow::FromBrowser(sender)) {
+       window->Activate();
+     }
+-    std::move(completion).Run(sender_weak ? sender : nullptr);
++    if (completion) {
++      std::move(completion).Run(sender_weak ? sender : nullptr);
++    }
+     return;
+   }
+   state->KeepAuxProfileSwitchProfileAlive(profile);
+-  if (!alive) {
+-    return;
+-  }
+   // This is the actual supplied load-only algorithm, including immediate
+   // completion for initialized profiles and null-load callback destruction.
+   // It does not find/open another Browser or cancel an underlying load.
+@@ -72,7 +80,9 @@
+ 
+ void ProfileSwitchRequest::Complete(Completion completion, Browser* result) {
+   loading_ = false;
+-  std::move(completion).Run(result);
++  if (completion) {
++    std::move(completion).Run(result);
++  }
+ }
+ 
+ void ProfileSwitchRequest::OnProfileLoaded(
+@@ -80,20 +90,26 @@
+     Completion completion, Profile* target) {
+   auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+   if (!sender || !target) {
+-    std::move(completion).Run(nullptr);
++    if (completion) {
++      std::move(completion).Run(nullptr);
++    }
+     return;
+   }
+   const bool switched = sender->GetFeatures().RunAuxProfileSwitch(target);
+   if (!sender_weak || !switched) {
+     // Rejection and awaiting the genuine profile security gate both preserve
+     // the original null Browser completion; a loaded Profile is not success.
+-    std::move(completion).Run(nullptr);
++    if (completion) {
++      std::move(completion).Run(nullptr);
++    }
+     return;
+   }
+   if (auto* window = BrowserWindow::FromBrowser(sender)) {
+     window->Activate();
+   }
+-  std::move(completion).Run(sender_weak ? sender : nullptr);
++  if (completion) {
++    std::move(completion).Run(sender_weak ? sender : nullptr);
++  }
+ }
+ 
+ void ProfileSwitchRequest::QueuePreviewCommit(base::FilePath target,

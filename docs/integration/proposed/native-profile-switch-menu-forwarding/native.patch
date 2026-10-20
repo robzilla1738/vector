@@ -1,0 +1,113 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -20,6 +20,8 @@
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/values.h"
+ #include "cc/paint/paint_flags.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/aux/browser_platform.h"
+@@ -96,6 +98,10 @@
+ #include "ui/views/view_tracker.h"
+ #include "ui/views/widget/widget.h"
+ 
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/views/frame/aux_profile_switch_request.h"
++#endif
++
+ namespace {
+ 
+ constexpr char kAgentManagerId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
+@@ -629,6 +635,21 @@
+       .GetAllProfilesAttributesSortedForDisplay();
+ }
+ 
++// Supplied040fe7a4 receives the actual weak sender, not a global active window.
++// No persistent preview/loading owner is introduced for direct selections.
++void DispatchSelectedProfile(
++    base::WeakPtr<BrowserWindowInterface> sender, base::FilePath path) {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux::ProfileSwitchRequest::Dispatch(std::move(sender), std::move(path));
++#else
++  // This adapter is registered only in the Aux macOS product. Preserve the
++  // existing non-product selector behavior in other Chromium build targets.
++  if (sender) {
++    profiles::SwitchToProfile(path, /*always_create=*/false);
++  }
++#endif
++}
++
+ // Native profile menu and browser navigation.
+ void RefreshAuxProfileButton(views::View* button);
+ 
+@@ -656,7 +677,15 @@
+     Build();
+   }
+ 
+-  ~AuxProfileMenu() override = default;
++  ~AuxProfileMenu() override {
++    if (pending_switch_) {
++      // Original4572824 tears down the full menu before dispatch. Native
++      // Widget::Close is asynchronous, so dispatch on the UI sequence only
++      // after this real delegate and all of its menu/row members are destroyed.
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE, std::move(pending_switch_));
++    }
++  }
+ 
+   // ui::SimpleMenuModel::Delegate:
+   void ExecuteCommand(int command_id, int event_flags) override {
+@@ -812,9 +841,14 @@
+   }
+ 
+   void SwitchTo(const base::FilePath& path) {
+-    if (path != browser_->GetProfile()->GetPath()) {
+-      profiles::SwitchToProfile(path, /*always_create=*/false);
+-    }
++    if (pending_switch_) {
++      return;
++    }
++    // Snapshot both before real teardown: closing destroys the selected row
++    // (which owns path) and can synchronously notify the Browser's observers.
++    pending_switch_ = base::BindOnce(&DispatchSelectedProfile,
++                                     browser_->GetWeakPtr(), base::FilePath(path));
++    contents_->SetEnabled(false);
+     GetWidget()->Close();
+   }
+ 
+@@ -880,6 +914,7 @@
+   base::FilePath action_profile_;
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
++  base::OnceClosure pending_switch_;
+ };
+ 
+ // Circular avatar with a small chevron, opening the profile menu.
+@@ -968,12 +1003,10 @@
+   METADATA_HEADER(AuxProfileDot, views::Button)
+ 
+  public:
+-  AuxProfileDot(const base::FilePath& path, bool current)
+-      : views::Button(base::BindRepeating(
+-            [](base::FilePath path) {
+-              profiles::SwitchToProfile(path, /*always_create=*/false);
+-            },
+-            path)),
++  AuxProfileDot(BrowserWindowInterface* browser,
++                const base::FilePath& path, bool current)
++      : views::Button(base::BindRepeating(&DispatchSelectedProfile,
++                                         browser->GetWeakPtr(), path)),
+         current_(current) {
+     SetPreferredSize(gfx::Size(14, 20));
+     SetFocusBehavior(FocusBehavior::ALWAYS);
+@@ -2000,7 +2033,7 @@
+     dots->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
+     for (ProfileAttributesEntry* entry : profiles) {
+       dots->AddChildView(std::make_unique<AuxProfileDot>(
+-          entry->GetPath(),
++          browser_, entry->GetPath(),
+           entry->GetPath() == browser_->GetProfile()->GetPath()));
+     }
+   }
