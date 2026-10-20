@@ -1,0 +1,21 @@
+{
+  "originalSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "actualSidebarCaller": "462bffc obtains genuineBrowserWidget+530; source/event guards; floorsactualMouseEventlocation, convertsactualsourcepointtoscreen via23239b4;462c094 directlycalls45bb30c(source,point,menuSource1)",
+  "originalAdmission": {
+    "45bb338..34c": "forced-appmode guard",
+    "45bb350..360": "actualBWItype5 PIP guard",
+    "45bb364": "nonnullsource",
+    "45bb368..36c": "tabdragkindnonzero guard",
+    "45bb370..380": "actualsourceGetWidgetnonnull",
+    "45bb384..39c": "actualretainedMenuRunnerIsRunning guard",
+    "45bb3bc..4e8": "noNonClientHitTestbranch; actualSystemMenuModelget+MenuRunnerflags9+RunMenuAtactualsourceWidgetscreenpoint"
+  },
+  "systemMenuGetter": "c5ba7a4thunk\u2192c776b50 lazyexistingSystemMenuModelBuilder+Init+actualmenu_model; no replacementdata/backend",
+  "current155": "BrowserWidgetShowContextMenuForViewImpl retainsstockcaption/nowhereonly gate, blockingrealclientareaSidebarContentsView; preservedotherordinarygates andactualSystemMenuModel/MenuRunner/callback",
+  "scope": "AuxMacbranchonly; nonAuxandnonMacpreexistinghittestunchanged; noBody/Region/GN/topcontrols/authoritychanges",
+  "bookmarkAudit": "CurrentgenuineVerticalTabBookmarksView alreadyports sourcefolderRename/Delete/Manage, savedURL Edit/Delete/5openroutes, linkedURLTabMenuModelanddeferredmenuclosure; sourcefoldermenuhasnocreatenodeaction, noneinvented",
+  "limits": [
+    "Fullsystemmenupresentation/commandinventory remainsseparate; thispatchonlyrestoresprovenadmission",
+    "No nativecompile/runtime/renderedmenuacceptance"
+  ]
+}

@@ -1,0 +1,11 @@
+# Genuine sidebar native context-menu admission
+
+The bounded bookmark audit found no missing create command in the supplied bookmark leaf menus. Current genuine `VerticalTabBookmarksView` already preserves the recovered folder Rename/Delete/Manage menu, saved-URL Edit/Delete/five open dispositions, linked-tab real TabMenuModel, deferred menu retirement and actual edit/delete dialogs. The supplied folder menu does not contain a create command; none is invented.
+
+A separate real native sidebar path is not equivalent: original blank-body right-click462bffc floors the actual event position, converts it through the actual source View to screen coordinates and directly calls BrowserWidget45bb30c. That complete original function checks forced-app mode, picture-in-picture, nonnull source, actual tab drag, a live source Widget and a currently running retained menu. It then uses the actual SystemMenuModelBuilder/MenuRunner. **There is no NonClientHitTest/caption-only admission check.** The pinned getter thunk c5ba7a4→c776b50 proves the existing lazy builder/Init/menu_model chain; it is not a separate data source.
+
+Current155 BrowserWidget retains its stock `HTCAPTION`/`HTNOWHERE`/keyboard-only gate. That rejects this genuine client-area right-click path whenever its hit-test is HTCLIENT. This one-file Aux-Mac adaptation restores the supplied live-source/reentry guards and permits that native menu path without the unrelated caption-only condition. Existing forced-app, PIP and real tab-drag guards remain before it. Existing actual menu model, runner flags, real source Widget/screen point, close callback and native command dispatch are retained. Non-Aux and non-Mac behavior is unchanged.
+
+No Body, Region, top-controls, chat actions, GN or shared source is modified. This does not invent a bookmark creation API or menu entries, and it does not claim the entire original system-menu visual/command inventory has been ported. No account/profile/auth gate or isolated state boundary is changed.
+
+`python3 verify.py` checks the exact actual397 baseline and independently replays the one-file patch. No native build, runtime menu invocation, bookmark mutation, owner profile, network, signing or Keychain operation was performed. Actual disposable menu observation remains root integration work.

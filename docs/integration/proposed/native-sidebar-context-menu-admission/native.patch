@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/views/frame/browser_widget.cc
++++ b/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -12,6 +12,7 @@
+ #include "base/metrics/user_metrics.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/app_mode/app_mode_utils.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/themes/custom_theme_supplier.h"
+ #include "chrome/browser/themes/theme_service.h"
+@@ -426,6 +427,15 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied BrowserWidget45bb30c is also called by the actual sidebar body
++  // (462bffc). It requires a live source widget and refuses menu reentry, but
++  // does not apply the stock caption-only hit test to those client-area views.
++  if (!source || !source->GetWidget() ||
++      (menu_runner_ && menu_runner_->IsRunning())) {
++    return;
++  }
++#else
+   // Only show context menu if point is in unobscured parts of browser, i.e.
+   // if NonClientHitTest returns :
+   // - HTCAPTION: in title bar or unobscured part of tabstrip
+@@ -434,7 +444,9 @@
+   views::View::ConvertPointFromScreen(non_client_view(), &point_in_view_coords);
+   int hit_test = non_client_view()->NonClientHitTest(point_in_view_coords);
+   if (source_type == ui::mojom::MenuSourceType::kKeyboard ||
+-      hit_test == HTCAPTION || hit_test == HTNOWHERE) {
++      hit_test == HTCAPTION || hit_test == HTNOWHERE)
++#endif
++  {
+     menu_runner_ = std::make_unique<views::MenuRunner>(
+         GetSystemMenuModel(),
+         views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU,

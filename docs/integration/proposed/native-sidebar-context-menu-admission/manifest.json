@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_widget.cc",
+      "baselineSha256": "ac57dfd43c13c4a5d38be013d6326816582a8b1153a63d67491d04494b087c33",
+      "outputSha256": "3532c33b9c355799cfc2eec5a91659ff47e0fe0922d683af9c9647426301d5f5"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
