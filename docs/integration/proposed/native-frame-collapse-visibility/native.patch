@@ -1,0 +1,51 @@
+--- a/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
++++ b/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
+@@ -5,6 +5,7 @@
+ 
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_retention.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+@@ -22,12 +23,21 @@
+ class RetainedCollapseActionViewInterface final
+     : public ToolbarButtonActionViewInterface {
+  public:
+-  explicit RetainedCollapseActionViewInterface(ToolbarButton* button)
+-      : ToolbarButtonActionViewInterface(button), button_(button) {}
++  RetainedCollapseActionViewInterface(
++      ToolbarButton* button, base::WeakPtr<BrowserWindowInterface> browser)
++      : ToolbarButtonActionViewInterface(button), button_(button),
++        browser_(browser) {}
+ 
+   void ActionItemChangedImpl(actions::ActionItem* action) override {
+     // The supplied chip updates accessibility text, not a visible label.
+     views::ButtonActionViewInterface::ActionItemChangedImpl(action);
++    // The expanded sidebar owns this control in its header. Retain the toolbar
++    // copy only while that header is collapsed, as in the supplied frame.
++    auto* state = browser_ ? tabs::VerticalTabStripStateController::From(
++                                 browser_.get()) : nullptr;
++    button_->SetVisible(state && state->ShouldDisplayVerticalTabs() &&
++                        state->GetCollapseState() !=
++                            tabs::VerticalTabStripCollapseState::kExpanded);
+     button_->SetTooltipText(std::u16string(action->GetTooltipText()));
+     button_->GetViewAccessibility().SetName(std::u16string(action->GetText()));
+     if (action->GetImage().IsVectorIcon()) {
+@@ -37,6 +47,7 @@
+ 
+  private:
+   raw_ptr<ToolbarButton> button_;
++  base::WeakPtr<BrowserWindowInterface> browser_;
+ };
+ 
+ class ProfileRetainedCollapseButton final : public ToolbarChipButton {
+@@ -54,7 +65,7 @@
+   }
+   std::unique_ptr<views::ActionViewInterface> GetActionViewInterface()
+       override {
+-    return std::make_unique<RetainedCollapseActionViewInterface>(this);
++    return std::make_unique<RetainedCollapseActionViewInterface>(this, browser_);
+   }
+   void OnMouseEntered(const ui::MouseEvent& event) override {
+     views::ViewTracker alive(this);

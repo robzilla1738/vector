@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+      "baselineSha256": "170f5090633c0184b8da5a80155d37d84cf4c7895102ce0ab2cf78d8beb9ff2b",
+      "outputSha256": "5f9f975249309092cd9f686b324f0498d3fb5599b6af6d546af0d8718ba82737"
+    }
+  ]
+}
