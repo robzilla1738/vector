@@ -1,0 +1,15 @@
+../../chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h:18:26: error: [chromium-rawptr] Use raw_ptr<T> instead of a raw pointer.
+   18 |   const gfx::VectorIcon* icon;
+      |                          ^
+../../chrome/browser/ui/views/frame/aux_sidebar_view.cc:1122:16: error: variable 'child' with type 'auto *' has incompatible initializer of type 'const base::raw_ptr<views::View, partition_alloc::internal::RawPtrTraits::kMayDangle>'
+ 1122 |     for (auto* child : children()) {
+      |                ^     ~
+../../chrome/browser/ui/views/frame/aux_sidebar_view.cc:1270:57: error: member reference type 'BrowserWindowInterface *' is a pointer; did you mean to use '->'?
+ 1270 |     remove->SetEnabled(CanRemoveIndicatorProfile(browser.get(), path_));
+      |                                                  ~~~~~~~^
+../../chrome/browser/ui/views/frame/aux_sidebar_view.cc:1270:58: error: no member named 'get' in 'BrowserWindowInterface'
+ 1270 |     remove->SetEnabled(CanRemoveIndicatorProfile(browser.get(), path_));
+      |                                                  ~~~~~~~ ^
+../../chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h:18:26: error: [chromium-rawptr] Use raw_ptr<T> instead of a raw pointer.
+   18 |   const gfx::VectorIcon* icon;
+      |                          ^

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "applyAfter": "Exact actualnative255; observed v255-focused-build.log diagnostics",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "56ccf8157c6016894733e72b2a3d0797bc191e63e64f85096d6b617b18c44658",
+      "outputSha256": "f4c084c5b68971be102256954e1a01a4a3f2185f838f3ea7de88b4d06fb075d8",
+      "anchors": [
+        {
+          "before": "class AuxIndicatorIconButton : public views::Button {",
+          "after": "class AuxIndicatorIconButton : public views::Button {\n  METADATA_HEADER(AuxIndicatorIconButton, views::Button)",
+          "count": 1
+        },
+        {
+          "before": "class AuxIndicatorIconGrid : public views::View {",
+          "after": "BEGIN_METADATA(AuxIndicatorIconButton)\nEND_METADATA\n\nclass AuxIndicatorIconGrid : public views::View {\n  METADATA_HEADER(AuxIndicatorIconGrid, views::View)",
+          "count": 1
+        },
+        {
+          "before": "    for (auto* child : children()) {",
+          "after": "    for (const auto& child : children()) {",
+          "count": 1
+        },
+        {
+          "before": "bool CanRemoveIndicatorProfile(BrowserWindowInterface* browser,",
+          "after": "BEGIN_METADATA(AuxIndicatorIconGrid)\nEND_METADATA\n\nbool CanRemoveIndicatorProfile(BrowserWindowInterface* browser,",
+          "count": 1
+        },
+        {
+          "before": "remove->SetEnabled(CanRemoveIndicatorProfile(browser.get(), path_));",
+          "after": "remove->SetEnabled(CanRemoveIndicatorProfile(browser, path_));",
+          "count": 1
+        }
+      ],
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+      "baselineSha256": "0ce38fbf7744b151f1755dd76e3fae4578d02d4bfe00520251a3bf7cdc94a113",
+      "outputSha256": "b6efdd746d22e6f5e4da67d6eb0f217379aa5c5a79f30c86725a5d1eba90b415",
+      "anchors": [
+        {
+          "before": "#include \"base/containers/span.h\"",
+          "after": "#include \"base/containers/span.h\"\n#include \"base/memory/raw_ptr_exclusion.h\"",
+          "count": 1
+        },
+        {
+          "before": "  const gfx::VectorIcon* icon;",
+          "after": "  // Points only to the immutable process-lifetime supplied vector catalog.\n  RAW_PTR_EXCLUSION const gfx::VectorIcon* icon;",
+          "count": 1
+        }
+      ],
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

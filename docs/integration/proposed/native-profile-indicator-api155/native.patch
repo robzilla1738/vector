@@ -1,0 +1,70 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1062,6 +1062,7 @@
+ 
+ // Supplied456bb40/456c300 icon grid. The existing catalog owns exact paths.
+ class AuxIndicatorIconButton : public views::Button {
++  METADATA_HEADER(AuxIndicatorIconButton, views::Button)
+  public:
+   AuxIndicatorIconButton(PressedCallback callback,
+                          const aux::ProfileIndicatorIconDescriptor& icon,
+@@ -1102,7 +1103,11 @@
+   const bool selected_;
+ };
+ 
++BEGIN_METADATA(AuxIndicatorIconButton)
++END_METADATA
++
+ class AuxIndicatorIconGrid : public views::View {
++  METADATA_HEADER(AuxIndicatorIconGrid, views::View)
+  public:
+   AuxIndicatorIconGrid(std::string_view selected,
+                        base::RepeatingCallback<void(std::string)> chosen) {
+@@ -1119,7 +1124,7 @@
+   }
+   void Layout(PassKey) override {
+     size_t index = 0;
+-    for (auto* child : children()) {
++    for (const auto& child : children()) {
+       child->SetBounds(8 + (index % 8) * 30, 8 + (index / 8) * 30, 28, 28);
+       ++index;
+     }
+@@ -1154,6 +1159,9 @@
+     return true;
+   }
+ };
++
++BEGIN_METADATA(AuxIndicatorIconGrid)
++END_METADATA
+ 
+ bool CanRemoveIndicatorProfile(BrowserWindowInterface* browser,
+                                const base::FilePath& path) {
+@@ -1267,7 +1275,7 @@
+     auto* remove = AddRow(kIndicatorSignOutIcon, u"Sign Out",
+                           base::BindRepeating(&AuxProfileIndicatorMenu::Remove,
+                                               base::Unretained(this)));
+-    remove->SetEnabled(CanRemoveIndicatorProfile(browser.get(), path_));
++    remove->SetEnabled(CanRemoveIndicatorProfile(browser, path_));
+   }
+   ~AuxProfileIndicatorMenu() override {
+     weak_factory_.InvalidateWeakPtrs();
+--- a/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h
++++ b/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h
+@@ -6,6 +6,7 @@
+ 
+ #include <string_view>
+ #include "base/containers/span.h"
++#include "base/memory/raw_ptr_exclusion.h"
+ 
+ class ProfileAttributesEntry;
+ namespace gfx {
+@@ -15,7 +16,8 @@
+ struct ProfileIndicatorIconDescriptor {
+   std::string_view name;
+   std::u16string_view label;
+-  const gfx::VectorIcon* icon;
++  // Points only to the immutable process-lifetime supplied vector catalog.
++  RAW_PTR_EXCLUSION const gfx::VectorIcon* icon;
+ };
+ base::span<const ProfileIndicatorIconDescriptor> ProfileIndicatorIcons();
+ // The actual stored profile indicator icon, or null for absent/unknown names.
