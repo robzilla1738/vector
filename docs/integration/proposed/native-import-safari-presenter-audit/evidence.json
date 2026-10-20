@@ -1,0 +1,62 @@
+{
+  "frameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "constructor": {
+    "entry": "0x2d63680",
+    "wholeImageExclusiveEnd": "0x2d638f0",
+    "boundedDecompileExclusiveEnd": "0x2d638bc",
+    "sliceSha256": "cc8c84825c4b5a91fa55caed81168403b4e7f001ea540574e05af2971e9d8e18",
+    "evidence": "ev_1c658a97e5c3e4ee8cd4bdb17ccdbf386c072665880ab4531823bcee64d29167"
+  },
+  "separateInit": {
+    "entry": "0x2d63b50",
+    "exclusiveEnd": "0x2d63d70",
+    "sliceSha256": "5452d7d55865849b382b66410ac718a1ab3650aba6d9c679af8f00fbc03c055a",
+    "evidence": "ev_8c40e38351579cab6b8d789344347bd4e47610389c6680b1bdbd1fd8b918dd28"
+  },
+  "fieldMapping": {
+    "0xb0": "profile_store_",
+    "0xb8": "account_store_",
+    "0xc0": "passkey_store_",
+    "0xc8": "pending_store_updates_",
+    "0xd0": "undo_helper_",
+    "0xd8": "passwords_grouper_",
+    "0xe0..0xf0": "empty duplicate-password map",
+    "0x130": "empty Init completion callback",
+    "0x138/0x140": "profile observation owner/null source",
+    "0x148/0x150": "account observation owner/null source",
+    "0x158/0x160": "passkey observation owner/null source",
+    "0x168/0x170": "weak-pointer factory flag/owner"
+  },
+  "current155": [
+    {
+      "path": "components/password_manager/core/browser/ui/saved_passwords_presenter.h",
+      "sha256": "c96965660d6b0603257036ee0cdb270da0dcb3be351a138dcc002d9ff0d8c01d"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/saved_passwords_presenter.cc",
+      "sha256": "6aea26abf32ba39a2d5609c2741a2766a50117b651fb8914b1fb08ac24fa913c"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/password_undo_helper.cc",
+      "sha256": "44d4014cb3a341df218591c5b27b3772d2cc3e23eebf396d67927f91185cad4e"
+    },
+    {
+      "path": "components/password_manager/core/browser/ui/passwords_grouper.cc",
+      "sha256": "df48f28400faa1e627be75c61395a6fc49b883171e8afe68727e5a0e5a9870a7"
+    },
+    {
+      "path": "components/password_manager/core/browser/import/password_importer.cc",
+      "sha256": "c2eddce5f1a8b68a44d624cec7d07a47dd18cc7dbdd166f559836097da9eb616"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "sha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7"
+    }
+  ],
+  "limitations": [
+    "Pure static constructor/Init equivalence; not a runtime import/cache observation.",
+    "Constructor Ghidra slice excludes out-of-line raw-pointer instrumentation at638e0..638f0; complete whole-image LLVM proves it only checks pointer flags and branches back to member store.",
+    "Init Ghidra reports PIC truncation after first fetch helper; complete bounded LLVM includes both profile/account fetch branches.",
+    "An initial proposed Init slice seeded cold predecessor at63b30 was closed without analysis and excluded from accepted evidence."
+  ]
+}
