@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "applyAfter": "actual343; shared AuxSectionView source already applied; three new files only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_action_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "fc42b1cf5e68ae11f920e98c1a569818e9250b4a47a563a5bfe6e8606d2bac0f",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_section.cc",
+      "baselineSha256": null,
+      "outputSha256": "fc8111586eb22dd5aebbce36b7b527bf1f030e5bd89674f636c5c004578df0e0",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_section.h",
+      "baselineSha256": null,
+      "outputSha256": "809bcdcd858c11162ccf6e3305adf96bca9ff700e4c6258db301b5d4270059e7",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

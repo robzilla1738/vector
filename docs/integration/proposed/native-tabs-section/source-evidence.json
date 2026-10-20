@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "tabs-wrapper-constructor",
+      "rva": "0x37e3034",
+      "bytes": 1212,
+      "sha256": "fe03926fa5aebda283a725b27686a55a2481480df199013630c13fc819051964",
+      "assemblySha256": "671232c89024e4fec4b5fbaebf6d856d2bb59a0679afcedef0342fac9fc23076"
+    },
+    {
+      "name": "action-constructor-and-callback",
+      "rva": "0x466afb0",
+      "bytes": 2940,
+      "sha256": "2dc89fde6be03e576799b88dfb7f3e0e618ea236f6f772c6c33205971469cddf",
+      "assemblySha256": "cf6fbf9def8f50d89a23cd4600d34a543cd87daacc13031026b2b508d016bea5"
+    },
+    {
+      "name": "action-metadata-cache-paint-colors",
+      "rva": "0x466bc8c",
+      "bytes": 1068,
+      "sha256": "f02a73921ba885527df3725be20b5b7759bf38cb7974798fd4e801dbeba836ca",
+      "assemblySha256": "0ab279bebff5f934d7b4f5e65ad64cd5b0a759d2cb69c65ed2b587eb6749d93f"
+    },
+    {
+      "name": "tidy-busy",
+      "rva": "0x464d4b0",
+      "bytes": 552,
+      "sha256": "695cd8ac12f7720531b85c881c2b288a33d66a22e48926ee2ffde4eb15c6dba1",
+      "assemblySha256": "7a54c8c1e3d777938dfa03c2dd7a2993afc8a7e83f80c3dbe5f1360ba26192a0"
+    },
+    {
+      "name": "flex-layout-constructor",
+      "rva": "0x2a105d0",
+      "bytes": 344,
+      "sha256": "e08efc62fc4e860420449ee19fc3887106f4fdb8e1fe4e7b796ff0c15cc93551",
+      "assemblySha256": "f1173a388d5f62eae6290b6682955dd28034861bd1323e0255c47b133f25f639"
+    },
+    {
+      "name": "flex-layout-metadata",
+      "rva": "0xa6d2710",
+      "bytes": 188,
+      "sha256": "475f7a3911d529d5e11aa497e3126eb56ca3a4d53cb8cba8305a41d51aa0581e",
+      "assemblySha256": "f32dfbf20589b0942d393ae9361ff7d038bb952d8d42a94b60ccc1a8ba72dd19"
+    },
+    {
+      "name": "original-button-field-order",
+      "rva": "0x136e5e8",
+      "bytes": 84,
+      "sha256": "d332460a8f52fac4e3cfd0742a102f4b4722ab09b9fba82c3ce23763f3b66ea9",
+      "assemblySha256": "3ec5e9442802ac14cf50763916c762a0b6e870d2a668a18e458ed9ef3a1d7202"
+    },
+    {
+      "name": "focus-behavior-setter",
+      "rva": "0x15377dc",
+      "bytes": 140,
+      "sha256": "400cb96234218e55681213f82abcd03ab8d30eacc0958a1f4ed2aff194940f05",
+      "assemblySha256": "bf8bb1f1edce5915e512465533a8885dbe640f511b92628ce82fc9a2332ce6d5"
+    },
+    {
+      "name": "label-elide-setter",
+      "rva": "0x5a0d40",
+      "bytes": 140,
+      "sha256": "29acd71421c9c40e0879a46f2900c5cad325fc8e4b3498ed676eae5b3e246384",
+      "assemblySha256": "36b1882eadd5cf604219e778af549b1b1072b1f6340e8ffa2f80b3db926f3cdf"
+    },
+    {
+      "name": "label-alignment-setter",
+      "rva": "0x1b89d00",
+      "bytes": 128,
+      "sha256": "94bbfda5e9fc534f0c8ad1a1d0ab21e8c2a5b220eb30473747e701a7b8d84c53",
+      "assemblySha256": "40e2a0e6634f7a1d9c1beb9d7ebae2da04f4fa45ec4e484f89aa219a7a955488"
+    },
+    {
+      "name": "pressed-saved-recipe",
+      "rva": "0x35e9868",
+      "bytes": 180,
+      "sha256": "77eb0f735474d9eceb6502511bb34b9c7244471c34ce829e79de4df50def40c2",
+      "assemblySha256": "e7654fc101834a7de787bde90083ee2d88f991941e482653b5dffca53e349fc3"
+    },
+    {
+      "name": "surface-border-recipe",
+      "rva": "0x35e6e40",
+      "bytes": 64,
+      "sha256": "d8cf738f88d09aa5a26d9cbd2b96a9292540e529bc1d5ac25720b97ca855e3e1",
+      "assemblySha256": "10e5f92f09ea8ad0a89a5b12161419789cac1e3f8b0d59776fd741577466f606"
+    },
+    {
+      "name": "hover-recipe",
+      "rva": "0x35e97ac",
+      "bytes": 180,
+      "sha256": "0a0033a6ebd27e194624f6e2745f24ce8fb54301904d2a45fd6d1485aa4845c2",
+      "assemblySha256": "311dfb2b2f6fec4decafd55592b354c890a7d4844859677a4d772c7086329904"
+    },
+    {
+      "name": "muted-foreground-recipe",
+      "rva": "0x35e7724",
+      "bytes": 24,
+      "sha256": "f8410506624a82a0c69c06ab301157fcf99e9d4030b182cd2eb33c49516a4ffe",
+      "assemblySha256": "9bca6eb99364619f5f52c5984439920b3a660b96b72f34dbde9820e417b46387"
+    }
+  ],
+  "apiInputs": [
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_section_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_section_view.h",
+      "sha256": "5185b02a317834483caa3354976cf725afc8fe3066be02cebd1e75367014e81a"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_section_view.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_section_view.cc",
+      "sha256": "eb22535a74af1c52971e484d4bf828ebb8782a117e5f560df37f2704e2456e6c"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/button/button.h",
+      "snapshotPath": "evidence/api/ui/views/controls/button/button.h",
+      "sha256": "5a618f1103c36a35d25c600a003f4d4a31129125736d887976187d4db2e0b6b9"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/button/button_controller.h",
+      "snapshotPath": "evidence/api/ui/views/controls/button/button_controller.h",
+      "sha256": "947e0d3d49368647487cee2d882140016804390725a6a577921d96d1da7d24da"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/throbber.h",
+      "snapshotPath": "evidence/api/ui/views/controls/throbber.h",
+      "sha256": "340a034f5fa0d39241e5c1a10b9ae1c44e0cc93c924f55bf900967dd009291f5"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/throbber.cc",
+      "snapshotPath": "evidence/api/ui/views/controls/throbber.cc",
+      "sha256": "2ec6dee38b2ef5b91c3af4276badadfc84fdfcc6b2d9dae71fdaa27737c4ee87"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/layout/flex_layout.h",
+      "snapshotPath": "evidence/api/ui/views/layout/flex_layout.h",
+      "sha256": "fb078e007350d6287c74d4e368b97ed728ca39d45a16410eceac81cf797a90dc"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/style/typography.h",
+      "snapshotPath": "evidence/api/ui/views/style/typography.h",
+      "sha256": "43064e26043d635390c1b5de3d6375a06a48c505c1b5996d94d818966bf0d7ab"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/text_constants.h",
+      "snapshotPath": "evidence/api/ui/gfx/text_constants.h",
+      "sha256": "48373935428aea038b4084d14e74164d3342d16941a4a6da40f811f142d69340"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/label.h",
+      "snapshotPath": "evidence/api/ui/views/controls/label.h",
+      "sha256": "7f8698cff76eaf02aa43111662661d9970744f1a720a1a20adefcc5d6c521f58"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/animation/ink_drop.h",
+      "snapshotPath": "evidence/api/ui/views/animation/ink_drop.h",
+      "sha256": "2209286ec8a4241962b236f408b11116e00f7fae4b34d593ae9c539305c3b571"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/animation/ink_drop_host.h",
+      "snapshotPath": "evidence/api/ui/views/animation/ink_drop_host.h",
+      "sha256": "a2fe6be08ef39c88a0eec6117f0b343fa5a41e8a4543983cbd0affd8355874be"
+    }
+  ],
+  "data": [
+    {
+      "name": "label-and-spinner-default-margins",
+      "rva": "0xdf40a90",
+      "bytes": 16,
+      "hex": "00000000000000000000000004000000",
+      "sha256": "d1249975be39efe9eb483e87e0939fdadb8be59bc210e67723e21d153a2a2190"
+    },
+    {
+      "name": "button-vtable",
+      "rva": "0xe729150",
+      "bytes": 1120,
+      "hex": "f8a4510100001000b47c1d0200001000c02d0100000010007898b20300001000c02d010000001000c02d010000001000c02d010000001000acbe6d0a00001000c02d0100000010002cbb66040000100050bc6604000010008cbc66040000100050ce660000001000689c77000000100014043d000000100050a06d0a0000100000d7f3030000100010508b010000100000ff070000001000b493420100001000386d8400000010009cf389000000100000a95f010000100024bda602000010005c21980200001000c0a16d0a00001000cca16d0a000010005487420100001000cca76d0a00001000f0a66d0a00001000409e20000000100034a96d0a00001000dca96d0a00001000fc98b203000010004c023d00000010005892b20300001000142b6a0a00001000c0ad6d0a000010003061670a000010004061670a000010006462670a000010007462670a000010000063670a00001000e062670a00001000f062670a00001000b4ae6d0a00001000ccae6d0a000010001063670a000010002063670a0000100080944a000000100000ff070000001000a4b46d0a0000100030b56d0a0000100058b56d0a00001000d0b56d0a00001000d8b56d0a0000100018b66d0a00001000e4ae6d0a000010007caf6d0a0000100034b06d0a0000100000bb010000001000403ef403000010003063670a00001000ac003f04000010005063670a00001000d0b76d0a00001000307884000000100038be77000000100070c9d10200001000c02d0100000010001864670a0000100000ff07000000100000ff0700000010009cba6d0a00001000e899f901000010003c64670a00001000fcba6d0a0000100080944a000000100080944a000000100080944a000000100000bb01000000100080944a000000100000bb010000001000d464670a0000100000ff070000001000c02d01000000100038033f0400001000401137020000100000bb01000000100084d4d10200001000c02d01000000100080eeaf00000010000066670a0000100088bd660400001000c02d01000000100014be660400001000c02d010000001000481a7e000000100080944a000000100000bb0100000010002cbe66040000100080b18c010000100018093f0400001000a8be6d0a0000100000bb01000000100000bb01000000100000bb0100000010003070960000001000c81eb2030000100054be660400001000908996000000100034548a000000100078a7770000001000f036f6000000100000bb010000001000dcbe6d0a000010004065670a000010007865670a0000100020c066040000100014d5d10200001000f4be6d0a0000100014bf6d0a00001000a40951010000100050fd740200001000f4eeaf000000100040da0e0100001000c05f670a000010008066670a000010009866670a00001000c867670a00001000c02d010000001000b4c06604000010007c68670a00001000c0292f00000010008c68670a00001000c02d010000001000c0b8ea0100001000f8b38c0100003000f8ffffffffffffff0000000000000000",
+      "sha256": "25c777cff18350f4bdac21b9403222630a477855885a74595fcdb8c4845672df"
+    },
+    {
+      "name": "color-name-226",
+      "rva": "0xe9101b0",
+      "bytes": 16,
+      "hex": "e200000000000000b3b2bd0d00002000",
+      "sha256": "b95473191303051ae18ae5502b0cd4c6616aa5de2c5fd2c217b4f7e5ed313d33"
+    },
+    {
+      "name": "color-name-247",
+      "rva": "0xe910300",
+      "bytes": 16,
+      "hex": "f70000000000000061b5bd0d00002000",
+      "sha256": "631e88d9cdefa6444d03f8b19ecc57e92e9e49fc1a1d46493a0278cdb699b918"
+    },
+    {
+      "name": "color-name-269",
+      "rva": "0xe910460",
+      "bytes": 16,
+      "hex": "0d0100000000000052b8bd0d00002000",
+      "sha256": "e045887f3d9d813b4c548b5a3a2d4c21700d487741c28471a6e97ac9e424a6be"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xdecc089",
+      "value": "TabsHeaderActionButton"
+    },
+    {
+      "rva": "0xdd453f1",
+      "value": "FlexLayout"
+    },
+    {
+      "rva": "0xdd45488",
+      "value": "../../ui/views/layout/flex_layout.h"
+    }
+  ],
+  "utf16": [
+    {
+      "rva": "0xdf87a0a",
+      "units": 21,
+      "value": "Organize tabs with AI",
+      "sha256": "d3cd84d4bdfd405fe759bd05f67a35e0733772186be2d675de2316bcb0bd91b5"
+    },
+    {
+      "rva": "0xdf87fee",
+      "units": 15,
+      "value": "Organizing tabs",
+      "sha256": "ad77a55e3cc10e26f7bb7c32f269a2e22ec6fa460cd1981d7c8670215482aa9c"
+    }
+  ],
+  "icons": [
+    {
+      "name": "Tidy",
+      "descriptorRva": "0xe9d5618",
+      "representationRva": "0xe9d5608",
+      "pathRva": "0xd3e38d4",
+      "elements": 234,
+      "sha256": "e620a627dc40475be27dd9152b114a35e53d06ed1d6b340d567c4369e41f8bbd"
+    },
+    {
+      "name": "Clear",
+      "descriptorRva": "0xe9d49d8",
+      "representationRva": "0xe9d49c8",
+      "pathRva": "0xd3d7e5c",
+      "elements": 71,
+      "sha256": "a63d7678e374650ec451b334c855cf81cd40e25bc22ea9a7f4343f3f5b1961e6"
+    }
+  ]
+}

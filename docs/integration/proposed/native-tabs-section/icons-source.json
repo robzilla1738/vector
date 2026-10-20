@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Tidy",
+    "descriptorRva": "0xe9d5618",
+    "representationRva": "0xe9d5608",
+    "pathRva": "0xd3e38d4",
+    "elements": 234,
+    "sha256": "e620a627dc40475be27dd9152b114a35e53d06ed1d6b340d567c4369e41f8bbd"
+  },
+  {
+    "name": "Clear",
+    "descriptorRva": "0xe9d49d8",
+    "representationRva": "0xe9d49c8",
+    "pathRva": "0xd3d7e5c",
+    "elements": 71,
+    "sha256": "a63d7678e374650ec451b334c855cf81cd40e25bc22ea9a7f4343f3f5b1961e6"
+  }
+]
