@@ -1,0 +1,560 @@
+--- a/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h
+@@ -5,7 +5,13 @@
+ #ifndef CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_MODEL_LISTENER_H_
+ #define CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_MODEL_LISTENER_H_
+ 
++#include <memory>
++
+ #include "base/containers/flat_set.h"
++#include "base/containers/span.h"
++#include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+@@ -40,6 +46,33 @@
+   SavedTabGroupModelListener& operator=(
+       const SavedTabGroupModelListener& other) = delete;
+   ~SavedTabGroupModelListener() override;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  class AuxProfileModelTransfer {
++   public:
++    ~AuxProfileModelTransfer();
++    AuxProfileModelTransfer(const AuxProfileModelTransfer&) = delete;
++    AuxProfileModelTransfer& operator=(const AuxProfileModelTransfer&) = delete;
++    bool CanFinish(bool source_rollback) const;
++    void Commit();
++    void Abort();
++
++   private:
++    friend class SavedTabGroupModelListener;
++    struct State;
++    explicit AuxProfileModelTransfer(std::unique_ptr<State> state);
++    void Finish(bool source_rollback);
++    std::unique_ptr<State> state_;
++  };
++
++  // A single real cohort contains visible and both fixed-cache windows.
++  // Query and preparation happen after cache creation, before collection moves.
++  static bool CanPrepareAuxProfileModelTransfer(
++      base::span<BrowserWindowInterface* const> windows);
++  static std::unique_ptr<AuxProfileModelTransfer>
++  PrepareAuxProfileModelTransfer(base::span<BrowserWindowInterface* const> windows);
++  void OnTabStripModelDestroyed(TabStripModel* model) override;
++#endif
+ 
+   // Start ignoring tab added/removed notifications that pertain to this group.
+   void PauseTrackingLocalTabGroup(const tab_groups::TabGroupId& group_id);
+@@ -107,6 +140,13 @@
+   }
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void LeaveAuxCallback();
++  base::flat_set<raw_ptr<TabStripModel>> aux_observed_models_;
++  bool aux_model_transfer_active_ = false;
++  int aux_callback_depth_ = 0;
++#endif
++
+   // Create a SavedTabGroup from the corresponding Tab Group in the TabStrip
+   // denoted by `group_id`. Also return a mapping of the tabs in the tab group
+   // to their saved tab guid. This mapping will be used in
+@@ -131,6 +171,8 @@
+ 
+   base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
+       browser_collection_observation_{this};
++
++  base::WeakPtrFactory<SavedTabGroupModelListener> aux_lifetime_factory_{this};
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
+@@ -5,8 +5,18 @@
+ #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h"
+ 
+ #include <algorithm>
++#include <iterator>
++#include <map>
++#include <vector>
+ 
+ #include "base/check.h"
++#include "base/check_op.h"
++#include "base/no_destructor.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "content/public/browser/web_contents.h"
+ #include "base/memory/raw_ptr.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -29,6 +39,28 @@
+ 
+ namespace tab_groups {
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++namespace {
++using AuxListenerRegistry =
++    std::map<Profile*, base::WeakPtr<SavedTabGroupModelListener>>;
++AuxListenerRegistry& AuxListeners() {
++  static base::NoDestructor<AuxListenerRegistry> registry;
++  return *registry;
++}
++
++bool IsRegisteredWindowForProfile(BrowserWindowInterface* window,
++                                  Profile* profile) {
++  bool registered = false;
++  ProfileBrowserCollection::GetForProfile(profile)->ForEach(
++      [&](BrowserWindowInterface* candidate) {
++        registered |= candidate == window;
++        return !registered;
++      });
++  return registered;
++}
++}  // namespace
++#endif
++
+ SavedTabGroupModelListener::SavedTabGroupModelListener() = default;
+ 
+ SavedTabGroupModelListener::SavedTabGroupModelListener(
+@@ -37,6 +69,10 @@
+     : service_(service), profile_(profile) {
+   CHECK(service);
+   CHECK(profile);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK(!AuxListeners().contains(profile_));
++  AuxListeners().emplace(profile_, aux_lifetime_factory_.GetWeakPtr());
++#endif
+ 
+   auto* browser_collection = ProfileBrowserCollection::GetForProfile(profile_);
+   browser_collection_observation_.Observe(browser_collection);
+@@ -47,6 +83,11 @@
+ }
+ 
+ SavedTabGroupModelListener::~SavedTabGroupModelListener() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (profile_) {
++    AuxListeners().erase(profile_);
++  }
++#endif
+   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+       [this](BrowserWindowInterface* browser) {
+         if (browser->GetProfile() == profile_) {
+@@ -58,6 +99,12 @@
+ 
+ void SavedTabGroupModelListener::OnTabGroupAdded(
+     const tab_groups::TabGroupId& group_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   if (local_tab_group_listeners_.contains(group_id)) {
+     return;
+   }
+@@ -80,6 +127,12 @@
+ 
+ void SavedTabGroupModelListener::OnTabGroupWillBeRemoved(
+     const tab_groups::TabGroupId& group_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   if (!local_tab_group_listeners_.contains(group_id)) {
+     return;
+   }
+@@ -89,6 +142,12 @@
+ 
+ void SavedTabGroupModelListener::OnTabGroupChanged(
+     const TabGroupChange& change) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   if (!local_tab_group_listeners_.contains(change.group)) {
+     return;
+   }
+@@ -138,6 +197,12 @@
+     std::optional<tab_groups::TabGroupId> new_local_group_id,
+     tabs::TabInterface* tab,
+     int index) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   // Remove `contents` from its current saved group, if it's in one.
+   for (auto& [local_group_id, listener] : local_tab_group_listeners_) {
+     if (local_group_id != new_local_group_id) {
+@@ -170,6 +235,12 @@
+     TabStripModel* tab_strip_model,
+     const TabStripModelChange& change,
+     const TabStripSelectionChange& selection) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   switch (change.type()) {
+     case TabStripModelChange::kMoved: {
+       std::optional<tab_groups::TabGroupId> local_id =
+@@ -215,6 +286,12 @@
+ 
+ void SavedTabGroupModelListener::WillCloseAllTabs(
+     TabStripModel* tab_strip_model) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   CHECK(tab_strip_model);
+   if (!tab_strip_model->group_model()) {
+     return;
+@@ -236,6 +313,12 @@
+ void SavedTabGroupModelListener::ConnectToLocalTabGroup(
+     const SavedTabGroup& saved_tab_group,
+     std::map<tabs::TabInterface*, base::Uuid> tab_guid_mapping) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   const tab_groups::TabGroupId local_group_id =
+       saved_tab_group.local_group_id().value();
+ 
+@@ -295,12 +378,24 @@
+ void SavedTabGroupModelListener::DisconnectLocalTabGroup(
+     tab_groups::TabGroupId tab_group_id,
+     ClosingSource closing_source) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   service_->RemoveLocalTabGroupMapping(tab_group_id, closing_source);
+   local_tab_group_listeners_.erase(tab_group_id);
+ }
+ 
+ void SavedTabGroupModelListener::RemoveLocalGroupFromSync(
+     tab_groups::TabGroupId local_group_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   if (local_tab_group_listeners_.contains(local_group_id)) {
+     // Prevent further observations for `local_group_id` as we attempt to close
+     // the tab group.
+@@ -313,6 +408,12 @@
+ 
+ void SavedTabGroupModelListener::UpdateLocalGroupFromSync(
+     tab_groups::TabGroupId local_group_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
+   if (!local_tab_group_listeners_.contains(local_group_id)) {
+     return;
+   }
+@@ -325,7 +426,19 @@
+ 
+ void SavedTabGroupModelListener::OnBrowserCreated(
+     BrowserWindowInterface* browser) {
+-  browser->GetTabStripModel()->AddObserver(this);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &SavedTabGroupModelListener::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
++#endif
++  auto* model = browser->GetTabStripModel();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  CHECK_EQ(model->profile(), profile_);
++  CHECK(!aux_observed_models_.contains(model));
++  aux_observed_models_.insert(model);
++#endif
++  model->AddObserver(this);
+ }
+ 
+ std::pair<SavedTabGroup, std::map<tabs::TabInterface*, base::Uuid>>
+@@ -364,4 +477,263 @@
+   return std::pair(std::move(saved_tab_group), std::move(tab_guid_mapping));
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void SavedTabGroupModelListener::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++void SavedTabGroupModelListener::OnTabStripModelDestroyed(TabStripModel* model) {
++  aux_observed_models_.erase(model);
++}
++
++struct SavedTabGroupModelListener::AuxProfileModelTransfer::State {
++  struct Window {
++    base::WeakPtr<BrowserWindowInterface> window;
++    raw_ptr<Profile> source_profile;
++  };
++  struct Group {
++    TabGroupId id;
++    std::vector<tabs::TabHandle> tabs;
++  };
++  struct Listener {
++    base::WeakPtr<SavedTabGroupModelListener> listener;
++    std::vector<Group> groups;
++  };
++  std::vector<Window> windows;
++  std::vector<Listener> listeners;
++  bool finished = false;
++};
++
++bool SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(
++    base::span<BrowserWindowInterface* const> windows) {
++  if (windows.empty()) {
++    return false;
++  }
++  base::flat_set<BrowserWindowInterface*> seen;
++  for (auto* window : windows) {
++    if (!window || !seen.insert(window).second ||
++        window->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        !window->GetProfile()->IsRegularProfile() ||
++        !IsRegisteredWindowForProfile(window, window->GetProfile())) {
++      return false;
++    }
++    auto* model = window->GetTabStripModel();
++    if (!model || model->profile() != window->GetProfile()) {
++      return false;
++    }
++    auto* service = TabGroupSyncServiceFactory::GetForProfile(model->profile());
++    if (!service) {
++      auto stale = AuxListeners().find(model->profile());
++      if (stale != AuxListeners().end() && stale->second) {
++        return false;
++      }
++      continue;
++    }
++    auto it = AuxListeners().find(model->profile());
++    if (it == AuxListeners().end() || !it->second) {
++      return false;
++    }
++    auto* listener = it->second.get();
++    if (listener->service_ != service || listener->aux_model_transfer_active_ ||
++        listener->aux_callback_depth_ ||
++        !listener->aux_observed_models_.contains(model)) {
++      return false;
++    }
++    if (model->SupportsTabGroups()) {
++      for (auto group : model->group_model()->ListTabGroups()) {
++        auto tracked = listener->local_tab_group_listeners_.find(group);
++        if (tracked == listener->local_tab_group_listeners_.end()) {
++          continue;
++        }
++        if (tracked->second.IsTrackingPaused()) {
++          return false;
++        }
++        auto saved = service->GetGroup(tracked->second.saved_guid());
++        auto tabs = model->GetTabsAtIndices(
++            model->group_model()->GetTabGroup(group)->ListTabs().ToIntVector());
++        if (!saved || saved->saved_tabs().size() != tabs.size()) {
++          return false;
++        }
++        for (auto* tab : tabs) {
++          if (std::ranges::none_of(saved->saved_tabs(), [&](const auto& saved_tab) {
++                return saved_tab.local_tab_id() == tab->GetHandle().raw_value();
++              })) {
++            return false;
++          }
++        }
++      }
++    }
++  }
++  return true;
++}
++
++std::unique_ptr<SavedTabGroupModelListener::AuxProfileModelTransfer>
++SavedTabGroupModelListener::PrepareAuxProfileModelTransfer(
++    base::span<BrowserWindowInterface* const> windows) {
++  if (!CanPrepareAuxProfileModelTransfer(windows)) {
++    return nullptr;
++  }
++  auto state = std::make_unique<AuxProfileModelTransfer::State>();
++  for (auto* window : windows) {
++    auto* model = window->GetTabStripModel();
++    state->windows.push_back({window->GetWeakPtr(), window->GetProfile()});
++    auto found = AuxListeners().find(window->GetProfile());
++    if (found == AuxListeners().end() || !found->second) {
++      CHECK(!TabGroupSyncServiceFactory::GetForProfile(window->GetProfile()));
++      continue;
++    }
++    auto* listener = found->second.get();
++    auto entry = std::ranges::find_if(state->listeners, [&](const auto& item) {
++      return item.listener.get() == listener;
++    });
++    if (entry == state->listeners.end()) {
++      state->listeners.push_back({found->second, {}});
++      entry = std::prev(state->listeners.end());
++      listener->aux_model_transfer_active_ = true;
++    }
++    if (model->SupportsTabGroups()) {
++      for (auto group : model->group_model()->ListTabGroups()) {
++        auto tracked = listener->local_tab_group_listeners_.find(group);
++        if (tracked == listener->local_tab_group_listeners_.end()) {
++          continue;
++        }
++        AuxProfileModelTransfer::State::Group snapshot{group, {}};
++        for (auto* tab : model->GetTabsAtIndices(
++                 model->group_model()->GetTabGroup(group)->ListTabs().ToIntVector())) {
++          snapshot.tabs.push_back(tab->GetHandle());
++        }
++        tracked->second.PauseTracking();
++        entry->groups.push_back(std::move(snapshot));
++      }
++    }
++    // This is the actual per-model subscription, not a BrowserClosed event.
++    model->RemoveObserver(listener);
++    CHECK_EQ(listener->aux_observed_models_.erase(model), 1u);
++  }
++  return std::unique_ptr<AuxProfileModelTransfer>(
++      new AuxProfileModelTransfer(std::move(state)));
++}
++
++SavedTabGroupModelListener::AuxProfileModelTransfer::AuxProfileModelTransfer(
++    std::unique_ptr<State> state) : state_(std::move(state)) {}
++
++SavedTabGroupModelListener::AuxProfileModelTransfer::~AuxProfileModelTransfer() {
++  // The owner must explicitly finish against actual final or restored models.
++  // There is no fake-success destructor rollback with unknown collections.
++  CHECK(state_->finished);
++}
++
++bool SavedTabGroupModelListener::AuxProfileModelTransfer::CanFinish(
++    bool source_rollback) const {
++  if (state_->finished) {
++    return false;
++  }
++  base::flat_set<Profile*> original_profiles;
++  for (const auto& entry : state_->windows) {
++    original_profiles.insert(entry.source_profile);
++  }
++  for (const auto& entry : state_->windows) {
++    auto* window = entry.window.get();
++    if (!window || !original_profiles.contains(window->GetProfile()) ||
++        (source_rollback && window->GetProfile() != entry.source_profile) ||
++        !IsRegisteredWindowForProfile(window, window->GetProfile())) {
++      return false;
++    }
++    auto* model = window->GetTabStripModel();
++    if (!model || model->profile() != window->GetProfile()) {
++      return false;
++    }
++    for (int i = 0; i < model->count(); ++i) {
++      if (model->GetWebContentsAt(i)->GetBrowserContext() != model->profile()) {
++        return false;
++      }
++    }
++    for (const auto& [profile, listener] : AuxListeners()) {
++      if (listener && listener->aux_observed_models_.contains(model)) {
++        return false;
++      }
++    }
++    if (auto* service = TabGroupSyncServiceFactory::GetForProfile(model->profile())) {
++      auto it = AuxListeners().find(model->profile());
++      if (it == AuxListeners().end() || !it->second ||
++          it->second->service_ != service || !it->second->aux_model_transfer_active_) {
++        return false;
++      }
++    }
++  }
++  for (const auto& entry : state_->listeners) {
++    auto* listener = entry.listener.get();
++    if (!listener || !listener->aux_model_transfer_active_ ||
++        listener->aux_callback_depth_) {
++      return false;
++    }
++    for (const auto& group : entry.groups) {
++      auto tracked = listener->local_tab_group_listeners_.find(group.id);
++      if (tracked == listener->local_tab_group_listeners_.end() ||
++          !tracked->second.IsTrackingPaused()) {
++        return false;
++      }
++      TabStripModel* actual_model = nullptr;
++      for (const auto& window : state_->windows) {
++        auto* model = window.window->GetTabStripModel();
++        if (model->profile() == listener->profile_ && model->SupportsTabGroups() &&
++            model->group_model()->ContainsTabGroup(group.id)) {
++          if (actual_model) {
++            return false;
++          }
++          actual_model = model;
++        }
++      }
++      if (!actual_model) {
++        return false;
++      }
++      auto tabs = actual_model->GetTabsAtIndices(
++          actual_model->group_model()->GetTabGroup(group.id)->ListTabs().ToIntVector());
++      if (tabs.size() != group.tabs.size()) {
++        return false;
++      }
++      for (auto* tab : tabs) {
++        if (!std::ranges::contains(group.tabs, tab->GetHandle())) {
++          return false;
++        }
++      }
++    }
++  }
++  return true;
++}
++
++void SavedTabGroupModelListener::AuxProfileModelTransfer::Commit() {
++  Finish(false);
++}
++void SavedTabGroupModelListener::AuxProfileModelTransfer::Abort() {
++  Finish(true);
++}
++void SavedTabGroupModelListener::AuxProfileModelTransfer::Finish(
++    bool source_rollback) {
++  CHECK(CanFinish(source_rollback));
++  for (const auto& entry : state_->windows) {
++    auto* window = entry.window.get();
++    auto found = AuxListeners().find(window->GetProfile());
++    if (found == AuxListeners().end() || !found->second) {
++      CHECK(!TabGroupSyncServiceFactory::GetForProfile(window->GetProfile()));
++      continue;
++    }
++    auto* listener = found->second.get();
++    auto* model = window->GetTabStripModel();
++    CHECK(listener->aux_observed_models_.insert(model).second);
++    model->AddObserver(listener);
++  }
++  for (const auto& entry : state_->listeners) {
++    auto* listener = entry.listener.get();
++    for (const auto& group : entry.groups) {
++      // Existing stock method verifies real saved/local tab identity 1:1.
++      listener->local_tab_group_listeners_.at(group.id).ResumeTracking();
++    }
++    listener->aux_model_transfer_active_ = false;
++  }
++  state_->finished = true;
++}
++#endif
++
+ }  // namespace tab_groups

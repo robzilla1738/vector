@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 SavedTabGroupModelListener; no BWF/core changes",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.h",
+      "baselineSha256": "fd0ce21f1fbb232f68ab54abe29a8c39f1b899307d38a2d5b13a6d6ab9e7767e",
+      "outputSha256": "6aa32027dd77f3f3f7da22d84c5282b91109fa37a7ad60c4fc718d8aea757041"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc",
+      "baselineSha256": "a3b6bbe954a51ed66cc73758f9a6bcd22f30fa5a014dd5c5b962edd4d2efd117",
+      "outputSha256": "263080093573eacdde50aeeab31a99c992808789b0b104177ecae7b3c659aee1"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
