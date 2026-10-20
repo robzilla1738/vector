@@ -1,0 +1,57 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor-callback-routing",
+      "start": "0x37e1a00",
+      "stopExclusive": "0x37e2c90",
+      "bytesSha256": "b1f34dcff72ea3d20e89879dab1c9af4407fbd125672889db649bbdad00c5078",
+      "asmSha256": "c49ca30d8961db01b55e44e13d843d8c72fdc33429419ae9552b74bd0b85ae1c"
+    },
+    {
+      "name": "select",
+      "start": "0x462d99c",
+      "stopExclusive": "0x462e4bc",
+      "bytesSha256": "1746144b425a5da71782ba108d916cc24ea45397577c08a50b6f3b90be8a9c0f",
+      "asmSha256": "ef9f38e2c04d331d15386ecc0e4a503192d487deb0d03524905b1d259a7a834b"
+    },
+    {
+      "name": "rename-settlement",
+      "start": "0x462e4bc",
+      "stopExclusive": "0x462e9d8",
+      "bytesSha256": "3d65c35c70eb74deaac4e04c9f09ae09eff0af25c8ef0a5f523521b275125fa2",
+      "asmSha256": "21f3fbaaec0ed7cfa2cf2ae6545a4ff085cc30ca6b6249aaf9b8eaa2ae9abc57"
+    },
+    {
+      "name": "archive-forward",
+      "start": "0x462e9d8",
+      "stopExclusive": "0x462ea30",
+      "bytesSha256": "2d06567604d2f296849fe6b24a033968ae83fa346ba81bfc2f90c08ae2fb1f4a",
+      "asmSha256": "5e7e8b783dafaba4308f2e599f5c77cda6cd4796333a03c2c9a000de6113eec6"
+    },
+    {
+      "name": "divider-metadata-and-paint",
+      "start": "0x4667274",
+      "stopExclusive": "0x4667530",
+      "bytesSha256": "5822ec46a9c41c576c9933e0d5d4c0c49c20335a8e9c279514713bd69839657c",
+      "asmSha256": "da3d6782e523bfc2bd1dd5800957a5cc8f808c57bb9754fed4e963c144dbebb6"
+    }
+  ],
+  "pointers": [
+    {
+      "address": "0xe726b08",
+      "raw": "0x10000004667274",
+      "meaning": "primary View metadata vtable slot+58 ->4667274"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdecc02d",
+      "value": "AsideSectionDivider",
+      "bytesSha256": "ffa694a73938c752889a60c0025e1470013c4a1870f0b1d2ed32857676447ac9"
+    }
+  ]
+}
