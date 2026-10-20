@@ -1,0 +1,85 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "original-tabstrip-pinned-binding.txt",
+      "sha256": "b2306e41c8417c7ab20d34e2390187f71e04dae4a46a2a40e3c04fdaf848e2ba",
+      "start": "0x41278c0",
+      "stop": "0x4127940"
+    },
+    {
+      "file": "original-pinned-container-metadata.txt",
+      "sha256": "94c4e9fdac10e5494de614b32d544326dfe0a82d6de51ecb3cd7a6834c11122e",
+      "start": "0x789e0f0",
+      "stop": "0x789e204"
+    },
+    {
+      "file": "original-bottom-constructor-vtable.txt",
+      "sha256": "12de0fcd63678ee696601ae7025713cddae058b57484f37541fb8ad10d5bbcdf",
+      "start": "0x3621b00",
+      "stop": "0x3621bf0"
+    },
+    {
+      "file": "original-bottom-metadata.txt",
+      "sha256": "0764f2617f9c106c3df44eaa80b60b520dac998494cf3ff78aa1581b1d38cc1a",
+      "start": "0x2db8d48",
+      "stop": "0x2db8db0"
+    },
+    {
+      "file": "original-hot-pinned-role.txt",
+      "sha256": "70e3e77e13740bbdebf826d4205b89e9df06ec95ca52beaa8f7bb37a29324ccd",
+      "start": "0x37e09fc",
+      "stop": "0x37e0a88"
+    },
+    {
+      "file": "original-pinned-metadata.txt",
+      "sha256": "a348947aa459d038f8b083ea695b444ba5b9e8272bbdc1f8d6a0c38edc226350",
+      "start": "0x460a634",
+      "stop": "0x460a740"
+    },
+    {
+      "file": "original-pinned-constructor.txt",
+      "sha256": "8c9062845416cca729c5348771ffb15f863142db28a13204492273e91692ba76",
+      "start": "0x4604e08",
+      "stop": "0x4604e78"
+    },
+    {
+      "file": "original-hot-scroll-role.txt",
+      "sha256": "d53d6ed9b7e77c8f569d2aa054d165ae1fa2e0a6164ae0c22e27a7be5a3aadc4",
+      "start": "0x37e0cd4",
+      "stop": "0x37e0d3c"
+    },
+    {
+      "file": "original-scroll-constructor.txt",
+      "sha256": "d992ee01b49c42a8ff8125649d0bf60e174e55d0542089f2158581a214beb19e",
+      "start": "0x42455c0",
+      "stop": "0x4245600"
+    },
+    {
+      "file": "original-bottom-spacer-roles.txt",
+      "sha256": "f9d9b604d913041fe3fe67960f9f7814423b78f24daecdeff6eb407455d6dc43",
+      "start": "0x37e4074",
+      "stop": "0x37e41d4"
+    },
+    {
+      "file": "original-live-borrow-slots.txt",
+      "sha256": "0e0e8573be5927aad6ac9b9d52b83877e48c06d179b8876e02f13499a758b1f9",
+      "start": "0x465823c",
+      "stop": "0x465841c"
+    }
+  ],
+  "existingAlgorithmPins": [
+    "native-profile-switch-owner/visual-source/source-pins.json",
+    "native-profile-switch-owner/preview-borrow.txt",
+    "native-profile-switch-owner/preview-restore.txt"
+  ],
+  "roleProof": {
+    "+6a8": "VerticalPinnedTabEntriesView: ctor4604e08 stores vtable e71f4b0; slot58 low36 bits at e71f508 is460a738; tailbranches460a634 metadata literaldecb673",
+    "+5b0": "VerticalTabStripScrollView: ctor42455c0 diagnostic literaldb10e77 and sourcefile literaldb10e92",
+    "+6f0": "VerticalTabStripBottomContainer: ctor3621bbc stores vtablee68bad0; slot58 low36bits is2db8d48; tail2db8d50 stores classname literaldb10d9f",
+    "+6f8": "stock bare views::View ctor136f140 called37e4180, assigned37e41d0",
+    "+478->+338": "PinnedTabContainerView: setter41278c0 validates actual metadata789e0f0/789e1b0 literalda9b94a before assigning sameview at4127938"
+  }
+}

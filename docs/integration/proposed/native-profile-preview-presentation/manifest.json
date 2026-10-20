@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "two new sources; requires existing aux_profile_switch_owner helper; no158 file mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc",
+      "baselineSha256": null,
+      "outputSha256": "0e6706f6daa312d85955c88194cf7e6ab19ffd693255db9695c249b6e1eea95a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.h",
+      "baselineSha256": null,
+      "outputSha256": "abef429ec02443f4a64a82b46548f8acfe46e75660fa891f324c461359f0b488"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiTriggerInstalled": false
+}

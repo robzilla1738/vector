@@ -1,0 +1,34 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 4604e08: a9bc5ff8     	stp	x24, x23, [sp, #-0x40]!
+ 4604e0c: a90157f6     	stp	x22, x21, [sp, #0x10]
+ 4604e10: a9024ff4     	stp	x20, x19, [sp, #0x20]
+ 4604e14: a9037bfd     	stp	x29, x30, [sp, #0x30]
+ 4604e18: 9100c3fd     	add	x29, sp, #0x30
+ 4604e1c: aa0303f4     	mov	x20, x3
+ 4604e20: aa0203f5     	mov	x21, x2
+ 4604e24: aa0103f6     	mov	x22, x1
+ 4604e28: aa0003f3     	mov	x19, x0
+ 4604e2c: 9735a8c5     	bl	0x136f140 <_ChromeMain+0x1369ea4>
+ 4604e30: 910c8008     	add	x8, x0, #0x320
+ 4604e34: 6f00e400     	movi.2d	v0, #0000000000000000
+ 4604e38: 3d80c800     	str	q0, [x0, #0x320]
+ 4604e3c: f9018c08     	str	x8, [x0, #0x318]
+ 4604e40: f00508c8     	adrp	x8, 0xe71f000 <dyld_stub_binder+0xe71f000>
+ 4604e44: 9112c108     	add	x8, x8, #0x4b0
+ 4604e48: 9110e109     	add	x9, x8, #0x438
+ 4604e4c: a9002408     	stp	x8, x9, [x0]
+ 4604e50: 91118109     	add	x9, x8, #0x460
+ 4604e54: f9000809     	str	x9, [x0, #0x10]
+ 4604e58: 91126109     	add	x9, x8, #0x498
+ 4604e5c: 9113210a     	add	x10, x8, #0x4c8
+ 4604e60: a906a809     	stp	x9, x10, [x0, #0x68]
+ 4604e64: 91146109     	add	x9, x8, #0x518
+ 4604e68: f9005809     	str	x9, [x0, #0xb0]
+ 4604e6c: 9115e109     	add	x9, x8, #0x578
+ 4604e70: f9006c09     	str	x9, [x0, #0xd8]
+ 4604e74: 9116a109     	add	x9, x8, #0x5a8
