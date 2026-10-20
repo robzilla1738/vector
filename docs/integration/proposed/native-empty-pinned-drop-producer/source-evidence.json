@@ -1,0 +1,54 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "drag839-producer",
+      "start": "0x465a3c0",
+      "stopExclusive": "0x465ab88",
+      "bytesSha256": "0768fa16c1ad3fe90208b352f84809d21a67ea5ad72f7af7c7e7810dfae4e768",
+      "asmSha256": "9825c020a5e7069b65c5b188a81a2ff2a547849bdc23d3d2ff5f9886a5e5e18c"
+    },
+    {
+      "name": "empty-pinned-drop-bounds",
+      "start": "0x464d3f0",
+      "stopExclusive": "0x464d4b0",
+      "bytesSha256": "bd36f9049f5f7c3f113e245ec567be358a888d39907df849e07b15676434076e",
+      "asmSha256": "2b3516974fdff1731f6442112772433430265ff43250d273946848f829ae9c26"
+    },
+    {
+      "name": "group-optional-proof",
+      "start": "0x4646654",
+      "stopExclusive": "0x4646f58",
+      "bytesSha256": "1aa71f18c9763bd4cb6438098740407082b4268d5b6b3310782833dee7fb1435",
+      "asmSha256": "814e8192b0166f601aefa9933806f00254da9b7e050b9c7549e905c997761dc3"
+    }
+  ],
+  "facts": {
+    "eligibility": "Actual attached active drag; nonempty drag data; no originally pinned entry or group-header; at least one real contents; all contents present in actual context model and ungrouped.",
+    "groupOptional": "465aa24 reads Tab+90, independently 4646654 uses Tab+80/+88 group ID and +90 engaged byte.",
+    "geometry": "Region screen x/width; outer-scroll screen top unless visible nonzero pinned bounds then pinned top-4; metric58+12 height.",
+    "ownership": "Region owns initialized-false latch839. Update only on changed predicate; RefreshAuxPinnedPresentation, invalidate layout and repaint body/region; clear on exit/retire and saved-target branch.",
+    "publication": "465a3d8 tests sourcef90; projection.is_publishing exposes the existing real refreshing_ guard."
+  },
+  "nativeApiPins": [
+    {
+      "path": "chrome/browser/ui/layout_constants.h",
+      "sha256": "c038059b2d21be16f1d83cdbd5b168303d77735918a5c66a51273cd0d39ed9df"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h",
+      "sha256": "9e1eaf01b73ecd898e326e864e390c059680ba1681afe253d9c6edca90dcbd35"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h",
+      "sha256": "67df15699a70bf61a8958448c115f9e9ac82d600c1d3103150164c51abac2929"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/dragging/drag_session_data.h",
+      "sha256": "6e59201b22d94fd2a636617d86ed76e683773ff89a1c036a163e547346e57da0"
+    }
+  ]
+}

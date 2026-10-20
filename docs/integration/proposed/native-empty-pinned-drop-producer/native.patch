@@ -1,0 +1,91 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_presentation.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_presentation.h
+@@ -5,6 +5,8 @@
+ #include "ui/views/view.h"
+ class PinnedTabContainerView;
+ class TabStripModel;
++class TabDragContext;
++namespace views { class ScrollView; }
+ class VerticalPinnedTabEntriesView;
+ namespace aux {
+ class ProfilePreviewAdmission;
+@@ -41,5 +43,14 @@
+     const PinnedTabContainerView&, const VerticalPinnedTabEntriesView*,
+     const ProfilePreviewAdmission&, int actual_region_width, bool source839);
+ void ApplyAuxPinnedPresentation(PinnedTabContainerView&, PinnedPresentation);
++// Original464d3f0 real screen rectangle; no capture or inferred profile state.
++gfx::Rect GetAuxEmptyPinnedDropBounds(const views::View& region, const views::ScrollView*,
++                                     const PinnedTabContainerView&);
++// Original465a3c0's +839 producer. Call from the real region's drag-target
++// query with its actual GetDragContext(), after the source publication guard
++// and saved-entry target branch. Clear the owned latch on drag exit/retire.
++bool CalculateAuxEmptyPinnedDropActive(TabDragContext*,
++    const PinnedTabContainerView&, const views::View& region, const views::ScrollView*,
++    const gfx::Point& point_in_screen);
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
+@@ -2,6 +2,10 @@
+ #include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/layout_constants.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_context.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
++#include "ui/views/controls/scroll_view.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+@@ -69,6 +73,41 @@
+   pinned.SetProperty(views::kMarginsKey,
+       state.visible ? gfx::Insets::TLBR(4, 8, 8, 8) : gfx::Insets());
+ }
++gfx::Rect GetAuxEmptyPinnedDropBounds(const views::View& region, const views::ScrollView* outer,
++                                     const PinnedTabContainerView& pinned) {
++  if (!outer) return {};
++  const auto bounds = region.GetBoundsInScreen();
++  const auto body = outer->GetBoundsInScreen();
++  int y = body.y();
++  if (pinned.GetVisible() && pinned.width() && pinned.height())
++    y = pinned.GetBoundsInScreen().y() - 4;
++  return gfx::Rect(bounds.x(), y, bounds.width(),
++      GetLayoutConstant(LayoutConstant::kVerticalTabPinnedHeight) + 12);
++}
++bool CalculateAuxEmptyPinnedDropActive(TabDragContext* context,
++    const PinnedTabContainerView& pinned, const views::View& region, const views::ScrollView* outer,
++    const gfx::Point& point) {
++  if (!context || !outer || !pinned.children().empty()) return false;
++  const auto* drag = context->GetDragController();
++  if (!drag || !drag->active() || drag->attached_context() != context) return false;
++  const auto& data = drag->GetSessionData();
++  if (data.tab_drag_data_.empty() || data.group_header_id()) return false;
++  auto* model = context->GetTabStripModel();
++  if (!model) return false;
++  bool found_contents = false;
++  for (const auto& entry : data.tab_drag_data_) {
++    if (entry.pinned) return false;
++    if (!entry.contents) continue;
++    const int index = model->GetIndexOfWebContents(entry.contents);
++    if (index == TabStripModel::kNoTab) return false;
++    const auto* tab = model->GetTabAtIndex(index);
++    // Original Tab+90 is the engaged byte of its group optional at+80,
++    // positively cross-checked against source4646654 group-ID decoding.
++    if (!tab || tab->GetGroup()) return false;
++    found_contents = true;
++  }
++  return found_contents && GetAuxEmptyPinnedDropBounds(region, outer, pinned).Contains(point);
++}
+ BEGIN_METADATA(AuxSectionDivider)
+ END_METADATA
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_sidebar_projection.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_projection.h
+@@ -42,6 +42,7 @@
+   void Start();
+   void Refresh();
+   void QueueRefresh();
++  bool is_publishing() const { return refreshing_; }
+   // Original b90/b92 lifecycle. Only the actual metadata transfer owner calls
+   // these; ordinary live state starts false as in the source constructor.
+   void BeginMetadataCapture();

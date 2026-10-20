@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "presentation helper86860b087 outputs + actual applied sidebar projection header",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.h",
+      "baselineSha256": "bfc0235a6c0816c8e8d05b9e72a3426119fe144a33bf6dcd6f169433d96c8b06",
+      "outputSha256": "7e0da12ed7cd2815c1b151dc8d5b1a0f5445cc4466f89ff44d928854f81f3e98"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "baselineSha256": "305d02d1dbd12e50226d2e1b6fc6b835b54c88470e1e635b95b85258e7cf45b1",
+      "outputSha256": "55b55a4d0e9fd0c0b9b5ba52cc6b3344a6303aec52ef6d8d091aa3c7d2d08a8a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_projection.h",
+      "baselineSha256": "4bccae33c047a07a7056af673b001c825664d2123673d54c5f471ab11ddb6003",
+      "outputSha256": "a6fb7c14dffb3b2b5c6d767aaf1e833405d51bd3d0e4d49ed5e85eb3cdb10264"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
