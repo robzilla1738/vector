@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "date": "2026-10-20",
+  "composition": "v524",
+  "status": "Built and launched; controls rendered and collapse verified; genuine hover check pending",
+  "build": {
+    "receipt": "out/native-integration/native-full-build-v524.json",
+    "sha256": "73698e24923e59a0e24614e1259622db25af526e5af3222f5ad164d55e0b5bff",
+    "passed": true
+  },
+  "sourceChanges": [
+    "native-sidebar-motion-lifecycle",
+    "native-bubble-theme-lifetime",
+    "provided-newtab-unavailable-controls"
+  ],
+  "referenceObserved": [
+    "Aside Ask row has composer/project/permission/model/reasoning/dictation controls",
+    "Aside collapsed sidebar completely hidden"
+  ],
+  "hoverToolLimitation": "CUA edge click does not trigger reference Aside hover; genuine pointer movement required",
+  "actualAiAvailable": false,
+  "fullParityAccepted": false,
+  "signingPerformed": false,
+  "ownerProfileCopied": false,
+  "runtimeObserved": [
+    "Original disconnected Ask row renders all six control categories",
+    "Account-dependent controls disabled with explicit unavailable status",
+    "Expanded then collapsed sidebar settles fully hidden without empty rail or extra control",
+    "Recovery notice dismissed without previous activation crash"
+  ],
+  "screenshots": "out/interaction-repair-pass/",
+  "package": {
+    "path": "out/provided-candidate-local-browser-pass/package.json",
+    "sha256": "a97f7e36165cf7bcf5cab5dc7292a8aa8310f4b1e465d62650231f9bcaa691b5"
+  },
+  "normalProfile": true
+}
