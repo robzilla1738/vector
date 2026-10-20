@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "applyAfter": "actual266; disjoint region267/sidebar268",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h",
+      "baselineSha256": "fe142f589d2640ab2268bcef3484a664f8036228298592e6c50dc5e4c3086ded",
+      "outputSha256": "3830bc48cb4b5ac8911c50f600f257ba95fc9182a4f3247e5fcfec3c03380366",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+      "baselineSha256": "6fe96a85d7c9492b0830032f30b025498a5b934480e0e71851447eec78b63f92",
+      "outputSha256": "4981451ecfa2745e8c7ceaedd5ba3e6b73659c347d81b55de7c7ee155cfcc02a",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

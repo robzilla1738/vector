@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor",
+      "rva": "0x3621b00",
+      "bytes": 2372,
+      "sha256": "70bbe785d89ece6663de931417996e311eec1162a7781205f253735e5bf9d62a",
+      "assemblySha256": "cb955d31da98aa011008bfa1febeb54a799084e1f81865984ab867449a50522d"
+    },
+    {
+      "name": "state-observers",
+      "rva": "0x4244d38",
+      "bytes": 2168,
+      "sha256": "64a58d7f98f6920a02563eec60344611e44bd701a4c3f5b9847add892b336849",
+      "assemblySha256": "8ea9f0b7ecb3f09c9e8822a28f4bc728a05548a979581c13b2951139ed3f9245"
+    },
+    {
+      "name": "sync-factory",
+      "rva": "0x21acfc0",
+      "bytes": 252,
+      "sha256": "fbcce38b7b3d92658d88fa47d144889f6a62000a0e2acec6257326dd144ee8e5",
+      "assemblySha256": "f456cd9624cf0a5e04fae18842e3d38310ddfda692386cf85bb6a6edb2178714"
+    },
+    {
+      "name": "sync-factory-name",
+      "rva": "0x21ad8ec",
+      "bytes": 76,
+      "sha256": "4cf910ea6d71f1adc3eedfc47bbc464df6c15e1a62d67bcf077280d6b41bbe60",
+      "assemblySha256": "be467bc8ece30cbb2bcfa183964e0684b1ebce72ed4efe96f6825671937fac50"
+    },
+    {
+      "name": "throbber-ctor",
+      "rva": "0xa6c7d3c",
+      "bytes": 140,
+      "sha256": "76a8ea18e5b0b75356b92b52270e758b5f672407b28c962bdf8dc3bfac9f2022",
+      "assemblySha256": "0ee2f4ab5bbd1fc9b6da2b585d65e867d8d6321438da7615ba0903f257d01669"
+    },
+    {
+      "name": "palette-250",
+      "rva": "0x35e8904",
+      "bytes": 20,
+      "sha256": "423bde2c09af89a5637842434548b690bb843729cc24d23a3f3dec38106638ae",
+      "assemblySha256": "02310facdfb1a8b8455c7b28b9310aae45fd5b34e51818810c159fad536303f5"
+    },
+    {
+      "name": "palette-221",
+      "rva": "0x35e730c",
+      "bytes": 24,
+      "sha256": "a12f8c07b2e6151d2770c7ca9521ae63447c6ab35c9471145edb1d282a3e2492",
+      "assemblySha256": "cd1641705cdb1ccdcfb92b3b2fd4ff52eb63ee6823118c308010c43c04953e83"
+    },
+    {
+      "name": "palette-215",
+      "rva": "0x35e6e40",
+      "bytes": 24,
+      "sha256": "4b11db24986f7e5ae1362f586a3effab9fdeffc748ae48899e3f66adf365ce94",
+      "assemblySha256": "f80af0a1a84e3f12b69b30056ce604e72b0d4cf729d135d15d4aae2b4522657d"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sync/service/sync_service.h",
+      "sha256": "7cd697d30bec4f10061d6f92a8c2d8802b50d55e8880dfd6de4d7e9c5c2611d7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sync/service/sync_service_observer.h",
+      "sha256": "bee5043b221ab1cc11afc1f932c3f110188083f3c02923fc5c68fabc3e8de8a3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sync/service/sync_service_impl.cc",
+      "sha256": "56fc3a94cc404b61a74a2d0b139e6ae4b8f451e5fe794db8dda80fddd630ffb1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sync/base/data_type.h",
+      "sha256": "0c5a343c16e108cfb490d9165dc4503193462abfaab3a55cbaad25e150ed2be3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sync/base/data_type.cc",
+      "sha256": "7285061b9ca9069c6125cac6aaa20749044436a1f01cbcea7e31ad0fbeee327b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sync/sync_service_factory.h",
+      "sha256": "f65aa016dd06e283ad066a61d55102d298811a7f0e576d0ef2f3d28ca572dc98"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/style/typography.h",
+      "sha256": "43064e26043d635390c1b5de3d6375a06a48c505c1b5996d94d818966bf0d7ab"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/layout/layout_types.h",
+      "sha256": "536d7fe94a4b3b4693964e71ffe1d958cff477474548c487a3e5cfd227ac2b73"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/label.cc",
+      "sha256": "c711357be49c05558cbe45f90d08551c0fc32476859dcea41ab89af670a513d7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/throbber.cc",
+      "sha256": "2ec6dee38b2ef5b91c3af4276badadfc84fdfcc6b2d9dae71fdaa27737c4ee87"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xcf06650",
+      "utf16": "Syncing..."
+    },
+    {
+      "rva": "0xdf7a18a",
+      "utf16": " ("
+    },
+    {
+      "rva": "0xdf7a190",
+      "utf16": ", "
+    },
+    {
+      "rva": "0xdf7a196",
+      "utf16": " +"
+    },
+    {
+      "rva": "0xdf7a19c",
+      "utf16": ")"
+    }
+  ]
+}
