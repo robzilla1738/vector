@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "base": "actual170 for InitState/core; renderer5e548e42d output for page header; two new metadata sources",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_profile_preview_data.cc",
+      "baselineSha256": null,
+      "outputSha256": "b85b44a318cd571e713f5ae37b0351c3264aa0c905e48dc1e9325a2164f2dd7c",
+      "baselineSource": null
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_preview_data.h",
+      "baselineSha256": null,
+      "outputSha256": "669265ae20ca103200234a3e9cee777e254be2b4ad841bf627d0617c30a7cc05",
+      "baselineSource": null
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "baselineSha256": "42807bc4a7abe8819837a3faa2b206b85b6d88823c0482fc666edbcd0a9bc8ea",
+      "outputSha256": "d2255880ec991240cbce4e70520b1d19146276d761a1bde240eccae6ed9fd72e",
+      "baselineSource": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_init_state.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.h",
+      "baselineSha256": "1bcd9b60d556fe29e101bbe22b93c852cf2206cb7c6f5af4af3d961138ae01fe",
+      "outputSha256": "8d9494689454d13dab0f11f2318254a86c2b27ee038e6bd5e9f061afe3ad754a",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-page/port/chrome/browser/ui/views/frame/aux_profile_preview_page.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "066113294d4fbf39cafec2549b45104abf819398b1890a8c1922d55834436f70",
+      "outputSha256": "67fa6f953b55b7db9ead3b39fac36628a649b2c6a0ad9fd3c0cf60e209b97595",
+      "baselineSource": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

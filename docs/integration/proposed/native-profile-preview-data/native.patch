@@ -1,0 +1,216 @@
+--- /dev/null
++++ b/chrome/browser/ui/aux_profile_preview_data.cc
+@@ -0,0 +1,91 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/aux_profile_preview_data.h"
++
++#include <algorithm>
++
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/browser_init_state.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/unload_controller.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++ProfilePreviewData CaptureProfilePreviewData(const TabStripModel& model) {
++  ProfilePreviewData result;
++  result.selected_index = std::max(model.active_index(), 0);
++  for (int i = 0; i < model.count(); ++i) {
++    auto* contents = model.GetWebContentsAt(i);
++    if (!contents) {
++      continue;
++    }
++    result.tabs.push_back({contents->GetTitle(),
++                           i == result.selected_index,
++                           model.IsTabPinned(i)});
++  }
++  return result;
++}
++
++ProfilePreviewData GetProfilePreviewData(
++    BrowserWindowInterface& source, const base::FilePath& target_path) {
++  if (target_path.empty()) {
++    return {};
++  }
++  auto* source_profile = source.GetProfile();
++  if (source_profile &&
++      source_profile->GetOriginalProfile()->GetPath() == target_path &&
++      source.GetTabStripModel()) {
++    return CaptureProfilePreviewData(*source.GetTabStripModel());
++  }
++  // Original2104368 names BrowserManagerService. Its ForEach visitor455e4ac
++  // checks actual window/profile/type, UnloadController and cache state.
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  auto* loaded = manager ? manager->GetProfileByPath(target_path) : nullptr;
++  if (loaded) {
++    ProfilePreviewData result;
++    auto* collection =
++        ProfileBrowserCollection::GetForProfile(loaded->GetOriginalProfile());
++    if (collection) {
++      collection->ForEach([&](BrowserWindowInterface* candidate) {
++          auto* init = candidate ? BrowserInitState::From(candidate) : nullptr;
++          auto* unload = candidate ? UnloadController::From(candidate) : nullptr;
++          if (!candidate || candidate == &source || !init || !unload ||
++              init->is_aux_profile_switch_cache() ||
++              unload->is_attempting_to_close_browser() ||
++              candidate->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++              !candidate->GetProfile() ||
++              candidate->GetProfile()->GetOriginalProfile()->GetPath() != target_path ||
++              !candidate->GetTabStripModel()) {
++            return true;
++          }
++          result = CaptureProfilePreviewData(*candidate->GetTabStripModel());
++          return result.tabs.empty();
++        });
++    }
++    if (!result.tabs.empty()) {
++      return result;
++    }
++  }
++  auto* cached = FindProfileSwitchWorkspace(&source, target_path);
++  auto* cache_init = cached ? BrowserInitState::From(cached) : nullptr;
++  if (cached && cached != &source && cache_init &&
++      cache_init->is_aux_profile_switch_cache() &&
++      cached->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      cached->GetTabStripModel()) {
++    auto result = CaptureProfilePreviewData(*cached->GetTabStripModel());
++    if (!result.tabs.empty()) {
++      return result;
++    }
++  }
++  if (const auto* init = BrowserInitState::From(&source)) {
++    if (const auto* saved = init->GetAuxProfilePreviewData(target_path)) {
++      return *saved;
++    }
++  }
++  return {};
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/aux_profile_preview_data.h
+@@ -0,0 +1,31 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_AUX_PROFILE_PREVIEW_DATA_H_
++#define CHROME_BROWSER_UI_AUX_PROFILE_PREVIEW_DATA_H_
++
++#include <string>
++#include <vector>
++
++#include "base/files/file_path.h"
++
++class BrowserWindowInterface;
++class TabStripModel;
++namespace aux {
++struct ProfilePreviewTabInfo {
++  std::u16string title;
++  bool active = false;
++  bool pinned = false;
++  bool operator==(const ProfilePreviewTabInfo&) const = default;
++};
++struct ProfilePreviewData {
++  std::vector<ProfilePreviewTabInfo> tabs;
++  int selected_index = 0;
++};
++
++// Original45589b0: genuine live title/active/pinned data only.
++ProfilePreviewData CaptureProfilePreviewData(const TabStripModel& model);
++// Original455ca00: active source, other real normal window, owned hidden cache,
++// then the source window's saved per-path metadata. Does not load a profile.
++ProfilePreviewData GetProfilePreviewData(BrowserWindowInterface& source,
++                                        const base::FilePath& target_path);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREVIEW_DATA_H_
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -10,9 +10,11 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <utility>
+ 
+ #include "base/files/file_path.h"
+ #include "base/types/pass_key.h"
++#include "chrome/browser/ui/aux_profile_preview_data.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "components/tab_groups/tab_group_id.h"
+ #include "ui/base/mojom/window_show_state.mojom.h"
+@@ -116,6 +118,18 @@
+   // profile keepalive, retained until this window's state is destroyed.
+   void KeepAuxProfileSwitchProfileAlive(Profile* profile);
+ 
++  // Original Browser+0xa8 per-path preview metadata, retained by this same
++  // window through actual in-place profile changes; never a process-global map.
++  void RememberAuxProfilePreviewData(const base::FilePath& path,
++                                    aux::ProfilePreviewData data) {
++    aux_profile_preview_data_.insert_or_assign(path, std::move(data));
++  }
++  const aux::ProfilePreviewData* GetAuxProfilePreviewData(
++      const base::FilePath& path) const {
++    auto found = aux_profile_preview_data_.find(path);
++    return found == aux_profile_preview_data_.end() ? nullptr : &found->second;
++  }
++
+   bool omit_from_session_restore() const { return omit_from_session_restore_; }
+   bool should_trigger_session_restore() const {
+     return should_trigger_session_restore_;
+@@ -131,6 +145,8 @@
+   const uint64_t aux_profile_switch_workspace_id_;
+   std::map<base::FilePath, std::unique_ptr<ScopedProfileKeepAlive>>
+       aux_profile_switch_keep_alives_;
++
++  std::map<base::FilePath, aux::ProfilePreviewData> aux_profile_preview_data_;
+ 
+   // Whether this Browser should be omitted from being saved/restored by session
+   // restore.
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_page.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_page.h
+@@ -6,6 +6,7 @@
+ #include <vector>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "chrome/browser/ui/aux_profile_preview_data.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/gfx/image/image_skia.h"
+@@ -20,12 +21,7 @@
+ namespace aux {
+ class ProfileSearchButton;
+ 
+-struct ProfilePreviewTab {
+-  std::u16string title;
+-  bool active = false;
+-  bool pinned = false;
+-  bool operator==(const ProfilePreviewTab&) const = default;
+-};
++using ProfilePreviewTab = ProfilePreviewTabInfo;
+ 
+ // Real supplied page renderer (ProfilePagePreviewPageView, original467dc80).
+ // Data is supplied by the actual profile/session producer; this view never
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -218,6 +218,19 @@
+   scope.custom_started = true;
+   std::move(bindings->begin_).Run(browser, old_cache, next_cache);
+ 
++  // Supplied455b3d4/455b61c snapshot the actual two live models before
++  // ownership moves, preserving same-window per-profile fallback metadata.
++  auto* preview_state = BrowserInitState::From(&browser);
++  CHECK(preview_state);
++  preview_state->RememberAuxProfilePreviewData(
++      previous->GetPath(),
++      CaptureProfilePreviewData(*browser.GetTabStripModel()));
++  auto* target_preview_state = BrowserInitState::From(&next_cache);
++  CHECK(target_preview_state);
++  target_preview_state->RememberAuxProfilePreviewData(
++      target->GetPath(),
++      CaptureProfilePreviewData(*next_cache.GetTabStripModel()));
++
+   auto source_tabs = ProfileSwitchTabCollection::Take(
+       browser, base::PassKey<ProfileSwitchTransaction>());
+   if (!source_tabs) {

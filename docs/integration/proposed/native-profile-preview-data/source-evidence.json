@@ -1,0 +1,71 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "capture.asm",
+      "start": "0x45589b0",
+      "stop": "0x4558afc",
+      "bytesSha256": "60efe95be499c887d9c30896372555047e8eafab36f095c4f7382ddbb6af86a1",
+      "extractSha256": "63356b6aa77e978d547278f57a2ae053fa0cc71e33e652c4de751f72d1a5e2ce"
+    },
+    {
+      "file": "lookup.asm",
+      "start": "0x455ca00",
+      "stop": "0x455cf34",
+      "bytesSha256": "b2c85d73b786eb6b84731d23cc7afcc73f0aa86f4fc3793ec56ab5f8e8fead41",
+      "extractSha256": "6d8b295c0c985bc4dc36913d9a701ddc8a88e9b36ae732033a2b9dedce454acc"
+    },
+    {
+      "file": "actual-window-visitor.asm",
+      "start": "0x455e4ac",
+      "stop": "0x455e6b4",
+      "bytesSha256": "a880dd5246f38d43eb11763c309766a37f30d0418610cefe1ea6cdc3102914e6",
+      "extractSha256": "0ccb67a63593a317455a0bdb241b6bdb15f3cc5c10e6dd58616149a9612e66b2"
+    },
+    {
+      "file": "source-write.asm",
+      "start": "0x455b3d4",
+      "stop": "0x455b4b0",
+      "bytesSha256": "aba80b21603f9f98b93e6fb689bc2ca737ad14fcaadcbab66431a1a6fac86bd0",
+      "extractSha256": "9ee4ddbd4388ab7f6d9c677299d2e1ffad39ad67445256cadb6f5c9c0c911cef"
+    },
+    {
+      "file": "cache-write.asm",
+      "start": "0x455b610",
+      "stop": "0x455b6c0",
+      "bytesSha256": "22baa94478fd6cdcc7402fee4eb1301e40c8c0fc642189b14642a70bf1261862",
+      "extractSha256": "11438d2300e5fa88c780983775a1a65d81dc7fc6884c7ce6e89cf66d003eae5b"
+    },
+    {
+      "file": "factory-identity.asm",
+      "start": "0x2104368",
+      "stop": "0x2104424",
+      "bytesSha256": "2b44ca9a60c49ca729c780bc7cd4eb256226214e2d497af461363b6b205b2e53",
+      "extractSha256": "47866ea4cc586e19f50cf1e1899d47c1c3045f5c6cf593dd15dd8dea1551136a"
+    },
+    {
+      "file": "actual-tab-title.asm",
+      "start": "0x7d4c4e4",
+      "stop": "0x7d4c544",
+      "bytesSha256": "7bd44baa26e978c567f143b39a6dd5cbff5965442e466ff2b88a0381d00c6f26",
+      "extractSha256": "4e7ac0d841386c2c6ee5418cecbe50902f7c0b4b9ac8c319a780c5143eadfdb4"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xdec5965",
+      "value": "BrowserManagerService"
+    },
+    {
+      "rva": "0xdec5eb6",
+      "value": "UnloadController::kDataKeyImpl"
+    }
+  ],
+  "limits": [
+    "Original transient detached-collection map traversal has no separate155 storage in current transaction; actual hidden workspace owns those same live collections. Metadata fallback restored separately.",
+    "No owner/gesture trigger installed by this slice.",
+    "No compile/runtime/UI acceptance."
+  ]
+}
