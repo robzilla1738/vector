@@ -1,0 +1,10 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.mm
+@@ -42,6 +42,7 @@
+ @end
+ 
+ @implementation AuxChromiumSourceProfilePickerController
++@synthesize popover = _popover;
+ - (instancetype)initWithBrowserName:(std::u16string)browser_name
+                           profiles:(base::ListValue)profiles
+                         onSelected:(base::OnceCallback<void(base::DictValue)>)selected {

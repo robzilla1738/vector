@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.mm",
+      "baselineSha256": "b6075fb330ec47c3298ac8a47b0e7bb34a90fe42f5185e7b5533a94db18ae5af",
+      "outputSha256": "27f2518b9d3292048a9c091ad258ae72a5e3932b6e67339ff9c82659cc1cb328",
+      "anchors": [
+        {
+          "find": "@implementation AuxChromiumSourceProfilePickerController\n",
+          "replace": "@implementation AuxChromiumSourceProfilePickerController\n@synthesize popover = _popover;\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

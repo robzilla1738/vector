@@ -513,6 +513,7 @@ steps.extend([
     ('native-import-window-lifecycle-bindings/native.patch', 'native-import-window-lifecycle-bindings/manifest.json'),
     ('native-import-coordinator-build/native.patch', 'native-import-coordinator-build/manifest.json'),
     ('native-import-coordinator-build-labels/native.patch', 'native-import-coordinator-build-labels/manifest.json'),
+    ('native-source-picker-explicit-synthesis/native.patch', 'native-source-picker-explicit-synthesis/manifest.json'),
 ])
 
 if options.through:

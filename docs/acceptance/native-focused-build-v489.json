@@ -1,0 +1,57 @@
+{
+  "composition": "v489",
+  "compositionSha256": "37fa58532a7637cae06e5eb66e05f132447f6d780c7739f87c39acde69b606b5",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "gnCommand": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/gn",
+    "gen",
+    "out/AuxFast"
+  ],
+  "gnExitCode": 0,
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_clone_worker.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_clone_photo_mac.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_new_target_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_source_capture.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/source_profile_picker_mac.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/source_crypto_mac.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_clone_worker.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_clone_photo_mac.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_new_target_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/chromium_source_capture.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/source_profile_picker_mac.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/source_crypto_mac.o"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 9.829785108566284,
+  "totalElapsedSeconds": 9.829795122146606,
+  "runtimeAcceptance": false,
+  "gnComposition": "v488",
+  "precedingCompile": {
+    "composition": "v488",
+    "exitCode": 1,
+    "passedObjects": 9,
+    "failure": "source_profile_picker_mac.mm explicit weak popover synthesis required"
+  }
+}
