@@ -1,0 +1,46 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_strip_view.cc
+@@ -601,6 +601,43 @@
+ }
+ 
+ bool TabStripView::IsPositionInWindowCaption(const gfx::Point& point) {
++  if (external_scroll_mode_) {
++    // Supplied external mode puts the genuine unpinned container directly here
++    // and the live pinned container under the actual region. Neither is one of
++    // 155's ScrollView children; the generic non-scroll fallback is caption.
++    const auto hit = [this, &point](const views::View* view) {
++      if (!view || !view->GetVisible())
++        return false;
++      gfx::Point local = point;
++      ConvertPointToTarget(this, view, &local);
++      return view->HitTestPoint(local);
++    };
++    if (pinned_tabs_container_view_ &&
++        (pinned_tabs_container_view_->parent() == this ||
++         (external_pinned_parent_ && external_pinned_parent_->Contains(this) &&
++          pinned_tabs_container_view_->parent() == external_pinned_parent_)) &&
++        hit(pinned_tabs_container_view_)) {
++      return false;
++    }
++    // Preserve the actual shared viewport's clip. Offscreen direct contents
++    // must not turn a header/profile point into a hit on an invisible tab.
++    bool inside_viewport = true;
++    if (external_scroll_view_) {
++      inside_viewport =
++          external_scroll_view_->Contains(this) && hit(external_scroll_view_);
++      if (inside_viewport) {
++        auto* bar = external_scroll_view_->vertical_scroll_bar();
++        if (bar && hit(bar))
++          return false;
++      }
++    }
++    if (inside_viewport && unpinned_tabs_container_view_ &&
++        unpinned_tabs_container_view_->parent() == this &&
++        hit(unpinned_tabs_container_view_)) {
++      return false;
++    }
++  }
++
+   for (views::View* child : children()) {
+     if (!child->GetVisible()) {
+       continue;

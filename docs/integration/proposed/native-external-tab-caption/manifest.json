@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "actual native external-scroll mount; single current TabStripView.cc exact baseline",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "baselineSha256": "a39b439425885b1e78e0f8b2b3f6e08e42b2d14fa95da8c6a89bc490b02b5077",
+      "outputSha256": "3dcfec9432aa4601729998fb61a169ffef291f6180047b5c92659e7aef1b26b4",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,75 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "focus-not-caption",
+      "rva": "0x41294a0",
+      "bytes": 392,
+      "sha256": "0fc1fae34b8ec25fc0eee4ce26f4ee993f81c25e3088aafbd48631a0b858eeec",
+      "assemblySha256": "693bd44b53fbcac6121cbdfecc8b9584569509cb5e1f8b0f12a6d800d83ca9a6"
+    },
+    {
+      "name": "original-external-mode",
+      "rva": "0x4129628",
+      "bytes": 648,
+      "sha256": "06a7d079fdd2fcc19447188f190a239d0388f32f640157b9dcbc3baa0071bb34",
+      "assemblySha256": "8fc8ab3e426336b921786530da7a17cfd06739349d110b3d200acb1bce62b212"
+    },
+    {
+      "name": "original-direct-unpinned",
+      "rva": "0x41277dc",
+      "bytes": 1112,
+      "sha256": "976cc1f569ac19033f7e84b03af94df6fd593d184cab0b621abf3d16388cf445",
+      "assemblySha256": "a56649ef9745ee01262fd27dac8c2eb7f3ba22e23fc53669ae5b8570ef6c3013"
+    },
+    {
+      "name": "original-region-mount",
+      "rva": "0x464ccfc",
+      "bytes": 1780,
+      "sha256": "10626faf61a3f719d49eff03243815721c136af373828042240f523501859ef8",
+      "assemblySha256": "9d0f4de0f32a89b7ba4aa92ba456fe2b7d3710974503ce887632b677d184a315"
+    }
+  ],
+  "apiInputs": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "sha256": "3603d527a821578114159770cea8ba89a0252dc27f0c9b935dae4326e8f1771a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "65b1d3f71de4675be008418a05f837d4f1ea7c4dbccb746e3b53408b7fa6fd7e"
+    },
+    {
+      "path": "ui/views/view.cc",
+      "snapshotPath": "evidence/api/ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "ui/views/view.h",
+      "snapshotPath": "evidence/api/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/controls/scroll_view.h",
+      "snapshotPath": "evidence/api/ui/views/controls/scroll_view.h",
+      "sha256": "3ee51f79a7460c78fc34f35f49d2d68fa32f402f771ffb24b58df8a4a58eab8b"
+    },
+    {
+      "path": "ui/views/controls/scrollbar/scroll_bar.h",
+      "snapshotPath": "evidence/api/ui/views/controls/scrollbar/scroll_bar.h",
+      "sha256": "d346c4160418622bc6fac80e050d1f28edb4a11b1352a6a3461a0e9809db6d3a"
+    }
+  ],
+  "authority": "155 structural integration adaptation to the proven supplied external topology; original caption method not identified",
+  "providedUpstreamPolicy": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+    "snapshotPath": "evidence/provided-upstream-region.cc",
+    "sha256": "653eedd1314d18fdfaacb6c96b1637d49dd55919211b59aead2bd129a9f90f37",
+    "classification": "owner-provided upstream source; not asserted to equal shipped fork caption bytes"
+  }
+}
