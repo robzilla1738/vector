@@ -1,0 +1,23 @@
+{
+  "composition": "v268",
+  "exitCode": 0,
+  "elapsedSeconds": 36.043041944503784,
+  "targets": {
+    "sidebar_avatar": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "region_footer_retirement": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserOrUIAccepted": false
+}

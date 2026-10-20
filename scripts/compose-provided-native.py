@@ -293,6 +293,12 @@ steps.extend([
     ('native-primary-bookmarks-menu/native.patch', 'native-primary-bookmarks-menu/manifest.json'),
     ('native-primary-menu-api155/native.patch', 'native-primary-menu-api155/manifest.json'),
     ('native-ntp-override-probe-identity/native.patch', 'native-ntp-override-probe-identity/manifest.json'),
+    ('native-primary-profile-avatar/native.patch', 'native-primary-profile-avatar/manifest.json'),
+    ('native-retire-independent-profile-footer/native.patch', 'native-retire-independent-profile-footer/manifest.json'),
+    ('native-primary-avatar-api155/native.patch', 'native-primary-avatar-api155/manifest.json'),
+    ('native-adblock-optional-update/native.patch', 'native-adblock-optional-update/manifest.json'),
+    ('native-bottom-sync-owner/native.patch', 'native-bottom-sync-owner/manifest.json'),
+    ('native-bottom-sync-shadow/native.patch', 'native-bottom-sync-shadow/manifest.json'),
 ])
 
 if options.through:

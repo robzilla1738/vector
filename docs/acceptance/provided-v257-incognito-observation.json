@@ -1,0 +1,40 @@
+{
+  "browserPid": 72990,
+  "launcherPid": 72988,
+  "guardianPid": 72989,
+  "daemonPid": 73003,
+  "mode": "incognito",
+  "browserArguments": [
+    "--incognito",
+    "about:blank"
+  ],
+  "temporary": true,
+  "nativeAcceptanceFlagsChanged": false,
+  "health": {
+    "service": "aside-daemon",
+    "ready": true,
+    "version": "1.26.1016.1852",
+    "pid": 73003
+  },
+  "windowEvidence": "out/native-integration/v257-incognito-owned-windows.json",
+  "screenshot": "out/native-integration/v257-incognito-window.png",
+  "screenshotSha256": "f2ac5cb4a6e5c073f21f2309776a999a1e9372510a17f387140e7cf3c0b584f8",
+  "observation": "Genuine OTR frame opens; independent legacy sidebar body and footer visible in this v257 snapshot. Later source removal not yet packaged.",
+  "normalProfileOrUIParityAccepted": false,
+  "stopVerification": {
+    "utc": "2026-10-20T04:35:11.741487+00:00",
+    "knownPids": {
+      "72988": "absent",
+      "72989": "absent",
+      "72990": "absent",
+      "73003": "absent"
+    },
+    "ports": {
+      "21520": "clear",
+      "21522": "clear",
+      "45203": "clear"
+    },
+    "temporaryStateRetained": true,
+    "detachedDescendantsFullyProven": false
+  }
+}

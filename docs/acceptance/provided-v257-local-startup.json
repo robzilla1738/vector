@@ -70,5 +70,11 @@
     },
     "launcherExitCode": 130,
     "temporaryStateRetained": true
+  },
+  "staticFollowup": {
+    "sourceDiagnosis": "docs/integration/proposed/native-helper-availability-v257/README.md",
+    "firstRefusal": "Original-native execution acceptance gate, before guard/addon/key access",
+    "keyAbsenceOrSigningRequirementProven": false,
+    "acceptanceFlagsChanged": false
   }
 }
