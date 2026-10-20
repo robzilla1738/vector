@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "applyAfter": "Root native201 actual profile-switch producer sources; independent root sidebar profile renderer209 required before controller mount",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc",
+      "baselineSha256": null,
+      "outputSha256": "221937f8a9ee28b867a591b209d69417a13e27bfe83482f3602f6a175489624e",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.h",
+      "baselineSha256": null,
+      "outputSha256": "9bbfb0e90da6d9d60c701590e8213f9ac4278b91b53d288a7f6cd7fb7e2a5964",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button.cc",
+      "baselineSha256": "d8d4aadb03d9924f1f2d5649de9ba15fd622a04177bba9d53f0ebeae5c87bfdf",
+      "outputSha256": "0771775c06fec7f7851fa10966bee031066af283db7a7f3eec26a758e9b3b3f4",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc",
+      "baselineSha256": "78946b4d84c9537e48377fa35422dee0ebbd98d80227ec67315a442ea4f71c1d",
+      "outputSha256": "40b0d1844648b3e1c251e0a91a7f55eaa1df2529661f39b28287f2b5b18cf7e8",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h",
+      "baselineSha256": "10426520b36647e136a1f56dbd15335366911be721cf5f2ebce511606ffd8515",
+      "outputSha256": "5c72c50378f81e04e49a0869f58ec0fd127ee68a27296b72cd3d28c1f162ff5e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h",
+      "baselineSha256": "ad87eecb9093215546d0163b03c83f76d9a68a854a9529b920360dc00f269d63",
+      "outputSha256": "8854999b3d7201000e4d9ada0b9676c1b9c51103b692a654e3c42a63284a5110",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "registration": [
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.h"
+  ],
+  "remainingGaps": [
+    "Actual mount and focused Chromium155 compilation pending integrator",
+    "Actual registered aside.account_auth_paused producer not established; missing registration reports false and is not fabricated",
+    "Controller RefreshNow must be called after genuine completed toolbar/profile rebind"
+  ]
+}

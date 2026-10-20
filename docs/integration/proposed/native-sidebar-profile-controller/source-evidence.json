@@ -1,0 +1,123 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-constructor",
+      "rva": "0x465c5f0",
+      "bytes": 4592,
+      "sha256": "3308440cbbcdb610be523db04c8ac96d3242d891ff6fbd72bf74a6c5a4d24760"
+    },
+    {
+      "name": "original-name-and-pref",
+      "rva": "0x465dab8",
+      "bytes": 1540,
+      "sha256": "fd9270a73533c3137f448d99529dc06b532a2414b4200097baa767aa1b12dddc"
+    },
+    {
+      "name": "original-observer-vtables-and-thunks",
+      "rva": "0x465ee6c",
+      "bytes": 1972,
+      "sha256": "3060cbc993dc6e457428e10117346e71f911ae592e7c2fd715c190727e849145"
+    },
+    {
+      "name": "original-coalesced-sync-and-avatar",
+      "rva": "0x465f620",
+      "bytes": 1440,
+      "sha256": "75ddde63c953441abaa1f55a12cd4d5afb809a3245de99514c2914e09bb3b950"
+    },
+    {
+      "name": "original-avatar-destructor",
+      "rva": "0x2fdc570",
+      "bytes": 424,
+      "sha256": "1f7f2af9fbd9eb85a7ed1abb73c37f55adfecce98cb5152b77734b642769e1f5"
+    },
+    {
+      "name": "original-avatar-rebind",
+      "rva": "0x423f6b0",
+      "bytes": 104,
+      "sha256": "41dc39fe247ff38aa459b1e7eb5483975df42119317452d66aefbda99839c62e"
+    },
+    {
+      "name": "original-avatar-icon-notification",
+      "rva": "0x423fa70",
+      "bytes": 72,
+      "sha256": "e8392697133a50dc70b7d23cae599deee99783a6d870c5fb202612ad1d954caf"
+    },
+    {
+      "name": "original-avatar-text-notification",
+      "rva": "0x3613940",
+      "bytes": 748,
+      "sha256": "23f612388c68ee8c08df632f8c0e00e7ff96426696c810dfa315b120377ce9a8"
+    },
+    {
+      "name": "original-image-model-resize",
+      "rva": "0x7ad3088",
+      "bytes": 320,
+      "sha256": "7e9faf4182ead77038661bd9c1c3dbdcafa0f23a8e8607773f20d00938d91100"
+    },
+    {
+      "name": "original-avatar-name-fallback",
+      "rva": "0x220801c",
+      "bytes": 740,
+      "sha256": "0da59845b9f8316bb90035bda1a086803e48c9dcbc01b891884d516cf1dfb8dd"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "sha256": "65283ec7a47aa7b75d17529f1da0b606481132b54da440d967c1ccbfcf6916dd"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "sha256": "5c444edaed9dfce7c63ba24441649595c6037ae87b5c1c4a693dfa793e716105"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button.h",
+      "sha256": "442665264c02e070c74e916b3bb15c5857d36e7a6e9ec69ea3991e300c070ebd"
+    },
+    {
+      "path": "chrome/browser/profiles/profiles_state.cc",
+      "sha256": "86ba0f9f132e5e0a1ddb66d89ef713262428ba8f24ed89902f3dbb0c119cc83d"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "sha256": "e7ee344afa32713a03236ee7b02bcaff8e0eba44490549ee1e1aaa872d68804b"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage_observer.h",
+      "sha256": "94ec482031460ac7b21da38ba5978906a293444f9a89d957462b066ec05ef74c"
+    },
+    {
+      "path": "ui/views/controls/button/label_button.cc",
+      "sha256": "5c0a697253b35f26acb629d62338a22dfd1ebb71c37368d4be959b9f0ac01ff8"
+    },
+    {
+      "path": "ui/views/view_observer.h",
+      "sha256": "e86499051d444fe97629f167b179ca508f44d41e7315432539b8e74e9535a76e"
+    },
+    {
+      "path": "ui/base/models/image_model.h",
+      "sha256": "2b0235eb40af265bafd34d1839f3cb67eb40fec84f781a856184ea1792efda5f"
+    },
+    {
+      "path": "components/prefs/pref_change_registrar.h",
+      "sha256": "4a0f8d27a8ef8165c033341ff6bc8d81386a26d52a67078885cf72b9ce2a2e01"
+    },
+    {
+      "path": "skia/ext/image_operations.h",
+      "sha256": "6ea25f21cb224a47a9ad80c94656f61deedaf9cea771a4f561d9dc81239c5320"
+    }
+  ],
+  "rootRenderer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-sidebar-profile-button/port/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h",
+    "sha256": "933d4670de8453a64f45f41ad7efe2d93e983668abde871c8e9731d1d755d319"
+  },
+  "rawMeaningCorrections": [
+    "465f038 GetWidget return x0 is checked;465f130 stores x20 actual AvatarToolbarButton, not returned Widget",
+    "profilevirtual150 is const original Profile; profilevirtual30 returns full original-profile FilePath;220801c is profiles::GetAvatarNameForProfile, not basename formatting",
+    "observer source-invalidating slot10 emitted BOTH original destructor2fdc604 and actual original profile-rebind423f6e0"
+  ]
+}
