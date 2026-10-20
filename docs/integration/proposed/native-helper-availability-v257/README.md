@@ -1,0 +1,32 @@
+# V257 packaged helper availability: source diagnosis
+
+Source-only follow-up to root's real disposable 900×560 error observation. The log reports `[Installation] native helper unavailable` and `Installation signing key missing or unsafe`; actual UI says “Unable to resolve Chromium profile account.” Root reports the run stopped, its owned PIDs absent and Aux ports clear. This audit did not launch anything, inspect processes, read any home/profile/key/credential, call a helper/auth/OS API, sign or provision anything. It inspected only code, generated package files and the specified observation records.
+
+## Concrete chain
+
+1. Actual `launch-v257-disposable.py` removes inherited `DYLD_`, `ASIDE_` and `AUX_` variables, then invokes the normal launcher with its disposable profile/candidate. Its receipt explicitly records `runtimeAcceptanceFlagsRemoved:true`. `scripts/aux.mjs` supplies isolated home/ports/runtime paths and `--use-mock-keychain`; it does not manufacture native runtime acceptance.
+2. The packaged bundle marks `daemonRuntime:'provided-node-development'`. Native supervisor therefore executes the unchanged bundled Node with actual generated original daemon JS, the fixed boundary dylib insertion and the ordinary isolated environment. This is not a replacement daemon or a successful auth claim.
+3. Actual generated daemon `candidateBindingPaths()` selects only its real app-relative `Resources/native/aux-native.cjs`. Its `assets.mjs` derives `daemonResources` from actual `node-development` location; the resulting path matches the packaged wrapper. No stale `process.execPath` resource lookup is involved here.
+4. That exact wrapper checks runtime acceptance **before** canonical-home/guard/original-addon loading. With no acceptance value it throws `Provided native execution has not been accepted`. Original `loadBinding()` catches that require error, caches `binding=null` and returns false from `isNativeHelperBindingAvailable()`. `ensureInstallationKey()` then emits the observed generic helper-unavailable warning and returns false **before** `install-status` or `install-init`. This observed warning is not proof that a helper file is absent or a stored key is missing.
+5. Separately, native `SignDaemonChallenge()` validates the actual challenge/domain and calls `RunCarrier`. `RunCarrier` first checks the existing acceptance value; absent acceptance returns null **before** bundle resolution, carrier file selection, canonical-home checks, launch or native command invocation. Supervisor `DidSignChallenge()` maps any null signature to its generic “Installation signing key missing or unsafe” message. That wording does not identify a key-file/Keychain failure and does not prove that any key lookup occurred. The legacy `LoadInstallationPrivateKey()` intentionally returns null and is not the active challenge-signing path; restoring independent PEM files would be a different authority, not a fix.
+6. Agent's real account query needs its own genuine local challenge signature and `AsideDaemonSessionToken`; native extension signing uses the same active signer. Thus real account resolution fails, and the supplied router renders its actual error. Health readiness is separate and does not unlock this boundary.
+
+The absence of acceptance in this particular launch is directly supported by its launcher source/receipt, not inferred by reading a live environment. Generic logs alone could have other causes in another run; later boundary/OS checks remain unexercised here.
+
+## Static packaging checks
+
+The actual candidate root is `out/provided-candidate-v257-local/Aux.app/Contents/Resources/aux`. Its valid supplied bundle omits `nativeCarrierLayout`, so native correctly selects historical fixed `native/aux-native-carrier`. That file exists as a regular 755 file, matching the package addition hash. Absence of the optional profile-bundle path is expected for this package, not a missing-file defect.
+
+The fixed boundary dylib and guard are regular 755 files and match package addition hashes. The wrapper/role-pin files are regular 644; the immutable original daemon binding is regular 600 with exact daemon role hash `bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb`. The actual fixed native directory has the required role suffix. These static permission/hash/path checks pass the corresponding file-level prerequisites. They do not prove dynamic loading, query interposition, stored authority, successful signing or any OS entitlement.
+
+No concrete helper packaging, path, role-hash or Node resource-base mismatch was found in this bounded chain. The selected path and intentional early refusals explain the observed behavior without hypothesizing a missing private key. Consequently **no native/launcher/package code patch is proposed**.
+
+## Existing unsigned local paths and their limits
+
+The current unsigned local path legitimately starts the supplied daemon/health and exposes the real native/Agent loading/error surface. It does not provide authority-free successful original authentication. Existing load-only mode deliberately refuses `run`/PDF; carrier boundary/load verification proves registration only, not signing. Neither is a legitimate login continuation.
+
+Chrome's `--use-mock-keychain` is passed to Chromium. It does not turn the separate original Node addon/carrier Security calls into Chrome mock storage. The query boundary preserves original data-protection/enclave/access-control semantics and requires genuine isolated scope; it does not synthesize authority or success. Original software-P256 versus enclave/PQ branches are not a documented no-storage/no-authority local-login option.
+
+This finding does **not** recommend restoring an acceptance variable, enabling load-only as runtime auth, creating a flag, reading/initializing authority, changing Keychain, signing/provisioning or replacing cryptography. Those are not source fixes for a proven packaging defect and are outside current development scope. Preserve the real failure. UI fidelity work and root's actual observation can continue; a decision about any further genuine account/auth input belongs to the owner/root, not a fabricated local completion path.
+
+`source-evidence.json` pins current sources, candidate file metadata, exact package addition matches and bounded original-daemon/diagnostic anchors. Source/check evidence is distinct from root's runtime observation. No new runtime acceptance is claimed.

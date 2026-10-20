@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "scope": "Source/static generated candidate + specified launch log/receipt only; no home/profile/key/credential reads or runtime/helper/auth/Keychain/signing operations.",
+  "sourceRecords": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/launch-v257-disposable.py",
+      "sha256": "14f5c937c8f3ef5d98ed102b36cecd6a30adcebd0b33d80fae0b14de7d7ff20b",
+      "anchors": [
+        {
+          "find": "not k.startswith(('DYLD_','ASIDE_','AUX_'))",
+          "count": 1,
+          "byteOffset": 185,
+          "anchor": "n/v257-browser-disposable-launch.log';env={k:v for k,v in os.environ.items() if not k.startswith(('DYLD_','ASIDE_','AUX_'))};fd=os.open(log,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)\nwith os.fdopen(fd,'w') as output:\n child=subprocess.Popen(['node',str(root/'scripts/aux.mjs'),'--temp-profile','--app',str("
+        },
+        {
+          "find": "runtimeAcceptanceFlagsRemoved",
+          "count": 1,
+          "byteOffset": 688,
+          "anchor": "vided-candidate-v257-local/Aux.app'),'log':str(log),'temporary':True,'runtimeAcceptanceFlagsRemoved':True},indent=2)+'\\n');print('Owned disposable launche"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/aux.mjs",
+      "sha256": "d756f7475e751633aedc38d435e1658aea5e191ccc213cf88506f3ddf49b64ea",
+      "anchors": [
+        {
+          "find": "const env = { ...process.env",
+          "count": 1,
+          "byteOffset": 5512,
+          "anchor": "const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),\n  AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,\n  AUX_BROWSER_CDP_HOST: '127.0.0.1:45203',\n  AUX_AGENT_RUNTIME_DIR: join(home, 'runtime'),\n  AUX_COMPUTER_USE_SOURCE_APP: join(resources, 'apps/computer-use/Aux Computer Use.app'),\n  AUX_HELPER_PATH: join(resources, 'apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use') };\nif (options.noBrowser) {\n  const boundary = join(resources, 'native/libaux-native-boundary.dylib');\n  const stat = await lstat(boundary);\n  if (stopping) return;\n  const canonicalBoundary = await realpath(boundary);\n  if (stopping) return;\n  if (!stat.isFile() || sta"
+        },
+        {
+          "find": "await start(executable, [",
+          "count": 1,
+          "byteOffset": 8100,
+          "anchor": "await start(executable, [\n    `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain',\n    ...browserArgs,\n  ], env);\n}\n\n}\nawait main();\n"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc",
+      "sha256": "8116f2d0d23b5b7f8441eb4f909edbce38c2cc705ff6e6f812f6805efd39e5dd",
+      "anchors": [
+        {
+          "find": "if (env->GetVar(\"AUX_ENABLE_PROVIDED_NATIVE_CARRIER\") != \"1\")",
+          "count": 1,
+          "byteOffset": 2403,
+          "anchor": "ternally reviewed runtime acceptance gate, not an\n  // automatically manufactured approval or fallback to independent PEM keys.\n  if (env->GetVar(\"AUX_ENABLE_PROVIDED_NATIVE_CARRIER\") != \"1\")\n    return std::nullopt;\n  auto paths = BundlePaths::FromBrowserExecutable();\n  if (!paths)\n    return std::nullopt;\n  const auto root = base::MakeAbsoluteFilePath(paths->root);\n  const auto canonical_home = base::MakeAbsoluteFilePath(home);\n  if (!home.IsAbs"
+        },
+        {
+          "find": "std::string_view carrier_relative",
+          "count": 1,
+          "byteOffset": 3421,
+          "anchor": "std::string_view carrier_relative = \"native/aux-native-carrier\";\n  const auto metadata_path = paths->root.AppendASCII(\"bundle.json\");\n  base::File metadata(metadata_path, base::File::FLAG_OPEN | base::File::FLAG_READ);\n  if (!metadata.IsValid()) {\n    if (metadata.error_details() != base::File::FILE_ERROR_NOT_FOUND ||\n        base::IsLink(metadata_pat"
+        },
+        {
+          "find": "const auto carrier = bundled(carrier_relative)",
+          "count": 1,
+          "byteOffset": 4686,
+          "anchor": "const auto carrier = bundled(carrier_relative);\n  const auto boundary = bundled(\"native/libaux-native-boundary.dylib\");\n  const auto binding =\n      bundled(\"apps/daemon/Aux \"\n              \"Daemon.app/Contents/Resources/native/provided-native.node\");\n  if (carrier.empty() || boundary.empty() || binding.empty())\n    return std::nullopt;\n  auto payload = base::WriteJson(input);\n  if (!payload || payload->size() > 4096)\n    return std::nullopt;\n  int sockets[2];\n "
+        },
+        {
+          "find": "LoadInstallationPrivateKey(",
+          "count": 1,
+          "byteOffset": 9139,
+          "anchor": "LoadInstallationPrivateKey(const base::FilePath & /*home*/) {\n  // Legacy independent credential broker cannot export the supplied authority's\n  // private key. Keep it fail-closed until the actual Vault proxy is\n  // integrated.\n  return std::nullopt;\n}\nstd::optional<crypto::"
+        },
+        {
+          "find": "SignDaemonChallenge(",
+          "count": 1,
+          "byteOffset": 10479,
+          "anchor": "SignDaemonChallenge(const base::FilePath &home,\n                                               std::string_view challenge) {\n  auto message = HttpMessage(challenge);\n  if (!message)\n    return std::nullopt;\n  base::DictValue input;\n  input.Set(\"challenge\", base::Base64Encode(*message));\n  auto result = RunCarrier(home, \"cdp-sign\", std::move(input));\n  const auto *signature = result ? result->FindString(\"signature\") : nullptr;\n  // The daemon verifies this unchanged native signature. One carrier invocation\n  // keeps the entire signing operation within its five-second I/O deadline.\n  if (!signature || signature->empty() || signature->size() > 8192 ||\n      !base::Base64Decode(*signature))\n    return std::nullopt;\n  return *signature;\n}\nbool VerifyInstallationChallenge(const crypto::keypair::PublicKey &key,\n   "
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "c99733b59493118b246bb19f96552ff85caf004e7bb884a17196bef6234c8502",
+      "anchors": [
+        {
+          "find": "Installation signing key missing or unsafe",
+          "count": 1,
+          "byteOffset": 14072,
+          "anchor": "l<std::string> signature) {\n  if (state_ == State::kStopping) {\n    return;\n  }\n  if (!signature) {\n    SetState(State::kFailed, \"Installation signing key missing or unsafe\");\n    return;\n  }\n  base::DictValue input;\n  input.Set(\"challengeId\", id);\n  input.Set(\"signedChal"
+        },
+        {
+          "find": "options.environment[\"DYLD_INSERT_LIBRARIES\"]",
+          "count": 1,
+          "byteOffset": 3372,
+          "anchor": "2)) return base::Process();\n  options.environment[\"AUX_HOME\"] = canonical_home.value();\n  options.environment[\"DYLD_INSERT_LIBRARIES\"] = boundary.value();\n  // Runtime acceptance is inherited only; never manufacture it at startup.\n  options.environment[\"AUX_PORT\"] = base::NumberToString(port);\n  // Bind supplied runtime discovery to this browser, never inherited endpoints.\n  options.environment[\"AUX_HOST\"] = \"1"
+        },
+        {
+          "find": "if (*runtime == \"provided-node-development\")",
+          "count": 1,
+          "byteOffset": 6982,
+          "anchor": "    return std::nullopt;\n  }\n  if (const auto* runtime = bundle->FindString(\"daemonRuntime\")) {\n    if (*runtime == \"provided-node-development\") {\n      paths.daemon_executable = paths.node;\n    } else if (*runtime != \"provided-sea\") {\n      return std::nullopt;\n    }\n  }\n  return paths;\n}\nDaemonSupervisor::DaemonSupervisor(\n    BundlePaths paths,\n    base::FilePath home,\n    uint16_t port,\n    scoped_refptr<network::Sha"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "anchors": [
+        {
+          "find": "if (!loadOnly && process.env.AUX_ENABLE_PROVIDED_NATIVE_CARRIER !== '1')",
+          "count": 1,
+          "byteOffset": 348,
+          "anchor": "ode:path');\nconst loadOnly = process.env.AUX_PROVIDED_NATIVE_LOAD_ONLY === '1';\nif (!loadOnly && process.env.AUX_ENABLE_PROVIDED_NATIVE_CARRIER !== '1') {\n  throw new Error('Provided native execution has not been accepted');\n}\nif (!process.env.AUX_HOME || !path.isAbsolute(process.env.AUX_HOME)) {\n  throw new Error('Absolute AUX_HOME is required');\n}\nconst home = fs.realpathSync(process.env.AUX_HOME);\nconst scope = crypto.createHash('sha256').update"
+        },
+        {
+          "find": "const guard = require",
+          "count": 1,
+          "byteOffset": 1325,
+          "anchor": "\n// No external binding/guard path environment variable is used here.\nconst guard = require(owned('aux-native-guard.node'));\nconst status = guard.prepare(home, loadOnly);\nif (status?.boundaryActive !== true || status.denyAll !== loadOnly) {\n  throw new Error('Native boundary guard refused required mode');\n}\nprocess.env.AUX_HOME = home;\nprocess.env.AUX_NATIVE_KEYCHAIN_SCOPE = scope;\nconst bindingPath = owned('provided-native.node');\nconst { verifyNativeRole } = require(owned('native-role-pins.cjs'));\nconst bindingRole = verifyNativeRole(directory, crypto.createHash('sha256').update(fs.readFileSync(bindingPath)).digest('hex'));\nconst original = require(bindingPath);\nif (loadOnly) {\n  // Original NAPI entry registration is allowed; original commands/PDF actions\n  "
+        },
+        {
+          "find": "if (loadOnly) {",
+          "count": 1,
+          "byteOffset": 1928,
+          "anchor": "if (loadOnly) {\n  // Original NAPI entry registration is allowed; original commands/PDF actions\n  // are not. This mode cannot become production inside the same process.\n  const descriptors = Object.getOwnPropertyDescriptors(original);\n  const registration = Object.freeze({ originalBindingLoaded: true, bindingRole,\n    runExportRegistered: typeof descriptors.run?.value === 'function',\n    pdfExportRegistered: Object.hasOwn(descriptors, 'pdf') });\n  module.exports = Object.freeze({ registration, get boundaryStatus() { return guard.status(); },\n    run() { throw new Error('Native execution disabled in load-only mode'); },\n    get pdf() { throw new Error('Native PDF execution disabled in load-only mode'); },\n  });\n} else {\n  // Preserve all original exports, function identity and PDF beh"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/native-carrier.mm",
+      "sha256": "91085e810287552315d60cddec2c31dde44c3dfcc3175b953672407bc1e674f4",
+      "anchors": [
+        {
+          "find": "const char *accepted = std::getenv",
+          "count": 1,
+          "byteOffset": 3161,
+          "anchor": " Actual crypto remains held until isolated runtime acceptance is\n      // reviewed.\n      const char *accepted = std::getenv(\"AUX_ENABLE_PROVIDED_NATIVE_CARRIER\");\n      if (!accepted || std::string(accepted) != \"1\")\n        return Fail(\n            \"Provided native carrier requires explicit runtime acceptance\");\n      if (argc != 3)\n        return Fail(\n            \"Usage: aux-native-carrier <provided-native.node> <command>\");\n      command = argv[2];\n      if (command != \"install-status\" && command != \"install-init\" &&\n          command != \"get-public-keys\" && command != \"cdp-sign\")\n        return Fail(\"Native carrier command is not allowed\");\n      for (char ch; std::cin.get(ch);) {\n        i"
+        },
+        {
+          "find": "bindingHash !=",
+          "count": 1,
+          "byteOffset": 5702,
+          "anchor": ": digest) {\n      bindingHash += hex[byte >> 4];\n      bindingHash += hex[byte & 15];\n    }\n    if (bindingHash !=\n        \"bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb\")\n      return Fail(\"Provided native binding hash mismatch\");\n    void *library = dlopen(bindingPath, RTLD_LAZY | RTLD_LOCAL);\n    if (!library) {\n      if (verifyLoad) {\n        std::c"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/node-boundary-guard.mm",
+      "sha256": "33316274fc8e7071f5d3f4daa0de8cb12367ca865a2beafee54a7ce1b7f439d1",
+      "anchors": [
+        {
+          "find": "if (!validate || !configure",
+          "count": 1,
+          "byteOffset": 2562,
+          "anchor": "if (!validate || !configure || !latch || !isDenied || !refused ||\n      !validate((const void *)(unsigned long)&SecItemAdd,\n                (const void *)(unsigned long)&SecItemCopyMatching,\n                (const void *)(unsigned long)&SecItemDelete,\n                (const void *)(unsigned long)&SecItemUpdate,\n                (const void *)(unsigned long)&SecKeyCreateRandomKey))\n    return Error(env, \"Actual native query interposition is required\");\n  unsigned char digest[CC_SHA256_DIGEST_LENGTH];\n  CC_SHA256(canonical, static_cast<CC_LONG>(strlen(canonical)), digest);\n  const char hex[] = \"0123456789abcdef\";\n  std::string scope;\n  for (unsigned char byte : digest) {\n    scope += hex[byte >> 4];\n    scope += hex[byte & 15];\n  }\n  if (!configure(scope.c_str()))\n    return Error(env, \"Native scope cannot change in a process\");\n  // Deliberately inherited by original"
+        },
+        {
+          "find": "if (!deny && isDenied())",
+          "count": 1,
+          "byteOffset": 3773,
+          "anchor": "    return Error(env, \"Cannot establish canonical native worker scope\");\n  if (deny)\n    latch();\n  if (!deny && isDenied())\n    return Error(env, \"Load-only process cannot enable native execution\");\n  napi_value result, yes, mode, calls;\n  napi_create_object(env, &result);\n  napi_get_boolean("
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/keychain-interpose.mm",
+      "sha256": "56b9813b29d416fb90aefdbeb8bd777521a5c51a91b4bea7415c701277578450",
+      "anchors": [
+        {
+          "find": "Keep original DP/enclave/access-control semantics",
+          "count": 1,
+          "byteOffset": 1076,
+          "anchor": "nil;\n  // Keep original DP/enclave/access-control semantics. Only unattended UI\n  // policy is tightened: denied interaction remains a real error, never a fake\n  // unlock.\n  NSMutableDictionary *unattended = [mapped mutableCopy];\n  unattended[(__bridge id)kSecUseAuthenticationUI] =\n      (__bridge id)kSecUseAuthenticationUIFail;\n  return unattended;\n}\nOSStatus Add(CFDictionaryRef attributes, CFTypeRef *result) {\n  @autoreleasepool {\n    if (Refuse()) {\n      if (result)\n        *result = nullptr;\n      return errSecInteractionNotAllowed;\n    "
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native-role-pins.cjs",
+      "sha256": "1185df7f7949884e5e989935a8242ff0a503cb7444495668d05469d7c605375c",
+      "anchors": [
+        {
+          "find": "const bindings = Object.freeze",
+          "count": 1,
+          "byteOffset": 128,
+          "anchor": "const bindings = Object.freeze({\n  daemon: Object.freeze({ suffix: '/apps/daemon/Aux Daemon.app/Contents/Resources/native', sha256: 'bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb' }),\n  cli: Object.freeze({ suffix: '/apps/cli/Aux CLI.app/Contents/Resources/native', sha256: '66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc' }),\n});\nfunction verifyNativeRole(directory, digest) {\n  if (typeof directory !== 'string' || !path.isAbsolute(directory) || path.normalize(directory) !== directory) throw new Error('Canonic"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/provided-package.mjs",
+      "sha256": "72321f565fab2ac289afed3563682b770a3f4f1b1beed4ecd5b2f0b1ff342554",
+      "anchors": [
+        {
+          "find": "await add('aux-native-carrier'",
+          "count": 1,
+          "byteOffset": 8533,
+          "anchor": "await add('aux-native-carrier', developmentDpLayout ? 'native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier' : 'native/aux-native-carrier');\n    await add('libaux-native-boundary.dylib', 'native/libaux-native-boundary.dylib');\n    for (const role of ['daemon', 'cli']) await add('aux-native-guard.node', `apps/${role}/Aux ${role === 'daemon' ? 'Daemon' : 'CLI'}.app/Contents/Resources/native/aux-native-guard.node`);\n    const cliExecutable = 'apps/"
+        },
+        {
+          "find": "nativeCarrierLayout: 'profile-bundle'",
+          "count": 1,
+          "byteOffset": 10653,
+          "anchor": "dFile(bundleFile, 'utf8'));\n      await writeFile(bundleFile, JSON.stringify({ ...bundle, nativeCarrierLayout: 'profile-bundle' }, null, 2) + '\\n');\n      layoutChanges.push({ path: 'bundle.json', sha256: await digest(bundleFile) });\n    }\n    // "
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v257-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets.mjs",
+      "sha256": "cb292b3e549e2b90495d12fe0e55e3be66de1a6fef8d686cc2266bc11403615d",
+      "anchors": [
+        {
+          "find": "export const daemonResources",
+          "count": 1,
+          "byteOffset": 301,
+          "anchor": "rom 'node:crypto';\nconst directory = fs.realpathSync(fileURLToPath(new URL('.', import.meta.url)));\nexport const daemonResources = path.dirname(directory);\nexport const daemonMacOS = path.resolve(daemonResources, '../MacOS');\nexport const daemonAppRoot = path.resolve(daemonResources, '../..');\nif (path.basename(directory) !== 'node-development' || path.basename(daemonAppRoot) !== 'Aux Daemon.app' ||\n    path.basename(daemonR"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v257-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "a12c54e7e74e63f04e9399931710dba07a59fbbd19f98ecceb39ea285d131b53",
+      "anchors": [
+        {
+          "find": "function candidateBindingPaths()",
+          "count": 1,
+          "byteOffset": 2892690,
+          "anchor": "function candidateBindingPaths(){let Cn=platformPrebuildDirs();if(Cn.length===0)return[];return[path.join(__auxDaemonResources,`native/aux-native.cjs`)]}function loadBinding(){if(binding!==void 0)return binding;for(let Cn of candidateBindingPaths())if(existsSync(Cn))try{return binding=require$2(Cn),loadedBindingPath=Cn,binding}catch(Cn){bindingLoadError=Cn instanceof Error?Cn.message:String(Cn)}return binding=null,binding}function loadPdfBinding(){let Cn=loadBinding();if(!Cn?.pdf)throw Error(bindingLoadError??`Native PDF binding is not available; rebuild the native helper`);return Cn.pdf}function isNativeHelperBindingAvailable(){return loadBinding()!=null}function runNativeHelperCommand(Cn,ei=``){let ti=loadBinding();if(!ti)return{error:bindingLoadError??`Native helper binding is n"
+        },
+        {
+          "find": "function isNativeHelperBindingAvailable()",
+          "count": 1,
+          "byteOffset": 2893285,
+          "anchor": "function isNativeHelperBindingAvailable(){return loadBinding()!=null}function runNativeHelperCommand(Cn,ei=``){let ti=loadBinding();if(!ti)return{error:bindingLoadError??`Native helper binding is not available`};try{retur"
+        },
+        {
+          "find": "async function ensureInstallationKey()",
+          "count": 1,
+          "byteOffset": 11652701,
+          "anchor": "async function ensureInstallationKey(){if(!await isHelperAvailable$1())return posthog(AccountRegistry.getCurrentAccountId()).capture({event:`daemon.native-helper.failed`,properties:{helper:`installation`,operation:`startup`,errorType:`NativeHelperUnavailable`}}),logger.alert(`[Installation] native helper unavailable; daemon auth challenge exchange may fail`),!1;try{if((await getInstallationStatus().catch(async Cn=>{if(!existsSync(INSTALLATION_REPAIR_MARKER))throw Cn;return await repairInstallation(Cn),{installed:!1}})).installed)return existsSync(INSTALLATION_REPAIR_MARKER)&&(rmSync(INSTALLATION_REPAIR_MARKER,{force:!0}),logger.info(`[Installation] ignored repair marker; installation keys are healthy`)),!0;let Cn=await initInstallation();return logger.info(`[Installation] created new installation key`,{scheme:Cn.scheme}),!0}catch(Cn){throw posthog(AccountRegistry.getCurrentAccountId()).capture({event:`daemon.native-helper.failed`,properties:{helper:`installation`,operation:`startup`,errorMessage:errorMessage(Cn)}}),logger.alert(`[Installation] failed to initialize IK`,{error:errorMessage(Cn)}),Cn}}async function repairInstallation(Cn){logger.alert(`[Installation] repairing installation keys from marker`,{error:errorMessage(Cn)}),await destroyInstallation(),await Promise.all(AccountRegistry.getAll().accounts.map(Cn=>c"
+        }
+      ]
+    }
+  ],
+  "candidate": {
+    "root": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v257-local/Aux.app/Contents/Resources/aux",
+    "bundleSha256": "58216ba59deeffd2c4378542b0c1a5588724f35f847a75d74100bda8a4d30ea2",
+    "version": 1,
+    "implementation": "supplied",
+    "daemonRuntime": "provided-node-development",
+    "nativeCarrierLayoutPresent": false,
+    "selectedCarrier": "native/aux-native-carrier",
+    "files": [
+      {
+        "path": "native/aux-native-carrier",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o755",
+        "bytes": 61632,
+        "sha256": "9ff6410b8bb6568fc6230e4b50658d8968b4b97d45ff1b1c4a8529421d3815d6",
+        "packageAdditionHashMatches": true
+      },
+      {
+        "path": "native/libaux-native-boundary.dylib",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o755",
+        "bytes": 79024,
+        "sha256": "af00da675eb2e8d31dbded96b136c0fd09fbb89e49d92dd6ef33132a22434f8d",
+        "packageAdditionHashMatches": true
+      },
+      {
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o644",
+        "bytes": 2771,
+        "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+      },
+      {
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o755",
+        "bytes": 56232,
+        "sha256": "7d871f039b7b7f7eedce2a954e8b217470e38e8ae1e0a434cfafc708e4b20971",
+        "packageAdditionHashMatches": true
+      },
+      {
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o600",
+        "bytes": 9255280,
+        "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+      },
+      {
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/native-role-pins.cjs",
+        "regularFile": true,
+        "symlink": false,
+        "mode": "0o644",
+        "bytes": 1045,
+        "sha256": "1185df7f7949884e5e989935a8242ff0a503cb7444495668d05469d7c605375c"
+      }
+    ]
+  },
+  "observation": {
+    "launcherReceipt": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v257-browser-launcher.json",
+      "sha256": "23b2f5d3937fde3270edc7fd0dd63bcab129badfac14928665c0c36cc05d464d",
+      "runtimeAcceptanceFlagsRemoved": true
+    },
+    "log": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v257-browser-disposable-launch.log",
+      "sha256": "b9f01de4837f4008a71be7e208e4e6edfed8d8b84fe8aece31dd030b6c700ffe",
+      "diagnostics": [
+        "\u001b[90m2026-10-19 23:08:12.716\u001b[0m \u001b[31mALERT\u001b[0m [Installation] native helper unavailable; daemon auth challenge exchange may fail",
+        "[65156:16655053:1019/230813.414347:ERROR:chrome/browser/aux/browser_platform.cc:76] Installation signing key missing or unsafe"
+      ]
+    },
+    "rootReported": "Stopped; owned four PIDs absent; Aux ports clear. Not re-probed by this source audit."
+  },
+  "conclusions": {
+    "provenPackagingMismatch": false,
+    "intentionalEarlyAcceptanceRefusal": true,
+    "keyMissingEstablished": false,
+    "noAuthorityUnsignedLoginPathFound": true,
+    "sourceFixProposed": false
+  },
+  "verification": {
+    "sourceAnchors": 27,
+    "sourceFiles": 12,
+    "staticPackageFiles": 6,
+    "fileModeRoleAndAdditionHashes": true,
+    "runtime": false
+  }
+}
