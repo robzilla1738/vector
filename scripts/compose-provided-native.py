@@ -281,6 +281,8 @@ steps.extend([
     ('native-profile-indicator-context/native.patch', 'native-profile-indicator-context/manifest.json'),
     ('native-profile-context-registration/native.patch', 'native-profile-context-registration/manifest.json'),
     ('native-search-browser-bindings/native.patch', 'native-search-browser-bindings/manifest.json'),
+    ('native-profile-search-owner/native.patch', 'native-profile-search-owner/manifest.json'),
+    ('native-profile-search-observer-155/native.patch', 'native-profile-search-observer-155/manifest.json'),
 ])
 
 if options.through:
