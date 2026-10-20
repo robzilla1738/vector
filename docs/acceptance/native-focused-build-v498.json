@@ -1,0 +1,46 @@
+{
+  "composition": "v498",
+  "compositionSha256": "8a8381066430fc3211905f9564caad48464820e8b98b90bb37614e2f4688dec7",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "gnCommand": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/gn",
+    "gen",
+    "out/AuxFast"
+  ],
+  "gnExitCode": 0,
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_webui.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_webui_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_completion_choice.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_archive_picker.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_webui.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_webui_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_completion_choice.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_archive_picker.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 35.860044717788696,
+  "totalElapsedSeconds": 71.24771881103516,
+  "runtimeAcceptance": false
+}
