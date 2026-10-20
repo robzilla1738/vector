@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x672a29c",
+      "end": "0x672aa24",
+      "sha256": "4d10ec04b193f8ccdf0cdd9ecf5eeef492029d9e68b91888caa851496843c782",
+      "listing": "deserialize-database-data.asm",
+      "listingSha256": "ecc9a9cc41f7f3a89cddb09b5b3e6fd134fd87dfacff20e89e4cc730af5167b8"
+    },
+    {
+      "start": "0x672aa24",
+      "end": "0x672b204",
+      "sha256": "60792688364f06ae0ef35d95e0dff735b29f98f4b5efed57997e2b9be34fd28c",
+      "listing": "serialize-database-data.asm",
+      "listingSha256": "9fe638df26db1651ba438ba98a2879eb4a57dac158addfcf30448a6cb37b8c5c"
+    },
+    {
+      "start": "0xa08163c",
+      "end": "0xa081b24",
+      "sha256": "1600e1d8e6f71688e6990d0055a7286a82498a0d998ccb122c45615333a6984b",
+      "listing": "generated-payload-serialize.asm",
+      "listingSha256": "be50027e823cb73ed6820e6b2cb9f8e6cd831811b7b4e9b4de2845b168b325cf"
+    },
+    {
+      "start": "0xa081440",
+      "end": "0xa08144c",
+      "sha256": "ccdf0af53a028e75dd9defc5e0761d0bfe179e2dbfb88a4d93dd8bb2444e93d9",
+      "listing": "payload-class-data.asm",
+      "listingSha256": "56f735843f9942b7535375868961dbe673d164f1ed22bbd2b22699f71e9b9020"
+    },
+    {
+      "start": "0x40fa214",
+      "end": "0x40fa608",
+      "sha256": "a586a30a811a7a28b17d2c74e98efcd7b24b92c2dc3c578c9a7cdb3f04874c66",
+      "listing": "live-inbox-json-consumer.asm",
+      "listingSha256": "7246f5be8f31017975379a8f3b4b0fece06923984574c359bc8408d9a9bc53c7"
+    }
+  ],
+  "data": [
+    {
+      "name": "payload-class-data-and-name",
+      "address": "0xe9c8710",
+      "hex": "b0efc70e00001000e8f1c70e00003000000000000000000000000000000000002411080a0000b000a00000000108000008010000000000001400000001000000636f6e74656e742e4e6f74696669636174696f6e44617461626173654461746150726f746f2e4e6f74696669636174696f6e44617461000050",
+      "sha256": "3dbd7da6c93df6ffa9677b3808b9f475eef3ae2de0dd8cf4df73103c348d4aaa"
+    },
+    {
+      "name": "payload-default-object-vtable",
+      "address": "0xec7efb0",
+      "hex": "40cb550e00009000",
+      "sha256": "9848bcdebb97cf92b453ff8e2afd449be0fce43e66c8eb1a157db6558a79fea8"
+    },
+    {
+      "name": "payload-vtable",
+      "address": "0xe55cb40",
+      "hex": "d810080a00001000fc10080a000010004c14080a00001000241b080a000010004014080a000010003c16080a00003000",
+      "sha256": "c5039d41d7f06c40dc78d61e27abf4c0cf046030f39363820ca79aeee925d8a6"
+    },
+    {
+      "name": "payload-parser-header",
+      "address": "0xec7f1e8",
+      "hex": "1000000010000000780038010000ffff3c01000010000200000200000000000010879c0e00002000000000000000000040588f0800001000",
+      "sha256": "dd470d8ebfb90cb31726e901dc11c5f49c874326bc29a38ac5cc16875b71df4d"
+    }
+  ],
+  "api155": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/notifications/notification_database_data.proto",
+      "sha256": "904951475d48b53b9638d1cef8a43dfcbdc6c30554bccfa9a8a0424f9d4a7eb0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/browser/notifications/notification_database_conversions.cc",
+      "sha256": "e05ae344d569b9bfbe109d2bd575900b3f65a8980598389a10aee2a9b67e1f88"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/protobuf/src/google/protobuf/generated_message_tctable_decl.h",
+      "sha256": "088d375d85056ffaaa90597dc844036ab35a996c38794f828e0416756c01573d"
+    }
+  ],
+  "interpretation": {
+    "nativePlatformDataOffset": "0x98",
+    "cloneBeginOffset": "0x290",
+    "cloneLengthOffset": "0x298",
+    "jsonOptionalOffset": "0x2a8",
+    "jsonPresenceOffset": "0x2c0",
+    "actionsOffset": "0x2c8",
+    "protobufCloneField": 8,
+    "payloadMaxField": 16,
+    "payloadFieldCount": 16
+  },
+  "nativeModified": false,
+  "runtimeExecuted": false
+}
