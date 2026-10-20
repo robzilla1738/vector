@@ -1,0 +1,107 @@
+--- a/chrome/browser/ui/views/frame/browser_widget.cc
++++ b/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -44,6 +44,10 @@
+ #include "ui/views/input_protection/widget_stationarity_monitor.h"
+ #include "ui/views/widget/native_widget.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "base/apple/foundation_util.h"
++#endif
++
+ #if BUILDFLAG(IS_CHROMEOS)
+ #include "chromeos/ui/base/window_properties.h"
+ #include "chromeos/ui/base/window_state_type.h"
+@@ -218,6 +222,15 @@
+     }
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  // The supplied bridge owns the Aux browser's full-window material, including
++  // its disabled preference and fullscreen fallback. Upstream glass eligibility
++  // must not make that compositor opaque before the bridge initializes it.
++  if (base::apple::BaseBundleID() == "dev.aux.browser") {
++    params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
++  }
++#endif
++
+   Init(std::move(params));
+ 
+   if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -831,6 +831,13 @@
+       GetWidget()->RegisterPaintAsActiveChangedCallback(
+           base::BindRepeating(&BrowserNativeWidgetMac::UpdateBackgroundColor,
+                               base::Unretained(this)));
++  // Aux already hosts the supplied full-window material in the remote-Cocoa
++  // bridge. Do not put Chromium's second glass, tint and opaque remainder over
++  // it. The bridge remains the owner of preference/fullscreen/opaque fallback.
++  if (base::apple::BaseBundleID() == "dev.aux.browser") {
++    GetNSWindowHost()->SetLayerAndCompositorOpaque(false);
++    return;
++  }
+   // GlassFrameService is only available if glass frame is enabled.
+   if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+     glass_frame_service_subscription_ =
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <vector>
+ 
++#include "base/apple/foundation_util.h"
+ #include "base/command_line.h"
+ #include "base/containers/fixed_flat_map.h"
+ #include "base/functional/bind.h"
+@@ -87,8 +88,12 @@
+                                          BrowserView* browser_view)
+     : BrowserFrameView(frame, browser_view),
+       fullscreen_session_timer_(std::make_unique<base::OneShotTimer>()) {
+-  // GlassFrameService is only available if glass frame is enabled.
+-  if (auto* const glass_service = GlassFrameService::GetInstance()) {
++  // Keep the compositor's frame clear above the supplied bridge material.
++  // Its own preference/fullscreen lifecycle supplies the native fallback.
++  if (base::apple::BaseBundleID() == "dev.aux.browser") {
++    SetPaintToLayer();
++    layer()->SetFillsBoundsOpaquely(false);
++  } else if (auto* const glass_service = GlassFrameService::GetInstance()) {
+     SetPaintToLayer();
+     is_glass_frame_eligible_ =
+         glass_service->IsBrowserWindowEligible(browser_view->browser());
+@@ -499,7 +504,8 @@
+     return;
+   }
+ 
+-  if (is_glass_frame_eligible_) {
++  if (base::apple::BaseBundleID() == "dev.aux.browser" ||
++      is_glass_frame_eligible_) {
+     // In glass mode, painting to frame color happens in the opaque background
+     // view instead.
+     return;
+@@ -583,7 +589,8 @@
+   if (caption_button_placeholder_container_) {
+     caption_button_placeholder_container_->SetBackground(
+         views::CreateSolidBackground(
+-            is_glass_frame_eligible_
++            (base::apple::BaseBundleID() == "dev.aux.browser" ||
++             is_glass_frame_eligible_)
+                 ? SK_ColorTRANSPARENT
+                 : GetFrameColor(BrowserFrameActiveState::kUseCurrent)));
+   }
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -1672,8 +1672,12 @@
+     CHECK(vertical_tabs_background)
+         << "Expected vertical tab strip to have a CustomCornersBackground.";
+ 
+-    if (in_glass_mode()) {
+-      if (!is_fullscreen(layout_data_->window_state)) {
++    // The supplied Aux Mac material is full-window and has its own fullscreen
++    // fallback. Its clear sidebar must not depend on Chromium's separate glass
++    // service eligibility. Preserve the retained-overlay fade below.
++    const bool supplied_window_material = BUILDFLAG(IS_MAC) && admission;
++    if (in_glass_mode() || supplied_window_material) {
++      if (!is_fullscreen(layout_data_->window_state) || supplied_window_material) {
+         frame_color.opacity = 0.0f;
+       }
+       // Use a curve that goes very close to 1 very quickly, but still has a

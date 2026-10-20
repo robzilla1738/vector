@@ -1,0 +1,25 @@
+{
+  "baseComposition": "v524",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_widget.cc",
+      "baselineSha256": "3532c33b9c355799cfc2eec5a91659ff47e0fe0922d683af9c9647426301d5f5",
+      "outputSha256": "74f3783fbea63c7c91433b3382665914e600ad8c69f522e5732bf103c78a6bad"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "baselineSha256": "1c386ad1b01ca2f5e924f09ee67ef4919edbb182429f11f92128a432f93e29e7",
+      "outputSha256": "33613d0888a95cf18c18f589626743e1c0e270d9fb7a525ae2fa4628fca6573a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view_mac.mm",
+      "baselineSha256": "7c8c99cb64c7d676ab65979253a249940a11b61ea455eb952103613578aed77d",
+      "outputSha256": "d779364cf49adcdecbc53f14b645066a6b01aebc77b0aa86c27f3cb3669dbf0a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "dcaa8e35629125b895a2db19d61ac82dfaaca71c30e10c305a52961731917918",
+      "outputSha256": "b9506730eb2b2d8c032e6e6e5299e6f663ac2d26f78a5545cb0d934a18a82a75"
+    }
+  ]
+}
