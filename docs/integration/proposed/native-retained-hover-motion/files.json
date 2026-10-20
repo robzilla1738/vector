@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v518 (native-hidden-sidebar-overlay output)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "f4c9e2a1fb7a2f522c2b5a5a24cb28a6975a69dcc9777b4513410ebb4771cf2b",
+      "outputSha256": "c0e5476dfab5d00969728670b40823c7444978a86d82361cc4d546be18613495"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "94db1a5ae12d533bd1b595b4b699d77d43c007656246265f59dcb5b12f91ee41",
+      "outputSha256": "4a7ec7400da1f40215ba27600b07989c1b3af589f870126f827e06fe23b0f58b"
+    }
+  ]
+}

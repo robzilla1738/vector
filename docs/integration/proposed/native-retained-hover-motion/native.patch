@@ -1,0 +1,94 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -318,6 +318,18 @@
+ void VerticalTabStripRegionView::OnAnimationProgressed(
+     const BrowserAnimationController* controller,
+     BrowserAnimationUpdate status) {
++  if (aux_profile_preview_admission_) {
++    // Collapse is owned by its recovered SlideAnimation. This subscription
++    // drives only the original controller-based hover motion (4650c50..c8c).
++    if (status == BrowserAnimationUpdate::kStarted)
++      hover_card_animation_lock_ = hover_card_controller()->GetHoverCardHideLock();
++    else if (status == BrowserAnimationUpdate::kEnded ||
++             status == BrowserAnimationUpdate::kCanceled)
++      hover_card_animation_lock_.reset();
++    InvalidateLayout();
++    browser_view()->InvalidateLayout();
++    return;
++  }
+   switch (status) {
+     case BrowserAnimationUpdate::kStarted: {
+       const auto motion =
+@@ -990,8 +1002,7 @@
+                                     ? TabStripAnimations::kCollapse
+                                     : TabStripAnimations::kExpand);
+ 
+-  if (!aux_profile_preview_admission_)
+-    on_animation_update_subscription_ = animation_controller->Subscribe(
++  on_animation_update_subscription_ = animation_controller->Subscribe(
+       TabStripAnimations::kVerticalTabStrip,
+       base::BindRepeating(&VerticalTabStripRegionView::OnAnimationProgressed,
+                           base::Unretained(this)));
+@@ -1376,16 +1387,21 @@
+     base::RecordAction(
+         base::UserMetricsAction("VerticalTabs_ExpandOnHover_Hide"));
+   }
+-  // Source4650ac4 updates layout directly; hover does not start a second
+-  // collapse SlideAnimation or the independent Chromium hover animator.
+   InvalidateLayout();
+   browser_view()->InvalidateLayout();
++  // The original continues after its layout effects:4650bc0..4650c8c
++  // resolves the controller and starts the genuine hover motion. This is
++  // separate from the recovered collapse SlideAnimation, not its replacement.
++  BrowserAnimationController::From(browser_view()->browser())
++      ->Start(TabStripAnimations::kVerticalTabStrip,
++              expanded ? TabStripAnimations::kExpandOnHover
++                       : TabStripAnimations::kCollapseOnHover);
+ }
+ 
+ void VerticalTabStripRegionView::AnimateExpandOnHover(bool expand) {
+   if (aux_profile_preview_admission_) {
+     // The installed real region delegate applies the source layout/pinned-leaf
+-    // effects. Never run a second independent BrowserAnimationController here.
++    // effects, including the original controller-based hover motion.
+     aux_profile_preview_admission_->SetHoverExpanded(expand);
+     return;
+   }
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -612,7 +612,8 @@
+   if (const auto* region = views().vertical_tab_strip_region_view.get()) {
+     if (const auto* admission = region->GetAuxProfilePreviewAdmission()) {
+       const double expanded = admission->collapse_value();
+-      const bool overlay = admission->hover_expanded() || admission->retained();
++      const bool overlay = animation.expand_on_hover_width > 0.0 ||
++                           admission->hover_expanded() || admission->retained();
+       animation.current_motion = BrowserAnimationMotion();
+       if (admission->collapse_animating()) {
+         animation.current_motion = delegate().IsVerticalTabStripCollapsed()
+@@ -620,8 +621,9 @@
+                                        : TabStripAnimations::kExpand;
+       }
+       animation.tab_strip_width = expanded;
+-      animation.expand_on_hover_width = overlay ? 1.0 : 0.0;
+-      animation.expand_on_hover_opacity = overlay ? 1.0 : 0.0;
++      // Width/opacity above come from the original controller-based hover
++      // motion. The admission owns its request/lifetime, not a Boolean frame.
++      // Keep collapse width/top on the separate recovered SlideAnimation.
+       // Preserve the typed layout's .25/.75 geometry checkpoints, driven by
+       // the existing recovered SlideAnimation rather than a second clock.
+       const double top_progress = std::clamp((expanded - 0.25) / 0.5, 0.0, 1.0);
+@@ -641,9 +643,11 @@
+               : gfx::Tween::DoubleValueBetween(
+                     std::clamp((expanded - 0.75) / 0.25, 0.0, 1.0),
+                     flat_corner, 1.0);
+-      animation.bottom_corner = overlay ? -1.0 : 1.0;
++      animation.bottom_corner = gfx::Tween::DoubleValueBetween(
++          animation.expand_on_hover_width, 1.0, -1.0);
+       if (overlay) {
+-        animation.top_corner = -1.0;
++        animation.top_corner = gfx::Tween::DoubleValueBetween(
++            animation.expand_on_hover_width, animation.top_corner, -1.0);
+       } else if (max_uncollapsed_top_corner) {
+         animation.top_corner =
+             std::min(animation.top_corner, *max_uncollapsed_top_corner);
