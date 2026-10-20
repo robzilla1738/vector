@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "candidate": "out/provided-candidate-v170-local/Aux.app",
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "signingExecuted": false,
+  "disposableHome": true,
+  "browserLaunched": false,
+  "providedNodeExecutableVerifiedWithProcPidPath": true,
+  "health": {
+    "pid": 93122,
+    "service": "aside-daemon",
+    "ready": true,
+    "version": "1.26.1016.1852"
+  },
+  "ownedDaemonAbsentAfterStop": true,
+  "auxListenersAbsentAfterStop": true,
+  "actualIssues": [
+    "Initial lexical /var disposable path rejected by cache guard; launcher now canonicalizes temporary root",
+    "Daemon-only launcher omitted fixed bundled Computer Use/runtime paths; now matches native child environment",
+    "Discovered Computer Use runtime app fails original read-only codesign verification because adapted bundle signatures are invalid; actual warning remains",
+    "Original installation native helper remains unavailable without explicit runtime acceptance"
+  ],
+  "computerUseRuntimeVerified": false,
+  "privateFinalLogSha256": "8ba6cd16d74baf556f434d977e8a6c4d9e85166500ea6e210c0cbda804a30a10",
+  "nativeAuthorityAccepted": false,
+  "uiParityAccepted": false
+}

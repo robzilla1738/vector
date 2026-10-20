@@ -40,7 +40,9 @@ try { supplied = JSON.parse(await readFile(join(resources, 'bundle.json'), 'utf8
 catch { throw new Error('Assemble the supplied app first with package:provided, then select it with --app.'); }
 if (supplied.version !== 1 || supplied.implementation !== 'supplied') throw new Error('A packaged supplied Aux implementation is required.');
 if (options.temporary && (options.profile || args.includes('--home'))) throw new Error('Temporary profile cannot be combined with explicit home/profile.');
-const temporaryRoot = options.temporary ? await mkdtemp(join(tmpdir(), 'aux-provided-')) : undefined;
+// macOS tmpdir may begin with /var, a symlink. Cache guards require the
+// actual canonical disposable root before the supplied daemon seeds resources.
+const temporaryRoot = options.temporary ? await realpath(await mkdtemp(join(tmpdir(), 'aux-provided-'))) : undefined;
 const home = temporaryRoot ? join(temporaryRoot, 'home') : options.home;
 const profile = temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile');
 await mkdir(home, { recursive: true, mode: 0o700 });
@@ -98,7 +100,10 @@ async function main() {
   if (stopping) return;
 const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
   AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,
-  AUX_BROWSER_CDP_HOST: '127.0.0.1:45203' };
+  AUX_BROWSER_CDP_HOST: '127.0.0.1:45203',
+  AUX_AGENT_RUNTIME_DIR: join(home, 'runtime'),
+  AUX_COMPUTER_USE_SOURCE_APP: join(resources, 'apps/computer-use/Aux Computer Use.app'),
+  AUX_HELPER_PATH: join(resources, 'apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use') };
 if (options.noBrowser) {
   const boundary = join(resources, 'native/libaux-native-boundary.dylib');
   const stat = await lstat(boundary);
