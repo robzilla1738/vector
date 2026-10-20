@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "components/tabs/public/tab_group_tab_collection.h",
+      "sha256": "dcf035bfc1502acfe984b9b3446cb22e568d57a9d133c3918e0d8dd78108051f"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "9706772003c9423024dec54088221083806d382dbb0f76875aeb137e1173531d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_tabs.cc",
+      "sha256": "46a41aa9e602c58473ff4384de06b86e0a4139a006056e8eced5fd73c40557fb"
+    }
+  ],
+  "conclusion": "Whole-group detached collection owns and moves the exact TabGroup, including its existing TabGroupFeatures. No restore-by-title or marker rewrite is required for this actual profile-cache transfer.",
+  "scope": "This proves existing-object transfer, not disk session restoration, MultiContentsView takeover or a different group reconstruction path."
+}

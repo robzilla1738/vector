@@ -1,0 +1,149 @@
+// Copyright 2026 Aux Authors. All rights reserved.
+#include "chrome/browser/ui/views/frame/aux_profile_switch_tabs.h"
+
+#include <numeric>
+#include <unordered_set>
+#include <utility>
+
+#include "base/check.h"
+#include "base/check_op.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "components/tabs/public/split_tab_collection.h"
+#include "components/tabs/public/tab_group_tab_collection.h"
+#include "content/public/browser/web_contents.h"
+
+namespace aux {
+ProfileSwitchTabCollection::ProfileSwitchTabCollection(Browser& source)
+    : source_(source.weak_factory_.GetWeakPtr()),
+      profile_(source.GetProfile()->GetWeakPtr()),
+      selection_(source.GetTabStripModel()->selection_model()),
+      tab_count_(source.GetTabStripModel()->count()) {}
+
+std::unique_ptr<ProfileSwitchTabCollection> ProfileSwitchTabCollection::Take(
+    Browser& source,
+    base::PassKey<ProfileSwitchTransaction>) {
+  if (!source.aux_profile_switch_suppress_empty_ || source.IsDeleteScheduled() ||
+      !source.GetProfile()->IsRegularProfile() ||
+      source.GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+    return nullptr;
+  }
+  auto* model = source.GetTabStripModel();
+  // Validate every actual BrowserContext before the first ownership change.
+  for (int i = 0; i < model->count(); ++i) {
+    auto* contents = model->GetWebContentsAt(i);
+    if (!contents || contents->GetBrowserContext() != source.GetProfile()) {
+      return nullptr;
+    }
+  }
+  auto snapshot = std::unique_ptr<ProfileSwitchTabCollection>(
+      new ProfileSwitchTabCollection(source));
+  std::vector<int> indices(model->count());
+  std::iota(indices.begin(), indices.end(), 0);
+  snapshot->owned_ = model->DetachTabsAndCollectionsForInsertion(indices);
+  CHECK(model->empty());
+  CHECK(snapshot->HasOnlyProfile(source.GetProfile()));
+  return snapshot;
+}
+
+ProfileSwitchTabCollection::~ProfileSwitchTabCollection() {
+  if (!owned_.empty()) {
+    // The owner may abort preparation, but it cannot silently destroy the
+    // user's actual tabs. Its mutation guard/source lifetime are mandatory.
+    CHECK(source_);
+    CHECK(Insert(*source_));
+  }
+}
+
+bool ProfileSwitchTabCollection::HasOnlyProfile(Profile* profile) const {
+  if (!profile || profile != profile_.get()) {
+    return false;
+  }
+  int count = 0;
+  const auto matches = [&](tabs::TabInterface* tab) {
+    auto* contents = tab ? tab->GetContents() : nullptr;
+    ++count;
+    return contents && contents->GetBrowserContext() == profile;
+  };
+  for (const auto& entry : owned_) {
+    if (std::holds_alternative<std::unique_ptr<DetachedTab>>(entry)) {
+      const auto& detached = std::get<std::unique_ptr<DetachedTab>>(entry);
+      if (!detached || !matches(detached->tab.get())) {
+        return false;
+      }
+    } else {
+      const auto& detached =
+          std::get<std::unique_ptr<DetachedTabCollection>>(entry);
+      if (!detached) {
+        return false;
+      }
+      bool valid = true;
+      std::visit([&](const auto& collection) {
+        if (!collection) {
+          valid = false;
+          return;
+        }
+        for (auto* tab : *collection) {
+          if (!matches(tab)) {
+            valid = false;
+          }
+        }
+      }, detached->collection_);
+      if (!valid) {
+        return false;
+      }
+    }
+  }
+  return count == tab_count_;
+}
+
+bool ProfileSwitchTabCollection::InsertInto(
+    Browser& destination,
+    base::PassKey<ProfileSwitchTransaction>) {
+  return Insert(destination);
+}
+
+bool ProfileSwitchTabCollection::Insert(Browser& destination) {
+  auto* model = destination.GetTabStripModel();
+  if (!destination.aux_profile_switch_suppress_empty_ ||
+      destination.IsDeleteScheduled() || !model->empty() ||
+      destination.GetProfile() != profile_.get() ||
+      model->profile() != profile_.get() ||
+      !HasOnlyProfile(destination.GetProfile())) {
+    return false;
+  }
+  for (auto& entry : owned_) {
+    if (std::holds_alternative<std::unique_ptr<DetachedTab>>(entry)) {
+      auto detached = std::move(std::get<std::unique_ptr<DetachedTab>>(entry));
+      const int flags = detached->was_pinned_at_time_of_removal
+                            ? AddTabTypes::ADD_PINNED : AddTabTypes::ADD_NONE;
+      model->InsertDetachedTabAt(model->count(), std::move(detached->tab), flags);
+    } else {
+      auto detached =
+          std::move(std::get<std::unique_ptr<DetachedTabCollection>>(entry));
+      if (std::holds_alternative<
+              std::unique_ptr<tabs::TabGroupTabCollection>>(detached->collection_)) {
+        model->InsertDetachedTabGroupAt(std::move(detached), model->count());
+      } else {
+        const bool pinned = detached->pinned_;
+        model->InsertDetachedSplitTabAt(std::move(detached), model->count(), pinned);
+      }
+    }
+  }
+  owned_.clear();
+  CHECK_EQ(model->count(), tab_count_);
+  if (tab_count_) {
+    // Build state for the destination model, never reuse the old model's
+    // internal ListSelectionModel cache. The actual tab pointers survived.
+    tabs::TabStripModelSelectionState selection(model);
+    std::unordered_set<tabs::TabInterface*> selected(
+        selection_.selected_tabs().begin(), selection_.selected_tabs().end());
+    selection.SetSelectedTabs(std::move(selected), selection_.active_tab(),
+                              selection_.anchor_tab());
+    selection.set_focused_group(selection_.focused_group());
+    model->SetSelectionFromModel(std::move(selection));
+  }
+  return true;
+}
+}  // namespace aux
