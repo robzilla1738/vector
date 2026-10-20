@@ -1,0 +1,58 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -571,9 +571,10 @@
+   return result;
+ }
+ 
+-base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+-                                      std::string category,
+-                                      const SourceKey& key) {
++namespace {
++base::DictValue ReadEncryptedCategoryImpl(const base::FilePath& profile,
++                                         std::string category,
++                                         const SourceKey* key) {
+   base::DictValue result;
+   auto fail = [&](const char* message) {
+     result.clear();
+@@ -664,7 +665,8 @@
+         // requires the real source-derived AES key.
+         plaintext = !cookies && !ciphertext.starts_with("v10")
+                         ? std::optional<std::string>(ciphertext)
+-                        : DecryptSourceValue(ciphertext, key);
++                        : key ? DecryptSourceValue(ciphertext, *key)
++                              : std::nullopt;
+         if (plaintext && !cookies) {
+           ++decrypted_passwords;
+         }
+@@ -780,6 +782,12 @@
+   result.Set(cookies ? "cookies" : "passwords", std::move(rows));
+   return result;
+ }
++}  // namespace
++base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
++                                      std::string category,
++                                      const SourceKey& key) {
++  return ReadEncryptedCategoryImpl(profile, std::move(category), &key);
++}
+ base::DictValue ReadAuthorizedCategory(const base::FilePath& profile,
+                                        bool firefox,
+                                        std::string source,
+@@ -801,11 +809,15 @@
+   }
+   std::string error;
+   auto key = AuthorizeSourceKey(source, error);
+-  if (!key) {
++  if (!key && category != "passwords") {
+     return base::DictValue().Set("error", error);
+   }
+-  auto result = ReadEncryptedCategory(profile, category, *key);
+-  ClearSourceKey(*key);
++  // The supplied password reader accepts the genuine optional source key.
++  // Missing authority cannot decode v10; blocked/plaintext rows need no key.
++  auto result = ReadEncryptedCategoryImpl(profile, category, key ? &*key : nullptr);
++  if (key) {
++    ClearSourceKey(*key);
++  }
+   return result;
+ }
+ }  // namespace aux_import
