@@ -55,6 +55,18 @@
       "start": "0x4250f40",
       "endExclusive": "0x4251034",
       "sha256": "75c3e8c5ae2d128d67e42fefa0c81dd900c40729f12f3d0f026a06dc134393fb"
+    },
+    {
+      "label": "Chromium completion returns on success; failure listener only",
+      "start": "0x424fb60",
+      "endExclusive": "0x424fe00",
+      "sha256": "1f77087154310f951be9a357f35e1e7407d0925ce234217255d816400e488ec7"
+    },
+    {
+      "label": "Safari exclusive native warning versus no-window invalid event",
+      "start": "0x4250e40",
+      "endExclusive": "0x4251084",
+      "sha256": "db5bff94d5ff4d5fc33af0ace29026f613ca2ca3335c923523cb80cafedbcfba"
     }
   ],
   "eventStrings": [
@@ -87,6 +99,11 @@
       "address": "0xcf080c4",
       "value": "safari",
       "sha256IncludingNul": "3982ef9e6fef79a579c3b90f62ee3f7c3f120da05a78d60f7a24d614f233e550"
+    },
+    {
+      "address": "0xdb1f167",
+      "value": "browser-import-failed",
+      "sha256IncludingNul": "cbc51c93757b54df8fe5ae574408df4d4dca9c1218d94a17de3f1477b5d3c351"
     }
   ],
   "evidenceFiles": [
@@ -113,6 +130,14 @@
     {
       "path": "evidence/terminal-events.asm",
       "sha256": "2c051a3a087b78b32afb0324f9a79fb8e413cc9e11a8eeb6a17aa8377432ef19"
+    },
+    {
+      "path": "evidence/chromium-terminal-event.asm",
+      "sha256": "15fc512659e6e74876429756ee9fd1d9a164931804b2b3609b775d89c6b71cb5"
+    },
+    {
+      "path": "evidence/safari-invalid-owner.asm",
+      "sha256": "64cad7b04ff4aa551f0e0700ee439f531a34b098e5797a208a0b7e7f0a51a39b"
     }
   ],
   "dependencyApiPins": [
@@ -140,5 +165,6 @@
       "path": "native-import-autofill-owner/README.md",
       "sha256": "bc12e976b2c387d394fa4737b0d4debeebf65c9d0683954fe1b11e4283c2d964"
     }
-  ]
+  ],
+  "terminalContract": "Only Safari emits browser-import-succeeded. Chromium true completion returns; Safari invalid archive native warning and no-window event are exclusive."
 }

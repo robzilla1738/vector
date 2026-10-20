@@ -81,9 +81,13 @@ class Handler final : public content::WebUIMessageHandler {
   }
   void Finished(const std::string& source, bool success) {
     busy_ = false;
-    if (IsJavascriptAllowed())
-      FireWebUIListener(success ? "browser-import-succeeded"
-                                : "browser-import-failed", source);
+    if (!IsJavascriptAllowed()) return;
+    if (!success)
+      FireWebUIListener("browser-import-failed", source);
+    else if (source == "safari")
+      FireWebUIListener("browser-import-succeeded", source);
+    // Chromium424fb60 returns on success; Firefox likewise has no success
+    // listener. Their actual native completion owners retire/show the choice.
   }
   FirefoxImport::WebUILifecycle FirefoxLifecycle() {
     auto& contents = *web_ui()->GetWebContents();
@@ -230,8 +234,18 @@ class Handler final : public content::WebUIMessageHandler {
     if (busy_ || !Admit()) return;
     SafariWebUIImport::WebUILifecycle lifecycle{
         aux_importer::CaptureImportOwnerRetirement(*web_ui()->GetWebContents()),
-        base::BindOnce(&aux_importer::OpenImportedProfile)};
-    if (!lifecycle.retire_owner) return;
+        base::BindOnce(&aux_importer::OpenImportedProfile),
+        base::BindOnce(
+            [](base::WeakPtr<Handler> handler,
+               base::OnceCallback<bool()> warning) {
+              if (!handler) return false;
+              handler->busy_ = false;
+              return warning && std::move(warning).Run();
+            }, weak_.GetWeakPtr(),
+            aux_importer::CaptureSafariInvalidArchiveWarning(
+                *web_ui()->GetWebContents())),
+        aux_importer::CaptureImportOwnerPresence(*web_ui()->GetWebContents())};
+    if (!lifecycle.retire_owner || !lifecycle.has_owner_window) return;
     busy_ = true;
     safari_ = std::make_unique<SafariWebUIImport>(profile_.get(),
         base::BindRepeating(&Handler::ImportState, weak_.GetWeakPtr(),
@@ -244,6 +258,15 @@ class Handler final : public content::WebUIMessageHandler {
   }
   void ImportState(std::string source, std::string state,
                    std::string, double, std::string) {
+    // Original4250e40 emits this only when the initiating native window no
+    // longer exists; re-admitting a live window would suppress that fallback.
+    if (source == "safari" && state == "invalid-file") {
+      busy_ = false;
+      if (IsJavascriptAllowed())
+        FireWebUIListener("safari-import-invalid-file",
+            "This is not a valid Safari data ZIP file.");
+      return;
+    }
     if (!busy_) return;
     // Original42518c0 is the actual Safari import-start callback, after the
     // initialized destination/setup and immediately before PrepareImport.
