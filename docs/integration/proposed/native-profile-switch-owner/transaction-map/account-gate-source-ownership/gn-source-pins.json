@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "sha256": "3cb78ff9c27fa432e31de69dd57fa7a3ba3371d99e9ea5563ddf90a6ee47b61b"
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "sha256": "adfc94ede8a34bf7a5c89d51c788eeac0b04c8d20bbaf0fa5c55c396c7eace92"
+    },
+    {
+      "path": "chrome/browser/prefs/BUILD.gn",
+      "sha256": "bf26ba3c3065d5ae3d68121f5992e53a8418fc1b0358c5fd94a920c110da31a4"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "sha256": "bdafcbaf67a20f3d8ede65a2503e0c1c908163883eeee8756b33175cede072f5"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/BUILD.gn",
+      "sha256": "11fd64e49928f588c3934ee626994ba09f913ea62d37653593a47617eaa42d92"
+    },
+    {
+      "path": "chrome/browser/ui/profiles/BUILD.gn",
+      "sha256": "428d7a5f35d35f3a02b15e1050ed7e95cd3eeb1c86a79e3e4f093ef5c8d182e6"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/BUILD.gn",
+      "sha256": "1a591966c507c5c088633366fe4ca52b322c5995d9b46ade13b189a6e9fb873b"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "sha256": "20dac205d894e682728b39808e60af75e4ad5a640af3c8853155aff91e803d14"
+    },
+    {
+      "path": "chrome/browser/devtools/BUILD.gn",
+      "sha256": "e0b3512b7c80ea7c6575bfd7d96e76dd5147963ed1917d3a685c82f3f04d9612"
+    },
+    {
+      "path": "chrome/browser/aux/passkeys/BUILD.gn",
+      "sha256": "984d125a8c51cdfd40dc65a2c71fdabe31b79a5f9fd41f5fbe672812c0e6b57e"
+    }
+  ],
+  "gnModified": false,
+  "gnGenerated": false,
+  "nativeCompiled": false
+}

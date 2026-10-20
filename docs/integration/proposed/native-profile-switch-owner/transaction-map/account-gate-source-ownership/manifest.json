@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "base": "profile-identity c3a130418 gate.cc; account-gate-continuation9550545b1 gate.h; actual frozen201 browser_prefs.cc",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "dac291bdb7fc78cfa5fbf01daf5e6474f2572b960697caca4e5eb2f934b566b0",
+      "outputSha256": "9d565f0538560fd745320331cdf8fe2613dbebb63bbfb5e1349861e44f44f3c0"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "9fbed7f8bea6567bfd62a0bba457c99038a2274e7d4b222b575358ed4ed88128",
+      "outputSha256": "3e8442b74ca284420aa5c72d6663d514592c6430330ca8cf3eecf5bcc5fc7692"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.h",
+      "baselineSha256": null,
+      "outputSha256": "19b26129a95381793e33bba08e431205739dcc29bc9a56438d28667e739a05e4"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": null,
+      "outputSha256": "0739874fa2349d3f2444234c056515db1a74cb4b59d94e87cd6b196049e0f4dc"
+    },
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "baselineSha256": "734658f9a48ba75df124229ab21bef034744b553a46a91f332d3b2bd7d2156d8",
+      "outputSha256": "d76d7c47c4413589078a9dc7ada7dac74c53ba46f09a7d2e784a71a357e8e2a7"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

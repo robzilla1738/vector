@@ -1,0 +1,111 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -34,9 +34,7 @@
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "chrome/browser/ui/unload_controller.h"
+ #include "components/prefs/pref_change_registrar.h"
+-#include "components/prefs/pref_registry_simple.h"
+ #include "components/prefs/pref_service.h"
+-#include "components/user_prefs/pref_registry_syncable.h"
+ #include "content/public/browser/web_contents.h"
+ #include "extensions/browser/extension_registry.h"
+ #include "extensions/browser/extension_registry_observer.h"
+@@ -456,15 +454,4 @@
+   registry.stopping = true;
+   registry.gates.clear();
+ }
+-void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterBooleanPref(kOnboardingComplete, false);
+-}
+-void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterStringPref(kProfileId, "");
+-  registry->RegisterStringPref(kAccountUserId, "");
+-  registry->RegisterIntegerPref("aside.account_id", -1);
+-  registry->RegisterBooleanPref(kBootstrapComplete, false);
+-  registry->RegisterBooleanPref(kSuppressAutomaticGate, false);
+-  registry->RegisterBooleanPref(kExtensionAvailable, false);
+-}
+ }  // namespace aux
+--- a/chrome/browser/aux/profile_gate.h
++++ b/chrome/browser/aux/profile_gate.h
+@@ -7,8 +7,6 @@
+ class BrowserWindowInterface;
+ class Profile;
+ class GURL;
+-class PrefRegistrySimple;
+-namespace user_prefs { class PrefRegistrySyncable; }
+ namespace content {
+ class WebContents;
+ }
+@@ -22,7 +20,5 @@
+ // not a generic new-window action, authentication bypass or extension API.
+ void RequestProfileBootstrap(Profile* profile);
+ void ShutdownProfileGates();
+-void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry);
+-void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
+ }  // namespace aux
+ #endif
+--- /dev/null
++++ b/chrome/browser/aux/profile_gate_prefs.h
+@@ -0,0 +1,11 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PROFILE_GATE_PREFS_H_
++#define CHROME_BROWSER_AUX_PROFILE_GATE_PREFS_H_
++class PrefRegistrySimple;
++namespace user_prefs { class PrefRegistrySyncable; }
++namespace aux {
++// Registration only: no ProfileManager, gate owner, browser window or network.
++void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry);
++void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/profile_gate_prefs.cc
+@@ -0,0 +1,17 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/profile_gate_prefs.h"
++#include "components/prefs/pref_registry_simple.h"
++#include "components/user_prefs/pref_registry_syncable.h"
++namespace aux {
++void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry) {
++  registry->RegisterBooleanPref("aside.onboarding_completed", false);
++}
++void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterStringPref("aside.profile_id", "");
++  registry->RegisterStringPref("aside.account_user_id", "");
++  registry->RegisterIntegerPref("aside.account_id", -1);
++  registry->RegisterBooleanPref("aside.bootstrap_complete", false);
++  registry->RegisterBooleanPref("aside.automatic_password_gate_suppressed", false);
++  registry->RegisterBooleanPref("aside.account_password_extension_available", false);
++}
++}  // namespace aux
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -23,6 +23,9 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/about_flags.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/profile_gate_prefs.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ #endif
+@@ -1432,6 +1435,7 @@
+   extensions::RegisterAuxPopupLocalStatePrefs(registry);
+   extensions::RegisterAuxBrowserLocalStatePrefs(registry);
+   aux::RegisterProfileSwitchLocalStatePrefs(registry);
++  aux::RegisterProfileGateLocalStatePrefs(registry);
+ #endif
+   registry->RegisterBooleanPref(prefs::kNativeBenchmarkEnabled, false);
+   registry->RegisterStringPref(prefs::kNativeBenchmarkFixtureUrl, "");
+@@ -1779,6 +1783,9 @@
+ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+                           const std::string& locale) {
+   TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux::RegisterProfileGateProfilePrefs(registry);
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   registry->RegisterStringPref(aux::kAppearanceThemePref, "system");
+   registry->RegisterBooleanPref(aux::kAppearanceGlassPref, true);

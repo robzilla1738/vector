@@ -1,0 +1,73 @@
+# Root integration instructions, NOT a shared native GN edit.
+# Replace the existing profile_state/profile_gate blocks and add these targets.
+source_set("profile_state") {
+  sources = [ "profile_state.cc", "profile_state.h" ]
+  public_deps = [ "//base" ]
+}
+
+source_set("account_bootstrap_state") {
+  sources = [ "account_bootstrap_state.cc", "account_bootstrap_state.h" ]
+  public_deps = [ "//base" ]
+}
+
+source_set("profile_identity") {
+  sources = [ "profile_identity.cc", "profile_identity.h" ]
+  public_deps = [ "//base" ]
+  deps = [
+    "//chrome/browser:browser_process",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_util",
+    "//components/prefs",
+    "//content/public/browser",
+  ]
+}
+
+source_set("profile_security_client") {
+  sources = [ "profile_security_client.cc", "profile_security_client.h" ]
+  public_deps = [ ":profile_state", "//services/network/public/cpp" ]
+  deps = [ ":profile_identity", "//net", "//url" ]
+}
+
+# Interface only, exactly like ntp_prerender. Implemented by the full UI target.
+source_set("profile_gate") {
+  public = [ "profile_gate.h" ]
+  public_deps = [ "//base" ]
+}
+
+source_set("profile_gate_prefs") {
+  sources = [ "profile_gate_prefs.cc", "profile_gate_prefs.h" ]
+  deps = [ "//components/prefs", "//components/user_prefs" ]
+}
+
+# Keep profile_state_probe unchanged: depends ONLY on :profile_state and //base.
+# It has no browser process/ProfileManager, Profile, network client, UI, or prefs.
+# The fixture source receives an explicit synthetic ID and reads disposable JSON.
+
+# In //chrome/browser/ui:ui (existing full browser UI source set):
+#   sources += [ "../aux/profile_gate.cc" ]
+#   deps += [
+#     "//chrome/browser/aux:account_bootstrap_state",
+#     "//chrome/browser/aux:profile_identity",
+#     "//chrome/browser/aux:profile_security_client",
+#   ]
+# Existing :profile_gate header dependency remains. Its implementation MUST NOT
+# be compiled again by the former :profile_gate source_set.
+
+# Explicit direct consumer deps (retain any existing :profile_state deps where
+# sources also include profile_state.h; these additions do not replace checks):
+# //chrome/browser/extensions/api/aux_account:aux_account:
+#   + //chrome/browser/aux:profile_identity
+#   + //chrome/browser/aux:profile_security_client
+# //chrome/browser/extensions/api/aux_mini_popup:aux_mini_popup:
+#   + //chrome/browser/aux:profile_identity
+# //chrome/browser/devtools:devtools:
+#   + //chrome/browser/aux:profile_identity
+#   + //chrome/browser/aux:profile_security_client
+# //chrome/browser/aux/passkeys:passkeys:
+#   + //chrome/browser/aux:profile_identity
+# //chrome/browser/ui/profiles:impl (real FinalizeNewProfileSetup continuation):
+#   + //chrome/browser/aux:profile_gate
+# //chrome/browser/prefs:impl:
+#   + //chrome/browser/aux:profile_gate_prefs
+# Browser prefs must not add :profile_gate implementation or :profile_manager_impl.
