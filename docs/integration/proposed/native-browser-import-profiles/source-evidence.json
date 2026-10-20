@@ -1,0 +1,86 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4266e60",
+      "end": "0x426793c",
+      "sha256": "bc752b37bbb883356b6e12e948a173c651cc929067481c9ea099f7aa3fec86c1",
+      "listing": "cache-and-fallback.asm",
+      "listingSha256": "64d6806c9778ae6fa30bdaf49afd5538fe023c860896bc7a4ca49110b0c08bdd"
+    },
+    {
+      "start": "0x426793c",
+      "end": "0x4267ecc",
+      "sha256": "494963ad47b2995c6f7ff07bf0727873ceb7a0244bcfc6d5cdc68d5f1ad42b06",
+      "listing": "directory-and-record.asm",
+      "listingSha256": "04879bacad4dc8b6f7920da92c7ee31efb386a84711825d4f85af9e5e0b693f7"
+    },
+    {
+      "start": "0x4268340",
+      "end": "0x4268620",
+      "sha256": "32372e65a54cd09aed854b795ac569c50a922b6472cd94d35476037672c11cef",
+      "listing": "fallback-sort.asm",
+      "listingSha256": "33621f58863c0905c35a61ce23be722077140fbc1465c5283823cade63881442"
+    },
+    {
+      "start": "0x4269a04",
+      "end": "0x4269a88",
+      "sha256": "b1dfee9f42992ee89fad2a51b8cbcb90a77f0ced831470414d0919f123283305",
+      "listing": "fallback-sort-comparator.asm",
+      "listingSha256": "1e75735a79dc3040056fe3560a740999d0d7fa3f1687255f7b7545cb58d38a7b"
+    },
+    {
+      "start": "0x4276114",
+      "end": "0x4276264",
+      "sha256": "c03b924e2798f04b0a87258d8d353f1d187b11457ba08a0afe17341592d37199",
+      "listing": "public-profile-fields.asm",
+      "listingSha256": "7ec9f942ccb2e544209d69a0555d5ae4e7a1aaba84cba9dbffa778fbc703da7d"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1fa26",
+      "text": "Local State",
+      "hex": "4c6f63616c20537461746500"
+    },
+    {
+      "address": "0xdb1fef1",
+      "text": "profile.info_cache",
+      "hex": "70726f66696c652e696e666f5f636163686500"
+    },
+    {
+      "address": "0xdb1ff04",
+      "text": "profile.profiles_order",
+      "hex": "70726f66696c652e70726f66696c65735f6f7264657200"
+    },
+    {
+      "address": "0xd7f2e37",
+      "text": "name",
+      "hex": "6e616d6500"
+    },
+    {
+      "address": "0xdaa1638",
+      "text": "user_name",
+      "hex": "757365725f6e616d6500"
+    },
+    {
+      "address": "0xdb1ff23",
+      "text": "gaia_name",
+      "hex": "676169615f6e616d6500"
+    },
+    {
+      "address": "0xd96ca9f",
+      "text": "subtitle",
+      "hex": "7375627469746c6500"
+    }
+  ],
+  "raw": {
+    "start": "0x4266e60",
+    "end": "0x4267ef0",
+    "path": "profiles.raw",
+    "sha256": "6efafe902cfa03fa266d5c58c8c6ba09ed6e0da242d1cf106a248344d9dd5946"
+  },
+  "decompilerEvidence": "ev_fbdabb76b4a7053b3b22f4d60cfb78e4e41de85f2a4a180e24076f5b7c382da6",
+  "decompilerInputsSha256": "6efafe902cfa03fa266d5c58c8c6ba09ed6e0da242d1cf106a248344d9dd5946"
+}

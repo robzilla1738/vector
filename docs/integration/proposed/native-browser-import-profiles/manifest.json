@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "f0b394c80 registry discovery output; disjoint lower migration-reader hunks may be replayed by integrator",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "039ba6119ec322eef57c1ee66308dad87899b06fb949d1b6890d77f16751f5fb",
+      "outputSha256": "65eb6215568160367f481baf6a834c685d416e73ff1f8b37a4f22da4e22fc023"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}
