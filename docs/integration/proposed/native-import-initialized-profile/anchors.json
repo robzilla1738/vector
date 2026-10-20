@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/themes/theme_service.h",
+    "before": "class ThemeSyncableService;",
+    "after": "class ThemeSyncableService;\n\nnamespace aux_importer {\nvoid ResetInitializedImportProfileTheme(Profile* profile);\n}  // namespace aux_importer",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/themes/theme_service.h",
+    "before": " protected:\n",
+    "after": " protected:\n  friend void aux_importer::ResetInitializedImportProfileTheme(Profile* profile);\n",
+    "count": 1
+  }
+]

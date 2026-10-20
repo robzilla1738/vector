@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/themes/theme_service.h",
+      "baselineSha256": "59686e1ae1b7779d4eafe04e84ff2e271fe4d308561e0ae3c3b6dc51e6cd222f",
+      "outputSha256": "ca44da30308a40d0c3d455a4071da7bb052b4f45012014d024623a610419e3b1"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_profile_metadata.cc",
+      "baselineSha256": null,
+      "outputSha256": "1a557f823dfbc598f39cb7c7b5899197bc4536ffc9542fc2df5c589c33bda98e"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_profile_metadata.h",
+      "baselineSha256": null,
+      "outputSha256": "618b66d0c4c902ef1cd35afa932620fdf46453188f40a78f53274d7110bc075e"
+    }
+  ]
+}
