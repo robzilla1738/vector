@@ -1,0 +1,43 @@
+{
+  "scope": "Static original scroll admission; no source patch, native execution, builds, profiles or OS state.",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+      "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h",
+      "sha256": "bb01e31966adc17a687f4ba8033e67973fd5fd01a8cba2a6a4d1ada1499a0f93"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "sha256": "4d0fd5e780ed1ac086e2327bd4dcfec10acf547f63dde2b4b6a01dbf58420fc7"
+    }
+  ],
+  "proofs": {
+    "drawn": "0x464c540..574 inlines original views::View::IsDrawn at 0x89f39c..3bc. Primary View table address point 0xe584330, slot+0xa8 at0xe5843d8 contains chained pointer 0x1000000089f39c. owner+0x188 is parent_, not Widget*.",
+    "enabled": "0x41d9d90..ea8 handles actual vertical_tabs.enabled pref and enable locks, storing cached enabled bool at+0x1e0. Scroll guard0x464c578..5a0 combines actual VerticalTabs/VerticalTabsLaunch feature checks with this bool, matching ShouldDisplayVerticalTabs."
+  },
+  "artifacts": [
+    {
+      "path": "profile-scroll-view-drawn-original.txt",
+      "sha256": "fe6784be8c4f27b54e1b6b8579ed7d04060ec46e237763f392f30bd2c86c5f43"
+    },
+    {
+      "path": "profile-scroll-enabled-mode-original.txt",
+      "sha256": "9e7b0274c2591952ed2341309a97a6ac62001bde39a14bd7648925b14aa9209b"
+    },
+    {
+      "path": "profile-scroll-admission-data-original.txt",
+      "sha256": "b14d9096370886ada7c84f5695e333b7130b9e7322817923c013f0fe942f3579"
+    }
+  ]
+}
