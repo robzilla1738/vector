@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "9d565f0538560fd745320331cdf8fe2613dbebb63bbfb5e1349861e44f44f3c0",
+      "outputSha256": "553727465ddf8656df2eb33959118122267424ba4726453f38e538ab5ff34437"
+    }
+  ]
+}

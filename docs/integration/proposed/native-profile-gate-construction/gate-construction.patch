@@ -1,0 +1,14 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -122,7 +122,10 @@
+         runner, StateHome().AppendASCII("accounts.json"),
+         base::BindPostTask(base::SingleThreadTaskRunner::GetCurrentDefault(),
+             base::BindRepeating(&ProfileGate::Refresh, weak_.GetWeakPtr())));
+-    Refresh();
++    // Publish this gate in the registry before Refresh can synchronously show
++    // a browser and re-enter CanShowBrowser through BrowserView::Show.
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&ProfileGate::Refresh, weak_.GetWeakPtr()));
+   }
+   ~ProfileGate() override {
+     weak_.InvalidateWeakPtrs();
