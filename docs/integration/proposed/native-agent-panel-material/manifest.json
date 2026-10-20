@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc",
+      "baselineSha256": "9ca07cbb9891a29d2529369a459dbea256c7d50f03ea4623e93db9308510214e",
+      "outputSha256": "a7d3d048903257d7a77c509c6ca7187877aa0cf7e6a52bce92af826e2980d58e"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+      "baselineSha256": "3816ef43a20d596265d76f605ec07318e80b218527f69ac17ad75c96c3ec09f1",
+      "outputSha256": "f582f80fc3786dab5b33554c4f960e5405bc5ae0ca5cdf36fed1ed5c69ed5309"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/themed_background.cc",
+      "baselineSha256": "eafa98e4a05566fe7f4d4c52a3f2b9f9dec9e000e0a1b9c308738bacb02d06e3",
+      "outputSha256": "5f625938d1088b76eefe9d78ca85b6ad86f280ca1bc2f287ccbef9a2df314539"
+    }
+  ]
+}

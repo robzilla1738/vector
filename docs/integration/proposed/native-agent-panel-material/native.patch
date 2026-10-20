@@ -1,0 +1,114 @@
+--- a/chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc
+@@ -27,6 +27,13 @@
+ #include "ui/actions/actions.h"
+ #include "ui/views/controls/webview/webview.h"
+ #include "ui/views/view.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/skia/include/core/SkColor.h"
++#include "ui/views/controls/webview/web_contents_set_background_color.h"
++#endif
+ 
+ namespace extensions {
+ 
+@@ -43,9 +50,28 @@
+ 
+   // ExtensionSidePanelCoordinator::Delegate:
+   std::unique_ptr<ExtensionViewHost> CreateHost(const GURL& url) override {
+-    return ExtensionViewHostFactory::CreateSidePanelHost(
++    auto host = ExtensionViewHostFactory::CreateSidePanelHost(
+         *coordinator_->extension(), url, coordinator_->browser(),
+         coordinator_->tab_interface());
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    if (host && coordinator_->extension()->id() == aux::kAgentExtensionId) {
++      // Retain the recovered popup helper's transparent renderer/host boundary
++      // for the supplied sidepanel, whose body explicitly requests transparency.
++      auto* contents = host->host_contents();
++      using Background = views::WebContentsSetBackgroundColor;
++      if (const auto* existing = Background::FromWebContents(contents);
++          existing && existing->color() != SK_ColorTRANSPARENT) {
++        contents->RemoveUserData(Background::UserDataKey());
++      }
++      Background::CreateForWebContentsWithColor(contents, SK_ColorTRANSPARENT);
++      contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
++      if (auto* view = contents->GetRenderWidgetHostView()) {
++        view->SetBackgroundColor(SK_ColorTRANSPARENT);
++        view->SetBackgroundColorOverride(SK_ColorTRANSPARENT);
++      }
++    }
++#endif
++    return host;
+   }
+ 
+   SidePanelNativeView CreateView(SidePanelEntryScope& scope) override {
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -15,6 +15,12 @@
+ #include "base/notreached.h"
+ #include "base/values.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "ui/native_theme/native_theme.h"
++#include "ui/views/widget/widget.h"
++#endif
+ #include "chrome/browser/ui/animation/browser_animation_controller.h"
+ #include "chrome/browser/ui/animation/browser_animation_types.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+@@ -131,7 +137,22 @@
+     SkPath path = SkPath::RRect(rrect);
+     canvas->ClipPath(path, /*do_anti_alias=*/true);
+ 
+-      ThemedBackground::PaintBackground(canvas, view, browser_view_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    const auto* panel_ui = SidePanelUI::From(browser_view_->browser());
++    if (panel_ui && panel_ui->IsSidePanelEntryShowing(
++            SidePanelEntryKey(SidePanelEntryId::kExtension,
++                              aux::kAgentExtensionId)) &&
++        !view->GetWidget()->GetCustomTheme() &&
++        view->GetNativeTheme()->preferred_contrast() !=
++            ui::NativeTheme::PreferredContrast::kMore) {
++      // Same single 80% tint used by the supplied normal Agent page; the
++      // sidepanel body is transparent and leaves that native backing to us.
++      canvas->DrawColor(SkColorSetA(
++          view->GetColorProvider()->GetColor(kColorToolbar), 204));
++      return;
++    }
++#endif
++    ThemedBackground::PaintBackground(canvas, view, browser_view_);
+   }
+ 
+  private:
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -20,6 +20,8 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/side_panel/side_panel_ui.h"
++#include "ui/views/widget/widget.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/views/frame/main_background_region_view.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -127,6 +129,17 @@
+     SkColor color = view->GetColorProvider()->GetColor(
+         GetThemeChoiceInfo(theme_choice, view).second);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // The Agent panel has its own single native tint. Do not put Chromium's
++    // opaque main-region matte behind it, including beside ordinary web pages.
++    const auto* panel_ui = SidePanelUI::From(browser_view->browser());
++    if (views::IsViewClass<MainBackgroundRegionView>(view) && panel_ui &&
++        panel_ui->IsSidePanelEntryShowing(SidePanelEntryKey(
++            SidePanelEntryId::kExtension, aux::kAgentExtensionId)) &&
++        !view->GetWidget()->GetCustomTheme() &&
++        view->GetNativeTheme()->preferred_contrast() !=
++            ui::NativeTheme::PreferredContrast::kMore) {
++      return;
++    }
+     // Supplied normal Agent pages paint --web-content-background at 80% over
+     // the native material. Give the toolbar row one matching tint, rather than
+     // stacking the upstream toolbar, top-container and main-region mattes.
