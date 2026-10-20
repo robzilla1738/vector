@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "00fcf834d avatar / actual266; region267 disjoint",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "1356b3e0c2a481c50eb24c1372b10013906b869041856528e274e7c08ff135cb",
+      "outputSha256": "4e84fadf6e88ed170d35e9bb8dc37ed1b6e1ef737a586f8798881e64bb0384eb",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "    source_icon_ = image;\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

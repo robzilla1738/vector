@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -634,7 +634,6 @@
+                         bool show_monogram,
+                         std::u16string_view name) {
+     preserve_source_image_ = true;
+-    source_icon_ = image;
+     icon_view_->SetImage(image);
+     if (!show_monogram) {
+       return;

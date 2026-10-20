@@ -1,0 +1,4 @@
+../../chrome/browser/ui/views/frame/aux_sidebar_view.cc:637:18: error: no viable overloaded '='
+  637 |     source_icon_ = image;
+../../ui/base/models/image_model.h:83:15: note: candidate function not viable: 'this' argument has type 'const ui::ImageModel', but method is not marked const
+../../ui/base/models/image_model.h:85:15: note: candidate function not viable: 'this' argument has type 'const ui::ImageModel', but method is not marked const
