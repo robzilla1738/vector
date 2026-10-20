@@ -1,0 +1,559 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "selector",
+      "rva": "0x456d980",
+      "bytes": 244,
+      "sha256": "dc0d4f9dbdc68adb94b4bf0d61f821cf76a3cae24c47fb56322b2b91f2f5e4e9",
+      "assemblySha256": "299d6df4ad73ca4ef1e53380421f85def6e3cd9e888a7b25477a2848274de7fc"
+    },
+    {
+      "name": "validated-name",
+      "rva": "0x456da74",
+      "bytes": 272,
+      "sha256": "75f712195c638b731cb0181270e04cc77cd97d9377c394920f7029b69d5f7789",
+      "assemblySha256": "78cb9a9c3d2ed2c0e3e3309bebee803710fc6ca1ae72a2f3d53f051d9f845d9c"
+    }
+  ],
+  "table": {
+    "rva": "0xead4c58",
+    "bytes": 1920,
+    "sha256": "b9fa9c53862e1ad68873e66dea17c33d4af93deed680e0f024a74aeca2d73b4d"
+  },
+  "icons": [
+    {
+      "key": "sun",
+      "label": "Sun",
+      "identifier": "kSun",
+      "tableRva": "0xead4c58",
+      "descriptorRva": "0xe9d56e0",
+      "representationRva": "0xe9d56d0",
+      "pathRva": "0xd3e46f0",
+      "elements": 347,
+      "sha256": "5b1ee689b84ccdfec5ae6b0dd30580b969a65561d98a2bebe8eb1f9cca84a805"
+    },
+    {
+      "key": "moon",
+      "label": "Moon",
+      "identifier": "kMoon",
+      "tableRva": "0xead4c80",
+      "descriptorRva": "0xe9d5370",
+      "representationRva": "0xe9d5360",
+      "pathRva": "0xd3e07d4",
+      "elements": 77,
+      "sha256": "4da49cccf1f553376186959bb17d8df7661bda19a5782655bef751d15761317d"
+    },
+    {
+      "key": "cloud",
+      "label": "Cloud",
+      "identifier": "kCloud",
+      "tableRva": "0xead4ca8",
+      "descriptorRva": "0xe9d4cd0",
+      "representationRva": "0xe9d4cc0",
+      "pathRva": "0xd3da2c4",
+      "elements": 86,
+      "sha256": "833645ac4c449087d0ced3c9effa2176b2da576eddd628b9b22777868705feb1"
+    },
+    {
+      "key": "zap",
+      "label": "Zap",
+      "identifier": "kZap",
+      "tableRva": "0xead4cd0",
+      "descriptorRva": "0xe9d5898",
+      "representationRva": "0xe9d5888",
+      "pathRva": "0xd3e6c90",
+      "elements": 49,
+      "sha256": "b314db0582555be1015eb746a3fb74432357cd35259803a3d35cca4c7bcd1681"
+    },
+    {
+      "key": "heart",
+      "label": "Heart",
+      "identifier": "kHeart",
+      "tableRva": "0xead4cf8",
+      "descriptorRva": "0xe9d5168",
+      "representationRva": "0xe9d5158",
+      "pathRva": "0xd3de3f8",
+      "elements": 133,
+      "sha256": "a15b7f5d55e615c29f033743b7d6fdd0531fbb371626ca7d70f526521d42145a"
+    },
+    {
+      "key": "flame",
+      "label": "Flame",
+      "identifier": "kFlame",
+      "tableRva": "0xead4d20",
+      "descriptorRva": "0xe9d4fb0",
+      "representationRva": "0xe9d4fa0",
+      "pathRva": "0xd3dce84",
+      "elements": 111,
+      "sha256": "47fce8459364b0e5212cccc3adec9ffcd4382650c0a3053757ce0108714af60e"
+    },
+    {
+      "key": "star",
+      "label": "Star",
+      "identifier": "kStar",
+      "tableRva": "0xead4d48",
+      "descriptorRva": "0xe9d5668",
+      "representationRva": "0xe9d5658",
+      "pathRva": "0xd3e4198",
+      "elements": 107,
+      "sha256": "eb0ba38bc8bed98572bda87f7f79ab47bc09ffd9cbac5e838fd59a629c6ad2c2"
+    },
+    {
+      "key": "magic_wand",
+      "label": "Magic wand",
+      "identifier": "kMagicWand",
+      "tableRva": "0xead4d70",
+      "descriptorRva": "0xe9d52a8",
+      "representationRva": "0xe9d5298",
+      "pathRva": "0xd3dfa4c",
+      "elements": 325,
+      "sha256": "ccc1f281ff9085e3d8bf4c674b6284829fa0b8218d44831677854e1f57eccf99"
+    },
+    {
+      "key": "thumbs_up",
+      "label": "Thumbs up",
+      "identifier": "kThumbsUp",
+      "tableRva": "0xead4d98",
+      "descriptorRva": "0xe9d5780",
+      "representationRva": "0xe9d5770",
+      "pathRva": "0xd3e5704",
+      "elements": 79,
+      "sha256": "c45ef662309f4b3d4402f6f214507ec448e16ceeffde735f10e5d6b1b386151f"
+    },
+    {
+      "key": "diamond",
+      "label": "Diamond",
+      "identifier": "kDiamond",
+      "tableRva": "0xead4dc0",
+      "descriptorRva": "0xe9d4de8",
+      "representationRva": "0xe9d4dd8",
+      "pathRva": "0xd3db190",
+      "elements": 106,
+      "sha256": "bd88ee8918e9716f38b839bc58d79a6122e045fc6469b6ddff26b83f3ab9f50c"
+    },
+    {
+      "key": "book",
+      "label": "Book",
+      "identifier": "kBook",
+      "tableRva": "0xead4de8",
+      "descriptorRva": "0xe9d4aa0",
+      "representationRva": "0xe9d4a90",
+      "pathRva": "0xd3d8cfc",
+      "elements": 152,
+      "sha256": "3325a3257353a446e0cc343cfc0e26df154883646e1531f4b8097adaac9e531c"
+    },
+    {
+      "key": "magic_book",
+      "label": "Magic book",
+      "identifier": "kMagicBook",
+      "tableRva": "0xead4e10",
+      "descriptorRva": "0xe9d5280",
+      "representationRva": "0xe9d5270",
+      "pathRva": "0xd3df6a4",
+      "elements": 234,
+      "sha256": "7157e2697de08485fe928a9b1e7e2a5adf6cdc5118c05ccfec1220e38ef979ea"
+    },
+    {
+      "key": "hourglass",
+      "label": "Hourglass",
+      "identifier": "kHourglass",
+      "tableRva": "0xead4e38",
+      "descriptorRva": "0xe9d5190",
+      "representationRva": "0xe9d5180",
+      "pathRva": "0xd3de60c",
+      "elements": 178,
+      "sha256": "c6f297191fec78e9015e72ae5267a9d92b9db52ed6608dc28e563486a8da0223"
+    },
+    {
+      "key": "clock",
+      "label": "Clock",
+      "identifier": "kClock",
+      "tableRva": "0xead4e60",
+      "descriptorRva": "0xe9d4c80",
+      "representationRva": "0xe9d4c70",
+      "pathRva": "0xd3da020",
+      "elements": 81,
+      "sha256": "e34ccb65b1ac3ce6bbe32c1f0d5b2ca9bb789e3b3db54cf212ec8c87364537f4"
+    },
+    {
+      "key": "smile",
+      "label": "Smile",
+      "identifier": "kSmile",
+      "tableRva": "0xead4e88",
+      "descriptorRva": "0xe9d4ed8",
+      "representationRva": "0xe9d4ec8",
+      "pathRva": "0xd3dc174",
+      "elements": 214,
+      "sha256": "ad0bc134ea8d0c75c4730a8851b444b956f3cd9eafd9034fb838ca3c50d92787"
+    },
+    {
+      "key": "slime",
+      "label": "Slime",
+      "identifier": "kSlime",
+      "tableRva": "0xead4eb0",
+      "descriptorRva": "0xe9d53e8",
+      "representationRva": "0xe9d53d8",
+      "pathRva": "0xd3e0ec4",
+      "elements": 134,
+      "sha256": "e4291dd165cb4b092e2dea37d10c2b812df62730d0c6d453232121af6e726dd3"
+    },
+    {
+      "key": "lock",
+      "label": "Lock",
+      "identifier": "kLock",
+      "tableRva": "0xead4ed8",
+      "descriptorRva": "0xe9d5230",
+      "representationRva": "0xe9d5220",
+      "pathRva": "0xd3df254",
+      "elements": 118,
+      "sha256": "a788dd52e4f5f9627e03ba4b5af4bfa6ab0990c42ec55f202c8b528bf794f866"
+    },
+    {
+      "key": "map_pin",
+      "label": "Map pin",
+      "identifier": "kMapPin",
+      "tableRva": "0xead4f00",
+      "descriptorRva": "0xe9d52f8",
+      "representationRva": "0xe9d52e8",
+      "pathRva": "0xd3e00d4",
+      "elements": 87,
+      "sha256": "3f25938f0982e89990b8042eeb801daef56ce8a4c2aedb8a1e01c4e1177edf32"
+    },
+    {
+      "key": "pin",
+      "label": "Pin",
+      "identifier": "kPin",
+      "tableRva": "0xead4f28",
+      "descriptorRva": "0xe9d5488",
+      "representationRva": "0xe9d5478",
+      "pathRva": "0xd3e1834",
+      "elements": 90,
+      "sha256": "b4ffa746bce9676752da3666143273e394c21d9c7709566f887ce32f5e965948"
+    },
+    {
+      "key": "tag",
+      "label": "Tag",
+      "identifier": "kTag",
+      "tableRva": "0xead4f50",
+      "descriptorRva": "0xe9d5730",
+      "representationRva": "0xe9d5720",
+      "pathRva": "0xd3e5358",
+      "elements": 86,
+      "sha256": "bf24d5c5091eacd8e3a8208379eadecc4ab48d1531b028b9eb4a2ba7503ab6eb"
+    },
+    {
+      "key": "flag",
+      "label": "Flag",
+      "identifier": "kFlag",
+      "tableRva": "0xead4f78",
+      "descriptorRva": "0xe9d4fd8",
+      "representationRva": "0xe9d4fc8",
+      "pathRva": "0xd3dd040",
+      "elements": 97,
+      "sha256": "99b52b68db3cd99340c1880be9c5d7e7d95a7242c2bfcb6b11b9e56adef52608"
+    },
+    {
+      "key": "shopping_bag",
+      "label": "Shopping bag",
+      "identifier": "kShoppingBag",
+      "tableRva": "0xead4fa0",
+      "descriptorRva": "0xe9d55f0",
+      "representationRva": "0xe9d55e0",
+      "pathRva": "0xd3e37ac",
+      "elements": 74,
+      "sha256": "0a5aa8d0fbfb6b1dbbc10c486e50856d98a5094265d5c9a581fdf5eba4d70a98"
+    },
+    {
+      "key": "suitcase",
+      "label": "Suitcase",
+      "identifier": "kSuitcase",
+      "tableRva": "0xead4fc8",
+      "descriptorRva": "0xe9d56b8",
+      "representationRva": "0xe9d56a8",
+      "pathRva": "0xd3e4418",
+      "elements": 182,
+      "sha256": "50e85075b62cd888531ee3578dff08ca140f3f98bf115850962f33fe988f6e07"
+    },
+    {
+      "key": "banknote",
+      "label": "Banknote",
+      "identifier": "kBanknote",
+      "tableRva": "0xead4ff0",
+      "descriptorRva": "0xe9d4a50",
+      "representationRva": "0xe9d4a40",
+      "pathRva": "0xd3d88b4",
+      "elements": 162,
+      "sha256": "b030a96f6385cdac0f897664b1a12ae8cdf552030211cb2ce868caf628b6a1ca"
+    },
+    {
+      "key": "telescope",
+      "label": "Telescope",
+      "identifier": "kTelescope",
+      "tableRva": "0xead5018",
+      "descriptorRva": "0xe9d5758",
+      "representationRva": "0xe9d5748",
+      "pathRva": "0xd3e54b0",
+      "elements": 149,
+      "sha256": "81979f0ae7b82022b74eb8926ac92816cf8cccb477eb4c90aabe062253f6f6cb"
+    },
+    {
+      "key": "trophy",
+      "label": "Trophy",
+      "identifier": "kTrophy",
+      "tableRva": "0xead5040",
+      "descriptorRva": "0xe9d57d0",
+      "representationRva": "0xe9d57c0",
+      "pathRva": "0xd3e5b50",
+      "elements": 160,
+      "sha256": "592f22a47e0f8da75dfdb85bb6ce1c7ebd3ca8d77d159a9c1af034da4d48be46"
+    },
+    {
+      "key": "rocket",
+      "label": "Rocket",
+      "identifier": "kRocket",
+      "tableRva": "0xead5068",
+      "descriptorRva": "0xe9d5528",
+      "representationRva": "0xe9d5518",
+      "pathRva": "0xd3e24ec",
+      "elements": 150,
+      "sha256": "d4fb9e327aa47957711329e2cc98c103b40ce8700f9721f6010d23980bee2dad"
+    },
+    {
+      "key": "ticket",
+      "label": "Ticket",
+      "identifier": "kTicket",
+      "tableRva": "0xead5090",
+      "descriptorRva": "0xe9d57a8",
+      "representationRva": "0xe9d5798",
+      "pathRva": "0xd3e5840",
+      "elements": 196,
+      "sha256": "72c78f4e1d3f60ef3e4061e45d8a7282f932685b6cb059786fb9cfde65f5e8da"
+    },
+    {
+      "key": "camera",
+      "label": "Camera",
+      "identifier": "kCamera",
+      "tableRva": "0xead50b8",
+      "descriptorRva": "0xe9d4b90",
+      "representationRva": "0xe9d4b80",
+      "pathRva": "0xd3d9720",
+      "elements": 90,
+      "sha256": "c862c01f89ab3de58ba4083ee56877f3efcfaf7066a35210651013f0dab82a61"
+    },
+    {
+      "key": "folder",
+      "label": "Folder",
+      "identifier": "kFolder",
+      "tableRva": "0xead50e0",
+      "descriptorRva": "0xe9d5000",
+      "representationRva": "0xe9d4ff0",
+      "pathRva": "0xd3dd1c4",
+      "elements": 62,
+      "sha256": "378138a167f29b2b4f7da113632ceee27795289149d8005b7557071a6cd9bbc4"
+    },
+    {
+      "key": "bookmark",
+      "label": "Bookmark",
+      "identifier": "kBookmark",
+      "tableRva": "0xead5108",
+      "descriptorRva": "0xe9d4b18",
+      "representationRva": "0xe9d4b08",
+      "pathRva": "0xd3d91e8",
+      "elements": 54,
+      "sha256": "ba516d65ddd461104ffa963d3eebd2ea64d1a623337c3a64477196f9d4c52572"
+    },
+    {
+      "key": "pencil",
+      "label": "Pencil",
+      "identifier": "kPencil",
+      "tableRva": "0xead5130",
+      "descriptorRva": "0xe9d5438",
+      "representationRva": "0xe9d5428",
+      "pathRva": "0xd3e1448",
+      "elements": 79,
+      "sha256": "fdf5d9142e21a280081fe1be7c1dbdf6c7d6dc5bf38e26d0804cdffedf30c8a2"
+    },
+    {
+      "key": "write",
+      "label": "Write",
+      "identifier": "kWrite",
+      "tableRva": "0xead5158",
+      "descriptorRva": "0xe9d5870",
+      "representationRva": "0xe9d5860",
+      "pathRva": "0xd3e6a58",
+      "elements": 142,
+      "sha256": "fdc92465ca9bd2c057ecb9f4622896fd799689f1c4c4faf6c2b6329e0e5fb2ff"
+    },
+    {
+      "key": "brush",
+      "label": "Brush",
+      "identifier": "kBrush",
+      "tableRva": "0xead5180",
+      "descriptorRva": "0xe9d4b40",
+      "representationRva": "0xe9d4b30",
+      "pathRva": "0xd3d92c0",
+      "elements": 197,
+      "sha256": "9177d774ee0ac44a61cc961d2cf25e58f3555afaf9406cac554d9beaca47bd2a"
+    },
+    {
+      "key": "palette",
+      "label": "Palette",
+      "identifier": "kPalette",
+      "tableRva": "0xead51a8",
+      "descriptorRva": "0xe9d4d20",
+      "representationRva": "0xe9d4d10",
+      "pathRva": "0xd3da5bc",
+      "elements": 187,
+      "sha256": "90664461a1e06e20ba4ad7d73365af4a0f9d8524cfefc58839fe777dcc943c16"
+    },
+    {
+      "key": "half_circle",
+      "label": "Half circle",
+      "identifier": "kHalfCircle",
+      "tableRva": "0xead51d0",
+      "descriptorRva": "0xe9d4c30",
+      "representationRva": "0xe9d4c20",
+      "pathRva": "0xd3d9d38",
+      "elements": 68,
+      "sha256": "5dedbaaf73cf8534a1442ae690eb3ab0f3e72090fc9f9d35b4149f475266ff4e"
+    },
+    {
+      "key": "atom",
+      "label": "Atom",
+      "identifier": "kAtom",
+      "tableRva": "0xead51f8",
+      "descriptorRva": "0xe9d4a00",
+      "representationRva": "0xe9d49f0",
+      "pathRva": "0xd3d7f78",
+      "elements": 474,
+      "sha256": "5917604df08897567ffaeac5460e2d03966e879373f77b3303912b75d04e9785"
+    },
+    {
+      "key": "headphones",
+      "label": "Headphones",
+      "identifier": "kHeadphones",
+      "tableRva": "0xead5220",
+      "descriptorRva": "0xe9d5140",
+      "representationRva": "0xe9d5130",
+      "pathRva": "0xd3de284",
+      "elements": 93,
+      "sha256": "d1771d436c4e3d5caaa1681acc8b9290c000ddd13a775e2af0dcb2364b14e48d"
+    },
+    {
+      "key": "bell",
+      "label": "Bell",
+      "identifier": "kBell",
+      "tableRva": "0xead5248",
+      "descriptorRva": "0xe9d4a78",
+      "representationRva": "0xe9d4a68",
+      "pathRva": "0xd3d8b3c",
+      "elements": 112,
+      "sha256": "3be2473759e05dc8fadde1edec784b1a9af540a198ad41247891d42e457d85f2"
+    },
+    {
+      "key": "email",
+      "label": "Email",
+      "identifier": "kEmail",
+      "tableRva": "0xead5270",
+      "descriptorRva": "0xe9d4e88",
+      "representationRva": "0xe9d4e78",
+      "pathRva": "0xd3dba8c",
+      "elements": 75,
+      "sha256": "66701cbff602976d81f96b160f9e514784b1d68f37e46a517bf313b97932f156"
+    },
+    {
+      "key": "chart",
+      "label": "Chart",
+      "identifier": "kChart",
+      "tableRva": "0xead5298",
+      "descriptorRva": "0xe9d4bb8",
+      "representationRva": "0xe9d4ba8",
+      "pathRva": "0xd3d9888",
+      "elements": 194,
+      "sha256": "7734e88066a6b9a9138b130b8b71e88123ad956280522a9ec3afdf0f525e4536"
+    },
+    {
+      "key": "form_circle",
+      "label": "Circle",
+      "identifier": "kFormCircle",
+      "tableRva": "0xead52c0",
+      "descriptorRva": "0xe9d5050",
+      "representationRva": "0xe9d5040",
+      "pathRva": "0xd3dd548",
+      "elements": 35,
+      "sha256": "6c85b9bccf5ad1c5e2b3ac84c6705507b40e5f15ffefd6ddf47d4547e49ffc8e"
+    },
+    {
+      "key": "form_square",
+      "label": "Square",
+      "identifier": "kFormSquare",
+      "tableRva": "0xead52e8",
+      "descriptorRva": "0xe9d50c8",
+      "representationRva": "0xe9d50b8",
+      "pathRva": "0xd3ddc1c",
+      "elements": 43,
+      "sha256": "058aebaafdbaa8bc67086cab46682bb07a392b1d2d4b3d785f6863d75adadb55"
+    },
+    {
+      "key": "form_diamond",
+      "label": "Diamond",
+      "identifier": "kFormDiamond",
+      "tableRva": "0xead5310",
+      "descriptorRva": "0xe9d5078",
+      "representationRva": "0xe9d5068",
+      "pathRva": "0xd3dd5d4",
+      "elements": 47,
+      "sha256": "865eb74989365fa3783eadb98d8e7287e68b50cebec136bc935cd053ff202c7b"
+    },
+    {
+      "key": "form_flower",
+      "label": "Flower",
+      "identifier": "kFormFlower",
+      "tableRva": "0xead5338",
+      "descriptorRva": "0xe9d50a0",
+      "representationRva": "0xe9d5090",
+      "pathRva": "0xd3dd690",
+      "elements": 355,
+      "sha256": "5c9087e6d868428866d8500cd8feb262f533baf84558a62dee87e9c682392fad"
+    },
+    {
+      "key": "cursor",
+      "label": "Cursor",
+      "identifier": "kCursor",
+      "tableRva": "0xead5360",
+      "descriptorRva": "0xe9d4dc0",
+      "representationRva": "0xe9d4db0",
+      "pathRva": "0xd3db0d4",
+      "elements": 47,
+      "sha256": "39d449e8bb2d0859da8eba024183eedc1c2f8f3cf9ed9ca79af66165a32cacc1"
+    },
+    {
+      "key": "console",
+      "label": "Console",
+      "identifier": "kConsole",
+      "tableRva": "0xead5388",
+      "descriptorRva": "0xe9d4d48",
+      "representationRva": "0xe9d4d38",
+      "pathRva": "0xd3da8a8",
+      "elements": 129,
+      "sha256": "e23e9bc31de1326c50b0bb723900adca714447782d89efb1376f3c633be51c32"
+    },
+    {
+      "key": "bubble",
+      "label": "Bubble",
+      "identifier": "kBubble",
+      "tableRva": "0xead53b0",
+      "descriptorRva": "0xe9d4b68",
+      "representationRva": "0xe9d4b58",
+      "pathRva": "0xd3d95d4",
+      "elements": 83,
+      "sha256": "cc2058a0eeeec5bf7e6e42f17bb5bc78b1b157047d5a60d5cbd2412c3c97e042"
+    }
+  ]
+}

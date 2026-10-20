@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "applyAfter": "Actual native228 profile attribute sources, unchanged from205; new read-only selector dependency for genuine pager owner",
+  "files": [
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.cc",
+      "baselineSha256": "f7730b23906724ee8021bd3c891804883caec4ed7c9522e6143250fd566403c6",
+      "outputSha256": "4c01151a9c458b214db64a913b6a7c5f18fb78a0d41d08c942cbee48df5ca2b6",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "baselineSha256": "e7ee344afa32713a03236ee7b02bcaff8e0eba44490549ee1e1aaa872d68804b",
+      "outputSha256": "9f7742e44937b918ec00c91694d6071e4485d990236c4bbf4cf0bf2e66b9e550",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+      "baselineSha256": null,
+      "outputSha256": "40555c87e90dadd6a8ca9431f932e7cd871f9aec91d358194bd03a5d00e67157",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+      "baselineSha256": null,
+      "outputSha256": "3ab693c4f34bc37024fd4458c738f54d058489c4170dd40e3186886f506d2a09",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "ce3408e48bc2c7b406b6c34d5cfbc799665109410672d93a9013e39f48aebf1a",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "registration": [
+    "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+    "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+    "chrome/browser/ui/views/profiles/aux_profile_indicator_icons.inc"
+  ],
+  "remainingGaps": [
+    "Actual original icon editor/setter and change notification producer remain separate; existing16-icon picker is not wired to this selector",
+    "Pager owner/header mount remains separate; no current UI changed by this source-only prerequisite"
+  ]
+}
