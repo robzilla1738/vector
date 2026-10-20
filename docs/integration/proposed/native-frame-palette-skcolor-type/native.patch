@@ -1,0 +1,79 @@
+--- a/chrome/browser/ui/color/chrome_color_mixers.cc
++++ b/chrome/browser/ui/color/chrome_color_mixers.cc
+@@ -99,41 +99,41 @@
+       key.forced_colors == ui::ColorProviderKey::ForcedColors::kNone) {
+     const bool dark = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
+     ui::ColorMixer& mixer = provider->AddMixer();
+-    mixer[kColorToolbar] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorToolbarBackgroundSubtleEmphasis] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorToolbarBackgroundSubtleEmphasisHovered] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorToolbarButtonIcon] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarButtonIconDefault] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarButtonIconDisabled] = {dark ? 0x61b3b3b3 : 0x61000000};
+-    mixer[kColorToolbarButtonIconHovered] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarButtonIconInactive] = {dark ? 0x6eb3b3b3 : 0x6e000000};
+-    mixer[kColorToolbarButtonIconPressed] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarButtonText] = {dark ? 0xffc7c7c7 : 0xff474747};
+-    mixer[kColorToolbarButtonBorder] = {dark ? 0x1ab3b3b3 : 0x1a000000};
+-    mixer[kColorToolbarContentAreaSeparator] = {dark ? 0x00000000 : 0x00000000};
+-    mixer[kColorToolbarTopSeparatorFrameActive] = {dark ? 0x00000000 : 0x00000000};
+-    mixer[kColorToolbarTopSeparatorFrameInactive] = {dark ? 0x00000000 : 0x00000000};
+-    mixer[kColorToolbarText] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarTextDefault] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorToolbarTextDisabled] = {dark ? 0x61b3b3b3 : 0x61000000};
+-    mixer[kColorToolbarTextDisabledDefault] = {dark ? 0x61b3b3b3 : 0x61000000};
+-    mixer[kColorToolbarInkDropHover] = {dark ? 0x15b3b3b3 : 0x15000000};
+-    mixer[kColorToolbarInkDropRipple] = {dark ? 0x29b3b3b3 : 0x29000000};
+-    mixer[kColorLocationBarBackground] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorLocationBarBackgroundHovered] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorLocationBarBorder] = {dark ? 0x1ab3b3b3 : 0x1a000000};
+-    mixer[kColorLocationBarBorderOnMismatch] = {dark ? 0x1ab3b3b3 : 0x1a000000};
+-    mixer[kColorLocationBarBorderOpaque] = {dark ? 0xff272727 : 0xffe5e5e5};
+-    mixer[kColorOmniboxIconBackground] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorOmniboxIconBackgroundTonal] = {dark ? 0xff171717 : 0xffffffff};
+-    mixer[kColorOmniboxIconForeground] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorOmniboxIconForegroundTonal] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorOmniboxIconHover] = {dark ? 0x1ab3b3b3 : 0x1a000000};
+-    mixer[kColorOmniboxIconPressed] = {dark ? 0x29b3b3b3 : 0x29000000};
+-    mixer[kColorOmniboxText] = {dark ? 0xffb3b3b3 : 0xff000000};
+-    mixer[kColorOmniboxTextDimmed] = {dark ? 0xb2b3b3b3 : 0xb2000000};
+-    mixer[kColorOmniboxResultsBackground] = {dark ? 0xff262626 : 0xfff1f1f1};
+-    mixer[kColorOmniboxResultsBackgroundHovered] = {dark ? 0xff2f2f2f : 0xffe9e9e9};
++    mixer[kColorToolbar] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorToolbarBackgroundSubtleEmphasis] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorToolbarBackgroundSubtleEmphasisHovered] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorToolbarButtonIcon] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarButtonIconDefault] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarButtonIconDisabled] = {dark ? 0x61b3b3b3u : 0x61000000u};
++    mixer[kColorToolbarButtonIconHovered] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarButtonIconInactive] = {dark ? 0x6eb3b3b3u : 0x6e000000u};
++    mixer[kColorToolbarButtonIconPressed] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarButtonText] = {dark ? 0xffc7c7c7u : 0xff474747u};
++    mixer[kColorToolbarButtonBorder] = {dark ? 0x1ab3b3b3u : 0x1a000000u};
++    mixer[kColorToolbarContentAreaSeparator] = {dark ? 0x00000000u : 0x00000000u};
++    mixer[kColorToolbarTopSeparatorFrameActive] = {dark ? 0x00000000u : 0x00000000u};
++    mixer[kColorToolbarTopSeparatorFrameInactive] = {dark ? 0x00000000u : 0x00000000u};
++    mixer[kColorToolbarText] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarTextDefault] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorToolbarTextDisabled] = {dark ? 0x61b3b3b3u : 0x61000000u};
++    mixer[kColorToolbarTextDisabledDefault] = {dark ? 0x61b3b3b3u : 0x61000000u};
++    mixer[kColorToolbarInkDropHover] = {dark ? 0x15b3b3b3u : 0x15000000u};
++    mixer[kColorToolbarInkDropRipple] = {dark ? 0x29b3b3b3u : 0x29000000u};
++    mixer[kColorLocationBarBackground] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorLocationBarBackgroundHovered] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorLocationBarBorder] = {dark ? 0x1ab3b3b3u : 0x1a000000u};
++    mixer[kColorLocationBarBorderOnMismatch] = {dark ? 0x1ab3b3b3u : 0x1a000000u};
++    mixer[kColorLocationBarBorderOpaque] = {dark ? 0xff272727u : 0xffe5e5e5u};
++    mixer[kColorOmniboxIconBackground] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorOmniboxIconBackgroundTonal] = {dark ? 0xff171717u : 0xffffffffu};
++    mixer[kColorOmniboxIconForeground] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorOmniboxIconForegroundTonal] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorOmniboxIconHover] = {dark ? 0x1ab3b3b3u : 0x1a000000u};
++    mixer[kColorOmniboxIconPressed] = {dark ? 0x29b3b3b3u : 0x29000000u};
++    mixer[kColorOmniboxText] = {dark ? 0xffb3b3b3u : 0xff000000u};
++    mixer[kColorOmniboxTextDimmed] = {dark ? 0xb2b3b3b3u : 0xb2000000u};
++    mixer[kColorOmniboxResultsBackground] = {dark ? 0xff262626u : 0xfff1f1f1u};
++    mixer[kColorOmniboxResultsBackgroundHovered] = {dark ? 0xff2f2f2fu : 0xffe9e9e9u};
+   }
+ #endif
+ 

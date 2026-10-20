@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/color/chrome_color_mixers.cc",
+      "baselineSha256": "dd4e75a006d5cda348537382992af76103935bba85804dfcb9e11e76c4b8dd8a",
+      "outputSha256": "ac588bffab325d2b8f1416aa3f6d5cbf59a4afdd44e18df02cbe9dafc4ace92f"
+    }
+  ]
+}
