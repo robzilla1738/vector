@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "b2788587776257dfa6e1d3f640046933c267d37953fec78102171b89b42f83fe",
+      "outputSha256": "72570d989654647a1eeb1e14368031b6f652d24e22b337cd7bc2e8a69536faf6",
+      "anchors": [
+        {
+          "find": "//chrome/browser/ui/webui/aux_importer/source_profile_picker_mac.h",
+          "replace": "source_profile_picker_mac.h",
+          "count": 1
+        },
+        {
+          "find": "//chrome/browser/ui/webui/aux_importer/source_profile_picker_mac.mm",
+          "replace": "source_profile_picker_mac.mm",
+          "count": 1
+        },
+        {
+          "find": " \"//chrome/browser/profiles:profile_window\",",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "//chrome/browser/ui/browser_window/public:browser_window_interface",
+          "replace": "//chrome/browser/ui/browser_window",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

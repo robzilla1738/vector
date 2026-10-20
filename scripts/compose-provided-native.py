@@ -504,6 +504,15 @@ steps.extend([
     ('native-import-completion-choice/native.patch', 'native-import-completion-choice/manifest.json'),
     ('native-import-profile-helper-build/native.patch', 'native-import-profile-helper-build/manifest.json'),
     ('native-contextual-view-observer-fix/native.patch', 'native-contextual-view-observer-fix/manifest.json'),
+    ('native-chromium-source-profile-picker/native.patch', 'native-chromium-source-profile-picker/manifest.json'),
+    ('native-firefox-new-target-owner/native.patch', 'native-firefox-new-target-owner/manifest.json'),
+    ('native-chromium-new-target-worker/native.patch', 'native-chromium-new-target-worker/manifest.json'),
+    ('native-chromium-new-target-coordinator/native.patch', 'native-chromium-new-target-coordinator/manifest.json'),
+    ('native-chromium-source-capture/native.patch', 'native-chromium-source-capture/manifest.json'),
+    ('native-import-window-lifecycle/native.patch', 'native-import-window-lifecycle/manifest.json'),
+    ('native-import-window-lifecycle-bindings/native.patch', 'native-import-window-lifecycle-bindings/manifest.json'),
+    ('native-import-coordinator-build/native.patch', 'native-import-coordinator-build/manifest.json'),
+    ('native-import-coordinator-build-labels/native.patch', 'native-import-coordinator-build-labels/manifest.json'),
 ])
 
 if options.through:
