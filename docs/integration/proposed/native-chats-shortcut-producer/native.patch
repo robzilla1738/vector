@@ -1,0 +1,59 @@
+--- a/chrome/browser/ui/cocoa/accelerators_cocoa.mm
++++ b/chrome/browser/ui/cocoa/accelerators_cocoa.mm
+@@ -15,6 +15,7 @@
+ #include "base/memory/singleton.h"
+ #include "build/branding_buildflags.h"
+ #include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/buildflags.h"
+ #include "printing/buildflags/buildflags.h"
+ #import "ui/base/accelerators/platform_accelerator_cocoa.h"
+ #import "ui/events/cocoa/cocoa_event_utils.h"
+@@ -42,6 +43,10 @@
+     {IDC_NEW_INCOGNITO_WINDOW, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN,
+      ui::VKEY_N},
+     {IDC_NEW_TAB, ui::EF_COMMAND_DOWN, ui::VKEY_T},
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // Supplied AcceleratorsCocoa entry0xcef7368, command34067.
++    {IDC_AUX_OPEN_NEW_CHAT, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN, ui::VKEY_E},
++#endif
+     {IDC_NEW_WINDOW, ui::EF_COMMAND_DOWN, ui::VKEY_N},
+     {IDC_PASTE, ui::EF_COMMAND_DOWN, ui::VKEY_V},
+     {IDC_PRINT, ui::EF_COMMAND_DOWN, ui::VKEY_P},
+--- a/chrome/browser/ui/views/frame/aux_chats_controller.h
++++ b/chrome/browser/ui/views/frame/aux_chats_controller.h
+@@ -27,6 +27,9 @@
+ class AuxChatsSection;
+ class AuxChatsTransport;
+ class BookmarkTabAssociations;
++// Supplied region37e220c: format the real native New Chat accelerator, or
++// leave the help absent when the platform has no mapping.
++std::u16string GetNewChatShortcutHelp();
+ // Same-window owner for the original region's Chats section, request lifetime,
+ // menu actions and task/NewChat projection. The section itself is mounted as a
+ // genuine direct body child; this controller adds no view or replacement UI.
+--- a/chrome/browser/ui/views/frame/aux_chats_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_controller.cc
+@@ -3,6 +3,9 @@
+ #include <utility>
+ #include "base/check.h"
+ #include "base/functional/bind.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/ui/accelerator_table.h"
++#include "ui/base/accelerators/accelerator.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "extensions/common/extension.h"
+@@ -22,6 +25,13 @@
+       extensions::ExtensionRegistry::EVERYTHING);
+ }
+ }  // namespace
++std::u16string GetNewChatShortcutHelp() {
++  ui::Accelerator accelerator;
++  if (!GetAcceleratorForCommandId(IDC_AUX_OPEN_NEW_CHAT, &accelerator)) {
++    return {};
++  }
++  return accelerator.GetShortcutText();
++}
+ AuxChatsController::AuxChatsController(BrowserWindowInterface& browser,
+     BookmarkTabAssociations& bookmarks, std::u16string shortcut_help,
+     Changed changed)

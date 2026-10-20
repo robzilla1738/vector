@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/cocoa/accelerators_cocoa.mm",
+      "baselineSha256": "6e9eb799cd6ebabb4bd7dfe222e10dc0615a4b60999bb2e1df37955ff901ed5b",
+      "outputSha256": "06f946e5a862c26bd57435e56ed20c261133f5a131f41d2eaf41c4cc0d94176b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.h",
+      "baselineSha256": "e48d1ca34933a3305b6c82909a817596b55da36d69791ae71165c70c863d2258",
+      "outputSha256": "95eba03c3d6f66501c8b95d8d976f2e6de428bdb233d23bc9c5d4ffb0f7c24c5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.cc",
+      "baselineSha256": "55006401d23fdaf7a3c004adda98b874534532999a46f5a096f6df80502b71f8",
+      "outputSha256": "d8bd09b59ce3717c7ecfd1bb0a4158d77888c31822740eafe8c211eb8d9418b4"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

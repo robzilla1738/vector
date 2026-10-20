@@ -1,0 +1,30 @@
+{
+  "original": {
+    "path": "Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "caller": "37e220c..2254: command0x8513 lookup2986c5c; formatter33a1504; normalbutton setter4244850",
+    "lookup": "2986c5c..6d78: nonmenu shortcuts, then AcceleratorsCocoa singleton1c6b9f0",
+    "cocoaMap": "1c6c134..144 static rangecef71f4..cef74d0, stride12; loads cmd/modifiers/key at1c6c1f4..f8",
+    "entry": {
+      "address": "0xcef7368",
+      "bytes": "138500001200000045000000",
+      "command": 34067,
+      "modifiers": 18,
+      "key": 69,
+      "meaning": "EF_COMMAND_DOWN | EF_SHIFT_DOWN, VKEY_E"
+    },
+    "visibleHelp": "4244850..4a44 creates normalbutton Label+638; current AX-only port is not full visible-help parity"
+  },
+  "current155": {
+    "command": "IDC_AUX_OPEN_NEW_CHAT=34067; actual BrowserCommandController handler preserved",
+    "formatter": "ui::Accelerator::GetShortcutText()",
+    "lookup": "GetAcceleratorForCommandId global, accelerator_table.h; onMac GetDefaultMacAcceleratorForCommandId",
+    "flags": "event_constants.h SHIFT1<<1, COMMAND1<<4"
+  },
+  "integration": "Root body constructor argument must call aux::GetNewChatShortcutHelp() instead of std::u16string(); no new GN source; no shared file mutation",
+  "limits": [
+    "No native compile/runtime performed",
+    "Visible normalbutton shortcut label presentation still requires source-based adaptation; this patch fixes actual producer/mapping only",
+    "No guessed hardcoded shortcut string; unavailable mapping returns empty"
+  ]
+}
