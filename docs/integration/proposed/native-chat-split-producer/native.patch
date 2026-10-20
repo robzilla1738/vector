@@ -1,0 +1,90 @@
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.h
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.h
+@@ -23,7 +23,6 @@
+     bool agent_installed = false;
+     bool suppress_auto_expansion = false;  // Original source +11e9.
+     std::set<tabs::TabHandle> handles_1090;
+-    std::set<tabs::TabHandle> handles_10d8;
+   };
+   using CurrentAccount = base::RepeatingCallback<std::optional<int>()>;
+   using Classify = base::RepeatingCallback<std::optional<Classification>()>;
+@@ -47,6 +46,7 @@
+   std::optional<std::string> Association(tabs::TabHandle) const;
+   void Reconcile();
+   void Retire();
++  const std::set<tabs::TabHandle>& split_handles() const { return split_handles_; }
+  private:
+   struct PendingSelection {
+     std::string id;
+@@ -67,6 +67,7 @@
+                              const TabStripSelectionChange&) override;
+   void OnTabChangedAt(tabs::TabInterface*, TabChangeType) override;
+   void OnTabStripModelDestroyed(TabStripModel*) override;
++  void OnSplitTabChanged(const SplitTabChange&) override;
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   base::WeakPtr<Profile> profile_;
+   raw_ptr<TabStripModel> model_;
+@@ -77,6 +78,7 @@
+   IsNewChat is_new_chat_;
+   base::RepeatingClosure changed_;
+   std::set<std::string> chats_;
++  std::set<tabs::TabHandle> split_handles_;  // Original +10d8.
+   std::map<tabs::TabHandle, std::string> associations_;  // Original +fc8.
+   std::map<tabs::TabHandle, std::string> pending_navigation_;  // +1000.
+   std::map<tabs::TabHandle, base::TimeTicks> associated_at_;  // +10a8.
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
+@@ -25,6 +25,10 @@
+   CHECK(account_ && classify_ && is_new_chat_ && changed_ &&
+         effects_.clear_1090 && effects_.clear_pending_1028 && effects_.expand_chats);
+   CHECK(browser.GetTabStripModel() == &model);
++  for (int i = 0; i < model_->count(); ++i) {
++    auto* tab = model_->GetTabAtIndex(i);
++    if (tab->GetSplit()) split_handles_.insert(tab->GetHandle());
++  }
+   model_->AddObserver(this);
+ }
+ AuxChatTabOwner::~AuxChatTabOwner() { Retire(); }
+@@ -59,7 +63,7 @@
+                          std::optional<tabs::TabHandle> excluded) const {
+   return state.agent_installed && !tab.IsPinned() && !tab.GetSplit() &&
+          !state.handles_1090.contains(tab.GetHandle()) &&
+-         !state.handles_10d8.contains(tab.GetHandle());
++         !split_handles_.contains(tab.GetHandle());
+ }
+ int AuxChatTabOwner::Find(const std::string& id, int account,
+                          const Classification& state,
+@@ -264,6 +268,33 @@
+ void AuxChatTabOwner::OnTabStripModelChanged(TabStripModel*,
+     const TabStripModelChange&, const TabStripSelectionChange&) { Reconcile(); }
+ void AuxChatTabOwner::OnTabChangedAt(tabs::TabInterface*, TabChangeType) { Reconcile(); }
++void AuxChatTabOwner::OnSplitTabChanged(const SplitTabChange& change) {
++  if (!ScopeCurrent() || change.model != model_) return;
++  auto add = [this](const auto& tabs) {
++    for (const auto& [tab, index] : tabs)
++      if (tab) split_handles_.insert(tab->GetHandle());
++  };
++  auto remove = [this](const auto& tabs) {
++    for (const auto& [tab, index] : tabs)
++      if (tab) split_handles_.erase(tab->GetHandle());
++  };
++  // Original4647a28: actual split added/changed/removed payloads, not tab titles.
++  switch (change.type) {
++    case SplitTabChange::Type::kAdded:
++      add(change.GetAddedChange()->tabs());
++      break;
++    case SplitTabChange::Type::kContentsChanged:
++      remove(change.GetContentsChange()->prev_tabs());
++      add(change.GetContentsChange()->new_tabs());
++      break;
++    case SplitTabChange::Type::kRemoved:
++      remove(change.GetRemovedChange()->tabs());
++      break;
++    case SplitTabChange::Type::kVisualsChanged:
++      break;
++  }
++  changed_.Run();
++}
+ void AuxChatTabOwner::OnTabStripModelDestroyed(TabStripModel* model) {
+   if (model_ == model) Retire();
+ }

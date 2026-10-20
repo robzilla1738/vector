@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "62c2ee765 native-chat-tab-owner outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.h",
+      "baselineSha256": "822aab0e5240fbd2ba2d28bf3af6b7195b678d085975897f3a92114494f9eca4",
+      "outputSha256": "874ab5631f9846fca3c1cceccebe7ee77ff25dae2fafc14c2f6e10f0646b4ee4"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.cc",
+      "baselineSha256": "bcd4248a791a4628af176aed2b5a61bfaab65db093a6af4f83cb6ce59698ba9e",
+      "outputSha256": "238a36c325b8e4b3e841ff0371233fa283868e0d8e8d02bd2378ebe23e0da3a3"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

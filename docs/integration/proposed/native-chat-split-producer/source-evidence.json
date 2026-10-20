@@ -1,0 +1,30 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "ctor-observers",
+      "start": "0x37dfc80",
+      "stopExclusive": "0x37dff80",
+      "bytesSha256": "03441984b50433d9e1bc8f0f967298d56e5249bd3df2a5347ec2db46d21f7c31",
+      "asmSha256": "bb3e618efd4c339546fd5207aef529c63df4647f1077978ebf0001fc8c9b0d8d"
+    },
+    {
+      "name": "split-change",
+      "start": "0x4647a28",
+      "stopExclusive": "0x4647c7c",
+      "bytesSha256": "4a7f9ab3e4ee34ada9e8ce78f872a0da80738aa177031162d8c99e04526bb38a",
+      "asmSha256": "b4af59c54d94eca7a57732746e775c1c541590cda3ec968f07309791f4a18b38"
+    }
+  ],
+  "observerVtable": {
+    "address": "0xe7235a0",
+    "slot": 11,
+    "slotAddress": "0xe7235f8",
+    "targetLow32": "0x4647c74",
+    "tableBytesSha256": "937c47187ff1bbf6040dbdc98b5579e2646ddcd14eeef6a50dbf7123975b0d4a"
+  },
+  "runtimePerformed": false
+}
