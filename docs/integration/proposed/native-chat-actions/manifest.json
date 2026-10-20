@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "new files; consumes compiled original Chats model/transport; no existing native source edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_actions.h",
+      "baselineSha256": null,
+      "outputSha256": "b17d9c718dd7be9209286732e83e98e8ec1edb7acb9b0cd9a1a3d42fdfd8efa8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+      "baselineSha256": null,
+      "outputSha256": "644f1bdbde4eb73d906400fc0e2de21eaf36121b5b727a60c428335956aed43c"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

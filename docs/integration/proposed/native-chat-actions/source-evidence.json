@@ -1,0 +1,52 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "context",
+      "start": "0x462ea30",
+      "stopExclusive": "0x462fb38",
+      "bytesSha256": "8b76ac38d389547085a798bf66bcadd6aed3aff91ce1ca956bf52e720b428675",
+      "asmSha256": "a188b386810abfaae9f7d30530769bd00650d7a68dba6aff9aa486b404e7fdc4"
+    },
+    {
+      "name": "enabled",
+      "start": "0x4639548",
+      "stopExclusive": "0x46398c8",
+      "bytesSha256": "62d16b5e60619f15f898cb39cda54c456cf3beff630088c25974081d62fdf7c7",
+      "asmSha256": "c5439ee8d0cebee7ca366dd6a39923f49534ac4e42203f2571a4148a9725db4e"
+    },
+    {
+      "name": "completion",
+      "start": "0x46398c8",
+      "stopExclusive": "0x463a514",
+      "bytesSha256": "bab3bbc935396b7c5126eb3fbb2387f600a61f3acb1d81a5fdd6152f8f43a86f",
+      "asmSha256": "a3a3738f0b5b7c9985990aa9c541ebebd0440057e893dd6f3d4ffd6ce0cbf12c"
+    },
+    {
+      "name": "rename",
+      "start": "0x4638cc8",
+      "stopExclusive": "0x463930c",
+      "bytesSha256": "039afbbd26b04e4743afd8af31455c6a5068b04454132e9c63172f0864d3e8c3",
+      "asmSha256": "f80b2e36286cbcfdb6cb48350f47cd7b702ce0d37d4271a923a3353e8e562f1d"
+    },
+    {
+      "name": "trim",
+      "start": "0x463b0b0",
+      "stopExclusive": "0x463b1dc",
+      "bytesSha256": "55a75e64223c443c862f0eb730e849dc2547287385e1da60ec6724647806b829",
+      "asmSha256": "d33d93cc9f699eec83edb0fb5a930860b79c5f8664306f881d8c558798fb9852"
+    },
+    {
+      "name": "find-folder",
+      "start": "0x4670990",
+      "stopExclusive": "0x4670aac",
+      "bytesSha256": "07d080d56a79f51422aec2352ba9100705af262ccf57641b0719caee895e49ca",
+      "asmSha256": "97a114fd82d5426604d33b368a9acda291ef3936d96416704d58e49268e0c8cd"
+    }
+  ],
+  "sourceAuthority": "supplied original machine code; pseudocode only aids interpretation",
+  "runtimePerformed": false
+}

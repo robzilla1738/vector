@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "new files; consumes compiled original Chats model/transport; no existing native source edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_association.h",
+      "baselineSha256": null,
+      "outputSha256": "b1fce2b430a006d58134f5ab89f2f9e2a12ab412e84f126d54ab48f272b200ae"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_association.cc",
+      "baselineSha256": null,
+      "outputSha256": "ed8354533a69436c223de5366db26fa7fe2d284a61267b65e069884fef40b41f"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
