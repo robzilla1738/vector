@@ -1,0 +1,39 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "cookie-reader.asm",
+      "start": "0x425a380",
+      "endExclusive": "0x425b128",
+      "bytesSha256": "9649dafbcff24b53efbb39ca055e25563c3bf556e32cb42152fd406ee79fa83f",
+      "sha256": "033251c1c9159d2c3198bfcf40f7e7991bbc64515f3bbccb2084a3ba6249da06"
+    },
+    {
+      "file": "shared-decode.asm",
+      "start": "0x425cda0",
+      "endExclusive": "0x425ce78",
+      "bytesSha256": "21a44f3b744059eeb515ede7e8dd743ec0aa1f93ab71d0b2e07a21dd0067db5b",
+      "sha256": "8b899476f745fe9cee83efb1584d75cd1c3b79e5427b74996bf0702d655f5156"
+    },
+    {
+      "file": "password-aggregate.asm",
+      "start": "0x425b78c",
+      "endExclusive": "0x425b7a0",
+      "bytesSha256": "513209c9d37f79752b700a9bc546ca7971f7070386e44da0486fa4d870975557",
+      "sha256": "0621917c9dcae7cafd5c36ecde52d9b107c93985ed7796d0fd83baebfa384765"
+    }
+  ],
+  "cookieSQL": {
+    "address": "0xdb1f55e",
+    "text": "SELECT creation_utc, host_key, top_frame_site_key, name, value, encrypted_value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, samesite, source_scheme, source_port, last_update_utc, source_type, has_cross_site_ancestor FROM cookies",
+    "bytesSha256": "57852e0e5d1f325ebb5137efe699f9a30a23639b998804e49ca9216dcb280f10"
+  },
+  "baseline": {
+    "native": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "sha256": "95ca3702012286fc81adec9827ffc1f1a02cdc21a0f85855cea4cd952c1eb01b",
+    "captured": "applied431 reader;430 changes service only; previous L4 discovery and history preserved"
+  }
+}

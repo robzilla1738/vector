@@ -1,0 +1,176 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -704,8 +704,8 @@
+   base::ListValue rows;
+   size_t bytes = 0;
+   std::set<std::string> seen_passwords;
+-  size_t encrypted_passwords = 0;
+-  size_t decrypted_passwords = 0;
++  size_t encrypted_values = 0;
++  size_t decrypted_values = 0;
+   for (const auto& path : paths) {
+     std::string error;
+     auto db = Snapshot(path, error);
+@@ -713,25 +713,15 @@
+       result.Set("error", error);
+       return result;
+     }
+-    int version = 0;
+-    if (cookies) {
+-      auto meta = Prepare(db.get(), "SELECT value FROM meta WHERE key='version'");
+-      if (!meta || sqlite3_step(meta.get()) != SQLITE_ROW) {
+-        return fail("Cookie database version is unavailable");
+-      }
+-      version = sqlite3_column_int(meta.get(), 0);
+-      if (version < 0 || version > 100) {
+-        return fail("Cookie database version is unsupported");
+-      }
+-    }
+     auto query = Prepare(
+         db.get(),
+         cookies
+             ? "SELECT "
+-              "host_key,name,path,value,encrypted_value,creation_utc,expires_utc,"
+-              "last_access_utc,is_secure,is_httponly,samesite,priority,top_frame_"
+-              "site_key,has_cross_site_ancestor,source_scheme,source_port,source_"
+-              "type,last_update_utc FROM cookies LIMIT 50001"
++              "creation_utc,host_key,top_frame_site_key,name,value,encrypted_"
++              "value,path,expires_utc,is_secure,is_httponly,last_access_utc,has_"
++              "expires,is_persistent,priority,samesite,source_scheme,source_port,"
++              "last_update_utc,source_type,has_cross_site_ancestor FROM cookies "
++              "LIMIT 50001"
+             : "SELECT "
+               "origin_url,action_url,signon_realm,username_element,username_"
+               "value,password_element,password_value,date_created,date_last_used,"
+@@ -744,52 +734,50 @@
+     int status;
+     while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
+       const bool blocked = !cookies && sqlite3_column_int(query.get(), 11);
+-      int column = cookies ? 4 : 6;
++      int column = cookies ? 5 : 6;
+       auto* blob = sqlite3_column_blob(query.get(), column);
+       const int length = sqlite3_column_bytes(query.get(), column);
+       if (length < 0 || length > 1024 * 1024) {
+         return fail("Encrypted source row exceeds the size limit");
+       }
++      const auto host = cookies ? Text(query.get(), 1) : std::string();
+       std::optional<std::string> plaintext;
++      if (cookies) {
++        // Supplied425a8f4..425a918 prefers a nonempty plaintext value even
++        // when encrypted_value is also populated.
++        plaintext = Text(query.get(), 4);
++      }
+       if (blocked) {
+         plaintext = std::string();
++      } else if (cookies && !plaintext->empty()) {
++        // Source plaintext cookies do not participate in the decode counters.
+       } else if (length) {
++        ++encrypted_values;
+         const std::string_view ciphertext(static_cast<const char*>(blob), length);
+-        if (!cookies) {
+-          ++encrypted_passwords;
+-        }
+-        // Supplied425ce4c copies a non-v10 password unchanged. v10 alone
+-        // requires the real source-derived AES key.
+-        plaintext = !cookies && !ciphertext.starts_with("v10")
++        // Both original readers call425cda0: non-v10 input is copied as-is;
++        // v10 alone is AES-decoded with the already-authorized source key.
++        plaintext = !ciphertext.starts_with("v10")
+                         ? std::optional<std::string>(ciphertext)
+                         : DecryptSourceValue(ciphertext, key);
+-        if (plaintext && !cookies) {
+-          ++decrypted_passwords;
+-        }
+-      } else if (cookies) {
+-        plaintext = Text(query.get(), 3);
++        if (!plaintext) {
++          continue;
++        }
++        if (cookies) {
++          // Supplied425a938..425aa54 requires SHA256(host) on EVERY encrypted
++          // cookie path, not a synthetic meta-version gate. Mismatch skips.
++          const auto digest = crypto::hash::Sha256(host);
++          if (plaintext->size() < digest.size() ||
++              !std::ranges::equal(plaintext->substr(0, digest.size()), digest,
++                                  [](char a, unsigned char b) {
++                                    return static_cast<unsigned char>(a) == b;
++                                  })) {
++            continue;
++          }
++          plaintext->erase(0, digest.size());
++        }
++        ++decrypted_values;
+       } else {
+         plaintext = std::string();
+-      }
+-      if (!plaintext) {
+-        if (!cookies) {
+-          continue;
+-        }
+-        return fail(
+-            "Source value could not be decrypted; wrong key, denied access or "
+-            "unsupported encryption version");
+-      }
+-      const auto host = cookies ? Text(query.get(), 0) : std::string();
+-      if (cookies && length && version >= 24) {
+-        const auto digest = crypto::hash::Sha256(host);
+-        if (plaintext->size() < digest.size() ||
+-            !std::ranges::equal(plaintext->substr(0, digest.size()), digest,
+-                                [](char a, unsigned char b) {
+-                                  return static_cast<unsigned char>(a) == b;
+-                                })) {
+-          return fail("Decrypted cookie does not match its source host");
+-        }
+-        plaintext->erase(0, digest.size());
+       }
+       if (!base::IsStringUTF8(*plaintext)) {
+         return fail(
+@@ -799,22 +787,22 @@
+       row.Set("secret", std::move(*plaintext));
+       if (cookies) {
+         row.Set("host", host);
+-        row.Set("name", Text(query.get(), 1));
+-        row.Set("path", Text(query.get(), 2));
++        row.Set("name", Text(query.get(), 3));
++        row.Set("path", Text(query.get(), 6));
+         for (auto [field, index] :
+-             {std::pair{"created", 5}, {"expires", 6}, {"accessed", 7}}) {
++             {std::pair{"created", 0}, {"expires", 7}, {"accessed", 10}}) {
+           row.Set(field,
+                   base::NumberToString(sqlite3_column_int64(query.get(), index)));
+         }
+         row.Set("secure", !!sqlite3_column_int(query.get(), 8));
+         row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
+-        row.Set("sameSite", sqlite3_column_int(query.get(), 10));
+-        row.Set("priority", sqlite3_column_int(query.get(), 11));
+-        row.Set("partition", Text(query.get(), 12));
+-        row.Set("crossSite", !!sqlite3_column_int(query.get(), 13));
+-        row.Set("sourceScheme", sqlite3_column_int(query.get(), 14));
+-        row.Set("sourcePort", sqlite3_column_int(query.get(), 15));
+-        row.Set("sourceType", sqlite3_column_int(query.get(), 16));
++        row.Set("sameSite", sqlite3_column_int(query.get(), 14));
++        row.Set("priority", sqlite3_column_int(query.get(), 13));
++        row.Set("partition", Text(query.get(), 2));
++        row.Set("crossSite", !!sqlite3_column_int(query.get(), 19));
++        row.Set("sourceScheme", sqlite3_column_int(query.get(), 15));
++        row.Set("sourcePort", sqlite3_column_int(query.get(), 16));
++        row.Set("sourceType", sqlite3_column_int(query.get(), 18));
+         row.Set("updated",
+                 base::NumberToString(sqlite3_column_int64(query.get(), 17)));
+       } else {
+@@ -870,10 +858,11 @@
+       return fail("Encrypted source snapshot failed while reading rows");
+     }
+   }
+-  // Original425b78c admits no encrypted attempts, or at least one decoded
+-  // password across both stores; failed individual rows are not imported.
+-  if (!cookies && encrypted_passwords && !decrypted_passwords) {
+-    return fail("Source passwords could not be decrypted");
++  // Original425a778/425b78c admit no encrypted attempts or at least one
++  // successful decode. Row skips do not turn an all-failed source into success.
++  if (encrypted_values && !decrypted_values) {
++    return fail(cookies ? "Source cookies could not be decrypted"
++                        : "Source passwords could not be decrypted");
+   }
+   result.Set(cookies ? "cookies" : "passwords", std::move(rows));
+   return result;
