@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-match",
+      "rva": "0x4606510",
+      "bytes": 1184,
+      "sha256": "0ee36a9ff3c3fbb95fce39ddfc344f157751d4ef37a432622410f4a061afb6ec"
+    },
+    {
+      "name": "original-prefer-active",
+      "rva": "0x46077a0",
+      "bytes": 240,
+      "sha256": "4d364e3ca9a163318ae15cd80dfcd3a6d78758fe2ec330ca19857e92395d95fc"
+    },
+    {
+      "name": "original-activate-open",
+      "rva": "0x460a228",
+      "bytes": 1036,
+      "sha256": "edb22d8a2c56b13e3693d263254cec4038c5070fdb21f82c2e8f27729c1c8e1a"
+    },
+    {
+      "name": "original-remember-url",
+      "rva": "0x4557cb4",
+      "bytes": 176,
+      "sha256": "a2dd69b85753e402ea6951a0e36358aaf534e1c5bce522ef6c5a51623d130a5b"
+    },
+    {
+      "name": "original-navigate-params",
+      "rva": "0x31cc6dc",
+      "bytes": 348,
+      "sha256": "7f0850273d32895eff5dcf9f241e32376c3f849b294fc4ec77f744c9a2a81e86"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "base/supports_user_data.h",
+      "sha256": "14006c91e60640dd2a43889ecae12089d80d41a25f682cb307bc9c20b209fe30"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "9d6ce8bc398ef0953aa0e61bf98d31ae8aec3ff8d562d29ffe6bb2a69096e2be"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h",
+      "sha256": "7bac99cfa6525e98b23a47511bd5fcfeba68b62a712233f44d3e9e3e26436025"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_enums.h",
+      "sha256": "dd6e878329bdaeafeeb8836db0ca2fc04b43a83fd4321c9801892347d8bad0aa"
+    },
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator_params.h",
+      "sha256": "4b8c40a70ecc29d49eb2c0018a5ce05967eab2d610f7118c4c421030679b35b9"
+    },
+    {
+      "path": "content/public/browser/web_contents.h",
+      "sha256": "27ef39d4e28bceca91069bcf7ca1c5e6694f0550e4a2583645ee086389419cbe"
+    },
+    {
+      "path": "content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-model; new action module in UI target, not browser_ui_prefs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h",
+      "baselineSha256": null,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputSha256": "54440b662a2c043d3ea0aa358f5779191a1921e7387b816e8573be2c5841143f",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc",
+      "baselineSha256": null,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputSha256": "4e73cd6b70b47150fb35492f5c15484133e3cbb64dc4a08154557b3d68c7bad4",
+      "newFile": true
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiMounted": false
+}
