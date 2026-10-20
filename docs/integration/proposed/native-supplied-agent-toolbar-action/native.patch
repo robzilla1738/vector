@@ -1,0 +1,103 @@
+--- a/chrome/browser/ui/toolbar/toolbar_actions_model.cc
++++ b/chrome/browser/ui/toolbar/toolbar_actions_model.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
++
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/component_bootstrap.h"
++#endif
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -54,6 +59,21 @@
+ 
+ namespace {
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void PinSuppliedAgentAction(Profile* profile,
++                            extensions::ExtensionPrefs* prefs,
++                            bool has_action) {
++  if (profile->IsOffTheRecord() || !has_action) {
++    return;
++  }
++  auto pinned = prefs->GetPinnedExtensions();
++  if (!std::ranges::contains(pinned, aux::kAgentExtensionId)) {
++    pinned.push_back(aux::kAgentExtensionId);
++    prefs->SetPinnedExtensions(pinned);
++  }
++}
++#endif
++
+ // These values are persisted to logs. Entries should not be renumbered and
+ // numeric values should never be reused.
+ enum class DefaultPinnedExtensionState {
+@@ -206,6 +226,12 @@
+   if (!HasAction(extension->id()) && ShouldAddExtension(extension)) {
+     AddAction(extension->id());
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (extension->id() == aux::kAgentExtensionId) {
++    PinSuppliedAgentAction(profile_, extension_prefs_,
++                           HasAction(aux::kAgentExtensionId));
++  }
++#endif
+ }
+ 
+ void ToolbarActionsModel::OnExtensionUnloaded(
+@@ -613,6 +639,10 @@
+     Populate();
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  PinSuppliedAgentAction(profile_, extension_prefs_,
++                         HasAction(aux::kAgentExtensionId));
++#endif
+   // Set |pinned_action_ids_| directly to avoid notifying observers that they
+   // have changed even though they haven't.
+   pinned_action_ids_ = GetFilteredPinnedActionIds();
+--- a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/toolbar/toolbar_action_view.h"
++
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/component_bootstrap.h"
++#endif
+ 
+ #include <string>
+ 
+@@ -195,7 +200,16 @@
+ 
+ void ToolbarActionView::UpdateState() {
+   content::WebContents* web_contents = delegate_->GetCurrentWebContents();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  const bool supplied_agent = view_model_->GetId() == aux::kAgentExtensionId;
++  GetViewAccessibility().SetName(supplied_agent
++      ? u"Ask Aux" : view_model_->GetAccessibleName(web_contents));
++  if (supplied_agent) {
++    SetTooltipText(u"Ask Aux");
++  }
++#else
+   GetViewAccessibility().SetName(view_model_->GetAccessibleName(web_contents));
++#endif
+   if (!sessions::SessionTabHelper::IdForTab(web_contents).is_valid()) {
+     return;
+   }
+@@ -209,7 +223,10 @@
+ 
+   if (!base::FeatureList::IsEnabled(
+           extensions_features::kExtensionsMenuAccessControl)) {
+-    SetTooltipText(view_model_->GetTooltip(web_contents));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (!supplied_agent)
++#endif
++      SetTooltipText(view_model_->GetTooltip(web_contents));
+   }
+ 
+   SchedulePaint();

@@ -1,0 +1,54 @@
+{
+  "baseline": "actual-native-v541 (files unchanged from533)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/toolbar/toolbar_actions_model.cc",
+      "baselineSha256": "af43ceaf3dca0ea0639a257ee18091e4a43759f0be732326eb9b171d16f14d5a",
+      "outputSha256": "d9bdee94ac86cc70f598e181d144f05946fbfd069d0fb7c336b1c168b80b0927",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/toolbar/toolbar_actions_model.h\"",
+          "replace": "#include \"chrome/browser/ui/toolbar/toolbar_actions_model.h\"\n\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "namespace {\n\n// These values",
+          "replace": "namespace {\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\nvoid PinSuppliedAgentAction(Profile* profile,\n                            extensions::ExtensionPrefs* prefs,\n                            bool has_action) {\n  if (profile->IsOffTheRecord() || !has_action) {\n    return;\n  }\n  auto pinned = prefs->GetPinnedExtensions();\n  if (!std::ranges::contains(pinned, aux::kAgentExtensionId)) {\n    pinned.push_back(aux::kAgentExtensionId);\n    prefs->SetPinnedExtensions(pinned);\n  }\n}\n#endif\n\n// These values",
+          "count": 1
+        },
+        {
+          "find": "    AddAction(extension->id());\n  }\n}\n\nvoid ToolbarActionsModel::OnExtensionUnloaded",
+          "replace": "    AddAction(extension->id());\n  }\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (extension->id() == aux::kAgentExtensionId) {\n    PinSuppliedAgentAction(profile_, extension_prefs_,\n                           HasAction(aux::kAgentExtensionId));\n  }\n#endif\n}\n\nvoid ToolbarActionsModel::OnExtensionUnloaded",
+          "count": 1
+        },
+        {
+          "find": "  // Set |pinned_action_ids_| directly to avoid notifying observers that they",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  PinSuppliedAgentAction(profile_, extension_prefs_,\n                         HasAction(aux::kAgentExtensionId));\n#endif\n  // Set |pinned_action_ids_| directly to avoid notifying observers that they",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_action_view.cc",
+      "baselineSha256": "5e6e24a62040e76b97beb9274a9d0f1892452028079bc83e8c099aea35027436",
+      "outputSha256": "0442767a96540edf7ff74cfe321a536c147a765535b51599c4bb2528b92ff738",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/views/toolbar/toolbar_action_view.h\"",
+          "replace": "#include \"chrome/browser/ui/views/toolbar/toolbar_action_view.h\"\n\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  GetViewAccessibility().SetName(view_model_->GetAccessibleName(web_contents));",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  const bool supplied_agent = view_model_->GetId() == aux::kAgentExtensionId;\n  GetViewAccessibility().SetName(supplied_agent\n      ? u\"Ask Aux\" : view_model_->GetAccessibleName(web_contents));\n  if (supplied_agent) {\n    SetTooltipText(u\"Ask Aux\");\n  }\n#else\n  GetViewAccessibility().SetName(view_model_->GetAccessibleName(web_contents));\n#endif",
+          "count": 1
+        },
+        {
+          "find": "    SetTooltipText(view_model_->GetTooltip(web_contents));",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n    if (!supplied_agent)\n#endif\n      SetTooltipText(view_model_->GetTooltip(web_contents));",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
