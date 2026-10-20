@@ -1,0 +1,78 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x458cf98",
+      "end": "0x458d0b4",
+      "sha256": "3493cc0ca59611f7539bb749f521be3c1dee38c73cca82344cb5eda0eb926450",
+      "listing": "controls.asm",
+      "listingSha256": "a82d7b702894ac0f316f1132f19810e93469e6126b287bbf667ace85bf499569"
+    },
+    {
+      "start": "0x458d5b0",
+      "end": "0x458d960",
+      "sha256": "960aaec4c4b80bd38747cddd0545b749d78908efa165addd2fabf6aec987dc31",
+      "listing": "completion-wrappers.asm",
+      "listingSha256": "641c0893b5e2da009281bc80257c131f27ca236e36afa306a000898785a415d3"
+    },
+    {
+      "start": "0x2959bb0",
+      "end": "0x2959cc4",
+      "sha256": "04d0d821288151766f112bbf40d9136b0d39e22ded33aa3200fc6f648222ab4c",
+      "listing": "retirement-unmapped.asm",
+      "listingSha256": "4e14cd4d40eff91c4ef6e8fe399c1f3d9699de5fad11f21b7480704096a4642d"
+    },
+    {
+      "start": "0x7aca824",
+      "end": "0x7acac60",
+      "sha256": "0de313b0048b825264e7d71c9bee72e3525f1e406236b3731ed886210ff62722",
+      "listing": "profile-loader.asm",
+      "listingSha256": "eabc0ab2954b13c7fb17a26e85073321bd3185801404614aad0eb29531a04e13"
+    },
+    {
+      "start": "0x458d2f0",
+      "end": "0x458d328",
+      "sha256": "0396bb6800a300249e18809a3836f102a813784dcaa98a9a283d1e71804ef6e4",
+      "listing": "post-load-coordinator.asm",
+      "listingSha256": "80e9a7828cf88916914bebe46afebd5a83855d7162359129c433d1446a1db70b"
+    },
+    {
+      "start": "0x417c4ec",
+      "end": "0x417c5c4",
+      "sha256": "a130565461aec634fb6ed9bb8b2c9a9d81d2a47eb93cf0cc15e47704f4c7511c",
+      "listing": "post-load-owner.asm",
+      "listingSha256": "dd384ae6a386afd8d0baba9518269404d6a5a8192a5f17f00c652bcf0fd27dff"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xceea68f",
+      "hex": "61736964652e6f6e626f617264696e675f636f6d706c65746564",
+      "encoding": "utf-8",
+      "text": "aside.onboarding_completed"
+    }
+  ],
+  "selectors": [
+    {
+      "address": "0x989f040",
+      "hex": "509901901082049100021fd6",
+      "name": "objc:standardWindowButton:"
+    },
+    {
+      "address": "0x989f04c",
+      "hex": "109901b01002249100021fd6",
+      "name": "objc:setEnabled:"
+    },
+    {
+      "address": "0xa855d9c",
+      "hex": "501b01f010023b9100021fd6",
+      "name": "objc:orderOut:"
+    },
+    {
+      "address": "0xac2d0c0",
+      "hex": "90fc00b010820e9100021fd6",
+      "name": "objc:close"
+    }
+  ]
+}
