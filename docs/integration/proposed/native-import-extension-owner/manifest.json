@@ -81,7 +81,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_import/extension_import.cc",
       "baselineSha256": null,
-      "outputSha256": "276ae10a20cd2a82642545cb62c6f28f86443e1e0219fb816dfb5e3cd04e84c0"
+      "outputSha256": "3910652d29bff4ed4294d192b9a103fb3a7eb2e2f145b570db553879df609581"
     }
   ],
   "requiredGnChanges": {

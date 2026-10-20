@@ -94,7 +94,9 @@ void InstallChromiumExtensions(Profile* profile,
     const auto* update_url = row ? row->FindString("updateUrl") : nullptr;
     if (id && update_url && manager->AddFromExtensionImport(
                                *id, GURL(*update_url),
-                               [](const extensions::Extension*) { return true; })) {
+                               [](const extensions::Extension*, content::BrowserContext*) {
+                                 return true;
+                               })) {
       pending.insert(*id);
     }
   }

@@ -162,7 +162,7 @@
 +#endif
 --- /dev/null
 +++ b/chrome/browser/extensions/api/aux_browser_import/extension_import.cc
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,108 @@
 +// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
 +#include "chrome/browser/extensions/api/aux_browser_import/extension_import.h"
 +
@@ -259,7 +259,9 @@
 +    const auto* update_url = row ? row->FindString("updateUrl") : nullptr;
 +    if (id && update_url && manager->AddFromExtensionImport(
 +                               *id, GURL(*update_url),
-+                               [](const extensions::Extension*) { return true; })) {
++                               [](const extensions::Extension*, content::BrowserContext*) {
++                                 return true;
++                               })) {
 +      pending.insert(*id);
 +    }
 +  }
