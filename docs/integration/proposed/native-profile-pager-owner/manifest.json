@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "applyAfter": "Root shared reader782 + pager/catalog/drag/controller/renderer prerequisites; region assembly separately owned by L2 on77d baseline",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+      "baselineSha256": null,
+      "outputSha256": "a42edf0b860a3c3b17a518363bdc895c4724fa85091cd2afff77807e186c1b52",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.h",
+      "baselineSha256": null,
+      "outputSha256": "d2c7273a81b8afae6543eea8fe971a579ba88986897bc7300ab54108f1950083",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.cc",
+      "baselineSha256": null,
+      "outputSha256": "069bda0069df5a92dc239d111ada7a784f22813daeee9172b7ca96d9f5605394",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.h",
+      "baselineSha256": null,
+      "outputSha256": "ec7ce605b4c1956b19a6b16049515646e86b3fc732b6fa7d0839dbe3b32b5c21",
+      "newFile": true
+    }
+  ],
+  "registration": [
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator.h",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.cc",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.h"
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

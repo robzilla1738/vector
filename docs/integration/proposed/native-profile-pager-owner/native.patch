@@ -1,0 +1,579 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_page_indicator.cc
+@@ -0,0 +1,287 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/views/frame/aux_profile_page_indicator.h"
++
++#include <algorithm>
++#include <memory>
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/aux/account_profile_prefs.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/profiles/aux_profile_display_label.h"
++#include "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h"
++#include "components/prefs/pref_service.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/common/extension.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/compositor/layer.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/layout/box_layout.h"
++
++namespace aux {
++ProfilePageIndicator::ProfilePageIndicator(
++    BrowserView& browser_view,
++    SelectProfile select,
++    ShowProfileContext context,
++    base::RepeatingCallback<bool()> preview_idle)
++    : browser_view_(browser_view),
++      select_(std::move(select)),
++      context_(std::move(context)),
++      preview_idle_(std::move(preview_idle)),
++      drag_(*this,
++            paths_,
++            buttons_,
++            base::BindRepeating(&ProfilePageIndicator::Refresh,
++                                base::Unretained(this))) {
++  CHECK(select_);
++  CHECK(context_);
++  CHECK(preview_idle_);
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kHorizontal));
++  layout->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
++  SetPreferredSize(gfx::Size(0, 24));
++  SetPaintToLayer();
++  layer()->SetFillsBoundsOpaquely(false);
++  RefreshAccountMetadata();
++}
++
++ProfilePageIndicator::~ProfilePageIndicator() {
++  Retire();
++}
++
++const std::vector<base::FilePath>& ProfilePageIndicator::Roster() {
++  auto* profile = browser_view_->GetProfile();
++  if (!profile || profile->IsOffTheRecord()) {
++    roster_.clear();
++    roster_valid_ = true;
++    return roster_;
++  }
++  if (roster_valid_ && !preview_idle_.Run()) {
++    return roster_;
++  }
++  roster_.clear();
++  auto* manager =
++      g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  auto* state = g_browser_process ? g_browser_process->local_state() : nullptr;
++  if (manager && state) {
++    auto& storage = manager->GetProfileAttributesStorage();
++    roster_ = HorizontalProfileOrder(storage, *state);
++    std::erase_if(roster_, [&storage](const base::FilePath& path) {
++      auto* entry = storage.GetProfileAttributesWithPath(path);
++      return !entry || entry->IsOmitted();
++    });
++  }
++  roster_valid_ = true;
++  return roster_;
++}
++
++void ProfilePageIndicator::SetPresentation(
++    bool collapsed,
++    std::optional<bool> held_visibility) {
++  presentation_collapsed_ = collapsed;
++  held_visibility_ = held_visibility;
++  Refresh();
++}
++
++void ProfilePageIndicator::Refresh() {
++  if (drag_.DeferUpdate()) {
++    return;
++  }
++  BindRegistry();
++  auto* profile = browser_view_->GetProfile();
++  auto* manager =
++      g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  const auto& roster = Roster();
++  if (!profile || !manager || roster.size() <= 1) {
++    SetVisible(held_visibility_.value_or(false));
++    return;
++  }
++  const auto current_path = profile->GetOriginalProfile()->GetPath();
++  auto& storage = manager->GetProfileAttributesStorage();
++  if (paths_ != roster || buttons_.size() != roster.size()) {
++    drag_.Retire();
++    RemoveAllChildViews();
++    buttons_.clear();
++    paths_ = roster;
++    for (const auto& path : paths_) {
++      auto button = std::make_unique<ProfilePageIndicatorDotButton>(
++          base::BindRepeating(&ProfilePageIndicator::SelectPath,
++                              weak_factory_.GetWeakPtr(), path),
++          base::BindRepeating(&ProfilePageIndicator::ShowContext,
++                              weak_factory_.GetWeakPtr(), path),
++          base::BindRepeating(&ProfilePagerDrag::Start,
++                              base::Unretained(&drag_)),
++          base::BindRepeating(&ProfilePagerDrag::Update,
++                              base::Unretained(&drag_)),
++          base::BindRepeating(&ProfilePagerDrag::End,
++                              base::Unretained(&drag_)));
++      buttons_.push_back(AddChildView(std::move(button)));
++    }
++    InvalidateLayout();
++  }
++  for (size_t index = 0; index < paths_.size(); ++index) {
++    const auto& path = paths_[index];
++    auto* entry = storage.GetProfileAttributesWithPath(path);
++    auto* loaded = manager->GetProfileByPath(path);
++    const auto label = ProfileDisplayLabel(entry, loaded, paths_.size());
++    std::u16string tooltip = label;
++    if (agent_installed_) {
++      std::string email;
++      if (loaded && !loaded->IsOffTheRecord()) {
++        auto* prefs = loaded->GetOriginalProfile()->GetPrefs();
++        if (HasAccountProfileSession(prefs) &&
++            prefs->FindPreference("aside.account_email")) {
++          email = prefs->GetString("aside.account_email");
++        }
++      }
++      if (email.empty()) {
++        const auto cached = account_emails_.find(path);
++        if (cached != account_emails_.end()) {
++          email = cached->second;
++        }
++      }
++      const auto username = email.empty() && entry ? entry->GetUserName()
++                                                   : base::UTF8ToUTF16(email);
++      if (!username.empty()) {
++        tooltip += u"\n" + username;
++      }
++    }
++    if (index < 9) {
++      // U+001F is the original tooltip shortcut-column separator.
++      tooltip += u"\x1f\u2303" + base::NumberToString16(index + 1);
++    }
++    auto* button = buttons_[index].get();
++    button->SetCurrent(path == current_path);
++    button->SetProfileIcon(ProfileIndicatorIcon(entry));
++    button->SetTooltipText(tooltip);
++    button->GetViewAccessibility().SetName(u"Switch to " + label);
++    if (index < 9) {
++      button->GetViewAccessibility().SetKeyShortcuts(
++          "Control+" + base::NumberToString(index + 1));
++    } else {
++      button->GetViewAccessibility().RemoveKeyShortcuts();
++    }
++  }
++  SetVisible(held_visibility_.value_or(!presentation_collapsed_));
++}
++
++void ProfilePageIndicator::RefreshAccountMetadata() {
++  if (metadata_running_) {
++    metadata_pending_ = true;
++    return;
++  }
++  metadata_running_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce([] { return ReadProfileAccountEmails(StateHome()); }),
++      base::BindOnce(&ProfilePageIndicator::AccountMetadataReady,
++                     weak_factory_.GetWeakPtr()));
++}
++
++void ProfilePageIndicator::AccountMetadataReady(ProfileAccountEmails emails) {
++  metadata_running_ = false;
++  if (account_emails_ != emails) {
++    account_emails_ = std::move(emails);
++    Refresh();
++  }
++  if (std::exchange(metadata_pending_, false)) {
++    RefreshAccountMetadata();
++  }
++}
++
++void ProfilePageIndicator::SelectPath(const base::FilePath& path,
++                                      const ui::Event& event) {
++  auto* profile = browser_view_->GetProfile();
++  if (!profile || path.empty() ||
++      profile->GetOriginalProfile()->GetPath() == path) {
++    return;
++  }
++  select_.Run(path);
++}
++
++void ProfilePageIndicator::ShowContext(const base::FilePath& path,
++                                       ProfilePageIndicatorDotButton* button) {
++  if (button && button->GetWidget() && !path.empty()) {
++    context_.Run(button, path);
++  }
++}
++
++void ProfilePageIndicator::BindRegistry() {
++  auto* profile = browser_view_->GetProfile();
++  auto* registry =
++      profile ? extensions::ExtensionRegistry::Get(profile) : nullptr;
++  if (registry_observation_.IsObservingSource(registry)) {
++    return;
++  }
++  registry_observation_.Reset();
++  agent_installed_ = registry && registry->GetExtensionById(
++                                     kAgentExtensionId,
++                                     extensions::ExtensionRegistry::EVERYTHING);
++  if (registry) {
++    registry_observation_.Observe(registry);
++  }
++}
++
++void ProfilePageIndicator::SetAgentInstalled(
++    const extensions::Extension* extension,
++    bool installed) {
++  if (extension && extension->id() == kAgentExtensionId) {
++    agent_installed_ = installed;
++    Refresh();
++    RefreshAccountMetadata();
++  }
++}
++
++void ProfilePageIndicator::OnExtensionLoaded(
++    content::BrowserContext* context,
++    const extensions::Extension* extension) {
++  SetAgentInstalled(extension, true);
++}
++void ProfilePageIndicator::OnExtensionInstalled(
++    content::BrowserContext* context,
++    const extensions::Extension* extension,
++    bool is_update) {
++  SetAgentInstalled(extension, true);
++}
++void ProfilePageIndicator::OnExtensionUnloaded(
++    content::BrowserContext* context,
++    const extensions::Extension* extension,
++    extensions::UnloadedExtensionReason reason) {
++  SetAgentInstalled(extension, false);
++}
++void ProfilePageIndicator::OnExtensionUninstalled(
++    content::BrowserContext* context,
++    const extensions::Extension* extension,
++    extensions::UninstallReason reason) {
++  SetAgentInstalled(extension, false);
++}
++void ProfilePageIndicator::OnShutdown(extensions::ExtensionRegistry* registry) {
++  registry_observation_.Reset();
++  agent_installed_ = false;
++}
++
++void ProfilePageIndicator::Retire() {
++  registry_observation_.Reset();
++  agent_installed_ = false;
++  drag_.Retire();
++  roster_.clear();
++  roster_valid_ = false;
++}
++
++BEGIN_METADATA(ProfilePageIndicator)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_page_indicator.h
+@@ -0,0 +1,91 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PAGE_INDICATOR_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PAGE_INDICATOR_H_
++
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "chrome/browser/aux/profile_account_metadata.h"
++#include "chrome/browser/ui/views/frame/aux_profile_pager_drag.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "ui/views/view.h"
++
++class BrowserView;
++namespace aux {
++// Original region+5e0, owned real pager. These callbacks bind the genuine
++// preview input, profile-menu coordinator and async registry-metadata cache.
++class ProfilePageIndicator : public views::View,
++                             public extensions::ExtensionRegistryObserver {
++  METADATA_HEADER(ProfilePageIndicator, views::View)
++
++ public:
++  using SelectProfile = base::RepeatingCallback<bool(const base::FilePath&)>;
++  using ShowProfileContext =
++      base::RepeatingCallback<void(views::View*, const base::FilePath&)>;
++  ProfilePageIndicator(BrowserView& browser_view,
++                       SelectProfile select,
++                       ShowProfileContext context,
++                       base::RepeatingCallback<bool()> preview_idle);
++  ~ProfilePageIndicator() override;
++
++  // Inputs are the real source151px presentation gate and held pager
++  // visibility. They deliberately differ from the profile button's compact
++  // presentation.
++  void SetPresentation(bool collapsed, std::optional<bool> held_visibility);
++  void Refresh();
++  void RefreshAccountMetadata();
++  void Retire();
++  void OnExtensionLoaded(content::BrowserContext* context,
++                         const extensions::Extension* extension) override;
++  void OnExtensionInstalled(content::BrowserContext* context,
++                            const extensions::Extension* extension,
++                            bool is_update) override;
++  void OnExtensionUnloaded(content::BrowserContext* context,
++                           const extensions::Extension* extension,
++                           extensions::UnloadedExtensionReason reason) override;
++  void OnExtensionUninstalled(content::BrowserContext* context,
++                              const extensions::Extension* extension,
++                              extensions::UninstallReason reason) override;
++  void OnShutdown(extensions::ExtensionRegistry* registry) override;
++
++ private:
++  const std::vector<base::FilePath>& Roster();
++  void BindRegistry();
++  void SetAgentInstalled(const extensions::Extension* extension,
++                         bool installed);
++  void AccountMetadataReady(ProfileAccountEmails emails);
++  void SelectPath(const base::FilePath& path, const ui::Event& event);
++  void ShowContext(const base::FilePath& path,
++                   ProfilePageIndicatorDotButton* button);
++
++  const raw_ref<BrowserView> browser_view_;
++  const SelectProfile select_;
++  const ShowProfileContext context_;
++  const base::RepeatingCallback<bool()> preview_idle_;
++  ProfileAccountEmails account_emails_;
++  bool metadata_running_ = false;
++  bool metadata_pending_ = false;
++  std::vector<base::FilePath> roster_;
++  std::vector<base::FilePath> paths_;
++  std::vector<raw_ptr<ProfilePageIndicatorDotButton>> buttons_;
++  bool roster_valid_ = false;
++  bool agent_installed_ = false;
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                          extensions::ExtensionRegistryObserver>
++      registry_observation_{this};
++  bool presentation_collapsed_ = false;
++  std::optional<bool> held_visibility_;
++  ProfilePagerDrag drag_;
++  base::WeakPtrFactory<ProfilePageIndicator> weak_factory_{this};
++};
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PAGE_INDICATOR_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.cc
+@@ -0,0 +1,125 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.h"
++
++#include <algorithm>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "chrome/browser/ui/views/frame/aux_profile_search_button.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/compositor/layer.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/views/border.h"
++
++namespace aux {
++VerticalTabSidebarProfileHeader::VerticalTabSidebarProfileHeader(
++    BrowserView& browser_view,
++    views::Button::PressedCallback profile_pressed,
++    views::Button::PressedCallback search_pressed,
++    ProfilePageIndicator::SelectProfile select,
++    ProfilePageIndicator::ShowProfileContext context,
++    base::RepeatingCallback<bool()> preview_idle) {
++  SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(5, 4, 5, 8)));
++  SetPreferredSize(gfx::Size(0, 42));
++  SetPaintToLayer();
++  layer()->SetFillsBoundsOpaquely(false);
++  layer()->SetMasksToBounds(true);
++  profile_ = AddChildView(std::make_unique<VerticalTabSidebarProfileButton>(
++      std::move(profile_pressed)));
++  profile_->SetLabelSuppressed(true);
++  pager_ = AddChildView(std::make_unique<ProfilePageIndicator>(
++      browser_view, std::move(select), std::move(context),
++      std::move(preview_idle)));
++  search_ = AddChildView(
++      std::make_unique<ProfileSearchButton>(std::move(search_pressed)));
++  controller_ = std::make_unique<VerticalTabSidebarProfileButtonController>(
++      &browser_view, profile_,
++      base::BindRepeating(
++          [](VerticalTabSidebarProfileButton* button,
++             const SidebarProfileButtonState& state) {
++            button->SetDisplayName(state.display_name, state.auth_paused);
++            button->SetAvatarImage(state.avatar_image, state.avatar_diameter,
++                                   state.show_monogram, state.profile_image);
++          },
++          base::Unretained(profile_.get())));
++}
++
++VerticalTabSidebarProfileHeader::~VerticalTabSidebarProfileHeader() {
++  controller_.reset();
++  pager_->Retire();
++}
++
++void VerticalTabSidebarProfileHeader::SetPresentation(
++    bool compact,
++    bool label_suppressed,
++    std::optional<int> profile_width_limit,
++    bool pager_collapsed,
++    std::optional<bool> held_pager_visibility) {
++  profile_->SetCompact(compact);
++  profile_->SetLabelSuppressed(label_suppressed);
++  profile_->SetWidthLimit(profile_width_limit);
++  search_->SetVisible(!compact);
++  pager_->SetPresentation(pager_collapsed, held_pager_visibility);
++}
++
++void VerticalTabSidebarProfileHeader::SetHeldChildBounds(
++    std::optional<HeldChildBounds> bounds) {
++  held_bounds_ = std::move(bounds);
++  InvalidateLayout();
++}
++
++void VerticalTabSidebarProfileHeader::RefreshNow() {
++  controller_->RefreshNow();
++  pager_->Refresh();
++  pager_->RefreshAccountMetadata();
++}
++
++void VerticalTabSidebarProfileHeader::AddedToWidget() {
++  views::View::AddedToWidget();
++  RefreshNow();
++}
++
++void VerticalTabSidebarProfileHeader::Layout(PassKey) {
++  if (held_bounds_) {
++    if (profile_->parent() == this)
++      profile_->SetBoundsRect(held_bounds_->profile);
++    if (pager_->parent() == this)
++      pager_->SetBoundsRect(held_bounds_->pager);
++    if (search_->parent() == this)
++      search_->SetBoundsRect(held_bounds_->search);
++    return;
++  }
++  const gfx::Rect contents = GetContentsBounds();
++  const bool has_profile = profile_->parent() == this && profile_->GetVisible();
++  const bool owns_search = search_->parent() == this && search_->GetVisible();
++  const gfx::Size profile_size =
++      has_profile ? profile_->GetPreferredSize() : gfx::Size();
++  const gfx::Size search_size =
++      owns_search ? search_->GetPreferredSize() : gfx::Size();
++  const int center_y = contents.y() + contents.height() / 2;
++  const bool has_search = search_size.width() > 0 && search_size.height() > 0;
++  const int profile_x =
++      pager_->GetVisible() || has_search
++          ? contents.x()
++          : contents.x() + contents.width() / 2 - profile_size.width() / 2;
++  if (has_profile)
++    profile_->SetBounds(profile_x, center_y - profile_size.height() / 2,
++                        profile_size.width(), profile_size.height());
++  if (owns_search)
++    search_->SetBounds(contents.right() - search_size.width(),
++                       center_y - search_size.height() / 2, search_size.width(),
++                       search_size.height());
++  const int edge = std::max(profile_size.width(), search_size.width());
++  if (pager_->parent() == this && pager_->GetVisible())
++    pager_->SetBounds(contents.x() + edge,
++                      std::max(contents.y(), height() - 32),
++                      std::max(0, contents.width() - 2 * edge), 24);
++}
++
++BEGIN_METADATA(VerticalTabSidebarProfileHeader)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.h
+@@ -0,0 +1,64 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_SIDEBAR_PROFILE_HEADER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_SIDEBAR_PROFILE_HEADER_H_
++
++#include <memory>
++#include <optional>
++
++#include "base/memory/raw_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_profile_page_indicator.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/view.h"
++
++class BrowserView;
++namespace aux {
++class ProfileSearchButton;
++class VerticalTabSidebarProfileButton;
++class VerticalTabSidebarProfileButtonController;
++
++// The original plain region+5a8 parent, in child order598,5e0,5a0.
++class VerticalTabSidebarProfileHeader : public views::View {
++  METADATA_HEADER(VerticalTabSidebarProfileHeader, views::View)
++ public:
++  struct HeldChildBounds {
++    gfx::Rect profile;
++    gfx::Rect pager;
++    gfx::Rect search;
++  };
++  VerticalTabSidebarProfileHeader(
++      BrowserView& browser_view,
++      views::Button::PressedCallback profile_pressed,
++      views::Button::PressedCallback search_pressed,
++      ProfilePageIndicator::SelectProfile select,
++      ProfilePageIndicator::ShowProfileContext context,
++      base::RepeatingCallback<bool()> preview_idle);
++  ~VerticalTabSidebarProfileHeader() override;
++
++  VerticalTabSidebarProfileButton* profile_button() const { return profile_; }
++  ProfileSearchButton* search_button() const { return search_; }
++  ProfilePageIndicator* pager() const { return pager_; }
++  // The region owns the distinct source presentation, eligibility and held
++  // geometry decisions. No width-derived collapse policy lives in this leaf.
++  void SetPresentation(bool compact,
++                       bool label_suppressed,
++                       std::optional<int> profile_width_limit,
++                       bool pager_collapsed,
++                       std::optional<bool> held_pager_visibility);
++  void SetHeldChildBounds(std::optional<HeldChildBounds> bounds);
++  // Actual toolbar attachment/completed profile rebind and roster changes.
++  void RefreshNow();
++  void Layout(PassKey) override;
++  void AddedToWidget() override;
++
++ private:
++  raw_ptr<VerticalTabSidebarProfileButton> profile_;
++  raw_ptr<ProfilePageIndicator> pager_;
++  raw_ptr<ProfileSearchButton> search_;
++  std::optional<HeldChildBounds> held_bounds_;
++  std::unique_ptr<VerticalTabSidebarProfileButtonController> controller_;
++};
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_SIDEBAR_PROFILE_HEADER_H_

@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "parent-constructor",
+      "rva": "0x37e3b98",
+      "bytes": 1176,
+      "sha256": "f494675714e1fd6c218aac73fff6eab9e8027063c9b5bf5ddec3e2ab35446cf5",
+      "assemblySha256": "ee41152af77e0101c147f8347ca80431a77267b3444f7778b2eef25e59dafddb"
+    },
+    {
+      "name": "pager-refresh",
+      "rva": "0x4631680",
+      "bytes": 5248,
+      "sha256": "0b4357a85e7d35b60f5832e8ca27871cd8fb321c2ae3959f912e92cf0ef88e85",
+      "assemblySha256": "985c02dc768fb772241788f81712a6036b27deb1e3283614c0db7c6f472a2d81"
+    },
+    {
+      "name": "header-layout",
+      "rva": "0x464026c",
+      "bytes": 892,
+      "sha256": "4cce9362e49702d3b46d175e279f894e3bc45e33c7fa5f201fb22828089d883b",
+      "assemblySha256": "f763c417b80ac4cc46e307ac447e57029b1f34014e51645a6f700407738613c5"
+    },
+    {
+      "name": "extension-bind",
+      "rva": "0x46331d4",
+      "bytes": 1580,
+      "sha256": "6dfbbd1330e98b82239ad4789d94e6d3755800f2062ce03d8a2119decb5f59f9",
+      "assemblySha256": "338de1582ce7841b4d9f5ead908c44fe9bf9f012ac4fa2f2f911bfeaf8e13524"
+    },
+    {
+      "name": "extension-events",
+      "rva": "0x463cfac",
+      "bytes": 940,
+      "sha256": "83067a0351e5765bd67fd04f08302541e477de90c65e3b367ea04717b633c59d",
+      "assemblySha256": "16e8f24d88e0a1a931bb29ce8b957876e60c19cff218fdc14f1df78eb16af103"
+    },
+    {
+      "name": "selection-context",
+      "rva": "0x46520e4",
+      "bytes": 932,
+      "sha256": "7a5b749d52ec6fd23a1ac802feebf989cf61874837c4c53c11ab0c1077f4d0a3",
+      "assemblySha256": "8610c41f4d7c83ae1c1c38a481d274b11279ff538c40bbe4f6e395d0e0a574ed"
+    },
+    {
+      "name": "metadata-schedule",
+      "rva": "0x4632a8c",
+      "bytes": 1300,
+      "sha256": "0b5d3f96cbfa6d81bb8a948f46b593abe5cd43918a44c3a315260f0e1279c18e",
+      "assemblySha256": "156d5154617cbfbb93bfe82ca606af00cef0d5a354476a5c14310e5bfd77fd7d"
+    },
+    {
+      "name": "search-dispatch",
+      "rva": "0x4631518",
+      "bytes": 28,
+      "sha256": "3612211d05cad8b9db777da283aed6066e446436bd4d25debfeb204cc23d7802",
+      "assemblySha256": "1e3b658f1bbc48d28fd81c2541e7945eb9f6a8fa136493424c7f6e6fde8cfcee"
+    },
+    {
+      "name": "search-host",
+      "rva": "0x45b63c0",
+      "bytes": 240,
+      "sha256": "06041db382ba99ea7ce6643b5bc97de374eebe2634ed3aebcb451c43502bff7a",
+      "assemblySha256": "3f477c3125ed49a3ecca4e9acaf121dc0ccd7a4e3a781406c108892e22daa2b5"
+    }
+  ],
+  "pseudocode": [
+    {
+      "path": "evidence/pager.c",
+      "sha256": "f139778ed795f8cffba243b66c1a2358017c38bf23969021c1c057db0bbb506c"
+    },
+    {
+      "path": "evidence/context.c",
+      "sha256": "a243b89defdbbf46f9570319ecbfed97550c95fea7b38bbf8103f27b4cb60c90"
+    }
+  ],
+  "dependencies": [
+    "native-profile-page-indicator",
+    "native-profile-pager-drag",
+    "native-profile-indicator-icons",
+    "native-profile-display-label",
+    "native-sidebar-profile-button",
+    "native-sidebar-profile-controller",
+    "native-profile-account-metadata"
+  ]
+}
