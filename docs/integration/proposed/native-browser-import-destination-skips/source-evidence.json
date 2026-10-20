@@ -1,0 +1,60 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "destination-availability.asm",
+      "start": "0x4258840",
+      "endExclusive": "0x4258b68",
+      "bytesSha256": "f0414ef01ca46c45f92d932820e538841f48b010d5cb6444b8f04ecd614e9d3f",
+      "sha256": "393be4f75f14329031b3c0565178fa660e893e0d977d5fd061cecfe631e98460"
+    },
+    {
+      "file": "cookie-filter.asm",
+      "start": "0x425a380",
+      "endExclusive": "0x425b128",
+      "bytesSha256": "9649dafbcff24b53efbb39ca055e25563c3bf556e32cb42152fd406ee79fa83f",
+      "sha256": "033251c1c9159d2c3198bfcf40f7e7991bbc64515f3bbccb2084a3ba6249da06"
+    },
+    {
+      "file": "password-form.asm",
+      "start": "0x425b820",
+      "endExclusive": "0x425bdf0",
+      "bytesSha256": "c4be74a35f5ef8f7d7d62507c0bdcfdabf29b8985fa715e0d7cac8337b995251",
+      "sha256": "15ab186494d42ae2fff04dcac108f1eb332d63bbcb98516efced80aed391b658"
+    },
+    {
+      "file": "cookie-from-storage.asm",
+      "start": "0x1bed5d0",
+      "endExclusive": "0x1bed780",
+      "bytesSha256": "9d720ed84a68971cc7c6812410da2a7c3df4cc78de410b54f93a35c43fca5f4b",
+      "sha256": "2c94f6833255e82f18a75af2475dde3107024dd42b7ba20adf8009c1b49dc8bf"
+    },
+    {
+      "file": "cookie-url-helper.asm",
+      "start": "0x637300",
+      "endExclusive": "0x6375b0",
+      "bytesSha256": "9a3aa2e7967ae6537e3f73ee0a60d00b1beda654a13760b77748394b3b1c1d83",
+      "sha256": "8e4c98fad6746d9b16f10f0578721a92babaa0db3c1aaecd2014dd5c204e1cfa"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04258618.c",
+      "sha256": "8bb09c41e36a79db9f3f1e255046d150dda4675bbd3464b0db0ceda31d5c1291"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/net/cookies/cookie_util.cc",
+      "sha256": "dc152480aaf07c45e45e5579083ea059559e5fb0bd3e59ace73bde2784c2ca87"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/net/cookies/canonical_cookie.cc",
+      "sha256": "87931ba1a20a1eb64b6f0e289e3167863fd9547871e29d91ab8332ad6beb1eff"
+    }
+  ],
+  "parent": "a9ba04615 native-browser-import-secret-barriers output",
+  "cookieSQL": "SELECT creation_utc, host_key, top_frame_site_key, name, value, encrypted_value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, samesite, source_scheme, source_port, last_update_utc, source_type, has_cross_site_ancestor FROM cookies",
+  "passwordSQL": "SELECT origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, date_last_used, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, sender_profile_image_url, date_last_filled, actor_login_approved FROM logins"
+}

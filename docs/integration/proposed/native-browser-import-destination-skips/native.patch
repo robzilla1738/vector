@@ -1,0 +1,189 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -39,6 +39,7 @@
+ #include "net/cookies/canonical_cookie.h"
+ #include "net/cookies/cookie_access_result.h"
+ #include "net/cookies/cookie_options.h"
++#include "net/cookies/cookie_util.h"
+ #include "services/network/public/mojom/cookie_manager.mojom.h"
+ #include "ui/base/page_transition_types.h"
+ namespace aux_import {
+@@ -81,14 +82,9 @@
+   form.url = GURL(*row.FindString("url"));
+   form.action = GURL(*row.FindString("action"));
+   form.signon_realm = *row.FindString("realm");
+-  if (!form.url.SchemeIsHTTPOrHTTPS() ||
+-      !GURL(form.signon_realm).SchemeIsHTTPOrHTTPS()) {
+-    return std::nullopt;
+-  }
+-  const auto scheme = row.FindInt("scheme").value_or(-1);
+-  if (scheme < 0 || scheme > 4) {
+-    return std::nullopt;
+-  }
++  // Supplied425b820..425baf8 reconstructs the source form without an
++  // HTTP-only URL/realm filter; the real store retains its own validation.
++  const auto scheme = row.FindInt("scheme").value_or(0);
+   form.scheme = static_cast<password_manager::PasswordForm::Scheme>(scheme);
+   form.username_element =
+       base::UTF8ToUTF16(*row.FindString("usernameElement"));
+@@ -108,64 +104,53 @@
+   return std::move(form);
+ }
+ std::unique_ptr<net::CanonicalCookie> PrepareChromiumCookie(
+-    const base::DictValue& row, GURL& source, bool& skipped) {
+-  skipped = false;
+-  const auto* secret = row.FindString("secret");
+-  if (!secret) {
+-    return nullptr;
+-  }
+-  std::string host = *row.FindString("host");
+-  if (host.starts_with('.')) {
+-    host.erase(0, 1);
+-  }
+-  const bool secure = row.FindBool("secure").value_or(false);
+-  source = GURL(std::string(secure ? "https://" : "http://") + host + "/");
++    const base::DictValue& row, GURL& source) {
++  // Supplied425ab08..425ad80 skips partition parse errors and null canonical
++  // cookies. These are row skips, not failures of the staged source batch.
+   auto partition = net::CookiePartitionKey::FromStorage(
+       *row.FindString("partition"), row.FindBool("crossSite").value_or(false));
+-  const int same_site = row.FindInt("sameSite").value_or(-2),
+-            priority = row.FindInt("priority").value_or(-1);
+-  if (!source.is_valid() || !partition.has_value() || same_site < -1 ||
+-      same_site > 2 || priority < 0 || priority > 2) {
++  if (!partition.has_value()) {
+     return nullptr;
+   }
++  const int raw_same_site = row.FindInt("sameSite").value_or(-1);
++  const int same_site = raw_same_site >= 0 && raw_same_site <= 2
++                            ? raw_same_site : -1;
++  const int raw_priority = row.FindInt("priority").value_or(1);
++  const int priority = raw_priority == 0 ? 0 : raw_priority == 2 ? 2 : 1;
++  const int raw_scheme = row.FindInt("sourceScheme").value_or(0);
++  const int source_scheme = raw_scheme >= 0 && raw_scheme <= 2 ? raw_scheme : 0;
++  const int raw_type = row.FindInt("sourceType").value_or(3);
++  const int source_type = raw_type == 1 ? 1 : raw_type == 2 ? 2 : 3;
+   auto expiry = Timestamp(row, "expires", false);
+   if (*row.FindString("expires") == "0") {
+     expiry = base::Time();
+   }
+-  if (!expiry.is_null() && expiry <= base::Time::Now()) {
+-    skipped = true;
+-    return nullptr;
+-  }
+-  const int source_scheme = row.FindInt("sourceScheme").value_or(-1),
+-            source_port = row.FindInt("sourcePort").value_or(-2),
+-            source_type = row.FindInt("sourceType").value_or(0);
+-  if (source_scheme < 0 || source_scheme > 2 || source_port < -1 ||
+-      source_port > 65535 || source_type < 1 || source_type > 3 ||
+-      row.FindString("name")->size() + secret->size() > 4096 ||
+-      host.size() > 253 || row.FindString("path")->size() > 1024) {
+-    return nullptr;
+-  }
+-  source = GURL(std::string(source_scheme == 2 || (source_scheme == 0 && secure)
+-                                ? "https://"
+-                                : "http://") +
+-                host +
+-                (source_port >= 0 ? ":" + base::NumberToString(source_port)
+-                                  : std::string()) +
+-                "/");
+-  if (!source.is_valid()) {
+-    return nullptr;
+-  }
++  const bool secure = row.FindBool("secure").value_or(false);
+   auto cookie = net::CanonicalCookie::FromStorage(
+-      *row.FindString("name"), *secret, *row.FindString("host"),
+-      *row.FindString("path"), Timestamp(row, "created", false), expiry,
++      *row.FindString("name"), *row.FindString("secret"),
++      *row.FindString("host"), *row.FindString("path"),
++      Timestamp(row, "created", false), expiry,
+       Timestamp(row, "accessed", false), Timestamp(row, "updated", false),
+       secure, row.FindBool("httpOnly").value_or(false),
+       static_cast<net::CookieSameSite>(same_site),
+       static_cast<net::CookiePriority>(priority), std::move(partition.value()),
+-      static_cast<net::CookieSourceScheme>(source_scheme), source_port,
++      static_cast<net::CookieSourceScheme>(source_scheme),
++      row.FindInt("sourcePort").value_or(-1),
+       static_cast<net::CookieSourceType>(source_type),
+       net::CanonicalCookieFromStorageCallSite::kSqlitePersistentCookieStore);
+-  return cookie;
++  if (!cookie) {
++    return nullptr;
++  }
++  // Supplied425ad84..425aee4 uses the cookie path, then retries root when
++  // invalid. Port normalization belongs to FromStorage; no synthetic URL port.
++  const bool https = secure || source_scheme == 2;
++  source = net::cookie_util::CookieDomainAndPathToURL(
++      cookie->Domain(), cookie->Path(), https);
++  if (!source.is_valid()) {
++    source = net::cookie_util::CookieDomainAndPathToURL(
++        cookie->Domain(), "/", https);
++  }
++  return source.is_valid() ? std::move(cookie) : nullptr;
+ }
+ }  // namespace
+ class SecretLookup final : public password_manager::PasswordStoreConsumer {
+@@ -874,14 +859,14 @@
+         passwords.push_back(std::move(*form));
+       } else {
+         GURL source;
+-        bool skipped = false;
+-        auto cookie = PrepareChromiumCookie(row, source, skipped);
+-        if (skipped) {
++        if (!row.FindString("secret")) {
++          FailJob(id, "Source encrypted snapshot is incomplete");
++          return;
++        }
++        auto cookie = PrepareChromiumCookie(row, source);
++        if (!cookie) {
++          row.Remove("secret");
+           continue;
+-        }
+-        if (!cookie) {
+-          FailJob(id, "Source cookie could not enter the destination store");
+-          return;
+         }
+         cookies.emplace_back(std::move(cookie), std::move(source));
+       }
+@@ -892,24 +877,19 @@
+   if (!passwords.empty()) {
+     store = ProfilePasswordStoreFactory::GetForProfile(
+         profile_.get(), ServiceAccessType::EXPLICIT_ACCESS);
+-    if (!store ||
+-        !profile_->GetPrefs()->GetBoolean(
+-            password_manager::prefs::kCredentialsEnableService) ||
+-        store->GetError() != password_manager::ActionableError::kNoError) {
+-      FailJob(id, "Destination password store is unavailable");
+-      return;
+-    }
+-  }
++    // Supplied42589ac..42589d4 skips a missing real store. It does not add
++    // separate preference/error-state admission checks before AddLogins.
++  }
++  auto* manager = cookies.empty() ? nullptr
++      : profile_->GetDefaultStoragePartition()->GetCookieManagerForBrowserProcess();
+   job.chromium_secrets_started = true;
+-  job.chromium_passwords_done = passwords.empty();
+-  job.chromium_cookies_done = cookies.empty();
+-  if (!cookies.empty()) {
++  job.chromium_passwords_done = passwords.empty() || !store;
++  job.chromium_cookies_done = cookies.empty() || !manager;
++  if (manager) {
+     auto barrier = base::BarrierClosure(
+         cookies.size(),
+         base::BindOnce(&ImportService::DidCompleteChromiumSecrets,
+                        weak_.GetWeakPtr(), id, false));
+-    auto* manager = profile_->GetDefaultStoragePartition()
+-                        ->GetCookieManagerForBrowserProcess();
+     for (auto& [cookie, source] : cookies) {
+       manager->SetCanonicalCookie(
+           *cookie, source, net::CookieOptions::MakeAllInclusive(),
+@@ -925,7 +905,7 @@
+               }, weak_.GetWeakPtr(), id, barrier));
+     }
+   }
+-  if (!passwords.empty()) {
++  if (store) {
+     // Exact supplied destination batch; no independent per-login lookup/skip.
+     store->AddLogins(
+         std::move(passwords),
