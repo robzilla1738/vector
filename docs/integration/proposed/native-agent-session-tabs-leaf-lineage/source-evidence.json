@@ -1,0 +1,86 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x46272bc",
+      "end": "0x46272f4",
+      "purpose": "refresh realthis argument",
+      "sha256": "175ea7a2ec1d1540e28838ce98e8e7dc84958dfab6f1c49c48911ccc0b454165"
+    },
+    {
+      "start": "0x4125380",
+      "end": "0x4125444",
+      "purpose": "complete actual ancestor helper",
+      "sha256": "4e11722a2660e52679d056ffbebe996ff31ad89378da23efab9b9404b416a22f"
+    },
+    {
+      "start": "0x78ad68c",
+      "end": "0x78ad6d4",
+      "purpose": "TabView metadata getter",
+      "sha256": "c647ab2258f54c50fa0e12926c710e1b007216ad6af551748f26fc864715a4f3"
+    },
+    {
+      "start": "0x78adf4c",
+      "end": "0x78adf90",
+      "purpose": "TabView metadata name+path",
+      "sha256": "99b3cac72598258bb8c99704a1a75218e96da99913f256fa64e1d4ffc151ea69"
+    },
+    {
+      "start": "0x78a6ab8",
+      "end": "0x78a6b04",
+      "purpose": "TabGroupHeaderView metadata getter",
+      "sha256": "1485278abafcacab219791d093bc74c1fb0b42df027c99e523afce4761c766d8"
+    },
+    {
+      "start": "0x78a6ee8",
+      "end": "0x78a6f30",
+      "purpose": "TabGroupHeaderView name+path",
+      "sha256": "d923525e12d155fa309a3aec8c767ae716b428c84c2f4088073f100c5b318244"
+    },
+    {
+      "start": "0x412a854",
+      "end": "0x412a864",
+      "purpose": "required originalthirdmodeflag",
+      "sha256": "b9f79eab79981d39076ea4ee0119340c76fe453ac82ea3b34451558108587e76"
+    },
+    {
+      "start": "0x412c1d4",
+      "end": "0x412c208",
+      "purpose": "mode forces split presentation false",
+      "sha256": "a834b528c3e869cd8282a94f4fc98387bc8a8e2f7b01a77269dd52f2c71ce281"
+    },
+    {
+      "start": "0x4133c18",
+      "end": "0x4133ce8",
+      "purpose": "mode verticalrowheight",
+      "sha256": "7b515b01421c14cb6c90ccfb73fb9bc71112c9c84fbaa780d75cac1597c7e5df"
+    },
+    {
+      "start": "0x462a780",
+      "end": "0x462a870",
+      "purpose": "actual syntheticheaderdelegate",
+      "sha256": "1fd7422f2e5face563a7f09e5632dc850c4976cbdc22d630f18c19d60596f25d"
+    },
+    {
+      "start": "0x78a7a44",
+      "end": "0x78a7b04",
+      "purpose": "positive SplitTabView class metadata; original+614 branches resolve it",
+      "sha256": "3023c1bdc219e4e961be5286ec81f1abfefec3a6119310f3b4f88aae1d5d3f0f"
+    }
+  ],
+  "actualModeReads": [
+    "0x412c1e4",
+    "0x412ea64",
+    "0x412ed70",
+    "0x412f038",
+    "0x412f068",
+    "0x412f2e0",
+    "0x412f788",
+    "0x412fa18",
+    "0x4133c58"
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
