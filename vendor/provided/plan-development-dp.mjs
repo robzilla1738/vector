@@ -92,6 +92,13 @@ function snapshot(directory) {
   function walk(dir) { for (const name of fs.readdirSync(dir).sort()) { const absolute = path.join(dir, name), stat = fs.lstatSync(absolute), relative = path.relative(directory, absolute); if (stat.isDirectory() && !stat.isSymbolicLink()) walk(absolute); else if (stat.isSymbolicLink()) { const link = fs.readlinkSync(absolute), real = fs.realpathSync(absolute); if (path.isAbsolute(link) || !real.startsWith(directory + '/')) throw Error('Escaping package link'); files.push({ path: relative, link }); } else { files.push({ path: relative, sha256: hash(regular(absolute, 1024 * 1024 * 1024)), mode: stat.mode & 0o777 }); } } }
   walk(directory); return files;
 }
+export function preparedLeafPath(prep, preparationRoot, packageRoot, file) {
+  if (prep.method !== 'current-completed-package-no-provisioning-project') return path.join(preparationRoot, file.path);
+  if (!packageRoot || prep.resourceRoot !== path.join(packageRoot, prefix) || !file.path.startsWith('Resources/aux/')) throw Error('Current preparation resource root mismatch');
+  const relative = file.path.slice('Resources/aux/'.length);
+  if (!relative || relative.includes('\\') || relative.split('/').some(part => !part || part === '.' || part === '..')) throw Error('Unsafe current preparation leaf');
+  return path.join(prep.resourceRoot, relative);
+}
 export function planDevelopmentDp(request) {
   const { preparationPath, preparationSha256, boundaryReceiptPath, packageRoot, output, now, testMacIdentifier, browserReview, profileReports = [], allowAppleTrustNetwork = false, passwordManagerExcluded = false } = request;
   if (typeof allowAppleTrustNetwork !== 'boolean' || typeof passwordManagerExcluded !== 'boolean') throw Error('Explicit Boolean trust/topology mode required');
@@ -104,7 +111,8 @@ export function planDevelopmentDp(request) {
   for (const name of ['aux-native-carrier', 'libaux-native-boundary.dylib', 'aux-native-guard.node', 'aux-cli-launcher']) { const pin = receipt.outputs?.find(p => path.basename(p.path) === name); if (!pin || hash(regular(pin.path)) !== pin.sha256) throw Error('Boundary artifact pin mismatch'); }
   const preparationRoot = path.dirname(preparationPath);
   const blocked = [], artifacts = [];
-  for (const file of prep.inventory) { const p = path.join(preparationRoot, file.path), actual = file.link !== undefined ? { link: fs.readlinkSync(p) } : { sha256: hash(regular(p)), mode: fs.lstatSync(p).mode & 0o777 }; if (!samePreparedLeaf(file, actual)) throw Error('Prepared three-host input changed'); }
+  if (prep.method === 'current-completed-package-no-provisioning-project' && (!packageRoot || hash(regular(path.join(packageRoot, 'package.json'))) !== prep.packageReportSha256)) throw Error('Current preparation package receipt changed');
+  for (const file of prep.inventory) { const p = preparedLeafPath(prep, preparationRoot, packageRoot, file), actual = file.link !== undefined ? { link: fs.readlinkSync(p) } : { sha256: hash(regular(p)), mode: fs.lstatSync(p).mode & 0o777 }; if (!samePreparedLeaf(file, actual)) throw Error('Prepared three-host input changed'); }
   if (!packageRoot) blocked.push('Full disposable package with reviewed three-host overlay is absent; outer browser/computer-use cannot be fabricated');
   let inventory = [], targets = [];
   if (packageRoot) {

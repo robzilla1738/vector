@@ -74,7 +74,7 @@ export function planCurrentDevelopmentAuthority({ inputPath, inputSha256, output
   const input = pinnedJson(inputPath, inputSha256), scope = fixedScope(); validateCurrentAuthorityRequest(input, scope);
   if (sha(path.join(input.packageRoot, 'package.json')) !== input.packageReportSha256 || sha(input.cmsReceiptPath) !== input.cmsReceiptSha256) throw Error('Prepared input changed');
   canonicalDirectory(path.dirname(path.resolve(output))); if (fs.existsSync(output)) throw Error('Fresh signing plan output required');
-  const reportsRoot = path.join(input.output, 'cms-reports'); freshOutput(reportsRoot, [input.packageRoot, scope.policy.core.home]);
+  const reportsRoot = fs.mkdtempSync(path.join(input.output, 'cms-reports-')); fs.chmodSync(reportsRoot, 0o700);
   const profileReports = authenticateProfiles(input.profiles, input, reportsRoot);
   const browserPath = path.join(input.packageRoot, 'Aux.app/Contents/MacOS/Aux'), observation = inspectSigningCode(browserPath);
   if (Object.keys(observation.entitlements).length) throw Error('Current browser capabilities need an explicit additional review');

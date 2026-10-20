@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { developmentTargetDefinitions, developmentTargets, orderedDevelopmentTargets } from './plan-development-dp.mjs';
+import { developmentTargetDefinitions, developmentTargets, orderedDevelopmentTargets, preparedLeafPath } from './plan-development-dp.mjs';
 import { developmentProbeOperation } from './run-development-dp-probe.mjs';
 import { validateCurrentAuthorityRequest, validateLaunchAuthorityReport } from './current-development-authority.mjs';
 
@@ -48,4 +48,14 @@ test('signed launch handoff requires actual three-host same-authority verify rec
   assert.doesNotMatch(source, /prepareDevelopmentProject|prepareDevelopmentDp\(|xcodebuild|allowProvisioningUpdates|find-identity|spawnSync/);
   assert.match(source, /phase: 'verify-existing'/);
   assert.match(source, /packageReportIsHistoricalUnsignedInput: true/);
+});
+
+
+test('direct-package preparation validates existing leaf path without recreating historical copy tree', () => {
+  const packageRoot = '/fixture/project/out/current', prefix = packageRoot + '/Aux.app/Contents/Resources/aux';
+  const prep = { method: 'current-completed-package-no-provisioning-project', resourceRoot: prefix };
+  assert.equal(preparedLeafPath(prep, '/fixture/review', packageRoot, { path: 'Resources/aux/agent-runtime/node/bin/node' }), prefix + '/agent-runtime/node/bin/node');
+  for (const file of ['Resources/aux/../outside', 'Resources/aux//bad', 'Resources/aux/a/../../outside', 'Resources/other/a']) assert.throws(() => preparedLeafPath(prep, '/fixture/review', packageRoot, { path: file }));
+  assert.throws(() => preparedLeafPath({ ...prep, resourceRoot: '/owner' }, '/fixture/review', packageRoot, { path: 'Resources/aux/a' }));
+  assert.equal(preparedLeafPath({}, '/fixture/legacy', packageRoot, { path: 'Resources/aux/a' }), '/fixture/legacy/Resources/aux/a');
 });
