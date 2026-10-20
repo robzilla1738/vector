@@ -1,0 +1,129 @@
+--- a/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc
++++ b/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc
+@@ -1,17 +1,22 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/extensions/api/aux_notification/aux_notification_api.h"
+ 
+-#include "base/functional/bind.h"
++#include <string_view>
++#include <utility>
++
+ #include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/notifications/notification_permission_context.h"
+ #include "chrome/browser/profiles/profile.h"
+-#include "content/public/browser/permission_controller.h"
+-#include "content/public/browser/permission_request_description.h"
+-#include "content/public/browser/render_frame_host.h"
++#include "components/prefs/pref_service.h"
+ #include "content/public/browser/web_contents.h"
+-#include "third_party/blink/public/common/permissions/permission_utils.h"
+-#include "third_party/blink/public/mojom/permissions/permission.mojom.h"
+-#include "url/origin.h"
++#include "url/gurl.h"
++
+ namespace extensions {
++namespace {
++constexpr char kAiDeliveryModeByOrigin[] =
++    "persistent_notifications.ai_delivery_mode_by_origin";
++}  // namespace
++
+ ExtensionFunction::ResponseAction AuxNotificationFunction::RunAux() {
+   if (args().size() != 1) {
+     return RespondNow(Error("One permission target is required"));
+@@ -21,43 +26,40 @@
+       return RespondNow(Error("Origin string required"));
+     }
+     const GURL url(args()[0].GetString());
+-    const auto origin = url::Origin::Create(url);
+-    if (!url.SchemeIsHTTPOrHTTPS() || origin.opaque() ||
+-        url != origin.GetURL()) {
+-      return RespondNow(Error("A valid web origin is required"));
++    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
++      return RespondNow(Error("Invalid origin for revokePermission"));
+     }
+-    profile()->GetPermissionController()->ResetPermission(
+-        blink::PermissionType::NOTIFICATIONS, origin);
++    const GURL origin = url.DeprecatedGetOriginAsURL();
++    NotificationPermissionContext::UpdatePermission(
++        profile(), origin, CONTENT_SETTING_DEFAULT);
++    auto* prefs = profile()->GetPrefs();
++    auto delivery_modes = prefs->GetDict(kAiDeliveryModeByOrigin).Clone();
++    if (delivery_modes.Remove(origin.spec())) {
++      prefs->SetDict(kAiDeliveryModeByOrigin, std::move(delivery_modes));
++    }
+     return RespondNow(WithArguments(true));
+   }
+   if (!args()[0].is_int()) {
+     return RespondNow(Error("Tab identity required"));
+   }
+   content::WebContents* tab = nullptr;
+-  if (!ExtensionTabUtil::GetTabById(args()[0].GetInt(), profile(), false,
+-                                    &tab) ||
+-      !tab || tab->GetBrowserContext() != profile()) {
+-    return RespondNow(Error("Tab is unavailable in this profile"));
++  if (!ExtensionTabUtil::GetTabById(args()[0].GetInt(), browser_context(),
++                                   include_incognito_information(), &tab) ||
++      !tab) {
++    return RespondNow(Error("Invalid tabId for requestPermission"));
+   }
+-  auto* frame = tab->GetPrimaryMainFrame();
+-  if (!frame ||
+-      !frame->GetLastCommittedOrigin().GetURL().SchemeIsHTTPOrHTTPS()) {
++  const GURL& url = tab->GetLastCommittedURL();
++  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
+     return RespondNow(
+-        Error("Notification permission requires an active web origin"));
++        Error("Tab URL is not eligible for notification permission"));
+   }
+-  if (!user_gesture()) {
+-    return RespondNow(Error("Notification permission requires a user gesture"));
+-  }
+-  auto descriptor = blink::mojom::PermissionDescriptor::New();
+-  descriptor->name = blink::mojom::PermissionName::NOTIFICATIONS;
+-  profile()->GetPermissionController()->RequestPermissionFromCurrentDocument(
+-      frame, content::PermissionRequestDescription(std::move(descriptor), true),
+-      base::BindOnce(&AuxNotificationFunction::DidRequest,
+-                     base::RetainedRef(this)));
+-  return RespondLater();
+-}
+-void AuxNotificationFunction::DidRequest(content::PermissionResult result) {
+-  Respond(
+-      WithArguments(result.status == blink::mojom::PermissionStatus::GRANTED));
++  const GURL origin = url.DeprecatedGetOriginAsURL();
++  auto* prefs = profile()->GetPrefs();
++  auto delivery_modes = prefs->GetDict(kAiDeliveryModeByOrigin).Clone();
++  delivery_modes.Set(origin.spec(), 1);
++  prefs->SetDict(kAiDeliveryModeByOrigin, std::move(delivery_modes));
++  NotificationPermissionContext::UpdatePermission(profile(), origin,
++                                                 CONTENT_SETTING_ALLOW);
++  return RespondNow(WithArguments(true));
+ }
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/aux_notification/aux_notification_api.h
++++ b/chrome/browser/extensions/api/aux_notification/aux_notification_api.h
+@@ -2,15 +2,11 @@
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_NOTIFICATION_AUX_NOTIFICATION_API_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_NOTIFICATION_AUX_NOTIFICATION_API_H_
+ #include "chrome/browser/extensions/api/aux_common/aux_api.h"
+-#include "content/public/browser/permission_result.h"
+ namespace extensions {
+ class AuxNotificationFunction : public AuxFunction {
+  protected:
+   ~AuxNotificationFunction() override = default;
+   ResponseAction RunAux() override;
+-
+- private:
+-  void DidRequest(content::PermissionResult result);
+ };
+ class AuxNotificationRequestPermissionFunction final
+     : public AuxNotificationFunction {
+--- a/chrome/browser/aux/profile_gate_prefs.cc
++++ b/chrome/browser/aux/profile_gate_prefs.cc
+@@ -20,5 +20,7 @@
+   registry->RegisterBooleanPref("aside.bootstrap_complete", false);
+   registry->RegisterBooleanPref("aside.automatic_password_gate_suppressed", false);
+   registry->RegisterBooleanPref("aside.account_password_extension_available", false);
++  registry->RegisterDictionaryPref(
++      "persistent_notifications.ai_delivery_mode_by_origin");
+ }
+ }  // namespace aux

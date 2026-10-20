@@ -1,0 +1,137 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x4104d10",
+      "endExclusive": "0x41052a8",
+      "bytesSha256": "9561e2ec44907db5903df29e920a65947d8b7f6f9a77e5ed15dd3949d60df8d0",
+      "file": "request.asm",
+      "assemblySha256": "618c93dae1b0c8d9e601891996d582ca2da22a4ed5b1d6aa6f5ab64d38a9597d"
+    },
+    {
+      "start": "0x41052a8",
+      "endExclusive": "0x4105760",
+      "bytesSha256": "e093517dffbdee6bb88f083bc95c25ccb5c5e21d9fb27088d6aa53cf3f576a2b",
+      "file": "revoke.asm",
+      "assemblySha256": "2bba78cb7a111a7a9fd3ebb02daecc1e6e22079ecdde10976a0192cf20537b76"
+    },
+    {
+      "start": "0x77d8500",
+      "endExclusive": "0x77d8580",
+      "bytesSha256": "763559a3cc009ff176322e657bb5919a90e762e7f2af7a4a065b37f4151f3eac",
+      "file": "permission-effect.asm",
+      "assemblySha256": "5b2c13b92e39bfc825b27faa17149ac1473ff976beca1790ff195e12e38ad2bb"
+    },
+    {
+      "start": "0x23b024",
+      "endExclusive": "0x23b134",
+      "bytesSha256": "e32f327f0082f5faf8cac98a70ea37d36ffa66b89466c8f94816fc4040dc9b27",
+      "file": "http-scheme.asm",
+      "assemblySha256": "ec4ea48f95a6393ed8c9f6f93c022ce5c99ee88193669fbfecc6b93fe98ff510"
+    },
+    {
+      "start": "0xb1d0a4",
+      "endExclusive": "0xb1d730",
+      "bytesSha256": "64449a7be3be759347f0d3e52b224afeadd6b30a7a8a5eaa5f3b81b1c7f6d91c",
+      "file": "origin.asm",
+      "assemblySha256": "5faf8352fcbf1e3ebdd8f0116aa1bcd79751c4e32ebab07ea8b5f174a3d7ba3d"
+    },
+    {
+      "start": "0x2d8cc9c",
+      "endExclusive": "0x2d8ccdc",
+      "bytesSha256": "8325b1a25a6355e4628109c4b4315ea25d1f63815285130bb1a9e6d7a3b902af",
+      "file": "pref-registration.asm",
+      "assemblySha256": "2a3ad2dcfd988334648deb1d05a87b3b2c77851c758edc3a7f3a0d9ce95adccd"
+    },
+    {
+      "start": "0x46ae71c",
+      "endExclusive": "0x46ae7bc",
+      "bytesSha256": "7022658250eb1c8d0da61e86b464c5bd7b024583a01a0e9cb08f230f244c547a",
+      "file": "factories.asm",
+      "assemblySha256": "26b542c8953429378c9387eef84460cb1323c1e771f624be1ba017191beecb0e"
+    }
+  ],
+  "readOnlyFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/notification_permission_context.cc",
+      "sha256": "2dd629c00666d256e09bd9370d0e1bef660268727518bc76ec703612ca9eb637"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/notification_permission_context.h",
+      "sha256": "380964095517ca0cd5cb534f87ff085fcfc693a699e79361d9b0a7ab9bd67d27"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/extension_tab_util.h",
+      "sha256": "b3df395a7db75d778f092fcd51164be8c6c702039beb1e2d269200db5b3b1039"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_function.h",
+      "sha256": "b7d21adba7e74da120ead3ea1136e5a03046f29009a6ba92965f670c4b3b0b3a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_common/aux_api.cc",
+      "sha256": "a03e70605ddee33accb3d61454016116eb86ebd8b5bdbdab05efe2ef88d55fdb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/url/gurl.cc",
+      "sha256": "fb91c3636e79b640cbb9899c082fa8c112ca0f2b34bb1f26a7e11086ab0f60c1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/BUILD.gn",
+      "sha256": "e8ad789e6fb1d25589321998398a4a2ac4cd5106fcdb1c125bd18820036bfee9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_notification/BUILD.gn",
+      "sha256": "e1ad8d3e55440c3ecda8693d4ebdfb86bf42a1a4ef86d529d7d9acb6b51ac017"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideNotification.json",
+      "sha256": "9318102d38be59b25fdcb6f5022594e8f6ce8e47f2a19421e92a971acc70c305"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0xcee9a28",
+      "text": "persistent_notifications.ai_delivery_mode_by_origin"
+    },
+    {
+      "address": "0xceea92c",
+      "text": "Permission denied: missing private entitlements"
+    },
+    {
+      "address": "0xceea95c",
+      "text": "Invalid tabId for requestPermission"
+    },
+    {
+      "address": "0xceea980",
+      "text": "Tab URL is not eligible for notification permission"
+    },
+    {
+      "address": "0xceea9b4",
+      "text": "Invalid origin for revokePermission"
+    },
+    {
+      "address": "0xcc20045",
+      "text": "https"
+    },
+    {
+      "address": "0xcc2004b",
+      "text": "http"
+    }
+  ],
+  "registration": {
+    "requestFactory": "0x46ae71c",
+    "requestVtable": "0xe1afe60",
+    "requestRun": "0x4104d10",
+    "revokeFactory": "0x46ae76c",
+    "revokeVtable": "0xe1afed0",
+    "revokeRun": "0x41052a8"
+  }
+}

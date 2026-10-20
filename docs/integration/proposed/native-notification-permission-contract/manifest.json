@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_notification/aux_notification_api.cc",
+      "baselineSha256": "359f01f37a4ba21a06cdd2b77608515699fb4b2ef3ca1fe1f2730c3281e0c9eb",
+      "outputSha256": "8286dcdfbe5186dddd4c21d67dfd225c3da8c92a8cc561b5b9176eab05d12c5c"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_notification/aux_notification_api.h",
+      "baselineSha256": "fac9404d10f0d46e8483437e56ccc86309e729ccbe4abe327b1ca7baada6402c",
+      "outputSha256": "e58d22fcb706f81217289494fd86fc7d74f1392a420bb362d9ce8f88cc5a0ac5"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "d0f9cc3408230b2f74e1026e6794704a44caf72c09e4ccdc166b8294b78246da",
+      "outputSha256": "feb0323fdc736e792f1630356c4ee4983975343c297928b2ebae54a442c28fc5"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
