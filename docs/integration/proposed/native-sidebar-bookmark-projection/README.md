@@ -1,0 +1,31 @@
+# Genuine region bookmark/Chats projection coordinator
+
+Source-only six-file proposal: two new owner files plus narrow read-only/binding seams in the existing genuine owners. No Views, alternate models, backend calls, shared native writes, builds, profile execution, credentials or signing are introduced. Pure patch replay and fifteen original ARM64 ranges pass. Compilation, region mounting and UI acceptance remain root work.
+
+## Concrete mount contract
+
+`aux::AuxSidebarProjection` takes the actual BWI, existing `BookmarkTabAssociations`, mounted `VerticalTabBookmarksView`, `AuxChatsController`, saved-pin leaf, hover-card controller, real `AgentSessionTabsView`, actual `TabStripView.collection_node()`, and a required real region layout-changed closure. Construct after those owners exist; call `Start()` only after Bookmarks and Agent children have their genuine parents. It installs the existing Chats controller's projection callback (which feeds back into the coordinator), observes actual model/prefs/BookmarkModel, and performs the first publication. Its coalesced weak `QueueRefresh()` can also serve the existing Agent/pin changed callback through the actual region owner. `changed` must invalidate/refresh genuine region layout, not recursively call `Refresh()`.
+
+`Retire()` precedes profile identity changes, collection-node destruction and owned child removal. It stops actual observations/tasks and retires its visibility projection; it does not replace or destroy real Chats/Bookmark/Agent models. Root retains responsibility for retiring those actual owners and recreating them against the real current profile on commit/abort. View trackers, BWI/profile/model identity and weak callbacks reject stale work. No old-profile data is applied to a new BWI profile.
+
+Add `aux_sidebar_projection.{h,cc}` to the existing enabled-Mac UI source list. Dependencies are existing owner/model/UI dependencies. No GN edits are in this proposal. Actual existing files are pinned by per-file baseline/output SHA in `manifest.json`; previously delivered proposals remain immutable.
+
+## Original effects preserved
+
+* `462c2c0`: actual pending-navigation binding tries the active tab first, then remaining model tabs until the genuine inner queue empties. It then imports/reconciles the real f98 cache and real task associations before publication. Nested refresh is guarded by the source f90 role; source-style weak coalescing avoids a recursive update loop from task reconciliation.
+* The nodeID projection uses actual model order. The first eligible handle wins unless the actual active tab replaces it. A filtered handle→representation map is passed to the genuine inner owner, whose existing live-index resolver receives the same single selected handle for each node ID. Full cache identity is preserved in `BookmarkTabAssociations`; no URL establishes ownership. The actual active bookmark ID and presence flag reach `SetActiveBookmark`.
+* `4642084` eligibility retains registered section-enabled state, real pin/split state, actual task split set, genuine represented/pending NewChat and task associations. Source eligible active task selection is separately published to the existing Chats section; ordinary-tab task documents do not become a selected Chats row.
+* `462c5fc..608` constructs an empty URL vector before the real setter `46136ac`. Normal publication therefore calls `SetExcludedUrls({})`; it does not invent an exclusion URL list from titles or ownership. These URLs are activation-reuse exclusions, distinct from f98 associations.
+* Recursive collection visibility remains the existing `AuxOrdinaryTabProjection` (`4642670`) using actual pin, bookmark, task and Agent owners. The coordinator then forwards the actual active tab to the genuine Agent view.
+
+## Proven fb0 population and transfer suppression
+
+Previous bounded audits found only fb0 removals. The complete model callback now positively proves its producer: `4645894..58ac` Insert and `4645d18..5d6c` Replace attempt actual pending binding, and insert the real changed handle only when binding fails **and** the genuine queue remains nonempty. `6c86d20` is the actual lower-bound/unique-insert helper (and tail insert). The coordinator implements these exact Insert/Replace effects, matching bind erase, removal cleanup and full clear when the queue empties. `pending_bookmark_tab_handles()` exposes real read-only state if another recovered consumer needs it; there is no arbitrary insertion callback or URL classifier.
+
+Original constructor `37e03ec..414` clears the f98/fb0/fc8 storage. Original `37e0140..150` sets x8=this+b78 then unaligned uint32 zero at +17, covering b8f..b92. These are exact initial states, not fabricated false callbacks. Original Begin `4643508..0c` sets b90=true/b91=false/b92=false. Actual model changes while captured set b91 (`4645774..78`). Metadata restore `4643c08..0c` copies **actual b90 to b92**. Finish clears b90 before reconciliation and clears b92 afterward (`4643544`, `46438d8`). The coordinator owns these real booleans and exposes `BeginMetadataCapture`, `DidRestoreMetadata`, `FinishMetadataTransfer` for the actual transfer owner; it does not infer them from width, account mode or Browser flags. A normal freshly recreated post-transfer instance starts in the original false state. Retiring/recreating the whole profile-bound coordinator is also the documented current155 identity boundary; it prevents missing-node invalidation during a transfer rather than manufacturing a suppression argument.
+
+## Active row updater distinction
+
+`4641cd4` is not the ordinary visibility writer or bookmark selection setter. Its visible physical TabView+420 call reaches `7ab8320`: a loading-icon gate that returns for a cached image, suppression flag or idle network states, otherwise repaints through `5a117c`. Actual155 TabView/TabIcon already owns real loading/selection observations. This coordinator does not invent a second icon timer or reinterpret that callback as a show/hide setter. Bookmark selection comes from the positively recovered `462c2c0` publication; Agent selection uses the real active-tab API.
+
+Run `python3 verify.py` for disposable filesystem replay and original source pin verification. This does not claim compiled or observed UI parity.

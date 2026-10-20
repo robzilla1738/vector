@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "base": "actual shared native after368 (new files plus four disjoint owner seams)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "baselineSha256": "fd8e919d968163fa595372ebfba078709066608b3b8ce29b9ebbdaa7d72d1c91",
+      "outputSha256": "83165fa0978918cf77df5f593611e8076c6d1ae56cc81e51b480b9493bd1816c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "baselineSha256": "a8d1203a79ed9950477b8ea7e960d7d15de44d12eb6b34257a144695889ccd94",
+      "outputSha256": "f8072900cc719c7b8f65a8a18a7a1701a58994ff822c1419fd2c488b10a95cd1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.h",
+      "baselineSha256": "0e99fdf54fee2794a19c4ef222d175e17849bce3524edf3f8cbd3fb5ca80a38a",
+      "outputSha256": "e48d1ca34933a3305b6c82909a817596b55da36d69791ae71165c70c863d2258"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.h",
+      "baselineSha256": "bcc2d7a5f5e03394caaf3b86d060672074db895a860f773d6b062322c8e25ff0",
+      "outputSha256": "bf0fcae300d729f8d20d6805f6bfdb95502fe0d02756763d4d1c44c1d33a7e69"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_projection.h",
+      "baselineSha256": null,
+      "outputSha256": "4bccae33c047a07a7056af673b001c825664d2123673d54c5f471ab11ddb6003"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_projection.cc",
+      "baselineSha256": null,
+      "outputSha256": "9c527b3194b418152e5a626fd66f95d3fbd1ca9269a30bd4f59fb7315cc44b4f"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

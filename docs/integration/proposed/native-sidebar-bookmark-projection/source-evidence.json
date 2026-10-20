@@ -1,0 +1,113 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "publication",
+      "start": "0x462c2c0",
+      "stopExclusive": "0x462ce28",
+      "bytesSha256": "2126643c589e53e5e9395e93ad5f60441b6918e6d9bd2547bf7f054c6911373a",
+      "asmSha256": "946ec2a907a9ab5417d0f0362676bc0ab0c40b8e72ea8716d83677cefbdb463b"
+    },
+    {
+      "name": "bookmark-eligibility",
+      "start": "0x4642084",
+      "stopExclusive": "0x46422ec",
+      "bytesSha256": "ff9c349422cdc50a58ee40aa4c45dfb228012c711904ff6a72e12509edb3e245",
+      "asmSha256": "27396c3c2cbb803afb1069dc9f679390e43c8c72ab5ae8fde5550c6df1202aa6"
+    },
+    {
+      "name": "pending-bind",
+      "start": "0x4646654",
+      "stopExclusive": "0x4646f58",
+      "bytesSha256": "1aa71f18c9763bd4cb6438098740407082b4268d5b6b3310782833dee7fb1435",
+      "asmSha256": "814e8192b0166f601aefa9933806f00254da9b7e050b9c7549e905c997761dc3"
+    },
+    {
+      "name": "metadata-reconcile",
+      "start": "0x4646f58",
+      "stopExclusive": "0x46471bc",
+      "bytesSha256": "1d2d1c0e2827826fcf83607f4d7fb6261f5a79e64658af3c6c208c60d7607999",
+      "asmSha256": "8847051039e64f947b65acf42d5e8756704f2ba5997eaa058af715a8311d0df8"
+    },
+    {
+      "name": "source-initialization",
+      "start": "0x37e0138",
+      "stopExclusive": "0x37e015c",
+      "bytesSha256": "ec96a79b43af0a05998ae3331246aed03a46b72c36e13daa9dde9e36bdacf827",
+      "asmSha256": "d7dedafb9f4df280e7ee01a1191c94d24f4b1e8fca22bda834c600804b55dcb0"
+    },
+    {
+      "name": "cache-initialization",
+      "start": "0x37e03ec",
+      "stopExclusive": "0x37e041c",
+      "bytesSha256": "21e5591d156bfadfee306d6b26a17ce3aef89533e42c1adb948f1bb45147fc99",
+      "asmSha256": "70509dfb94dcd2d3e5aeaa58724d9b9382aa9c7ca74dfcc0395068942ec77305"
+    },
+    {
+      "name": "capture-begin",
+      "start": "0x46434a8",
+      "stopExclusive": "0x464351c",
+      "bytesSha256": "9a61a852962d985e08464617e98e836ad8142f7a489f303af48ff33419ffea71",
+      "asmSha256": "7da425c42237d79590386f2c2a906845c4f9acdfc61417a0d24af80730fe0691"
+    },
+    {
+      "name": "capture-finish",
+      "start": "0x464351c",
+      "stopExclusive": "0x4643928",
+      "bytesSha256": "400612855ce31fa2ff0195884d626a81cde62134b5e7c919acea0197724c5027",
+      "asmSha256": "cb12088f24bc2a8813c82374d813ede6f5fceb506c951fd21ceb2618753fe240"
+    },
+    {
+      "name": "metadata-restored",
+      "start": "0x4643bf8",
+      "stopExclusive": "0x4643c10",
+      "bytesSha256": "6162a1b62c246ad84f9f4d41aa43f875a9034bf83838ce6557f84382a2985581",
+      "asmSha256": "859b127f2542362817e1fb6035e9e7baebb645ca1ba8b011f0e64f3b9ff3c376"
+    },
+    {
+      "name": "model-events",
+      "start": "0x46456e8",
+      "stopExclusive": "0x4645d90",
+      "bytesSha256": "b5a858cc8ac42b198028767c1ad55a0f63751d9de0ff9ae5a579ae9c5743d2f3",
+      "asmSha256": "72580ffe5933d46ec6538d074c247f5b2d83dcd74fd192ad900307dfaf803001"
+    },
+    {
+      "name": "unique-handle-insert",
+      "start": "0x6c86d20",
+      "stopExclusive": "0x6c86f74",
+      "bytesSha256": "764a9552957d10017c57392c5864f9842e96566453b854c75650a8575a482da2",
+      "asmSha256": "34849568378d72e7aa00ae1df1bdb309411ab9389f8f865dfaa386ea9d8b69a4"
+    },
+    {
+      "name": "handle-remove",
+      "start": "0x464329c",
+      "stopExclusive": "0x464330c",
+      "bytesSha256": "276b73e218274d10fe49ed7dda754faf0cbe5b643ae5652907dd83b65abe6169",
+      "asmSha256": "055060ff6aa46081597caa56de1ae5e7ec78be3245a4d45f79259469b280fb2e"
+    },
+    {
+      "name": "loading-icon-update",
+      "start": "0x7ab8320",
+      "stopExclusive": "0x7ab8348",
+      "bytesSha256": "690ca45b4da5bef8df4b3f23f4516df927298fdc3c7fd5338e014cd4950d967a",
+      "asmSha256": "628a16285a1834c5d77833fbb9cb8065beccea2880dd31e9d25d69edf771a0f2"
+    },
+    {
+      "name": "active-row-update",
+      "start": "0x4641cd4",
+      "stopExclusive": "0x4642084",
+      "bytesSha256": "1f1892faee3d6b834e8d1caa9c87fae2e7c471800c2da5c9a2cd1cffd9057170",
+      "asmSha256": "272e3f6921ae941092138eb6eae37575ea7e12be728aa941d903e2ea09b0d183"
+    },
+    {
+      "name": "excluded-url-setter",
+      "start": "0x46136ac",
+      "stopExclusive": "0x4613864",
+      "bytesSha256": "f09db42120718e2da993b82dfa703e7f13871ca5db2c528ef6a929c06705bba3",
+      "asmSha256": "109f852f6e4c4805f551e055bb43fd3a38da09947688ed6bb3385ec553faae8f"
+    }
+  ]
+}
