@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -204,6 +204,8 @@
+   tabs_->SetVisible(presentation.content_visible);
+   new_tab_->SetVisible(presentation.content_visible);
+   new_tab_->SetCompact(presentation.compact);
++  // Original464ac28..6c: metric61 gives the real row outer margins.
++  new_tab_->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
+   bookmarks_->bookmarks_view()->SetCompact(presentation.compact);
+   agent_->SetExternalVisibility(presentation.content_visible);
+ }
+--- a/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
++++ b/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/ui/views/tabs/common/tab_group_view.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_layout_utils.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
+ #include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
+ #include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper.h"
+ #include "components/tab_groups/tab_group_id.h"
+@@ -225,8 +226,14 @@
+   int dragged_view_bottom = 0;
+   auto collapse_state = tab_container_view->GetTabStripCollapseState();
+ 
++  // Original41351dc asks layout metric61 (8px). Preserve155's padding
++  // outside the supplied external sidebar's real tab-strip hierarchy.
++  const auto* strip =
++      views::AsViewClass<TabStripView>(tab_container_view->parent());
+   const int horizontal_padding =
+-      GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
++      strip && strip->external_scroll_view()
++          ? 8
++          : GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
+ 
+   for (auto* child : children) {
+     int x =

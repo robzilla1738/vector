@@ -1,0 +1,49 @@
+{
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "rva": "0x464aa18",
+      "bytes": 12,
+      "hex": "a0078052a9e3fa96fa0300aa",
+      "sha256": "e38ceef135f27fb418da602f331a378afc134cfbb2308e1b221c94295b0412a0"
+    },
+    {
+      "rva": "0x464ac28",
+      "bytes": 72,
+      "hex": "687643f949031a2b2a7d1f134a0101524961891a29011a6b2a7d1f134a0101524961891a297d60d35c7f60d3fc2703a9e90f00f9c11d05f02120129100610391e2c300917d8c5297",
+      "sha256": "978320b81c999a76312de56d36e88ee18f6b63c529f848003a0f60cdeac02145"
+    },
+    {
+      "rva": "0x41351dc",
+      "bytes": 12,
+      "hex": "a0078052b8390f97e84b40f9",
+      "sha256": "8ea87a3ae88877e8cb35b194d217d6353801120d421567f4a08c51aa8a9fd8ca"
+    },
+    {
+      "rva": "0xced82bc",
+      "bytes": 4,
+      "hex": "10000000",
+      "sha256": "097328e8c957de2428283954f6a1ee8ff7ad7def12e100a600178407f5decf24"
+    },
+    {
+      "rva": "0x503924",
+      "bytes": 8,
+      "hex": "000180521b000014",
+      "sha256": "88f8c36158bd87c1072b8899edd718030ccb7608ba26f85f481babd21fb3bfd4"
+    },
+    {
+      "rva": "0xea05488",
+      "bytes": 24,
+      "hex": "00000000000000003659d40d000020000000000000000000",
+      "sha256": "02333280bdc53d33486712de45a9e687f444627a7fdef397c9ebbcde4c064143"
+    }
+  ],
+  "interpretation": {
+    "newTab": "464aa18 passes61 to GetLayoutConstant; w26 holds8.464ac28..6c writes two packed pairs(0,8),(0,8) to kMarginsKey on region6e8. Existing body omitted this call.",
+    "unpinned": "41351dc requests same61 for actual unpinned layout; current155 instead uses12. Restrict correction to genuine external tab-strip parent.",
+    "footer": "ProfilePageIndicator real roster<=1 hides. Selected14px zap profile indicator and unselected6px dot explain Aside footer screenshot; not a missing task-status bolt. Preserve actual roster and user-selected icon."
+  }
+}

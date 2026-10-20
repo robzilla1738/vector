@@ -1,0 +1,11 @@
+# Sidebar alignment pass1 — native533 baseline
+
+Restore two omitted supplied layout values together. NewTab receives the original outer horizontal8px margin, aligning its text with NewChat. Actual external unpinned rows use original8px horizontal padding instead of155's12px, restoring tab background and favicon positions. Row content, icons, colors, height, grouping, focused-group/drag branches and collapse state remain unchanged. Non-external155 layouts retain their metric.
+
+The original section-presentation assembly (native-sidebar-section-presentation/section-presentation.asm) sets region6e8 kMarginsKey at464ac28..6c. Packed Insets are(0,metric61,0,metric61);61 dispatches via ced82bc to503924, returning8. Original unpinned vertical-layout.asm41351dc uses the same metric61. source-evidence.json includes exact bounded bytes and the original whole-image identity. This corrects the earlier exploratory hypothesis: ea05688/ead32d8 set the element identifier, not margins. The genuine margin is applied later during layout.
+
+Footer audit: the original profile pager uses actual ordered profiles, hides for<=1, paints selected profile icon14px (the source catalog includes zap) and iconless6px dots. The supplied screenshot's bolt+dot is consistent with that real pager. Aux's disposable single-profile absence is expected. No fake running indicator, extra profile, or restored independent footer was added. Exact source owners: native-profile-pager-owner and native-profile-page-indicator; active implementations aux_profile_page_indicator.cc and aux_profile_indicator_icon.cc.
+
+The current canonical NewTab mark and twelve-pixel plus in sixteen-pixel slot remain. Settings favicon is left unchanged without evidence that the original native NTP-only neutral substitution applies to all Agent routes.
+
+Verification: independently decoded metric61 branch and kMarginsKey name from supplied binary; native.patch dry-run against actual533; two count-checked mutation anchors. No native edits, build, profile access or runtime acceptance in this lane. Integrator applies with manifest pins and checks NewTab action/normal tab left edges, plus compact layout and a real tab drag in disposable state.
