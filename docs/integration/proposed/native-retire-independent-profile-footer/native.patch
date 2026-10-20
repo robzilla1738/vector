@@ -1,0 +1,77 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -228,15 +228,6 @@
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding),
+           region_horizontal_padding, 0, region_horizontal_padding));
+ 
+-  aux_footer_ = AddChildView(
+-      std::make_unique<AuxSidebarFooter>(browser_view->browser()));
+-  aux_footer_->SetProperty(views::kMarginsKey,
+-                           gfx::Insets::VH(0, region_horizontal_padding));
+-  aux_footer_->SetProperty(
+-      views::kFlexBehaviorKey,
+-      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
+-                               views::MaximumFlexSizeRule::kUnbounded));
+-
+   gemini_button_ = AddChildView(std::make_unique<views::View>());
+ 
+   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
+@@ -843,7 +834,7 @@
+     Profile* target) const {
+   return pinned_tab_entries_ && target &&
+          target->GetPrefs()->FindPreference(aux::kPinnedTabEntriesPref) &&
+-         aux_sidebar_ && aux_footer_ && resize_area_ &&
++         aux_sidebar_ && resize_area_ &&
+          !resize_area_->is_resizing() &&
+          aux_sidebar_->CanRebindForAuxProfileSwitch(target);
+ }
+@@ -860,7 +851,6 @@
+   // Both commit and rollback derive the actual currently authoritative
+   // Browser profile. Do not copy another window's rendered rows or sources.
+   aux_sidebar_->RebindAuxProfileSwitch();
+-  aux_footer_->RebindForAuxProfileSwitch();
+ }
+ 
+ void VerticalTabStripRegionView::EndAuxProfileSwitch(uint64_t generation) {
+@@ -930,7 +920,6 @@
+ 
+ void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+   top_button_container_->SetAgentActive(active);
+-  aux_footer_->SetAgentActive(active);
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -1006,7 +995,6 @@
+   aux_sidebar_->SetVisible(!collapsed);
+   top_button_separator_->SetVisible(collapsed);
+   bottom_button_container_->SetVisible(collapsed);
+-  aux_footer_->SetVisible(!collapsed);
+ 
+   if (tab_strip_view()) {
+     tab_strip_view()->SetCollapsedState(collapsed);
+@@ -1579,7 +1567,6 @@
+       compact, admission->retained());
+   pinned_tab_entries_->SetCompactPresentation(compact);
+   aux_sidebar_->SetVisible(!compact);
+-  aux_footer_->SetVisible(!compact);
+   top_button_separator_->SetVisible(compact);
+   bottom_button_container_->SetVisible(compact);
+   resize_area_width_ = compact ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -51,7 +51,6 @@
+ class ProfileSearchButton;
+ }
+ 
+-class AuxSidebarFooter;
+ class AuxSidebarView;
+ class BrowserView;
+ class Profile;
+@@ -332,7 +331,6 @@
+   raw_ptr<VerticalPinnedTabEntriesView> pinned_tab_entries_ = nullptr;
+   std::optional<uint64_t> pinned_profile_switch_generation_;
+   raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
+-  raw_ptr<AuxSidebarFooter> aux_footer_ = nullptr;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;

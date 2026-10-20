@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "applyAfter": "actual264 region (avatar265 disjoint)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "5fc7cf055f5e30d31c2de90ee7ca77a7656e1f5c0e380c7ed4bd0e10896272ae",
+      "outputSha256": "1bd2175c5467315fe8e7b4ee2c0ef5defb6534f719122ebc04217e09e2584633",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "  aux_footer_ = AddChildView(\n      std::make_unique<AuxSidebarFooter>(browser_view->browser()));\n  aux_footer_->SetProperty(views::kMarginsKey,\n                           gfx::Insets::VH(0, region_horizontal_padding));\n  aux_footer_->SetProperty(\n      views::kFlexBehaviorKey,\n      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,\n                               views::MaximumFlexSizeRule::kUnbounded));\n\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "         aux_sidebar_ && aux_footer_ && resize_area_ &&",
+          "after": "         aux_sidebar_ && resize_area_ &&",
+          "count": 1
+        },
+        {
+          "before": "  aux_footer_->RebindForAuxProfileSwitch();\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "  aux_footer_->SetAgentActive(active);\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "  aux_footer_->SetVisible(!collapsed);\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "  aux_footer_->SetVisible(!compact);\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "32580cd7f5c9bc6088b60700132f7157c7c5f325adc5ce26fa0ff744929d7b4a",
+      "outputSha256": "3c056e124ac4747341bcfb0b3f88f726e4ad472aff23aeb8ea138a3e1b4e0542",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "class AuxSidebarFooter;\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "  raw_ptr<AuxSidebarFooter> aux_footer_ = nullptr;\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-region-tail",
+      "rva": "0x37e3b98",
+      "bytes": 1792,
+      "sha256": "45dcebdbbd2672b6aeaff7223bad25a00dc814faabc2f3942601e523e6910d0b",
+      "assemblySha256": "957b159ef2a26d0e50c6e927134f505422475afebb8f30cc2375e5928b288884"
+    },
+    {
+      "name": "bottom-container",
+      "rva": "0x3621b00",
+      "bytes": 2372,
+      "sha256": "70bbe785d89ece6663de931417996e311eec1162a7781205f253735e5bf9d62a",
+      "assemblySha256": "cb955d31da98aa011008bfa1febeb54a799084e1f81865984ab867449a50522d"
+    },
+    {
+      "name": "bottom-metadata",
+      "rva": "0x2db8d48",
+      "bytes": 176,
+      "sha256": "3a5c6d4ac7611aa322428aff10f015b374895c303e1bcdd1f4be6c3ec16b9541",
+      "assemblySha256": "1f776081852d0e443361b7494c172eec379da58544c68b6e0fc5f98abfa2bb19"
+    },
+    {
+      "name": "apply-bottom-state",
+      "rva": "0x464b238",
+      "bytes": 60,
+      "sha256": "c484343ffcba58cb2dd8c3b4b150a0af1e2fde09bb0013204d4104811b313338",
+      "assemblySha256": "17e70c76354a98f419fde62f73f1a3413d4935d3ed2d5627e65cb6f1a8d8e4ef"
+    },
+    {
+      "name": "bottom-state",
+      "rva": "0x424544c",
+      "bytes": 252,
+      "sha256": "082f6e2ce82b48fc23ce26c0974795020d03c96bf977178e0cf9b4e206c5fd3b",
+      "assemblySha256": "21330d8f78feaf9bcadb5e121b489e66f4b0e5d9f9353e80f6cc151bf9832ca9"
+    }
+  ]
+}
