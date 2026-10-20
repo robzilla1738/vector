@@ -1,0 +1,55 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "feed-settlement",
+      "start": "0x4635348",
+      "stopExclusive": "0x4636ac0",
+      "bytesSha256": "c4fb6ecda9de4c09c856bc06a55e865b3c1b096a4149f57b04489ad9bfa148b2",
+      "asmSha256": "914a7676510656f441c76165534a50eb8172e0a715863707b99738835a232609"
+    },
+    {
+      "name": "projection-refresh",
+      "start": "0x462c2c0",
+      "stopExclusive": "0x462ce28",
+      "bytesSha256": "2126643c589e53e5e9395e93ad5f60441b6918e6d9bd2547bf7f054c6911373a",
+      "asmSha256": "946ec2a907a9ab5417d0f0362676bc0ab0c40b8e72ea8716d83677cefbdb463b"
+    },
+    {
+      "name": "agent-registry",
+      "start": "0x46331d4",
+      "stopExclusive": "0x4633358",
+      "bytesSha256": "f18174e1561f1e6d0549d5887335825ca9d70709f5a7a3f5c579ac28cb1a04a0",
+      "asmSha256": "4a357a386208d1d08e252ce3cb387aa0eea5549efa3786735f4d3070f584b226"
+    }
+  ],
+  "reuseDependencies": [
+    {
+      "path": "docs/integration/proposed/native-chats-owner/source-evidence.json",
+      "sha256": "f7ffdc220200fedaa87d70017b262149b05ad6efdbc5e37e9a7f220fa6df8960"
+    },
+    {
+      "path": "docs/integration/proposed/native-chats-section/source-evidence.json",
+      "sha256": "c89ccb75672a3bddbfd7e731cc93606e92ceb55c32e3f79b131b22490465dc10"
+    },
+    {
+      "path": "docs/integration/proposed/native-chat-navigation/source-evidence.json",
+      "sha256": "d748c56538355c60bba45101d42f87ef2006582788893af8c73f43feb277a325"
+    },
+    {
+      "path": "docs/integration/proposed/native-chat-transient-state/source-evidence.json",
+      "sha256": "f9e17bf880e76ddd8317abb32d850d4e291ea73a1a940a57ad3876989ea3e8f0"
+    },
+    {
+      "path": "docs/integration/proposed/native-chat-ordinary-projection/source-evidence.json",
+      "sha256": "7bfab52f3502c467bafeceb1c9651d6f0e0a19980775bc57911d0cdc6b9002b2"
+    },
+    {
+      "path": "docs/integration/proposed/native-chats-header-menu/source-evidence.json",
+      "sha256": "e51456bf02cbe5ec54e6a3818d1e1c8df681e299b98a061ac02cfcde85d45a1f"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual342; new controller only, requires ordinary projection ea850c95a",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.cc",
+      "baselineSha256": null,
+      "outputSha256": "55006401d23fdaf7a3c004adda98b874534532999a46f5a096f6df80502b71f8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.h",
+      "baselineSha256": null,
+      "outputSha256": "8c20a26d10aa2174c16f8b4e784cccbac723121663561e79503a1074ea21c0b4"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,297 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_controller.cc
+@@ -0,0 +1,200 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_chats_controller.h"
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "extensions/common/extension.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/aux_chat_tab_owner.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_chat_actions.h"
++#include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
++#include "chrome/browser/ui/views/frame/aux_chats_header_actions.h"
++#include "chrome/browser/ui/views/frame/aux_chats_section.h"
++#include "chrome/browser/ui/views/frame/aux_chats_transport.h"
++namespace aux {
++namespace {
++bool HasAgent(Profile* profile) {
++  auto* registry = extensions::ExtensionRegistry::Get(profile);
++  return registry && registry->GetExtensionById(kAgentExtensionId,
++      extensions::ExtensionRegistry::EVERYTHING);
++}
++}  // namespace
++AuxChatsController::AuxChatsController(BrowserWindowInterface& browser,
++    BookmarkTabAssociations& bookmarks, std::u16string shortcut_help,
++    Changed changed)
++    : browser_(browser.GetWeakPtr()), profile_(browser.GetProfile()->GetWeakPtr()),
++      model_(browser.GetTabStripModel()), changed_(std::move(changed)) {
++  CHECK(model_ && changed_ && profile_->GetPrefs());
++  auto weak = weak_.GetWeakPtr();
++  transport_ = std::make_unique<AuxChatsTransport>(browser,
++      base::BindRepeating(&AuxChatsController::ChatsUpdated, weak));
++  // Both action owners use the same actual transport and current account
++  // selector as the region feed, including the source display-index fallback.
++  auto account = base::BindRepeating([](base::WeakPtr<AuxChatsController> owner)
++      -> std::optional<int> {
++    return owner ? owner->CurrentAccount() : std::nullopt;
++  }, weak);
++  auto classify = base::BindRepeating([](base::WeakPtr<AuxChatsController> owner)
++      -> std::optional<AuxChatTabOwner::Classification> {
++    if (!owner || !owner->ScopeCurrent()) return std::nullopt;
++    return AuxChatTabOwner::Classification{
++        .agent_installed = owner->agent_installed_,
++        .suppress_auto_expansion = owner->applying_snapshot_};
++  }, weak);
++  tabs_ = std::make_unique<AuxChatTabOwner>(browser, *model_, bookmarks,
++      account, std::move(classify), AuxChatTabOwner::SourceEffects{
++          .expand_chats = base::BindRepeating(&AuxChatsController::ExpandChats, weak)},
++      base::BindRepeating(&AuxChatsController::ProjectionChanged, weak));
++  actions_ = std::make_unique<AuxChatActions>(browser, *transport_, account,
++      base::BindRepeating(&AuxChatsController::OpenInNewTab, weak));
++  header_actions_ = std::make_unique<AuxChatsHeaderActions>(browser, *transport_);
++  AuxChatsSection::Actions section_actions;
++  section_actions.new_chat = base::BindRepeating(&AuxChatsController::SelectNewChat, weak);
++  section_actions.selected = base::BindRepeating(&AuxChatsController::Select, weak);
++  section_actions.rename = base::BindRepeating(&AuxChatsController::Rename, weak);
++  section_actions.archive = base::BindRepeating(&AuxChatsController::Archive, weak);
++  section_actions.context = base::BindRepeating(&AuxChatsController::ShowContext, weak);
++  section_actions.all_chats = base::BindRepeating(&AuxChatsController::ShowAll, weak);
++  section_actions.section_context = base::BindRepeating(
++      &AuxChatsController::ShowHeaderContext, weak);
++  unmounted_section_ = std::make_unique<AuxChatsSection>(*profile_->GetPrefs(),
++      std::move(section_actions), std::move(shortcut_help));
++  section_tracker_.SetTrackEntireViewHierarchy(true);
++  section_tracker_.SetView(unmounted_section_.get());
++  // A genuine region teardown can destroy the view before its controller.
++  section_tracker_.SetIsDeletingCallback(
++      base::BindOnce(&AuxChatsController::Retire, weak));
++  if (auto* registry = extensions::ExtensionRegistry::Get(profile_.get()))
++    registry_.Observe(registry);
++  agent_installed_ = HasAgent(profile_.get());
++  model_->AddObserver(this);
++}
++AuxChatsController::~AuxChatsController() { Retire(); }
++bool AuxChatsController::ScopeCurrent() const {
++  return !retired_ && browser_ && profile_ && model_ &&
++      browser_->GetProfile() == profile_.get() &&
++      browser_->GetTabStripModel() == model_;
++}
++std::optional<int> AuxChatsController::CurrentAccount() const {
++  return ScopeCurrent() ? std::optional<int>(ChatAccountForProfile(*profile_))
++                        : std::nullopt;
++}
++std::unique_ptr<AuxChatsSection> AuxChatsController::TakeSection() {
++  CHECK(!started_ && unmounted_section_);
++  return std::move(unmounted_section_);
++}
++AuxChatsSection* AuxChatsController::section() {
++  return static_cast<AuxChatsSection*>(section_tracker_.view());
++}
++AuxChatTabOwner& AuxChatsController::tabs() { return *tabs_; }
++void AuxChatsController::Start() {
++  if (!ScopeCurrent() || started_) return;
++  CHECK(!unmounted_section_ && section() && section()->parent());
++  started_ = true;
++  auto weak = weak_.GetWeakPtr();
++  tabs_->Reconcile();
++  if (!weak || !ScopeCurrent()) return;
++  if (agent_installed_) transport_->Start();
++}
++void AuxChatsController::Refresh() {
++  if (ScopeCurrent() && started_) transport_->Refresh();
++}
++void AuxChatsController::Retire() {
++  if (retired_) return;
++  retired_ = true;
++  weak_.InvalidateWeakPtrs();
++  registry_.Reset();
++  StopObservingAll(this);
++  transport_->Stop();
++  header_actions_->Retire();
++  actions_->Retire();
++  tabs_->Retire();
++  if (auto* view = section()) view->PauseProfileObservation();
++  model_ = nullptr;
++}
++void AuxChatsController::ChatsUpdated(const std::vector<Chat>& chats) {
++  if (!ScopeCurrent() || !section()) return;
++  chats_ = chats;
++  auto weak = weak_.GetWeakPtr();
++  const bool previous = std::exchange(applying_snapshot_, true);
++  actions_->SetChats(chats_);
++  section()->SetChats(chats_);
++  if (!weak || !ScopeCurrent() || !section()) return;
++  std::vector<std::string> ids;
++  ids.reserve(chats_.size());
++  for (const auto& chat : chats_) ids.push_back(chat.id);
++  // SetChats owns the original nested snapshot-suppression scope and calls
++  // ProjectionChanged after reconciling actual task associations.
++  tabs_->SetChats(ids);
++  if (weak) applying_snapshot_ = previous;
++}
++void AuxChatsController::ProjectionChanged() {
++  if (!ScopeCurrent() || !section()) return;
++  auto weak = weak_.GetWeakPtr();
++  const auto selected = tabs_->SelectedChat();
++  if (!weak || !ScopeCurrent() || !section()) return;
++  section()->SetSelectedChat(selected);
++  if (!weak || !ScopeCurrent() || !section()) return;
++  section()->SetNewChatRepresentedTab(tabs_->represented_new_chat(),
++                                     tabs_->represented_new_chat_active());
++  if (weak && ScopeCurrent()) changed_.Run();
++}
++void AuxChatsController::ExpandChats() {
++  if (ScopeCurrent() && section()) section()->ExpandFromTaskAssociation();
++}
++void AuxChatsController::Select(const std::string& id) {
++  if (ScopeCurrent()) tabs_->Select(id);
++}
++void AuxChatsController::SelectNewChat() {
++  if (ScopeCurrent()) tabs_->SelectNewChat();
++}
++void AuxChatsController::OpenInNewTab(const std::string& id) {
++  if (ScopeCurrent()) tabs_->OpenInNewTab(id);
++}
++void AuxChatsController::Rename(const std::string& id) {
++  if (!ScopeCurrent()) return;
++  auto weak = weak_.GetWeakPtr();
++  tabs_->SettleForRename(id);
++  if (weak && ScopeCurrent()) actions_->Rename(id);
++}
++void AuxChatsController::Archive(const std::string& id) {
++  if (ScopeCurrent()) actions_->Archive(id);
++}
++void AuxChatsController::ShowContext(views::View* anchor, Chat chat,
++                                    const ui::MouseEvent& event) {
++  if (ScopeCurrent()) actions_->ShowContext(anchor, std::move(chat), event);
++}
++void AuxChatsController::ShowHeaderContext(views::View* anchor,
++                                          const ui::MouseEvent& event) {
++  if (ScopeCurrent()) header_actions_->ShowContext(anchor, event);
++}
++void AuxChatsController::ShowAll() {
++  if (ScopeCurrent()) ShowAllChats(*browser_);
++}
++void AuxChatsController::UpdateAgentState() {
++  if (!ScopeCurrent()) return;
++  const bool installed = HasAgent(profile_.get());
++  if (installed == agent_installed_) return;
++  agent_installed_ = installed;
++  auto weak = weak_.GetWeakPtr();
++  if (installed && started_) transport_->Start();
++  else transport_->Stop();
++  if (!weak || !ScopeCurrent()) return;
++  tabs_->Reconcile();
++}
++void AuxChatsController::OnExtensionLoaded(content::BrowserContext*,
++                                          const extensions::Extension* extension) {
++  if (extension->id() == kAgentExtensionId) UpdateAgentState();
++}
++void AuxChatsController::OnExtensionUnloaded(content::BrowserContext*,
++    const extensions::Extension* extension, extensions::UnloadedExtensionReason) {
++  if (extension->id() == kAgentExtensionId) UpdateAgentState();
++}
++void AuxChatsController::OnShutdown(extensions::ExtensionRegistry*) { Retire(); }
++void AuxChatsController::OnTabStripModelDestroyed(TabStripModel* model) {
++  if (model == model_) Retire();
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_controller.h
+@@ -0,0 +1,91 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_CONTROLLER_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_CONTROLLER_H_
++#include <memory>
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/memory/raw_ptr.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "base/scoped_observation.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "chrome/browser/ui/views/frame/aux_chats_model.h"
++#include "ui/views/view_tracker.h"
++class BrowserWindowInterface;
++class Profile;
++class TabStripModel;
++namespace ui { class MouseEvent; }
++namespace aux {
++class AuxChatActions;
++class AuxChatTabOwner;
++class AuxChatsHeaderActions;
++class AuxChatsSection;
++class AuxChatsTransport;
++class BookmarkTabAssociations;
++// Same-window owner for the original region's Chats section, request lifetime,
++// menu actions and task/NewChat projection. The section itself is mounted as a
++// genuine direct body child; this controller adds no view or replacement UI.
++class AuxChatsController final : public extensions::ExtensionRegistryObserver,
++                                 public TabStripModelObserver {
++ public:
++  using Changed = base::RepeatingClosure;
++  AuxChatsController(BrowserWindowInterface&, BookmarkTabAssociations&,
++                     std::u16string shortcut_help, Changed projection_changed);
++  ~AuxChatsController();
++  AuxChatsController(const AuxChatsController&) = delete;
++  AuxChatsController& operator=(const AuxChatsController&) = delete;
++  std::unique_ptr<AuxChatsSection> TakeSection();
++  AuxChatsSection* section();
++  AuxChatTabOwner& tabs();
++  const std::vector<Chat>& chats() const { return chats_; }
++  bool agent_installed() const { return agent_installed_; }
++  // Mount first; start only once the real section is in the actual region.
++  void Start();
++  void Refresh();
++  // Call before profile identity changes or body removal. Recreate against the
++  // actual current profile for commit/abort; old request/menu callbacks retire.
++  void Retire();
++ private:
++  bool ScopeCurrent() const;
++  std::optional<int> CurrentAccount() const;
++  void ChatsUpdated(const std::vector<Chat>&);
++  void ProjectionChanged();
++  void ExpandChats();
++  void Select(const std::string&);
++  void SelectNewChat();
++  void Rename(const std::string&);
++  void Archive(const std::string&);
++  void OpenInNewTab(const std::string&);
++  void ShowContext(views::View*, Chat, const ui::MouseEvent&);
++  void ShowHeaderContext(views::View*, const ui::MouseEvent&);
++  void ShowAll();
++  void UpdateAgentState();
++  void OnTabStripModelDestroyed(TabStripModel*) override;
++  void OnExtensionLoaded(content::BrowserContext*, const extensions::Extension*) override;
++  void OnExtensionUnloaded(content::BrowserContext*, const extensions::Extension*,
++                           extensions::UnloadedExtensionReason) override;
++  void OnShutdown(extensions::ExtensionRegistry*) override;
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                          extensions::ExtensionRegistryObserver> registry_{this};
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  base::WeakPtr<Profile> profile_;
++  raw_ptr<TabStripModel> model_;
++  Changed changed_;
++  std::vector<Chat> chats_;
++  std::unique_ptr<AuxChatsSection> unmounted_section_;
++  views::ViewTracker section_tracker_;
++  std::unique_ptr<AuxChatsTransport> transport_;
++  std::unique_ptr<AuxChatTabOwner> tabs_;
++  std::unique_ptr<AuxChatActions> actions_;
++  std::unique_ptr<AuxChatsHeaderActions> header_actions_;
++  bool retired_ = false;
++  bool started_ = false;
++  bool agent_installed_ = false;
++  bool applying_snapshot_ = false;
++  base::WeakPtrFactory<AuxChatsController> weak_{this};
++};
++}  // namespace aux
++#endif
