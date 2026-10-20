@@ -5,8 +5,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { developmentSnapshot, verifySignedDevelopmentReceipt, signingChanges } from './execute-development-signing.mjs';
-import { fixedScope, regular, pinnedJson, freshOutput, prefix } from './development-dp-review.mjs';
+import { developmentSnapshot, validateDevelopmentSigningPlan, verifyPostSigningClaims, signingChanges } from './execute-development-signing.mjs';
+import { fixedScope, regular, pinnedJson, freshOutput, prefix, checkDevelopmentReceiptShape } from './development-dp-review.mjs';
 import { validateLaunchAuthorityReport } from './current-development-authority.mjs';
 import { inspectProvidedSigningTree } from '../../scripts/lib/provided-signing.mjs';
 import { developmentTargetDefinitions } from './plan-development-dp.mjs';
@@ -47,10 +47,26 @@ function readCache(cachePath, cacheSha256) {
   verifyRetainedSignatures(root, cache.parentFinalProofs);
   return { cache, root };
 }
+export function validateResourceParentMetadata(receipt, plan, scope) {
+  checkDevelopmentReceiptShape(receipt, scope);
+  validateDevelopmentSigningPlan(plan, scope.proposal);
+  if (receipt.passwordManagerExcluded !== true || plan.passwordManagerExcluded !== true || receipt.packageRoot !== plan.packageRoot || receipt.proposalSha256 !== plan.proposalSha256 || receipt.packageMayBePartiallySigned !== false) throw Error('Exact nine-target resource parent required');
+  const files = new Map(receipt.finalInventory.map(leaf => [leaf.path, leaf]));
+  if (files.size !== receipt.finalInventory.length) throw Error('Duplicate signed parent leaf');
+  for (const step of plan.targets.filter(target => target.path.startsWith(prefix + '/'))) {
+    const proof = receipt.finalProofs.find(item => item.path === step.path);
+    if (!proof || proof.signer !== step.signer || proof.sha256 !== files.get(step.codeRelative)?.sha256 || proof.profileSha256 !== (step.profile?.sha256 ?? null)) throw Error('Retained helper proof mismatch');
+    verifyPostSigningClaims(step, { flags: proof.flags, entitlements: proof.entitlements }, { team: proof.team }, proof.leaf, scope.proposal);
+    if (step.profile && files.get(step.path + '/Contents/embedded.provisionprofile')?.sha256 !== step.profile.sha256) throw Error('Retained profile proof mismatch');
+  }
+  signingChanges(plan.inventory, receipt.finalInventory, plan.targets);
+}
 export function cacheSignedDevelopmentResources({ signedReceiptPath, signedReceiptSha256, authorityReportPath, authorityReportSha256, inputPath, inputSha256, output }) {
-  const scope = fixedScope(), receipt = verifySignedDevelopmentReceipt({ receiptPath: signedReceiptPath, receiptSha256: signedReceiptSha256 });
+  const scope = fixedScope(), receipt = pinnedJson(signedReceiptPath, signedReceiptSha256);
   const authority = pinnedJson(authorityReportPath, authorityReportSha256), input = pinnedJson(inputPath, inputSha256), plan = pinnedJson(receipt.planPath, receipt.planSha256);
   validateLaunchAuthorityReport(authority, signedReceiptSha256, scope.policy.core.scope);
+  validateResourceParentMetadata(receipt, plan, scope);
+  for (const source of receipt.sources ?? []) { if (!source.path || source.path.split('/').some(part => !part || part === '.' || part === '..') || sha(path.join(repository, source.path)) !== source.sha256) throw Error('Parent signing implementation changed'); }
   if (receipt.passwordManagerExcluded !== true || plan.passwordManagerExcluded !== true || input.packageRoot !== receipt.packageRoot || input.preparationSha256 !== plan.preparationSha256) throw Error('Current verified nine-target parent required');
   const prep = pinnedJson(input.preparationPath, input.preparationSha256);
   if (prep.method !== 'current-completed-package-no-provisioning-project' || prep.resourceRoot !== path.join(receipt.packageRoot, prefix)) throw Error('Actual unsigned current preparation required');
@@ -62,6 +78,7 @@ export function cacheSignedDevelopmentResources({ signedReceiptPath, signedRecei
   const signedResources = resources(receipt.finalInventory), targets = plan.targets.filter(target => target.path.startsWith(prefix + '/'));
   if (signedResources.some(leaf => leaf.path.includes('/Aux Password Importer.app/'))) throw Error('Retired password product cannot be cached');
   const source = canonical(path.join(receipt.packageRoot, prefix));
+  assertSameInventory(signedResources, resourceSnapshot(source), 'Parent signed resources changed');
   output = path.resolve(output);
   if (!output.startsWith(path.join(repository, 'out') + '/')) throw Error('Project-owned cache required');
   output = freshOutput(output, [receipt.packageRoot, scope.policy.core.home]);
@@ -70,7 +87,7 @@ export function cacheSignedDevelopmentResources({ signedReceiptPath, signedRecei
   assertSameInventory(signedResources, resourceSnapshot(target), 'Copied signed resources differ');
   assertSameInventory(signedResources, resourceSnapshot(source), 'Parent resources changed during cache copy');
   verifyRetainedSignatures(target, targets);
-  const cache = { version: 1, kind: 'exact-signed-aux-resource-cache', scope: scope.policy.core.scope, proposalSha256: scope.proposalSha256, finalApp: packageReport.finalApp, parentSignedReceiptPath: signedReceiptPath, parentSignedReceiptSha256: signedReceiptSha256, parentPlanSha256: receipt.planSha256, parentPackageReportSha256: input.packageReportSha256, parentPreparationSha256: input.preparationSha256, parentAuthorityReportPath: authorityReportPath, parentAuthorityReportSha256: authorityReportSha256, authorityOperation: authority.operation, authorityProofInherited: true, passwordManagerExcluded: true, boundaryReceiptSha256: packageReport.boundaryReceiptSha256, unsignedResources, signedResources, parentFinalProofs: receipt.finalProofs.filter(proof => proof.path.startsWith(prefix + '/')), retainedTargets: targets, appleSigningPerformed: false, keychainOperationsPerformed: false, productLaunched: false };
+  const cache = { version: 1, kind: 'exact-signed-aux-resource-cache', scope: scope.policy.core.scope, proposalSha256: scope.proposalSha256, finalApp: packageReport.finalApp, parentSignedReceiptPath: signedReceiptPath, parentSignedReceiptSha256: signedReceiptSha256, parentPlanSha256: receipt.planSha256, parentPackageReportSha256: input.packageReportSha256, parentPreparationSha256: input.preparationSha256, parentAuthorityReportPath: authorityReportPath, parentAuthorityReportSha256: authorityReportSha256, authorityOperation: authority.operation, parentValidationScope: 'signed-aux-resources-only', parentOuterBrowserRevalidated: false, authorityProofInherited: true, passwordManagerExcluded: true, boundaryReceiptSha256: packageReport.boundaryReceiptSha256, unsignedResources, signedResources, parentFinalProofs: receipt.finalProofs.filter(proof => proof.path.startsWith(prefix + '/')), retainedTargets: targets, appleSigningPerformed: false, keychainOperationsPerformed: false, productLaunched: false };
   const cachePath = path.join(output, 'cache.json'); writeNew(cachePath, cache);
   return { cachePath, cacheSha256: sha(cachePath), signedResourceLeaves: signedResources.length, preservedNestedSignatures: 8, keychainOperationsPerformed: false, parentAppMutated: false };
 }
