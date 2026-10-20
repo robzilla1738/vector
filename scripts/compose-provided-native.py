@@ -411,6 +411,14 @@ steps.extend([
     ('native-sidebar-body-reset-lifetime/native.patch', 'native-sidebar-body-reset-lifetime/manifest.json'),
     ('native-empty-pinned-drop-wiring/native.patch', 'native-empty-pinned-drop-wiring/manifest.json'),
     ('native-cross-section-drag-cancel-forward/native.patch', 'native-cross-section-drag-cancel-forward/manifest.json'),
+    ('native-sidebar-early-hover-owner/native.patch', 'native-sidebar-early-hover-owner/manifest.json'),
+    ('native-saved-entry-drop-target/native.patch', 'native-saved-entry-drop-target/manifest.json'),
+    ('native-saved-entry-drop-routing/native.patch', 'native-saved-entry-drop-routing/manifest.json'),
+    ('native-chats-shortcut-producer/native.patch', 'native-chats-shortcut-producer/manifest.json'),
+    ('native-new-chat-visible-shortcut/native.patch', 'native-new-chat-visible-shortcut/manifest.json'),
+    ('native-bookmarks-tab-drop-target/native.patch', 'native-bookmarks-tab-drop-target/manifest.json'),
+    ('native-sidebar-final-drop-shortcut-wiring/native.patch', 'native-sidebar-final-drop-shortcut-wiring/manifest.json'),
+    ('native-sidebar-clamped-height-type/native.patch', 'native-sidebar-clamped-height-type/manifest.json'),
 ])
 
 if options.through:

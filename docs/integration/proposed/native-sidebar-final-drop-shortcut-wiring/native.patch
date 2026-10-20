@@ -1,0 +1,224 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1166,6 +1166,8 @@
+       "views/frame/aux_sidebar_contents_view.h",
+       "views/frame/aux_sidebar_body.cc",
+       "views/frame/aux_sidebar_body.h",
++      "views/frame/aux_saved_entry_drop_target.cc",
++      "views/frame/aux_saved_entry_drop_target.h",
+       "views/frame/aux_sidebar_presentation.cc",
+       "views/frame/aux_sidebar_presentation.h",
+       "views/frame/aux_sidebar_projection.cc",
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -18,6 +18,8 @@
+ #include "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h"
+ #include "chrome/browser/ui/views/frame/aux_sidebar_projection.h"
+ #include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
++#include "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h"
++#include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
+ #include "chrome/browser/ui/views/frame/aux_tabs_actions.h"
+ #include "chrome/browser/ui/views/frame/aux_tabs_section.h"
+ #include "chrome/browser/ui/views/frame/aux_vertical_new_tab_button.h"
+@@ -73,7 +75,7 @@
+           body->Changed();
+         }, weak_.GetWeakPtr()), changed}));
+   chats_ = std::make_unique<AuxChatsController>(*browser_, *associations_,
+-                                               std::u16string(), changed);
++                                               GetNewChatShortcutHelp(), changed);
+   chats_section_ = body_->AddChildView(chats_->TakeSection());
+   divider_ = body_->AddChildView(std::make_unique<AuxSectionDivider>());
+   tabs_ = body_->AddChildView(std::make_unique<AuxTabsSection>(AuxTabsSection::Actions{
+@@ -110,6 +112,21 @@
+   preview_ = region_->AddChildView(std::make_unique<CrossSectionDragPreview>());
+   preview_->SetProperty(views::kViewIgnoredByLayoutKey, true);
+   CHECK(region_->GetAuxProfilePreviewAdmission());
++  CHECK(strip_->GetPinnedTabsContainer());
++  saved_drop_ = std::make_unique<SavedEntryDropTarget>(*browser_, *region_,
++      *saved_, *strip_->GetPinnedTabsContainer(), *this,
++      region_->GetTabStripCollectionController()->GetDragHandler(), *preview_,
++      *region_->GetAuxProfilePreviewAdmission(),
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body)
++          -> std::unique_ptr<ExpandOnHoverLock> {
++        return body ? body->region_->AcquireDragExpansionLock() : nullptr;
++      }, weak_.GetWeakPtr()),
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
++        if (body) body->region_->ClearAuxEmptyPinnedDrop();
++      }, weak_.GetWeakPtr()),
++      base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
++        if (body) body->region_->SavedPinConversionCompleted();
++      }, weak_.GetWeakPtr()));
+   drag_ = std::make_unique<CrossSectionDragCoordinator>(*browser_, *region_,
+       *bookmarks_, *saved_, *this, strip_->GetPinnedTabsContainer(),
+       *region_->GetAuxProfilePreviewAdmission(), *preview_, *region_);
+@@ -133,6 +150,8 @@
+ void AuxSidebarBody::Retire() {
+   if (retiring_ || !body_) return;
+   retiring_ = true;
++  if (saved_drop_) saved_drop_->Retire();
++  saved_drop_.reset();
+   if (drag_) drag_->Retire();
+   drag_.reset();
+   if (projection_) projection_->Retire();
+@@ -183,6 +202,28 @@
+   bookmarks_->bookmarks_view()->SetCompact(presentation.compact);
+   agent_->SetExternalVisibility(presentation.content_visible);
+ }
++TabDragTarget* AuxSidebarBody::GetProvidedSavedDropTarget(const gfx::Point& point) {
++  if (!saved_drop_ || !strip_ || building_ || retiring_ || paused_) return nullptr;
++  switch (GetSavedEntryDropRoute(region_->GetDragContext(), *saved_,
++                                *region_, this, point)) {
++    case SavedEntryDropRoute::kUnpinnedTopBand:
++      region_->ClearAuxEmptyPinnedDrop();
++      if (auto* unpinned = strip_->GetUnpinnedTabsContainer())
++        return &unpinned->GetTabDragTarget(point);
++      return nullptr;
++    case SavedEntryDropRoute::kSavedEntries:
++      region_->ClearAuxEmptyPinnedDrop();
++      return saved_drop_.get();
++    case SavedEntryDropRoute::kNone:
++      return nullptr;
++  }
++}
++TabDragTarget* AuxSidebarBody::GetProvidedBookmarkDropTarget(const gfx::Point& point) const {
++  if (building_ || retiring_ || paused_ || !bookmarks_ ||
++      !bookmarks_->GetVisible() || !bookmarks_->bookmarks_view()->GetVisible() ||
++      !region_->GetBoundsInScreen().Contains(point)) return nullptr;
++  return bookmarks_->bookmarks_view();
++}
+ bool AuxSidebarBody::IsPublishingProjection() const {
+   return projection_ && projection_->is_publishing();
+ }
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+@@ -11,6 +11,7 @@
+ class BrowserWindowInterface;
+ class Profile;
+ class TabStripView;
++class TabDragTarget;
+ class VerticalTabStripRegionView;
+ class VerticalPinnedTabEntriesView;
+ class TabHoverCardController;
+@@ -28,6 +29,7 @@
+ class CrossSectionDragCoordinator;
+ class CrossSectionDragPreview;
+ class SidebarContentsView;
++class SavedEntryDropTarget;
+ class AuxSectionDivider;
+ // Mounts supplied owners under original shared scroll5b0/contents5c0. It does
+ // not render replacement rows or synthesize model/backend state.
+@@ -43,6 +45,8 @@
+   void ApplyPresentation();
+   void QueueProjectionRefresh();
+   bool IsPublishingProjection() const;
++  TabDragTarget* GetProvidedSavedDropTarget(const gfx::Point&);
++  TabDragTarget* GetProvidedBookmarkDropTarget(const gfx::Point&) const;
+   bool CanRebindForAuxProfileSwitch(Profile*) const;
+   uint64_t BeginAuxProfileSwitch(Profile*);
+   void RebindAuxProfileSwitch();
+@@ -72,6 +76,7 @@
+   std::unique_ptr<AuxTabsActions> actions_;
+   std::unique_ptr<AuxSidebarProjection> projection_;
+   std::unique_ptr<CrossSectionDragCoordinator> drag_;
++  std::unique_ptr<SavedEntryDropTarget> saved_drop_;
+   base::RepeatingClosure before_new_tab_;
+   base::RepeatingCallback<void(bool)> running_;
+   base::CallbackListSubscription new_tab_subscription_;
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -30,6 +30,7 @@
+ 
+ #include "base/callback_list.h"
+ #include "base/functional/bind.h"
++#include "base/numerics/clamped_math.h"
+ #include "base/i18n/number_formatting.h"
+ #include "base/i18n/rtl.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -644,7 +645,7 @@
+   }
+ }
+ 
+-void VerticalTabStripRegionView::HandleDragExited() {
++void VerticalTabStripRegionView::ClearAuxEmptyPinnedDrop() {
+   if (aux_empty_pinned_drop_active_) {
+     aux_empty_pinned_drop_active_ = false;
+     RefreshAuxPinnedPresentation();
+@@ -653,6 +654,9 @@
+     InvalidateLayout();
+     SchedulePaint();
+   }
++}
++void VerticalTabStripRegionView::HandleDragExited() {
++  ClearAuxEmptyPinnedDrop();
+   SetLinkDropArrow(std::nullopt);
+   link_drag_lock_.reset();
+   UpdateExpandOnHoverState(false);
+@@ -1096,16 +1100,17 @@
+ }
+ 
+ gfx::Rect VerticalTabStripRegionView::GetTabStripDraggableBounds() const {
+-  // Tabs should be draggable from the top of the tab strip to the bottom of the
+-  // tab strip's max size, saving space for the bottom button container and
+-  // padding.
+-  gfx::Rect tab_strip_draggable_bounds = tab_strip_view()->GetBoundsInScreen();
+-  tab_strip_draggable_bounds.set_height(
+-      GetBoundsInScreen().bottom() -
+-      bottom_button_container_->GetMinimumSize().height() -
+-      flex_layout_->interior_margin().height() -
+-      tab_strip_draggable_bounds.y());
+-  return tab_strip_draggable_bounds;
++  // Original465176c: shared body plus visible physical pinned rows, ending at
++  // the genuine visible profile/search header (or the actual region bottom).
++  auto bounds = aux_sidebar_->GetBoundsInScreen();
++  if (auto* strip = tab_strip_view()) {
++    if (auto* pinned = strip->GetPinnedTabsContainer(); pinned && pinned->GetVisible())
++      bounds.Union(pinned->GetBoundsInScreen());
++  }
++  const int bottom = aux_profile_header_ && aux_profile_header_->GetVisible()
++      ? aux_profile_header_->GetBoundsInScreen().y() : GetBoundsInScreen().bottom();
++  bounds.set_height(std::max(0, base::ClampSub(bottom, bounds.y())));
++  return bounds;
+ }
+ 
+ void VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged(bool enabled) {
+@@ -1731,6 +1736,9 @@
+ TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
+     const gfx::Point& point_in_screen) {
+   if (aux_sidebar_->IsPublishingProjection()) return nullptr;
++  if (!GetDragContext()) return nullptr;
++  if (auto* target = aux_sidebar_->GetProvidedSavedDropTarget(point_in_screen))
++    return target;
+   auto* pinned = GetPinnedTabsContainer();
+   const bool empty_drop = pinned && aux::CalculateAuxEmptyPinnedDropActive(
+       GetDragContext(), *pinned, *this, aux_sidebar_, point_in_screen);
+@@ -1742,8 +1750,17 @@
+     InvalidateLayout();
+     SchedulePaint();
+   }
+-  if (pinned && pinned->GetVisible() &&
++  if (pinned &&
+       (empty_drop || pinned->GetBoundsInScreen().Contains(point_in_screen)))
+     return &pinned->GetTabDragTarget(point_in_screen);
+-  return BaseTabStripRegionView::GetTabDragTarget(point_in_screen);
+-}
++  auto* bookmark_target = aux_sidebar_->GetProvidedBookmarkDropTarget(point_in_screen);
++  auto* strip = tab_strip_view();
++  if (bookmark_target && (!strip || point_in_screen.y() < strip->GetBoundsInScreen().y()))
++    return bookmark_target;
++  if (strip && GetTabStripDraggableBounds().Contains(point_in_screen)) {
++    if (auto* unpinned = strip->GetUnpinnedTabsContainer())
++      return &unpinned->GetTabDragTarget(point_in_screen);
++    return nullptr;
++  }
++  return bookmark_target;
++}
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -119,6 +119,7 @@
+   void EndAuxProfileSwitch(uint64_t generation);
+ 
+   void RefreshAuxPinnedPresentation();
++  void ClearAuxEmptyPinnedDrop();
+   std::unique_ptr<ExpandOnHoverLock> AcquireDragExpansionLock() override;
+   void SavedPinConversionCompleted() override;
+   void BookmarkConversionCompleted() override;

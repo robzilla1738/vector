@@ -1,0 +1,20 @@
+{
+  "composition": "v386",
+  "candidate": "out/provided-candidate-v386-local/Aux.app",
+  "nativeFullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "stage": "out/provided-reuse-v241-brand",
+  "disposableLaunch": {
+    "mode": "incognito",
+    "browserPid": 96205,
+    "exitCode": 1,
+    "fatal": "vertical_pinned_tab_entries_view.cc:458 CHECK hover_card_controller_",
+    "cause": "Chromium155 allocates hover controller only in InitializeTabStrip, after supplied saved rows need it in derived region construction",
+    "temporaryState": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-fB88d1",
+    "retained": true,
+    "windowObserved": false
+  },
+  "UIAccepted": false,
+  "signingProvisioningOrReleasePerformed": false
+}

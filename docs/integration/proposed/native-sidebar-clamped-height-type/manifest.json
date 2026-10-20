@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "8de853e2caa5aa42c5f8898ce815c0e2cb82c3e049c570e46171954b641fef8c",
+      "outputSha256": "ff8e847921ccb32cc3f7085a7a0eb0a1f971ad30421c4934ee7ecff035185bbd"
+    }
+  ]
+}

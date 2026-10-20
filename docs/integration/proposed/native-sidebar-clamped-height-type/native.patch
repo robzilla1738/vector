@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -1109,7 +1109,7 @@
+   }
+   const int bottom = aux_profile_header_ && aux_profile_header_->GetVisible()
+       ? aux_profile_header_->GetBoundsInScreen().y() : GetBoundsInScreen().bottom();
+-  bounds.set_height(std::max(0, base::ClampSub(bottom, bounds.y())));
++  bounds.set_height(std::max(0, static_cast<int>(base::ClampSub(bottom, bounds.y()))));
+   return bounds;
+ }
+ 

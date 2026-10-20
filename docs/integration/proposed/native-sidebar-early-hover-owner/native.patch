@@ -1,0 +1,124 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -56,6 +56,7 @@
+ }
+ void AuxSidebarBody::Build() {
+   CHECK(strip_ && !body_ && !retiring_);
++  building_ = true;
+   auto* model = browser_->GetTabStripModel();
+   CHECK(model && strip_->collection_node());
+   auto changed = base::BindRepeating(&AuxSidebarBody::Changed, weak_.GetWeakPtr());
+@@ -116,6 +117,7 @@
+       [](base::WeakPtr<AuxSidebarBody> body) {
+         if (body && body->projection_) body->projection_->Refresh();
+       }, weak_.GetWeakPtr()));
++  building_ = false;
+   bookmarks_->bookmarks_view()->SetContentsChangedCallback(base::BindRepeating(
+       [](base::WeakPtr<AuxSidebarBody> body, bool present) {
+         if (!body) return;
+@@ -165,7 +167,7 @@
+ }
+ void AuxSidebarBody::Unmount() { Retire(); strip_ = nullptr; }
+ void AuxSidebarBody::ApplyPresentation() {
+-  if (!body_ || !tabs_ || retiring_) return;
++  if (building_ || !body_ || !tabs_ || retiring_) return;
+   const auto* admission = region_->GetAuxProfilePreviewAdmission();
+   if (!admission) return;
+   const auto presentation = CalculateSidebarSectionPresentation(*admission,
+@@ -204,7 +206,7 @@
+   if (strip_ && !body_) Build();
+ }
+ void AuxSidebarBody::Changed() {
+-  if (retiring_ || paused_) return;
++  if (building_ || retiring_ || paused_) return;
+   if (running_ && chats_) running_.Run(std::ranges::any_of(chats_->chats(),
+       [](const Chat& chat) { return chat.status == ChatStatus::kRunning; }));
+   ApplyPresentation();
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+@@ -77,6 +77,7 @@
+   base::CallbackListSubscription new_tab_subscription_;
+   uint64_t generation_ = 0;
+   bool paused_ = false, retiring_ = false, bookmark_has_contents_ = false;
++  bool building_ = false;
+   base::WeakPtrFactory<AuxSidebarBody> weak_{this};
+ };
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/base_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/base_tab_strip_region_view.cc
+@@ -7,6 +7,8 @@
+ #include <variant>
+ 
+ #include "base/callback_list.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/user_metrics.h"
+ #include "chrome/browser/ui/browser_actions.h"
+@@ -46,7 +48,15 @@
+     : orientation_(orientation),
+       browser_view_(browser_view),
+       root_action_item_(root_action_item),
+-      tab_strip_model_(browser_view->browser()->GetTabStripModel()) {}
++      tab_strip_model_(browser_view->browser()->GetTabStripModel()) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied saved-entry/body owners exist during region construction and
++  // retain the actual hover owner across a native collection reset.
++  if (orientation_ == TabStripOrientation::kVertical)
++    hover_card_controller_ = std::make_unique<TabHoverCardController>(
++        this, browser_view_->browser());
++#endif
++}
+ 
+ BaseTabStripRegionView::~BaseTabStripRegionView() {
+   on_children_added_subscription_.reset();
+@@ -78,8 +88,9 @@
+     return;
+   }
+ 
+-  hover_card_controller_ =
+-      std::make_unique<TabHoverCardController>(this, browser_view_->browser());
++  if (!hover_card_controller_)
++    hover_card_controller_ =
++        std::make_unique<TabHoverCardController>(this, browser_view_->browser());
+   hover_tab_selector_ = std::make_unique<HoverTabSelector>(tab_strip_model_);
+ 
+   root_node_ = std::make_unique<RootTabCollectionNode>(
+@@ -127,6 +138,9 @@
+   on_children_removed_subscription_.reset();
+   on_child_moved_subscription_.reset();
+ 
++  if (hover_card_controller_)
++    hover_card_controller_->UpdateHoverCard(
++        nullptr, TabSlotController::HoverCardUpdateType::kEvent);
+   root_node_->Reset();
+ 
+   root_node_->SetController(nullptr);
+@@ -140,7 +154,12 @@
+ 
+   hover_tab_selector_->CancelTabTransition();
+   hover_tab_selector_.reset();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (orientation_ != TabStripOrientation::kVertical)
++    hover_card_controller_.reset();
++#else
+   hover_card_controller_.reset();
++#endif
+ 
+   root_node_.reset();
+ }
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -288,6 +288,12 @@
+   aux_profile_preview_admission_.reset();
+   if (aux_profile_preview_retention_)
+     aux_profile_preview_retention_->Retire();
++  // The genuine saved rows retain the actual hover owner. Destroy those rows
++  // before the base region destroys that owner, and release their menu locks
++  // before iterating the remaining region locks.
++  auto* saved_entries = pinned_tab_entries_.get();
++  pinned_tab_entries_ = nullptr;
++  RemoveChildViewT(saved_entries);
+   for (const auto& lock : hover_locks_) {
+     lock->ClearRegionViewOnDestruction();
+   }

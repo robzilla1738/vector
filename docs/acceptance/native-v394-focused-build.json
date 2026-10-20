@@ -1,0 +1,37 @@
+{
+  "composition": "v394",
+  "affectedObjects": [
+    "obj/chrome/browser/ui/ui/aux_saved_entry_drop_target.o",
+    "obj/chrome/browser/ui/cocoa/cocoa/accelerators_cocoa.o",
+    "obj/chrome/browser/ui/ui/aux_chats_controller.o",
+    "obj/chrome/browser/ui/ui/aux_new_chat_view.o",
+    "obj/chrome/browser/ui/ui/aux_vertical_tab_bookmarks_view.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_body.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o"
+  ],
+  "initialBuildExitCode": 1,
+  "initialFailure": "std::max template deduction between int and ClampedNumeric<int> in region bounds",
+  "correction": "Explicit saturated-result conversion to int before std::max",
+  "regionRebuild": {
+    "composition": "v394",
+    "exitCode": 0,
+    "elapsedSeconds": 12.470905065536499,
+    "targets": {
+      "vertical_tab_strip_region_view": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "otherSixObjectsCompiled": true,
+  "fullBuildPackagedOrRuntimeAccepted": false
+}
