@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/vector_icon_types.h",
+      "sha256": "270fd072d05b9af3a903e03ef6ec3990a365acd6f169bd176a4160f9732683f3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/vector_icons/close.icon",
+      "sha256": "2417c7f78708df6dd976a0324c50e565e62fda308fcc8a7975bb8b995ecd665c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/tab_container_impl.cc",
+      "sha256": "7aa55c3a5c585cc11593d4beee0576a261c537e4e820014e81b8261934ff7a66"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tab_ui_helper.h",
+      "sha256": "d6815ee432454a2914d56d00002abc57ab4144e28a0cf17b17ac7c4dfd3d8535"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/focus/focus_manager.h",
+      "sha256": "0661b5f4e2cd0c002bb01e90e7175260d401e7173427961596f5624c4eaf9830"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_dialog_delegate_view.h",
+      "sha256": "fbd5a619c66ca5cfb952492c83027ff351155648a0d3cb058dd3689b7b7a7612"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_dialog_delegate_view.cc",
+      "sha256": "4725e9170a04a56f6c0fff4de205385075b937a0de976ff707e976aca9abc82d"
+    }
+  ],
+  "functions": [
+    {
+      "name": "button construction",
+      "rva": "0x4684340",
+      "bytes": 2264,
+      "sha256": "e19608d937ec643717f020e760b4ef10a285f1a7c94fcec72009721df0e7ca44"
+    },
+    {
+      "name": "native group count visibility",
+      "rva": "0x4685bc4",
+      "bytes": 692,
+      "sha256": "511bd00fe5573baafb834fdf75629707d2267aa2e67ef7c864059b0fe1375f4a"
+    },
+    {
+      "name": "bubble construction and toggle",
+      "rva": "0x4684c18",
+      "bytes": 3624,
+      "sha256": "5069d95a8f36fb004a85c0fc3a4da546a9dc554e7bbbe815711c0dceef1faa91"
+    },
+    {
+      "name": "native group close all",
+      "rva": "0x46874ac",
+      "bytes": 368,
+      "sha256": "6da1876bda7627891030be3009ff011cf2d6ac22dbe637761e8682eb9ff45f6d"
+    },
+    {
+      "name": "native row construction",
+      "rva": "0x468761c",
+      "bytes": 3396,
+      "sha256": "61d23f3a1cce03255edb2a4c01b01eab059b385e5e9845fafaeacfdf9556ed84"
+    },
+    {
+      "name": "native bubble model callbacks",
+      "rva": "0x4688360",
+      "bytes": 688,
+      "sha256": "0eacf4aac5f3c177a2e304b0fe913205fd87a3883107cc090b581e0a601a3cd6"
+    },
+    {
+      "name": "activate actual tab handle",
+      "rva": "0x4688df0",
+      "bytes": 156,
+      "sha256": "a301d1ef93ed0dbe32b8efd1262e1efeb285860c584e51878cb49b447632c001"
+    },
+    {
+      "name": "close actual tab handle",
+      "rva": "0x4688e8c",
+      "bytes": 168,
+      "sha256": "de54fd2fac3d555c67a61295be5b740afc129c3c16d7fdc11223cddffcbe23ba"
+    },
+    {
+      "name": "row enter and exit",
+      "rva": "0x4689200",
+      "bytes": 1168,
+      "sha256": "1200dfd667857fd85cf43030c4c912c1ad768ce63e61d28691336a8c1914d13d"
+    },
+    {
+      "name": "row focus state change",
+      "rva": "0x4689968",
+      "bytes": 284,
+      "sha256": "ba8f9c6589ac61942bc2880a53b530c521c574b312ec6512721fd71d0890d5e0"
+    },
+    {
+      "name": "separator construction",
+      "rva": "0x468737c",
+      "bytes": 304,
+      "sha256": "ad7cf7c9429bf0ddd3a4c4d307dc07bec265c0479eb44e548b88264da8b9fa60"
+    },
+    {
+      "name": "header insets",
+      "rva": "0xdf47ab0",
+      "bytes": 16,
+      "sha256": "307c58f206f94afa8db0079064a4b586c5d2d61f31774117f2fb2cc846dab2ae"
+    },
+    {
+      "name": "row insets",
+      "rva": "0xdf47ac0",
+      "bytes": 16,
+      "sha256": "980130fbe65476d9b873dafaf9611358b3f2b5930d4d8e8abed05097980ad00e"
+    },
+    {
+      "name": "button child margins",
+      "rva": "0xdf40a70",
+      "bytes": 16,
+      "sha256": "0a6b1e0d6303cc9231bf2cebdf820fefd8d6dd4563d33db56ad536e586bc6f27"
+    },
+    {
+      "name": "row child margins",
+      "rva": "0xdf40090",
+      "bytes": 16,
+      "sha256": "96a8b8b47c64f17f2bfc3e85ca77b9aab48f7b51571ce883364c3727d4781591"
+    },
+    {
+      "name": "count flex",
+      "rva": "0xdf40780",
+      "bytes": 16,
+      "sha256": "1e776bca603e6d6738e23da58bed1d068b5bec7e1c3e8cf1562e927563901225"
+    },
+    {
+      "name": "supplied tooltip",
+      "rva": "0xd6e52f6",
+      "bytes": 56,
+      "sha256": "ff07b2b37e0277e241b2f1f0fe42acddcc27654177fe0971d8ebf76ac4048c0b"
+    },
+    {
+      "name": "title",
+      "rva": "0xd6e52e0",
+      "bytes": 20,
+      "sha256": "9d02bdaca864372b5d10c976efad2e9f163b894831f8973c4fb33a35a4c5988c"
+    },
+    {
+      "name": "subtitle",
+      "rva": "0xd6e537a",
+      "bytes": 62,
+      "sha256": "8a8ff735d3db23092766388458d925f50be2fb7f168f4ff4811f093ab41d012f"
+    },
+    {
+      "name": "WindowSparkle exact functional icon",
+      "rva": "0xd3e64b8",
+      "bytes": 1440,
+      "sha256": "1f41263459f656b9f8d1b92945eaf805cd8a152fb8dd19b99ca5aabcaa1074ea"
+    },
+    {
+      "name": "Globe exact functional icon",
+      "rva": "0xd3dde9c",
+      "bytes": 1000,
+      "sha256": "854d40819446d60a14cce484e9326cd678efc9df130476322dd28c0a310cb76b"
+    }
+  ]
+}

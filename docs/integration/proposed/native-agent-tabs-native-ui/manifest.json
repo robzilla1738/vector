@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "actual shared native135 horizontal/header baselines; requires native-agent-group-model afd4 marker API and parent helper GN registration",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "2994673b0d23d9758c4f84c132b02c84a5f69aaf11725c0237190a7669f0ae4a",
+      "outputSha256": "db507b69e4682f65334735c544397a8a37ece8788ce5bccb24281749b41c992a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h",
+      "baselineSha256": "e24a3d376c14e57e19da38e0b6fb672a67fbda6a081e5105269a2f520fbef88e",
+      "outputSha256": "412b73909fb796d5ffca0dd6c663083dd88e00777169f5b213f8d9cc33b3538b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "baselineSha256": "3edb745e0030066df9eccc698daab18ffac1170f8db12e456c178b2f69fad016",
+      "outputSha256": "555a8842fbf94e76b16e2bcb7784e7d0cfb16edc7775583e01eb69a009f99ec0"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h",
+      "baselineSha256": "b16cb5d3f64338420d32923bb4e7efc496c8962cd049a0b7af3b3be2397219eb",
+      "outputSha256": "56fe036bb67052d390fb873d054ef48acc859244041a35e19ced53909ec52af4"
+    }
+  ]
+}
