@@ -1,0 +1,27 @@
+{
+  "originalSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "actualTopCaller": "3555a30 browser;3555a34 context1;3555a38 x3=0;3555a3c calls4241c00; noleafchoicesenabled",
+  "actualConstructor": {
+    "capture": "4241c20 x21=x3;4241d4c strh w21,[this,0x364]",
+    "startCreation": "4241fe0 context1 &&4241fe8 byte364 &&actualprofile23c0424non-null\u2192action371factory273ed50, otherwise216cskip",
+    "endCreation": "424216c byte365nonnull\u2192action372factory273ed50; otherwise21d8skip",
+    "absence": "bothactualmemberpointers368/370 zeroed4241d50..58;zero choices skipboth withoutreplacement",
+    "duration": "4241f40..54 actual300000us unlessdisabledrichanimation=0; existing155300ms preserved"
+  },
+  "visibility": "42424c8guardstart;424255cguardend beforeactionlookup/animation;42425fc..263c actualownerviewvisibleiffactualvisiblechild, notforcedprefs",
+  "styles": "original2b67c1c orientationpropagatesonlyactualchildren;2b67d00flat-edgeonlywhenrealbothvisible withorientation/RTL; current155style algorithmalreadyhasactualchildguards",
+  "actual155Adaptations": [
+    "ExposeexplicitlogicalButtonsselectionenum,kBothdefaultpreservesallother155callers;verticalAuxcallerexplicitkNone",
+    "Optionalendchildguards avoidsharedActionmutations,hostobservation,promoandanimationprocessingforabsentleaf",
+    "BrowserViewverticalUpdateTabSearchBubbleHostmustnotconstruct155hostwithnullButton;currenthostctor90dereferencesitsrequiredButton, sowe detach/reset realoptionalhost andreturn",
+    "BrowserViewShow/CloseTabSearch4338/4348 alreadychecksoptionalhost; nofabricatedanchororsearchfallback",
+    "Sourceownervisibilityretainedonactualchildvisibilitynotifications ratherthanleavingemptyownerhit-testable"
+  ],
+  "scope": [
+    "Fouractual403sourcefilesonly",
+    "NoBody/Region/BrowserViewLayout/GN/sharedwrites/build",
+    "Monitor/pointercontrolidentityUNIDENTIFIED",
+    "SelectionNonecorrectsstockTabSearchappearance; doesnotestablishfulltop-controlstyleparity",
+    "Originalalternativekeyboardsearchproducer/notcurrentcombohostnotrecovered; doNOTclaimkeyboardTabSearchfunctionalacceptance"
+  ]
+}

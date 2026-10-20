@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h",
+      "baselineSha256": "57aae1b19bc741ab9ea26fb8e832e2914d0870f7e3055634de96ab6682be2ba4",
+      "outputSha256": "d3ee19c2edea8d8cdfff47f34f08aae02e84fdd5266ad14cfaada33a27e46908"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc",
+      "baselineSha256": "38c5b10cfcd4ccb2c07cfe48e7446fd87f875e72d4c27fee95babc856b84ba92",
+      "outputSha256": "6744e066ef1655398800b3e0c9b83ab0587f5927e0799429febbbfc1bfc9a255"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "baselineSha256": "c8b4f85e991e24eb4a5504a65b027e8dba8d1f9b1d54513a0769ce8083cf8684",
+      "outputSha256": "a8e26411c3be698f90b93495600a394222bea3102631d1c805d53c3bed11e250"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "1a5a9a29be724028d05455aee0d8628fe0e2f77d36101e46776f0b02b660ddb5",
+      "outputSha256": "c40fb378c588c59689a35b678647ef20f2cb5d7ae40da32a2b9121cd7d2e1104"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,202 @@
+--- a/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h
++++ b/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h
+@@ -49,11 +49,16 @@
+     kVerticalTabStrip,
+   };
+ 
++  // Supplied4241c00 takes independent creation choices for its two leaves.
++  // Other155 callers retain the existing both-buttons default.
++  enum class Buttons { kNone, kTabGroups, kTabSearch, kBoth };
++
+   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kTabSearchUnpinMenuItem);
+   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kEverythingMenuUnpinMenuItem);
+ 
+   explicit TabStripComboButton(BrowserWindowInterface* browser,
+-                               Context context);
++                               Context context,
++                               Buttons buttons = Buttons::kBoth);
+   TabStripComboButton(const TabStripComboButton&) = delete;
+   TabStripComboButton& operator=(const TabStripComboButton&) = delete;
+   ~TabStripComboButton() override;
+@@ -104,6 +109,8 @@
+ 
+   void UpdateStyles();
+ 
++  void UpdateContainerVisibility();
++
+   void OnMenuClosed();
+ 
+   void MaybeHideTabSearchButton();
+--- a/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
++++ b/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
+@@ -9,6 +9,7 @@
+ #include "base/metrics/user_metrics_action.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/browser_actions.h"
+@@ -52,7 +53,8 @@
+                                       kEverythingMenuUnpinMenuItem);
+ 
+ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
+-                                         Context context)
++                                         Context context,
++                                         Buttons buttons)
+     : browser_(browser),
+       context_(context),
+       action_view_controller_(std::make_unique<views::ActionViewController>()) {
+@@ -68,7 +70,8 @@
+           LayoutConstant::kVerticalTabStripFlatEdgeButtonPadding)));
+ 
+   std::unique_ptr<TabStripFlatEdgeButton> start_button;
+-  if (context_ == Context::kVerticalTabStrip) {
++  if (context_ == Context::kVerticalTabStrip &&
++      (buttons == Buttons::kBoth || buttons == Buttons::kTabGroups)) {
+     if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
+             browser_->GetProfile())) {
+       start_button = CreateFlatEdgeButtonFor(kActionTabGroupsMenu,
+@@ -88,8 +91,10 @@
+   if (start_button) {
+     start_button_ = AddChildView(std::move(start_button));
+   }
+-  end_button_ = AddChildView(
+-      CreateFlatEdgeButtonFor(kActionTabSearch, kTabSearchButtonElementId));
++  if (buttons == Buttons::kBoth || buttons == Buttons::kTabSearch) {
++    end_button_ = AddChildView(
++        CreateFlatEdgeButtonFor(kActionTabSearch, kTabSearchButtonElementId));
++  }
+ 
+   PrefService* prefs = browser_->GetProfile()->GetPrefs();
+   pref_registrar_.Init(prefs);
+@@ -138,8 +143,11 @@
+         prefs->GetBoolean(prefs::kEverythingMenuPinnedToTabstrip));
+   }
+ 
+-  update_button_visibility(GetEndButtonActionItem(), end_button_animation_,
+-                           IsTabSearchPinned() || show_tab_search_ephemerally_);
++  if (end_button_) {
++    update_button_visibility(GetEndButtonActionItem(), end_button_animation_,
++                             IsTabSearchPinned() || show_tab_search_ephemerally_);
++  }
++  UpdateContainerVisibility();
+ }
+ 
+ void TabStripComboButton::OnTabSearchBubbleShown() {
+@@ -179,6 +187,16 @@
+ 
+ void TabStripComboButton::ChildVisibilityChanged(views::View* child) {
+   UpdateStyles();
++  UpdateContainerVisibility();
++}
++
++void TabStripComboButton::UpdateContainerVisibility() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Original42425fc..263c: owner visibility is actual child visibility, not
++  // profile support, a preference guess, or a hidden replacement control.
++  SetVisible((start_button_ && start_button_->GetVisible()) ||
++             (end_button_ && end_button_->GetVisible()));
++#endif
+ }
+ 
+ void TabStripComboButton::ShowEverythingMenu() {
+@@ -266,14 +284,14 @@
+ 
+   PrefService* prefs = browser_->GetProfile()->GetPrefs();
+ 
+-  if (source == start_button_) {
++  if (start_button_ && source == start_button_) {
+     command_id = IDC_EVERYTHING_MENU_TOGGLE_PIN;
+     pref_name = prefs::kEverythingMenuPinnedToTabstrip;
+     string_id = prefs->GetBoolean(pref_name)
+                     ? IDS_EVERYTHING_MENU_BUTTON_CXMENU_UNPIN
+                     : IDS_EVERYTHING_MENU_BUTTON_CXMENU_PIN;
+     element_id = kEverythingMenuUnpinMenuItem;
+-  } else if (source == end_button_) {
++  } else if (end_button_ && source == end_button_) {
+     command_id = IDC_TAB_SEARCH_TOGGLE_PIN;
+     pref_name = prefs::kTabSearchPinnedToTabstrip;
+     string_id = prefs->GetBoolean(pref_name)
+@@ -341,6 +359,9 @@
+ }
+ 
+ void TabStripComboButton::OnBubbleInitializing() {
++  if (!end_button_) {
++    return;
++  }
+   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
+   CHECK(browser_view);
+   CHECK(browser_view->tab_strip_view());
+@@ -377,7 +398,7 @@
+ 
+ void TabStripComboButton::SetTabSearchBubbleHost(TabSearchBubbleHost* host) {
+   tab_search_bubble_host_observation_.Reset();
+-  if (host) {
++  if (host && end_button_) {
+     tab_search_bubble_host_observation_.Observe(host);
+     GetEndButtonActionItem()->SetImage(ui::ImageModel::FromVectorIcon(
+         context_ == Context::kVerticalTabStrip
+@@ -390,6 +411,9 @@
+ }
+ 
+ void TabStripComboButton::MaybeShowIPH() {
++  if (!end_button_) {
++    return;
++  }
+   PrefService* prefs = browser_->GetProfile()->GetPrefs();
+   if (IsTabSearchPinned() &&
+       prefs->GetBoolean(tab_search_prefs::kTabSearchUsed)) {
+@@ -466,7 +490,7 @@
+   if (animation->GetCurrentValue() == 0.0) {
+     if (start_button_ && animation == &start_button_animation_) {
+       GetStartButtonActionItem()->SetVisible(false);
+-    } else if (animation == &end_button_animation_) {
++    } else if (end_button_ && animation == &end_button_animation_) {
+       GetEndButtonActionItem()->SetVisible(false);
+     }
+   }
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h"
+ 
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+@@ -58,8 +59,14 @@
+                                  kUnfocusTabGroupButtonElementId);
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Supplied3555a30..3c passes both leaf-creation choices false.
++  constexpr auto buttons = TabStripComboButton::Buttons::kNone;
++#else
++  constexpr auto buttons = TabStripComboButton::Buttons::kBoth;
++#endif
+   combo_button_ = AddChildView(std::make_unique<TabStripComboButton>(
+-      browser_, TabStripComboButton::Context::kVerticalTabStrip));
++      browser_, TabStripComboButton::Context::kVerticalTabStrip, buttons));
+   combo_button_->SetOrientation(
+       combo_button_orientation_ = state_controller->IsCollapsed()
+                                       ? views::LayoutOrientation::kVertical
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -4391,6 +4391,15 @@
+       vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs()) {
+     auto* combo_button =
+         vertical_tab_strip_region_view_->GetTopContainer()->GetComboButton();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // The supplied vertical combo may deliberately have no search leaf.
++    // 155's host requires a real Button; never manufacture an anchor for it.
++    if (!combo_button->end_button()) {
++      combo_button->SetTabSearchBubbleHost(nullptr);
++      tab_search_bubble_host_.reset();
++      return;
++    }
++#endif
+     tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
+         combo_button->end_button(), browser_.get());
+     combo_button->SetTabSearchBubbleHost(tab_search_bubble_host_.get());
