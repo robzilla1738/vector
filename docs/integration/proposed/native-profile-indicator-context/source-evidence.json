@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "kind7-build",
+      "rva": "0x45760d4",
+      "bytes": 1612,
+      "sha256": "9d76d17a8b50c97a5b83fd0c6ee34edaedf45f2f82024b99ac0a55a3f1f5d6ba",
+      "assemblySha256": "6baf9994dccac76818353d6a21409e4317b6b50e2e1a861e65b76718e127856d"
+    },
+    {
+      "name": "kind8-build",
+      "rva": "0x45744e0",
+      "bytes": 336,
+      "sha256": "e8efb296536081c57bf2fe8bf5d323f959da9cbecad23ee705d17269180a2c27",
+      "assemblySha256": "1a2479d689c3d0d908f903580b24f86a5297ec07dce53909a9e8af72bf6877e1"
+    },
+    {
+      "name": "icon-grid",
+      "rva": "0x456bb40",
+      "bytes": 2172,
+      "sha256": "441b14d2a2923b86ab36c9fb9ef91729fcf6aaa4e92879a87d726d9e419bbf32",
+      "assemblySha256": "58ce24d5a0c09fe8816729ddcfd1fe7a858d99eae65d197fbbce7910c5ee6aef"
+    },
+    {
+      "name": "icon-paint",
+      "rva": "0x456c738",
+      "bytes": 896,
+      "sha256": "47c52bd6e2035f6c648c8463bfbcecba37e158f5beaa0b0fd3a3350a9ea98a1d",
+      "assemblySha256": "6590b07788092a6e0ae6ee38aca04219eca40fa7f1262399b28a7b4aac48b967"
+    },
+    {
+      "name": "icon-selection",
+      "rva": "0x457269c",
+      "bytes": 392,
+      "sha256": "edc0ad6d939461aa20d735092593c14fe2dc65d73a0a83bc605c55ebfb9a5e63",
+      "assemblySha256": "5ec5adf4bc2f55039e7ce38b3610498d496c7ab6e5fd5a51db9aa8947f90cef0"
+    },
+    {
+      "name": "icon-attribute-write",
+      "rva": "0x7accef8",
+      "bytes": 140,
+      "sha256": "182512b88b7d0b0df0d73b2cbb4328d7222d8871037749a6de5cb591f3c13821",
+      "assemblySha256": "d949b5851a8b37d307cf441efbfd8148e84b8da662aa66fc2b4bfba4fd0d8504"
+    },
+    {
+      "name": "can-remove-profile",
+      "rva": "0x40ff0cc",
+      "bytes": 388,
+      "sha256": "1d1aebe492bf9f7c1e4b788c7c2190e474fd1939b74581eaf18fae1a5466f6cf",
+      "assemblySha256": "7287f4b2d57728aa1208d02264ffea34aedd19e7038df9a0b10134d55bacfd49"
+    },
+    {
+      "name": "remove-profile",
+      "rva": "0x40ff250",
+      "bytes": 232,
+      "sha256": "998745a0398e710ad1be15d4adbb3d2f05673eced6cb1d4e0bb618dff5ed2ff2",
+      "assemblySha256": "9eff810e9218b5a459bb9a3c7ad05e9c82d18e56e2aea5751f96f789923aaee9"
+    },
+    {
+      "name": "delete-profile-helper",
+      "rva": "0x7ac93d8",
+      "bytes": 580,
+      "sha256": "baa3fc1df7b1ecbc3f950eff558941cde70fa8d794a7424fdd55be9e48ab2474",
+      "assemblySha256": "9adbd56b55c2dab7072c9f7f4fcf2783b75cf46d2ad0b53504c5ae7d24686388"
+    },
+    {
+      "name": "signout-dialog",
+      "rva": "0x4571fe4",
+      "bytes": 1720,
+      "sha256": "2ad7658b0bd35cc58a4cfa9e10808d36df2f12caea52695e00a1d6265455bf28",
+      "assemblySha256": "a9e98b859872bd5a2d6fdd9e764aecb6f722f1177065e315a176a7cbfad93cbf"
+    },
+    {
+      "name": "settings-action",
+      "rva": "0x457290c",
+      "bytes": 932,
+      "sha256": "bb60b49d79bd740cf3834f8c092bea55025c2fd619d388c9939688549717a346",
+      "assemblySha256": "4a36f937945b2ef77ad4ae80f03bb0c4aec5a48185be6c2bc2d1f0ea881c5508"
+    },
+    {
+      "name": "dialog-model-constructor",
+      "rva": "0x8d3946c",
+      "bytes": 224,
+      "sha256": "fd9a048888610bea7c394979e369650344ce65a66e868e454801d8b9e81c17ec",
+      "assemblySha256": "3b9b271b5fede28bf658e4cca5569ccc65bef294f2895b148df2bf4dccc37ed5"
+    },
+    {
+      "name": "dialog-model-ok",
+      "rva": "0x8d39134",
+      "bytes": 392,
+      "sha256": "c6f63a40c028d7ffa02b9316e63b63cca25d4e11fba1d42589fbf4eff67007af",
+      "assemblySha256": "5211253685b5292d6e3737656f485c76689e9ccb5d2514fcb2a2b1d1f3f0e8ce"
+    },
+    {
+      "name": "dialog-show-trampoline",
+      "rva": "0xb29ef64",
+      "bytes": 12,
+      "sha256": "67caa9d9132df7ab8670b3371ed02f8d8b5eaf9e1f3b3bd88590bc1c37572076",
+      "assemblySha256": "94875a2891fe043b3bfc899d19c3a939e54c26975b3267f0218cf71bd685b8e0"
+    },
+    {
+      "name": "dialog-window-show",
+      "rva": "0xc73c674",
+      "bytes": 84,
+      "sha256": "d7968608ed2b1aaf5d9dbbd112da65cc4254a0e9c5aac8215fc98d16cc63f4df",
+      "assemblySha256": "1b612b3009eb2a68e4e363bab3b01479e036bb4d2b484f54abca45af22e59eac"
+    },
+    {
+      "name": "dialog-modal-host",
+      "rva": "0xa66b0c0",
+      "bytes": 148,
+      "sha256": "5ce0dee1228d637b895596caee4d14e2bfd8b79265edba3ad7a52a8e6d5aeb64",
+      "assemblySha256": "81e05b0f065a6f9858da05d289afc38ce6e5833fd096e3b0471d8786a5772339"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/profiles/delete_profile_helper.cc",
+      "sha256": "bffa3c04cd724204cbc479c19782818f372e4d0421c3d1aa828a4fb26faaff66"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_metrics.h",
+      "sha256": "b63c1c19da763a470790f12c015e7339b89db833172ee6c9f5d31362819eb1c7"
+    },
+    {
+      "path": "ui/base/models/dialog_model.cc",
+      "sha256": "c23d3a07d7770692f57122cfdbe7cdda74ccca73ac727be9f5293d89344d43e6"
+    },
+    {
+      "path": "ui/views/bubble/bubble_dialog_model_host.cc",
+      "sha256": "178f2ad11e08b2b6076f1ae0a99e5ed1f2db6467b95858b41b8f474addbea0e2"
+    },
+    {
+      "path": "components/constrained_window/constrained_window_views.cc",
+      "sha256": "49149ba4374f35e97bb73423b4b1cc92cbee54d4cda5bca36ac7be2e8a173766"
+    }
+  ],
+  "suppliedSettings": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0457290c.c",
+    "sha256": "d001eb4f2daf7aebd7a435a69538cb10c2d7628baf3718a47143ffc218dc9990"
+  }
+}

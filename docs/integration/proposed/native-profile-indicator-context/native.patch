@@ -1,0 +1,885 @@
+--- a/chrome/browser/profiles/profile_attributes_entry.cc
++++ b/chrome/browser/profiles/profile_attributes_entry.cc
+@@ -340,6 +340,13 @@
+   return GetString("aside_profile_indicator_icon");
+ }
+ 
++void ProfileAttributesEntry::SetAuxProfileIndicatorIconName(
++    const std::string& name) {
++  if (SetString("aside_profile_indicator_icon", name)) {
++    profile_attributes_storage_->NotifyOnProfileAvatarChanged(GetPath());
++  }
++}
++
+ std::u16string ProfileAttributesEntry::GetShortcutName() const {
+   return GetString16(kShortcutNameKey);
+ }
+--- a/chrome/browser/profiles/profile_attributes_entry.h
++++ b/chrome/browser/profiles/profile_attributes_entry.h
+@@ -103,6 +103,7 @@
+ 
+   // Supplied profile attribute; unknown icon names are rejected by the selector.
+   std::string GetAuxProfileIndicatorIconName() const;
++  void SetAuxProfileIndicatorIconName(const std::string& name);
+   // Returns |GetGAIAGivenName()| if not empty. Otherwise, returns
+   // |GetGAIAName()|.
+   std::u16string GetGAIANameToDisplay() const;
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc
+@@ -0,0 +1,227 @@
++// Exact supplied kind7 icons; source byte pins in icons-source.json.
++// clang-format off
++constexpr gfx::PathElement kIndicatorChangeIconPath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 8.13455963f, 1.34688997f,
++    gfx::CUBIC_TO, 8.43817043f, 1.40919006f, 8.66678047f, 1.67816997f, 8.66678047f, 2.00021005f,
++    gfx::CUBIC_TO, 8.66678047f, 2.3684001f, 8.36798f, 2.66720009f, 7.99979019f, 2.66720009f,
++    gfx::CUBIC_TO, 7.79918003f, 2.66720009f, 7.60138988f, 2.67795992f, 7.40702009f, 2.69942999f,
++    gfx::CUBIC_TO, 4.74108982f, 2.9941299f, 2.66677999f, 5.25544024f, 2.66677999f, 8.00020981f,
++    gfx::CUBIC_TO, 2.66677999f, 10.9456997f, 5.05426979f, 13.3332005f, 7.99979019f, 13.3332005f,
++    gfx::CUBIC_TO, 10.7445898f, 13.3332005f, 13.0058002f, 11.2589998f, 13.3006001f, 8.59298038f,
++    gfx::CUBIC_TO, 13.3219995f, 8.39865017f, 13.3327999f, 8.20086002f, 13.3327999f, 8.00020981f,
++    gfx::CUBIC_TO, 13.3327999f, 7.63202f, 13.6316004f, 7.33322001f, 13.9997997f, 7.33322001f,
++    gfx::LINE_TO, 14.1345997f, 7.34688997f,
++    gfx::CUBIC_TO, 14.4382f, 7.40919018f, 14.6667995f, 7.6781702f, 14.6667995f, 8.00020981f,
++    gfx::CUBIC_TO, 14.6667995f, 8.25000954f, 14.6527004f, 8.49724007f, 14.6258001f, 8.74044037f,
++    gfx::CUBIC_TO, 14.257f, 12.0742998f, 11.4316998f, 14.6672001f, 7.99979019f, 14.6672001f,
++    gfx::CUBIC_TO, 4.31790018f, 14.6672001f, 1.33280003f, 11.6821003f, 1.33280003f, 8.00020981f,
++    gfx::CUBIC_TO, 1.33280003f, 4.56834984f, 3.92570996f, 1.74293005f, 7.25956011f, 1.37423003f,
++    gfx::CUBIC_TO, 7.50271988f, 1.34735f, 7.74994993f, 1.33322001f, 7.99979019f, 1.33322001f,
++    gfx::LINE_TO, 8.13455963f, 1.34688997f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 10.3005695f, 9.19161034f,
++    gfx::CUBIC_TO, 10.4281702f, 9.16847992f, 10.5596704f, 9.19528008f, 10.6658096f, 9.26681042f,
++    gfx::CUBIC_TO, 10.7717304f, 9.33827972f, 10.84548f, 9.44954967f, 10.8718596f, 9.57637978f,
++    gfx::CUBIC_TO, 10.8982697f, 9.70331955f, 10.8742399f, 9.83535004f, 10.8103399f, 9.94649982f,
++    gfx::CUBIC_TO, 10.7537699f, 10.0423603f, 10.6934299f, 10.1339703f, 10.62675f, 10.2238398f,
++    gfx::CUBIC_TO, 10.0335999f, 11.0382004f, 9.01124954f, 11.5250998f, 8.00174999f, 11.5167999f,
++    gfx::CUBIC_TO, 6.99187994f, 11.5235004f, 5.97123003f, 11.0359001f, 5.37674999f, 10.2238398f,
++    gfx::CUBIC_TO, 5.30997992f, 10.1342697f, 5.24994993f, 10.0430298f, 5.19315004f, 9.94746971f,
++    gfx::CUBIC_TO, 5.12889004f, 9.83646965f, 5.10457993f, 9.70442009f, 5.13065004f, 9.57736015f,
++    gfx::CUBIC_TO, 5.15674019f, 9.45055008f, 5.22999001f, 9.33957958f, 5.33573008f, 9.26778984f,
++    gfx::CUBIC_TO, 5.44161987f, 9.19598961f, 5.57237005f, 9.16880989f, 5.6999898f, 9.19161034f,
++    gfx::CUBIC_TO, 5.82748985f, 9.21438026f, 5.94091988f, 9.28530979f, 6.02029991f, 9.38595009f,
++    gfx::CUBIC_TO, 6.06984997f, 9.44707966f, 6.12065983f, 9.50438023f, 6.17460012f, 9.55978012f,
++    gfx::CUBIC_TO, 6.65473986f, 10.0554399f, 7.32464981f, 10.3169603f, 8.00174999f, 10.3166103f,
++    gfx::CUBIC_TO, 8.67901039f, 10.3180799f, 9.34951973f, 10.0570202f, 9.82791996f, 9.56075001f,
++    gfx::CUBIC_TO, 9.88146019f, 9.50553036f, 9.93212986f, 9.44888973f, 9.98124027f, 9.38790035f,
++    gfx::CUBIC_TO, 10.0602703f, 9.28703022f, 10.1731701f, 9.21483994f, 10.3005695f, 9.19161034f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 6.16677999f, 5.33322001f,
++    gfx::CUBIC_TO, 6.71880007f, 5.3334198f, 7.16662979f, 5.86378002f, 7.16677999f, 6.59982014f,
++    gfx::CUBIC_TO, 7.16677999f, 7.33607006f, 6.7189002f, 7.83302021f, 6.16677999f, 7.83322001f,
++    gfx::CUBIC_TO, 5.61450005f, 7.83322001f, 5.16677999f, 7.33621979f, 5.16677999f, 6.59982014f,
++    gfx::CUBIC_TO, 5.16694021f, 5.86363983f, 5.61460018f, 5.33322001f, 6.16677999f, 5.33322001f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 9.83279991f, 5.33322001f,
++    gfx::CUBIC_TO, 10.3849697f, 5.33322001f, 10.8326397f, 5.86363983f, 10.8327999f, 6.59982014f,
++    gfx::CUBIC_TO, 10.8327999f, 7.33621979f, 10.3850698f, 7.83322001f, 9.83279991f, 7.83322001f,
++    gfx::CUBIC_TO, 9.2806797f, 7.83302021f, 8.83279991f, 7.33607006f, 8.83279991f, 6.59982014f,
++    gfx::CUBIC_TO, 8.83296013f, 5.86378002f, 9.28077984f, 5.3334198f, 9.83279991f, 5.33322001f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 12.6667995f, 0.667200029f,
++    gfx::CUBIC_TO, 13.0347004f, 0.667379975f, 13.3325996f, 0.965279996f, 13.3327999f, 1.33322001f,
++    gfx::V_LINE_TO, 2.66720009f,
++    gfx::H_LINE_TO, 14.6667995f,
++    gfx::CUBIC_TO, 15.0347004f, 2.66738009f, 15.3325996f, 2.96528006f, 15.3327999f, 3.33322001f,
++    gfx::CUBIC_TO, 15.3327999f, 3.70129991f, 15.0347996f, 4.00003004f, 14.6667995f, 4.00020981f,
++    gfx::H_LINE_TO, 13.3327999f,
++    gfx::V_LINE_TO, 5.33322001f,
++    gfx::CUBIC_TO, 13.3327999f, 5.70130014f, 13.0347996f, 6.00003004f, 12.6667995f, 6.00020981f,
++    gfx::CUBIC_TO, 12.2986002f, 6.00020981f, 11.9997997f, 5.70140982f, 11.9997997f, 5.33322001f,
++    gfx::V_LINE_TO, 4.00020981f,
++    gfx::H_LINE_TO, 10.6667805f,
++    gfx::CUBIC_TO, 10.2985897f, 4.00020981f, 9.99979019f, 3.70141006f, 9.99979019f, 3.33322001f,
++    gfx::CUBIC_TO, 9.99997044f, 2.96517992f, 10.2987003f, 2.66720009f, 10.6667805f, 2.66720009f,
++    gfx::H_LINE_TO, 11.9997997f,
++    gfx::V_LINE_TO, 1.33322001f,
++    gfx::CUBIC_TO, 12.0f, 0.96517998f, 12.2987003f, 0.667200029f, 12.6667995f, 0.667200029f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kIndicatorChangeIconReps[] = {{kIndicatorChangeIconPath}};
++const gfx::VectorIcon kIndicatorChangeIcon(kIndicatorChangeIconReps, 1, "AuxProfileIndicatorContext");
++constexpr gfx::PathElement kIndicatorSettingsIconPath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 8.0f, 1.33000004f,
++    gfx::CUBIC_TO, 8.60000038f, 1.33000004f, 9.15999985f, 1.63f, 9.48999977f, 2.13000011f,
++    gfx::LINE_TO, 9.73999977f, 2.50999999f,
++    gfx::LINE_TO, 9.77999973f, 2.56999993f,
++    gfx::CUBIC_TO, 10.0f, 2.8499999f, 10.3800001f, 2.98000002f, 10.7299995f, 2.9000001f,
++    gfx::LINE_TO, 10.9799995f, 2.83999991f,
++    gfx::CUBIC_TO, 11.5900002f, 2.70000005f, 12.2299995f, 2.8900001f, 12.6700001f, 3.32999992f,
++    gfx::CUBIC_TO, 13.1099997f, 3.76999998f, 13.3000002f, 4.40999985f, 13.1599998f, 5.01999998f,
++    gfx::LINE_TO, 13.1000004f, 5.26999998f,
++    gfx::CUBIC_TO, 13.0200005f, 5.61999989f, 13.1499996f, 6.0f, 13.4300003f, 6.21999979f,
++    gfx::LINE_TO, 13.4899998f, 6.26000023f,
++    gfx::LINE_TO, 13.8699999f, 6.51000023f,
++    gfx::CUBIC_TO, 14.3699999f, 6.84000015f, 14.6700001f, 7.4000001f, 14.6700001f, 8.0f,
++    gfx::CUBIC_TO, 14.6700001f, 8.60000038f, 14.3699999f, 9.15999985f, 13.8699999f, 9.48999977f,
++    gfx::LINE_TO, 13.4899998f, 9.73999977f,
++    gfx::CUBIC_TO, 13.1700001f, 9.96000004f, 13.0100002f, 10.3500004f, 13.1000004f, 10.7299995f,
++    gfx::LINE_TO, 13.1599998f, 10.9799995f,
++    gfx::CUBIC_TO, 13.3000002f, 11.5900002f, 13.1099997f, 12.2299995f, 12.6700001f, 12.6700001f,
++    gfx::CUBIC_TO, 12.2299995f, 13.1099997f, 11.5900002f, 13.3000002f, 10.9799995f, 13.1599998f,
++    gfx::LINE_TO, 10.7299995f, 13.1000004f,
++    gfx::CUBIC_TO, 10.3500004f, 13.0100002f, 9.96000004f, 13.1700001f, 9.73999977f, 13.4899998f,
++    gfx::LINE_TO, 9.48999977f, 13.8699999f,
++    gfx::CUBIC_TO, 9.15999985f, 14.3699999f, 8.60000038f, 14.6700001f, 8.0f, 14.6700001f,
++    gfx::CUBIC_TO, 7.4000001f, 14.6700001f, 6.84000015f, 14.3699999f, 6.51000023f, 13.8699999f,
++    gfx::LINE_TO, 6.26000023f, 13.4899998f,
++    gfx::CUBIC_TO, 6.03999996f, 13.1700001f, 5.6500001f, 13.0100002f, 5.26999998f, 13.1000004f,
++    gfx::LINE_TO, 5.01999998f, 13.1599998f,
++    gfx::CUBIC_TO, 4.40999985f, 13.3000002f, 3.76999998f, 13.1099997f, 3.32999992f, 12.6700001f,
++    gfx::CUBIC_TO, 2.8900001f, 12.2299995f, 2.70000005f, 11.5900002f, 2.83999991f, 10.9799995f,
++    gfx::LINE_TO, 2.9000001f, 10.7299995f,
++    gfx::CUBIC_TO, 2.99000001f, 10.3500004f, 2.82999992f, 9.96000004f, 2.50999999f, 9.73999977f,
++    gfx::LINE_TO, 2.13000011f, 9.48999977f,
++    gfx::CUBIC_TO, 1.63f, 9.15999985f, 1.33000004f, 8.60000038f, 1.33000004f, 8.0f,
++    gfx::CUBIC_TO, 1.33000004f, 7.4000001f, 1.63f, 6.84000015f, 2.13000011f, 6.51000023f,
++    gfx::LINE_TO, 2.50999999f, 6.26000023f,
++    gfx::CUBIC_TO, 2.82999992f, 6.03999996f, 2.99000001f, 5.6500001f, 2.9000001f, 5.26999998f,
++    gfx::LINE_TO, 2.83999991f, 5.01999998f,
++    gfx::CUBIC_TO, 2.70000005f, 4.40999985f, 2.8900001f, 3.76999998f, 3.32999992f, 3.32999992f,
++    gfx::CUBIC_TO, 3.76999998f, 2.8900001f, 4.40999985f, 2.70000005f, 5.01999998f, 2.83999991f,
++    gfx::LINE_TO, 5.26999998f, 2.9000001f,
++    gfx::CUBIC_TO, 5.6500001f, 2.99000001f, 6.03999996f, 2.82999992f, 6.26000023f, 2.50999999f,
++    gfx::LINE_TO, 6.51000023f, 2.13000011f,
++    gfx::CUBIC_TO, 6.84000015f, 1.63f, 7.4000001f, 1.33000004f, 8.0f, 1.33000004f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 2.67000008f,
++    gfx::CUBIC_TO, 7.8499999f, 2.67000008f, 7.71000004f, 2.74000001f, 7.61999989f, 2.86999989f,
++    gfx::LINE_TO, 7.36999989f, 3.25f,
++    gfx::CUBIC_TO, 6.8499999f, 4.03000021f, 5.88999987f, 4.40999985f, 4.96999979f, 4.19999981f,
++    gfx::LINE_TO, 4.71999979f, 4.13999987f,
++    gfx::CUBIC_TO, 4.55999994f, 4.11000013f, 4.38999987f, 4.1500001f, 4.26999998f, 4.26999998f,
++    gfx::CUBIC_TO, 4.1500001f, 4.38999987f, 4.11000013f, 4.55999994f, 4.13999987f, 4.71999979f,
++    gfx::LINE_TO, 4.19999981f, 4.96999979f,
++    gfx::CUBIC_TO, 4.40999985f, 5.88999987f, 4.03000021f, 6.8499999f, 3.25f, 7.36999989f,
++    gfx::V_LINE_TO, 7.36999989f,
++    gfx::LINE_TO, 2.86999989f, 7.61999989f,
++    gfx::CUBIC_TO, 2.74000001f, 7.71000004f, 2.67000008f, 7.8499999f, 2.67000008f, 8.0f,
++    gfx::CUBIC_TO, 2.67000008f, 8.14999962f, 2.74000001f, 8.28999996f, 2.86999989f, 8.38000011f,
++    gfx::LINE_TO, 3.25f, 8.63000011f,
++    gfx::LINE_TO, 3.3900001f, 8.72999954f,
++    gfx::CUBIC_TO, 4.07999992f, 9.27000046f, 4.4000001f, 10.1700001f, 4.19999981f, 11.0299997f,
++    gfx::LINE_TO, 4.13999987f, 11.2799997f,
++    gfx::CUBIC_TO, 4.11000013f, 11.4399996f, 4.1500001f, 11.6099997f, 4.26999998f, 11.7299995f,
++    gfx::CUBIC_TO, 4.38999987f, 11.8500004f, 4.55999994f, 11.8900003f, 4.71999979f, 11.8599997f,
++    gfx::LINE_TO, 4.96999979f, 11.8000002f,
++    gfx::CUBIC_TO, 5.88999987f, 11.5900002f, 6.8499999f, 11.9700003f, 7.36999989f, 12.75f,
++    gfx::LINE_TO, 7.61999989f, 13.1300001f,
++    gfx::CUBIC_TO, 7.71000004f, 13.2600002f, 7.8499999f, 13.3299999f, 8.0f, 13.3299999f,
++    gfx::CUBIC_TO, 8.14999962f, 13.3299999f, 8.28999996f, 13.2600002f, 8.38000011f, 13.1300001f,
++    gfx::LINE_TO, 8.63000011f, 12.75f,
++    gfx::LINE_TO, 8.72999954f, 12.6099997f,
++    gfx::CUBIC_TO, 9.27000046f, 11.9200001f, 10.1700001f, 11.6000004f, 11.0299997f, 11.8000002f,
++    gfx::LINE_TO, 11.2799997f, 11.8599997f,
++    gfx::CUBIC_TO, 11.4399996f, 11.8900003f, 11.6099997f, 11.8500004f, 11.7299995f, 11.7299995f,
++    gfx::CUBIC_TO, 11.8500004f, 11.6099997f, 11.8900003f, 11.4399996f, 11.8599997f, 11.2799997f,
++    gfx::LINE_TO, 11.8000002f, 11.0299997f,
++    gfx::CUBIC_TO, 11.6000004f, 10.1700001f, 11.9200001f, 9.27000046f, 12.6099997f, 8.72999954f,
++    gfx::LINE_TO, 12.75f, 8.63000011f,
++    gfx::LINE_TO, 13.1300001f, 8.38000011f,
++    gfx::CUBIC_TO, 13.2600002f, 8.28999996f, 13.3299999f, 8.14999962f, 13.3299999f, 8.0f,
++    gfx::CUBIC_TO, 13.3299999f, 7.8499999f, 13.2600002f, 7.71000004f, 13.1300001f, 7.61999989f,
++    gfx::LINE_TO, 12.75f, 7.36999989f,
++    gfx::CUBIC_TO, 11.9700003f, 6.8499999f, 11.5900002f, 5.88999987f, 11.8000002f, 4.96999979f,
++    gfx::LINE_TO, 11.8599997f, 4.71999979f,
++    gfx::CUBIC_TO, 11.8900003f, 4.55999994f, 11.8500004f, 4.38999987f, 11.7299995f, 4.26999998f,
++    gfx::CUBIC_TO, 11.6099997f, 4.1500001f, 11.4399996f, 4.11000013f, 11.2799997f, 4.13999987f,
++    gfx::LINE_TO, 11.0299997f, 4.19999981f,
++    gfx::CUBIC_TO, 10.1099997f, 4.40999985f, 9.14999962f, 4.03000021f, 8.63000011f, 3.25f,
++    gfx::LINE_TO, 8.38000011f, 2.86999989f,
++    gfx::CUBIC_TO, 8.28999996f, 2.74000001f, 8.14999962f, 2.67000008f, 8.0f, 2.67000008f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 5.32999992f,
++    gfx::CUBIC_TO, 9.47000027f, 5.32999992f, 10.6700001f, 6.53000021f, 10.6700001f, 8.0f,
++    gfx::CUBIC_TO, 10.6700001f, 9.47000027f, 9.47000027f, 10.6700001f, 8.0f, 10.6700001f,
++    gfx::CUBIC_TO, 6.53000021f, 10.6700001f, 5.32999992f, 9.47000027f, 5.32999992f, 8.0f,
++    gfx::CUBIC_TO, 5.32999992f, 6.53000021f, 6.53000021f, 5.32999992f, 8.0f, 5.32999992f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 6.67000008f,
++    gfx::CUBIC_TO, 7.26000023f, 6.67000008f, 6.67000008f, 7.26000023f, 6.67000008f, 8.0f,
++    gfx::CUBIC_TO, 6.67000008f, 8.73999977f, 7.26000023f, 9.32999992f, 8.0f, 9.32999992f,
++    gfx::CUBIC_TO, 8.73999977f, 9.32999992f, 9.32999992f, 8.73999977f, 9.32999992f, 8.0f,
++    gfx::CUBIC_TO, 9.32999992f, 7.26000023f, 8.73999977f, 6.67000008f, 8.0f, 6.67000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kIndicatorSettingsIconReps[] = {{kIndicatorSettingsIconPath}};
++const gfx::VectorIcon kIndicatorSettingsIcon(kIndicatorSettingsIconReps, 1, "AuxProfileIndicatorContext");
++constexpr gfx::PathElement kIndicatorSignOutIconPath[] = {
++    gfx::CANVAS_DIMENSIONS, 24.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 5.0f, 21.0f,
++    gfx::R_CUBIC_TO, -0.550000012f, 0.0f, -1.01999998f, -0.189999998f, -1.40999997f, -0.589999974f,
++    gfx::ARC_TO, 1.94000006f, 1.94000006f, 0.0f, 0.0f, 1.0f, 3.0f, 19.0f,
++    gfx::V_LINE_TO, 5.0f,
++    gfx::R_CUBIC_TO, 0.0f, -0.550000012f, 0.200000003f, -1.01999998f, 0.589999974f, -1.40999997f,
++    gfx::CUBIC_TO, 3.98000002f, 3.20000005f, 4.44999981f, 3.0f, 5.0f, 3.0f,
++    gfx::R_H_LINE_TO, 6.0f,
++    gfx::R_CUBIC_TO, 0.280000001f, 0.0f, 0.519999981f, 0.100000001f, 0.709999979f, 0.289999992f,
++    gfx::R_CUBIC_TO, 0.189999998f, 0.189999998f, 0.289999992f, 0.430000007f, 0.289999992f, 0.709999979f,
++    gfx::R_CUBIC_TO, 0.0f, 0.280000001f, -0.100000001f, 0.519999981f, -0.289999992f, 0.709999979f,
++    gfx::ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 11.0f, 5.0f,
++    gfx::H_LINE_TO, 5.0f,
++    gfx::R_V_LINE_TO, 14.0f,
++    gfx::R_H_LINE_TO, 6.0f,
++    gfx::R_CUBIC_TO, 0.280000001f, 0.0f, 0.519999981f, 0.100000001f, 0.709999979f, 0.289999992f,
++    gfx::R_CUBIC_TO, 0.189999998f, 0.189999998f, 0.289999992f, 0.430000007f, 0.289999992f, 0.709999979f,
++    gfx::R_CUBIC_TO, 0.0f, 0.280000001f, -0.100000001f, 0.519999981f, -0.289999992f, 0.709999979f,
++    gfx::ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 11.0f, 21.0f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 12.1800003f, -8.0f,
++    gfx::H_LINE_TO, 10.0f,
++    gfx::R_ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, -0.709999979f, -0.289999992f,
++    gfx::ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 9.0f, 12.0f,
++    gfx::R_CUBIC_TO, 0.0f, -0.280000001f, 0.100000001f, -0.519999981f, 0.289999992f, -0.709999979f,
++    gfx::ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 10.0f, 11.0f,
++    gfx::R_H_LINE_TO, 7.17999983f,
++    gfx::LINE_TO, 15.3000002f, 9.13000011f,
++    gfx::R_ARC_TO, 0.920000017f, 0.920000017f, 0.0f, 0.0f, 1.0f, -0.280000001f, -0.680000007f,
++    gfx::R_CUBIC_TO, 0.0f, -0.25999999f, 0.0900000036f, -0.5f, 0.280000001f, -0.699999988f,
++    gfx::ARC_TO, 0.949999988f, 0.949999988f, 0.0f, 0.0f, 1.0f, 16.0f, 7.44000006f,
++    gfx::R_ARC_TO, 0.939999998f, 0.939999998f, 0.0f, 0.0f, 1.0f, 0.730000019f, 0.289999992f,
++    gfx::LINE_TO, 20.2999992f, 11.3000002f,
++    gfx::R_ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, 0.0f, 1.39999998f,
++    gfx::R_LINE_TO, -3.56999993f, 3.56999993f,
++    gfx::R_ARC_TO, 0.930000007f, 0.930000007f, 0.0f, 0.0f, 1.0f, -0.709999979f, 0.289999992f,
++    gfx::R_ARC_TO, 1.01999998f, 1.01999998f, 0.0f, 0.0f, 1.0f, -0.709999979f, -0.310000002f,
++    gfx::R_ARC_TO, 0.959999979f, 0.959999979f, 0.0f, 0.0f, 1.0f, -0.25999999f, -0.709999979f,
++    gfx::R_ARC_TO, 0.970000029f, 0.970000029f, 0.0f, 0.0f, 1.0f, 0.280000001f, -0.689999998f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kIndicatorSignOutIconReps[] = {{kIndicatorSignOutIconPath}};
++const gfx::VectorIcon kIndicatorSignOutIcon(kIndicatorSignOutIconReps, 1, "AuxProfileIndicatorContext");
++// clang-format on
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -106,6 +106,21 @@
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_request.h"
+ #endif
+ 
++#include <map>
++#include "base/functional/callback_helpers.h"
++#include "base/no_destructor.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/profiles/delete_profile_helper.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h"
++#include "components/constrained_window/constrained_window_views.h"
++#include "extensions/browser/extension_registry.h"
++#include "ui/base/models/dialog_model.h"
++#include "ui/base/models/dialog_model_field.h"
++#include "ui/gfx/paint_vector_icon.h"
++#include "ui/gfx/vector_icon_types.h"
++#include "ui/views/focus/focus_manager.h"
++
+ namespace {
+ 
+ constexpr char kAgentManagerId[] = "gokkffaiccpmoeodpmeamcjajcagjmkm";
+@@ -749,6 +764,36 @@
+ #endif
+ }
+ 
++#include "chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc"
++
++using AuxProfileMenuWidgets =
++    std::map<BrowserWindowInterface*, base::WeakPtr<views::Widget>>;
++AuxProfileMenuWidgets& ActiveAuxProfileMenus() {
++  static base::NoDestructor<AuxProfileMenuWidgets> menus;
++  return *menus;
++}
++void RetireAuxProfileMenu(BrowserWindowInterface* browser) {
++  auto& menus = ActiveAuxProfileMenus();
++  auto found = menus.find(browser);
++  if (found == menus.end())
++    return;
++  auto widget = found->second;
++  menus.erase(found);
++  if (widget)
++    widget->CloseNow();
++}
++void TrackAuxProfileMenu(BrowserWindowInterface* browser,
++                         views::Widget* widget) {
++  ActiveAuxProfileMenus()[browser] = widget->GetWeakPtr();
++}
++void ForgetAuxProfileMenu(BrowserWindowInterface* browser,
++                          views::Widget* widget) {
++  auto& menus = ActiveAuxProfileMenus();
++  auto found = menus.find(browser);
++  if (found != menus.end() && (!found->second || found->second.get() == widget))
++    menus.erase(found);
++}
++
+ // Native profile menu and browser navigation.
+ void RefreshAuxProfileButton(views::View* button);
+ 
+@@ -756,10 +801,12 @@
+                        public ui::SimpleMenuModel::Delegate {
+  public:
+   static void Show(BrowserWindowInterface* browser, views::View* anchor) {
++    RetireAuxProfileMenu(browser);
+     auto menu = std::make_unique<AuxProfileMenu>(browser, anchor);
+-    views::BubbleDialogDelegate::CreateBubbleDeprecated(
+-        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET)
+-        ->Show();
++    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++    TrackAuxProfileMenu(browser, widget);
++    widget->Show();
+   }
+ 
+   AuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor)
+@@ -777,6 +824,7 @@
+   }
+ 
+   ~AuxProfileMenu() override {
++    ForgetAuxProfileMenu(browser_, GetWidget());
+     if (pending_switch_) {
+       // Original4572824 tears down the full menu before dispatch. Native
+       // Widget::Close is asynchronous, so dispatch on the UI sequence only
+@@ -1012,6 +1060,339 @@
+   base::OnceClosure pending_switch_;
+ };
+ 
++// Supplied456bb40/456c300 icon grid. The existing catalog owns exact paths.
++class AuxIndicatorIconButton : public views::Button {
++ public:
++  AuxIndicatorIconButton(PressedCallback callback,
++                         const aux::ProfileIndicatorIconDescriptor& icon,
++                         bool selected)
++      : views::Button(std::move(callback)),
++        icon_(icon.icon),
++        selected_(selected) {
++    SetAnimateOnStateChange(false);
++    SetFocusBehavior(FocusBehavior::ALWAYS);
++    SetPreferredSize(gfx::Size(28, 28));
++    SetTooltipText(std::u16string(icon.label));
++    GetViewAccessibility().SetName(std::u16string(icon.label));
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 6);
++  }
++
++ protected:
++  void PaintButtonContents(gfx::Canvas* canvas) override {
++    const bool dark = GetWidget() && GetWidget()->GetColorMode() ==
++                                         ui::ColorProviderKey::ColorMode::kDark;
++    const SkColor foreground =
++        dark ? SkColorSetRGB(250, 250, 250) : SkColorSetRGB(10, 10, 10);
++    if (selected_ || GetState() == STATE_HOVERED ||
++        GetState() == STATE_PRESSED) {
++      cc::PaintFlags flags;
++      flags.setAntiAlias(true);
++      flags.setColor(SkColorSetA(foreground, dark ? 0x1a : 0x14));
++      canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 6, flags);
++    }
++    canvas->DrawImageInt(
++        gfx::CreateVectorIcon(*icon_, 18,
++                              SkColorSetA(foreground, selected_ ? 0xd9 : 0x8c)),
++        5, 5);
++  }
++  void StateChanged(ButtonState old_state) override { SchedulePaint(); }
++
++ private:
++  const raw_ptr<const gfx::VectorIcon> icon_;
++  const bool selected_;
++};
++
++class AuxIndicatorIconGrid : public views::View {
++ public:
++  AuxIndicatorIconGrid(std::string_view selected,
++                       base::RepeatingCallback<void(std::string)> chosen) {
++    SetBorder(views::CreateEmptyBorder(gfx::Insets(8)));
++    SetPreferredSize(gfx::Size(254, 194));
++    for (const auto& icon : aux::ProfileIndicatorIcons()) {
++      AddChildView(std::make_unique<AuxIndicatorIconButton>(
++          base::BindRepeating(
++              [](base::RepeatingCallback<void(std::string)> callback,
++                 std::string name, const ui::Event&) { callback.Run(name); },
++              chosen, std::string(icon.name)),
++          icon, icon.name == selected));
++    }
++  }
++  void Layout(PassKey) override {
++    size_t index = 0;
++    for (auto* child : children()) {
++      child->SetBounds(8 + (index % 8) * 30, 8 + (index / 8) * 30, 28, 28);
++      ++index;
++    }
++  }
++  bool OnKeyPressed(const ui::KeyEvent& event) override {
++    int delta = 0;
++    switch (event.key_code()) {
++      case ui::VKEY_LEFT:
++        delta = -1;
++        break;
++      case ui::VKEY_UP:
++        delta = -8;
++        break;
++      case ui::VKEY_RIGHT:
++        delta = 1;
++        break;
++      case ui::VKEY_DOWN:
++        delta = 8;
++        break;
++      default:
++        return false;
++    }
++    auto* focused =
++        GetFocusManager() ? GetFocusManager()->GetFocusedView() : nullptr;
++    auto found = std::ranges::find(children(), focused);
++    if (found == children().end())
++      return false;
++    int index = static_cast<int>(found - children().begin());
++    index = (index + delta + static_cast<int>(children().size())) %
++            children().size();
++    children()[index]->RequestFocus();
++    return true;
++  }
++};
++
++bool CanRemoveIndicatorProfile(BrowserWindowInterface* browser,
++                               const base::FilePath& path) {
++  auto* manager =
++      g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (!browser || !manager || path.empty() || !browser->GetProfile() ||
++      browser->GetProfile()->GetPath() == path)
++    return false;
++  auto& storage = manager->GetProfileAttributesStorage();
++  const auto entries = storage.GetAllProfilesAttributes();
++  if (std::ranges::count_if(
++          entries, [](auto* entry) { return !entry->IsOmitted(); }) < 2)
++    return false;
++  auto* entry = storage.GetProfileAttributesWithPath(path);
++  return entry && !entry->IsOmitted();
++}
++
++bool IndicatorSettingsAvailable(const base::FilePath& path) {
++  auto* manager =
++      g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  auto* profile = manager ? manager->GetProfileByPath(path) : nullptr;
++  auto* registry =
++      profile ? extensions::ExtensionRegistry::Get(profile) : nullptr;
++  return registry &&
++         registry->GetExtensionById(aux::kAgentExtensionId,
++                                    extensions::ExtensionRegistry::EVERYTHING);
++}
++
++void ConfirmRemoveIndicatorProfile(
++    base::WeakPtr<BrowserWindowInterface> browser,
++    base::FilePath path) {
++  if (!browser || !CanRemoveIndicatorProfile(browser.get(), path))
++    return;
++  auto* manager = g_browser_process->profile_manager();
++  auto* entry =
++      manager->GetProfileAttributesStorage().GetProfileAttributesWithPath(path);
++  std::u16string name =
++      entry ? entry->GetLocalProfileName() : std::u16string();
++  if (name.empty() && entry)
++    name = entry->GetName();
++  std::u16string body =
++      name.empty() ? u"This profile will be removed from this device."
++                   : u"\"" + name + u"\" will be removed from this device.";
++  auto model =
++      ui::DialogModel::Builder()
++          .SetInternalName("AuxDeleteProfileDialog")
++          .SetTitle(u"Delete profile?")
++          .AddParagraph(ui::DialogModelLabel(body))
++          .AddOkButton(
++              base::BindOnce(
++                  [](base::WeakPtr<BrowserWindowInterface> sender,
++                     base::FilePath target) {
++                    if (!sender ||
++                        !CanRemoveIndicatorProfile(sender.get(), target))
++                      return;
++                    g_browser_process->profile_manager()
++                        ->GetDeleteProfileHelper()
++                        .MaybeScheduleProfileForDeletion(
++                            target, base::DoNothing(),
++                            ProfileMetrics::DELETE_PROFILE_USER_MANAGER);
++                  },
++                  browser, path),
++              ui::DialogModel::Button::Params().SetLabel(u"Delete"))
++          .AddCancelButton(
++              base::DoNothing(),
++              ui::DialogModel::Button::Params().SetLabel(u"Cancel"))
++          .Build();
++  constrained_window::ShowBrowserModal(std::move(model),
++                                       browser->GetWindow()->GetNativeWindow());
++}
++
++class AuxProfileIndicatorMenu : public views::BubbleDialogDelegate {
++ public:
++  static void Show(BrowserWindowInterface* browser,
++                   views::View* anchor,
++                   const base::FilePath& path) {
++    RetireAuxProfileMenu(browser);
++    auto menu =
++        std::make_unique<AuxProfileIndicatorMenu>(browser, anchor, path);
++    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++    TrackAuxProfileMenu(browser, widget);
++    widget->Show();
++  }
++  AuxProfileIndicatorMenu(BrowserWindowInterface* browser,
++                          views::View* anchor,
++                          base::FilePath path)
++      : views::BubbleDialogDelegate(anchor, views::BubbleBorder::BOTTOM_LEFT),
++        browser_(browser->GetWeakPtr()),
++        owner_(browser),
++        path_(std::move(path)) {
++    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    SetShowCloseButton(false);
++    SetAccessibleTitle(u"Profile indicator menu");
++    set_margins(gfx::Insets::VH(4, 4));
++    set_fixed_width(200);
++    auto contents = std::make_unique<views::View>();
++    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kVertical));
++    contents_ = SetContentsView(std::move(contents));
++    icon_row_ = AddRow(kIndicatorChangeIcon, u"Change Icon",
++                       base::BindRepeating(&AuxProfileIndicatorMenu::OpenIcons,
++                                           base::Unretained(this)));
++    icon_row_->AddTrailingIcon(kChevronRightIcon);
++    if (IndicatorSettingsAvailable(path_)) {
++      AddRow(kIndicatorSettingsIcon, u"Settings",
++             base::BindRepeating(&AuxProfileIndicatorMenu::OpenSettings,
++                                 base::Unretained(this)));
++    }
++    contents_->AddChildView(std::make_unique<views::Separator>());
++    auto* remove = AddRow(kIndicatorSignOutIcon, u"Sign Out",
++                          base::BindRepeating(&AuxProfileIndicatorMenu::Remove,
++                                              base::Unretained(this)));
++    remove->SetEnabled(CanRemoveIndicatorProfile(browser.get(), path_));
++  }
++  ~AuxProfileIndicatorMenu() override {
++    weak_factory_.InvalidateWeakPtrs();
++    ForgetAuxProfileMenu(owner_, GetWidget());
++    if (icons_)
++      icons_->CloseNow();
++    if (pending_)
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE, std::move(pending_));
++  }
++
++ private:
++  AuxMenuRow* AddRow(const gfx::VectorIcon& icon,
++                     const std::u16string& label,
++                     views::Button::PressedCallback callback) {
++    return contents_->AddChildView(std::make_unique<AuxMenuRow>(
++        std::move(callback),
++        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurface, 16),
++        label));
++  }
++  void OpenIcons(const ui::Event&) {
++    if (icons_) {
++      icons_->Activate();
++      return;
++    }
++    auto* manager =
++        g_browser_process ? g_browser_process->profile_manager() : nullptr;
++    auto* entry = manager ? manager->GetProfileAttributesStorage()
++                                .GetProfileAttributesWithPath(path_)
++                          : nullptr;
++    if (!entry)
++      return;
++    auto popup = std::make_unique<views::BubbleDialogDelegate>(
++        icon_row_, views::BubbleBorder::LEFT_TOP);
++    popup->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
++    popup->SetShowCloseButton(false);
++    popup->set_margins(gfx::Insets());
++    popup->SetContentsView(std::make_unique<AuxIndicatorIconGrid>(
++        entry->GetAuxProfileIndicatorIconName(),
++        base::BindRepeating(&AuxProfileIndicatorMenu::ChooseIcon,
++                            weak_factory_.GetWeakPtr())));
++    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++        std::move(popup), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++    icons_ = widget->GetWeakPtr();
++    widget->Show();
++  }
++  void ChooseIcon(std::string name) {
++    const bool known = std::ranges::any_of(
++        aux::ProfileIndicatorIcons(),
++        [&name](const auto& icon) { return icon.name == name; });
++    auto* manager =
++        g_browser_process ? g_browser_process->profile_manager() : nullptr;
++    auto* entry = manager ? manager->GetProfileAttributesStorage()
++                                .GetProfileAttributesWithPath(path_)
++                          : nullptr;
++    if (!known || !entry) {
++      GetWidget()->Close();
++      return;
++    }
++    // Source retires all actual menu widgets before writing/notifying.
++    const base::FilePath path = path_;
++    pending_ = base::BindOnce(
++        [](base::FilePath target, std::string selected) {
++          auto* manager = g_browser_process
++                              ? g_browser_process->profile_manager()
++                              : nullptr;
++          auto* entry = manager ? manager->GetProfileAttributesStorage()
++                                      .GetProfileAttributesWithPath(target)
++                                : nullptr;
++          if (entry && entry->GetAuxProfileIndicatorIconName() != selected)
++            entry->SetAuxProfileIndicatorIconName(selected);
++        },
++        path, std::move(name));
++    GetWidget()->Close();
++  }
++  void OpenSettings(const ui::Event&) {
++    if (!browser_ || !IndicatorSettingsAvailable(path_)) {
++      GetWidget()->Close();
++      return;
++    }
++    auto* profile =
++        g_browser_process->profile_manager()->GetProfileByPath(path_);
++    auto* prefs =
++        profile && !profile->IsOffTheRecord() ? profile->GetPrefs() : nullptr;
++    if (!prefs || !prefs->FindPreference("aside.account_id") ||
++        prefs->GetInteger("aside.account_id") < 0) {
++      GetWidget()->Close();
++      return;
++    }
++    GURL url(base::StrCat(
++        {"chrome-extension://", aux::kAgentExtensionId, "/newtab.html#/u/",
++         base::NumberToString(prefs->GetInteger("aside.account_id")),
++         "/settings/general"}));
++    pending_ = base::BindOnce(
++        [](base::WeakPtr<BrowserWindowInterface> sender, base::FilePath path,
++           GURL url) {
++          aux::ProfileSwitchRequest::Dispatch(
++              sender, path,
++              base::BindOnce(
++                  [](GURL target, Browser* browser) {
++                    if (browser)
++                      browser->OpenGURL(
++                          target, WindowOpenDisposition::NEW_FOREGROUND_TAB);
++                  },
++                  url));
++        },
++        browser_, path_, url);
++    GetWidget()->Close();
++  }
++  void Remove(const ui::Event&) {
++    if (browser_ && CanRemoveIndicatorProfile(browser_.get(), path_))
++      pending_ =
++          base::BindOnce(&ConfirmRemoveIndicatorProfile, browser_, path_);
++    GetWidget()->Close();
++  }
++  const base::WeakPtr<BrowserWindowInterface> browser_;
++  const raw_ptr<BrowserWindowInterface> owner_;
++  const base::FilePath path_;
++  raw_ptr<views::View> contents_ = nullptr;
++  raw_ptr<AuxMenuRow> icon_row_ = nullptr;
++  base::WeakPtr<views::Widget> icons_;
++  base::OnceClosure pending_;
++  base::WeakPtrFactory<AuxProfileIndicatorMenu> weak_factory_{this};
++};
++
+ // Circular avatar with a small chevron, opening the profile menu.
+ class AuxProfileButton : public views::Button {
+   METADATA_HEADER(AuxProfileButton, views::Button)
+@@ -1133,6 +1514,24 @@
+   }
+ }
+ 
++bool IsAuxProfileMenuShowing(BrowserWindowInterface* browser) {
++  const auto& menus = ActiveAuxProfileMenus();
++  auto found = menus.find(browser);
++  return found != menus.end() && found->second && found->second->IsVisible();
++}
++
++void ShowAuxProfileActions(BrowserWindowInterface* browser,
++                           views::View* anchor,
++                           const base::FilePath& path) {
++  auto* manager =
++      g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (browser && anchor && anchor->GetWidget() && manager && !path.empty() &&
++      manager->GetProfileAttributesStorage().GetProfileAttributesWithPath(
++          path)) {
++    AuxProfileIndicatorMenu::Show(browser, anchor, path);
++  }
++}
++
+ AuxSidebarView::AuxSidebarView(BrowserWindowInterface* browser)
+     : browser_(browser) {
+   auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+@@ -1186,6 +1585,7 @@
+ 
+ uint64_t AuxSidebarView::BeginAuxProfileSwitch(Profile* target) {
+   CHECK(CanRebindForAuxProfileSwitch(target));
++  RetireAuxProfileMenu(browser_);
+   profile_switch_paused_ = true;
+   const uint64_t generation = ++profile_switch_generation_;
+   weak_factory_.InvalidateWeakPtrs();
+@@ -1250,6 +1650,7 @@
+ }
+ 
+ AuxSidebarView::~AuxSidebarView() {
++  RetireAuxProfileMenu(browser_);
+   browser_->GetTabStripModel()->RemoveObserver(this);
+ }
+ 
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -12,6 +12,7 @@
+ #include <string>
+ #include <vector>
+ 
++#include "base/files/file_path.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+@@ -36,6 +37,11 @@
+ 
+ // Genuine supplied primary profile menu; anchor must belong to a live Widget.
+ void ShowAuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor);
++bool IsAuxProfileMenuShowing(BrowserWindowInterface* browser);
++// Actual kind7 menu for this registered profile and clicked live anchor.
++void ShowAuxProfileActions(BrowserWindowInterface* browser,
++                           views::View* anchor,
++                           const base::FilePath& path);
+ 
+ namespace network {
+ class SimpleURLLoader;
+--- a/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
++++ b/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
+@@ -13,62 +13,61 @@
+ namespace aux {
+ namespace {
+ #include "chrome/browser/ui/views/profiles/aux_profile_indicator_icons.inc"
+-struct IndicatorIcon {
+-  std::string_view name;
+-  // Points only to the immortal, constant descriptors in this translation unit.
+-  RAW_PTR_EXCLUSION const gfx::VectorIcon* icon;
+-};
+-const IndicatorIcon kIcons[] = {
+-    {"sun", &kSunIcon},
+-    {"moon", &kMoonIcon},
+-    {"cloud", &kCloudIcon},
+-    {"zap", &kZapIcon},
+-    {"heart", &kHeartIcon},
+-    {"flame", &kFlameIcon},
+-    {"star", &kStarIcon},
+-    {"magic_wand", &kMagicWandIcon},
+-    {"thumbs_up", &kThumbsUpIcon},
+-    {"diamond", &kDiamondIcon},
+-    {"book", &kBookIcon},
+-    {"magic_book", &kMagicBookIcon},
+-    {"hourglass", &kHourglassIcon},
+-    {"clock", &kClockIcon},
+-    {"smile", &kSmileIcon},
+-    {"slime", &kSlimeIcon},
+-    {"lock", &kLockIcon},
+-    {"map_pin", &kMapPinIcon},
+-    {"pin", &kPinIcon},
+-    {"tag", &kTagIcon},
+-    {"flag", &kFlagIcon},
+-    {"shopping_bag", &kShoppingBagIcon},
+-    {"suitcase", &kSuitcaseIcon},
+-    {"banknote", &kBanknoteIcon},
+-    {"telescope", &kTelescopeIcon},
+-    {"trophy", &kTrophyIcon},
+-    {"rocket", &kRocketIcon},
+-    {"ticket", &kTicketIcon},
+-    {"camera", &kCameraIcon},
+-    {"folder", &kFolderIcon},
+-    {"bookmark", &kBookmarkIcon},
+-    {"pencil", &kPencilIcon},
+-    {"write", &kWriteIcon},
+-    {"brush", &kBrushIcon},
+-    {"palette", &kPaletteIcon},
+-    {"half_circle", &kHalfCircleIcon},
+-    {"atom", &kAtomIcon},
+-    {"headphones", &kHeadphonesIcon},
+-    {"bell", &kBellIcon},
+-    {"email", &kEmailIcon},
+-    {"chart", &kChartIcon},
+-    {"form_circle", &kFormCircleIcon},
+-    {"form_square", &kFormSquareIcon},
+-    {"form_diamond", &kFormDiamondIcon},
+-    {"form_flower", &kFormFlowerIcon},
+-    {"cursor", &kCursorIcon},
+-    {"console", &kConsoleIcon},
+-    {"bubble", &kBubbleIcon},
++const ProfileIndicatorIconDescriptor kIcons[] = {
++    {"sun", u"Sun", &kSunIcon},
++    {"moon", u"Moon", &kMoonIcon},
++    {"cloud", u"Cloud", &kCloudIcon},
++    {"zap", u"Zap", &kZapIcon},
++    {"heart", u"Heart", &kHeartIcon},
++    {"flame", u"Flame", &kFlameIcon},
++    {"star", u"Star", &kStarIcon},
++    {"magic_wand", u"Magic wand", &kMagicWandIcon},
++    {"thumbs_up", u"Thumbs up", &kThumbsUpIcon},
++    {"diamond", u"Diamond", &kDiamondIcon},
++    {"book", u"Book", &kBookIcon},
++    {"magic_book", u"Magic book", &kMagicBookIcon},
++    {"hourglass", u"Hourglass", &kHourglassIcon},
++    {"clock", u"Clock", &kClockIcon},
++    {"smile", u"Smile", &kSmileIcon},
++    {"slime", u"Slime", &kSlimeIcon},
++    {"lock", u"Lock", &kLockIcon},
++    {"map_pin", u"Map pin", &kMapPinIcon},
++    {"pin", u"Pin", &kPinIcon},
++    {"tag", u"Tag", &kTagIcon},
++    {"flag", u"Flag", &kFlagIcon},
++    {"shopping_bag", u"Shopping bag", &kShoppingBagIcon},
++    {"suitcase", u"Suitcase", &kSuitcaseIcon},
++    {"banknote", u"Banknote", &kBanknoteIcon},
++    {"telescope", u"Telescope", &kTelescopeIcon},
++    {"trophy", u"Trophy", &kTrophyIcon},
++    {"rocket", u"Rocket", &kRocketIcon},
++    {"ticket", u"Ticket", &kTicketIcon},
++    {"camera", u"Camera", &kCameraIcon},
++    {"folder", u"Folder", &kFolderIcon},
++    {"bookmark", u"Bookmark", &kBookmarkIcon},
++    {"pencil", u"Pencil", &kPencilIcon},
++    {"write", u"Write", &kWriteIcon},
++    {"brush", u"Brush", &kBrushIcon},
++    {"palette", u"Palette", &kPaletteIcon},
++    {"half_circle", u"Half circle", &kHalfCircleIcon},
++    {"atom", u"Atom", &kAtomIcon},
++    {"headphones", u"Headphones", &kHeadphonesIcon},
++    {"bell", u"Bell", &kBellIcon},
++    {"email", u"Email", &kEmailIcon},
++    {"chart", u"Chart", &kChartIcon},
++    {"form_circle", u"Circle", &kFormCircleIcon},
++    {"form_square", u"Square", &kFormSquareIcon},
++    {"form_diamond", u"Diamond", &kFormDiamondIcon},
++    {"form_flower", u"Flower", &kFormFlowerIcon},
++    {"cursor", u"Cursor", &kCursorIcon},
++    {"console", u"Console", &kConsoleIcon},
++    {"bubble", u"Bubble", &kBubbleIcon},
+ };
+ }  // namespace
++
++base::span<const ProfileIndicatorIconDescriptor> ProfileIndicatorIcons() {
++  return kIcons;
++}
+ 
+ const gfx::VectorIcon* ProfileIndicatorIcon(
+     const ProfileAttributesEntry* entry) {
+--- a/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h
++++ b/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h
+@@ -4,11 +4,20 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_PROFILES_AUX_PROFILE_INDICATOR_ICON_H_
+ #define CHROME_BROWSER_UI_VIEWS_PROFILES_AUX_PROFILE_INDICATOR_ICON_H_
+ 
++#include <string_view>
++#include "base/containers/span.h"
++
+ class ProfileAttributesEntry;
+ namespace gfx {
+ struct VectorIcon;
+ }
+ namespace aux {
++struct ProfileIndicatorIconDescriptor {
++  std::string_view name;
++  std::u16string_view label;
++  const gfx::VectorIcon* icon;
++};
++base::span<const ProfileIndicatorIconDescriptor> ProfileIndicatorIcons();
+ // The actual stored profile indicator icon, or null for absent/unknown names.
+ const gfx::VectorIcon* ProfileIndicatorIcon(
+     const ProfileAttributesEntry* entry);

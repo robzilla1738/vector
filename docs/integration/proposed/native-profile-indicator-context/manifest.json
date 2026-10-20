@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "applyAfter": "02f9a6821 actual primary header export; catalog and ProfileAttributesEntry exact frozen native235 baselines",
+  "files": [
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.cc",
+      "baselineSha256": "4c01151a9c458b214db64a913b6a7c5f18fb78a0d41d08c942cbee48df5ca2b6",
+      "outputSha256": "99e1891feae5ff684c10f382e54b4f8b427b8b2cd42ace2942eb8bf71c53f327",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "baselineSha256": "9f7742e44937b918ec00c91694d6071e4485d990236c4bbf4cf0bf2e66b9e550",
+      "outputSha256": "d85dd445a5445fbc4e3cc69b5a72bedab7dd9bc161cf71ab3227bfea3f24efb3",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "d345e0c172f179761354a0b364b388062b32b22e91085fd3ed558c8df3f70aca",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "f25e695ba1ea8a6d796d3f2b7377e984ae162fe501b0ec525239f9d5bb3d0aa4",
+      "outputSha256": "56ccf8157c6016894733e72b2a3d0797bc191e63e64f85096d6b617b18c44658",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "baselineSha256": "054135336b2e1008bdcef830ffa565be967749275322740d8ae8c8708bd98b55",
+      "outputSha256": "209979286689c046cc1ed3d2912542faca867e77485f03920abe261bd008f7a2",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+      "baselineSha256": "8f446f51ca6c6e9c428205e3909abc958265f207586fd8db96adb8b34e074c2e",
+      "outputSha256": "8ea98f51b47b69c096d66866ae671abebde531cfbe6c00598adcac8c4a081f05",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h",
+      "baselineSha256": "3ab693c4f34bc37024fd4458c738f54d058489c4170dd40e3186886f506d2a09",
+      "outputSha256": "0ce38fbf7744b151f1755dd76e3fae4578d02d4bfe00520251a3bf7cdc94a113",
+      "newFile": false
+    }
+  ],
+  "registration": [
+    "chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc"
+  ],
+  "additionalDependencies": [
+    "//components/constrained_window",
+    "//extensions/browser"
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

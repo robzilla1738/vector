@@ -1,0 +1,26 @@
+[
+  {
+    "identifier": "kIndicatorChangeIcon",
+    "descriptorRva": "0xe9d4eb0",
+    "representationRva": "0xe9d4ea0",
+    "pathRva": "0xd3dbbb8",
+    "elements": 367,
+    "sha256": "21dd6e8afc96ffc0dce2db9c46937e2261dbd1422223777f05cd24f752fce539"
+  },
+  {
+    "identifier": "kIndicatorSettingsIcon",
+    "descriptorRva": "0xe82bfa8",
+    "representationRva": "0xe82bf98",
+    "pathRva": "0xce68a54",
+    "elements": 523,
+    "sha256": "a97bd2a5e801ae1ed195b2e2a05df125b94beaf91a9b4b264f809502abe045a0"
+  },
+  {
+    "identifier": "kIndicatorSignOutIcon",
+    "descriptorRva": "0xe82d6b0",
+    "representationRva": "0xe82d6a0",
+    "pathRva": "0xce83afc",
+    "elements": 223,
+    "sha256": "f5c24433352f6c765b7998be6d41b77852c380c56a9d52cf841d353856631ea8"
+  }
+]
