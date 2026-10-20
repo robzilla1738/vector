@@ -1,0 +1,58 @@
+--- a/chrome/browser/ui/views/frame/aux_bookmark_confirmation.h
++++ b/chrome/browser/ui/views/frame/aux_bookmark_confirmation.h
+@@ -12,6 +12,14 @@
+ // Original4136218, only after a previously established normalized drag
+ // destination actually changes. No synthetic feedback on first admission.
+ void PerformBookmarkDragDestinationFeedback();
++// Same original4216dfc/41523f0 primitive with caller-supplied original labels.
++// Bookmark and Chats callers retain their own model/REST acceptance actions.
++void ShowAuxNativeConfirmation(gfx::NativeWindow parent,
++                               const std::u16string& title,
++                               const std::u16string& body,
++                               const std::u16string& accept_label,
++                               const std::u16string& cancel_label,
++                               base::OnceCallback<void(bool)> completion);
+ void ShowBookmarkDeleteConfirmation(gfx::NativeWindow parent,
+                                     const std::u16string& title,
+                                     const std::u16string& body,
+--- a/chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm
++++ b/chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm
+@@ -28,17 +28,20 @@
+       performFeedbackPattern:NSHapticFeedbackPatternLevelChange
+              performanceTime:NSHapticFeedbackPerformanceTimeDrawCompleted];
+ }
+-void ShowBookmarkDeleteConfirmation(gfx::NativeWindow parent,
+-                                    const std::u16string& title,
+-                                    const std::u16string& body,
+-                                    base::OnceCallback<void(bool)> completion) {
++void ShowAuxNativeConfirmation(gfx::NativeWindow parent,
++                               const std::u16string& title,
++                               const std::u16string& body,
++                               const std::u16string& accept_label,
++                               const std::u16string& cancel_label,
++                               base::OnceCallback<void(bool)> completion) {
+   NSAlert* alert = [[NSAlert alloc] init];
+   alert.messageText = base::SysUTF16ToNSString(title.empty() ? body : title);
+   alert.informativeText =
+       base::SysUTF16ToNSString(title.empty() ? std::u16string() : body);
+   alert.alertStyle = NSAlertStyleWarning;
+-  [alert addButtonWithTitle:@"Delete"];
+-  NSButton* cancel = [alert addButtonWithTitle:@"Cancel"];
++  [alert addButtonWithTitle:base::SysUTF16ToNSString(accept_label)];
++  NSButton* cancel =
++      [alert addButtonWithTitle:base::SysUTF16ToNSString(cancel_label)];
+   cancel.keyEquivalent = @"\e";
+   NSWindow* window = parent.GetNativeNSWindow();
+   if (window.sheetParent)
+@@ -63,4 +66,11 @@
+   if (completion)
+     std::move(completion).Run(response == NSAlertFirstButtonReturn);
+ }
++void ShowBookmarkDeleteConfirmation(gfx::NativeWindow parent,
++                                    const std::u16string& title,
++                                    const std::u16string& body,
++                                    base::OnceCallback<void(bool)> completion) {
++  ShowAuxNativeConfirmation(parent, title, body, u"Delete", u"Cancel",
++                            std::move(completion));
++}
+ }  // namespace aux

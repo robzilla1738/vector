@@ -1,0 +1,5 @@
+# Reuse the actual native confirmation primitive across supplied callers
+
+Export `aux::ShowAuxNativeConfirmation(parent,title,body,accept_label,cancel_label,OnceCallback<void(bool)>)` from the already compiled `aux_bookmark_confirmation.h`/Mac implementation. This preserves original4216dfc→41523f0 caller-selected labels, actual warning NSAlert, genuine parent-sheet/modal routing, Escape cancellation, retained alert lifetime and first-button1000 result. The existing Bookmark function delegates with its exact Delete/Cancel labels, so its behavior is unchanged. The actual Chats owner can pass its source-decoded labels and retain its own genuine accepted bulk REST action; this module performs no network/model action and fabricates no success.
+
+No checkbox path is added because these callers do not establish one. No new file or GN input is needed. Exact baseline equals actual326 helper bytes;327/328 owner-only fixes are disjoint. The original native primitive raw bytes/LLVM and two-file disposable patch replay pass; no new native compile, OS dialog, network request, owner state, signing or runtime acceptance claim.

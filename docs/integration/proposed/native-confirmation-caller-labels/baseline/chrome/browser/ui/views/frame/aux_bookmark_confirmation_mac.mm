@@ -1,0 +1,66 @@
+// Copyright 2026 The Aux Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+#include "chrome/browser/ui/views/frame/aux_bookmark_confirmation.h"
+
+#import <AppKit/AppKit.h>
+#include <memory>
+#include <utility>
+#include "base/functional/callback.h"
+#include "base/strings/sys_string_conversions.h"
+
+namespace aux {
+namespace {
+struct ConfirmationState {
+  ConfirmationState(NSAlert* value, base::OnceCallback<void(bool)> done)
+      : alert(value), completion(std::move(done)) {}
+  NSAlert* __strong alert;
+  base::OnceCallback<void(bool)> completion;
+};
+}  // namespace
+
+void PerformBookmarkDragDestinationFeedback() {
+  id<NSHapticFeedbackPerformer> performer =
+      [NSHapticFeedbackManager defaultPerformer];
+  [performer performFeedbackPattern:NSHapticFeedbackPatternLevelChange
+                    performanceTime:NSHapticFeedbackPerformanceTimeNow];
+  [performer
+      performFeedbackPattern:NSHapticFeedbackPatternLevelChange
+             performanceTime:NSHapticFeedbackPerformanceTimeDrawCompleted];
+}
+void ShowBookmarkDeleteConfirmation(gfx::NativeWindow parent,
+                                    const std::u16string& title,
+                                    const std::u16string& body,
+                                    base::OnceCallback<void(bool)> completion) {
+  NSAlert* alert = [[NSAlert alloc] init];
+  alert.messageText = base::SysUTF16ToNSString(title.empty() ? body : title);
+  alert.informativeText =
+      base::SysUTF16ToNSString(title.empty() ? std::u16string() : body);
+  alert.alertStyle = NSAlertStyleWarning;
+  [alert addButtonWithTitle:@"Delete"];
+  NSButton* cancel = [alert addButtonWithTitle:@"Cancel"];
+  cancel.keyEquivalent = @"\e";
+  NSWindow* window = parent.GetNativeNSWindow();
+  if (window.sheetParent)
+    window = window.sheetParent;
+  if (window && !window.attachedSheet) {
+    // Original4152898 retains its native alert through completion, clears
+    // that ownership before invoking the one-shot action, and accepts only1000.
+    // The model action itself is bound to the genuine view owner's WeakPtr.
+    auto state =
+        std::make_shared<ConfirmationState>(alert, std::move(completion));
+    [alert beginSheetModalForWindow:window
+                  completionHandler:^(NSModalResponse response) {
+                    auto callback = std::move(state->completion);
+                    state->alert = nil;
+                    if (callback)
+                      std::move(callback).Run(response ==
+                                              NSAlertFirstButtonReturn);
+                  }];
+    return;
+  }
+  const NSModalResponse response = [alert runModal];
+  if (completion)
+    std::move(completion).Run(response == NSAlertFirstButtonReturn);
+}
+}  // namespace aux

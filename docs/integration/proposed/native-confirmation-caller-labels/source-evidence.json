@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "confirmation-native",
+      "rva": "0x4152118",
+      "bytes": 2504,
+      "sha256": "b76b3667babcb9837a9dfc32e62d357120fa1b5d48c20720fbb1de60b1e9da2d",
+      "assemblySha256": "bc2b9693c4edfcb656eb940b15d2377d6e66f73896a2fe92d340738f79d06e5b"
+    }
+  ],
+  "literals": [],
+  "data": [],
+  "apiInputs": [],
+  "inputs": [],
+  "nativeMessages": [],
+  "nativeClassRefs": []
+}

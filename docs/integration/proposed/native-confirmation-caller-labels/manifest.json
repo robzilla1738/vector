@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "applyAfter": "actual326 compiled native-vertical-bookmarks-owner helper; owner API327/328 disjoint",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation.h",
+      "baselineSha256": "8b7b0cddc168bb6096199bbf2cbae9c3a526fe5141bea79b2235b52ba6838af9",
+      "outputSha256": "e941bcaf014886afa7525351b8762cf586f1a42a4dbdfd075b45eaa58e964a4e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+      "baselineSha256": "7848f9665bb06924ce6d13a66616aa12536db1c9e63abe7d7bedd399039af7fb",
+      "outputSha256": "e50fc39c755c3609c1a4169ea74d980729031fdccf6470fb0c653036849d579b",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
