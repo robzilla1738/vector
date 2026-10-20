@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "Applied native v249; actual focused compile session15726 terminated with one failed object (two namespace diagnostics).",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": "262ad8da4335c7e13eee37f43dc77002abba411f2b478e05ab6569fdcdc128b3",
+      "outputSha256": "fbdca579d5396cf363a2c9dee550174bf341b13077eab98791d26f9212caa234"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

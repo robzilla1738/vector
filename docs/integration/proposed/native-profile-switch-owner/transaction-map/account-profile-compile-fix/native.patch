@@ -1,0 +1,15 @@
+--- a/chrome/browser/aux/account_profile_updater.cc
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -227,10 +227,10 @@
+     syncer::SyncPrefs sync(prefs);
+     const auto user = prefs->GetString(kUser);
+     if (!user.empty()) sync.ClearEncryptionBootstrapTokenForAccount(GaiaId(user));
+-    else prefs->ClearPref(syncer::prefs::kSyncEncryptionBootstrapToken);
++    else prefs->ClearPref(syncer::prefs::internal::kSyncEncryptionBootstrapToken);
+     if (!weak) return;
+     if (sync.IsInitialSyncFeatureSetupComplete())
+-      prefs->SetDict(syncer::prefs::kSyncEncryptionBootstrapTokenPerAccount,
++      prefs->SetDict(syncer::prefs::internal::kSyncEncryptionBootstrapTokenPerAccount,
+                      base::DictValue());
+     if (!weak) return;
+     sync.ClearCachedPassphraseType();

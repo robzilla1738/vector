@@ -1,0 +1,5 @@
+# Actual Chromium155 updater compile fix
+
+Pinned against applied native v249 and the actual terminal focused build15726 (`v248-focused-build.log` is the script's historical filename). The build completed nine steps with one failed object: `account_profile_updater.o` reported precisely two namespace diagnostics. Actual `components/sync/base/pref_names.h` declares both original pref constants inside `syncer::prefs::internal` at116/122. This two-line correction uses that real current155 namespace; it does not change their literal key bytes, reset conditions, sync behavior, account admission, authorization or avatar effects.
+
+One source output with exact baseline/output hashes and one occurrence per corrected anchor. Exact patch replay in a fresh temporary directory passed. No shared native writes, GN changes, builds, program execution, network/auth, Keychain or owner-state operations occurred. Root reports the actual linked seven-scenario pure probe executed under the native lock with exit0. Compilation of this correction remains integrator work; no browser/runtime fidelity claim is made here. The previous full owner proposal stays immutable.

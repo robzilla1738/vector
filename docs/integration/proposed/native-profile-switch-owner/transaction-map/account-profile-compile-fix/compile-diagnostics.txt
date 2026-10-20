@@ -1,0 +1,13 @@
+[0/11] 13.43s F CXX obj/chrome/browser/aux/account_profile_source/account_profile_source.o
+[1/11] 13.62s F CXX obj/chrome/browser/aux/account_profile_source_probe/account_profile_source_probe.o
+[2/9] 15.20s F CXX obj/chrome/browser/aux/account_bootstrap_state/account_bootstrap_state.o
+[3/9] 15.32s F CXX obj/chrome/browser/profiles/misc/profile_key.o
+[4/9] 16.97s F CXX obj/chrome/browser/aux/account_profile_updater/account_profile_avatar.o
+[5/9] 19.45s F CXX obj/chrome/browser/aux/platform/browser_platform.o
+../../chrome/browser/aux/account_profile_updater.cc:230:27: error: no member named 'kSyncEncryptionBootstrapToken' in namespace 'syncer::prefs'; did you mean 'syncer::prefs::internal::kSyncEncryptionBootstrapToken'?
+../../components/sync/base/pref_names.h:116:23: note: 'syncer::prefs::internal::kSyncEncryptionBootstrapToken' declared here
+../../chrome/browser/aux/account_profile_updater.cc:233:22: error: no member named 'kSyncEncryptionBootstrapTokenPerAccount' in namespace 'syncer::prefs'; did you mean 'syncer::prefs::internal::kSyncEncryptionBootstrapTokenPerAccount'?
+../../components/sync/base/pref_names.h:122:23: note: 'syncer::prefs::internal::kSyncEncryptionBootstrapTokenPerAccount' declared here
+[7/9] 27.11s F LINK ./account_profile_source_probe
+[8/9] 45.28s F CXX obj/chrome/browser/profiles/profiles_extra_parts_impl/chrome_browser_main_extra_parts_profiles.o
+45.52s Build Failure: 9 done, 1 failed, 0 remaining - 0.20/s

@@ -1,0 +1,33 @@
+{
+  "actualBuildLog": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v248-focused-build.log",
+    "sha256": "f59d5baa5688e013f226f2f3ba6466a4a4b2396672d934a570580566404349f8",
+    "terminal": "45.52s Build Failure: 9 done, 1 failed, 0 remaining",
+    "failedObject": "account_profile_updater.o",
+    "errors": 2
+  },
+  "currentHeader": {
+    "path": "components/sync/base/pref_names.h",
+    "sha256": "5f6de56e035bb255acd6ff309750041de0f1cbf04edb2cbd0b4c51ce1b5cbd70",
+    "namespace": "syncer::prefs::internal",
+    "declarationsAtLines": [
+      116,
+      122
+    ]
+  },
+  "effectsPreserved": [
+    "sync.encryption_bootstrap_token",
+    "sync.encryption_bootstrap_token_per_account",
+    "All account selection/admission/avatar/auth/sync clear conditions unchanged."
+  ],
+  "verification": {
+    "exactAnchorCounts": [
+      1,
+      1
+    ],
+    "exactPatchReplay": true,
+    "newCompile": false,
+    "runtime": false,
+    "sharedNativeWrites": false
+  }
+}
