@@ -2,6 +2,14 @@
 
 Aux reuses the owner's supplied Aside implementation on Chromium. Preserve its UI, behavior, daemon, extensions, CLI, skills, helpers and runtime. Aside wins when the retired independent implementation differs. Change visible branding to Aux and isolate app/extension identities, state and endpoints. The active [reuse plan](../plans/2026-10-19-supplied-implementation-reuse.md) supersedes independent reconstruction.
 
+## Password-manager scope exception — 2026-10-20
+
+The owner explicitly excludes the built-in password manager from Aside parity. Do not ship the supplied Vault product, Aux password storage, Vault onboarding/unlock/recovery screens, or first-party password autofill UI. Support users' existing password managers through their browser extensions (for example, 1Password). Extension installation, autofill and optional desktop-app/native-messaging compatibility require actual verification; do not claim support from Chromium compatibility alone.
+
+Normal browsing and agent/chat startup must not depend on setting up or unlocking a password vault. Separate those dependencies before removing shared code. Browser/daemon installation authentication, AI provider credentials and ordinary site sessions remain necessary and are not user-password-manager features. Do not remove their security controls or fabricate unlocked/account state. Do not delete existing owner credentials or profiles.
+
+This exception supersedes Vault preservation and acceptance requirements elsewhere in older plans/status records. Removing the shipped Vault surfaces and dependencies is pending implementation.
+
 ## Source and identity
 
 - Agent/Vault target: `1.26.1016.1852`; daemon: `1.26.1016.1852`; supplied CLI: `1.26.1015`; runtime: `1.26.1019.335`. Pin actual files and executable/SEA hashes before transforming them.
@@ -27,7 +35,7 @@ CDP verifies its original raw32-byte challenge, without the HTTP domain prefix. 
 
 ## Local behavior and isolation
 
-- Preserve actual account/profile/PWM state, original installation cryptography and the supplied Vault setup/unlock/recovery flow. Do not synthesize onboarding completion, unlocked state, subscriptions or cloud responses.
+- Preserve actual account/profile state and original installation cryptography. Decouple local browsing and agent startup from the excluded Vault product. Do not synthesize onboarding completion, unlocked state, subscriptions or cloud responses.
 - Keep Aux state/endpoints separate from Aside. Defaults are daemon21520, bridge21522 and secure browser CDP45203. Never attach to or terminate the owner's Aside services.
 - Bundled runtime/model/catalog payloads are immutable seeds. Actual mutable npm/pip/bytecode state uses the private Aux home. Preserve original cached-runtime validation, update failures and task readiness behavior.
 - Preserve the original native addon. Use the reviewed fixed guard/interposer/carrier and scoped original DP semantics; no owner-group fallback, replacement PEM authority or file-Keychain backend.

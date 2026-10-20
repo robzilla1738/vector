@@ -2,6 +2,12 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Latest scope change — external password managers
+
+Owner direction, 2026-10-20: exclude the built-in Vault/password manager from Aux. Users bring existing password managers such as 1Password through browser extensions. Historical Vault implementation and acceptance notes below no longer define required product scope.
+
+Status: direction recorded; runtime removal is not yet implemented. Pending: remove Vault product surfaces/bundling, decouple normal browser and agent startup from Vault setup/unlock while preserving installation authentication and secure provider credentials, and verify third-party extension installation/autofill plus applicable desktop-app/native messaging. No owner credentials or profiles were modified.
+
 ## Current acceptance gates
 
 The owner authorized local signing on 2026-10-20. The copied signed development app is now `out/provided-candidate-v498-development-local/Aux.app`, running in the previously approved disposable Aux scope with a regular browser profile. The account startup error is resolved; the actual window shows the supplied **Sign in to Aux** onboarding page. No cloud sign-in was completed by the agent.

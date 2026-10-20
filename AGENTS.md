@@ -4,6 +4,10 @@ Aux reuses the implementation supplied by the owner, preserving its UI and behav
 
 Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
 
+## Owner scope exception — 2026-10-20
+
+Do not ship a built-in Aux password manager or the supplied Vault product. Users integrate their existing password managers, such as 1Password, through browser extensions. This overrides Vault preservation/parity requirements below. Remove Vault product surfaces and decouple browser/agent startup from Vault setup; retain required installation authentication and secure AI-provider credential handling. Third-party extension/autofill/native-messaging compatibility must be verified, not assumed. See `docs/design/aside-contract.md`. Do not delete owner credentials or profiles.
+
 ## Implementation policy
 
 - Reuse the supplied source and packaged implementation directly. Preserve component structure, CSS, typography, layout, interactions and behavior. Do not approximate them with newly designed screens.

@@ -4,9 +4,21 @@ Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reco
 
 On 2026-10-20 the owner explicitly authorized bounded local development signing to resolve the real account startup failure. That exception is implemented for the copied v498 development app and previously approved disposable Aux scope; see `docs/acceptance/provided-v498-local-auth-repair.json`. It does not authorize release, owner-profile access or unrelated OS grants. Broader no-signing statements below retain their ordinary-development scope outside this repair.
 
+## Owner scope change — 2026-10-20
+
+Aux will not include its own password manager or the supplied Vault product. Users bring their existing password managers, such as 1Password, through browser extensions. This overrides all Vault reuse, UI parity and acceptance requirements below; pinned Vault inputs remain historical source evidence, not a shipping requirement.
+
+Implementation follow-up:
+- Remove built-in Vault entrypoints, settings, onboarding, password-save/autofill prompts and packaged product surfaces.
+- Decouple browser and agent/chat startup from Vault setup/unlock without bypassing installation authentication or exposing provider credentials. Audit shared consumers before removing code or resources.
+- Preserve ordinary third-party extension installation and autofill; verify representative password-manager extension behavior in a disposable profile. Verify desktop companion/native messaging separately where supported by the vendor.
+- Do not import or migrate user passwords into Aux. Do not delete existing credentials or owner profiles.
+
+These are pending implementation and compatibility checks, not completed features. Browser UI and agent parity remain the priority.
+
 ## Goal
 
-Reuse the implementation supplied by the owner, preserve its UI and behavior, and change its branding, assets and identifiers to Aux. Deliver the faithful local Aux browser, including the supplied daemon, Agent/Vault UI, CLI, helpers and runtimes as needed. Adapt that implementation to Aux Chromium instead of replacing it with approximate screens or behavior.
+Reuse the implementation supplied by the owner, preserve its UI and behavior, and change its branding, assets and identifiers to Aux. Deliver the faithful local Aux browser, including the supplied daemon, Agent UI, CLI, helpers and runtimes as needed, excluding the built-in Vault/password manager. Adapt that implementation to Aux Chromium instead of replacing it with approximate screens or behavior.
 
 Work locally on main, use parallel agents for substantial disjoint implementation, keep tests focused, and continue until the requested result is complete. No push, hosted Actions, signing, provisioning, notarization or release. Earlier scoped authentication-helper signing evidence is historical and is not part of current development work.
 
