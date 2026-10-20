@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "parent": "actual419",
+  "discoveryPatchSha256": "47b9524d440cd6c53ab6f27c28f43ee8809dc0bbeb18555cc337e411d4457ea3",
+  "readerSteps": [
+    {
+      "version": 1,
+      "applyAfter": "v420",
+      "kind": "Verified nonoverlapping discovery/reader source integration",
+      "originalProposal": "native-browser-import-password-stores",
+      "originalManifestSha256": "1b513cd1d5a7cb9c8d8486afbac85dd6e96e346ff8f0a3244492d56da8d46edc",
+      "patchSha256": "10bf1447d8086d7b0b02c825408885ac66c8424f5a116aa79e4692b76744cc7b",
+      "files": [
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+          "baselineSha256": "93bf82fb3405d13356310f7d3f4fc005f58f1bec644fd88ebe8265a4955156fa",
+          "originalBaselineSha256": "bf21cf5985b31bd39f50e646e32de5b914e55da64a2dcccb470acfce303ab21f",
+          "originalOutputSha256": "62e00dcab50452ac9b05dec7dbd711e33f84e43a2f4710eb634f1b05a4aa4e37",
+          "outputSha256": "35780fd30b067e78ee6829c66e69f80707233124da061df6980cc3c6473d7bf4"
+        }
+      ],
+      "compiled": false,
+      "runtimeAcceptance": false
+    },
+    {
+      "version": 1,
+      "applyAfter": "v421",
+      "kind": "Verified nonoverlapping discovery/reader source integration",
+      "originalProposal": "native-browser-import-blocked-partial",
+      "originalManifestSha256": "a7ad0b950827369296b9b51fd2abb4e9fa6fd51f38ee5e86791b5f227baf1c8c",
+      "patchSha256": "3dcee2d114bc37ce18bcffd7a54930641bc6ba6eb5bb11b5af3e3f696c09e646",
+      "files": [
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+          "baselineSha256": "35780fd30b067e78ee6829c66e69f80707233124da061df6980cc3c6473d7bf4",
+          "originalBaselineSha256": "62e00dcab50452ac9b05dec7dbd711e33f84e43a2f4710eb634f1b05a4aa4e37",
+          "originalOutputSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517",
+          "outputSha256": "a44f9d27f644278142aefd3d99d91faf67c223198171ca92ed4c4668952c92b3"
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+          "baselineSha256": "9134c1a508e56453689717309b332503cac2a67df37f0815ce89eeebe3e057be",
+          "originalBaselineSha256": "9acdaba6e85c4801c500e195abf98b6e044aca499c36c330834528e50fb175a9",
+          "originalOutputSha256": "e828a3d7fd911e33614552e3fd8a0e22b7dce98bce2afae01422b155b6568971",
+          "outputSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3"
+        }
+      ],
+      "compiled": false,
+      "runtimeAcceptance": false
+    },
+    {
+      "version": 1,
+      "applyAfter": "v422",
+      "kind": "Verified nonoverlapping discovery/reader source integration",
+      "originalProposal": "native-browser-import-optional-key",
+      "originalManifestSha256": "559c92c182d863ad60ac79ebb67b081cfb83a93e16792ccc65a59b6a4fe23aea",
+      "patchSha256": "050e0f42adfcb969ec0c0414c9b2165c2a22f2ac8e4c56e9d7b851f687a0ae1d",
+      "files": [
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+          "baselineSha256": "a44f9d27f644278142aefd3d99d91faf67c223198171ca92ed4c4668952c92b3",
+          "originalBaselineSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517",
+          "originalOutputSha256": "33041b0ac7ceac62e36b1f4a17f20553fb945e74c7351775b12dd72b88694ee1",
+          "outputSha256": "0828eb23f0fa5c705c2ef75f04bafab1f037339bf84a1b543f88be2541a516ce"
+        }
+      ],
+      "compiled": false,
+      "runtimeAcceptance": false
+    }
+  ],
+  "reverseOrderByteEquality": true,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "outputSha256": "0828eb23f0fa5c705c2ef75f04bafab1f037339bf84a1b543f88be2541a516ce"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "outputSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3"
+    }
+  ],
+  "sourceProfileOperations": false
+}

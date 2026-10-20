@@ -444,6 +444,10 @@ steps.extend([
     ('native-browser-import-explicit-kinds/native.patch', 'native-browser-import-explicit-kinds/manifest.json'),
     ('native-browser-import-safe-storage/native.patch', 'native-browser-import-safe-storage/manifest.json'),
     ('native-browser-import-validation-errors/native.patch', 'native-browser-import-validation-errors/manifest.json'),
+    ('native-browser-import-discovery/native.patch', 'native-browser-import-discovery/manifest.json'),
+    ('native-browser-import-password-stores/native.patch', 'native-browser-import-reader-integration/manifest-v421.json'),
+    ('native-browser-import-blocked-partial/native.patch', 'native-browser-import-reader-integration/manifest-v422.json'),
+    ('native-browser-import-optional-key/native.patch', 'native-browser-import-reader-integration/manifest-v423.json'),
 ])
 
 if options.through:

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "v422",
+  "kind": "Verified nonoverlapping discovery/reader source integration",
+  "originalProposal": "native-browser-import-optional-key",
+  "originalManifestSha256": "559c92c182d863ad60ac79ebb67b081cfb83a93e16792ccc65a59b6a4fe23aea",
+  "patchSha256": "050e0f42adfcb969ec0c0414c9b2165c2a22f2ac8e4c56e9d7b851f687a0ae1d",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "a44f9d27f644278142aefd3d99d91faf67c223198171ca92ed4c4668952c92b3",
+      "originalBaselineSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517",
+      "originalOutputSha256": "33041b0ac7ceac62e36b1f4a17f20553fb945e74c7351775b12dd72b88694ee1",
+      "outputSha256": "0828eb23f0fa5c705c2ef75f04bafab1f037339bf84a1b543f88be2541a516ce"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

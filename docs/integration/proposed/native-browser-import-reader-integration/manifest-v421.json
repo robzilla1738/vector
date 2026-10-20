@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "v420",
+  "kind": "Verified nonoverlapping discovery/reader source integration",
+  "originalProposal": "native-browser-import-password-stores",
+  "originalManifestSha256": "1b513cd1d5a7cb9c8d8486afbac85dd6e96e346ff8f0a3244492d56da8d46edc",
+  "patchSha256": "10bf1447d8086d7b0b02c825408885ac66c8424f5a116aa79e4692b76744cc7b",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "93bf82fb3405d13356310f7d3f4fc005f58f1bec644fd88ebe8265a4955156fa",
+      "originalBaselineSha256": "bf21cf5985b31bd39f50e646e32de5b914e55da64a2dcccb470acfce303ab21f",
+      "originalOutputSha256": "62e00dcab50452ac9b05dec7dbd711e33f84e43a2f4710eb634f1b05a4aa4e37",
+      "outputSha256": "35780fd30b067e78ee6829c66e69f80707233124da061df6980cc3c6473d7bf4"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
