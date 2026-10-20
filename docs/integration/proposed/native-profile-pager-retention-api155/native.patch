@@ -1,0 +1,147 @@
+--- a/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
++++ b/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
+@@ -13,57 +13,57 @@
+ #include "chrome/browser/ui/views/profiles/aux_profile_indicator_icons.inc"
+ struct IndicatorIcon {
+   std::string_view name;
+-  const gfx::VectorIcon* icon;
++  const gfx::VectorIcon& icon;
+ };
+ const IndicatorIcon kIcons[] = {
+-    {"sun", &kSunIcon},
+-    {"moon", &kMoonIcon},
+-    {"cloud", &kCloudIcon},
+-    {"zap", &kZapIcon},
+-    {"heart", &kHeartIcon},
+-    {"flame", &kFlameIcon},
+-    {"star", &kStarIcon},
+-    {"magic_wand", &kMagicWandIcon},
+-    {"thumbs_up", &kThumbsUpIcon},
+-    {"diamond", &kDiamondIcon},
+-    {"book", &kBookIcon},
+-    {"magic_book", &kMagicBookIcon},
+-    {"hourglass", &kHourglassIcon},
+-    {"clock", &kClockIcon},
+-    {"smile", &kSmileIcon},
+-    {"slime", &kSlimeIcon},
+-    {"lock", &kLockIcon},
+-    {"map_pin", &kMapPinIcon},
+-    {"pin", &kPinIcon},
+-    {"tag", &kTagIcon},
+-    {"flag", &kFlagIcon},
+-    {"shopping_bag", &kShoppingBagIcon},
+-    {"suitcase", &kSuitcaseIcon},
+-    {"banknote", &kBanknoteIcon},
+-    {"telescope", &kTelescopeIcon},
+-    {"trophy", &kTrophyIcon},
+-    {"rocket", &kRocketIcon},
+-    {"ticket", &kTicketIcon},
+-    {"camera", &kCameraIcon},
+-    {"folder", &kFolderIcon},
+-    {"bookmark", &kBookmarkIcon},
+-    {"pencil", &kPencilIcon},
+-    {"write", &kWriteIcon},
+-    {"brush", &kBrushIcon},
+-    {"palette", &kPaletteIcon},
+-    {"half_circle", &kHalfCircleIcon},
+-    {"atom", &kAtomIcon},
+-    {"headphones", &kHeadphonesIcon},
+-    {"bell", &kBellIcon},
+-    {"email", &kEmailIcon},
+-    {"chart", &kChartIcon},
+-    {"form_circle", &kFormCircleIcon},
+-    {"form_square", &kFormSquareIcon},
+-    {"form_diamond", &kFormDiamondIcon},
+-    {"form_flower", &kFormFlowerIcon},
+-    {"cursor", &kCursorIcon},
+-    {"console", &kConsoleIcon},
+-    {"bubble", &kBubbleIcon},
++    {"sun", kSunIcon},
++    {"moon", kMoonIcon},
++    {"cloud", kCloudIcon},
++    {"zap", kZapIcon},
++    {"heart", kHeartIcon},
++    {"flame", kFlameIcon},
++    {"star", kStarIcon},
++    {"magic_wand", kMagicWandIcon},
++    {"thumbs_up", kThumbsUpIcon},
++    {"diamond", kDiamondIcon},
++    {"book", kBookIcon},
++    {"magic_book", kMagicBookIcon},
++    {"hourglass", kHourglassIcon},
++    {"clock", kClockIcon},
++    {"smile", kSmileIcon},
++    {"slime", kSlimeIcon},
++    {"lock", kLockIcon},
++    {"map_pin", kMapPinIcon},
++    {"pin", kPinIcon},
++    {"tag", kTagIcon},
++    {"flag", kFlagIcon},
++    {"shopping_bag", kShoppingBagIcon},
++    {"suitcase", kSuitcaseIcon},
++    {"banknote", kBanknoteIcon},
++    {"telescope", kTelescopeIcon},
++    {"trophy", kTrophyIcon},
++    {"rocket", kRocketIcon},
++    {"ticket", kTicketIcon},
++    {"camera", kCameraIcon},
++    {"folder", kFolderIcon},
++    {"bookmark", kBookmarkIcon},
++    {"pencil", kPencilIcon},
++    {"write", kWriteIcon},
++    {"brush", kBrushIcon},
++    {"palette", kPaletteIcon},
++    {"half_circle", kHalfCircleIcon},
++    {"atom", kAtomIcon},
++    {"headphones", kHeadphonesIcon},
++    {"bell", kBellIcon},
++    {"email", kEmailIcon},
++    {"chart", kChartIcon},
++    {"form_circle", kFormCircleIcon},
++    {"form_square", kFormSquareIcon},
++    {"form_diamond", kFormDiamondIcon},
++    {"form_flower", kFormFlowerIcon},
++    {"cursor", kCursorIcon},
++    {"console", kConsoleIcon},
++    {"bubble", kBubbleIcon},
+ };
+ }  // namespace
+ 
+@@ -75,7 +75,7 @@
+   const std::string name = entry->GetAuxProfileIndicatorIconName();
+   for (const auto& candidate : kIcons) {
+     if (candidate.name == name) {
+-      return candidate.icon;
++      return &candidate.icon;
+     }
+   }
+   return nullptr;
+--- a/chrome/browser/ui/views/frame/aux_profile_pager_drag.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_pager_drag.cc
+@@ -151,13 +151,13 @@
+   int distance = std::numeric_limits<int>::max();
+   for (size_t candidate = 0; candidate < buttons_->size(); ++candidate) {
+     const int next =
+-        std::abs(base::ClampSub(center, Slot(candidate).CenterPoint().x()));
++        base::ClampSub(center, Slot(candidate).CenterPoint().x()).Abs().RawValue();
+     if (next < distance) {
+       distance = next;
+       nearest = candidate;
+     }
+   }
+-  const int y = std::clamp(base::ClampSub(point.y(), pressed_local.y()), -6, 6);
++  const int y = std::clamp(base::ClampSub(point.y(), pressed_local.y()).RawValue(), -6, 6);
+   if (nearest != *index) {
+     Move(*index, nearest);
+   }
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_retention.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_retention.h
+@@ -7,7 +7,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "ui/events/event_observer.h"
+ #include "ui/gfx/geometry/point.h"
+ #include "ui/views/view_tracker.h"

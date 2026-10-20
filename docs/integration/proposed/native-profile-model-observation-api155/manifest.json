@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc",
+      "baselineSha256": "2ab2dcfd1e23a31ef48f69c5cf8423b571690e5b2ecd4a30f9c4c686fa902f30",
+      "outputSha256": "8f446f51ca6c6e9c428205e3909abc958265f207586fd8db96adb8b34e074c2e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_retention.h",
+      "baselineSha256": "64b6be106ceb6b760b8472f74ffee26067afa75d3301d91e9e85b605dfcde2b9",
+      "outputSha256": "7022bb6ee0eeaf01f720dc43f66e8ccbf87c694c7d00d57e8dedb6ac4d16fbaa"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_retention.cc",
+      "baselineSha256": "b652f59e54eb40c8b1790df60c75cc9d9f65845d687af39583a3423a7e536c04",
+      "outputSha256": "4d19c2c1084926bffbd0c835dc5a287d8378e7d9485fbd431f1d4d83e7377e93"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,179 @@
+--- a/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
++++ b/chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc
+@@ -4,6 +4,8 @@
+ #include "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.h"
+ 
+ #include <string_view>
++
++#include "base/memory/raw_ptr_exclusion.h"
+ 
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+ #include "ui/gfx/vector_icon_types.h"
+@@ -13,57 +15,58 @@
+ #include "chrome/browser/ui/views/profiles/aux_profile_indicator_icons.inc"
+ struct IndicatorIcon {
+   std::string_view name;
+-  const gfx::VectorIcon& icon;
++  // Points only to the immortal, constant descriptors in this translation unit.
++  RAW_PTR_EXCLUSION const gfx::VectorIcon* icon;
+ };
+ const IndicatorIcon kIcons[] = {
+-    {"sun", kSunIcon},
+-    {"moon", kMoonIcon},
+-    {"cloud", kCloudIcon},
+-    {"zap", kZapIcon},
+-    {"heart", kHeartIcon},
+-    {"flame", kFlameIcon},
+-    {"star", kStarIcon},
+-    {"magic_wand", kMagicWandIcon},
+-    {"thumbs_up", kThumbsUpIcon},
+-    {"diamond", kDiamondIcon},
+-    {"book", kBookIcon},
+-    {"magic_book", kMagicBookIcon},
+-    {"hourglass", kHourglassIcon},
+-    {"clock", kClockIcon},
+-    {"smile", kSmileIcon},
+-    {"slime", kSlimeIcon},
+-    {"lock", kLockIcon},
+-    {"map_pin", kMapPinIcon},
+-    {"pin", kPinIcon},
+-    {"tag", kTagIcon},
+-    {"flag", kFlagIcon},
+-    {"shopping_bag", kShoppingBagIcon},
+-    {"suitcase", kSuitcaseIcon},
+-    {"banknote", kBanknoteIcon},
+-    {"telescope", kTelescopeIcon},
+-    {"trophy", kTrophyIcon},
+-    {"rocket", kRocketIcon},
+-    {"ticket", kTicketIcon},
+-    {"camera", kCameraIcon},
+-    {"folder", kFolderIcon},
+-    {"bookmark", kBookmarkIcon},
+-    {"pencil", kPencilIcon},
+-    {"write", kWriteIcon},
+-    {"brush", kBrushIcon},
+-    {"palette", kPaletteIcon},
+-    {"half_circle", kHalfCircleIcon},
+-    {"atom", kAtomIcon},
+-    {"headphones", kHeadphonesIcon},
+-    {"bell", kBellIcon},
+-    {"email", kEmailIcon},
+-    {"chart", kChartIcon},
+-    {"form_circle", kFormCircleIcon},
+-    {"form_square", kFormSquareIcon},
+-    {"form_diamond", kFormDiamondIcon},
+-    {"form_flower", kFormFlowerIcon},
+-    {"cursor", kCursorIcon},
+-    {"console", kConsoleIcon},
+-    {"bubble", kBubbleIcon},
++    {"sun", &kSunIcon},
++    {"moon", &kMoonIcon},
++    {"cloud", &kCloudIcon},
++    {"zap", &kZapIcon},
++    {"heart", &kHeartIcon},
++    {"flame", &kFlameIcon},
++    {"star", &kStarIcon},
++    {"magic_wand", &kMagicWandIcon},
++    {"thumbs_up", &kThumbsUpIcon},
++    {"diamond", &kDiamondIcon},
++    {"book", &kBookIcon},
++    {"magic_book", &kMagicBookIcon},
++    {"hourglass", &kHourglassIcon},
++    {"clock", &kClockIcon},
++    {"smile", &kSmileIcon},
++    {"slime", &kSlimeIcon},
++    {"lock", &kLockIcon},
++    {"map_pin", &kMapPinIcon},
++    {"pin", &kPinIcon},
++    {"tag", &kTagIcon},
++    {"flag", &kFlagIcon},
++    {"shopping_bag", &kShoppingBagIcon},
++    {"suitcase", &kSuitcaseIcon},
++    {"banknote", &kBanknoteIcon},
++    {"telescope", &kTelescopeIcon},
++    {"trophy", &kTrophyIcon},
++    {"rocket", &kRocketIcon},
++    {"ticket", &kTicketIcon},
++    {"camera", &kCameraIcon},
++    {"folder", &kFolderIcon},
++    {"bookmark", &kBookmarkIcon},
++    {"pencil", &kPencilIcon},
++    {"write", &kWriteIcon},
++    {"brush", &kBrushIcon},
++    {"palette", &kPaletteIcon},
++    {"half_circle", &kHalfCircleIcon},
++    {"atom", &kAtomIcon},
++    {"headphones", &kHeadphonesIcon},
++    {"bell", &kBellIcon},
++    {"email", &kEmailIcon},
++    {"chart", &kChartIcon},
++    {"form_circle", &kFormCircleIcon},
++    {"form_square", &kFormSquareIcon},
++    {"form_diamond", &kFormDiamondIcon},
++    {"form_flower", &kFormFlowerIcon},
++    {"cursor", &kCursorIcon},
++    {"console", &kConsoleIcon},
++    {"bubble", &kBubbleIcon},
+ };
+ }  // namespace
+ 
+@@ -75,7 +78,7 @@
+   const std::string name = entry->GetAuxProfileIndicatorIconName();
+   for (const auto& candidate : kIcons) {
+     if (candidate.name == name) {
+-      return &candidate.icon;
++      return candidate.icon;
+     }
+   }
+   return nullptr;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_retention.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_retention.h
+@@ -6,8 +6,8 @@
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+-#include "base/scoped_observation.h"
+-#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "base/memory/raw_ptr.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "ui/events/event_observer.h"
+ #include "ui/gfx/geometry/point.h"
+ #include "ui/views/view_tracker.h"
+@@ -40,8 +40,7 @@
+   base::RepeatingCallback<bool()> force_collapse_locked_;
+   bool retired_ = false;
+   std::unique_ptr<views::EventMonitor> monitor_;
+-  base::ScopedObservation<TabStripModel, TabStripModelObserver> model_observation_{
+-      this};
++  raw_ptr<TabStripModel> observed_model_ = nullptr;
+ };
+ }  // namespace aux
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_RETENTION_H_
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_retention.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_retention.cc
+@@ -28,7 +28,9 @@
+       force_collapse_locked_(std::move(force_collapse_locked)) {
+   CHECK(force_collapse_locked_);
+   region_.SetTrackEntireViewHierarchy(true);
+-  model_observation_.Observe(browser.GetTabStripModel());
++  observed_model_ = browser.GetTabStripModel();
++  CHECK(observed_model_);
++  observed_model_->AddObserver(this);
+ }
+ ProfilePreviewRetention::~ProfilePreviewRetention() { Retire(); }
+ 
+@@ -60,11 +62,12 @@
+ void ProfilePreviewRetention::Retire() {
+   retired_ = true;
+   DetachFromWidget();
+-  model_observation_.Reset();
++  TabStripModelObserver::StopObservingAll(this);
++  observed_model_ = nullptr;
+ }
+ 
+ void ProfilePreviewRetention::OnTabStripModelDestroyed(TabStripModel* model) {
+-  CHECK_EQ(model_observation_.GetSource(), model);
++  CHECK_EQ(observed_model_, model);
+   // Original4647c94 checks SAME source model before setting terminal f90.
+   Retire();
+ }

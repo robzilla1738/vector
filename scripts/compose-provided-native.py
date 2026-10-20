@@ -263,6 +263,17 @@ steps.extend([
     ('native-profile-indicator-icons/native.patch', 'native-profile-indicator-icons/manifest.json'),
     ('native-profile-pager-drag/native.patch', 'native-profile-pager-drag/manifest.json'),
     ('native-profile-pager-catalog-registration/native.patch', 'native-profile-pager-catalog-registration/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/account-gate-transaction-alignment/native.patch', 'native-profile-switch-owner/transaction-map/account-gate-transaction-alignment/manifest.json'),
+    ('native-profile-preview-retention-producers/native.patch', 'native-profile-preview-retention-producers/manifest.json'),
+    ('native-profile-retention-registration/native.patch', 'native-profile-retention-registration/manifest.json'),
+    ('native-profile-account-metadata/native.patch', 'native-profile-account-metadata/manifest.json'),
+    ('native-profile-account-metadata-registration/native.patch', 'native-profile-account-metadata-registration/manifest.json'),
+    ('native-profile-pager-retention-api155/native.patch', 'native-profile-pager-retention-api155/manifest.json'),
+    ('native-profile-model-observation-api155/native.patch', 'native-profile-model-observation-api155/manifest.json'),
+    ('native-profile-pager-owner/native.patch', 'native-profile-pager-owner/manifest.json'),
+    ('native-profile-header-menu-entry/native.patch', 'native-profile-header-menu-entry/manifest.json'),
+    ('native-profile-header-owner-registration/native.patch', 'native-profile-header-owner-registration/manifest.json'),
+    ('native-profile-preview-region-installer/native.patch', 'native-profile-preview-region-installer/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,3 @@
+# Actual Chromium155 pager and retention integration corrections
+
+The v240 focused compiler found raw-pointer field enforcement on immortal vector-icon descriptors, ambiguous numeric-wrapper overloads in pager geometry, and premature instantiation of tab-model observation before its explicit specialization. Store the same static icon objects by reference; unwrap the existing clamped arithmetic (including its saturating absolute value); and include the actual model specialization before ScopedObservation. Icon lookup, six-pixel drag clamp, observer lifecycle and original behavior remain intact.

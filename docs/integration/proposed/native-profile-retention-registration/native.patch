@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1135,6 +1135,10 @@
+       "views/frame/aux_vertical_sidebar_profile_button_controller.h",
+       "views/frame/aux_profile_preview_admission.cc",
+       "views/frame/aux_profile_preview_admission.h",
++      "views/frame/aux_profile_preview_retention.cc",
++      "views/frame/aux_profile_preview_retention.h",
++      "views/toolbar/aux_profile_retained_collapse_button.cc",
++      "views/toolbar/aux_profile_retained_collapse_button.h",
+       "views/frame/aux_profile_page_indicator_dot_button.cc",
+       "views/frame/aux_profile_page_indicator_dot_button.h",
+       "views/frame/aux_profile_pager_drag.cc",

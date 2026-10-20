@@ -1,0 +1,11 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -28,7 +28,7 @@
+ }
+ 
+ source_set("profile_state") {
+-  sources = [ "profile_state.cc", "profile_state.h" ]
++  sources = [ "profile_state.cc", "profile_state.h", "profile_account_metadata.cc", "profile_account_metadata.h" ]
+   public_deps = [ "//base" ]
+ }
+ 
