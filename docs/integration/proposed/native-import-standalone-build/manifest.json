@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "72570d989654647a1eeb1e14368031b6f652d24e22b337cd7bc2e8a69536faf6",
+      "outputSha256": "42b4475d056e051293b542afaae76d860df739fe39d9f1ea38d93eca56ddef7f",
+      "anchors": [
+        {
+          "find": "source_set(\"headers\")",
+          "replace": "source_set(\"standalone_window\") {\n public = [ \"//chrome/browser/ui/webui/aux_importer/import_standalone_window.h\" ]\n public_deps = [ \"//chrome/browser/profiles:profile\", \"//chrome/browser/ui/browser_window\" ]\n}\nsource_set(\"headers\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "7b3e683cb648c8a8ccbaef78052667b7ee294197bb6869695476a18ac1ceab02",
+      "outputSha256": "e58e393e9ee40d77339bbffdc70dade95e213c7b187f7fafead54887c0be2f7f",
+      "anchors": [
+        {
+          "find": "  if (enable_aux_browser && is_mac) {\n    deps += [\n      \"//base:i18n\",",
+          "replace": "  if (enable_aux_browser && is_mac) {\n    deps += [\n      \"//base:i18n\",\n      \"//chrome/browser/extensions/api/aux_browser_import:standalone_window\",",
+          "count": 1
+        },
+        {
+          "find": "      \"views/frame/aux_section_view.cc\",",
+          "replace": "      \"webui/aux_importer/import_standalone_window.mm\",\n      \"views/frame/aux_section_view.cc\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/settings/BUILD.gn",
+      "baselineSha256": "71c8420274801da526e7c21242a5f14b21c3ceeec92d35aa04c37188cce541de",
+      "outputSha256": "9582c1eba73f1c5e947d868433a23b63e57799259194d52d0a33795d15eaf7f3",
+      "anchors": [
+        {
+          "find": "source_set(\"impl\") {\n  public_deps = [ \"//chrome/browser:browser_public_dependencies\" ]",
+          "replace": "source_set(\"impl\") {\n  public_deps = [ \"//chrome/browser:browser_public_dependencies\" ]\n  if (enable_aux_browser && is_mac) {\n    public_deps += [ \"//chrome/browser/extensions/api/aux_browser_import:standalone_window\" ]\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -1,3 +1,7 @@
++source_set("standalone_window") {
++ public = [ "//chrome/browser/ui/webui/aux_importer/import_standalone_window.h" ]
++ public_deps = [ "//chrome/browser/profiles:profile", "//chrome/browser/ui/browser_window" ]
++}
+ source_set("headers") { sources = [ "aux_browser_import_api.h" ] public_deps = [ "//chrome/browser/extensions/api/aux_common" ] }
+ source_set("aux_browser_import") {
+  sources = [ "chromium_clone_worker.cc", "chromium_clone_worker.h", "chromium_clone_photo.h", "chromium_clone_photo_mac.mm", "chromium_import_destination.h", "chromium_new_target_import.h", "chromium_new_target_import.cc", "chromium_source_capture.h", "chromium_source_capture.cc", "//chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h", "//chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm", "source_profile_picker_mac.h", "source_profile_picker_mac.mm", "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "safari_import.cc", "safari_import.h", "firefox_cookie_import.cc", "firefox_cookie_import.h", "firefox_import.cc", "firefox_import.h", "chromium_profile_clone.cc", "chromium_profile_clone.h", "//chrome/browser/ui/webui/aux_importer/import_profile_metadata.h", "//chrome/browser/ui/webui/aux_importer/import_profile_metadata.cc", "//chrome/browser/ui/webui/aux_importer/import_completion_choice.h", "//chrome/browser/ui/webui/aux_importer/import_completion_choice.mm", "extension_import.cc", "extension_import.h", "import_webui.cc", "import_webui.h", "import_webui_resources.h", "//chrome/browser/ui/webui/aux_importer/safari_archive_picker.h", "//chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc", "//chrome/browser/ui/webui/aux_importer/import_target_chooser.h", "//chrome/browser/ui/webui/aux_importer/import_target_chooser.mm" ]
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1123,6 +1123,7 @@
+   if (enable_aux_browser && is_mac) {
+     deps += [
+       "//base:i18n",
++      "//chrome/browser/extensions/api/aux_browser_import:standalone_window",
+       "//chrome/browser/ui/tabs:aux_bookmark_tab_representation",
+       "//chrome/browser/extensions/api/aux_mini_popup",
+       "//chrome/browser/ui/tabs:aux_pinned_tab_entries",
+@@ -1130,6 +1131,7 @@
+       "//ui/snapshot",
+     ]
+     sources += [
++      "webui/aux_importer/import_standalone_window.mm",
+       "views/frame/aux_section_view.cc",
+       "views/frame/aux_section_view.h",
+       "views/frame/aux_tab_expand_chevron_view.cc",
+--- a/chrome/browser/ui/webui/settings/BUILD.gn
++++ b/chrome/browser/ui/webui/settings/BUILD.gn
+@@ -136,6 +136,9 @@
+ 
+ source_set("impl") {
+   public_deps = [ "//chrome/browser:browser_public_dependencies" ]
++  if (enable_aux_browser && is_mac) {
++    public_deps += [ "//chrome/browser/extensions/api/aux_browser_import:standalone_window" ]
++  }
+ 
+   sources = [
+     "about_handler.cc",
