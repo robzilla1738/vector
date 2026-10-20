@@ -1,0 +1,130 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "input.asm",
+      "start": "0x464c280",
+      "stop": "0x464cd40",
+      "bytesSha256": "1030bd43a71bfef0466a3572b1bd6cf8bdc96f31d3d9d68ec6831350d5151be4",
+      "extractSha256": "aa1ec2b16695d5a0af117ee26aa06ec36be4edb1aad7e1e07c02218de374f31e"
+    },
+    {
+      "file": "selection.asm",
+      "start": "0x46520e4",
+      "stop": "0x4652368",
+      "bytesSha256": "d58435de19a29e59afabbeceea3cb82f80d8a82910f710b51190cb73a07c7040",
+      "extractSha256": "47d74a43df254eba679411faa5bbe28e3c60e0ae699a600fde3871b425793cdd"
+    },
+    {
+      "file": "finish-cancel.asm",
+      "start": "0x4657570",
+      "stop": "0x4657810",
+      "bytesSha256": "2242164e9a4f490ebe12e15467c5a1f8e311707893fd745bb28cd5dd9c1c3598",
+      "extractSha256": "4fcde63bfc6a741094f09315f6acfd32174fb1c58f3382d6c81610c5966293eb"
+    },
+    {
+      "file": "commit.asm",
+      "start": "0x4656258",
+      "stop": "0x4656540",
+      "bytesSha256": "265f04c42815b190e68158cbd747617262d35f07b2575114c08943e5c1eacf56",
+      "extractSha256": "384ec94d41f5f8c70cccc7f410b7ebfab82f5ebf3c4084dad166e0bb3c9f7b73"
+    },
+    {
+      "file": "animation-ctor.asm",
+      "start": "0x37e0254",
+      "stop": "0x37e02b0",
+      "bytesSha256": "d9c34ef2b8de605cceb84e84e9f61878f6512db2ed310ec964e84735bc6099c3",
+      "extractSha256": "e3f62551e5fbf4cdb15deedfc0f1657858f2cd6ef11be0b35213609a0e894d03"
+    },
+    {
+      "file": "animation-progress.asm",
+      "start": "0x4649b30",
+      "stop": "0x4649be8",
+      "bytesSha256": "1e325c982d29167461c65ccef5d89dfad6facae300fbcfc0a46103a14c790cd7",
+      "extractSha256": "c0a9a9cdc385381bf243832bd62609ab6a8c6e811909e559fee100c9f3201451"
+    },
+    {
+      "file": "animation-end.asm",
+      "start": "0x464b490",
+      "stop": "0x464b5fc",
+      "bytesSha256": "387bdbe292ac84432e05fd9cb3dab8414e888412356082c3300090fc913504c5",
+      "extractSha256": "d7065ba40d109bbc6f89aea5a6bf8cfdfddb813c01d47bbe9bee45547258839f"
+    },
+    {
+      "file": "completion.asm",
+      "start": "0x467d4c8",
+      "stop": "0x467d640",
+      "bytesSha256": "859de0b700553b2fea1731597eaeb9b86d377de750aec541a87891f534d185b0",
+      "extractSha256": "19a5e24b436221978b30e9f1220e93f8adfc86969036c5d270451c08fe027d1d"
+    },
+    {
+      "file": "point-conversion.asm",
+      "start": "0x43f0144",
+      "stop": "0x43f01cc",
+      "bytesSha256": "ea6f791554c960296b75b168749f8e2c430ae3ec2ed401eec9c158d5624916c9",
+      "extractSha256": "20394e27bc72c833ed07d768b22094d641139372866ecaf78fe7cba25a5dae55"
+    }
+  ],
+  "constants": [
+    {
+      "name": "epsilon",
+      "address": "0xdf506ec",
+      "bytes": "6f12833a",
+      "value": 0.0010000000474974513
+    },
+    {
+      "name": "edge",
+      "address": "0xdf51900",
+      "bytes": "295c8f3e",
+      "value": 0.2800000011920929
+    },
+    {
+      "name": "edgeLimit",
+      "address": "0xdf50b34",
+      "bytes": "0ad7233e",
+      "value": 0.1599999964237213
+    },
+    {
+      "name": "duration",
+      "address": "0xdf4f6f0",
+      "bytes": "0000000080c00441",
+      "value": 170000.0
+    }
+  ],
+  "upstream": [
+    {
+      "path": "ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.cc",
+      "sha256": "a1d6f332d438dd56939a0703361c678490b3d7494875b409403346aff01f116c"
+    },
+    {
+      "path": "ui/events/event_constants.h",
+      "sha256": "faafc4e6950a16876bd631f5fd63faf8464ca2e51013e0c384c53378a85d7139"
+    },
+    {
+      "path": "ui/events/event.h",
+      "sha256": "2beb783f717f170cc53c404ed1be4f40b8301b53cf58f6094356acf76d7b9c78"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.h",
+      "sha256": "a9ba074e27e08a0aed78e293c41eeda5a421d07d089af1138e120df196f3aa59"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+      "sha256": "789f2df783a9cf88c8006b521d8eb7a1bd57fabaaf89b4bd5ee154e3183aa237"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h",
+      "sha256": "07b8750dfe6e71083348b1947e66e1058fa7e7f2d6d4f67599c2e7b661237a3e"
+    }
+  ],
+  "remaining": [
+    "Real region must bind recovered mode/collapsed/hover/retained/expansion guard and actual event registration/removal lifecycle.",
+    "No input hook installed, native build or gesture/UI acceptance."
+  ]
+}
