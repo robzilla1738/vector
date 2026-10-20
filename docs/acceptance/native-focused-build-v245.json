@@ -1,0 +1,38 @@
+{
+  "exitCode": 0,
+  "elapsedSeconds": 72.2139081954956,
+  "targets": {
+    "chrome/browser/ui/views/profiles/aux_profile_indicator_icon.cc": "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "chrome/browser/ui/views/frame/aux_profile_preview_retention.cc": "obj/chrome/browser/ui/ui/aux_profile_preview_retention.o",
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc": "obj/chrome/browser/ui/ui/aux_profile_retained_collapse_button.o",
+    "chrome/browser/ui/views/toolbar/toolbar_view.cc": "obj/chrome/browser/ui/views/toolbar/impl/toolbar_view.o",
+    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc": "obj/chrome/browser/ui/ui/aux_profile_page_indicator.o",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_header.cc": "obj/chrome/browser/ui/ui/aux_vertical_sidebar_profile_header.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_profile_indicator_icon.o",
+    "obj/chrome/browser/ui/ui/aux_profile_preview_retention.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "obj/chrome/browser/ui/ui/aux_profile_retained_collapse_button.o",
+    "obj/chrome/browser/ui/views/toolbar/impl/toolbar_view.o",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/ui/ui/aux_profile_page_indicator.o",
+    "obj/chrome/browser/ui/ui/aux_vertical_sidebar_profile_header.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "version": "v245",
+  "scope": "Eight actual native UI translation units; focused compilation only",
+  "fullBrowserCompiled": false,
+  "runtimeParity": false,
+  "log": "out/native-integration/v245-focused-build.log"
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "6b846559a2370b1f6c90e245708b4a954aa15afc727171ae5935f9753613ff5c",
+      "outputSha256": "2418f161a64c12f9992788529b4e4e0b67c59b77d8d5d2537c64785e996f87b6"
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "baselineSha256": "adfc94ede8a34bf7a5c89d51c788eeac0b04c8d20bbaf0fa5c55c396c7eace92",
+      "outputSha256": "b48b156e41b7c57f8b9a0f5eaf8631db841c282fd358d6714769882d6f4f6720"
+    }
+  ],
+  "compiled": false
+}

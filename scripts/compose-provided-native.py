@@ -274,6 +274,9 @@ steps.extend([
     ('native-profile-header-menu-entry/native.patch', 'native-profile-header-menu-entry/manifest.json'),
     ('native-profile-header-owner-registration/native.patch', 'native-profile-header-owner-registration/manifest.json'),
     ('native-profile-preview-region-installer/native.patch', 'native-profile-preview-region-installer/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/account-profile-owner/native.patch', 'native-profile-switch-owner/transaction-map/account-profile-owner/manifest.json'),
+    ('native-account-updater-registration/native.patch', 'native-account-updater-registration/manifest.json'),
+    ('native-account-updater-gn-api155/native.patch', 'native-account-updater-gn-api155/manifest.json'),
 ])
 
 if options.through:

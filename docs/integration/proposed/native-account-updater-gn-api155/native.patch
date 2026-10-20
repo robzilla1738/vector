@@ -1,0 +1,11 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -100,7 +100,7 @@
+     "//chrome/browser/profiles:profile_util", "//chrome/browser/sync:factories",
+     "//components/image_fetcher/core", "//components/keyed_service/core",
+     "//components/prefs", "//components/sync/base", "//components/sync/service",
+-    "//content/public/browser", "//google_apis/gaia", "//net",
++    "//content/public/browser", "//google_apis", "//net",
+     "//services/network/public/cpp", "//ui/gfx", "//url",
+   ]
+ }
