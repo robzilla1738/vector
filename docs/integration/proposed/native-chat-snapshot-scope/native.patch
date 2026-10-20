@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.h
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.h
+@@ -83,6 +83,7 @@
+   std::map<tabs::TabHandle, std::string> pending_navigation_;  // +1000.
+   std::map<tabs::TabHandle, base::TimeTicks> associated_at_;  // +10a8.
+   std::optional<PendingSelection> pending_selection_;  // +13d0.
++  bool processing_snapshot_ = false;  // Original region +11e9.
+   bool retired_ = false;
+   base::WeakPtrFactory<AuxChatTabOwner> weak_{this};
+ };
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
+@@ -44,8 +44,14 @@
+   pending_selection_.reset();
+ }
+ void AuxChatTabOwner::SetChats(const std::vector<std::string>& ids) {
++  if (!ScopeCurrent()) return;
+   chats_ = std::set<std::string>(ids.begin(), ids.end());
++  const bool previous = std::exchange(processing_snapshot_, true);
++  auto weak = weak_.GetWeakPtr();
+   Reconcile();
++  // Reconcile notifies the genuine owner and may retire this section. Restore
++  // only the surviving owner, including the original nested previous value.
++  if (weak) processing_snapshot_ = previous;
+ }
+ int AuxChatTabOwner::Index(tabs::TabHandle handle) const {
+   if (!ScopeCurrent()) return TabStripModel::kNoTab;
+@@ -262,7 +268,8 @@
+     associations_[handle] = id;
+     associated_at_[handle] = base::TimeTicks::Now();
+   }
+-  if (!state.suppress_auto_expansion) effects_.expand_chats.Run();
++  if (!processing_snapshot_ && !state.suppress_auto_expansion)
++    effects_.expand_chats.Run();
+ }
+ void AuxChatTabOwner::OnTabStripModelChanged(TabStripModel*,
+     const TabStripModelChange&, const TabStripSelectionChange&) { Reconcile(); }
