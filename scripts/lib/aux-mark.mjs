@@ -30,14 +30,16 @@ export async function readAuxMark() {
   };
 }
 
-export function auxMarkReactChildren(runtime, mark) {
+export function auxMarkReactChildren(runtime, mark, opacity = 0.3) {
   if (!/^\w+$/.test(runtime)) throw new Error('Invalid JSX runtime identifier');
+  if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1)
+    throw new Error('Invalid Aux mark opacity');
   const jsx = `(0,${runtime}.jsx)`,
     jsxs = `(0,${runtime}.jsxs)`;
   const paths = mark.paths
     .map((d) => `${jsx}("path",${JSON.stringify({ d, fill: 'currentColor' })})`)
     .join(',');
-  return `[${jsx}("defs",{children:${jsx}("clipPath",{id:${JSON.stringify(mark.clipId)},children:${jsx}("rect",${JSON.stringify({ width: mark.clipWidth, height: mark.clipHeight, fill: '#fff' })})})}),${jsxs}("g",{transform:${JSON.stringify(mark.transform)},clipPath:${JSON.stringify(`url(#${mark.clipId})`)},fillOpacity:.3,children:[${paths}]})]`;
+  return `[${jsx}("defs",{children:${jsx}("clipPath",{id:${JSON.stringify(mark.clipId)},children:${jsx}("rect",${JSON.stringify({ width: mark.clipWidth, height: mark.clipHeight, fill: '#fff' })})})}),${jsxs}("g",{transform:${JSON.stringify(mark.transform)},clipPath:${JSON.stringify(`url(#${mark.clipId})`)},fillOpacity:${opacity},children:[${paths}]})]`;
 }
 
 export function auxMarkSvg(mark, color, opacity) {

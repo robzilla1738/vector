@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { stageProvidedUi } from './provided-ui.mjs';
+import { readAuxMark } from './aux-mark.mjs';
 
 const pinned = JSON.parse(
   await readFile(
@@ -90,6 +91,18 @@ test('pinned supplied UI stages deterministically and rejects unreported adaptat
       }
       const files = first.components[component].files.map((file) => file.path);
       assert.ok(!files.some((path) => path.startsWith('aux-private-shim')));
+      const smallMarkPath = component === 'agent'
+        ? 'assets/tag-icon-DeMC7uIN.js'
+        : 'assets/popup-MxHiJ2Et.js';
+      const smallMark = await readFile(join(temporary, 'first', component, smallMarkPath), 'utf8');
+      for (const path of (await readAuxMark()).paths)
+        assert.ok(smallMark.includes(JSON.stringify(path)));
+      assert.ok(!smallMark.includes('M12 0.798752C18.0061'));
+      assert.ok(smallMark.includes('fillOpacity:1,children:'));
+      const smallSyntax = spawnSync(process.execPath,
+        ['--check', join(temporary, 'first', component, smallMarkPath)],
+        { encoding: 'utf8' });
+      assert.equal(smallSyntax.status, 0, smallSyntax.stderr);
     }
     await assert.rejects(
       stageProvidedUi({

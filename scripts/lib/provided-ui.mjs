@@ -19,6 +19,11 @@ const version = '1.26.1016.1852';
 const textFile = /\.(?:js|mjs|html|json|css|txt|svg)$/;
 const inlineMark =
   /(\w+=\w+=>\(0,(\w+)\.jsxs\)\("svg",\{width:64,height:64,viewBox:"0 0 64 64",fill:"none",xmlns:"http:\/\/www\.w3\.org\/2000\/svg",\.\.\.\w+,children:)\[\(0,\2\.jsxs\)\("g",\{clipPath:"url\(#clip0_3720_\d+\)"[\s\S]*?\{width:64,height:64,fill:"white"\}\)\}\)\}\)\]\}\)/g;
+const smallMarkFiles = {
+  agent: 'assets/tag-icon-DeMC7uIN.js',
+  vault: 'assets/popup-MxHiJ2Et.js',
+};
+const smallMark = /(\(0,(\w+)\.jsx\)\("svg",\{viewBox:"0 0 24 24",fill:"none",xmlns:"http:\/\/www\.w3\.org\/2000\/svg",width:\w+,height:\w+,"aria-hidden":\w+,focusable:"false",\.\.\.\w+,)children:\(0,\2\.jsx\)\("path",\{fillRule:"evenodd",clipRule:"evenodd",d:"M12 0\.798752C18\.0061[^"\n]+",fill:"currentColor"\}\)/g;
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const extensionId = (key) =>
   createHash('sha256')
@@ -233,6 +238,20 @@ export async function stageProvidedUi({
               kind: 'branding',
               find: match[0],
               replace: `${match[1].replace('viewBox:"0 0 64 64"', 'viewBox:"0 0 1024 1024"')}${auxMarkReactChildren(match[2], mark)}})`,
+              count: 1,
+            };
+            text = apply(text, anchor);
+            anchors.push(anchor);
+          }
+          if (file.path === smallMarkFiles[component]) {
+            const matches = [...text.matchAll(smallMark)];
+            if (matches.length !== 1)
+              throw new Error(`Small Aux mark anchor changed: ${component}/${file.path}`);
+            const match = matches[0];
+            const anchor = {
+              kind: 'branding',
+              find: match[0],
+              replace: `${match[1].replace('viewBox:"0 0 24 24"', 'viewBox:"0 0 1024 1024"')}children:${auxMarkReactChildren(match[2], mark, 1)}`,
               count: 1,
             };
             text = apply(text, anchor);

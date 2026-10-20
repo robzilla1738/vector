@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "composition": "v205",
+  "localDevelopmentOnly": true,
+  "candidate": "out/provided-candidate-v205-local/Aux.app",
+  "browserPid": 24615,
+  "daemonHealthPid": 24649,
+  "browserExecutableVerified": true,
+  "visibleOwnedWindow": {
+    "id": 32259,
+    "title": "Aux setup"
+  },
+  "screenshot": {
+    "path": "out/native-integration/v205-setup-window.png",
+    "sha256": "dac0008ef05bd757e8223a2bfd3949830a3b989cc09a56a65628130d0ec4ba34"
+  },
+  "observations": [
+    "Browser survives the previous TabContainer startup crash.",
+    "Supplied Agent sign-in UI is displayed in the disposable setup window.",
+    "Visible 24px product glyph still uses old artwork; corrected source transform awaits a fresh packaged observation.",
+    "Old setup window differs from original popup; staged original gate remains unapplied."
+  ],
+  "ownerCredentialsEntered": false,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false,
+  "stop": {
+    "observedOwnedPids": [
+      {
+        "pid": 24613,
+        "executable": null
+      },
+      {
+        "pid": 24615,
+        "executable": null
+      },
+      {
+        "pid": 24649,
+        "executable": null
+      }
+    ],
+    "auxListenerExitCode": 1,
+    "auxListeners": "",
+    "tempStateRetained": true,
+    "completeDetachedCleanupProven": false
+  }
+}

@@ -250,6 +250,7 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/profile-identity/native.patch', 'native-profile-switch-owner/transaction-map/profile-identity/manifest.json'),
     ('native-profile-switch-owner/transaction-map/account-profile-list/native.patch', 'native-profile-switch-owner/transaction-map/account-profile-list/manifest.json'),
     ('native-profile-switch-owner/transaction-map/profile-identity-optional-pref/native.patch', 'native-profile-switch-owner/transaction-map/profile-identity-optional-pref/manifest.json'),
+    ('native-profile-preview-admission/native.patch', 'native-profile-preview-admission/manifest.json'),
 ])
 
 if options.through:
