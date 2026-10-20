@@ -121,7 +121,8 @@ record = {
     'argsSha256': hashlib.sha256(args_bytes).hexdigest(),
     'command': command, 'buildExitCode': 0, 'generatedKeyProbePassed': True,
     'files': files, 'appFiles': app_files, 'recordedAt': datetime.now(timezone.utc).isoformat(),
-    'remaining': ['Guarded original-native loading and common Aux authority', 'Explicit local signing', 'Disposable packaged UI/runtime and functional acceptance'],
+    'localDevelopmentOnly': True,
+    'remaining': ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
 }
 receipt.parent.mkdir(parents=True, exist_ok=True)
 with receipt.open('x') as stream:
