@@ -1,0 +1,198 @@
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/ui/browser_actions.h"
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
+@@ -55,6 +56,7 @@
+ #include "components/lens/lens_features.h"
+ #include "components/omnibox/browser/omnibox_prefs.h"
+ #import "components/omnibox/common/omnibox_feature_configs.h"
++#import "components/remote_cocoa/app_shim/browser_native_widget_window_mac.h"
+ #import "components/remote_cocoa/app_shim/native_widget_mac_nswindow.h"
+ #import "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
+ #import "components/remote_cocoa/app_shim/window_touch_bar_delegate.h"
+@@ -77,6 +79,17 @@
+ 
+ namespace {
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++enum class AuxPopupKind { kNone, kAccountPassword, kExtension };
++AuxPopupKind GetAuxPopupKind(BrowserView* view) {
++  if (!view || !view->browser()) return AuxPopupKind::kNone;
++  const auto& name = BrowserInitState::From(view->browser())->create_params().app_name;
++  if (name == "aux-account-password-popup") return AuxPopupKind::kAccountPassword;
++  if (name == "aux-extension-popup") return AuxPopupKind::kExtension;
++  return AuxPopupKind::kNone;
++}
++#endif
++
+ AppShimHost* GetHostForBrowser(BrowserView* browser_view) {
+   auto* const shim_manager = apps::AppShimManager::Get();
+   if (!browser_view || !shim_manager) {
+@@ -266,6 +279,16 @@
+ void BrowserNativeWidgetMac::GetWindowFrameTitlebarHeight(
+     bool* override_titlebar_height,
+     float* titlebar_height) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  const auto popup = GetAuxPopupKind(browser_view_);
++  if (popup != AuxPopupKind::kNone) {
++    // Original4550500: account bootstrap has a zero-height native titlebar;
++    // the extension popup explicitly leaves titlebar height to AppKit.
++    *override_titlebar_height = popup == AuxPopupKind::kAccountPassword;
++    *titlebar_height = 0;
++    return;
++  }
++#endif
+   if (browser_view_ && browser_view_->browser_widget() &&
+       browser_view_->browser_widget()->GetFrameView()) {
+     *override_titlebar_height = true;
+@@ -715,6 +738,18 @@
+                        NSWindowStyleMaskMiniaturizable |
+                        NSWindowStyleMaskResizable;
+   CHECK(browser_view_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (GetAuxPopupKind(browser_view_) != AuxPopupKind::kNone) {
++    // Original45512e8 marker branch: native Browser window, style0x8003.
++    params->window_class = remote_cocoa::mojom::WindowClass::kBrowser;
++    params->style_mask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
++                         NSWindowStyleMaskFullSizeContentView;
++    params->titlebar_appears_transparent = true;
++    params->window_title_hidden = true;
++    params->animation_enabled = true;
++    return;
++  }
++#endif
+   if (browser_view_->GetIsPictureInPictureType()) {
+     // Picture in Picture windows, even if they are part of a web app, draw
+     // their own title bar and decorations.  Note that `GetIsWebAppType()` might
+@@ -745,6 +780,20 @@
+     const remote_cocoa::mojom::CreateWindowParams* params) {
+   CHECK(browser_view_);
+   NativeWidgetMacNSWindow* ns_window = NativeWidgetMac::CreateNSWindow(params);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  const auto popup = GetAuxPopupKind(browser_view_);
++  if (popup != AuxPopupKind::kNone) {
++    // Original4551750 uses the real BrowserNativeWidgetWindow and its frame.
++    // Both exclude background movement; the bootstrap hides all lights,
++    // while the extension popup retains only the close button.
++    ns_window.movableByWindowBackground = NO;
++    auto* browser_window = base::apple::ObjCCast<BrowserNativeWidgetWindow>(ns_window);
++    if (browser_window) {
++      [browser_window setCloseButtonOnly:popup == AuxPopupKind::kExtension];
++      [browser_window setTrafficLightsHidden:popup == AuxPopupKind::kAccountPassword];
++    }
++  }
++#endif
+   touch_bar_delegate_ = [[BrowserWindowTouchBarViewsDelegate alloc]
+       initWithBrowser:browser_view_->browser()
+                window:ns_window];
+--- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
++++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
+@@ -12,6 +12,11 @@
+ // When set to `YES`, the traffic lights will always be shown. When set to `NO`,
+ // the traffic lights follow the default AppKit behavior.
+ - (void)setAlwaysShowTrafficLights:(BOOL)alwaysShow;
++// Supplied native popup frame state. These use the actual standard buttons,
++// and survive AppKit layout/reveal updates through the existing frame owner.
++- (void)setCloseButtonOnly:(BOOL)closeOnly;
++- (void)setTrafficLightsHidden:(BOOL)hidden;
++
+ // A controller that keeps a small portion (0.5px) of the fullscreen AppKit
+ // NSWindow on screen.
+ // This controller is used as a workaround for an AppKit bug
+--- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
++++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
+@@ -38,6 +38,9 @@
+ @implementation BrowserWindowFrame {
+   BOOL _inFullScreen;
+   BOOL _alwaysShowTrafficLights;
++  BOOL _closeButtonOnly;
++  BOOL _trafficLightsHidden;
++  BOOL _hasExplicitPopupTrafficLightState;
+ }
+ 
+ // NSThemeFrame overrides.
+@@ -119,10 +122,34 @@
+   [self maybeShowTrafficLights];
+ }
+ 
++- (void)setCloseButtonOnly:(BOOL)closeOnly {
++  _hasExplicitPopupTrafficLightState = YES;
++  _closeButtonOnly = closeOnly;
++  [self setNeedsLayout:YES];
++  [self layoutSubtreeIfNeeded];
++  [self updateTrafficLightButtons];
++}
++
++- (void)setTrafficLightsHidden:(BOOL)hidden {
++  _hasExplicitPopupTrafficLightState = YES;
++  _trafficLightsHidden = hidden;
++  [self setNeedsLayout:YES];
++  [self layoutSubtreeIfNeeded];
++  [self updateTrafficLightButtons];
++}
++
++- (void)layout {
++  [super layout];
++  [self maybeShowTrafficLights];
++}
++
+ - (void)maybeShowTrafficLights {
+-  if (!_alwaysShowTrafficLights) {
+-    return;
+-  }
++  if (_hasExplicitPopupTrafficLightState || _alwaysShowTrafficLights ||
++      _closeButtonOnly || _trafficLightsHidden)
++    [self updateTrafficLightButtons];
++}
++
++- (void)updateTrafficLightButtons {
+   NSWindow* window = [self window];
+   const NSWindowButton kButtons[] = {
+       NSWindowCloseButton,
+@@ -133,11 +160,22 @@
+     NSButton* button = [window standardWindowButton:type];
+     CHECK(button);
+     CHECK([button isKindOfClass:[_NSThemeWidget class]]);
+-    [button setAlphaValue:1.0];
++    const BOOL shown = !_trafficLightsHidden &&
++                       (type == NSWindowCloseButton || !_closeButtonOnly);
++    const CGFloat amount = shown ? 1.0 : 0.0;
++    [button setAlphaValue:amount];
++    [button setHidden:!shown];
++    [button setEnabled:shown];
+     // macOS 27 adds -[NSThemeWidget setRevealAmount:] to control the visibility
+     // of the traffic lights.
+     if ([button respondsToSelector:@selector(setRevealAmount:)]) {
+-      [(_NSThemeWidget*)button setRevealAmount:1.0];
++      [(_NSThemeWidget*)button setRevealAmount:amount];
++      // Original43812b4..12f0 also updates the actual cell's control view on27.
++      if (@available(macOS 27, *)) {
++        NSView* control_view = button.cell.controlView;
++        if ([control_view respondsToSelector:@selector(setRevealAmount:)])
++          [(_NSThemeWidget*)control_view setRevealAmount:amount];
++      }
+     }
+   }
+ }
+@@ -220,4 +258,14 @@
+       setAlwaysShowTrafficLights:alwaysShow];
+ }
+ 
+-@end
++- (void)setCloseButtonOnly:(BOOL)closeOnly {
++  [base::apple::ObjCCastStrict<BrowserWindowFrame>(self.contentView.superview)
++      setCloseButtonOnly:closeOnly];
++}
++
++- (void)setTrafficLightsHidden:(BOOL)hidden {
++  [base::apple::ObjCCastStrict<BrowserWindowFrame>(self.contentView.superview)
++      setTrafficLightsHidden:hidden];
++}
++
++@end

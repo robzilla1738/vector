@@ -1,0 +1,249 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "titlebar-height.asm",
+      "start": "0x4550500",
+      "endExclusive": "0x455083c",
+      "bytesSha256": "3b9ccc06ecd1188773dbc6a23798907d247b80325b9b60dc3d2c1bda287ac890",
+      "assemblySha256": "68e06733fedc6424853c1cbaf158a8443111fa8b6796753646d8fef778ee2dca"
+    },
+    {
+      "file": "window-params.asm",
+      "start": "0x45512e8",
+      "endExclusive": "0x4551750",
+      "bytesSha256": "99fd3a5a93ef5f2e81f6c82e29cb5ac0b4d3966fab2e3c745a2caa6ae271e60b",
+      "assemblySha256": "28ebc5988c4f655b2ddabcadc404e9a9c9add175675d77f38d34db2aeb7aee83"
+    },
+    {
+      "file": "window-creation.asm",
+      "start": "0x4551750",
+      "endExclusive": "0x4551e08",
+      "bytesSha256": "7fda9a10f935f5ceb3b743540f6923e4aa616d21dd12ff3a37e42937adbf619a",
+      "assemblySha256": "2ef9701602110629e6fb39d5c32de1045ca0fe9c91c7618c57bdd5510f82886d"
+    },
+    {
+      "file": "native-window-factory.asm",
+      "start": "0x2132a58",
+      "endExclusive": "0x2132b10",
+      "bytesSha256": "05b66e66e733649fac3f269d815c77ed9fdb3a7eb61d0edef2b7b17af5d07c7d",
+      "assemblySha256": "0c39681405b61de0494880962be7e69e5ad4cb863d3902f17dd9aaea90fd9252"
+    },
+    {
+      "file": "frame-state.asm",
+      "start": "0x4381104",
+      "endExclusive": "0x43813b0",
+      "bytesSha256": "7282886121a9d89a8f2e70f44f7515d00a04aa2d32a26d40969aa62394c77efc",
+      "assemblySha256": "c2fa2285b186a2910eabe15e791c00115d2f3bf34a10ab83de607819b6b7a399"
+    },
+    {
+      "file": "frame-forwarding.asm",
+      "start": "0x9c28404",
+      "endExclusive": "0x9c284cc",
+      "bytesSha256": "4d355859b51a31bd76f5c6f1547c8000eda0e03b3753f650577916a7661f2a4a",
+      "assemblySha256": "7728bf0d04d5b1fd8672a52a7be795e5df219815d84b2233fc54cace2900d5a8"
+    }
+  ],
+  "windowClassTable": [
+    {
+      "index": 0,
+      "tableSlot": "0xe9a2360",
+      "classRef": "0xeced880",
+      "class": "0xed07420",
+      "data": "0xed011d0",
+      "nameAddress": "0xdcc8db4",
+      "name": "NativeWidgetMacNSWindow"
+    },
+    {
+      "index": 1,
+      "tableSlot": "0xe9a2368",
+      "classRef": "0xecee0a8",
+      "class": "0xed07060",
+      "data": "0xed00370",
+      "nameAddress": "0xdcc86d8",
+      "name": "BrowserNativeWidgetWindow"
+    },
+    {
+      "index": 2,
+      "tableSlot": "0xe9a2370",
+      "classRef": "0xecee0f8",
+      "class": "0xed07330",
+      "data": "0xed00b90",
+      "nameAddress": "0xdcc8d34",
+      "name": "NativeWidgetMacFramelessNSWindow"
+    },
+    {
+      "index": 3,
+      "tableSlot": "0xe9a2378",
+      "classRef": "0xecee100",
+      "class": "0xed07498",
+      "data": "0xed012f0",
+      "nameAddress": "0xdcc9279",
+      "name": "NativeWidgetMacOverlayNSWindow"
+    }
+  ],
+  "selectors": [
+    {
+      "call": "0xc3800b4",
+      "stub": "0xcbccd20",
+      "selectorSlot": "0xed0d3a8",
+      "selectorAddress": "0xdf6240b",
+      "name": "setNeedsLayout:",
+      "trampolineSha256": "3eb4d74b87b84e2d309cdd4c8dd77f763d776eaec25a52efe6d356ed61cc46f3",
+      "stubSha256": "978bfc2428563f458c156ec4a07fcb54a50e6f768cd255b0d16eb48f399e6ea5"
+    },
+    {
+      "call": "0xc3800c0",
+      "stub": "0xcbccd40",
+      "selectorSlot": "0xed0d3b0",
+      "selectorAddress": "0xdf6241b",
+      "name": "updateTrafficLightButtons",
+      "trampolineSha256": "cb1dab48b153cd68471c3683f5ffa376dcd32dd66c2052f03e8fbdb9d92859dc",
+      "stubSha256": "2ae49da2f683a4a3ac0df72d0bbc8c4f7612e806cb010f3192bfe7b3dae01294"
+    },
+    {
+      "call": "0xc3099c4",
+      "stub": "0xcbc84e0",
+      "selectorSlot": "0xed0c260",
+      "selectorAddress": "0xdf5f07b",
+      "name": "layoutSubtreeIfNeeded",
+      "trampolineSha256": "7332426a39a5d75b2f9c5905622b43b87dd487ad80cee5171eb94a256a6dff29",
+      "stubSha256": "3333809f689751a515175119a4072f6765b51694e453a7a10943ea831d10e620"
+    },
+    {
+      "call": "0xc38064c",
+      "stub": "0xcbc8920",
+      "selectorSlot": "0xed0c360",
+      "selectorAddress": "0xdf5f3b8",
+      "name": "setAlphaValue:",
+      "trampolineSha256": "61a4a8bfd8248ef6fd15a956e9a7b927508d839dd92f349e467a25d76ee69d1e",
+      "stubSha256": "f079b180e404d4234eba809327c3acdd3b0616f1e8442aff1d74548e0b266a8b"
+    },
+    {
+      "call": "0xc380658",
+      "stub": "0xcbccd60",
+      "selectorSlot": "0xed08a38",
+      "selectorAddress": "0xdf62435",
+      "name": "setRevealAmount:",
+      "trampolineSha256": "3b25d367537071348326284e951a679d2a5441d6feabb3ea4efd34a1a3add01f",
+      "stubSha256": "e19e614b92bf97d5eafed164073f7348b7465f94ff50471b71abfc56b80928d0"
+    },
+    {
+      "call": "0xc380664",
+      "stub": "0xcbc6540",
+      "selectorSlot": "0xed0bab0",
+      "selectorAddress": "0xdf5da14",
+      "name": "cell",
+      "trampolineSha256": "29c498e38244152643a73849f64712cf9e00b747e36b6c4a55cac2d95fd12c23",
+      "stubSha256": "751b0c87b39db6a7c5bc9237bff81139a552a428d92e17cbae3e681221fb469b"
+    },
+    {
+      "call": "0x889e108",
+      "stub": "0xcbbe5a0",
+      "selectorSlot": "0xed088b0",
+      "selectorAddress": "0xdf57c98",
+      "name": "setHidden:",
+      "trampolineSha256": "ba3d90dbc53e0ee74272e462f42d2d96b25983818a68367760a098505013a9ec",
+      "stubSha256": "7dab5abf5756a899520a5e9a8258abde5ce4bdda5ab30ead997bf7a7e0cba043"
+    },
+    {
+      "call": "0x989f04c",
+      "stub": "0xcbc0900",
+      "selectorSlot": "0xed0a458",
+      "selectorAddress": "0xdf596ac",
+      "name": "setEnabled:",
+      "trampolineSha256": "486e7f657664634b70c47c4d5122a1c28dc16f9b74717330c329ac8d06dd86d4",
+      "stubSha256": "c7c367e8fc94c983fd6d7ea92698fba808f5703f553d2638e790e3fdba52c3e0"
+    },
+    {
+      "call": "0x989f040",
+      "stub": "0xcbc7120",
+      "selectorSlot": "0xed0bd90",
+      "selectorAddress": "0xdf5e1c9",
+      "name": "standardWindowButton:",
+      "trampolineSha256": "9d5b30ec3a13b789b5582a8d77522e533c168a4c6f711ced5334c40c761ff303",
+      "stubSha256": "17ea23a52b1b5d44f9b45841757edbe63e49f8ee6742ef70f193566f2aee477c"
+    },
+    {
+      "call": "0xc550e68",
+      "stub": "0xcbcce60",
+      "selectorSlot": "0xed0d3e8",
+      "selectorAddress": "0xdf624f8",
+      "name": "setCloseButtonOnly:",
+      "trampolineSha256": "02dde314231ceb10c750d23c6dfa4e2d2b257633a34c5a74164fc8db978d8e1b",
+      "stubSha256": "e4206f19134d034a725ade43fb051e8c5ee1d48d93e96bf0f53d59909aa239fa"
+    },
+    {
+      "call": "0xc550e74",
+      "stub": "0xcbd0e80",
+      "selectorSlot": "0xed0e2e0",
+      "selectorAddress": "0xdf64ed8",
+      "name": "setMovableByWindowBackground:",
+      "trampolineSha256": "694a021d8f9c290c520251b8af1d21bc06c81b03610ca35c1e109eaa0d564dbc",
+      "stubSha256": "66cd548151a49c228eb06ccbaa8a98d38ce680463b8a5b6f1f3aedf93edca5a7"
+    },
+    {
+      "call": "0xc550e80",
+      "stub": "0xcbcce80",
+      "selectorSlot": "0xed0d3f0",
+      "selectorAddress": "0xdf6250c",
+      "name": "setTrafficLightsHidden:",
+      "trampolineSha256": "fab16ad6bf37bf4deccc8a2f5761996da77a7290eab408750a02a01581f5e8e5",
+      "stubSha256": "4d07192e2a06d339326ed00cb8f1fef37d1758fade1657425c0361038d7609bd"
+    },
+    {
+      "call": "0xa131e34",
+      "stub": "0xcbcdb20",
+      "selectorSlot": "0xed0d660",
+      "selectorAddress": "0xdf62d2d",
+      "name": "setTitlebarAppearsTransparent:",
+      "trampolineSha256": "3ccd765d389ed35bcfd08a74c13f7c8b8027fd1d561509021df6ff8d240d7d04",
+      "stubSha256": "6a08f3eccc9d96fac839f586b653a0e80f4c3c01faa1864046265dda74aeedfe"
+    },
+    {
+      "call": "0xa131e40",
+      "stub": "0xcbcd1c0",
+      "selectorSlot": "0xed0d4b0",
+      "selectorAddress": "0xdf6271f",
+      "name": "setTitleVisibility:",
+      "trampolineSha256": "f033e0968d86563fd94291dd1bd131622f5012ebf412f205bcf40f17c785b679",
+      "stubSha256": "2e6f8205e22c52fa1c8107d34eb6c284e1ac15229294e72a958e4dd8c4aa83c3"
+    },
+    {
+      "call": "0xa131e4c",
+      "stub": "0xcbcdb40",
+      "selectorSlot": "0xed0d668",
+      "selectorAddress": "0xdf62d4c",
+      "name": "setAnimationBehavior:",
+      "trampolineSha256": "ab37a3ae9fc4e46be4c4ea241a1533bd7870fe02068a41ebf9acb4b8da1017c5",
+      "stubSha256": "664fb1a5beb4b608589b2338c00a9b2414af63fefd6ff4dbb69731fe132aaf77"
+    }
+  ],
+  "buttonTypes": [
+    0,
+    1,
+    2
+  ],
+  "nativeReadOnlyReferences": [
+    {
+      "path": "components/remote_cocoa/common/native_widget_ns_window.mojom",
+      "sha256": "05f779a619fdd15660a61c1fcad8d238715cc372b866f9d7cd08fe269c141a0d"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm",
+      "sha256": "9410b8992cce952afe26c4f4cf260e031d57c12acdf93f5167e0a0146f6833ca"
+    }
+  ],
+  "appKitStyleHeader": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSWindow.h",
+    "sha256": "32d8533578a7dfc8edf193775bc3471556ad8da94322bc42ce5942eed9c47549",
+    "lines": [
+      56,
+      59,
+      63
+    ]
+  }
+}

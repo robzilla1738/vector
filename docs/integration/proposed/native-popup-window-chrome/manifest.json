@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "baselineSha256": "a7ebb3f65065f11beb006e7adc36c40a180b57d23dc84ce33044a597af0c8f25",
+      "outputSha256": "1c386ad1b01ca2f5e924f09ee67ef4919edbb182429f11f92128a432f93e29e7"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/browser_native_widget_window_mac.h",
+      "baselineSha256": "0c44ad1801c65daba0865ca0369b5a239d751754d1fd93df4c31fb5eca40f3a5",
+      "outputSha256": "d3918dbcf29721a5bd11b172b8496d955dddbd4adb9007fb98729a84c518b3ae"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm",
+      "baselineSha256": "aa8533e184b60fa8d9865fb5dc469d7ff99579b1f2559d6149acd0f4f0ffa3e0",
+      "outputSha256": "85954d2f92c7e49dd3d05b94471ae05ce73c2cebeecba7c1763aef59963caa85"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
