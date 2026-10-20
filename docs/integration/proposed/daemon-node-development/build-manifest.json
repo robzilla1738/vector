@@ -1,0 +1,625 @@
+{
+  "version": 1,
+  "implementation": "supplied-daemon-js-on-unchanged-node",
+  "localDevelopmentOnly": true,
+  "productionReady": false,
+  "runtimeTested": false,
+  "dpRuntimeAccepted": false,
+  "sourceBinarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "sourceCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "baseAdaptedCodeSha256": "6549409a85a872cf0a5cf2ef22d3c75fdd1b47a0fc988ddf85c1d53894e763b5",
+  "baseEdits": [
+    {
+      "name": "browser skill identity",
+      "count": 6
+    },
+    {
+      "name": "embedded CLI guide",
+      "count": 5
+    },
+    {
+      "name": "embedded CLI update",
+      "count": 2
+    },
+    {
+      "name": "embedded CLI presence",
+      "count": 1
+    },
+    {
+      "name": "environment namespace",
+      "count": 241
+    },
+    {
+      "name": "bundle identity",
+      "count": 9
+    },
+    {
+      "name": "Agent identity",
+      "count": 1
+    },
+    {
+      "name": "Vault identity",
+      "count": 1
+    },
+    {
+      "name": "home",
+      "count": 1
+    },
+    {
+      "name": "daemon port",
+      "count": 1
+    },
+    {
+      "name": "daemon URL",
+      "count": 1
+    },
+    {
+      "name": "CDP URL",
+      "count": 1
+    },
+    {
+      "name": "computer-use executable",
+      "count": 3
+    },
+    {
+      "name": "bundled computer-use source",
+      "count": 1
+    },
+    {
+      "name": "secure storage namespace",
+      "count": 1
+    },
+    {
+      "name": "bundled runtime path",
+      "count": 1
+    },
+    {
+      "name": "explicit external skill synchronization",
+      "count": 1
+    },
+    {
+      "name": "isolated native binding",
+      "count": 1
+    },
+    {
+      "name": "bundled runtime lazy cache provisioning",
+      "count": 1
+    },
+    {
+      "name": "bundled memory startup provisioning",
+      "count": 1
+    },
+    {
+      "name": "load-only native SEA diagnostic",
+      "count": 1
+    },
+    {
+      "name": "telemetry disabled",
+      "count": 1
+    },
+    {
+      "name": "hosted API unavailable locally",
+      "count": 8
+    },
+    {
+      "name": "legacy hosted API unavailable locally",
+      "count": 1
+    },
+    {
+      "name": "hosted releases unavailable locally",
+      "count": 6
+    },
+    {
+      "name": "hosted sharing unavailable locally",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.resolvePasswordManagerGeneratedPasswordRefs",
+      "replace": "__AUX_PRESERVED_WIRE_0__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.createPasswordManagerGeneratedPasswordRef",
+      "replace": "__AUX_PRESERVED_WIRE_1__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.clearPasswordManagerGeneratedPasswordRefs",
+      "replace": "__AUX_PRESERVED_WIRE_2__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.fillPasswordManagerGeneratedPasswordRef",
+      "replace": "__AUX_PRESERVED_WIRE_3__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.performPasswordManagerAutofill",
+      "replace": "__AUX_PRESERVED_WIRE_4__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.revokeNotificationPermission",
+      "replace": "__AUX_PRESERVED_WIRE_5__",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.grantNotificationPermission",
+      "replace": "__AUX_PRESERVED_WIRE_6__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.ensureTabInAiTabsGroup",
+      "replace": "__AUX_PRESERVED_WIRE_7__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.playNotificationSound",
+      "replace": "__AUX_PRESERVED_WIRE_8__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.resolveBindingWindow",
+      "replace": "__AUX_PRESERVED_WIRE_9__",
+      "count": 3
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.getThirdPartyCookies",
+      "replace": "__AUX_PRESERVED_WIRE_10__",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.setThirdPartyCookies",
+      "replace": "__AUX_PRESERVED_WIRE_11__",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.callExtensionMV3Api",
+      "replace": "__AUX_PRESERVED_WIRE_12__",
+      "count": 4
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside Daemon Dev Auth v1",
+      "replace": "__AUX_PRESERVED_WIRE_13__",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "AsideDaemonSessionToken",
+      "replace": "__AUX_PRESERVED_WIRE_14__",
+      "count": 4
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.showNotification",
+      "replace": "__AUX_PRESERVED_WIRE_15__",
+      "count": 4
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.clearAiTabsGroup",
+      "replace": "__AUX_PRESERVED_WIRE_16__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.waitForDownload",
+      "replace": "__AUX_PRESERVED_WIRE_17__",
+      "count": 4
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside Daemon Auth v1",
+      "replace": "__AUX_PRESERVED_WIRE_18__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.createAgentTab",
+      "replace": "__AUX_PRESERVED_WIRE_19__",
+      "count": 3
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.openProfileUrl",
+      "replace": "__AUX_PRESERVED_WIRE_20__",
+      "count": 4
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.applePasswords",
+      "replace": "__AUX_PRESERVED_WIRE_21__",
+      "count": 14
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.searchHistory",
+      "replace": "__AUX_PRESERVED_WIRE_22__",
+      "count": 2
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.pickDirectory",
+      "replace": "__AUX_PRESERVED_WIRE_23__",
+      "count": 3
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "AsideSessionToken",
+      "replace": "__AUX_PRESERVED_WIRE_24__",
+      "count": 1
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.ownsTarget",
+      "replace": "__AUX_PRESERVED_WIRE_25__",
+      "count": 3
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.controlTab",
+      "replace": "__AUX_PRESERVED_WIRE_26__",
+      "count": 6
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "Aside.listTabs",
+      "replace": "__AUX_PRESERVED_WIRE_27__",
+      "count": 6
+    },
+    {
+      "name": "protect supplied wire spelling",
+      "kind": "branding",
+      "find": "`Aside.`",
+      "replace": "__AUX_PRESERVED_WIRE_28__",
+      "count": 1
+    },
+    {
+      "name": "visible product and non-wire identifiers",
+      "kind": "branding",
+      "find": "Aside",
+      "replace": "Aux",
+      "count": 568
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_0__",
+      "replace": "Aside.resolvePasswordManagerGeneratedPasswordRefs",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_1__",
+      "replace": "Aside.createPasswordManagerGeneratedPasswordRef",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_2__",
+      "replace": "Aside.clearPasswordManagerGeneratedPasswordRefs",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_3__",
+      "replace": "Aside.fillPasswordManagerGeneratedPasswordRef",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_4__",
+      "replace": "Aside.performPasswordManagerAutofill",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_5__",
+      "replace": "Aside.revokeNotificationPermission",
+      "count": 1
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_6__",
+      "replace": "Aside.grantNotificationPermission",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_7__",
+      "replace": "Aside.ensureTabInAiTabsGroup",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_8__",
+      "replace": "Aside.playNotificationSound",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_9__",
+      "replace": "Aside.resolveBindingWindow",
+      "count": 3
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_10__",
+      "replace": "Aside.getThirdPartyCookies",
+      "count": 1
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_11__",
+      "replace": "Aside.setThirdPartyCookies",
+      "count": 1
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_12__",
+      "replace": "Aside.callExtensionMV3Api",
+      "count": 4
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_13__",
+      "replace": "Aside Daemon Dev Auth v1",
+      "count": 1
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_14__",
+      "replace": "AsideDaemonSessionToken",
+      "count": 4
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_15__",
+      "replace": "Aside.showNotification",
+      "count": 4
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_16__",
+      "replace": "Aside.clearAiTabsGroup",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_17__",
+      "replace": "Aside.waitForDownload",
+      "count": 4
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_18__",
+      "replace": "Aside Daemon Auth v1",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_19__",
+      "replace": "Aside.createAgentTab",
+      "count": 3
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_20__",
+      "replace": "Aside.openProfileUrl",
+      "count": 4
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_21__",
+      "replace": "Aside.applePasswords",
+      "count": 14
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_22__",
+      "replace": "Aside.searchHistory",
+      "count": 2
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_23__",
+      "replace": "Aside.pickDirectory",
+      "count": 3
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_24__",
+      "replace": "AsideSessionToken",
+      "count": 1
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_25__",
+      "replace": "Aside.ownsTarget",
+      "count": 3
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_26__",
+      "replace": "Aside.controlTab",
+      "count": 6
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_27__",
+      "replace": "Aside.listTabs",
+      "count": 6
+    },
+    {
+      "name": "restore supplied wire spelling",
+      "kind": "branding",
+      "find": "__AUX_PRESERVED_WIRE_28__",
+      "replace": "`Aside.`",
+      "count": 1
+    }
+  ],
+  "developmentEdits": [
+    {
+      "name": "actual daemon app resources",
+      "count": 1
+    },
+    {
+      "name": "packaged resource mode, not executable identity",
+      "count": 1
+    },
+    {
+      "name": "same guarded original native binding",
+      "count": 1
+    },
+    {
+      "name": "actual runtime-bootstrap.cjs location",
+      "count": 1
+    },
+    {
+      "name": "actual memory-bootstrap.cjs location",
+      "count": 1
+    },
+    {
+      "name": "actual native diagnostic location",
+      "count": 1
+    },
+    {
+      "name": "same packaged PTY module",
+      "count": 1
+    },
+    {
+      "name": "same bundled importer app",
+      "count": 1
+    },
+    {
+      "name": "actual app resource mode for importer",
+      "count": 1
+    },
+    {
+      "name": "original Photon asset for worker",
+      "count": 1
+    },
+    {
+      "name": "original Photon asset in process",
+      "count": 1
+    },
+    {
+      "name": "original QuickJS wasm",
+      "count": 1
+    }
+  ],
+  "launch": {
+    "node": "agent-runtime/node/bin/node",
+    "script": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "execArgv": [
+      "--disable-sigusr1",
+      "--use-system-ca"
+    ]
+  },
+  "seaFlags": 25,
+  "originalSeaTailSha256": "cf3803940ef497f0d0a14409cc684d146ef34f754307ae4107feade9eead00d9",
+  "files": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "bytes": 12134392,
+      "mode": 420,
+      "sha256": "a12c54e7e74e63f04e9399931710dba07a59fbbd19f98ecceb39ea285d131b53"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets.mjs",
+      "bytes": 2177,
+      "mode": 420,
+      "sha256": "cb292b3e549e2b90495d12fe0e55e3be66de1a6fef8d686cc2266bc11403615d"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/quickjs-emscripten-module.wasm",
+      "bytes": 503134,
+      "mode": 420,
+      "sha256": "105c3bed22d457e43e3d1c3c1c6959fda62a8fe06f0fc8a985303c3a2be72232"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/photon_rs_bg.wasm",
+      "bytes": 1881634,
+      "mode": 420,
+      "sha256": "10468181565c56004c867f3a4af96f89a0ef5a63a72f2b5fb12c1f1992a3615c"
+    }
+  ],
+  "nativeBinding": "same apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs and daemon-role provided-native.node; never test adapter",
+  "limitations": [
+    "No launcher/stage/assembly/native opt-in added",
+    "No native authority, signing or Keychain acceptance",
+    "SEA-only packaged-memory diagnostic still requires actual SEA; isSea is not spoofed",
+    "Original nullable-load/error semantics and all public wires/backend unchanged",
+    "Existing runtime bootstrap still requires canonical AUX_HOME/runtime destination",
+    "OS/helper/PTY actual behavior remains unverified"
+  ]
+}
