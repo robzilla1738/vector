@@ -1,0 +1,28 @@
+{
+  "composition": "v498",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-local/Aux.app",
+  "launcherPid": 33907,
+  "command": [
+    "node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-local/Aux.app",
+    "--",
+    "--new-window",
+    "chrome://newtab/"
+  ],
+  "normalProfile": true,
+  "incognito": false,
+  "temporaryProfile": true,
+  "installedAppChanged": false,
+  "signingRun": false,
+  "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v498-normal-preview.log",
+  "runtimeAcceptance": false,
+  "browserPid": 33913,
+  "foregroundActivation": true,
+  "observedWindow": "Aux",
+  "observedURL": "chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/main.html#/onboarding/splash",
+  "leftRunning": true,
+  "ownerProfileAccessed": false
+}

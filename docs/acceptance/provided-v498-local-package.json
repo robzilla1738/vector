@@ -10,6 +10,6 @@
   "sourceSnapshotManifestSha256": "c37cf10878fcb7c4f471a9b5feadd6dc79faa96da4d294255f7a6e8e4d66000d",
   "signed": false,
   "installed": false,
-  "launched": false,
+  "launched": true,
   "runtimeAcceptance": false
 }
