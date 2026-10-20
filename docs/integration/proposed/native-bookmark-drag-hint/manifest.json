@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "applyAfter": "Current root317 leaf and actual compiled ProfilePreviewAdmission; NEW helper paths only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "baselineSha256": null,
+      "outputSha256": "9428b4161dee7aaf72d5a2bd84a437b78a67c24277165474780ebdeb006e8d0c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h",
+      "baselineSha256": null,
+      "outputSha256": "33b422c785e83be587b4083a3a3221e33455cf57bf36a07024b4fe3cdee45ece"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Root GN registration and actual region getter/callback mounting, widget lifecycle owner.",
+    "Empty pin fallback optionalboundary+478 child+338 needs exact originalmetadata/current155 gettermapping; do notinvent.",
+    "Native focused compile and disposable actual projection/hint observation remain required."
+  ]
+}

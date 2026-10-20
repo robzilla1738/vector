@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "projection-state-and-text",
+      "rva": "0x462ce28",
+      "fileOffset": 73584168,
+      "bytes": 904,
+      "sha256": "fb44da56a5448b08eaa17ab527f74ee6358c7ae1a19b274fc988d39d29e2e7df"
+    },
+    {
+      "name": "hint-create",
+      "rva": "0x4634090",
+      "fileOffset": 73613456,
+      "bytes": 1984,
+      "sha256": "cde74f0857bcad3c33a12e9c6bdf845c835c33a540b873d0d16e13ee33c29f89"
+    },
+    {
+      "name": "hint-content-layout-size",
+      "rva": "0x467ae44",
+      "fileOffset": 73903684,
+      "bytes": 168,
+      "sha256": "a38d01883874cfc5d2b0ed4060fd125b0ab8dcc456c0884542b9a2b12a2558db"
+    },
+    {
+      "name": "hint-content-paint",
+      "rva": "0x467aeec",
+      "fileOffset": 73903852,
+      "bytes": 728,
+      "sha256": "1e404127a59b3f4f5c3dc16c81d25c9e794546c95f4a004ccdc9c8b367b5a6d7"
+    },
+    {
+      "name": "hint-position",
+      "rva": "0x4650ec0",
+      "fileOffset": 73731776,
+      "bytes": 640,
+      "sha256": "9fc988238dc3b78d940df9ae31836f0d0d5bbce0d24ce1e3085caf562287ef65"
+    },
+    {
+      "name": "pinned-drop-admission",
+      "rva": "0x462d1c0",
+      "fileOffset": 73585088,
+      "bytes": 1056,
+      "sha256": "1cd9db48efbc5e50dc4174ab36d0d5e18a03f78fad1b6a481bb4398acf57f7a4"
+    },
+    {
+      "name": "empty-pin-fallback",
+      "rva": "0x464d3f0",
+      "fileOffset": 73716720,
+      "bytes": 192,
+      "sha256": "bd36f9049f5f7c3f113e245ec567be358a888d39907df849e07b15676434076e"
+    },
+    {
+      "name": "layout-metric-dispatch",
+      "rva": "0x5038c0",
+      "fileOffset": 5257408,
+      "bytes": 100,
+      "sha256": "2cffbee8ddb5eefd037708e69f963dffc0f94d316ba9d554fabe256bbca816b9"
+    },
+    {
+      "name": "layout-metric-58-result",
+      "rva": "0x503944",
+      "fileOffset": 5257540,
+      "bytes": 24,
+      "sha256": "31f0661a8320f660665b5c8ffd83f6846b47c55e5938553134da8d5069fdf4b9"
+    },
+    {
+      "name": "palette-fill-256",
+      "rva": "0x35e8dc8",
+      "fileOffset": 56528328,
+      "bytes": 200,
+      "sha256": "b9b4a930ff7ab904a1b00fd46e60ee63cd9fb760e92faa27a31256ea817d99b8"
+    },
+    {
+      "name": "palette-border-258",
+      "rva": "0x35e8f60",
+      "fileOffset": 56528736,
+      "bytes": 188,
+      "sha256": "d6b3aa8d1511421427b3c65b30036f3a88b36eba1be892556cc8b768d50f585b"
+    },
+    {
+      "name": "palette-border-shared-sp20",
+      "rva": "0x35e6e40",
+      "fileOffset": 56520256,
+      "bytes": 68,
+      "sha256": "28ed2f4e2b84593d279d75705e1252d51da9c5d51c159791bacda85a9664cec7"
+    },
+    {
+      "name": "palette-shadow-230",
+      "rva": "0x35e7a54",
+      "fileOffset": 56523348,
+      "bytes": 188,
+      "sha256": "54e9c04aecaff6c414a0e78963f5f4eee2ed8189210219782ae1a04bb34e6779"
+    },
+    {
+      "name": "palette-text-270",
+      "rva": "0x35e9924",
+      "fileOffset": 56531236,
+      "bytes": 188,
+      "sha256": "df2735ccc0b1786cf758bd380c1d82b190aeeb7818a4852a02e628fc17af4d93"
+    },
+    {
+      "name": "literal-remove",
+      "rva": "0xdf87dc6",
+      "fileOffset": 234388934,
+      "bytes": 32,
+      "sha256": "31af180ed1b2f6bbfba32aa48c7ee8ae6964549d972f037231a1e05b6803d3f1"
+    },
+    {
+      "name": "literal-remove-prefix",
+      "rva": "0xdf87de6",
+      "fileOffset": 234388966,
+      "bytes": 36,
+      "sha256": "41312463eaee06f5d4eb15af8ff75decaa291ec970420457888da9fa6937486a"
+    },
+    {
+      "name": "literal-add",
+      "rva": "0xdf87e0a",
+      "fileOffset": 234389002,
+      "bytes": 26,
+      "sha256": "ca5a1b44c0b062f8784c4e9578dec32cd15d285efe8935b47477b6ad78d77bb2"
+    },
+    {
+      "name": "literal-add-prefix",
+      "rva": "0xdf87e24",
+      "fileOffset": 234389028,
+      "bytes": 38,
+      "sha256": "6fbdc7c3301c7a7bf99e192dbfd641118007cdce32cc9620eaee809eaf6ce32d"
+    },
+    {
+      "name": "fallback-insets",
+      "rva": "0xdf47a50",
+      "fileOffset": 234125904,
+      "bytes": 16,
+      "sha256": "76c4ae7e52f7e24376e03fbd7c9e99723bc8969b67de2fee6cc32558db3f8b55"
+    },
+    {
+      "name": "layout58-table-entry",
+      "rva": "0xced82b0",
+      "fileOffset": 216892080,
+      "bytes": 4,
+      "sha256": "6fea016a651b6460fdd05e8073e5114413e814d86781e4dc4e8c3592dc851128"
+    }
+  ],
+  "hint": {
+    "state": "actualbookmarkowner860 active,861 detached,970 SCREENpoint,978 actualdragtitle; inactive hides retained6d8 widget.",
+    "text": [
+      "Add bookmark",
+      "Add to bookmarks: <actual title>",
+      "Remove bookmark",
+      "Remove bookmark: <actual title>"
+    ],
+    "geometry": "LabelGeist12px normal400, line16, borderVH4/10. Containerpreferredlabel+16, labellayoutinset8;paintinnerboundsinset8,radius8; .5border at.25inset/radius8. Point+4,+4; flipabove ifbelowbottom; clamporiginwithinactualdisplayworkarea preservingpreferredsize.",
+    "palette": {
+      "fill256": {
+        "dark": "ff18181b",
+        "light": "fffafafa"
+      },
+      "border258": {
+        "dark": "26fafafa",
+        "light": "1a0a0a0a"
+      },
+      "shadow230": "1a000000 both",
+      "text270": "ff16a34a both"
+    },
+    "shadow": "actualoneShadowValue(offset0,3 blur6), no CrossSectionDragPreview duplication.",
+    "current155Adaptation": "Client-owned nonactivating/event-transparent translucent TYPE_DRAG widget; actualregionWidget context and existing font resolver. Original initparams rawfields not asserted identical155 offsets."
+  },
+  "admission": {
+    "oracle": "Exact462d248..33c predicate is existing actual ProfilePreviewAdmission::AdmitsProfilePreview(width()); no secondwidth/animationoracle.",
+    "node": "nonnull actualBookmarkNode is_url + actualleaf required. Invalid clears onlyregioncandidate; nonadmittedwidth clearsleafinsertion.",
+    "inside": "ActualvisibleleafSCREENboundscontains point; nonemptyentriesoutside rejects. Inside callsreal leaf UpdateDropInsertion, returnsactualoptionalRect; candidate remainsactualnode even ifqueryunavailable.",
+    "emptyFallback": "464d3f0 requiresactualcustomouterscroll5b0. regionSCREENx/width, topouterscrollSCREENy; ifactual+478 child+338 visible/nonempty useschildSCREENy-4. Height=originalmetric58(40)+12=52. FallbackpreviewinsetsTLBR4/8/8/8.",
+    "unresolvedBoundary": "Actual+478 child+338 semanticclass/current155 accessor stillrequiresindependentmetadata/slotproof beforemount; do not guessNewTabButton/Unpinnedcontainer merelyfromlayout. No fallbackgeometry is fabricated."
+  }
+}
