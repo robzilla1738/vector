@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "composition": "v201",
+  "receiptSha256": "a9c4ba3f627abcd3e45d122361ce64de0692eb28c7730ad9a32b5d46fc6258c2",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "buildSteps": 591,
+  "elapsed": "11m45.65s",
+  "nativeLeaves": 563,
+  "logSha256": "173562ea02953a16344f29fa5e42318e613f6d9a0717e88ce9f8b1770f369592",
+  "packageReceiptSha256": "46b6aed3e362dd7dfec1b2626af87f020671f735717230fd14224efb2a1d4c71",
+  "suppliedResources": 10803,
+  "signed": false,
+  "browserLaunched": true,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false
+}

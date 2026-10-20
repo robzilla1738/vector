@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "baselineSha256": "555a8842fbf94e76b16e2bcb7784e7d0cfb16edc7775583e01eb69a009f99ec0",
+      "outputSha256": "f3e0b7ae6bf3f5b06433b3f01bed23041fb8ff01c89bc77998eb64cf3451d70a"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

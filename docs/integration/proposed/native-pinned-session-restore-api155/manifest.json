@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "baselineSha256": "238681a4787d43cf5c79da3f8f91d6b72b2cbbb8b43b719460b8ec4c126989cc",
+      "outputSha256": "bd7059a16abfb0303baddb48d5b578b09ad2fbdd03a0cdbe6e41aae4cd0be04c"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.h",
+      "baselineSha256": "08a2f997143e8a179e000f28f58caa6d750c815d1085e69d866a0a854763597a",
+      "outputSha256": "a780f14d9d644b1508bf98d2a7fb31f4d206bb3741eb4672c11e4e70e7276209"
+    }
+  ],
+  "sourceProposal": "native-pinned-tab-entry-session-restore/native.patch",
+  "adaptation": "Retains already compiled saved_url variable rename only",
+  "compiled": false,
+  "runtimeAcceptance": false
+}

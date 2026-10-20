@@ -1,0 +1,123 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "metadata": {
+    "vtable": "0xe723eb0",
+    "slot58": "0x465e674",
+    "nameRva": "0xdecbfce",
+    "name": "VerticalTabSidebarProfileButton"
+  },
+  "extracts": [
+    {
+      "file": "original-constructor.asm",
+      "start": "0x465c5f0",
+      "stop": "0x465d7e0",
+      "bytesSha256": "3308440cbbcdb610be523db04c8ac96d3242d891ff6fbd72bf74a6c5a4d24760",
+      "extractSha256": "9a5bb09bda60fb9f2ac161f80f262babe1bb5ebdede6b1fde955b62ca98226d0"
+    },
+    {
+      "file": "original-render-state.asm",
+      "start": "0x465dab8",
+      "stop": "0x465e0bc",
+      "bytesSha256": "fd9270a73533c3137f448d99529dc06b532a2414b4200097baa767aa1b12dddc",
+      "extractSha256": "afb7acde2019f20651dc0fc5159426dff8a4646c6544ab56bb95f0ee7cc921dd"
+    },
+    {
+      "file": "original-virtuals.asm",
+      "start": "0x465e674",
+      "stop": "0x465e9e4",
+      "bytesSha256": "50feaad1a2be137a0b474bd8f5c66aca7ed4cd1c16758222fda78166735568ff",
+      "extractSha256": "6924058a2236a797860db8dd79c5ffea0ae2d482823b900393b249596d7b8e1d"
+    },
+    {
+      "file": "original-source-data.asm",
+      "start": "0x465f738",
+      "stop": "0x465fc60",
+      "bytesSha256": "ef8bb6109fd51215a29303e66fe1482d1d96a3a4d129e459e337bbaf295e0273",
+      "extractSha256": "7bde3014e855292c0df3e5d48fab89e5ba557a493576fbf1a10213a6870d855b"
+    }
+  ],
+  "icons": [
+    {
+      "name": "kAsideExpandMoreIcon",
+      "descriptorRva": "0xe9d4f50",
+      "representationRva": "0xe9d4f40",
+      "pathRva": "0xd3dc800",
+      "elements": 53,
+      "sha256": "f8f4b5945f11373258604848ae0ead3a789fce6f582035ccc8b4eac17ad1f239"
+    },
+    {
+      "name": "kAccountCircleChromeRefreshOldIcon",
+      "descriptorRva": "0xe82ba10",
+      "representationRva": "0xe82ba00",
+      "pathRva": "0xce6335c",
+      "elements": 420,
+      "sha256": "9bdb8c7352e5c7b025906817e260f7019001345e528452e2aae7e51b80b41fea"
+    },
+    {
+      "name": "kAccountBoxIcon",
+      "descriptorRva": "0xe82b948",
+      "representationRva": "0xe82b938",
+      "pathRva": "0xce61c80",
+      "elements": 276,
+      "sha256": "8d8c80f5fa28793a56a059ae2200ccf8e8781d0434eb3492f6e57e149b96bb84"
+    },
+    {
+      "name": "kAsideIncognitoRefreshMenuIcon",
+      "descriptorRva": "0xe82bf08",
+      "representationRva": "0xe82bef8",
+      "pathRva": "0xce67ecc",
+      "elements": 242,
+      "sha256": "a69bfffcfce5ed82b703c5d23628bb73a0d4ff5df87e114d0dbab9102398aebd"
+    }
+  ],
+  "insets": {
+    "containerRva": "0xd6e5150",
+    "TLBR": [
+      5,
+      4,
+      5,
+      8
+    ],
+    "avatarMarginsRva": "0xdf40a90",
+    "avatarMarginsTLBR": [
+      0,
+      0,
+      0,
+      4
+    ],
+    "labelMarginsRva": "0xdf447f0",
+    "labelMarginsTLBR": [
+      0,
+      0,
+      0,
+      5
+    ]
+  },
+  "rea": {
+    "evidenceFiles": [
+      "/Users/rcourson/Documents/Vibe/web/out/native-integration/profile-header-analysis/rea-methods-evidence.json",
+      "/Users/rcourson/Documents/Vibe/web/out/native-integration/profile-header-analysis/rea-constructor-evidence.json",
+      "/Users/rcourson/Documents/Vibe/web/out/native-integration/profile-header-analysis/rea-state-evidence.json",
+      "/Users/rcourson/Documents/Vibe/web/out/native-integration/profile-header-analysis/rea-avatar-evidence.json"
+    ],
+    "snapshot": "/Users/rcourson/Documents/Vibe/web/out/native-integration/profile-header-analysis/ghidra-analysis.json",
+    "analysisTarget": {
+      "source": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+      "sourceSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+      "offset": 73778672,
+      "virtualAddress": "0x465c5f0",
+      "end": "0x4661000",
+      "sha256": "92b909474fb3bec8c72344f2fa5e1a86a3811c87f497d5809bf0dff8054381b8",
+      "purpose": "Bounded static header constructor analysis; no whole-framework analysis or target execution"
+    },
+    "limitations": [
+      "Pseudocode is a bounded raw-code derivation, not original C++ source.",
+      "External tail calls can truncate pseudocode; original full-image LLVM instructions are authoritative.",
+      "An interior465f780 selector resolves to canonical465f738.",
+      "Observed GetWidget return is only tested: the actual icon source remains original toolbar child, as rawregister flow proves."
+    ]
+  },
+  "compiled": false,
+  "runtimeAcceptance": false
+}

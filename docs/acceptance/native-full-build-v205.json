@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "composition": "v205",
+  "receiptSha256": "196fbfb587af6d82afd0d582b70b2d8a72d0fb646c8e8bffcf7d7706a7724722",
+  "buildExitCode": 0,
+  "generatedKeyProbePassed": true,
+  "buildSteps": 7,
+  "elapsed": "5m58.17s",
+  "nativeLeaves": 563,
+  "logSha256": "5f69a482887271aef6693ef05c064ce08092eb0f94432a5840aef8e7687c2806",
+  "browserLaunched": false,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false,
+  "change": "Install horizontal width callback after actual TabContainer creation, including reinitialization"
+}

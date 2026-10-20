@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "candidate": "out/provided-candidate-v201-local/Aux.app",
+  "disposableHome": true,
+  "temporaryRoot": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-N26ldI",
+  "browserPid": 17792,
+  "launcherPid": 17788,
+  "launcherExitCode": 1,
+  "browserCrash": "SIGSEGV in TabStrip::SetAvailableWidthCallback called before155TabStrip::Initialize creates TabContainer",
+  "stack": "docs/integration/proposed/native-horizontal-scroll-initialization/startup-stack.txt",
+  "sourceFix": "native-horizontal-scroll-initialization/native.patch",
+  "ownedCandidateExecutablesAbsentAfterExit": true,
+  "auxListenersAbsentAfterExit": true,
+  "temporaryStateRetained": true,
+  "completeDetachedShutdownProven": false,
+  "signingExecuted": false,
+  "runtimeAcceptanceFlagsRemoved": true,
+  "nativeAuthorityAccepted": false,
+  "uiCaptured": false,
+  "uiParityAccepted": false,
+  "logSha256": "29b4489fdee5ab9e2c61754abd5d4f1e93d1ccecd71b7c54a46d2def4170673a",
+  "otherActualIssues": [
+    "Supplied background reports unavailable current profile ID; actual original prefs-only context/UUID source is separately being integrated",
+    "Installation signing key unavailable without native authority acceptance",
+    "Supplied Computer Use read-only signature verification rejects adapted Info.plist; no signing performed"
+  ]
+}

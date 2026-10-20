@@ -1,0 +1,36 @@
+<deduplicated_symbol> (in Aux Framework) + 24
+base::debug::StackTrace::StackTrace() (in Aux Framework) + 80
+base::debug::(anonymous namespace)::StackDumpSignalHandler(int, __siginfo*, void*) (in Aux Framework) + 936
+0x187db4144
+TabStrip::SetAvailableWidthCallback(base::RepeatingCallback<int ()>) (in Aux Framework) + 36
+TabStripScrollContainer::TabStripScrollContainer(BrowserView*, std::__Cr::unique_ptr<TabStrip, std::__Cr::default_delete<TabStrip>>) (in Aux Framework) + 836
+HorizontalTabStripRegionViewOld::HorizontalTabStripRegionViewOld(BrowserView*) (in Aux Framework) + 1220
+CreateHorizontalTabStripRegionView(BrowserView*) (in Aux Framework) + 68
+BrowserView::BrowserView(BrowserWindowInterface*) (in Aux Framework) + 2296
+BrowserWindow::CreateBrowserWindow(BrowserWindowInterface*, bool, bool) (in Aux Framework) + 72
+Browser::Browser(BrowserWindowCreateParams) (in Aux Framework) + 696
+Browser::Create(BrowserWindowCreateParams) (in Aux Framework) + 196
+CreateBrowserWindow(BrowserWindowCreateParams) (in Aux Framework) + 264
+StartupBrowserCreatorImpl::OpenTabsInBrowser(BrowserWindowInterface*, chrome::startup::IsProcessStartup, std::__Cr::vector<StartupTab, std::__Cr::allocator<StartupTab>> const&, StartupBrowserCreatorImpl::TabOverWrite) (in Aux Framework) + 492
+StartupBrowserCreatorImpl::RestoreOrCreateBrowser(std::__Cr::vector<StartupTab, std::__Cr::allocator<StartupTab>> const&, StartupBrowserCreatorImpl::BrowserOpenBehavior, unsigned int, chrome::startup::IsProcessStartup, bool) (in Aux Framework) + 408
+StartupBrowserCreatorImpl::DetermineURLsAndLaunch(chrome::startup::IsProcessStartup, bool) (in Aux Framework) + 1060
+StartupBrowserCreatorImpl::Launch(Profile*, chrome::startup::IsProcessStartup, bool) (in Aux Framework) + 368
+StartupBrowserCreator::LaunchBrowser(base::CommandLine const&, Profile*, base::FilePath const&, chrome::startup::IsProcessStartup, chrome::startup::IsFirstRun, bool) (in Aux Framework) + 424
+StartupBrowserCreator::LaunchBrowserForLastProfiles(base::CommandLine const&, base::FilePath const&, chrome::startup::IsProcessStartup, chrome::startup::IsFirstRun, StartupProfileInfo, std::__Cr::vector<Profile*, std::__Cr::allocator<Profile*>> const&, bool) (in Aux Framework) + 476
+StartupBrowserCreator::ProcessCmdLineImpl(base::CommandLine const&, base::FilePath const&, chrome::startup::IsProcessStartup, StartupProfileInfo, std::__Cr::vector<Profile*, std::__Cr::allocator<Profile*>> const&) (in Aux Framework) + 3256
+StartupBrowserCreator::Start(base::CommandLine const&, base::FilePath const&, StartupProfileInfo, std::__Cr::vector<Profile*, std::__Cr::allocator<Profile*>> const&) (in Aux Framework) + 144
+ChromeBrowserMainParts::PreMainMessageLoopRunImpl() (in Aux Framework) + 2236
+ChromeBrowserMainParts::PreMainMessageLoopRun() (in Aux Framework) + 60
+content::BrowserMainLoop::PreMainMessageLoopRun() (in Aux Framework) + 148
+content::StartupTaskRunner::RunAllTasksNow(bool) (in Aux Framework) + 100
+content::BrowserMainLoop::CreateStartupTasks() (in Aux Framework) + 560
+content::BrowserMainRunnerImpl::Initialize(content::MainFunctionParams) (in Aux Framework) + 84
+content::BrowserMain(content::MainFunctionParams) (in Aux Framework) + 100
+content::RunBrowserProcessMain(content::MainFunctionParams, content::ContentMainDelegate*) (in Aux Framework) + 140
+content::ContentMainRunnerImpl::RunBrowser(content::MainFunctionParams, bool) (in Aux Framework) + 1324
+content::ContentMainRunnerImpl::Run() (in Aux Framework) + 668
+content::RunContentProcess(content::ContentMainParams, content::ContentMainRunner*) (in Aux Framework) + 1060
+content::ContentMain(content::ContentMainParams) (in Aux Framework) + 112
+ChromeMain (in Aux Framework) + 440
+0x104e2088c
+0x1879d3e80

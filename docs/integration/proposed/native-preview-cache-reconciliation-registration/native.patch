@@ -1,0 +1,29 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1111,6 +1111,7 @@
+       "//base:i18n",
+       "//chrome/browser/extensions/api/aux_mini_popup",
+       "//chrome/browser/ui/tabs:aux_pinned_tab_entries",
++      "//ui/snapshot",
+     ]
+     sources += [
+       "views/frame/aux_profile_switch_request.cc",
+@@ -1123,6 +1124,8 @@
+       "aux_profile_preview_data.h",
+       "views/frame/aux_profile_preview_page.cc",
+       "views/frame/aux_profile_preview_page.h",
++      "views/frame/aux_profile_preview_capture_cache.cc",
++      "views/frame/aux_profile_preview_capture_cache.h",
+       "views/frame/aux_profile_preview_region_owner.cc",
+       "views/frame/aux_profile_preview_region_owner.h",
+       "views/frame/aux_profile_preview_icons.inc",
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -22,6 +22,7 @@
+       "//components/pref_registry",
+       "//components/prefs",
+       "//content/public/browser",
++      "//net",
+       "//url",
+     ]
+   }

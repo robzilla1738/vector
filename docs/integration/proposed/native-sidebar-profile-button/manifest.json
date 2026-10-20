@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "baselineSha256": null,
+      "outputSha256": "ab7b138373adc8b5ac3c3db850a8d045dc9e8bd93f8ebf98777a4a292a44bb7c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h",
+      "baselineSha256": null,
+      "outputSha256": "933d4670de8453a64f45f41ad7efe2d93e983668abde871c8e9731d1d755d319"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "35d6e01e661128ee3db8f3a50e11b34615f272b28a13a8e28140f8da6a5fdb9c"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "owner": "separate actual AvatarToolbarButton/profile observer state controller; no replacement producer"
+}

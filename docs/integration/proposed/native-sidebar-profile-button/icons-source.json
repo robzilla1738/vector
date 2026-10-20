@@ -1,0 +1,34 @@
+[
+  {
+    "name": "kAsideExpandMoreIcon",
+    "descriptorRva": "0xe9d4f50",
+    "representationRva": "0xe9d4f40",
+    "pathRva": "0xd3dc800",
+    "elements": 53,
+    "sha256": "f8f4b5945f11373258604848ae0ead3a789fce6f582035ccc8b4eac17ad1f239"
+  },
+  {
+    "name": "kAccountCircleChromeRefreshOldIcon",
+    "descriptorRva": "0xe82ba10",
+    "representationRva": "0xe82ba00",
+    "pathRva": "0xce6335c",
+    "elements": 420,
+    "sha256": "9bdb8c7352e5c7b025906817e260f7019001345e528452e2aae7e51b80b41fea"
+  },
+  {
+    "name": "kAccountBoxIcon",
+    "descriptorRva": "0xe82b948",
+    "representationRva": "0xe82b938",
+    "pathRva": "0xce61c80",
+    "elements": 276,
+    "sha256": "8d8c80f5fa28793a56a059ae2200ccf8e8781d0434eb3492f6e57e149b96bb84"
+  },
+  {
+    "name": "kAsideIncognitoRefreshMenuIcon",
+    "descriptorRva": "0xe82bf08",
+    "representationRva": "0xe82bef8",
+    "pathRva": "0xce67ecc",
+    "elements": 242,
+    "sha256": "a69bfffcfce5ed82b703c5d23628bb73a0d4ff5df87e114d0dbab9102398aebd"
+  }
+]

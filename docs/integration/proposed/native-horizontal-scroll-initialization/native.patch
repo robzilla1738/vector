@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+@@ -122,9 +122,6 @@
+         browser_view->browser()));
+     scroll_buttons_->SetScrollView(scroll_view_);
+     scroll_buttons_->SetVisible(false);
+-    tab_strip_->SetAvailableWidthCallback(base::BindRepeating(
+-        &TabStripScrollContainer::GetTabStripAvailableWidth,
+-        base::Unretained(this)));
+     scrolled_subscription_ = scroll_view_->AddContentsScrolledCallback(
+         base::BindRepeating(&TabStripScrollContainer::OnContentsScrolled,
+                             base::Unretained(this)));
+@@ -144,6 +141,14 @@
+                             base::Unretained(this), false));
+   }
+ 
++  // Chromium155 creates the actual TabContainer during region initialization,
++  // after this wrapper is constructed. Reinstall on every genuine reinitialize.
++  void InitializeTabStrip() {
++    tab_strip_->SetAvailableWidthCallback(base::BindRepeating(
++        &TabStripScrollContainer::GetTabStripAvailableWidth,
++        base::Unretained(this)));
++  }
++
+   ~TabStripScrollContainer() override {
+     scroll_buttons_->SetScrollView(nullptr);
+   }
+@@ -659,6 +664,9 @@
+   }
+ 
+   tab_strip_->Initialize();
++  if (tab_strip_scroll_container_) {
++    tab_strip_scroll_container_->InitializeTabStrip();
++  }
+   static_cast<BrowserTabStripController*>(tab_strip_->controller())
+       ->InitFromModel(tab_strip_);
+   tab_strip_set_ = true;
