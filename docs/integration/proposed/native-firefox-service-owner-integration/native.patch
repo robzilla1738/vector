@@ -16,18 +16,27 @@
    base::FilePath path;
    std::vector<std::string> categories;
    size_t category = 0, row = 0;
-@@ -468,6 +470,11 @@
-         job.cancelled = true;
-         if (job.safari_import) {
-           job.safari_import->Cancel();
-+          std::move(reply).Run(base::Value(), "");
-+          return;
-+        }
-+        if (job.firefox_import) {
-+          job.firefox_import->Cancel();
+@@ -471,6 +473,11 @@
            std::move(reply).Run(base::Value(), "");
            return;
          }
++        if (job.firefox_import) {
++          job.firefox_import->Cancel();
++          std::move(reply).Run(base::Value(), "");
++          return;
++        }
+         job.rows.clear();
+         job.snapshots.clear();
+         job.secret_lookup.reset();
+@@ -488,7 +495,7 @@
+     return;
+   }
+   if (method != "startImport" || args.size() != 1 || !args[0].is_dict() ||
+-      !discovered_ || jobs_.size() >= 16) {
++      !discovered_) {
+     error("Choose a discovered source before starting an import");
+     return;
+   }
 @@ -673,9 +680,20 @@
      if (!job.safari_import) {
        job.safari_import = std::make_unique<SafariImport>(

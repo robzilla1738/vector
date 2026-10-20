@@ -7,6 +7,12 @@
   },
   {
     "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "find": "      !discovered_ || jobs_.size() >= 16) {",
+    "replace": "      !discovered_) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
     "find": "  std::unique_ptr<SafariImport> safari_import;",
     "replace": "  std::unique_ptr<SafariImport> safari_import;\n  std::unique_ptr<FirefoxImport> firefox_import;",
     "count": 1

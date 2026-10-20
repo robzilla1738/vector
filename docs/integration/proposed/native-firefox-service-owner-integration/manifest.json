@@ -5,7 +5,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
       "baselineSha256": "64f9148e2176998446027a9905cce32e445d4108f09cf54bbebf4e868b1c4687",
-      "outputSha256": "4908f3d55ad864c0a390fef315b66e50cdb530ee167fef8af300db13f6e185f0"
+      "outputSha256": "b0b18cfc6015d9ef96ee93fe401a7f63f4d360d205a34c6997dd907174e1b016"
     },
     {
       "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",

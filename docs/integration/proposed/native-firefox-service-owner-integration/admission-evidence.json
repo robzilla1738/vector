@@ -1,0 +1,25 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x4276580",
+      "endExclusive": "0x42774a8",
+      "bytesSha256": "5a9deac904b87adfd71648352aae274f3370605abc1095597816eb5402b067b9",
+      "listing": "original-import-start-full.asm",
+      "listingSha256": "e3174d1aa556aa4a59bc773ac4da8afe71007f6c078a0281a308aecce47c5b40"
+    },
+    {
+      "start": "0x4277730",
+      "endExclusive": "0x4277a54",
+      "bytesSha256": "06e508f82456528532883ee01a0547a25330492e5d835b42c61f5d4ae568b3c1",
+      "listing": "original-import-start-map-cold.asm",
+      "listingSha256": "06c22c0a765a00e6aacba0d6f48d44a0d5264bef6c1fd4d38f534e5a994d3c59"
+    }
+  ],
+  "observation": "Original job map root is at0xed452f8; its size at0xed45300 is loaded only after insertion at42773e8, incremented and stored. The cold static-init path initializes an empty map then rejoins lookup/insertion. No16-job admission guard occurs on these captured paths.",
+  "change": "Remove independently introduced jobs_.size()>=16 rejection; preserve argument/discovery/caller validation.",
+  "limitations": "Static captured instruction paths, not runtime stress evidence. Existing raw Ghidra start pseudocode has PIC/unreachable-block warnings; instructions are authoritative."
+}
