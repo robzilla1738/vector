@@ -1,0 +1,114 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "command-branch.asm",
+      "start": "0x4561988",
+      "endExclusive": "0x45619f4",
+      "bytesSha256": "55e03579dc72327e48c1a31f424e0938e663b6b665a9dafddafb079bb50f7608",
+      "assemblySha256": "c435a5e0184a16f2a482984f53dda10f8d50b955a75396f23ff4dbef24a2d44e"
+    },
+    {
+      "file": "command-dispatch.asm",
+      "start": "0x4561c04",
+      "endExclusive": "0x4561c38",
+      "bytesSha256": "69bc4032bbbeb635c044f47e544caab51526571c9a030dcc1ff433fc6abbbfdd",
+      "assemblySha256": "0fba9c6ae1dd7539830322ecf8680b251ee95dec36f4a400ae487566b70ad28e"
+    },
+    {
+      "file": "command-window-fallback.asm",
+      "start": "0x4564508",
+      "endExclusive": "0x456454c",
+      "bytesSha256": "399cd67064add1329dedd84fe77f5d0ebf05c37bff60cde6ba845dd118cdd7c5",
+      "assemblySha256": "c85181608eee487363c9efefa31b37e74114990a7f854bbdc2108cd310a4541a"
+    },
+    {
+      "file": "browser-search-toggle.asm",
+      "start": "0x45b63c0",
+      "endExclusive": "0x45b64f0",
+      "bytesSha256": "6903cf52cc07bd2c9e87c8b5046b90610a34efa3a40029396adf766cfa52b2a5",
+      "assemblySha256": "09214a28831d1ebf48b0d36f12b084d1b039f210a40e36ed9cdfdbb8249f2667"
+    }
+  ],
+  "accelerator": {
+    "address": "0xcef74a0",
+    "structFormat": "<iii",
+    "values": [
+      52500,
+      18,
+      65
+    ],
+    "bytesSha256": "3780e9d54535c3e8d11d4741995108f9e36bab20260c3be0777a01bdae521172"
+  },
+  "windowVtable": {
+    "base": "0xe70cd70",
+    "entries": [
+      {
+        "offset": "0x2c8",
+        "slot": "0xe70d038",
+        "function": "0x45b63c0",
+        "raw": "0x100000045b63c0"
+      },
+      {
+        "offset": "0x2d0",
+        "slot": "0xe70d040",
+        "function": "0x45b64b0",
+        "raw": "0x100000045b64b0"
+      }
+    ]
+  },
+  "decompile": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04561570.c",
+    "sha256": "fca7a7cff8f8e48cb5c2992e850a61dea7641f3e56945aed2b006cbdd2452b50",
+    "lines": [
+      1888,
+      1930
+    ]
+  },
+  "nativeReadOnlyReferences": [
+    {
+      "path": "chrome/app/chrome_command_ids.h",
+      "sha256": "52e80b67f21cdf7310e1c1b1d22eb04fc38f0077b2ba9f602f41c3ecc6d3657b"
+    },
+    {
+      "path": "ui/events/event_constants.h",
+      "sha256": "faafc4e6950a16876bd631f5fd63faf8464ca2e51013e0c384c53378a85d7139"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/accelerators_cocoa.mm",
+      "sha256": "06f946e5a862c26bd57435e56ed20c261133f5a131f41d2eaf41c4cc0d94176b"
+    },
+    {
+      "path": "chrome/browser/global_keyboard_shortcuts_mac.mm",
+      "sha256": "b930252f065d4245d4390cf3bc9d7b8396a429b48c2cff63be0e02ea74205180"
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "sha256": "03c460dec7a5dcbd2c2e55962aba533fe28b0120b6013ef72d5118f24f480c4e"
+    },
+    {
+      "path": "chrome/browser/ui/browser_commands.cc",
+      "sha256": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window.h",
+      "sha256": "2dfc76acb7122440fc588f0651b851c77a0fbfcc9fac761dc79c24f2e9215a5a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "c40fb378c588c59689a35b678647ef20f2cb5d7ae40da32a2b9121cd7d2e1104"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e"
+    }
+  ],
+  "priorComboProposal": "native-sidebar-combo-source-selection",
+  "existingSearchGuard": {
+    "path": "../native-profile-search-owner/guard.asm",
+    "sha256": "63bf4c11655686364e243e86bb036c82d280adc6f613bbad63e6e64883259f7f"
+  }
+}

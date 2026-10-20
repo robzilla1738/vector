@@ -1,0 +1,19 @@
+# Supplied keyboard Tab Search: actual route after the empty combo
+
+Bounded source finding against actual native406. **No native code patch is needed for the installed-Agent keyboard route.** This resolves the earlier uncertainty recorded by `native-sidebar-combo-source-selection`; it does not retroactively claim that the actual keyboard interaction was tested.
+
+The original vertical combo really creates neither leaf. That does not remove the independent native keyboard/command producer:
+
+1. The original Cocoa accelerator entry at0xcef74a0 is the exact12-byte tuple **{52500,18,65}**. Current named definitions identify this as **IDC_TAB_SEARCH, Command|Shift, A**. The unique original data entry is pinned, not inferred from a screenshot/control shape.
+2. Original ExecuteCommand4561570 compares command0xcd14=52500 at45619a4 and branches4561c04. It obtains the actual BrowserWindow, including its existing alternate-window lookup/fallback, then dispatches virtual slot0x2c8. The native window vtable at e70cd70 has exactly `slot2c8→45b63c0`, and the adjacent Close slot2d0 points45b64b0. The stored dyld-chained pointer bytes and decoded targets are pinned.
+3. Original BrowserView45b63c0 checks the genuine installed Agent across all five ExtensionRegistry sets, then selects the persistent per-window coordinator at+618. This path does not require the combo button or its stock host at+610. It calls the actual original show/hide/reload owner recovered in `native-profile-search-owner`.
+4. The actual current implementation retains the same independent chain: Cocoa CmdShiftA→command52500→BrowserCommandController `ShowTabSearch`→real BrowserWindow `CreateTabSearchBubble`→BrowserView `ToggleAuxProfileSearch`. Normal-window command enablement does not depend on the optional combo. The installed-Agent branch closes a stock host **if present**, then gets/creates the actual search owner from the genuine browser Widget and toggles it. Root already bound this route before the empty-combo correction.
+5. The original absent-Agent branch explicitly checks the stock host pointer at45b63e8: null returns; nonnull invokes `ShowTabSearchBubble(true)`. The current nullable host branch preserves this. Creating a hidden button, inventing an anchor or unconditional stock fallback to eliminate that return would change the supplied behavior.
+
+Thus the source does not support the claim that removing the erroneous visible155 search leaf leaves the **installed-Agent** keyboard command unbound. No additional command registration, control, host or UI is proposed. The current real location-bar argument is not used to position the recovered Agent owner; its genuine browser-centered geometry remains unchanged. The all-registry installed test is preserved; this finding does not convert an installed-but-unavailable extension/private API/auth result into success.
+
+## Evidence and limits
+
+`source-evidence.json` pins the supplied arm64 artifact, bounded actual command and BrowserView assembly, original command decompile, accelerator bytes and actual virtual-slot pointers. It separately pins current named constants, Cocoa keyboard mapping/default lookup, command dispatch/enablement, public BrowserWindow interface, BrowserView binding and genuine owner branch. `verify.py --native-root <read-only Chromium src>` verifies this bounded chain and checks the current source anchors/hashes. It neither invokes an accelerator nor runs a browser, profile/auth/helper operation, build or OS input.
+
+Actual disposable CmdShiftA dispatch, focus/escape/repeated toggle, source renderer functionality, private API behavior and both-theme visual acceptance remain unverified. The separate native account/signing failure is preserved. Original combo/context/layout and fullscreen work remain their own slices; no broader keyboard/UI completion is claimed.
