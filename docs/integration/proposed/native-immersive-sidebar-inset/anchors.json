@@ -1,0 +1,16 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+    "name": "reserve-original-external-sidebar-space",
+    "count": 1,
+    "before": "  const int original_top = params.visual_client_area.y();\n\n  if (IsParentedTo(views().horizontal_tab_strip_region_view,",
+    "after": "  const int original_top = params.visual_client_area.y();\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // The supplied external top-container path reserves the actual sidebar before\n  // placing toolbar children (0x45e9d18..0x45e9de4). Internal layouts have\n  // already reserved it and must not receive a second inset.\n  if (!IsParentedTo(views().top_container, views().browser_view) &&\n      layout_data_->tab_strip_type == TabStripType::kVertical &&\n      IsParentedToAndVisible(views().vertical_tab_strip_region_view,\n                             views().browser_view)) {\n    int sidebar_width =\n        views().vertical_tab_strip_region_view->GetPreferredSize().width();\n    if (!delegate().IsVerticalTabStripCollapsed()) {\n      sidebar_width =\n          std::max(sidebar_width,\n                   base::ClampCeil(\n                       params.leading_exclusion.ContentWithPadding().width()));\n    }\n    params.InsetHorizontal(sidebar_width, /*leading=*/true);\n  }\n#endif\n\n  if (IsParentedTo(views().horizontal_tab_strip_region_view,"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+    "name": "restore-original-external-child-local-coordinates",
+    "count": 1,
+    "before": "  return gfx::Rect(params.visual_client_area.x(), original_top,\n                   params.visual_client_area.width(),\n                   params.visual_client_area.y() - original_top);\n}",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // The container itself retains the inset X; its immediate children are local\n  // to that container (supplied 0x45ea2c0..0x45ea3e0).\n  if (!IsParentedTo(views().top_container, views().browser_view) &&\n      params.visual_client_area.x() != 0) {\n    for (auto& [child, child_layout] : layout.children) {\n      if (!child_layout.bounds.IsEmpty()) {\n        child_layout.bounds.Offset(-params.visual_client_area.x(), 0);\n      }\n    }\n  }\n#endif\n\n  return gfx::Rect(params.visual_client_area.x(), original_top,\n                   params.visual_client_area.width(),\n                   params.visual_client_area.y() - original_top);\n}"
+  }
+]

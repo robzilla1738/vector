@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "actual403; layout source unchanged from401",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "51f9087e02654b3d3a4854211cccfa6068576ba60896b0e6dc3aa10cbbe48302",
+      "outputSha256": "c16c802195823f8e6a9ec8103beb1be1471fdebdad248e4faad514a6f105c6e1"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x45e9cc0",
+      "endExclusive": "0x45e9df0",
+      "sha256": "2d133f0d9c400f0ad393145141004bccc75d0a287334dafbb746b853db4c0174",
+      "listing": "external-sidebar-predicate-inset.asm",
+      "listingSha256": "0b45b7e89d0671c90606133fb51986cd69a9605197676ed2cdd2e5c5baf8c2c2"
+    },
+    {
+      "start": "0x45ea2c0",
+      "endExclusive": "0x45ea3e4",
+      "sha256": "8712d0ad0a9440ac4ff841fca29ad7b0d1af2b58f008f22a22e276a8f958f710",
+      "listing": "external-child-local-normalization.asm",
+      "listingSha256": "b222e2bfec91a017a11857233dae47038e15e99413b12a578767e14085256d62"
+    },
+    {
+      "start": "0x91e291c",
+      "endExclusive": "0x91e2928",
+      "sha256": "d7e2075447d7a5cf7dd021f3aa5b9cc3846ade4bea70e332b7d16f0f399f4428",
+      "listing": "collapsed-predicate-thunk.asm",
+      "listingSha256": "ebb99481e114f3a833fd90ad4acefdfc8cb7a2433be92f3c5ede9d0d69c31b52"
+    },
+    {
+      "start": "0xc770db0",
+      "endExclusive": "0xc770de8",
+      "sha256": "7034863b3ba641ecb92646c990f08ba83c44cd6404839d96510d306223bfb0ac",
+      "listing": "collapsed-predicate.asm",
+      "listingSha256": "6e59a1aa015bf714c058b404bb33d97cefe1f46176a3462dd07c99f9bf7a7d09"
+    },
+    {
+      "start": "0x114694",
+      "endExclusive": "0x11473c",
+      "sha256": "fc1a8836d8d68fc9427eabca1ff6d95c8f9726c6e2c7c2072e0ebcf6bd2c0b69",
+      "listing": "state-controller-lookup.asm",
+      "listingSha256": "0baac946c843ce823c4c61337aa352699d555c13076da29af32ee4ff65f08099"
+    },
+    {
+      "start": "0x7d5c80",
+      "endExclusive": "0x7d5d00",
+      "sha256": "2d5f184f3fed839a04dfafce092db70a0f683e6a46db72c3dc2481824ea7dca0",
+      "listing": "preferred-size-dispatch.asm",
+      "listingSha256": "0ccf2930a249f80635bb08ab606a25f5374aa9397962b357ad92c837eaa08a05"
+    }
+  ],
+  "data": [
+    {
+      "address": "0xe896eb8",
+      "size": 8,
+      "file": "state-controller-key.bin",
+      "sha256": "7075091724d33893635c914180726a9753975cb104caabbe05649b382acdac80"
+    },
+    {
+      "address": "0xe507710",
+      "size": 32,
+      "file": "layout-virtuals.bin",
+      "sha256": "90dcd845fbf2261424aa8d664b9d14b088fe45711dd99d1db59239ad13ed88c5"
+    },
+    {
+      "address": "0xdae74fb",
+      "size": 46,
+      "file": "state-controller-key-name.bin",
+      "sha256": "d9c159ed1b2c7b496d619b6dc85bbcaff69d5bccfa91cd47172bc38830117343"
+    }
+  ],
+  "api155": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "fileSha256": "51f9087e02654b3d3a4854211cccfa6068576ba60896b0e6dc3aa10cbbe48302",
+      "startAnchor": "gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(",
+      "endAnchor": "void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground",
+      "snapshot": "actual155-top-container.txt",
+      "sha256": "5a941c3d1cc6f01c05807ac4189d14589ef6637916db9c381661fd448a013504"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc",
+      "fileSha256": "2090c4b7b913c03017334d4d44cd8a41c73d1b6acee1020c7ec0df3391c56ccc",
+      "startAnchor": "void BrowserViewLayoutImpl::Layout(views::View* host) {",
+      "endAnchor": "  // Lay out the browser view itself.",
+      "snapshot": "actual155-external-layout.txt",
+      "sha256": "46ff30e888f62c88919d54277d72ddbda830910d1917fa6fe0a956a408820997"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc",
+      "fileSha256": "37875e741e2f30aa32b7cc696910a66c78678da9615352fa7f9e68ada840c702",
+      "startAnchor": "BrowserViewLayoutDelegate::TabStripType",
+      "endAnchor": "bool BrowserViewLayoutDelegateImpl::ShouldDrawWebAppFrameToolbar",
+      "snapshot": "actual155-vertical-state.txt",
+      "sha256": "a871a7401a3e517d363493ced5841d19ded17be40d62b6dbff6ad7ce7d63860f"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_layout_params.cc",
+      "fileSha256": "4f177335bc4382dbce35728b9f2064eccb121c116a0839e509de7b737e545017",
+      "startAnchor": "void BrowserLayoutParams::InsetHorizontal",
+      "endAnchor": "std::ostream& operator<<",
+      "snapshot": "actual155-inset.txt",
+      "sha256": "77476f3f97881f6ad0bc46687a419095bc9b3e48447e1c34458bb5b88b71628c"
+    }
+  ]
+}

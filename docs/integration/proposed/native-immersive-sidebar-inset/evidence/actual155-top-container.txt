@@ -1,0 +1,71 @@
+gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
+    ProposedLayout& layout,
+    BrowserLayoutParams params,
+    bool needs_exclusion) const {
+  const int original_top = params.visual_client_area.y();
+
+  if (IsParentedTo(views().horizontal_tab_strip_region_view,
+                   views().top_container)) {
+    gfx::Rect tabstrip_bounds;
+    if (layout_data_->tab_strip_type == TabStripType::kHorizontal) {
+      const int leading_margin = GetHorizontalTabStripLeadingMargin(params);
+      tabstrip_bounds = GetBoundsWithExclusion(
+          params, views().horizontal_tab_strip_region_view, leading_margin);
+      params.SetTop(tabstrip_bounds.bottom() -
+                    GetLayoutConstant(LayoutConstant::kTabstripToolbarOverlap));
+      needs_exclusion = false;
+    }
+    layout.AddChild(views().horizontal_tab_strip_region_view, tabstrip_bounds,
+                    layout_data_->tab_strip_type == TabStripType::kHorizontal);
+  }
+
+  // Lay out toolbar. If tabstrip is completely absent (or vertical), this can
+  // go in the top exclusion area.
+  const bool toolbar_visible = delegate().IsToolbarVisible();
+  if (IsParentedTo(views().toolbar, views().top_container)) {
+    gfx::Rect toolbar_bounds;
+    if (toolbar_visible) {
+      toolbar_bounds =
+          needs_exclusion
+              ? GetBoundsWithExclusion(params, views().toolbar)
+              : gfx::Rect(params.visual_client_area.x(),
+                          params.visual_client_area.y(),
+                          params.visual_client_area.width(),
+                          views().toolbar->GetPreferredSize().height());
+      params.SetTop(toolbar_bounds.bottom());
+      needs_exclusion = false;
+    }
+    layout.AddChild(views().toolbar, toolbar_bounds, toolbar_visible);
+  }
+
+  // Lay out the bookmarks bar if one is present.
+  const bool bookmarks_visible = delegate().IsBookmarkBarVisible();
+  if (IsParentedTo(views().bookmark_bar, views().top_container)) {
+    const gfx::Rect bookmarks_bounds(
+        params.visual_client_area.x(), params.visual_client_area.y(),
+        params.visual_client_area.width(),
+        bookmarks_visible ? views().bookmark_bar->GetPreferredSize().height()
+                          : 0);
+    layout.AddChild(views().bookmark_bar, bookmarks_bounds, bookmarks_visible);
+    params.SetTop(bookmarks_bounds.bottom());
+  }
+
+  // Maybe show the separator in the top container.
+  if (IsParentedTo(views().top_container_separator, views().top_container)) {
+    gfx::Rect separator_bounds;
+    if (layout_data_->separator_info.top_container_separator) {
+      separator_bounds = gfx::Rect(
+          params.visual_client_area.x(), params.visual_client_area.y(),
+          params.visual_client_area.width(),
+          views().top_container_separator->GetPreferredSize().height());
+      params.SetTop(separator_bounds.bottom());
+    }
+    layout.AddChild(views().top_container_separator, separator_bounds,
+                    layout_data_->separator_info.top_container_separator);
+  }
+
+  return gfx::Rect(params.visual_client_area.x(), original_top,
+                   params.visual_client_area.width(),
+                   params.visual_client_area.y() - original_top);
+}
+

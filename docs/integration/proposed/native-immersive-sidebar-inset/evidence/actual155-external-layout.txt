@@ -1,0 +1,46 @@
+void BrowserViewLayoutImpl::Layout(views::View* host) {
+  if (reentrancy_guard_) {
+    return;
+  }
+  base::AutoReset<bool> guard_reset(&reentrancy_guard_, true);
+
+  auto params = delegate().GetBrowserLayoutParams(/*use_browser_bounds=*/true);
+  if (params.IsEmpty()) {
+    return;
+  }
+
+  DoPreLayoutComputations(params);
+
+  // If the top container is separate from the browser view, lay it out now.
+  if (views().top_container &&
+      views().top_container->parent() != views().browser_view) {
+    // In slide/immersive mode, animating the top container is handled by
+    // someone else, but there are adjustments that are needed to be made.
+    ProposedLayout top_container_layout;
+
+    // The computation for the top container components does not change.
+    const gfx::Rect top_container_local_bounds = CalculateTopContainerLayout(
+        top_container_layout, params, /*needs_exclusion=*/true);
+
+    // Apply the child layouts for the top container.
+    std::move(top_container_layout)
+        .ApplyLayout(views().top_container,
+                     [this](views::View* view, bool visible) {
+                       SetViewVisibility(view, visible);
+                     });
+
+    // Position the top container in its parent, whatever that is.
+    views().top_container->SetBoundsRect(
+        GetTopContainerBoundsInParent(top_container_local_bounds, params));
+
+    // In (for example) fullscreen-with-toolbar, if the size of the top
+    // container changes, then the overall layout dimensions may also change.
+    // See https://crbug.com/519626620 for more information.
+    const auto new_params =
+        delegate().GetBrowserLayoutParams(/*use_browser_bounds=*/true);
+    if (params != new_params) {
+      OnLayoutParamsChanged(params, new_params);
+      params = new_params;
+    }
+  }
+

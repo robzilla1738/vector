@@ -1,0 +1,49 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -1339,6 +1339,26 @@
+     bool needs_exclusion) const {
+   const int original_top = params.visual_client_area.y();
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The supplied external top-container path reserves the actual sidebar before
++  // placing toolbar children (0x45e9d18..0x45e9de4). Internal layouts have
++  // already reserved it and must not receive a second inset.
++  if (!IsParentedTo(views().top_container, views().browser_view) &&
++      layout_data_->tab_strip_type == TabStripType::kVertical &&
++      IsParentedToAndVisible(views().vertical_tab_strip_region_view,
++                             views().browser_view)) {
++    int sidebar_width =
++        views().vertical_tab_strip_region_view->GetPreferredSize().width();
++    if (!delegate().IsVerticalTabStripCollapsed()) {
++      sidebar_width =
++          std::max(sidebar_width,
++                   base::ClampCeil(
++                       params.leading_exclusion.ContentWithPadding().width()));
++    }
++    params.InsetHorizontal(sidebar_width, /*leading=*/true);
++  }
++#endif
++
+   if (IsParentedTo(views().horizontal_tab_strip_region_view,
+                    views().top_container)) {
+     gfx::Rect tabstrip_bounds;
+@@ -1398,6 +1418,19 @@
+     layout.AddChild(views().top_container_separator, separator_bounds,
+                     layout_data_->separator_info.top_container_separator);
+   }
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The container itself retains the inset X; its immediate children are local
++  // to that container (supplied 0x45ea2c0..0x45ea3e0).
++  if (!IsParentedTo(views().top_container, views().browser_view) &&
++      params.visual_client_area.x() != 0) {
++    for (auto& [child, child_layout] : layout.children) {
++      if (!child_layout.bounds.IsEmpty()) {
++        child_layout.bounds.Offset(-params.visual_client_area.x(), 0);
++      }
++    }
++  }
++#endif
+ 
+   return gfx::Rect(params.visual_client_area.x(), original_top,
+                    params.visual_client_area.width(),
