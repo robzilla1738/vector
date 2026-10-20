@@ -1,0 +1,44 @@
+[
+  {
+    "path": "chrome/browser/ui/browser_live_tab_context.cc",
+    "name": "include",
+    "before": "#include \"chrome/browser/ui/browser_live_tab_context.h\"",
+    "after": "#include \"chrome/browser/ui/browser_live_tab_context.h\"\n\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/tabs/aux_bookmark_tab_representation.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/browser_live_tab_context.cc",
+    "name": "closed-tab-extra-data",
+    "before": "  std::map<std::string, std::string> extra_data;\n\n  glic::PopulateGlicExtraData",
+    "after": "  std::map<std::string, std::string> extra_data;\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::PopulateBookmarkTabRepresentationExtraData(\n      tab_strip_model_->GetWebContentsAt(index), &extra_data);\n#endif\n\n  glic::PopulateGlicExtraData",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/browser_tabrestore.cc",
+    "name": "include",
+    "before": "#include \"chrome/browser/buildflags.h\"",
+    "after": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/tabs/aux_bookmark_tab_representation.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/browser_tabrestore.cc",
+    "name": "after-genuine-navigation-restore",
+    "before": "  DCHECK_EQ(0u, entries.size());",
+    "after": "  DCHECK_EQ(0u, entries.size());\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::RestoreBookmarkTabRepresentationFromExtraData(web_contents.get(),\n                                                    extra_data);\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/sessions/session_service.cc",
+    "name": "include",
+    "before": "#include \"chrome/browser/buildflags.h\"",
+    "after": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/tabs/aux_bookmark_tab_representation.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/sessions/session_service.cc",
+    "name": "snapshot-extra-data",
+    "before": "  if (group.has_value()) {\n    command_storage_manager()->AppendRebuildCommand(",
+    "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  std::map<std::string, std::string> bookmark_extra_data;\n  aux::PopulateBookmarkTabRepresentationExtraData(tab, &bookmark_extra_data);\n  for (const auto& [key, value] : bookmark_extra_data) {\n    command_storage_manager()->AppendRebuildCommand(\n        sessions::CreateAddTabExtraDataCommand(session_id, key, value));\n  }\n#endif\n\n  if (group.has_value()) {\n    command_storage_manager()->AppendRebuildCommand(",
+    "count": 1
+  }
+]

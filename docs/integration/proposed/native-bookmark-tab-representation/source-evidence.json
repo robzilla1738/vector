@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "get",
+      "rva": "0x4557640",
+      "bytes": 180,
+      "sha256": "0ff5daa2824d43da12a86a9217495fd75f226e5c94df7ae104d9d613a21b4973",
+      "assemblySha256": "a8950ef5269f4d0898f5958433496bc60c155188fbbc22682d1572d8add880c0"
+    },
+    {
+      "name": "set",
+      "rva": "0x45576f4",
+      "bytes": 148,
+      "sha256": "3530c11e02683bc9cd70223ed21ce4930a4a45c6eef7f257ef66b4b8c2cfa84f",
+      "assemblySha256": "6a1633171716e1b85305e37a93a2b5be416048905baf97eab41edfe8aaf61d18"
+    },
+    {
+      "name": "serialize",
+      "rva": "0x4557788",
+      "bytes": 724,
+      "sha256": "ff4c133625fce036ef3f48c5495d1bc10403b879826c2839a3108f33f59cac26",
+      "assemblySha256": "ec19c60e81cd11151d9250e2a92989924a39030db9c00f9a9dc01454670a222a"
+    },
+    {
+      "name": "restore",
+      "rva": "0x4557a5c",
+      "bytes": 460,
+      "sha256": "8d93c8c615f3bc00e3007470f52ac13ffce7255ec728ed608551d7123ecb2c11",
+      "assemblySha256": "291e8846d48097fd68a960b015ab6a253a475a467a2675e94e0c870a8d43a56a"
+    },
+    {
+      "name": "restore-caller",
+      "rva": "0x4569800",
+      "bytes": 76,
+      "sha256": "b03f8130701710f9d2c1916e256998d83c0b3156d637881718580ebe1548d066",
+      "assemblySha256": "1881b689bf8388d3adad81ed0c6c3964fde4183ea7a823e46ac6c3392cfd49f9"
+    },
+    {
+      "name": "closed-tab-caller",
+      "rva": "0x2b54c88",
+      "bytes": 136,
+      "sha256": "f2405c4addbdbbc7ef4af8a96d03cba03e158c60efe33626debe3d38c4a46232",
+      "assemblySha256": "f4b7dc5ae47ee234853b918264e8fe0a6c16246352185de2fe7716bd30be0852"
+    },
+    {
+      "name": "snapshot-caller",
+      "rva": "0x415bd40",
+      "bytes": 816,
+      "sha256": "eeae6f32a7ebf2a19f06836691492c8be999f0c01870f5e819f9bf328e60594d",
+      "assemblySha256": "4da4a6daa26888c7e8876578215a43b69e492ecf5be926a80b464a0c6b1a322f"
+    },
+    {
+      "name": "region-import",
+      "rva": "0x4645e90",
+      "bytes": 1500,
+      "sha256": "23d5d6b28f6dcc9c577a7cd29abd66f5537cc507ee336e507030979d58450a03",
+      "assemblySha256": "e0cfe35c3bbf27f10923fe43d7d5c2d871eaa04ee57e8cd367e46f6eb3e6e2b3"
+    },
+    {
+      "name": "region-reconcile",
+      "rva": "0x4646f58",
+      "bytes": 612,
+      "sha256": "1d2d1c0e2827826fcf83607f4d7fb6261f5a79e64658af3c6c208c60d7607999",
+      "assemblySha256": "72fd74222872a101e31b594df893b4abae598f4588b2386aa2f6ecd7f0716008"
+    },
+    {
+      "name": "session-persist",
+      "rva": "0x464ffb8",
+      "bytes": 288,
+      "sha256": "653079ccadb4498f292369550e2b75146c7423fd9461435116b74d8ea4cbb9d4",
+      "assemblySha256": "d96ca91d5a6a943514cfaf2dfc53ccef1fa6130707f362c03045b1f735684e89"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/supports_user_data.h",
+      "sha256": "14006c91e60640dd2a43889ecae12089d80d41a25f682cb307bc9c20b209fe30"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/web_contents.h",
+      "sha256": "27ef39d4e28bceca91069bcf7ca1c5e6694f0550e4a2583645ee086389419cbe"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/sessions/session_service.cc",
+      "sha256": "c81c16800929ac618834b2e4f50174472dee726b4248899d360f358379fcc80d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/sessions/core/session_service_commands.h",
+      "sha256": "83928557cc84247794c628f7cb1a15befc6d198d1f5f11e97a69e078068fb575"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/strings/string_number_conversions.h",
+      "sha256": "dcecf9161bb1e2bd2ee0482e68c199263289bf0a60874cd50d2cc426de6b3b2c"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xd6e17ac",
+      "value": "bookmark_tab_representation_node_id"
+    },
+    {
+      "rva": "0xd6e17d0",
+      "value": "bookmark_tab_representation_host"
+    }
+  ]
+}

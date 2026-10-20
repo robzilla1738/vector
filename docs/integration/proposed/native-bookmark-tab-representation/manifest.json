@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "applyAfter": "actual276 (three existing source paths unchanged through278)",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service.cc",
+      "baselineSha256": "c81c16800929ac618834b2e4f50174472dee726b4248899d360f358379fcc80d",
+      "outputSha256": "024f72420c95260a60d7e88ecfd000a6f4a0c8de3efbe5f173f865e907be646e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.cc",
+      "baselineSha256": "4483ed52d63cf75a1f0563f7728c0d5067cb233b7060117a8c9b3681c03b98af",
+      "outputSha256": "00a4285c02c73d7c6f67189de859f376053242af91a34629b74bdd1f717f5ec3",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/browser_tabrestore.cc",
+      "baselineSha256": "3be33d1e695274a77e0607b5fcb98c2c9746cbf5066a91ad9d5e57d6db3edbba",
+      "outputSha256": "523c2f14505ff7b4e5a2e044f163a6b1db9af5070c8a4b9725e716d57c90e1b7",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_bookmark_tab_representation.cc",
+      "baselineSha256": null,
+      "outputSha256": "1d6f81b2b3b64629f411225ce55bfc93b887f50540c6f717f6ca1e8243d03d82",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h",
+      "baselineSha256": null,
+      "outputSha256": "bc6de95b433d9523a5072c9f42d725a5a2989d9e10a7fdce7ddeec01471edaa8",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false,
+  "mounted": "serialization/restore boundary only; real Bookmarks owner pending"
+}
