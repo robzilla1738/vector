@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "applyAfter": "actual Tabs-section integration; NEW files only, no region/GN edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_new_tab_button.cc",
+      "baselineSha256": null,
+      "outputSha256": "ad651f434ab71c6ddc8dda240c5764f5f1c38e2d1447a0714cb6ef3234530df0",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_new_tab_button.h",
+      "baselineSha256": null,
+      "outputSha256": "f14e387eefdced77e695a80e4f5a93b82b58772823b3d52b598c0e065469a9d3",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_new_tab_icon.inc",
+      "baselineSha256": null,
+      "outputSha256": "65964a6d042f4af7b402fb472ccaadc51d70735a2d7682dc4a17878873e968ab",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

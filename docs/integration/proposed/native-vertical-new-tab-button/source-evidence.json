@@ -1,0 +1,275 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor",
+      "rva": "0x4242e5c",
+      "bytes": 1996,
+      "sha256": "db33f66678cdeddc3802fa55a6fb1cc3dc19c46492212d31a46c2f8888403591",
+      "assemblySha256": "42ee3c50aecaff53a6d3e1931dc921a5023639731fb5fa19ad6b32eb11e67d3f"
+    },
+    {
+      "name": "destructor",
+      "rva": "0x4243628",
+      "bytes": 416,
+      "sha256": "b23aeeaa6ba8a3bf9a9112e86c7ab3fbd4524cae67773d923a43ca1c2e781cfb",
+      "assemblySha256": "59cf995ca2f46a64c6e29841a4cd7079adef175406cfdfe74a4b8291966ae28e"
+    },
+    {
+      "name": "action-interface",
+      "rva": "0x4243bbc",
+      "bytes": 340,
+      "sha256": "92e95c7b250e482116093fea48bcb11477871380ef287f35da21d29a3dbedb97",
+      "assemblySha256": "7c496d56936b1930d2cceac390bbd7fda9178f02b37a6a49264b19d7dcb75277"
+    },
+    {
+      "name": "paint-state-highlight",
+      "rva": "0x4243d10",
+      "bytes": 2364,
+      "sha256": "b33606a3867a7d09347e3922856d4066fca734dab994c2a02bfd37ad032df8a4",
+      "assemblySha256": "d1d7ef955359e5e3534aaa4c1ca861cf15d20077a603d16c7b1ec00d0995a908"
+    },
+    {
+      "name": "compact-shortcut",
+      "rva": "0x424464c",
+      "bytes": 1016,
+      "sha256": "3e5d2adc01b9504dbbfcfbebe93df724e762d2f89a4179e461a8af870950d805",
+      "assemblySha256": "77f10987c2b818f6d9dbb7f1cf3a9f40d5e2df10a878443d76fdbd331fe05d95"
+    },
+    {
+      "name": "metadata-action-update",
+      "rva": "0x4244a44",
+      "bytes": 756,
+      "sha256": "d51805839a73f0ecb6d2ee20081f96bcb0cc5ce10b88580003ae7bab7a48c89a",
+      "assemblySha256": "c23256bedcd7433922405a3c70cbc8f2ef75a5974a407ab172e456a3b429c885"
+    },
+    {
+      "name": "before-invoke",
+      "rva": "0x7fb5f68",
+      "bytes": 52,
+      "sha256": "7231ef0e8321a2618524115279e975bd995aa85720d8ec409924c3356d110c8c",
+      "assemblySha256": "373c82c6406ec79c85399e05b16522a84e493a344be3a147d5ebb1f310133b29"
+    },
+    {
+      "name": "button-action-update",
+      "rva": "0x28539a0",
+      "bytes": 280,
+      "sha256": "d7a8df710464a9b93ee050d8d7be53d704d97a3d07839486febf0483f85c63df",
+      "assemblySha256": "c03a36285e7d793798d63f774a937d2777ad3ba92861b26d7177ea24f15590d2"
+    },
+    {
+      "name": "image-container-create",
+      "rva": "0x3b229b8",
+      "bytes": 208,
+      "sha256": "bb83a99aded0ae7d2ae02ebf52e58fbef7beb6b21394aa7bd49ce3afb4b0dd06",
+      "assemblySha256": "02ac65914d9ae5a2eeb3887e6c8aac0f39e88808d9db99ed987184d383a31fbc"
+    },
+    {
+      "name": "image-container-update",
+      "rva": "0x87b52c",
+      "bytes": 280,
+      "sha256": "3d1dbccdde7ed36d2c654d5db008558b01b9f8291b37ec3e6857983ec8b5ffc4",
+      "assemblySha256": "4e97ded6b5008468201b28e2939f616ebcb59951fd2d542e81d3e70c0e6cc21f"
+    },
+    {
+      "name": "flex-constructor",
+      "rva": "0x2a105d0",
+      "bytes": 140,
+      "sha256": "e1a76d87a83e308b2c01635d27f93642e8d9dcd332ef09a898fb4b11b7991d70",
+      "assemblySha256": "0ed68e2ec34cea38a21ebdaea7cf31fd9a4a063bb8cc9484008da9b58527936f"
+    },
+    {
+      "name": "region-new-tab-binding",
+      "rva": "0x37e34f0",
+      "bytes": 1704,
+      "sha256": "278e39f7ea671ce069f8b7794a3f9a8dcd5086c00e44934fa4f99af3cdba38b4",
+      "assemblySha256": "0aa13e4b75556afe459c0b9b3532bae06c514661106fbca02f2a7df5eadfb6de"
+    },
+    {
+      "name": "region-before-invoke",
+      "rva": "0x4630edc",
+      "bytes": 148,
+      "sha256": "f1387fb75bcabaa71a28c2d761565776b9a70b31bc1cbe065df121843b219f9f",
+      "assemblySha256": "3bf71c8c7a09f7ae33f039315e75c1585026a222cf9a996d66c63f9abf68fd0d"
+    },
+    {
+      "name": "section-elide",
+      "rva": "0x46624a0",
+      "bytes": 64,
+      "sha256": "afbcc0205fa2e079fe9d4d15f282739806c77217e52eada4325057f97cab4429",
+      "assemblySha256": "fba2bfdc98a0769e150de795525cd2f3ab099652434e8e884b67ff2a7054c45e"
+    },
+    {
+      "name": "palette-222",
+      "rva": "0x35e73b0",
+      "bytes": 144,
+      "sha256": "6262ecc6d08ccd998ef69ff5ee764cfb08bb9ae8f26241a77df41d8b15b6105e",
+      "assemblySha256": "f5c83f9bcc872741c366be5a70756be7e6cb5a6d45fd88b520c03d6de3551762"
+    },
+    {
+      "name": "palette-cache",
+      "rva": "0x35e76f0",
+      "bytes": 96,
+      "sha256": "5d4562c2de554693b34fb76d1a1777c8e9cbd5cc47a854ccd547a1b667c71282",
+      "assemblySha256": "f8390096ad50b78a9bb124a322ee41ab8a9030cf61967843834ab41d379cd8e4"
+    },
+    {
+      "name": "palette-236",
+      "rva": "0x35e7e90",
+      "bytes": 272,
+      "sha256": "eef552a9880b899f6bc83388d8a51e32fabcc069c34fd47d3f8512b47dd4a534",
+      "assemblySha256": "f200df076613970b5c549fcead9b43f354c6c0fbb6fedfc6d97ecd468a293826"
+    }
+  ],
+  "data": [
+    {
+      "rva": "0xcf06638",
+      "bytes": 24,
+      "hex": "000000410000004100000000000000410000000000000041",
+      "sha256": "bd41e446e4b445bc95ebad8a72d86bcbc1bff106721851f8311b42d13e41ddab"
+    },
+    {
+      "rva": "0xdf3ff60",
+      "bytes": 16,
+      "hex": "00000000020000000000000002000000",
+      "sha256": "a552addd9e706b10905a518e0ce64a398528d9b1ab12c63f5edf56074ad338d3"
+    },
+    {
+      "rva": "0xdf40090",
+      "bytes": 16,
+      "hex": "00000000000000000000000008000000",
+      "sha256": "96a8b8b47c64f17f2bfc3e85ca77b9aab48f7b51571ce883364c3727d4781591"
+    },
+    {
+      "rva": "0xdf40c60",
+      "bytes": 16,
+      "hex": "00000000080000000000000004000000",
+      "sha256": "6cd46726176e2e612a80e0d03da8f9f4088e2005816ac04857be99053bb0ce92"
+    },
+    {
+      "rva": "0xe34de10",
+      "bytes": 48,
+      "hex": "30c4670a00001000882ab20300001000b829b2030000100040d460000000100040d46000000010002cb5870000003000",
+      "sha256": "3009964bef4735abdce2f43fd0680b7e100f12a061143bfec52678a6d5acd3dd"
+    },
+    {
+      "rva": "0xe24ff08",
+      "bytes": 48,
+      "hex": "604b240400001000244c240400001000e84c24040000100070fc740200001000685ffb070000100000bb010000003000",
+      "sha256": "5c0302c003373628648c716048dfa926072150e3ac69679b04478425146bd0b8"
+    },
+    {
+      "rva": "0xe82bd28",
+      "bytes": 16,
+      "hex": "18bd820e000020000100000000000000",
+      "sha256": "060dd98c160fe69eff14de17b30441f052cffd52c1600b4df116f908640a4905"
+    },
+    {
+      "rva": "0xe82bd18",
+      "bytes": 16,
+      "hex": "5866e60c000020004e00000000000000",
+      "sha256": "8ab67ea3027018bb7cee8fec7e65e71680dc993a3c7c8b6046a4b2baf68edade"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xdb10d59",
+      "value": "../../chrome/browser/ui/views/tabs/vertical/vertical_new_tab_button.h"
+    }
+  ],
+  "apiInputs": [
+    {
+      "path": "ui/views/controls/button/label_button.h",
+      "snapshotPath": "evidence/api/ui/views/controls/button/label_button.h",
+      "sha256": "ea3d046e67e4db0ed9d96ff96eeba29e8b2a0e75b00d5c0f1f855fa540d89702"
+    },
+    {
+      "path": "ui/views/controls/button/label_button.cc",
+      "snapshotPath": "evidence/api/ui/views/controls/button/label_button.cc",
+      "sha256": "5c0a697253b35f26acb629d62338a22dfd1ebb71c37368d4be959b9f0ac01ff8"
+    },
+    {
+      "path": "ui/views/controls/button/button.h",
+      "snapshotPath": "evidence/api/ui/views/controls/button/button.h",
+      "sha256": "5a618f1103c36a35d25c600a003f4d4a31129125736d887976187d4db2e0b6b9"
+    },
+    {
+      "path": "ui/views/controls/button/button.cc",
+      "snapshotPath": "evidence/api/ui/views/controls/button/button.cc",
+      "sha256": "4e0f6e8121599691365ef0313764f1ef2dec0340847fa464f818ffe66f8c30d8"
+    },
+    {
+      "path": "ui/views/controls/button/label_button_image_container.h",
+      "snapshotPath": "evidence/api/ui/views/controls/button/label_button_image_container.h",
+      "sha256": "4df0c31fe6dbdf5d94b7c93d3e80c18074d034d6e215d0fae3b620937a519171"
+    },
+    {
+      "path": "ui/views/controls/button/label_button_image_container.cc",
+      "snapshotPath": "evidence/api/ui/views/controls/button/label_button_image_container.cc",
+      "sha256": "8002b48b7bc8566267816dc28bdacb8468ea13ec6bb7d3bf5960447fa21bdc69"
+    },
+    {
+      "path": "ui/views/controls/highlight_path_generator.h",
+      "snapshotPath": "evidence/api/ui/views/controls/highlight_path_generator.h",
+      "sha256": "f7f83889fa9b7f152c00a956054d249659fca6e763b2419a3be124deabad01e5"
+    },
+    {
+      "path": "ui/views/layout/flex_layout.h",
+      "snapshotPath": "evidence/api/ui/views/layout/flex_layout.h",
+      "sha256": "fb078e007350d6287c74d4e368b97ed728ca39d45a16410eceac81cf797a90dc"
+    },
+    {
+      "path": "ui/views/layout/flex_layout_types.h",
+      "snapshotPath": "evidence/api/ui/views/layout/flex_layout_types.h",
+      "sha256": "195ee05b43a41363a87c91676d18e89365e43fedd435a96454b91dcf38c7757a"
+    },
+    {
+      "path": "ui/views/actions/action_view_controller.h",
+      "snapshotPath": "evidence/api/ui/views/actions/action_view_controller.h",
+      "sha256": "dbcf420fe9b6a4caf71cfef3f549236fa02ad755c51c6f9289a0a30ba19d8b27"
+    },
+    {
+      "path": "ui/views/actions/action_view_interface.cc",
+      "snapshotPath": "evidence/api/ui/views/actions/action_view_interface.cc",
+      "sha256": "77fd82468c1180a742627e7ec7b9aaa42439ecdc2274c12b8085f1d40bb8be87"
+    },
+    {
+      "path": "ui/gfx/geometry/rrect_f.h",
+      "snapshotPath": "evidence/api/ui/gfx/geometry/rrect_f.h",
+      "sha256": "845ac26c60d314fe286499b651cb9c5fe36109c1779150aa4663b4ab3add2bcf"
+    },
+    {
+      "path": "ui/gfx/canvas.h",
+      "snapshotPath": "evidence/api/ui/gfx/canvas.h",
+      "sha256": "7f497d934fb4c28dc868d5a320dde173a1741f6a5268a0232d1884ed82a3b7a1"
+    },
+    {
+      "path": "ui/gfx/text_constants.h",
+      "snapshotPath": "evidence/api/ui/gfx/text_constants.h",
+      "sha256": "48373935428aea038b4084d14e74164d3342d16941a4a6da40f811f142d69340"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/shared/new_tab_button.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/tabs/shared/new_tab_button.cc",
+      "sha256": "9725a6a8cb075162ec797985f7dd0b2ff369f30933d4e1e99797eac6f8cc5361"
+    },
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "snapshotPath": "evidence/api/chrome/browser/ui/browser_actions.cc",
+      "sha256": "e68e4c8fba81c39a383666c70a1c13974d9502c90b03e80f15d246308a5c4da9"
+    }
+  ],
+  "icons": [
+    {
+      "name": "NewTabPlus",
+      "descriptorRva": "0xe82bd28",
+      "representationRva": "0xe82bd18",
+      "pathRva": "0xce66658",
+      "elements": 78,
+      "sha256": "84d3681210af2a5e6d522b8526b308cb14dda1f38cbc4d35cca8ef4a9f9d0f51"
+    }
+  ]
+}
