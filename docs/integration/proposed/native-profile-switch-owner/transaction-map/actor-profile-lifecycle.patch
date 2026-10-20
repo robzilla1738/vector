@@ -1,0 +1,1049 @@
+--- a/chrome/browser/actor/ui/actor_ui_window_controller.h
++++ b/chrome/browser/actor/ui/actor_ui_window_controller.h
+@@ -21,6 +21,7 @@
+ #include "ui/views/view_observer.h"
+ 
+ class ActorOverlayWebView;
++class Profile;
+ 
+ namespace chrome {
+ class BrowserCommandController;
+@@ -58,6 +59,10 @@
+   ~ActorUiContentsContainerController() override;
+ 
+   views::WebView* contents_container_view() { return contents_container_view_; }
++  bool IsColdForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* profile);
++  void FinishForAuxProfileSwitch();
+ 
+   // Called whenever web contents are attached to a `web_view`.
+   void OnWebContentsAttached(views::WebView* web_view);
+@@ -82,6 +87,10 @@
+   void NotifyTabControllerOnImmersiveModeChanged();
+ 
+  private:
++  void LeaveAuxCallback();
++  void RunPostedWebContentsAttached();
++  void RunPostedBoundsChanged();
++
+   // Applies the state updates to the Actor Overlay.
+   void ApplyOverlayState(bool is_visible,
+                          ActorOverlayState state,
+@@ -117,8 +126,12 @@
+   base::ScopedObservation<views::View, views::ViewObserver> view_observation_{
+       this};
+ 
++  bool aux_profile_switch_prepared_ = false;
++  int aux_callback_depth_ = 0;
++  int aux_pending_notifications_ = 0;
+   base::WeakPtrFactory<ActorUiContentsContainerController> weak_ptr_factory_{
+       this};
++  base::WeakPtrFactory<ActorUiContentsContainerController> aux_lifetime_factory_{this};
+ };
+ 
+ }  // namespace actor::ui
+@@ -137,6 +150,11 @@
+       BrowserWindowInterface* browser_window_interface);
+ 
+   void TearDown();
++  bool CanRebindForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* profile);
++  void FinishForAuxProfileSwitch();
++  void AbortForAuxProfileSwitch(Profile* source_profile);
+ 
+   actor::ui::ActorUiContentsContainerController* GetControllerForWebContents(
+       content::WebContents* web_contents);
+@@ -159,6 +177,9 @@
+   chrome::BrowserCommandController* GetCommandController();
+ 
+  private:
++  void LeaveAuxCallback();
++  void RunPostedImmersiveChange();
++  void RunPostedOmniboxChange(bool is_open);
+   void InitializeImmersiveModeObserver();
+   void NotifyControllersOfImmersiveChange();
+   void OnImmersiveFullscreenToolbarPrefChanged();
+@@ -184,7 +205,12 @@
+       contents_container_controllers_;
+   ::ui::ScopedUnownedUserData<ActorUiWindowController> scoped_data_holder_;
+ 
++  raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
++  bool aux_profile_switch_prepared_ = false;
++  int aux_callback_depth_ = 0;
++  int aux_pending_notifications_ = 0;
+   base::WeakPtrFactory<ActorUiWindowController> weak_ptr_factory_{this};
++  base::WeakPtrFactory<ActorUiWindowController> aux_lifetime_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_ACTOR_UI_ACTOR_UI_WINDOW_CONTROLLER_H_
+--- a/chrome/browser/actor/ui/actor_ui_window_controller.cc
++++ b/chrome/browser/actor/ui/actor_ui_window_controller.cc
+@@ -2,7 +2,13 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
++#include "base/functional/callback_helpers.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
++
++#include <algorithm>
+ 
+ #include "chrome/browser/actor/actor_keyed_service.h"
+ #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
+@@ -53,21 +59,93 @@
+ ActorUiContentsContainerController::~ActorUiContentsContainerController() =
+     default;
+ 
++bool ActorUiContentsContainerController::IsColdForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
++      aux_pending_notifications_ ||
++      (overlay_ && !overlay_->CanRebindForAuxProfileSwitch()) ||
++      (handoff_button_controller_ &&
++       !handoff_button_controller_->IsColdForAuxProfileSwitch())) {
++    return false;
++  }
++  auto* contents = contents_container_view_->web_contents();
++  if (contents != web_contents()) {
++    return false;
++  }
++  auto* tab = contents ? tabs::TabInterface::GetFromContents(contents) : nullptr;
++  if (tab && ActorUiTabControllerInterface::From(tab)) {
++    auto* actual = ActorUiTabController::Get(tab->GetUnownedUserDataHost());
++    return actual && actual->IsColdForAuxProfileSwitch();
++  }
++  return true;
++}
++
++void ActorUiContentsContainerController::PrepareForAuxProfileSwitch() {
++  CHECK(IsColdForAuxProfileSwitch());
++  aux_profile_switch_prepared_ = true;
++  // These are the actual unregister closures, not actor completion callbacks.
++  actor_ui_tab_controller_callback_runners_.clear();
++  Observe(nullptr);
++  view_observation_.Reset();
++}
++
++void ActorUiContentsContainerController::RebindForAuxProfileSwitch(Profile* profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK(!aux_pending_notifications_);
++  if (overlay_) {
++    overlay_->RebindForAuxProfileSwitch(profile);
++  }
++}
++
++void ActorUiContentsContainerController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  aux_profile_switch_prepared_ = false;
++  // Real attachment path registers real current-tab callbacks and posts the
++  // original notification. It does not simulate an Actor state completion.
++  OnWebContentsAttached(contents_container_view_);
++}
++
++void ActorUiContentsContainerController::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++void ActorUiContentsContainerController::RunPostedWebContentsAttached() {
++  CHECK(aux_pending_notifications_ > 0);
++  --aux_pending_notifications_;
++  NotifyTabControllerOnWebContentsAttached();
++}
++void ActorUiContentsContainerController::RunPostedBoundsChanged() {
++  CHECK(aux_pending_notifications_ > 0);
++  --aux_pending_notifications_;
++  NotifyTabControllerOnViewBoundsChanged();
++}
++
+ void ActorUiContentsContainerController::OnViewBoundsChanged(
+     views::View* observed_view) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   CHECK(observed_view == contents_container_view_);
+   if (!contents_container_view_->web_contents()) {
+     return;
+   }
+ 
++  ++aux_pending_notifications_;
+   content::GetUIThreadTaskRunner({})->PostTask(
+       FROM_HERE, base::BindOnce(&ActorUiContentsContainerController::
+-                                    NotifyTabControllerOnViewBoundsChanged,
++                                    RunPostedBoundsChanged,
+                                 weak_ptr_factory_.GetWeakPtr()));
+ }
+ 
+ void ActorUiContentsContainerController::OnWebContentsAttached(
+     views::WebView* web_view) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   if (!web_view->web_contents()) {
+     return;
+   }
+@@ -114,10 +192,11 @@
+ 
+       // Asynchronous post needed for the window to completely open and
+       // activate before trying to show the UI components.
++      ++aux_pending_notifications_;
+       content::GetUIThreadTaskRunner({})->PostTask(
+           FROM_HERE,
+           base::BindOnce(&ActorUiContentsContainerController::
+-                             NotifyTabControllerOnWebContentsAttached,
++                             RunPostedWebContentsAttached,
+                          weak_ptr_factory_.GetWeakPtr()));
+     }
+   }
+@@ -137,6 +216,9 @@
+ 
+ void ActorUiContentsContainerController::
+     NotifyTabControllerOnWebContentsAttached() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* tab_controller = GetActorUiTabController()) {
+     tab_controller->OnWebContentsAttached();
+   }
+@@ -144,6 +226,9 @@
+ 
+ void ActorUiContentsContainerController::
+     NotifyTabControllerOnViewBoundsChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* tab_controller = GetActorUiTabController()) {
+     tab_controller->OnViewBoundsChanged();
+   }
+@@ -151,6 +236,9 @@
+ 
+ void ActorUiContentsContainerController::
+     NotifyTabControllerOnImmersiveModeChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* tab_controller = GetActorUiTabController()) {
+     tab_controller->OnImmersiveModeChanged();
+   }
+@@ -158,6 +246,12 @@
+ 
+ void ActorUiContentsContainerController::OnWebContentsDetached(
+     views::WebView* web_view) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   if (!web_view->web_contents()) {
+     return;
+   }
+@@ -176,6 +270,9 @@
+ 
+ void ActorUiContentsContainerController::OnActorOverlayBackgroundChange(
+     bool is_visible) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (!overlay_) {
+     return;
+   }
+@@ -184,6 +281,9 @@
+ 
+ void ActorUiContentsContainerController::
+     NotifyWindowOmniboxPopupVisibilityChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* tab_controller = GetActorUiTabController()) {
+     tab_controller->OnWindowOmniboxPopupVisibilityChanged();
+   }
+@@ -193,6 +293,9 @@
+     bool is_visible,
+     ActorOverlayState state,
+     base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   base::OnceClosure on_overlay_ready =
+       base::BindOnce(&ActorUiContentsContainerController::ApplyOverlayState,
+                      weak_ptr_factory_.GetWeakPtr(), is_visible,
+@@ -204,6 +307,9 @@
+ void ActorUiContentsContainerController::EnsureOverlayReady(
+     bool is_visible,
+     base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // Ensure the callback runs on any early return. We Release() ownership only
+   // when passing the callback to an asynchronous operation.
+   base::ScopedClosureRunner runner(std::move(callback));
+@@ -225,6 +331,9 @@
+     bool is_visible,
+     ActorOverlayState state,
+     base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // Ensure the callback runs on any early return. We Release() ownership only
+   // when passing the callback to an asynchronous operation.
+   base::ScopedClosureRunner runner(std::move(callback));
+@@ -245,6 +354,9 @@
+ }
+ 
+ void ActorUiContentsContainerController::UpdateFindInPageCommandState() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiContentsContainerController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* command_controller = window_controller_->GetCommandController()) {
+     command_controller->TabStateChanged();
+   }
+@@ -273,6 +385,105 @@
+ 
+ ActorUiWindowController::~ActorUiWindowController() = default;
+ 
++bool ActorUiWindowController::CanRebindForAuxProfileSwitch() const {
++  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
++      aux_pending_notifications_ || is_omnibox_popup_open_ ||
++      From(browser_window_interface_) != this ||
++      browser_window_interface_->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !browser_window_interface_->GetProfile()->IsRegularProfile()) {
++    return false;
++  }
++  auto* model = browser_window_interface_->GetTabStripModel();
++  if (!model || model->profile() != browser_window_interface_->GetProfile()) {
++    return false;
++  }
++  for (int i = 0; i < model->count(); ++i) {
++    auto* tab = model->GetTabAtIndex(i);
++    auto* service = actor::ActorKeyedService::Get(tab->GetContents()->GetBrowserContext());
++    if (service && service->GetTaskFromTab(*tab)) {
++      return false;
++    }
++    if (actor::ui::ActorUiTabControllerInterface::From(tab)) {
++      auto* actual = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
++      if (!actual || !actual->IsColdForAuxProfileSwitch()) {
++        return false;
++      }
++    }
++  }
++  return std::ranges::all_of(contents_container_controllers_,
++      [](const auto& controller) { return controller->IsColdForAuxProfileSwitch(); });
++}
++
++void ActorUiWindowController::PrepareForAuxProfileSwitch() {
++  CHECK(CanRebindForAuxProfileSwitch());
++  aux_switch_source_profile_ = browser_window_interface_->GetProfile();
++  aux_profile_switch_prepared_ = true;
++  pref_change_registrar_.Reset();
++  immersive_mode_observer_.Reset();
++  for (const auto& controller : contents_container_controllers_) {
++    controller->PrepareForAuxProfileSwitch();
++  }
++}
++
++void ActorUiWindowController::RebindForAuxProfileSwitch(Profile* profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK(profile);
++  CHECK(profile->IsRegularProfile());
++  CHECK(browser_window_interface_->GetProfile() == profile);
++  CHECK(browser_window_interface_->GetTabStripModel()->profile() == profile);
++  CHECK(browser_window_interface_->GetTabStripModel()->empty());
++  for (const auto& controller : contents_container_controllers_) {
++    controller->RebindForAuxProfileSwitch(profile);
++  }
++  InitializeImmersiveModeObserver();
++}
++
++void ActorUiWindowController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  aux_switch_source_profile_ = nullptr;
++  aux_profile_switch_prepared_ = false;
++  auto alive = aux_lifetime_factory_.GetWeakPtr();
++  for (const auto& controller : contents_container_controllers_) {
++    controller->FinishForAuxProfileSwitch();
++    if (!alive) {
++      return;
++    }
++  }
++}
++
++void ActorUiWindowController::AbortForAuxProfileSwitch(Profile* source_profile) {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_switch_source_profile_ == source_profile);
++  CHECK(browser_window_interface_->GetProfile() == source_profile);
++  auto* model = browser_window_interface_->GetTabStripModel();
++  CHECK(model->profile() == source_profile);
++  for (int i = 0; i < model->count(); ++i) {
++    CHECK(model->GetWebContentsAt(i)->GetBrowserContext() == source_profile);
++  }
++  for (const auto& controller : contents_container_controllers_) {
++    controller->RebindForAuxProfileSwitch(source_profile);
++  }
++  InitializeImmersiveModeObserver();
++  FinishForAuxProfileSwitch();
++}
++
++void ActorUiWindowController::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++void ActorUiWindowController::RunPostedImmersiveChange() {
++  CHECK(aux_pending_notifications_ > 0);
++  --aux_pending_notifications_;
++  NotifyControllersOfImmersiveChangeInternal();
++}
++void ActorUiWindowController::RunPostedOmniboxChange(bool is_open) {
++  CHECK(aux_pending_notifications_ > 0);
++  --aux_pending_notifications_;
++  OnOmniboxPopupStateChangedInternal(is_open);
++}
++
+ // static
+ ActorUiWindowController* ActorUiWindowController::From(
+     BrowserWindowInterface* browser_window_interface) {
+@@ -298,16 +509,20 @@
+ }
+ 
+ void ActorUiWindowController::OnOmniboxPopupStateChanged(bool is_open) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   is_omnibox_popup_open_ = is_open;
+   if (base::FeatureList::IsEnabled(
+           features::kGlicActorPostTaskUiUpdateEnabled)) {
+     // Use PostTask to avoid re-entrancy issues and race conditions during
+     // Tab Discard where the WebContents <-> TabModel mapping is temporarily
+     // unstable. This prevents the crash in GetFromContents().
++    ++aux_pending_notifications_;
+     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE,
+         base::BindOnce(
+-            &ActorUiWindowController::OnOmniboxPopupStateChangedInternal,
++            &ActorUiWindowController::RunPostedOmniboxChange,
+             weak_ptr_factory_.GetWeakPtr(), is_open));
+   } else {
+     OnOmniboxPopupStateChangedInternal(is_open);
+@@ -315,6 +530,12 @@
+ }
+ 
+ void ActorUiWindowController::OnOmniboxPopupStateChangedInternal(bool is_open) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   for (const auto& container : contents_container_controllers_) {
+     container->NotifyWindowOmniboxPopupVisibilityChanged();
+   }
+@@ -345,15 +566,18 @@
+ }
+ 
+ void ActorUiWindowController::NotifyControllersOfImmersiveChange() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (base::FeatureList::IsEnabled(
+           features::kGlicActorPostTaskUiUpdateEnabled)) {
+     // Use PostTask to avoid re-entrancy issues and race conditions during
+     // Tab Discard where the WebContents <-> TabModel mapping is temporarily
+     // unstable. This prevents the crash in GetFromContents().
++    ++aux_pending_notifications_;
+     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE,
+-        base::BindOnce(&ActorUiWindowController::
+-                           NotifyControllersOfImmersiveChangeInternal,
++        base::BindOnce(&ActorUiWindowController::RunPostedImmersiveChange,
+                        weak_ptr_factory_.GetWeakPtr()));
+   } else {
+     NotifyControllersOfImmersiveChangeInternal();
+@@ -361,34 +585,58 @@
+ }
+ 
+ void ActorUiWindowController::NotifyControllersOfImmersiveChangeInternal() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
+   for (const auto& controller : contents_container_controllers_) {
+     controller->NotifyTabControllerOnImmersiveModeChanged();
+   }
+ }
+ 
+ void ActorUiWindowController::OnImmersiveFullscreenEntered() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   NotifyControllersOfImmersiveChange();
+ }
+ 
+ void ActorUiWindowController::OnImmersiveFullscreenExited() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   NotifyControllersOfImmersiveChange();
+ }
+ 
+ void ActorUiWindowController::OnImmersiveRevealStarted() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   NotifyControllersOfImmersiveChange();
+ }
+ 
+ void ActorUiWindowController::OnImmersiveRevealEnded() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   NotifyControllersOfImmersiveChange();
+ }
+ 
+ void ActorUiWindowController::OnImmersiveFullscreenToolbarPrefChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (IsImmersiveModeEnabled()) {
+     NotifyControllersOfImmersiveChange();
+   }
+ }
+ 
+ void ActorUiWindowController::OnImmersiveModeControllerDestroyed() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   immersive_mode_observer_.Reset();
+   pref_change_registrar_.RemoveAll();
+ }
+@@ -413,6 +661,9 @@
+ }
+ 
+ void ActorUiWindowController::TearDown() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiWindowController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   contents_container_controllers_.clear();
+ }
+ 
+--- a/chrome/browser/actor/ui/actor_overlay_web_view.h
++++ b/chrome/browser/actor/ui/actor_overlay_web_view.h
+@@ -18,6 +18,8 @@
+ }  // namespace tabs
+ 
+ // ActorOverlayWebView is used to display the WebContents of the actor overlay.
++class Profile;
++
+ class ActorOverlayWebView : public views::WebView {
+   METADATA_HEADER(ActorOverlayWebView, views::WebView)
+ 
+@@ -33,6 +35,8 @@
+   // If the UI is closed, this webview may still exist as an empty container
+   // until ShowUI is called again.
+   void CloseUI();
++  bool CanRebindForAuxProfileSwitch() const;
++  void RebindForAuxProfileSwitch(Profile* profile);
+ 
+   // Forwards the overlay background visibility to WebUI.
+   void SetOverlayBackground(bool is_visible);
+@@ -50,6 +54,7 @@
+   void PrimaryPageChanged(content::Page& page) override;
+ 
+  private:
++  void LeaveAuxCallback();
+   virtual actor::ui::ActorOverlayUI* GetWebUi();
+   // Manages the lifetime of the WebContents input event ignoring state.
+   std::optional<content::WebContents::ScopedIgnoreInputEvents>
+@@ -62,7 +67,9 @@
+   // before the navigation commits and the WebUI is created.
+   std::vector<base::OnceClosure> pending_webui_init_callbacks_;
+ 
++  int aux_callback_depth_ = 0;
+   base::WeakPtrFactory<ActorOverlayWebView> weak_factory_{this};
++  base::WeakPtrFactory<ActorOverlayWebView> aux_lifetime_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_ACTOR_UI_ACTOR_OVERLAY_WEB_VIEW_H_
+--- a/chrome/browser/actor/ui/actor_overlay_web_view.cc
++++ b/chrome/browser/actor/ui/actor_overlay_web_view.cc
+@@ -2,6 +2,9 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
++#include "base/functional/callback_helpers.h"
++#include "base/functional/bind.h"
+ #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
+ 
+ #include "chrome/browser/profiles/profile.h"
+@@ -26,6 +29,26 @@
+   GetViewAccessibility().SetIsIgnored(true);
+ }
+ 
++bool ActorOverlayWebView::CanRebindForAuxProfileSwitch() const {
++  // Hidden WebContents still own their source BrowserContext and WebUI/Mojo
++  // callback queues. They are not silently destroyed or marked completed.
++  return !aux_callback_depth_ && !web_contents() && !GetVisible() &&
++         !scoped_ignore_input_events_ && pending_webui_init_callbacks_.empty();
++}
++
++void ActorOverlayWebView::RebindForAuxProfileSwitch(Profile* profile) {
++  CHECK(CanRebindForAuxProfileSwitch());
++  CHECK(profile);
++  CHECK(profile->IsRegularProfile());
++  CHECK(browser_->GetProfile() == profile);
++  SetBrowserContext(profile);
++}
++
++void ActorOverlayWebView::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
+ ActorOverlayWebView::~ActorOverlayWebView() {
+   CloseUI();
+   SetWebContents(nullptr);
+@@ -33,6 +56,9 @@
+ 
+ void ActorOverlayWebView::ShowUI(tabs::TabInterface* tab,
+                                  base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   CHECK(base::FeatureList::IsEnabled(features::kGlicActorUi));
+   CHECK(features::kGlicActorUiOverlay.Get());
+   if (!web_contents()) {
+@@ -66,6 +92,9 @@
+ }
+ 
+ void ActorOverlayWebView::CloseUI() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (web_contents()) {
+     SetVisible(false);
+     // Re-enable mouse, keyboard, and a11y input events to the underlying web
+@@ -76,6 +105,9 @@
+ }
+ 
+ void ActorOverlayWebView::SetOverlayBackground(bool is_visible) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   actor::ui::ActorOverlayUI* web_ui = GetWebUi();
+   if (!web_ui) {
+     return;
+@@ -85,6 +117,9 @@
+ }
+ 
+ void ActorOverlayWebView::SetBorderGlowVisibility(bool is_visible) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   actor::ui::ActorOverlayUI* web_ui = GetWebUi();
+   if (!web_ui) {
+     return;
+@@ -95,6 +130,9 @@
+ 
+ void ActorOverlayWebView::MoveCursorTo(const gfx::Point& point,
+                                        base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // Ensure the callback runs on any early return. We Release() ownership only
+   // when passing the callback to an asynchronous operation.
+   base::ScopedClosureRunner runner(std::move(callback));
+@@ -107,6 +145,9 @@
+ }
+ 
+ void ActorOverlayWebView::TriggerClickAnimation(base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // Ensure the callback runs on any early return. We Release() ownership only
+   // when passing the callback to an asynchronous operation.
+   base::ScopedClosureRunner runner(std::move(callback));
+@@ -130,6 +171,9 @@
+ }
+ 
+ void ActorOverlayWebView::PrimaryPageChanged(content::Page& page) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorOverlayWebView::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   content::RenderWidgetHostView* rwhv =
+       web_contents()->GetRenderWidgetHostView();
+   if (rwhv) {
+--- a/chrome/browser/actor/ui/handoff_button_controller.h
++++ b/chrome/browser/actor/ui/handoff_button_controller.h
+@@ -74,6 +74,7 @@
+   virtual bool IsFocused();
+ 
+   base::WeakPtr<HandoffButtonController> GetWeakPtr();
++  bool IsColdForAuxProfileSwitch() const;
+ 
+   // Registers the current tab interface.
+   [[nodiscard]] base::ScopedClosureRunner RegisterTabInterface(
+@@ -94,6 +95,7 @@
+   raw_ptr<views::LabelButton> button_view_ = nullptr;
+ 
+  private:
++  void LeaveAuxCallback();
+   void CreateAndShowButton(const std::u16string& text,
+                            const std::u16string& a11y_text,
+                            const ::ui::ImageModel& icon);
+@@ -118,7 +120,9 @@
+   raw_ptr<ActorUiWindowController> window_controller_ = nullptr;
+   raw_ptr<tabs::TabInterface> tab_interface_ = nullptr;
+ 
++  int aux_callback_depth_ = 0;
+   base::WeakPtrFactory<HandoffButtonController> weak_ptr_factory_{this};
++  base::WeakPtrFactory<HandoffButtonController> aux_lifetime_factory_{this};
+ };
+ 
+ }  // namespace actor::ui
+--- a/chrome/browser/actor/ui/handoff_button_controller.cc
++++ b/chrome/browser/actor/ui/handoff_button_controller.cc
+@@ -2,6 +2,9 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
++#include "base/functional/callback_helpers.h"
++#include "base/functional/bind.h"
+ #include "chrome/browser/actor/ui/handoff_button_controller.h"
+ 
+ #include "base/feature_list.h"
+@@ -220,9 +223,22 @@
+ 
+ HandoffButtonController::~HandoffButtonController() = default;
+ 
++bool HandoffButtonController::IsColdForAuxProfileSwitch() const {
++  return !aux_callback_depth_ && !widget_ && !delegate_ && !button_view_ &&
++         !is_hovering_ && !is_focused_ && !view_observer_.IsObserving();
++}
++
++void HandoffButtonController::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
+ void HandoffButtonController::UpdateState(HandoffButtonState state,
+                                           bool is_visible,
+                                           base::OnceClosure callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (!state.is_active) {
+     CloseButton(views::Widget::ClosedReason::kUnspecified);
+     std::move(callback).Run();
+@@ -306,6 +322,9 @@
+     const std::u16string& text,
+     const std::u16string& a11y_text,
+     const ImageModel& icon) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   CHECK(!widget_);
+ 
+   // Create the button view.
+@@ -389,6 +408,9 @@
+ 
+ void HandoffButtonController::OnWidgetDestroying(
+     views::Widget::ClosedReason reason) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   view_observer_.Reset();
+   button_view_ = nullptr;
+   widget_.reset();
+@@ -396,6 +418,9 @@
+ }
+ 
+ void HandoffButtonController::CloseButton(views::Widget::ClosedReason reason) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // Before closing the button, reset hover and focus status to prevent stale
+   // state propagation.
+   if (base::FeatureList::IsEnabled(
+@@ -409,6 +434,9 @@
+ }
+ 
+ void HandoffButtonController::UpdateButtonHoverStatus(bool is_hovered) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   is_hovering_ = is_hovered;
+   if (auto* tab_controller = GetTabController()) {
+     tab_controller->OnHandoffButtonHoverStatusChanged();
+@@ -416,6 +444,9 @@
+ }
+ 
+ void HandoffButtonController::OnButtonPressed() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   // If the Actor is currently in control, pressing the button
+   // flips the state and pauses the task.
+   if (auto* tab_controller = GetTabController()) {
+@@ -452,6 +483,9 @@
+ }
+ 
+ void HandoffButtonController::UnregisterTabInterface() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   tab_interface_ = nullptr;
+   UpdateState(HandoffButtonState(), /*is_visible=*/false, base::DoNothing());
+ }
+@@ -467,6 +501,9 @@
+ }
+ 
+ void HandoffButtonController::UpdateButtonFocusStatus(bool is_focused) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   is_focused_ = is_focused;
+   if (auto* tab_controller = GetTabController()) {
+     tab_controller->OnHandoffButtonFocusStatusChanged();
+@@ -474,10 +511,16 @@
+ }
+ 
+ void HandoffButtonController::OnViewFocused(views::View* observed_view) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   UpdateButtonFocusStatus(/*is_focused=*/true);
+ }
+ 
+ void HandoffButtonController::OnViewBlurred(views::View* observed_view) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &HandoffButtonController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   UpdateButtonFocusStatus(/*is_focused=*/false);
+ }
+ 
+--- a/chrome/browser/actor/ui/actor_ui_tab_controller.h
++++ b/chrome/browser/actor/ui/actor_ui_tab_controller.h
+@@ -32,6 +32,7 @@
+   void SetActorTaskResume() override;
+   base::WeakPtr<ActorUiTabControllerInterface> GetWeakPtr() override;
+   UiTabState GetCurrentUiTabState() const override;
++  bool IsColdForAuxProfileSwitch() const;
+ 
+ #if !BUILDFLAG(IS_ANDROID)
+   void OnWebContentsAttached() override;
+@@ -51,6 +52,12 @@
+ #endif
+ 
+  private:
++  void LeaveAuxCallback();
++  UiResultCallback TrackAuxUiCompletion(UiResultCallback callback);
++  static void CompleteAuxUiWork(base::WeakPtr<ActorUiTabController> owner,
++                                UiResultCallback callback,
++                                bool result);
++
+   // Called only once on startup to initialize tab subscriptions.
+   void RegisterTabSubscriptions();
+ 
+@@ -131,7 +138,10 @@
+ 
+   ::ui::ScopedUnownedUserData<ActorUiTabController> scoped_unowned_user_data_;
+ 
++  int aux_callback_depth_ = 0;
++  int aux_pending_ui_work_ = 0;
+   base::WeakPtrFactory<ActorUiTabController> weak_factory_{this};
++  base::WeakPtrFactory<ActorUiTabController> aux_lifetime_factory_{this};
+ };
+ 
+ }  // namespace actor::ui
+--- a/chrome/browser/actor/ui/actor_ui_tab_controller.cc
++++ b/chrome/browser/actor/ui/actor_ui_tab_controller.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/check.h"
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+ 
+ #include "base/check_op.h"
+@@ -57,6 +59,44 @@
+ 
+ ActorUiTabController::~ActorUiTabController() = default;
+ 
++bool ActorUiTabController::IsColdForAuxProfileSwitch() const {
++  return !aux_callback_depth_ && !aux_pending_ui_work_ &&
++         !update_scrim_background_debounce_timer_.IsRunning() &&
++         !is_overlay_hovered_ && !should_show_scrim_background_ &&
++         current_ui_tab_state_ == UiTabState() &&
++         (!actor_keyed_service_ || !actor_keyed_service_->GetTaskFromTab(*tab_));
++}
++
++void ActorUiTabController::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++UiResultCallback ActorUiTabController::TrackAuxUiCompletion(
++    UiResultCallback callback) {
++  ++aux_pending_ui_work_;
++  return base::BindOnce(&ActorUiTabController::CompleteAuxUiWork,
++                        aux_lifetime_factory_.GetWeakPtr(), std::move(callback));
++}
++
++void ActorUiTabController::CompleteAuxUiWork(
++    base::WeakPtr<ActorUiTabController> owner,
++    UiResultCallback callback,
++    bool result) {
++  base::ScopedClosureRunner leave;
++  if (owner) {
++    CHECK(owner->aux_pending_ui_work_ > 0);
++    --owner->aux_pending_ui_work_;
++    ++owner->aux_callback_depth_;
++    leave.ReplaceClosure(base::BindOnce(&ActorUiTabController::LeaveAuxCallback,
++                                        owner));
++  }
++  // Preserve the original result/callback even if the tab owner is gone.
++  if (callback) {
++    std::move(callback).Run(result);
++  }
++}
++
+ void ActorUiTabController::RegisterTabSubscriptions() {
+   if (base::FeatureList::IsEnabled(
+           features::kGlicHandoffButtonHideWhenModalUIShown)) {
+@@ -68,7 +108,11 @@
+ 
+ void ActorUiTabController::OnUiTabStateChange(const UiTabState& ui_tab_state,
+                                               UiResultCallback callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (current_ui_tab_state_ == ui_tab_state) {
++    callback = TrackAuxUiCompletion(std::move(callback));
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, base::BindOnce(std::move(callback), true));
+     return;
+@@ -128,6 +172,9 @@
+ }
+ 
+ void ActorUiTabController::OnViewBoundsChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (!actor_keyed_service_->GetTaskFromTab(*tab_)) {
+     return;
+   }
+@@ -135,6 +182,10 @@
+ }
+ 
+ void ActorUiTabController::UpdateUi(UiResultCallback callback) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
++  callback = TrackAuxUiCompletion(std::move(callback));
+   // TODO(crbug.com/447593256): Propagate errors when component update fails.
+   // TODO(crbug.com/428216197): Only notify relevant UI components on change and
+   // decouple visibility + state changes into 2 functions.
+@@ -171,10 +222,16 @@
+ }
+ 
+ void ActorUiTabController::OnWebContentsAttached() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   UpdateUi(base::BindOnce(&LogAndIgnoreCallbackError, "OnWebContentsAttached"));
+ }
+ 
+ void ActorUiTabController::OnImmersiveModeChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   UpdateUi(
+       base::BindOnce(&LogAndIgnoreCallbackError, "OnImmersiveModeChanged"));
+ }
+@@ -236,6 +293,9 @@
+ }
+ 
+ void ActorUiTabController::SetActorTaskPaused() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* task = actor_keyed_service_->GetTaskFromTab(*tab_)) {
+     task->Pause(/*from_actor=*/false);
+   } else {
+@@ -244,6 +304,9 @@
+ }
+ 
+ void ActorUiTabController::SetActorTaskResume() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   if (auto* task = actor_keyed_service_->GetTaskFromTab(*tab_)) {
+     task->Resume();
+   } else {
+@@ -255,6 +318,9 @@
+ // and onto contents container, investigate removing debouncing on the tab
+ // controller side and handle it on the ui component side.
+ void ActorUiTabController::UpdateScrimBackground() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   bool should_show_scrim_background =
+       is_overlay_hovered_ || (handoff_button_controller_ &&
+                               (handoff_button_controller_->IsHovering() ||
+@@ -273,21 +339,33 @@
+ }
+ 
+ void ActorUiTabController::OnWindowOmniboxPopupVisibilityChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   UpdateUi(base::BindOnce(&LogAndIgnoreCallbackError,
+                           "OnWindowOmniboxPopupVisibilityChanged"));
+ }
+ 
+ void ActorUiTabController::OnModalUIChanged(tabs::TabInterface* tab) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   DCHECK_EQ(tab, base::to_address(tab_));
+   UpdateUi(base::BindOnce(&LogAndIgnoreCallbackError, "OnModalUIChanged"));
+ }
+ 
+ void ActorUiTabController::OnOverlayHoverStatusChanged(bool is_hovering) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   is_overlay_hovered_ = is_hovering;
+   update_scrim_background_debounce_timer_.Reset();
+ }
+ 
+ void ActorUiTabController::OnHandoffButtonHoverStatusChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   update_scrim_background_debounce_timer_.Reset();
+ }
+ 
+@@ -304,6 +382,9 @@
+ }
+ 
+ void ActorUiTabController::OnHandoffButtonFocusStatusChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &ActorUiTabController::LeaveAuxCallback, aux_lifetime_factory_.GetWeakPtr()));
+   update_scrim_background_debounce_timer_.Reset();
+ }
+ 

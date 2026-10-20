@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 Actor window/container/overlay/handoff/tab owners",
+  "files": [
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.h",
+      "baselineSha256": "af252bceaf85abbfa0bc5935614d440100f23722f786de2b6f6d7b7683b4a7d5",
+      "outputSha256": "267c4e5d1d3abbe1f9e73dd5501eede39a1030279334d2cac8f9e062407658b8"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "baselineSha256": "9b238ef1a806d93dbfaf4ea55957beb232ffd136680c443ba0de558150d899ce",
+      "outputSha256": "c49dd2beaa8bc9da97a8fca35c957db24a04507dfab97739f1432dc80b55a435"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.h",
+      "baselineSha256": "06ddfa4f2de7990123557bb7a75bf921ccfe06ed0b47260b6ee9106520b48611",
+      "outputSha256": "fc59f0afbefe6587e3dd737664617ba973a9a479306b61aaa18875b5b6a9521c"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.cc",
+      "baselineSha256": "562d55ad0368ab743989bc9735743b3c7b8765769ffb0bd4ec6edb6e96aa219b",
+      "outputSha256": "022b6718f63ae2e789f21bef736bd6890640e96e324596fa64465ef9ac8c20ea"
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.h",
+      "baselineSha256": "6695e20c1d47a6ef75dae5d656e3fddf6a77fab40a71ccfb62aa49aefe42ea9e",
+      "outputSha256": "03843071c333825a16d8d3fd20d8df35cf09fdd5223ee821dc7f16dee21975cb"
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.cc",
+      "baselineSha256": "c56ceca5118b2312d97b2e3253dd5ce457c70e6f4fc1c52cbda2a1bc61adc595",
+      "outputSha256": "43b0999b0b07ca047c1271bc2af684aabfc4256545cdd180d98527fa8cb88d52"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "baselineSha256": "92718076d31887b0dd4f8e6bbe911cb2239322ee3c560c896ba57cc0bce67f64",
+      "outputSha256": "d598128c5a96b9e6375875477b2daf486a46108c8acd2ad8e214021e9c5af0b7"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "baselineSha256": "fc506aeae6deda1b28544639c6dbd72cf1aa25e311cb3516abea316c5641cdf1",
+      "outputSha256": "367d1808142231f6ed86af9bc6c819fcf7545d460e51dce7e5223c3c4119adec"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
