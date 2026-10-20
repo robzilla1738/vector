@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "e502ae81e cache metadata provider output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "9df81ae881d6fdb582afaa83ebdc8caa9b7eb4030d1f06c6c23c4ea025a1ce8f",
+      "outputSha256": "4b6539beb72e6e9f423d63768597df6f1f12a9091d9a1596f96f7fe375f501e5"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
