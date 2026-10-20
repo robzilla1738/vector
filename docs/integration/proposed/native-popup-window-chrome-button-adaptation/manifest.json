@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm",
+      "baselineSha256": "85954d2f92c7e49dd3d05b94471ae05ce73c2cebeecba7c1763aef59963caa85",
+      "outputSha256": "b766457a825230aba6e112ea8e7b5f5f4e02a5de2e22c9fee44f067f9d484fdb"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}

@@ -1,0 +1,53 @@
+--- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
++++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
+@@ -140,13 +140,35 @@
+ 
+ - (void)layout {
+   [super layout];
+-  [self maybeShowTrafficLights];
++  if (_hasExplicitPopupTrafficLightState)
++    [self updateTrafficLightButtons];
+ }
+ 
+ - (void)maybeShowTrafficLights {
+-  if (_hasExplicitPopupTrafficLightState || _alwaysShowTrafficLights ||
+-      _closeButtonOnly || _trafficLightsHidden)
++  if (_hasExplicitPopupTrafficLightState) {
+     [self updateTrafficLightButtons];
++    return;
++  }
++  if (!_alwaysShowTrafficLights) {
++    return;
++  }
++  NSWindow* window = [self window];
++  const NSWindowButton kButtons[] = {
++      NSWindowCloseButton,
++      NSWindowMiniaturizeButton,
++      NSWindowZoomButton,
++  };
++  for (NSWindowButton type : kButtons) {
++    NSButton* button = [window standardWindowButton:type];
++    CHECK(button);
++    CHECK([button isKindOfClass:[_NSThemeWidget class]]);
++    [button setAlphaValue:1.0];
++    // macOS 27 adds -[NSThemeWidget setRevealAmount:] to control the visibility
++    // of the traffic lights.
++    if ([button respondsToSelector:@selector(setRevealAmount:)]) {
++      [(_NSThemeWidget*)button setRevealAmount:1.0];
++    }
++  }
+ }
+ 
+ - (void)updateTrafficLightButtons {
+@@ -158,7 +180,10 @@
+   };
+   for (NSWindowButton type : kButtons) {
+     NSButton* button = [window standardWindowButton:type];
+-    CHECK(button);
++    // Current AppKit declares this nullable. A0x8003 popup may omit a standard
++    // control; do not create or operate on a replacement for an absent button.
++    // Original4381324 asserts here; this is a popup-only platform adaptation.
++    if (!button) continue;
+     CHECK([button isKindOfClass:[_NSThemeWidget class]]);
+     const BOOL shown = !_trafficLightsHidden &&
+                        (type == NSWindowCloseButton || !_closeButtonOnly);
