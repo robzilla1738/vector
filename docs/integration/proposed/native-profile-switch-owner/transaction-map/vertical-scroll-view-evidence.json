@@ -1,0 +1,89 @@
+{
+  "sourceBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "current155Sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scroll_view.h",
+      "sha256": "86cc206f462e97edb486b3fcf27ddd6fcd6ba4684b015fc3e6273186474c9dca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scroll_view.cc",
+      "sha256": "3a2b71a6a950420c2aa43411cd6d72968491ab07897113e6e5b1ea765b2e6efa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/compositor/compositor_animation_observer.h",
+      "sha256": "8e81ec701775880da2cc0515bc35c40b03416a47ceb5549edc223e55396ed238"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/compositor/compositor.h",
+      "sha256": "62a68380af3b78038a957a4532f51292f04210a8b551a7155bd4078f383adfea"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/animation.cc",
+      "sha256": "158dff731bd19a52e5a021dc7cb0fcb858f1b8fb6521a7aa76481ba58be575c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/events/event_constants.h",
+      "sha256": "faafc4e6950a16876bd631f5fd63faf8464ca2e51013e0c384c53378a85d7139"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/events/types/event_type.h",
+      "sha256": "ae3cd593be1eca7da9c786aed2cf6900f616dd06e61e163108378ed48c0da8f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/vertical/BUILD.gn",
+      "sha256": "8a447c82df3bec222992338797c318226274394281d1d8c242a105b1563ee2d0"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "vertical-scroll-view-recovery.json",
+      "sha256": "53fb567cc31235c5150038c3e1aa0156762e4964ea965829fce3a9c13cff4e2e"
+    },
+    {
+      "path": "vertical-scroll-view.patch",
+      "sha256": "edcb97b14bcefb17932d4de7db3d9c672310f9faed428cbdac0226d69406b676"
+    },
+    {
+      "path": "vertical-scroll-view-manifest.json",
+      "sha256": "3f7b29b5b710ec280522d2a3aeb4d70a9b9d7fb7f94e1183bdf34578ef3992a3"
+    }
+  ],
+  "constants": {
+    "0xdf508e4": {
+      "float": 0.10000000149011612,
+      "bytes": "cdcccc3d"
+    },
+    "0xdf50c40": {
+      "float": 0.3100000023841858,
+      "bytes": "52b89e3e"
+    },
+    "0xdf506f8": {
+      "float": 0.009999999776482582,
+      "bytes": "0ad7233c"
+    },
+    "0xdf4bb58": {
+      "double": 1000000.0,
+      "bytes": "0000000080842e41"
+    },
+    "0xcbb5efc": {
+      "import": "_nextafterf",
+      "evidence": "Original LC_SYMTAB/LC_DYSYMTAB and __stubs reserved1+reserved2 index; no execution."
+    }
+  },
+  "checks": {
+    "threeFilePatchReplayAndOutputHashes": true,
+    "nativeCompile": false,
+    "nativeRuntime": false,
+    "sharedWrites": false
+  },
+  "limits": [
+    "Separate supplied inherited ScrollView+3a9 initial preferred-layout optimization remains unported; not the existing+3a8UseContentsPreferredSize property. No whole-class layout acceptance claimed."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "actual shared native170; source-only proposal, no parent frame/region owner edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h",
+      "baselineSha256": null,
+      "outputSha256": "07b8750dfe6e71083348b1947e66e1058fa7e7f2d6d4f67599c2e7b661237a3e"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "8dbeea84988445f6982a0370a99bd03c83749da68bbf9057e22a2771a5b14b37"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/BUILD.gn",
+      "baselineSha256": "8a447c82df3bec222992338797c318226274394281d1d8c242a105b1563ee2d0",
+      "outputSha256": "4a235e9cf056e2b3605de3d2101d4c556b3307919d3fadb8f45a724317fcbc45"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
