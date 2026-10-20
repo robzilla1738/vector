@@ -1,0 +1,17 @@
+{
+  "scope": "Foundation path computation only; no browser or source profile operation",
+  "fixedHome": "/private/tmp/aux-cf-home-proof-orj538cu",
+  "paths": {
+    "home": "/tmp/aux-cf-home-proof-orj538cu",
+    "support": [
+      "/tmp/aux-cf-home-proof-orj538cu/Library/Application Support"
+    ]
+  },
+  "allPathsWithinDisposableRoot": false,
+  "canonicalPaths": [
+    "/private/tmp/aux-cf-home-proof-orj538cu",
+    "/private/tmp/aux-cf-home-proof-orj538cu/Library/Application Support"
+  ],
+  "allCanonicalPathsWithinDisposableRoot": true,
+  "limitation": "Foundation path computation only. The /tmp spelling aliases /private/tmp. No actual Chromium path lookup or import was executed."
+}
