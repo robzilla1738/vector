@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "applyAfter": "v430",
+  "originalManifestSha256": "87cb1c91822344922a7ea1a3221834f8c11978ce2911b06c18c44c17deb9c73c",
+  "originalPatchSha256": "a97e25213e8746b5c6a8c3456c0d761408423233e0a0af5187e47c613febf50b",
+  "reverseOrderByteEquality": true,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "f9b70ff4240b4108a4cb4aece6ef2821304e8a54e2c43aa35e19306fc7489af7",
+      "outputSha256": "9be4de8cee54d958ff30920c2b18a2786b8b5776632d66034291bdfd1b096a7e"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

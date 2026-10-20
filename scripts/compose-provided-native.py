@@ -454,6 +454,8 @@ steps.extend([
     ('native-browser-import-full-staging/native.patch', 'native-browser-import-staging-history-integration/manifest-v427.json'),
     ('native-browser-import-history-owner/native.patch', 'native-browser-import-staging-history-integration/manifest-v428.json'),
     ('native-browser-import-secret-barriers/native.patch', 'native-browser-import-secret-barriers/manifest.json'),
+    ('native-browser-import-destination-skips/native.patch', 'native-browser-import-destination-skips/manifest.json'),
+    ('native-browser-import-original-kinds/native.patch', 'native-browser-import-original-kinds-integration/manifest.json'),
 ])
 
 if options.through:
