@@ -1,0 +1,130 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x46bff58",
+      "end": "0x46c0ac0",
+      "sha256": "44e8476e346a09dd2132ef9d02275962f1fddcb9724399d48bcdd9964fc84dfe",
+      "listing": "init.asm",
+      "listingSha256": "7308d794ee05ae963b0608ca0b6d111bef6ee3d2e945607879e4c661dfff0933"
+    },
+    {
+      "start": "0x46beb2c",
+      "end": "0x46bedf0",
+      "sha256": "0539298992052206b7b200d84d8ab6e533b1358f2f24c08f47b4f9be1926d837",
+      "listing": "decrypt.asm",
+      "listingSha256": "89e2f4d0fb5fe9d509f58d38c3f1a459930101b4f93be9c6fdf313b294d0ff70"
+    },
+    {
+      "start": "0x46be6c8",
+      "end": "0x46beb2c",
+      "sha256": "a51b8054a32635de73cefbfdca6a4e77bbbcff620ba66db45b72d9a1c0cf4ffa",
+      "listing": "utility-owner.asm",
+      "listingSha256": "adb6fa8b1abaefa0c277a69d25f0b5dbc661805518728b86850cc153de43c369"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xd6ec3a4",
+      "text": "libmozglue.dylib",
+      "hex": "6c69626d6f7a676c75652e64796c6962",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd6ec3b5",
+      "text": "libnss3.dylib",
+      "hex": "6c69626e7373332e64796c6962",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd6ec3c3",
+      "text": "libsoftokn3.dylib",
+      "hex": "6c6962736f66746f6b6e332e64796c6962",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef03fd",
+      "text": "NSS_Init",
+      "hex": "4e53535f496e6974",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef0406",
+      "text": "NSS_Shutdown",
+      "hex": "4e53535f53687574646f776e",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef0413",
+      "text": "PK11_GetInternalKeySlot",
+      "hex": "504b31315f476574496e7465726e616c4b6579536c6f74",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef042b",
+      "text": "PK11_FreeSlot",
+      "hex": "504b31315f46726565536c6f74",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef0439",
+      "text": "PK11_Authenticate",
+      "hex": "504b31315f41757468656e746963617465",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef044b",
+      "text": "PK11SDR_Decrypt",
+      "hex": "504b31315344525f44656372797074",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef045b",
+      "text": "SECITEM_FreeItem",
+      "hex": "5345434954454d5f467265654974656d",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef046c",
+      "text": "key4.db",
+      "hex": "6b6579342e6462",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef0474",
+      "text": "cert9.db",
+      "hex": "63657274392e6462",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef03f2",
+      "text": "pkcs11.txt",
+      "hex": "706b637331312e747874",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef047d",
+      "text": "key3.db",
+      "hex": "6b6579332e6462",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef0485",
+      "text": "cert8.db",
+      "hex": "63657274382e6462",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdef048e",
+      "text": "secmod.db",
+      "hex": "7365636d6f642e6462",
+      "encoding": "utf-8"
+    }
+  ],
+  "table": {
+    "address": "0xeae5310",
+    "hex": "6c04ef0d000010007404ef0d00001000f203ef0d000010007d04ef0d000010008504ef0d000010008e04ef0d00001000"
+  },
+  "decompileSha256": "9b1297e6df403efa2bd739d17fee2a8eef557669018c533ecdf5750a50d40735"
+}

@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "chrome/utility/importer/nss_decryptor_mac.h",
+      "baselineSha256": null,
+      "outputSha256": "f12ae5ede2fb114126926e896a4b8a4c47c60937277ef038ccdf238a2ec6218e"
+    },
+    {
+      "path": "chrome/utility/importer/nss_decryptor_mac.cc",
+      "baselineSha256": null,
+      "outputSha256": "80fa6427d82a011a9d3a6ca2a7eb25f938629fc92c1772d776693c0211a81bb5"
+    },
+    {
+      "path": "chrome/utility/importer/nss_decryptor.h",
+      "baselineSha256": "2445c2a8b4469ff8e306518b0b34704111376eea5c1d5e1696d45daecfbdc191",
+      "outputSha256": "31bdd6d1443b894142211ad430112dba8ddae94cdfeec1d773c70cd0bc2a36bb"
+    },
+    {
+      "path": "chrome/utility/importer/nss_decryptor.cc",
+      "baselineSha256": "840d2b9b762fafe8639036589ad001d3529607ce963216ca2221ddf5125cd645",
+      "outputSha256": "a901be12ee48f2db70111d2f81dd374d1c1c9a55ec01ad146ef92c6f0f7080e7"
+    }
+  ]
+}

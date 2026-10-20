@@ -1,0 +1,20 @@
+[
+  {
+    "path": "chrome/utility/importer/nss_decryptor.h",
+    "before": "#elif BUILDFLAG(USE_NSS_CERTS)",
+    "after": "#elif BUILDFLAG(IS_MAC)\n#include \"chrome/utility/importer/nss_decryptor_mac.h\"\n#elif BUILDFLAG(USE_NSS_CERTS)",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/nss_decryptor.cc",
+    "before": "std::u16string NSSDecryptor::Decrypt(",
+    "after": "#if !BUILDFLAG(IS_MAC)\nstd::u16string NSSDecryptor::Decrypt(",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/nss_decryptor.cc",
+    "before": "bool NSSDecryptor::ReadAndParseLogins(",
+    "after": "#endif  // !BUILDFLAG(IS_MAC)\n\nbool NSSDecryptor::ReadAndParseLogins(",
+    "count": 1
+  }
+]
