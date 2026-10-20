@@ -1,0 +1,78 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -58,14 +58,14 @@
+   bool firefox;
+ };
+ constexpr Family kFamilies[] = {
+-    {"chrome", "Chrome", "Google/Chrome", false},
++    {"chrome", "Google Chrome", "Google/Chrome", false},
+     {"brave", "Brave", "BraveSoftware/Brave-Browser", false},
+     {"arc", "Arc", "Arc/User Data", false},
+     {"dia", "Dia", "Dia/User Data", false},
+-    {"atlas", "Atlas", "com.openai.atlas", false},
++    {"atlas", "ChatGPT Atlas", "com.openai.atlas/browser-data/host", false},
+     {"comet", "Comet", "Comet", false},
+     {"helium", "Helium", "net.imput.helium", false},
+-    {"edge", "Edge", "Microsoft Edge", false},
++    {"edge", "Microsoft Edge", "Microsoft Edge", false},
+     {"firefox", "Firefox", "Firefox/Profiles", true}};
+ std::optional<base::DictValue> JSON(const base::FilePath& path) {
+   std::string text;
+@@ -337,7 +337,7 @@
+   }
+   base::DictValue safari;
+   safari.Set("id", "safari");
+-  safari.Set("name", "Safari export");
++  safari.Set("name", "Safari");
+   safari.Set("installed", true);
+   safari.Set("profiles",
+              base::ListValue().Append(
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -47,6 +47,8 @@
+   auto result = job.Clone();
+   if (const auto* status = job.FindString("status")) result.Set("state", *status);
+   if (const auto* error = job.FindString("error")) result.Set("errorMessage", *error);
++  if (const auto* source = job.FindString("sourceId"); source && *source == "atlas")
++    result.Set("sourceId", "chatgpt-atlas");
+   return result;
+ }
+ const bookmarks::BookmarkNode* Root(bookmarks::BookmarkModel* model,
+@@ -146,7 +148,24 @@
+   auto result = sources_.Clone();
+   for (auto& source : result) {
+     const auto* id = source.GetDict().FindString("id");
+-    source.GetDict().Set("requiresFileImport", id && *id == "safari");
++    const bool file_import = id && *id == "safari";
++    if (id && *id == "atlas")
++      source.GetDict().Set("id", "chatgpt-atlas");
++    if (file_import)
++      source.GetDict().Set("requiresFileImport", true);
++    else
++      source.GetDict().Remove("requiresFileImport");
++    // Original4278274 exposes this list; the supplied settings picker calls
++    // includes() on it. Advertise only real current migrator capabilities.
++    base::ListValue supported;
++    if (const auto* categories = source.GetDict().FindList("categories")) {
++      for (const char* kind : {"history", "bookmarks", "passwords", "cookies",
++                               "autofill"}) {
++        if (std::ranges::find(*categories, base::Value(kind)) != categories->end())
++          supported.Append(kind);
++      }
++    }
++    source.GetDict().Set("supportedDataKinds", std::move(supported));
+     source.GetDict().Remove("nativeFirefox");
+     source.GetDict().Remove("nativeFixture");
+     if (auto* profiles = source.GetDict().FindList("profiles")) {
+@@ -219,6 +238,11 @@
+   const auto& options = args[0].GetDict();
+   const auto *source_id = options.FindString("sourceId"),
+              *profile_id = options.FindString("sourceProfileId");
++  std::string internal_source_id;
++  if (source_id && *source_id == "chatgpt-atlas") {
++    internal_source_id = "atlas";
++    source_id = &internal_source_id;
++  }
+   // The supplied UI omits dataKinds for a full import and passes an explicit
+   // list for a partial import. Keep the internal migrator categories unchanged.
+   const bool has_kinds = options.Find("dataKinds") != nullptr;

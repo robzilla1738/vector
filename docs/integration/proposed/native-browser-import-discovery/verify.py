@@ -1,0 +1,71 @@
+from pathlib import Path
+import hashlib
+import json
+import struct
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parent
+sha = lambda data: hashlib.sha256(data).hexdigest()
+manifest = json.loads((root / 'manifest.json').read_text())
+anchors = json.loads((root / 'anchors.json').read_text())
+evidence = json.loads((root / 'source-evidence.json').read_text())
+binary = Path(evidence['thinPath']).read_bytes()
+assert sha(binary) == evidence['thinSha256']
+sections = []
+pos = 32
+for _ in range(struct.unpack_from('<I', binary, 16)[0]):
+    command, size = struct.unpack_from('<II', binary, pos)
+    if command == 0x19:
+        for index in range(struct.unpack_from('<I', binary, pos + 64)[0]):
+            at = pos + 72 + index * 80
+            sections.append(struct.unpack_from('<QQI', binary, at + 32))
+    pos += size
+
+def read(address, length):
+    start, size, offset = next(s for s in sections
+                               if s[0] <= address and address + length <= s[0] + s[1])
+    return binary[offset + address - start:offset + address - start + length]
+
+for item in evidence['ranges']:
+    start, end = int(item['start'], 16), int(item['end'], 16)
+    assert sha(read(start, end - start)) == item['sha256']
+    assert sha((root / 'evidence' / item['listing']).read_bytes()) == item['listingSha256']
+for item in evidence['literals']:
+    data = bytes.fromhex(item['hex'])
+    assert read(int(item['address'], 16), len(data)) == data
+    assert data.decode() == item['text'] + '\0'
+registry = evidence['sourceRegistry']
+start = int(registry['address'], 16)
+raw = bytes.fromhex(registry['hex'])
+assert read(start, len(raw)) == raw
+for index, row in enumerate(registry['rows']):
+    for key, offset in [('id', 0), ('bundle', 8), ('name', 24)]:
+        pointer = struct.unpack('<Q', read(start + index * 32 + offset, 8))[0] & 0xfffffffff
+        assert read(pointer, len(row[key]) + 1) == row[key].encode() + b'\0'
+for item in evidence['uiInputs']:
+    data = Path(item['path']).read_bytes()
+    assert sha(data) == item['sha256']
+    text = data.decode()
+    for anchor in item['anchors']:
+        assert text.count(anchor['text']) == anchor['count']
+assert len(manifest['files']) == 2 and len(anchors) == 7
+for item in manifest['files']:
+    before = (root / 'baseline' / item['path']).read_text()
+    assert sha(before.encode()) == item['baselineSha256']
+    after = before
+    for anchor in (a for a in anchors if a['path'] == item['path']):
+        assert after.count(anchor['before']) == anchor['count'] == 1
+        after = after.replace(anchor['before'], anchor['after'])
+    assert after == (root / 'source' / item['path']).read_text()
+    assert sha(after.encode()) == item['outputSha256']
+with tempfile.TemporaryDirectory(prefix='aux-retained-collapse-replay-') as temp:
+    for item in manifest['files']:
+        target = Path(temp) / item['path']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((root / 'baseline' / item['path']).read_bytes())
+    subprocess.run(['git', 'apply', '--check', str(root / 'native.patch')], cwd=temp, check=True)
+    subprocess.run(['git', 'apply', str(root / 'native.patch')], cwd=temp, check=True)
+    for item in manifest['files']:
+        assert sha((Path(temp) / item['path']).read_bytes()) == item['outputSha256']
+print('PASS: original source metadata/root +1852 UI pins; seven counted anchors/two-file replay')

@@ -1,0 +1,51 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "source-backed-browser-names-and-atlas-profile-root",
+    "count": 1,
+    "before": "    {\"chrome\", \"Chrome\", \"Google/Chrome\", false},",
+    "after": "    {\"chrome\", \"Google Chrome\", \"Google/Chrome\", false},"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "atlas-original-nested-root",
+    "count": 1,
+    "before": "    {\"atlas\", \"Atlas\", \"com.openai.atlas\", false},",
+    "after": "    {\"atlas\", \"ChatGPT Atlas\", \"com.openai.atlas/browser-data/host\", false},"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "edge-original-friendly-name",
+    "count": 1,
+    "before": "    {\"edge\", \"Edge\", \"Microsoft Edge\", false},",
+    "after": "    {\"edge\", \"Microsoft Edge\", \"Microsoft Edge\", false},"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "safari-source-name",
+    "count": 1,
+    "before": "  safari.Set(\"name\", \"Safari export\");",
+    "after": "  safari.Set(\"name\", \"Safari\");"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "canonical-public-job-id",
+    "count": 1,
+    "before": "  if (const auto* error = job.FindString(\"error\")) result.Set(\"errorMessage\", *error);\n",
+    "after": "  if (const auto* error = job.FindString(\"error\")) result.Set(\"errorMessage\", *error);\n  if (const auto* source = job.FindString(\"sourceId\"); source && *source == \"atlas\")\n    result.Set(\"sourceId\", \"chatgpt-atlas\");\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "source-descriptor-contract",
+    "count": 1,
+    "before": "    const auto* id = source.GetDict().FindString(\"id\");\n    source.GetDict().Set(\"requiresFileImport\", id && *id == \"safari\");\n",
+    "after": "    const auto* id = source.GetDict().FindString(\"id\");\n    const bool file_import = id && *id == \"safari\";\n    if (id && *id == \"atlas\")\n      source.GetDict().Set(\"id\", \"chatgpt-atlas\");\n    if (file_import)\n      source.GetDict().Set(\"requiresFileImport\", true);\n    else\n      source.GetDict().Remove(\"requiresFileImport\");\n    // Original4278274 exposes this list; the supplied settings picker calls\n    // includes() on it. Advertise only real current migrator capabilities.\n    base::ListValue supported;\n    if (const auto* categories = source.GetDict().FindList(\"categories\")) {\n      for (const char* kind : {\"history\", \"bookmarks\", \"passwords\", \"cookies\",\n                               \"autofill\"}) {\n        if (std::ranges::find(*categories, base::Value(kind)) != categories->end())\n          supported.Append(kind);\n      }\n    }\n    source.GetDict().Set(\"supportedDataKinds\", std::move(supported));\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "accept-original-atlas-alias-with-internal-identity",
+    "count": 1,
+    "before": "  const auto *source_id = options.FindString(\"sourceId\"),\n             *profile_id = options.FindString(\"sourceProfileId\");\n",
+    "after": "  const auto *source_id = options.FindString(\"sourceId\"),\n             *profile_id = options.FindString(\"sourceProfileId\");\n  std::string internal_source_id;\n  if (source_id && *source_id == \"chatgpt-atlas\") {\n    internal_source_id = \"atlas\";\n    source_id = &internal_source_id;\n  }\n"
+  }
+]

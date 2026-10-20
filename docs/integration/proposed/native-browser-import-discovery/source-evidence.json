@@ -1,0 +1,196 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x42600fc",
+      "end": "0x42603c0",
+      "sha256": "b1936fa249567856a24748355949eb86886d07a27613c1bc958afa7e52f82d44",
+      "listing": "profile-roots.asm",
+      "listingSha256": "f864582ef92cedef2955b27965a1228271d910c2363099c1ec415a8c47e80655"
+    },
+    {
+      "start": "0x4275b40",
+      "end": "0x4276580",
+      "sha256": "52444d9e46e7a47cd65f17a2db304d85107ce09c869baa19c71fb2750d90306d",
+      "listing": "source-descriptors.asm",
+      "listingSha256": "97a1ce0f2a88e16f0ca37cd0a52bd17258f5e96733c963b1178e7d82b7d717a7"
+    },
+    {
+      "start": "0x42755a0",
+      "end": "0x42759b0",
+      "sha256": "17a3446494ceffd7750317e7a722ca95cab0c1b159be7bc4c6e8f5571d65a90b",
+      "listing": "friendly-names.asm",
+      "listingSha256": "e6f7f9fb443005cd8cc00aa9ce0ecfef55d7f323f6291061c88c210d8dde7cd6"
+    },
+    {
+      "start": "0x4278274",
+      "end": "0x42783cc",
+      "sha256": "86ce6c4df8618cdb675fec2e7d39ac5af94c4c96a465d8a6194b425956c4d039",
+      "listing": "descriptor-fields.asm",
+      "listingSha256": "51bddc9ce9a142675679349d7dfc3f22fc36e67b9d46d145c62c69415af78c5a"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1fa80",
+      "text": "com.openai.atlas",
+      "hex": "636f6d2e6f70656e61692e61746c617300"
+    },
+    {
+      "address": "0xdb1fa91",
+      "text": "browser-data",
+      "hex": "62726f777365722d6461746100"
+    },
+    {
+      "address": "0xd7ed14c",
+      "text": "host",
+      "hex": "686f737400"
+    },
+    {
+      "address": "0xdb1fa9e",
+      "text": "Dia",
+      "hex": "44696100"
+    },
+    {
+      "address": "0xdb1fa5a",
+      "text": "User Data",
+      "hex": "55736572204461746100"
+    },
+    {
+      "address": "0xdb1fd94",
+      "text": "Google Chrome",
+      "hex": "476f6f676c65204368726f6d6500"
+    },
+    {
+      "address": "0xdb1fdec",
+      "text": "ChatGPT Atlas",
+      "hex": "436861744750542041746c617300"
+    },
+    {
+      "address": "0xdb04a1f",
+      "text": "Microsoft Edge",
+      "hex": "4d6963726f736f6674204564676500"
+    },
+    {
+      "address": "0xda2566f",
+      "text": "Safari",
+      "hex": "53616661726900"
+    },
+    {
+      "address": "0xdb23405",
+      "text": "profiles",
+      "hex": "70726f66696c657300"
+    },
+    {
+      "address": "0xdb2340e",
+      "text": "supportedDataKinds",
+      "hex": "737570706f72746564446174614b696e647300"
+    },
+    {
+      "address": "0xdb23421",
+      "text": "requiresFileImport",
+      "hex": "726571756972657346696c65496d706f727400"
+    },
+    {
+      "address": "0xcf0a3f5",
+      "text": "chatgpt-atlas",
+      "hex": "636861746770742d61746c617300"
+    }
+  ],
+  "uiInputs": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/general-3dgRbrRk.js",
+      "sha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "anchors": [
+        {
+          "text": "k.source.supportedDataKinds.includes(N)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/use-browser-importer-GNOc7eYC.js",
+      "sha256": "3c8688338f8c1b74ad74408dfb576f069917f3e8d4a71ef07a0352e026b58c15",
+      "anchors": [
+        {
+          "text": "v.name===w.name",
+          "count": 1
+        },
+        {
+          "text": "r.requiresFileImport",
+          "count": 1
+        },
+        {
+          "text": "r.profiles.length===0",
+          "count": 1
+        },
+        {
+          "text": "typeof n.lastUsedAt==\"string\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "anchors": [
+        {
+          "text": "await chrome.asideBrowserImport.getImportSources()",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "sourceRegistry": {
+    "address": "0xe8a7320",
+    "hex": "d3427f0d0000100079dc9b0d00002000000000000000000094fdb10d00001000e0f1b10d00001000a2fdb10d000020000000000000000000b4fdb10d00001000c2fdb10d000010005e83ab0d0000200000000000000000006f56a20d00001000c9fdb10d00001000a485a30d0000200000000000000000005a56a20d00001000be81a20d00001000d1fdb10d0000200000000000000000008684a20d00001000e6f1b10d0000100080fab10d000020000000000000000000ecfdb10d00001000ecf1b10d00001000fafdb10d000020000000000000000000a797a90d00001000f2f1b10d000010000efeb10d0000200000000000000000009efab10d00001000fbf1b10d00001000a2fab10d00002000000000000000000025feb10d00001000",
+    "rows": [
+      {
+        "id": "chrome",
+        "bundle": "com.google.Chrome",
+        "name": "Google Chrome"
+      },
+      {
+        "id": "brave",
+        "bundle": "com.brave.Browser",
+        "name": "Brave Browser"
+      },
+      {
+        "id": "safari",
+        "bundle": "com.apple.Safari",
+        "name": "Safari"
+      },
+      {
+        "id": "firefox",
+        "bundle": "org.mozilla.firefox",
+        "name": "Firefox"
+      },
+      {
+        "id": "arc",
+        "bundle": "company.thebrowser.Browser",
+        "name": "Arc"
+      },
+      {
+        "id": "atlas",
+        "bundle": "com.openai.atlas",
+        "name": "ChatGPT Atlas"
+      },
+      {
+        "id": "comet",
+        "bundle": "ai.perplexity.comet",
+        "name": "Comet"
+      },
+      {
+        "id": "dia",
+        "bundle": "company.thebrowser.dia",
+        "name": "Dia"
+      },
+      {
+        "id": "helium",
+        "bundle": "net.imput.helium",
+        "name": "Helium"
+      }
+    ]
+  }
+}

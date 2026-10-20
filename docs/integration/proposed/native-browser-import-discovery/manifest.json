@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "actual419; migrator kFamilies hunks disjoint from L2 password-store proposal",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "bf21cf5985b31bd39f50e646e32de5b914e55da64a2dcccb470acfce303ab21f",
+      "outputSha256": "93bf82fb3405d13356310f7d3f4fc005f58f1bec644fd88ebe8265a4955156fa"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "9acdaba6e85c4801c500e195abf98b6e044aca499c36c330834528e50fb175a9",
+      "outputSha256": "9134c1a508e56453689717309b332503cac2a67df37f0815ce89eeebe3e057be"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}
