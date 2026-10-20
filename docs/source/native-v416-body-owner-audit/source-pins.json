@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "nativeComposition": 416,
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "cc5c329fb5249746e8db50e5b14a51661cea2a68eb23d9b741b6325c16b59e62",
+      "anchors": [
+        {
+          "text": "std::make_unique<aux::AuxSidebarBody>",
+          "count": 1
+        },
+        {
+          "text": "aux_sidebar_->Mount(*tab_strip_view());",
+          "count": 1
+        },
+        {
+          "text": "aux_sidebar_->Unmount();",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "sha256": "3b942776a8b13834460874393ac6f1d9b65099eab9ad61e6b157a70c070546f0",
+      "anchors": [
+        {
+          "text": "raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "sha256": "9ced2b606ec003bedcbb77ece6ee158f7d4f2f4455056d2da739616155c7191c",
+      "anchors": [
+        {
+          "text": "std::make_unique<AuxBookmarksSection>",
+          "count": 1
+        },
+        {
+          "text": "std::make_unique<AuxChatsController>",
+          "count": 1
+        },
+        {
+          "text": "std::make_unique<AuxTabsSection>",
+          "count": 1
+        },
+        {
+          "text": "std::make_unique<AuxSidebarProjection>",
+          "count": 1
+        },
+        {
+          "text": "std::make_unique<CrossSectionDragCoordinator>",
+          "count": 1
+        },
+        {
+          "text": "SetAgentSessionTabsView(agent_)",
+          "count": 1
+        },
+        {
+          "text": "SetAgentSessionTabsView(nullptr)",
+          "count": 1
+        },
+        {
+          "text": "uint64_t AuxSidebarBody::BeginAuxProfileSwitch",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_body.h",
+      "sha256": "c5838381dc22dd64426e5e9fe30ddb7aecabad127c08044e2d49c8abb89e6aeb",
+      "anchors": []
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "sha256": "4e84fadf6e88ed170d35e9bb8dc37ed1b6e1ef737a586f8798881e64bb0384eb",
+      "anchors": []
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "sha256": "209979286689c046cc1ed3d2912542faca867e77485f03920abe261bd008f7a2",
+      "anchors": []
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-sidebar-body-mount/README.md",
+      "sha256": "95957c062c23905bf22fc27ad44d0cd310d76c03a471ff935810339d5e17d005",
+      "anchors": []
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/037dfc80.c",
+      "sha256": "3e2f860db024cec514cb608ab55e53b5f28e1fc6c06b67273015d5cd3d5c7fc3",
+      "anchors": []
+    }
+  ],
+  "scope": "Read-only bounded body construction/lifecycle audit",
+  "nativeModified": false,
+  "runtimeExecuted": false,
+  "normalProfilePixelAcceptance": false
+}
