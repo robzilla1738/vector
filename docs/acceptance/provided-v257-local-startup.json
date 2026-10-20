@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "composition": "v257",
+  "candidate": "out/provided-candidate-v257-local/Aux.app",
+  "packagedProvidedResources": 10803,
+  "packagedNativeLeaves": 563,
+  "browserPid": 65156,
+  "daemonPid": 65171,
+  "processIdentity": {
+    "exactCandidateCommand": true,
+    "ownLauncherAncestor": 65152,
+    "osExecutableCloneByteHashMatchesCandidate": true
+  },
+  "health": {
+    "service": "aside-daemon",
+    "ready": true,
+    "version": "1.26.1016.1852",
+    "pid": 65171
+  },
+  "visibleWindow": {
+    "windowId": 32293,
+    "width": 900,
+    "height": 560,
+    "title": "Aux",
+    "observed": "Original Agent error boundary: Something went wrong / Unable to resolve Chromium profile account."
+  },
+  "screenshot": "out/native-integration/v257-startup-window.png",
+  "screenshotSha256": "ecf2bf29eef0e0cda028ee860802c291c75f98eef54f854a9e23ac948fa35c29",
+  "launchLogSha256": "b9f01de4837f4008a71be7e208e4e6edfed8d8b84fe8aece31dd030b6c700ffe",
+  "nativeInstallationAuthorizationAvailable": false,
+  "omniBoxObservedError": "Invalid session options",
+  "browserLaunched": true,
+  "onboardingCompleted": false,
+  "runtimeAccepted": false,
+  "uiParityAccepted": false,
+  "ownerProfileOrCredentialsUsed": false,
+  "signingOrProvisioningPerformed": false,
+  "stopped": {
+    "processes": {
+      "65152": {
+        "present": false,
+        "observation": "PID  PPID STAT COMM"
+      },
+      "65155": {
+        "present": false,
+        "observation": "PID  PPID STAT COMM"
+      },
+      "65156": {
+        "present": false,
+        "observation": "PID  PPID STAT COMM"
+      },
+      "65171": {
+        "present": false,
+        "observation": "PID  PPID STAT COMM"
+      }
+    },
+    "ports": {
+      "21520": {
+        "clear": true,
+        "listeners": ""
+      },
+      "21522": {
+        "clear": true,
+        "listeners": ""
+      },
+      "45203": {
+        "clear": true,
+        "listeners": ""
+      }
+    },
+    "launcherExitCode": 130,
+    "temporaryStateRetained": true
+  }
+}

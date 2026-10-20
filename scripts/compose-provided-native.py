@@ -289,6 +289,10 @@ steps.extend([
     ('native-profile-search-interface/native.patch', 'native-profile-search-interface/manifest.json'),
     ('native-primary-profile-menu/native.patch', 'native-primary-profile-menu/manifest.json'),
     ('native-primary-profile-menu-registration/native.patch', 'native-primary-profile-menu-registration/manifest.json'),
+    ('native-omnibox-optional-arguments/native.patch', 'native-omnibox-optional-arguments/manifest.json'),
+    ('native-primary-bookmarks-menu/native.patch', 'native-primary-bookmarks-menu/manifest.json'),
+    ('native-primary-menu-api155/native.patch', 'native-primary-menu-api155/manifest.json'),
+    ('native-ntp-override-probe-identity/native.patch', 'native-ntp-override-probe-identity/manifest.json'),
 ])
 
 if options.through:

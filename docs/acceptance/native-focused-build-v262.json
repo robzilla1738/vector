@@ -1,0 +1,32 @@
+{
+  "composition": "v262",
+  "exitCode": 1,
+  "elapsedSeconds": 68.336434841156,
+  "targets": {
+    "sidebar_primary": "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "search_extension_action": "obj/chrome/browser/extensions/extensions/chrome_management_api_delegate.o",
+    "omnibox_optional_arguments": "obj/chrome/browser/extensions/api/aux_omnibox/aux_omnibox/aux_omnibox_api.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_sidebar_view.o",
+    "obj/chrome/browser/extensions/extensions/chrome_management_api_delegate.o",
+    "obj/chrome/browser/extensions/api/aux_omnibox/aux_omnibox/aux_omnibox_api.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserCompiled": false,
+  "runtimeParity": false,
+  "successfulTargets": [
+    "search_extension_action",
+    "omnibox_optional_arguments"
+  ],
+  "failedTarget": "sidebar_primary",
+  "diagnostic": "Unused retired RefreshAuxProfileButton callback; removed and verified in v264"
+}
