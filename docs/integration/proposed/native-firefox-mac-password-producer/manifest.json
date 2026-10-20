@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/utility/importer/firefox_importer.cc",
+      "baselineSha256": "e12518980617da984c16059bb2d0fd7fb60a57c3cd279f6d062481d3f90af063",
+      "outputSha256": "1428dff7a8e05c3181d9674d40f6219516e0c9827dc3c7decb2f42b387cb0d30"
+    },
+    {
+      "path": "chrome/utility/importer/firefox_importer.h",
+      "baselineSha256": "af84459f75746a46497bcaabb6d8621b132e555c5299328eb563d1b43cd0229d",
+      "outputSha256": "a84865cdcaa95545d4f7e7f86542c9eda1b8d9044454f886f24e188b1980c945"
+    }
+  ]
+}

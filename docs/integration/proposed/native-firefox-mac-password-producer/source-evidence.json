@@ -1,0 +1,27 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x46be6c8",
+      "end": "0x46beb2c",
+      "sha256": "a51b8054a32635de73cefbfdca6a4e77bbbcff620ba66db45b72d9a1c0cf4ffa",
+      "listing": "producer.asm",
+      "listingSha256": "adb6fa8b1abaefa0c277a69d25f0b5dbc661805518728b86850cc153de43c369"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdeeff73",
+      "text": "logins.json",
+      "hex": "6c6f67696e732e6a736f6e",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdeeff7f",
+      "text": "/Applications/Firefox.app/Contents/MacOS",
+      "hex": "2f4170706c69636174696f6e732f46697265666f782e6170702f436f6e74656e74732f4d61634f53",
+      "encoding": "utf-8"
+    }
+  ]
+}

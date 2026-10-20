@@ -1,0 +1,44 @@
+[
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "#include <string_view>",
+    "after": "#include <string_view>\n#include <utility>",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "#if !BUILDFLAG(IS_MAC)\n#include \"chrome/utility/importer/nss_decryptor.h\"\n#endif  // !BUILDFLAG(IS_MAC)",
+    "after": "#include \"chrome/utility/importer/nss_decryptor.h\"\n#include \"base/numerics/safe_conversions.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "void FirefoxImporter::ImportRemainingItems() {\n#if !BUILDFLAG(IS_MAC)",
+    "after": "void FirefoxImporter::ImportRemainingItems() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "  }\n#endif  // !BUILDFLAG(IS_MAC)\n  if ((items_ & user_data_importer::AUTOFILL_FORM_DATA)",
+    "after": "  }\n  if ((items_ & user_data_importer::AUTOFILL_FORM_DATA)",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "#if !BUILDFLAG(IS_MAC)\nvoid FirefoxImporter::ImportPasswords() {",
+    "after": "#if BUILDFLAG(IS_MAC)\nvoid FirefoxImporter::ImportPasswords() {\n  // Destroy the NSS/database snapshot before publishing the utility result.\n  const auto result = [this]() -> std::pair<bool, uint32_t> {\n    const auto json_file = source_path_.AppendASCII(\"logins.json\");\n    if (!base::PathExists(json_file))\n      return {true, 0};\n    NSSDecryptor decryptor;\n    if (!decryptor.Init(source_path_, source_path_) &&\n        !decryptor.Init(app_path_, source_path_) &&\n        !decryptor.Init(base::FilePath(\"/Applications/Firefox.app/Contents/MacOS\"),\n                        source_path_)) {\n      return {false, 0};\n    }\n    std::vector<user_data_importer::ImportedPasswordForm> forms;\n    if (!decryptor.ReadAndParseLogins(json_file, &forms))\n      return {false, 0};\n    size_t forwarded = 0;\n    for (const auto& form : forms) {\n      if (cancelled())\n        return {false, 0};\n      if (!form.username_value.empty() || !form.password_value.empty() ||\n          form.blocked_by_user) {\n        bridge_->SetPasswordForm(form);\n        ++forwarded;\n      }\n    }\n    if (!forms.empty() && forwarded == 0)\n      return {false, 0};\n    return {true, base::checked_cast<uint32_t>(forwarded)};\n  }();\n  bridge_->NotifyFirefoxPasswordImportResult(result.first, result.second);\n}\n#else\nvoid FirefoxImporter::ImportPasswords() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.cc",
+    "before": "#endif  // !BUILDFLAG(IS_MAC)\n\nvoid FirefoxImporter::ImportHomepage()",
+    "after": "#endif  // BUILDFLAG(IS_MAC)\n\nvoid FirefoxImporter::ImportHomepage()",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/firefox_importer.h",
+    "before": "#if !BUILDFLAG(IS_MAC)\n  void ImportPasswords();\n#endif",
+    "after": "  void ImportPasswords();",
+    "count": 1
+  }
+]

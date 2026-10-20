@@ -1,0 +1,98 @@
+--- a/chrome/utility/importer/firefox_importer.cc
++++ b/chrome/utility/importer/firefox_importer.cc
+@@ -8,6 +8,7 @@
+ #include <memory>
+ #include <set>
+ #include <string_view>
++#include <utility>
+ 
+ #include "base/files/file_enumerator.h"
+ #include "base/files/file_util.h"
+@@ -33,9 +34,8 @@
+ #include "sql/statement.h"
+ #include "url/gurl.h"
+ 
+-#if !BUILDFLAG(IS_MAC)
+ #include "chrome/utility/importer/nss_decryptor.h"
+-#endif  // !BUILDFLAG(IS_MAC)
++#include "base/numerics/safe_conversions.h"
+ 
+ namespace {
+ 
+@@ -162,13 +162,11 @@
+ }
+ 
+ void FirefoxImporter::ImportRemainingItems() {
+-#if !BUILDFLAG(IS_MAC)
+   if ((items_ & user_data_importer::PASSWORDS) && !cancelled()) {
+     bridge_->NotifyItemStarted(user_data_importer::PASSWORDS);
+     ImportPasswords();
+     bridge_->NotifyItemEnded(user_data_importer::PASSWORDS);
+   }
+-#endif  // !BUILDFLAG(IS_MAC)
+   if ((items_ & user_data_importer::AUTOFILL_FORM_DATA) && !cancelled()) {
+     bridge_->NotifyItemStarted(user_data_importer::AUTOFILL_FORM_DATA);
+     ImportAutofillFormData();
+@@ -498,7 +496,40 @@
+   ImportRemainingItems();
+ }
+ 
+-#if !BUILDFLAG(IS_MAC)
++#if BUILDFLAG(IS_MAC)
++void FirefoxImporter::ImportPasswords() {
++  // Destroy the NSS/database snapshot before publishing the utility result.
++  const auto result = [this]() -> std::pair<bool, uint32_t> {
++    const auto json_file = source_path_.AppendASCII("logins.json");
++    if (!base::PathExists(json_file))
++      return {true, 0};
++    NSSDecryptor decryptor;
++    if (!decryptor.Init(source_path_, source_path_) &&
++        !decryptor.Init(app_path_, source_path_) &&
++        !decryptor.Init(base::FilePath("/Applications/Firefox.app/Contents/MacOS"),
++                        source_path_)) {
++      return {false, 0};
++    }
++    std::vector<user_data_importer::ImportedPasswordForm> forms;
++    if (!decryptor.ReadAndParseLogins(json_file, &forms))
++      return {false, 0};
++    size_t forwarded = 0;
++    for (const auto& form : forms) {
++      if (cancelled())
++        return {false, 0};
++      if (!form.username_value.empty() || !form.password_value.empty() ||
++          form.blocked_by_user) {
++        bridge_->SetPasswordForm(form);
++        ++forwarded;
++      }
++    }
++    if (!forms.empty() && forwarded == 0)
++      return {false, 0};
++    return {true, base::checked_cast<uint32_t>(forwarded)};
++  }();
++  bridge_->NotifyFirefoxPasswordImportResult(result.first, result.second);
++}
++#else
+ void FirefoxImporter::ImportPasswords() {
+   // Initializes NSS3.
+   NSSDecryptor decryptor;
+@@ -524,7 +555,7 @@
+     }
+   }
+ }
+-#endif  // !BUILDFLAG(IS_MAC)
++#endif  // BUILDFLAG(IS_MAC)
+ 
+ void FirefoxImporter::ImportHomepage() {
+   GURL home_page = GetHomepage(source_path_);
+--- a/chrome/utility/importer/firefox_importer.h
++++ b/chrome/utility/importer/firefox_importer.h
+@@ -88,9 +88,7 @@
+   void ImportBookmarks();
+   void ImportRemainingItems();
+ 
+-#if !BUILDFLAG(IS_MAC)
+   void ImportPasswords();
+-#endif
+   void ImportHistory();
+   // Import the user's home page, unless it is set to default home page as
+   // defined in browserconfig.properties.
