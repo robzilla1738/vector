@@ -1,0 +1,50 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "public-live-mode.asm",
+      "start": "0x427b9f0",
+      "endExclusive": "0x427baa4",
+      "bytesSha256": "e544c7aed6cf9d0aaa78156597ac6cc139e16d7994ab07638ced86f21df1f0c5",
+      "sha256": "1eb033ea02c750a55ecb24c87a073d17a50e0c6ace24f046a93ce7fb063bf2b5"
+    },
+    {
+      "file": "worker-snapshot-start.asm",
+      "start": "0x4253e58",
+      "endExclusive": "0x4254188",
+      "bytesSha256": "c7c938fd086cdc67e2c7685b1529964c405fbfd948a91a085a10a825ace9610a",
+      "sha256": "99de64e728f6bcb834610ab9b22f640b9df7c5f7d6ce4297869290ffdd88c379"
+    },
+    {
+      "file": "worker-missing-history.asm",
+      "start": "0x42544a8",
+      "endExclusive": "0x4254534",
+      "bytesSha256": "e558b4ed9f25a34e99053afa56e43788b52a1ea1ac49c5adf9383f68a5749f52",
+      "sha256": "be9282d23900b06a1d484e4489e9d95b5a94810a55be17a52a13ef604ef5498a"
+    },
+    {
+      "file": "worker-key-eligibility.asm",
+      "start": "0x425957c",
+      "endExclusive": "0x42597f4",
+      "bytesSha256": "a77b59a783467e3ec991dffec141c3e20f144588a5068c1ff57e100884cd03ff",
+      "sha256": "c5f9aa0149572088c92d15dbadd87fa5a31db7484c49782186d6228d1cd29551"
+    },
+    {
+      "file": "destination-admission.asm",
+      "start": "0x4255660",
+      "endExclusive": "0x4255868",
+      "bytesSha256": "55aec41e4a83f3dc69b4dd5b033e5c4120f406ab185a44180fd206f3ef8827fb",
+      "sha256": "dc37eabb92a633e270a4c6cc825c439e090045d102bae4f6b61e6e797c3b4b1a"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    }
+  ],
+  "readerParent": "c99280be7 output (be8 reader); rebase L4 discovery without overwriting it"
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.h",
+      "baselineSha256": "00c2183014a4c0aea962b97bce13aada5996568756b9e9ffd109ef3653e68d1c",
+      "outputSha256": "41df8746550d377d88947052fe311172195e4f7450ec785c19ad46165d3667f9"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517",
+      "outputSha256": "801b8697fe0e9b53046a788c8f39234df3a433611fd560be6b1617a8a7a9936d"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "355c966539c15ecf7a981ca1d2a1dadef2a2876550a909833975e0f028a80be5",
+      "outputSha256": "f4ce73b238e5fc34e5097d7922b5d03bd49fae234d3d1ae91627a92a2a90d9ce"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3",
+      "outputSha256": "a1af51833dc8b880669ded1bd89153440f78cc7522663465f0a47d4599a917e0"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}

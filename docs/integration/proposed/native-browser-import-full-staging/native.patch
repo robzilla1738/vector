@@ -1,0 +1,193 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.h
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+@@ -1,6 +1,8 @@
+ // Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_MIGRATOR_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_MIGRATOR_H_
++#include <vector>
++
+ #include "base/files/file_path.h"
+ #include "base/values.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/source_crypto.h"
+@@ -11,6 +13,12 @@
+                              bool firefox,
+                              std::string category);
+ base::ListValue DiscoverSources();
++// Supplied live/current-profile owner: finish the whole source snapshot before
++// any destination effect; source-key admission is shared by encrypted stores.
++base::DictValue ReadChromiumMigrationSnapshot(
++    const base::FilePath& profile,
++    std::string source,
++    std::vector<std::string> categories);
+ // Results remain in native worker/UI memory; never returned to extension RPC.
+ base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+                                       std::string category,
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -808,4 +808,62 @@
+   ClearSourceKey(*key);
+   return result;
+ }
++base::DictValue ReadChromiumMigrationSnapshot(
++    const base::FilePath& profile,
++    std::string source,
++    std::vector<std::string> categories) {
++  auto database_for = [&](std::string_view category) {
++    auto path = profile.AppendASCII(category == "passwords" ? "Login Data"
++                                                            : "Network/Cookies");
++    if (!base::PathExists(path)) {
++      path = profile.AppendASCII(category == "passwords"
++                                     ? "Login Data For Account"
++                                     : "Cookies");
++    }
++    return path;
++  };
++  bool needs_key = false;
++  for (const auto& category : categories) {
++    if ((category == "passwords" || category == "cookies") &&
++        base::PathExists(database_for(category))) {
++      needs_key = true;
++    }
++  }
++  std::optional<SourceKey> key;
++  if (needs_key) {
++    std::string error;
++    key = AuthorizeSourceKey(source, error);
++    if (!key) {
++      return base::DictValue().Set("error", error);
++    }
++  }
++  base::ListValue snapshots;
++  for (const auto& category : categories) {
++    base::DictValue data;
++    const bool encrypted = category == "passwords" || category == "cookies";
++    if (encrypted && !base::PathExists(database_for(category))) {
++      data.Set(category, base::ListValue());
++    } else if (category == "bookmarks" &&
++               !base::PathExists(profile.AppendASCII("Bookmarks"))) {
++      data.Set("bookmarks", base::ListValue());
++    } else if (category == "history" &&
++               !base::PathExists(profile.AppendASCII("History"))) {
++      data.Set("visits", base::ListValue());
++    } else if (encrypted) {
++      // Only the real optional admitted above can enter encrypted readers.
++      if (!key) {
++        return base::DictValue().Set(
++            "error", "Source encrypted databases changed during snapshot");
++      }
++      data = ReadEncryptedCategory(profile, category, *key);
++    } else {
++      data = ReadCategory(profile, false, category);
++    }
++    if (const auto* error = data.FindString("error")) {
++      return base::DictValue().Set("error", *error);
++    }
++    snapshots.Append(std::move(data));
++  }
++  return base::DictValue().Set("snapshots", std::move(snapshots));
++}
+ }  // namespace aux_import
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.h
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.h
+@@ -24,6 +24,7 @@
+   struct Job;
+   void DidDiscover(Reply reply, base::ListValue);
+   void Next(std::string id);
++  void DidStageChromium(std::string id, base::DictValue);
+   void DidRead(std::string id, base::DictValue);
+   void DidParseBookmarks(std::string id,
+                          user_data_importer::BookmarkParser::ParsedBookmarks);
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -129,6 +129,8 @@
+   size_t category = 0, row = 0;
+   int imported = 0;
+   base::ListValue rows;
++  base::ListValue snapshots;
++  bool chromium_staged = false;
+   std::unique_ptr<SecretLookup> secret_lookup;
+ };
+ ImportService* ImportService::Get(Profile* profile) {
+@@ -217,6 +219,7 @@
+            *job.state.FindString("status") == "queued")) {
+         job.cancelled = true;
+         job.rows.clear();
++        job.snapshots.clear();
+         job.secret_lookup.reset();
+         job.parser.reset();
+         job.archive.clear();
+@@ -350,6 +353,10 @@
+   job->source = *source_id;
+   job->source_profile = *profile_id;
+   for (const auto& category : *categories) {
++    if (!internal_categories && category.is_string() &&
++        category.GetString() == "preferences") {
++      continue;
++    }
+     if (!category.is_string() ||
+         std::ranges::find(*source->FindList("categories"), category) ==
+             source->FindList("categories")->end()) {
+@@ -399,6 +406,7 @@
+   }
+   if (job.category == job.categories.size()) {
+     job.archive.clear();
++    job.snapshots.clear();
+     if (profile_->GetPrefs()->FindPreference(
+             "aux.browser.import.source_profiles")) {
+       ScopedListPrefUpdate update(profile_->GetPrefs(),
+@@ -426,6 +434,19 @@
+   job.state.Set("status", "running");
+   job.state.Set("category", job.categories[job.category]);
+   Emit(job);
++  if (!job.firefox && job.source != "safari") {
++    if (!job.chromium_staged) {
++      base::ThreadPool::PostTaskAndReplyWithResult(
++          FROM_HERE, {base::MayBlock()},
++          base::BindOnce(&ReadChromiumMigrationSnapshot, job.path, job.source,
++                         job.categories),
++          base::BindOnce(&ImportService::DidStageChromium, weak_.GetWeakPtr(), id));
++    } else {
++      auto data = std::move(job.snapshots[job.category].GetDict());
++      DidRead(id, std::move(data));
++    }
++    return;
++  }
+   if (job.source == "safari") {
+     base::ThreadPool::PostTaskAndReplyWithResult(
+         FROM_HERE, {base::MayBlock()},
+@@ -439,6 +460,27 @@
+       base::BindOnce(&ReadAuthorizedCategory, job.path, job.firefox, job.source,
+                      job.categories[job.category]),
+       base::BindOnce(&ImportService::DidRead, weak_.GetWeakPtr(), id));
++}
++void ImportService::DidStageChromium(std::string id, base::DictValue data) {
++  if (!profile_ || !jobs_.contains(id) || jobs_.at(id)->cancelled) {
++    return;
++  }
++  if (const auto* error = data.FindString("error")) {
++    FailJob(id, *error);
++    return;
++  }
++  auto& job = *jobs_.at(id);
++  auto* snapshots = data.FindList("snapshots");
++  if (!snapshots || snapshots->size() != job.categories.size() ||
++      !std::ranges::all_of(*snapshots, [](const base::Value& value) {
++        return value.is_dict();
++      })) {
++    FailJob(id, "Source snapshot did not complete");
++    return;
++  }
++  job.snapshots = std::move(*snapshots);
++  job.chromium_staged = true;
++  Next(id);
+ }
+ void ImportService::DidRead(std::string id, base::DictValue data) {
+   if (!profile_ || !jobs_.contains(id)) {
+@@ -619,6 +661,7 @@
+   }
+   job.archive.clear();
+   job.rows.clear();
++  job.snapshots.clear();
+   job.parser.reset();
+   job.state.Set("status", "failed");
+   job.state.Set("error", std::move(error));
