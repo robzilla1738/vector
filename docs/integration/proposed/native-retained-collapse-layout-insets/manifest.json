@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "actual408 icon-only action binding + UTF16 API adaptation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+      "baselineSha256": "34cfbd8f5c16927473a1f485a46a359a3133aabd6b90bdf166916a7b0743b3d8",
+      "outputSha256": "170f5090633c0184b8da5a80155d37d84cf4c7895102ce0ab2cf78d8beb9ff2b"
+    }
+  ],
+  "kind": "Correction of original optional LayoutInsets setter and external Margins property mapping",
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,43 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x41f8edc",
+      "end": "0x41f8fbc",
+      "sha256": "e621d41ce5c4d01cf4049752467c9a73016a477dc99da21b5541eb7e4cd14f65",
+      "listing": "chip-construction.asm",
+      "listingSha256": "b771e441533c5dd77af71322841adcd1187e2c94142ba3eb8c9bca6be4b8a3fe"
+    },
+    {
+      "start": "0x214c0f0",
+      "end": "0x214c174",
+      "sha256": "9e334b4bd6bc4359de4d92d34307e6b3575ddd4be6b4b2c2bf9970e61469f4e4",
+      "listing": "optional-layout-insets-setter.asm",
+      "listingSha256": "d65d3a984359ef1964574773cfe9dc1f183cebdcc95d290804bbdfdd89d88b8b"
+    },
+    {
+      "start": "0x2394f60",
+      "end": "0x2395058",
+      "sha256": "c20ba6f5598a19883a9b8973c3e6079fa6bdd255f8feaa573ca4086718ba7e8b",
+      "listing": "chip-target-insets.asm",
+      "listingSha256": "e79b27dac7d5ee3067a3b2a748a02f0834cd35d50629acec46b1142db429830c"
+    }
+  ],
+  "properties": [
+    {
+      "key": "0xea05488",
+      "nameAddress": "0xea05490",
+      "raw": "0x2000000dd45936",
+      "name": "kMarginsKey",
+      "namePointer": "0xdd45936"
+    },
+    {
+      "key": "0xea054a8",
+      "nameAddress": "0xea054b0",
+      "raw": "0x2000000dd45942",
+      "name": "kInternalPaddingKey",
+      "namePointer": "0xdd45942"
+    }
+  ]
+}

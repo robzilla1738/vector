@@ -1,0 +1,16 @@
+[
+  {
+    "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+    "name": "original-optional-layout-insets-and-external-margins",
+    "count": 1,
+    "before": "    // Final source values: common20/6 are overridden by16/8 at41f8f48..6c.\n    SetInternalPadding(gfx::Insets(8));\n",
+    "after": "    // Source41f8f48..6c replaces the optional layout insets, not internal padding.\n    SetLayoutInsets(gfx::Insets(8));\n    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 2, 0, 2));\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+    "name": "explicit-margins-property-api",
+    "count": 1,
+    "before": "#include \"ui/views/view_tracker.h\"\n",
+    "after": "#include \"ui/views/view_class_properties.h\"\n#include \"ui/views/view_tracker.h\"\n"
+  }
+]

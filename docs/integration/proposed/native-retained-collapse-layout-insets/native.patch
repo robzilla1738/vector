@@ -1,0 +1,22 @@
+--- a/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
++++ b/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
+@@ -14,6 +14,7 @@
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/actions/action_view_controller.h"
++#include "ui/views/view_class_properties.h"
+ #include "ui/views/view_tracker.h"
+ 
+ namespace aux {
+@@ -43,8 +44,9 @@
+   ProfileRetainedCollapseButton(BrowserWindowInterface& browser,
+                                 actions::ActionItem& action)
+       : ToolbarChipButton(PressedCallback()), browser_(browser.GetWeakPtr()) {
+-    // Final source values: common20/6 are overridden by16/8 at41f8f48..6c.
+-    SetInternalPadding(gfx::Insets(8));
++    // Source41f8f48..6c replaces the optional layout insets, not internal padding.
++    SetLayoutInsets(gfx::Insets(8));
++    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 2, 0, 2));
+     SetMinSize(gfx::Size(32, 32));
+     SetMaxSize(gfx::Size(32, 32));
+     action_controller_.CreateActionViewRelationship(this,
