@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": {
+    "ui/views/widget/widget.cc": "79d330de81f5cd78b8afdeb32d6569530b343f0913e9a17e707c1fb4e85f0524",
+    "ui/views/bubble/bubble_dialog_delegate_view.cc": "4725e9170a04a56f6c0fff4de205385075b937a0de976ff707e976aca9abc82d"
+  },
+  "notes": [
+    "Widget::HandleWidgetDestroyed marks real native destruction before DeleteDelegate; observers fire before delegate deletion, so forwarding uses actual delegate teardown instead of OnWidgetDestroyed as a false full-teardown signal.",
+    "Delegate destruction posts copied weak-sender/path work to the actual UI sequence; no actual Widget or view pointer is retained by the task."
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

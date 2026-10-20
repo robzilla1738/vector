@@ -42,6 +42,15 @@
  // Native profile menu and browser navigation.
  void RefreshAuxProfileButton(views::View* button);
  
+@@ -644,7 +665,7 @@
+ 
+   AuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor)
+       : views::BubbleDialogDelegate(anchor, views::BubbleBorder::BOTTOM_LEFT),
+-        browser_(browser) {
++        browser_(browser), sender_(browser->GetWeakPtr()) {
+     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+     SetShowCloseButton(false);
+     set_margins(gfx::Insets::VH(6, 6));
 @@ -656,7 +677,15 @@
      Build();
    }
@@ -72,12 +81,17 @@
 +    // Snapshot both before real teardown: closing destroys the selected row
 +    // (which owns path) and can synchronously notify the Browser's observers.
 +    pending_switch_ = base::BindOnce(&DispatchSelectedProfile,
-+                                     browser_->GetWeakPtr(), base::FilePath(path));
++                                     sender_, base::FilePath(path));
 +    contents_->SetEnabled(false);
      GetWidget()->Close();
    }
  
-@@ -880,6 +914,7 @@
+@@ -876,10 +910,12 @@
+   }
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
++  const base::WeakPtr<BrowserWindowInterface> sender_;
+   raw_ptr<views::View> contents_ = nullptr;
    base::FilePath action_profile_;
    std::unique_ptr<ui::SimpleMenuModel> menu_model_;
    std::unique_ptr<views::MenuRunner> menu_runner_;
@@ -85,7 +99,7 @@
  };
  
  // Circular avatar with a small chevron, opening the profile menu.
-@@ -968,12 +1003,10 @@
+@@ -968,12 +1004,10 @@
    METADATA_HEADER(AuxProfileDot, views::Button)
  
   public:
@@ -102,7 +116,7 @@
          current_(current) {
      SetPreferredSize(gfx::Size(14, 20));
      SetFocusBehavior(FocusBehavior::ALWAYS);
-@@ -2000,7 +2033,7 @@
+@@ -2000,7 +2034,7 @@
      dots->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
      for (ProfileAttributesEntry* entry : profiles) {
        dots->AddChildView(std::make_unique<AuxProfileDot>(

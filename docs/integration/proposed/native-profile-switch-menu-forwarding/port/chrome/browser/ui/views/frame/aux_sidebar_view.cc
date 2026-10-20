@@ -665,7 +665,7 @@ class AuxProfileMenu : public views::BubbleDialogDelegate,
 
   AuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor)
       : views::BubbleDialogDelegate(anchor, views::BubbleBorder::BOTTOM_LEFT),
-        browser_(browser) {
+        browser_(browser), sender_(browser->GetWeakPtr()) {
     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
     SetShowCloseButton(false);
     set_margins(gfx::Insets::VH(6, 6));
@@ -847,7 +847,7 @@ class AuxProfileMenu : public views::BubbleDialogDelegate,
     // Snapshot both before real teardown: closing destroys the selected row
     // (which owns path) and can synchronously notify the Browser's observers.
     pending_switch_ = base::BindOnce(&DispatchSelectedProfile,
-                                     browser_->GetWeakPtr(), base::FilePath(path));
+                                     sender_, base::FilePath(path));
     contents_->SetEnabled(false);
     GetWidget()->Close();
   }
@@ -910,6 +910,7 @@ class AuxProfileMenu : public views::BubbleDialogDelegate,
   }
 
   const raw_ptr<BrowserWindowInterface> browser_;
+  const base::WeakPtr<BrowserWindowInterface> sender_;
   raw_ptr<views::View> contents_ = nullptr;
   base::FilePath action_profile_;
   std::unique_ptr<ui::SimpleMenuModel> menu_model_;

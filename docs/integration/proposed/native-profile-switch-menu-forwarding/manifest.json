@@ -5,7 +5,7 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
       "baselineSha256": "aed972176d28ecfa24cd5ad37de40dd97686045fba2c1b990b50c45d1aaae446",
-      "outputSha256": "2915fba435a21759d8e8d88699661422a9e8f3aa09af4bf1883b17d564bf8505"
+      "outputSha256": "4f31f58c9c0fff6a86accf9430e8715a22a552692f4ed9c68361c67e5386a7ef"
     }
   ],
   "sharedSourceModified": false,
