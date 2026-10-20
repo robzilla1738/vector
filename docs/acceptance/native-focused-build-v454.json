@@ -1,0 +1,34 @@
+{
+  "compositionSha256": "b0c68758e88a5ba916840f75a4c83667c609079fcebf6e8670ef531ec68e0902",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "composition": "v454",
+  "exitCode": 0,
+  "elapsedSeconds": 30.18806481361389,
+  "targets": {
+    "import_service": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "migrator": "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "safari_import": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_import.o",
+    "safari_data_importer": "obj/components/user_data_importer/utility/safari_data_importer/safari_data_importer.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/safari_import.o",
+    "obj/components/user_data_importer/utility/safari_data_importer/safari_data_importer.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "runtimeAcceptance": false,
+  "noSourceProfileOrKeychainOperations": true,
+  "gnGeneration": {
+    "exitCode": 0,
+    "log": "out/native-integration/v451-gn-gen.log"
+  }
+}

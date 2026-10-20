@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "6131bc4dca4f171d8bd1f2855f736791da1d8f81ba8b6c9c4e629a7dddf9097c",
+      "outputSha256": "5af23f4ad3cb966df3f65f335611661c2179a7c4de4e3d21fd6ba7b4d0c8f830"
+    }
+  ],
+  "removedRetiredDependency": ":safari_archive",
+  "genuineDependencies": [
+    "//chrome/browser:browser_process",
+    "//chrome/browser/affiliations",
+    "//chrome/browser/autofill",
+    "//chrome/browser/reading_list",
+    "//chrome/browser/sync",
+    "//components/autofill/core/browser",
+    "//components/password_manager/core/browser/ui",
+    "//components/user_data_importer/content",
+    "//components/user_data_importer/utility:safari_data_importer"
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

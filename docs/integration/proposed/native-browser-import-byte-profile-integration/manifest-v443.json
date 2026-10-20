@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v442",
+  "originalProposal": "native-browser-import-profile-admission",
+  "originalManifestSha256": "8097b9ee49eea751466171f8d7f1cec585bcc587a941ce65f5d3277f9a97b57f",
+  "originalPatchSha256": "429bc072870c3601d7e9da1c4bf7c60b1d161da82addc946cb8647c87f841be3",
+  "appliedPatchSha256": "429bc072870c3601d7e9da1c4bf7c60b1d161da82addc946cb8647c87f841be3",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "762f7d652d6ee65f68b39117fcfc8cdd7b166b13512932ddd38cff98056037e5",
+      "originalBaselineSha256": "276999580083f60f665837055ddd6f658b23cd328733766a6ed68c291566ead3",
+      "originalOutputSha256": "a8c04ccebaa2ac1bc8e23d53eafa4da8c35ec5671c28945e11416c7f8d8e1166",
+      "outputSha256": "5669d5f356f9258153f4320c8423482ca0c951f0b361aea4b7e1e219295dd020"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

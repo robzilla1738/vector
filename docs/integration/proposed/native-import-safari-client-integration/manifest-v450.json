@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "applyAfter": "v449",
+  "originalManifestSha256": "03ef36a99cafaa25c08b16e90ba8dfb902c165d3e0f6e96d7c55ab75ca46de6c",
+  "originalPatchSha256": "68b133edaf87492f61045c2fc1e4cdb712523e3199c5e08641d18c4af22cf7a3",
+  "appliedPatchSha256": "0f9fca3584f10eb4c5096fc9a0040ae208d719a4ba398077cb9dce5f33234568",
+  "application": "all original service/header/source anchors exactly once; new files byte-identical",
+  "originalFiveFileReplayPassed": true,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "11991fc1cf21e4310307c91cd23c4e72f2b35a3c47f18432f4902c1a7abb642c",
+      "outputSha256": "0e6d46fdcdb17ee809ba573d9b480e818aba439627c7d21c13225a841d4845e1",
+      "originalBaselineSha256": "2b3b956d6015a97aea2b01aa4a9eafae30f57abb560eaf4f8e1c93bc4dca0922",
+      "originalOutputSha256": "725193708e9cdc8c9bd8ed372af59e268620d35112908a2d5bd91d46eb1498db"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "d01a7d90c9fccfbda804bd14e6d4ddbb447511f7bbae1207aa717ef2ab4abb71",
+      "outputSha256": "b7c50afa21536bdc440672b34db4d7cdf2c71dc538722f28bfa2fea559f9ace4",
+      "originalBaselineSha256": "d01a7d90c9fccfbda804bd14e6d4ddbb447511f7bbae1207aa717ef2ab4abb71",
+      "originalOutputSha256": "b7c50afa21536bdc440672b34db4d7cdf2c71dc538722f28bfa2fea559f9ace4"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "0598c729c3bc63dcb9cf8b01536cce3951d9e444f63b06a43e6cdef1c01b05b6",
+      "outputSha256": "7acf08d0e62f920a7c50d372b30b38e0413c8cf4996328f6c6c30c954a05917f",
+      "originalBaselineSha256": "c50b71a40b03442ea36da922db92d5a3ca8c103a75354ca6321ea808a8b13ea0",
+      "originalOutputSha256": "da505b871acfef2dc7a738226b2577bf1b4e6d4f1eced63f66ba811d961f25e6"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.h",
+      "baselineSha256": null,
+      "outputSha256": "1cfdaae5f6c7031cd440a7d43320e366e0f1f53f3c93afb03aa81ef90c45fa6d",
+      "originalBaselineSha256": null,
+      "originalOutputSha256": "1cfdaae5f6c7031cd440a7d43320e366e0f1f53f3c93afb03aa81ef90c45fa6d"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "34383b2fa141a0c22db9e4f7c529530c46abffa0ef653e4992fee2987fe7611c",
+      "originalBaselineSha256": null,
+      "originalOutputSha256": "34383b2fa141a0c22db9e4f7c529530c46abffa0ef653e4992fee2987fe7611c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

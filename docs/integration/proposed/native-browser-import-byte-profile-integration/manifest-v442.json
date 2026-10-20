@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v441",
+  "originalProposal": "native-browser-import-private-bytes-build-deps",
+  "originalManifestSha256": "0dd7e90ba38fbd33cb6e17831715eb9c7c2d4008eb36516288b6b01ce26f201e",
+  "originalPatchSha256": "e2cfb695905d3183c31c1add6ff737660873d52e18e1ce414689d3d79629a035",
+  "appliedPatchSha256": "e2cfb695905d3183c31c1add6ff737660873d52e18e1ce414689d3d79629a035",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "44d5943d1416e324cd8d69748915efa8394630bbc793eb54b94366a33b13e2d0",
+      "originalBaselineSha256": "44d5943d1416e324cd8d69748915efa8394630bbc793eb54b94366a33b13e2d0",
+      "originalOutputSha256": "ed821135cc4cc28e2efb217a6c024abbd5535a15cefd111776fbc91df0feffef",
+      "outputSha256": "ed821135cc4cc28e2efb217a6c024abbd5535a15cefd111776fbc91df0feffef"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

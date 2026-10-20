@@ -1,0 +1,11 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -6,7 +6,7 @@
+ }
+ 
+ source_set("migrator") {
+- sources = [ "migrator.cc", "migrator.h", "source_crypto.h", "source_crypto_mac.mm" ]
++ sources = [ "migrator.cc", "migrator.h", "encrypted_source_bytes.h", "source_crypto.h", "source_crypto_mac.mm" ]
+  frameworks = [ "AppKit.framework", "Security.framework", "LocalAuthentication.framework" ]
+  public_deps = [ "//base" ]
+  deps = [ "//third_party/sqlite", "//crypto", "//third_party/boringssl", "//url" ]

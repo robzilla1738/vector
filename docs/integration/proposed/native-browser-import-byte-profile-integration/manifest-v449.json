@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v448",
+  "originalProposal": "native-browser-import-physical-snapshot-build-deps",
+  "originalManifestSha256": "3a06d0ede70c1b512dfb1084eb450684ddd198b332c8a868459da787656b772c",
+  "originalPatchSha256": "c1734f211af2c3c3176f7983b9e1c9ccb74094babd9ca144113946bbc21bc0da",
+  "appliedPatchSha256": "c1734f211af2c3c3176f7983b9e1c9ccb74094babd9ca144113946bbc21bc0da",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "ce0ad97105825f581e98ba74eba4046880f518c7e036176c8c78299e14e74dca",
+      "originalBaselineSha256": "ce0ad97105825f581e98ba74eba4046880f518c7e036176c8c78299e14e74dca",
+      "originalOutputSha256": "6131bc4dca4f171d8bd1f2855f736791da1d8f81ba8b6c9c4e629a7dddf9097c",
+      "outputSha256": "6131bc4dca4f171d8bd1f2855f736791da1d8f81ba8b6c9c4e629a7dddf9097c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

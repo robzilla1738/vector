@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "applyAfter": "v443",
+  "originalProposal": "native-browser-import-firefox-profiles",
+  "originalManifestSha256": "3314d258e70bdaa8227b136de2d28ef3b3275671d6d12f2978625bb10ec58894",
+  "originalPatchSha256": "b4cc9aef2fb9da2bc5b3f3cc5637935e6a41fd3e54cd921e7f14e00fd83af127",
+  "appliedPatchSha256": "f0949e4f392fde72376109fc6d92f22edcd3fdd7ea464cc0a4ba72518b6dae15",
+  "application": "exact original counted anchors with include context coalesced for Firefox",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "5669d5f356f9258153f4320c8423482ca0c951f0b361aea4b7e1e219295dd020",
+      "originalBaselineSha256": "a8c04ccebaa2ac1bc8e23d53eafa4da8c35ec5671c28945e11416c7f8d8e1166",
+      "originalOutputSha256": "ccd75fdf22181e1d0b202e6052c532828d2527d1dd0af7ec904913ac1360842b",
+      "coalescedInclude": "Existing UTF conversion include retained once; two genuine Firefox headers added after existing time include",
+      "outputSha256": "07b5763429dcd6cb59d1dae394e0a1e260c40ad6e66f37c232870334ef638c14"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

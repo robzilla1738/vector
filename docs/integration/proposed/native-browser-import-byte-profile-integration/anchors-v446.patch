@@ -1,0 +1,80 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -726,11 +726,8 @@
+   safari.Set("id", "safari");
+   safari.Set("name", "Safari");
+   safari.Set("installed", true);
+-  safari.Set("profiles",
+-             base::ListValue().Append(
+-                 base::DictValue()
+-                     .Set("id", "archive")
+-                     .Set("name", "All profiles in selected export")));
++  // Supplied4275f50 publishes no Safari profiles: the archive is the source.
++  safari.Set("profiles", base::ListValue());
+   safari.Set("categories", base::ListValue()
+                                .Append("bookmarks")
+                                .Append("history")
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -521,11 +521,11 @@
+       profile_id = (*profiles)[0].GetDict().FindString("id");
+     }
+   }
+-  if (!profile_id) {
++  if (!profile_id && *source_id != "safari") {
+     error("Choose a source profile before importing");
+     return;
+   }
+-  if (source && source->FindBool("installed").value_or(false)) {
++  if (source && profile_id && source->FindBool("installed").value_or(false)) {
+     if (const auto* profiles = source->FindList("profiles")) {
+       for (const auto& row : *profiles) {
+         if (row.GetDict().FindString("id") &&
+@@ -535,8 +535,9 @@
+       }
+     }
+   }
+-  if (!source || !selected ||
+-      (*source_id != "safari" && !selected->FindString("nativePath"))) {
++  if (!source || !source->FindBool("installed").value_or(false) ||
++      (*source_id != "safari" &&
++       (!selected || !selected->FindString("nativePath")))) {
+     error("Selected source profile is unavailable");
+     return;
+   }
+@@ -548,13 +549,10 @@
+   auto job = std::make_unique<Job>();
+   if (*source_id == "safari") {
+     const auto* archive = options.FindDict("safariArchive");
+-    const auto* name = archive ? archive->FindString("fileName") : nullptr;
++    // Supplied4276b34 reads only the nonempty binary data; fileName is optional.
+     const auto* data = archive ? archive->Find("data") : nullptr;
+-    if (!name || name->size() > 255 || name->find('/') != name->npos ||
+-        name->find('\\') != name->npos || name->find('\0') != name->npos ||
+-        !base::EndsWith(*name, ".zip", base::CompareCase::INSENSITIVE_ASCII) ||
+-        !data) {
+-      error("Choose a Safari ZIP file before importing");
++    if (!data) {
++      error("Safari import requires safariArchive.data");
+       return;
+     }
+     constexpr size_t limit = 16 * 1024 * 1024;
+@@ -591,7 +589,7 @@
+   job->extension = extension;
+   job->import_extensions = !has_kinds && !internal_categories;
+   job->source = *source_id;
+-  job->source_profile = *profile_id;
++  if (profile_id) job->source_profile = *profile_id;
+   for (const auto& category : *categories) {
+     if (!internal_categories && category.is_string() &&
+         category.GetString() == "preferences") {
+@@ -613,7 +611,8 @@
+   const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   job->state.Set("jobId", id);
+   job->state.Set("sourceId", *source_id);
+-  job->state.Set("sourceProfileId", *profile_id);
++  if (profile_id && !profile_id->empty())
++    job->state.Set("sourceProfileId", *profile_id);
+   job->state.Set("status", "queued");
+   job->state.Set("completed", 0);
+   job->state.Set("total", static_cast<int>(job->categories.size()));

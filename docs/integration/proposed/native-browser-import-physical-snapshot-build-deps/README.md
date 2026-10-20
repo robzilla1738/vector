@@ -1,0 +1,1 @@
+Add the genuine //sql dependency to the existing migrator for original cookie/password sql::Database and sql::Statement owners. One count-checked existing dependency anchor; no new target or runtime operation.

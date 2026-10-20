@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "applyAfter": "v452",
+  "originalProposal": "native-browser-import-history-physical-source",
+  "originalManifestSha256": "f8dd8b712d11e709b61442fd03c6413208309b871319fb7ee3ca4df9a2dd898b",
+  "originalPatchSha256": "b9f7a83f42f72a61f770c0bba7bbbf8c72ffeec5c047cf774fe97698e2a6d683",
+  "application": "unchanged original patch; rebased whole-file hashes; original replay passed",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "7acf08d0e62f920a7c50d372b30b38e0413c8cf4996328f6c6c30c954a05917f",
+      "originalBaselineSha256": "0598c729c3bc63dcb9cf8b01536cce3951d9e444f63b06a43e6cdef1c01b05b6",
+      "originalOutputSha256": "cfca0865db2e3fda88d87f471e1ecc61959d6d8210d4b80aa80aa33dd8f8ed25",
+      "outputSha256": "d504dce6aef92f4b382d594a91884bc6742d70478c47131fd3fddccce47057ab"
+    }
+  ]
+}

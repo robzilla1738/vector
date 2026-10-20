@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "v447",
+  "originalProposal": "native-browser-import-physical-snapshot",
+  "originalManifestSha256": "50aa84de1c3a695cfd94996c0a93e3508952ac37f76aa8cbf15de1f3e985cc72",
+  "originalPatchSha256": "708efa7c66beb0ddec36762ed2a92ee98561139ea5ec58197681cf4c2e8764d2",
+  "appliedPatchSha256": "9ebe172e35fcc55184412c4079c9ca829c58fe9e7d19151e834daee278a6fc70",
+  "application": "three-way merge of pinned original before/after and composed v447; additive include conflicts explicitly coalesced",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "0edec8bfce296bdcd34e0551e71afcb6aab6b7ed40f49dfd4780675f17326e43",
+      "originalBaselineSha256": "982ef2bb6fbe827f8790c4087ea87f2fbadf439b2e937f62f7aa0e76a3da890b",
+      "originalOutputSha256": "4f275e58d19b0cab7d93f4fc7ab4a6fd2db909e78371135e42e038148dd4b1a7",
+      "resolvedAdditiveIncludeConflicts": [
+        [
+          "#include \"url/gurl.h\"",
+          "#include \"sql/database.h\"",
+          "#include \"sql/statement.h\""
+        ]
+      ],
+      "outputSha256": "0598c729c3bc63dcb9cf8b01536cce3951d9e444f63b06a43e6cdef1c01b05b6"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

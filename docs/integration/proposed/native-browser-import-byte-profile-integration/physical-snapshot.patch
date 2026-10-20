@@ -1,0 +1,200 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -14,6 +14,7 @@
+ #include "base/environment.h"
+ #include "base/files/file_enumerator.h"
+ #include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
+ #include "base/json/json_reader.h"
+ #include "base/path_service.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -27,6 +28,8 @@
+ #include "crypto/hash.h"
+ #include "third_party/sqlite/sqlite3.h"
+ #include "url/gurl.h"
++#include "sql/database.h"
++#include "sql/statement.h"
+ namespace aux_import {
+ namespace {
+ std::optional<base::FilePath> SourceHome(bool& fixture) {
+@@ -989,13 +992,29 @@
+ }
+ 
+ namespace {
+-// Supplied encrypted readers use SQLite string lengths, without Text()'s
+-// inherited 8192-byte truncation. Native SQLite/allocation limits still apply.
+-std::string EncryptedSourceText(sqlite3_stmt* statement, int column) {
+-  const auto* value = sqlite3_column_text(statement, column);
+-  const int size = sqlite3_column_bytes(statement, column);
+-  return !value || size < 0 ? std::string()
+-                           : std::string(reinterpret_cast<const char*>(value), size);
++// Original425a544..425a6b4 /425b3f0..425b524: prefer a physical copy of
++// this one selected DB; on temp/copy failure open the actual source instead.
++class ChromiumSourceSnapshot {
++ public:
++  bool Open(const base::FilePath& source) {
++    base::FilePath selected = source;
++    if (temporary_directory_.CreateUniqueTempDir()) {
++      const auto copy = temporary_directory_.GetPath().Append(source.BaseName());
++      if (base::CopyFile(source, copy)) {
++        selected = copy;
++      }
++    }
++    return database_.Open(selected);
++  }
++  sql::Database& database() { return database_; }
++
++ private:
++  // Destruction order is deliberate: real SQLite closes before temp removal.
++  base::ScopedTempDir temporary_directory_;
++  sql::Database database_{"Test"};  // Exact original source database tag.
++};
++std::string EncryptedSourceText(sql::Statement& statement, int column) {
++  return statement.ColumnString(column);
+ }
+ base::DictValue ReadEncryptedCategoryImpl(const base::FilePath& profile,
+                                           std::string category,
+@@ -1035,14 +1054,11 @@
+   size_t encrypted_values = 0;
+   size_t decrypted_values = 0;
+   for (const auto& path : paths) {
+-    std::string error;
+-    auto db = Snapshot(path, error);
+-    if (!db) {
+-      result.Set("error", error);
+-      return result;
+-    }
+-    auto query = Prepare(
+-        db.get(),
++    ChromiumSourceSnapshot snapshot;
++    if (!snapshot.Open(path)) {
++      return fail("Source database could not be opened");
++    }
++    const std::string query_text =
+         cookies
+             ? "SELECT "
+               "creation_utc,host_key,top_frame_site_key,name,value,encrypted_"
+@@ -1056,25 +1072,22 @@
+               "icon_url,federation_url,skip_zero_click,generation_upload_status,"
+               "date_last_used,date_password_modified,sender_email,sender_name,"
+               "date_received,sharing_notification_displayed,sender_profile_"
+-              "image_url,date_last_filled,actor_login_approved FROM logins");
+-    if (!query) {
++              "image_url,date_last_filled,actor_login_approved FROM logins";
++    sql::Statement query(snapshot.database().GetUniqueStatement(query_text));
++    if (!query.is_valid()) {
+       return fail("Encrypted source database lacks required columns");
+     }
+-    int status;
+-    while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
+-      const bool blocked = !cookies && sqlite3_column_int(query.get(), 9);
++    while (query.Step()) {
++      const bool blocked = !cookies && query.ColumnInt(9);
+       const int column = 5;
+-      auto* blob = sqlite3_column_blob(query.get(), column);
+-      const int length = sqlite3_column_bytes(query.get(), column);
+-      if (length < 0) {
+-        return fail("Encrypted source row has an invalid byte count");
+-      }
+-      const auto host = cookies ? EncryptedSourceText(query.get(), 1) : std::string();
++      const auto blob = query.ColumnBlobAsString(column);
++      const size_t length = blob.size();
++      const auto host = cookies ? EncryptedSourceText(query, 1) : std::string();
+       std::optional<std::string> plaintext;
+       if (cookies) {
+         // Supplied425a8f4..425a918 prefers a nonempty plaintext value even
+         // when encrypted_value is also populated.
+-        plaintext = EncryptedSourceText(query.get(), 4);
++        plaintext = EncryptedSourceText(query, 4);
+       }
+       if (blocked) {
+         plaintext = std::string();
+@@ -1082,7 +1095,7 @@
+         // Source plaintext cookies do not participate in the decode counters.
+       } else if (length) {
+         ++encrypted_values;
+-        const std::string_view ciphertext(static_cast<const char*>(blob), length);
++        const std::string_view ciphertext(blob);
+         // Both original readers call425cda0: non-v10 input is copied as-is;
+         // v10 alone is AES-decoded with the already-authorized source key.
+         plaintext = !ciphertext.starts_with("v10")
+@@ -1123,24 +1136,24 @@
+       stage_bytes("secret", std::move(*plaintext));
+       if (cookies) {
+         stage_bytes("host", host);
+-        stage_bytes("name", EncryptedSourceText(query.get(), 3));
+-        stage_bytes("path", EncryptedSourceText(query.get(), 6));
++        stage_bytes("name", EncryptedSourceText(query, 3));
++        stage_bytes("path", EncryptedSourceText(query, 6));
+         for (auto [field, index] :
+              {std::pair{"created", 0}, {"expires", 7}, {"accessed", 10}}) {
+           row.Set(field,
+-                  base::NumberToString(sqlite3_column_int64(query.get(), index)));
+-        }
+-        row.Set("secure", !!sqlite3_column_int(query.get(), 8));
+-        row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
+-        row.Set("sameSite", sqlite3_column_int(query.get(), 14));
+-        row.Set("priority", sqlite3_column_int(query.get(), 13));
+-        stage_bytes("partition", EncryptedSourceText(query.get(), 2));
+-        row.Set("crossSite", !!sqlite3_column_int(query.get(), 19));
+-        row.Set("sourceScheme", sqlite3_column_int(query.get(), 15));
+-        row.Set("sourcePort", sqlite3_column_int(query.get(), 16));
+-        row.Set("sourceType", sqlite3_column_int(query.get(), 18));
++                  base::NumberToString(query.ColumnInt64(index)));
++        }
++        row.Set("secure", !!query.ColumnInt(8));
++        row.Set("httpOnly", !!query.ColumnInt(9));
++        row.Set("sameSite", query.ColumnInt(14));
++        row.Set("priority", query.ColumnInt(13));
++        stage_bytes("partition", EncryptedSourceText(query, 2));
++        row.Set("crossSite", !!query.ColumnInt(19));
++        row.Set("sourceScheme", query.ColumnInt(15));
++        row.Set("sourcePort", query.ColumnInt(16));
++        row.Set("sourceType", query.ColumnInt(18));
+         row.Set("updated",
+-                base::NumberToString(sqlite3_column_int64(query.get(), 17)));
++                base::NumberToString(query.ColumnInt64(17)));
+       } else {
+         // Exact source425b820..425bda4 / original27-column SELECT.
+         for (auto [field, index] : {std::pair{"url", 0},
+@@ -1156,21 +1169,21 @@
+                                     {"senderEmail", 20},
+                                     {"senderName", 21},
+                                     {"senderProfileImageUrl", 24}}) {
+-          stage_bytes(field, EncryptedSourceText(query.get(), index));
++          stage_bytes(field, EncryptedSourceText(query, index));
+         }
+         for (auto [field, index] :
+              {std::pair{"created", 8}, {"used", 18}, {"modified", 19},
+               {"received", 22}, {"filled", 25}}) {
+           row.Set(field,
+-                  base::NumberToString(sqlite3_column_int64(query.get(), index)));
+-        }
+-        row.Set("timesUsed", sqlite3_column_int(query.get(), 12));
+-        row.Set("scheme", sqlite3_column_int(query.get(), 10));
+-        row.Set("passwordType", sqlite3_column_int(query.get(), 11));
+-        row.Set("skipZeroClick", !!sqlite3_column_int(query.get(), 16));
+-        row.Set("generationUploadStatus", sqlite3_column_int(query.get(), 17));
+-        row.Set("sharingNotificationDisplayed", !!sqlite3_column_int(query.get(), 23));
+-        row.Set("actorLoginApproved", !!sqlite3_column_int(query.get(), 26));
++                  base::NumberToString(query.ColumnInt64(index)));
++        }
++        row.Set("timesUsed", query.ColumnInt(12));
++        row.Set("scheme", query.ColumnInt(10));
++        row.Set("passwordType", query.ColumnInt(11));
++        row.Set("skipZeroClick", !!query.ColumnInt(16));
++        row.Set("generationUploadStatus", query.ColumnInt(17));
++        row.Set("sharingNotificationDisplayed", !!query.ColumnInt(23));
++        row.Set("actorLoginApproved", !!query.ColumnInt(26));
+         row.Set("blocked", blocked);
+         if (blocked) {
+           row.Set("username", "");
+@@ -1201,7 +1214,7 @@
+       }
+       rows.Append(std::move(row));
+     }
+-    if (status != SQLITE_DONE) {
++    if (!query.Succeeded()) {
+       return fail("Encrypted source snapshot failed while reading rows");
+     }
+   }

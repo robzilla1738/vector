@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "v446",
+  "originalProposal": "native-import-safari-bookmarks-only",
+  "originalManifestSha256": "594e74dba01b6655c38fc9a02da2359ce61d343c67a17b6e010708d2ad4a3985",
+  "originalPatchSha256": "2c792dd8b70118f59c32adb4c19b77c6d670a310db18be82bca7eea366bbb2c2",
+  "appliedPatchSha256": "2c792dd8b70118f59c32adb4c19b77c6d670a310db18be82bca7eea366bbb2c2",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.h",
+      "baselineSha256": "10e4045b7e3e5b2479c6f65715bd6c17e8f8a31d42170c7fb3564c25def48a08",
+      "originalBaselineSha256": "10e4045b7e3e5b2479c6f65715bd6c17e8f8a31d42170c7fb3564c25def48a08",
+      "originalOutputSha256": "d01980739073ec76ad843c6bc6493dd2f576f6e7b16cd415fc28f01e06a35c67",
+      "outputSha256": "d01980739073ec76ad843c6bc6493dd2f576f6e7b16cd415fc28f01e06a35c67"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "baselineSha256": "1704cb730922b7ab0a00b6c75cfcb7a89f93c24f71afc074ae88a878ebfa175f",
+      "originalBaselineSha256": "1704cb730922b7ab0a00b6c75cfcb7a89f93c24f71afc074ae88a878ebfa175f",
+      "originalOutputSha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7",
+      "outputSha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

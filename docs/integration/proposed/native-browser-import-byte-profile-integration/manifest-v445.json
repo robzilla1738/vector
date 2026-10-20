@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v444",
+  "originalProposal": "native-browser-import-firefox-build-deps",
+  "originalManifestSha256": "f4da28ab0fda35564c42f54c056a1364bdcde810b847217d0f83085c445da78f",
+  "originalPatchSha256": "cca02c15748e7c8cb66c276198b03d7623060a41e61849b4215d6790d2b0b562",
+  "appliedPatchSha256": "cca02c15748e7c8cb66c276198b03d7623060a41e61849b4215d6790d2b0b562",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "ed821135cc4cc28e2efb217a6c024abbd5535a15cefd111776fbc91df0feffef",
+      "originalBaselineSha256": "ed821135cc4cc28e2efb217a6c024abbd5535a15cefd111776fbc91df0feffef",
+      "originalOutputSha256": "ce0ad97105825f581e98ba74eba4046880f518c7e036176c8c78299e14e74dca",
+      "outputSha256": "ce0ad97105825f581e98ba74eba4046880f518c7e036176c8c78299e14e74dca"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

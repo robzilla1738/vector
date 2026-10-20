@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "applyAfter": "v453",
+  "originalProposal": "native-browser-import-absent-encrypted-stores",
+  "originalManifestSha256": "24eccfd021490c0b882c98a8723c50069c4b08431ebf6593330b0595499e502b",
+  "originalPatchSha256": "a91b61681e974711ef543938c1f243dea78c2e7e08cdb4350406fdc8ac0d14ba",
+  "application": "unchanged original patch; rebased whole-file hashes; original replay passed",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "d504dce6aef92f4b382d594a91884bc6742d70478c47131fd3fddccce47057ab",
+      "originalBaselineSha256": "4f275e58d19b0cab7d93f4fc7ab4a6fd2db909e78371135e42e038148dd4b1a7",
+      "originalOutputSha256": "d44e433eaea20ad002531be13593d692ebf8f8aa339a302789302493f18c1965",
+      "outputSha256": "3c4be869878a4a0eadb7fa76db081eefa8df97b6e14298e8aedce376b99ea489"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "v445",
+  "originalProposal": "native-import-safari-owner",
+  "originalManifestSha256": "ee9c13c079b311e4b1a6509db27fa5c52a4793f0c0c99e77866fa5b971412b7c",
+  "originalPatchSha256": "920059c9f0b396461958df1cbd143f2e2890e1a5001a4265dc4a2d1141042f71",
+  "appliedPatchSha256": "382ff9416963d327898ae5747dea84c3bfb799ce2a4b228f02183b1f7e156763",
+  "application": "exact original counted anchors with include context coalesced for Firefox",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "07b5763429dcd6cb59d1dae394e0a1e260c40ad6e66f37c232870334ef638c14",
+      "originalBaselineSha256": "701213d190aa6028e015fc9a47eef54809f10b83825e85e86b2cf8a37ac74cb4",
+      "originalOutputSha256": "c50b71a40b03442ea36da922db92d5a3ca8c103a75354ca6321ea808a8b13ea0",
+      "outputSha256": "0edec8bfce296bdcd34e0551e71afcb6aab6b7ed40f49dfd4780675f17326e43"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "ba5b3e57d63e43b9de40b7a0801ab42c6dd1a612c2a25f5784b3f7ca0af1a758",
+      "originalBaselineSha256": "3d2777b74fb79cb94e6db13daf94f15996d3e475c7eb738854a7c04f564442b7",
+      "originalOutputSha256": "2b3b956d6015a97aea2b01aa4a9eafae30f57abb560eaf4f8e1c93bc4dca0922",
+      "outputSha256": "11991fc1cf21e4310307c91cd23c4e72f2b35a3c47f18432f4902c1a7abb642c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

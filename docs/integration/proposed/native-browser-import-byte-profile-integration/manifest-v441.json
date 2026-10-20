@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v440",
+  "originalProposal": "native-browser-import-private-bytes-wrapper",
+  "originalManifestSha256": "19d1f2bd792027538243eb5da0648f2a92db6a686d67a365dac2e1f9fd3a13ec",
+  "originalPatchSha256": "cd9665d1f5ccb7fadf1fed676372d375105fc0cd92871b08a795d4d9243143d7",
+  "appliedPatchSha256": "cd9665d1f5ccb7fadf1fed676372d375105fc0cd92871b08a795d4d9243143d7",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "4c465d66b420b0623b98d518e66cbc7ad69224c147d45683d0e1b84214905206",
+      "originalBaselineSha256": "81c64504b0455991afa3bebc0d6d7c209e14669ee944fe0e4cf9b35c81339632",
+      "originalOutputSha256": "982ef2bb6fbe827f8790c4087ea87f2fbadf439b2e937f62f7aa0e76a3da890b",
+      "outputSha256": "762f7d652d6ee65f68b39117fcfc8cdd7b166b13512932ddd38cff98056037e5"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

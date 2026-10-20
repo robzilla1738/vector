@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "44d5943d1416e324cd8d69748915efa8394630bbc793eb54b94366a33b13e2d0",
+      "outputSha256": "ed821135cc4cc28e2efb217a6c024abbd5535a15cefd111776fbc91df0feffef"
+    }
+  ],
+  "compiled": false
+}

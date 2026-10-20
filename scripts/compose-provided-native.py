@@ -464,6 +464,21 @@ steps.extend([
     ('native-browser-import-encrypted-reader-caps/native.patch', 'native-browser-import-owner-batch-integration/manifest-v437.json'),
     ('native-browser-import-password-metadata/native.patch', 'native-browser-import-owner-batch-integration/manifest-v438.json'),
     ('native-browser-import-owner-batch-integration/arc.patch', 'native-browser-import-owner-batch-integration/manifest-v439.json'),
+    ('native-browser-import-byte-profile-integration/private-bytes.patch', 'native-browser-import-byte-profile-integration/manifest-v440.json'),
+    ('native-browser-import-private-bytes-wrapper/native.patch', 'native-browser-import-byte-profile-integration/manifest-v441.json'),
+    ('native-browser-import-private-bytes-build-deps/native.patch', 'native-browser-import-byte-profile-integration/manifest-v442.json'),
+    ('native-browser-import-profile-admission/native.patch', 'native-browser-import-byte-profile-integration/manifest-v443.json'),
+    ('native-browser-import-byte-profile-integration/anchors-v444.patch', 'native-browser-import-byte-profile-integration/manifest-v444.json'),
+    ('native-browser-import-firefox-build-deps/native.patch', 'native-browser-import-byte-profile-integration/manifest-v445.json'),
+    ('native-browser-import-byte-profile-integration/anchors-v446.patch', 'native-browser-import-byte-profile-integration/manifest-v446.json'),
+    ('native-import-safari-bookmarks-only/native.patch', 'native-browser-import-byte-profile-integration/manifest-v447.json'),
+    ('native-browser-import-byte-profile-integration/physical-snapshot.patch', 'native-browser-import-byte-profile-integration/manifest-v448.json'),
+    ('native-browser-import-physical-snapshot-build-deps/native.patch', 'native-browser-import-byte-profile-integration/manifest-v449.json'),
+    ('native-import-safari-client-integration/native.patch', 'native-import-safari-client-integration/manifest-v450.json'),
+    ('native-import-safari-client-build-deps/native.patch', 'native-import-safari-client-build-deps/manifest.json'),
+    ('native-import-job-contract/native.patch', 'native-import-source-parity-integration/manifest-v452.json'),
+    ('native-browser-import-history-physical-source/native.patch', 'native-import-source-parity-integration/manifest-v453.json'),
+    ('native-browser-import-absent-encrypted-stores/native.patch', 'native-import-source-parity-integration/manifest-v454.json'),
 ])
 
 if options.through:

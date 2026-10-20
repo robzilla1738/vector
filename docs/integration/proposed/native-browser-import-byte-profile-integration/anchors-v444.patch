@@ -1,0 +1,122 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -22,6 +22,8 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/encrypted_source_bytes.h"
+ #include "base/threading/platform_thread.h"
+ #include "base/time/time.h"
++#include "chrome/common/importer/firefox_importer_utils.h"
++#include "chrome/common/ini_parser.h"
+ #include "crypto/hash.h"
+ #include "third_party/sqlite/sqlite3.h"
+ #include "url/gurl.h"
+@@ -590,6 +592,68 @@
+   }
+   return profiles;
+ }
++// Original71f0cc8 reads profiles.ini and delegates to the shared Firefox
++// importer. Resolve its relative paths against this explicit source INI before
++// invoking the dictionary helper, whose normal GetProfilesINI() is global.
++// This is a source-home adaptation, not a different profile selection policy.
++base::ListValue DiscoverFirefoxProfiles(const base::FilePath& support,
++                                       const base::FilePath* fixture_home) {
++  auto ini = support.AppendASCII("Firefox/profiles.ini");
++  if (!base::PathExists(ini)) {
++    ini = base::FilePath();
++  }
++  if (fixture_home && !ini.empty()) {
++    const auto resolved = base::MakeAbsoluteFilePath(ini);
++    if (resolved.empty() || !fixture_home->IsParent(resolved)) {
++      return {};
++    }
++  }
++  std::string content;
++  base::ReadFileToString(ini, &content);
++  DictionaryValueINIParser parser;
++  parser.Parse(content);
++  auto dictionary = parser.root().Clone();
++  for (int index = 0;; ++index) {
++    const auto profile = "Profile" + base::NumberToString(index);
++    if (!dictionary.Find(profile)) {
++      break;
++    }
++    const auto* relative =
++        dictionary.FindStringByDottedPath(profile + ".IsRelative");
++    const auto* path = dictionary.FindStringByDottedPath(profile + ".Path");
++    if (relative && *relative == "1" && path) {
++      const auto resolved =
++          ini.DirName().Append(base::FilePath::FromUTF8Unsafe(*path));
++      dictionary.SetByDottedPath(profile + ".Path", resolved.value());
++      dictionary.SetByDottedPath(profile + ".IsRelative", "0");
++    }
++  }
++  base::ListValue profiles;
++  for (const auto& details : GetFirefoxDetailsFromDictionary(dictionary, {})) {
++    if (fixture_home) {
++      // The explicit disposable fixture boundary must never follow custom INI
++      // paths into the owner's source profile. This is fixture-only policy.
++      if (!details.path.IsAbsolute() || details.path.ReferencesParent() ||
++          !fixture_home->IsParent(details.path)) {
++        continue;
++      }
++      const auto resolved = base::MakeAbsoluteFilePath(details.path);
++      if (resolved.empty() || !fixture_home->IsParent(resolved)) {
++        continue;
++      }
++    }
++    if (!base::DirectoryExists(details.path)) {
++      continue;
++    }
++    profiles.Append(base::DictValue()
++                        .Set("id", details.path.value())
++                        .Set("name", details.name.empty()
++                                         ? "Default"
++                                         : base::UTF16ToUTF8(details.name))
++                        .Set("nativePath", details.path.value()));
++  }
++  return profiles;
++}
+ }  // namespace
+ base::ListValue DiscoverSources() {
+   bool fixture = false;
+@@ -612,8 +676,9 @@
+     source.Set("name", family.name);
+     const auto canonical = base::MakeAbsoluteFilePath(directory);
+     const bool available =
+-        base::DirectoryExists(directory) &&
+-        (!fixture || (!canonical.empty() && home->IsParent(canonical)));
++        family.firefox ||
++        (base::DirectoryExists(directory) &&
++         (!fixture || (!canonical.empty() && home->IsParent(canonical))));
+     source.Set("installed",
+                available && (fixture || InstalledSourceApplication(family.id)));
+     source.Set("nativeFixture", fixture);
+@@ -624,25 +689,16 @@
+       continue;
+     }
+     if (fixture) {
+-      directory = canonical;
++      if (!family.firefox) {
++        directory = canonical;
++      }
+       source.Set("unsupportedReason",
+                  "Fixture inventory does not access real "
+                  "source Safe Storage credentials.");
+     }
+     base::ListValue profiles;
+     if (family.firefox) {
+-      base::FileEnumerator directories(directory, false,
+-                                       base::FileEnumerator::DIRECTORIES);
+-      for (auto path = directories.Next();
+-           !path.empty() && profiles.size() < 128; path = directories.Next()) {
+-        if (!base::IsLink(path) &&
+-            base::PathExists(path.AppendASCII("places.sqlite"))) {
+-          profiles.Append(base::DictValue()
+-                              .Set("id", path.BaseName().value())
+-                              .Set("name", path.BaseName().value())
+-                              .Set("nativePath", path.value()));
+-        }
+-      }
++      profiles = DiscoverFirefoxProfiles(support, fixture ? &*home : nullptr);
+     } else {
+       profiles = DiscoverChromiumProfiles(directory,
+                                            std::string_view(family.id) == "atlas");

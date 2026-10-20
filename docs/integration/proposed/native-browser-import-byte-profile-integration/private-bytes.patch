@@ -1,0 +1,271 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -18,6 +18,8 @@
+ #include "base/path_service.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/extensions/api/aux_browser_import/encrypted_source_bytes.h"
+ #include "base/threading/platform_thread.h"
+ #include "base/time/time.h"
+ #include "crypto/hash.h"
+@@ -937,7 +939,8 @@
+ }
+ base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+                                       std::string category,
+-                                      const SourceKey& key) {
++                                      const SourceKey& key,
++                                      bool private_bytes = false) {
+   base::DictValue result;
+   auto fail = [&](const char* message) {
+     result.clear();
+@@ -1045,16 +1048,23 @@
+       } else {
+         plaintext = std::string();
+       }
+-      if (!base::IsStringUTF8(*plaintext)) {
++      if (!private_bytes && !base::IsStringUTF8(*plaintext)) {
+         return fail(
+             "Decoded category exceeds its bounds or contains invalid text");
+       }
+       base::DictValue row;
+-      row.Set("secret", std::move(*plaintext));
++      auto stage_bytes = [&](std::string_view name, std::string bytes) {
++        if (private_bytes) {
++          SetEncryptedSourceBytes(row, name, std::move(bytes));
++        } else {
++          row.Set(name, std::move(bytes));
++        }
++      };
++      stage_bytes("secret", std::move(*plaintext));
+       if (cookies) {
+-        row.Set("host", host);
+-        row.Set("name", EncryptedSourceText(query.get(), 3));
+-        row.Set("path", EncryptedSourceText(query.get(), 6));
++        stage_bytes("host", host);
++        stage_bytes("name", EncryptedSourceText(query.get(), 3));
++        stage_bytes("path", EncryptedSourceText(query.get(), 6));
+         for (auto [field, index] :
+              {std::pair{"created", 0}, {"expires", 7}, {"accessed", 10}}) {
+           row.Set(field,
+@@ -1064,7 +1074,7 @@
+         row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
+         row.Set("sameSite", sqlite3_column_int(query.get(), 14));
+         row.Set("priority", sqlite3_column_int(query.get(), 13));
+-        row.Set("partition", EncryptedSourceText(query.get(), 2));
++        stage_bytes("partition", EncryptedSourceText(query.get(), 2));
+         row.Set("crossSite", !!sqlite3_column_int(query.get(), 19));
+         row.Set("sourceScheme", sqlite3_column_int(query.get(), 15));
+         row.Set("sourcePort", sqlite3_column_int(query.get(), 16));
+@@ -1086,7 +1096,7 @@
+                                     {"senderEmail", 20},
+                                     {"senderName", 21},
+                                     {"senderProfileImageUrl", 24}}) {
+-          row.Set(field, EncryptedSourceText(query.get(), index));
++          stage_bytes(field, EncryptedSourceText(query.get(), index));
+         }
+         for (auto [field, index] :
+              {std::pair{"created", 8}, {"used", 18}, {"modified", 19},
+@@ -1109,17 +1119,22 @@
+       if (!cookies) {
+         // Original425b658..425b74c joins realm, UTF8 username, UTF8 password,
+         // and blocked state with newlines; its set insertion keeps the first.
+-        const auto identity = *row.FindString("realm") + "\n" +
+-                              *row.FindString("username") + "\n" +
+-                              *row.FindString("secret") + "\n" +
+-                              (blocked ? "1" : "0");
++        // Original dedup converts the real UTF16 username/password back to
++        // UTF8. Invalid input follows the native conversion, not raw-byte keys.
++        auto text = [&](std::string_view name) {
++          return *GetEncryptedSourceBytes(row, name);
++        };
++        const auto identity = std::string(text("realm")) + "\n" +
++            base::UTF16ToUTF8(base::UTF8ToUTF16(text("username"))) + "\n" +
++            base::UTF16ToUTF8(base::UTF8ToUTF16(text("secret"))) + "\n" +
++            (blocked ? "1" : "0");
+         if (!seen_passwords.insert(identity).second) {
+           continue;
+         }
+       }
+-      for (auto [field, value] : row) {
+-        if (value.is_string()) {
+-          if (!base::IsStringUTF8(value.GetString())) {
++      if (!private_bytes) {
++        for (auto [field, value] : row) {
++          if (value.is_string() && !base::IsStringUTF8(value.GetString())) {
+             return fail("Decoded source metadata contains invalid text");
+           }
+         }
+@@ -1215,7 +1230,7 @@
+         return base::DictValue().Set(
+             "error", "Source encrypted databases changed during snapshot");
+       }
+-      data = ReadEncryptedCategory(profile, category, *key);
++      data = ReadEncryptedCategory(profile, category, *key, true);
+     } else {
+       data = ReadCategory(profile, false, category);
+     }
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/extension_import.h"
++#include "chrome/browser/extensions/api/aux_browser_import/encrypted_source_bytes.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/safari_archive.h"
+ #include "chrome/browser/history/history_service_factory.h"
+ #include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+@@ -76,24 +77,35 @@
+ namespace {
+ std::optional<password_manager::StoredCredential> PrepareChromiumPassword(
+     const base::DictValue& row) {
+-  const auto* secret = row.FindString("secret");
++  const auto secret = GetEncryptedSourceBytes(row, "secret");
+   if (!secret) {
+     return std::nullopt;
+   }
++  for (auto name : {"url", "action", "realm", "submitElement", "usernameElement",
++                    "username", "passwordElement", "displayName", "iconUrl",
++                    "federationUrl", "senderEmail", "senderName",
++                    "senderProfileImageUrl"}) {
++    if (!GetEncryptedSourceBytes(row, name)) {
++      return std::nullopt;
++    }
++  }
++  auto text = [&](std::string_view name) {
++    return std::string(*GetEncryptedSourceBytes(row, name));
++  };
+   password_manager::StoredCredential form;
+-  form.url = GURL(*row.FindString("url"));
+-  form.action = GURL(*row.FindString("action"));
+-  form.signon_realm = *row.FindString("realm");
++  form.url = GURL(text("url"));
++  form.action = GURL(text("action"));
++  form.signon_realm = text("realm");
+   // Supplied425b820..425baf8 reconstructs the source form without an
+   // HTTP-only URL/realm filter; the real store retains its own validation.
+   const auto scheme = row.FindInt("scheme").value_or(0);
+   form.scheme = static_cast<password_manager::PasswordForm::Scheme>(scheme);
+-  form.submit_element = base::UTF8ToUTF16(*row.FindString("submitElement"));
++  form.submit_element = base::UTF8ToUTF16(text("submitElement"));
+   form.username_element =
+-      base::UTF8ToUTF16(*row.FindString("usernameElement"));
+-  form.username_value = base::UTF8ToUTF16(*row.FindString("username"));
++      base::UTF8ToUTF16(text("usernameElement"));
++  form.username_value = base::UTF8ToUTF16(text("username"));
+   form.password_element =
+-      base::UTF8ToUTF16(*row.FindString("passwordElement"));
++      base::UTF8ToUTF16(text("passwordElement"));
+   form.password_value =
+       password_manager::PasswordString(base::UTF8ToUTF16(*secret));
+   form.date_created = Timestamp(row, "created", false);
+@@ -103,20 +115,20 @@
+   form.blocked_by_user = row.FindBool("blocked").value_or(false);
+   form.type = static_cast<password_manager::PasswordForm::Type>(
+       row.FindInt("passwordType").value_or(0));
+-  form.display_name = base::UTF8ToUTF16(*row.FindString("displayName"));
+-  form.icon_url = GURL(*row.FindString("iconUrl"));
+-  form.federation_origin = url::SchemeHostPort(GURL(*row.FindString("federationUrl")));
++  form.display_name = base::UTF8ToUTF16(text("displayName"));
++  form.icon_url = GURL(text("iconUrl"));
++  form.federation_origin = url::SchemeHostPort(GURL(text("federationUrl")));
+   form.skip_zero_click = row.FindBool("skipZeroClick").value_or(false);
+   form.generation_upload_status =
+       static_cast<password_manager::PasswordForm::GenerationUploadStatus>(
+           row.FindInt("generationUploadStatus").value_or(0));
+   form.date_received = Timestamp(row, "received", false);
+   form.date_last_filled = Timestamp(row, "filled", false);
+-  form.sender_email = base::UTF8ToUTF16(*row.FindString("senderEmail"));
+-  form.sender_name = base::UTF8ToUTF16(*row.FindString("senderName"));
++  form.sender_email = base::UTF8ToUTF16(text("senderEmail"));
++  form.sender_name = base::UTF8ToUTF16(text("senderName"));
+   form.sharing_notification_displayed =
+       row.FindBool("sharingNotificationDisplayed").value_or(false);
+-  form.sender_profile_image_url = GURL(*row.FindString("senderProfileImageUrl"));
++  form.sender_profile_image_url = GURL(text("senderProfileImageUrl"));
+   form.actor_login_approved = row.FindBool("actorLoginApproved").value_or(false);
+   if (const auto* note = row.FindString("note"); note && !note->empty()) {
+     form.SetPasswordNote(base::UTF8ToUTF16(*note));
+@@ -238,10 +250,13 @@
+ }
+ std::unique_ptr<net::CanonicalCookie> PrepareChromiumCookie(
+     const base::DictValue& row, GURL& source) {
++  auto text = [&](std::string_view name) {
++    return std::string(*GetEncryptedSourceBytes(row, name));
++  };
+   // Supplied425ab08..425ad80 skips partition parse errors and null canonical
+   // cookies. These are row skips, not failures of the staged source batch.
+   auto partition = net::CookiePartitionKey::FromStorage(
+-      *row.FindString("partition"), row.FindBool("crossSite").value_or(false));
++      text("partition"), row.FindBool("crossSite").value_or(false));
+   if (!partition.has_value()) {
+     return nullptr;
+   }
+@@ -260,8 +275,8 @@
+   }
+   const bool secure = row.FindBool("secure").value_or(false);
+   auto cookie = net::CanonicalCookie::FromStorage(
+-      *row.FindString("name"), *row.FindString("secret"),
+-      *row.FindString("host"), *row.FindString("path"),
++      text("name"), text("secret"),
++      text("host"), text("path"),
+       Timestamp(row, "created", false), expiry,
+       Timestamp(row, "accessed", false), Timestamp(row, "updated", false),
+       secure, row.FindBool("httpOnly").value_or(false),
+@@ -1007,9 +1022,11 @@
+         passwords.push_back(std::move(*form));
+       } else {
+         GURL source;
+-        if (!row.FindString("secret")) {
+-          FailJob(id, "Source encrypted snapshot is incomplete");
+-          return;
++        for (auto name : {"secret", "host", "name", "path", "partition"}) {
++          if (!GetEncryptedSourceBytes(row, name)) {
++            FailJob(id, "Source encrypted snapshot is incomplete");
++            return;
++          }
+         }
+         auto cookie = PrepareChromiumCookie(row, source);
+         if (!cookie) {
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/encrypted_source_bytes.h
+@@ -0,0 +1,39 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_ENCRYPTED_SOURCE_BYTES_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_ENCRYPTED_SOURCE_BYTES_H_
++
++#include <optional>
++#include <string>
++#include <string_view>
++#include <utility>
++
++#include "base/strings/string_util.h"
++#include "base/values.h"
++
++namespace aux_import {
++// Private worker-to-UI staging only. These values are never RPC/status fields.
++// Value strings require UTF8; native source strings may instead contain bytes.
++inline void SetEncryptedSourceBytes(base::DictValue& row,
++                                    std::string_view key,
++                                    std::string value) {
++  if (base::IsStringUTF8AllowingNoncharacters(value)) {
++    row.Set(key, std::move(value));
++  } else {
++    base::Value::BlobStorage bytes(value.begin(), value.end());
++    row.Set(key, base::Value(std::move(bytes)));
++  }
++}
++inline std::optional<std::string_view> GetEncryptedSourceBytes(
++    const base::DictValue& row, std::string_view key) {
++  if (const auto* text = row.FindString(key)) {
++    return *text;
++  }
++  if (const auto* bytes = row.FindBlob(key)) {
++    return bytes->empty() ? std::string_view()
++                         : std::string_view(reinterpret_cast<const char*>(bytes->data()),
++                                            bytes->size());
++  }
++  return std::nullopt;
++}
++}  // namespace aux_import
++#endif
