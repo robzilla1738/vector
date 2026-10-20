@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v514",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "baselineSha256": "a8e26411c3be698f90b93495600a394222bea3102631d1c805d53c3bed11e250",
+      "outputSha256": "9f59985939436d3176ab73637e05b12d315b923135dd4559c45568757a97048d"
+    }
+  ]
+}

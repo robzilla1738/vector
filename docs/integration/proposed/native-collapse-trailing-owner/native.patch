@@ -1,0 +1,18 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -253,7 +253,14 @@
+ 
+     if (collapse_button_ && collapse_button_->GetVisible()) {
+       const gfx::Size pref_size = collapse_button_->GetPreferredSize();
+-      gfx::Rect bounds(left_alignment,
++      // Supplied34794dc..9508 selects leading placement only with a visible
++      // combo. With no combo leaves,347a610..a680 places Collapse on the
++      // trailing edge, including the original two-pixel adjustment.
++      const int collapse_x = combo_button_ && combo_button_->GetVisible()
++                                 ? left_alignment
++                                 : std::max(0, host_size.width() -
++                                                   pref_size.width()) + 2;
++      gfx::Rect bounds(collapse_x,
+                        std::max(0, y_baseline - pref_size.height() / 2),
+                        pref_size.width(), pref_size.height());
+       layout.child_layouts.emplace_back(collapse_button_.get(),
