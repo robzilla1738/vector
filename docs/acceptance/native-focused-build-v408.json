@@ -1,0 +1,20 @@
+{
+  "composition": "v408",
+  "exitCode": 0,
+  "elapsedSeconds": 16.040528059005737,
+  "targets": {
+    "aux_profile_retained_collapse_button": "obj/chrome/browser/ui/ui/aux_profile_retained_collapse_button.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_profile_retained_collapse_button.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}

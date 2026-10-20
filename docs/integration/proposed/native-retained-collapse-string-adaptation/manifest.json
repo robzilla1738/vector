@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "Chromium155 compiler API adaptation",
+  "applyAfter": "native-retained-collapse-icon-only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+      "baselineSha256": "eadaf49ee93523f9749d95b234582682e38fae8b169b5b4bb4f63fcb5c2b1abc",
+      "outputSha256": "34cfbd8f5c16927473a1f485a46a359a3133aabd6b90bdf166916a7b0743b3d8"
+    }
+  ]
+}

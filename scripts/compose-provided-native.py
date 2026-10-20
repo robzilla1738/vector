@@ -431,6 +431,8 @@ steps.extend([
     ('native-immersive-sidebar-inset/native.patch', 'native-immersive-sidebar-inset/manifest.json'),
     ('native-sidebar-combo-source-selection/native.patch', 'native-sidebar-combo-source-selection/manifest.json'),
     ('native-immersive-overlay-host/native.patch', 'native-immersive-overlay-host/manifest.json'),
+    ('native-retained-collapse-icon-only/native.patch', 'native-retained-collapse-icon-only/manifest.json'),
+    ('native-retained-collapse-string-adaptation/native.patch', 'native-retained-collapse-string-adaptation/manifest.json'),
 ])
 
 if options.through:
