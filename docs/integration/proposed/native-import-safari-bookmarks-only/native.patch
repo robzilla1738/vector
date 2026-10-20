@@ -1,0 +1,75 @@
+--- a/components/user_data_importer/utility/safari_data_importer.h
++++ b/components/user_data_importer/utility/safari_data_importer.h
+@@ -73,7 +73,9 @@
+   // Opens the ZIP file provided in `path` and prepares to import the data
+   // (passwords, payment cards, bookmarks, and history) contained inside. Each
+   // data type is optional and may or may not be present.
+-  void PrepareImport(const base::FilePath& path);
++  // Supplied Aux/Aside caller can request only bookmarks and reading list.
++  // Existing upstream callers retain the full four-category import.
++  void PrepareImport(const base::FilePath& path, bool bookmarks_only = false);
+ 
+   // Logs the file size of the uncompressed ZIP file.
+   void LogFileSize(int64_t file_size_bytes);
+@@ -294,6 +296,9 @@
+   // Number of URLs imported during the history import process.
+   size_t history_urls_imported_;
+ 
++  // Supplied040ee4ac/040eeb84/040ef57c: keep parsing and commit scopes equal.
++  bool bookmarks_only_ = false;
++
+   // Maximum size the history entries vector can reach before calling
+   // "ParseHistoryCallback". Can be modified for testing purposes.
+   size_t history_size_threshold_ = 1000;
+--- a/components/user_data_importer/utility/safari_data_importer.cc
++++ b/components/user_data_importer/utility/safari_data_importer.cc
+@@ -301,8 +301,10 @@
+ 
+ SafariDataImporter::~SafariDataImporter() = default;
+ 
+-void SafariDataImporter::PrepareImport(const base::FilePath& path) {
++void SafariDataImporter::PrepareImport(const base::FilePath& path,
++                                        bool bookmarks_only) {
+   metrics_recorder_.OnFlowStarted();
++  bookmarks_only_ = bookmarks_only;
+ 
+   std::string zip_filename = path.AsUTF8Unsafe();
+   if (zip_filename.empty()) {
+@@ -323,6 +325,20 @@
+ 
+ void SafariDataImporter::CompleteImport(
+     const std::vector<int>& selected_password_ids) {
++  // Supplied040ef57c true branch commits only bookmarks, with a one-task
++  // completion barrier. Full import below retains the upstream four tasks.
++  if (bookmarks_only_) {
++    base::RepeatingClosure barrier_closure = base::BarrierClosure(
++        1, base::BindOnce(&SafariDataImporter::OnImportComplete,
++                         weak_factory_.GetWeakPtr()));
++    metrics_recorder_.bookmark_metrics().OnImportStarted();
++    metrics_recorder_.reading_list_metrics().OnImportStarted();
++    GetRunner()->PostTask(
++        FROM_HERE, base::BindOnce(&SafariDataImporter::ContinueImportBookmarks,
++                                  weak_factory_.GetWeakPtr())
++                       .Then(barrier_closure));
++    return;
++  }
+   constexpr int kNumTasks = 4;
+ 
+   // No need to BindPostTask here, because `barrier_closure` is always chained
+@@ -539,6 +555,16 @@
+     return;
+   }
+ 
++  // Supplied040eeb84 true branch does not even parse the other categories.
++  if (bookmarks_only_) {
++    metrics_recorder_.bookmark_metrics().OnPreparationStarted();
++    metrics_recorder_.reading_list_metrics().OnPreparationStarted();
++    blocking_worker_.AsyncCall(&BlockingWorker::WriteBookmarksToTmpFile)
++        .Then(base::BindOnce(&SafariDataImporter::PrepareBookmarks,
++                             weak_factory_.GetWeakPtr()));
++    return;
++  }
++
+   // Passwords import may require conflict resolution, so it is done first.
+   metrics_recorder_.password_metrics().OnPreparationStarted();
+   blocking_worker_.AsyncCall(&BlockingWorker::Unzip)

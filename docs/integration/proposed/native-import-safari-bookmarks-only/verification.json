@@ -1,0 +1,9 @@
+{
+  "kind": "disposable-static-patch-replay",
+  "files": 2,
+  "gitApplyCheck": "PASS",
+  "allOutputHashes": "PASS",
+  "noBuildOrRuntime": true,
+  "manifestSha256": "594e74dba01b6655c38fc9a02da2359ce61d343c67a17b6e010708d2ad4a3985",
+  "patchSha256": "2c792dd8b70118f59c32adb4c19b77c6d670a310db18be82bca7eea366bbb2c2"
+}

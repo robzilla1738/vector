@@ -1,0 +1,7 @@
+# Supplied Safari bookmarks-only component branch
+
+Two-file proposal for the genuine Chromium155 SafariDataImporter. It adds the supplied optional bookmarks-only PrepareImport argument (default false for existing upstream callers), limits preparation to the existing bookmarks/reading-list pipeline when true, and commits that same pipeline with the original one-task barrier. Full import retains the genuine upstream four-category implementation, including its payment-card parser, policy and destination.
+
+Exact source anchors and bounded snapshots are in ../native-import-safari-owner/: original040ee4ac stores argument3 at+0x298;040eeb84 branches on that field and only schedules WriteBookmarksToTmpFile→PrepareBookmarks for true;040ef57c true branch constructs BarrierClosure(1) and posts ContinueImportBookmarks. No category callback or imported count is fabricated for the omitted categories. The native outer client correspondingly waits only bookmark ready/imported flags in this mode.
+
+This is a prerequisite for replacing the independent Safari reader with the recovered outer native client. It does not change the public caller by itself and does not assert end-to-end parity. Source branch mapping and disposable patch replay/output SHA checks passed. No compile, runtime, owner profile/card/password data access or shared checkout write occurred. No GN change is needed for these already-owned component files; the outer-client port will need genuine dependencies reviewed by the integrator.

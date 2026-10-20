@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "reason": "Port supplied SafariDataImporter bookmarks-only parsing and one-task commit branch using real155 importer.",
+  "files": [
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.h",
+      "baselineSha256": "10e4045b7e3e5b2479c6f65715bd6c17e8f8a31d42170c7fb3564c25def48a08",
+      "outputSha256": "d01980739073ec76ad843c6bc6493dd2f576f6e7b16cd415fc28f01e06a35c67",
+      "anchors": [
+        {
+          "find": "  void PrepareImport(const base::FilePath& path);",
+          "replace": "  // Supplied Aux/Aside caller can request only bookmarks and reading list.\n  // Existing upstream callers retain the full four-category import.\n  void PrepareImport(const base::FilePath& path, bool bookmarks_only = false);",
+          "count": 1
+        },
+        {
+          "find": "  // Maximum size the history entries vector can reach before calling",
+          "replace": "  // Supplied040ee4ac/040eeb84/040ef57c: keep parsing and commit scopes equal.\n  bool bookmarks_only_ = false;\n\n  // Maximum size the history entries vector can reach before calling",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "baselineSha256": "1704cb730922b7ab0a00b6c75cfcb7a89f93c24f71afc074ae88a878ebfa175f",
+      "outputSha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7",
+      "anchors": [
+        {
+          "find": "void SafariDataImporter::PrepareImport(const base::FilePath& path) {\n  metrics_recorder_.OnFlowStarted();",
+          "replace": "void SafariDataImporter::PrepareImport(const base::FilePath& path,\n                                        bool bookmarks_only) {\n  metrics_recorder_.OnFlowStarted();\n  bookmarks_only_ = bookmarks_only;",
+          "count": 1
+        },
+        {
+          "find": "    const std::vector<int>& selected_password_ids) {\n  constexpr int kNumTasks = 4;",
+          "replace": "    const std::vector<int>& selected_password_ids) {\n  // Supplied040ef57c true branch commits only bookmarks, with a one-task\n  // completion barrier. Full import below retains the upstream four tasks.\n  if (bookmarks_only_) {\n    base::RepeatingClosure barrier_closure = base::BarrierClosure(\n        1, base::BindOnce(&SafariDataImporter::OnImportComplete,\n                         weak_factory_.GetWeakPtr()));\n    metrics_recorder_.bookmark_metrics().OnImportStarted();\n    metrics_recorder_.reading_list_metrics().OnImportStarted();\n    GetRunner()->PostTask(\n        FROM_HERE, base::BindOnce(&SafariDataImporter::ContinueImportBookmarks,\n                                  weak_factory_.GetWeakPtr())\n                       .Then(barrier_closure));\n    return;\n  }\n  constexpr int kNumTasks = 4;",
+          "count": 1
+        },
+        {
+          "find": "  // Passwords import may require conflict resolution, so it is done first.",
+          "replace": "  // Supplied040eeb84 true branch does not even parse the other categories.\n  if (bookmarks_only_) {\n    metrics_recorder_.bookmark_metrics().OnPreparationStarted();\n    metrics_recorder_.reading_list_metrics().OnPreparationStarted();\n    blocking_worker_.AsyncCall(&BlockingWorker::WriteBookmarksToTmpFile)\n        .Then(base::BindOnce(&SafariDataImporter::PrepareBookmarks,\n                             weak_factory_.GetWeakPtr()));\n    return;\n  }\n\n  // Passwords import may require conflict resolution, so it is done first.",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
