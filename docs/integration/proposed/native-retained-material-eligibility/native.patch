@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -994,7 +994,12 @@
+     layout.AddChild(
+         views().vertical_tab_strip_background_blur_backdrop,
+         vertical_tab_strip_bounds,
+-        in_glass_mode() && features::kGlassExpandOnHoverEnabled.Get() &&
++        (in_glass_mode() ||
++         (BUILDFLAG(IS_MAC) &&
++          views().vertical_tab_strip_region_view &&
++          views().vertical_tab_strip_region_view
++              ->GetAuxProfilePreviewAdmission())) &&
++            features::kGlassExpandOnHoverEnabled.Get() &&
+             layout_data_->vertical_tab_strip_animation.expand_on_hover_width >
+                 0.0f);
+   }
