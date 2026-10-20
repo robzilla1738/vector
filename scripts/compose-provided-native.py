@@ -303,6 +303,13 @@ steps.extend([
     ('native-bottom-sync-profile-rebind/native.patch', 'native-bottom-sync-profile-rebind/manifest.json'),
     ('native-profile-header-bottom-placement/native.patch', 'native-profile-header-bottom-placement/manifest.json'),
     ('native-daemon-authorization-refresh/native.patch', 'native-daemon-authorization-refresh/manifest.json'),
+    ('native-section-view/native.patch', 'native-section-view/manifest.json'),
+    ('native-chats-model/native.patch', 'native-chats-model/manifest.json'),
+    ('native-section-clip/native.patch', 'native-section-clip/manifest.json'),
+    ('native-vertical-bookmark-expansion/native.patch', 'native-vertical-bookmark-expansion/manifest.json'),
+    ('native-sidebar-shared-components-gn/native.patch', 'native-sidebar-shared-components-gn/manifest.json'),
+    ('native-bookmark-tab-representation/native.patch', 'native-bookmark-tab-representation/manifest.json'),
+    ('native-bookmark-tab-representation-gn/native.patch', 'native-bookmark-tab-representation-gn/manifest.json'),
 ])
 
 if options.through:

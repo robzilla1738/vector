@@ -1,0 +1,20 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1125,6 +1125,17 @@
+       "//ui/snapshot",
+     ]
+     sources += [
++      "views/frame/aux_section_view.cc",
++      "views/frame/aux_section_view.h",
++      "views/frame/aux_tab_expand_chevron_view.cc",
++      "views/frame/aux_tab_expand_chevron_view.h",
++      "views/frame/aux_section_icons.inc",
++      "views/frame/aux_section_clip_view.cc",
++      "views/frame/aux_section_clip_view.h",
++      "views/frame/aux_chats_model.cc",
++      "views/frame/aux_chats_model.h",
++      "views/frame/aux_vertical_tab_bookmark_expansion.cc",
++      "views/frame/aux_vertical_tab_bookmark_expansion.h",
+       "views/frame/aux_profile_switch_request.cc",
+       "views/frame/aux_profile_switch_request.h",
+       "views/frame/aux_profile_search_button.cc",
