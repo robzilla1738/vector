@@ -1,0 +1,22 @@
+--- a/chrome/browser/aux/profile_gate_prefs.cc
++++ b/chrome/browser/aux/profile_gate_prefs.cc
+@@ -1,7 +1,7 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/aux/profile_gate_prefs.h"
+ #include "components/prefs/pref_registry_simple.h"
+-#include "components/user_prefs/pref_registry_syncable.h"
++#include "components/pref_registry/pref_registry_syncable.h"
+ namespace aux {
+ void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry) {
+   registry->RegisterBooleanPref("aside.onboarding_completed", false);
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -64,7 +64,7 @@
+ 
+ source_set("profile_gate_prefs") {
+   sources = [ "profile_gate_prefs.cc", "profile_gate_prefs.h" ]
+-  deps = [ "//components/prefs", "//components/user_prefs" ]
++  deps = [ "//components/prefs", "//components/pref_registry" ]
+ }
+ 
+ executable("profile_state_probe") {

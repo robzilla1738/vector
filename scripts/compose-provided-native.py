@@ -256,6 +256,7 @@ steps.extend([
     ('native-profile-preview-region-hover/native.patch', 'native-profile-preview-region-hover/manifest.json'),
     ('native-profile-page-indicator/native.patch', 'native-profile-page-indicator/manifest.json'),
     ('native-profile-pager-registration/native.patch', 'native-profile-pager-registration/manifest.json'),
+    ('native-profile-prefs-api155/native.patch', 'native-profile-prefs-api155/manifest.json'),
 ])
 
 if options.through:

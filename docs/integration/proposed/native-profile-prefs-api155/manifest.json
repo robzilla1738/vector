@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "0739874fa2349d3f2444234c056515db1a74cb4b59d94e87cd6b196049e0f4dc",
+      "outputSha256": "a9c951f611d87d1c180a6b79cc0d3cd6c1ba23bdeab1aac363fcf8839a7c6edb"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "4c017d12b1ee9d7e8df200686b1592fdb24ae55326b5b31e7a14cfb805bbbfae",
+      "outputSha256": "af04758687202c882b87a611e925d3f4805a59d06113918d38af146081f6dce7"
+    }
+  ],
+  "compiled": false
+}
