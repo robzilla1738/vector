@@ -1,0 +1,124 @@
+{
+  "image": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "constructor",
+      "start": "0x4265d48",
+      "endExclusive": "0x4265f80",
+      "sha256": "cd84882a8407003a8e9aca7a5fbbfe564ce23f48ffab2482e35317dce27f5a55"
+    },
+    {
+      "name": "loadView",
+      "start": "0x4265f80",
+      "endExclusive": "0x4266a28",
+      "sha256": "81b389cefe1da8e664ba5623ee0d004ad885a2cccb17045862d461aa3254feff"
+    },
+    {
+      "name": "checkbox",
+      "start": "0x4266a28",
+      "endExclusive": "0x4266bac",
+      "sha256": "c1a9a61ba8fd25f2d17b258458652bf9fcf3d3aacb89ee65f5d6d89b4b487ddc"
+    },
+    {
+      "name": "confirm-and-destruction",
+      "start": "0x4266bac",
+      "endExclusive": "0x4266e24",
+      "sha256": "a3cae8e5e3c5d6a1aafed484ed33f04b06e3e9f73be08a6a32adf82d81330975"
+    },
+    {
+      "name": "show bridge",
+      "start": "0x4267ec0",
+      "endExclusive": "0x426831c",
+      "sha256": "f28da82668d222b261e71f75dc81fc7846fd33a5319ac068417139659ca7b29f"
+    },
+    {
+      "name": "source display names",
+      "start": "0x425fe90",
+      "endExclusive": "0x42600fc",
+      "sha256": "e63b8d165a034d88b6196e0f5555040db867727150e315710a4e6843b361ef00"
+    }
+  ],
+  "objcMetadata": {
+    "classAddress": "0xed05aa8",
+    "roAddress": "0xecf9c38",
+    "methodListAddress": "0xdf732ac",
+    "name": "AsideChromiumProfilePickerController"
+  },
+  "strings": [
+    {
+      "cfStringAddress": "0xeb31998",
+      "cstringAddress": "0xdb1fe83",
+      "text": "Choose a %@ profile"
+    },
+    {
+      "cfStringAddress": "0xeb319b8",
+      "cstringAddress": "0xdb1fe97",
+      "text": "Pick the %@ profile you want to import into Aside."
+    },
+    {
+      "cfStringAddress": "0xeb319d8",
+      "cstringAddress": "0xdb1feca",
+      "text": "No %@ profiles were found on this Mac."
+    },
+    {
+      "cfStringAddress": "0xeb319f8",
+      "cstringAddress": "0xd886689",
+      "text": "Continue"
+    },
+    {
+      "cfStringAddress": "0xeb31a18",
+      "cstringAddress": "0xdb1ff1b",
+      "text": "%@ - %@"
+    }
+  ],
+  "adaptations": [
+    "Class/product branding to Aux; one static description Aside\u2192Aux",
+    "Chromium155 actual WebContents NativeView wrapper and base::DictValue/ListValue wholemetadata row in place of original80byte record",
+    "Caller-provided exact source display label replaces sourceenum425fe90 helper; original label mapping pinned",
+    "Retain original popover across selection callback in ARC local while preserving callback-before-close order"
+  ],
+  "nonChanges": [
+    "No new discovery/profile reads",
+    "No scrolling, caps, sorting, alternate selection or cancel callback",
+    "Original integer gfx::Rect and native y=view.height-y-height transform"
+  ],
+  "sourceNames": {
+    "0": "Arc",
+    "1": "Brave",
+    "2": "ChatGPT Atlas",
+    "3": "Chrome",
+    "4": "Comet",
+    "5": "Dia",
+    "6": "Microsoft Edge",
+    "7": "Helium",
+    "default": "Browser"
+  },
+  "brandingAnchors": [
+    {
+      "find": "Pick the %@ profile you want to import into Aside.",
+      "replace": "Pick the %@ profile you want to import into Aux.",
+      "count": 1
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "evidence/controller.asm",
+      "sha256": "0615de91398e35a06787915eb4bc7c2fd174847e2e868f8a4806d93924f30258"
+    },
+    {
+      "path": "evidence/show-picker.asm",
+      "sha256": "661a7757ca6c42ab344d2d4a3bd0e47e21c845e9bdd7e30c9af1fe132995da94"
+    },
+    {
+      "path": "evidence/source-label.asm",
+      "sha256": "79a350dae468707030e087d191f8e95f3a223dae7f8ee6efefdca8adb71a61d0"
+    },
+    {
+      "path": "evidence/view-decompile.json",
+      "sha256": "8acde08506f8f52bde23e5bc4afe9df9d1536b39ab36533a9875b9b633531882"
+    }
+  ]
+}

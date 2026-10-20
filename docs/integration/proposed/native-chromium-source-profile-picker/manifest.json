@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "reason": "Reuse supplied native source-profile AppKit popover, single-selection/Continue and whole-row oncecallback lifecycle.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.h",
+      "baselineSha256": null,
+      "outputSha256": "9981a6f2f2be0e74f8d035ea59f21241fba4e5cacac55a882171b0f43c6d8a2b"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.mm",
+      "baselineSha256": null,
+      "outputSha256": "b6075fb330ec47c3298ac8a47b0e7bb34a90fe42f5185e7b5533a94db18ae5af"
+    }
+  ],
+  "mounted": false,
+  "requiredGnChanges": {
+    "macOnlySources": [
+      "chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.h",
+      "chrome/browser/extensions/api/aux_browser_import/source_profile_picker_mac.mm"
+    ],
+    "frameworks": [
+      "AppKit.framework"
+    ],
+    "integrationOwner": "root"
+  },
+  "requiredPrerequisites": [
+    "Root Handler passes actual native discovery rows and original integer CSS buttonbounds conversion",
+    "Root exact source enum/name mapping; browser_name must match supplied425fe90 display label"
+  ]
+}

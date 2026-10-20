@@ -1,0 +1,11 @@
+{
+  "disposablePatchCheckReplay": "PASS",
+  "allOutputHashes": "PASS",
+  "sharedNativeWrites": false,
+  "buildRun": false,
+  "runtimeRun": false,
+  "ownerProfilesRead": false,
+  "reaClosed": true,
+  "countedOriginalLiteralPort": "PASS",
+  "integerBoundsAndNoAddedDiscoveryOrDismissCallback": "PASS"
+}
