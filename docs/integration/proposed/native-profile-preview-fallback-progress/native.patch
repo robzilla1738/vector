@@ -1,0 +1,49 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
+@@ -41,6 +41,7 @@
+   ProfileSwitchRequest request_;
+   std::map<base::FilePath, views::ViewTracker> pages_;
+   base::FilePath target_;
++  int direction_ = 0;
+   bool committing_ = false;
+   base::WeakPtrFactory<ProfilePreviewRegionOwner> weak_factory_{this};
+ };
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -202,6 +202,7 @@
+     return false;
+   }
+   target_ = target;
++  direction_ = direction;
+   return true;
+ }
+ 
+@@ -223,6 +224,13 @@
+   if (presentation_.borrowed_views().empty()) {
+     // Original4656178..46561fc: metadata-only/non-live path dispatches the
+     // actual asynchronous load immediately; loaded Profile is not success.
++    auto alive = weak_factory_.GetWeakPtr();
++    // Original4656178..4656188 sets the full signed target progress before
++    // dispatching a non-live page, rather than leaving a partial gesture.
++    presentation_.Update(static_cast<float>(direction_));
++    if (!alive || !browser_) {
++      return false;
++    }
+     request_.Start(target_, std::move(done));
+   } else {
+     // Original4656258 plus actual frame settlement retains the live preview
+@@ -235,6 +243,7 @@
+     ProfileSwitchRequest::Completion completion, Browser* result) {
+   committing_ = false;
+   target_.clear();
++  direction_ = 0;
+   auto sender = browser_;
+   presentation_.Reset(false);
+   // Reset or completion may close this actual owner. No member access follows
+@@ -248,5 +257,6 @@
+   request_.CancelPendingPreviewCommit();
+   presentation_.Reset(false);
+   target_.clear();
++  direction_ = 0;
+ }
+ }  // namespace aux

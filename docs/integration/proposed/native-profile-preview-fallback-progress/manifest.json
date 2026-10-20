@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "base": "owneracbb2881e output only, after real owner assembly",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+      "baselineSha256": "65d7c63c7e1ca5aad1ebdd2e55e1d1bc52b26d38cb65122fc2ef42150d0375a9",
+      "outputSha256": "e372f11440578e6732b087215a6c0e9e9f43015fb0c577187d86e238e39daa8e",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-owner/port/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": "ea97d7f4c81ee791c830c6cf5054ddeda23c0b0f121fe41ec1d5938c2e114ef6",
+      "outputSha256": "5d7764d3d1ad7523985b922e62bc14db46721368c7bf21160ae909b75736ef96",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-owner/port/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
