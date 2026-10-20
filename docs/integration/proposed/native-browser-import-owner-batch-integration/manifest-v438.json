@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "v437",
+  "originalProposal": "native-browser-import-password-metadata",
+  "originalManifestSha256": "c6245f3bca83c82cec54991e90be166c2aa2dd527ab483acfbe32c8abbbdb757",
+  "originalPatchSha256": "1637bf486d9262a2328c58a7a415a5ddd0eff3611e9f90914dd84bf8f3b84c55",
+  "appliedPatchSha256": "1637bf486d9262a2328c58a7a415a5ddd0eff3611e9f90914dd84bf8f3b84c55",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "92762ceceecf20d7e56a1259507783152a48870d3b8067a84d0542e1a3f227d9",
+      "originalBaselineSha256": "4ca712d960d24f9d64e78934baad20bf381c1b607e8797a1f8defc6b4733f68b",
+      "originalOutputSha256": "bdbcdb8d75321372277c2549bbcc7ba6fa310feeb3cb658631579a5b3856fec7",
+      "outputSha256": "cd8413e45017130f58d91a3e322a60a994a85c39689b3763714200d591eea3e4"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "9991d2fda377d4f9bf6140d25a5a74699f548854af03a8d09d345e63d9a05cd2",
+      "originalBaselineSha256": "f9b70ff4240b4108a4cb4aece6ef2821304e8a54e2c43aa35e19306fc7489af7",
+      "originalOutputSha256": "cfa2ed07ea39d6ad324a52ce3637bfcee5548581efe6d166ecbaf93ff9d48e1b",
+      "outputSha256": "d11f51bd5ff446efcb20e9f8488261896ed93118c953f724d13499e0dcd7a91c"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

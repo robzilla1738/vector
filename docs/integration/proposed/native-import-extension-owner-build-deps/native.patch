@@ -1,0 +1,21 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_import/BUILD.gn
+@@ -1,15 +1,15 @@
+ source_set("headers") { sources = [ "aux_browser_import_api.h" ] public_deps = [ "//chrome/browser/extensions/api/aux_common" ] }
+ source_set("aux_browser_import") {
+- sources = [ "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "import_webui.cc", "import_webui.h" ]
++ sources = [ "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "extension_import.cc", "extension_import.h", "import_webui.cc", "import_webui.h" ]
+  public_deps = [ ":headers" ]
+- deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//components/user_data_importer/mojom", "//components/user_data_importer/utility:bookmarks", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", ":safari_archive", "//extensions/browser", ":migrator", "//ui/base", "//url" ]
++ deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//components/user_data_importer/mojom", "//components/user_data_importer/utility:bookmarks", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", ":safari_archive", "//extensions/browser", "//extensions/common", ":migrator", "//ui/base", "//url" ]
+ }
+ 
+ source_set("migrator") {
+  sources = [ "migrator.cc", "migrator.h", "source_crypto.h", "source_crypto_mac.mm" ]
+  frameworks = [ "AppKit.framework", "Security.framework", "LocalAuthentication.framework" ]
+  public_deps = [ "//base" ]
+- deps = [ "//third_party/sqlite", "//crypto", "//third_party/boringssl" ]
++ deps = [ "//third_party/sqlite", "//crypto", "//third_party/boringssl", "//url" ]
+ }
+ executable("migrator_probe") {
+  testonly=true

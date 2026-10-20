@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "v436",
+  "originalProposal": "native-browser-import-encrypted-reader-caps",
+  "originalManifestSha256": "aa045d6d3eb094a2a11ac5cc7d4782bb977c4a0e7042ce3bcd27beb6ea5b6f75",
+  "originalPatchSha256": "c761f4fbbc37b0cf2dc72fef1455fcb80a4e0469742050fe2506baa13fb01ff1",
+  "appliedPatchSha256": "c761f4fbbc37b0cf2dc72fef1455fcb80a4e0469742050fe2506baa13fb01ff1",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "abbc7cce14d62e76d13f58cdd6de81ce601ce63badb3cd5b420a0459a98ea18c",
+      "originalBaselineSha256": "d40e3b10c1db581a4793651a5d7359b7a3f3e3b91e2ead41808c8840cd80a848",
+      "originalOutputSha256": "4ca712d960d24f9d64e78934baad20bf381c1b607e8797a1f8defc6b4733f68b",
+      "outputSha256": "92762ceceecf20d7e56a1259507783152a48870d3b8067a84d0542e1a3f227d9"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+      "baselineSha256": "7c1910526be481990e4bdd622d29d8c02da5b0b23da3cc5c8c25945218c470e6",
+      "originalBaselineSha256": "7c1910526be481990e4bdd622d29d8c02da5b0b23da3cc5c8c25945218c470e6",
+      "originalOutputSha256": "fdd5242ce0f471cdcae22841cede9aaae974dcf0ed59efc74077c576df949940",
+      "outputSha256": "fdd5242ce0f471cdcae22841cede9aaae974dcf0ed59efc74077c576df949940"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,227 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -351,6 +351,192 @@
+   profiles.Append(std::move(profile));
+   return true;
+ }
++// Arc's supplied StorableSidebar parser426b4b0/426d388 uses alternating
++// ID/value arrays, not a flattened list of every tab or a guessed URL owner.
++const base::DictValue& ArcValue(const base::DictValue& item) {
++  if (const auto* value = item.FindDict("value")) {
++    return *value;
++  }
++  return item;
++}
++const base::DictValue* FindArcItem(const base::ListValue& items,
++                                 std::string_view id) {
++  for (size_t index = 0; index + 1 < items.size(); index += 2) {
++    if (items[index].is_string() && items[index].GetString() == id) {
++      return items[index + 1].is_dict()
++                 ? &ArcValue(items[index + 1].GetDict())
++                 : nullptr;
++    }
++  }
++  return nullptr;
++}
++void AppendArcBookmark(base::ListValue& rows,
++                       std::string title,
++                       const base::ListValue& path,
++                       const GURL* url) {
++  base::DictValue row;
++  row.Set("root", "other");
++  row.Set("path", path.Clone());
++  row.Set("title", url && title.empty() ? url->spec() : title);
++  row.Set("folder", !url);
++  row.Set("arcSidebar", true);
++  row.Set("createdWindowsMicros",
++          base::NumberToString(base::Time::Now()
++                                   .ToDeltaSinceWindowsEpoch().InMicroseconds()));
++  if (url) {
++    row.Set("url", url->spec());
++  }
++  rows.Append(std::move(row));
++}
++void AppendArcItem(const base::ListValue& items,
++                   const std::string& id,
++                   std::set<std::string>& visited,
++                   const base::ListValue& path,
++                   base::ListValue& rows) {
++  if (!visited.insert(id).second) {
++    return;
++  }
++  const auto* item = FindArcItem(items, id);
++  if (!item) {
++    return;
++  }
++  if (item->FindDictByDottedPath("data.list")) {
++    const auto* source_title = item->FindString("title");
++    const std::string title = source_title ? *source_title : "Untitled Folder";
++    AppendArcBookmark(rows, title, path, nullptr);
++    auto next = path.Clone();
++    next.Append(title);
++    if (const auto* children = item->FindList("childrenIds")) {
++      for (const auto& child : *children) {
++        if (child.is_string()) {
++          AppendArcItem(items, child.GetString(), visited, next, rows);
++        }
++      }
++    }
++    return;
++  }
++  const auto* saved_url = item->FindStringByDottedPath("data.tab.savedURL");
++  if (!saved_url) {
++    return;
++  }
++  const GURL url(*saved_url);
++  if (!url.is_valid() || url.SchemeIs("chrome") ||
++      url.SchemeIs("chrome-extension") || url.SchemeIs("devtools")) {
++    return;
++  }
++  const auto* title = item->FindString("title");
++  if (!title) {
++    title = item->FindStringByDottedPath("data.tab.savedTitle");
++  }
++  AppendArcBookmark(rows, title ? *title : url.spec(), path, &url);
++}
++std::optional<std::string> ArcPinnedContainer(const base::DictValue& space) {
++  if (const auto* modern = space.FindList("newContainerIDs")) {
++    for (size_t index = 0; index + 1 < modern->size(); index += 2) {
++      if ((*modern)[index].is_dict() && (*modern)[index + 1].is_string() &&
++          (*modern)[index].GetDict().contains("pinned")) {
++        return (*modern)[index + 1].GetString();
++      }
++    }
++  }
++  if (const auto* legacy = space.FindList("containerIDs")) {
++    for (size_t index = 0; index + 1 < legacy->size(); index += 2) {
++      if ((*legacy)[index].is_string() && (*legacy)[index + 1].is_string() &&
++          (*legacy)[index].GetString() == "pinned") {
++        return (*legacy)[index + 1].GetString();
++      }
++    }
++  }
++  return std::nullopt;
++}
++void AppendArcSidebarBookmarks(const base::FilePath& profile,
++                               base::ListValue& rows) {
++  // Original4259984 uses Arc User Data's parent, not the selected profile's
++  // arbitrary parent or a guessed owner account. Profile basename is the
++  // actual captured sourceProfileId selected by the existing job owner.
++  std::string text;
++  if (!base::ReadFileToString(profile.DirName().DirName().AppendASCII(
++                                  "StorableSidebar.json"), &text)) {
++    return;
++  }
++  auto state = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC, 200);
++  if (!state) {
++    return;
++  }
++  const base::ListValue* items = nullptr;
++  const base::ListValue* spaces = nullptr;
++  if (const auto* containers = state->FindListByDottedPath("sidebar.containers")) {
++    for (const auto& container : *containers) {
++      if (!container.is_dict()) {
++        continue;
++      }
++      const auto* found_items = container.GetDict().FindList("items");
++      const auto* found_spaces = container.GetDict().FindList("spaces");
++      if (found_items && found_spaces && !found_items->empty() &&
++          !found_spaces->empty()) {
++        items = found_items;
++        spaces = found_spaces;
++        break;
++      }
++    }
++  }
++  if (!items || !spaces) {
++    items = state->FindListByDottedPath("sidebarSyncState.items");
++    spaces = state->FindListByDottedPath("sidebarSyncState.spaceModels");
++    if (!items || !spaces) {
++      items = state->FindListByDottedPath("firebaseSyncState.syncData.items");
++      spaces = state->FindListByDottedPath("firebaseSyncState.syncData.spaceModels");
++    }
++  }
++  if (!items || !spaces) {
++    return;
++  }
++  const auto selected = profile.BaseName().value();
++  for (size_t index = 1; index < spaces->size(); index += 2) {
++    if (!(*spaces)[index].is_dict()) {
++      continue;
++    }
++    const auto& space = ArcValue((*spaces)[index].GetDict());
++    const auto* source_profile = space.FindDict("profile");
++    if (!source_profile) {
++      continue;
++    }
++    const bool default_profile =
++        selected == "Default" && source_profile->FindBool("default").value_or(false);
++    const auto* directory = source_profile->FindStringByDottedPath(
++        "custom._0.directoryBasename");
++    if (!default_profile && (!directory || *directory != selected)) {
++      continue;
++    }
++    const auto pinned = ArcPinnedContainer(space);
++    if (!pinned || pinned->empty()) {
++      continue;
++    }
++    const auto* container = FindArcItem(*items, *pinned);
++    const auto* children = container ? container->FindList("childrenIds") : nullptr;
++    if (!children) {
++      continue;
++    }
++    const auto* source_title = space.FindString("title");
++    const std::string title = source_title ? *source_title : "Untitled Space";
++    base::ListValue path;
++    path.Append(title);
++    base::ListValue contents;
++    std::set<std::string> visited;
++    for (const auto& child : *children) {
++      if (child.is_string()) {
++        AppendArcItem(*items, child.GetString(), visited, path, contents);
++      }
++    }
++    // Original parser emits a space only when it has an actual admitted child.
++    if (!contents.empty()) {
++      AppendArcBookmark(rows, title, {}, nullptr);
++      for (auto& child : contents) {
++        rows.Append(std::move(child));
++      }
++    }
++  }
++}
+ base::ListValue DiscoverChromiumProfiles(const base::FilePath& directory,
+                                        bool atlas) {
+   base::ListValue profiles;
+@@ -1036,6 +1222,11 @@
+     if (const auto* error = data.FindString("error")) {
+       return base::DictValue().Set("error", *error);
+     }
++    if (source == "arc" && category == "bookmarks") {
++      if (auto* bookmarks = data.FindList("bookmarks")) {
++        AppendArcSidebarBookmarks(profile, *bookmarks);
++      }
++    }
+     snapshots.Append(std::move(data));
+   }
+   base::DictValue result;
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -147,7 +147,7 @@
+       return false;
+     }
+     if (row.FindBool("folder").value_or(false)) {
+-      return !title->empty();
++      return !title->empty() || row.FindBool("arcSidebar").value_or(false);
+     }
+     const auto* text = row.FindString("url");
+     const GURL url(text ? *text : std::string());
+@@ -206,7 +206,7 @@
+     if (const auto* path = row.FindList("path")) {
+       for (const auto& value : *path) {
+         // Original flattening keeps unnamed folders out of the path.
+-        if (!value.GetString().empty()) {
++        if (!value.GetString().empty() || row.FindBool("arcSidebar").value_or(false)) {
+           descend(base::UTF8ToUTF16(value.GetString()));
+         }
+       }

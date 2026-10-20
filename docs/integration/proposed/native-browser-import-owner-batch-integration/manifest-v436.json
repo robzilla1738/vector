@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v435",
+  "originalProposal": "native-import-extension-owner-build-deps",
+  "originalManifestSha256": "e6d0548bc1a3e59864fa612feb722727345b1f958257f45b14f0ae2c2f7f65c2",
+  "originalPatchSha256": "ba81e192da4d9a3682818bde61fd061f4bc275f86cec94f8135425436ef63bd1",
+  "appliedPatchSha256": "ba81e192da4d9a3682818bde61fd061f4bc275f86cec94f8135425436ef63bd1",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "b0ff5b29014b6da7b3fcd00845b532bf5a9ac79ceb7c4981a21603b7939c5c3c",
+      "originalBaselineSha256": "b0ff5b29014b6da7b3fcd00845b532bf5a9ac79ceb7c4981a21603b7939c5c3c",
+      "originalOutputSha256": "44d5943d1416e324cd8d69748915efa8394630bbc793eb54b94366a33b13e2d0",
+      "outputSha256": "44d5943d1416e324cd8d69748915efa8394630bbc793eb54b94366a33b13e2d0"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

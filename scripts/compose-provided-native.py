@@ -456,6 +456,14 @@ steps.extend([
     ('native-browser-import-secret-barriers/native.patch', 'native-browser-import-secret-barriers/manifest.json'),
     ('native-browser-import-destination-skips/native.patch', 'native-browser-import-destination-skips/manifest.json'),
     ('native-browser-import-original-kinds/native.patch', 'native-browser-import-original-kinds-integration/manifest.json'),
+    ('native-browser-import-cookie-source/native.patch', 'native-browser-import-owner-batch-integration/manifest-v432.json'),
+    ('native-browser-import-bookmark-owner/native.patch', 'native-browser-import-owner-batch-integration/manifest-v433.json'),
+    ('native-browser-import-bookmark-admission/native.patch', 'native-browser-import-owner-batch-integration/manifest-v434.json'),
+    ('native-browser-import-owner-batch-integration/extensions.patch', 'native-browser-import-owner-batch-integration/manifest-v435.json'),
+    ('native-import-extension-owner-build-deps/native.patch', 'native-browser-import-owner-batch-integration/manifest-v436.json'),
+    ('native-browser-import-encrypted-reader-caps/native.patch', 'native-browser-import-owner-batch-integration/manifest-v437.json'),
+    ('native-browser-import-password-metadata/native.patch', 'native-browser-import-owner-batch-integration/manifest-v438.json'),
+    ('native-browser-import-owner-batch-integration/arc.patch', 'native-browser-import-owner-batch-integration/manifest-v439.json'),
 ])
 
 if options.through:

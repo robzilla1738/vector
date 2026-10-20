@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "applyAfter": "v431",
+  "originalProposal": "native-browser-import-cookie-source",
+  "originalManifestSha256": "2c29eaf6916c338feb3d17faccfec35395830ea588112c725994740ba07eb84c",
+  "originalPatchSha256": "9fdf3b75ba7ad475f3bd80dbe91ec91d6b4219cefec6b0a9464c125ecb041ea6",
+  "appliedPatchSha256": "9fdf3b75ba7ad475f3bd80dbe91ec91d6b4219cefec6b0a9464c125ecb041ea6",
+  "application": "unchanged original patch",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "95ca3702012286fc81adec9827ffc1f1a02cdc21a0f85855cea4cd952c1eb01b",
+      "originalBaselineSha256": "95ca3702012286fc81adec9827ffc1f1a02cdc21a0f85855cea4cd952c1eb01b",
+      "originalOutputSha256": "d40e3b10c1db581a4793651a5d7359b7a3f3e3b91e2ead41808c8840cd80a848",
+      "outputSha256": "d40e3b10c1db581a4793651a5d7359b7a3f3e3b91e2ead41808c8840cd80a848"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

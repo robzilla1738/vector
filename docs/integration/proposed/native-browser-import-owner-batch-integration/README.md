@@ -1,0 +1,7 @@
+# Original cookie, bookmark and extension owner integration
+
+The ordered batch432–438 integrates source proposals after frozen431: original cookie reader; bookmark destination and original admission; extension source/real pending-install observer; actual build dependencies; encrypted reader caps; original password schema/metadata. Rebased manifests pin all complete inputs/outputs and original patch bytes. The extension patch has one stale include context after bookmark admission; its original counted anchors replay exactly once, producing a derived patch with identical behavioral edits/new file bytes. Other patches replay unchanged. Original cookie/bookmark/caps/password source verifiers are independent. The extension’s original five-file outputs are independently reversed to exact recorded baseline hashes and forward-replayed; its original image ranges/literals and actual Chromium API headers are rehashed.
+
+No source profile, extension update, installation, Keychain or OS operation is executed here. Native compilation and actual packaged behavior are separate evidence. These changes do not imply the separate profile-clone flow, Arc augmentation, remaining Snapshot/JSON/history/profile caps or arbitrary-byte staging are complete.
+
+V439 applies all four original Arc augmentation anchors exactly once after438. Its diff context is rebased around the source-extension and password-metadata changes. Original Arc pins and two-file replay pass independently; no Arc/source profile is read during preparation.
