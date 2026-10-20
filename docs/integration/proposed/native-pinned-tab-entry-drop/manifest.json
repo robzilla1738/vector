@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "applyAfter": "actual native289 leaf sources; no region/GN changes",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "fa4780cdd30c9a1eaeaf7f9cd97304b47acbafea18f171e40016e8b9d8c0283b",
+      "outputSha256": "a276475b25efd11d871c121547c7b343c39ababca25303d72dfe51394ae904aa"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "376fd7244198f599f631427401c073df51aba175f13bc637d02ff026983c1d6a",
+      "outputSha256": "549116312565da1d3e91297260fce8fcaa414015054a03250bd58d156ed502b2"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Region must pass genuine payload/current drag to these APIs and perform actual bookmark removal only on success.",
+    "Entry-originated drag initiation/ghost/cancel callbacks are not included in this incoming-drop API slice."
+  ]
+}

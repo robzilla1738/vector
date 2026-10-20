@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "class metadata",
+      "rva": "0x460a634",
+      "fileOffset": 73442868,
+      "bytes": 88,
+      "sha256": "1b27d4eb1d555d39210bee680e098a86148f30800ca64ac705e6b5d0e157bf90"
+    },
+    {
+      "name": "constructor profile pref subscription",
+      "rva": "0x4604e08",
+      "fileOffset": 73420296,
+      "bytes": 988,
+      "sha256": "2c8acb48ec9386a3e41fefa6e493cab81b97c6e460cfc39afe57438cef710104"
+    },
+    {
+      "name": "screen insertion query",
+      "rva": "0x4606940",
+      "fileOffset": 73427264,
+      "bytes": 480,
+      "sha256": "5abe8271aac44a6fadaf6e96498fb984c71272d256d6099ae6116a781d3a46c0"
+    },
+    {
+      "name": "gap update and child layout",
+      "rva": "0x4606b20",
+      "fileOffset": 73427744,
+      "bytes": 960,
+      "sha256": "7e29eceac467ce5c7b6021a906c23079b31288b69666c47f83740c5791404607"
+    },
+    {
+      "name": "URL-title commit",
+      "rva": "0x46070b8",
+      "fileOffset": 73429176,
+      "bytes": 1424,
+      "sha256": "53c3d978892cd679d442692adb7214162f0fb1e9916641bad89ad99340688086"
+    },
+    {
+      "name": "slot geometry",
+      "rva": "0x4608230",
+      "fileOffset": 73433648,
+      "bytes": 232,
+      "sha256": "0d349729f4fedcc7710259b8879e66f193d6018ebbceb273967ae5355b386087"
+    },
+    {
+      "name": "placeholder paint",
+      "rva": "0x4608318",
+      "fileOffset": 73433880,
+      "bytes": 848,
+      "sha256": "f24dca7e348dee58a5543b386405f0656f2cc4bc10c476c163c0d947701da6c3"
+    },
+    {
+      "name": "child movement animation",
+      "rva": "0x460989c",
+      "fileOffset": 73439388,
+      "bytes": 592,
+      "sha256": "12629bbed6cd160565d1ddfe6d0f2b2ec17e71e6114b4a55b61fce4dd819d455"
+    },
+    {
+      "name": "bookmark drop region consumer",
+      "rva": "0x462d5e0",
+      "fileOffset": 73586144,
+      "bytes": 708,
+      "sha256": "93a9348e9dec8452900b35458f97993b78fdc3a94091c468b1f7033a98b65bec"
+    },
+    {
+      "name": "persistent pref reader",
+      "rva": "0x41d4660",
+      "fileOffset": 69027424,
+      "bytes": 964,
+      "sha256": "d3eff3815f24f2b4af61a258a5796ce02ecfd0580a7fc32a546569a5999f0b67"
+    }
+  ],
+  "paletteSource": "native-agent-tabs-paint/source-evidence.json and native-vertical-bookmark-row/source-evidence.json: role216 = Widget dark0x33fafafa/light0x260a0a0a",
+  "findings": {
+    "model": "Exact metadata VerticalPinnedTabEntriesView; Browser* at340, TabStripModel*348; Profile::GetPrefs pinned_tabs subscription. Not a BookmarkModel-backed leaf.",
+    "query": "SCREEN point\u2192local; N+1 virtual slots; strict nearest Manhattan centre, earlier wins tie; actualgap update then SCREEN rect.",
+    "update": "Clamp index to saved count, optional presence adds one slot, shift children with index>=gap; preserve visual old origins while restarting140ms60Hz tween11 movement; clear restores original geometry.",
+    "commit": "Read currentactualpref, first exactURL move or insert, old-before-slot subtract1, nonemptyincomingtitle replaces oldtitle only, write currentpref, cleargap, rebuild, confirmactualstoredURL.",
+    "owner": "Region has actual dragdata and real BookmarkModel. Successful URL/title conversion precedes source BookmarkModel::Remove; leaf must not fabricate/removesourcebookmark."
+  }
+}
