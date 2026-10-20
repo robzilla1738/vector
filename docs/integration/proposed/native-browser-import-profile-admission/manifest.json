@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "7ded08322 Arc migrator output; shared root adds direct GURL include independently",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "276999580083f60f665837055ddd6f658b23cd328733766a6ed68c291566ead3",
+      "outputSha256": "a8c04ccebaa2ac1bc8e23d53eafa4da8c35ec5671c28945e11416c7f8d8e1166"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "actual-directory-admission-no-inherited-policy",
+    "count": 1,
+    "before": "// Original426793c admits actual directories; retain Aux's existing identifier,\n// symlink and bounded-inventory checks at this external filesystem boundary.\nbool AppendChromiumProfile(base::ListValue& profiles,\n                           const base::FilePath& directory,\n                           std::string_view id,\n                           const base::DictValue* metadata) {\n  if (profiles.size() >= 128 || id.empty() || id.find('/') != id.npos ||\n      id.find(\"..\") != id.npos || id.find('\\0') != id.npos ||\n      !base::IsStringUTF8(id)) {\n    return false;\n  }\n  const auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));\n  if (!base::DirectoryExists(path) || base::IsLink(path)) {\n    return false;\n  }\n",
+    "after": "// Original426793c appends the actual cache ID and checks directory status.\n// It has no profile-count, single-component-name or symlink rejection policy.\nbool AppendChromiumProfile(base::ListValue& profiles,\n                           const base::FilePath& directory,\n                           std::string_view id,\n                           const base::DictValue* metadata) {\n  const auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));\n  if (!base::DirectoryExists(path)) {\n    return false;\n  }\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "actual-local-state-read-options",
+    "count": 1,
+    "before": "  if (auto state = JSON(directory.AppendASCII(\"Local State\"))) {",
+    "after": "  // Original4266e60 uses an unbounded file read and JSON options0/depth200.\n  // Discovery must not silently fall back because an inherited generic reader\n  // rejects a source symlink or reaches an unrelated byte cap.\n  std::string local_state;\n  std::optional<base::DictValue> state;\n  if (base::ReadFileToString(directory.AppendASCII(\"Local State\"), &local_state)) {\n    state = base::JSONReader::ReadDict(local_state, base::JSON_PARSE_RFC, 200);\n  }\n  if (state) {"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "source-fallback-ascii-only-path",
+    "count": 1,
+    "before": "      if (id == \"Default\" || id.starts_with(\"Profile \") ||\n          (atlas && id.starts_with(\"user-\"))) {",
+    "after": "      // Original103eb5c is an ASCII high-bit test in this readdir path,\n      // not an ID whitelist applied to the separate JSON cache path.\n      if (base::IsStringASCII(id) &&\n          (id == \"Default\" || id.starts_with(\"Profile \") ||\n           (atlas && id.starts_with(\"user-\")))) {"
+  }
+]

@@ -1,0 +1,49 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4266e60",
+      "end": "0x4267508",
+      "sha256": "87e017b5f0e314c188e9a2c19cc06350ec7a83b2472e33373e5054a992da7fd0",
+      "listing": "cache-read-and-order.asm",
+      "listingSha256": "244bad424c885490a49066a2bd853ab458c42ef56fb41e2e4f72f8426273d56d"
+    },
+    {
+      "start": "0x4267508",
+      "end": "0x426793c",
+      "sha256": "1fff364b146036614b766496595e07dd6df7bbce48924dc37dafbd1f013440a8",
+      "listing": "fallback-enumeration.asm",
+      "listingSha256": "316ebdd7ba0252a4846958a6d0a9a41d612ade9b95743820dd40d57beb977283"
+    },
+    {
+      "start": "0x426793c",
+      "end": "0x4267a88",
+      "sha256": "53fbaeaa1ea9f01b7b75484f63190bb864f0907ef30b2f79266b0955482e04d6",
+      "listing": "directory-status.asm",
+      "listingSha256": "426e8a716b2b399a7aa9b1b30660e0e4746e2571dcd114f5e7c00c3cc4fe2e50"
+    },
+    {
+      "start": "0x1699414",
+      "end": "0x1699ac0",
+      "sha256": "1f626fe6df1373df9780af654e0f2938c83228eb6b97e456964eb7af3f5e9e00",
+      "listing": "original-filepath-append.asm",
+      "listingSha256": "f9749b952abb0244253e6698f20aa70e22cd82af5b5aefec0d98a4d0624d6821"
+    },
+    {
+      "start": "0x103eb5c",
+      "end": "0x103ec60",
+      "sha256": "006f7335158a745a774ad561b1d8823d9efbf1b98e42f26476ed811c496dc74a",
+      "listing": "fallback-ascii.asm",
+      "listingSha256": "637120cd5ee8d2635a99364d589592e4af79e5592526abec46bd78a67a5ee63e"
+    },
+    {
+      "start": "0x4267a88",
+      "end": "0x4267ecc",
+      "sha256": "759386df5e95cc5e72d6b9acc29f1fe53e8dbe36ff06ca69fd18020386dd128e",
+      "listing": "full-profile-metadata.asm",
+      "listingSha256": "c2bd04167355ec9a312ffc70d8d3a553318354086244a2f7e3ba2d83bdd3585c"
+    }
+  ],
+  "literals": []
+}

@@ -1,0 +1,56 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -257,19 +257,14 @@
+     }
+   }
+ }
+-// Original426793c admits actual directories; retain Aux's existing identifier,
+-// symlink and bounded-inventory checks at this external filesystem boundary.
++// Original426793c appends the actual cache ID and checks directory status.
++// It has no profile-count, single-component-name or symlink rejection policy.
+ bool AppendChromiumProfile(base::ListValue& profiles,
+                            const base::FilePath& directory,
+                            std::string_view id,
+                            const base::DictValue* metadata) {
+-  if (profiles.size() >= 128 || id.empty() || id.find('/') != id.npos ||
+-      id.find("..") != id.npos || id.find('\0') != id.npos ||
+-      !base::IsStringUTF8(id)) {
+-    return false;
+-  }
+   const auto path = directory.Append(base::FilePath::FromUTF8Unsafe(id));
+-  if (!base::DirectoryExists(path) || base::IsLink(path)) {
++  if (!base::DirectoryExists(path)) {
+     return false;
+   }
+   // Original4267a88: metadata is absent during fallback, never a fabricated
+@@ -490,7 +485,15 @@
+ base::ListValue DiscoverChromiumProfiles(const base::FilePath& directory,
+                                        bool atlas) {
+   base::ListValue profiles;
+-  if (auto state = JSON(directory.AppendASCII("Local State"))) {
++  // Original4266e60 uses an unbounded file read and JSON options0/depth200.
++  // Discovery must not silently fall back because an inherited generic reader
++  // rejects a source symlink or reaches an unrelated byte cap.
++  std::string local_state;
++  std::optional<base::DictValue> state;
++  if (base::ReadFileToString(directory.AppendASCII("Local State"), &local_state)) {
++    state = base::JSONReader::ReadDict(local_state, base::JSON_PARSE_RFC, 200);
++  }
++  if (state) {
+     if (const auto* cache = state->FindDictByDottedPath("profile.info_cache")) {
+       std::set<std::string, std::less<>> ordered_ids;
+       if (const auto* order = state->FindListByDottedPath("profile.profiles_order")) {
+@@ -518,8 +521,11 @@
+                                  base::FileEnumerator::DIRECTORIES);
+     for (auto path = entries.Next(); !path.empty(); path = entries.Next()) {
+       const auto id = path.BaseName().value();
+-      if (id == "Default" || id.starts_with("Profile ") ||
+-          (atlas && id.starts_with("user-"))) {
++      // Original103eb5c is an ASCII high-bit test in this readdir path,
++      // not an ID whitelist applied to the separate JSON cache path.
++      if (base::IsStringASCII(id) &&
++          (id == "Default" || id.starts_with("Profile ") ||
++           (atlas && id.starts_with("user-")))) {
+         AppendChromiumProfile(profiles, directory, id, nullptr);
+       }
+     }
