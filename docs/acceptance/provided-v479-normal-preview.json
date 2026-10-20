@@ -1,0 +1,30 @@
+{
+  "composition": "v479",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v479-local/Aux.app",
+  "launcherPid": 86193,
+  "command": [
+    "node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v479-local/Aux.app",
+    "--",
+    "--new-window",
+    "chrome://newtab/"
+  ],
+  "normalProfile": true,
+  "incognito": false,
+  "temporaryProfile": true,
+  "installedAppChanged": false,
+  "signingRun": false,
+  "log": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v479-normal-preview.log",
+  "runtimeAcceptance": false,
+  "browserPid": 86200,
+  "foregroundActivation": true,
+  "observedWindow": "Aux",
+  "observedURL": "chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/main.html#/onboarding/splash",
+  "observedHeading": "Something went wrong",
+  "observedError": "Unable to resolve Chromium profile account.",
+  "leftRunning": true,
+  "ownerProfileAccessed": false
+}
