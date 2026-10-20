@@ -11,6 +11,7 @@ import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
 import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
+import { transformProvidedSettingsImportCopy } from './lib/provided-settings-import-copy.mjs';
 import { transformProvidedPasswordManagerScope } from './lib/provided-password-manager-scope.mjs';
 import { transformProvidedUiBoundary } from './lib/provided-ui-boundary.mjs';
 import { transformProvidedNewTabUnavailableControls } from './lib/provided-newtab-unavailable-controls.mjs';
@@ -54,7 +55,8 @@ try {
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
     const controls = transformProvidedNewTabUnavailableControls({ ...input, text: boundary.text });
-    return { text: controls.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors] };
+    const settings = transformProvidedSettingsImportCopy({ ...input, text: controls.text });
+    return { text: settings.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { assertFreshResourceBaseline, bundleExclusionOrderProof, validateNativeBundleSealReview, nativeResealChanges } from './reuse-development-authority.mjs';
+import { assertFreshResourceBaseline, bundleExclusionOrderProof, validateNativeBundleSealReview, nativeResealChanges, reviewedUiResourceInventory } from './reuse-development-authority.mjs';
 
 test('reuse requires complete exact unsigned resource bytes/modes/links and identical final relocation path', () => {
   const cache = { finalApp: '/project/out/current/Aux.app', unsignedResources: [{ path: 'Aux.app/Contents/Resources/aux/apps/daemon/code', mode: 0o755, sha256: 'SEA-CURRENT' }, { path: 'Aux.app/Contents/Resources/aux/runtime/python/bin/link', link: '../python3' }] };
@@ -57,4 +57,25 @@ test('native-only utility never re-signs Apple helpers or runs a Keychain/provis
   assert.match(source, /nativeResealChanges\(copied, after, nativeSeals\)/);
   assert.match(source, /verifyRetainedSignatures\(target, cache.retainedTargets\)/);
   assert.match(source, /authorityProofInherited: true/);
+});
+
+
+test('explicit UI restage keeps all helper bytes, modes and capabilities exact', () => {
+  const base = 'Aux.app/Contents/Resources/aux/';
+  const ui = { path: base + 'apps/extension/dist/assets/general-3dgRbrRk.js', mode: 0o644, sha256: 'a'.repeat(64) };
+  const helper = { path: base + 'apps/daemon/Aux Daemon.app/Contents/MacOS/Aux Daemon', mode: 0o755, sha256: 'c'.repeat(64) };
+  const inventory = [ui, helper];
+  const review = [{ path: ui.path, beforeSha256: ui.sha256, afterSha256: 'b'.repeat(64) }];
+  const fresh = reviewedUiResourceInventory(inventory, review);
+  assert.deepEqual(fresh[1], helper);
+  const cache = { finalApp: '/project/Aux.app', unsignedResources: inventory };
+  assertFreshResourceBaseline(cache, fresh, cache.finalApp, null, review);
+  assert.throws(() => assertFreshResourceBaseline(cache, fresh, cache.finalApp));
+  assert.throws(() => assertFreshResourceBaseline(cache, fresh.map(row => ({ ...row, mode: 0o755 })), cache.finalApp, null, review));
+  assert.throws(() => reviewedUiResourceInventory(inventory, [review[0], review[0]]));
+  assert.throws(() => reviewedUiResourceInventory(inventory, [{ ...review[0], beforeSha256: 'd'.repeat(64) }]));
+  assert.throws(() => reviewedUiResourceInventory(inventory, [{ ...review[0], path: helper.path, beforeSha256: helper.sha256 }]));
+  const manifest = { ...ui, path: base + 'apps/extension/dist/manifest.json' };
+  assert.throws(() => reviewedUiResourceInventory([manifest], [{ ...review[0], path: manifest.path }]));
+  assert.throws(() => reviewedUiResourceInventory([{ ...ui, link: '/outside' }], review));
 });

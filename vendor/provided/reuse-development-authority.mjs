@@ -38,9 +38,30 @@ export function bundleExclusionOrderProof(before, after) {
   if (stable(parse(before)) !== stable(parse(after))) throw Error('Bundle changed beyond exclusion record order');
   return { field: 'excludedFiles', equivalence: 'identical-unique-records-order-only', beforeSha256: hash(before), afterSha256: hash(after) };
 }
-export function assertFreshResourceBaseline(cache, fresh, nextFinalApp, metadataProof = null) {
+// A UI-only restage can retain helper signatures when every changed resource
+// is explicitly reviewed. Executables, manifests that grant extension access,
+// profiles, native addons, and helper bundles are never admitted here.
+export function reviewedUiResourceInventory(inventory, review = []) {
+  const allowed = new Set([
+    'apps/extension/dist/assets/general-3dgRbrRk.js',
+    'bundle.json', 'provenance/manifest.json', 'provenance/ui-manifest.json',
+    'provenance/apps-manifest.json', 'provenance/distribution-manifest.json',
+    'provenance/computer-use-manifest.json',
+  ].map(relative => prefix + '/' + relative));
+  if (!Array.isArray(review) || new Set(review.map(row => row.path)).size !== review.length)
+    throw Error('Unique reviewed UI resource changes required');
+  const changes = new Map(review.map(row => {
+    const leaf = inventory.find(item => item.path === row.path);
+    if (!allowed.has(row.path) || !leaf || leaf.link || leaf.sha256 !== row.beforeSha256 ||
+        !/^[a-f0-9]{64}$/.test(row.afterSha256 ?? '') || row.beforeSha256 === row.afterSha256)
+      throw Error('Unreviewed UI resource or baseline');
+    return [row.path, row.afterSha256];
+  }));
+  return inventory.map(leaf => changes.has(leaf.path) ? { ...leaf, sha256: changes.get(leaf.path) } : leaf);
+}
+export function assertFreshResourceBaseline(cache, fresh, nextFinalApp, metadataProof = null, uiResourceReview = []) {
   if (typeof nextFinalApp !== 'string' || nextFinalApp !== cache.finalApp) throw Error('Final app/runtime relocation path changed');
-  let expected = cache.unsignedResources;
+  let expected = reviewedUiResourceInventory(cache.unsignedResources, uiResourceReview);
   if (metadataProof) {
     const bundle = prefix + '/bundle.json', before = expected.find(leaf => leaf.path === bundle), after = fresh.find(leaf => leaf.path === bundle);
     if (metadataProof.field !== 'excludedFiles' || metadataProof.equivalence !== 'identical-unique-records-order-only' || !before || !after || before.link || after.link || before.mode !== after.mode || before.sha256 !== metadataProof.beforeSha256 || after.sha256 !== metadataProof.afterSha256) throw Error('Bundle exclusion order proof mismatch');
@@ -106,7 +127,7 @@ export function cacheSignedDevelopmentResources({ signedReceiptPath, signedRecei
   const cachePath = path.join(output, 'cache.json'); writeNew(cachePath, cache);
   return { cachePath, cacheSha256: sha(cachePath), signedResourceLeaves: signedResources.length, preservedNestedSignatures: 8, keychainOperationsPerformed: false, parentAppMutated: false };
 }
-export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRoot, packageReportSha256, output }) {
+export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRoot, packageReportSha256, output, uiResourceReview = [] }) {
   const { cache, root } = readCache(cachePath, cacheSha256), scope = fixedScope(); packageRoot = canonical(packageRoot);
   if (!packageRoot.startsWith(path.join(repository, 'out') + '/') || !disjoint(packageRoot, path.dirname(cachePath))) throw Error('Fresh copied package separate from cache required');
   const report = pinnedJson(path.join(packageRoot, 'package.json'), packageReportSha256);
@@ -114,14 +135,14 @@ export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRo
   const before = developmentSnapshot(packageRoot);
   const oldBundle = cache.unsignedResources.find(leaf => leaf.path === prefix + '/bundle.json'), newBundle = before.find(leaf => leaf.path === prefix + '/bundle.json');
   let resourceMetadataCompatibility = null;
-  if (oldBundle?.sha256 !== newBundle?.sha256) {
+  if (oldBundle?.sha256 !== newBundle?.sha256 && !uiResourceReview.some(row => row.path === oldBundle.path)) {
     const previous = regular(path.join(root, 'bundle.json')), current = regular(path.join(packageRoot, prefix, 'bundle.json'));
     resourceMetadataCompatibility = bundleExclusionOrderProof(previous, current);
     if (resourceMetadataCompatibility.beforeSha256 !== oldBundle?.sha256 || resourceMetadataCompatibility.afterSha256 !== newBundle?.sha256) throw Error('Bundle metadata changed during comparison');
   }
-  assertFreshResourceBaseline(cache, resources(before), report.finalApp, resourceMetadataCompatibility);
+  assertFreshResourceBaseline(cache, resources(before), report.finalApp, resourceMetadataCompatibility, uiResourceReview);
   output = freshOutput(output, [packageRoot, path.dirname(cachePath), scope.policy.core.home]);
-  const plan = { version: 1, kind: 'exact-native-descendant-authority-reuse', cachePath, cacheSha256, cachedResourceRoot: root, packageRoot, packageReportSha256, finalApp: report.finalApp, before, resourceMetadataCompatibility, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, scope: cache.scope, authorizedOperation: 'copy-exact-signed-resources-and-adhoc-outer-only', appleSigningAllowed: false, keychainOperationsAllowed: false, output };
+  const plan = { version: 1, kind: 'exact-native-descendant-authority-reuse', cachePath, cacheSha256, cachedResourceRoot: root, packageRoot, packageReportSha256, finalApp: report.finalApp, before, resourceMetadataCompatibility, uiResourceReview, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, scope: cache.scope, authorizedOperation: 'copy-exact-signed-resources-and-adhoc-outer-only', appleSigningAllowed: false, keychainOperationsAllowed: false, output };
   const planPath = path.join(output, 'reuse-plan.json'); writeNew(planPath, plan);
   return { planPath, planSha256: sha(planPath), packageMutated: false, appleSigningPerformed: false, keychainOperationsPerformed: false };
 }
@@ -160,6 +181,7 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
   const plan = pinnedJson(planPath, planSha256), { cache, root } = readCache(plan.cachePath, plan.cacheSha256);
   if (plan.kind !== 'exact-native-descendant-authority-reuse' || plan.authorizedOperation !== 'copy-exact-signed-resources-and-adhoc-outer-only' || plan.appleSigningAllowed !== false || plan.keychainOperationsAllowed !== false || root !== plan.cachedResourceRoot) throw Error('Exact native descendant plan required');
   const reviewedNativeSeals = validateNativeBundleSealReview(nativeSealReview, plan.before);
+  const expectedResources = reviewedUiResourceInventory(cache.signedResources, plan.uiResourceReview ?? []);
   const target = path.join(plan.packageRoot, prefix), backup = path.join(plan.output, 'fresh-unsigned-resources');
   if (resumeOverlay) {
     if (!reviewedNativeSeals.length) throw Error('Explicit native bundle repair review required');
@@ -171,10 +193,17 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
     fs.cpSync(root, staged, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true, mode: fs.constants.COPYFILE_FICLONE });
     assertSameInventory(cache.signedResources, resourceSnapshot(staged), 'Staged retained resource copy changed');
     verifyRetainedSignatures(staged, cache.retainedTargets);
+    for (const row of plan.uiResourceReview ?? []) {
+      const relative = row.path.slice(prefix.length + 1);
+      const source = path.join(target, relative);
+      if (sha(source) !== row.afterSha256) throw Error('Reviewed UI input changed');
+      fs.copyFileSync(source, path.join(staged, relative));
+    }
+    assertSameInventory(expectedResources, resourceSnapshot(staged), 'Reviewed UI overlay differs');
     fs.renameSync(target, backup); fs.renameSync(staged, target);
   }
   const copied = developmentSnapshot(plan.packageRoot);
-  assertSameInventory(cache.signedResources, resources(copied), 'Retained resource overlay differs');
+  assertSameInventory(expectedResources, resources(copied), 'Retained resource overlay differs');
   assertSameInventory(plan.before.filter(leaf => !leaf.path.startsWith(prefix + '/')), copied.filter(leaf => !leaf.path.startsWith(prefix + '/')), 'Overlay changed native browser inputs');
   // Native build's own framework/helper signatures are retained, never blanket
   // re-signed. Any invalid native signature is an explicit blocker, not a reason
@@ -199,19 +228,20 @@ export async function applyDevelopmentResourceReuse({ planPath, planSha256, appl
   codesign(['--verify', '--strict', '--all-architectures', path.join(plan.packageRoot, 'Aux.app')]);
   verifyRetainedSignatures(target, cache.retainedTargets);
   const after = developmentSnapshot(plan.packageRoot), changes = nativeResealChanges(copied, after, nativeSeals);
-  assertSameInventory(cache.signedResources, resources(after), 'Inherited helper/resource bytes changed during outer seal');
-  const receipt = { version: 1, implementation: 'inherited-development-authority-native-reseal', sourceSha256: sha(fileURLToPath(import.meta.url)), status: 'signed-and-verified', packageRoot: plan.packageRoot, packageReportSha256: plan.packageReportSha256, packageReportIsHistoricalUnsignedInput: true, planPath, planSha256, cachePath: plan.cachePath, cacheSha256: plan.cacheSha256, scope: cache.scope, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, retainedHelperSignaturesVerified: 8, nativeSignaturesVerified: [...nativeTargets].sort(), parentAppleSignaturesReused: true, appleSigningPerformed: false, adhocSignedTargets: [...nativeSeals.map(step => step.path), 'Aux.app'], nativeSealReview: nativeSeals, keychainOperationsPerformed: false, authorityProofInherited: true, providedResourcesByteIdentical: true, resourceMetadataCompatibility: plan.resourceMetadataCompatibility, untargetedLeavesPreserved: true, changes, finalInventory: after, finalSnapshotSha256: hash(stable(after)), productLaunched: false, accountStartupVerified: false, aiRequestVerified: false };
+  assertSameInventory(expectedResources, resources(after), 'Inherited helper/resource bytes changed during outer seal');
+  const receipt = { version: 1, implementation: 'inherited-development-authority-native-reseal', sourceSha256: sha(fileURLToPath(import.meta.url)), status: 'signed-and-verified', packageRoot: plan.packageRoot, packageReportSha256: plan.packageReportSha256, packageReportIsHistoricalUnsignedInput: true, planPath, planSha256, cachePath: plan.cachePath, cacheSha256: plan.cacheSha256, scope: cache.scope, parentSignedReceiptSha256: cache.parentSignedReceiptSha256, parentAuthorityReportSha256: cache.parentAuthorityReportSha256, retainedHelperSignaturesVerified: 8, nativeSignaturesVerified: [...nativeTargets].sort(), parentAppleSignaturesReused: true, appleSigningPerformed: false, adhocSignedTargets: [...nativeSeals.map(step => step.path), 'Aux.app'], nativeSealReview: nativeSeals, keychainOperationsPerformed: false, authorityProofInherited: true, providedResourcesByteIdentical: !(plan.uiResourceReview?.length), uiResourceReview: plan.uiResourceReview ?? [], resourceMetadataCompatibility: plan.resourceMetadataCompatibility, untargetedLeavesPreserved: true, changes, finalInventory: after, finalSnapshotSha256: hash(stable(after)), productLaunched: false, accountStartupVerified: false, aiRequestVerified: false };
   const receiptPath = path.join(plan.output, 'reuse-receipt.json'); writeNew(receiptPath, receipt);
   return { receiptPath, receiptSha256: sha(receiptPath), status: receipt.status, appleSigningPerformed: false, keychainOperationsPerformed: false };
 }
 export function verifyReusedDevelopmentReceipt({ receiptPath, receiptSha256 }) {
   const receipt = pinnedJson(receiptPath, receiptSha256), plan = pinnedJson(receipt.planPath, receipt.planSha256), { cache } = readCache(receipt.cachePath, receipt.cacheSha256);
-  if (receipt.version !== 1 || receipt.implementation !== 'inherited-development-authority-native-reseal' || receipt.status !== 'signed-and-verified' || receipt.sourceSha256 !== sha(fileURLToPath(import.meta.url)) || receipt.packageRoot !== plan.packageRoot || receipt.cacheSha256 !== plan.cacheSha256 || receipt.parentSignedReceiptSha256 !== cache.parentSignedReceiptSha256 || receipt.parentAuthorityReportSha256 !== cache.parentAuthorityReportSha256 || receipt.scope !== cache.scope || receipt.authorityProofInherited !== true || receipt.appleSigningPerformed !== false || receipt.keychainOperationsPerformed !== false || stable(receipt.adhocSignedTargets) !== stable([...(receipt.nativeSealReview ?? []).map(step => step.path), 'Aux.app']) || receipt.providedResourcesByteIdentical !== true || receipt.untargetedLeavesPreserved !== true) throw Error('Exact inherited native reseal receipt required');
+  if (receipt.version !== 1 || receipt.implementation !== 'inherited-development-authority-native-reseal' || receipt.status !== 'signed-and-verified' || receipt.sourceSha256 !== sha(fileURLToPath(import.meta.url)) || receipt.packageRoot !== plan.packageRoot || receipt.cacheSha256 !== plan.cacheSha256 || receipt.parentSignedReceiptSha256 !== cache.parentSignedReceiptSha256 || receipt.parentAuthorityReportSha256 !== cache.parentAuthorityReportSha256 || receipt.scope !== cache.scope || receipt.authorityProofInherited !== true || receipt.appleSigningPerformed !== false || receipt.keychainOperationsPerformed !== false || stable(receipt.adhocSignedTargets) !== stable([...(receipt.nativeSealReview ?? []).map(step => step.path), 'Aux.app']) || receipt.providedResourcesByteIdentical !== !(plan.uiResourceReview?.length) || stable(receipt.uiResourceReview ?? []) !== stable(plan.uiResourceReview ?? []) || receipt.untargetedLeavesPreserved !== true) throw Error('Exact inherited native reseal receipt required');
   const current = developmentSnapshot(receipt.packageRoot);
   assertSameInventory(receipt.finalInventory, current, 'Native descendant changed after sealing');
   if (hash(stable(current)) !== receipt.finalSnapshotSha256) throw Error('Native descendant final snapshot mismatch');
-  assertSameInventory(cache.signedResources, resources(current), 'Inherited signed resources changed');
-  const expectedOverlay = [...plan.before.filter(leaf => !leaf.path.startsWith(prefix + '/')), ...cache.signedResources];
+  const expectedResources = reviewedUiResourceInventory(cache.signedResources, plan.uiResourceReview ?? []);
+  assertSameInventory(expectedResources, resources(current), 'Inherited helpers or reviewed UI resources changed');
+  const expectedOverlay = [...plan.before.filter(leaf => !leaf.path.startsWith(prefix + '/')), ...expectedResources];
   const nativeSeals = validateNativeBundleSealReview(receipt.nativeSealReview ?? [], expectedOverlay);
   nativeResealChanges(expectedOverlay, current, nativeSeals);
   for (const step of nativeSeals) codesign(['--verify', '--strict', '--all-architectures', path.join(receipt.packageRoot, step.path)]);
@@ -224,7 +254,7 @@ export function verifyReusedDevelopmentReceipt({ receiptPath, receiptSha256 }) {
 export function writeReusedLaunchHandoff({ receiptPath, receiptSha256, output }) {
   const receipt = verifyReusedDevelopmentReceipt({ receiptPath, receiptSha256 }), scope = fixedScope();
   const app = path.join(receipt.packageRoot, 'Aux.app'), home = scope.policy.core.home, profile = path.join(home, 'preview-profile-local-browser-pass');
-  const handoff = { version: 1, kind: 'inherited-signed-preview-launch-handoff', app, home, profile, scope: receipt.scope, receiptPath, receiptSha256, parentSignedReceiptSha256: receipt.parentSignedReceiptSha256, parentAuthorityReportSha256: receipt.parentAuthorityReportSha256, authorityProofInherited: true, signedResourcesByteIdentical: true, packageReportIsHistoricalUnsignedInput: true, command: ['node','scripts/aux.mjs','--home',home,'--profile',profile,'--app',app,'--','--new-window','chrome://newtab/'], environment: { HOME: home, CFFIXED_USER_HOME: home, AUX_ENABLE_PROVIDED_NATIVE_CARRIER: '1', AUX_NATIVE_KEYCHAIN_SCOPE: receipt.scope }, removeEnvironment: ['AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN','AUX_PROVIDED_DP_PROBE','AUX_DP_PROBE_APPROVED','AUX_DP_PROBE_OPERATION','AUX_PROVIDED_NATIVE_LOAD_ONLY'], launched: false, accountStartupVerified: false, aiRequestVerified: false };
+  const handoff = { version: 1, kind: 'inherited-signed-preview-launch-handoff', app, home, profile, scope: receipt.scope, receiptPath, receiptSha256, parentSignedReceiptSha256: receipt.parentSignedReceiptSha256, parentAuthorityReportSha256: receipt.parentAuthorityReportSha256, authorityProofInherited: true, signedResourcesByteIdentical: receipt.providedResourcesByteIdentical, uiResourceReview: receipt.uiResourceReview ?? [], packageReportIsHistoricalUnsignedInput: true, command: ['node','scripts/aux.mjs','--home',home,'--profile',profile,'--app',app,'--','--new-window','chrome://newtab/'], environment: { HOME: home, CFFIXED_USER_HOME: home, AUX_ENABLE_PROVIDED_NATIVE_CARRIER: '1', AUX_NATIVE_KEYCHAIN_SCOPE: receipt.scope }, removeEnvironment: ['AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN','AUX_PROVIDED_DP_PROBE','AUX_DP_PROBE_APPROVED','AUX_DP_PROBE_OPERATION','AUX_PROVIDED_NATIVE_LOAD_ONLY'], launched: false, accountStartupVerified: false, aiRequestVerified: false };
   writeNew(path.resolve(output), handoff); return handoff;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
