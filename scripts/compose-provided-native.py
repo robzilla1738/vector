@@ -407,6 +407,9 @@ steps.extend([
     ('native-pinned-container-layout/native.patch', 'native-pinned-container-layout/manifest.json'),
     ('native-sidebar-section-presentation/native.patch', 'native-sidebar-section-presentation/manifest.json'),
     ('native-sidebar-body-mount/native.patch', 'native-sidebar-body-mount/manifest.json'),
+    ('native-empty-pinned-drop-producer/native.patch', 'native-empty-pinned-drop-producer/manifest.json'),
+    ('native-sidebar-body-reset-lifetime/native.patch', 'native-sidebar-body-reset-lifetime/manifest.json'),
+    ('native-empty-pinned-drop-wiring/native.patch', 'native-empty-pinned-drop-wiring/manifest.json'),
 ])
 
 if options.through:

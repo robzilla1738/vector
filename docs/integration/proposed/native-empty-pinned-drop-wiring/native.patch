@@ -1,0 +1,88 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -181,6 +181,9 @@
+   bookmarks_->bookmarks_view()->SetCompact(presentation.compact);
+   agent_->SetExternalVisibility(presentation.content_visible);
+ }
++bool AuxSidebarBody::IsPublishingProjection() const {
++  return projection_ && projection_->is_publishing();
++}
+ void AuxSidebarBody::QueueProjectionRefresh() {
+   if (projection_) projection_->QueueRefresh();
+   Changed();
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+@@ -42,6 +42,7 @@
+   void Unmount();
+   void ApplyPresentation();
+   void QueueProjectionRefresh();
++  bool IsPublishingProjection() const;
+   bool CanRebindForAuxProfileSwitch(Profile*) const;
+   uint64_t BeginAuxProfileSwitch(Profile*);
+   void RebindAuxProfileSwitch();
+--- a/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
+@@ -82,7 +82,7 @@
+   if (pinned.GetVisible() && pinned.width() && pinned.height())
+     y = pinned.GetBoundsInScreen().y() - 4;
+   return gfx::Rect(bounds.x(), y, bounds.width(),
+-      GetLayoutConstant(LayoutConstant::kVerticalTabPinnedHeight) + 12);
++      /* original selector58=40; Chromium155 counterpart is32 */ 40 + 12);
+ }
+ bool CalculateAuxEmptyPinnedDropActive(TabDragContext* context,
+     const PinnedTabContainerView& pinned, const views::View& region, const views::ScrollView* outer,
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -639,6 +639,14 @@
+ }
+ 
+ void VerticalTabStripRegionView::HandleDragExited() {
++  if (aux_empty_pinned_drop_active_) {
++    aux_empty_pinned_drop_active_ = false;
++    RefreshAuxPinnedPresentation();
++    aux_sidebar_->InvalidateLayout();
++    aux_sidebar_->SchedulePaint();
++    InvalidateLayout();
++    SchedulePaint();
++  }
+   SetLinkDropArrow(std::nullopt);
+   link_drag_lock_.reset();
+   UpdateExpandOnHoverState(false);
+@@ -858,6 +866,8 @@
+ 
+ uint64_t VerticalTabStripRegionView::BeginAuxProfileSwitch(Profile* target) {
+   CHECK(CanRebindForAuxProfileSwitch(target));
++  aux_empty_pinned_drop_active_ = false;
++  RefreshAuxPinnedPresentation();
+   pinned_tab_entries_->PauseForProfileSwitch();
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   bottom_button_container_->PauseForAuxProfileSwitch();
+@@ -999,6 +1009,7 @@
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
++  aux_empty_pinned_drop_active_ = false;
+   aux_sidebar_->Unmount();
+   RetireAuxProfilePreviewInput();
+   aux_profile_preview_owner_.reset();
+@@ -1713,5 +1724,20 @@
+ 
+ TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
+     const gfx::Point& point_in_screen) {
++  if (aux_sidebar_->IsPublishingProjection()) return nullptr;
++  auto* pinned = GetPinnedTabsContainer();
++  const bool empty_drop = pinned && aux::CalculateAuxEmptyPinnedDropActive(
++      GetDragContext(), *pinned, *this, aux_sidebar_, point_in_screen);
++  if (empty_drop != aux_empty_pinned_drop_active_) {
++    aux_empty_pinned_drop_active_ = empty_drop;
++    RefreshAuxPinnedPresentation();
++    aux_sidebar_->InvalidateLayout();
++    aux_sidebar_->SchedulePaint();
++    InvalidateLayout();
++    SchedulePaint();
++  }
++  if (pinned && pinned->GetVisible() &&
++      (empty_drop || pinned->GetBoundsInScreen().Contains(point_in_screen)))
++    return &pinned->GetTabDragTarget(point_in_screen);
+   return BaseTabStripRegionView::GetTabDragTarget(point_in_screen);
+ }

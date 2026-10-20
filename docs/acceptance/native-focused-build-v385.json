@@ -1,0 +1,57 @@
+{
+  "composition": "v385",
+  "originalReplay": {
+    "steps": 388,
+    "sources": 545,
+    "actualNativeSourcesMatch": true,
+    "actualArtworkMatches": 23,
+    "seed": "out/native-original-replay-v382"
+  },
+  "focusedBuild": {
+    "composition": "v385",
+    "exitCode": 0,
+    "elapsedSeconds": 27.5820369720459,
+    "targets": {
+      "aux_sidebar_body": "obj/chrome/browser/ui/ui/aux_sidebar_body.o",
+      "aux_sidebar_presentation": "obj/chrome/browser/ui/ui/aux_sidebar_presentation.o",
+      "vertical_tab_strip_region_view": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+      "tab_collection_node": "obj/chrome/browser/ui/views/tabs/common/impl/tab_collection_node.o",
+      "pinned_tab_container_view": "obj/chrome/browser/ui/views/tabs/common/impl/pinned_tab_container_view.o",
+      "tab_view_vertical_layout": "obj/chrome/browser/ui/views/tabs/common/impl/tab_view_vertical_layout.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/ui/aux_sidebar_body.o",
+      "obj/chrome/browser/ui/ui/aux_sidebar_presentation.o",
+      "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+      "obj/chrome/browser/ui/views/tabs/common/impl/tab_collection_node.o",
+      "obj/chrome/browser/ui/views/tabs/common/impl/pinned_tab_container_view.o",
+      "obj/chrome/browser/ui/views/tabs/common/impl/tab_view_vertical_layout.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "genuineSidebarMountedInSource": true,
+  "fullBuildV382": {
+    "status": "interrupted",
+    "exitCode": 130,
+    "reason": "Review identified live ResetTabStrip child teardown before sidebar retirement; corrected in v384",
+    "ownedProcessGroup": 87282,
+    "ownedProcessGroupAbsentAfterStop": true
+  },
+  "fullBuildV385": "running",
+  "latestFullBrowser": "v277",
+  "UIAccepted": false,
+  "remaining": [
+    "Matching full browser build and disposable observation",
+    "Genuine saved-entry native tab drag delegate region6b0",
+    "Both-theme and normal-profile behavior acceptance"
+  ],
+  "signingProvisioningOrReleasePerformed": false
+}
