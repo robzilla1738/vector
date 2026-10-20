@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "base": "actual241 search h/cc, unchanged through frozen249",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "baselineSha256": "1cb02cbea0be55dd11e35196022d9cad42bc7b3d785f76b2a64bf90259f75ad0",
+      "outputSha256": "4856c7f9081c077ddac8a06002174d55fe72a822b78576d30d68a4e4929325f6",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-search-owner/baseline/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "baselineSha256": "7a2a43aef8986641e7c74e2509b5d99fd8b5418e68a54c45afaf6b98413a6e0a",
+      "outputSha256": "6aa9d1c9bdd9cc0643d960a5a4906ceeb52b72e9fa73b79e1ec93b4b5738483e",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-search-owner/baseline/chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

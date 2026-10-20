@@ -1,0 +1,92 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "extracts": [
+    {
+      "file": "guard.asm",
+      "start": "0x459fbcc",
+      "stop": "0x459fce0",
+      "bytesSha256": "bf61530fa2c3533777c38b432d2dc0343b39e121cedacfe1f38bcb339fc31757",
+      "extractSha256": "63bf4c11655686364e243e86bb036c82d280adc6f613bbad63e6e64883259f7f"
+    },
+    {
+      "file": "controller.asm",
+      "start": "0x459fce0",
+      "stop": "0x45a1f04",
+      "bytesSha256": "cce1d9bee265a6dcdc20f2f13230a304d063ee6e97fd1f5bc277fe3fd03dec8c",
+      "extractSha256": "94ce6707722836a5c1894333cfb1420aaaca2ac73db7648320fc5c75bad1bf5c"
+    },
+    {
+      "file": "browser-toggle.asm",
+      "start": "0x45b63c0",
+      "stop": "0x45b64f0",
+      "bytesSha256": "6903cf52cc07bd2c9e87c8b5046b90610a34efa3a40029396adf766cfa52b2a5",
+      "extractSha256": "09214a28831d1ebf48b0d36f12b084d1b039f210a40e36ed9cdfdbb8249f2667"
+    },
+    {
+      "file": "views.asm",
+      "start": "0x45a1f04",
+      "stop": "0x45a4508",
+      "bytesSha256": "9fa465a979f1e1ba26dec1c9b3e874246d99c4383f17710da6ebe66571e6735d",
+      "extractSha256": "c5e79896fa52cad308a765098e1ccde43b0e958cd51157979669b897cfd11b0d"
+    }
+  ],
+  "urlFragments": [
+    {
+      "descriptor": "0xead56f8",
+      "address": "0xcbd441e",
+      "length": 16,
+      "value": "chrome-extension"
+    },
+    {
+      "descriptor": "0xead5708",
+      "address": "0xd9b0601",
+      "length": 3,
+      "value": "://"
+    },
+    {
+      "descriptor": "0xead5718",
+      "address": "0xce48949",
+      "length": 32,
+      "value": "fjdhphbdlfjogobdofoaagnlnkoibdge"
+    },
+    {
+      "descriptor": "0xead5728",
+      "address": "0xd7e813c",
+      "length": 1,
+      "value": "/"
+    },
+    {
+      "descriptor": "0xead5738",
+      "address": "0xd6e3e20",
+      "length": 14,
+      "value": "tabsearch.html"
+    }
+  ],
+  "retainedReaSnapshots": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/out/profile-search-analysis/guard-hide-ghidra.json",
+      "sha256": "7cec3c0502a3f8bc61fa08a1e84b093098f788d30d4e3ad92bdac3daa3448064"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/out/profile-search-analysis/show-ghidra.json",
+      "sha256": "8f3ea62e66c383c5c44a992f2a66b9dec596a229d5d00be23ee54e18ac9357c7"
+    }
+  ],
+  "nativeVisualEffect": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/widget/native_widget_mac.mm",
+    "sha256": "540c1e6e4481a55adf063742233e3d2ba1c2cc66682fc974dbbd6925d9835bb6",
+    "literal": "DesktopMediaPickerVisualEffect"
+  },
+  "bindings": {
+    "guard": "459fbcc aggregates5registrysets; literalAgentID via Aux componentidentity only",
+    "toggle": "45b63c0 selectsstockhost(true) withoutAgent; custom visiblee2togglesCloseAndReload;45b64b0 closescustom+stock",
+    "window": "45a0198 real620x340 browsercenter; retainedWidget+WebView; ctornameDesktopMediaPickerVisualEffect and10corner radius",
+    "animation": "45a0198 open120ms .96\u21921bounds/.01\u21921opacity;45a1474 close90ms currentbounds\u2192.96/currentopacity\u21920;45a1a40 Tween11open/5close and realNativeWindowframeupdates",
+    "reload": "45a1f04 ReloadForNextShow uses exact descriptorURL. e0set bytoggle/shortcut/CloseContents; ordinaryHide preservespage",
+    "events": "45a18ac actualEventObserver; typesdescriptor d6e3e34 exact7; EscapeHide,CmdShiftA CloseAndReload. Contents registersEscape/CmdShiftA; PreHandle returnsNOT_HANDLED",
+    "model": "45a2014 activecontentschange OR insertion hides; sourcecontroller owns actualTabStripModelObserver andvisible-only registrar",
+    "binding": "45a09e0..a7c actualWebContentsuserdatae504ce0 carriesweakBrowser. PortexposespositiveGetAuxProfileSearchBrowser, rechecksactualProfilebeforeuse",
+    "retirement": "459fdd4 closesactualwidget/contents/eventmonitor/observer; currentport browserWidget-owned property+realweakwindow/Widgetobservation"
+  }
+}
