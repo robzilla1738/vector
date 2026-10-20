@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "composition": "v527",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-browser-pass/Aux.app",
+  "authorization": "Owner explicitly approved local signing of the current copied build and necessary helpers; existing approved disposable Aux scope only. No provisioning/release.",
+  "packageReportSha256": "0d38cab22b7366526556a99e5ebe44c9fb8459985eb426d29db181ec8d87eb3c",
+  "signing": {
+    "receiptPath": "/Users/rcourson/Documents/Vibe/web/out/current-local-authority-v527/signing-receipt.json",
+    "sha256": "812c6f230b6322bb12a889ee383f2033981f9b907f4811faab51f76e15e012f6",
+    "status": "signed-and-verified",
+    "signedTargets": 9,
+    "developmentRoles": [
+      "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app"
+    ],
+    "untargetedLeavesPreserved": true,
+    "passwordManagerExcluded": true
+  },
+  "authority": {
+    "reportPath": "/Users/rcourson/Documents/Vibe/web/out/current-local-authority-v527/authority-verify.json",
+    "sha256": "0be9d3b926532b22a5e7a49ba26fa3c5fd29922c9efca73f21e65c05c528444a",
+    "ok": true,
+    "phase": "verify-existing",
+    "operation": "verify",
+    "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "allThreeSamePublicKey": true,
+    "hosts": [
+      {
+        "host": "daemon",
+        "ok": true,
+        "rawCdpVerified": true,
+        "httpDomainVerified": true,
+        "tamperRefused": true,
+        "originalFormatPreserved": true,
+        "defaultGroupVerified": true
+      },
+      {
+        "host": "carrier",
+        "ok": true,
+        "rawCdpVerified": true,
+        "httpDomainVerified": true,
+        "tamperRefused": true,
+        "originalFormatPreserved": true,
+        "defaultGroupVerified": null
+      },
+      {
+        "host": "cli",
+        "ok": true,
+        "rawCdpVerified": true,
+        "httpDomainVerified": true,
+        "tamperRefused": true,
+        "originalFormatPreserved": true,
+        "defaultGroupVerified": true
+      }
+    ]
+  },
+  "handoffPath": "/Users/rcourson/Documents/Vibe/web/out/current-local-authority-v527/launch-handoff.json",
+  "handoffSha256": "9ec5e82b11eb34830e3c72787648ce8f7d87df6da63b135702a897dc16a72edc",
+  "productLaunchedByThisLane": false,
+  "newKeysInitialized": false,
+  "keysResetOrDeleted": false,
+  "provisioningPerformed": false,
+  "ownerProfilesAccessed": false,
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false,
+  "accountStartupVerified": false,
+  "aiRequestVerified": false,
+  "targetOwnershipReturnedToRoot": true
+}
