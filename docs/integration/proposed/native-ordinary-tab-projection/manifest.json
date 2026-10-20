@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "base": "actual350; controller123f25018 required; no native writes",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "1037f4f0d6b57ead8933e9330c48c24588b83d92ec66d9c1cf496ee949ba921d",
+      "outputSha256": "b1e0cbf6854eee4765f68a2bb158cd22197cb9f74c81ea6ea1aeaac803075e55"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "6c32eb65c1ea329692c1b7bc52fbc4edac720d09467dcfdb529ce53cc9065267",
+      "outputSha256": "cb7d17b9f50572a4d6b278257163d29b62fd99e85b68f6d8f0319a5cdb190253"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_strip_view.h",
+      "baselineSha256": "4978c806f6df03adcec8563f53dd506abd0f48daeac5bd17a663e9b87ea474e7",
+      "outputSha256": "182b073a8f376658307a86e251a28ae534afc757eb7d9b6c701dbf8996f377ee"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.h",
+      "baselineSha256": null,
+      "outputSha256": "7587a734270fc218274532eb59e0700b324f1fa3f79518dcf1193b69c4caa3d3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+      "baselineSha256": null,
+      "outputSha256": "b218b7a4cfb9888e3a71fb74d42263f931e0e2d6e411b0e60596adecaa21b0dd"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

@@ -1,0 +1,43 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "visibility-recursion",
+      "start": "0x4642670",
+      "stopExclusive": "0x4642b3c",
+      "bytesSha256": "44a265767132fb3fb9db73d3be3578b2264fa94eb0735d517d3cab5d59d085cf",
+      "asmSha256": "fd0008c8b81b836ee0dcf878b6b2ce323d1d2f144962be9042043c44cf91333e"
+    },
+    {
+      "name": "bookmark-eligibility",
+      "start": "0x4642084",
+      "stopExclusive": "0x46422ec",
+      "bytesSha256": "ff9c349422cdc50a58ee40aa4c45dfb228012c711904ff6a72e12509edb3e245",
+      "asmSha256": "27396c3c2cbb803afb1069dc9f679390e43c8c72ab5ae8fde5550c6df1202aa6"
+    },
+    {
+      "name": "saved-pin-representation",
+      "start": "0x4606510",
+      "stopExclusive": "0x4606900",
+      "bytesSha256": "61f1e311526875d310488c92e9bb57f55491d85578b63c641f6d14539d7e8dfe",
+      "asmSha256": "479fe20ab47738d1463b261b1bdb859b0a2c0fb7512f7bd29ff1764e6f5c2069"
+    },
+    {
+      "name": "agent-group-marker",
+      "start": "0x4127680",
+      "stopExclusive": "0x4127744",
+      "bytesSha256": "a4b7fe928b3930b2b5719247665d5abc277144b3e3face8a3f66e9b6ea4d80e6",
+      "asmSha256": "c0a0617c21c2e0a8d8e347b0e173a217e3fe3de04a7e553061e476e12700aa38"
+    },
+    {
+      "name": "active-row-refresh",
+      "start": "0x4641cd4",
+      "stopExclusive": "0x4642084",
+      "bytesSha256": "1f1892faee3d6b834e8d1caa9c87fae2e7c471800c2da5c9a2cd1cffd9057170",
+      "asmSha256": "272e3f6921ae941092138eb6eae37575ea7e12be728aa941d903e2ea09b0d183"
+    }
+  ]
+}
