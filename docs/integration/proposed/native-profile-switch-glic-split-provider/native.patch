@@ -1,0 +1,103 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -7,6 +7,7 @@
+ #include <optional>
+ #include <utility>
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
++#include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+ #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+ #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
+@@ -155,7 +156,7 @@
+     const BrowserWindowFeatures& features) {
+   return features.breadcrumb_manager_browser_agent_ ||
+       features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
+-      features.glic_split_button_controller_ || features.organizer_panel_controller_ ||
++      features.organizer_panel_controller_ ||
+       features.ai_overlay_dialog_controller_ ||
+       features.new_tab_footer_controller_ ||
+       features.ios_promo_controller_ ||
+@@ -190,6 +191,11 @@
+   }
+   if (auto* toast = ToastController::From(&browser);
+       toast && toast->HasPendingToastWork()) {
++    return nullptr;
++  }
++  if (bool(features_->glic_iph_controller_) != bool(features_->glic_split_button_controller_) ||
++      (features_->glic_split_button_controller_ &&
++       !features_->glic_split_button_controller_->CanPrepareForAuxProfileSwitch())) {
+     return nullptr;
+   }
+   if (features_->glic_iph_controller_ &&
+@@ -297,6 +303,12 @@
+   }
+   for (auto* cache : {&previous_cache, &target_cache}) {
+     auto& features = cache->GetFeatures();
++    if (bool(features.glic_iph_controller_) != bool(features.glic_split_button_controller_) ||
++        bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_) ||
++        (features.glic_split_button_controller_ &&
++         !features.glic_split_button_controller_->CanPrepareForAuxProfileSwitch())) {
++      return false;
++    }
+     if (bool(features.glic_iph_controller_) != bool(features_->glic_iph_controller_) ||
+         (features.glic_iph_controller_ &&
+          !features.glic_iph_controller_->CanPrepareForAuxProfileSwitch())) {
+@@ -400,6 +412,12 @@
+       if (!alive()) {
+         return;
+       }
++    }
++  }
++  if (features_->glic_split_button_controller_) {
++    features_->glic_split_button_controller_->PrepareForAuxProfileSwitch();
++    if (!alive()) {
++      return;
+     }
+   }
+   if (features_->glic_iph_controller_) {
+@@ -899,6 +917,19 @@
+       return;
+     }
+   }
++  if (features_->glic_split_button_controller_) {
++    // Rebind the actual service only after target toolbar/vertical delegates
++    // and dormant real bubble view owners have their target profile identity.
++    auto* service = glic::GlicKeyedService::Get(target);
++    if (!alive()) {
++      return;
++    }
++    CHECK(service);
++    features_->glic_split_button_controller_->RebindForAuxProfileSwitch(*service);
++    if (!alive()) {
++      return;
++    }
++  }
+   if (plan->target_ai_mode_owner) {
+     auto owner = omnibox::AiModePageActionController::CreatePreparedForAuxProfileSwitch(
+         browser, *target, *plan->location);
+@@ -981,6 +1012,12 @@
+       return;
+     }
+   }
++  if (features_->glic_split_button_controller_) {
++    features_->glic_split_button_controller_->FinishForAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++  }
+   if (features_->glic_iph_controller_) {
+     features_->glic_iph_controller_->FinishAuxProfileSwitch();
+     if (!alive()) {
+@@ -1192,6 +1229,12 @@
+   }
+   if (features_->lens_overlay_entry_point_controller_) {
+     features_->lens_overlay_entry_point_controller_->UpdateEntryPointsState(true);
++    if (!alive()) {
++      return;
++    }
++  }
++  if (features_->glic_split_button_controller_) {
++    features_->glic_split_button_controller_->AbortForAuxProfileSwitch(browser.GetProfile());
+     if (!alive()) {
+       return;
+     }

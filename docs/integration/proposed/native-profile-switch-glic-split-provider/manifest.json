@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "base": "decc27341 stable Iph provider output",
+  "requiredOwnerProposals": [
+    "7ef77cb9f GlicButton",
+    "baf33cc4d dormant bubble+delegate",
+    "2315a124f Split+private graph"
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "a45b646d8b1c918f85b2e27e7479c4061a2aa902948e0862307d778b880622b4",
+      "outputSha256": "c245d4bd6408cefa46c7ef0c2714f7a6a89691e33ce59f7d8fb32ecbe98fa82b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
