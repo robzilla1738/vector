@@ -1,0 +1,64 @@
+{
+  "frameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "serializer": {
+    "start": "0x4277dc8",
+    "endExclusive": "0x4277f34",
+    "rawCaptureEndExclusive": "0x4278274",
+    "sliceSha256": "2f3b950fa32d03546313b2a47cc94abab5e60aa8241cf005a64d649964de6c50",
+    "decompileLimitation": "Raw Ghidra PIC misclassification makes pseudocode unusable; retained whole-image LLVM instructions and literal bytes are authoritative."
+  },
+  "mandatoryFields": {
+    "jobId": "job+8",
+    "sourceId": "job+0x20",
+    "state": "std::string job+0x58",
+    "progress": "double job+0x70"
+  },
+  "optionalNonemptyFields": {
+    "currentDataKind": "job+0x78",
+    "errorMessage": "job+0x90"
+  },
+  "nativeStateLiterals": {
+    "queued": "0xcf0a409",
+    "cancelled": "0xcf0a410",
+    "succeeded": "0xcf0a41a",
+    "failed": "0xcf0a430",
+    "running": "inline stores at42785a0..42785b8 and supplied0427b60c.c"
+  },
+  "suppliedConsumer": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0"
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/general-3dgRbrRk.js",
+      "sha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4"
+    }
+  ],
+  "actualPackagedConsumer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v431-local/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+    "sha256": "19e9f0b24cae91aa8dfc3df71240f3255b82cb8f24ee5f184efe2d2a17e3b92c",
+    "auxNamespaceCount": 6,
+    "retiredNamespaceCount": 0
+  },
+  "nativeEvent": {
+    "original": "asideBrowserImport.onImportProgress",
+    "dispatcher": "0x42798c4",
+    "isolatedAux": "auxBrowserImport.onImportProgress",
+    "route": "extensions::EventRouter::DispatchEventToExtension(captured extension ID)"
+  },
+  "namespaceTransform": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native-ui-compat.mjs",
+      "sha256": "392349c7f42dd1658a68d9028584aa63a13c57a8ddda82a5d24fc31239c12011"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/provided-native-ui-anchors.json",
+      "sha256": "3ed1d20145e8b0af66ef07d8368478afbfdf763de2451f5546d12d5d7092749c"
+    }
+  ],
+  "safariCleanup": {
+    "originalFunction": "0x427a9cc",
+    "evidence": "../native-import-safari-owner/client-completion.asm",
+    "result": "Original last imported callback destroys importer before presenter and then deletes staged directory/publishes final state. Current ClearOwners matches; no defer-to-metrics patch."
+  }
+}

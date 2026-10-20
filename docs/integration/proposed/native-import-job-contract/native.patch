@@ -1,0 +1,70 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -49,11 +49,18 @@
+ namespace {
+ constexpr char kService[] = "aux.browser.import.service";
+ base::DictValue PublicJob(const base::DictValue& job) {
+-  auto result = job.Clone();
+-  if (const auto* status = job.FindString("status")) result.Set("state", *status);
+-  if (const auto* error = job.FindString("error")) result.Set("errorMessage", *error);
+-  if (const auto* source = job.FindString("sourceId"); source && *source == "atlas")
+-    result.Set("sourceId", "chatgpt-atlas");
++  // Supplied4277dc8: four mandatory fields and two nonempty optionals.
++  // Keep adapter bookkeeping private; supplied1852 consumes this exact object.
++  base::DictValue result;
++  result.Set("jobId", *job.FindString("jobId"));
++  const auto& source = *job.FindString("sourceId");
++  result.Set("sourceId", source == "atlas" ? "chatgpt-atlas" : source);
++  result.Set("state", *job.FindString("status"));
++  result.Set("progress", job.FindDouble("progress").value_or(0.0));
++  if (const auto* kind = job.FindString("currentDataKind"); kind && !kind->empty())
++    result.Set("currentDataKind", *kind);
++  if (const auto* error = job.FindString("error"); error && !error->empty())
++    result.Set("errorMessage", *error);
+   return result;
+ }
+ const bookmarks::BookmarkNode* Root(bookmarks::BookmarkModel* model,
+@@ -475,7 +482,8 @@
+       }
+       std::move(reply).Run(base::Value(), "");
+     } else {
+-      std::move(reply).Run(base::Value(PublicJob(job.state)), "");
++      std::move(reply).Run(base::Value(extension == "native-import-webui"
++          ? job.state.Clone() : PublicJob(job.state)), "");
+     }
+     return;
+   }
+@@ -632,7 +640,9 @@
+   if (*source_id == "safari") job->state.Set("progress", 0.0);
+   job->state.Set("completed", 0);
+   job->state.Set("total", static_cast<int>(job->categories.size()));
+-  auto result = PublicJob(job->state);
++  // Original42773f4..4277460 returns only the job identifier from startImport.
++  auto result = internal_categories ? job->state.Clone()
++      : base::DictValue().Set("jobId", id);
+   jobs_.emplace(id, std::move(job));
+   std::move(reply).Run(base::Value(std::move(result)), "");
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+@@ -692,12 +702,22 @@
+       }
+     }
+     job.state.Set("status", "succeeded");
++    job.state.Set("progress", 1.0);
++    job.state.Remove("currentDataKind");
+     job.state.Set("importedRows", job.imported);
+     Emit(job);
+     return;
+   }
+   job.state.Set("status", "running");
+   job.state.Set("category", job.categories[job.category]);
++  if (!job.firefox && !job.chromium_staged) {
++    // Supplied427b60c starts at0.02;427b898 selects a real source profile
++    // then dispatches its actual migrator at0.1. It exposes no row/category
++    // percentages. Discovery is already complete at this adapter boundary.
++    job.state.Set("progress", 0.02);
++    Emit(job);
++    job.state.Set("progress", 0.1);
++  }
+   Emit(job);
+   if (!job.firefox && job.source != "safari") {
+     if (!job.chromium_staged) {

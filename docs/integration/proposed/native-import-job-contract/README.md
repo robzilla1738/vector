@@ -1,0 +1,21 @@
+# Supplied browser import job contract
+
+One-file proposal against the captured applied451 import_service.cc (full baseline included and SHA-pinned). Restore original public snapshots/start replies and actual Chromium phase progress while retaining private adapter bookkeeping for the retired recovery WebUI. No native/shared write, build or runtime operation occurred.
+
+Original serializer04277dc8..04277f34 always writes jobId, sourceId, state and numeric progress. It only writes currentDataKind/errorMessage when their stored strings are nonempty. It does not publish sourceProfileId, status, category, completed, total or importedRows. The serializer reads a real std::string at job+0x58; there is no enum conversion to invent. Constructors store literal queued (0xcf0a409), Start stores running inline, and terminal/cancel owners store succeeded (0xcf0a41a), failed (0xcf0a430) and cancelled (0xcf0a410). The internal adapter status field stores those same strings and is mapped to the original state property explicitly.
+
+Original startImport42773f4..4277470 returns only {jobId}. getImportProgress and the onImportProgress event share the complete serializer. This proposal keeps that same public shape in both snapshot/event paths and the exact one-field start reply. The independent recovery WebUI retains its private cloned state; its counters are not exposed as public implementation behavior.
+
+Original Chromium job0427b60c emits running0.02 before source discovery;0427b898 chooses its actual profile, creates the native migrator and emits0.1.0427c570 final callback publishes succeeded1.0 or failure preserving the previous progress and actual error. No source category callback is registered by that owner. The adapter's prior per-category counters are neither original percentages nor currentDataKind. This patch emits0.02 and0.1 at its corresponding already-discovered-source/snapshot dispatch boundary, then retains0.1 until actual destination completion. It does not turn row counters into invented public progress. Safari keeps its recovered real0.02/0.08/0.5/1 and actual category callbacks untouched. Firefox-specific phase fidelity is outside this narrowly verified change.
+
+## Supplied1852 consumer and event route
+
+Pinned extension-main-Dz1-AsCT.js subscribes to chrome.asideBrowserImport.onImportProgress, filters sourceId and returned jobId, polls getImportProgress every1000ms, resolves succeeded/cancelled, and rejects failed using errorMessage. Its settings general-3dgRbrRk.js displays currentDataKind labels, treats progress<=1 as a fraction, and forces100 on succeeded. Exact excerpts and complete source hashes are retained; no UI was recreated.
+
+Original042798c4 dispatches asideBrowserImport.onImportProgress through EventRouter to the captured extension ID. The existing identity adapter explicitly maps asideBrowserImport→auxBrowserImport with count-checked1852 anchors. Actual packaged431 extension-main SHA19e9f0b24cae91aa8dfc3df71240f3255b82cb8f24ee5f184efe2d2a17e3b92c has6 auxBrowserImport references and0 retired namespace references and subscribes through that actual Aux API. Current native auxBrowserImport.onImportProgress and captured-extension EventRouter delivery match it. No event/name patch is justified.
+
+## Safari terminal cleanup audit
+
+Original0427a9cc requires commit-started plus all imported flags (or only bookmarks in bookmarks-only mode). It destroys SafariDataImporter before SavedPasswordsPresenter within the final imported callback, clears conflict IDs, posts temporary directory deletion, then publishes succeeded. The real component invokes that client callback before its Then(barrier) metrics continuation. Thus original itself retires the importer before that final weak OnImportComplete metrics path; current ClearOwners follows the source. Deferring cleanup or inventing a metric-driven success barrier would change supplied behavior. No Safari ownership patch is proposed.
+
+Validation: disposable one-file git apply --check/replay, complete output hash, exact native literals/LLVM and staged/source consumer pins. Raw serializer Ghidra pseudocode is explicitly unusable due PIC misclassification; LLVM instructions plus mapped literal bytes prove its fields. Compilation and disposable actual UI/event observation remain integrator gates; static evidence is not runtime acceptance.

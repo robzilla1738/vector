@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "reason": "Restore exact supplied import job/start JSON and Chromium native phase progress; preserve Safari source-owned progress/cleanup.",
+  "baselineDescription": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "0e6d46fdcdb17ee809ba573d9b480e818aba439627c7d21c13225a841d4845e1",
+      "outputSha256": "64f9148e2176998446027a9905cce32e445d4108f09cf54bbebf4e868b1c4687",
+      "anchors": [
+        {
+          "find": "  auto result = job.Clone();\n  if (const auto* status = job.FindString(\"status\")) result.Set(\"state\", *status);\n  if (const auto* error = job.FindString(\"error\")) result.Set(\"errorMessage\", *error);\n  if (const auto* source = job.FindString(\"sourceId\"); source && *source == \"atlas\")\n    result.Set(\"sourceId\", \"chatgpt-atlas\");\n  return result;",
+          "replace": "  // Supplied4277dc8: four mandatory fields and two nonempty optionals.\n  // Keep adapter bookkeeping private; supplied1852 consumes this exact object.\n  base::DictValue result;\n  result.Set(\"jobId\", *job.FindString(\"jobId\"));\n  const auto& source = *job.FindString(\"sourceId\");\n  result.Set(\"sourceId\", source == \"atlas\" ? \"chatgpt-atlas\" : source);\n  result.Set(\"state\", *job.FindString(\"status\"));\n  result.Set(\"progress\", job.FindDouble(\"progress\").value_or(0.0));\n  if (const auto* kind = job.FindString(\"currentDataKind\"); kind && !kind->empty())\n    result.Set(\"currentDataKind\", *kind);\n  if (const auto* error = job.FindString(\"error\"); error && !error->empty())\n    result.Set(\"errorMessage\", *error);\n  return result;",
+          "count": 1
+        },
+        {
+          "find": "      std::move(reply).Run(base::Value(PublicJob(job.state)), \"\");",
+          "replace": "      std::move(reply).Run(base::Value(extension == \"native-import-webui\"\n          ? job.state.Clone() : PublicJob(job.state)), \"\");",
+          "count": 1
+        },
+        {
+          "find": "  auto result = PublicJob(job->state);",
+          "replace": "  // Original42773f4..4277460 returns only the job identifier from startImport.\n  auto result = internal_categories ? job->state.Clone()\n      : base::DictValue().Set(\"jobId\", id);",
+          "count": 1
+        },
+        {
+          "find": "    job.state.Set(\"status\", \"succeeded\");\n    job.state.Set(\"importedRows\", job.imported);",
+          "replace": "    job.state.Set(\"status\", \"succeeded\");\n    job.state.Set(\"progress\", 1.0);\n    job.state.Remove(\"currentDataKind\");\n    job.state.Set(\"importedRows\", job.imported);",
+          "count": 1
+        },
+        {
+          "find": "  job.state.Set(\"status\", \"running\");\n  job.state.Set(\"category\", job.categories[job.category]);\n  Emit(job);",
+          "replace": "  job.state.Set(\"status\", \"running\");\n  job.state.Set(\"category\", job.categories[job.category]);\n  if (!job.firefox && !job.chromium_staged) {\n    // Supplied427b60c starts at0.02;427b898 selects a real source profile\n    // then dispatches its actual migrator at0.1. It exposes no row/category\n    // percentages. Discovery is already complete at this adapter boundary.\n    job.state.Set(\"progress\", 0.02);\n    Emit(job);\n    job.state.Set(\"progress\", 0.1);\n  }\n  Emit(job);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
