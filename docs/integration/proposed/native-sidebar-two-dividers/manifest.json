@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_body.h",
+      "baselineSha256": "c5838381dc22dd64426e5e9fe30ddb7aecabad127c08044e2d49c8abb89e6aeb",
+      "outputSha256": "3af788ecb98a8562b7f257b6d396063cb057bce78fd55b5ecb8c9bd170624ddc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "baselineSha256": "9ced2b606ec003bedcbb77ece6ee158f7d4f2f4455056d2da739616155c7191c",
+      "outputSha256": "315e7e6710a0b4baa3363926fed2c329479c6f8999fbe4c51c2763b8afb8de4b"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,24 @@
+345:     }
+346:     plVar11 = *(long **)(param_1 + 0x5c8);
+347:     if (plVar11 != (long *)0x0) {
+348:       (**(code **)(*plVar11 + 0xa0))(plVar11,uVar6 & uVar23 & 1);
+349:       local_70 = 0;
+350:       local_68 = 0;
+351:       FUN_01aede60(*(long *)(param_1 + 0x5c8) + 0xd8,&DAT_0ea05488,&local_70);
+352:     }
+353:     plVar11 = *(long **)(param_1 + 0x5d8);
+354:     if (plVar11 != (long *)0x0) {
+355:       (**(code **)(*plVar11 + 0xa0))(plVar11,uVar6 & uVar23 & 1);
+356:     }
+
+388:       (**(code **)(*plVar11 + 0xa0))(plVar11,bVar7);
+389:     }
+390:     plVar11 = *(long **)(param_1 + 0x678);
+391:     if (plVar11 != (long *)0x0) {
+392:       (**(code **)(*plVar11 + 0xa0))(plVar11,uVar6 & 1);
+393:     }
+394:     plVar11 = *(long **)(param_1 + 0x6d0);
+395:     if (plVar11 != (long *)0x0) {
+396:       (**(code **)(*plVar11 + 0xa0))(plVar11,uVar6 & local_78 & uVar25);
+397:     }
+398:     FUN_04645400(param_1);

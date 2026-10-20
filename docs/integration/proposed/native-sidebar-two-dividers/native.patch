@@ -1,0 +1,49 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.h
+@@ -66,7 +66,8 @@
+   raw_ptr<SidebarContentsView> body_ = nullptr;
+   raw_ptr<AuxBookmarksSection> bookmarks_ = nullptr;
+   raw_ptr<AuxChatsSection> chats_section_ = nullptr;
+-  raw_ptr<AuxSectionDivider> divider_ = nullptr;
++  raw_ptr<AuxSectionDivider> bookmarks_divider_ = nullptr;
++  raw_ptr<AuxSectionDivider> chats_divider_ = nullptr;
+   raw_ptr<AuxTabsSection> tabs_ = nullptr;
+   raw_ptr<AuxVerticalNewTabButton> new_tab_ = nullptr;
+   raw_ptr<AgentSessionTabsView> agent_ = nullptr;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -74,10 +74,12 @@
+           if (!enabled && body->drag_) body->drag_->Cancel();
+           body->Changed();
+         }, weak_.GetWeakPtr()), changed}));
++  // Source37dfc80: Bookmarks+668, divider+6d0, Chats+5c8, divider+5d8.
++  bookmarks_divider_ = body_->AddChildView(std::make_unique<AuxSectionDivider>());
+   chats_ = std::make_unique<AuxChatsController>(*browser_, *associations_,
+                                                GetNewChatShortcutHelp(), changed);
+   chats_section_ = body_->AddChildView(chats_->TakeSection());
+-  divider_ = body_->AddChildView(std::make_unique<AuxSectionDivider>());
++  chats_divider_ = body_->AddChildView(std::make_unique<AuxSectionDivider>());
+   tabs_ = body_->AddChildView(std::make_unique<AuxTabsSection>(AuxTabsSection::Actions{
+       base::BindRepeating([](base::WeakPtr<AuxSidebarBody> body) {
+         if (body && body->actions_) body->actions_->Tidy();
+@@ -177,7 +179,8 @@
+   new_tab_subscription_ = {};
+   associations_.reset();
+   if (preview_) { region_->RemoveChildViewT(preview_.get()); preview_ = nullptr; }
+-  bookmarks_ = nullptr; chats_section_ = nullptr; divider_ = nullptr;
++  bookmarks_ = nullptr; chats_section_ = nullptr;
++  bookmarks_divider_ = nullptr; chats_divider_ = nullptr;
+   tabs_ = nullptr; new_tab_ = nullptr; bookmark_has_contents_ = false;
+   body_ = nullptr;
+   SetContents(std::unique_ptr<views::View>());
+@@ -195,7 +198,9 @@
+       bookmark_has_contents_);
+   bookmarks_->SetVisible(presentation.bookmarks_visible);
+   chats_section_->SetVisible(presentation.chats_visible);
+-  divider_->SetVisible(presentation.divider_visible);
++  // Source464a8c0: +6d0 follows populated Bookmarks; +5d8 follows Chats.
++  bookmarks_divider_->SetVisible(presentation.divider_visible);
++  chats_divider_->SetVisible(presentation.chats_visible);
+   tabs_->SetVisible(presentation.content_visible);
+   new_tab_->SetVisible(presentation.content_visible);
+   new_tab_->SetCompact(presentation.compact);

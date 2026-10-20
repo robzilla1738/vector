@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/037dfc80.c",
+    "sha256": "3e2f860db024cec514cb608ab55e53b5f28e1fc6c06b67273015d5cd3d5c7fc3",
+    "lineRanges": [
+      [
+        1584,
+        1618
+      ],
+      [
+        2534,
+        2600
+      ]
+    ],
+    "excerpt": "037dfc80.c.excerpt.txt"
+  },
+  {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0464a8c0.c",
+    "sha256": "21fbd95a02f8d6a7ab09a2d7e1a5324edc3a568e94054a52c7d64ec9c4b1653a",
+    "lineRanges": [
+      [
+        345,
+        356
+      ],
+      [
+        388,
+        398
+      ]
+    ],
+    "excerpt": "0464a8c0.c.excerpt.txt"
+  }
+]

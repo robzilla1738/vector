@@ -1,0 +1,103 @@
+1584:   lVar16 = *(long *)(param_1 + 0x5c0);
+1585:   pcVar34 = DAT_0ef0a480;
+1586:   if (DAT_0ef0a480 == (char *)0x0) {
+1587:     FUN_042d36f8();
+1588:   }
+1589:   FUN_000ab5b0();
+1590:   pcVar20 = pcVar34;
+1591:   FUN_0136f140();
+1592:   *(undefined ***)pcVar20 = &PTR_LAB_0e726ab0;
+1593:   *(undefined ***)(pcVar20 + 8) = &PTR_LAB_0e726e98;
+1594:   *(undefined ***)(pcVar20 + 0x10) = &PTR_LAB_0e726ec0;
+1595:   *(undefined ***)(pcVar20 + 0x68) = &PTR_setProperty_forKey__0e726ef8;
+1596:   *(undefined ***)(pcVar20 + 0x70) = &PTR_LAB_0e726f28;
+1597:   *(undefined ***)(pcVar20 + 0xb0) = &PTR_LAB_0e726f78;
+1598:   *(undefined ***)(pcVar20 + 0xd8) = &PTR_LAB_0e726fd8;
+1599:   *(undefined ***)(pcVar20 + 0xf8) = &PTR_LAB_0e727008;
+1600:   FUN_027d1a60();
+1601:   if (pcVar34[0x1a9] != '\0') {
+1602:     pcVar34[0x1a9] = 0;
+1603:     FUN_00f27fd0(pcVar20 + 0xf8,(long)pcVar34 + 0x1a9);
+1604:   }
+1605:   if (pcVar34[0x169] != '\0') {
+1606:                     /* WARNING: Does not return */
+1607:     pcVar8 = (code *)SoftwareBreakpoint(0,0x37e55f8);
+1608:     (*pcVar8)();
+1609:   }
+1610:   FUN_007793fc(lVar16,pcVar34,*(undefined8 *)(lVar16 + 0x198));
+1611:   if (((ulong)pcVar34 & 0xfffffffc00000000) == DAT_0ebb2088) {
+1612:     FUN_000142fc(pcVar34);
+1613:   }
+1614:   if ((*(ulong *)(param_1 + 0x6d0) & 0xfffffffc00000000) == DAT_0ebb2088) {
+1615:     FUN_00022a3c();
+1616:   }
+1617:   *(char **)(param_1 + 0x6d0) = pcVar34;
+1618:   (**(code **)(*(long *)pcVar34 + 0xa0))(pcVar34,0);
+
+2534:     pcVar8 = (code *)SoftwareBreakpoint(0,0x37e5688);
+2535:     (*pcVar8)();
+2536:   }
+2537:   FUN_007793fc(*(long *)(param_1 + 0x5c0),pcVar34,
+2538:                *(undefined8 *)(*(long *)(param_1 + 0x5c0) + 0x198));
+2539:   if (((ulong)pcVar34 & 0xfffffffc00000000) == DAT_0ebb2088) {
+2540:     FUN_000142fc(pcVar34);
+2541:   }
+2542:   if ((*(ulong *)(param_1 + 0x5c8) & 0xfffffffc00000000) == DAT_0ebb2088) {
+2543:     FUN_00022a3c();
+2544:   }
+2545:   *(char **)(param_1 + 0x5c8) = pcVar34;
+2546:   pqVar46 = &segment_command_00000020.vmsize;
+2547:   FUN_0000f368();
+2548:   *(undefined4 *)pqVar46 = 1;
+2549:   pqVar46[1] = (qword)FUN_01027980;
+2550:   pqVar46[2] = (qword)FUN_002f2880;
+2551:   pqVar46[3] = (qword)FUN_0255db00;
+2552:   pqVar46[4] = (qword)&LAB_03b26c40;
+2553:   pqVar46[6] = uVar4;
+2554:   pqVar46[5] = uVar15;
+2555:   *(undefined1 *)(pqVar46 + 7) = 0;
+2556:   uStack_1a8 = &DAT_100000001;
+2557:   local_1a0 = CONCAT44(local_1a0._4_4_,3);
+2558:   local_190 = 0;
+2559:   uStack_188 = 0;
+2560:   local_198 = 0;
+2561:   local_1b0 = pqVar46;
+2562:   FUN_01c1438c(pcVar34 + 0xd8,&DAT_0ea05548,&local_1b0);
+2563:   FUN_0174ad24(&local_1b0);
+2564:   lVar16 = *(long *)(param_1 + 0x5c0);
+2565:   pcVar34 = DAT_0ef0a480;
+2566:   if (DAT_0ef0a480 == (char *)0x0) {
+2567:     FUN_042d36f8();
+2568:   }
+2569:   FUN_000ab5b0();
+2570:   pcVar20 = pcVar34;
+2571:   FUN_0136f140();
+2572:   *(undefined ***)pcVar20 = &PTR_LAB_0e726ab0;
+2573:   *(undefined ***)(pcVar20 + 8) = &PTR_LAB_0e726e98;
+2574:   *(undefined ***)(pcVar20 + 0x10) = &PTR_LAB_0e726ec0;
+2575:   *(undefined ***)(pcVar20 + 0x68) = &PTR_setProperty_forKey__0e726ef8;
+2576:   *(undefined ***)(pcVar20 + 0x70) = &PTR_LAB_0e726f28;
+2577:   *(undefined ***)(pcVar20 + 0xb0) = &PTR_LAB_0e726f78;
+2578:   *(undefined ***)(pcVar20 + 0xd8) = &PTR_LAB_0e726fd8;
+2579:   *(undefined ***)(pcVar20 + 0xf8) = &PTR_LAB_0e727008;
+2580:   FUN_027d1a60();
+2581:   if (pcVar34[0x1a9] != '\0') {
+2582:     pcVar34[0x1a9] = 0;
+2583:     FUN_00f27fd0(pcVar20 + 0xf8,(long)pcVar34 + 0x1a9);
+2584:   }
+2585:   if (pcVar34[0x169] != '\0') {
+2586:                     /* WARNING: Does not return */
+2587:     pcVar8 = (code *)SoftwareBreakpoint(0,0x37e5694);
+2588:     (*pcVar8)();
+2589:   }
+2590:   FUN_007793fc(lVar16,pcVar34,*(undefined8 *)(lVar16 + 0x198));
+2591:   if (((ulong)pcVar34 & 0xfffffffc00000000) == DAT_0ebb2088) {
+2592:     FUN_000142fc(pcVar34);
+2593:   }
+2594:   if ((*(ulong *)(param_1 + 0x5d8) & 0xfffffffc00000000) == DAT_0ebb2088) {
+2595:     FUN_00022a3c();
+2596:   }
+2597:   *(char **)(param_1 + 0x5d8) = pcVar34;
+2598:   (**(code **)(*(long *)pcVar34 + 0xa0))(pcVar34,0);
+2599:   pcVar34 = DAT_0ef0a480;
+2600:   if (DAT_0ef0a480 == (char *)0x0) {
