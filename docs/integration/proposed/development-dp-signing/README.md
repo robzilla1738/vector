@@ -1,5 +1,7 @@
 # Conditional local Apple Development DP signing proposal
 
+Historical proposal and scoped authentication evidence. Current development is local UI/behavior fidelity; the owner removed signing and provisioning from that work. Do not resume the actions or approval requests below. See [current status](../../../STATUS.md) and the workspace rules.
+
 Status: **proposal only, not ready for signing approval**. Root's authorized read-only identity inspection found one valid Apple Development identity and no Developer ID Application identity. This assessment reads only that public fingerprint/team metadata and static copied implementation inputs. It invokes no signing tool mutation, private key, profile inspection/creation, native command, DP query, grant or developer service.
 
 `proposal.json` contains concrete own-team identities, exact existing disposable home/scope, proposed first shared group, three actual DP callers and their currently available input hashes. It is deliberately **not** an executable policy for the existing ad hoc signer: it has no signing targets field, and all new authorities are explicitly false. Original supplied cryptography, wrapped formats, derivation labels and mapped `aux.<homeSHA>.<original logical key>` selectors remain unchanged.

@@ -1,5 +1,7 @@
 # Node native guard and startup seams
 
+The source-only/queued statements below describe the original proposal. Later actual build and scoped authority evidence is recorded in [current status](../../../STATUS.md) and the development-DP evidence files. Current local UI/behavior work excludes signing and provisioning; historical approval instructions below do not reopen those workflows.
+
 Status: source-only integration slice. No shared Chromium files edited. Native compile remains queued: carrier/interposer session31341 and newly added NAPI guard session27971. Neither new guard nor fixed-scope revision has compiled or run. Earlier successful pointer proof applies to earlier carrier only.
 
 ## Production loader contract
