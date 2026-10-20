@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import hashlib,json,subprocess,tempfile
+r=Path(__file__).resolve().parent;sha=lambda b:hashlib.sha256(b).hexdigest();j=json.loads((r/'manifest.json').read_text())
+with tempfile.TemporaryDirectory(prefix='aux-task-expansion-') as d:
+ for f in j['files']:
+  if f['baselineSha256'] is not None:
+   p=Path(d)/f['path'];p.parent.mkdir(parents=True,exist_ok=True);v=(r/'baseline'/f['path']).read_bytes();assert sha(v)==f['baselineSha256'];p.write_bytes(v)
+ subprocess.run(['git','-C',d,'apply','--check',str(r/'native.patch')],check=True)
+ subprocess.run(['git','-C',d,'apply',str(r/'native.patch')],check=True)
+ for f in j['files']:
+  v=(Path(d)/f['path']).read_bytes();assert sha(v)==f['outputSha256'] and v==(r/'port'/f['path']).read_bytes()
+print('PASS three-file common group-header agent-mode replay; uncompiled/unmounted')
+e=json.loads((r/'source-evidence.json').read_text());b=Path(e['artifact']['path']).read_bytes();assert sha(b)==e['artifact']['sha256']
+for f in e['functions']:
+ assert sha(b[int(f['start'],16):int(f['stopExclusive'],16)])==f['bytesSha256']
+ assert sha((r/(f['name']+'.asm')).read_bytes())==f['asmSha256']
+print("PASS original header/agent-mode/layout/palette source pins")
+
+import re,struct
+icon=e['icon'];code=(r/'port/chrome/browser/ui/views/tabs/common/aux_agent_group_header_icon.inc').read_text();body=code.split('Path[] = {',1)[1].split('};',1)[0];encoded=bytearray()
+for command,scalar in re.findall(r'gfx::(\w+)|(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?f)',body):
+ encoded+=struct.pack('<I',icon['commands'].index(command)) if command else struct.pack('<f',float(scalar[:-1]))
+assert len(encoded)==icon['elements']*4 and sha(encoded)==icon['bytesSha256']
+assert sha(b[int(icon['pathAddress'],16):int(icon['pathAddress'],16)+len(encoded)])==icon['bytesSha256']
+for c in e['constants']:assert list(struct.unpack_from('<4i',b,int(c['address'],16)))==c['ints']
+assert sha(Path(e['locale']['path']).read_bytes())==e['locale']['sha256']
+assert e['locale']['text']=='Tabs controlled by Aside while it works'
+assert e['locale']['auxText']=='Tabs controlled by Aux while it works'
+print('PASS exact360 glyph scalar bits, layout constants and supplied locale pin')

@@ -1,0 +1,320 @@
+--- a/chrome/browser/ui/views/tabs/common/tab_group_header_view.h
++++ b/chrome/browser/ui/views/tabs/common/tab_group_header_view.h
+@@ -94,6 +94,7 @@
+   void OnBlur() override;
+   void AddedToWidget() override;
+   void RemovedFromWidget() override;
++  void OnThemeChanged() override;
+ 
+   // views::FocusChangeListener:
+   void OnWillChangeFocus(views::View* focused_before,
+@@ -145,6 +146,7 @@
+   tab_groups::TabGroupVisualData tab_group_visual_data_;
+   bool needs_attention_ = false;
+   bool is_shared_ = false;
++  bool is_agent_group_ = false;
+ 
+   // The sync icon that is displayed in the tab group header of saved groups in
+   // the tabstrip.
+@@ -155,6 +157,9 @@
+   // The circle indicator rendered after the title when a tab group needs
+   // attention.
+   const raw_ptr<views::ImageView> attention_indicator_ = nullptr;
++
++  const raw_ptr<views::FlexLayoutView> agent_count_badge_ = nullptr;
++  const raw_ptr<views::Label> agent_count_label_ = nullptr;
+ 
+   const raw_ptr<views::LabelButton> editor_bubble_button_ = nullptr;
+ 
+--- a/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
++++ b/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
+@@ -5,6 +5,11 @@
+ #include "chrome/browser/ui/views/tabs/common/tab_group_header_view.h"
+ 
+ #include "base/task/single_thread_task_runner.h"
++#include "base/check.h"
++#include "base/check_op.h"
++#include "base/strings/string_number_conversions.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/gfx/vector_icon_types.h"
+ #include "build/build_config.h"
+ #include "build/buildflag.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+@@ -56,6 +61,21 @@
+ // The amount of padding between the label and any sync icon.
+ constexpr int kSyncIconLabelPadding = 2;
+ 
++#include "chrome/browser/ui/views/tabs/common/aux_agent_group_header_icon.inc"
++
++class AuxAiTabsCountBadgeView final : public views::FlexLayoutView {
++  METADATA_HEADER(AuxAiTabsCountBadgeView, views::FlexLayoutView)
++ public:
++  AuxAiTabsCountBadgeView() {
++    SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
++    SetOrientation(views::LayoutOrientation::kVertical);
++    SetCanProcessEventsWithinSubtree(false);
++    SetVisible(false);
++  }
++};
++BEGIN_METADATA(AuxAiTabsCountBadgeView)
++END_METADATA
++
+ views::ScrollView* GetScrollView(views::View* view) {
+   views::View* ancestor = view;
+   while (ancestor) {
+@@ -138,10 +158,13 @@
+     const tab_groups::TabGroupVisualData* tab_group_visual_data)
+     : HoverCardAnchorTarget(this),
+       tab_group_visual_data_(*tab_group_visual_data),
++      is_agent_group_(tab_group_visual_data->is_agent_group()),
+       sync_icon_(AddChildView(std::make_unique<views::ImageView>())),
+       group_header_label_(
+           AddChildView(std::make_unique<TabGroupHeaderLabel>())),
+       attention_indicator_(AddChildView(std::make_unique<views::ImageView>())),
++      agent_count_badge_(AddChildView(std::make_unique<AuxAiTabsCountBadgeView>())),
++      agent_count_label_(agent_count_badge_->AddChildView(std::make_unique<views::Label>())),
+       editor_bubble_button_(
+           orientation == TabStripOrientation::kVertical
+               ? AddChildView(std::make_unique<views::LabelButton>(
+@@ -158,10 +181,15 @@
+   attention_indicator_->SetProperty(views::kElementIdentifierKey,
+                                     kTabGroupHeaderAttentionIndicatorElementId);
+   SetNotifyEnterExitOnChild(true);
++  agent_count_badge_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));
++  agent_count_label_->SetAutoColorReadabilityEnabled(false);
++  agent_count_label_->SetFontList(agent_count_label_->font_list()
++      .DeriveWithSizeDelta(12 - agent_count_label_->font_list().GetFontSize())
++      .DeriveWithWeight(gfx::Font::Weight::MEDIUM));
+ 
+   if (editor_bubble_button_) {
+     ConfigureEditorBubbleButton(editor_bubble_button_);
+-    editor_bubble_button_->SetVisible(delegate_->IsGroupFocused());
++    editor_bubble_button_->SetVisible(!is_agent_group_ && delegate_->IsGroupFocused());
+   }
+   editor_bubble_opened_subscription_ =
+       editor_bubble_tracker_.RegisterOnBubbleOpened(base::BindRepeating(
+@@ -224,6 +252,11 @@
+ 
+ TabGroupHeaderView::~TabGroupHeaderView() = default;
+ 
++void TabGroupHeaderView::OnThemeChanged() {
++  views::FlexLayoutView::OnThemeChanged();
++  if (is_agent_group_) OnDataChanged(delegate_->GetTabGroupData());
++}
++
+ gfx::Size TabGroupHeaderView::CalculatePreferredSize(
+     const views::SizeBounds& available_size) const {
+   gfx::Size size =
+@@ -442,7 +475,7 @@
+           FROM_HERE,
+           base::BindOnce(
+               [](base::WeakPtr<TabGroupHeaderView> view) {
+-                if (view && view->editor_bubble_button_) {
++                if (view && !view->is_agent_group_ && view->editor_bubble_button_) {
+                   view->GetFocusManager()->SetFocusedViewWithReason(
+                       view->editor_bubble_button_,
+                       views::FocusManager::FocusChangeReason::kFocusTraversal);
+@@ -464,6 +497,7 @@
+     views::View* source,
+     const gfx::Point& point,
+     ui::mojom::MenuSourceType source_type) {
++  if (is_agent_group_) return;
+   // When the context menu is triggered via keyboard, the keyboard event
+   // propagates to the textfield inside the Editor Bubble. In those cases, we
+   // want to tell the Editor Bubble to stop the event by setting
+@@ -516,12 +550,20 @@
+ }
+ 
+ tab_groups::TabGroupId TabGroupHeaderView::group() const {
++  // A source Agent-session aggregate has real tab data, not a physical group ID.
++  CHECK(!is_agent_group_);
+   return delegate_->GetTabGroup().id();
+ }
+ 
+ void TabGroupHeaderView::OnDataChanged(
+     const tabs::TabGroupData& tab_group_data) {
+   tab_group_visual_data_ = tab_group_data.visual_data;
++  is_agent_group_ = tab_group_visual_data_.is_agent_group();
++  agent_count_badge_->SetVisible(is_agent_group_);
++  if (is_agent_group_) {
++    CHECK_GE(tab_group_data.num_tabs_in_group, 0);
++    agent_count_label_->SetText(base::NumberToString16(tab_group_data.num_tabs_in_group));
++  }
+   is_shared_ = tab_group_data.is_sharing_group;
+ 
+   group_header_label_->SetText(tab_group_visual_data_.title());
+@@ -536,14 +578,22 @@
+ 
+     // Update save tab group related items, the sync icon and attention
+     // indicator.
+-    sync_icon_->SetVisible(is_shared_);
+-    if (is_shared_) {
++    sync_icon_->SetVisible(is_agent_group_ || is_shared_);
++    sync_icon_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, is_agent_group_ ? 8 : kSyncIconLabelPadding));
++    if (is_agent_group_) {
++      const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
++      const SkColor secondary = dark ? 0x8cfafafa : 0x8c0a0a0a;
++      sync_icon_->SetImage(ui::ImageModel::FromVectorIcon(
++          kAuxAgentHeaderSparkleIcon, secondary, 16));
++      sync_icon_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
++      agent_count_label_->SetEnabledColor(secondary);
++    } else if (is_shared_) {
+       sync_icon_->SetImage(ui::ImageModel::FromVectorIcon(
+           features::IsRoundedIconsEnabled() ? kGroupCustomIcon
+                                             : kPeopleGroupOldIcon,
+           foreground_color, kIconSize));
+     }
+-    if (tab_group_visual_data_.is_collapsed() && needs_attention_) {
++    if (!is_agent_group_ && tab_group_visual_data_.is_collapsed() && needs_attention_) {
+       attention_indicator_->SetVisible(true);
+       attention_indicator_->SetImage(ui::ImageModel::FromVectorIcon(
+           kDefaultTouchFaviconMaskCustomIcon, foreground_color,
+@@ -573,8 +623,8 @@
+     }
+ 
+     // Update background.
+-    SetBackground(views::CreateRoundedRectBackground(background_color,
+-                                                     GetCornerRadius()));
++    SetBackground(is_agent_group_ ? nullptr :
++        views::CreateRoundedRectBackground(background_color, GetCornerRadius()));
+     UpdateAttentionState(
+         data_sharing::features::IsDataSharingFunctionalityEnabled() &&
+         tab_group_data.needs_attention);
+@@ -585,12 +635,17 @@
+ 
+   if (features::IsTabGroupHoverCardsEnabled()) {
+     SetHoverCardDataFrom(tab_group_data);
++    if (is_agent_group_) SetTooltipText(u"Tabs controlled by Aux while it works");
+   } else {
+     UpdateTooltipText();
+   }
+ }
+ 
+ void TabGroupHeaderView::UpdateTooltipText() {
++  if (is_agent_group_) {
++    SetTooltipText(u"Tabs controlled by Aux while it works");
++    return;
++  }
+   if (group_header_label_->GetText().empty()) {
+     SetTooltipText(
+         l10n_util::GetStringFUTF16(IDS_TAB_GROUPS_UNNAMED_GROUP_TOOLTIP,
+@@ -618,7 +673,7 @@
+   }
+   needs_attention_ = needs_attention;
+ 
+-  if (tab_group_visual_data_.is_collapsed() && needs_attention_) {
++  if (!is_agent_group_ && tab_group_visual_data_.is_collapsed() && needs_attention_) {
+     attention_indicator_->SetVisible(true);
+     attention_indicator_->SetImage(ui::ImageModel::FromVectorIcon(
+         kDefaultTouchFaviconMaskCustomIcon, GetForegroundColor(),
+@@ -654,7 +709,7 @@
+   std::u16string shared_state = u"";
+   if (is_shared_) {
+     shared_state = l10n_util::GetStringUTF16(IDS_SAVED_GROUP_AX_LABEL_SHARED);
+-    if (tab_group_visual_data_.is_collapsed() && needs_attention_) {
++    if (!is_agent_group_ && tab_group_visual_data_.is_collapsed() && needs_attention_) {
+       shared_state += u", " + l10n_util::GetStringUTF16(
+                                   DATA_SHARING_GROUP_LABEL_NEW_ACTIVITY);
+     }
+@@ -675,6 +730,10 @@
+ }
+ 
+ SkColor TabGroupHeaderView::GetForegroundColor() const {
++  if (is_agent_group_ && tab_group_visual_data_.color() == tab_groups::TabGroupColorId::kGrey && GetWidget()) {
++    const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
++    return dark ? 0x8cfafafa : 0x8c0a0a0a;
++  }
+   if (GetColorProvider()) {
+     SkColor background_color = GetColorProvider()->GetColor(
+         GetTabGroupTabStripColorId(tab_group_visual_data_.color(),
+@@ -722,12 +781,17 @@
+   if (!editor_bubble_button_) {
+     return;
+   }
++  if (is_agent_group_) {
++    editor_bubble_button_->SetVisible(false);
++    return;
++  }
+   editor_bubble_button_->SetVisible(delegate_->IsGroupFocused() ||
+                                     editor_bubble_tracker_.is_open() ||
+                                     is_hovered);
+ }
+ 
+ void TabGroupHeaderView::ShowEditorBubble() {
++  if (is_agent_group_) return;
+   if (editor_bubble_tracker_.is_open()) {
+     return;
+   }
+--- /dev/null
++++ b/chrome/browser/ui/views/tabs/common/aux_agent_group_header_icon.inc
+@@ -0,0 +1,70 @@
++// Exact supplied e9d5848 -> d3e64b8 functional glyph; original scalar bits.
++constexpr gfx::PathElement kAuxAgentHeaderSparklePath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 12.0f, 7.32999992f,
++    gfx::CUBIC_TO, 12.3699999f, 7.32999992f, 12.6700001f, 7.63000011f, 12.6700001f, 8.0f,
++    gfx::CUBIC_TO, 12.6700001f, 8.84000015f, 12.8500004f, 9.30000019f, 13.1099997f, 9.56000042f,
++    gfx::CUBIC_TO, 13.3699999f, 9.81000042f, 13.8199997f, 10.0f, 14.6700001f, 10.0f,
++    gfx::CUBIC_TO, 15.0299997f, 10.0f, 15.3299999f, 10.3000002f, 15.3299999f, 10.6700001f,
++    gfx::CUBIC_TO, 15.3299999f, 11.0299997f, 15.0299997f, 11.3299999f, 14.6700001f, 11.3299999f,
++    gfx::CUBIC_TO, 13.8199997f, 11.3299999f, 13.3699999f, 11.5200005f, 13.1099997f, 11.7799997f,
++    gfx::CUBIC_TO, 12.8500004f, 12.0299997f, 12.6700001f, 12.4899998f, 12.6700001f, 13.3299999f,
++    gfx::CUBIC_TO, 12.6700001f, 13.6999998f, 12.3699999f, 14.0f, 12.0f, 14.0f,
++    gfx::CUBIC_TO, 11.6300001f, 14.0f, 11.3299999f, 13.6999998f, 11.3299999f, 13.3299999f,
++    gfx::CUBIC_TO, 11.3299999f, 12.4899998f, 11.1499996f, 12.0299997f, 10.8900003f, 11.7799997f,
++    gfx::CUBIC_TO, 10.6300001f, 11.5200005f, 10.1800003f, 11.3299999f, 9.32999992f, 11.3299999f,
++    gfx::CUBIC_TO, 8.96000004f, 11.3299999f, 8.67000008f, 11.0299997f, 8.67000008f, 10.6700001f,
++    gfx::CUBIC_TO, 8.67000008f, 10.3000002f, 8.96000004f, 10.0f, 9.32999992f, 10.0f,
++    gfx::CUBIC_TO, 10.1800003f, 10.0f, 10.6300001f, 9.81000042f, 10.8900003f, 9.56000042f,
++    gfx::CUBIC_TO, 11.1499996f, 9.30000019f, 11.3299999f, 8.84000015f, 11.3299999f, 8.0f,
++    gfx::CUBIC_TO, 11.3299999f, 7.63000011f, 11.6300001f, 7.32999992f, 12.0f, 7.32999992f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 12.0f, 2.67000008f,
++    gfx::CUBIC_TO, 13.4700003f, 2.67000008f, 14.6700001f, 3.8599999f, 14.6700001f, 5.32999992f,
++    gfx::CUBIC_TO, 14.6700001f, 5.69999981f, 14.3699999f, 6.0f, 14.0f, 6.0f,
++    gfx::CUBIC_TO, 13.6300001f, 6.0f, 13.3299999f, 5.69999981f, 13.3299999f, 5.32999992f,
++    gfx::CUBIC_TO, 13.3299999f, 4.5999999f, 12.7399998f, 4.0f, 12.0f, 4.0f,
++    gfx::H_LINE_TO, 4.0f,
++    gfx::CUBIC_TO, 3.25999999f, 4.0f, 2.67000008f, 4.5999999f, 2.67000008f, 5.32999992f,
++    gfx::V_LINE_TO, 10.6700001f,
++    gfx::CUBIC_TO, 2.67000008f, 11.3999996f, 3.25999999f, 12.0f, 4.0f, 12.0f,
++    gfx::H_LINE_TO, 6.67000008f,
++    gfx::CUBIC_TO, 7.03000021f, 12.0f, 7.32999992f, 12.3000002f, 7.32999992f, 12.6700001f,
++    gfx::CUBIC_TO, 7.32999992f, 13.0299997f, 7.03000021f, 13.3299999f, 6.67000008f, 13.3299999f,
++    gfx::H_LINE_TO, 4.0f,
++    gfx::CUBIC_TO, 2.52999997f, 13.3299999f, 1.33000004f, 12.1400003f, 1.33000004f, 10.6700001f,
++    gfx::V_LINE_TO, 5.32999992f,
++    gfx::CUBIC_TO, 1.33000004f, 3.8599999f, 2.52999997f, 2.67000008f, 4.0f, 2.67000008f,
++    gfx::H_LINE_TO, 12.0f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 11.8299999f, 10.5f,
++    gfx::CUBIC_TO, 11.7700005f, 10.5600004f, 11.71f, 10.6099997f, 11.6499996f, 10.6700001f,
++    gfx::CUBIC_TO, 11.71f, 10.7200003f, 11.7700005f, 10.7700005f, 11.8299999f, 10.8299999f,
++    gfx::CUBIC_TO, 11.8900003f, 10.8900003f, 11.9499998f, 10.96f, 12.0f, 11.0200005f,
++    gfx::CUBIC_TO, 12.0500002f, 10.96f, 12.1099997f, 10.8900003f, 12.1700001f, 10.8299999f,
++    gfx::CUBIC_TO, 12.2299995f, 10.7700005f, 12.29f, 10.7200003f, 12.3500004f, 10.6700001f,
++    gfx::CUBIC_TO, 12.29f, 10.6099997f, 12.2299995f, 10.5600004f, 12.1700001f, 10.5f,
++    gfx::CUBIC_TO, 12.1099997f, 10.4399996f, 12.0500002f, 10.3800001f, 12.0f, 10.3100004f,
++    gfx::CUBIC_TO, 11.9499998f, 10.3800001f, 11.8900003f, 10.4399996f, 11.8299999f, 10.5f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 4.0f, 4.67000008f,
++    gfx::CUBIC_TO, 4.36999989f, 4.67000008f, 4.67000008f, 4.96999979f, 4.67000008f, 5.32999992f,
++    gfx::CUBIC_TO, 4.67000008f, 5.69999981f, 4.36999989f, 6.0f, 4.0f, 6.0f,
++    gfx::CUBIC_TO, 3.63000011f, 6.0f, 3.32999992f, 5.69999981f, 3.32999992f, 5.32999992f,
++    gfx::CUBIC_TO, 3.32999992f, 4.96999979f, 3.63000011f, 4.67000008f, 4.0f, 4.67000008f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 6.0f, 4.67000008f,
++    gfx::CUBIC_TO, 6.36999989f, 4.67000008f, 6.67000008f, 4.96999979f, 6.67000008f, 5.32999992f,
++    gfx::CUBIC_TO, 6.67000008f, 5.69999981f, 6.36999989f, 6.0f, 6.0f, 6.0f,
++    gfx::CUBIC_TO, 5.63000011f, 6.0f, 5.32999992f, 5.69999981f, 5.32999992f, 5.32999992f,
++    gfx::CUBIC_TO, 5.32999992f, 4.96999979f, 5.63000011f, 4.67000008f, 6.0f, 4.67000008f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 8.0f, 4.67000008f,
++    gfx::CUBIC_TO, 8.36999989f, 4.67000008f, 8.67000008f, 4.96999979f, 8.67000008f, 5.32999992f,
++    gfx::CUBIC_TO, 8.67000008f, 5.69999981f, 8.36999989f, 6.0f, 8.0f, 6.0f,
++    gfx::CUBIC_TO, 7.63000011f, 6.0f, 7.32999992f, 5.69999981f, 7.32999992f, 5.32999992f,
++    gfx::CUBIC_TO, 7.32999992f, 4.96999979f, 7.63000011f, 4.67000008f, 8.0f, 4.67000008f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kAuxAgentHeaderSparkleReps[] = {{kAuxAgentHeaderSparklePath}};
++const gfx::VectorIcon kAuxAgentHeaderSparkleIcon(kAuxAgentHeaderSparkleReps, 1, "kAuxAgentHeaderSparkleIcon");

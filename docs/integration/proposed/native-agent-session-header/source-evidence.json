@@ -1,0 +1,134 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor-badge",
+      "start": "0x411b300",
+      "stopExclusive": "0x411d440",
+      "bytesSha256": "1fefbe0b24de7661c2448dc9667d7c289cd1a2fdfecf61f65ca28f0c93773e0d",
+      "asmSha256": "0e2ac5f8c645ab50b071185eb3e9eb76090857bb3a8b519af361bda128e830d4"
+    },
+    {
+      "name": "agent-data-update",
+      "start": "0x411f0c0",
+      "stopExclusive": "0x411fbf0",
+      "bytesSha256": "9f52e5a0ef534019bce2a9e748e5bf4ebbe5910f1fe50050b81e6fca86f6880a",
+      "asmSha256": "a7f33cda138c1f50278fe9c02f5f3ee1a087639c60d7614c53c5dcaf8d9455e4"
+    },
+    {
+      "name": "agent-color-chip-suppression",
+      "start": "0x411fbf0",
+      "stopExclusive": "0x411fc3c",
+      "bytesSha256": "226b94d6370044fa3eb6ed20dcda64081d384fb0bb86fb30903b644a1c2bbed1",
+      "asmSha256": "820158dde4606010b49b4a312bcd721a7dff8de57e8a95e9d5990654548b8176"
+    },
+    {
+      "name": "agent-editor-suppression",
+      "start": "0x411e8c0",
+      "stopExclusive": "0x411e940",
+      "bytesSha256": "df6767393df553cd0fef9004e588ee0d39de27dd84076452bcc5f914c6069d21",
+      "asmSha256": "9c86236a4325f552f3ff7f2228e4eb53288aa8394ae16765b70a35098123d106"
+    },
+    {
+      "name": "badge-metadata",
+      "start": "0x41200e8",
+      "stopExclusive": "0x41201e0",
+      "bytesSha256": "7d174aed0a403c20420586d9c3ac75c40bbce1f731c7e882960c0f1eeb93aef7",
+      "asmSha256": "ee70098bb98c3387c5aeaa230d5623e262db5001017ed867c45fe37b83500f33"
+    },
+    {
+      "name": "secondary-palette",
+      "start": "0x35e73e0",
+      "stopExclusive": "0x35e73f8",
+      "bytesSha256": "c139d9fe9cb23c83941e4590092d5f85005e03b1fdf283ff0fea3b9760441415",
+      "asmSha256": "3a11af4e40dc9f6de8528d25383eee8134a2aae2569f51efed9e4d87c06d94de"
+    },
+    {
+      "name": "grey-foreground-role",
+      "start": "0x41da630",
+      "stopExclusive": "0x41da664",
+      "bytesSha256": "9d2820efff65bfec6e3191569af22c390302439f5a8745a7fab9eb606dffa3a1",
+      "asmSha256": "5c78198c77a89b5a426ab3a169a3f7ad26c0b236643ba7ac13b599f8b36fedce"
+    }
+  ],
+  "constants": [
+    {
+      "address": "0xdf40070",
+      "ints": [
+        0,
+        8,
+        0,
+        0
+      ]
+    },
+    {
+      "address": "0xdf40090",
+      "ints": [
+        0,
+        0,
+        0,
+        8
+      ]
+    },
+    {
+      "address": "0xdf3e700",
+      "ints": [
+        0,
+        4,
+        0,
+        0
+      ]
+    }
+  ],
+  "icon": {
+    "iconAddress": "0xe9d5848",
+    "repAddress": "0xe9d5838",
+    "pathAddress": "0xd3e64b8",
+    "elements": 360,
+    "bytesSha256": "1f41263459f656b9f8d1b92945eaf805cd8a152fb8dd19b99ca5aabcaa1074ea",
+    "commands": [
+      "NEW_PATH",
+      "FILL_RULE_NONZERO",
+      "PATH_COLOR_ALPHA",
+      "PATH_COLOR_ARGB",
+      "PATH_MODE_CLEAR",
+      "STROKE",
+      "CAP_SQUARE",
+      "MOVE_TO",
+      "R_MOVE_TO",
+      "ARC_TO",
+      "R_ARC_TO",
+      "LINE_TO",
+      "R_LINE_TO",
+      "H_LINE_TO",
+      "R_H_LINE_TO",
+      "V_LINE_TO",
+      "R_V_LINE_TO",
+      "CUBIC_TO",
+      "R_CUBIC_TO",
+      "CUBIC_TO_SHORTHAND",
+      "QUADRATIC_TO",
+      "R_QUADRATIC_TO",
+      "QUADRATIC_TO_SHORTHAND",
+      "R_QUADRATIC_TO_SHORTHAND",
+      "CIRCLE",
+      "OVAL",
+      "ROUND_RECT",
+      "CLOSE",
+      "CANVAS_DIMENSIONS",
+      "CLIP",
+      "DISABLE_AA",
+      "FLIPS_IN_RTL"
+    ]
+  },
+  "locale": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/en.lproj/locale.pak",
+    "sha256": "b3e12b14fee821ba97f6efd73554d344c8c79791ef60e46c05029859853320c6",
+    "resource": 11290,
+    "text": "Tabs controlled by Aside while it works",
+    "auxText": "Tabs controlled by Aux while it works"
+  }
+}

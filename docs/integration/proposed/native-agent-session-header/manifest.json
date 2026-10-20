@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "actual356 unchanged commonHeader; new agent mode only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_group_header_view.h",
+      "baselineSha256": "e66549db75683abb2bd679ea561af184ad6bdda2b72ae0c496e11156fcb44aab",
+      "outputSha256": "cc39cc0224baf0ab4b0c4fa2d70539b88dc40af31aae30c99b3a67a1736e99d6"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/tab_group_header_view.cc",
+      "baselineSha256": "5ba35bf4a24960cc964fd4e24feac3ace1b669a5145d1995a54e989d544524c2",
+      "outputSha256": "06336bcbbaf52bb6620d2528bc12d38a7200144be7b990109fa9deb80a9d6a68"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/common/aux_agent_group_header_icon.inc",
+      "baselineSha256": null,
+      "outputSha256": "94055efad79d0cf9f4d5c69fdd5ba4eb560dbc51b9db28f88a112523811960e2"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
