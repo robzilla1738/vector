@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "base": "actual shared200 page (includes189/190 adapters); two new capture source files",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h",
+      "baselineSha256": null,
+      "outputSha256": "43e642461dac62490bae12cda7b06abe195ca0ca67d61b413b1e342fa2948ecf"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.cc",
+      "baselineSha256": null,
+      "outputSha256": "f2908dddc7e8b94451a6b66abf982abceaa4b904ea2a4c269b9ef4f336fec165"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+      "baselineSha256": "57677b73be4b269027c4813e3a4eeab03193acc38012029d1fd166b1abb7292d",
+      "outputSha256": "135f6a4fb78f410da6a2e58e552d93f6d55bcd195cce76aa69d5a9a9b6bab030",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-image-cache/baseline/chrome/browser/ui/views/frame/aux_profile_preview_page.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "captureConnected": false
+}

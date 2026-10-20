@@ -1,0 +1,103 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "scheduler.asm",
+      "start": "0x4659080",
+      "stop": "0x465933c",
+      "bytesSha256": "305d9b185c07ea2e757c52072459f089fddcbb8843a781d2795f6e53acdd2de9",
+      "extractSha256": "35f142f95017abf5e80057bf54c23345b8a876e7f0809bd71189ac8dc54bf9cc"
+    },
+    {
+      "file": "capture.asm",
+      "start": "0x4680e80",
+      "stop": "0x4681484",
+      "bytesSha256": "78ea3a3fb562d2ba59558c815fd4e46e6c6013051019fdc6cbc76543c51bb2fd",
+      "extractSha256": "ce9731a13e8f3142cd849b8c838ae13e885b90be3606f77541af48fedc229f60"
+    },
+    {
+      "file": "callback.asm",
+      "start": "0x46814f0",
+      "stop": "0x46819ac",
+      "bytesSha256": "400f152529ac8b3666aea0254e63900eac509df344ad665bae0f31d5762fc97e",
+      "extractSha256": "7f902249cac434e125882caacc3ee50fb78909a7bf50f9112d7ed6f3e9aed225"
+    },
+    {
+      "file": "snapshot-api.asm",
+      "start": "0xa24bc40",
+      "stop": "0xa24bec0",
+      "bytesSha256": "aecda01c22c77a2bdeff83ce57d3adb584ca3319bb334a2214119797fc1f833e",
+      "extractSha256": "d41c1ed5f5c1067fe3fcd98c71aba570c1a7d1a111f7c6955b709538e62532d6"
+    },
+    {
+      "file": "roster.asm",
+      "start": "0x40fd74c",
+      "stop": "0x40fd7e0",
+      "bytesSha256": "232e37d8dd70c7c247cd7a5c798fd0221c1fd84e0fe83927e263c3da4d5646a2",
+      "extractSha256": "3014e39cef74d9ea84a0f241b8be003623079bccf5651f8820d55903310900eb"
+    },
+    {
+      "file": "page-image.asm",
+      "start": "0x46550b8",
+      "stop": "0x4655148",
+      "bytesSha256": "4f69c36bd9b2b024931f64256fd7898a6b06496c6740cca5828610d0503d18f2",
+      "extractSha256": "5cf47c3a81552c8b860cfe277e8e1a96a3142bc329d8a176def6f8f94aaef8d9"
+    },
+    {
+      "file": "page-clear.asm",
+      "start": "0x4655368",
+      "stop": "0x46553cc",
+      "bytesSha256": "ecfe89dba0f401915a753a6f856e10cf2ceee8328feee2bcea5e4340a0d76c2a",
+      "extractSha256": "2df9f54f5ed3e7cbd0ec8f3b6fc7864785dcffd0214ff908ed62243177266b39"
+    },
+    {
+      "file": "page-active.asm",
+      "start": "0x4658d3c",
+      "stop": "0x4658e2c",
+      "bytesSha256": "3c396d99a099c0e3576875fd80d1db1773676a9d145273f2ee250ff703ea01ba",
+      "extractSha256": "98f41f494d462c3c0e2b6f23921f3072c47499ccfd272ff9c57c7edb5e8db668"
+    },
+    {
+      "file": "start-capture.asm",
+      "start": "0x4655fec",
+      "stop": "0x4656000",
+      "bytesSha256": "6e31bf716859ac7412398a650c3828e1e4c6cc4bd511194ee0c33c9b088f5322",
+      "extractSha256": "1b8488e5e187e71b7aed31af6d2506906bfc9c71d5eda53cea5e442f14d1be57"
+    },
+    {
+      "file": "settled-capture.asm",
+      "start": "0x467d53c",
+      "stop": "0x467d554",
+      "bytesSha256": "85e2e2749d1c3460d70646a57445b4e2eb011ae0fc59cf51a1ea2637b4bf180d",
+      "extractSha256": "ef8befce3b2c61310f2b2d4c96420f4b269ad9b2e1ff9197e089447d2c9632a4"
+    },
+    {
+      "file": "header-owner.asm",
+      "start": "0x37e3b98",
+      "stop": "0x37e3d7c",
+      "bytesSha256": "5d00fe02d5eea004398f3a5630f164d15264f9364fd44db3928a0d25e11f6391",
+      "extractSha256": "b4bcbc18ff7a3eee66a917f94f784cbeae9634f8f784bc2a99656872f13ac429"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "ui/snapshot/snapshot.h",
+      "sha256": "8c27070431f7dbe79b0aabf22e601eb8ee6deb9c587a5afe84a4d14b3a2fa397"
+    },
+    {
+      "path": "ui/snapshot/snapshot_mac.mm",
+      "sha256": "95146d79aba77fe3d266a3be32776f1a21596bf47176d96c4f37f10f55f901a4"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage.h",
+      "sha256": "8123fe72170c6c958ccdc3a049f556c8757f625e5b0306d0603f255ef9bb4f66"
+    }
+  ],
+  "remaining": [
+    "Genuine header/search container and actual idle/collapse geometry callback are not yet mounted.",
+    "Capture cache is intentionally not connected until those real owners exist.",
+    "Native compile, capture and visual acceptance not run."
+  ]
+}

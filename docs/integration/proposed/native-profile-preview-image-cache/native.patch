@@ -1,0 +1,249 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h
+@@ -0,0 +1,66 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_CAPTURE_CACHE_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_CAPTURE_CACHE_H_
++
++#include <array>
++#include <map>
++#include <optional>
++#include <set>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/time/time.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/gfx/image/image_skia.h"
++#include "ui/views/view_tracker.h"
++
++class BrowserWindowInterface;
++namespace gfx { class Image; }
++namespace aux {
++
++// Genuine region layout, after its own layout pass. The original controller
++// supplies this only while gesture/commit/settlement are idle and its actual
++// collapsed/hover/expansion geometry satisfies the recovered151px guard.
++// header is the original+5a8 container (header+598 and search+5a0), NOT an
++// arbitrary top bar or the entire Sidebar. Missing roles are not substituted.
++struct ProfilePreviewCaptureGeometry {
++  gfx::Rect bounds;
++  raw_ptr<views::View> header = nullptr;
++  raw_ptr<views::View> scroll = nullptr;
++  std::array<raw_ptr<views::View>, 3> optional_content = {};
++};
++
++// Ports original4659080 /4680e80 /46814f0. Capture is real own-window native
++// GrabViewSnapshot. No background service, target execution or model image.
++// Deliberately unconnected until the original region header/layout owner is
++// restored: a null geometry callback result retries, never captures another UI.
++class ProfilePreviewCaptureCache {
++ public:
++  using Geometry = base::RepeatingCallback<
++      std::optional<ProfilePreviewCaptureGeometry>()>;
++  ProfilePreviewCaptureCache(BrowserWindowInterface& browser,
++                            views::View& region, Geometry geometry);
++  ~ProfilePreviewCaptureCache();
++  ProfilePreviewCaptureCache(const ProfilePreviewCaptureCache&) = delete;
++  ProfilePreviewCaptureCache& operator=(const ProfilePreviewCaptureCache&) = delete;
++
++  void Request(base::TimeDelta delay);
++  gfx::ImageSkia Find(const base::FilePath& path) const;
++
++ private:
++  bool IsCurrent(const base::FilePath& path) const;
++  void Schedule(base::FilePath path, base::TimeDelta delay, int attempt);
++  void Capture(base::FilePath path, int attempt);
++  void OnCaptured(base::FilePath path, int attempt, gfx::Image image);
++
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  views::ViewTracker region_;
++  Geometry geometry_;
++  std::set<base::FilePath> pending_;
++  std::map<base::FilePath, gfx::ImageSkia> images_;
++  base::WeakPtrFactory<ProfilePreviewCaptureCache> weak_factory_{this};
++};
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_CAPTURE_CACHE_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.cc
+@@ -0,0 +1,154 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/task/single_thread_task_runner.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "ui/gfx/image/image.h"
++#include "ui/snapshot/snapshot.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++namespace {
++constexpr int kLastAttempt = 3;
++// Original MOVZ0xd4c0/MOVK1 is120000microseconds, not100000.
++constexpr auto kRetryDelay = base::Microseconds(120000);
++
++bool HasMultipleProfiles() {
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (!manager) {
++    return false;
++  }
++  size_t count = 0;
++  for (auto* entry : manager->GetProfileAttributesStorage()
++                         .GetAllProfilesAttributesSortedForDisplay()) {
++    if (entry && !entry->IsOmitted() && ++count >= 2) {
++      return true;
++    }
++  }
++  return false;
++}
++
++bool Within(views::View& region, views::View* child,
++            const gfx::Rect& bounds) {
++  if (!child || !child->GetVisible() || child->size().IsEmpty() ||
++      !region.Contains(child) || !child->parent()) {
++    return false;
++  }
++  auto rect = child->bounds();
++  // Current155 has genuine nested children; preserve actual owner coordinates.
++  views::View::ConvertRectToTarget(child->parent(), &region, &rect);
++  return bounds.Contains(rect);
++}
++}  // namespace
++
++ProfilePreviewCaptureCache::ProfilePreviewCaptureCache(
++    BrowserWindowInterface& browser, views::View& region, Geometry geometry)
++    : browser_(browser.GetWeakPtr()), region_(&region),
++      geometry_(std::move(geometry)) {
++  CHECK(geometry_);
++}
++ProfilePreviewCaptureCache::~ProfilePreviewCaptureCache() = default;
++
++bool ProfilePreviewCaptureCache::IsCurrent(const base::FilePath& path) const {
++  auto* browser = browser_.get();
++  auto* profile = browser ? browser->GetProfile() : nullptr;
++  return profile && !profile->IsOffTheRecord() &&
++      profile->GetOriginalProfile()->GetPath() == path;
++}
++
++void ProfilePreviewCaptureCache::Request(base::TimeDelta delay) {
++  auto* browser = browser_.get();
++  auto* profile = browser ? browser->GetProfile() : nullptr;
++  if (profile && !profile->IsOffTheRecord()) {
++    Schedule(profile->GetOriginalProfile()->GetPath(), delay, 0);
++  }
++}
++
++void ProfilePreviewCaptureCache::Schedule(
++    base::FilePath path, base::TimeDelta delay, int attempt) {
++  if (path.empty() || attempt > kLastAttempt || !region_.view() ||
++      !HasMultipleProfiles() || !pending_.insert(path).second) {
++    return;
++  }
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(&ProfilePreviewCaptureCache::Capture,
++                     weak_factory_.GetWeakPtr(), path, attempt), delay);
++}
++
++void ProfilePreviewCaptureCache::Capture(base::FilePath path, int attempt) {
++  pending_.erase(path);
++  if (!IsCurrent(path) || !region_.view() || !HasMultipleProfiles()) {
++    return;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  region_.view()->DeprecatedLayoutImmediately();
++  if (!alive || !region_.view() || !IsCurrent(path)) {
++    return;
++  }
++  auto geometry = geometry_.Run();
++  if (!alive || !region_.view() || !IsCurrent(path)) {
++    return;
++  }
++  auto* region = region_.view();
++  if (!geometry || geometry->bounds.IsEmpty() ||
++      !Within(*region, geometry->header, geometry->bounds) ||
++      !Within(*region, geometry->scroll, geometry->bounds)) {
++    Schedule(path, kRetryDelay, attempt + 1);
++    return;
++  }
++  for (const auto& view : geometry->optional_content) {
++    if (view && view->GetVisible() && view->size().IsEmpty()) {
++      Schedule(path, kRetryDelay, attempt + 1);
++      return;
++    }
++  }
++  auto* widget = region->GetWidget();
++  auto* root = widget ? widget->GetRootView() : nullptr;
++  if (!root || !widget->GetNativeView()) {
++    return;
++  }
++  auto bounds = geometry->bounds;
++  views::View::ConvertRectToTarget(region, root, &bounds);
++  bounds.Intersect(root->GetLocalBounds());
++  if (bounds.IsEmpty()) {
++    return;
++  }
++  ui::GrabViewSnapshot(widget->GetNativeView(), bounds,
++      base::BindOnce(&ProfilePreviewCaptureCache::OnCaptured,
++                    weak_factory_.GetWeakPtr(), path, attempt));
++}
++
++void ProfilePreviewCaptureCache::OnCaptured(
++    base::FilePath path, int attempt, gfx::Image image) {
++  if (!region_.view() || !IsCurrent(path)) {
++    return;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  const bool idle = geometry_.Run().has_value();
++  if (!alive || !region_.view() || !IsCurrent(path)) {
++    return;
++  }
++  if (image.IsEmpty() || !idle) {
++    Schedule(path, kRetryDelay, attempt + 1);
++    return;
++  }
++  images_.insert_or_assign(path, image.AsImageSkia());
++}
++
++gfx::ImageSkia ProfilePreviewCaptureCache::Find(
++    const base::FilePath& path) const {
++  const auto found = images_.find(path);
++  return found == images_.end() ? gfx::ImageSkia() : found->second;
++}
++}  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
+@@ -254,9 +254,20 @@
+   InvalidateLayout();
+ }
+ void ProfilePagePreviewPageView::SetCapturedImage(const gfx::ImageSkia& image) {
++  // Original4654f/4655108: an actual borrowed live host takes precedence.
++  if (live_host_->GetVisible()) {
++    return;
++  }
+   captured_image_->SetImage(ui::ImageModel::FromImageSkia(image));
++  captured_image_->SetVisible(!image.isNull());
++  fallback_->SetVisible(image.isNull());
++  InvalidateLayout();
+ }
+ void ProfilePagePreviewPageView::ShowLiveContent(bool live) {
++  // Original4658d3c /4658374: active live/fallback presentation retires the
++  // cached image, rather than drawing metadata over a stale captured sidebar.
++  captured_image_->SetImage(ui::ImageModel());
++  captured_image_->SetVisible(false);
+   live_host_->SetVisible(live);
+   fallback_->SetVisible(!live);
+   InvalidateLayout();
