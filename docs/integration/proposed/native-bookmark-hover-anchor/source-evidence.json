@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "expectedSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "vtable": {
+    "address": "0xe7212d0",
+    "bytes": 80,
+    "sha256": "aad7a3ca3d262c626a8fc766a9e94fb5b63003caf4db22dad5ba3e4946543abe",
+    "pointerFormat": 2,
+    "entries": [
+      {
+        "slot": "0x0",
+        "encoded": "0x100000046217a8",
+        "target": "0x46217a8"
+      },
+      {
+        "slot": "0x8",
+        "encoded": "0x100000046217b0",
+        "target": "0x46217b0"
+      },
+      {
+        "slot": "0x10",
+        "encoded": "0x100000046217f0",
+        "target": "0x46217f0"
+      },
+      {
+        "slot": "0x18",
+        "encoded": "0x10000004621828",
+        "target": "0x4621828"
+      },
+      {
+        "slot": "0x20",
+        "encoded": "0x1000000460ee20",
+        "target": "0x460ee20"
+      },
+      {
+        "slot": "0x28",
+        "encoded": "0x1000000153f9e0",
+        "target": "0x153f9e0"
+      },
+      {
+        "slot": "0x30",
+        "encoded": "0x100000016dd180",
+        "target": "0x16dd180"
+      },
+      {
+        "slot": "0x38",
+        "encoded": "0x10000003f4fca8",
+        "target": "0x3f4fca8"
+      },
+      {
+        "slot": "0x40",
+        "encoded": "0x100000016dd180",
+        "target": "0x16dd180"
+      },
+      {
+        "slot": "0x48",
+        "encoded": "0x30000003f512c0",
+        "target": "0x3f512c0"
+      }
+    ]
+  },
+  "ranges": [
+    {
+      "name": "row-vtable-store",
+      "address": "0x4624100",
+      "bytes": 244,
+      "sourceBytesSha256": "bdd056052e414fe989be9be55395e79d9829df0366953ce22f5db26ace74222c",
+      "assemblySha256": "3da0e7de8b5543853ffb16f2def16dabe7ad98b71daa327876a100596754a4e6"
+    },
+    {
+      "name": "update",
+      "address": "0x27643c0",
+      "bytes": 536,
+      "sourceBytesSha256": "9358197fd3a1c1b94bd21e152d6b193e6896bf61fdbd9ffafa9ff95827b59114",
+      "assemblySha256": "b6dc69880a464e0420284e137ee487c0c75afcad278cbc0304c8d315c73882f3"
+    },
+    {
+      "name": "update-tail-thunk",
+      "address": "0xa76340c",
+      "bytes": 12,
+      "sourceBytesSha256": "b0281b6c0431f4c0d9947b4c72343ffff0fb87b7d46d8f271d4f10b8f7fc6249",
+      "assemblySha256": "ed23564a5c98472611978af86590de5cc13f8a557f3303ad26d9aa2d56e45cd6"
+    },
+    {
+      "name": "show-create-call",
+      "address": "0xc7abd3c",
+      "bytes": 116,
+      "sourceBytesSha256": "0ea58625b95e1b8c61abe7863a90e58176603dc49a21208a71885d749669fb22",
+      "assemblySha256": "db4095187e8efbb2d0f92ee201994fe0238c1d0283f0c08b4771df83ae414cba"
+    },
+    {
+      "name": "create-constructor-call",
+      "address": "0xc7ab260",
+      "bytes": 80,
+      "sourceBytesSha256": "7c1a42613ed5a473c4effd813aa26141dfdfd3b81287f9079c1a60b8ba25c51d",
+      "assemblySha256": "2b8be66bbd4d33f04dfbebc260a98195d61af3ef77d3896aab989ca313b973c2"
+    },
+    {
+      "name": "bubble-constructor-thunk",
+      "address": "0xc7a8f84",
+      "bytes": 4,
+      "sourceBytesSha256": "dea593504dad42e80569e2a895f59d836def7ebe9f800600e8d398d0a572083b",
+      "assemblySha256": "a30cf6bb51df95d6d83ccf0c33c29a1c6e80f1c207f4e9de56b95b9289cf0bbc"
+    },
+    {
+      "name": "bubble-base-call",
+      "address": "0xc7a8778",
+      "bytes": 104,
+      "sourceBytesSha256": "fb83a20e51ff2b339bd67e33772657355feaeb11f831259cc3e4648a36fc86e8",
+      "assemblySha256": "00655113f1c69fee6fb22fd114d41be7e72c597b1df1ec6d8291ebfe0a5604c6"
+    },
+    {
+      "name": "arrow-getter",
+      "address": "0x3f512c0",
+      "bytes": 8,
+      "sourceBytesSha256": "866b82fb6649dcf0f7873c61006d47004b1074ea9b382227c4ab724c93f547f7",
+      "assemblySha256": "ca56f18f31ab471e030273bfc387088ad99cf5d61f16b652deb144254585f695"
+    }
+  ],
+  "currentApi": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/bubble/bubble_border.h",
+    "sha256": "68b271850ea6ae625ad8e7b7fdd467929497eb36b2a454d1627a50669627cdb5",
+    "VERTICAL": 4,
+    "LEFT_TOP": 4
+  },
+  "finding": "Original bookmark row secondary vtable +0x48 returns constant4; original bubble ctor calls that exact virtual and forwards the result as its arrow argument. Actual155 enum LEFT_TOP=4. Original interface was not limited to the first five overridden functions. No current orientation/collapse heuristic is needed."
+}
