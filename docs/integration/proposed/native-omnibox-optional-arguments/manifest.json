@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual257; staged261 disjoint",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc",
+      "baselineSha256": "31ef092b5e3d3654da441511e31c8e99ca7a564a3506a9b601cd995f07a798c7",
+      "outputSha256": "95ee05b42d076c92f1be3ee1497c009bd9e557d1764bad980eaee92dcb2da86b",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-omnibox-optional-arguments/baseline/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,44 @@
+{
+  "sources": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideOmnibox.json",
+      "sha256": "c425ea67416b530a7455d03cc48374fd77ac798843948968992784eb1791030e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_omnibox.json",
+      "sha256": "888a1150b597b87c6681d9bfafd3259c3c1d0ef5e7903a26a6af199ccdcd1a0d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/renderer/bindings/api_signature.cc",
+      "sha256": "7f0326374714dbeb8f2ebb75a876b77eccaf2b745a2ba1f0bc371eb0d9a28aca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/renderer/bindings/api_signature_unittest.cc",
+      "sha256": "3fe23684312bb947c7ff88009ebf602489f7189b570b6ce0a154ed98b582bf20"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/newtab-CnOLQ0yu.js",
+      "sha256": "585d55943f27a1c09bd384dba357133dff68e99dc581e40cba5bf94803b3247f"
+    }
+  ],
+  "anchors": [
+    {
+      "source": "newtab-CnOLQ0yu.js",
+      "find": "S=await chrome.auxOmnibox?.createSession()",
+      "effect": "Actual supplied caller omits options; continues notifySessionStarted only with native result."
+    },
+    {
+      "source": "idl-asideOmnibox.json",
+      "effect": "createSession.options and queryAutocomplete.options optional object; addTabContext.delayUpload and deleteContext.fromAutomaticChip optional boolean."
+    },
+    {
+      "source": "api_signature.cc",
+      "effect": "ResolveProvidedArguments produces one positional entry per schema argument; ParseArgument empty optional calls AddNull; BaseValueArgumentParser::AddNull appends base::Value() NONE."
+    },
+    {
+      "source": "api_signature_unittest.cc",
+      "effect": "OptionalArguments test verifies empty input [] normalizes to [null]."
+    }
+  ],
+  "scope": "Accept the real bindings absent-value representation only at four schema-optional positions; no changes to native handler creation, session identity/frame/extension ownership, context uploads or errors."
+}

@@ -1,0 +1,71 @@
+--- a/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
++++ b/chrome/browser/extensions/api/aux_omnibox/aux_omnibox_api.cc
+@@ -236,13 +236,16 @@
+   OmniboxOwnerState::CreateForWebContents(owner);
+   auto* state = OmniboxOwnerState::FromWebContents(owner);
+   if (method == "createSession") {
+-    if (args().size() > 1 || (!args().empty() && !args()[0].is_dict()))
++    // Extension bindings normalize an omitted optional argument to NONE.
++    const auto* options = args().empty() ? nullptr : args()[0].GetIfDict();
++    if (args().size() > 1 ||
++        (!args().empty() && !args()[0].is_none() && !options))
+       return RespondNow(Error("Invalid session options"));
+     if (state->sessions.size() >= 16) return RespondNow(Error("Too many active search sessions"));
+     auto session = std::make_unique<OmniboxSession>(owner, extension_id());
+     if (!session->backend_) return RespondNow(Error("Native search handler is unavailable"));
+-    if (!args().empty()) {
+-      const auto* initial = args()[0].GetDict().FindString("initialText");
++    if (options) {
++      const auto* initial = options->FindString("initialText");
+       if (initial) {
+         if (initial->size() > 8192) return RespondNow(Error("Input is too long"));
+         session->initial_text_ = *initial;
+@@ -291,11 +294,13 @@
+   }
+   if (method == "queryAutocomplete") {
+     if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
+-        args()[1].GetString().size() > 8192 || (args().size() == 3 && !args()[2].is_dict()))
++        args()[1].GetString().size() > 8192 ||
++        (args().size() == 3 && !args()[2].is_none() && !args()[2].is_dict()))
+       return RespondNow(Error("Invalid autocomplete query"));
+     const auto input = base::UTF8ToUTF16(args()[1].GetString());
+     const base::DictValue empty;
+-    const auto& options = args().size() == 3 ? args()[2].GetDict() : empty;
++    const auto* supplied_options = args().size() == 3 ? args()[2].GetIfDict() : nullptr;
++    const auto& options = supplied_options ? *supplied_options : empty;
+     const auto* keyword = options.FindString("keyword");
+     const int cursor = options.FindInt("cursorPosition").value_or(input.size());
+     const bool ok = cursor >= 0 && session.backend_->Query(input,
+@@ -384,11 +389,13 @@
+           .Set("errorType", native::ProvidedUploadError(result.error())), std::nullopt);
+     }, std::move(reply)));
+     if (method == "addTabContext") {
+-      if (args().size() < 2 || !args()[1].is_int() ||
+-          (args().size() == 3 && !args()[2].is_bool())) return RespondNow(Error("Native tab identity required"));
++      if (args().size() < 2 || args().size() > 3 || !args()[1].is_int() ||
++          (args().size() == 3 && !args()[2].is_none() && !args()[2].is_bool())) return RespondNow(Error("Native tab identity required"));
+       const auto tab = NativeTabHandle(profile(), args()[1].GetInt());
+       if (!tab) return RespondNow(Error("Invalid tabId"));
+-      session.backend_->AddTabContext(*tab, args().size() == 3 && args()[2].GetBool(), std::move(callback));
++      session.backend_->AddTabContext(*tab,
++          args().size() == 3 && args()[2].is_bool() && args()[2].GetBool(),
++          std::move(callback));
+     } else {
+       if (!request) return RespondNow(Error("File context required"));
+       const auto* name = request->FindString("fileName");
+@@ -411,11 +418,12 @@
+     return RespondLater();
+   }
+   if (method == "deleteContext") {
+-    if (args().size() < 2 || !args()[1].is_string() ||
+-        (args().size() == 3 && !args()[2].is_bool())) return RespondNow(Error("Context token required"));
++    if (args().size() < 2 || args().size() > 3 || !args()[1].is_string() ||
++        (args().size() == 3 && !args()[2].is_none() && !args()[2].is_bool())) return RespondNow(Error("Context token required"));
+     auto token = base::UnguessableToken::DeserializeFromString(args()[1].GetString());
+     if (!token) return RespondNow(Error("Invalid native context token"));
+-    session.backend_->DeleteContext(*token, args().size() == 3 && args()[2].GetBool());
++    session.backend_->DeleteContext(*token,
++        args().size() == 3 && args()[2].is_bool() && args()[2].GetBool());
+     return RespondNow(NoArguments());
+   }
+   if (method == "clearFiles") {
