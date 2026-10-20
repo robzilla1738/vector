@@ -1,0 +1,23 @@
+--- a/chrome/browser/extensions/api/aux_adblock/filter_service.cc
++++ b/chrome/browser/extensions/api/aux_adblock/filter_service.cc
+@@ -724,7 +724,9 @@
+     return;
+   }
+   if (method == "startSubscriptionUpdate") {
+-    if (args.size() > 1 || (!args.empty() && !args[0].is_dict())) {
++    // The extension bindings preserve omitted optional positions as NONE.
++    const auto* options = args.empty() ? nullptr : args[0].GetIfDict();
++    if (args.size() > 1 || (!args.empty() && !args[0].is_none() && !options)) {
+       fail("Update options are invalid");
+       return;
+     }
+@@ -736,8 +738,7 @@
+       return;
+     }
+     std::vector<std::string> ids;
+-    const auto* requested =
+-        args.empty() ? nullptr : args[0].GetDict().FindList("ids");
++    const auto* requested = options ? options->FindList("ids") : nullptr;
+     if (requested) {
+       for (const auto& item : *requested) {
+         if (!item.is_string() || !Subscription(item.GetString())) {

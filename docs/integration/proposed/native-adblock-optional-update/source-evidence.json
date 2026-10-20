@@ -1,0 +1,232 @@
+{
+  "namespaces": [
+    {
+      "namespace": "auxAccount",
+      "originalFunctionCount": 4,
+      "currentFunctionCount": 4,
+      "originalOptionalPositions": [],
+      "currentOptionalPositions": [],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/browser-binding-CzDmxQNA.js",
+          "sha256": "7c1723d6d71f46cf98235fb77411277ba7ca533321cdf46dd73f4d7de7353231",
+          "offset": 1523,
+          "excerpt": "lable\"),getProfiles:()=>d(()=>chrome.auxAccount?.getProfiles(),\"Browser profiles are unavailable\"),selectProfile:t=>d(()=>chrome.auxMiniPopup?.switchProfile(t),\"Mini popup host is unavailable\")},S=\"page-selection-context:subscribe\",I=t=>!!t&&!t.startsWith(\"chrome://\")&&"
+        },
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/queries-ldd77hNk.js",
+          "sha256": "54428b8afd993c718ea02e8b3d9d3f2792d4627f505e2b831cbfb4c741347c22",
+          "offset": 62694,
+          "excerpt": "st t=typeof chrome>\"u\"?void 0:chrome.auxAccount;if(!t?.signDaemonAuthChallenge)throw new Error(\"Aux daemon Authorization requires chrome.auxAccount.signDaemonAuthChallenge\");return(await vt(async()=>t.signDaemonAuthChallenge(e),{signal:AbortSignal.timeout(ui),createAbor"
+        }
+      ]
+    },
+    {
+      "namespace": "auxBrowserPreferences",
+      "originalFunctionCount": 33,
+      "currentFunctionCount": 33,
+      "originalOptionalPositions": [],
+      "currentOptionalPositions": [],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/appearance-C03x8vQf.js",
+          "sha256": "a171562318a41f235f26d3a3a59ae64c2a34a867165c513bb75f99cb86d94ca4",
+          "offset": 1405,
+          "excerpt": "(),o=typeof chrome>\"u\"?void 0:chrome.auxBrowserPreferences,n=X(o),a=typeof chrome>\"u\"?void 0:chrome.auxMiniPopup,i=typeof a?.getShortcut==\"function\"&&typeof a.setShortcut==\"function\",[t,c,u]=U({queries:[h,ee,{...j,enabled:!n&&i}]}),d=K({mutationFn:async({commandId:s,sho"
+        },
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/appearance-Ceuw3-j6.js",
+          "sha256": "bb8e15ed17f7791543ad69e740cc6efe90898c365367506898eef6397fe83393",
+          "offset": 8013,
+          "excerpt": "tionPosition)throw new Error(\"chrome.auxBrowserPreferences.getVerticalTabInsertionPosition API is unavailable\");return o.getVerticalTabInsertionPosition()},enabled:c}),t=x({mutationFn:async o=>{const i=u();if(!i?.setVerticalTabInsertionPosition)throw new Error(\"chrome.a"
+        }
+      ]
+    },
+    {
+      "namespace": "auxMiniPopup",
+      "originalFunctionCount": 10,
+      "currentFunctionCount": 10,
+      "originalOptionalPositions": [],
+      "currentOptionalPositions": [],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/appearance-C03x8vQf.js",
+          "sha256": "a171562318a41f235f26d3a3a59ae64c2a34a867165c513bb75f99cb86d94ca4",
+          "offset": 1468,
+          "excerpt": "o),a=typeof chrome>\"u\"?void 0:chrome.auxMiniPopup,i=typeof a?.getShortcut==\"function\"&&typeof a.setShortcut==\"function\",[t,c,u]=U({queries:[h,ee,{...j,enabled:!n&&i}]}),d=K({mutationFn:async({commandId:s,shortcut:l})=>(await W(o,s,l),h.queryFn()),onSuccess:s=>{r.setQuer"
+        },
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/browser-binding-CzDmxQNA.js",
+          "sha256": "7c1723d6d71f46cf98235fb77411277ba7ca533321cdf46dd73f4d7de7353231",
+          "offset": 1250,
+          "excerpt": "t(r)}},x={setHeight:t=>{v(()=>chrome.auxMiniPopup?.setSize(g,t))},requestClose:()=>{v(()=>chrome.auxMiniPopup?.hide())},openProfileUrl:t=>w({method:\"Aux.openProfileUrl\",params:{url:t}}),pickDirectory:()=>d(()=>chrome.auxMiniPopup?.pickDirectory(),\"Mini popup host is una"
+        }
+      ]
+    },
+    {
+      "namespace": "auxNotification",
+      "originalFunctionCount": 2,
+      "currentFunctionCount": 2,
+      "originalOptionalPositions": [],
+      "currentOptionalPositions": [],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/background.js",
+          "sha256": "ef899fabd47a911283e35cfa810ba3ff05801d12c297c344b2151f7f1c4055f6",
+          "offset": 295931,
+          "excerpt": ".params.targetId);\n      if (!chrome.auxNotification) throw new Error(\"chrome.auxNotification API not available (requires Aux browser)\");\n      return await chrome.auxNotification.requestPermission(n), { success: !0 };\n    }\n    case \"Aux.revokeNotificationPermission\":\n"
+        }
+      ]
+    },
+    {
+      "namespace": "auxBrowserImport",
+      "originalFunctionCount": 4,
+      "currentFunctionCount": 4,
+      "originalOptionalPositions": [],
+      "currentOptionalPositions": [],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/extension-main-Dz1-AsCT.js",
+          "sha256": "19e9f0b24cae91aa8dfc3df71240f3255b82cb8f24ee5f184efe2d2a17e3b92c",
+          "offset": 25114,
+          "excerpt": ":async()=>typeof chrome>\"u\"||!chrome.auxBrowserImport?[]:await chrome.auxBrowserImport.getImportSources()},$r={queryKey:[\"auxBrowserImport\",\"completed\"],queryFn:async()=>[...await Q()]},ni=e=>{M=e},ai=()=>M,si=()=>{M=null},ii=async(e,t={})=>{const r=await Q();if(ce(e)&&"
+        },
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/general-3dgRbrRk.js",
+          "sha256": "55d04990d2bb9d8b5c8b427f4bc0bcde96269de4fc2e0820346734429feead2a",
+          "offset": 574546,
+          "excerpt": "},Rm=()=>typeof chrome<\"u\"&&!!chrome.auxBrowserImport,Cm=({dataKinds:e,description:t,onBusyChange:n,onClose:i,preparingDescription:r,progressFallbackTitle:s,progressTitlePrefix:a,successMessage:o,title:l})=>{const c=Yl(),h=Bn(),[d,u]=(0,at.useState)(\"\"),[p,_]=(0,at.useS"
+        }
+      ]
+    },
+    {
+      "namespace": "auxAdblock",
+      "originalFunctionCount": 14,
+      "currentFunctionCount": 14,
+      "originalOptionalPositions": [
+        {
+          "method": "startSubscriptionUpdate",
+          "index": 0,
+          "name": "options"
+        }
+      ],
+      "currentOptionalPositions": [
+        {
+          "method": "startSubscriptionUpdate",
+          "index": 0,
+          "name": "options"
+        }
+      ],
+      "suppliedCallers": [
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/done-DPzI9pFd.js",
+          "sha256": "52f50e3e0a5472bf25a8a2718b7b255ab77e12158f29ac08eb93ea3ae42b7aa0",
+          "offset": 13730,
+          "excerpt": "st P=typeof chrome>\"u\"?void 0:chrome.auxAdblock;P&&await Ve(P,r).catch(w=>{console.error(\"[onboarding] Could not set up Adblock\",w),D.error(\"Could not set up Adblock. You can enable it in Settings \u2192 Privacy.\")}),await S.mutateAsync({accountId:d}),await r.invalidateQueri"
+        },
+        {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/privacy-BeEEt9Qu.js",
+          "sha256": "3f2072d631ad33b6dcf9224203d43a0f62075c14bc9683746581f6cb43b24435",
+          "offset": 17390,
+          "excerpt": "st t=typeof chrome>\"u\"?void 0:chrome.auxAdblock;return t?(0,e.jsx)(Z,{title:\"Adblock\",children:(0,e.jsx)(q,{children:(0,e.jsx)(ys,{api:t})})}):null},ys=({api:t})=>{const{confirm:r}=W(),s=A(),a=j(M.state(t)),o=j(M.subscriptions(t)),l=j(M.customRules(t)),c=Gt({mutationKey"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideAccount.json",
+      "sha256": "8d5559baeefe2c68823dd6dfd17aea186e2dcc6c2a499230add8d6871079a32e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_account.json",
+      "sha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideBrowserPreferences.json",
+      "sha256": "f11130d19cfae062457e31c0474b4da2109b45ec22fc0bb13854c8b4f7b699e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_browser_preferences.json",
+      "sha256": "42b5d90cfcb115da723e6effa4e86f0a5a8e5b6330f9bf4dd250a65c545a4ba3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sha256": "f4c061bf002fcd682d1df18ec6f9afad1539ebae447fd66ec3f01a400dd38158"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_mini_popup.json",
+      "sha256": "6c505ae4ed39a75d142bc90b9e81c6b478b68f44cdca171249e215b760ddfd06"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "sha256": "d90980366a306c3071872c8ff43060690e1d299d84cc8b593712eef3dff1d503"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideNotification.json",
+      "sha256": "9318102d38be59b25fdcb6f5022594e8f6ce8e47f2a19421e92a971acc70c305"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_notification.json",
+      "sha256": "84656322f74f635bc7b0e05abc47d2d1fe9f5c0473952474bc7cb77cd30be011"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc",
+      "sha256": "359f01f37a4ba21a06cdd2b77608515699fb4b2ef3ca1fe1f2730c3281e0c9eb"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideBrowserImport.json",
+      "sha256": "6749876d48f66adf56d406b8a2344fb26f917106f0c883227d6593e9b0bf281c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_browser_import.json",
+      "sha256": "41648de35f1224565616e04ff97594711fcffab5d7e495ca014e2e87bb0bb6cf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc",
+      "sha256": "0f670a25085e6059b6b9d16ffe8e93bebd8ef0a2c64d342be9f6d718594c9e4b"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideAdblock.json",
+      "sha256": "994c80db2e7d82d5876dea8b8eed5d9405db15f1a60bd3916011a2f43280cce7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_adblock.json",
+      "sha256": "61ad0eb377c6f7b11b49fe8d68e5f1ffe96faaf3173900f5733d70e2d5343ca2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_adblock/aux_adblock_api.cc",
+      "sha256": "b52dfb7f8e53f9ed3f0d3f8503ea9085c55587ca66fe64a1516dae26e9ca403f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_adblock/filter_service.cc",
+      "sha256": "1a98f628cee3f205d16a824c188390a0700e3711e87397836aaa7213ee2f499e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/renderer/bindings/api_signature.cc",
+      "sha256": "7f0326374714dbeb8f2ebb75a876b77eccaf2b745a2ba1f0bc371eb0d9a28aca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/renderer/bindings/api_signature_unittest.cc",
+      "sha256": "3fe23684312bb947c7ff88009ebf602489f7189b570b6ce0a154ed98b582bf20"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/privacy-BeEEt9Qu.js",
+      "sha256": "3f2072d631ad33b6dcf9224203d43a0f62075c14bc9683746581f6cb43b24435"
+    }
+  ],
+  "positiveCaller": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-current/ui/agent/assets/privacy-BeEEt9Qu.js",
+    "find": "o=S(()=>t.startSubscriptionUpdate())",
+    "effect": "Supplied Manage filters explicit Update action invokes omittedoptions then waits for actual job progress."
+  },
+  "boundary": "AuxAdblockFunction forwards args().Clone unchanged to FilterService::Invoke; actual155 bindings append NONE for omittedoptionalpositions, but do not append absentcallback to the baseValue arglist. No optional positional params in the other five audited namespaces."
+}

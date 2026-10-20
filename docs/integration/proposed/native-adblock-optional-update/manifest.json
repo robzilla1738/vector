@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual268",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_adblock/filter_service.cc",
+      "baselineSha256": "1a98f628cee3f205d16a824c188390a0700e3711e87397836aaa7213ee2f499e",
+      "outputSha256": "fe5c6b30c530e09331befc0818c5937b015ae373025500f1783f370875ea3f44",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-adblock-optional-update/baseline/chrome/browser/extensions/api/aux_adblock/filter_service.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
