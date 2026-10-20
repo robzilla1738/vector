@@ -32,3 +32,9 @@ These are necessary Chromium155 integration adaptations around the reused source
 ## Validation
 
 Four exact actual-v524 baseline and output hashes are recorded in files.json. Disposable replay verifies all patch outputs. No native checkout changes, build, profile reads, preference mutation, signing or launch were performed. Integrator should compile and compare both apps above the same colorful desktop region, checking active/inactive and retained hover state. Actual liquid-glass appearance remains a runtime acceptance condition; this patch does not alone establish full-product parity.
+
+## Bounded post-integration audit
+
+After integration, no later opacity reset was found: Aux skips both native/frame service subscriptions; subsequent duplicate-material geometry/color callbacks return because their views were never created. Native compositor creation consumes the explicit translucent parameters. The original fullscreen replacement retains and reparents its compositor.
+
+A residual limitation remains in `BrowserViewTabbedLayoutImpl`'s retained-panel blur-backdrop visibility: it still requires `in_glass_mode()` from Chromium's separate eligibility service. In fullscreen or battery-ineligible windows, retained reveal can therefore lose its content blur even though the supplied native full-window material remains active. The normal active eligible preview is unaffected by this gate. This was recorded read-only; no extra build or speculative visual change was introduced before normal-window material acceptance.
