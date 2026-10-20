@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "entry-left-press",
+      "rva": "0x460a9e8",
+      "fileOffset": 73443816,
+      "bytes": 388,
+      "sha256": "5d3ed0fb0220445195df9e4252aa571234a8d69e4f95cba2d5bee2c45a5e15b6"
+    },
+    {
+      "name": "entry-drag-handler",
+      "rva": "0x460aec0",
+      "fileOffset": 73445056,
+      "bytes": 5608,
+      "sha256": "f4e6ae7dabd04b072fef8e1a3aede6024a8730e28bad8d131bf6ec7b0d6afdcc"
+    },
+    {
+      "name": "entry-release-handler",
+      "rva": "0x460c4a8",
+      "fileOffset": 73450664,
+      "bytes": 2476,
+      "sha256": "377d8bef201a95d7e18ad09a47d61668c57876b33b7f620953f9c28162c3e100"
+    },
+    {
+      "name": "entry-capture-lost",
+      "rva": "0x460ce54",
+      "fileOffset": 73453140,
+      "bytes": 476,
+      "sha256": "0adaf3386f78142766d9ad1e04e8ede56ddda86cb57bf1322673979baf19de91"
+    },
+    {
+      "name": "posted-capture-cleanup",
+      "rva": "0x460f1f8",
+      "fileOffset": 73462264,
+      "bytes": 736,
+      "sha256": "3ec4284a7fff4f4a75cb97aa4ac74710c413623fb9f1f09f147df38c6b856751"
+    },
+    {
+      "name": "ghost-widget-create",
+      "rva": "0x4607b70",
+      "fileOffset": 73431920,
+      "bytes": 1392,
+      "sha256": "45e6537dd6f7342b40ce2f140c1982f03d40c3891f5c5c2a7912bc24295d9b3f"
+    },
+    {
+      "name": "ghost-widget-update",
+      "rva": "0x4608f70",
+      "fileOffset": 73437040,
+      "bytes": 752,
+      "sha256": "2bcd435d75a307cd675eb5740f36151a3f200a57a72f186a5b278635d4816c4f"
+    },
+    {
+      "name": "reset-source-drag",
+      "rva": "0x46093c4",
+      "fileOffset": 73438148,
+      "bytes": 676,
+      "sha256": "d1e5ddf01d6555072e9929cb63256cf7f1e53d935f6024282263dd5ac53de089"
+    },
+    {
+      "name": "region-update-callback",
+      "rva": "0x462b5c0",
+      "fileOffset": 73577920,
+      "bytes": 1240,
+      "sha256": "164a270dffc52050bb606e3e397795c54c410d5835785084300c01c3af2e4d24"
+    },
+    {
+      "name": "region-finish-callback",
+      "rva": "0x462ba98",
+      "fileOffset": 73579160,
+      "bytes": 1044,
+      "sha256": "3ee190efbcca0aaa131ffa963c14b5e012c7dce2c290af2d876759f86f97e8bc"
+    }
+  ],
+  "facts": {
+    "threshold": "460af98\u2013460afb4: pressed, ONLY left; strict abs(dx)>8 OR abs(dy)>8 in leaf coordinates.",
+    "pressCapture": "460aa70\u2013460ab60: create/update hidden ghost, actualmousehandler/capture, store original leaf press + local graboffset.",
+    "routing": "460b234\u2013460b324: every update passes actualentryURL/title/image/optionalID, draggedSCREENrect and SCREENpoint to callback530; optionalreturnedSCREENrect decides route.",
+    "reorder": "460b42c\u2013460be20: nearest existing tile by draggedrect centre Manhattan distance, move same realchild and entryrecord, update actualindices, markdirty518, animate other children140ms.",
+    "ghost": "4607d40\u20134607d74 InitParams type7 TYPE_DRAG, translucent/noevents/notactivatable.4608f70 projects dragWidget/clone to realSCREENbounds; sourceEntryopacity0 when ghost exists.",
+    "release": "460c4a8: clear press/drag, release capture, restore transforms/opacity. Stored cross-route\u2192finish538(URL,title,optionalID), cleanup540; failedcompletion refreshes actualpref model. Ordinary dirty reorder\u2192posted realorderedprefwrite.",
+    "captureLost": "460ce54\u2013460d030 posts weak460f1f8 cleanup; cleanup resets actual source childtransforms/opacity/drag state and callback540, no persistence.",
+    "lineage": "Same original VerticalPinnedTabEntriesView and exact pinned_tabs model documented73506be4f; bookmark conversion remains genuine region-owned BookmarkModel operation."
+  },
+  "adaptations": [
+    "Current155 child-owned TYPE_DRAG Widget uses CLIENT_OWNS_WIDGET for explicit lifetime and same EntryView renderer.",
+    "Actual tabs::TabHandle replaces original optional numeric tab ID without deriving or reusing IDs; region revalidates actual profile/model.",
+    "Weak checks protect actual synchronous UI callback destruction; profile-switch pause cancels capture and destroys the old ghost.",
+    "Current leaf refresh defers while actual child is captured for dragging so original same-child in-memory reorder/press ownership is retained.",
+    "No synthesized OS drag events, model-transcript data, bookmark nodes, optional colors, auth state or accepted source payloads."
+  ]
+}

@@ -1,0 +1,504 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -11,11 +11,13 @@
+ #include <vector>
+ 
+ #include "base/callback_list.h"
++#include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/prefs/pref_change_registrar.h"
++#include "components/tabs/public/tab_interface.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/menus/simple_menu_model.h"
+@@ -27,6 +29,7 @@
+ class ExpandOnHoverLock;
+ namespace views {
+ class MenuRunner;
++class Widget;
+ }
+ 
+ // The supplied saved-entry leaf, distinct from stock live pinned-tab views.
+@@ -37,6 +40,22 @@
+  public:
+   explicit VerticalPinnedTabEntriesView(BrowserWindowInterface* browser);
+   ~VerticalPinnedTabEntriesView() override;
++
++  struct EntryDragData {
++    aux::PinnedTabEntry saved;
++    std::u16string title;
++    ui::ImageModel image;
++    std::optional<tabs::TabHandle> live_tab;
++  };
++  using EntryDragUpdate = base::RepeatingCallback<std::optional<gfx::Rect>(
++      const EntryDragData&, const gfx::Rect&, const gfx::Point&)>;
++  using EntryDragFinish = base::RepeatingCallback<bool(const EntryDragData&)>;
++  // Update consumes actual SCREEN tile bounds/pointer. An engaged rectangle
++  // routes to the region; even an empty rectangle is a genuine routed result.
++  void SetEntryDragCallbacks(EntryDragUpdate update, EntryDragFinish finish,
++                             base::RepeatingClosure cleanup);
++  void CancelEntryDrag();
++  bool IsEntryDragInProgress() const { return dragging_view_ != nullptr; }
+ 
+   // Original screen-space bookmark/tab drop projection. The region owns the
+   // real drag payload and deletes a bookmark only after a successful commit.
+@@ -73,6 +92,13 @@
+     bool active = false;
+   };
+   void BindProfile();
++  void PrepareEntryDrag(size_t index);
++  void DragEntry(EntryView* view, const gfx::Point& pointer,
++                 const gfx::Point& grab_offset);
++  void UpdateDragGhost(EntryView* view, const gfx::Rect& local_bounds);
++  void ReleaseEntryDrag();
++  void ResetEntryDrag();
++  void ReorderEntry(EntryView* view, size_t destination);
+   void ScheduleRefresh();
+   void Refresh();
+   void Activate(size_t index);
+@@ -97,6 +123,15 @@
+   GURL menu_url_;
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
++  EntryDragUpdate drag_update_;
++  EntryDragFinish drag_finish_;
++  base::RepeatingClosure drag_cleanup_;
++  raw_ptr<EntryView> dragging_view_ = nullptr;
++  std::optional<EntryDragData> drag_data_;
++  std::optional<gfx::Rect> drag_region_bounds_;
++  std::unique_ptr<views::Widget> drag_ghost_;
++  raw_ptr<EntryView> drag_ghost_entry_ = nullptr;
++  bool reorder_dirty_ = false;
+   std::optional<size_t> drop_insertion_;
+   bool compact_ = false;
+   std::optional<int> width_override_;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -137,6 +137,8 @@
+     SetNotifyEnterExitOnChild(true);
+   }
+   void Update() {
++    if (index_ >= owner_->entries_.size())
++      return;
+     const auto& entry = owner_->entries_[index_];
+     SetTooltipText(entry.title);
+     GetViewAccessibility().SetName(entry.title);
+@@ -169,11 +171,40 @@
+     if (!event.IsOnlyLeftMouseButton() && !event.IsOnlyMiddleMouseButton())
+       return false;
+     pressed_ = true;
++    auto weak = weak_factory_.GetWeakPtr();
+     RequestFocus();
++    if (!weak || owner_->paused_ || !owner_->model_)
++      return true;
++    if (event.IsOnlyLeftMouseButton()) {
++      grab_offset_ = event.location();
++      press_in_leaf_ = event.location();
++      views::View::ConvertPointToTarget(this, owner_, &press_in_leaf_);
++      owner_->PrepareEntryDrag(index_);
++      if (!weak)
++        return true;
++      SetMouseAndGestureHandler(this);
++      if (!weak)
++        return true;
++      if (GetWidget()) {
++        captured_ = true;
++        GetWidget()->SetCapture(this);
++      }
++    }
+     return true;
+   }
+   void OnMouseReleased(const ui::MouseEvent& event) override {
+     const bool pressed = std::exchange(pressed_, false);
++    const bool dragged = std::exchange(drag_started_, false);
++    auto weak = weak_factory_.GetWeakPtr();
++    captured_ = false;
++    if (GetWidget() && GetWidget()->HasCapture())
++      GetWidget()->ReleaseCapture();
++    if (!weak)
++      return;
++    if (dragged) {
++      owner_->ReleaseEntryDrag();
++      return;
++    }
+     if (!pressed || !HitTestPoint(event.location()))
+       return;
+     if (event.IsOnlyLeftMouseButton())
+@@ -220,8 +251,47 @@
+   void AnimationEnded(const gfx::Animation*) override {
+     SetTransform(gfx::Transform());
+   }
+-  void CancelPress() { pressed_ = false; }
+-  void OnMouseCaptureLost() override { CancelPress(); }
++  void SetIndex(size_t index) { index_ = index; }
++  void SetDraggedBounds(const gfx::Rect& bounds) {
++    auto weak = weak_factory_.GetWeakPtr();
++    slide_.Stop();
++    if (!weak)
++      return;
++    gfx::Transform transform;
++    transform.Translate(bounds.x() - x(), bounds.y() - y());
++    SetTransform(transform);
++  }
++  bool OnMouseDragged(const ui::MouseEvent& event) override {
++    if (!pressed_ || !event.IsOnlyLeftMouseButton())
++      return false;
++    gfx::Point pointer = event.location();
++    views::View::ConvertPointToTarget(this, owner_, &pointer);
++    const gfx::Vector2d movement = pointer - press_in_leaf_;
++    if (!drag_started_ && std::abs(movement.x()) <= 8 &&
++        std::abs(movement.y()) <= 8)
++      return false;
++    drag_started_ = true;
++    owner_->DragEntry(this, pointer, grab_offset_);
++    return true;
++  }
++  void CancelPress() {
++    pressed_ = false;
++    drag_started_ = false;
++    const bool captured = std::exchange(captured_, false);
++    if (captured && GetWidget() && GetWidget()->HasCapture())
++      GetWidget()->ReleaseCapture();
++  }
++  void OnMouseCaptureLost() override {
++    const bool dragged = drag_started_;
++    captured_ = false;
++    CancelPress();
++    if (dragged) {
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE,
++          base::BindOnce(&VerticalPinnedTabEntriesView::CancelEntryDrag,
++                         owner_->weak_factory_.GetWeakPtr()));
++    }
++  }
+   void OnMouseEntered(const ui::MouseEvent&) override {
+     hovered_ = true;
+     SchedulePaint();
+@@ -238,7 +308,8 @@
+     return true;
+   }
+   void OnPaint(gfx::Canvas* canvas) override {
+-    if (!GetWidget() || !GetColorProvider())
++    if (!GetWidget() || !GetColorProvider() ||
++        index_ >= owner_->entries_.size())
+       return;
+     const bool dark = IsDark(*this);
+     const bool active = owner_->entries_[index_].active;
+@@ -260,10 +331,14 @@
+ 
+  private:
+   const raw_ptr<VerticalPinnedTabEntriesView> owner_;
+-  const size_t index_;
++  size_t index_;
+   raw_ptr<views::ImageView> icon_ = nullptr;
+   gfx::Vector2d slide_offset_;
+   gfx::LinearAnimation slide_;
++  gfx::Point press_in_leaf_;
++  gfx::Point grab_offset_;
++  bool captured_ = false;
++  bool drag_started_ = false;
+   bool pressed_ = false;
+   bool hovered_ = false;
+   base::WeakPtrFactory<EntryView> weak_factory_{this};
+@@ -279,6 +354,8 @@
+   BindProfile();
+ }
+ VerticalPinnedTabEntriesView::~VerticalPinnedTabEntriesView() {
++  drag_ghost_entry_ = nullptr;
++  drag_ghost_.reset();
+   CancelContextMenu();
+   TabStripModelObserver::StopObservingAll(this);
+ }
+@@ -295,14 +372,23 @@
+   Refresh();
+ }
+ void VerticalPinnedTabEntriesView::PauseForProfileSwitch() {
++  auto weak = weak_factory_.GetWeakPtr();
++  CancelEntryDrag();
++  if (!weak)
++    return;
++  drag_ghost_entry_ = nullptr;
++  drag_ghost_.reset();
++  if (!weak)
++    return;
+   paused_ = true;
+   drop_insertion_.reset();
+-  auto weak = weak_factory_.GetWeakPtr();
+   CancelContextMenu();
+   if (!weak)
+     return;
+   for (views::View* child : children()) {
+     static_cast<EntryView*>(child)->CancelPress();
++    if (!weak)
++      return;
+     static_cast<EntryView*>(child)->StopDropAnimation();
+     if (!weak)
+       return;
+@@ -337,7 +423,7 @@
+                      weak_factory_.GetWeakPtr()));
+ }
+ void VerticalPinnedTabEntriesView::Refresh() {
+-  if (paused_ || !model_)
++  if (paused_ || !model_ || dragging_view_)
+     return;
+   ui_changes_.clear();
+   auto saved = aux::ReadPinnedTabEntries(*browser_->GetProfile()->GetPrefs());
+@@ -388,6 +474,240 @@
+   PreferredSizeChanged();
+   InvalidateLayout();
+ }
++void VerticalPinnedTabEntriesView::SetEntryDragCallbacks(
++    EntryDragUpdate update, EntryDragFinish finish,
++    base::RepeatingClosure cleanup) {
++  drag_update_ = std::move(update);
++  drag_finish_ = std::move(finish);
++  drag_cleanup_ = std::move(cleanup);
++}
++void VerticalPinnedTabEntriesView::PrepareEntryDrag(size_t index) {
++  if (paused_ || !model_ || index >= entries_.size() || !GetWidget())
++    return;
++  // The supplied leaf allocates this hidden TYPE_DRAG clone on left press.
++  if (drag_ghost_)
++    return;
++  auto weak = weak_factory_.GetWeakPtr();
++  auto ghost = std::make_unique<views::Widget>();
++  views::Widget::InitParams params(views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++                                  views::Widget::InitParams::TYPE_DRAG);
++  params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
++  params.accept_events = false;
++  params.activatable = views::Widget::InitParams::Activatable::kNo;
++  params.context = GetWidget()->GetNativeWindow();
++  ghost->Init(std::move(params));
++  if (!weak || !GetWidget())
++    return;
++  ghost->SetColorModeOverride(GetWidget()->GetColorMode());
++  if (!weak)
++    return;
++  auto entry = std::make_unique<EntryView>(this, index);
++  entry->SetCanProcessEventsWithinSubtree(false);
++  entry->SetFocusBehavior(FocusBehavior::NEVER);
++  EntryView* ghost_entry = ghost->SetContentsView(std::move(entry));
++  if (!weak)
++    return;
++  drag_ghost_entry_ = ghost_entry;
++  drag_ghost_ = std::move(ghost);
++}
++void VerticalPinnedTabEntriesView::DragEntry(
++    EntryView* view, const gfx::Point& pointer, const gfx::Point& grab_offset) {
++  if (paused_ || !model_ || !GetWidget())
++    return;
++  const auto child = std::ranges::find(children(), view);
++  if (child == children().end())
++    return;
++  size_t index = child - children().begin();
++  if (index >= entries_.size())
++    return;
++  if (!dragging_view_) {
++    dragging_view_ = view;
++    reorder_dirty_ = false;
++  }
++  if (dragging_view_ != view)
++    return;
++  const Entry& entry = entries_[index];
++  EntryDragData data{entry.saved, entry.title, entry.image, std::nullopt};
++  if (auto live = aux::FindPinnedTabEntry(*model_, entry.saved.url))
++    data.live_tab = model_->GetTabAtIndex(*live)->GetHandle();
++  const gfx::Rect local_bounds(pointer - grab_offset.OffsetFromOrigin(),
++                                view->size());
++  gfx::Rect screen_bounds = local_bounds;
++  gfx::Point screen_point = pointer;
++  views::View::ConvertRectToScreen(this, &screen_bounds);
++  views::View::ConvertPointToScreen(this, &screen_point);
++  auto weak = weak_factory_.GetWeakPtr();
++  const auto update = drag_update_;
++  std::optional<gfx::Rect> routed;
++  if (update)
++    routed = update.Run(data, screen_bounds, screen_point);
++  if (!weak || paused_ || dragging_view_ != view)
++    return;
++  const bool was_routed = drag_region_bounds_.has_value();
++  drag_region_bounds_ = routed;
++  drag_data_ = data;
++  if (routed) {
++    if (!routed->IsEmpty()) {
++      view->layer()->SetOpacity(0);
++      if (weak && drag_ghost_)
++        drag_ghost_->Hide();
++    } else {
++      UpdateDragGhost(view, local_bounds);
++    }
++    return;
++  }
++  if (was_routed) {
++    const auto cleanup = drag_cleanup_;
++    if (cleanup)
++      cleanup.Run();
++    if (!weak || paused_ || dragging_view_ != view)
++      return;
++  }
++  size_t nearest = 0;
++  int64_t distance = std::numeric_limits<int64_t>::max();
++  for (size_t i = 0; i < entries_.size(); ++i) {
++    const auto center = SlotBounds(i, entries_.size()).CenterPoint();
++    const auto dragged_center = local_bounds.CenterPoint();
++    const int64_t next = std::abs(int64_t{dragged_center.x()} - center.x()) +
++                         std::abs(int64_t{dragged_center.y()} - center.y());
++    if (next < distance) {
++      nearest = i;
++      distance = next;
++    }
++  }
++  if (nearest != index)
++    ReorderEntry(view, nearest);
++  if (weak && dragging_view_ == view)
++    UpdateDragGhost(view, local_bounds);
++}
++void VerticalPinnedTabEntriesView::UpdateDragGhost(
++    EntryView* view, const gfx::Rect& local_bounds) {
++  if (!GetWidget())
++    return;
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!drag_ghost_) {
++    view->SetDraggedBounds(local_bounds);
++    return;
++  }
++  const auto child = std::ranges::find(children(), view);
++  if (child == children().end())
++    return;
++  drag_ghost_->SetColorModeOverride(GetWidget()->GetColorMode());
++  if (!weak)
++    return;
++  drag_ghost_entry_->SetIndex(child - children().begin());
++  drag_ghost_entry_->Update();
++  if (!weak)
++    return;
++  gfx::Rect screen_bounds = local_bounds;
++  views::View::ConvertRectToScreen(this, &screen_bounds);
++  drag_ghost_->SetBounds(screen_bounds);
++  if (!weak)
++    return;
++  drag_ghost_->ShowInactive();
++  if (weak)
++    view->layer()->SetOpacity(0);
++}
++void VerticalPinnedTabEntriesView::ReorderEntry(EntryView* view,
++                                               size_t destination) {
++  const auto found = std::ranges::find(children(), view);
++  if (found == children().end() || destination >= entries_.size())
++    return;
++  const size_t source = found - children().begin();
++  if (source < destination)
++    std::rotate(entries_.begin() + source, entries_.begin() + source + 1,
++                entries_.begin() + destination + 1);
++  else
++    std::rotate(entries_.begin() + destination, entries_.begin() + source,
++                entries_.begin() + source + 1);
++  auto weak = weak_factory_.GetWeakPtr();
++  ReorderChildView(view, destination);
++  if (!weak)
++    return;
++  reorder_dirty_ = true;
++  for (size_t i = 0; i < children().size(); ++i) {
++    auto* entry = static_cast<EntryView*>(children()[i]);
++    entry->SetIndex(i);
++    if (entry == view)
++      entry->SetBoundsRect(SlotBounds(i, entries_.size()));
++    else
++      entry->MoveForDrop(SlotBounds(i, entries_.size()));
++    if (!weak)
++      return;
++  }
++}
++void VerticalPinnedTabEntriesView::ResetEntryDrag() {
++  dragging_view_ = nullptr;
++  drag_data_.reset();
++  drag_region_bounds_.reset();
++  reorder_dirty_ = false;
++  auto weak = weak_factory_.GetWeakPtr();
++  if (drag_ghost_)
++    drag_ghost_->Hide();
++  if (!weak)
++    return;
++  for (views::View* child : children()) {
++    auto* entry = static_cast<EntryView*>(child);
++    entry->CancelPress();
++    if (!weak)
++      return;
++    entry->StopDropAnimation();
++    if (!weak)
++      return;
++    entry->layer()->SetOpacity(1);
++    if (!weak)
++      return;
++  }
++  SchedulePaint();
++}
++void VerticalPinnedTabEntriesView::CancelEntryDrag() {
++  const bool had_drag = dragging_view_ != nullptr;
++  const auto cleanup = drag_cleanup_;
++  auto weak = weak_factory_.GetWeakPtr();
++  ResetEntryDrag();
++  if (weak && had_drag && cleanup)
++    cleanup.Run();
++}
++void VerticalPinnedTabEntriesView::ReleaseEntryDrag() {
++  if (!dragging_view_)
++    return;
++  const auto data = drag_data_;
++  const bool routed = drag_region_bounds_.has_value();
++  const bool dirty = reorder_dirty_;
++  std::vector<aux::PinnedTabEntry> saved;
++  if (!routed && dirty) {
++    for (const auto& entry : entries_)
++      saved.push_back(entry.saved);
++  }
++  Profile* const profile = browser_->GetProfile();
++  const auto finish = drag_finish_;
++  const auto cleanup = drag_cleanup_;
++  auto weak = weak_factory_.GetWeakPtr();
++  ResetEntryDrag();
++  if (!weak)
++    return;
++  if (routed && data) {
++    const bool completed = finish && finish.Run(*data);
++    if (!weak)
++      return;
++    if (cleanup)
++      cleanup.Run();
++    if (weak && !completed)
++      Refresh();
++    return;
++  }
++  if (dirty) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(
++            [](base::WeakPtr<VerticalPinnedTabEntriesView> owner,
++               Profile* expected, std::vector<aux::PinnedTabEntry> entries) {
++              if (owner && !owner->paused_ &&
++                  owner->browser_->GetProfile() == expected) {
++                aux::WritePinnedTabEntries(*expected->GetPrefs(), entries);
++              }
++            }, weak, profile, std::move(saved)));
++  }
++}
+ std::optional<gfx::Rect> VerticalPinnedTabEntriesView::UpdateDropInsertion(
+     const gfx::Point& screen_point) {
+   if (paused_ || !model_ || !GetWidget())
+@@ -656,6 +976,14 @@
+   ScheduleRefresh();
+ }
+ void VerticalPinnedTabEntriesView::OnTabStripModelDestroyed(TabStripModel*) {
++  auto weak = weak_factory_.GetWeakPtr();
++  CancelEntryDrag();
++  if (!weak)
++    return;
++  drag_ghost_entry_ = nullptr;
++  drag_ghost_.reset();
++  if (!weak)
++    return;
+   model_ = nullptr;
+   ui_changes_.clear();
+   pref_changes_.Reset();

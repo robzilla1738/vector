@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-drop 73506be4f outputs, staged292; ONLY leaf files",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "a276475b25efd11d871c121547c7b343c39ababca25303d72dfe51394ae904aa",
+      "outputSha256": "86a344aa7280d519c091a1f40e6b0ed97a4fc7ce8a88b9a3fdd98c2adf72d375"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "549116312565da1d3e91297260fce8fcaa414015054a03250bd58d156ed502b2",
+      "outputSha256": "9e9df6b186467218f647e2e4d39a62fbe46ab528aeb1767a107467be43c6278d"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "Root region must bind genuine update530/finish538/cleanup540 callbacks.",
+    "Original optional RGB accent remains unavailable in current leaf model; no fabricated accent is supplied.",
+    "Native compilation and disposable real drag observation remain unperformed."
+  ]
+}
