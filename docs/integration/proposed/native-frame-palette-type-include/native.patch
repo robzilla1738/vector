@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/color/chrome_color_mixers.cc
++++ b/chrome/browser/ui/color/chrome_color_mixers.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/ui/color/tab_strip_color_mixer.h"
+ #include "ui/color/color_mixer.h"
+ #include "ui/color/color_provider.h"
++#include "ui/color/color_recipe.h"
+ #include "ui/color/color_provider_utils.h"
+ 
+ namespace {

@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
-      "baseSha256": "c16c802195823f8e6a9ec8103beb1be1471fdebdad248e4faad514a6f105c6e1",
-      "patchedSha256": "5944987c97e9939acc64fd67665db909b47d196f81243ae8c50f1fcecc4e8b72"
+      "baselineSha256": "c16c802195823f8e6a9ec8103beb1be1471fdebdad248e4faad514a6f105c6e1",
+      "outputSha256": "5944987c97e9939acc64fd67665db909b47d196f81243ae8c50f1fcecc4e8b72"
     }
   ]
 }
