@@ -1,0 +1,31 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.h",
+      "baselineSha256": "607ffd58427cdded4971bbdc95c6fda8f9d27c1ffa2f670cb464c7038c21c034",
+      "outputSha256": "dc84616ea5fed4ffe3a3d3361c56b0e4576b6dc6f640641c0b854cb683a738e9"
+    },
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "baselineSha256": "f582f9cc1e4bb9944982bd1c1640bcd20fb817fd23466d9bedcab70a74f73d3d",
+      "outputSha256": "29bf94e0e9ef3d98f91cb4840f4a03a3ea5f12f0509b8f4e7a93e52788783470"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "da7a4402278333797b42d14ff001d782946e1ea1d7b2c5209c14697ad1b44660",
+      "outputSha256": "b4eb841fbc0788a312e218caddfdb429fd3b3a02363f6bf37ed63aceab6263c9"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h",
+      "baselineSha256": "9350603645c387d3c89c4de3570944743931061eb53806f3add3dc8520120f6e",
+      "outputSha256": "e36b71f0b5610b1bcd3752ab6b12bc8f7a3d282c6f5da32ca204d11031d590d5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "f2b47252fdda1bd6e70f13cb70a342ac076fd40d3a4c6f41cfdc45deadf5df47",
+      "outputSha256": "066113294d4fbf39cafec2549b45104abf819398b1890a8c1922d55834436f70"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

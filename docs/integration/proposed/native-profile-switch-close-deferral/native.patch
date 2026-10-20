@@ -1,0 +1,161 @@
+--- a/chrome/browser/ui/browser.h
++++ b/chrome/browser/ui/browser.h
+@@ -148,6 +148,11 @@
+   base::CallbackListSubscription RegisterBrowserCloseCancelled(
+       BrowserCloseCancelledCallback callback) override;
+   base::WeakPtr<BrowserWindowInterface> GetWeakPtr() override;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Preserve a genuine window-close request until the synchronous transfer
++  // ends.
++  bool DeferCloseForAuxProfileSwitch();
++#endif
+   base::CallbackListSubscription RegisterActiveTabDidChange(
+       ActiveTabChangeCallback callback) override;
+   tabs::TabInterface* GetActiveTabInterface() override;
+@@ -337,6 +342,7 @@
+   // Original Browser+104/+105/+108: whole transaction, transient empty-tab
+   // suppression and generation, not a global/profile-wide saving toggle.
+   bool aux_profile_switch_in_progress_ = false;
++  bool aux_profile_switch_deferred_close_ = false;
+   bool aux_profile_switch_suppress_empty_ = false;
+   uint32_t aux_profile_switch_generation_ = 0;
+ #endif
+--- a/chrome/browser/ui/browser.cc
++++ b/chrome/browser/ui/browser.cc
+@@ -612,6 +612,14 @@
+ }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++bool Browser::DeferCloseForAuxProfileSwitch() {
++  if (!aux_profile_switch_in_progress_) {
++    return false;
++  }
++  aux_profile_switch_deferred_close_ = true;
++  return true;
++}
++
+ void Browser::CommitAuxProfileSwitchIdentity(
+     Profile* target,
+     std::unique_ptr<ScopedProfileKeepAlive> prepared_keep_alive) {
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -4632,6 +4632,15 @@
+ // BrowserView, views::ClientView overrides:
+ 
+ views::CloseRequestResult BrowserView::OnWindowCloseRequested() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (BrowserInitState::From(browser_) &&
++      static_cast<Browser*>(browser_.get())->DeferCloseForAuxProfileSwitch()) {
++    // Do not hide the frame or start teardown while its actual tabs/profile
++    // are being transferred. The real Close request is retried after
++    // settlement.
++    return views::CloseRequestResult::kCannotClose;
++  }
++#endif
+   // You cannot close a frame for which there is an active originating drag
+   // session.
+   if (tab_strip_view() && !tab_strip_view()->IsTabStripCloseable()) {
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
+@@ -6,11 +6,13 @@
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/types/pass_key.h"
+ #include "chrome/browser/ui/aux_profile_switch_session_rebuild.h"
+ 
+ class Browser;
+ class BrowserWindowFeatures;
++class BrowserWindowInterface;
+ class Profile;
+ namespace aux {
+ // Window-owned, synchronous core of the supplied in-place transaction. No
+@@ -61,6 +63,7 @@
+  private:
+   struct Scope;
+   static void Complete(Scope* scope);
++  static void ReleaseMutation(base::WeakPtr<BrowserWindowInterface> window);
+   base::raw_ref<Browser> owner_;
+   ProfileSwitchSessionRebuild rebuild_;
+ };
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -4,12 +4,12 @@
+ #include <array>
+ #include <utility>
+ 
+-#include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/check_op.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+@@ -21,6 +21,7 @@
+ #include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_manager_service.h"
+ #include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window_theme_observer.h"
+ #include "chrome/browser/ui/sessions/session_service_browser_helper.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+@@ -68,6 +69,29 @@
+     : owner_(owner) {}
+ ProfileSwitchTransaction::~ProfileSwitchTransaction() = default;
+ 
++void ProfileSwitchTransaction::ReleaseMutation(
++    base::WeakPtr<BrowserWindowInterface> window) {
++  if (!window) {
++    return;
++  }
++  auto* browser = static_cast<Browser*>(window.get());
++  browser->aux_profile_switch_in_progress_ = false;
++  if (std::exchange(browser->aux_profile_switch_deferred_close_, false)) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(
++            [](base::WeakPtr<BrowserWindowInterface> actual_window) {
++              if (actual_window) {
++                if (auto* native_window =
++                        BrowserWindow::FromBrowser(actual_window.get())) {
++                  native_window->Close();
++                }
++              }
++            },
++            window));
++  }
++}
++
+ void ProfileSwitchTransaction::Complete(Scope* scope) {
+   auto& browser = *scope->browsers[0];
+   auto& previous_cache = *scope->browsers[1];
+@@ -115,7 +139,9 @@
+   }
+   // Protect the actual owner against reentrant switches/close while real cache
+   // constructors and their observers run, not only after construction ends.
+-  base::AutoReset<bool> active(&browser.aux_profile_switch_in_progress_, true);
++  browser.aux_profile_switch_in_progress_ = true;
++  base::ScopedClosureRunner active(base::BindOnce(
++      &ProfileSwitchTransaction::ReleaseMutation, browser.GetWeakPtr()));
+   // All unported/native profile-bound surfaces must refuse HERE, before cache
+   // creation, menus, tabs, identity or auth/bootstrap side effects.
+   auto bindings = std::move(prepare).Run(browser, *target);
+@@ -161,8 +187,12 @@
+       !bindings->revalidate_.Run(browser, old_cache, next_cache)) {
+     return Result::kRejected;
+   }
+-  base::AutoReset<bool> old_active(&old_cache.aux_profile_switch_in_progress_, true);
+-  base::AutoReset<bool> next_active(&next_cache.aux_profile_switch_in_progress_, true);
++  old_cache.aux_profile_switch_in_progress_ = true;
++  base::ScopedClosureRunner old_active(base::BindOnce(
++      &ProfileSwitchTransaction::ReleaseMutation, old_cache.GetWeakPtr()));
++  next_cache.aux_profile_switch_in_progress_ = true;
++  base::ScopedClosureRunner next_active(base::BindOnce(
++      &ProfileSwitchTransaction::ReleaseMutation, next_cache.GetWeakPtr()));
+   Scope scope;
+   scope.bindings = &*bindings;
+   scope.browsers = {&browser, &old_cache, &next_cache};
