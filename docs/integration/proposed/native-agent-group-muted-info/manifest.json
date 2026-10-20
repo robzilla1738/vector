@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "actual native161; group enum5 already present; no prior extension_tab_util.cc adaptation",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/extension_tab_util.cc",
+      "baselineSha256": "c6919164dd0f69213437eaf3c22201eb2395ebea3506771274844552b7aebc8b",
+      "outputSha256": "d8ecdb44f724893a856ac42c9b518fe951e13c22df3349ba17fddf6449e1628f"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

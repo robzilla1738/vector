@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "real-reason-getter",
+      "rva": "0x76832e0",
+      "bytes": 52,
+      "sha256": "cab237b237be41aa19f72a8d805f7de02b12d655ee95d1c59ee6841655c8788c"
+    },
+    {
+      "name": "tab-muted-info-creator",
+      "rva": "0x7631c9c",
+      "bytes": 288,
+      "sha256": "8b3979798c18cf653cf9c7a584f712da3276b33de4d4c9ab5cb6c6a09b0b06df"
+    },
+    {
+      "name": "muted-info-serializer",
+      "rva": "0xc489ad4",
+      "bytes": 232,
+      "sha256": "b03fdf201fd712b2d5a54d1d99332aa3e7cb24dc68190785bc0a95e048fcb960"
+    },
+    {
+      "name": "tab-serializer-call",
+      "rva": "0xc48a94c",
+      "bytes": 48,
+      "sha256": "d3c1f170014b2209f30f1e72d2022db29e7c153dc4cc3544b851cf7c07c59e78"
+    },
+    {
+      "name": "agent-group-owned-mute",
+      "rva": "0x41e331c",
+      "bytes": 128,
+      "sha256": "75be02cd60cb777808cc150e04bf6d9f8d3ed65f467e8e2b4aca1149691234ef"
+    }
+  ],
+  "strings": [
+    {
+      "rva": "0xd983698",
+      "value": "muted"
+    },
+    {
+      "rva": "0xd8a569b",
+      "value": "reason"
+    },
+    {
+      "rva": "0xda18dd2",
+      "value": "extensionId"
+    },
+    {
+      "rva": "0xd8d8ddc",
+      "value": "user"
+    },
+    {
+      "rva": "0xdda32b1",
+      "value": "capture"
+    },
+    {
+      "rva": "0xd88f4aa",
+      "value": "extension"
+    },
+    {
+      "rva": "0xdea9fa2",
+      "value": "mutedInfo"
+    }
+  ],
+  "reasonGetterDirectCallers": [
+    "0x2cd9724",
+    "0x41e334c",
+    "0x7631cc8",
+    "0x7d3934c"
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/ui/tabs/tab_enums.h",
+      "sha256": "dd6e878329bdaeafeeb8836db0ca2fc04b43a83fd4321c9801892347d8bad0aa"
+    },
+    {
+      "path": "chrome/common/extensions/api/tabs.json",
+      "sha256": "5380b79db1c0078e99ca5f97f55bde46d357e07d76d3afcf886020c69a8c4b23"
+    },
+    {
+      "path": "out/AuxAside/gen/chrome/common/extensions/api/tabs.h",
+      "sha256": "6da698a4a8eec02914d95683621d7dc4903869ef20d6ce533727cded39fdedee"
+    },
+    {
+      "path": "out/AuxAside/gen/chrome/common/extensions/api/tabs.cc",
+      "sha256": "54d85514c415dc394a211f07691f08dd55c36dda476fb14bc54ce8feff8c6394"
+    }
+  ]
+}

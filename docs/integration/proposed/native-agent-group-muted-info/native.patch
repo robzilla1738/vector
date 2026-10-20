@@ -1,0 +1,10 @@
+--- a/chrome/browser/extensions/extension_tab_util.cc
++++ b/chrome/browser/extensions/extension_tab_util.cc
+@@ -275,6 +275,7 @@
+     case TabMutedReason::kAudioIndicator:
+     case TabMutedReason::kContentSetting:
+     case TabMutedReason::kContentSettingChrome:
++    case TabMutedReason::kAgentGroup:
+       info.reason = api::tabs::MutedInfoReason::kUser;
+       break;
+     case TabMutedReason::kExtension:
