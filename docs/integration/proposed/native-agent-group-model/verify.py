@@ -44,7 +44,9 @@ with tempfile.TemporaryDirectory(prefix='aux-popup-reopen-') as directory:
     subprocess.run(['git', 'init', '-q', directory], check=True)
     for row in manifest['files']:
         path = row['path']
-        assert sha(root / 'baseline' / path) == row['baselineSha256']
+        assert sha(root / 'baseline' / path) == row.get('baselineFixtureSha256', row['baselineSha256'])
+        if row.get('newFile'):
+            assert row['baselineSha256'] is None
         assert sha(root / 'source' / path) == row['outputSha256']
         out = replay / path
         out.parent.mkdir(parents=True, exist_ok=True)

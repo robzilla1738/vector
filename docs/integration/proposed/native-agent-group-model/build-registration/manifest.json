@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "baselineSha256": "8d5b77a717f57845e0941a3be15942e63e40f0c39928e4e1221a16a9915624db",
+      "outputSha256": "2d8eb4997114604e8212a92ab397b132cb6bf19501ffc59ac355a15591eea3dd"
+    }
+  ],
+  "compiled": false
+}

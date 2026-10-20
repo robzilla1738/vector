@@ -1,0 +1,1 @@
+Register the narrow new authenticated-session helper header in the actual content public browser source target. Its implementation stays in the existing DevTools agent-host implementation target. No new public host vtable or duplicate session registry is introduced. This is staged build metadata, not an applied or compiled result.

@@ -4,9 +4,10 @@
   "files": [
     {
       "path": "content/public/browser/devtools_authenticated_session.h",
-      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "baselineSha256": null,
       "outputSha256": "1d40e754b469144491dca09752bd82854bd6b48511f65616303dc7aab680260e",
-      "newFile": true
+      "newFile": true,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "path": "content/browser/devtools/devtools_agent_host_impl.h",

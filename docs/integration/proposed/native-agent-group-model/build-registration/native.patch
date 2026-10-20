@@ -1,0 +1,10 @@
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -145,6 +145,7 @@
+     "devtools_agent_host_client_channel.h",
+     "devtools_agent_host_observer.cc",
+     "devtools_agent_host_observer.h",
++    "devtools_authenticated_session.h",
+     "devtools_background_services_context.h",
+     "devtools_external_agent_proxy.h",
+     "devtools_external_agent_proxy_delegate.h",
