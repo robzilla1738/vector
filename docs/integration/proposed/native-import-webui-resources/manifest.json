@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "reason": "Embed all twelve positively mapped supplied importer resources; HTML visible brand only.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui_resources.h",
+      "baselineSha256": null,
+      "outputSha256": "a8f6d3fe940119df4095a045da942d7d29e1eefc296968611e29ab8790f97b92"
+    }
+  ],
+  "mounted": false
+}

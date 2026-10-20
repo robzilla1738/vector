@@ -1,0 +1,15 @@
+{
+  "allResources": 12,
+  "referencedIconImages": 10,
+  "missingResources": [],
+  "exactPakHtmlJsDownloadsEquality": "PASS",
+  "allServedByteRecovery": "PASS",
+  "originalCssUnchanged": "PASS",
+  "htmlAsideRetained": "PASS",
+  "javascriptUnchanged": "PASS",
+  "handlerUnchanged": "PASS",
+  "disposablePatchCheckReplay": "PASS",
+  "sharedNativeUnchanged": true,
+  "buildRun": false,
+  "runtimeRun": false
+}
