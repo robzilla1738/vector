@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "row-profile-descriptor",
+      "rva": "0x4573ce8",
+      "bytes": 120,
+      "sha256": "51234b6f6c8047658b0bdc5ce97f3deb363cf909dfb04696c19f2de535164b1b"
+    },
+    {
+      "name": "row-command-descriptor",
+      "rva": "0x45790d0",
+      "bytes": 88,
+      "sha256": "05db274ffba0ccd35b29b23f1b5352f09bb3a7000f890fa045ffc67c9237ec60"
+    },
+    {
+      "name": "row-layout",
+      "rva": "0x4579ad8",
+      "bytes": 188,
+      "sha256": "6335ad7bc2d65f1304a97c97dbf55bf000ba31ebd4057e247f927c577df85180"
+    },
+    {
+      "name": "row-icon-margin",
+      "rva": "0x4579d48",
+      "bytes": 28,
+      "sha256": "ba3dfdc69c6746354f4a7580f61390d474d88352c0659849cab3d803d6652e68"
+    },
+    {
+      "name": "label-style",
+      "rva": "0x45796c0",
+      "bytes": 272,
+      "sha256": "755950b0062001f74ed75677d0fa08c0309426c76a525283f2315719d0260a8d"
+    },
+    {
+      "name": "row-primary-label",
+      "rva": "0x457a0bc",
+      "bytes": 48,
+      "sha256": "9bc54db834745d7737e771d2877300d538933e95c02661e52a383a9a52be80b7"
+    },
+    {
+      "name": "row-secondary-label",
+      "rva": "0x457a1dc",
+      "bytes": 36,
+      "sha256": "f0ed3079f08e8ea415868468ae0bc348f4a8774e2ee6f5e914b252e8c7f3dd04"
+    },
+    {
+      "name": "row-shortcut-label",
+      "rva": "0x457a30c",
+      "bytes": 68,
+      "sha256": "f6eaaee5f11c2be78bad5ce9783570e478892efafce682fbf089e2e9df258c80"
+    },
+    {
+      "name": "row-trailing-glyph",
+      "rva": "0x457a618",
+      "bytes": 252,
+      "sha256": "3c5bea86c2b8d3f3332e93406482b314c0831e2104cea67fd0e0c6870190f90f"
+    },
+    {
+      "name": "row-background",
+      "rva": "0x457b0f8",
+      "bytes": 164,
+      "sha256": "9620be887432348757833dfaebebdf103e30437620caa3b2fc0460a687b27b90"
+    },
+    {
+      "name": "optional-preferred-size",
+      "rva": "0x27d1a60",
+      "bytes": 160,
+      "sha256": "9c490b01a4b8eda6620274d13093523a895a3bd74fb555b24e855fedc4cdbc22"
+    },
+    {
+      "name": "font-context-getter",
+      "rva": "0xa687694",
+      "bytes": 68,
+      "sha256": "2783459e49c5ce7d4c359bbc73c038f34f751000c6c5c243ce08fc523cb3146f"
+    },
+    {
+      "name": "mixer-221",
+      "rva": "0x35e730c",
+      "bytes": 24,
+      "sha256": "a12f8c07b2e6151d2770c7ca9521ae63447c6ab35c9471145edb1d282a3e2492"
+    },
+    {
+      "name": "mixer-222",
+      "rva": "0x35e73e0",
+      "bytes": 24,
+      "sha256": "c139d9fe9cb23c83941e4590092d5f85005e03b1fdf283ff0fea3b9760441415"
+    },
+    {
+      "name": "mixer-248",
+      "rva": "0x35e8764",
+      "bytes": 24,
+      "sha256": "73718afacafdf3e816517ecd3652ac6780822eb95765a9c8936c93adc9a8e934"
+    }
+  ],
+  "colorNames": [
+    {
+      "id": 221,
+      "name": "kColorAsideSurfacePrimaryForeground",
+      "nameRva": "0xdbdb1fa",
+      "entryRva": "0xe910160"
+    },
+    {
+      "id": 222,
+      "name": "kColorAsideSurfaceSecondaryForeground",
+      "nameRva": "0xdbdb21e",
+      "entryRva": "0xe910170"
+    },
+    {
+      "id": 248,
+      "name": "kColorAsideMenuItemBackgroundHover",
+      "nameRva": "0xdbdb587",
+      "entryRva": "0xe910310"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/controls/label.h",
+      "sha256": "7f8698cff76eaf02aa43111662661d9970744f1a720a1a20adefcc5d6c521f58"
+    },
+    {
+      "path": "ui/views/layout/flex_layout.h",
+      "sha256": "fb078e007350d6287c74d4e368b97ed728ca39d45a16410eceac81cf797a90dc"
+    },
+    {
+      "path": "ui/views/layout/box_layout.cc",
+      "sha256": "a01295f5097d7065daf45b15a3b092ba7a20406fccb16f75e98ec8c718a85bc7"
+    },
+    {
+      "path": "ui/base/models/image_model.h",
+      "sha256": "2b0235eb40af265bafd34d1839f3cb67eb40fec84f781a856184ea1792efda5f"
+    },
+    {
+      "path": "ui/views/style/typography.h",
+      "sha256": "43064e26043d635390c1b5de3d6375a06a48c505c1b5996d94d818966bf0d7ab"
+    }
+  ]
+}

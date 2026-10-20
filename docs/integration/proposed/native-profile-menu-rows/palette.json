@@ -1,0 +1,32 @@
+[
+  {
+    "role": "kPrimaryForeground",
+    "id": 221,
+    "rva": "0x35e730c",
+    "bytes": 24,
+    "resultRegister": 22,
+    "dark": "0xd9fafafa",
+    "light": "0xd90a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSecondaryForeground",
+    "id": 222,
+    "rva": "0x35e73e0",
+    "bytes": 24,
+    "resultRegister": 27,
+    "dark": "0x8cfafafa",
+    "light": "0x8c0a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kMenuHover",
+    "id": 248,
+    "rva": "0x35e8764",
+    "bytes": 24,
+    "resultRegister": 21,
+    "dark": "0x1afafafa",
+    "light": "0x140a0a0a",
+    "seedRegister23": null
+  }
+]

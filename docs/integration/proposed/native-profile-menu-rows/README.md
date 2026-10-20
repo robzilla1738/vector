@@ -1,0 +1,25 @@
+# Supplied profile-menu row geometry, typography and colors
+
+Apply after the actual native160 API correction (or161, whose sidebar is unchanged). Sole native target: `chrome/browser/ui/views/frame/aux_sidebar_view.cc`, baseline SHA256 `4f31f58c9c0fff6a86accf9430e8715a22a552692f4ed9c68361c67e5386a7ef`. No shared native source, build registration, profile transaction, API, stylesheet or packaged supplied UI is edited here.
+
+## Original implementation evidence
+
+The pinned original `AsideMenuItemButton` constructor is04579880; its actual primary vtable is e6d7350, installed at045799d8. It constructs a native Button, a horizontal FlexLayout centered on the cross axis, an empty border TLBR(0,8,0,8) at04579b1c, and external `kMarginsKey` TLBR(0,4,0,4) at04579b38. A leading icon has16px size in the profile and ordinary menu descriptors, with8px right margin at04579d48. Rows notify mouse enter/exit across child views, as the original byte1cb assignment records.
+
+Both direct profile-row descriptor04573ce8..04573d60 and ordinary command descriptor045790d0..04579128 store zero width and32px height. Constructor04579ae0..04579af4 passes that exact optional size to27d1a60. That callee stores the optional preferred-size pair and validity flag, merges existing dimensions when relevant, and notifies the virtual preferred-size-change hook. This is **preferred size(0,32), not a minimum-size API**. The existing parent vertical BoxLayout stretches the row width and already honors each child's actual `kMarginsKey` (pinned current155 implementation).
+
+Style helper045796c0 sets left alignment, tail elision and disables automatic color readability, then derives the native context5/STYLE_PRIMARY font to the requested size/style/weight. Its caller at0457a0bc supplies14px and weight400/500 according to the original row descriptor; helper045797b8 gives14px text20px line height. Secondary/shortcut callers0457a1dc and0457a30c supply12px, weight400, secondary foreground222; their line height is16. This slice preserves normal400 text weight and ports explicit sizes/line heights. The descriptor-specific500 weight remains unresolved at the profile-menu producer and is not guessed from selected-profile identity.
+
+Trailing native glyph construction0457a618 uses16px and secondary foreground222; its left margin is8px at0457a6f4. Existing functional glyph paths are retained here; this does not declare those paths faithful.
+
+Original background method0457b0f8 selects private `MenuItemBackgroundHover`248 and radius6. Its state conditions include normal native hover/pressed and additional private flags at4b8/4b9. This slice retains the existing hover/pressed behavior while porting the proven radius/color. The extra private flag lifecycle is not inferred as keyboard focus or selection. Private foreground roles221/222 and hover248 use exact original mixer035e6d40 light/dark constants. `palette.json` plus the verifier independently evaluates the pinned AArch64 expressions; no older CSS approximation supplies values. Current155 resolves mode through the actual containing Widget's ColorProviderKey, not a global OS-theme heuristic.
+
+## Scope and limits
+
+The entire source suffix beginning `ProfileAvatar`, including actual avatar fallback, all menu construction/selection/check/actions, real weak sender, owned path, pending-close disabling, destructor-posted profile Dispatch and submenu models, is byte-for-byte preserved. The selected profile still has its existing check and profile-actions button. The former independent panel width252/margins6, caption style, glyph paths, avatar fallback and submenu presentation are explicitly **not** accepted as recovered parity by this slice. Profile-specific weight500, original additional hover/selection flags and profile-actions glyph metrics remain recovery work. L2 owns shared original ProfileMonogramAvatarView recovery for the preview and eventual menu reuse.
+
+The fixed preferred row height and exact font metrics replace the former guessed vertical padding7/system Body3/Body5 combination. The icon-to-title gap becomes8 instead of10. Main/shortcut label colors and vector leading/trailing16px glyph colors update with the real window's theme. Supplied raster/profile images remain unchanged. The separately unrecovered14px profile-actions button keeps its current geometry and native theme color.
+
+## Verification
+
+Run `python3 docs/integration/proposed/native-profile-menu-rows/verify.py` from the repository. It hashes the pinned original arm64 extraction, checks exact instruction ranges and original color-name pairs, evaluates all three light/dark mixer constants, verifies relevant Chromium155 headers, checks preservation of the transaction/menu suffix and replays the one-file patch into a disposable tree. It executes no target binary and performs no OS actions. No actual native compile or visual acceptance is claimed; the integrator must compile the sidebar object after its active full build and observe the disposable original-equivalent surface.

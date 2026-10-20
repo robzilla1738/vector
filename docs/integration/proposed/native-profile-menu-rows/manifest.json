@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "actual native160; unchanged sidebar after menu-forwarding156",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "4f31f58c9c0fff6a86accf9430e8715a22a552692f4ed9c68361c67e5386a7ef",
+      "outputSha256": "8fda78c3ebe0cee34d57acb15af7b9475a75e4191e1f09731faa2463d07670bd"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

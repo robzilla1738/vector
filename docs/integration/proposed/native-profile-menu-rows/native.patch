@@ -1,0 +1,181 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -71,9 +71,11 @@
+ #include "ui/base/models/image_model.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+ #include "ui/color/color_id.h"
++#include "ui/color/color_provider_key.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/gfx/canvas.h"
++#include "ui/gfx/font.h"
+ #include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/insets.h"
+ #include "ui/gfx/geometry/size.h"
+@@ -92,6 +94,7 @@
+ #include "ui/views/controls/scroll_view.h"
+ #include "ui/views/controls/separator.h"
+ #include "ui/views/layout/box_layout.h"
++#include "ui/views/layout/flex_layout.h"
+ #include "ui/views/layout/layout_provider.h"
+ #include "ui/views/style/typography.h"
+ #include "ui/views/view_class_properties.h"
+@@ -539,7 +542,35 @@
+ constexpr int kCommandTabUnpin = 112;
+ constexpr int kCommandTabClose = 113;
+ 
+-// A full width row of the profile menu.
++// Supplied private roles221/222/248, resolved against this actual window.
++enum class ProfileMenuColor { kForeground, kSecondary, kHover };
++
++SkColor ResolveProfileMenuColor(const views::View* view,
++                                ProfileMenuColor role) {
++  const bool dark =
++      view->GetWidget() && view->GetWidget()->GetColorMode() ==
++                               ui::ColorProviderKey::ColorMode::kDark;
++  switch (role) {
++    case ProfileMenuColor::kForeground:
++      return dark ? 0xd9fafafa : 0xd90a0a0a;
++    case ProfileMenuColor::kSecondary:
++      return dark ? 0x8cfafafa : 0x8c0a0a0a;
++    case ProfileMenuColor::kHover:
++      return dark ? 0x1afafafa : 0x140a0a0a;
++  }
++}
++
++void StyleProfileMenuLabel(views::Label* label, int size) {
++  label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  label->SetElideBehavior(gfx::ELIDE_TAIL);
++  label->SetAutoColorReadabilityEnabled(false);
++  label->SetFontList(
++      label->font_list().Derive(size - label->font_list().GetFontSize(),
++                                gfx::Font::NORMAL, gfx::Font::Weight::NORMAL));
++  label->SetLineHeight(size == 12 ? 16 : 20);
++  label->SetCanProcessEventsWithinSubtree(false);
++}
++
+ class AuxMenuRow : public views::Button {
+   METADATA_HEADER(AuxMenuRow, views::Button)
+ 
+@@ -547,41 +578,46 @@
+   AuxMenuRow(PressedCallback callback,
+              const ui::ImageModel& icon,
+              const std::u16string& text)
+-      : views::Button(std::move(callback)) {
+-    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+-        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(7, 8), 10));
+-    layout->set_cross_axis_alignment(
+-        views::BoxLayout::CrossAxisAlignment::kCenter);
++      : views::Button(std::move(callback)), source_icon_(icon) {
++    SetPreferredSize(gfx::Size(0, 32));
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(0, 8, 0, 8)));
++    SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 4, 0, 4));
++    SetNotifyEnterExitOnChild(true);
++    SetLayoutManager(std::make_unique<views::FlexLayout>())
++        ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+     auto icon_view = std::make_unique<views::ImageView>(icon);
+     icon_view->SetImageSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));
+     icon_view->SetPreferredSize(gfx::Size(kMenuRowIcon, kMenuRowIcon));
++    icon_view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
+     icon_view->SetCanProcessEventsWithinSubtree(false);
+-    AddChildView(std::move(icon_view));
+-    auto label = std::make_unique<views::Label>(
+-        text, views::style::CONTEXT_MENU, views::style::STYLE_BODY_3);
+-    label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+-    label->SetElideBehavior(gfx::ELIDE_TAIL);
+-    label->SetEnabledColor(ui::kColorSysOnSurface);
+-    label->SetCanProcessEventsWithinSubtree(false);
+-    layout->SetFlexForView(AddChildView(std::move(label)), 1);
++    icon_view_ = AddChildView(std::move(icon_view));
++    auto label = std::make_unique<views::Label>(text);
++    StyleProfileMenuLabel(label.get(), 14);
++    label->SetProperty(
++        views::kFlexBehaviorKey,
++        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
++                                 views::MaximumFlexSizeRule::kUnbounded));
++    label_ = AddChildView(std::move(label));
+     GetViewAccessibility().SetName(text);
+     SetFocusBehavior(FocusBehavior::ALWAYS);
+-    UpdateBackground();
++    UpdateColors();
+   }
+ 
+   void AddTrailingIcon(const gfx::VectorIcon& icon) {
+-    auto view = std::make_unique<views::ImageView>(
+-        ui::ImageModel::FromVectorIcon(icon, ui::kColorSysOnSurfaceSubtle, 14));
++    trailing_icon_ = &icon;
++    auto view = std::make_unique<views::ImageView>();
++    view->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));
+     view->SetCanProcessEventsWithinSubtree(false);
+-    AddChildView(std::move(view));
++    trailing_icon_view_ = AddChildView(std::move(view));
++    UpdateColors();
+   }
+ 
+   void AddTrailingText(const std::u16string& text) {
+-    auto label = std::make_unique<views::Label>(
+-        text, views::style::CONTEXT_MENU, views::style::STYLE_BODY_5);
+-    label->SetEnabledColor(ui::kColorSysOnSurfaceSubtle);
+-    label->SetCanProcessEventsWithinSubtree(false);
+-    AddChildView(std::move(label));
++    auto label = std::make_unique<views::Label>(text);
++    StyleProfileMenuLabel(label.get(), 12);
++    label->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 8, 0, 0));
++    trailing_text_ = AddChildView(std::move(label));
++    UpdateColors();
+   }
+ 
+   views::ImageButton* AddTrailingButton(const gfx::VectorIcon& icon,
+@@ -603,14 +639,48 @@
+     UpdateBackground();
+   }
+ 
++  void OnThemeChanged() override {
++    views::Button::OnThemeChanged();
++    UpdateColors();
++  }
++
+  private:
++  void UpdateColors() {
++    label_->SetEnabledColor(
++        ResolveProfileMenuColor(this, ProfileMenuColor::kForeground));
++    const SkColor secondary =
++        ResolveProfileMenuColor(this, ProfileMenuColor::kSecondary);
++    if (source_icon_.IsVectorIcon()) {
++      const auto icon = source_icon_.GetVectorIcon();
++      icon_view_->SetImage(ui::ImageModel::FromVectorIcon(
++          *icon.vector_icon(), secondary, kMenuRowIcon, icon.badge_icon()));
++    }
++    if (trailing_icon_view_) {
++      trailing_icon_view_->SetImage(
++          ui::ImageModel::FromVectorIcon(*trailing_icon_, secondary, 16));
++    }
++    if (trailing_text_) {
++      trailing_text_->SetEnabledColor(secondary);
++    }
++    UpdateBackground();
++  }
++
+   void UpdateBackground() {
+     const bool hovered = GetState() == views::Button::STATE_HOVERED ||
+                          GetState() == views::Button::STATE_PRESSED;
+-    SetBackground(hovered ? views::CreateRoundedRectBackground(
+-                                ui::kColorSysStateHoverOnSubtle, 8)
+-                          : nullptr);
+-  }
++    SetBackground(
++        hovered
++            ? views::CreateRoundedRectBackground(
++                  ResolveProfileMenuColor(this, ProfileMenuColor::kHover), 6)
++            : nullptr);
++  }
++
++  const ui::ImageModel source_icon_;
++  raw_ptr<views::ImageView> icon_view_ = nullptr;
++  raw_ptr<views::Label> label_ = nullptr;
++  raw_ptr<views::ImageView> trailing_icon_view_ = nullptr;
++  raw_ptr<const gfx::VectorIcon> trailing_icon_ = nullptr;
++  raw_ptr<views::Label> trailing_text_ = nullptr;
+ };
+ 
+ BEGIN_METADATA(AuxMenuRow)
