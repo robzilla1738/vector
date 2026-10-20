@@ -1,0 +1,27 @@
+{
+  "composition": "out/native-reuse-composition-v121",
+  "compositionSha256": "f807bbfe41510cb7f715e0a92fc6297890f49454d291bface81ed3b5e5df06fb",
+  "sourceOutputs": 290,
+  "artworkTargets": 23,
+  "originalReplay": {
+    "steps": 131,
+    "sourceOutputsMatch": true
+  },
+  "gnAttempts": [
+    {
+      "version": 120,
+      "exitCode": 1,
+      "reason": "Missing Aux build argument import in private Features target"
+    },
+    {
+      "version": 121,
+      "exitCode": 0,
+      "log": "out/native-integration/v121-gn.log",
+      "result": "Done. Made 36072 targets from 5013 files in 26082ms"
+    }
+  ],
+  "focusedBuild": "running; no result claimed",
+  "fullBrowserLink": false,
+  "runtimeOrVisualParity": false,
+  "signingPerformed": false
+}
