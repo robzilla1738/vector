@@ -1,0 +1,44 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "source-created-time-direct-include",
+    "count": 1,
+    "before": "#include \"base/threading/platform_thread.h\"\n",
+    "after": "#include \"base/threading/platform_thread.h\"\n#include \"base/time/time.h\"\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "exact-source-bookmark-flattening",
+    "count": 1,
+    "before": "bool BookmarkTree(const base::DictValue& node,\n                  base::ListValue& result,\n                  const base::ListValue& path,\n                  std::string root,\n                  int depth) {\n  if (depth > 64 || result.size() > 20000) {\n    return false;\n  }\n  auto next = path.Clone();\n  const auto *type = node.FindString(\"type\"), *name = node.FindString(\"name\");\n  if (!type || !name) {\n    return false;\n  }\n  if (*type != \"folder\" && *type != \"url\") {\n    return false;\n  }\n  const bool folder = *type == \"folder\";\n  base::DictValue row;\n  row.Set(\"root\", root);\n  row.Set(\"path\", path.Clone());\n  row.Set(\"title\", name->substr(0, 1024));\n  row.Set(\"folder\", folder);\n  if (const auto* date = node.FindString(\"date_added\")) {\n    int64_t number = 0;\n    if (base::StringToInt64(*date, &number)) {\n      row.Set(\"createdWindowsMicros\", base::NumberToString(number));\n    }\n  }\n  if (!folder) {\n    const auto* url = node.FindString(\"url\");\n    if (!url || url->size() > 8192) {\n      return false;\n    }\n    row.Set(\"url\", *url);\n  }\n  result.Append(std::move(row));\n  if (folder) {\n    next.Append(*name);\n    if (const auto* children = node.FindList(\"children\")) {\n      for (const auto& child : *children) {\n        if (!child.is_dict() ||\n            !BookmarkTree(child.GetDict(), result, next, root, depth + 1)) {\n          return false;\n        }\n      }\n    }\n  }\n  return true;\n}\n",
+    "after": "// Supplied425c084 admits valid bookmarklets; its only scheme exclusions are\n// chrome, chrome-extension and devtools. Malformed nodes are skipped, not a\n// reason to reject the complete source bookmark batch.\nvoid BookmarkTree(const base::DictValue& node,\n                  base::ListValue& result,\n                  const base::ListValue& path,\n                  std::string root) {\n  const auto* type = node.FindString(\"type\");\n  if (!type || (*type != \"folder\" && *type != \"url\")) {\n    return;\n  }\n  const auto* source_name = node.FindString(\"name\");\n  const std::string name = source_name ? *source_name : std::string();\n  const bool folder = *type == \"folder\";\n  const auto* source_url = node.FindString(\"url\");\n  const GURL url(source_url ? *source_url : std::string());\n  if (!folder && (!source_url || !url.is_valid() || url.SchemeIs(\"chrome\") ||\n                  url.SchemeIs(\"chrome-extension\") || url.SchemeIs(\"devtools\"))) {\n    return;\n  }\n  auto next = path.Clone();\n  if (!folder || !name.empty()) {\n    base::DictValue row;\n    row.Set(\"root\", root);\n    row.Set(\"path\", path.Clone());\n    row.Set(\"title\", !folder && name.empty() ? url.spec() : name);\n    row.Set(\"folder\", folder);\n    int64_t created = 0;\n    if (const auto* date = node.FindString(\"date_added\")) {\n      if (!base::StringToInt64(*date, &created)) {\n        created = 0;\n      }\n    }\n    if (created <= 0) {\n      created = base::Time::Now().ToDeltaSinceWindowsEpoch().InMicroseconds();\n    }\n    row.Set(\"createdWindowsMicros\", base::NumberToString(created));\n    if (!folder) {\n      row.Set(\"url\", url.spec());\n    }\n    result.Append(std::move(row));\n  }\n  if (folder) {\n    if (!name.empty()) {\n      next.Append(name);\n    }\n    if (const auto* children = node.FindList(\"children\")) {\n      for (const auto& child : *children) {\n        if (child.is_dict()) {\n          BookmarkTree(child.GetDict(), result, next, root);\n        }\n      }\n    }\n  }\n}\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "untruncated-source-roots-and-real-read-failure",
+    "count": 1,
+    "before": "  if (category == \"bookmarks\" && !firefox) {\n    auto bookmarks = JSON(profile.AppendASCII(\"Bookmarks\"));\n    const auto* roots = bookmarks ? bookmarks->FindDict(\"roots\") : nullptr;\n    if (!roots) {\n      return error(\"Source bookmark roots are missing or invalid\");\n    }\n    base::ListValue entries;\n    for (const auto* root : {\"bookmark_bar\", \"other\", \"synced\"}) {\n      if (const auto* node = roots->FindDict(root)) {\n        if (const auto* children = node->FindList(\"children\")) {\n          const size_t first = entries.size();\n          for (const auto& child : *children) {\n            if (!child.is_dict() ||\n                !BookmarkTree(child.GetDict(), entries, {}, root, 0)) {\n              return error(\n                  \"Bookmark hierarchy exceeds limits or contains invalid \"\n                  \"records\");\n            }\n          }\n          const auto* name = node->FindString(\"name\");\n          const std::string root_name =\n              name && !name->empty()\n                  ? name->substr(0, 1024)\n                  : std::string(std::string_view(root) == \"bookmark_bar\"\n                                    ? \"Bookmarks Bar\"\n                                    : std::string_view(root) == \"other\"\n                                          ? \"Other Bookmarks\"\n                                          : \"Mobile Bookmarks\");\n          for (size_t index = first; index < entries.size(); ++index) {\n            entries[index].GetDict().Set(\"sourceRootName\", root_name);\n          }\n        }\n      }\n    }\n    result.Set(\"bookmarks\", std::move(entries));\n    return result;\n  }\n",
+    "after": "  if (category == \"bookmarks\" && !firefox) {\n    // Original4253e58 reads the source file without an arbitrary byte limit;\n    // unreadable/invalid/missing roots contribute no ordinary bookmark rows.\n    std::string text;\n    std::optional<base::DictValue> source;\n    if (base::ReadFileToString(profile.AppendASCII(\"Bookmarks\"), &text)) {\n      source = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC, 200);\n    }\n    const auto* roots = source ? source->FindDict(\"roots\") : nullptr;\n    base::ListValue entries;\n    if (roots) {\n      for (const auto* root : {\"bookmark_bar\", \"other\", \"synced\"}) {\n        if (const auto* node = roots->FindDict(root)) {\n          if (const auto* children = node->FindList(\"children\")) {\n            const size_t first = entries.size();\n            for (const auto& child : *children) {\n              if (child.is_dict()) {\n                BookmarkTree(child.GetDict(), entries, {}, root);\n              }\n            }\n            const auto* name = node->FindString(\"name\");\n            const std::string root_name =\n                name && !name->empty()\n                    ? *name\n                    : std::string(std::string_view(root) == \"bookmark_bar\"\n                                      ? \"Bookmarks Bar\"\n                                      : std::string_view(root) == \"other\"\n                                            ? \"Other Bookmarks\"\n                                            : \"Mobile Bookmarks\");\n            for (size_t index = first; index < entries.size(); ++index) {\n              entries[index].GetDict().Set(\"sourceRootName\", root_name);\n            }\n          }\n        }\n      }\n    }\n    result.Set(\"bookmarks\", std::move(entries));\n    return result;\n  }\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "allow-original-bookmarklets-in-mode1",
+    "count": 1,
+    "before": "           !url.SchemeIs(\"chrome-extension\") && !url.SchemeIs(\"devtools\") &&\n           !url.SchemeIs(\"javascript\");",
+    "after": "           !url.SchemeIs(\"chrome-extension\") && !url.SchemeIs(\"devtools\");"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "retire-unsupported-narrowing-comment",
+    "count": 1,
+    "before": "    // The retained javascript restriction is an Aux integration boundary.\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+    "name": "allow-real-bookmarklets-in-remaining-bookmark-destination",
+    "count": 1,
+    "before": "                 url && GURL(*url).is_valid() &&\n                 !GURL(*url).SchemeIs(\"javascript\")) {",
+    "after": "                 url && GURL(*url).is_valid()) {"
+  }
+]

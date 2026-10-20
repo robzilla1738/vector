@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "e3a0806b5 bookmark-owner output",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "280cd2709c87afc29adbab95f1859f2389ad9adba08ed1d51522a12abeb6fed3",
+      "outputSha256": "4f3db28df0166e70958bca8092205ace3b304f2332dfdc6c430002189b55ba67"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "debd29147abb04cb75d4b7e4b66f9607b9d9dcc976f57c395960403607d0c0b7",
+      "outputSha256": "83042da212d2eae4bd46cb83719a8c81d945644f63b901de02d03b34d97da226"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

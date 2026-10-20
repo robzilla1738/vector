@@ -1,0 +1,207 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -19,6 +19,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/threading/platform_thread.h"
++#include "base/time/time.h"
+ #include "crypto/hash.h"
+ #include "third_party/sqlite/sqlite3.h"
+ namespace aux_import {
+@@ -201,54 +202,60 @@
+   }
+   return std::string(reinterpret_cast<const char*>(value), size);
+ }
+-bool BookmarkTree(const base::DictValue& node,
++// Supplied425c084 admits valid bookmarklets; its only scheme exclusions are
++// chrome, chrome-extension and devtools. Malformed nodes are skipped, not a
++// reason to reject the complete source bookmark batch.
++void BookmarkTree(const base::DictValue& node,
+                   base::ListValue& result,
+                   const base::ListValue& path,
+-                  std::string root,
+-                  int depth) {
+-  if (depth > 64 || result.size() > 20000) {
+-    return false;
++                  std::string root) {
++  const auto* type = node.FindString("type");
++  if (!type || (*type != "folder" && *type != "url")) {
++    return;
++  }
++  const auto* source_name = node.FindString("name");
++  const std::string name = source_name ? *source_name : std::string();
++  const bool folder = *type == "folder";
++  const auto* source_url = node.FindString("url");
++  const GURL url(source_url ? *source_url : std::string());
++  if (!folder && (!source_url || !url.is_valid() || url.SchemeIs("chrome") ||
++                  url.SchemeIs("chrome-extension") || url.SchemeIs("devtools"))) {
++    return;
+   }
+   auto next = path.Clone();
+-  const auto *type = node.FindString("type"), *name = node.FindString("name");
+-  if (!type || !name) {
+-    return false;
+-  }
+-  if (*type != "folder" && *type != "url") {
+-    return false;
+-  }
+-  const bool folder = *type == "folder";
+-  base::DictValue row;
+-  row.Set("root", root);
+-  row.Set("path", path.Clone());
+-  row.Set("title", name->substr(0, 1024));
+-  row.Set("folder", folder);
+-  if (const auto* date = node.FindString("date_added")) {
+-    int64_t number = 0;
+-    if (base::StringToInt64(*date, &number)) {
+-      row.Set("createdWindowsMicros", base::NumberToString(number));
+-    }
+-  }
+-  if (!folder) {
+-    const auto* url = node.FindString("url");
+-    if (!url || url->size() > 8192) {
+-      return false;
+-    }
+-    row.Set("url", *url);
+-  }
+-  result.Append(std::move(row));
++  if (!folder || !name.empty()) {
++    base::DictValue row;
++    row.Set("root", root);
++    row.Set("path", path.Clone());
++    row.Set("title", !folder && name.empty() ? url.spec() : name);
++    row.Set("folder", folder);
++    int64_t created = 0;
++    if (const auto* date = node.FindString("date_added")) {
++      if (!base::StringToInt64(*date, &created)) {
++        created = 0;
++      }
++    }
++    if (created <= 0) {
++      created = base::Time::Now().ToDeltaSinceWindowsEpoch().InMicroseconds();
++    }
++    row.Set("createdWindowsMicros", base::NumberToString(created));
++    if (!folder) {
++      row.Set("url", url.spec());
++    }
++    result.Append(std::move(row));
++  }
+   if (folder) {
+-    next.Append(*name);
++    if (!name.empty()) {
++      next.Append(name);
++    }
+     if (const auto* children = node.FindList("children")) {
+       for (const auto& child : *children) {
+-        if (!child.is_dict() ||
+-            !BookmarkTree(child.GetDict(), result, next, root, depth + 1)) {
+-          return false;
+-        }
+-      }
+-    }
+-  }
+-  return true;
++        if (child.is_dict()) {
++          BookmarkTree(child.GetDict(), result, next, root);
++        }
++      }
++    }
++  }
+ }
+ // Original426793c admits actual directories; retain Aux's existing identifier,
+ // symlink and bounded-inventory checks at this external filesystem boundary.
+@@ -552,35 +559,37 @@
+     return result;
+   }
+   if (category == "bookmarks" && !firefox) {
+-    auto bookmarks = JSON(profile.AppendASCII("Bookmarks"));
+-    const auto* roots = bookmarks ? bookmarks->FindDict("roots") : nullptr;
+-    if (!roots) {
+-      return error("Source bookmark roots are missing or invalid");
+-    }
++    // Original4253e58 reads the source file without an arbitrary byte limit;
++    // unreadable/invalid/missing roots contribute no ordinary bookmark rows.
++    std::string text;
++    std::optional<base::DictValue> source;
++    if (base::ReadFileToString(profile.AppendASCII("Bookmarks"), &text)) {
++      source = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC, 200);
++    }
++    const auto* roots = source ? source->FindDict("roots") : nullptr;
+     base::ListValue entries;
+-    for (const auto* root : {"bookmark_bar", "other", "synced"}) {
+-      if (const auto* node = roots->FindDict(root)) {
+-        if (const auto* children = node->FindList("children")) {
+-          const size_t first = entries.size();
+-          for (const auto& child : *children) {
+-            if (!child.is_dict() ||
+-                !BookmarkTree(child.GetDict(), entries, {}, root, 0)) {
+-              return error(
+-                  "Bookmark hierarchy exceeds limits or contains invalid "
+-                  "records");
++    if (roots) {
++      for (const auto* root : {"bookmark_bar", "other", "synced"}) {
++        if (const auto* node = roots->FindDict(root)) {
++          if (const auto* children = node->FindList("children")) {
++            const size_t first = entries.size();
++            for (const auto& child : *children) {
++              if (child.is_dict()) {
++                BookmarkTree(child.GetDict(), entries, {}, root);
++              }
+             }
+-          }
+-          const auto* name = node->FindString("name");
+-          const std::string root_name =
+-              name && !name->empty()
+-                  ? name->substr(0, 1024)
+-                  : std::string(std::string_view(root) == "bookmark_bar"
+-                                    ? "Bookmarks Bar"
+-                                    : std::string_view(root) == "other"
+-                                          ? "Other Bookmarks"
+-                                          : "Mobile Bookmarks");
+-          for (size_t index = first; index < entries.size(); ++index) {
+-            entries[index].GetDict().Set("sourceRootName", root_name);
++            const auto* name = node->FindString("name");
++            const std::string root_name =
++                name && !name->empty()
++                    ? *name
++                    : std::string(std::string_view(root) == "bookmark_bar"
++                                      ? "Bookmarks Bar"
++                                      : std::string_view(root) == "other"
++                                            ? "Other Bookmarks"
++                                            : "Mobile Bookmarks");
++            for (size_t index = first; index < entries.size(); ++index) {
++              entries[index].GetDict().Set("sourceRootName", root_name);
++            }
+           }
+         }
+       }
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -133,8 +133,7 @@
+     const auto* text = row.FindString("url");
+     const GURL url(text ? *text : std::string());
+     return url.is_valid() && !url.SchemeIs("chrome") &&
+-           !url.SchemeIs("chrome-extension") && !url.SchemeIs("devtools") &&
+-           !url.SchemeIs("javascript");
++           !url.SchemeIs("chrome-extension") && !url.SchemeIs("devtools");
+   };
+   // Source425c084 filters these before constructing the writer's vector.
+   if (std::ranges::none_of(entries, admitted)) {
+@@ -171,7 +170,6 @@
+     const bool folder = row.FindBool("folder").value_or(false);
+     const auto* url_text = row.FindString("url");
+     const GURL url(url_text ? *url_text : std::string());
+-    // The retained javascript restriction is an Aux integration boundary.
+     const bookmarks::BookmarkNode* parent = imported;
+     auto descend = [&](std::u16string_view segment) {
+       for (const auto& child : parent->children()) {
+@@ -799,8 +797,7 @@
+         model->AddFolder(parent, parent->children().size(),
+                          base::UTF8ToUTF16(*title), nullptr, time);
+       } else if (const auto* url = row.FindString("url");
+-                 url && GURL(*url).is_valid() &&
+-                 !GURL(*url).SchemeIs("javascript")) {
++                 url && GURL(*url).is_valid()) {
+         model->AddURL(parent, parent->children().size(),
+                       base::UTF8ToUTF16(*title), GURL(*url), nullptr, time);
+         ++job.imported;
