@@ -1,0 +1,16 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm",
+    "name": "explicit-platform-buildflags-include",
+    "count": 1,
+    "before": "#include \"base/feature_list.h\"\n",
+    "after": "#include \"base/feature_list.h\"\n#include \"build/build_config.h\"\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm",
+    "name": "cover-real-shifted-child-in-overlay-compositor",
+    "count": 1,
+    "before": "  browser_view_->overlay_widget()->SetSize(bounds.size());\n",
+    "after": "  gfx::Size overlay_size = bounds.size();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (browser_view_->ShouldDrawVerticalTabStrip() &&\n      browser_view_->top_container()->parent() != browser_view_.get() &&\n      bounds.x() > 0) {\n    // The supplied external layout retains the sidebar inset in the child's X.\n    // This 155 overlay has no layout manager to remove that origin: its source\n    // compositor must cover the child's right edge, not just its width.\n    overlay_size.set_width(bounds.right());\n  }\n#endif\n  browser_view_->overlay_widget()->SetSize(overlay_size);\n"
+  }
+]

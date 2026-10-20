@@ -1,0 +1,27 @@
+class TopContainerOverlayView : public views::View {
+  METADATA_HEADER(TopContainerOverlayView, views::View)
+
+ public:
+  explicit TopContainerOverlayView(base::WeakPtr<BrowserView> browser_view)
+      : browser_view_(std::move(browser_view)) {}
+  ~TopContainerOverlayView() override = default;
+
+  void ChildPreferredSizeChanged(views::View* child) override {
+    // When a child of BrowserView changes its preferred size, it
+    // invalidates the BrowserView's layout as well. When a child is
+    // reparented under this overlay view, this doesn't happen since the
+    // overlay view is owned by NonClientView.
+    //
+    // BrowserView's layout logic still applies in this case. To ensure
+    // it is used, we must invalidate BrowserView's layout.
+    if (browser_view_) {
+      browser_view_->InvalidateLayout();
+    }
+  }
+
+ private:
+  // The BrowserView this overlay is created for. WeakPtr is used since
+  // this view is held in a different hierarchy.
+  base::WeakPtr<BrowserView> browser_view_;
+};
+

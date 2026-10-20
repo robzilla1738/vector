@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "applyAfter": "actual405; preserves restored original external-container inset",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm",
+      "baselineSha256": "aa76012ccca1284686169f2436d64fc5992197d9cf63bb29bddfdb862e5a5c68",
+      "outputSha256": "94b9d3f25a776e0a71f05e222648dc26cfe8246e63ef19824a74c01631eeaa52"
+    }
+  ],
+  "kind": "Chromium155 platform adaptation; original Chrome-side resize not recovered",
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

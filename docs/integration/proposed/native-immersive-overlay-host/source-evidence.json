@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x9c2a180",
+      "endExclusive": "0x9c2a25c",
+      "sha256": "f79d1152865f104f066dbf87d5724d6b9b954129a36089d6661bdc1794745398",
+      "listing": "original-cocoa-top-view-bounds.asm",
+      "listingSha256": "47d362db20e896f2dcc97e9443edf06bf19b3aeb288a95173b8071c9583359a1"
+    }
+  ],
+  "selectors": [
+    {
+      "call": "0x9c2a1ac",
+      "stub": "0xcbc2e00",
+      "decoded": "objc:view"
+    },
+    {
+      "call": "0x9c2a1b8",
+      "stub": "0xcbbe3c0",
+      "decoded": "objc:window"
+    },
+    {
+      "call": "0x9c2a1c4",
+      "stub": "0xcbbab00",
+      "decoded": "objc:frame"
+    },
+    {
+      "call": "0x9c2a1ec",
+      "stub": "0xcbccb60",
+      "decoded": "objc:setFrameSize:"
+    },
+    {
+      "call": "0x9c2a22c",
+      "stub": "0xcbcd0a0",
+      "decoded": "objc:setVisibility:"
+    }
+  ],
+  "api155": [
+    {
+      "path": "chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm",
+      "fileSha256": "aa76012ccca1284686169f2436d64fc5992197d9cf63bb29bddfdb862e5a5c68",
+      "startAnchor": "void ImmersiveModeControllerMac::OnViewBoundsChanged(",
+      "endAnchor": "void ImmersiveModeControllerMac::LockDestroyed()",
+      "snapshot": "actual155-source-host-sizing.txt",
+      "sha256": "d992d838a9af1f89c7838448c6a9d0629cb2a8cce7a9b6bdc557769b7cf0bc0a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "fileSha256": "c40fb378c588c59689a35b678647ef20f2cb5d7ae40da32a2b9121cd7d2e1104",
+      "startAnchor": "class TopContainerOverlayView : public views::View {",
+      "endAnchor": "BEGIN_METADATA(TopContainerOverlayView)",
+      "snapshot": "actual155-overlay-owner.txt",
+      "sha256": "a1927116c33093694c1943cfdb2a5b40d286c5e05501549603643f2cc34c8a3c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "fileSha256": "c40fb378c588c59689a35b678647ef20f2cb5d7ae40da32a2b9121cd7d2e1104",
+      "startAnchor": "void BrowserView::ReparentTopContainerForStartOfImmersive() {",
+      "endAnchor": "void BrowserView::ReparentTopContainerForEndOfImmersive()",
+      "snapshot": "actual155-reparenting.txt",
+      "sha256": "4c3b51750911c2d78bfaf41b86ae6c98e369cb31215c585bd91b59aa46c66bac"
+    },
+    {
+      "path": "components/remote_cocoa/app_shim/immersive_mode_controller_cocoa.mm",
+      "fileSha256": "2674b29953dc7aa602fc8d27176169adddc1cdfe9d15d052f1d57ee7a5645a15",
+      "startAnchor": "void ImmersiveModeControllerCocoa::OnTopViewBoundsChanged(",
+      "endAnchor": "void ImmersiveModeControllerCocoa::UpdateToolbarVisibility(",
+      "snapshot": "actual155-cocoa-callback.txt",
+      "sha256": "4268075a85c21e0120741a3d235e5c828161b81e242223c5cf4f8f669a43f45b"
+    }
+  ],
+  "priorOriginalLayout": {
+    "path": "docs/integration/proposed/native-immersive-sidebar-inset/source-evidence.json",
+    "sha256": "7b96d21d8da39dfd0ef5fb77e705f8a80c9a194d97fb19cd23ca8332cab96436"
+  },
+  "runtimeInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v405-fullscreen-owned-windows.json",
+      "sha256": "b25090eb86b8b0974a45279d5776d228b5186fe3275c87022570663499381bda"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v405-fullscreen-window.png",
+      "sha256": "c73e985f0b823c2c16df83d9d89af713c0d12b9cbc983367eaae1ea95098a0c8"
+    }
+  ]
+}

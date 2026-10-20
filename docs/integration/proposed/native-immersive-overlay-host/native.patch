@@ -1,0 +1,30 @@
+--- a/chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm
++++ b/chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm
+@@ -13,6 +13,7 @@
+ #include "base/auto_reset.h"
+ #include "base/check.h"
+ #include "base/feature_list.h"
++#include "build/build_config.h"
+ #include "chrome/browser/glic/widget/glic_widget.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -368,7 +369,18 @@
+         gfx::Size(new_size.width(), browser_view_->tab_strip_view()->height()));
+     overlay_height_ += tab_widget_height_;
+   }
+-  browser_view_->overlay_widget()->SetSize(bounds.size());
++  gfx::Size overlay_size = bounds.size();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (browser_view_->ShouldDrawVerticalTabStrip() &&
++      browser_view_->top_container()->parent() != browser_view_.get() &&
++      bounds.x() > 0) {
++    // The supplied external layout retains the sidebar inset in the child's X.
++    // This 155 overlay has no layout manager to remove that origin: its source
++    // compositor must cover the child's right edge, not just its width.
++    overlay_size.set_width(bounds.right());
++  }
++#endif
++  browser_view_->overlay_widget()->SetSize(overlay_size);
+   if (auto* window = GetNSWindowMojo()) {
+     window->OnTopContainerViewBoundsChanged(bounds);
+   }
