@@ -1,0 +1,52 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -458,16 +458,15 @@
+   omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
+ 
+   aux_resting_origin_view_ = AddChildView(std::make_unique<views::LabelButton>(
+-      base::BindRepeating([this]() {
++      base::BindRepeating([](LocationBarView* owner) {
+         // Never map a click on the shortened origin onto URL text offsets.
+-        aux_resting_origin_view_->SetVisible(false);
+-        aux_page_title_view_->SetVisible(false);
+-        omnibox_view_->SetAuxRestingPresentation(false);
+-        FocusLocation(true, false);
+-        SelectAll();
+-        InvalidateLayout();
+-      }), std::u16string()));
+-  aux_resting_origin_view_->label()->SetFontList(font_list);
++        owner->aux_resting_origin_view_->SetVisible(false);
++        owner->aux_page_title_view_->SetVisible(false);
++        owner->omnibox_view_->SetAuxRestingPresentation(false);
++        owner->FocusLocation(true, false);
++        owner->SelectAll();
++        owner->InvalidateLayout();
++      }, base::Unretained(this)), std::u16string(), CONTEXT_OMNIBOX_PRIMARY));
+   aux_resting_origin_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   aux_resting_origin_view_->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
+   aux_resting_origin_view_->SetEnabledTextColors(kColorOmniboxText);
+@@ -480,7 +479,6 @@
+   aux_page_title_view_ = AddChildView(std::make_unique<views::Label>(
+       std::u16string(), CONTEXT_OMNIBOX_PRIMARY, views::style::STYLE_PRIMARY));
+   aux_page_title_view_->SetFontList(font_list);
+-  aux_resting_origin_view_->label()->SetFontList(font_list);
+   aux_page_title_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   aux_page_title_view_->SetElideBehavior(gfx::ELIDE_TAIL);
+   aux_page_title_view_->SetAutoColorReadabilityEnabled(false);
+@@ -807,7 +805,7 @@
+     return;
+   }
+ 
+-  const auto* contents = GetWebContents();
++  auto* contents = GetWebContents();
+   const auto* edit_model = GetOmniboxController()->edit_model();
+   const bool show_page_title =
+       browser_ && browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
+@@ -2202,7 +2200,6 @@
+   ime_inline_autocomplete_view_->SetFontList(font_list);
+   omnibox_additional_text_view_->SetFontList(font_list);
+   aux_page_title_view_->SetFontList(font_list);
+-  aux_resting_origin_view_->label()->SetFontList(font_list);
+   selected_keyword_view_->SetFontList(font_list);
+   for (ContentSettingImageView* view : content_setting_views_) {
+     view->SetFontList(font_list);
