@@ -1,0 +1,60 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -160,8 +160,15 @@
+       (state_ != State::kStopped && state_ != State::kFailed)) {
+     return;
+   }
++  if (state_ == State::kFailed) {
++    activation_deadline_ = base::TimeTicks();
++  }
++  if (!activation_deadline_.is_null() &&
++      base::TimeTicks::Now() >= activation_deadline_) {
++    SetState(State::kFailed, "Bundled daemon repeatedly exited before readiness");
++    return;
++  }
+   SetState(State::kStarting);
+-  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
+   launch_pending_ = true;
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+@@ -185,7 +192,9 @@
+   process_created_ = process_.CreationTime();
+   // Begin the cold-start allowance when the launched child is available, not
+   // while its blocking launch task is still waiting for a worker.
+-  activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
++  if (activation_deadline_.is_null()) {
++    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
++  }
+   Poll();
+ }
+ void DaemonSupervisor::Request(
+@@ -246,7 +255,9 @@
+   }
+   // Only restart a child after its freshly observed exit. Never adopt a health
+   // PID.
+-  bool exited = process_.WaitForExitWithTimeout(base::TimeDelta(), nullptr);
++  int exit_code = -1;
++  bool exited =
++      process_.WaitForExitWithTimeout(base::TimeDelta(), &exit_code);
+ #if BUILDFLAG(IS_POSIX)
+   // Another child reaper can consume waitpid's exit status. ESRCH still proves
+   // the original PID is absent; signal zero never sends a process signal.
+@@ -259,7 +270,9 @@
+   }
+   if (exited) {
+     process_.Close();
+-    SetState(State::kStopped);
++    SetState(State::kStopped,
++             "Bundled daemon exited before readiness (exit " +
++                 base::NumberToString(exit_code) + ")");
+     timer_.Start(FROM_HERE, base::Milliseconds(500), this,
+                  &DaemonSupervisor::Start);
+     return;
+@@ -353,6 +366,7 @@
+ }
+ void DaemonSupervisor::DidFinishShutdown(bool stopped) {
+   authorization_.clear();
++  activation_deadline_ = base::TimeTicks();
+   SetState(
+       stopped ? State::kStopped : State::kFailed,
+       stopped ? std::string() : "Owned daemon could not be safely stopped");

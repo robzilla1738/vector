@@ -185,6 +185,10 @@ steps.extend([
     ('native-profile-switch-async-owner/build-registration/native.patch', 'native-profile-switch-async-owner/build-registration/manifest.json'),
     ('native-agent-tabs-native-ui/native.patch', 'native-agent-tabs-native-ui/manifest.json'),
     ('native-agent-tabs-native-ui/vertical-visibility/native.patch', 'native-agent-tabs-native-ui/vertical-visibility/manifest.json'),
+    ('native-profile-switch-direct-dispatch/native.patch', 'native-profile-switch-direct-dispatch/manifest.json'),
+    ('native-profile-switch-menu-forwarding/native.patch', 'native-profile-switch-menu-forwarding/manifest.json'),
+    ('native-daemon-startup-budget/native.patch', 'native-daemon-startup-budget/manifest.json'),
+    ('native-agent-tabs-paint/native.patch', 'native-agent-tabs-paint/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "composition": "v135",
+  "packageReportSha256": "021d728d9e0f3adaabec54ffae81e1cf4b16c9af0f4321e860c46fe3a0bb9b4a",
+  "suppliedResources": 10799,
+  "nativeLeaves": 563,
+  "app": "out/provided-candidate-v135-local/Aux.app",
+  "signingExecuted": false,
+  "startupPassed": false,
+  "uiCaptured": false,
+  "runtimeAccepted": false,
+  "observations": [
+    "Explicit launcher used a fresh disposable profile and mock Chromium Keychain.",
+    "Daemon child repeatedly exited; no daemon or browser CDP listener was observed.",
+    "Startup retry reset its readiness allowance on every restart.",
+    "Read-only validation of assembled daemon reported modified plist/signature; child exit cause remains unproven.",
+    "CUA app selection timed out and an additional exact-candidate process appeared without disposable-profile arguments.",
+    "Both observed exact-candidate processes were stopped; no candidate process remained in the final check."
+  ],
+  "isolationAccepted": false,
+  "isolationLimitation": "The CUA-started second process may have used Aux default state. Its profile contents were not inspected, and this run must not count as an isolated acceptance pass.",
+  "privateLaunchLogSha256": "3ee0ea97afc2f69fe060d34ee06768e74d153d733842278fc03eb534daa79233",
+  "next": [
+    "Compile bounded existing startup retry budget",
+    "Investigate executing supplied daemon code with unchanged bundled Node in local development, preserving original native guard and contracts",
+    "Use explicit disposable launch handles; avoid CUA app selection that may launch another instance"
+  ]
+}
