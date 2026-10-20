@@ -820,3 +820,7 @@ V32 direct daemon authentication succeeded (HTTP200 in15ms), but returned `AuxDa
 ### Development priority: faithful local UI and behavior
 
 Owner clarified that signing/release work is not the development priority. No new signing pass was executed after that instruction. The corrected standalone wire-token source has been staged and a fresh v32 native candidate assembled, but remains unsigned/unlaunched; earlier actual signed authority evidence is retained. Current implementation work focuses on supplied same-window profile switching (real tab/collection transfer, cache roles, stable controller/view rebinds) and exact popup geometry. Integrated proposals are still staged source until their complete transaction and compiled/runtime checks pass; they are not declared working parity.
+
+## 2026-10-20 — v499 browser preview without login
+
+The owner requested seeing the actual browser before signing in. Fixed synchronous ProfileGate construction re-entry, rebuilt and locally signed v499, and visibly verified its regular disposable browser window with the supplied new-tab UI and native sidebar. The existing automatic gate suppression preference is enabled only in that disposable preview; account/Vault/onboarding state is unchanged. NTP preloading exposes a separate native delegate crash and is disabled for this preview. Evidence: `docs/acceptance/provided-v499-browser-preview.json`. Full parity remains unaccepted.

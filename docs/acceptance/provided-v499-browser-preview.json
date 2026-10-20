@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "composition": "v499",
+  "purpose": "Owner requested viewing the actual browser without logging in",
+  "buildReceipt": "docs/acceptance/native-full-build-v499.json",
+  "signingReceipt": "out/native-integration/v499-development-signing-receipt.json",
+  "signedAndVerifiedTargets": 11,
+  "sharedAuthorityVerified": true,
+  "launchRecord": "out/native-integration/v499-browser-preview-launcher.json",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v499-development-local/Aux.app",
+  "normalProfile": true,
+  "incognito": false,
+  "disposableProfile": true,
+  "accountOnboardingFabricated": false,
+  "cloudLoginCompleted": false,
+  "previewPreference": "aside.automatic_password_gate_suppressed=true",
+  "previewFlags": [
+    "--hide-crash-restore-bubble",
+    "--disable-features=AuxNtpPrerender"
+  ],
+  "uiObserved": {
+    "window": "New Tab - Aux",
+    "url": "chrome://newtab/",
+    "suppliedContent": "chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/newtab.html",
+    "controls": [
+      "Address and search bar",
+      "Search",
+      "Ask",
+      "Suggested tasks",
+      "Bookmarks",
+      "Chats",
+      "New Chat",
+      "Tabs",
+      "Your Aux"
+    ]
+  },
+  "remainingIssue": "Default NTP preloading hits NOTREACHED in content/public/browser/prerender_web_contents_delegate.cc:134. Disabled only for this preview; repair remains pending.",
+  "fullParityAccepted": false
+}
