@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "drag-start",
+      "rva": "0x4652488",
+      "bytes": 376,
+      "sha256": "64a184170c03243ba856152386bac4de60963545d41f64516d00b406c26dede0",
+      "assemblySha256": "e52e9d58db669b7efd4637585b0641365d5088ea76b34b010b83699e496d57a7"
+    },
+    {
+      "name": "drag-update",
+      "rva": "0x4652600",
+      "bytes": 792,
+      "sha256": "5cb969c626cfcb78cf8d0528b8ef1014490b182f4abfb6e26dfc623c612f7601",
+      "assemblySha256": "b0ff5811149739eb0f3d5c840edd5a1ac851470d7c948868aa6f031e2d4571c8"
+    },
+    {
+      "name": "drag-end",
+      "rva": "0x4652918",
+      "bytes": 1484,
+      "sha256": "d154a472cf9f2f1e22ea2c5cc7c0bed3ddfab2b5c7467a08e7d3e7ab23ef8c84",
+      "assemblySha256": "bbdb21579ad8dd175eb40e55eb9993e68ccda9586b51240398e8c0dcce778cf9"
+    },
+    {
+      "name": "reorder",
+      "rva": "0x465669c",
+      "bytes": 3400,
+      "sha256": "794f86d5647c8956a44450214b74236b6cf9bbc157dfffeddfe8e728e1b0b18e",
+      "assemblySha256": "8410eaa13e9bfb20949e3f9b9eb67c629b36e551a91d4747acc339828474dc2e"
+    },
+    {
+      "name": "clear-siblings",
+      "rva": "0x4651c08",
+      "bytes": 508,
+      "sha256": "0fb7b3232418180860c6f6cd1dbfcba730d08dab4b371c138db51dfd1550d5cd",
+      "assemblySha256": "cd9f9990d2713ed4b3c366632b457226144647aef15a6aa9486ccf121a6ef08b"
+    },
+    {
+      "name": "construct-animations",
+      "rva": "0x37e0314",
+      "bytes": 200,
+      "sha256": "9783f048a0cb48e773f9ee0f34c98904280e85742930db6f9b3af179b1063165",
+      "assemblySha256": "a1c02d5f20d44deaab1b6d4955b4fe07f83eb7ceedebbd4720c1c922e499e73b"
+    },
+    {
+      "name": "animate-siblings",
+      "rva": "0x4649c54",
+      "bytes": 188,
+      "sha256": "3f0b988bb024d89c1aa6758fa7fb1e4186316a46bb40fee0207a379733ae0782",
+      "assemblySha256": "21df7f04e9588ec6976093216c02fdac97313043da42b7ebf9b96eabfa84336a"
+    },
+    {
+      "name": "animate-settlement",
+      "rva": "0x4649a5c",
+      "bytes": 180,
+      "sha256": "4a1b8b3cac812841642fa8fb4bb93ec2e9264ad2c38d1444aad3621fcb05e482",
+      "assemblySha256": "99f00d3e2a36f7df458cc901198102d48f3ff0f667f3d2023fda855523a903fb"
+    },
+    {
+      "name": "finish-settlement",
+      "rva": "0x464b90c",
+      "bytes": 588,
+      "sha256": "30417daceccd3dc0ef0091a1b600f6ede6dd40a089288bccb97c846cf388183d",
+      "assemblySha256": "e56f20cf65c41804a3b89f4cc9a35861b540bacb056d523d745732b326c3c6f3"
+    },
+    {
+      "name": "finish-siblings",
+      "rva": "0x464b3cc",
+      "bytes": 196,
+      "sha256": "bcb090a7381806ab773b771e28b961257ccec6a696a8d06e73ffead8000e18b9",
+      "assemblySha256": "a2f2190887bca08f898ef431a5567f95b63780e908e6b0c3f0cd60cc08c2af7c"
+    },
+    {
+      "name": "slide-begin",
+      "rva": "0x239e964",
+      "bytes": 224,
+      "sha256": "1c812c12eb1979b28599a2c16a4be3c166df24bf0f478d4f7a4c27abfb2013ca",
+      "assemblySha256": "94a819d461c404b28ae7065bc5201e4a9be62aea06ba7cdbe8809d37b7bd821e"
+    },
+    {
+      "name": "nextafter-stub",
+      "rva": "0x94b2218",
+      "bytes": 12,
+      "sha256": "4003597c1f8026faf8d049fa12f95c4e643fe8e9a8872acaf12718e9ba333005",
+      "assemblySha256": "9704e79e5b166850f20443898af5639187db6375d0cd954940928875b06309dd"
+    }
+  ],
+  "opacity": {
+    "rva": "0xdf51324",
+    "bytes": 4,
+    "sha256": "7cc71f142a363d1bc5259dbd406984054d79a21fb23c4cc63fdf83b89b2e8568"
+  },
+  "nextafterImport": "_nextafter",
+  "rea": {
+    "evidenceId": "ev_dbb1cbcb4289a168ccdad82fb97685e585214f9818f7609456a87225a393eafe",
+    "inputStart": "0x465669c",
+    "inputStop": "0x46573e4",
+    "sha256": "794f86d5647c8956a44450214b74236b6cf9bbc157dfffeddfe8e728e1b0b18e",
+    "pseudocodeSha256": "4fe0b0ae6aa00c07e56179a13e363ce09f2d5cbe050d6a35358e8990bfccde68",
+    "limitations": [
+      "Bounded raw target omits external callees; original full LLVM register flow is authority for from/to arguments and external call semantics"
+    ]
+  },
+  "platformSources": [
+    {
+      "path": "ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/gfx/geometry/transform.h",
+      "sha256": "d2269f2c798f837438754f637a58193865af533dee3ee4022aad4069fcf877fb"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    },
+    {
+      "path": "ui/gfx/animation/tween.cc",
+      "sha256": "eee0d2d46efffbc341415e960ea74f0008bd207f03c825e0d5e9c6a2e0bab00e"
+    },
+    {
+      "path": "ui/gfx/animation/animation_delegate.h",
+      "sha256": "5d344a5f7d614acabbe7db6dd6f3b65ef5701b6adb15d9335830faf4fc90a3ae"
+    },
+    {
+      "path": "base/numerics/clamped_math.h",
+      "sha256": "1b3208a6f26d2b78508b94b940a17eb33c252a549bb0927cbcff2eeba41c3fad"
+    },
+    {
+      "path": "base/numerics/safe_conversions.h",
+      "sha256": "d730a0709abd5426b6c89a4961451a45397cc4ee13c88176d9250b80723fd614"
+    },
+    {
+      "path": "components/prefs/pref_service.h",
+      "sha256": "2b76919536ecfc8f07ae580f58f507b649e83d7f5722af8646c903cdc593512f"
+    }
+  ]
+}

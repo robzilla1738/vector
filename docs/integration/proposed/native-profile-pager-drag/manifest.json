@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "applyAfter": "Original pager leaf3edcafbf9 (root7cb852939), existing real HorizontalProfileOrder owner primitive; no existing file modified",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_pager_drag.cc",
+      "baselineSha256": null,
+      "outputSha256": "88eb85e61c8fb88380036c422e64f392e28b2639f0023cd6c2649529ef8d346d",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_pager_drag.h",
+      "baselineSha256": null,
+      "outputSha256": "453dbb44ce4041092440836e03f8839a831527f0d0bdf1f6a2ad985b248d95dc",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "registration": [
+    "chrome/browser/ui/views/frame/aux_profile_pager_drag.cc",
+    "chrome/browser/ui/views/frame/aux_profile_pager_drag.h"
+  ],
+  "remainingGaps": [
+    "Genuine pager roster/tooltip/context/selection owner and header mount remain separate",
+    "Refresh callback must preserve real owner retirement/profile-transfer guards; no placeholder callback allowed",
+    "Focused Chromium155 compilation and disposable drag observation remain pending integrator"
+  ]
+}
