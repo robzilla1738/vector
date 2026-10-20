@@ -1,0 +1,55 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "default-constructor.asm",
+      "start": "0x300f948",
+      "endExclusive": "0x300f994",
+      "bytesSha256": "f646b35dc99da0ef91ffbea95fc9201900f05c692feca7ac1f35c02760acfc0a",
+      "sha256": "8e09e4844f24a6d238a7e215b9ba36083ec82e22f2549c9823abbdd0bb9f8da1"
+    },
+    {
+      "file": "option-copy.asm",
+      "start": "0x21f17a8",
+      "endExclusive": "0x21f1820",
+      "bytesSha256": "705b4e41b3f2578d221f001e440fdb53b9e369322bd8447a330ce766319707e1",
+      "sha256": "272cd1efe480b25f6cc5078e6647a1451ecd24ccc101e058f0270e779b0fc5eb"
+    },
+    {
+      "file": "open-dispatch.asm",
+      "start": "0x1561684",
+      "endExclusive": "0x1561724",
+      "bytesSha256": "8e20ce02c9d701bc56f91789e5673f8e032c70238b41ac09db338c645b82af31",
+      "sha256": "064727af0a9c0dd948e2b38a5591520099457afb066e2a9378a9cdd3b7df613e"
+    },
+    {
+      "file": "open-flags-locking-journal.asm",
+      "start": "0x174fa80",
+      "endExclusive": "0x17501b0",
+      "bytesSha256": "a29133d6a13fab63aec12bcddfb91814d30c70528f9d623570cbb27c3653dd31",
+      "sha256": "7e622b2c6fa8d927cdbdf5700ab5db8015d1bbf7d4955157f30ed0ca478455cc"
+    }
+  ],
+  "literals": {
+    "0xdbd33bd": "PRAGMA locking_mode=NORMAL",
+    "0xdbd341b": "PRAGMA journal_mode=TRUNCATE"
+  },
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/database.h",
+      "sha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/sql/database.cc",
+      "sha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/sqlite/sqlite3.h",
+      "sha256": "99f4ff6b1bbe134a172cc7afc0ced4f74825e85d2c7f8ecc9b0d97e9ec18b1d7"
+    }
+  ],
+  "reviewedProposal": "3c87170e6 physical snapshot; no code changes in this proof"
+}
