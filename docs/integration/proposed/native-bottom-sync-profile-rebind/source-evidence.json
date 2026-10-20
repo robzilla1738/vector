@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "platformAdaptation": true,
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "ee5b20d6171131b87688cc696b9cefe9cb4fd465117b4adb3e96434b5f348a7e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "1bd2175c5467315fe8e7b4ee2c0ef5defb6534f719122ebc04217e09e2584633"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/scoped_observation.h",
+      "sha256": "406257977df2006bd2046320066a8fbf4a8d183981541f24d99196d0eb3677f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "sha256": "e964cd8170055591c81cc7424eaa191be8495da5ccd34385f6708a02925410c5"
+    }
+  ],
+  "suppliedOwnerPrerequisites": [
+    "../native-bottom-sync-owner/source-evidence.json",
+    "../native-bottom-sync-shadow/source-evidence.json"
+  ],
+  "reason": "Same retained region and BottomContainer survive an authoritative Browser profile transfer. The constructor-only observation must detach before transfer and rebind to the real current profile after matching commit or rollback."
+}

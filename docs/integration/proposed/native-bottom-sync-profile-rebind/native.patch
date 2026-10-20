@@ -1,0 +1,115 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h
+@@ -57,6 +57,10 @@
+   bool IsPositionInWindowCaption(const gfx::Point& point);
+ 
+   void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void PauseForAuxProfileSwitch();
++  void RebindAfterAuxProfileSwitch();
++#endif
+ 
+  private:
+   void OnNewTabButtonContextMenuWillShow();
+@@ -66,6 +70,7 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   void Layout(PassKey) override;
+   void InitializeSyncCard();
++  void BindSyncServiceForCurrentProfile();
+   void UpdateSyncState();
+   void UpdateSyncLabel();
+   void OnStateChanged(syncer::SyncService* service) override;
+@@ -82,6 +87,7 @@
+       sync_observation_{this};
+   syncer::DataTypeSet pending_initial_downloads_;
+   bool sync_compact_ = false;
++  bool sync_profile_switch_paused_ = false;
+ #endif
+ 
+   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h"
+ 
+ #include <algorithm>
++
++#include "base/check.h"
+ 
+ #include "base/functional/bind.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -173,11 +175,7 @@
+                                views::MaximumFlexSizeRule::kUnbounded, false,
+                                views::MinimumFlexSizeRule::kPreferred));
+   UpdateSyncLabel();
+-  sync_service_ = SyncServiceFactory::GetForProfile(browser_->GetProfile());
+-  if (sync_service_) {
+-    sync_observation_.Observe(sync_service_);
+-  }
+-  UpdateSyncState();
++  BindSyncServiceForCurrentProfile();
+   UpdateSyncLabel();
+   sync_card_->SetVisible(false);
+ }
+@@ -189,6 +187,30 @@
+         std::min(sync_card_->width(), sync_card_->height()) / 2, 0, 12);
+     sync_shadow_->SetRoundedCornerRadius(radius);
+   }
++}
++
++void VerticalTabStripBottomContainer::PauseForAuxProfileSwitch() {
++  CHECK(!sync_profile_switch_paused_);
++  sync_profile_switch_paused_ = true;
++  sync_observation_.Reset();
++  sync_service_ = nullptr;
++}
++
++void VerticalTabStripBottomContainer::RebindAfterAuxProfileSwitch() {
++  CHECK(sync_profile_switch_paused_);
++  sync_profile_switch_paused_ = false;
++  BindSyncServiceForCurrentProfile();
++}
++
++void VerticalTabStripBottomContainer::BindSyncServiceForCurrentProfile() {
++  CHECK(!sync_profile_switch_paused_);
++  CHECK(!sync_service_);
++  CHECK(!sync_observation_.IsObserving());
++  sync_service_ = SyncServiceFactory::GetForProfile(browser_->GetProfile());
++  if (sync_service_) {
++    sync_observation_.Observe(sync_service_);
++  }
++  UpdateSyncState();
+ }
+ 
+ void VerticalTabStripBottomContainer::UpdateSyncState() {
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -832,7 +832,7 @@
+ 
+ bool VerticalTabStripRegionView::CanRebindForAuxProfileSwitch(
+     Profile* target) const {
+-  return pinned_tab_entries_ && target &&
++  return pinned_tab_entries_ && bottom_button_container_ && target &&
+          target->GetPrefs()->FindPreference(aux::kPinnedTabEntriesPref) &&
+          aux_sidebar_ && resize_area_ &&
+          !resize_area_->is_resizing() &&
+@@ -842,6 +842,9 @@
+ uint64_t VerticalTabStripRegionView::BeginAuxProfileSwitch(Profile* target) {
+   CHECK(CanRebindForAuxProfileSwitch(target));
+   pinned_tab_entries_->PauseForProfileSwitch();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bottom_button_container_->PauseForAuxProfileSwitch();
++#endif
+   const auto generation = aux_sidebar_->BeginAuxProfileSwitch(target);
+   pinned_profile_switch_generation_ = generation;
+   return generation;
+@@ -858,6 +861,9 @@
+   if (pinned_profile_switch_generation_ == generation) {
+     pinned_profile_switch_generation_.reset();
+     pinned_tab_entries_->RebindAfterProfileSwitch();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    bottom_button_container_->RebindAfterAuxProfileSwitch();
++#endif
+     if (aux_profile_header_)
+       aux_profile_header_->RefreshNow();
+     if (aux_profile_preview_capture_)

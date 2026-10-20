@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "applyAfter": "802100102 + e99d6aacd (root staged271/272); region actual268",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h",
+      "baselineSha256": "e6a654231a8c23c2a46d681e5c9fc7687554ad0bed6bed4a4262abe8ae7e4b9b",
+      "outputSha256": "137c59c8249a5f9c6da67443e3ee2d04c24a7212ebb39b4eacb3f543ce7e9298",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "  void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);",
+          "after": "  void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  void PauseForAuxProfileSwitch();\n  void RebindAfterAuxProfileSwitch();\n#endif",
+          "count": 1
+        },
+        {
+          "before": "  void UpdateSyncState();",
+          "after": "  void BindSyncServiceForCurrentProfile();\n  void UpdateSyncState();",
+          "count": 1
+        },
+        {
+          "before": "  bool sync_compact_ = false;",
+          "after": "  bool sync_compact_ = false;\n  bool sync_profile_switch_paused_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+      "baselineSha256": "148e7072602d5788ba9e22f522876e945cd918829e5a0203531e9b7f4e9c4082",
+      "outputSha256": "8063dc8bd2f3662e792f23d02872ef9547d674b21691b8284a4ea79c6905076f",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "#include <algorithm>",
+          "after": "#include <algorithm>\n\n#include \"base/check.h\"",
+          "count": 1
+        },
+        {
+          "before": "  sync_service_ = SyncServiceFactory::GetForProfile(browser_->GetProfile());\n  if (sync_service_) {\n    sync_observation_.Observe(sync_service_);\n  }\n  UpdateSyncState();\n  UpdateSyncLabel();",
+          "after": "  BindSyncServiceForCurrentProfile();\n  UpdateSyncLabel();",
+          "count": 1
+        },
+        {
+          "before": "void VerticalTabStripBottomContainer::UpdateSyncState() {",
+          "after": "void VerticalTabStripBottomContainer::PauseForAuxProfileSwitch() {\n  CHECK(!sync_profile_switch_paused_);\n  sync_profile_switch_paused_ = true;\n  sync_observation_.Reset();\n  sync_service_ = nullptr;\n}\n\nvoid VerticalTabStripBottomContainer::RebindAfterAuxProfileSwitch() {\n  CHECK(sync_profile_switch_paused_);\n  sync_profile_switch_paused_ = false;\n  BindSyncServiceForCurrentProfile();\n}\n\nvoid VerticalTabStripBottomContainer::BindSyncServiceForCurrentProfile() {\n  CHECK(!sync_profile_switch_paused_);\n  CHECK(!sync_service_);\n  CHECK(!sync_observation_.IsObserving());\n  sync_service_ = SyncServiceFactory::GetForProfile(browser_->GetProfile());\n  if (sync_service_) {\n    sync_observation_.Observe(sync_service_);\n  }\n  UpdateSyncState();\n}\n\nvoid VerticalTabStripBottomContainer::UpdateSyncState() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "1bd2175c5467315fe8e7b4ee2c0ef5defb6534f719122ebc04217e09e2584633",
+      "outputSha256": "8c61099574f14890e10d0c1e27b6f0a5e32f7ef4da2b5d4bde497ff4ef4fa3f1",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "  return pinned_tab_entries_ && target &&",
+          "after": "  return pinned_tab_entries_ && bottom_button_container_ && target &&",
+          "count": 1
+        },
+        {
+          "before": "  pinned_tab_entries_->PauseForProfileSwitch();",
+          "after": "  pinned_tab_entries_->PauseForProfileSwitch();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  bottom_button_container_->PauseForAuxProfileSwitch();\n#endif",
+          "count": 1
+        },
+        {
+          "before": "    pinned_tab_entries_->RebindAfterProfileSwitch();",
+          "after": "    pinned_tab_entries_->RebindAfterProfileSwitch();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n    bottom_button_container_->RebindAfterAuxProfileSwitch();\n#endif",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
