@@ -1,0 +1,71 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1101,6 +1101,10 @@
+     "//ui/strings",
+     "//ui/webui",
+   ]
++
++  if (enable_aux_browser && is_mac) {
++    deps += [ "//chrome/browser/extensions/api/aux_mini_popup" ]
++  }
+ 
+   allow_circular_includes_from = [
+     # page_load_metrics's :impl includes headers from //chrome/browser/ui that
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1270,6 +1270,10 @@
+     "//ui/webui/tracked_element",
+   ]
+ 
++  if (enable_aux_browser && is_mac) {
++    deps += [ "//chrome/browser/extensions/api/aux_mini_popup" ]
++  }
++
+   if (!is_android) {
+     public_deps = [
+       "//chrome/browser/ui/omnibox/omnibox_everywhere:impl",
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_mini_popup") {
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+-  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/gfx/animation", "//ui/views", "//ui/views/controls/webview" ]
++  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/keep_alive_registry", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/gfx/animation", "//ui/views", "//ui/views/controls/webview" ]
+   frameworks = [ "AppKit.framework" ]
+ }
+ 
+--- a/chrome/browser/ui/context_highlight/BUILD.gn
++++ b/chrome/browser/ui/context_highlight/BUILD.gn
+@@ -18,6 +18,7 @@
+ 
+     public_deps = [
+       "//base",
++      "//chrome/browser:buildflags",
+       "//chrome/browser/ui/browser_window",
+       "//components/tabs:public",
+       "//content/public/browser",
+--- a/chrome/browser/skills/BUILD.gn
++++ b/chrome/browser/skills/BUILD.gn
+@@ -50,7 +50,10 @@
+   ]
+   if (!is_android) {
+     sources += [ "skills_ui_window_controller.h" ]
+-    public_deps = [ "//components/signin/public/identity_manager" ]
++    public_deps = [
++      "//chrome/browser:buildflags",
++      "//components/signin/public/identity_manager",
++    ]
+     deps += [
+       "//chrome/browser/ui/toasts",
+       "//chrome/browser/ui/toasts/api:toasts",
+--- a/chrome/browser/ui/views/media_router/BUILD.gn
++++ b/chrome/browser/ui/views/media_router/BUILD.gn
+@@ -27,6 +27,7 @@
+ 
+   public_deps = [
+     "//base",
++    "//chrome/browser:buildflags",
+     "//chrome/browser/media",
+     "//chrome/browser/ui/browser_window",
+     "//chrome/browser/ui/exclusive_access",

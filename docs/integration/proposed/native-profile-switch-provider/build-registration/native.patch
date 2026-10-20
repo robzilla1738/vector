@@ -1,0 +1,12 @@
+--- a/chrome/browser/ui/browser_window/internal/BUILD.gn
++++ b/chrome/browser/ui/browser_window/internal/BUILD.gn
+@@ -48,6 +48,9 @@
+       "//ui/android",
+     ]
+   } else {
++    if (enable_aux_browser && is_mac) {
++      sources += [ "browser_window_features_aux_profile_switch.cc" ]
++    }
+     sources += [
+       "browser_window_features.cc",
+       "browser_window_interface_iterator_non_android.cc",

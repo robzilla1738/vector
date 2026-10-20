@@ -138,6 +138,21 @@ steps.extend([
     ('native-profile-switch-browser-actions/source-abort/native.patch', 'native-profile-switch-browser-actions/source-abort/manifest.json'),
     ('native-popup-retirement/native.patch', 'native-popup-retirement/manifest.json'),
     ('native-profile-switch-agent-tabs-ownership/native.patch', 'native-profile-switch-agent-tabs-ownership/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/source-rollback-owners.patch', 'native-profile-switch-owner/transaction-map/source-rollback-owners-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/context-highlight-profile.patch', 'native-profile-switch-owner/transaction-map/context-highlight-profile-manifest.json'),
+    ('native-profile-switch-owner/transaction-map/tab-strip-profile-guard.patch', 'native-profile-switch-owner/transaction-map/tab-strip-profile-guard-manifest.json'),
+    ('native-profile-switch-provider/native.patch', 'native-profile-switch-provider/manifest.json'),
+    ('native-profile-switch-provider/build-registration/native.patch', 'native-profile-switch-provider/build-registration/manifest.json'),
+    ('native-profile-switch-cast/native.patch', 'native-profile-switch-cast/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/skills-toast-profile.patch', 'native-profile-switch-owner/transaction-map/skills-toast-profile-manifest.json'),
+    ('native-popup-startup/native.patch', 'native-popup-startup/manifest.json'),
+    ('native-popup-keepalive/native.patch', 'native-popup-keepalive/manifest.json'),
+    ('native-profile-switch-provider-readiness/native.patch', 'native-profile-switch-provider-readiness/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/weak-profile-mutation-scopes.patch', 'native-profile-switch-owner/transaction-map/weak-profile-mutation-scopes-manifest.json'),
+    ('native-profile-switch-chrome-labs/native.patch', 'native-profile-switch-chrome-labs/manifest.json'),
+    ('native-popup-focus-transfer/native.patch', 'native-popup-focus-transfer/manifest.json'),
+    ('native-fidelity-integration-build-registration/native.patch', 'native-fidelity-integration-build-registration/manifest.json'),
+    ('native-profile-switch-provider/buildflag-import/native.patch', 'native-profile-switch-provider/buildflag-import/manifest.json'),
 ])
 
 if options.through:

@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/BUILD.gn",
+      "baselineSha256": "588edd9c66b87015d354d05d7c0873ddc2d96915896858f3f6bd5b915df01dcb",
+      "outputSha256": "8bbd3d6d927bba608414fb2927c59f9c716342f04bf900bdde8a6db457e791c7"
+    }
+  ],
+  "compiled": false
+}
