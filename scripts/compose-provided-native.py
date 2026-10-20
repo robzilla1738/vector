@@ -514,6 +514,7 @@ steps.extend([
     ('native-import-coordinator-build/native.patch', 'native-import-coordinator-build/manifest.json'),
     ('native-import-coordinator-build-labels/native.patch', 'native-import-coordinator-build-labels/manifest.json'),
     ('native-source-picker-explicit-synthesis/native.patch', 'native-source-picker-explicit-synthesis/manifest.json'),
+    ('native-import-standalone-authority/native.patch', 'native-import-standalone-authority/manifest.json'),
 ])
 
 if options.through:

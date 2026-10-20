@@ -1,0 +1,27 @@
+{
+  "composition": "v490",
+  "compositionSha256": "7e3105485545a6de249b85d3714c585268d5d42e5c976ca2024d73fbc3ba231c",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "gnCommand": [],
+  "gnExitCode": null,
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_window_lifecycle.o"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 9.985935688018799,
+  "totalElapsedSeconds": 9.98593807220459,
+  "runtimeAcceptance": false,
+  "gnReusedFrom": "v488 (no GN changes)"
+}
