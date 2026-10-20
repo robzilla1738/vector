@@ -1,0 +1,4 @@
+Actual262 focused build, sidebar only:
+../../chrome/browser/ui/views/frame/aux_sidebar_view.cc:1595:6: error: unused function 'RefreshAuxProfileButton' [-Werror,-Wunused-function]
+ 1595 | void RefreshAuxProfileButton(views::View* button) {
+1 error generated.

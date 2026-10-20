@@ -1,0 +1,24 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -821,8 +821,6 @@
+ }
+ 
+ // Native profile menu and browser navigation.
+-void RefreshAuxProfileButton(views::View* button);
+-
+ // The primary menu uses the same real ordered/non-omitted registry roster as
+ // the supplied pager (40fd7f4,457333c), never the display-sorted UI helper.
+ std::vector<ProfileAttributesEntry*> PrimaryProfileRoster() {
+@@ -1672,12 +1670,6 @@
+   raw_ptr<views::ImageView> avatar_ = nullptr;
+ };
+ 
+-void RefreshAuxProfileButton(views::View* button) {
+-  if (button && button->GetClassName() == AuxProfileButton::kViewClassName) {
+-    static_cast<AuxProfileButton*>(button)->RefreshAvatar();
+-  }
+-}
+-
+ BEGIN_METADATA(AuxProfileButton)
+ END_METADATA
+ 

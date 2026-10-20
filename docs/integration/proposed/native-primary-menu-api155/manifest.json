@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "6c2ef6d5e native-primary-bookmarks-menu / root263",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "a242f455a6eeea4cc3d411172ac80bc43db38ca2250219e61daf7d1ce64bc862",
+      "outputSha256": "11f56f57307bb42d639a9a7c33b1e4c2dcab080ebf87dabf73d5dd654c09397c",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "void RefreshAuxProfileButton(views::View* button);\n\n",
+          "after": "",
+          "count": 1
+        },
+        {
+          "before": "void RefreshAuxProfileButton(views::View* button) {\n  if (button && button->GetClassName() == AuxProfileButton::kViewClassName) {\n    static_cast<AuxProfileButton*>(button)->RefreshAvatar();\n  }\n}\n\n",
+          "after": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
