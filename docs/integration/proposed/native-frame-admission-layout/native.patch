@@ -1,0 +1,88 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/ui/views/animations/side_panel_animations.h"
+ #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
+ #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/frame/custom_corners.h"
+ #include "chrome/browser/ui/views/frame/custom_corners_background.h"
+ #include "chrome/browser/ui/views/frame/custom_floating_corner.h"
+@@ -545,8 +546,8 @@
+ 
+   auto* const controller = delegate().GetAnimationController();
+ 
++  double top_corner_collapsed_state = 1.0;
+   if (layout_data_->tab_strip_type == TabStripType::kVertical) {
+-    double top_corner_collapsed_state = 1.0;
+     const bool would_have_separator = has_infobar || !is_split_view;
+     switch (layout_data_->window_state) {
+       case WindowState::kFullscreen:
+@@ -604,6 +605,49 @@
+   animation.bottom_corner = *controller->GetCurrentValue(
+       TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kBottomCorner);
+ 
++  // Aux's recovered region owns collapse/hover/retention. It intentionally does
++  // not start BrowserAnimationController motions, whose default is collapsed.
++  // Project the live owner into the typed layout instead of reading that stale
++  // default (which otherwise places the toolbar above an expanded sidebar).
++  if (const auto* region = views().vertical_tab_strip_region_view.get()) {
++    if (const auto* admission = region->GetAuxProfilePreviewAdmission()) {
++      const double expanded = admission->collapse_value();
++      const bool overlay = admission->hover_expanded() || admission->retained();
++      animation.current_motion = BrowserAnimationMotion();
++      if (admission->collapse_animating()) {
++        animation.current_motion = delegate().IsVerticalTabStripCollapsed()
++                                       ? TabStripAnimations::kCollapse
++                                       : TabStripAnimations::kExpand;
++      }
++      animation.tab_strip_width = expanded;
++      animation.expand_on_hover_width = overlay ? 1.0 : 0.0;
++      animation.expand_on_hover_opacity = overlay ? 1.0 : 0.0;
++      // Preserve the typed layout's .25/.75 geometry checkpoints, driven by
++      // the existing recovered SlideAnimation rather than a second clock.
++      const double top_progress = std::clamp((expanded - 0.25) / 0.5, 0.0, 1.0);
++      animation.top_offset = admission->retained()
++                                 ? 0
++                                 : base::ClampRound(leading_exclusion_height *
++                                                    (1.0 - top_progress));
++      const double flat_corner = std::max(top_corner_collapsed_state, 0.0);
++      animation.top_corner =
++          expanded < 0.25
++              ? gfx::Tween::DoubleValueBetween(expanded / 0.25,
++                                               top_corner_collapsed_state,
++                                               flat_corner)
++              : gfx::Tween::DoubleValueBetween(
++                    std::clamp((expanded - 0.75) / 0.25, 0.0, 1.0),
++                    flat_corner, 1.0);
++      animation.bottom_corner = overlay ? -1.0 : 1.0;
++      if (overlay) {
++        animation.top_corner = -1.0;
++      } else if (max_uncollapsed_top_corner) {
++        animation.top_corner =
++            std::min(animation.top_corner, *max_uncollapsed_top_corner);
++      }
++    }
++  }
++
+   return animation;
+ }
+ 
+@@ -640,6 +684,17 @@
+ BrowserViewTabbedLayoutImpl::GetVerticalTabStripCollapsedState() const {
+   if (!views().vertical_tab_strip_region_view) {
+     return VerticalTabStripCollapsedState::kExpanded;
++  }
++  if (const auto* admission = views().vertical_tab_strip_region_view
++                                  ->GetAuxProfilePreviewAdmission()) {
++    if (admission->collapse_animating()) {
++      return delegate().IsVerticalTabStripCollapsed()
++                 ? VerticalTabStripCollapsedState::kCollapsing
++                 : VerticalTabStripCollapsedState::kExpanding;
++    }
++    return delegate().IsVerticalTabStripCollapsed()
++               ? VerticalTabStripCollapsedState::kCollapsed
++               : VerticalTabStripCollapsedState::kExpanded;
+   }
+   const auto motion = delegate().GetAnimationController()->GetCurrentMotion(
+       TabStripAnimations::kVerticalTabStrip);
