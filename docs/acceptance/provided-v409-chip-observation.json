@@ -1,0 +1,181 @@
+{
+  "processProof": [
+    {
+      "pid": 40927,
+      "launcher": 40925,
+      "lineage": [
+        40927,
+        40926,
+        40925,
+        40923,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/X/dev.aux.browser.code_sign_clone/code_sign_clone.OayvWL/Aux.app.bundle/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v409-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    40927
+  ],
+  "windows": [
+    {
+      "pid": 40927,
+      "windowId": 32628,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32627,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32622,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32621,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 439.0,
+        "y": 40.0,
+        "width": 610.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32620,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 439.0,
+        "y": 40.0,
+        "width": 610.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32619,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32626,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32624,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32623,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 40927,
+      "windowId": 32625,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v409",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "interactionTool": "mcp__cua_repl",
+  "profile": "disposable incognito profile",
+  "observed": [
+    "Actual executable was an OS code-sign clone with byte-identical candidate binary and verified launcher lineage.",
+    "Selecting clone bundle path failed with kLSApplicationNotFoundErr; selecting original candidate path successfully bound the actual about:blank incognito window. Only one Aux main process existed before stopping.",
+    "Toolbar Collapse chip now renders its full sidebar-toggle icon; preceding v408 tiny-dot clipping is corrected by original layout-insets and external-margin mapping.",
+    "Clicking actual toolbar action changes both toolbar and sidebar labels to Expand Tabs.",
+    "Clicking same action again restores Collapse Tabs labels and sidebar resize handle."
+  ],
+  "scope": "Retained toolbar chip icon rendering and real action/accessible-state updates only; no full UI or normal-profile acceptance.",
+  "launcherPid": 40925,
+  "guardianPid": 40926,
+  "browserPid": 40927,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-t74cFf",
+  "installedAppChanged": false,
+  "ownerProfileUsed": false,
+  "fullUiParityAccepted": false,
+  "nativeRuntimeAcceptance": false
+}
