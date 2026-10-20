@@ -1,0 +1,75 @@
+{
+  "composition": "out/native-reuse-composition-v135",
+  "compositionSha256": "4dca23ff7d297ec966b0bd101cc5ad682e17dca3cca1cebccc5a78022f55f0ef",
+  "sourceOutputs": 296,
+  "artworkTargets": 23,
+  "originalReplay": {
+    "steps": 145,
+    "allSourceOutputsMatch": true
+  },
+  "attempts": [
+    {
+      "version": 134,
+      "result": {
+        "exitCode": 1,
+        "elapsedSeconds": 39.37325406074524,
+        "targets": {
+          "browser_view": "obj/chrome/browser/ui/ui/browser_view.o",
+          "aux_profile_switch_transaction": "obj/chrome/browser/ui/ui/aux_profile_switch_transaction.o",
+          "browser_window_features_aux_profile_switch": "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o",
+          "browser": "obj/chrome/browser/ui/ui/browser.o",
+          "aux_agent_tabs_bubble": "obj/chrome/browser/ui/ui/aux_agent_tabs_bubble.o",
+          "horizontal_tab_strip_region_view": "obj/chrome/browser/ui/ui/horizontal_tab_strip_region_view.o"
+        },
+        "command": [
+          "python3",
+          "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+          "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+          "-C",
+          "out/AuxFast",
+          "obj/chrome/browser/ui/ui/browser_view.o",
+          "obj/chrome/browser/ui/ui/aux_profile_switch_transaction.o",
+          "obj/chrome/browser/ui/browser_window/internal/internal/browser_window_features_aux_profile_switch.o",
+          "obj/chrome/browser/ui/ui/browser.o",
+          "obj/chrome/browser/ui/ui/aux_agent_tabs_bubble.o",
+          "obj/chrome/browser/ui/ui/horizontal_tab_strip_region_view.o",
+          "-j",
+          "10",
+          "-k",
+          "0"
+        ]
+      },
+      "passedObjects": 5,
+      "failedObjects": 1,
+      "failure": "BrowserView used checked Browser cast without actual Browser definition"
+    },
+    {
+      "version": 135,
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 67.74539232254028,
+        "targets": {
+          "browser_view": "obj/chrome/browser/ui/ui/browser_view.o"
+        },
+        "command": [
+          "python3",
+          "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+          "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+          "-C",
+          "out/AuxFast",
+          "obj/chrome/browser/ui/ui/browser_view.o",
+          "-j",
+          "10",
+          "-k",
+          "0"
+        ]
+      },
+      "correction": "Explicit chrome/browser/ui/browser.h include"
+    }
+  ],
+  "distinctObjectsVerified": 6,
+  "fullBrowserLink": false,
+  "runtimeOrVisualAcceptance": false,
+  "forcedDestructionAccepted": false,
+  "signingPerformed": false
+}
