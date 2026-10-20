@@ -1,0 +1,63 @@
+--- a/chrome/browser/aux/installation_auth.h
++++ b/chrome/browser/aux/installation_auth.h
+@@ -2,6 +2,8 @@
+ // Supplied native-authority integration; HTTP and raw CDP inputs are distinct.
+ #ifndef CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
+ #define CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
++#include <array>
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ #include <string_view>
+@@ -11,6 +13,9 @@
+ namespace aux {
+ // Blocking functions: invoke on a MayBlock worker, never the UI thread.
+ base::FilePath StateHome();
++// Supplied Agent inbox authority, independent of the installation signing key.
++std::optional<std::array<uint8_t, 32>>
++LoadAgentInboxMasterKey(const base::FilePath &home);
+ std::optional<crypto::keypair::PrivateKey>
+ LoadInstallationPrivateKey(const base::FilePath &home);
+ std::optional<crypto::keypair::PublicKey>
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -66,6 +66,10 @@
+   // automatically manufactured approval or fallback to independent PEM keys.
+   if (env->GetVar("AUX_ENABLE_PROVIDED_NATIVE_CARRIER") != "1")
+     return std::nullopt;
++  const bool agent_inbox = command == "agent-inbox-key";
++  if (agent_inbox &&
++      env->GetVar("AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN") != "1")
++    return std::nullopt;
+   auto paths = BundlePaths::FromBrowserExecutable();
+   if (!paths)
+     return std::nullopt;
+@@ -149,6 +153,8 @@
+   options.environment["HOME"] = canonical_home.value();
+   options.environment["AUX_HOME"] = canonical_home.value();
+   options.environment["AUX_ENABLE_PROVIDED_NATIVE_CARRIER"] = "1";
++  if (agent_inbox)
++    options.environment["AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN"] = "1";
+   options.environment["DYLD_INSERT_LIBRARIES"] = boundary.value();
+   options.fds_to_remap = {{child.get(), STDIN_FILENO},
+                           {child.get(), STDOUT_FILENO},
+@@ -236,6 +242,19 @@
+              ? home.AppendASCII(".aux")
+              : base::FilePath();
+ }
++std::optional<std::array<uint8_t, 32>>
++LoadAgentInboxMasterKey(const base::FilePath &home) {
++  auto result = RunCarrier(home, "agent-inbox-key", {});
++  const auto *encoded = result ? result->FindString("key") : nullptr;
++  if (!encoded || result->size() != 1)
++    return std::nullopt;
++  auto bytes = base::Base64Decode(*encoded);
++  if (!bytes || bytes->size() != 32 || base::Base64Encode(*bytes) != *encoded)
++    return std::nullopt;
++  std::array<uint8_t, 32> key;
++  std::copy(bytes->begin(), bytes->end(), key.begin());
++  return key;
++}
+ std::optional<crypto::keypair::PrivateKey>
+ LoadInstallationPrivateKey(const base::FilePath & /*home*/) {
+   // Legacy independent credential broker cannot export the supplied authority's

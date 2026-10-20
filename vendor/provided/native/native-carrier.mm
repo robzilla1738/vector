@@ -9,6 +9,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
+#import "agent-inbox-master-key.h"
 
 namespace {
 int Fail(const char *message) {
@@ -84,8 +85,15 @@ int main(int argc, const char *argv[]) {
             "Usage: aux-native-carrier <provided-native.node> <command>");
       command = argv[2];
       if (command != "install-status" && command != "install-init" &&
-          command != "get-public-keys" && command != "cdp-sign")
+          command != "get-public-keys" && command != "cdp-sign" &&
+          command != "agent-inbox-key")
         return Fail("Native carrier command is not allowed");
+      if (command == "agent-inbox-key") {
+        const char *accepted =
+            std::getenv("AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN");
+        if (!accepted || std::string(accepted) != "1")
+          return Fail("Agent inbox key requires separate runtime acceptance");
+      }
       for (char ch; std::cin.get(ch);) {
         if (input.size() >= 32768)
           return Fail("Native carrier input too large");
@@ -131,6 +139,21 @@ int main(int argc, const char *argv[]) {
     if (bindingHash !=
         "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb")
       return Fail("Provided native binding hash mismatch");
+    if (command == "agent-inbox-key") {
+      NSData *key = AuxLoadAgentInboxMasterKey();
+      if (!key)
+        return Fail("Scoped Agent inbox key is unavailable");
+      NSData *json = [NSJSONSerialization
+          dataWithJSONObject:@{ @"key" : [key base64EncodedStringWithOptions:0] }
+                     options:0
+                       error:nil];
+      if (!json)
+        return Fail("Cannot encode Agent inbox key response");
+      // This is the bounded private parent pipe, never a diagnostic log.
+      std::cout.write(static_cast<const char *>(json.bytes), json.length);
+      std::cout << '\n';
+      return 0;
+    }
     void *library = dlopen(bindingPath, RTLD_LAZY | RTLD_LOCAL);
     if (!library) {
       if (verifyLoad) {

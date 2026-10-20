@@ -1,0 +1,32 @@
+[
+  {
+    "path": "chrome/browser/aux/installation_auth.h",
+    "before": "#include <optional>",
+    "after": "#include <array>\n#include <cstdint>\n#include <optional>",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/installation_auth.h",
+    "before": "base::FilePath StateHome();",
+    "after": "base::FilePath StateHome();\n// Supplied Agent inbox authority, independent of the installation signing key.\nstd::optional<std::array<uint8_t, 32>>\nLoadAgentInboxMasterKey(const base::FilePath &home);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/installation_auth.cc",
+    "before": "  auto paths = BundlePaths::FromBrowserExecutable();",
+    "after": "  const bool agent_inbox = command == \"agent-inbox-key\";\n  if (agent_inbox &&\n      env->GetVar(\"AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN\") != \"1\")\n    return std::nullopt;\n  auto paths = BundlePaths::FromBrowserExecutable();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/installation_auth.cc",
+    "before": "  options.environment[\"AUX_ENABLE_PROVIDED_NATIVE_CARRIER\"] = \"1\";",
+    "after": "  options.environment[\"AUX_ENABLE_PROVIDED_NATIVE_CARRIER\"] = \"1\";\n  if (agent_inbox)\n    options.environment[\"AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN\"] = \"1\";",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/installation_auth.cc",
+    "before": "std::optional<crypto::keypair::PrivateKey>\nLoadInstallationPrivateKey",
+    "after": "std::optional<std::array<uint8_t, 32>>\nLoadAgentInboxMasterKey(const base::FilePath &home) {\n  auto result = RunCarrier(home, \"agent-inbox-key\", {});\n  const auto *encoded = result ? result->FindString(\"key\") : nullptr;\n  if (!encoded || result->size() != 1)\n    return std::nullopt;\n  auto bytes = base::Base64Decode(*encoded);\n  if (!bytes || bytes->size() != 32 || base::Base64Encode(*bytes) != *encoded)\n    return std::nullopt;\n  std::array<uint8_t, 32> key;\n  std::copy(bytes->begin(), bytes->end(), key.begin());\n  return key;\n}\nstd::optional<crypto::keypair::PrivateKey>\nLoadInstallationPrivateKey",
+    "count": 1
+  }
+]

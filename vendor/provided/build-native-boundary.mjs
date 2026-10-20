@@ -21,27 +21,31 @@ export function buildProvidedNativeBoundary(output, nodeInclude = process.env.AU
   const carrier = join(output, 'aux-native-carrier');
   const boundary = join(output, 'libaux-native-boundary.dylib');
   const fixture = join(output, 'keychain-query-map-test');
+  const inboxFixture = join(output, 'agent-inbox-keychain-map-test');
   const guard = join(output, 'aux-native-guard.node');
   const launcher = join(output, 'aux-cli-launcher');
   const compile = (args) => {
-    const command = ['xcrun', 'clang++', '-std=c++20', '-fobjc-arc', '-framework', 'Foundation', '-framework', 'Security', ...args];
+    const command = ['xcrun', 'clang++', '-std=c++20', '-fobjc-arc', '-framework', 'Foundation', '-framework', 'Security', '-framework', 'LocalAuthentication', ...args];
     invocations.push(command);
     const result = spawnSync('python3', [lock, ...command], { stdio: 'inherit' });
     if (result.status !== 0) throw new Error('Provided native boundary compilation failed');
   };
-  compile(['-dynamiclib', join(source, 'keychain-query-map.mm'), join(source, 'keychain-interpose.mm'), join(source, 'sea-resource-pointer.mm'), '-o', boundary]);
-  compile([join(source, 'native-carrier.mm'), '-o', carrier]);
+  compile(['-dynamiclib', join(source, 'keychain-query-map.mm'), join(source, 'agent-inbox-keychain-map.mm'), join(source, 'keychain-interpose.mm'), join(source, 'sea-resource-pointer.mm'), '-o', boundary]);
+  compile([join(source, 'native-carrier.mm'), join(source, 'agent-inbox-master-key.mm'), '-o', carrier]);
   compile([join(source, 'keychain-query-map.mm'), join(source, 'keychain-query-map-test.mm'), '-o', fixture]);
+  compile([join(source, 'agent-inbox-keychain-map.mm'), join(source, 'agent-inbox-keychain-map-test.mm'), '-o', inboxFixture]);
   compile(['-shared', '-undefined', 'dynamic_lookup', '-I', resolve(nodeInclude), join(source, 'node-boundary-guard.mm'), '-o', guard]);
   compile([join(source, 'cli-launcher.mm'), '-o', launcher]);
   for (const pin of [...sources.map((e) => ({ ...e, path: resolve(repository, e.path) })), ...headers]) {
     if (sha(pin.path) !== pin.sha256) throw new Error('Native source/header changed during build; no receipt');
   }
-  const tested = spawnSync('python3', [lock, fixture], { stdio: 'inherit' });
-  if (tested.status !== 0) throw new Error('Pure native mapping fixture failed; no receipt');
-  const outputs = [carrier, boundary, guard, launcher, fixture].map((path) => ({ path, sha256: sha(path) }));
+  for (const executable of [fixture, inboxFixture]) {
+    const tested = spawnSync('python3', [lock, executable], { stdio: 'inherit' });
+    if (tested.status !== 0) throw new Error('Pure native mapping fixture failed; no receipt');
+  }
+  const outputs = [carrier, boundary, guard, launcher, fixture, inboxFixture].map((path) => ({ path, sha256: sha(path) }));
   writeFileSync(receipt, `${JSON.stringify({ version: 1, implementation: 'supplied-boundary', sources, headers, invocations, outputs, buildExitCode: 0, mapFixturePassed: true }, null, 2)}\n`, { flag: 'wx' });
-  return { carrier, boundary, fixture, guard, launcher, receipt };
+  return { carrier, boundary, fixture, inboxFixture, guard, launcher, receipt };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = buildProvidedNativeBoundary(process.argv[2] ?? 'out/provided-native', process.argv[3]);

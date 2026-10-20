@@ -8,6 +8,8 @@ const repository = fileURLToPath(new URL('../../', import.meta.url));
 const digest = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run') {
   const sources = ['aux-native.cjs', 'native-role-pins.cjs', 'build-native-boundary.mjs', 'native/keychain-query-map.h',
+    'native/agent-inbox-keychain-map.h', 'native/agent-inbox-keychain-map.mm',
+    'native/agent-inbox-keychain-map-test.mm', 'native/agent-inbox-master-key.h', 'native/agent-inbox-master-key.mm',
     'native/keychain-query-map.mm', 'native/keychain-interpose.mm', 'native/sea-resource-pointer.mm', 'native/native-carrier.mm',
     'native/node-boundary-guard.mm', 'native/cli-launcher.mm', 'native/keychain-query-map-test.mm'].map((name) => {
     const path = resolve(repository, 'vendor/provided', name);
@@ -18,6 +20,7 @@ export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run')
     ['libaux-native-boundary.dylib', 'native/libaux-native-boundary.dylib'],
     ['aux-native-guard.node', ['apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node', 'apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node']],
     ['keychain-query-map-test', null],
+    ['agent-inbox-keychain-map-test', null],
     ['aux-cli-launcher', 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli'],
   ].map(([name, destination]) => {
     const path = resolve(repository, output, name);

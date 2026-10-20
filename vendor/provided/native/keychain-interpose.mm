@@ -2,6 +2,7 @@
 // Loading this library performs no Keychain request. Unknown queries fail
 // closed.
 #import "keychain-query-map.h"
+#import "agent-inbox-keychain-map.h"
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
@@ -19,7 +20,16 @@ bool Refuse() {
   refused.fetch_add(1, std::memory_order_relaxed);
   return true;
 }
-NSDictionary *Map(CFDictionaryRef input, bool update = false) {
+bool AgentInboxEnabled() {
+  const char *accepted = std::getenv("AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN");
+  if (!accepted || std::string(accepted) != "1" ||
+      deny_all.load(std::memory_order_acquire))
+    return false;
+  std::lock_guard<std::mutex> lock(scope_mutex);
+  return !fixed_scope.empty();
+}
+NSDictionary *Map(CFDictionaryRef input, bool update = false,
+                  bool allow_agent_inbox = false) {
   if (!input)
     return nil;
   std::string raw;
@@ -30,9 +40,16 @@ NSDictionary *Map(CFDictionaryRef input, bool update = false) {
   if (raw.empty())
     return nil;
   NSString *scope = [NSString stringWithUTF8String:raw.c_str()];
-  NSDictionary *mapped =
-      update ? AuxMapKeychainUpdate((__bridge NSDictionary *)input, scope)
-             : AuxMapKeychainQuery((__bridge NSDictionary *)input, scope);
+  NSDictionary *mapped;
+  if (AuxIsAgentInboxKeychainQuery((__bridge NSDictionary *)input, scope)) {
+    if (update || !allow_agent_inbox || !AgentInboxEnabled())
+      return nil;
+    // The original family already requires a noninteractive LAContext.
+    return AuxMapAgentInboxKeychainQuery((__bridge NSDictionary *)input, scope);
+  } else {
+    mapped = update ? AuxMapKeychainUpdate((__bridge NSDictionary *)input, scope)
+                    : AuxMapKeychainQuery((__bridge NSDictionary *)input, scope);
+  }
   if (!mapped)
     return nil;
   // Keep original DP/enclave/access-control semantics. Only unattended UI
@@ -50,7 +67,7 @@ OSStatus Add(CFDictionaryRef attributes, CFTypeRef *result) {
         *result = nullptr;
       return errSecInteractionNotAllowed;
     }
-    NSDictionary *q = Map(attributes);
+    NSDictionary *q = Map(attributes, false, true);
     if (!q) {
       if (result)
         *result = nullptr;
@@ -66,7 +83,7 @@ OSStatus Copy(CFDictionaryRef query, CFTypeRef *result) {
         *result = nullptr;
       return errSecInteractionNotAllowed;
     }
-    NSDictionary *q = Map(query);
+    NSDictionary *q = Map(query, false, true);
     if (!q) {
       if (result)
         *result = nullptr;
@@ -145,6 +162,9 @@ extern "C" void AuxNativeBoundaryDenyAll() {
 }
 extern "C" bool AuxNativeBoundaryIsDenyAll() {
   return deny_all.load(std::memory_order_acquire);
+}
+extern "C" bool AuxNativeBoundaryAgentInboxKeychainEnabled() {
+  return AgentInboxEnabled();
 }
 extern "C" uint64_t AuxNativeBoundaryRefusedCalls() {
   return refused.load(std::memory_order_relaxed);

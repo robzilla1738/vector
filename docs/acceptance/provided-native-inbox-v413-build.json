@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "composition": "v413",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/native-build-receipt.json",
+  "receiptSha256": "fe0387667b45c132a9d667767cbad603b52ff0e356ccb0bdef9ec84648a1e163",
+  "buildExitCode": 0,
+  "mapFixturePassed": true,
+  "sources": [
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "path": "vendor/provided/native-role-pins.cjs",
+      "sha256": "1185df7f7949884e5e989935a8242ff0a503cb7444495668d05469d7c605375c"
+    },
+    {
+      "path": "vendor/provided/build-native-boundary.mjs",
+      "sha256": "12ab63b07560cfaca5521548023e8f563c5fdbd4fcc8358630d832f4331ed9bb"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.h",
+      "sha256": "4191ac2bf8c8e083d019467e30e15ef41bb86bb9ddee2e649ec1c95668a201e6"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-keychain-map.h",
+      "sha256": "9b59fd7bcd9997f3266658fc6dd30e386713cfcf3a02e9a0c9802b9bc160290b"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-keychain-map.mm",
+      "sha256": "fa180ae31ab41690ed73dd353378ddc2cf84784b98a97ffc420076fe477841ab"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-keychain-map-test.mm",
+      "sha256": "0ca24d204927d6d1e977baf9797f641924997322a116e89f2a31426be80d4f59"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-master-key.h",
+      "sha256": "168b2566d8be94911889387be15dab544e830a45dca5f1e000e6cb8391a9bf29"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-master-key.mm",
+      "sha256": "ec54a67bc8b4ed1a12fe097cae61f60b8c392c7894d1d056e25807d91930ec01"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab"
+    },
+    {
+      "path": "vendor/provided/native/keychain-interpose.mm",
+      "sha256": "83c12c894127fe04ef69780011d07553d288e3d0b14ff406949ebe96a40a7168"
+    },
+    {
+      "path": "vendor/provided/native/sea-resource-pointer.mm",
+      "sha256": "31c5f488aac338ff21b17a25bd6e88817825ed9893ae12c47abdb1af1400516a"
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a"
+    },
+    {
+      "path": "vendor/provided/native/node-boundary-guard.mm",
+      "sha256": "33316274fc8e7071f5d3f4daa0de8cb12367ca865a2beafee54a7ce1b7f439d1"
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "efcf3feff62575db879be9c913f91aa0c5d26c9309b553c6970497e87da8d436"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map-test.mm",
+      "sha256": "b97098a29e5d90de511a7795f5589df581f58077f37a97d2516790ec0babe782"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/aux-native-carrier",
+      "sha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/libaux-native-boundary.dylib",
+      "sha256": "0cb7b98642dab352799b848b6f035e2a8251fb7ed6b54e0c15ee7a7cea325fd9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/aux-native-guard.node",
+      "sha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/aux-cli-launcher",
+      "sha256": "4fe2e05ec0cbd55f7b10f606158d93f70bec73b45bc6cce954ddf8b807a82d58"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/keychain-query-map-test",
+      "sha256": "9b7891212f1a5c93f96c073638a97795f70bf05b79eaaecbc217e8a2e2c7b544"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/agent-inbox-keychain-map-test",
+      "sha256": "f687c46c26bb6e515046cd99a5c9df86655c77734d8c619049c4102f79826a03"
+    }
+  ],
+  "keychainOperations": false,
+  "carrierExecuted": false,
+  "flagsEnabled": false,
+  "runtimeAcceptance": false,
+  "notes": [
+    "Only pure dictionary fixtures executed; no Security operation or authentication evaluation.",
+    "Native bridge object compiled; full browser link deferred to coherent inbox pipeline batch.",
+    "Preceding local compile corrections: Apple SDK requires __STDC_WANT_LIB_EXT1__ for memset_s; Objective-C assert expressions containing commas need parentheses."
+  ]
+}

@@ -437,6 +437,7 @@ steps.extend([
     ('native-notification-permission-contract/native.patch', 'native-notification-permission-contract/manifest.json'),
     ('native-notification-permission-build-deps/native.patch', 'native-notification-permission-build-deps/manifest.json'),
     ('native-popup-supplied-entry/native.patch', 'native-popup-supplied-entry/manifest.json'),
+    ('native-notification-inbox-key-bridge/native.patch', 'native-notification-inbox-key-bridge/manifest.json'),
 ])
 
 if options.through:

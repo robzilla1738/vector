@@ -1,0 +1,25 @@
+{
+  "composition": "v413",
+  "exitCode": 0,
+  "elapsedSeconds": 23.487948179244995,
+  "targets": {
+    "installation_auth": "obj/chrome/browser/aux/platform/installation_auth.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/aux/platform/installation_auth.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "nativeSources": 563,
+  "artwork": 23,
+  "fullLink": false,
+  "keychainOperations": false,
+  "flagsEnabled": false
+}

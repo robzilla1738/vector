@@ -63,11 +63,11 @@ int main() {
       assert(AuxIsAgentInboxKeychainQuery(source, scope));
       NSDictionary* mapped = AuxMapAgentInboxKeychainQuery(source, scope);
       assert(mapped);
-      assert([mapped[(__bridge id)kSecAttrService]
+      assert(([mapped[(__bridge id)kSecAttrService]
           isEqual:[NSString stringWithFormat:@"aux.%@.Aside Agent Master Key",
-                                             scope]]);
-      assert([mapped[(__bridge id)kSecAttrAccount]
-          isEqual:[NSString stringWithFormat:@"aux.%@.Aside Agent", scope]]);
+                                             scope]]));
+      assert(([mapped[(__bridge id)kSecAttrAccount]
+          isEqual:[NSString stringWithFormat:@"aux.%@.Aside Agent", scope]]));
       assert(mapped[(__bridge id)kSecUseAuthenticationContext] == context);
       assert(AuxIsAgentInboxKeychainQuery(mapped, scope));
       assert([AuxMapAgentInboxKeychainQuery(mapped, scope) isEqual:mapped]);

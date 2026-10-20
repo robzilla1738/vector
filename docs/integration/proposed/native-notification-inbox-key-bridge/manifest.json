@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "v412",
+  "kind": "Supplied inbox master-key bridge with separate explicit runtime gate",
+  "files": [
+    {
+      "path": "chrome/browser/aux/installation_auth.h",
+      "baselineSha256": "669857e23958b85fb93e956c18e7d8dcbbffaee51f4ef5969d51ea8e286234e1",
+      "outputSha256": "840c2b392e7311fa3550f42effa3355c47d7c92fac5ac1c2ab8f3d6946821269"
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "baselineSha256": "8116f2d0d23b5b7f8441eb4f909edbce38c2cc705ff6e6f812f6805efd39e5dd",
+      "outputSha256": "2801bc2549dc464975c4ff7094dee1c18d55ccdc080ca1aeca2a7242b05ef9f8"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
