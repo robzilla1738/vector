@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "composition": "v428",
+  "steps": 431,
+  "sourceOutputs": 578,
+  "artworkOutputs": 23,
+  "allSourceOutputsMatch": true,
+  "allArtworkOutputsMatch": true,
+  "compositionSha256": "6904c937c13b4356cb3dce646a35afc0df59a009186230c80e6b5f3c309499d3",
+  "originalReplayManifestSha256": "319312ea0932274f73420a0bda8da4dc599e64fffdf45939f7dad445cf0a26a7",
+  "compiled": false,
+  "runtimeAcceptance": false
+}

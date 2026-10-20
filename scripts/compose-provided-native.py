@@ -453,6 +453,7 @@ steps.extend([
     ('native-browser-import-owner-profiles-integration/profiles.patch', 'native-browser-import-owner-profiles-integration/manifest-v426.json'),
     ('native-browser-import-full-staging/native.patch', 'native-browser-import-staging-history-integration/manifest-v427.json'),
     ('native-browser-import-history-owner/native.patch', 'native-browser-import-staging-history-integration/manifest-v428.json'),
+    ('native-browser-import-secret-barriers/native.patch', 'native-browser-import-secret-barriers/manifest.json'),
 ])
 
 if options.through:
