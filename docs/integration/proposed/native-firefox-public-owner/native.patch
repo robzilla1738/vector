@@ -40,7 +40,7 @@
 +#endif
 --- /dev/null
 +++ b/chrome/browser/extensions/api/aux_browser_import/firefox_import.cc
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,210 @@
 +// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
 +// Supplied427acfc /42631c0 /4263a68 /42648b0 /42648ec orchestration.
 +#include "chrome/browser/extensions/api/aux_browser_import/firefox_import.h"
@@ -122,12 +122,6 @@
 +        ? selected->services_supported & user_data_importer::FAVORITES
 +        : selected->services_supported;
 +    if (!items) {
-+      Finish(false);
-+      return;
-+    }
-+    // Original Mac discovery produces0x4b. Do not silently mount a reduced
-+    // stock-Mac full import while its real password prerequisite is absent.
-+    if (!bookmarks_only_ && !(items & user_data_importer::PASSWORDS)) {
 +      Finish(false);
 +      return;
 +    }

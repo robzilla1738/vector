@@ -82,12 +82,6 @@ class FirefoxImport::Impl final : public importer::ImporterProgressObserver {
       Finish(false);
       return;
     }
-    // Original Mac discovery produces0x4b. Do not silently mount a reduced
-    // stock-Mac full import while its real password prerequisite is absent.
-    if (!bookmarks_only_ && !(items & user_data_importer::PASSWORDS)) {
-      Finish(false);
-      return;
-    }
     password_requested_ = (items & user_data_importer::PASSWORDS) != 0;
     // Original4263440..3450 considers an unrequested password item settled.
     password_complete_ = !password_requested_;

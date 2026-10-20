@@ -10,7 +10,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
       "baselineSha256": null,
-      "outputSha256": "877ff2b4a97f7960ee6caa79b9173528cb1fff6e96e4f3a97685009879386a86"
+      "outputSha256": "9cd1f0830e39b016a1c6dc69dd8df2759bf1de09956e47ef35ea25de7b53bf2b"
     }
   ],
   "mounted": false,
@@ -18,7 +18,7 @@
     "native-firefox-host-preparation-hook applied456",
     "L2 firefox_cookie_import.{h,cc} concrete dual-callback producer",
     "L4 host AuxPasswordImportResult/aux_password_import_result() real utility/Mojo result before PASSWORDS ItemEnded",
-    "RealMacPW utility plus ImporterList PASSWORDS capability restoration; absentbittruthfullyfailsfullimport"
+    "RealMacPW utility plus original source registry/version admission and0x4b services_supported restoration before mounting; original owner itself preserves unrequested-password semantics"
   ],
   "requiredGnChanges": {
     "aux_browser_import.sources": [
