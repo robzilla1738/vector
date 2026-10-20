@@ -1,0 +1,392 @@
+{
+  "version": 1,
+  "scope": "Static supplied implementation and current generated/native source only. No runtime/owner-profile/auth/Keychain/signing/network/OS operations.",
+  "originalAgentVersion": "1.26.1016.1852",
+  "resources": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand",
+  "nativeSourceVersion": "257 full build live at audit time",
+  "sourceRecords": [
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "19e9f0b24cae91aa8dfc3df71240f3255b82cb8f24ee5f184efe2d2a17e3b92c",
+      "anchors": [
+        {
+          "find": "xr=n(\"/_public/onboarding/splash/\")",
+          "count": 1,
+          "byteOffset": 27403,
+          "contextByteOffset": 27403,
+          "anchor": "xr=n(\"/_public/onboarding/splash/\")({beforeLoad:async({context:e})=>{const{accountId:t,browserProfile:r}=await e.queryClient.query({...S.queryOptions,staleTime:\"static\"});let o=await e.queryClient.query({...e.trpc.accounts.get.queryOptions({accountId:t}),staleTime:0});if(o?.mode===\"cloud\"&&o.authStatus!==\"paused\"&&o.onboardingCompletedAt===void 0&&(await e.queryClient.query({...e.trpc.accounts.auth.me.queryOptions({accountId:t}),staleTime:0}),o=await e.queryClient.query({...e.trpc.accounts.get.queryOptions({accountId:t}),staleTime:0})),o?.mode===\"cloud\"&&o.authStatus!==\"paused\")throw c({to:ae(o)??\"/u/$userId/tasks\",params:{userId:String(t)},replace:!0});if((r?.profileIndex??0)>=1)throw c({to:\"/auth/sign-up\",replace:!0})},component:a(yr,\"component\")}),Er=n(\"/_web/(profile)/profile/$profileId\")({beforeLoad:({location:e,params:{profileId:t}})=>{const r=/^\\d+$/.test(t)?t:\"0\";throw c({href:e.href.replace(/^\\/profile\\/[^/]+/,`/u/${r}`),replace:!0})}}),Cr=()=>s(()=>import(\"./route-BiU8pLwS.js\"),__vite__mapDeps([229,2,10,11,1,3,4,5,6,7,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,4"
+        },
+        {
+          "find": "Qt=n(\"/_public/onboarding\")",
+          "count": 1,
+          "byteOffset": 18109,
+          "contextByteOffset": 18109,
+          "anchor": "Qt=n(\"/_public/onboarding\")({beforeLoad:async({context:e,location:t})=>{if(await te(),Ht(t.pathname)||Y)return;const{accountId:r}=await e.queryClient.query({...S.queryOptions,staleTime:\"static\"});let o=await e.queryClient.fetchQuery(e.trpc.accounts.get.queryOptions({accountId:r}));o?.mode===\"cloud\"&&o.authStatus!==\"paused\"&&o.onboardingCompletedAt===void 0&&(await e.queryClient.fetchQuery({...e.trpc.accounts.auth.me.queryOptions({accountId:r}),staleTime:0}),o=await e.queryClient.fetchQuery({...e.trpc.accounts.get.queryOptions({accountId:r}),staleTime:0})),Y=!0;const u=ae(o);if(u===void 0||!u)return;const p=new URLSearchParams(t.searchStr).get(\"checkout\");if(!(t.pathname.replace(/\\/+$/,\"\")===\"/onboarding/ai\"&&(p===\"success\"||p===\"cancel\")))throw c({to:u,search:{accountId:r,bootstrapPopup:!1,completionTarget:\"workspace\"},replace:!0})},component:a(Ft,\"component\")});function Ht(e){return e.replace(/\\/+$/,\"\")===Mt}var Kt=()=>s(()=>import(\"./route-TQyeTEXE.js\"),__vite__mapDeps([49,2,10,11,1,3,4,5,6,7,50,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,51,52,53,54,55,"
+        },
+        {
+          "find": "Ot=n(\"/\")",
+          "count": 1,
+          "byteOffset": 14676,
+          "contextByteOffset": 14676,
+          "anchor": "Ot=n(\"/\")({beforeLoad:async({context:e})=>{const t=It()?\"/u/$userId/sidepanel\":vt()?\"/u/$userId/minipopup\":null;if(t){const r=await at();throw e.queryClient.setQueryData(S.queryKey,r),c({to:t,params:{userId:String(r.accountId)},replace:!0})}throw c({to:\"/auth/sign-in\"})},errorComponent:a(At,\"errorComponent\")}),W=new Map;async function F(e){const t=typeof window>\"u\"?void 0:window.location.href,r=await S(),o=ee(e.pathname,e.pathname.startsWith(\"/u"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/extension-main-Dz1-AsCT.js",
+      "providedSourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/splash-D666ivBP.js",
+      "sha256": "fd0b1c1bc534c8bf846793120aa7b868cc436a35dd12c7239477884738682c99",
+      "anchors": [
+        {
+          "find": "function aa()",
+          "count": 1,
+          "byteOffset": 65690,
+          "contextByteOffset": 65690,
+          "anchor": "function aa(){const s=X();return(0,e.jsxs)(ee,{orientation:\"horizontal\",className:\"min-h-0\",children:[(0,e.jsx)(c1,{id:\"splash-login\",defaultSize:\"45.5%\",minSize:\"0%\",className:\"overflow-hidden\",children:(0,e.jsx)(T.section,{\"aria-label\":\"Sign in to Aux\",className:\"no-drag flex h-full min-w-80 flex-col overflow-y-auto px-7 pt-6 pb-8\",initial:{opacity:s?1:0},animate:{opacity:1},transition:{duration:s?0:.4},children:(0,e.jsx)(v2,{})})}),(0,e.jsx)(c1,{id:\"splash-hero\",defaultSize:\"54.5%\",minSize:\"0%\",children:(0,e.jsx)(\"div\",{className:\"light @container-size flex size-full items-center justify-center p-2\",children:(0,e.jsxs)(T.div,{className:\"inset-black/10 relative flex size-full shrink-0 flex-col overflow-hidden rounded-xl shadow-xs inset-ring-1\",initial:{opacity:s?1:0},animate:{opacity:1},transition:{duration:s?0:.4},children:[(0,e.jsx)(\"video\",{src:qe,onLoadedMetadata:a=>{a.currentTarget.playbackRate=.35},autoPlay:!s,muted:!0,loop:!0,playsInline:!0,\"aria-hidden\":!0,className:\"pointer-events-none absolute top-1/2 left-1/2 z-0 h-[100cqh] w-[100cqw] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover\"}),(0,e.jsx)(\"div\",{className:\"relative z-1 flex min-h-0 flex-1 flex-col pt-36\",children:(0,e.jsx)(\"div\",{className:\"relative min-h-0 flex-1 overflow-hidden\",children:(0,e.jsx)(g2,{})})})]})})})]})}var v2=()=>{const[s,a]=(0,o.useState)(null),[t,n]=(0,o.useState)(\"\"),r=()=>{s&&(n(s.email),a(null))};return s?(0,e.jsx)(Ue,{...s,onBack:r,onCodeSent:a}):(0,e.jsx)(w2,{email:t,onCodeSent:a})},w2=({email:s,onCodeSent:a})=>(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(We,{\"aria-label\":\"Aux\",className:\"-ml-1 h-8 w-fit shrink-0 [&_path]:fill-current\"}),(0,e.jsxs)(\"h1\",{className:\"font-display mt-6 text-4xl leading-10 font-normal tracking-tight\",children:[\"The most intelligent\",(0,e.jsx)(\"br\",{}),"
+        },
+        {
+          "find": "w2=({email:s,onCodeSent:a})",
+          "count": 1,
+          "byteOffset": 67201,
+          "contextByteOffset": 67201,
+          "anchor": "w2=({email:s,onCodeSent:a})=>(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(We,{\"aria-label\":\"Aux\",className:\"-ml-1 h-8 w-fit shrink-0 [&_path]:fill-current\"}),(0,e.jsxs)(\"h1\",{className:\"font-display mt-6 text-4xl leading-10 font-normal tracking-tight\",children:[\"The most intelligent\",(0,e.jsx)(\"br\",{}),\"AI assistant,\",(0,e.jsx)(\"br\",{}),\"but it’s a browser.\"]}),(0,e.jsxs)(\"div\",{className:\"no-drag mt-auto pt-10\",children:[(0,e.jsx)(Pe,{compact:!0,email:s,intent:\"sign-up\",onCodeSent:a}),(0,e.jsx)(\"div\",{className:\"mt-12 [&_button]:rounded-xl\",children:(0,e.jsx)(Ae,{successEvent:\"onboarding.auth.sign-up-with-google\"})})]})]});export{aa as component};\n\n//# chunkId=d6fce36c-6b22-5ac9-916c-5aaf299de433"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/splash-D666ivBP.js",
+      "providedSourceSha256": "d81b276872969f21480c904b2d189625056da34748e9dfe0a3a752c891ca6138"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/email-auth-form-BeiZBkkt.js",
+      "sha256": "9b6f0fdcda18afcefe5d01cb4409c9680b31ef614ec3cc7a4a6064845faf3102",
+      "anchors": [
+        {
+          "find": "accounts.auth.startEmailAuth",
+          "count": 1,
+          "byteOffset": 1094,
+          "contextByteOffset": 904,
+          "anchor": "m\"./-types-Wy38XkNB.js\";import{t as M}from\"./error-content-CCom8r6s.js\";var R=v(w(),1),e=b(),U=z,ee=({email:d=\"\",intent:o,compact:i=!1,onCodeSent:l})=>{const n=j(),{track:p}=E(),f=P(),g=C(f.accounts.auth.startEmailAuth.mutationOptions()),t=O({mode:\"onSubmit\",resolver:k(U),defaultValues:{email:d}}),x=async s=>{try{const{accountId:r,browserProfile:a}=await L(s.email),m=await g.mutateAsync({accountId:r,email:s.email,profileContext:a??void 0});p(o===\"sign-up\"?\"onboarding.auth.sign-up-with-email\":\"onboarding.auth.sign-in-with-email\");const c={accountId:r,email:m.email,startedAt:Date.now(),signInAttemptId:m.signInAttemptId,profileContext:a?D.parse(a):void 0};l?l(c):await n({to:\"/auth/sign-in/verify\",search:c,replace:!0})}catch(r){if(q(r)){B(),await n({to:\"/auth/sign-in\",search:{email:s.email},replace:!0});return}"
+        },
+        {
+          "find": "htmlFor:\"email\"",
+          "count": 1,
+          "byteOffset": 2279,
+          "contextByteOffset": 2189,
+          "anchor": "ame:\"space-y-2\",onSubmit:t.handleSubmit(x),children:[(0,e.jsxs)(F,{children:[(0,e.jsx)(I,{htmlFor:\"email\",className:i?\"sr-only\":void 0,children:\"Email\"}),(0,e.jsx)(_,{...t.register(\"email\"),id:\"email\",type:\"email\",autoComplete:\"email\",\"aria-invalid\":t.formState.errors.email?!0:void 0,className:i?\"h-10 rounded-xl\":\"h-10\",placeholder:i?\"e.g. john@example.com\":\"john@example.com\"})]}),(0,e.jsx)(N,{className:\"text-xs\",errors:Object.values(t.formState.errors)}),(0,e.jsxs)(u,{className:i?\"h-10 w-full rounded-xl\":\"h-10 w-full\",type:\"submit\",size:\"lg\",disabled:S||t.formState.isSubmitting,children:[t.formState.isSubmitting&&(0,e.jsx)(y,{}),(0,e.jsx)(\"span\",{children:\"Continue\"})]})]}),!i&&(0,e.jsx)(u,{className:\"h-10 w-full\",variant:\"ghost\",size:\"lg\",render:(0,e.jsx)(A,{to:o===\"sign-up\"?\"/auth/sign-in\":\"/auth/sign-up\",replace:!0}),children:o===\"sign-up\""
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/email-auth-form-BeiZBkkt.js",
+      "providedSourceSha256": "9b6f0fdcda18afcefe5d01cb4409c9680b31ef614ec3cc7a4a6064845faf3102"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/google-sign-in-C6OIqXPh.js",
+      "sha256": "75cfa19f32f8016315ace9a3fb863457400fc002dac2baa263cfb554487e0b3a",
+      "anchors": [
+        {
+          "find": "accounts.auth.startGoogleOAuth",
+          "count": 1,
+          "byteOffset": 15233,
+          "contextByteOffset": 15143,
+          "anchor": "State)(Gt),[x,i]=(0,n.useState)(!1),c=(0,n.useRef)(null),m=(0,n.useRef)(b()),h=rt(),K=D(h.accounts.auth.startGoogleOAuth.mutationOptions()),I=D(h.accounts.auth.cancelGoogleOAuth.mutationOptions()),l=st({queryKey:[\"auth-callback-status\",\"google\",e?.accountId,e?.oauthAttemptId,e?.startedAt],queryFn:async()=>{if(!e)return{status:\"pending\"};const s=new URL(\"/auth/callback"
+        },
+        {
+          "find": "children:\"Sign in with Google\"",
+          "count": 1,
+          "byteOffset": 18783,
+          "contextByteOffset": 18623,
+          "anchor": "(0,t.jsxs)(ft,{className:\"h-10 w-full\",variant:\"outline\",size:\"lg\",disabled:U,onClick:()=>{Q()},children:[U?(0,t.jsx)(ot,{}):(0,t.jsx)(wt,{}),(0,t.jsx)(\"span\",{children:\"Sign in with Google\"})]})},Kt=({successEvent:o})=>{const r=M"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/google-sign-in-C6OIqXPh.js",
+      "providedSourceSha256": "b14d09c149272889b24b2515f018ee70293984fb43b52efafa4d0d9eaee7d9fb"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/queries-ldd77hNk.js",
+      "sha256": "1cb7eaf56cfa0582ffd1ac451ac0e5a07def3182b102c839cf40441c3fd17c0c",
+      "anchors": [
+        {
+          "find": "function pe(e)",
+          "count": 1,
+          "byteOffset": 27935,
+          "contextByteOffset": 27935,
+          "anchor": "function pe(e){return(e?.bindingVersion??0)>=1}function de(e){return e.chromiumProfileId||e.profileId}async function Dr(e,t){if(!pe(e))return;const r=e.asideUserId||e.boundUserId;if(e.localOnly||!r)return-1;const n=e.boundAccountId;if(n===void 0||!Number.isInteger(n)||n<0)throw new Ve(\"The account connected to this profile is unavailable. Sign in again.\");const i=await t(n);if(!i||i.id!==n||i.userId!==r)throw new Ve(\"The account connected to this profile changed. Sign in again.\");return n}function Nr(){const e=new Error(\"Operation aborted\");return e.name=\"AbortError\",e}async fu"
+        },
+        {
+          "find": "async function Kt(e=De)",
+          "count": 1,
+          "byteOffset": 69395,
+          "contextByteOffset": 69395,
+          "anchor": "async function Kt(e=De){const t=R,r=await Ue();if(_(t),!r)return null;const n=await Dr(r,o=>F.accounts.get.query({accountId:o}));if(_(t),n!==void 0&&n!==-1)return{accountId:n,browserProfile:r};const i=await xt.get(async()=>{const o=await _i(r,e);if(n===-1&&(o.mode!==\"local\"||o.userId))throw new Error(\"Unable to resolve this profile's local account.\");return{accountId:o.id,browserProfile:r}},Ai(r));return _(t),i??null}async function Di(){const e=await Kt();if(!e)throw new Error(\"Unable to identify the current browser profile. Reopen Aux and try again.\");return e}async function eo(){return(await Di()).accountId}async function Ni(){const e=await kt.get(async()=>(await F.accounts.current.query()).accountId??void 0);if(e===void 0)throw new Error(\"Unable to resolve dae"
+        },
+        {
+          "find": "async function ce()",
+          "count": 1,
+          "byteOffset": 68316,
+          "contextByteOffset": 68316,
+          "anchor": "async function ce(){const e=typeof chrome?.auxAccount?.setProfileAccount==\"function\";try{const t=await vt(async()=>chrome?.auxAccount?.getProfileContext?.(),{signal:AbortSignal.timeout(wi),createAbortError:()=>new Error(\"chrome.auxAccount.getProfileContext timed out\")});if(e&&(!t||!de(t)))throw new Error(\"Unable to identify the current browser profile. Reopen Aux and try again.\");return t&&de(t)?t:void 0}catch(t){if(Ri(t),t instanceof Error&&t.message.includes(\"timed out\"))throw new Error(\"Unable to identify the current browser profile. Reopen Aux and try again.\",{cause:t});if(e)throw t;return}}async function Ue(){return Ft.get(ce)}async function Xi(){if(window.location.protocol===\"chrome-extension:\"&&!await Ue())throw new Error(\"Unable to identify the current browser profile. Reopen Aux and try again.\")}asy"
+        },
+        {
+          "find": "new URL(\"/auth/daemon/challenge\"",
+          "count": 1,
+          "byteOffset": 59551,
+          "contextByteOffset": 59421,
+          "anchor": "n,storageCache:i,viteEnv:o}=e,a=async()=>typeof t==\"function\"?await t():t;let s=null,u=null;const c=async()=>{const m=await a(),p=new URL(\"/auth/daemon/challenge\",m);p.searchParams.set(\"clientKind\",r);let b;try{b=await fetch(p,{signal:AbortSignal.timeout(nt)})}catch(N){throw new k(`Failed to request daemon auth challenge: ${z(N)}`,\"challenge\")}if(!b.ok)throw new k(`Failed to request daemon auth challenge: ${b.status}`,\"challenge\",b.status);let O;try{O=await b.json()}catch(N){throw new k(`Failed to parse daemon auth challenge: ${z(N)}`,\"challenge\")}const{challenge:S,challengeId:C}=O,G=new Uint8Array([...new TextEncoder().encode(\"Aside Daemon Auth v1\\0\"),...Xn(S)]);let I;try{I=await n({challenge:S,signingInput:G})}catch(N){throw new k(`Failed to sign daemon auth challenge: ${z(N)}`,\"sign\")}const Ht=typeof I==\"string\"?I:ei(I);let V;try{V=await fetch(new URL(\"/auth/daemon/session\",m),{body:JSON.stringify({challengeId:C,signedChallenge:Ht}),headers:{\"content-type\":\"application/json\"},method:\"POST\",signal:AbortSignal.timeout(nt)})}catch(N){throw new k(`Failed to exchange daemon auth challenge: ${z(N)}`,\"session\")}if(!V.ok)throw new k(`Failed to exchange daemon auth challenge: ${V.status}`,\"session\",V.status);let Fe;try{Fe=await V.json()}catch(N){th"
+        },
+        {
+          "find": "`AsideDaemonSessionToken ${O}`",
+          "count": 1,
+          "byteOffset": 61445,
+          "contextByteOffset": 61335,
+          "anchor": "c(m,p)=>{for(let b=1;b<=2;b++){const{accessToken:O}=await h(),S=new Headers(p?.headers);S.set(\"Authorization\",`AsideDaemonSessionToken ${O}`);const C={...p,headers:S},G=m instanceof Request?new Request(m,C):m,I=await fetch(G,m instanceof Request?void 0:C);if(await ot(I,503,\"SERVICE_UNAVAILABLE\",it))throw new Error(`Failed to fetch with daemon Authorization: ${it}`);if(!await ot"
+        },
+        {
+          "find": "async function li(e)",
+          "count": 1,
+          "byteOffset": 62644,
+          "contextByteOffset": 62644,
+          "anchor": "async function li(e){const t=typeof chrome>\"u\"?void 0:chrome.auxAccount;if(!t?.signDaemonAuthChallenge)throw new Error(\"Aux daemon Authorization requires chrome.auxAccount.signDaemonAuthChallenge\");return(await vt(async()=>t.signDaemonAuthChallenge(e),{signal:AbortSignal.timeout(ui),createAbortError:()=>new Error(\"chrome.auxAccount.signDaemonAuthChallenge timed out\")})).signedChallenge}var Lt=ri({clientKind:oi,daemonUrl:Nt,signChallenge:async({challenge:e})=>{if(!(!(\"ServiceWorkerGlobalScope\"in globalThis)&&typeof chrome<\"u\"&&!chrome.auxAccount?.signDaemonAuthChallenge&&chrome.runtim"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/queries-ldd77hNk.js",
+      "providedSourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/-types-Wy38XkNB.js",
+      "sha256": "7c386e96eab84cd15049417c253ce754d657098768fc774020250336533ed151",
+      "anchors": [
+        {
+          "find": "function K(o)",
+          "count": 1,
+          "byteOffset": 593,
+          "contextByteOffset": 593,
+          "anchor": "function K(o){if(!o||o.mode!==\"cloud\"||o.authStatus===\"paused\")return null;if(o.onboardingCompletedAt!==void 0)return o.onboardingCompletedAt===null?\"/onboarding/import-browser\":null}async function V(){if(window.location.protocol!==\"chrome-extension:\")return!1;const o=await chrome.tabs.getCur"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/-types-Wy38XkNB.js",
+      "providedSourceSha256": "22df7f0ce3efd4eacb8df317b81c139c8b86c52aab1563e9dc335205f39d8e32"
+    },
+    {
+      "label": "Agent1852 actual staged UI",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/assets/done-DPzI9pFd.js",
+      "sha256": "52f50e3e0a5472bf25a8a2718b7b255ab77e12158f29ac08eb93ea3ae42b7aa0",
+      "anchors": [
+        {
+          "find": "defaultValues:{defaultBrowser:!0",
+          "count": 1,
+          "byteOffset": 12538,
+          "contextByteOffset": 12418,
+          "anchor": "eError:a})=>{const{completionTarget:i}=Q.useSearch(),{track:c}=V(),n=z(),r=N(),p=(0,v.useRef)(!1),s=de({resolver:ce(rt),defaultValues:{defaultBrowser:!0,addToDock:!0,keepTasksRunning:!0,helpImproveAux:!0}}),m=Ue(),b=B(n.analytics.capture.mutationOptions()),S=B(n.accounts.auth.completeOnboarding.mutationOptions()),A=l=>f=>{const d=f===!0;s.setValue(l,d,{shouldDirty:!0}),c(\"onboarding.done.toggle-setting\",{id:l"
+        },
+        {
+          "find": "accounts.auth.completeOnboarding",
+          "count": 1,
+          "byteOffset": 12681,
+          "contextByteOffset": 12591,
+          "anchor": "ksRunning:!0,helpImproveAux:!0}}),m=Ue(),b=B(n.analytics.capture.mutationOptions()),S=B(n.accounts.auth.completeOnboarding.mutationOptions()),A=l=>f=>{const d=f===!0;s.setValue(l,d,{shouldDirty:!0}),c(\"onboarding.done.toggle-setting\",{id:l,value:d})},x=async l=>{try{const f=await r.query({...ie.queryOptions,staleTime:\"static\"}),{a"
+        },
+        {
+          "find": "await S.mutateAsync({accountId:d})",
+          "count": 1,
+          "byteOffset": 13920,
+          "contextByteOffset": 13820,
+          "anchor": "et up Adblock\",w),D.error(\"Could not set up Adblock. You can enable it in Settings → Privacy.\")}),await S.mutateAsync({accountId:d}),await r.invalidateQueries(n.accounts.get.queryFilter({accountId:d})),await tt({accountId:d,completionTarget:i,currentProfilePath:f.browserProfile?.profilePath,queryClient:r,trpc:n})}catch(f){const d=await je(f,\"Could not finish onboarding.\");D.error(d.title,{"
+        },
+        {
+          "find": "tt=async({accountId:t",
+          "count": 1,
+          "byteOffset": 14889,
+          "contextByteOffset": 14889,
+          "anchor": "tt=async({accountId:t,completionTarget:a,currentProfilePath:i,queryClient:c,trpc:n})=>{if(await Se())return;if(window.location.protocol===\"chrome-extension:\"){await chrome.tabs.create({url:st(t,a),active:!0}),await U({accountId:t,currentProfilePath:i,queryClient:c,trpc:n});const p=await chrome.tabs.getCurrent();p?.id!=null&&await chrome.tabs.remove(p.id);return}const r=a===\"settings-account\"?new URL(`/u/${t}/settings/account`,window.location.origin).toString():new URL(`/u/${t}/tasks`,window.location.origin).toString();await U({accountId:t,currentProfilePath:i,queryClient:c,trpc:n}),window.location.replace(r)},st=(t,a)=>a===\"settings-account\"?ve(`/u/${t}/settings/account`):new URL(\"/newtab.html?mode=search\",window.location.origin).toString(),at=async({defaultBrowser:t,addToDock:a})=>{const i=typeof chrome>\"u\"?void 0:chrome.auxBrowserPreferences,c={defaultBrowserState:null,dockState:null};if(!i)return c;if(t){const n=await i.getDefaultBrowserState();c.defaultBrowserState=n.isDefault||!n.canSet?n:await i.setAsDefaultBrowser()}if(a){const n=await i.getDockState();c.dockState=n.isAdded||!n.canAdd?n:await i.ad"
+        },
+        {
+          "find": "children:\"Get started\"",
+          "count": 1,
+          "byteOffset": 10282,
+          "contextByteOffset": 10192,
+          "anchor": "fy-center\",children:(0,e.jsx)(j,{children:(0,e.jsx)(De,{type:\"submit\",form:\"options-form\",children:\"Get started\"})})}),(0,e.jsx)(He,"
+        }
+      ],
+      "providedSourcePath": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/assets/done-DPzI9pFd.js",
+      "providedSourceSha256": "aea41f2be6aa1cd51f1171ac4a2cb209263328db276255bdf25733df6aa0bbfb"
+    },
+    {
+      "label": "Pinned actual supplied daemon code",
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "anchors": [
+        {
+          "find": "createDefaultAccountRegistry=()=>",
+          "count": 1,
+          "byteOffset": 2298564,
+          "contextByteOffset": 2298564,
+          "anchor": "createDefaultAccountRegistry=()=>({version:1,currentAccountId:0,accounts:[{id:0,name:DEFAULT_LOCAL_ACCOUNT_NAME,provider:`anonymous`,mode:`local`,authStatus:`active`,createdAt:Date.now(),incarnationId:randomUUID()}],sessions:{},localBootstraps:{},profileBindings:{},profileAccountBindings:{}}),AccountRegistryStore=class Cn{storage;data;constructor(Cn){this.storage=Cn,this.data=createDefaultAccountRegistry(),this.reload()}static fromFile(ei=ACCOUNTS_JSON_PATH){"
+        },
+        {
+          "find": "async function ensureProfileAccount(Cn)",
+          "count": 1,
+          "byteOffset": 11700196,
+          "contextByteOffset": 11700196,
+          "anchor": "async function ensureProfileAccount(Cn){if((Cn.bindingVersion??0)>=1){let ei=Cn.asideUserId??Cn.boundUserId;if(Cn.localOnly||!ei){let ei=AccountRegistry.resolveProfileAccount({profileId:Cn.chromiumProfileId??Cn.profileId,profilePath:Cn.profilePath,profileIndex:Cn.profileIndex,localOnly:!0});return await ensureAccountBootstrapped(ei),ei}let ti=Cn.boundAccountId===void 0?void 0:AccountRegistry.getAccount(Cn.boundAccountId);if(!ti||ti.userId!==ei)throw new TRPCError({code:`PRECONDITION_FAILED`,message:`This Chromium profile has no connected account.`});return ti}let ei=AccountRegistry.resolveProfileAccount(Cn);return await ensureAccountBootstrapped(ei),ei}var deviceCodeUiProcedure,accountsRouter,init_routes$25=__esmMin((()=>{init_dist$25(),init_zod(),init_accounts(),init_token_refresh(),init_bootstrap(),init_start_context_awareness(),init_daemon_auth$1(),init_api_client(),init_au"
+        },
+        {
+          "find": "async function runAccountBootstrap(Cn)",
+          "count": 1,
+          "byteOffset": 12074672,
+          "contextByteOffset": 12074672,
+          "anchor": "async function runAccountBootstrap(Cn){stateDb.close(Cn);let ei=await tryMigrateStateDb(Cn);fetchCurrentUser(Cn).catch(()=>{});let ti=getAccountRoot(Cn);initAccountDirectory(ti),MemoryManager.init(Cn),initializeRoutineDevice(Cn),ei>0&&ei<19&&await migrateRoutineV2Sessions(Cn).catch(ei=>logger.warn(`[RoutineV2Migration] Migration unavailable; V1 rows remain disabled`,{accountId:Cn,error:ei})),syncAccountBuiltinSkills([ti]),recoverSuspensionsOnStartup(Cn),rearmAutomations(Cn),await settleInterruptedWorkflows(Cn);try{globalChannelManager.initialize(Cn)}catch(Cn){logger.error(`[Channels] failed to initialize`,{error:Cn})}startSessionTurnMemoryBackfill(Cn).catch(ei=>logger.error(`[Bootstrap] Memory history backfill stopped unexpectedly`,{accountId:Cn,error:ei})),notifyAgentFileChange(Cn,`reconcile`)}var bootstrappedAccounts,pendingBootstraps,init_bootstrap=__esmMin((()=>{init_accounts(),init_bootstrap$1(),init_current_user(),init_service$4(),init_suspension(),init_manager(),init_automations(),init_stop_coder_work(),init_workflow(),init_start_comprehension(),init_start_context_awareness(),init_agent_installations(),init_directory(),init_startup(),init_migrate(),init_routine_v2(),init_state_db(),init_logger$2(),init_oauth_provider(),init_memory$3(),init_history_projection(),init_service(),init_device$1(),init_scheduler(),in"
+        },
+        {
+          "find": "async function completeOnboarding(Cn)",
+          "count": 1,
+          "byteOffset": 11669058,
+          "contextByteOffset": 11669058,
+          "anchor": "async function completeOnboarding(Cn){let ei=await fetchAsideAPIAuthenticated(Cn,`/auth/onboarding/complete`,{method:`POST`,headers:{\"x-aside-auth-protocol\":`2`},output:completionSchema});return AccountRegistry.updateAccount(Cn,{onboardingCompletedAt:ei.onboardingCompletedAt}),ei}var completionSchema,init_account_security=__esmMin((()=>{init_zod(),init_accounts(),init_api_client(),completionSchema=object({onboardingCompletedAt:string$3(),saved:literal(!0)})}));async function connectCurrentPwmAccount(Cn){let ei=`app-account:${Cn}`,t"
+        },
+        {
+          "find": "isComplete:!0",
+          "count": 1,
+          "byteOffset": 2309402,
+          "contextByteOffset": 2309172,
+          "anchor": "Bootstrap(ai.localBootstraps[String(Cn)]);return ii.mode===`cloud`&&ii.userId&&ii.onboardingCompletedAt&&(!oi?.boundUserId||oi.boundUserId===ii.userId)&&(ai.localBootstraps[String(Cn)]={...oi,createdAt:oi?.createdAt??ii.createdAt,isComplete:!0,vaultSyncMode:oi?.vaultSyncMode===`enabled`?`enabled`:`disabled`,boundUserId:ii.userId,hasEverBoundCloudUser:!0}),this.data=ai,{result:clone$1(ii),next:ai}});return ti&&(ti.mode!==ni.mode||ti.authStatus!==ni.authStatus||ti.userId"
+        },
+        {
+          "find": "async function startEmailAuth(",
+          "count": 1,
+          "byteOffset": 11684474,
+          "contextByteOffset": 11684474,
+          "anchor": "async function startEmailAuth(Cn,ei,ti=`start`,ni,ri){ni??=getPreparedChromiumSignInAttemptId(Cn,ri,ei),getChromiumSignInContext(Cn,ni,ri,ei),assertAccountCanAuthenticate({accountId:Cn,email:ei});let ii=await fetchAsideAPI(`/auth/email/start`,{method:`POST`,body:{email:ei,accountId:Cn,intent:ti,signInAttemptId:ni},output:emailAuthStartResponseSchema});return getChromiumSignInContext(Cn,ni,ri,ei),{email:ii.email,requiresEmailVerification:!0,...ni?{signInAttemptId:ni}:{}}}async function verifyEmailCode(Cn,ei,ti,ni,ri){ni=getChromiumSignInContext(Cn,ri,ni,ei),assertAccountCanAuthenticate({accountId:Cn,email:ei});let ii=AccountRegistry.getAccount"
+        }
+      ]
+    },
+    {
+      "label": "Actual staged unchanged-Node daemon source",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "a12c54e7e74e63f04e9399931710dba07a59fbbd19f98ecceb39ea285d131b53",
+      "anchors": [
+        {
+          "find": "AUX_API_BASE_URL=process.env.AUX_API_URL",
+          "count": 1,
+          "byteOffset": 6041249,
+          "contextByteOffset": 6041249,
+          "anchor": "AUX_API_BASE_URL=process.env.AUX_API_URL?process.env.AUX_API_URL:`http://127.0.0.1:9/aux-unavailable/api`,ACCESS_TOKEN_REFRESH_ERROR_CODES=/* @__PURE__ */ new Set([`ACCESS_TOKEN_EXPIRED`,`ACCESS_TOKEN_INVALID`,`ACCESS_TOKEN_STALE_CLAIMS`]),"
+        },
+        {
+          "find": "async function completeOnboarding(Cn)",
+          "count": 1,
+          "byteOffset": 11667582,
+          "contextByteOffset": 11667582,
+          "anchor": "async function completeOnboarding(Cn){let ei=await fetchAuxAPIAuthenticated(Cn,`/auth/onboarding/complete`,{method:`POST`,headers:{\"x-aside-auth-protocol\":`2`},output:completionSchema});return AccountRegistry.updateAccount(Cn,{onboardingCompletedAt:ei.onboardingCompletedAt}),ei}var completionSchema,init_account_security=__esmMin((()=>{init_zod(),init_accounts(),init_api_client(),completionSchema=object({onboardingCompletedAt:string$3(),saved:literal(!0)})}));async function connectCurrentPwmAccount(Cn){let ei=`app-account:${Cn}`,ti="
+        }
+      ]
+    },
+    {
+      "label": "Actual current native257 source",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_gate.cc",
+      "sha256": "9d565f0538560fd745320331cdf8fe2613dbebb63bbfb5e1349861e44f44f3c0",
+      "anchors": [
+        {
+          "find": "void Refresh()",
+          "count": 1,
+          "byteOffset": 6805,
+          "contextByteOffset": 6805,
+          "anchor": "void Refresh() {\n    if (!profile_) return;\n    if (reading_) {\n      refresh_again_ = true;\n      return;\n    }\n    auto* prefs = profile_->GetPrefs();\n    if (g_browser_process->local_state()->GetBoolean(kOnboardingComplete) ||\n        prefs->GetBoolean(kSuppressAutomaticGate) || IsOmitted(profile_.get())) {\n      DidRead(true);\n      return;\n    }\n    reading_ = true;\n    const auto id = prefs->GetString(kProfileId);\n    const auto user = prefs->GetString(kAccountUserId);\n    base::ThreadPool::PostTaskAndReplyWithResult(\n        FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&ReadAccountBootstrapState, StateHome(), id,\n                       profile_->GetPath(), user),\n        base::BindOnce(&ProfileGate::DidReadState, weak_.GetWeakPtr(), id, user));\n  }\n  void DidReadState(std::string id, std::string user,\n                    std::optional<bool> complete) {\n    reading_ = false;\n    if (!profile_) return;\n    auto* prefs = profile_->GetPrefs();\n    if (id != prefs->GetString(kProfileId) ||\n        user != prefs->GetString(kAccountUserId)) {\n      Refresh();\n      return;\n    }\n    if (complete.value_or(false) &&\n        !g_browser_process->local_state()->GetBoolean(kOnboardingComplete)) {\n      // Source04103b7c writes completion only after a real true reader result.\n      auto weak"
+        },
+        {
+          "find": "void DidReadState(",
+          "count": 1,
+          "byteOffset": 7582,
+          "contextByteOffset": 7582,
+          "anchor": "void DidReadState(std::string id, std::string user,\n                    std::optional<bool> complete) {\n    reading_ = false;\n    if (!profile_) return;\n    auto* prefs = profile_->GetPrefs();\n    if (id != prefs->GetString(kProfileId) ||\n        user != prefs->GetString(kAccountUserId)) {\n      Refresh();\n      return;\n    }\n    if (complete.value_or(false) &&\n        !g_browser_process->local_state()->GetBoolean(kOnboardingComplete)) {\n      // Source04103b7c writes completion only after a real true reader result.\n      auto weak = weak_.GetWeakPtr();\n      g_browser_process->local_state()->SetBoolean(kOnboardingComplete, true);\n      if (!weak) return;\n      g_browser_process->local_state()->CommitPendingWrite();\n    }\n    auto weak = weak_.GetWeakPtr();\n    DidRead(complete.value_or(prefs->GetBoolean(kBootstrapComplete)));\n    if (!weak || !profile_) return;\n    if (refresh_again_) {\n      refresh_again_ = false;\n      Refresh();\n    } else if (!complete.has_value()) {\n      timer_.Start(FROM_HERE, base::Seconds(1),\n          base::BindOnce(&ProfileGate::Refresh, weak_.GetWeakPtr()));\n    }\n  }\n  void DidRead(bool complete) {\n    if (!profile_) return;\n    const bool was_allowed = allowed_;\n    const bool extension_ready =\n        extensions::ExtensionRegistry::Get(profile_.get())\n            ->enabled_extensions().Contains(kAgentExtensionId);\n    allowed_ = complete;\n    if (complete) timer_.Stop();\n    if (!allowed_) {\n      ClearPreload();\n      auto weak = weak_.GetWeakPtr();\n      For"
+        },
+        {
+          "find": "void DidRead(bool complete)",
+          "count": 1,
+          "byteOffset": 8700,
+          "contextByteOffset": 8700,
+          "anchor": "void DidRead(bool complete) {\n    if (!profile_) return;\n    const bool was_allowed = allowed_;\n    const bool extension_ready =\n        extensions::ExtensionRegistry::Get(profile_.get())\n            ->enabled_extensions().Contains(kAgentExtensionId);\n    allowed_ = complete;\n    if (complete) timer_.Stop();\n    if (!allowed_) {\n      ClearPreload();\n      auto weak = weak_.GetWeakPtr();\n      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(\n          [&](BrowserWindowInterface* browser) {\n            if (!weak || !profile_) return false;\n            if (browser->GetProfile()->GetOriginalProfile() ==\n                    profile_->GetOriginalProfile() &&\n                browser->GetType() == BrowserWindowInterface::TYPE_NORMAL) {\n              browser->GetWindow()->Hide();\n            }\n            return !!weak;\n          });\n      if (!weak) return;\n      if (extension_ready) {\n        // Supplied native bootstrap delegates the real onboarding journey to\n        // the Agent; native does not choose a Vault setup/unlock route.\n        ShowBootstrap(GURL(\"chrome-extension://\" +\n                           std::string(kAgentExtensionId) +\n                           \"/main.html#/onboarding/splash\"), std::nullopt);\n      }\n    } else {\n      auto weak = weak_.GetWeakPtr();\n      CloseBootstrap();\n      if (!weak) return;\n      WarmNewTab();\n      if (!was_allowed) {\n        ForEachCurrentBrowserWindow"
+        },
+        {
+          "find": "gfx::Rect bounds(",
+          "count": 1,
+          "byteOffset": 12933,
+          "contextByteOffset": 12933,
+          "anchor": "gfx::Rect bounds(area.CenterPoint().x() - 450,\n                     area.CenterPoint().y() - 280, 900, 560);\n    bounds.AdjustToFit(area);\n    auto params = BrowserWindowCreateParams::CreateForAppPopup(\n        \"aux-account-password-popup\", true, bounds, profile_.get(), true);\n    params.omit_from_session_restore = true;\n    auto* browser = CreateBrowserWindow(std::move(params));\n    if (!browser) return;\n    creation.browser = browser->GetWeakPtr();\n    if (!weak) {\n      browser->GetWindow()->Close();\n      return;\n    }\n    bootstrap_browser_ = browser->GetWeakPtr();\n    route_ = url.spec();\n    bootstrap_account_id_ = account_id;\n    auto* contents = chrome::AddAndReturnTabAt(\n        browser, url, -1, true, std::nullopt, false,\n        NavigateParams::WindowAction::kNoAction);\n    if (!weak || !bootstrap_browser_) return;\n    if (!contents) {\n      CloseBootstrap();\n      return;\n    }\n    bootstrap_contents_ = contents->GetWeakPtr();\n    // Stock browser tab creation installs the actual extension observers.\n    browser->GetWindow()->Show();\n  }\n  void CloseBootstrap() {\n    auto browser = std::move(bootstrap_browser_);\n    bootstrap_contents_.reset();\n    bootstrap_account_id_.reset();\n    route_.clear();\n    if (browser &&\n        !UnloadController::From(browser.get())->is_attempting_to_close_browser()) {\n      browser->GetWindow()->Close();\n    }\n  }\n  void OnProfileWillBeDestroyed(Profile*) override {\n    weak_.InvalidateWeakPtrs();\n    ClearPreload();\n    timer_.Stop();\n    CloseBootstrap();\n    extension_observer_.Reset();\n    profile_observer_.Reset();\n    pref_observer_.Reset();\n    local_observer_.Reset();\n    accounts_watcher_.Reset();\n    profile_.reset();\n    allowed_ = false;\n  }\n  void OnExtensionLoaded(content::BrowserContext*,\n                         const extensio"
+        },
+        {
+          "find": "bool CanShowBrowser(",
+          "count": 1,
+          "byteOffset": 16623,
+          "contextByteOffset": 16623,
+          "anchor": "bool CanShowBrowser(\n    BrowserWindowInterface* browser,\n    base::RepeatingCallback<void(content::WebContents*)> initialize_tab) {\n  auto& registry = Registry();\n  Profile* profile = browser ? browser->GetProfile() : nullptr;\n  if (registry.stopping || !profile) {\n    return false;\n  }\n  if (profile->IsOffTheRecord() || IsOmitted(profile)) return true;\n  auto* original = profile->GetOriginalProfile();\n  auto& gate = registry.gates[original];\n  if (!gate || !gate->has_profile()) {\n    gate = std::make_unique<ProfileGate>(original, std::move(initialize_tab));\n  }\n  gate->SetInitializer(std::move(initialize_tab));\n  auto weak_gate = gate->GetWeakPtr();\n  if (!weak_gate->owns_bootstrap(browser) && !weak_gate->allowed()) {\n    weak_gate->NotifyBrowserRequested();\n  }\n  return weak_gate &&\n         (weak_gate->owns_bootstrap(browser) || weak_gate->allowed());\n}\nvoid RequestProfileBootstrap(Profile* profile) {\n  if (!profile || profile->IsOffTheRecord()) return;\n  auto& registry = Registry();\n  if (registry.stopping) return;\n  auto& gate = registry.gates[prof"
+        }
+      ]
+    },
+    {
+      "label": "Actual current native257 source",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/account_bootstrap_state.cc",
+      "sha256": "2d4dd52989898f1e93fde59bc20937a4f3d5fcf13b2836c3ab94a771947b6606",
+      "anchors": [
+        {
+          "find": "bool Complete(",
+          "count": 1,
+          "byteOffset": 6355,
+          "contextByteOffset": 6355,
+          "anchor": "bool Complete(const Dict& state, std::string_view id, std::string_view path,\n              std::string_view user) {\n  const Dict* account = nullptr;\n  bool selected_binding = false;\n  if (const auto* binding = FindBinding(\n          state.FindDict(\"profileAccountBindings\"), id, path, true)) {\n    selected_binding = true;\n    account = FindAccount(state, binding->FindInt(\"accountId\"));\n  }\n  if (!selected_binding) {\n    if (const auto* binding = FindBinding(\n            state.FindDict(\"profileBindings\"), id, path, false)) {\n      selected_binding = true;\n      account = FindAccount(state, std::nullopt, Text(binding, \"userId\"));\n    }\n  }\n  if (!selected_binding && !user.empty()) account = FindAccount(state, std::nullopt, user);\n  if (!selected_binding && user.empty()) {\n    const auto* local = state.FindDict(\"profileAccountBindings\");\n    const auto* cloud = state.FindDict(\"profileBindings\");\n    if ((!local || local->empty()) && (!cloud || cloud->empty())) {\n      account = FindAccount(state, state.FindInt(\"currentAccountId\"));\n    }\n  }\n  // Explicit null/empty/wrong-type field is a known false result. Only an\n  // actually absent property permits the original legacy bootstrap fallback.\n  if (account && account->contains(\"onboardingCompletedAt\")) {\n    return !Text(account, \"onboardingCompletedAt\").empty();\n  }\n  return LegacyComplete(state, id, path, user);\n}\nstd::optional<Dict> NormalizeAccountsState(const base::Value& accounts) {\n  const auto* parsed = accounts.GetIfDict();\n  if (!parsed) return std::nullopt;\n  Dict projected = parsed->Clone();\n  // The supplied parser omits malforme"
+        },
+        {
+          "find": "bool LegacyComplete(",
+          "count": 1,
+          "byteOffset": 4317,
+          "contextByteOffset": 4317,
+          "anchor": "bool LegacyComplete(const Dict& state, std::string_view profile_id,\n                     std::string_view path, std::string_view user) {\n  const auto* cloud = state.FindDict(\"profileBindings\");\n  const auto* local = state.FindDict(\"profileAccountBindings\");\n  if (const auto* binding = FindBinding(cloud, profile_id, path, false)) {\n    if (const auto bound_user = Text(binding, \"userId\"); !bound_user.empty()) {\n      return LegacyState(state, FindAccount(state, std::nullopt, bound_user)) == 3;\n    }\n    const auto* bootstrap = state.FindDict(\"localBootstrap\");\n    return Flag(bootstrap, \"isComplete\") &&\n           Text(bootstrap, \"vaultSyncMode\") != \"pending_choice\";\n  }\n  if (!user.empty()) {\n    return LegacyState(state, FindAccount(state, std::nullopt, user)) == 3;\n  }\n  if (const auto* binding = FindBinding(local, profile_id, path, true)) {\n    const auto* account = FindAccount(state, binding->FindInt(\"accountId\"));\n    return account && LegacyState(state, account) == 3;\n  }\n  const auto* global = state.FindDict(\"localBootstrap\");\n  if (Flag(global, \"hasEverBoundCloudUser\") ||\n      !Text(global, \"boundUserId\").empty() ||\n      (cloud && !cloud->empty()) || (local && !local->empty())) return false;\n  if (const auto* rows = state.FindDict(\"localBootstraps\")) {\n    for (const auto [key, value] : *ro"
+        }
+      ]
+    },
+    {
+      "label": "Actual current native257 source",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4",
+      "anchors": [
+        {
+          "find": "if (method == \"auxAccount.getProfileContext\")",
+          "count": 1,
+          "byteOffset": 8410,
+          "contextByteOffset": 8410,
+          "anchor": "if (method == \"auxAccount.getProfileContext\") {\n    if (!args().empty()) return RespondNow(Error(\"This method takes no arguments\"));\n    auto* current = profile()->GetOriginalProfile();\n    const auto id = aux::GetProfileId(current);\n    if (id.empty()) return RespondNow(Error(\"Aux account profile context unavailable\"));\n    base::DictValue context;\n    context.Set(\"profileId\", id);\n    context.Set(\"profilePath\", current->GetPath().value());\n    if (const auto index = aux::GetProfileIndex(current))\n      context.Set(\"profileIndex\", *index);\n    auto* prefs = current->GetPrefs();\n    if (prefs->FindPreference(\"aside.account_user_id\")) {\n      const auto& user = prefs->GetString(\"aside.account_user_id\");\n      if (!user.empty()) context.Set(\"boundUserId\", user);\n    }\n    if (prefs->FindPreference(\"aside.account_id\")) {\n      const int account = prefs->GetInteger(\"aside.account_id\");\n      if (account >= 0) context.Set(\"boundAccountId\", account);\n    }\n    return RespondNow(WithArguments(std::move(context)));\n  }\n  auto profiles = ProfileSnapshot(profile());\n  if (method == \"auxAccount.openProfileRoute\") {\n    if (args().size() != 1 || !args()[0].is_dict()) {\n      return Respon"
+        },
+        {
+          "find": "if (method == \"auxAccount.signDaemonAuthChallenge\")",
+          "count": 1,
+          "byteOffset": 6738,
+          "contextByteOffset": 6738,
+          "anchor": "if (method == \"auxAccount.signDaemonAuthChallenge\") {\n    if (args().size() != 1 || !args()[0].is_string()) {\n      return RespondNow(Error(\"A base64 challenge is required\"));\n    }\n    const auto& challenge = args()[0].GetString();\n    const auto bytes = base::Base64Decode(challenge);\n    if (!bytes || bytes->size() != 32) {\n      return RespondNow(Error(\"Challenge must contain 32 bytes\"));\n    }\n    base::ThreadPool::PostTaskAndReplyWithResult(\n        FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&aux::SignDaemonChallenge, aux::StateHome(), challenge),\n        base::BindOnce(&AuxAccountFunction::DidSign, base::RetainedRef(this)));\n    return RespondLater();\n  }\n  if (method == \"auxAccount.getProfiles\") {\n    if (!args().empty()) return RespondNow(Error(\"This method takes no arguments\"));\n    auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;\n   "
+        },
+        {
+          "find": "void AuxAccountFunction::DidSign(",
+          "count": 1,
+          "byteOffset": 11681,
+          "contextByteOffset": 11681,
+          "anchor": "void AuxAccountFunction::DidSign(std::optional<std::string> signature) {\n  if (!signature) {\n    Respond(Error(\"Installation signing credential is missing or unsafe\"));\n    return;\n  }\n  base::DictValue result;\n  result.Set(\"signedChallenge\", *signature);\n  Respond(WithArguments(std::move(result)));\n}\nvoid AuxAccountFunction::DidReadProfiles(base::ListValue profiles) {\n  if (!brow"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "sourceRecords": 12,
+    "anchors": 39,
+    "originalDaemonExplicitCompleteTrueWriters": 1
+  },
+  "verification": {
+    "providedUiManifestHashes": true,
+    "providedStaticUiSourceHashes": true,
+    "allAnchorsPresent": true,
+    "nativeBuild": false,
+    "runtime": false
+  }
+}

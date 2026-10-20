@@ -1,0 +1,113 @@
+--- a/docs/source/provided-first-launch.md
++++ b/docs/source/provided-first-launch.md
+@@ -1,82 +1,51 @@
+-# Supplied local first-launch flow
++# Supplied first launch and local-account observation
+ 
+-Static audit only, using pinned Agent/Vault `1.26.1016.1852` and the exact supplied daemon embedded-code SHA-256 `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5`. No accounts, owner state, Keychain, live daemon, requests, browser or supplied executable was accessed/executed. `provided-first-launch-inputs.json` records31 exact source anchors with file/code hashes and byte offsets. It is evidence for source behavior, not packaged acceptance.
++Current source audit: pinned Agent/Vault `1.26.1016.1852`, resources `out/provided-reuse-v241-brand`, and native v257 while its full build runs. Static inspection only; no browser/daemon/helper execution, requests, profile/home access, credentials, Keychain, signing, provisioning or OS changes occurred. [Current source hashes and bounded anchors](provided-first-launch-current-inputs.json) support these findings. Packaged observation remains integrator work.
+ 
+-## Result
++**The earlier independent local Vault setup/unlock wrapper recommendation is retired.** Original `AsideAccountPasswordGate` reader/admission and the real Agent splash now win. The earlier 31-anchor `provided-first-launch-inputs.json` remains historical evidence for individual APIs, not authority to restore that independent policy. `docs/integration/proposed/local-vault-bootstrap/` is historical and must not be applied as the current startup route.
+ 
+-**The supplied implementation supports an anonymous local account configuring an independent provider and using local chat without hosted product login.** A real initialized/unlocked Vault and actual native/daemon account binding are prerequisites for Aux's native gate. No cloud session, subscription, onboarding timestamp or successful service reply needs to be fabricated. Built-in hosted plan models remain sign-in/service dependent and unavailable in the local-only build.
++## Fresh original launch
+ 
+-The bare router root is a trap for this flow: Agent `main.html#/` deliberately redirects to `/auth/sign-in` (except sidepanel/minipopup entry detection). Native local bootstrap must enter the original Vault setup/unlock actors, then allow the actual newtab, rather than treating the cloud sign-in splash as a local setup wizard.
++The actual native gate reads genuine canonical profile/account prefs and accounts bootstrap state. While incomplete, it hides normal same-profile browser windows and opens a real app-popup Browser at `main.html#/onboarding/splash`: **900×560**, centered in the selected display's work area and adjusted to fit. It uses supplied Agent content and real native tab creation, not a 1040×760 replacement Widget or Vault `/popup/setup`/`/popup/authentication` wrapper.
+ 
+-## Account identity and zero
++Admission accepts genuine global onboarding completion, real automatic-gate suppression, original omitted/OTR-profile behavior or parsed original account/bootstrap completion. An unavailable account file falls back to the actual saved profile bootstrap flag and retries after one second. These are source criteria, **not** instructions to stamp preferences or forge completion. Vault lock state and daemon authorization are separate from original browsing admission; private API/auth checks remain intact.
+ 
+-The daemon's `createDefaultAccountRegistry` creates account0 with `provider:'anonymous'`, `mode:'local'`, `authStatus:'active'`, no user/session/onboarding completion. The UI's native profile schema accepts a nonnegative `boundAccountId`, and both Agent and Vault resolvers test `undefined`, sentinel-1 and null explicitly; zero is valid.
++Closing the popup is dismissal, not completion: the gate suppresses automatically reopening it, while an incomplete normal browser remains disallowed. A healthy daemon, loaded extension asset or closed window does not prove onboarding.
+ 
+-Agent `queries` functions `pe`/`de`/`Dr` recognize bindingVersion>=1 and the physical Chromium ID. `Dr` returns sentinel-1 for `localOnly` or absent bound user. `Kt` then calls actual `accounts.ensureProfileAccount` with native profile identity. It rejects a returned cloud/user-bearing account on this local branch. `Me`/`q` retain the actual result; daemon-current fallback is used only when a native profile cannot be resolved. Native must supply the real profile rather than rely on that fallback.
++## Actual controls and guarded route
+ 
+-Vault's `index.esm` functions `j0`/`Vl`/`H0`, `rb`/`sb` perform the corresponding checks. `jd` accepts account0 with `e!==null`; its final fallback constant is0, but that fallback is **not** authority to invent a profile binding. Standalone mode is selected only by an explicit Chrome-storage mode value. The integrated build must not stamp standalone/cloud state to alter source flow.
++The splash retains its supplied 45.5% login/54.5% animated hero split, “Sign in to Aux” section, headline, Email field, **Continue** and **Sign in with Google**. Compact Email is an accessible visually hidden label; its placeholder is `e.g. john@example.com`. There is no anonymous/local/skip-signup control.
+ 
+-The daemon `ensureProfileAccount` v1 local branch resolves using `chromiumProfileId ?? profileId`, real path/index and `localOnly:true`, then runs actual account bootstrap. `resolveProfileAccount` persists `profileAccountBindings`; it reuses/mints according to actual registered identity and available slots. The first profile with index0 can reuse the real anonymous slot0. Other profiles must use their actual returned ID; **do not hardcode0**.
++The parent route checks actual native profile context. Splash then resolves the actual account and reads `accounts.get`. An active cloud account redirects to the genuine onboarding/task destination; native profile index>=1 redirects to `/auth/sign-up`. A fresh local account stays on splash. Bare `main.html#/` separately redirects to `/auth/sign-in`, except actual sidepanel/minipopup entry detection. Do not invent `/unlock` or substitute a new page.
+ 
+-## Reachable local routes after real readiness
++Email Continue validates the original schema before `accounts.auth.startEmailAuth`; valid submission prepares a real profile sign-in attempt and invokes hosted email-start. Google uses actual `accounts.auth.startGoogleOAuth` and popup/status/exchange/callback flow. Blank invalid email reaches only local validation. Valid email submission/Google are genuine authentication actions, not local continuations.
+ 
+-- Standalone `newtab.html` loads the original newtab island. `Ne` queries actual profile resolution, sets account context, and renders account-dependent content only when account ID is non-null. Its placeholder `accountId:t??0` is not a readiness signal. Account0 skips a prefetch/event-subscription optimization (`t>0`), but the actual model inventory hook accepts0 and requests inventory using the actual account.
+-- Newtab's Settings link resolves to `main.html#/u/<actualId>/settings`. Direct model configuration is `main.html#/u/<actualId>/settings/model`.
+-- Task list/new chat are `main.html#/u/<actualId>/tasks` and `main.html#/u/<actualId>/tasks/new`. Existing chat is `/u/<actualId>/tasks/<sessionId>`.
+-- The settings/profile parent route guard calls `F`, which resolves the actual native-bound account and rewrites a mismatched numeric route. It does not require a cloud account. Cross-profile handoff uses real profile list/path identities and unlocked profile checks.
+-- `_types` function `K(account)` returns null for absent/local/paused accounts. Only an active cloud account with explicit null `onboardingCompletedAt` routes to `/onboarding/import-browser`. Undefined cloud completion is refreshed from real auth first. Local accounts do not need a fake completion timestamp.
+-- The splash component is an email/Google sign-up/sign-in screen. Its guard redirects already active cloud accounts appropriately; it offers no anonymous local continuation. Additional profile-index branches can route to sign-up. It must not be used as the local Vault setup entry.
++## Local daemon authorization precedes account resolution
+ 
+-## Provider configuration and chat
++`chrome.auxAccount.getProfileContext()` immediately returns actual persisted UUID/path/index and optional saved user/account ID. It does not invent `bindingVersion`, `localOnly`, a binding or unlocked status. The UI handles that original shape through real `accounts.ensureProfileAccount`, with `resolveProfileAccountByProfile` fallback only if the procedure is missing, and uses the actual returned account ID. Zero is valid; do not hardcode it as resolution success.
+ 
+-`model-BrFuJM2w.js` displays a sign-in row for the **built-in hosted provider** on local/paused accounts; it does not block the independent provider list. `provider-context` obtains `models.listSettingsInventory({accountId})`. `connect-dialog` submits a genuine manual credential with `models.setCredential({providerId,credential:{type:'api_key',key},accountId})`; custom providers use their actual configuration procedures. No provider request was sent in this audit.
++These RPCs request `/auth/daemon/challenge?clientKind=agent-manager-extension`, sign through `chrome.auxAccount.signDaemonAuthChallenge` (or actual background relay), exchange `/auth/daemon/session`, then send `AsideDaemonSessionToken`. Native signing reports actual failure when its installation boundary cannot sign. Unsigned browser status and daemon health do not establish authorization or cloud sign-in.
+ 
+-The daemon's `accountProcedure` requires an existing numeric account and adds its context, without a cloud-session/plan requirement. `models.setCredential` and `listSettingsInventory` use that procedure. Credential connection rewrites routing selections to available models. Actual inventory, credentials, provider availability and selection must work; none may be replaced by synthetic catalog/plan data.
++Therefore genuine authorization/account-resolution failure can produce the supplied loading/error UI before the login component renders. Observe the actual result; do not insert a test token, successful API stub, acceptance flag or fabricated registry data. This source audit does not establish successful unsigned installation authorization.
+ 
+-The composer shows a sign-in nudge when its actual available-model array is empty for local/paused accounts. Connecting a real independent provider supplies its actual model inventory; the source model-selection/default rewrite then supports it. A stale built-in default is not evidence that local providers are prohibited. `sessions.create`/`createAndPrompt` are account procedures, and createSession reads actual selected/default model. They are not globally plan-gated. Provider-specific authorization and real runtime/native dependencies still apply.
++## Fresh anonymous completion is not a local success path
+ 
+-## Genuine Vault setup/unlock journey
++The real default registry has account 0 (`anonymous`, `local`, active), no session and empty local bootstrap/cloud/local binding maps. Its default account omits `onboardingCompletedAt`. Real `ensureProfileAccount` can resolve/persist the account and initialize real account services; that service bootstrap does not mark user onboarding complete.
+ 
+-All app-side PWM calls intentionally omit `profileId`, selecting **`app-account:<numericId>`**. This differs from the Chromium profile ID used for AccountRegistry binding. Supplying a Chromium hash as PWM profileId would select a different Vault connection scope.
++The native completion reader permits legacy fallback only if the selected account's onboarding property is absent. Explicit null/empty/wrong type is known false; fresh empty legacy bootstrap data is also incomplete. The pinned daemon's only `isComplete:true` writer found by full-text/source-chain inspection is guarded by a real cloud account, genuine nonempty user and completed timestamp. This is a bounded source fact, not authority to fabricate those values.
+ 
+-`passwordManager.accounts.list({accountId})` returns `currentPwmAccountId` (actual UUID) and connected account rows. Each row's `authStatus` is obtained from actual `passwordManager.getAuthStatus`, with unavailable rows null and session-key loss forcing locked status. Native must select the matching current UUID, not an arbitrary unlocked account or a guessed UUID.
++The done page's **Get started** calls `accounts.auth.completeOnboarding`. The daemon makes a real authenticated hosted `/auth/onboarding/complete` POST, validates `{onboardingCompletedAt:string,saved:true}`, then updates the actual account. Only after success does the UI open `newtab.html?mode=search` (or actual settings-account destination), run completion cleanup and close onboarding. The staged hosted API default is the honest unavailable boundary `http://127.0.0.1:9/aux-unavailable/api`, not signup/completion success. Do not override it or directly navigate to done as a completion mechanism.
+ 
+-Vault popup `Z2` accepts app-account0 and queries that real list. Its ordinary ready/setup/authentication routing follows actual `isInitialized` and `isLocked`, with settings/expiry checks. The integrated setup-required component `Lx` avoids the standalone email-login branch for a local anonymous account. `Sx` then uses its actual selected UUID to open:
++Done defaults actual default-browser, Dock, task-running and analytics options true. These are real effects. Import pages invoke real import actors. Neither is needed for the initial splash/error observation, and none was exercised here.
+ 
+-`chrome-extension://<AuxVaultId>/popup.html#/setup?pwmAccountId=<actualUUID>`
++## Practical disposable observation
+ 
+-The `Jo` setup loader requires a UUID, looks it up in the real account list, validates its actual status and app account, and allows a local-owner/uninitialized account without calling cloud connectCurrent. Unresolved or signed-in-user ownership takes the original connectCurrent path; do not bypass it.
++1. After the integrator's build/package is ready, launch only the already-authorized fixed disposable home/profile and actual candidate, retaining existing Aux-only ports/state scope. This document itself authorizes no launch or private-state operation.
++2. Record actual window count, normal-browser visibility, popup 900×560 placement, real URL, and supplied splash/loading/error surface. Record actual visible errors instead of assuming an error wrapper or claiming successful account access.
++3. If splash renders, compare its complete Aux logo, split geometry, typography, media and Email/Continue/Google controls against pinned source. Optional blank-email submission exercises local validation. Do not supply real email/Google login, import data, provider credentials or OS-setting actions for this observation.
++4. Stop at the actual auth/signup boundary. Closing is dismissal. Missing anonymous continuation is original behavior, not a reason to add a local wrapper. If signing/account resolution fails, retain that precise result; root decides any needed user input after actual observation.
++5. Normal-browser/newtab acceptance requires genuine original completion/admission and actual local authorization. Those prerequisites are not established by this fresh local-only/unavailable-hosted boundary. No completed state or auth result is fabricated here.
+ 
+-The original `Ar`/`P5` setup actor creates recovery entropy, validates password/confirmation, and calls actual `passwordManager.auth.setup({accountId,pwmAccountId,password,recoveryEntropyB64})`. The daemon sets up encryption and creates Personal Vault. **That method returns initialized/unlocked before the UI's recovery save+ack stage finishes.** Actor completion requires both successful recovery-file save and acknowledgment. The page then displays the original `Ow` ready screen; its Open Vault action selects the real current PWM account, invalidates queries and navigates to `/popup/vault`.
++Given genuine admission/resolution, local/paused accounts have no cloud-onboarding redirect in the original account helper. Real local newtab/tasks and independent-provider settings can use their actual numeric account without a hosted plan. Routes remain `newtab.html`, `main.html#/u/<actualId>/tasks`, `/u/<actualId>/tasks/new` and `/u/<actualId>/settings/model`; inventory/credential APIs accept 0. This is a reachable-state source fact, not proof that fresh startup reaches it or permission for manual registry/pref edits.
+ 
+-Therefore native must not close this setup WebView merely because an intermediate status poll becomes unlocked. It must retain the source recovery journey for the same bound app account/PWM UUID until the page's actual committed ready navigation, then recheck real status. This is view lifecycle preservation, not a persisted/fake onboarding flag.
+-
+-For an already initialized locked local Vault, enter original:
+-
+-`chrome-extension://<AuxVaultId>/popup.html#/popup/authentication`
+-
+-The source actor calls actual password unlock or eligible biometric unlock, rejects still-locked/empty unlock results and routes to `/popup/vault` only after real success. No native password field, plaintext bridge or synthetic unlock is added.
+-
+-`requiresPasswordVerification` is **not** a source-wide lock bit. The original popup uses it to suppress biometric alternatives in the unlock actor. If native turns an otherwise unlocked status into locked solely for this field, `/popup/authentication` immediately redirects to `/popup/vault`, creating an unresolved loop. Root approved following source behavior: native lock is `!isInitialized || isLocked`; retain the verification field for actual sensitive-action/biometric policy.
+-
+-## Native argument/result contract
+-
+-Native `getProfileContext` must return the real registered profileId/chromiumProfileId, exact path, actual index, bindingVersion1, truthful localOnly, and actual boundAccountId including0. Local profiles omit boundUserId/asideUserId; do not synthesize a user. Existing cloud bindings retain actual bound user/account and localOnly=false. Extra native lock/onboarding/browserMode fields do not replace the daemon's real status.
+-
+-`signDaemonAuthChallenge` is called with a base64 challenge and returns `{signedChallenge}`; native/daemon signing isolation remains root-owned. `getProfiles` rows need chromiumProfileId/path/accountId/isLocked. Original `openProfileRoute` supplies both IDs, exact path, sourceUrl and URL. Native proposal already accepts these fields and allows Vault popup bootstrap paths.
+-
+-`setProfileAccount` and `onProfileContextChanged` are optional source detectors/subscriptions. Local cold-start does not need fake implementations. Real cloud sign-in binding calls require the former; real profile changes require accurate cache invalidation/event delivery or an explicit reload boundary. A no-op success would be wrong.
+-
+-**Existing startup issue, separate follow-up:** native ProfileGate::Bind currently forces localOnly=true even for an existing cloud binding. Supplied ensureProfileAccount then intentionally removes/replaces its cloud binding. Root requested a subsequent narrow correction deriving localOnly from actual existing registry metadata; this route proposal leaves Bind unchanged and makes no cloud-compatible startup claim until that follow-up lands.
+-
+-## Concrete native proposal
+-
+-`docs/integration/proposed/local-vault-bootstrap/` contains a three-file follow-up patch plus full proposed files and exact baseline/output hashes. Baseline is root's combined provided profile-security + entrypoints tree, already using `newtab.html` and `main.html#/`. It is **unapplied and uncompiled**.
+-
+-- Add actual current PWM UUID and informational password-verification field to ProfileSecurityState.
+-- Query authenticated real `passwordManager.accounts.list` instead of auth.status; select the current validated UUID's actual authStatus. The list internally calls the same real status method. Preserve registered-profile metadata reread, authorization checks, loopback-only request behavior and failure-closed status.
+-- Require Agent/Vault components loaded. For genuinely bound local-anonymous accounts, select original Vault setup or authentication route. Other/cloud bootstrap route and cloud onboarding criteria remain unchanged.
+-- Track only the bootstrap WebContents weak pointer and its actual bound app-account identity. Retain an in-progress original setup while its committed URL has not reached Vault `/popup/vault`, including temporary status failures, and release only when fresh real status also permits browsing. Rebinding to a different app account or known current PWM UUID invalidates the old view scope. No database/onboarding/auth field is stamped.
+-- After real completion, close bootstrap, warm actual newtab and reveal the existing browser as before. Explicit native task/model links must use the actual account route above, never bare main root.
+-
+-Exact three-file `git apply --check`, replay and output-hash equality passed against root's combined proposal in a disposable directory. Source anchors and native APIs (`WebContents::GetWeakPtr`, `base::Uuid::ParseLowercase`) were checked statically. No shared Chromium checkout was edited; no native compile/link or packaged bootstrap observation was performed. Root must compose, compile and observe actual setup (including recovery save/ack), lock/unlock, account0/manual-provider navigation and cloud-binding preservation before accepting this flow.
++Remaining boundaries are actual packaged native/daemon authorization; real startup popup/error observation; faithful original signup/onboarding availability and any owner-authorized input; then normal-browser/newtab behavior. This audit preserves failures and interactions. It does not make signing, new auth infrastructure or replacement setup UI the next development task.

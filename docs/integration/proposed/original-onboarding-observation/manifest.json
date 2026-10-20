@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "docs/source/provided-first-launch.md",
+      "baselineSha256": "85c1981b022722a67b896770b440e538bdb3d683632d42bb174cdf8453c409fc",
+      "outputSha256": "79cce23b7008948be5d1928f69f74f767152a25af0af89bcf690620700eafca9"
+    }
+  ],
+  "appliedToRoot": false
+}

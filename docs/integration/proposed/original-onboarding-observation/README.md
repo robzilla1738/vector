@@ -1,0 +1,9 @@
+# Original onboarding observation audit
+
+Static audit and a source-pinned correction of the current root `docs/source/provided-first-launch.md`. This lane predates that root document, so `docs.patch` plus `manifest.json`/full `port` text carries its exact reviewed replacement without an add/add cherry-pick conflict. Root should verify the document baseline hash and apply `docs.patch`; the new input ledger at `docs/source/provided-first-launch-current-inputs.json` is a normal new tracked file in this delivery.
+
+Twelve exact static source pins and 39 bounded anchors passed. Staged Agent hashes match its actual generated UI manifest; each corresponding supplied 1852 static JS source hash also matches that pinned manifest. The actual original daemon code SHA remains 5e35dfa1...; its six textual `isComplete` mentions include exactly one local-bootstrap true writer, guarded by real cloud user/completion. The current native 257 gate/reader/API sources are pinned. Exact documentation patch replay passed in a fresh temporary directory.
+
+Result: preserve the original 900×560 Agent signup popup and actual auth/account guards. No anonymous continuation exists in the splash; service bootstrap is not user onboarding, and actual hosted completion is unavailable at the local boundary. Root can meaningfully observe the actual supplied splash or honest error after its full build. The old independent local Vault-wrapper recommendation is explicitly retired, not silently left as an alternative startup policy. This is source fidelity evidence, not packaged acceptance.
+
+No shared native/root edits, build, runtime, request, owner home/profile/credential/Keychain access, signing, provisioning or OS action occurred. No new auth path, flag, completion stamp, mock or fallback UI was introduced. The practical observation sequence is in the corrected document; actual launch and any subsequent user-input decision remain root-owned.
