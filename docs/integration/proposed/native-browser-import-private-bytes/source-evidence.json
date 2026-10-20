@@ -1,0 +1,55 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "column-bytes.asm",
+      "start": "0x6d63b8",
+      "endExclusive": "0x6d645c",
+      "bytesSha256": "5ff8c49e6252f4185edb33ab7b1f5f2b5e7f932797d7b8a074013d4ab946d01b",
+      "sha256": "32bd3fab61b16d9fe1f42ad63010a25ec93e4107f5b88f8bf433c2524ba20e34"
+    },
+    {
+      "file": "cookie-byte-flow.asm",
+      "start": "0x425a8ac",
+      "endExclusive": "0x425ad84",
+      "bytesSha256": "ce84c428a01ef351f11088de21aff84a3abdea0d57861f16ea58dda2c1f4bbcb",
+      "sha256": "0f42c9188cea05015abbf796ff854c7964435224a1010a8b99ae77137561a670"
+    },
+    {
+      "file": "password-text-and-dedup.asm",
+      "start": "0x425b5d4",
+      "endExclusive": "0x425be60",
+      "bytesSha256": "cb7f9d39223d0177e1fe4cc117d38c654888336be0491b8f6e7d715f18635a32",
+      "sha256": "e4c73295b99c54539d9a3351143554abad50b6ae6450bd111ae6203aa428dc81"
+    },
+    {
+      "file": "utf8-to-utf16.asm",
+      "start": "0x8e2310",
+      "endExclusive": "0x8e2830",
+      "bytesSha256": "dfa5cef2dd33ff1d89ff476918cf37414aee0a6a64877835c4e47a99ee0b1dc8",
+      "sha256": "0b7224881e568e353beddb4d05dea47a09a81eedc7cbfa302ed1cba2d1ed7a1f"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/values.cc",
+      "sha256": "407e63b368f14817d97c606e649c6a5abae30d7cbf8612efefbe20edcea16f09"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/strings/utf_string_conversions.cc",
+      "sha256": "cec6c3dfcf2b26d188540d9792d9df25c62cf84cd10fe07ade36330e873edcdf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/net/cookies/canonical_cookie.h",
+      "sha256": "f434d5f1f5fb12fc7f334cddc4b28b6aa9336d7cca9d4c7703f530e634241b8a"
+    }
+  ],
+  "parent": "19114b5b2 password-metadata output"
+}
