@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "applyAfter": "v426",
+  "originalProposal": "native-browser-import-full-staging",
+  "originalManifestSha256": "7913f921e60a1d2f226aabef47ef0d0a33deb5255d0772e710ea34c130c38778",
+  "patchSha256": "cca377fc6ef1072a6e7815d1df12bb40cae1a7fadb25fae8f9b65af93aa79d76",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.h",
+      "baselineSha256": "00c2183014a4c0aea962b97bce13aada5996568756b9e9ffd109ef3653e68d1c",
+      "originalBaselineSha256": "00c2183014a4c0aea962b97bce13aada5996568756b9e9ffd109ef3653e68d1c",
+      "originalOutputSha256": "41df8746550d377d88947052fe311172195e4f7450ec785c19ad46165d3667f9",
+      "outputSha256": "41df8746550d377d88947052fe311172195e4f7450ec785c19ad46165d3667f9"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "ad43322b1a083e1dacb905207156ab3776862c73f7a82935c739d073bbb9253a",
+      "originalBaselineSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517",
+      "originalOutputSha256": "801b8697fe0e9b53046a788c8f39234df3a433611fd560be6b1617a8a7a9936d",
+      "outputSha256": "a05166298eec6144624fe7242db614a7e4fa4cb31812c2d406bfbd3dcc52f3b0"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.h",
+      "baselineSha256": "355c966539c15ecf7a981ca1d2a1dadef2a2876550a909833975e0f028a80be5",
+      "originalBaselineSha256": "355c966539c15ecf7a981ca1d2a1dadef2a2876550a909833975e0f028a80be5",
+      "originalOutputSha256": "f4ce73b238e5fc34e5097d7922b5d03bd49fae234d3d1ae91627a92a2a90d9ce",
+      "outputSha256": "f4ce73b238e5fc34e5097d7922b5d03bd49fae234d3d1ae91627a92a2a90d9ce"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3",
+      "originalBaselineSha256": "5cb6b505525241447793800fcc1e3b3bc4c322c44b51af13f5464ef486e590e3",
+      "originalOutputSha256": "a1af51833dc8b880669ded1bd89153440f78cc7522663465f0a47d4599a917e0",
+      "outputSha256": "a1af51833dc8b880669ded1bd89153440f78cc7522663465f0a47d4599a917e0"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

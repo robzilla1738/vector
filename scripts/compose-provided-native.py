@@ -451,6 +451,8 @@ steps.extend([
     ('native-browser-import-registry/native.patch', 'native-browser-import-registry-integration/manifest.json'),
     ('native-browser-import-full-owner-key-gate/native.patch', 'native-browser-import-owner-profiles-integration/manifest-v425.json'),
     ('native-browser-import-owner-profiles-integration/profiles.patch', 'native-browser-import-owner-profiles-integration/manifest-v426.json'),
+    ('native-browser-import-full-staging/native.patch', 'native-browser-import-staging-history-integration/manifest-v427.json'),
+    ('native-browser-import-history-owner/native.patch', 'native-browser-import-staging-history-integration/manifest-v428.json'),
 ])
 
 if options.through:

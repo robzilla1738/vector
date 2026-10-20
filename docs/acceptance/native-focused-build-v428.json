@@ -1,0 +1,28 @@
+{
+  "compositionSha256": "6904c937c13b4356cb3dce646a35afc0df59a009186230c80e6b5f3c309499d3",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "composition": "v428",
+  "exitCode": 0,
+  "elapsedSeconds": 25.844445943832397,
+  "targets": {
+    "import_service": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "migrator": "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "source_crypto_mac": "obj/chrome/browser/extensions/api/aux_browser_import/migrator/source_crypto_mac.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/migrator.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/migrator/source_crypto_mac.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "runtimeAcceptance": false,
+  "noSourceProfileOrKeychainOperations": true
+}
