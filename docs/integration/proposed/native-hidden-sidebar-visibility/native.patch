@@ -1,0 +1,17 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -924,9 +924,13 @@
+             0, horizontal_layout.vertical_tab_strip_width, 0, 0));
+       }
+     }
++    // Empty collapsed geometry must also hide the child/layer subtree: a
++    // zero-width View alone does not suppress overflowing controls or AX nodes.
++    // The view stays attached, so its native window edge monitor still works.
+     layout.AddChild(views().vertical_tab_strip_region_view,
+                     vertical_tab_strip_bounds,
+-                    layout_data_->tab_strip_type == TabStripType::kVertical);
++                    layout_data_->tab_strip_type == TabStripType::kVertical &&
++                        !vertical_tab_strip_bounds.IsEmpty());
+   }
+ 
+   if (IsParentedTo(views().vertical_tab_strip_background_blur_backdrop,
