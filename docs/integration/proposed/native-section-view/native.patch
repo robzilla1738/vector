@@ -1,0 +1,322 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_section_icons.inc
+@@ -0,0 +1,17 @@
++// Exact supplied53-element disclosure path e9d4f50/d3dc800.
++constexpr gfx::PathElement kDisclosurePath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 4.47141981f, 5.86199999f,
++    gfx::CUBIC_TO, 4.21109009f, 5.60169983f, 3.78908992f, 5.60169983f, 3.5286901f, 5.86199999f,
++    gfx::CUBIC_TO, 3.26834989f, 6.12236023f, 3.26834989f, 6.54437017f, 3.5286901f, 6.80474997f,
++    gfx::LINE_TO, 7.52868986f, 10.8047504f,
++    gfx::CUBIC_TO, 7.78909016f, 11.0650797f, 8.21109009f, 11.0650797f, 8.47142029f, 10.8047504f,
++    gfx::LINE_TO, 12.4714003f, 6.80474997f,
++    gfx::CUBIC_TO, 12.7318001f, 6.54437017f, 12.7318001f, 6.12236023f, 12.4714003f, 5.86199999f,
++    gfx::CUBIC_TO, 12.2110996f, 5.60169983f, 11.7890997f, 5.60169983f, 11.5286999f, 5.86199999f,
++    gfx::LINE_TO, 8.00008965f, 9.39068031f,
++    gfx::LINE_TO, 4.47141981f, 5.86199999f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kDisclosureReps[] = {{kDisclosurePath}};
++const gfx::VectorIcon kDisclosureIcon(kDisclosureReps, 1, "kAuxSectionDisclosureIcon");
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_section_view.cc
+@@ -0,0 +1,162 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_section_view.h"
++#include "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h"
++
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "cc/paint/paint_flags.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/events/event.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/font_list.h"
++#include "ui/gfx/geometry/rect_f.h"
++#include "ui/gfx/text_constants.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/controls/highlight_path_generator.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++namespace {
++
++SkColor SectionColor(const views::View& view, bool hover) {
++  // Original private mixer035e6d40 roles226/247. No CSS/theme substitute.
++  const bool dark = view.GetWidget()->GetColorMode() ==
++      ui::ColorProviderKey::ColorMode::kDark;
++  return hover ? (dark ? 0x14fafafa : 0x140a0a0a)
++               : (dark ? 0x73fafafa : 0x730a0a0a);
++}
++
++}  // namespace
++
++class AuxSectionHeaderButton final : public views::Button {
++  METADATA_HEADER(AuxSectionHeaderButton, views::Button)
++ public:
++  AuxSectionHeaderButton(std::u16string title, bool disclosure,
++                        base::RepeatingClosure primary,
++                        base::RepeatingClosure secondary,
++                        std::unique_ptr<views::View> accessory)
++      : views::Button(base::BindRepeating(
++            &AuxSectionHeaderButton::RunPrimary, base::Unretained(this))),
++        primary_(std::move(primary)), secondary_(std::move(secondary)) {
++    SetEnabled(!primary_.is_null());
++    SetNotifyEnterExitOnChild(true);
++    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(4, 8)));
++    layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
++    label_ = AddChildView(std::make_unique<views::Label>(title));
++    label_->SetCanProcessEventsWithinSubtree(false);
++    label_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
++    label_->SetElideBehavior(gfx::FADE_TAIL);
++    label_->SetSubpixelRenderingEnabled(false);
++    label_->SetAutoColorReadabilityEnabled(false);
++    label_->SetBackgroundColor(SK_ColorTRANSPARENT);
++    const gfx::FontList font;
++    label_->SetFontList(font.Derive(13 - font.GetFontSize(), gfx::Font::NORMAL,
++                                 gfx::Font::Weight::MEDIUM));
++    auto* spacer = AddChildView(std::make_unique<views::View>());
++    layout->SetFlexForView(spacer, 1);
++    controls_ = AddChildView(std::make_unique<views::View>());
++    auto* controls_layout = controls_->SetLayoutManager(
++        std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kHorizontal));
++    controls_layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
++    if (accessory) {
++      accessory->SetVisible(false);
++      accessory_ = controls_->AddChildView(std::move(accessory));
++    }
++    if (disclosure) {
++      chevron_ = controls_->AddChildView(std::make_unique<AuxTabExpandChevronView>(
++          true, AuxTabExpandChevronView::Foreground::kMuted));
++      chevron_->SetVisible(false);
++    }
++    GetViewAccessibility().SetName(title);
++    // Original5038c0 jump-table slot56 ->503924 ->8, for focus and hover.
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 8);
++  }
++  gfx::Size CalculatePreferredSize(const views::SizeBounds& available) const override {
++    auto result = views::Button::CalculatePreferredSize(available);
++    result.set_height(28);
++    return result;
++  }
++  bool OnMousePressed(const ui::MouseEvent& event) override {
++    if ((event.flags() & ui::EF_MOUSE_BUTTON) == ui::EF_RIGHT_MOUSE_BUTTON &&
++        !secondary_.is_null()) {
++      secondary_.Run();
++      return true;
++    }
++    return views::Button::OnMousePressed(event);
++  }
++  void SetDisclosureOpen(bool open) { if (chevron_) chevron_->SetExpanded(open); }
++  void SetAlwaysShowAccessory(bool always_show) {
++    always_show_accessory_ = always_show;
++    UpdateControls();
++  }
++ protected:
++  void OnThemeChanged() override {
++    views::Button::OnThemeChanged();
++    if (GetWidget()) label_->SetEnabledColor(SectionColor(*this, false));
++  }
++  void OnPaintBackground(gfx::Canvas* canvas) override {
++    if (primary_.is_null() || GetState() == STATE_NORMAL) return;
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(SectionColor(*this, true));
++    canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
++  }
++  void StateChanged(ButtonState old_state) override {
++    views::Button::StateChanged(old_state);
++    UpdateControls();
++  }
++ private:
++  void RunPrimary() { if (!primary_.is_null()) primary_.Run(); }
++  void UpdateControls() {
++    if (accessory_)
++      accessory_->SetVisible(always_show_accessory_ || GetState() != STATE_NORMAL);
++    if (chevron_)
++      chevron_->SetVisible(GetState() == STATE_HOVERED || GetState() == STATE_PRESSED);
++  }
++  base::RepeatingClosure primary_;
++  base::RepeatingClosure secondary_;
++  raw_ptr<views::Label> label_ = nullptr;
++  raw_ptr<views::View> controls_ = nullptr;
++  raw_ptr<views::View> accessory_ = nullptr;
++  raw_ptr<AuxTabExpandChevronView> chevron_ = nullptr;
++  bool always_show_accessory_ = false;
++};
++BEGIN_METADATA(AuxSectionHeaderButton)
++END_METADATA
++
++AuxSectionView::AuxSectionView(std::u16string title, bool disclosure,
++    base::RepeatingClosure primary, gfx::Insets section_insets,
++    base::RepeatingClosure secondary, std::unique_ptr<views::View> accessory,
++    int content_top_margin) {
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical, section_insets));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kStretch);
++  layout->SetCollapseMarginsSpacing(true);
++  header_ = AddChildView(std::make_unique<AuxSectionHeaderButton>(
++      std::move(title), disclosure, std::move(primary), std::move(secondary),
++      std::move(accessory)));
++  header_->SetProperty(views::kMarginsKey, gfx::Insets::VH(0, 8));
++  contents_ = AddChildView(std::make_unique<views::View>());
++  contents_->SetProperty(views::kMarginsKey,
++                         gfx::Insets::TLBR(content_top_margin, 0, 0, 0));
++  auto* contents_layout = contents_->SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical));
++  contents_layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kStretch);
++  contents_layout->SetCollapseMarginsSpacing(true);
++}
++AuxSectionView::~AuxSectionView() = default;
++views::Button* AuxSectionView::header_button() const { return header_; }
++void AuxSectionView::SetDisclosureOpen(bool open) { header_->SetDisclosureOpen(open); }
++void AuxSectionView::SetHeaderAlwaysShowAccessory(bool always_show) {
++  header_->SetAlwaysShowAccessory(always_show);
++}
++BEGIN_METADATA(AuxSectionView)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_section_view.h
+@@ -0,0 +1,38 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SECTION_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SECTION_VIEW_H_
++
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/views/view.h"
++
++namespace views { class Button; }
++namespace aux {
++class AuxSectionHeaderButton;
++
++// Supplied AsideSectionView4662010/metadata4663164. The actual Bookmarks/Chats
++// owners control expansion, rows and persistence; this base owns their views.
++class AuxSectionView : public views::View {
++  METADATA_HEADER(AuxSectionView, views::View)
++ public:
++  AuxSectionView(std::u16string title, bool disclosure,
++                 base::RepeatingClosure primary, gfx::Insets section_insets,
++                 base::RepeatingClosure secondary = {},
++                 std::unique_ptr<views::View> accessory = {},
++                 int content_top_margin = 4);
++  ~AuxSectionView() override;
++  views::Button* header_button() const;
++  views::View* contents() const { return contents_; }
++  void SetDisclosureOpen(bool open);
++  void SetHeaderAlwaysShowAccessory(bool always_show);
++
++ private:
++  raw_ptr<AuxSectionHeaderButton> header_ = nullptr;
++  raw_ptr<views::View> contents_ = nullptr;
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc
+@@ -0,0 +1,60 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h"
++
++#include "base/time/time.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/gfx/animation/animation.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/geometry/transform.h"
++#include "ui/gfx/vector_icon_types.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++namespace {
++#include "chrome/browser/ui/views/frame/aux_section_icons.inc"
++}  // namespace
++AuxTabExpandChevronView::AuxTabExpandChevronView(bool expanded,
++    Foreground foreground) : expanded_(expanded), foreground_(foreground) {
++  SetCanProcessEventsWithinSubtree(false);
++  SetPreferredSize(gfx::Size(16, 16));
++  SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 4, 0, 0));
++  animation_.SetSlideDuration(gfx::Animation::ShouldRenderRichAnimation()
++      ? base::Milliseconds(180) : base::TimeDelta());
++  animation_.Reset(expanded ? 1.0 : 0.0);
++}
++AuxTabExpandChevronView::~AuxTabExpandChevronView() = default;
++void AuxTabExpandChevronView::SetExpanded(bool expanded) {
++  if (expanded_ == expanded) return;
++  expanded_ = expanded;
++  if (expanded) animation_.Show();
++  else animation_.Hide();
++}
++void AuxTabExpandChevronView::OnPaint(gfx::Canvas* canvas) {
++  canvas->Save();
++  gfx::Transform rotation;
++  rotation.Translate(width() / 2.0f, height() / 2.0f);
++  rotation.Rotate(180.0 * animation_.GetCurrentValue());
++  rotation.Translate(-width() / 2.0f, -height() / 2.0f);
++  canvas->Transform(rotation);
++  views::ImageView::OnPaint(canvas);
++  canvas->Restore();
++}
++void AuxTabExpandChevronView::OnThemeChanged() {
++  views::ImageView::OnThemeChanged();
++  if (!GetWidget()) return;
++  const bool dark = GetWidget()->GetColorMode() ==
++      ui::ColorProviderKey::ColorMode::kDark;
++  const SkColor color = foreground_ == Foreground::kMuted
++      ? (dark ? 0x73fafafa : 0x730a0a0a)
++      : (dark ? 0x8cfafafa : 0x8c0a0a0a);
++  SetImage(ui::ImageModel::FromVectorIcon(kDisclosureIcon, color, 16));
++}
++void AuxTabExpandChevronView::AnimationProgressed(const gfx::Animation*) {
++  SchedulePaint();
++}
++BEGIN_METADATA(AuxTabExpandChevronView)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_EXPAND_CHEVRON_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_TAB_EXPAND_CHEVRON_VIEW_H_
++
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/slide_animation.h"
++#include "ui/views/controls/image_view.h"
++
++namespace aux {
++// Supplied TabExpandChevronView4119804/411af20. Callers retain expansion state.
++class AuxTabExpandChevronView : public views::ImageView,
++                               private gfx::AnimationDelegate {
++  METADATA_HEADER(AuxTabExpandChevronView, views::ImageView)
++ public:
++  enum class Foreground { kSecondary, kMuted };  // Original roles222/226.
++  explicit AuxTabExpandChevronView(bool expanded = true,
++      Foreground foreground = Foreground::kSecondary);
++  ~AuxTabExpandChevronView() override;
++  void SetExpanded(bool expanded);
++  void OnPaint(gfx::Canvas* canvas) override;
++ protected:
++  void OnThemeChanged() override;
++ private:
++  void AnimationProgressed(const gfx::Animation*) override;
++  bool expanded_;
++  Foreground foreground_;
++  gfx::SlideAnimation animation_{this};
++};
++}  // namespace aux
++#endif

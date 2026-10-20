@@ -1,0 +1,137 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "section-constructor",
+      "start": "0x4662010",
+      "stopExclusive": "0x4662e74",
+      "bytesSha256": "8cf552fe230dbff6d589a61174ad32a41a09d2323e1632de4ea4252c68751266",
+      "asmSha256": "c14d085cdda262ca9bc11bfb26ca2b3e94f69be1d59e9be7a403b6c9b3932df4"
+    },
+    {
+      "name": "header-methods",
+      "start": "0x4665910",
+      "stopExclusive": "0x4665fac",
+      "bytesSha256": "8621cb306351cc7486be4fc54f2965792855b0c9049d278f4cc2e6161fb6a180",
+      "asmSha256": "ebb8a6c6b1cad993e16b6de6751c24c95fe68633f1bc7be4481bd49fbfe0060e"
+    },
+    {
+      "name": "section-metadata",
+      "start": "0x4663164",
+      "stopExclusive": "0x4663264",
+      "bytesSha256": "b235d193655a091acdd96a141f4a64314f50ac1302494ce5478f84bfbe00d574",
+      "asmSha256": "abc2aa7302b1d8fbb0220a770a22b984ff7cbc1a5969836191d4291fa97c7284"
+    },
+    {
+      "name": "disclosure-constructor",
+      "start": "0x4119804",
+      "stopExclusive": "0x4119b20",
+      "bytesSha256": "f53b3e70040c7eee6e1b560ba6de7e9b9070e156bdaba6239694e0547da84a86",
+      "asmSha256": "74e7ffe8660c4f807ae8aeb3b9b9d453a8ca3f9f76a17a992c2350a4f2e31885"
+    },
+    {
+      "name": "disclosure-paint",
+      "start": "0x411af20",
+      "stopExclusive": "0x411b1c4",
+      "bytesSha256": "56eda69b2604c7a868f6808a732644489c8cd9b0c36d73c79e6d4a4a95d2ac1f",
+      "asmSha256": "589aff37108b969124de0972e09d12dd79cb4b40dd79a51a9281e4c947443744"
+    },
+    {
+      "name": "layout-constant",
+      "start": "0x5038c0",
+      "stopExclusive": "0x5039a0",
+      "bytesSha256": "137581ea5cb665be1621207b26e56c3897e9ccd27691e489fcef19d6a54ba817",
+      "asmSha256": "5dd3fc527e490cdf0c98f61bc997ad0e212f14db3bbe469e68f143435d7e1ab5"
+    },
+    {
+      "name": "bookmarks-caller",
+      "start": "0x37e1200",
+      "stopExclusive": "0x37e1280",
+      "bytesSha256": "9beb8841077eb2c52d25c31794a63e57db8b90f9d130ae3a0b0836c17bb664d3",
+      "asmSha256": "204cdb65b7abf65ca5a380042ceddd4b9bb1eb11c29010029cb97654e08ebd4f"
+    }
+  ],
+  "constants": {
+    "sectionClass": {
+      "address": "0xdecc01c",
+      "evidence": "Original supplied decompile04663164.c returns literalAsideSectionView; boundedconstructor+metadata included."
+    },
+    "radius": {
+      "table": "0xced81c8",
+      "index": 56,
+      "entryHex": "10000000",
+      "branch": "0x503914+0x10=0x503924",
+      "result": 8
+    },
+    "rotationDegrees": {
+      "address": "0xdf4be70",
+      "double": 180.0,
+      "bytes": "0000000000806640"
+    },
+    "chevronMargin": {
+      "address": "0xdf3e700",
+      "insets": [
+        0,
+        4,
+        0,
+        0
+      ],
+      "bytes": "00000000040000000000000000000000"
+    },
+    "disclosureIcon": {
+      "definition": "0xe9d4f50",
+      "path": "0xd3dc800",
+      "elements": 53,
+      "bytesSha256": "f8f4b5945f11373258604848ae0ead3a789fce6f582035ccc8b4eac17ad1f239"
+    },
+    "headerFont": {
+      "pixels": 13,
+      "weight": 500,
+      "colorRole": 226
+    },
+    "hoverColorRole": 247,
+    "headerHeight": 28,
+    "headerInternalInsets": [
+      4,
+      8,
+      4,
+      8
+    ],
+    "headerOuterMargins": [
+      0,
+      8,
+      0,
+      8
+    ],
+    "bookmarksSectionInsets": [
+      4,
+      0,
+      8,
+      0
+    ],
+    "bookmarksContentTopMargin": 4,
+    "chevronDurationMs": 180,
+    "chevronReducedDurationMs": 0,
+    "chevronDefaultColorRole": 222,
+    "sectionChevronColorRole": 226
+  },
+  "reusedPalette": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-agent-tabs-paint/palette.json",
+    "sha256": "6816488a9242481f8b6b8188cff56d4bf97ea8de4b8e764f24940236ec84a3d0",
+    "roles": [
+      222,
+      226,
+      247
+    ]
+  },
+  "ghidra": {
+    "snapshot": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/out/sidebar-body-analysis/section-ghidra.json",
+    "sha256": "3f82cb2827ecdbacdfa51cd29b624010295896fdbef13597e5abcfe26cd0878c",
+    "rawSha256": "3428f81a2fc7fa46137ff99c1156b2d2663fa696ccb8b9e4fc46daf6335843cf",
+    "limits": "Bounded raw import; externaltailcalls/literals are unmapped, fullboundedLLVM bodies and originalwholeartifact constant offsets remain authority."
+  },
+  "scope": "Actual sectionbase/header/rotatingchevron only. RealBookmarks/Chats owner suppliescallbacks, expansion/persistence/rows. Notmounted; heldbodyretirement mustnotapply until realcompletebodyintegration."
+}

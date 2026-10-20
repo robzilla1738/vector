@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "base": "new native view files; no shared existing source delta",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "16391c41effcb4321ac0ed1268d0cd7c5d84bce235313132abe20b34ad412895"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "e311295c2214dbb476542efb28cf948a19d44c772fc65510397771bd0adeb06c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_view.h",
+      "baselineSha256": null,
+      "outputSha256": "bc94373b0c8d746ceb84decee42e76215a5bc45c1e7331bdaded7109472acaaf"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "c54de54bb6d33c6f2ec95add940a6b029e7a23082b6a5ec50977b55d4f4d3b74"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h",
+      "baselineSha256": null,
+      "outputSha256": "9df0f3444b2320ca62c874c23078d0b25d792d085705bcf2fc0b8ba6b23ed16e"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
