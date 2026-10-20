@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aside/AsideAgentManager/1.26.1016.1852/background.js",
+      "sha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7"
+    }
+  ],
+  "functions": [
+    {
+      "name": "secure producer",
+      "rva": "0x7d5697c",
+      "bytes": 2224,
+      "sha256": "e81e6296f97df86cb5b01f6c0584ab4678bd0726423cad6cc61843943514efe2"
+    },
+    {
+      "name": "native marker setter",
+      "rva": "0x41e2f7c",
+      "bytes": 928,
+      "sha256": "943f3edeb6e2a07894eeb201555ba225a756b0dbacc1ac15513555181d440691"
+    },
+    {
+      "name": "owned audio policy",
+      "rva": "0x41e331c",
+      "bytes": 476,
+      "sha256": "6c5ebe8a81538689c79270d2c375496f6affade9df882077fa23d99f80767c48"
+    },
+    {
+      "name": "group membership transition",
+      "rva": "0x41e34f8",
+      "bytes": 276,
+      "sha256": "15898036042befc83dfd57aa13334ee74de7dc5708bbf383502ea75054c6f695"
+    },
+    {
+      "name": "feature factory and init",
+      "rva": "0x7d4705c",
+      "bytes": 332,
+      "sha256": "edd8e517a1d194d22eb9f39ba590aeeff7ac16eccbafa1f9340dc61bec4371a8"
+    },
+    {
+      "name": "group feature binding",
+      "rva": "0x7d46e88",
+      "bytes": 108,
+      "sha256": "924406d49e0a3415168a23b9b5d59f40e02cb421c749af32de553fd4f8596cc5"
+    },
+    {
+      "name": "regular group visual setter",
+      "rva": "0x4078130",
+      "bytes": 248,
+      "sha256": "8a68c1c30d9f293cb9af4b3c4d554b490bc8d989598545410e27242d480d82fb"
+    }
+  ]
+}

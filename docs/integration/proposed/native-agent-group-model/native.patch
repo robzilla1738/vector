@@ -1,0 +1,301 @@
+--- /dev/null
++++ b/content/public/browser/devtools_authenticated_session.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CONTENT_PUBLIC_BROWSER_DEVTOOLS_AUTHENTICATED_SESSION_H_
++#define CONTENT_PUBLIC_BROWSER_DEVTOOLS_AUTHENTICATED_SESSION_H_
++#include "content/common/content_export.h"
++namespace content {
++class DevToolsAgentHost;
++// UI-thread query of actual currently attached clients. No target is created,
++// and default/public/unfiltered clients never grant this capability.
++CONTENT_EXPORT bool HasAuthenticatedRemoteDebuggingSession(
++    DevToolsAgentHost* host);
++}  // namespace content
++#endif  // CONTENT_PUBLIC_BROWSER_DEVTOOLS_AUTHENTICATED_SESSION_H_
+--- a/content/browser/devtools/devtools_agent_host_impl.h
++++ b/content/browser/devtools/devtools_agent_host_impl.h
+@@ -169,6 +169,7 @@
+   // above instead.
+   void ForceDetachAllSessions() override;
+ 
++  friend bool HasAuthenticatedRemoteDebuggingSession(DevToolsAgentHost* host);
+   friend class DevToolsAgentHost;  // for static methods
+   friend class DevToolsSession;
+   friend class DevToolsRendererChannel;
+--- a/content/browser/devtools/devtools_agent_host_impl.cc
++++ b/content/browser/devtools/devtools_agent_host_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "content/browser/devtools/devtools_agent_host_impl.h"
+ 
++#include <algorithm>
+ #include <map>
+ #include <vector>
+ 
+@@ -32,6 +33,8 @@
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/content_browser_client.h"
++#include "content/public/browser/devtools_agent_host_client.h"
++#include "content/public/browser/devtools_authenticated_session.h"
+ #include "content/public/browser/devtools_external_agent_proxy_delegate.h"
+ #include "content/public/browser/devtools_manager_delegate.h"
+ #include "content/public/browser/devtools_socket_factory.h"
+@@ -136,6 +139,20 @@
+ #endif
+ 
+ }  // namespace
++
++bool HasAuthenticatedRemoteDebuggingSession(DevToolsAgentHost* host) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!host) {
++    return false;
++  }
++  auto impl = DevToolsAgentHostImpl::GetForId(host->GetId());
++  if (!impl || impl.get() != host) {
++    return false;
++  }
++  return std::ranges::any_of(impl->sessions(), [](const auto& session) {
++    return session->GetClient()->IsAuthenticatedRemoteDebuggingSession();
++  });
++}
+ 
+ const char DevToolsAgentHost::kTypeTab[] = "tab";
+ const char DevToolsAgentHost::kTypePage[] = "page";
+--- a/chrome/browser/ui/tabs/tab_group_features.h
++++ b/chrome/browser/ui/tabs/tab_group_features.h
+@@ -41,6 +41,9 @@
+     return attention_indicator_.get();
+   }
+ 
++  bool is_agent_group() const { return is_agent_group_; }
++  void set_is_agent_group(bool value) { is_agent_group_ = value; }
++
+  protected:
+   TabGroupFeatures();
+ 
+@@ -50,6 +53,7 @@
+   std::unique_ptr<TabGroupAttentionIndicator> attention_indicator_;
+ 
+   bool initialized_ = false;
++  bool is_agent_group_ = false;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_TABS_TAB_GROUP_FEATURES_H_
+--- a/components/tab_groups/tab_group_visual_data.h
++++ b/components/tab_groups/tab_group_visual_data.h
+@@ -36,6 +36,9 @@
+   const tab_groups::TabGroupColorId& color() const { return color_; }
+   bool is_collapsed() const { return is_collapsed_; }
+ 
++  bool is_agent_group() const { return is_agent_group_; }
++  void SetIsAgentGroup(bool value) { is_agent_group_ = value; }
++
+   // Checks whether two instances are visually equivalent.
+   auto operator<=>(const TabGroupVisualData&) const = default;
+ 
+@@ -45,6 +48,7 @@
+   std::u16string title_;
+   tab_groups::TabGroupColorId color_;
+   bool is_collapsed_;
++  bool is_agent_group_ = false;
+ };
+ 
+ }  // namespace tab_groups
+--- a/chrome/browser/ui/tabs/tab_enums.h
++++ b/chrome/browser/ui/tabs/tab_enums.h
+@@ -12,6 +12,7 @@
+   kAudioIndicator,        // Mute toggled via tab-strip audio icon.
+   kContentSetting,        // The sound content setting was set to BLOCK.
+   kContentSettingChrome,  // Mute toggled on chrome:// URL.
++  kAgentGroup,            // Automatic mute owned by the native agent group.
+ };
+ 
+ // Source of the call to CloseTab().
+--- a/chrome/browser/ui/tabs/tab_strip_model.h
++++ b/chrome/browser/ui/tabs/tab_strip_model.h
+@@ -756,6 +756,9 @@
+   // the group's header view in the Tab Strip.
+   void OpenTabGroupEditor(const tab_groups::TabGroupId& group);
+ 
++  // Updates the actual native group marker and its owned mute state.
++  void SetGroupIsAgent(const tab_groups::TabGroupId& group, bool is_agent);
++
+   // Updates the group visuals and notifies observers.
+   void ChangeTabGroupVisuals(const tab_groups::TabGroupId& group,
+                              tab_groups::TabGroupVisualData visual_data,
+--- a/chrome/browser/ui/tabs/tab_strip_model.cc
++++ b/chrome/browser/ui/tabs/tab_strip_model.cc
+@@ -66,6 +66,7 @@
+ #include "chrome/browser/ui/tabs/tab_close_types_data.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_group_desktop.h"
++#include "chrome/browser/ui/tabs/tab_group_features.h"
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/tabs/tab_model.h"
+ #include "chrome/browser/ui/tabs/tab_muted_utils.h"
+@@ -108,6 +109,8 @@
+ #include "components/web_modal/web_contents_modal_dialog_manager.h"
+ #include "components/webapps/common/web_app_id.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/devtools_authenticated_session.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/reload_type.h"
+ #include "content/public/browser/render_process_host.h"
+@@ -128,6 +131,72 @@
+ namespace {
+ 
+ TabGroupModelFactory* factory_instance = nullptr;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++// The supplied producer accepts a secure session attached to a member target,
++// or a secure browser session. Merely trusting a client or naming a group does
++// not satisfy this actual connection predicate.
++bool HasAgentGroupSession(TabStripModel* model, const TabGroup* group) {
++  const gfx::Range range = group->ListTabs();
++  for (uint32_t index = range.start(); index < range.end(); ++index) {
++    auto* contents = model->GetWebContentsAt(index);
++    auto tab_host = content::DevToolsAgentHost::GetForTab(contents);
++    if (tab_host &&
++        content::HasAuthenticatedRemoteDebuggingSession(tab_host.get())) {
++      return true;
++    }
++    // The155 tab and page targets are distinct. Preserve existing page sessions
++    // without creating a new target merely to ask about authentication.
++    if (content::DevToolsAgentHost::HasFor(contents) &&
++        content::HasAuthenticatedRemoteDebuggingSession(
++            content::DevToolsAgentHost::GetOrCreateFor(contents).get())) {
++      return true;
++    }
++  }
++  for (const auto& host : content::DevToolsAgentHost::GetAll()) {
++    if (host->GetType() == content::DevToolsAgentHost::kTypeBrowser &&
++        content::HasAuthenticatedRemoteDebuggingSession(host.get())) {
++      return true;
++    }
++  }
++  return false;
++}
++
++bool IsAgentGroup(TabGroupModel* model,
++                  const std::optional<tab_groups::TabGroupId>& id) {
++  const auto* group = model && id ? model->GetTabGroup(*id) : nullptr;
++  const auto* features = group ? group->GetTabGroupFeatures() : nullptr;
++  return features && features->is_agent_group();
++}
++
++void SetAgentGroupAudioMuted(content::WebContents* contents, bool is_agent) {
++  if (!contents) {
++    return;
++  }
++  if (is_agent) {
++    // Do not steal mute ownership from an already-muted tab.
++    if (!contents->IsAudioMuted()) {
++      SetTabAudioMuted(contents, true, TabMutedReason::kAgentGroup, {});
++    }
++    return;
++  }
++  if (!contents->IsAudioMuted() ||
++      GetTabAudioMutedReason(contents) != TabMutedReason::kAgentGroup) {
++    return;
++  }
++  const GURL& url = contents->GetLastCommittedURL();
++  if (!url.is_empty() && !url.SchemeIs(content::kChromeUIScheme)) {
++    auto* profile = Profile::FromBrowserContext(contents->GetBrowserContext());
++    auto* settings = HostContentSettingsMapFactory::GetForProfile(profile);
++    if (settings->GetContentSetting(url, url, ContentSettingsType::SOUND) ==
++        CONTENT_SETTING_BLOCK) {
++      SetTabAudioMuted(contents, true, TabMutedReason::kContentSetting, {});
++      return;
++    }
++  }
++  SetTabAudioMuted(contents, false, TabMutedReason::kAgentGroup, {});
++}
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
+ 
+ // Works similarly to base::AutoReset but checks for access from the wrong
+ // thread as well as ensuring that the previous value of the re-entrancy guard
+@@ -2376,11 +2445,53 @@
+   }
+ }
+ 
++void TabStripModel::SetGroupIsAgent(const tab_groups::TabGroupId& group_id,
++                                    bool is_agent) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  TabGroup* group = group_model_->GetTabGroup(group_id);
++  CHECK(group);
++  TabGroupFeatures* features = group->GetTabGroupFeatures();
++  CHECK(features);
++  if (features->is_agent_group() == is_agent) {
++    return;
++  }
++  features->set_is_agent_group(is_agent);
++  tab_groups::TabGroupVisualData old_visuals = *group->visual_data();
++  tab_groups::TabGroupVisualData new_visuals = old_visuals;
++  new_visuals.SetIsAgentGroup(is_agent);
++  group->SetVisualData(new_visuals, group->IsCustomized());
++  TabGroupChange::VisualsChange visuals;
++  visuals.old_visuals = &old_visuals;
++  visuals.new_visuals = &new_visuals;
++  NotifyTabGroupVisualsChanged(group_id, visuals);
++  const gfx::Range range = group->ListTabs();
++  for (uint32_t index = range.start(); index < range.end(); ++index) {
++    SetAgentGroupAudioMuted(GetWebContentsAt(index), is_agent);
++  }
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
++}
++
+ void TabStripModel::ChangeTabGroupVisuals(
+     const tab_groups::TabGroupId& group_id,
+     tab_groups::TabGroupVisualData visual_data,
+     bool is_customized) {
+   TabGroup* tab_group = group_model_->GetTabGroup(group_id);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  TabGroupFeatures* features = tab_group->GetTabGroupFeatures();
++  CHECK(features);
++  if (HasAgentGroupSession(this, tab_group)) {
++    const bool was_agent = features->is_agent_group();
++    const bool is_agent = visual_data.title() == u"Agent Tabs";
++    SetGroupIsAgent(group_id, is_agent);
++    if (is_agent && !was_agent && !visual_data.is_collapsed()) {
++      visual_data = tab_groups::TabGroupVisualData(visual_data.title(),
++                                                   visual_data.color(), true);
++    }
++  }
++  // Normal visual updates cannot forge or erase native feature metadata.
++  visual_data.SetIsAgentGroup(features->is_agent_group());
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
+ 
+   // Move current visuals to old_visuals before updating
+   tab_groups::TabGroupVisualData old_visuals = *tab_group->visual_data();
+@@ -5195,6 +5306,13 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Capture before removal can destroy an emptied source group. Only a real
++  // agent-membership transition owns an automatic audio change.
++  const bool was_agent_group = IsAgentGroup(group_model_.get(), initial_group);
++  const bool is_agent_group = IsAgentGroup(group_model_.get(), new_group);
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
++
+   if (initial_group.has_value()) {
+     TabGroup* tab_group = group_model_->GetTabGroup(initial_group.value());
+     tab_group->RemoveTab();
+@@ -5244,6 +5362,11 @@
+       NotifyTabGroupVisualsChanged(new_group.value(), visuals);
+     }
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (was_agent_group != is_agent_group) {
++    SetAgentGroupAudioMuted(tab->GetContents(), is_agent_group);
++  }
++#endif  // BUILDFLAG(ENABLE_AUX_BROWSER)
+ }
+ 
+ void TabStripModel::MaybeUpdateFocusModeForMovedTab(
