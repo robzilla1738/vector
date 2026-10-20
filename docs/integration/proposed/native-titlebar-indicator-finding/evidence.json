@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "conclusion": "OS-indicator inference; exact screenshot owner/state unproven; no application mode implementation justified",
+  "historicalInputs": [
+    {
+      "path": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/146-browser-sidebar-restored.png",
+      "sha256": "d1ec02b2a108a57c45f3f43fda0ae3c43fd25388851d642437ad9d561d67c78d",
+      "kind": "historical JPEG despite PNG filename; external only"
+    },
+    {
+      "path": "/Users/rcourson/Desktop/Aside UI Reference 2026-10-16/09 Browser shell profiles and libraries/146-browser-sidebar-restored.txt",
+      "sha256": "7682f9cbc7c7fa52745dbef6d3b41be4e35017ddaeea8cd54abb15a8bc09d311",
+      "kind": "historical accessibility capture; external only"
+    }
+  ],
+  "existingSourcePins": [
+    {
+      "path": "docs/integration/proposed/native-sidebar-top-controls/source-evidence.json",
+      "sha256": "650007eaf72f5353172a62c1e43f05655055101f03efe95ad315bdb035f9fbfe"
+    },
+    {
+      "path": "docs/integration/proposed/native-sidebar-top-controls/README.md",
+      "sha256": "f9dd88baeb9e8b5123fcc824dc4eaa3327cc41f33a52f3f0ca4f74e59f3c6554"
+    }
+  ],
+  "officialSources": [
+    {
+      "url": "https://developer.apple.com/videos/play/wwdc2023/10136/",
+      "scope": "OS-owned sharing controls and direct-window selection; not screenshot-state proof"
+    },
+    {
+      "url": "https://developer.apple.com/documentation/screencapturekit",
+      "scope": "SCContentSharingPicker system sharing control"
+    },
+    {
+      "url": "https://support.apple.com/guide/facetime/request-or-give-remote-control-fctmebd8481a/mac",
+      "scope": "Screen Sharing and Control Screen official button labels and icon links",
+      "iconLinks": [
+        {
+          "label": "Control Screen button",
+          "url": "https://ipcdn-web.apple.com/assets/v2/web/a5382d48-bb14-475d-9213-041acbe5c88b"
+        },
+        {
+          "label": "Screen Sharing button",
+          "url": "https://ipcdn-web.apple.com/assets/v2/web/bb869521-ebc8-4790-849a-b3d6039eec12"
+        }
+      ]
+    }
+  ],
+  "officialSourcesReadOn": "2026-10-20",
+  "nativeModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}
