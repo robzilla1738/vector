@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "applyAfter": "actual316 unchanged row leaves; native-bookmark-drag-contract af8ba0c60; exclusion helper actual309; no GN or region edits",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h",
+      "baselineSha256": null,
+      "outputSha256": "3db81dfaacd1b07da4080c2ca670dfd299d2498d9476b29f01e5ba2a38b7df7c",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "1b73314484e236c36461a42a3ffd7df5df179168c1a5b6d8a651051f51a6efd5",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation.h",
+      "baselineSha256": null,
+      "outputSha256": "8b7b0cddc168bb6096199bbf2cbae9c3a526fe5141bea79b2235b52ba6838af9",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_confirmation_mac.mm",
+      "baselineSha256": null,
+      "outputSha256": "7848f9665bb06924ce6d13a66616aa12536db1c9e63abe7d7bedd399039af7fb",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.h",
+      "baselineSha256": "3677fe37a2778d8931d32947f8098cea50f23ec1c6ac018123e0385c66ff53eb",
+      "outputSha256": "5c3bd5e26a62bc187631c08a9fe4a135945db30e85565fd1f611051b17c7a630",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_view.cc",
+      "baselineSha256": "8d9f87f673d48bc1ebc378dd87ac0156e91c0142d973856068e506a7db46a7b3",
+      "outputSha256": "34f656f36510dc0017f18d1be20fbc62a36e3b0144eac3a81934cf774aa605ef",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

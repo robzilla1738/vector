@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor",
+      "rva": "0x460f608",
+      "bytes": 2612,
+      "sha256": "b6296da47f4ed247c37d0e9945557f0990d30e6cc42b6e7995bbab1c456fedfd",
+      "assemblySha256": "aee8fcbfa72b6444e70db071eb7a131a05ec4d366b2a376abff2eea03b55ecbc"
+    },
+    {
+      "name": "row-projection-and-pending-consume",
+      "rva": "0x4612858",
+      "bytes": 7392,
+      "sha256": "085277438aaa04a3ae48f9bbf3616d1a04af93143bf5ff29572b8ae11de8899c",
+      "assemblySha256": "a509878b362cafbca2da040e4fd2f50137b6372045f44a61de061cc3bfc1a73d"
+    },
+    {
+      "name": "activate",
+      "rva": "0x4614898",
+      "bytes": 1960,
+      "sha256": "8d7e50756f402182fbd174b6c934708ceeef2addf42ef33f6124a251435dfc12",
+      "assemblySha256": "1256dbafc71793849fe6ad3b667cc679b5fab2b0313730de0133bec71825cb09"
+    },
+    {
+      "name": "drag-gap-restore",
+      "rva": "0x4615260",
+      "bytes": 2464,
+      "sha256": "f133b58d8e054a588365446ac7e24a4f77b29f48692034bbfcbfda70e28fe937",
+      "assemblySha256": "016af1d4e3a4301ffa0c9534c827c74991e6c5f9671743f074ed52c4263f6115"
+    },
+    {
+      "name": "rebuild",
+      "rva": "0x4615c00",
+      "bytes": 4860,
+      "sha256": "d385e77dd990e054ba20df38f5d69003387b8b590c845f545c58226b598b6fba",
+      "assemblySha256": "00ae728aa732a5dfd2c1eb7ca213a3c2d7905139e4a27cf816851b6d50531d27"
+    },
+    {
+      "name": "row-drag-layer",
+      "rva": "0x4617140",
+      "bytes": 432,
+      "sha256": "5a60fce066b613406d208c17c0bd82eea92ef2ed46d6a2216fcc8197e4596432",
+      "assemblySha256": "9f2586a1ac6eadcc5ce2fa48d83585528c40075f4fa38f1ebb5fa1ccb19b3910"
+    },
+    {
+      "name": "press-drag-release-context",
+      "rva": "0x4618b60",
+      "bytes": 9236,
+      "sha256": "c4bef285a55d14a9007592c1e42751e50e322b508dae968dbd7d5990cba6667e",
+      "assemblySha256": "3c7c74a892d7a159426d2185aa08ee4a037d949b6c06427ccb456f84d57e3709"
+    },
+    {
+      "name": "drag-projection-and-pending-open",
+      "rva": "0x461b834",
+      "bytes": 2180,
+      "sha256": "4e786eeef7e2df50da08df24cedd76db919bb63df7a95476ed2d7bdb5360046d",
+      "assemblySha256": "0a0935e3844ca45f30d478bc4bb8a9da366eb301dfa3969df6c55ac57f64e3f7"
+    },
+    {
+      "name": "menu-actions-edit-observers",
+      "rva": "0x461c0b8",
+      "bytes": 10472,
+      "sha256": "b0d316c01ed6d50bca7e5e1379e106ee5bcf2da16c1865e827c05e285136481a",
+      "assemblySha256": "62e9decff3b17619d1d6f413ad13c65280a3228525e1277a0a94f404fcd8fc86"
+    },
+    {
+      "name": "menu-delegate",
+      "rva": "0x461fd04",
+      "bytes": 1820,
+      "sha256": "0e007890c0bb0d8cf1c5c5566e3e411395a0cedbf48e068870086eabb98dda75",
+      "assemblySha256": "c9f66614c1df69e4becbe7b3148ed1daa7fa0fd6c9663783552131bda607db74"
+    },
+    {
+      "name": "confirmation-native",
+      "rva": "0x4152118",
+      "bytes": 2504,
+      "sha256": "b76b3667babcb9837a9dfc32e62d357120fa1b5d48c20720fbb1de60b1e9da2d",
+      "assemblySha256": "bc2b9693c4edfcb656eb940b15d2377d6e66f73896a2fe92d340738f79d06e5b"
+    },
+    {
+      "name": "pending-url-match",
+      "rva": "0x1a42a1c",
+      "bytes": 160,
+      "sha256": "2aae3cf61690933a2ecc401a150c8d8e92b8d301454de3bc489896195afeff11",
+      "assemblySha256": "19711370c1d166ec0e09d2f6db9e0d50d8d60403507e78208c36d463f4aaa801"
+    },
+    {
+      "name": "edit-url-constructor",
+      "rva": "0x3701d4",
+      "bytes": 1224,
+      "sha256": "953dd2c1658d923f393c0255091a9ed85206b4b25e3bd7ba92c5b274a5df05ae",
+      "assemblySha256": "70213e50431963b05979f7330a499dc22a0aa66b6f47e8d56ed69b7ce158aa9a"
+    },
+    {
+      "name": "manage-bookmarks-thunk",
+      "rva": "0xc17ae78",
+      "bytes": 16,
+      "sha256": "412378e2a51332953e8c34859d1afea1af11807617647ccfe6815a624ff6f5ea",
+      "assemblySha256": "2e8b7f3291005f838b3bd23cbf5e94be6dd4353f0283e0a77cf4dbb7e347bb54"
+    },
+    {
+      "name": "manage-bookmarks-navigation",
+      "rva": "0xc6e16d8",
+      "bytes": 140,
+      "sha256": "167cd8be10db1a23f5be0f5a9ba00fc3189e813ce307a60055c2d6421f9e448d",
+      "assemblySha256": "6b8da1a8973fff26c9a21f312728b64bce343c7ce08c29cdbb9d777225c6793a"
+    },
+    {
+      "name": "normalized-drop-destination",
+      "rva": "0x461b6f4",
+      "bytes": 320,
+      "sha256": "12ee8d1358617898f4130abaf8ebc1ab5a036f376c8d519e66192ecf9d2eb2ed",
+      "assemblySha256": "1d17932b89d4d7a8e95a9debaee03cbf1f2d7ecbf92684181c4d1e3c455860a8"
+    },
+    {
+      "name": "drop-feedback",
+      "rva": "0x4136218",
+      "bytes": 76,
+      "sha256": "1887f72ca4054e5f3c98adab8a5af9d110ce613c62cacab7549b829aebac8802",
+      "assemblySha256": "2c78a9d8cac76cb6bea4f976172b8650066ec5d3e16529cf5a22894eab11ded0"
+    }
+  ],
+  "literals": [
+    {
+      "rva": "0xdf8770c",
+      "value": "Rename",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8771a",
+      "value": "Delete",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87728",
+      "value": "Manage Bookmarks",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8774a",
+      "value": "Edit",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87754",
+      "value": "Open in Incognito window",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87786",
+      "value": "Open in new tab group",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf877b2",
+      "value": "Open in new tab",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf877d2",
+      "value": "Open in new window",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf877f8",
+      "value": "Open in split view",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8781e",
+      "value": "Rename Folder",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8783a",
+      "value": "Cancel",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87848",
+      "value": "Folder name",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87904",
+      "value": "Delete Folder",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87920",
+      "value": "Edit Bookmark",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8793c",
+      "value": "Save",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87946",
+      "value": "Name",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf87950",
+      "value": "URL",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf8798a",
+      "value": "Delete Bookmark",
+      "encoding": "utf-16le"
+    },
+    {
+      "rva": "0xdf879aa",
+      "value": "Drag tabs here to add bookmarks",
+      "encoding": "utf-16le"
+    }
+  ],
+  "data": [
+    {
+      "name": "contents-insets",
+      "rva": "0xdf47a40",
+      "bytes": 16,
+      "hex": "01000000080000000000000008000000",
+      "sha256": "c6121a6fe2e73a961efbfb0cd8e015c228ae8892103f213e0f97bc386e51074e"
+    },
+    {
+      "name": "dragged-opacity",
+      "rva": "0xdf51324",
+      "bytes": 4,
+      "hex": "d7a3703f",
+      "sha256": "7cc71f142a363d1bc5259dbd406984054d79a21fb23c4cc63fdf83b89b2e8568"
+    },
+    {
+      "name": "menu-open-dispositions-contexts",
+      "rva": "0xd6e5024",
+      "bytes": 16,
+      "hex": "08040406040000000001000002000000",
+      "sha256": "11b901a863debb7ba3e5b880088509185a1f572a9fdc62db7db9fc89c5153d15"
+    }
+  ],
+  "apiInputs": [
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_menu_model_delegate.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/tabs/tab_menu_model_delegate.h",
+      "sha256": "37fa6e14e24a3737e5a1794e0c36b06b0b318ac528b5ffd82bea549e10e7a1e3"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_model.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "3c9cbacc91d78d56ab81e774ce0021fa2ca50b7f8c7dc602fa0ae5664bcae885"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h",
+      "sha256": "6980854b7e01184e395b24e6236c11a9e69b9dad3a936a10927fbe3e8ba275fc"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/navigator/browser_navigator_params.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/navigator/browser_navigator_params.h",
+      "sha256": "4b8c40a70ecc29d49eb2c0018a5ce05967eab2d610f7118c4c421030679b35b9"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_model.h",
+      "snapshotPath": "evidence/api/components/bookmarks/browser/bookmark_model.h",
+      "sha256": "81f8febe1ed65148c1221d8e9ef61aa7160a1a54694570ff978fbd6342d55075"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_model_observer.h",
+      "snapshotPath": "evidence/api/components/bookmarks/browser/bookmark_model_observer.h",
+      "sha256": "6104e6dd57863caaaab20dbe683d2f33f083c955b802476436ae5c5e69cb7efc"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/common/bookmark_pref_names.h",
+      "snapshotPath": "evidence/api/components/bookmarks/common/bookmark_pref_names.h",
+      "sha256": "a62f3ad3cb549705a373380b6630c10573769dc194c552e550975ad7920f35b9"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/policy/core/common/policy_pref_names.h",
+      "snapshotPath": "evidence/api/components/policy/core/common/policy_pref_names.h",
+      "sha256": "e31c524af6902700ddb28c6d57947c6018f3c1581140a9ca5fe0dcadfe6a532c"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/models/dialog_model.h",
+      "snapshotPath": "evidence/api/ui/base/models/dialog_model.h",
+      "sha256": "59aec268d00927bcb045e2f802cbfc6fe7ed5a94d7a85c5ab5f70cc823f132ef"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/animation/bounds_animator.h",
+      "snapshotPath": "evidence/api/ui/views/animation/bounds_animator.h",
+      "sha256": "65a2e4aa80c9c0578993e0b1edc9611f81270ca1b13039f6598b8b1e99a4784c"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/slide_animation.h",
+      "snapshotPath": "evidence/api/ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/animation/tween.cc",
+      "snapshotPath": "evidence/api/ui/gfx/animation/tween.cc",
+      "sha256": "eee0d2d46efffbc341415e960ea74f0008bd207f03c825e0d5e9c6a2e0bab00e"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/gfx/native_ui_types.h",
+      "snapshotPath": "evidence/api/ui/gfx/native_ui_types.h",
+      "sha256": "24a0b53bf57294c1703d09d5c56a8d4487098edcee496425b21387372747375d"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/page_navigator.h",
+      "snapshotPath": "evidence/api/content/public/browser/page_navigator.h",
+      "sha256": "4877a26c8b683832533d8245f37695a6ce46fe3e0d5359ea3f0cbed95cada92f"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/window_open_disposition.h",
+      "snapshotPath": "evidence/api/ui/base/window_open_disposition.h",
+      "sha256": "089c25f933c1e28e375f04e888201ae64b9f2ba30556d9e1fe25414cf63c0fbd"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/url/gurl.cc",
+      "snapshotPath": "evidence/api/url/gurl.cc",
+      "sha256": "fb91c3636e79b640cbb9899c082fa8c112ca0f2b34bb1f26a7e11086ab0f60c1"
+    },
+    {
+      "originalPath": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h",
+      "snapshotPath": "evidence/api/chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h",
+      "sha256": "dde412636ff84f278f3307ecda4c13ba07a10e73e6d58ea95be6adfb3b48ad6a"
+    },
+    {
+      "originalPath": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSHapticFeedback.h",
+      "snapshotPath": "evidence/api/AppKit/NSHapticFeedback.h",
+      "sha256": "1f7fbe5e8e85abeccbc04947b1aa8531e059f511efc07ca00bea86135d24a86e"
+    }
+  ],
+  "inputs": [],
+  "nativeMessages": [
+    {
+      "rva": "0xc13559c",
+      "value": "objc:defaultPerformer"
+    },
+    {
+      "rva": "0xc13563c",
+      "value": "objc:performFeedbackPattern:performanceTime:"
+    }
+  ],
+  "nativeClassRefs": [
+    {
+      "rva": "0xecedbe0",
+      "value": "_OBJC_CLASS_$_NSHapticFeedbackManager"
+    }
+  ]
+}
