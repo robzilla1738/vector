@@ -1,0 +1,62 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -752,6 +752,9 @@
+   }
+   return ordered;
+ }
++namespace {
++base::DictValue ReadChromiumHistory(const base::FilePath& profile);
++}  // namespace
+ base::DictValue ReadCategory(const base::FilePath& profile,
+                              bool firefox,
+                              std::string category) {
+@@ -760,6 +763,9 @@
+     result.Set("error", std::move(message));
+     return std::move(result);
+   };
++  if (!firefox && category == "history") {
++    return ReadChromiumHistory(profile);
++  }
+   if (firefox && category == "cookies") {
+     std::string snapshot_error;
+     auto db = Snapshot(profile.AppendASCII("cookies.sqlite"), snapshot_error);
+@@ -1013,6 +1019,39 @@
+   base::ScopedTempDir temporary_directory_;
+   sql::Database database_{"Test"};  // Exact original source database tag.
+ };
++// Original mode1 source worker4254500..4684 uses this same physical-copy
++// owner and native SQL defaults. Missing/open/prepare failures leave no rows;
++// Step ending (including an error) retains any rows already decoded.
++base::DictValue ReadChromiumHistory(const base::FilePath& profile) {
++  base::ListValue visits;
++  const auto history = profile.AppendASCII("History");
++  ChromiumSourceSnapshot snapshot;
++  if (base::PathExists(history) && snapshot.Open(history)) {
++    sql::Statement query(snapshot.database().GetUniqueStatement(
++        "SELECT url, title, visit_count, typed_count, last_visit_time, hidden "
++        "FROM urls"));
++    if (query.is_valid()) {
++      while (query.Step()) {
++        const GURL url(query.ColumnString(0));
++        if (!url.is_valid() || url.SchemeIs("chrome") ||
++            url.SchemeIs("chrome-extension") || url.SchemeIs("devtools")) {
++          continue;
++        }
++        base::DictValue visit;
++        visit.Set("url", url.spec());
++        visit.Set("title", base::UTF16ToUTF8(query.ColumnString16(1)));
++        visit.Set("visitCount", query.ColumnInt(2));
++        visit.Set("typedCount", query.ColumnInt(3));
++        visit.Set("timeMicros", base::NumberToString(query.ColumnInt64(4)));
++        visit.Set("hidden", query.ColumnBool(5));
++        visit.Set("chromiumSummary", true);
++        visit.Set("unixTime", false);
++        visits.Append(std::move(visit));
++      }
++    }
++  }
++  return base::DictValue().Set("visits", std::move(visits));
++}
+ std::string EncryptedSourceText(sql::Statement& statement, int column) {
+   return statement.ColumnString(column);
+ }

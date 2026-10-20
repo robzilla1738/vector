@@ -1,0 +1,95 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4254500",
+      "end": "0x425468c",
+      "sha256": "6bfc11bc998f6a2e051e7972f3665b347f229e04f4b59caae672f71216d44520",
+      "listing": "history-copy-open-query-stop.asm",
+      "listingSha256": "9636b5ddacb72e52d39f4465a8e5a8451737610125df5c2be213f009954eb35b"
+    },
+    {
+      "start": "0x4254fc4",
+      "end": "0x4255260",
+      "sha256": "eb33ef9696fc844b1418dd93f3b4cd33954487141d03479a0c930e168abcacc4",
+      "listing": "history-decode-loop.asm",
+      "listingSha256": "b3096b7846a9969e8a91f0539abce4153e8f9b5509032421b903eaaed8f6eae6"
+    },
+    {
+      "start": "0x300f948",
+      "end": "0x300f9bc",
+      "sha256": "b838a7b2c550cfa95c4c3b268ed41d85e18628f058d7983f38ffacd8025eb7a3",
+      "listing": "database-test-constructor.asm",
+      "listingSha256": "fa1f2274b36b799e6951748575ecd7551b230eee60f1ef4f6f690d7d601ce2e9"
+    },
+    {
+      "start": "0x6d5fe0",
+      "end": "0x6d60b0",
+      "sha256": "ba26207d15fc232e87d8bae416edb0f9254737a25a3c2ba92d867d58ef028851",
+      "listing": "column-native-text.asm",
+      "listingSha256": "4f9e725383d0c651fd23abbf30027904e8a02fb2e047bebbbe3749274aea5753"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1f4ad",
+      "hex": "53454c4543542075726c2c207469746c652c2076697369745f636f756e742c2074797065645f636f756e742c206c6173745f76697369745f74696d652c2068696464656e2046524f4d2075726c7300",
+      "text": "SELECT url, title, visit_count, typed_count, last_visit_time, hidden FROM urls\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xda509b7",
+      "hex": "486973746f727900",
+      "text": "History\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd0ce5e3",
+      "hex": "73636f7065645f64697200",
+      "text": "scoped_dir\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd834a65",
+      "hex": "5465737400",
+      "text": "Test\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd7f42d3",
+      "hex": "6368726f6d6500",
+      "text": "chrome\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd8a2510",
+      "hex": "6368726f6d652d657874656e73696f6e00",
+      "text": "chrome-extension\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xd9cecf3",
+      "hex": "646576746f6f6c7300",
+      "text": "devtools\u0000",
+      "encoding": "utf-8"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "sql/statement.cc",
+      "sha256": "2abc884d52d25d9f4e727ac7c4b7b90d79ee81327773679031efe3eba1dfc5d6",
+      "copy": "upstream/sql/statement.cc"
+    },
+    {
+      "path": "sql/statement.h",
+      "sha256": "e1660a39b274de49586157eeab4f1529f8a5087d76deb75ff98b7fc0257b18d4",
+      "copy": "upstream/sql/statement.h"
+    },
+    {
+      "path": "sql/database.h",
+      "sha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4",
+      "copy": "upstream/sql/database.h"
+    }
+  ]
+}

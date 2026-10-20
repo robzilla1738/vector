@@ -1,0 +1,9 @@
+{
+  "originalCommit": "55b08b0a5",
+  "originalPrefix": "docs/integration/proposed/native-browser-import-history-owner/",
+  "integratedPrefix": "docs/integration/proposed/native-browser-import-history-physical-source/",
+  "reason": "Keep the earlier history-summary proposal immutable; the new physical-source proposal used a colliding name",
+  "originalDiffSha256": "3db44023c3c32461578b38798e0b311b1fb27b9c047b9433b0d3dafc0fe6137e",
+  "rewrittenDiffSha256": "0bb42b4010ada2707e34d3aa05a5569cb6a1ee675410ae775056c64815cc4f2f",
+  "nativePatchAndManifestByteIdentical": true
+}

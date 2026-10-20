@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "actual native449; same original physical-copy owner already registered by root",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "0598c729c3bc63dcb9cf8b01536cce3951d9e444f63b06a43e6cdef1c01b05b6",
+      "outputSha256": "cfca0865db2e3fda88d87f471e1ecc61959d6d8210d4b80aa80aa33dd8f8ed25"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}
