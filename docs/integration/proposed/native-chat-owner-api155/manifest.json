@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "actual native316 owner output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.cc",
+      "baselineSha256": "238a36c325b8e4b3e841ff0371233fa283868e0d8e8d02bd2378ebe23e0da3a3",
+      "outputSha256": "887f3cf9a09c6bba5f5045fa4f7c993b5bb3b3a2eba7194f2788106de0f92276"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
