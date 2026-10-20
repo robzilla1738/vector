@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "33041b0ac7ceac62e36b1f4a17f20553fb945e74c7351775b12dd72b88694ee1",
+      "outputSha256": "47db3b90de837a408ac55a9506ce55a7c91e9824d718e8cba08f293a03fc6517"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}

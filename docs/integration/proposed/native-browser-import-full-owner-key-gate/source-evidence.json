@@ -1,0 +1,43 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "live-key-gate.asm",
+      "start": "0x4254978",
+      "endExclusive": "0x4254b28",
+      "bytesSha256": "730c7c066f0c9008a8806575d802ec0d8beca820b0643bb449a4f64d7c42a46e",
+      "sha256": "fd3200b72fa0a0d833f2ab2143bf6ea7c642dd070aa755d236914cf248b11777"
+    },
+    {
+      "file": "live-key-failure.asm",
+      "start": "0x4254ce8",
+      "endExclusive": "0x4254ed0",
+      "bytesSha256": "e1fe509ed68dc0d69295ae02f1ef56bd5db585fed0d0560dcecde78624486d21",
+      "sha256": "02993a97dda7a4de34bffd414d49901afbe9737780e221f166b7008e0c67b05b"
+    },
+    {
+      "file": "public-mode-selection.asm",
+      "start": "0x427b9f0",
+      "endExclusive": "0x427baa4",
+      "bytesSha256": "e544c7aed6cf9d0aaa78156597ac6cc139e16d7994ab07638ced86f21df1f0c5",
+      "sha256": "1eb033ea02c750a55ecb24c87a073d17a50e0c6ace24f046a93ce7fb063bf2b5"
+    },
+    {
+      "file": "mode-dispatch.asm",
+      "start": "0x42534e8",
+      "endExclusive": "0x42536f8",
+      "bytesSha256": "d4fb0c48490fb04a29d71685fdfff06406c4cea8990ea526f396ad9643952bcf",
+      "sha256": "104d85cbabebb83aeb65082ab702be746e31745703c84abbd869af79744e68bc"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    }
+  ],
+  "supersedes": "2502391dd optional-key allowance; its low-level decoder proof is insufficient for full-owner admission"
+}
