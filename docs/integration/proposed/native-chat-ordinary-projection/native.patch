@@ -1,0 +1,165 @@
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.h
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.h
+@@ -23,12 +23,10 @@
+   struct Classification {
+     bool agent_installed = false;
+     bool suppress_auto_expansion = false;  // Original source +11e9.
+-    std::set<tabs::TabHandle> handles_1090;
+   };
+   using CurrentAccount = base::RepeatingCallback<std::optional<int>()>;
+   using Classify = base::RepeatingCallback<std::optional<Classification>()>;
+   struct SourceEffects {
+-    base::RepeatingCallback<void(tabs::TabHandle)> clear_1090;
+     base::RepeatingClosure expand_chats;
+   };
+   AuxChatTabOwner(BrowserWindowInterface&, TabStripModel&, BookmarkTabAssociations&,
+@@ -38,6 +36,12 @@
+   void SetChats(const std::vector<std::string>& ids);
+   bool Select(const std::string& id);
+   void SelectNewChat();
++  // Actual source1090 explicitly projects a Chat document as an ordinary tab.
++  // This is not tab ownership and never authorizes closing it.
++  void MarkOrdinaryTab(tabs::TabHandle);
++  const std::set<tabs::TabHandle>& ordinary_chat_tab_handles() const {
++    return ordinary_chat_tabs_;
++  }
+   std::optional<tabs::TabHandle> represented_new_chat() const {
+     return ScopeCurrent() ? represented_new_chat_ : std::nullopt;
+   }
+@@ -63,7 +67,8 @@
+   bool ScopeCurrent() const;
+   int Index(tabs::TabHandle) const;
+   int Find(const std::string&, int account, const Classification&,
+-           std::optional<tabs::TabHandle> excluded = std::nullopt) const;
++           std::optional<tabs::TabHandle> excluded = std::nullopt,
++           bool include_ordinary = false) const;
+   void Bind(tabs::TabInterface&, const std::string&, int account,
+             const Classification&);
+   bool IsNewChat(tabs::TabInterface&);
+@@ -89,6 +94,7 @@
+   Classify classify_;
+   base::RepeatingClosure changed_;
+   std::set<std::string> chats_;
++  std::set<tabs::TabHandle> ordinary_chat_tabs_;  // Original +1090.
+   std::set<tabs::TabHandle> split_handles_;  // Original +10d8.
+   std::map<tabs::TabHandle, std::string> associations_;  // Original +fc8.
+   std::map<tabs::TabHandle, std::string> pending_navigation_;  // +1000.
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
+@@ -12,6 +12,7 @@
+ #include "chrome/browser/ui/tabs/aux_chat_tab_association.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
++#include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+ #include "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h"
+ #include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
+ #include "content/public/browser/navigation_controller.h"
+@@ -26,7 +27,7 @@
+       account_(std::move(account)), classify_(std::move(classify)),
+       changed_(std::move(changed)) {
+   CHECK(account_ && classify_ && changed_ &&
+-        effects_.clear_1090 && effects_.expand_chats);
++        effects_.expand_chats);
+   CHECK(browser.GetTabStripModel() == &model);
+   for (int i = 0; i < model_->count(); ++i) {
+     auto* tab = model_->GetTabAtIndex(i);
+@@ -74,12 +75,12 @@
+ bool AuxChatTabOwner::Trackable(const tabs::TabInterface& tab,
+                                const Classification& state) const {
+   return state.agent_installed && !tab.IsPinned() && !tab.GetSplit() &&
+-         !state.handles_1090.contains(tab.GetHandle()) &&
++         !ordinary_chat_tabs_.contains(tab.GetHandle()) &&
+          !split_handles_.contains(tab.GetHandle());
+ }
+ int AuxChatTabOwner::Find(const std::string& id, int account,
+                          const Classification& state,
+-                         std::optional<tabs::TabHandle> excluded) const {
++                         std::optional<tabs::TabHandle> excluded, bool include_ordinary) const {
+   // Original46385cc: active explicit association wins immediately; otherwise
+   // LAST explicit match outranks active URL match, then first URL match.
+   int explicit_match = TabStripModel::kNoTab;
+@@ -94,7 +95,7 @@
+       explicit_match = i;
+       continue;
+     }
+-    if (state.handles_1090.contains(tab->GetHandle())) continue;
++    if (!include_ordinary && ordinary_chat_tabs_.contains(tab->GetHandle())) continue;
+     if (ChatIdFromWebContents(*tab->GetContents(), account) == id) {
+       if (i == model_->active_index()) active_url = i;
+       if (first_url == TabStripModel::kNoTab) first_url = i;
+@@ -143,15 +144,39 @@
+   changed_.Run();
+   return true;
+ }
++void AuxChatTabOwner::MarkOrdinaryTab(tabs::TabHandle handle) {
++  if (!ScopeCurrent() || Index(handle) == TabStripModel::kNoTab) return;
++  ordinary_chat_tabs_.insert(handle);
++  Clear(handle);
++}
+ bool AuxChatTabOwner::OpenInNewTab(const std::string& id) {
+   if (!ScopeCurrent() || id.empty()) return false;
+   auto weak = weak_.GetWeakPtr();
+   auto account = account_.Run();
+   if (!weak || !ScopeCurrent() || !account) return false;
++  auto state = classify_.Run();
++  if (!weak || !ScopeCurrent() || !state) return false;
++  // Original463a1dc calls46385cc with x3=1, including existing1090 URL
++  // candidates. This action does not always manufacture another duplicate.
++  const int existing = Find(id, *account, *state, std::nullopt, true);
++  if (existing != TabStripModel::kNoTab) {
++    MarkOrdinaryTab(model_->GetTabAtIndex(existing)->GetHandle());
++    model_->ActivateTabAt(existing, TabStripUserGestureDetails(
++        TabStripUserGestureDetails::GestureType::kNone));
++    if (weak && ScopeCurrent()) changed_.Run();
++    return true;
++  }
++  if (!state->agent_installed) return false;
+   NavigateParams params(browser_.get(), ChatURL(*account, id), ui::PAGE_TRANSITION_LINK);
+   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+   Navigate(&params);
+-  return weak && ScopeCurrent() && params.navigated_or_inserted_contents;
++  if (!weak || !ScopeCurrent()) return false;
++  auto* contents = params.navigated_or_inserted_contents.get();
++  const int index = contents ? model_->GetIndexOfWebContents(contents) : TabStripModel::kNoTab;
++  if (index == TabStripModel::kNoTab) return false;
++  MarkOrdinaryTab(model_->GetTabAtIndex(index)->GetHandle());
++  changed_.Run();
++  return true;
+ }
+ bool AuxChatTabOwner::IsNewChat(tabs::TabInterface& tab) {
+   auto weak = weak_.GetWeakPtr();
+@@ -267,7 +292,7 @@
+     const int index = Index(selection->selected);
+     if (index != TabStripModel::kNoTab) {
+       Clear(selection->selected);
+-      effects_.clear_1090.Run(selection->selected);
++      ordinary_chat_tabs_.erase(selection->selected);
+       if (!weak || !ScopeCurrent()) return;
+       model_->CloseWebContentsAt(index, CLOSE_USER_GESTURE);
+       if (!weak || !ScopeCurrent()) return;
+@@ -289,7 +314,7 @@
+   const auto handle = tab.GetHandle();
+   if (new_chat) {
+     Clear(handle);
+-    effects_.clear_1090.Run(handle);
++    ordinary_chat_tabs_.erase(handle);
+     return;
+   }
+   auto id = ChatIdFromWebContents(*tab.GetContents(), account);
+@@ -306,7 +331,7 @@
+   if (associations_.contains(handle) &&
+       !tab.GetContents()->GetController().GetLastCommittedEntry()) return;
+   Clear(handle);
+-  effects_.clear_1090.Run(handle);
++  ordinary_chat_tabs_.erase(handle);
+ }
+ void AuxChatTabOwner::Reconcile() {
+   if (!ScopeCurrent()) return;
+@@ -323,6 +348,7 @@
+   std::erase_if(associations_, [&](const auto& entry) { return !live.contains(entry.first); });
+   std::erase_if(pending_navigation_, [&](const auto& entry) { return !live.contains(entry.first); });
+   std::erase_if(associated_at_, [&](const auto& entry) { return !live.contains(entry.first); });
++  std::erase_if(ordinary_chat_tabs_, [&](auto handle) { return !live.contains(handle); });
+   RefreshRepresentedNewChat(*account);
+   if (!weak || !ScopeCurrent()) return;
+   changed_.Run();

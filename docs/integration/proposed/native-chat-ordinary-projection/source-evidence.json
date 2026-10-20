@@ -1,0 +1,36 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "existing-ordinary-action",
+      "start": "0x463a19c",
+      "stopExclusive": "0x463a468",
+      "bytesSha256": "4cd247e65499b8f4b912bddad1c8325fafc42842ab1859c09677dc7fef746693",
+      "asmSha256": "f3d52e8375c7a7d8be3299d104adfc34fd6d42ba369c64fff0ad4a35a4b951bb"
+    },
+    {
+      "name": "new-ordinary-action",
+      "start": "0x463acb8",
+      "stopExclusive": "0x463af4c",
+      "bytesSha256": "92d7aec49055a5f686649b81076f7bdd095dde9ebe5315f8cb1bb7165bc37b66",
+      "asmSha256": "7d6f62b47468dcddda6c6d98ce6f02f1fa7a163867e0f904c623d394ca6e9bdc"
+    },
+    {
+      "name": "find-including-ordinary",
+      "start": "0x46385cc",
+      "stopExclusive": "0x4638950",
+      "bytesSha256": "c20afa0af5d983a855356c38d3e255c35897d84e8fcc4af1c2cf34cddcc2334a",
+      "asmSha256": "555d6950699e2225ad292e1d693830ae74e37434b1f2bf18dd5403abe25c6b24"
+    },
+    {
+      "name": "detach-clear",
+      "start": "0x4642f18",
+      "stopExclusive": "0x4643390",
+      "bytesSha256": "32aeb96a9949b41a327bd26035b786391dd69c92dde043c1f45241c5c502cf9e",
+      "asmSha256": "58e9aa61a5ecfaabc785c0b44b0259771534cfb9b207e70d75c2c995375a8602"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "13bb4261a transient-state outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.h",
+      "baselineSha256": "c532cfde5ae65204f7b61a1e6d018fcaa336ce85f1f4a2e7003b42ebb8923cf4",
+      "outputSha256": "bcc2d7a5f5e03394caaf3b86d060672074db895a860f773d6b062322c8e25ff0"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_chat_tab_owner.cc",
+      "baselineSha256": "8af052d742bbdf3d8c1aec440c770a6eb9829aca7ce51259f71c35ab86b04f62",
+      "outputSha256": "5b40c08b61c633fc572dce886be41efbd3d14fc0a9a0981d04fd1073509d6e6f"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

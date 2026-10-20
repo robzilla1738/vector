@@ -1,0 +1,9 @@
+# Original1090 ordinary-Chat-document projection
+
+Incremental after13bb4261a. The real task owner now owns source1090 rather than requiring an externally fabricated set/clear callback. `ordinary_chat_tab_handles()` exposes actual produced state for the shared section/Bookmark/ordinary-tab coordinator. `MarkOrdinaryTab` accepts only a currently live same-model handle, adds1090 and clears that handle's explicit task/pending/timestamp projection. No title/URL-based close authority is added.
+
+This also corrects a concrete foundation behavior mismatch: original context `Open in a new tab` does **not** always create another duplicate. Source463a1dc calls46385cc with x3=1; that boolean skips1090 exclusion for URL lookup. A real existing matching tab is preferred according to the original explicit/active/model-order rules, then moved to1090, removed from fc8/1000/timestamp projection and activated. Only if absent does the original installed-Agent path open a new foreground page and mark its actual resulting model handle1090 (463acb8..af48). The port uses real Navigate's returned WebContents for this155 adaptation, never a presumed active/new tab.
+
+Actual non-Chat/NewChat reconciliation and first-click rename cleanup erase the owned1090 state exactly where their former required callback ran; removed-model handles are pruned. No empty classification, fake side effect or no-op SourceEffects handler is installed. `Classification.handles_1090` and `SourceEffects.clear_1090` are removed; remaining Classification is real Agent installed + source suppression, and SourceEffects now only actual section expansion.
+
+The coordinator still must connect the remaining source drag/archive producers to this real owner; this proposal does not claim those missing user actions or mount the body. Root owns native compile. Exact two-file replay and original producer/find/detach pins pass with no shared native edit, runtime or owner-state access.
