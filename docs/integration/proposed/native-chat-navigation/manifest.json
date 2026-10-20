@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "actual native309 transport; new source-only navigation module",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.h",
+      "baselineSha256": null,
+      "outputSha256": "f9d736c3d78d2e2f6aa0c2a41d2a2a3231800d2c1be3cd38d4dac9e7135d0fd6"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": null,
+      "outputSha256": "4890cc5cfe357c5b86ba452b8404cb7f9088c1baf6c0857b00c452b660c4bcb3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "baselineSha256": "1bf10988c4f22d7a6acb2de9f29940f25bbcf15eff785ec6082520c717bd5e6e",
+      "outputSha256": "649d42e74eec3f004e42baabeb59cd0f3bff1f330194e5da723b833b15dccd1a"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
