@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "applyAfter": "v414",
+  "files": [
+    {
+      "path": "chrome/browser/notifications/BUILD.gn",
+      "baselineSha256": "e8ad789e6fb1d25589321998398a4a2ac4cd5106fcdb1c125bd18820036bfee9",
+      "outputSha256": "d66b1a028a8caf948cfe97f6a5772ac9a6d08d9056605fb147025e7b30d24456"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

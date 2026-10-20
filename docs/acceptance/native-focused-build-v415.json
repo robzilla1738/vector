@@ -1,0 +1,34 @@
+{
+  "composition": "v415",
+  "exitCode": 0,
+  "elapsedSeconds": 95.42372012138367,
+  "targets": {
+    "inbox": "obj/chrome/browser/notifications/impl/aux_notification_inbox.o",
+    "notification_service": "obj/chrome/browser/notifications/impl/platform_notification_service_impl.o",
+    "blink_mojo": "obj/third_party/blink/common/common/notification_mojom_traits.o",
+    "blink_platform": "obj/third_party/blink/common/common/platform_notification_data.o",
+    "blink_producer": "obj/third_party/blink/renderer/modules/notifications/notifications/notification_data.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/notifications/impl/aux_notification_inbox.o",
+    "obj/chrome/browser/notifications/impl/platform_notification_service_impl.o",
+    "obj/third_party/blink/common/common/notification_mojom_traits.o",
+    "obj/third_party/blink/common/common/platform_notification_data.o",
+    "obj/third_party/blink/renderer/modules/notifications/notifications/notification_data.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "nativeSources": 574,
+  "artwork": 23,
+  "fullLink": false,
+  "keychainOperations": false,
+  "notificationOperations": false,
+  "runtimeAcceptance": false
+}

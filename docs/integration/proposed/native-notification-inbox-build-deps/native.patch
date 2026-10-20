@@ -1,0 +1,50 @@
+--- a/chrome/browser/notifications/BUILD.gn
++++ b/chrome/browser/notifications/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ import("//build/config/features.gni")
+ import("//chrome/common/features.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//extensions/buildflags/buildflags.gni")
+ 
+ if (is_android) {
+@@ -39,6 +40,7 @@
+ 
+   public_deps = [
+     "//base",
++    "//chrome/browser:buildflags",
+     "//chrome/browser/notifications/proto",
+     "//chrome/browser/notifications/scheduler",
+     "//chrome/browser/notifications/scheduler/public",
+@@ -171,7 +173,21 @@
+ }
+ 
+ source_set("impl") {
+-  sources = [
++  if (enable_aux_browser) {
++    sources = [ "aux_notification_inbox.cc", "aux_notification_inbox.h" ]
++    deps = [
++      "//chrome/browser/aux:platform",
++      "//crypto",
++      "//sql",
++      "//extensions/browser",
++      "//extensions/common",
++      "//ui/gfx/codec",
++    ]
++  } else {
++    sources = []
++    deps = []
++  }
++  sources += [
+     "metrics/notification_metrics_logger.cc",
+     "metrics/notification_metrics_logger_factory.cc",
+     "non_persistent_notification_handler.cc",
+@@ -200,7 +216,7 @@
+     "//chrome/browser:browser_public_dependencies",
+   ]
+ 
+-  deps = [
++  deps += [
+     "//chrome/browser:browser_features",
+     "//chrome/browser/content_settings:content_settings_factory",
+     "//chrome/browser/lifetime",
