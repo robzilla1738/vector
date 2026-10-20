@@ -277,6 +277,10 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/account-profile-owner/native.patch', 'native-profile-switch-owner/transaction-map/account-profile-owner/manifest.json'),
     ('native-account-updater-registration/native.patch', 'native-account-updater-registration/manifest.json'),
     ('native-account-updater-gn-api155/native.patch', 'native-account-updater-gn-api155/manifest.json'),
+    ('native-profile-switch-owner/transaction-map/account-profile-compile-fix/native.patch', 'native-profile-switch-owner/transaction-map/account-profile-compile-fix/manifest.json'),
+    ('native-profile-indicator-context/native.patch', 'native-profile-indicator-context/manifest.json'),
+    ('native-profile-context-registration/native.patch', 'native-profile-context-registration/manifest.json'),
+    ('native-search-browser-bindings/native.patch', 'native-search-browser-bindings/manifest.json'),
 ])
 
 if options.through:

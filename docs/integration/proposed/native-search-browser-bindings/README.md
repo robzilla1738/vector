@@ -1,0 +1,3 @@
+# Original BrowserView search dispatch
+
+Original45b63c0 toggles the retained custom search owner and45b64b0 closes both custom and stock hosts. Replace the independent ExtensionPopup shortcut with the original module entrypoints. Begin actual profile settlement closes the bound search surface before browser identity changes, preserving the existing transactional admission. The source module separately supplies the genuine missing-Agent stock fallback and retained original page/animation lifecycle. No independent Vault gate is added. Actual compilation and disposable UI observation remain required.
