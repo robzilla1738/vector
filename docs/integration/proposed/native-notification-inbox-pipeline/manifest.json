@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.h",
+      "baselineSha256": null,
+      "outputSha256": "8de3732b0ddb18e5780b3b4171ae3a7f5f9bbcdf0f1c81e3255a5617b6859b35"
+    },
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.cc",
+      "baselineSha256": null,
+      "outputSha256": "157ae7e62b47a63cab8902ecab3c2b6f365ba2d7b28aa98492265cf7989902ee"
+    },
+    {
+      "path": "chrome/browser/notifications/platform_notification_service_impl.h",
+      "baselineSha256": "043bd3b6464e3e6b8a787fe3d4b05a9a6c012c8e3f5818c8034a8733bf130a2b",
+      "outputSha256": "394ae3aeda16850a1b8900e4fd14529f1377da45f8c7ebcb8c0ffa2d4e51c1bb"
+    },
+    {
+      "path": "chrome/browser/notifications/platform_notification_service_impl.cc",
+      "baselineSha256": "307f9a1f4b8a4d37a39f488615ba8d273b4f9a40e96b5125ccc6d6ccbf1c1a5b",
+      "outputSha256": "316b87bfc9fec8ce1daefaadaf7a46f4be815a54de924845acf53971a95ba30d"
+    },
+    {
+      "path": "third_party/blink/public/mojom/notifications/notification.mojom",
+      "baselineSha256": "1fcadec30ebc71b685232b3852f3c451b997699fa4c4e44ceb920c886bc3531c",
+      "outputSha256": "eb4a4a12330b9f39a499fc239a6de299aae67809ae33f6db07d49a2552b12006"
+    },
+    {
+      "path": "third_party/blink/public/common/notifications/platform_notification_data.h",
+      "baselineSha256": "7a9fc077e098d0a420a0d68a9530b859b33cc3bb55da40d32ebbbe16c47fe9d1",
+      "outputSha256": "6c7659976bd9e9de91374f789d48a4c0dd8706248fadb01689c4c409b1d335d8"
+    },
+    {
+      "path": "third_party/blink/common/notifications/platform_notification_data.cc",
+      "baselineSha256": "b43d63fed1fb50d45a79bc831fbc40444c1e6b655064b20376a6ea16a4359110",
+      "outputSha256": "d3b2f5cd54173c32f1ffe1a1e10af1a7bb204c9f7ac9c866b52ae7de2998f7ab"
+    },
+    {
+      "path": "third_party/blink/public/common/notifications/notification_mojom_traits.h",
+      "baselineSha256": "2118b7fbe7ccd84ad9d34e8f54daa28b8d16e025dff5a6596303f35461096741",
+      "outputSha256": "17aa85fd165fa3e339098a9663afee785e11476bfddbe50bff6e743bd3b352ea"
+    },
+    {
+      "path": "third_party/blink/common/notifications/notification_mojom_traits.cc",
+      "baselineSha256": "5d0698b21482a7ebac223cace1dcee9b4506e0564eda2e3aba1f93b60414d823",
+      "outputSha256": "65df78dd3d24637ccd6a11e9a251907405e9da4e5881a0005c90dc962354da1d"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/notifications/notification_data.cc",
+      "baselineSha256": "123a213ee1482a146593535b77cd47b6cd8eb21ff91bea9f6be8798f0ef6471b",
+      "outputSha256": "45d1c6c88e9f9cc4753233f3cc566d148af52b3b00811bbaabc95d86c5251b30"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
