@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "kind": "read-only current155 production source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "sha256": "f582f9cc1e4bb9944982bd1c1640bcd20fb817fd23466d9bedcab70a74f73d3d"
+    },
+    {
+      "path": "chrome/browser/ui/find_bar/find_bar_controller.h",
+      "sha256": "795cec5067f6f690d07d43a38f102d17c2530d2c943125ddca8e83efd96376f4"
+    },
+    {
+      "path": "chrome/browser/ui/find_bar/find_bar_controller.cc",
+      "sha256": "0fd95923fe0f6f11a09fd7a78c89bb2b24c8f5576a6c22024aa48be054a5c6eb"
+    },
+    {
+      "path": "chrome/browser/ui/views/find_bar_host.h",
+      "sha256": "ea87858f7fd892dde12b1accc80f6a90100ecc132b09e0c85c8788a17c82da89"
+    },
+    {
+      "path": "chrome/browser/ui/views/find_bar_host.cc",
+      "sha256": "2a51d550ae0e1127fc3ff919d39fee89693d23c4bf5e15377a02ce4a746a0aa6"
+    },
+    {
+      "path": "chrome/browser/ui/views/find_bar_view.h",
+      "sha256": "bdeadc27420abdd93a41ffa893535e9cc7b23605c32eb4d6ab9af3f08ef4db4b"
+    },
+    {
+      "path": "chrome/browser/ui/views/find_bar_view.cc",
+      "sha256": "53c0d41bbcbf7c98485e3e1bedef4bc8ed6acb2f1dadbd1d0e6adf07ec3a43fd"
+    }
+  ],
+  "ownerStateAccessed": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "Ordered 4afdbddbb actual-target provider output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "019f8b1a46d95df0031ca9460e3d864be37143d9dbda0088bd3cebbcb70af5c3",
+      "outputSha256": "282e14313b89c4dc6c570adc8eb73e9f7416ab5aa18dda466704f6d14c4b4029"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

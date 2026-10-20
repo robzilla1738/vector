@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -121,8 +121,10 @@
+       features.ai_mode_page_action_controller_ || features.data_protection_ui_controller_ ||
+       features.new_tab_footer_controller_ ||
+       features.ios_promo_controller_ ||
+-      features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_ ||
+-      features.find_bar_controller_;
++      features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_;
++  // FindBarController retains the same window command controller and observes
++  // actual tab helpers. Genuine Browser::TabDetachedAtImpl already detaches it,
++  // and target/source insertion reattaches real state; no Profile is cached.
+ }
+ 
+ std::shared_ptr<BrowserWindowFeatures::AuxProfileSwitchProvider::Bindings>
