@@ -1,0 +1,39 @@
+--- a/chrome/browser/ui/views/tabs/vertical/BUILD.gn
++++ b/chrome/browser/ui/views/tabs/vertical/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/ui.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ 
+ source_set("vertical") {
+@@ -17,10 +18,17 @@
+   ]
+ 
+   public_deps = [
++    "//chrome/browser:buildflags",
+     "//chrome/browser/ui/views/tabs/common",
+     "//ui/compositor",
+     "//ui/events",
+   ]
++  if (enable_aux_browser && is_mac) {
++    public_deps += [
++      "//components/sync/base",
++      "//components/sync/service",
++    ]
++  }
+ 
+   deps = [
+     "//base",
+@@ -101,6 +109,10 @@
+     "//ui/views",
+   ]
+ 
++  if (enable_aux_browser && is_mac) {
++    deps += [ "//chrome/browser/sync" ]
++  }
++
+   public_deps = [
+     ":vertical",
+     "//chrome/browser:browser_public_dependencies",

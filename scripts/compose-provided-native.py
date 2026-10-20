@@ -299,6 +299,8 @@ steps.extend([
     ('native-adblock-optional-update/native.patch', 'native-adblock-optional-update/manifest.json'),
     ('native-bottom-sync-owner/native.patch', 'native-bottom-sync-owner/manifest.json'),
     ('native-bottom-sync-shadow/native.patch', 'native-bottom-sync-shadow/manifest.json'),
+    ('native-bottom-sync-gn/native.patch', 'native-bottom-sync-gn/manifest.json'),
+    ('native-bottom-sync-profile-rebind/native.patch', 'native-bottom-sync-profile-rebind/manifest.json'),
 ])
 
 if options.through:

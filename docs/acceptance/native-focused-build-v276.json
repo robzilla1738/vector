@@ -1,0 +1,35 @@
+{
+  "composition": "v276",
+  "exitCode": 0,
+  "elapsedSeconds": 20.70579981803894,
+  "targets": {
+    "filter_options": "obj/chrome/browser/extensions/api/aux_adblock/aux_adblock/filter_service.o",
+    "sync_owner": "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_bottom_container.o",
+    "region_sync_lifecycle": "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_adblock/aux_adblock/filter_service.o",
+    "obj/chrome/browser/ui/views/tabs/vertical/impl/vertical_tab_strip_bottom_container.o",
+    "obj/chrome/browser/ui/ui/vertical_tab_strip_region_view.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "fullBrowserOrUIAccepted": false,
+  "originalReplay": {
+    "matchedSources": 440,
+    "steps": 279,
+    "composition": "out/native-replayed-composition-v276"
+  },
+  "buildGeneration": {
+    "passed": true,
+    "targets": 36081,
+    "files": 5013
+  }
+}
