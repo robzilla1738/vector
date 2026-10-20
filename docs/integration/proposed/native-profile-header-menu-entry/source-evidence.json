@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "context-open",
+      "rva": "0x456ee5c",
+      "bytes": 260,
+      "sha256": "e4b8ce376859ab999f692a973d3deb0a63726e9fc89f5337a227004d9c38f1f2",
+      "assemblySha256": "a13c1767920b0990b9b17b6458da62b82552018568434385c95178fde94c4911"
+    },
+    {
+      "name": "context-kind7",
+      "rva": "0x45760d4",
+      "bytes": 1612,
+      "sha256": "9d76d17a8b50c97a5b83fd0c6ee34edaedf45f2f82024b99ac0a55a3f1f5d6ba",
+      "assemblySha256": "6baf9994dccac76818353d6a21409e4317b6b50e2e1a861e65b76718e127856d"
+    },
+    {
+      "name": "kind-dispatch",
+      "rva": "0x4574428",
+      "bytes": 92,
+      "sha256": "0d3b1573aa5ea433218ca4051c52d05e5b79be073044e14905ed6a3ab158bf71",
+      "assemblySha256": "3b4d1e4de44e80e4e4fb2e6241ea3ff40cd3f9581d94cbb887575d958d0b2b5a"
+    },
+    {
+      "name": "context-host-constructor",
+      "rva": "0x4572f28",
+      "bytes": 804,
+      "sha256": "3923dc0b86c48ea915d6aebebf900fa5a570af8f3e975bf4e53e66ba1f49bc10",
+      "assemblySha256": "3143d1a68146b37b69252ac014be963f07123f535efe53b5197bb4f6de447d0f"
+    }
+  ]
+}

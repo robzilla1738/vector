@@ -1,0 +1,13 @@
+# Actual header primary menu entry and targeted-context prerequisite
+
+This narrow two-file patch exports `ShowAuxProfileMenu(BrowserWindowInterface*,views::View*)` through the existing sidebar header and implementation. It forwards to the actual existing AuxProfileMenu only after the real anchor has a Widget. The menu's Browser weak sender, asynchronous teardown/dispatch, current owner and contents remain unchanged. It does not create a second menu design, change rows, or invoke a secondary menu before native widget creation. L2's genuine header primary callback can use this function; region ownership remains exclusively L2.
+
+The requested apparent target-context shortcut is deliberately **not** exported as `ShowAuxProfileActions` yet. Fresh source recovery proves existing private Edit/Delete is a different surface. Original4652368 sends the clicked dot and exact path to coordinator456ee5c; the coordinator retires its current menu, stores the path at+118, and opens panel kind7 through456e680. Original jump-table d6e3084 entry6 resolves45760d4. This builds a200px panel, with accessible title `Profile indicator menu`, and these actual contents:
+
+* `Change Icon` (df87416): action8, actual kind8 submenu via456fae8; the supplied48-icon indicator catalog is its prerequisite, not the retired16-icon independent picker.
+* `Settings` (df870f2) appears only for an already-loaded clicked profile whose real ExtensionRegistry contains Agent among all31 sets. Callback457290c rechecks actual availability.
+* Separator, then `Sign Out` (df8742e), enabled by original40ff0cc. Callback4571fe4 rechecks that predicate before its real sign-out/confirmation lifecycle.
+
+Forwarding targeted dots to existing `ShowProfileActions(Edit/Delete)`, showing a generic primary bubble behind a MenuRunner, or enabling Sign Out merely because a local account exists would change supplied behavior. None is implemented. The actual panel-kind7/icon-submenu/settings/signout callbacks and corresponding expansion-lock ownership remain the concrete prerequisite for the required target callback. L2 may reference the intended future name but must not claim a linked/functional context path until that implementation lands.
+
+`verify.py` pins the supplied bytes, independently decodes the original switch-table target and UTF16 literals, and replays this exact two-file export patch against its recorded native baseline. It also asserts the original menu class body was not altered. No actual native source write/build, app or menu launch, owner data access, OS grants or signing occurred. This is source integration, not UI/runtime acceptance.

@@ -1,0 +1,27 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -33,6 +33,9 @@
+ class BrowserWindowInterface;
+ class Profile;
+ class TabDragTarget;
++
++// Genuine supplied primary profile menu; anchor must belong to a live Widget.
++void ShowAuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor);
+ 
+ namespace network {
+ class SimpleURLLoader;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1127,6 +1127,12 @@
+ 
+ }  // namespace
+ 
++void ShowAuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor) {
++  if (browser && anchor && anchor->GetWidget()) {
++    AuxProfileMenu::Show(browser, anchor);
++  }
++}
++
+ AuxSidebarView::AuxSidebarView(BrowserWindowInterface* browser)
+     : browser_(browser) {
+   auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(

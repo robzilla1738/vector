@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "baselineSha256": "8487df30a40afce0e8b594e2058e7bd09b5fd2de9b43f1445bbe598d72f94e71",
+      "outputSha256": "054135336b2e1008bdcef830ffa565be967749275322740d8ae8c8708bd98b55",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "f0a450e2afe4220bcc06f2213e100ed23a78a633957fefdd251ca29f98e1fd05",
+      "outputSha256": "f25e695ba1ea8a6d796d3f2b7377e984ae162fe501b0ec525239f9d5bb3d0aa4",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "applyAfter": "Exact frozen native sidebar baseline; no L2 region overlap"
+}
