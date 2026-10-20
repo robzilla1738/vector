@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "candidate": "v529",
+  "fullParity": false,
+  "nativeBuildPassed": true,
+  "packagePassed": true,
+  "signedReuseReceipt": "out/current-local-authority-v529-reuse/reuse-receipt.json",
+  "scopedBrowserPid": 40724,
+  "normalWindow": true,
+  "observed": [
+    "seamless Agent new-tab toolbar",
+    "resting magnifier",
+    "model selector opens with available models",
+    "reasoning selector opens",
+    "permission selector opens without changing permissions",
+    "project selector opens",
+    "original sidepanel header, current-page context and composer",
+    "new tab and recovery dismissal without reproduced crash"
+  ],
+  "aiRequestSent": false,
+  "credentialsRead": false,
+  "reference": "out/material-authority-pass/aside-current-ask.png",
+  "current": "out/material-authority-pass/aux-after-ask.png",
+  "sidepanel": "out/material-authority-pass/aux-sidepanel.png",
+  "remaining": [
+    "Agent sidepanel native backing still opaque",
+    "retained blur fullscreen/battery eligibility limitation",
+    "broader full parity not accepted"
+  ],
+  "inspectionIncident": {
+    "extraUnscopedBrowserPid": 39109,
+    "cause": "Desktop getApp launched a second instance during startup",
+    "stopped": true,
+    "disconnectedUiFromThatProcessRejected": true,
+    "finalScopedPidVerified": 40724
+  }
+}
