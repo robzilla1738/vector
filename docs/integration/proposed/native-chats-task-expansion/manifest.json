@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual297 section output including root296 PrefRegistry155 include correction",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.h",
+      "baselineSha256": "22cc982dc03afeda67ee2fde99d7bb2913e78e21d845224df36992ace61d7819",
+      "outputSha256": "8d2c043524fa7607d3cbe14c14d6110193a7286488b76a357067b54a0b7fe416"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "baselineSha256": "9039d776eb6bb4265524fa13ece3a8b95efb8b603dc8a0db2d4854f4b6587039",
+      "outputSha256": "edd4dc7dd1a8a1145315b346dea91353e43af8bc505d21ffac7a96fa88217ce9"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

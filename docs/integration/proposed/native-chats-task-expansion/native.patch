@@ -1,0 +1,28 @@
+--- a/chrome/browser/ui/views/frame/aux_chats_section.h
++++ b/chrome/browser/ui/views/frame/aux_chats_section.h
+@@ -39,6 +39,8 @@
+   void SetNewChatRepresentedTab(std::optional<tabs::TabHandle> tab, bool active);
+   void PauseProfileObservation();
+   void BindProfilePrefs(PrefService& prefs);
++  // Original464ec6c/464ee60: task adoption opens rows without changing pref.
++  void ExpandFromTaskAssociation();
+   bool expanded() const { return expanded_; }
+  private:
+   void Toggle();
+--- a/chrome/browser/ui/views/frame/aux_chats_section.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_section.cc
+@@ -78,6 +78,14 @@
+   // This may notify external actual profile observers that retire this owner.
+   prefs_->SetBoolean(kExpanded, expanded_);
+ }
++void AuxChatsSection::ExpandFromTaskAssociation() {
++  if (expanded_) return;
++  expanded_ = true;
++  SetDisclosureOpen(true);
++  clip_->SetVisible(true);
++  animation_.Show();
++  ApplyHeight();
++}
+ void AuxChatsSection::PreferenceChanged() {
+   if (!prefs_) return;
+   const bool expanded = prefs_->GetBoolean(kExpanded);

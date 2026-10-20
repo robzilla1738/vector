@@ -1,0 +1,45 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "select",
+      "start": "0x462d99c",
+      "stopExclusive": "0x462e4bc",
+      "bytesSha256": "1746144b425a5da71782ba108d916cc24ea45397577c08a50b6f3b90be8a9c0f",
+      "asmSha256": "ef9f38e2c04d331d15386ecc0e4a503192d487deb0d03524905b1d259a7a834b"
+    },
+    {
+      "name": "rename-settlement",
+      "start": "0x462e4bc",
+      "stopExclusive": "0x462e9d8",
+      "bytesSha256": "3d65c35c70eb74deaac4e04c9f09ae09eff0af25c8ef0a5f523521b275125fa2",
+      "asmSha256": "21f3fbaaec0ed7cfa2cf2ae6545a4ff085cc30ca6b6249aaf9b8eaa2ae9abc57"
+    },
+    {
+      "name": "selected-and-find",
+      "start": "0x4638470",
+      "stopExclusive": "0x4638950",
+      "bytesSha256": "6e641a116e0058b24f481107c0b174ab657b8940b54b223e3a53c019b8aa4a21",
+      "asmSha256": "5b9634c9ad7531c5f6d3e4b1a1701b6ecfdd523a07a33960295ea93cc70d76d5"
+    },
+    {
+      "name": "reconcile",
+      "start": "0x463e680",
+      "stopExclusive": "0x463edd0",
+      "bytesSha256": "26b6ab11cbef77fe28476ead5463df74c57a564d213a89ca12abc7955fccc7c2",
+      "asmSha256": "551f9a1092d662e2555e743b67c49abd5c924e3415380a0de104c26eb75946c9"
+    },
+    {
+      "name": "bind",
+      "start": "0x464e4b8",
+      "stopExclusive": "0x464ef84",
+      "bytesSha256": "926636a81461aa29ca8174b9e40a1366102539d2efe79e4badfdac0f8a246725",
+      "asmSha256": "de4eb601349f074dcc8d95e3762c6e36887087ca5522b867c7c567587dde1907"
+    }
+  ],
+  "sourceAuthority": "full LLVM source ranges; bounded Ghidra task-bind snapshot has explicit truncated external-tail limitations",
+  "runtimePerformed": false
+}
