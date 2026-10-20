@@ -1,0 +1,572 @@
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entries.h
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entries.h
+@@ -24,6 +24,12 @@
+   std::u16string title;
+ };
+ 
++// Source mutations preserve existing title/order and remove only first match.
++void AddPinnedTabEntryIfAbsent(PrefService& prefs,
++                               const GURL& url,
++                               const std::u16string& title);
++void RemoveFirstPinnedTabEntry(PrefService& prefs, const GURL& url);
++
+ void RegisterPinnedTabEntriesPrefs(PrefRegistrySimple* registry);
+ std::vector<PinnedTabEntry> ParsePinnedTabEntries(
+     const base::ListValue& values);
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entries.cc
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entries.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ 
++#include <algorithm>
+ #include <utility>
+ 
+ #include "base/strings/utf_string_conversions.h"
+@@ -13,8 +14,8 @@
+ namespace aux {
+ 
+ void RegisterPinnedTabEntriesPrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterListPref(
+-      kPinnedTabEntriesPref, user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
++  registry->RegisterListPref(kPinnedTabEntriesPref,
++                             user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+ }
+ 
+ std::vector<PinnedTabEntry> ParsePinnedTabEntries(
+@@ -66,4 +67,28 @@
+   prefs.SetList(kPinnedTabEntriesPref, SerializePinnedTabEntries(entries));
+ }
+ 
++void AddPinnedTabEntryIfAbsent(PrefService& prefs,
++                               const GURL& url,
++                               const std::u16string& title) {
++  if (!url.is_valid())
++    return;
++  auto entries = ReadPinnedTabEntries(prefs);
++  if (std::ranges::any_of(
++          entries, [&url](const auto& entry) { return entry.url == url; }))
++    return;
++  entries.push_back({url, title});
++  WritePinnedTabEntries(prefs, entries);
++}
++
++void RemoveFirstPinnedTabEntry(PrefService& prefs, const GURL& url) {
++  if (!url.is_valid())
++    return;
++  auto entries = ReadPinnedTabEntries(prefs);
++  const auto found = std::ranges::find_if(
++      entries, [&url](const auto& entry) { return entry.url == url; });
++  if (found != entries.end())
++    entries.erase(found);
++  WritePinnedTabEntries(prefs, entries);
++}
++
+ }  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_TABS_AUX_PINNED_TAB_ENTRY_IDENTITY_H_
++#define CHROME_BROWSER_UI_TABS_AUX_PINNED_TAB_ENTRY_IDENTITY_H_
++#include <optional>
++#include "url/gurl.h"
++namespace content {
++class WebContents;
++}
++namespace aux {
++void RememberPinnedTabEntryUrl(content::WebContents& contents, const GURL& url);
++std::optional<GURL> GetRememberedPinnedTabEntryUrl(
++    const content::WebContents& contents);
++void ClearRememberedPinnedTabEntryUrl(content::WebContents& contents);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_TABS_AUX_PINNED_TAB_ENTRY_IDENTITY_H_
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc
+@@ -0,0 +1,43 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
++#include <memory>
++#include "base/supports_user_data.h"
++#include "content/public/browser/web_contents.h"
++namespace aux {
++namespace {
++
++const char kPinnedTabEntryUrlKey = 0;
++
++class PinnedTabEntryUrlData : public base::SupportsUserData::Data {
++ public:
++  explicit PinnedTabEntryUrlData(const GURL& value) : url(value) {}
++  const GURL url;
++};
++
++}  // namespace
++
++void RememberPinnedTabEntryUrl(content::WebContents& contents,
++                               const GURL& url) {
++  if (!url.is_valid()) {
++    return;
++  }
++  contents.SetUserData(&kPinnedTabEntryUrlKey,
++                       std::make_unique<PinnedTabEntryUrlData>(url));
++}
++
++std::optional<GURL> GetRememberedPinnedTabEntryUrl(
++    const content::WebContents& contents) {
++  const auto* data = static_cast<const PinnedTabEntryUrlData*>(
++      contents.GetUserData(&kPinnedTabEntryUrlKey));
++  if (!data) {
++    return std::nullopt;
++  }
++  return data->url;
++}
++
++void ClearRememberedPinnedTabEntryUrl(content::WebContents& contents) {
++  contents.RemoveUserData(&kPinnedTabEntryUrlKey);
++}
++}  // namespace aux
+--- a/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc
++++ b/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc
+@@ -3,49 +3,16 @@
+ // found in the LICENSE file.
+ #include "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h"
+ 
+-#include <memory>
+-
+-#include "base/supports_user_data.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ #include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+ #include "content/public/browser/web_contents.h"
+ 
+ namespace aux {
+-namespace {
+-
+-const char kPinnedTabEntryUrlKey = 0;
+-
+-class PinnedTabEntryUrlData : public base::SupportsUserData::Data {
+- public:
+-  explicit PinnedTabEntryUrlData(const GURL& value) : url(value) {}
+-  const GURL url;
+-};
+-
+-}  // namespace
+-
+-void RememberPinnedTabEntryUrl(content::WebContents& contents,
+-                               const GURL& url) {
+-  if (!url.is_valid()) {
+-    return;
+-  }
+-  contents.SetUserData(&kPinnedTabEntryUrlKey,
+-                       std::make_unique<PinnedTabEntryUrlData>(url));
+-}
+-
+-std::optional<GURL> GetRememberedPinnedTabEntryUrl(
+-    const content::WebContents& contents) {
+-  const auto* data = static_cast<const PinnedTabEntryUrlData*>(
+-      contents.GetUserData(&kPinnedTabEntryUrlKey));
+-  if (!data) {
+-    return std::nullopt;
+-  }
+-  return data->url;
+-}
+-
+ std::optional<int> FindPinnedTabEntry(const TabStripModel& model,
+                                       const GURL& url) {
+   if (!url.is_valid()) {
+--- a/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h
++++ b/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h
+@@ -6,6 +6,7 @@
+ 
+ #include <optional>
+ 
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "url/gurl.h"
+ 
+ class BrowserWindowInterface;
+@@ -16,10 +17,6 @@
+ 
+ namespace aux {
+ 
+-// Native per-WebContents identity survives navigation and whole-tab transfer.
+-void RememberPinnedTabEntryUrl(content::WebContents& contents, const GURL& url);
+-std::optional<GURL> GetRememberedPinnedTabEntryUrl(
+-    const content::WebContents& contents);
+ std::optional<int> FindPinnedTabEntry(const TabStripModel& model,
+                                       const GURL& url);
+ void OpenPinnedTabEntry(BrowserWindowInterface& browser, const GURL& url);
+--- a/chrome/browser/ui/tabs/pinned_tab_service.h
++++ b/chrome/browser/ui/tabs/pinned_tab_service.h
+@@ -5,12 +5,23 @@
+ #ifndef CHROME_BROWSER_UI_TABS_PINNED_TAB_SERVICE_H_
+ #define CHROME_BROWSER_UI_TABS_PINNED_TAB_SERVICE_H_
+ 
++#include <cstdint>
++#include <map>
++#include <set>
++
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/scoped_observation.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/keyed_service/core/keyed_service.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "base/memory/weak_ptr.h"
++#include "components/tabs/public/tab_interface.h"
++#include "url/gurl.h"
++#endif
+ 
+ class Profile;
+ class BrowserWindowInterface;
+@@ -27,6 +38,12 @@
+   PinnedTabService(const PinnedTabService&) = delete;
+   PinnedTabService& operator=(const PinnedTabService&) = delete;
+   ~PinnedTabService() override;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // 155 same-window owner transaction adapter; no synthetic browser events.
++  base::WeakPtr<PinnedTabService> GetWeakPtrForAuxProfileSwitch();
++  uint64_t PauseForAuxProfileSwitch();
++  void ResumeAfterAuxProfileSwitch(uint64_t token);
++#endif
+ 
+  private:
+   // Invoked with true when all browsers start closing.
+@@ -44,21 +61,34 @@
+   void OnTabPinnedStateChanged(tabs::TabInterface* tab, int index) override;
+   void WillCloseAllTabs(TabStripModel* tab_strip_model) override;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  void ObserveBrowserIfOwned(BrowserWindowInterface* browser);
++  void RefreshBrowserObservations();
++  void CachePinnedEntryIdentity(tabs::TabInterface* tab);
++#else
+   // Writes the pinned tabs for `profile_`, but only if a new tab or browser
+   // window has been added since the last time the method was called.
+   void WritePinnedTabsIfNecessary();
++#endif
+ 
+   raw_ptr<Profile> profile_;
+ 
+-  // True if we should save the pinned tabs when a browser window closes or the
+-  // user exits the application. This is set to false after writing pinned tabs,
+-  // and set back to true when new tabs or windows are added.
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool closing_all_browsers_ = false;
++  std::map<tabs::TabHandle, GURL> pinned_entry_urls_;
++  std::set<uint64_t> profile_switch_pauses_;
++  uint64_t next_profile_switch_pause_ = 0;
++#else
+   bool need_to_write_pinned_tabs_ = true;
++#endif
+ 
+   base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
+       browser_collection_observation_{this};
+ 
+   base::CallbackListSubscription closing_all_browsers_subscription_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<PinnedTabService> weak_factory_{this};
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_TABS_PINNED_TAB_SERVICE_H_
+--- a/chrome/browser/ui/tabs/pinned_tab_service.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
+@@ -11,6 +11,12 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/tabs/pinned_tab_codec.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "base/check.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
++#include "content/public/browser/web_contents.h"
++#endif
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ 
+ PinnedTabService::PinnedTabService(Profile* profile) : profile_(profile) {
+@@ -28,9 +34,18 @@
+       GlobalBrowserCollection::GetInstance());
+ }
+ 
+-PinnedTabService::~PinnedTabService() = default;
++PinnedTabService::~PinnedTabService() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  TabStripModelObserver::StopObservingAll(this);
++#endif
++}
+ 
+ void PinnedTabService::OnClosingAllBrowsersChanged(bool closing) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // 155 global-close signal is used only as an event guard. Saved entries
++  // follow explicit pin/unpin mutations; closing live tabs does not erase them.
++  closing_all_browsers_ = closing;
++#else
+   // Saving of tabs happens when the user exits the application or closes the
+   // last browser window. After saving, `need_to_write_pinned_tabs_` is set to
+   // false to make sure subsequent window closures don't overwrite the pinned
+@@ -49,9 +64,13 @@
+   if (closing && TabStripModelObserver::IsObservingAny(this)) {
+     WritePinnedTabsIfNecessary();
+   }
++#endif
+ }
+ 
+ void PinnedTabService::OnBrowserCreated(BrowserWindowInterface* browser) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  ObserveBrowserIfOwned(browser);
++#else
+   if (browser->GetProfile() != profile_ ||
+       browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+     return;
+@@ -60,6 +79,7 @@
+   need_to_write_pinned_tabs_ = true;
+   // TODO(crbug.com/452120900): TabStripModel auto-unregistered by dtor
+   browser->GetTabStripModel()->AddObserver(this);
++#endif
+ }
+ 
+ void PinnedTabService::OnBrowserClosed(BrowserWindowInterface* browser) {
+@@ -68,8 +88,13 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!profile_switch_pauses_.empty())
++    return;
++#endif
+   browser->GetTabStripModel()->RemoveObserver(this);
+ 
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
+   // This happens when user closes each tab manually via the close button. In
+   // this case WillCloseAllTabs() with closing_all() is not called. This causes
+   // pinned tabs to reopen on the next startup. So we should call
+@@ -77,32 +102,143 @@
+   if (!TabStripModelObserver::IsObservingAny(this)) {
+     WritePinnedTabsIfNecessary();
+   }
++#endif
+ }
+ 
+ void PinnedTabService::OnTabStripModelChanged(
+     TabStripModel* tab_strip_model,
+     const TabStripModelChange& change,
+     const TabStripSelectionChange& selection) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!profile_switch_pauses_.empty())
++    return;
++  if (change.type() == TabStripModelChange::kInserted) {
++    for (const auto& inserted : change.GetInsert()->contents)
++      CachePinnedEntryIdentity(inserted.tab);
++  } else if (change.type() == TabStripModelChange::kRemoved) {
++    for (const auto& removed : change.GetRemove()->contents) {
++      if (removed.tab)
++        pinned_entry_urls_.erase(removed.tab->GetHandle());
++    }
++  } else if (change.type() == TabStripModelChange::kReplaced) {
++    CachePinnedEntryIdentity(change.GetReplace()->tab);
++  }
++#else
+   if (change.type() == TabStripModelChange::kInserted) {
+     need_to_write_pinned_tabs_ = true;
+   }
++#endif
+ }
+ 
+ void PinnedTabService::OnTabPinnedStateChanged(tabs::TabInterface* tab,
+                                                int index) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!tab || closing_all_browsers_ || !profile_switch_pauses_.empty())
++    return;
++  auto* contents = tab->GetContents();
++  // The source service is profile-bound;155 owner transactions must not let
++  // an old model observer write a target profile's tab into this profile.
++  if (!contents || contents->GetBrowserContext() != profile_)
++    return;
++  const auto handle = tab->GetHandle();
++  if (tab->IsPinned()) {
++    const GURL url = contents->GetVisibleURL();
++    if (!url.is_valid())
++      return;
++    pinned_entry_urls_.insert_or_assign(handle, url);
++    aux::RememberPinnedTabEntryUrl(*contents, url);
++    aux::AddPinnedTabEntryIfAbsent(*profile_->GetPrefs(), url,
++                                   contents->GetTitle());
++  } else {
++    GURL url;
++    if (auto remembered = pinned_entry_urls_.find(handle);
++        remembered != pinned_entry_urls_.end())
++      url = remembered->second;
++    else if (auto remembered = aux::GetRememberedPinnedTabEntryUrl(*contents);
++             remembered && remembered->is_valid())
++      url = *remembered;
++    else
++      url = contents->GetVisibleURL();
++    pinned_entry_urls_.erase(handle);
++    aux::ClearRememberedPinnedTabEntryUrl(*contents);
++    aux::RemoveFirstPinnedTabEntry(*profile_->GetPrefs(), url);
++  }
++#else
+   need_to_write_pinned_tabs_ = true;
++#endif
+ }
+ 
+ void PinnedTabService::WillCloseAllTabs(TabStripModel* tab_strip_model) {
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
+   if (tab_strip_model->closing_all() &&
+       TabStripModelObserver::CountObservedModels(this) == 1) {
+     WritePinnedTabsIfNecessary();
+   }
+-}
+-
++#endif
++}
++
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
+ void PinnedTabService::WritePinnedTabsIfNecessary() {
+   if (need_to_write_pinned_tabs_) {
+     PinnedTabCodec::WritePinnedTabs(profile_);
+   }
+   need_to_write_pinned_tabs_ = false;
+ }
++
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void PinnedTabService::CachePinnedEntryIdentity(tabs::TabInterface* tab) {
++  if (!tab || !tab->IsPinned())
++    return;
++  auto* contents = tab->GetContents();
++  if (!contents || contents->GetBrowserContext() != profile_)
++    return;
++  auto url = aux::GetRememberedPinnedTabEntryUrl(*contents);
++  if (!url || !url->is_valid()) {
++    auto cached = pinned_entry_urls_.find(tab->GetHandle());
++    if (cached == pinned_entry_urls_.end())
++      return;
++    url = cached->second;
++  }
++  if (!url->is_valid())
++    return;
++  aux::RememberPinnedTabEntryUrl(*contents, *url);
++  pinned_entry_urls_.insert_or_assign(tab->GetHandle(), *url);
++}
++void PinnedTabService::ObserveBrowserIfOwned(BrowserWindowInterface* browser) {
++  if (!profile_switch_pauses_.empty() || browser->GetProfile() != profile_ ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL)
++    return;
++  auto* model = browser->GetTabStripModel();
++  model->AddObserver(this);
++  for (auto* tab : *model)
++    CachePinnedEntryIdentity(tab);
++}
++void PinnedTabService::RefreshBrowserObservations() {
++  TabStripModelObserver::StopObservingAll(this);
++  if (!profile_switch_pauses_.empty())
++    return;
++  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
++      [this](BrowserWindowInterface* browser) {
++        ObserveBrowserIfOwned(browser);
++        return true;
++      });
++}
++base::WeakPtr<PinnedTabService>
++PinnedTabService::GetWeakPtrForAuxProfileSwitch() {
++  return weak_factory_.GetWeakPtr();
++}
++uint64_t PinnedTabService::PauseForAuxProfileSwitch() {
++  const uint64_t token = ++next_profile_switch_pause_;
++  CHECK(token);
++  profile_switch_pauses_.insert(token);
++  TabStripModelObserver::StopObservingAll(this);
++  return token;
++}
++void PinnedTabService::ResumeAfterAuxProfileSwitch(uint64_t token) {
++  if (!profile_switch_pauses_.erase(token) || !profile_switch_pauses_.empty())
++    return;
++  RefreshBrowserObservations();
++}
++#endif
+--- a/chrome/browser/ui/tabs/pinned_tab_service_factory.h
++++ b/chrome/browser/ui/tabs/pinned_tab_service_factory.h
+@@ -18,6 +18,7 @@
+  public:
+   // Returns the PinnedTabService that tracks pinning changes for `profile`.
+   static PinnedTabService* GetForProfile(Profile* profile);
++  static PinnedTabService* GetForProfileIfExists(Profile* profile);
+ 
+   static PinnedTabServiceFactory* GetInstance();
+ 
+--- a/chrome/browser/ui/tabs/pinned_tab_service_factory.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service_factory.cc
+@@ -11,6 +11,12 @@
+ PinnedTabService* PinnedTabServiceFactory::GetForProfile(Profile* profile) {
+   return static_cast<PinnedTabService*>(
+       GetInstance()->GetServiceForBrowserContext(profile, true));
++}
++
++PinnedTabService* PinnedTabServiceFactory::GetForProfileIfExists(
++    Profile* profile) {
++  return static_cast<PinnedTabService*>(
++      GetInstance()->GetServiceForBrowserContext(profile, false));
+ }
+ 
+ PinnedTabServiceFactory* PinnedTabServiceFactory::GetInstance() {
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entries_unittest.cc
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entries_unittest.cc
+@@ -60,5 +60,45 @@
+   EXPECT_TRUE(ReadPinnedTabEntries(second).empty());
+ }
+ 
++TEST(PinnedTabEntriesTest, ExplicitPinKeepsFirstTitleAndExistingOrder) {
++  TestingPrefServiceSimple prefs;
++  RegisterPinnedTabEntriesPrefs(prefs.registry());
++  const GURL first("https://example.test/one");
++  WritePinnedTabEntries(prefs, std::vector<PinnedTabEntry>{{first, u"First"}});
++  AddPinnedTabEntryIfAbsent(prefs, first, u"Changed");
++  AddPinnedTabEntryIfAbsent(prefs, GURL("https://example.test/two"), u"Second");
++  const auto entries = ReadPinnedTabEntries(prefs);
++  ASSERT_EQ(entries.size(), 2u);
++  EXPECT_EQ(entries[0].url, first);
++  EXPECT_EQ(entries[0].title, u"First");
++  EXPECT_EQ(entries[1].title, u"Second");
++}
++
++TEST(PinnedTabEntriesTest, ExplicitUnpinRemovesOnlyFirstExactUrl) {
++  TestingPrefServiceSimple prefs;
++  RegisterPinnedTabEntriesPrefs(prefs.registry());
++  const GURL first("https://example.test/one");
++  const GURL other("https://other.test/one");
++  WritePinnedTabEntries(
++      prefs, std::vector<PinnedTabEntry>{
++                 {first, u"First"}, {other, u"Other"}, {first, u"Duplicate"}});
++  RemoveFirstPinnedTabEntry(prefs, first);
++  const auto entries = ReadPinnedTabEntries(prefs);
++  ASSERT_EQ(entries.size(), 2u);
++  EXPECT_EQ(entries[0].url, other);
++  EXPECT_EQ(entries[1].url, first);
++  EXPECT_EQ(entries[1].title, u"Duplicate");
++}
++
++TEST(PinnedTabEntriesTest, InvalidMutationLeavesActualPreferenceUntouched) {
++  TestingPrefServiceSimple prefs;
++  RegisterPinnedTabEntriesPrefs(prefs.registry());
++  prefs.SetList(kPinnedTabEntriesPref, base::ListValue().Append(9));
++  AddPinnedTabEntryIfAbsent(prefs, GURL(), u"Invalid");
++  RemoveFirstPinnedTabEntry(prefs, GURL());
++  ASSERT_EQ(prefs.GetList(kPinnedTabEntriesPref).size(), 1u);
++  EXPECT_EQ(prefs.GetList(kPinnedTabEntriesPref)[0].GetInt(), 9);
++}
++
+ }  // namespace
+ }  // namespace aux

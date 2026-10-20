@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "applyAfter": "model+SYNCABLE registration (ce990049c), native actions d80f28b1c; shared service/factory unchanged170",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "baselineSha256": "fed71c8033f24413e95a60c2dfac7248565efa67d89bc127dae645dc1e09e7bd",
+      "outputSha256": "cc7289acac68a106c77f4e6687e020c20dadc687ed1560415447c1ddb47a435c",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "baselineSha256": "f795d9b7543b4e436eec52d7188cf6746234a0a74de3a299d4f34c4b3f038c5a",
+      "outputSha256": "3daf450f90b832813291081f51c71d9afd313c9621561283428a40407f00f7b0",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h",
+      "baselineSha256": null,
+      "outputSha256": "79a3a314481372b4b86431bb632ffb13383576bd82c38c3679fd9cfe4506f835",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc",
+      "baselineSha256": null,
+      "outputSha256": "fc305679af67bdd4c244b93dc56ac66c9cba8954a91c1513cca00a6185e1e255",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc",
+      "baselineSha256": "4e73cd6b70b47150fb35492f5c15484133e3cbb64dc4a08154557b3d68c7bad4",
+      "outputSha256": "cec6aee12ac50e49c9a954e96ac92c2f9cea2308af852dbdea08922a495d865e",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h",
+      "baselineSha256": "54440b662a2c043d3ea0aa358f5779191a1921e7387b816e8573be2c5841143f",
+      "outputSha256": "0928fcba489bcc5afff1d870fa839f08702078d01f007d759b2e55f7815585f3",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.h",
+      "baselineSha256": "54ac3ad1270c7204d910bff2fe68f16087ca9c47a7b9f4938081b28d572354b8",
+      "outputSha256": "1732d2abdce7729665f83fd1b617264de12b3853726f5efb780adcb3ca0c0d18",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "baselineSha256": "bb78b0df8ec453405fe128d9f580f2fa3ad852dfaacc2f044c36a53f0e0937d8",
+      "outputSha256": "e986b50d157a91c144279da28dd054f708e1124a7e224b50f15028eba1068265",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service_factory.h",
+      "baselineSha256": "7dd6631efe5bc5f4cf72c3f086d8d54d12d5105c06b868b23e70e2310e92d5af",
+      "outputSha256": "435c683841efb9332baee2ffd9e254cf700eecea2a99c135719935efd17aad98",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service_factory.cc",
+      "baselineSha256": "569b4726ab2230fbbd636dddbf2126ddde1e4e9aa886c431a1ee5ee1af399a26",
+      "outputSha256": "f8da89580a0a958c8e55857ae0898c74dc49fd42a3918f48c757d86c6e92f77a",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries_unittest.cc",
+      "baselineSha256": "c721526c91c7f4eab2331d300f0756fb08e55c722d5665f415510a970d5a9385",
+      "outputSha256": "eea6d715bd751e42f507bc70c2a2ee54ae428c584cd70936c8a2ae9837d2c88e",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "remainingGaps": [
+    "full source SchedulePinnedTabsReconciliation and native reorder matching",
+    "source per-profile asynchronous-closing guard beyond155 global-close callback",
+    "root transaction hook must wire existing service weak pause/token/resume"
+  ]
+}

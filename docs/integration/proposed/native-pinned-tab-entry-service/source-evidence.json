@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-add-if-absent",
+      "rva": "0x41d4ccc",
+      "bytes": 596,
+      "sha256": "de559ee1e03364f793a2aea5d6346d4bc94f523bbea4586aed081b233e112ee8"
+    },
+    {
+      "name": "original-remove-first",
+      "rva": "0x41d4f20",
+      "bytes": 780,
+      "sha256": "71b002d3707d85060523bc9c127952fb9e4fa467249013bf37312146af070974"
+    },
+    {
+      "name": "original-service-constructor",
+      "rva": "0x3222210",
+      "bytes": 868,
+      "sha256": "740ea056698047fe6ff5e926fa21134aace3b67a5cb514b4c1c27afef3018e74"
+    },
+    {
+      "name": "original-model-insert-remove-replace",
+      "rva": "0x41d7424",
+      "bytes": 336,
+      "sha256": "1ea5117b5fc00764f34ee94dc4384b405c85b549e28a19dc3330a63f0d603d2c"
+    },
+    {
+      "name": "original-cache-identity",
+      "rva": "0x41d7574",
+      "bytes": 484,
+      "sha256": "b1abb7c3423d4c6e477fdcfe5bcf927ae9047914c7cc83063112853d3da8c559"
+    },
+    {
+      "name": "original-pin-event",
+      "rva": "0x41d79ec",
+      "bytes": 756,
+      "sha256": "55b4c7f9df244bd436b0ac20e53076f262a9381a97ca7bea000f49062c60e38e"
+    },
+    {
+      "name": "original-unpin-event",
+      "rva": "0x41d7ce0",
+      "bytes": 1020,
+      "sha256": "e6223592cecb2a40c95525084496043dbba0de7ba209a8fcef613cde840049df"
+    },
+    {
+      "name": "original-title-getter",
+      "rva": "0x14a84dc",
+      "bytes": 724,
+      "sha256": "405330c43b7686b70b4e1fcca2510a9d546b9f49173ca501c7048276c2dd7eb9"
+    },
+    {
+      "name": "actual PinnedTabService vtable",
+      "rva": "0xe2207c0",
+      "bytes": 264,
+      "sha256": "fe9e0e24b68ebc7e0932ce099d864ee5cfc95e89be755ef6d83addb2ad0b9ad5"
+    }
+  ],
+  "strings": [
+    {
+      "rva": "0xdae6f2e",
+      "value": "SchedulePinnedTabsReconciliation"
+    },
+    {
+      "rva": "0xdae6f4f",
+      "value": "../../chrome/browser/ui/tabs/pinned_tab_service.cc"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_codec.cc",
+      "sha256": "5a5d86495b8b11c88c1836888ea95021d4d9f0767348c6f8b4c0460cd8f7f76b"
+    },
+    {
+      "path": "chrome/common/pref_names.h",
+      "sha256": "89ae6e72d45077ed8648cf3a67f1d16df3bfd50db4a2202bb3756e34227efb8f"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    },
+    {
+      "path": "components/tabs/public/tab_interface.h",
+      "sha256": "481ef95faafeac585e8589032f44c272af7904d2ec2b96ffaa71e04a21db8987"
+    },
+    {
+      "path": "components/tabs/public/supports_handles.h",
+      "sha256": "b5324805b10b7802b6a4055dd12a35941fba29db02b56ad968404d1d5448c218"
+    },
+    {
+      "path": "chrome/browser/lifetime/application_lifetime_desktop.h",
+      "sha256": "ae49c6a5c80bcf04b6959a13622b55227419860ed94ffa8c38a457bc9dc7edaf"
+    },
+    {
+      "path": "base/supports_user_data.h",
+      "sha256": "14006c91e60640dd2a43889ecae12089d80d41a25f682cb307bc9c20b209fe30"
+    }
+  ]
+}
