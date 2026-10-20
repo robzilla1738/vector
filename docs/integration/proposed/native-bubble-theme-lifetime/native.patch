@@ -1,0 +1,16 @@
+--- a/ui/views/bubble/bubble_dialog_delegate_view.cc
++++ b/ui/views/bubble/bubble_dialog_delegate_view.cc
+@@ -338,7 +338,12 @@
+   void OnWidgetThemeChanged(Widget* widget) override {
+     // TODO(dfried): Consider merging BubbleWidget with ThemeCopyingWidget
+     // instead of observing the theme here.
+-    owner_->GetWidget()->ThemeChanged();
++    // The anchor can notify while the delegate is being created or retired,
++    // before it has an attached bubble widget. Initialization supplies the
++    // current theme when the widget becomes available.
++    if (Widget* bubble_widget = owner_->GetWidget()) {
++      bubble_widget->ThemeChanged();
++    }
+   }
+ 
+ #if !BUILDFLAG(IS_MAC)

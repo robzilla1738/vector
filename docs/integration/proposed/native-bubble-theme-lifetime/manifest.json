@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "ui/views/bubble/bubble_dialog_delegate_view.cc",
+      "baselineSha256": "4725e9170a04a56f6c0fff4de205385075b937a0de976ff707e976aca9abc82d",
+      "outputSha256": "4a6ec211afce9708559a517a4a397a7d50d240afcb1d59ec7d418305f94bf359"
+    }
+  ]
+}
