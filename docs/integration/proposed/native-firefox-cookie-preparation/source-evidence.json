@@ -1,0 +1,135 @@
+{
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "worker",
+      "start": "0x4260740",
+      "endExclusive": "0x426293c",
+      "sha256": "fce30a4197a29b115de6fa78fd42abfd0d09b6118744cd7253473fa79b768df3",
+      "assembly": "worker.asm",
+      "assemblySha256": "0d82a36b3a9698741cfd45a3d9be45b1f4d41644cf21026bdc0bd0ae3981dcab"
+    },
+    {
+      "name": "prepare-reply-settlement",
+      "start": "0x4263f48",
+      "endExclusive": "0x4264450",
+      "sha256": "5328a8deda47ec61c8f5e241d09b2e4fb3539f0d74ba66d050c429ac30b8f963",
+      "assembly": "prepare-reply-settlement.asm",
+      "assemblySha256": "f5d07a3789292d54fe39fb17956b47c55787bc920df3323c3eb39db497c64aee"
+    },
+    {
+      "name": "partition-query-unescape",
+      "start": "0x13ea5c0",
+      "endExclusive": "0x13ea6a4",
+      "sha256": "295d1743db18d7eb32fee79a13d6e6dd54ca5d1bfd38cf9bf1d28912ccbef99d",
+      "assembly": "partition-query-unescape.asm",
+      "assemblySha256": "ff962488eb51e26115f3359d3c7eb2999e7a42627e87ad11fe45bbfffd59ed57"
+    },
+    {
+      "name": "source-url",
+      "start": "0x637300",
+      "endExclusive": "0x637550",
+      "sha256": "288f03a12a89cb7dc2f5d09983f42f41c11275300bf824400588bf249672af03",
+      "assembly": "source-url.asm",
+      "assemblySha256": "98ab64f67f24dad775e99213ece5f1ec78bf8253308c62faddf5d9bc3b8d8374"
+    },
+    {
+      "name": "canonical-from-storage",
+      "start": "0x1bed5d0",
+      "endExclusive": "0x1bed928",
+      "sha256": "078a9e0090d0f2cc004174c9c5da1b4dc888b72ee955ff0dae19b8904722f917",
+      "assembly": "canonical-from-storage.asm",
+      "assemblySha256": "948b1993efe8dc3cf617bfed13fa0f9120408fcb342ef04af1627d8b32d38965"
+    },
+    {
+      "name": "default-sql-options",
+      "start": "0x300f948",
+      "endExclusive": "0x300fc48",
+      "sha256": "c0b89017a237bed415a183c8a2c3d1b781b660091628a6d219b3d3df4214997d",
+      "assembly": "default-sql-options.asm",
+      "assemblySha256": "370a8953e488226748214a1a266348bc060155e73e9141a662072c427e34810e"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xdb1fba5",
+      "text": "SELECT name, value, host, path, expiry, lastAccessed, creationTime, ",
+      "sha256": "6c9c81178a8bc8f4a8d04cd1846e0976630d002def95c72b9234798c3c5934d3"
+    },
+    {
+      "offset": "0xdb1fcc6",
+      "text": "https://firefox-origin-attributes.invalid/?",
+      "sha256": "0703b5373fcee22b84cc98f7770ca976e1eed61e3d27a4458ad593cceb82001c"
+    },
+    {
+      "offset": "0xcc20045",
+      "text": "https",
+      "sha256": "3e1943522517e81328e3f3f7ea1f0d7fc2ca886dfe1639a7fa6508760d1cee3a"
+    },
+    {
+      "offset": "0xcc2004b",
+      "text": "http",
+      "sha256": "e0603c499aae47eb89343ad0ef3178e044c62e70ae2309b35591d1d49a3211ec"
+    }
+  ],
+  "originalDecompile": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04260740.c",
+    "sha256": "89ccab7f51f8dbe9b546e9439ea7a1e22b0f370b13ea01cdef972a1bbf926d23",
+    "copy": "original-worker.c"
+  },
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativeApiPins": [
+    {
+      "path": "sql/database.h",
+      "sha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4"
+    },
+    {
+      "path": "sql/statement.h",
+      "sha256": "e1660a39b274de49586157eeab4f1529f8a5087d76deb75ff98b7fc0257b18d4"
+    },
+    {
+      "path": "base/strings/cstring_view.h",
+      "sha256": "69271a584978512438d393b592e521a92de38e3e09f214dffced8cbb4a10140e"
+    },
+    {
+      "path": "base/strings/string_split.h",
+      "sha256": "1aeae886c809a3c6a6e4077e7185c5f9ff05c42bdd9bbcd9fe6cf0d22ccd4a6a"
+    },
+    {
+      "path": "base/time/time.h",
+      "sha256": "e66bef19df9d66cb48f6e6cc7eff68faf35dd46b29ac469206b6e7d122c1bb80"
+    },
+    {
+      "path": "net/base/url_util.cc",
+      "sha256": "dc31de78a9a9b03fe24ea42e8876aa95bba86a3a30da17429397bae403db6e3f"
+    },
+    {
+      "path": "net/cookies/canonical_cookie.h",
+      "sha256": "f434d5f1f5fb12fc7f334cddc4b28b6aa9336d7cca9d4c7703f530e634241b8a"
+    },
+    {
+      "path": "net/cookies/cookie_partition_key.h",
+      "sha256": "bbb61a2d775a976f0b45079a5b5763e8a6b8c949411e4a19a3d7f704d8b5a5b8"
+    },
+    {
+      "path": "net/cookies/cookie_constants.h",
+      "sha256": "b80532fa2916bd6c2c426e1d5be7930076bbb2bc15fade65d0aacbec07f3e18e"
+    },
+    {
+      "path": "services/network/public/mojom/cookie_manager.mojom",
+      "sha256": "949209b259acbc23844112f6d0a94e84f70d01c62525c8607360e04bef6b1ad5"
+    },
+    {
+      "path": "chrome/browser/profiles/profile.h",
+      "sha256": "dc1ff74874ce73db6eeb579ed9b5a85a3226387ce3a4172eb814336562634485"
+    },
+    {
+      "path": "content/public/browser/storage_partition.h",
+      "sha256": "5bf636613ec28382e393b812216afd199ff7024d0a3b780887261ad11abdffa7"
+    }
+  ],
+  "observed": "static only; no target execution, database/profile reads, NSS/Keychain or cookie operations"
+}

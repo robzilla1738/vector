@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_cookie_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "dd733e544b8d9050ba4a696a543f47e6e5fd8acfdf81c7abbc80ad4d4ae233fa"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_cookie_import.h",
+      "baselineSha256": null,
+      "outputSha256": "b3eb8de130c208929cc113db6e5c06394777bc289aeae7d573e847794ed201bd"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "patchSha256": "7b55cf3ea10e85d1364d059bcc0699b019fc4df68a371c4b3da043072aaa4509"
+}
