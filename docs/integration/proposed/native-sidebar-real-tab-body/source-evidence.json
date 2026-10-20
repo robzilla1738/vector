@@ -1,0 +1,56 @@
+{
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+    "mount": "37e0cd4..37e0e00: add originalcustomscroll(+5b0), create actualVerticalTabStripView7fb6840 with realcontroller context+848, SetContents at37e0dec; vertical subclass7fb6840 invokes common7fb4934. Full originalregiondecompile pins remaining child hierarchy; header/savedentries/bottom surfaces separate."
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "sha256": "4e84fadf6e88ed170d35e9bb8dc37ed1b6e1ef737a586f8798881e64bb0384eb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/base_tab_strip_region_view.cc",
+      "sha256": "74476b2d47cd6c95ce769c62d59505b978fd4655429c54090f538976e17e5b7d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_strip_view.cc",
+      "sha256": "11adcc521c5930609e5ab6cabf3c5194814756ac5344df4a375f77af790f8594"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc",
+      "sha256": "b75f25bda129c7aa78b854db0b04f0bd4bbd7b7a0f7ff71aab25cf42f79a41df"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc",
+      "sha256": "40f5c1210307aedb51961a32f466f8a9b6faf5cec3bcbbef4f1edf3a1d68e6d2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc",
+      "sha256": "02691a4de119ffbbe000dae99366f3427f24cd291b9aa5d2b00c037668de0b54"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "sha256": "376fd7244198f599f631427401c073df51aba175f13bc637d02ff026983c1d6a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/037dfc80.c",
+      "sha256": "3e2f860db024cec514cb608ab55e53b5f28e1fc6c06b67273015d5cd3d5c7fc3"
+    }
+  ],
+  "observedIndependentRows": {
+    "source": "AuxSidebarView::Rebuild",
+    "effects": [
+      "Bookmarks heading +independent BookmarkModel projection and Openbookmarks/empty-state",
+      "Chats heading +independent authenticated taskfeed projection and NewChat/Showall",
+      "Tabs heading +extra NewTab button"
+    ],
+    "disposition": "Retire this extra mounted body; preserve source-based native tabmodel collection, same rows/actions/drag/live customscroll. Menu classes remain; no generic replacement body."
+  },
+  "actual155ModelOwnership": "BaseTabStripRegionView::InitializeTabStrip creates RootTabCollectionNode with actualTabStripModel, actualTabStripCollectionController; samecommonTabStripView owns actualpinned/unpinned containers; restoredVerticalTabStripScrollView is actualunpinnedscroll. Savedentries are separate regionleaf with realPinService and pause/rebind lifecycle.",
+  "limits": [
+    "This removes positively identified extra independent UI, not full153-v155 row paint/typography/collection parity.",
+    "Exact original rowfactory, all group/tab leaf paint and full original body geometry remain unverified; no guessedrestyling.",
+    "No actualUI/runtime observation by this lane; supplied screenshot is parent-owned observation."
+  ]
+}

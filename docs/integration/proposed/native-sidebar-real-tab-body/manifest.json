@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "base": "actual268 after genuine footer retirement; provider unchanged",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "3c056e124ac4747341bcfb0b3f88f726e4ad472aff23aeb8ea138a3e1b4e0542",
+      "outputSha256": "4135ee899746e19a4de3469394f044103876827d0e665aa0aba72b62d3beab5c",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-sidebar-real-tab-body/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "1bd2175c5467315fe8e7b4ee2c0ef5defb6534f719122ebc04217e09e2584633",
+      "outputSha256": "5ba0b5fcd6628aa966e40e7425e202fe63379666ad2fd8c4d63e1f06d999a84e",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-sidebar-real-tab-body/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "c245d4bd6408cefa46c7ef0c2714f7a6a89691e33ce59f7d8fb32ecbe98fa82b",
+      "outputSha256": "26a18b2e6abdee308bef1a1f6820aae0e0562badf2881fca57228c8a8aac7f4b",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-sidebar-real-tab-body/baseline/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.h",
+      "baselineSha256": "209979286689c046cc1ed3d2912542faca867e77485f03920abe261bd008f7a2",
+      "outputSha256": "52951df338efc8171695b6415fb19ea2e6ee644080d6684a18e1ed075cc59c03",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-sidebar-real-tab-body/baseline/chrome/browser/ui/views/frame/aux_sidebar_view.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "4e84fadf6e88ed170d35e9bb8dc37ed1b6e1ef737a586f8798881e64bb0384eb",
+      "outputSha256": "63e28cf8c9130a409f750ae6e7dbb9835ea7b0e711edfdf26cba95fc661be2f1",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-sidebar-real-tab-body/baseline/chrome/browser/ui/views/frame/aux_sidebar_view.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

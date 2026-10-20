@@ -1,0 +1,193 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -51,7 +51,6 @@
+ class ProfileSearchButton;
+ }
+ 
+-class AuxSidebarView;
+ class BrowserView;
+ class Profile;
+ class VerticalPinnedTabEntriesView;
+@@ -108,7 +107,6 @@
+   // their callback lists across the supplied same-window transaction.
+   bool CanRebindForAuxProfileSwitch(Profile* target) const;
+   uint64_t BeginAuxProfileSwitch(Profile* target);
+-  void RebindAuxProfileSwitch();
+   void EndAuxProfileSwitch(uint64_t generation);
+ 
+   views::View* GetPinnedTabEntriesViewForAuxProfilePreview();
+@@ -261,7 +259,6 @@
+   void HandleMouseExited();
+ 
+   void OnTabStripViewSet() override;
+-  void OnAuxAgentActiveChanged(bool active);
+   void OnTabStripViewWillClear() override;
+ 
+   void OnCollapseStateChanged(
+@@ -330,7 +327,7 @@
+   raw_ptr<views::Separator> top_button_separator_ = nullptr;
+   raw_ptr<VerticalPinnedTabEntriesView> pinned_tab_entries_ = nullptr;
+   std::optional<uint64_t> pinned_profile_switch_generation_;
+-  raw_ptr<AuxSidebarView> aux_sidebar_ = nullptr;
++  uint64_t pinned_profile_switch_next_generation_ = 0;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -202,15 +202,6 @@
+   pinned_tab_entries_->SetProperty(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
+-  aux_sidebar_ = AddChildView(
+-      std::make_unique<AuxSidebarView>(browser_view->browser()));
+-  aux_sidebar_->SetProperty(
+-      views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+-
+-  aux_sidebar_->SetRunningChangedCallback(base::BindRepeating(
+-      &VerticalTabStripRegionView::OnAuxAgentActiveChanged,
+-      base::Unretained(this)));
+-
+   bottom_button_container_ =
+       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
+           state_controller_, root_action_item, browser_view->browser(),
+@@ -832,29 +823,25 @@
+ 
+ bool VerticalTabStripRegionView::CanRebindForAuxProfileSwitch(
+     Profile* target) const {
+-  return pinned_tab_entries_ && target &&
++  return pinned_tab_entries_ && target && target->IsRegularProfile() &&
+          target->GetPrefs()->FindPreference(aux::kPinnedTabEntriesPref) &&
+-         aux_sidebar_ && resize_area_ &&
+-         !resize_area_->is_resizing() &&
+-         aux_sidebar_->CanRebindForAuxProfileSwitch(target);
++         !pinned_profile_switch_generation_ && resize_area_ &&
++         !resize_area_->is_resizing();
+ }
+ 
+ uint64_t VerticalTabStripRegionView::BeginAuxProfileSwitch(Profile* target) {
+   CHECK(CanRebindForAuxProfileSwitch(target));
++  // Keep the genuine saved-entry observer lifecycle. The live tab collection
++  // is paused/rebound by its actual controller, not an independent task feed.
++  CloseAuxProfileMenu(browser_view()->browser());
+   pinned_tab_entries_->PauseForProfileSwitch();
+-  const auto generation = aux_sidebar_->BeginAuxProfileSwitch(target);
++  const auto generation = ++pinned_profile_switch_next_generation_;
++  CHECK(generation != 0);
+   pinned_profile_switch_generation_ = generation;
+   return generation;
+ }
+ 
+-void VerticalTabStripRegionView::RebindAuxProfileSwitch() {
+-  // Both commit and rollback derive the actual currently authoritative
+-  // Browser profile. Do not copy another window's rendered rows or sources.
+-  aux_sidebar_->RebindAuxProfileSwitch();
+-}
+-
+ void VerticalTabStripRegionView::EndAuxProfileSwitch(uint64_t generation) {
+-  aux_sidebar_->EndAuxProfileSwitch(generation);
+   if (pinned_profile_switch_generation_ == generation) {
+     pinned_profile_switch_generation_.reset();
+     pinned_tab_entries_->RebindAfterProfileSwitch();
+@@ -916,10 +903,6 @@
+   if (aux_profile_preview_owner_) {
+     aux_profile_preview_owner_->Cancel();
+   }
+-}
+-
+-void VerticalTabStripRegionView::OnAuxAgentActiveChanged(bool active) {
+-  top_button_container_->SetAgentActive(active);
+ }
+ 
+ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -956,9 +939,11 @@
+               &VerticalTabStripRegionView::OnExpandOnHoverEnabledChanged,
+               base::Unretained(this)));
+ 
+-  std::optional<size_t> sidebar_index = GetIndexOf(aux_sidebar_);
+-  CHECK(sidebar_index.has_value());
+-  ReorderChildView(tab_strip_view(), sidebar_index.value() + 1);
++  // Original region+5b0 contains the real model-owned tab body immediately
++  // after the saved entries.155 owns its custom scroll under TabStripView.
++  const auto entries_index = GetIndexOf(pinned_tab_entries_);
++  CHECK(entries_index.has_value());
++  ReorderChildView(tab_strip_view(), entries_index.value() + 1);
+ 
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
+   InitializeAuxProfilePreview();
+@@ -992,7 +977,6 @@
+                            resize_area_->is_resizing());
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+-  aux_sidebar_->SetVisible(!collapsed);
+   top_button_separator_->SetVisible(collapsed);
+   bottom_button_container_->SetVisible(collapsed);
+ 
+@@ -1566,7 +1550,6 @@
+   top_button_container_->SetAuxProfilePreviewPresentation(
+       compact, admission->retained());
+   pinned_tab_entries_->SetCompactPresentation(compact);
+-  aux_sidebar_->SetVisible(!compact);
+   top_button_separator_->SetVisible(compact);
+   bottom_button_container_->SetVisible(compact);
+   resize_area_width_ = compact ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+@@ -1679,9 +1662,5 @@
+ 
+ TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
+     const gfx::Point& point_in_screen) {
+-  if (aux_sidebar_) {
+-    if (auto* target = aux_sidebar_->GetPinnedTabDragTarget(point_in_screen))
+-      return target;
+-  }
+   return BaseTabStripRegionView::GetTabDragTarget(point_in_screen);
+ }
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -911,12 +911,6 @@
+       return;
+     }
+   }
+-  if (plan->vertical) {
+-    plan->vertical->RebindAuxProfileSwitch();
+-    if (!alive()) {
+-      return;
+-    }
+-  }
+   if (features_->glic_split_button_controller_) {
+     // Rebind the actual service only after target toolbar/vertical delegates
+     // and dormant real bubble view owners have their target profile identity.
+@@ -1214,10 +1208,6 @@
+     }
+   }
+   if (plan->vertical) {
+-    plan->vertical->RebindAuxProfileSwitch();
+-    if (!alive()) {
+-      return;
+-    }
+     plan->vertical->EndAuxProfileSwitch(plan->vertical_generation);
+     if (!alive()) {
+       return;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.h
+@@ -38,6 +38,8 @@
+ // Genuine supplied primary profile menu; anchor must belong to a live Widget.
+ void ShowAuxProfileMenu(BrowserWindowInterface* browser, views::View* anchor);
+ bool IsAuxProfileMenuShowing(BrowserWindowInterface* browser);
++// Retire the actual menu before a real same-window profile transfer.
++void CloseAuxProfileMenu(BrowserWindowInterface* browser);
+ // Actual kind7 menu for this registered profile and clicked live anchor.
+ void ShowAuxProfileActions(BrowserWindowInterface* browser,
+                            views::View* anchor,
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1749,6 +1749,10 @@
+   }
+ }
+ 
++void CloseAuxProfileMenu(BrowserWindowInterface* browser) {
++  RetireAuxProfileMenu(browser);
++}
++
+ bool IsAuxProfileMenuShowing(BrowserWindowInterface* browser) {
+   const auto& menus = ActiveAuxProfileMenus();
+   auto found = menus.find(browser);
