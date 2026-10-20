@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v528",
+  "files": [
+    {
+      "path": "content/browser/preloading/prerender/prerender_host.cc",
+      "baselineSha256": "aa2f518cc76e294511d5c1749e4b97c6bf926e1494ab46c0a8655aa2d7b0a137",
+      "outputSha256": "07594e4c0a48e660e179299dd5951112f147e10904232d2797e4803d30a85f66"
+    }
+  ]
+}

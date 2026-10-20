@@ -1,0 +1,19 @@
+--- a/content/browser/preloading/prerender/prerender_host.cc
++++ b/content/browser/preloading/prerender/prerender_host.cc
+@@ -1050,9 +1050,13 @@
+   // Relaxes checks for initiator, transition type, and headers. This logic is
+   // intended to be used for WebView, as WebView is intended to host
+   // embedder-trusted contests.
+-  bool allow_partial_mismatch =
+-      web_contents_->GetDelegate()->ShouldAllowPartialParamMismatchOfPrerender2(
+-          navigation_request);
++  // A WebContents can be temporarily detached from its embedder during tab
++  // adoption. Without a delegate, retain the default strict compatibility
++  // checks rather than dereferencing an absent optional policy provider.
++  auto* delegate = web_contents_->GetDelegate();
++  const bool allow_partial_mismatch =
++      delegate && delegate->ShouldAllowPartialParamMismatchOfPrerender2(
++                      navigation_request);
+   // Compare BeginNavigationParams.
+   ActivationNavigationParamsMatch result =
+       AreBeginNavigationParamsCompatibleWithNavigation(
