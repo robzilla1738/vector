@@ -1,0 +1,84 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x426b100",
+      "end": "0x426b330",
+      "sha256": "0ee25df172c86e077f6804d41b41d3ca4591ebab2c3eb2e12891a0b373d63054",
+      "listing": "chooser.asm",
+      "listingSha256": "c5c415bea5a443f9d0e590aa732ab0cd1784e50fa23b6ed522fab3efd26620c0"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdf7a56e",
+      "text": "Import ",
+      "encoding": "utf-16le",
+      "hex": "49006d0070006f00720074002000"
+    },
+    {
+      "address": "0xdf7a57e",
+      "text": " Data",
+      "encoding": "utf-16le",
+      "hex": "20004400610074006100"
+    },
+    {
+      "address": "0xdf7a58a",
+      "text": "Where do you want to import ",
+      "encoding": "utf-16le",
+      "hex": "57006800650072006500200064006f00200079006f0075002000770061006e007400200074006f00200069006d0070006f00720074002000"
+    },
+    {
+      "address": "0xdf7a5c4",
+      "text": " data?",
+      "encoding": "utf-16le",
+      "hex": "200064006100740061003f00"
+    },
+    {
+      "address": "0xdb2042e",
+      "text": "New Profile",
+      "encoding": "utf-8",
+      "hex": "4e65772050726f66696c65"
+    },
+    {
+      "address": "0xdb2043a",
+      "text": "Current Profile",
+      "encoding": "utf-8",
+      "hex": "43757272656e742050726f66696c65"
+    },
+    {
+      "address": "0xd9bd672",
+      "text": "Cancel",
+      "encoding": "utf-8",
+      "hex": "43616e63656c"
+    }
+  ],
+  "selectors": [
+    {
+      "address": "0xc1512cc",
+      "hex": "b05300b01002119100021fd6",
+      "decoded": "objc:setAlertStyle:"
+    },
+    {
+      "address": "0xc1512b4",
+      "hex": "905300b01002259100021fd6",
+      "decoded": "objc:setMessageText:"
+    },
+    {
+      "address": "0xc1512c0",
+      "hex": "905300b01082259100021fd6",
+      "decoded": "objc:setInformativeText:"
+    },
+    {
+      "address": "0xc1512d8",
+      "hex": "905300b01002269100021fd6",
+      "decoded": "objc:addButtonWithTitle:"
+    },
+    {
+      "address": "0xc15129c",
+      "hex": "905300b01082269100021fd6",
+      "decoded": "objc:runModal"
+    }
+  ]
+}
