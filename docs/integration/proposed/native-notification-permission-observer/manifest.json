@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.h",
+      "baselineSha256": "8de3732b0ddb18e5780b3b4171ae3a7f5f9bbcdf0f1c81e3255a5617b6859b35",
+      "outputSha256": "6a411d8832810c7c7bd7945b35e0fdd15441dec1d91be17bf6c8681dcb5de8db"
+    },
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.cc",
+      "baselineSha256": "157ae7e62b47a63cab8902ecab3c2b6f365ba2d7b28aa98492265cf7989902ee",
+      "outputSha256": "d27ba0062a880a78d755a9367b94af42ee90e7002018541c7d399fec5d40a05c"
+    },
+    {
+      "path": "chrome/browser/notifications/platform_notification_service_impl.cc",
+      "baselineSha256": "316b87bfc9fec8ce1daefaadaf7a46f4be815a54de924845acf53971a95ba30d",
+      "outputSha256": "fe90a5bbb0a9cf7162e9b9431fd82039d25c321b780d4906b601089dfd0973ba"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "parent": "b886d3e02 native-notification-inbox-pipeline"
+}

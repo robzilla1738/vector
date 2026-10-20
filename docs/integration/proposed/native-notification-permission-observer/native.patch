@@ -1,0 +1,222 @@
+--- a/chrome/browser/notifications/aux_notification_inbox.h
++++ b/chrome/browser/notifications/aux_notification_inbox.h
+@@ -2,15 +2,19 @@
+ #ifndef CHROME_BROWSER_NOTIFICATIONS_AUX_NOTIFICATION_INBOX_H_
+ #define CHROME_BROWSER_NOTIFICATIONS_AUX_NOTIFICATION_INBOX_H_
+ 
++#include <map>
++#include <set>
+ #include <optional>
+ #include <string>
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/values.h"
++#include "components/prefs/pref_change_registrar.h"
+ #include "third_party/skia/include/core/SkBitmap.h"
+ 
+ class Profile;
+ class GURL;
++class ContentSettingsPattern;
+ namespace blink { struct PlatformNotificationData; }
+ 
+ namespace aux {
+@@ -25,6 +29,8 @@
+       const SkBitmap& image, bool persistent);
+   bool IsAiOnly(const GURL& origin) const;
+   void Shutdown();
++  void OnContentSettingChanged(const ContentSettingsPattern& primary,
++                               const ContentSettingsPattern& secondary);
+ 
+  private:
+   struct SaveResult {
+@@ -35,7 +41,14 @@
+   static SaveResult Save(const base::FilePath& profile_path,
+       base::DictValue payload, SkBitmap image, bool persistent);
+   void DidSave(base::DictValue payload, SaveResult result);
++  std::set<std::string> CollectPermissionOrigins() const;
++  std::string ReadPermission(const GURL& origin) const;
++  void OnDeliveryModesChanged();
++  void RefreshPermissionOrigins(const std::set<std::string>& origins,
++                                const char* source);
+   base::WeakPtr<Profile> profile_;
++  PrefChangeRegistrar permission_prefs_;
++  std::map<std::string, std::string> permission_snapshot_;
+   base::WeakPtrFactory<NotificationInbox> weak_{this};
+ };
+ }  // namespace aux
+--- a/chrome/browser/notifications/aux_notification_inbox.cc
++++ b/chrome/browser/notifications/aux_notification_inbox.cc
+@@ -15,6 +15,10 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
++#include "components/content_settings/core/common/content_settings.h"
++#include "components/content_settings/core/common/content_settings_types.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "crypto/aead.h"
+@@ -33,6 +37,7 @@
+ #include "third_party/blink/public/common/notifications/platform_notification_data.h"
+ #include "ui/gfx/codec/png_codec.h"
+ #include "url/gurl.h"
++#include "url/origin.h"
+ 
+ namespace aux {
+ namespace {
+@@ -59,13 +64,13 @@
+   void DispatchOnMessage(extensions::Message message) override {}
+ };
+ 
+-void Dispatch(Profile& profile, base::DictValue payload) {
++void Dispatch(Profile& profile, const char* message_type, base::DictValue payload) {
+   auto* registry = extensions::ExtensionRegistry::Get(&profile);
+   if (!registry ||
+       !registry->enabled_extensions().GetByID(kAgentExtensionId)) return;
+   auto* service = extensions::MessageService::Get(&profile);
+   if (!service) return;
+-  payload.Set("type", kInboxMessage);
++  payload.Set("type", message_type);
+   std::string serialized;
+   if (!base::JSONWriter::Write(payload, &serialized)) return;
+   const extensions::PortId id(base::UnguessableToken::Create(), 1, true,
+@@ -73,7 +78,7 @@
+   auto delegate = service->GetChannelDelegate();
+   auto port = std::make_unique<InboxMessagePort>(delegate, id);
+   service->OpenChannelToExtension(extensions::ChannelEndpoint(&profile), id,
+-      extensions::MessagingEndpoint::ForNativeApp(kInboxMessage), std::move(port),
++      extensions::MessagingEndpoint::ForNativeApp(message_type), std::move(port),
+       kAgentExtensionId, GURL(), extensions::mojom::ChannelType::kSendMessage,
+       std::string());
+   if (delegate) {
+@@ -114,13 +119,35 @@
+   if (!statement.Run()) return std::nullopt;
+   return database.GetLastInsertRowId();
+ }
++std::optional<std::string> PermissionOrigin(const GURL& url) {
++  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) return std::nullopt;
++  return url::Origin::Create(url).Serialize();
++}
++std::optional<std::string> PermissionOrigin(
++    const ContentSettingsPattern& pattern) {
++  if (!pattern.IsValid() || pattern == ContentSettingsPattern::Wildcard())
++    return std::nullopt;
++  return PermissionOrigin(GURL(pattern.ToString()));
++}
+ }  // namespace
+ 
+ NotificationInbox::NotificationInbox(Profile& profile)
+-    : profile_(profile.GetWeakPtr()) {}
++    : profile_(profile.GetWeakPtr()) {
++  permission_prefs_.Init(profile.GetPrefs());
++  permission_prefs_.Add(kDeliveryModes,
++      base::BindRepeating(&NotificationInbox::OnDeliveryModesChanged,
++                          weak_.GetWeakPtr()));
++  // Original constructor seeds without replaying historical notifications or
++  // permission-change events to the Agent.
++  for (const auto& origin : CollectPermissionOrigins()) {
++    std::string state = ReadPermission(GURL(origin));
++    if (state != "default") permission_snapshot_.emplace(origin, std::move(state));
++  }
++}
+ NotificationInbox::~NotificationInbox() = default;
+ void NotificationInbox::Shutdown() {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  permission_prefs_.RemoveAll();
+   weak_.InvalidateWeakPtrs();
+   profile_.reset();
+ }
+@@ -181,6 +208,79 @@
+     payload.Set("inbox_save_failed", true);
+   }
+   if (result.image_base64) payload.Set("image_png_base64", *result.image_base64);
+-  Dispatch(*profile_, std::move(payload));
++  Dispatch(*profile_, kInboxMessage, std::move(payload));
++}
++std::set<std::string> NotificationInbox::CollectPermissionOrigins() const {
++  std::set<std::string> origins;
++  if (!profile_) return origins;
++  auto* settings = HostContentSettingsMapFactory::GetForProfile(profile_.get());
++  for (const auto& rule : settings->GetSettingsForOneType(
++           ContentSettingsType::NOTIFICATIONS)) {
++    if (auto origin = PermissionOrigin(rule.primary_pattern)) origins.insert(*origin);
++  }
++  for (const auto entry : profile_->GetPrefs()->GetDict(kDeliveryModes)) {
++    if (auto origin = PermissionOrigin(GURL(entry.first))) origins.insert(*origin);
++  }
++  return origins;
++}
++std::string NotificationInbox::ReadPermission(const GURL& origin) const {
++  if (!profile_ || !origin.is_valid() || !origin.SchemeIsHTTPOrHTTPS())
++    return "default";
++  const GURL canonical = origin.DeprecatedGetOriginAsURL();
++  const ContentSetting setting =
++      HostContentSettingsMapFactory::GetForProfile(profile_.get())->GetContentSetting(
++          canonical, canonical, ContentSettingsType::NOTIFICATIONS);
++  if (setting == CONTENT_SETTING_BLOCK) return "deny";
++  if (setting != CONTENT_SETTING_ALLOW) return "default";
++  return IsAiOnly(canonical) ? "allow_for_ai" : "allow";
++}
++void NotificationInbox::OnDeliveryModesChanged() {
++  RefreshPermissionOrigins(CollectPermissionOrigins(), "api");
++}
++void NotificationInbox::OnContentSettingChanged(
++    const ContentSettingsPattern& primary,
++    const ContentSettingsPattern& secondary) {
++  if (!profile_) return;
++  std::set<std::string> origins;
++  if (auto origin = PermissionOrigin(primary)) origins.insert(*origin);
++  if (auto origin = PermissionOrigin(secondary)) origins.insert(*origin);
++  if (origins.empty()) origins = CollectPermissionOrigins();
++  RefreshPermissionOrigins(origins, "native_ui");
++}
++void NotificationInbox::RefreshPermissionOrigins(
++    const std::set<std::string>& origins, const char* source) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto self = weak_.GetWeakPtr();
++  for (const auto& origin : origins) {
++    if (!profile_) return;
++    const GURL url(origin);
++    const std::string state = ReadPermission(url);
++    const auto previous = permission_snapshot_.find(origin);
++    const std::string old_state = previous == permission_snapshot_.end()
++        ? "default" : previous->second;
++    if (state == old_state) continue;
++    // Update before SetDict: its genuine synchronous pref callback can reenter.
++    if (state == "default") permission_snapshot_.erase(origin);
++    else permission_snapshot_.insert_or_assign(origin, state);
++    if (state == "default" || state == "deny") {
++      auto* settings = HostContentSettingsMapFactory::GetForProfile(profile_.get());
++      const GURL canonical = url.DeprecatedGetOriginAsURL();
++      if (settings->GetContentSetting(canonical, canonical,
++              ContentSettingsType::NOTIFICATIONS) != CONTENT_SETTING_ALLOW) {
++        base::DictValue modes = profile_->GetPrefs()->GetDict(kDeliveryModes).Clone();
++        if (modes.Remove(canonical.spec())) {
++          profile_->GetPrefs()->SetDict(kDeliveryModes, std::move(modes));
++          if (!self || !self->profile_) return;
++        }
++      }
++    }
++    base::DictValue payload;
++    payload.Set("origin", origin);
++    payload.Set("permission", state);
++    payload.Set("source", source);
++    payload.Set("timestamp", base::Time::Now().InMillisecondsFSinceUnixEpoch());
++    Dispatch(*profile_, "aside.notificationPermissionChanged", std::move(payload));
++    if (!self) return;
++  }
+ }
+ }  // namespace aux
+--- a/chrome/browser/notifications/platform_notification_service_impl.cc
++++ b/chrome/browser/notifications/platform_notification_service_impl.cc
+@@ -250,6 +250,9 @@
+   if (!content_type_set.Contains(ContentSettingsType::NOTIFICATIONS))
+     return;
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_inbox_->OnContentSettingChanged(primary_pattern, secondary_pattern);
++#endif
+   auto recorder = base::MakeRefCounted<RevokeDeleteCountRecorder>();
+   profile_->ForEachLoadedStoragePartition(
+       [&](content::StoragePartition* partition) {

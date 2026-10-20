@@ -1,0 +1,105 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x32f48ac",
+      "endExclusive": "0x32f4d90",
+      "bytesSha256": "3d89f36966180bc9ecaff94a687e0509980710ad7c059a3bcd557e23922bb5f4",
+      "file": "constructor-silent-snapshot.asm",
+      "assemblySha256": "d28725c181653eb6d8f59eb34b991c6ca352ee7e372092dd306c1f7d70a8a61e"
+    },
+    {
+      "start": "0x40f881c",
+      "endExclusive": "0x40f88d0",
+      "bytesSha256": "8600e250bdd1f6476bde162d7f36dd8bf6ecdcfc5b0c646c9b2ecee4cd0411ce",
+      "file": "pref-callback-shutdown.asm",
+      "assemblySha256": "a3e90b9ca0d04127af65719d96757f73994f05174aec39488f0bc50c8c8223fc"
+    },
+    {
+      "start": "0x40f8df0",
+      "endExclusive": "0x40f978c",
+      "bytesSha256": "1dcf2ac5ca1d5f6ad92dbca2e2c6bba803c2d46574ea7840a633b21a1766eab2",
+      "file": "snapshot-diff-events.asm",
+      "assemblySha256": "555b438b1261118f3536de1238b56ca258f9fd27f59ac8c782ba0c7c0e0391c2"
+    },
+    {
+      "start": "0x40f978c",
+      "endExclusive": "0x40f9eb8",
+      "bytesSha256": "d0766b016e550c5faf3757f611cfef0852359f031a47ca2e17da9da83ac6ca5d",
+      "file": "origins-patterns-status.asm",
+      "assemblySha256": "0962cd543a00ca0f1130469aca3f344238036f8b8033b4b8802a6fbfa637856c"
+    },
+    {
+      "start": "0x40faf40",
+      "endExclusive": "0x40fb030",
+      "bytesSha256": "82c0d46ec90ae8865a3163504bc577435a852786e69103c3da8152405e3109c4",
+      "file": "origin-normalizer.asm",
+      "assemblySha256": "c7ecaae3b044d645c33ce7ebcde20511f2405277975e6e8b0d98d0b85bfbcb5e"
+    },
+    {
+      "start": "0x22ef2b0",
+      "endExclusive": "0x22ef340",
+      "bytesSha256": "fe66abea6471cb9ad9657d0793a9e713acc9c1764ac1310e24e88eb806a9e0c2",
+      "file": "content-setting-callback.asm",
+      "assemblySha256": "0e2a749484262a4695f6474a92bf915f247fd1bb9a5bb05c4f5fd5e2195c2644"
+    },
+    {
+      "start": "0xe7a640",
+      "endExclusive": "0xe7ab40",
+      "bytesSha256": "2c57b449982ca786c8c08baedce82e7fea4d1a5ed30c0bcfc61307685c803b80",
+      "file": "pattern-compare.asm",
+      "assemblySha256": "517b0bb15aa7b3ba03f6d6844b7a69842d71ce33370015b832eae8af66c5912a"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0xcee9acf",
+      "text": "api"
+    },
+    {
+      "address": "0xcee9ad3",
+      "text": "default"
+    },
+    {
+      "address": "0xcee9adb",
+      "text": "deny"
+    },
+    {
+      "address": "0xcee9ae0",
+      "text": "native_ui"
+    },
+    {
+      "address": "0xcee9b4f",
+      "text": "allow_for_ai"
+    },
+    {
+      "address": "0xcee9b5c",
+      "text": "allow"
+    }
+  ],
+  "readOnlyFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/core/browser/host_content_settings_map.h",
+      "sha256": "9f7ec0ccc270d1145ec798c4a0995e53922866fa226a3dc630e66722d38dc807"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/core/common/content_settings_pattern.h",
+      "sha256": "1382a48a518c2d41ca1d67bdf6184eb953877c271d3a3c702f44cf768a1826fd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/core/common/content_settings_pattern.cc",
+      "sha256": "c31aba1121270d87ec4d79b29d0ebdcc845875eb394cad4c17c2b96ef6ae7f7b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/content_settings/core/browser/content_settings_type_set.h",
+      "sha256": "2e1debee2adb31ff16e595e9baec0958707ffb620a2a9a4bc456e3bee250f8e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_change_registrar.h",
+      "sha256": "4a0f8d27a8ef8165c033341ff6bc8d81386a26d52a67078885cf72b9ce2a2e01"
+    }
+  ]
+}
