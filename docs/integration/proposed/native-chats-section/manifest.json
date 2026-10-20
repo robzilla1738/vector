@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "base": "new genuine Chats section/NewChat files; consumes appliedcommonsection/model/clip and bf037row+root155compat",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "baselineSha256": null,
+      "outputSha256": "14a2c4e05c8254b29e035f55ee051a7e3e185225082131068c975222e3d58239"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.h",
+      "baselineSha256": null,
+      "outputSha256": "22cc982dc03afeda67ee2fde99d7bb2913e78e21d845224df36992ace61d7819"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_new_chat_icon.inc",
+      "baselineSha256": null,
+      "outputSha256": "411ea3486723be30a2d74b50b6fb9abc52867103ef83fe576775a1823219449e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_new_chat_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "25e86caf4b8be1d86c17f8631a15c14788e98de149e47a738631481d7147ad8e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_new_chat_view.h",
+      "baselineSha256": null,
+      "outputSha256": "cf53c141cdf429983ab49453b62b8b9d1d0c798067e2b308c54ce363d3b3be30"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

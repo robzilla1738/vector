@@ -1,0 +1,68 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "prefs",
+      "start": "0x34e3f1c",
+      "stopExclusive": "0x34e43f4",
+      "bytesSha256": "493490ac03e9333cf85cb5b20c2a60684bf27ce2574482dee2868e16c26d71bd",
+      "asmSha256": "67af0df255d56b4cd3cef280252497a586c1658db6ee0837eeada21ff10af761"
+    },
+    {
+      "name": "construct",
+      "start": "0x37e1c00",
+      "stopExclusive": "0x37e2c90",
+      "bytesSha256": "57a8b833352307e583dc24a698f21b045247e7e4c7d50b58ffba22a137605ded",
+      "asmSha256": "c70507406b196a039e59fdf954472051dabcef5a29a2853f91d8fec9c1ee9788"
+    },
+    {
+      "name": "height-toggle",
+      "start": "0x4667530",
+      "stopExclusive": "0x4667728",
+      "bytesSha256": "d591120db5fb123d406f08f3435fcf45e4ab2fb1027beb92050e1a32eae5da3c",
+      "asmSha256": "1b0fcf0ddd2029c9464956c15043d4b736c253a1c56fd6b666c378ba75d22200"
+    },
+    {
+      "name": "new-tab-base-ctor",
+      "start": "0x4242e5c",
+      "stopExclusive": "0x4243628",
+      "bytesSha256": "db33f66678cdeddc3802fa55a6fb1cc3dc19c46492212d31a46c2f8888403591",
+      "asmSha256": "42ee3c50aecaff53a6d3e1931dc921a5023639731fb5fa19ad6b32eb11e67d3f"
+    },
+    {
+      "name": "new-tab-base-hover",
+      "start": "0x4243d10",
+      "stopExclusive": "0x4243f60",
+      "bytesSha256": "5af8a3e3851b3cb121a5100a228b4293dfb10a4af43a6283008bcb9d4e36fad8",
+      "asmSha256": "2821f5010e7c80cdfa8d7fa2faa5091bdb5b34c9cb54a3e2eacffc8e357f80e5"
+    },
+    {
+      "name": "new-chat-selected",
+      "start": "0x46695b0",
+      "stopExclusive": "0x4669bfc",
+      "bytesSha256": "2bba50c20df621ed073902c47f2f9e307f0bc453b9198548afd51e649c5fc30c",
+      "asmSha256": "239457a8f7dfa0f748f3a37eaadc1a6cc8d371626e229192726f5f879f6b3292"
+    },
+    {
+      "name": "new-chat-presentation",
+      "start": "0x4643390",
+      "stopExclusive": "0x464349c",
+      "bytesSha256": "1f5a378f7a23e81e61e0d85465194c3e29892d3e9b385c3aba4ded4fecde7981",
+      "asmSha256": "81f3133d291508dd256811f145757b2e6ff300a8b64833f57a437d96ce436f94"
+    }
+  ],
+  "locale": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Resources/en.lproj/locale.pak",
+    "sha256": "b3e12b14fee821ba97f6efd73554d344c8c79791ef60e46c05029859853320c6",
+    "resource": 11311,
+    "text": "Show all"
+  },
+  "newChatGlyph": {
+    "address": "0xd3db640",
+    "elements": 275,
+    "sha256": "28c152be5a7e69ce058c0451e18d2d6d607c05cf2e3c875d52f567b51ad2189e"
+  }
+}

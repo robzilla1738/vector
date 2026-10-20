@@ -1,0 +1,15 @@
+# Genuine Chats section and New Chat ownership
+
+Source-only next part of the ongoing complete body owner, **unmounted**. No independent body/provider retirement. This consumes actual common section, clipped view and Chat rows already delivered; root owns GN/compilation and final mounted assembly.
+
+`AuxChatsSection` preserves the derived `AsideSectionView` graph (region+5c8): actual header, New Chat container, actual clipped row list, real expanded-state preference, original reversible180ms animation and exact measured/animated-height split. The original registration034e3f1c explicitly stores booleantrue/flags0 for `aside.vertical_tabs.chats_section_expanded`; `RegisterPrefs` exposes exactly that for root's real profile registry. Current profile observations can pause/rebind without fabricating changed preference values.
+
+Actual section insets4,0,8,0, header outer0,8 and final contents margin1,0,0,0 are preserved. The New Chat container has margins0,7,0,7 and its internal verticalBox inset1,1,0,1; clip margins2,7,0,7. Each row is32px with2px top spacing except first. Height is intentionally34*(records+1)-1 when nonempty (including real Show all row),0when empty; animated height rounds away from zero. Clip stays visible while animating even at0.
+
+`AuxNewChatView` preserves two real source leaves: normal `VerticalNewTabButton` LabelButton graph (metadata4244a44, headerliteraldb10d59), and selected `AsideNewChatTabButton` Button graph (46697f8). Normal is14px normal text/16px glyph/8px spacing/6x8 inset, minimum32px height and radius8 hover; selected has32px height, exact225foreground/214background/radius10. The275-element original glyph is copied exactly. Presentation takes actual optionalTabHandle and actual active state from4643390; no width/collapsed heuristic. Both receive the source original New Chat operation callback. The shortcut-help text must come from actual native command mapping, not an invented key label. Original command lookup is0x8513; currentAux numericcommand differs and remains an integration dependency.
+
+Show all is pinned to actual1852 native locale.pak resource11311 (alias of10899), UTF8 bytes `Show all`. The older Downloads locale text omitted aliases and could not establish it; no guessed Show all chats label is used.
+
+All seven action callbacks are required: genuine NewChat, select, Rename settlement, Archive, row context, ShowAll and section context. They are not successful defaults or no-ops. The containing source tab/menu/poll owner still needs to supply the real implementation, perform current account/profile binding and mount this section alongside genuine Bookmarks/Tabs. The original task popover bridge and exact hovered Archive icon-button paint remain readiness dependencies. This proposal alone must not be called end-to-end Chats parity.
+
+Verify with `python3 verify.py`: original bytes and glyph/constants/locale alias, plus fresh temporary patch replay. No native writes/builds/browser/profile/clipboard/auth/credential/Keychain/OS operation occurred. Compiled/runtime/UI acceptance is not claimed.

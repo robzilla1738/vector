@@ -1,0 +1,455 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_section.cc
+@@ -0,0 +1,142 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_chats_section.h"
++#include <cmath>
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++#include "chrome/browser/ui/views/frame/aux_new_chat_view.h"
++#include "chrome/browser/ui/views/frame/aux_section_clip_view.h"
++#include "components/prefs/pref_service.h"
++#include "components/user_prefs/pref_registry_syncable.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/view_class_properties.h"
++namespace aux {
++namespace {
++constexpr char kExpanded[] = "aside.vertical_tabs.chats_section_expanded";
++}  // namespace
++void AuxChatsSection::RegisterPrefs(user_prefs::PrefRegistrySyncable* registry) {
++  // Original034e3f1c: booleantrue, flags0; not a new Aux-default invention.
++  registry->RegisterBooleanPref(kExpanded, true);
++}
++AuxChatsSection::AuxChatsSection(PrefService& prefs, Actions actions,
++                                 std::u16string shortcut_help)
++    : AuxSectionView(u"Chats", true,
++          base::BindRepeating(&AuxChatsSection::Toggle, base::Unretained(this)),
++          gfx::Insets::TLBR(4, 0, 8, 0),
++          base::BindRepeating(&AuxChatsSection::ShowSectionContext,
++                               base::Unretained(this)), {}, 2),
++      actions_(std::move(actions)) {
++  CHECK(actions_.new_chat && actions_.selected && actions_.rename &&
++        actions_.archive && actions_.context && actions_.all_chats &&
++        actions_.section_context);
++  header_button()->SetTooltipText(u"Chats with Aux");
++  contents()->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(1, 0, 0, 0));
++  new_chat_ = contents()->AddChildView(std::make_unique<AuxNewChatView>(
++      actions_.new_chat, std::move(shortcut_help)));
++  new_chat_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 7, 0, 7));
++  auto rows = std::make_unique<views::View>();
++  auto* layout = rows->SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kStretch);
++  layout->SetCollapseMarginsSpacing(true);
++  rows_view_ = rows.get();
++  clip_ = contents()->AddChildView(std::make_unique<AuxSectionClipView>(std::move(rows)));
++  clip_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(2, 7, 0, 7));
++  // Original region ctor sets180000us after ShouldRenderRichAnimation check.
++  animation_.SetSlideDuration(gfx::Animation::ShouldRenderRichAnimation()
++      ? base::Milliseconds(180) : base::TimeDelta());
++  BindProfilePrefs(prefs);
++}
++AuxChatsSection::~AuxChatsSection() = default;
++void AuxChatsSection::PauseProfileObservation() {
++  pref_observer_.RemoveAll();
++  prefs_ = nullptr;
++}
++void AuxChatsSection::BindProfilePrefs(PrefService& prefs) {
++  pref_observer_.RemoveAll();
++  CHECK(prefs.FindPreference(kExpanded));
++  prefs_ = &prefs;
++  expanded_ = prefs_->GetBoolean(kExpanded);
++  SetDisclosureOpen(expanded_);
++  animation_.Reset(expanded_ ? 1 : 0);
++  pref_observer_.Init(prefs_);
++  pref_observer_.Add(kExpanded,
++      base::BindRepeating(&AuxChatsSection::PreferenceChanged, base::Unretained(this)));
++  ApplyHeight();
++}
++void AuxChatsSection::Toggle() {
++  if (!prefs_) return;
++  expanded_ = !expanded_;
++  SetDisclosureOpen(expanded_);
++  clip_->SetVisible(true);
++  if (expanded_) animation_.Show();
++  else animation_.Hide();
++  ApplyHeight();
++  // This may notify external actual profile observers that retire this owner.
++  prefs_->SetBoolean(kExpanded, expanded_);
++}
++void AuxChatsSection::PreferenceChanged() {
++  if (!prefs_) return;
++  const bool expanded = prefs_->GetBoolean(kExpanded);
++  if (expanded_ == expanded) return;
++  expanded_ = expanded;
++  SetDisclosureOpen(expanded_);
++  clip_->SetVisible(true);
++  if (expanded_) animation_.Show();
++  else animation_.Hide();
++  ApplyHeight();
++}
++void AuxChatsSection::ShowSectionContext() {
++  auto callback = actions_.section_context;
++  callback.Run(header_button());
++}
++void AuxChatsSection::SetChats(const std::vector<Chat>& chats) {
++  if (chats_ == chats) return;
++  chats_ = chats;
++  rows_.clear();
++  rows_view_->RemoveAllChildViews();
++  for (const auto& chat : chats_) {
++    auto row = std::make_unique<AuxChatRow>(chat, actions_.selected,
++        actions_.rename, actions_.archive, actions_.context);
++    if (!rows_.empty()) row->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(2, 0, 0, 0));
++    row->SetSelected(selected_id_ == chat.id);
++    rows_.push_back(rows_view_->AddChildView(std::move(row)));
++  }
++  if (!chats_.empty()) {
++    Chat show_all;
++    show_all.title = u"Show all";
++    auto row = std::make_unique<AuxChatRow>(std::move(show_all),
++        base::BindRepeating([](base::RepeatingClosure callback, const std::string&) {
++          callback.Run();
++        }, actions_.all_chats), AuxChatRow::Action(), AuxChatRow::Action(),
++        AuxChatRow::Context(), true);
++    row->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(2, 0, 0, 0));
++    rows_view_->AddChildView(std::move(row));
++  }
++  ApplyHeight();
++}
++void AuxChatsSection::SetSelectedChat(std::optional<std::string> id) {
++  if (selected_id_ == id) return;
++  selected_id_ = std::move(id);
++  for (const auto& row : rows_) row->SetSelected(selected_id_ == row->chat().id);
++}
++void AuxChatsSection::SetNewChatRepresentedTab(std::optional<tabs::TabHandle> tab,
++                                             bool active) {
++  new_chat_->SetRepresentedTab(tab, active);
++}
++void AuxChatsSection::ApplyHeight() {
++  // Original4667640 intentionally uses34*(records+1)-1, not measured32*n.
++  const int natural = chats_.empty() ? 0 : (static_cast<int>(chats_.size()) + 1) * 34 - 1;
++  const int animated = static_cast<int>(std::round(natural * animation_.GetCurrentValue()));
++  clip_->SetHeights(animated, natural);
++  clip_->SetVisible(animated > 0 || animation_.is_animating());
++}
++void AuxChatsSection::AnimationProgressed(const gfx::Animation*) { ApplyHeight(); }
++void AuxChatsSection::AnimationEnded(const gfx::Animation*) { ApplyHeight(); }
++void AuxChatsSection::AnimationCanceled(const gfx::Animation*) { ApplyHeight(); }
++BEGIN_METADATA(AuxChatsSection)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_chats_section.h
+@@ -0,0 +1,64 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_SECTION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_CHATS_SECTION_H_
++#include <optional>
++#include <vector>
++#include "base/functional/callback.h"
++#include "chrome/browser/ui/views/frame/aux_chat_row.h"
++#include "chrome/browser/ui/views/frame/aux_section_view.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/tabs/public/tab_interface.h"
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/slide_animation.h"
++class PrefService;
++namespace user_prefs { class PrefRegistrySyncable; }
++namespace aux {
++class AuxNewChatView;
++class AuxSectionClipView;
++// Original region+5c8 derived AsideSectionView owns actual NewChat container,
++// clipped row list, expansion preference and reversible animation.
++class AuxChatsSection final : public AuxSectionView,
++                              public gfx::AnimationDelegate {
++  METADATA_HEADER(AuxChatsSection, AuxSectionView)
++ public:
++  struct Actions {
++    base::RepeatingClosure new_chat;
++    AuxChatRow::Action selected;
++    AuxChatRow::Action rename;
++    AuxChatRow::Action archive;
++    AuxChatRow::Context context;
++    base::RepeatingClosure all_chats;
++    base::RepeatingCallback<void(views::View*)> section_context;
++  };
++  static void RegisterPrefs(user_prefs::PrefRegistrySyncable* registry);
++  AuxChatsSection(PrefService& prefs, Actions actions,
++                  std::u16string shortcut_help);
++  ~AuxChatsSection() override;
++  void SetChats(const std::vector<Chat>& chats);
++  void SetSelectedChat(std::optional<std::string> id);
++  void SetNewChatRepresentedTab(std::optional<tabs::TabHandle> tab, bool active);
++  void PauseProfileObservation();
++  void BindProfilePrefs(PrefService& prefs);
++  bool expanded() const { return expanded_; }
++ private:
++  void Toggle();
++  void PreferenceChanged();
++  void ApplyHeight();
++  void ShowSectionContext();
++  void AnimationProgressed(const gfx::Animation*) override;
++  void AnimationEnded(const gfx::Animation*) override;
++  void AnimationCanceled(const gfx::Animation*) override;
++  Actions actions_;
++  raw_ptr<PrefService> prefs_ = nullptr;
++  PrefChangeRegistrar pref_observer_;
++  raw_ptr<AuxNewChatView> new_chat_ = nullptr;
++  raw_ptr<views::View> rows_view_ = nullptr;
++  raw_ptr<AuxSectionClipView> clip_ = nullptr;
++  std::vector<Chat> chats_;
++  std::vector<raw_ptr<AuxChatRow>> rows_;
++  std::optional<std::string> selected_id_;
++  bool expanded_ = true;
++  gfx::SlideAnimation animation_{this};
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_new_chat_icon.inc
+@@ -0,0 +1,61 @@
++// Supplied275-element New Chat path e9d4e60 ->d3db640.
++constexpr gfx::PathElement kNewChatPath[] = {
++    gfx::CANVAS_DIMENSIONS, 16.0f,
++    gfx::MOVE_TO, 7.5f, 1.89999998f,
++    gfx::LINE_TO, 5.69999981f, 1.89999998f,
++    gfx::CUBIC_TO, 4.17923021f, 1.89999998f, 3.8178401f, 1.92953002f, 3.31961989f, 2.1833899f,
++    gfx::CUBIC_TO, 2.83039999f, 2.43265009f, 2.43265009f, 2.83039999f, 2.18337989f, 3.31963992f,
++    gfx::CUBIC_TO, 1.92953002f, 3.8178401f, 1.89999998f, 4.17923021f, 1.89999998f, 5.69999981f,
++    gfx::LINE_TO, 1.89999998f, 10.3000002f,
++    gfx::CUBIC_TO, 1.89999998f, 11.8206997f, 1.92953002f, 12.1820898f, 2.18337011f, 12.6803598f,
++    gfx::CUBIC_TO, 2.43267989f, 13.1696396f, 2.83046007f, 13.5674295f, 3.31967998f, 13.8166304f,
++    gfx::CUBIC_TO, 3.81783009f, 14.0704699f, 4.17923021f, 14.1000004f, 5.69999981f, 14.1000004f,
++    gfx::LINE_TO, 10.3000002f, 14.1000004f,
++    gfx::CUBIC_TO, 11.8206997f, 14.1000004f, 12.1820898f, 14.0704699f, 12.6803703f, 13.8166199f,
++    gfx::CUBIC_TO, 13.1695805f, 13.5673904f, 13.5673904f, 13.1695805f, 13.8166199f, 12.6803598f,
++    gfx::CUBIC_TO, 14.0704699f, 12.1820898f, 14.1000004f, 11.8206997f, 14.1000004f, 10.3000002f,
++    gfx::LINE_TO, 14.1000004f, 8.5f,
++    gfx::CUBIC_TO, 14.1000004f, 8.16862965f, 13.8313704f, 7.9000001f, 13.5f, 7.9000001f,
++    gfx::CUBIC_TO, 13.1686296f, 7.9000001f, 12.8999996f, 8.16862965f, 12.8999996f, 8.5f,
++    gfx::LINE_TO, 12.8999996f, 10.3000002f,
++    gfx::CUBIC_TO, 12.8999996f, 11.5795002f, 12.8750296f, 11.8850803f, 12.7473803f, 12.1356297f,
++    gfx::CUBIC_TO, 12.6132097f, 12.3990202f, 12.3990202f, 12.6132097f, 12.1356401f, 12.7473803f,
++    gfx::CUBIC_TO, 11.8850803f, 12.8750296f, 11.5795002f, 12.8999996f, 10.3000002f, 12.8999996f,
++    gfx::LINE_TO, 5.69999981f, 12.8999996f,
++    gfx::CUBIC_TO, 4.4204998f, 12.8999996f, 4.1148901f, 12.8750296f, 3.86442995f, 12.7474003f,
++    gfx::CUBIC_TO, 3.60100007f, 12.6132097f, 3.38682008f, 12.3990402f, 3.25258994f, 12.1356001f,
++    gfx::CUBIC_TO, 3.12496996f, 11.8850803f, 3.0999999f, 11.5795002f, 3.0999999f, 10.3000002f,
++    gfx::LINE_TO, 3.0999999f, 5.69999981f,
++    gfx::CUBIC_TO, 3.0999999f, 4.4204998f, 3.12496996f, 4.1148901f, 3.25258994f, 3.86441994f,
++    gfx::CUBIC_TO, 3.38681006f, 3.60098004f, 3.60098004f, 3.38681006f, 3.86439991f, 3.25259995f,
++    gfx::CUBIC_TO, 4.1148901f, 3.12496996f, 4.4204998f, 3.0999999f, 5.69999981f, 3.0999999f,
++    gfx::LINE_TO, 7.5f, 3.0999999f,
++    gfx::CUBIC_TO, 7.83136988f, 3.0999999f, 8.10000038f, 2.83137012f, 8.10000038f, 2.5f,
++    gfx::CUBIC_TO, 8.10000038f, 2.16862988f, 7.83136988f, 1.89999998f, 7.5f, 1.89999998f,
++    gfx::CLOSE,
++    gfx::NEW_PATH,
++    gfx::MOVE_TO, 6.43333006f, 10.1667004f,
++    gfx::LINE_TO, 6.43333006f, 8.16674995f,
++    gfx::LINE_TO, 6.25758982f, 8.59101009f,
++    gfx::LINE_TO, 12.0909595f, 2.75765991f,
++    gfx::CUBIC_TO, 12.4088802f, 2.43969989f, 12.9244604f, 2.43969989f, 13.2424402f, 2.75766993f,
++    gfx::CUBIC_TO, 13.5603304f, 3.07560992f, 13.5603304f, 3.5911901f, 13.2424097f, 3.90916991f,
++    gfx::LINE_TO, 7.40907001f, 9.74242973f,
++    gfx::LINE_TO, 7.83333015f, 9.56669998f,
++    gfx::LINE_TO, 5.83333015f, 9.56669998f,
++    gfx::LINE_TO, 6.43333006f, 10.1667004f,
++    gfx::CLOSE,
++    gfx::MOVE_TO, 5.23332977f, 10.1667004f,
++    gfx::CUBIC_TO, 5.23332977f, 10.4980698f, 5.5019598f, 10.7666998f, 5.83333015f, 10.7666998f,
++    gfx::LINE_TO, 7.83333015f, 10.7666998f,
++    gfx::CUBIC_TO, 7.99245977f, 10.7666998f, 8.14507008f, 10.7034903f, 8.25759029f, 10.59097f,
++    gfx::LINE_TO, 14.0909595f, 4.75766993f,
++    gfx::CUBIC_TO, 14.87747f, 3.97105002f, 14.87747f, 2.69577003f, 14.0909996f, 1.90917003f,
++    gfx::CUBIC_TO, 13.3043404f, 1.12254f, 12.0289202f, 1.12254f, 11.2424097f, 1.90917003f,
++    gfx::LINE_TO, 5.40907001f, 7.74248981f,
++    gfx::CUBIC_TO, 5.29653978f, 7.85501003f, 5.23332977f, 8.00761986f, 5.23332977f, 8.16674995f,
++    gfx::LINE_TO, 5.23332977f, 10.1667004f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kNewChatReps[] = {{kNewChatPath}};
++const gfx::VectorIcon kNewChatIcon(kNewChatReps, 1, "kAuxNewChatIcon");
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_new_chat_view.cc
+@@ -0,0 +1,145 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_new_chat_view.h"
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "cc/paint/paint_flags.h"
++#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/models/image_model.h"
++#include "ui/color/color_provider_key.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/font_list.h"
++#include "ui/gfx/vector_icon_types.h"
++#include "ui/views/accessibility/view_accessibility.h"
++#include "ui/views/controls/button/button.h"
++#include "ui/views/controls/button/button_controller.h"
++#include "ui/views/controls/button/label_button.h"
++#include "ui/views/border.h"
++#include "ui/views/controls/highlight_path_generator.h"
++#include "ui/views/controls/image_view.h"
++#include "ui/views/controls/label.h"
++#include "ui/views/layout/box_layout.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++namespace {
++#include "chrome/browser/ui/views/frame/aux_new_chat_icon.inc"
++bool Dark(const views::View& view) {
++  return view.GetWidget() && view.GetWidget()->GetColorMode() ==
++      ui::ColorProviderKey::ColorMode::kDark;
++}
++}  // namespace
++// Original VerticalNewTabButton base4242e5c keeps its LabelButton graph.
++class AuxNewChatNormalButton final : public views::LabelButton {
++  METADATA_HEADER(AuxNewChatNormalButton, views::LabelButton)
++ public:
++  AuxNewChatNormalButton(base::RepeatingClosure callback,
++                        const std::u16string& shortcut_help)
++      : views::LabelButton(std::move(callback), u"New Chat") {
++    SetMinSize(gfx::Size(0, 32));
++    SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(6, 8)));
++    SetImageLabelSpacing(8);
++    SetHorizontalAlignment(gfx::ALIGN_LEFT);
++    label()->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
++    label()->SetElideBehavior(gfx::FADE_TAIL);
++    label()->SetAutoColorReadabilityEnabled(false);
++    label()->SetSubpixelRenderingEnabled(false);
++    const gfx::FontList font;
++    label()->SetFontList(font.Derive(14 - font.GetFontSize(), gfx::Font::NORMAL,
++                           gfx::Font::Weight::NORMAL));
++    SetTooltipText(u"New Chat");
++    if (!shortcut_help.empty()) GetViewAccessibility().SetDescription(shortcut_help);
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 8);
++  }
++ protected:
++  void OnThemeChanged() override {
++    views::LabelButton::OnThemeChanged();
++    const SkColor color = Dark(*this) ? 0x8cfafafa : 0x8c0a0a0a;
++    SetEnabledTextColors(color);
++    SetTextColor(STATE_DISABLED, color);
++    SetImageModel(STATE_NORMAL, ui::ImageModel::FromVectorIcon(kNewChatIcon, color, 16));
++  }
++  void OnPaintBackground(gfx::Canvas* canvas) override {
++    if (GetState() != STATE_HOVERED && GetState() != STATE_PRESSED) return;
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(Dark(*this) ? 0x14fafafa : 0x140a0a0a);
++    canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
++  }
++};
++BEGIN_METADATA(AuxNewChatNormalButton)
++END_METADATA
++class AuxNewChatButton final : public views::Button {
++  METADATA_HEADER(AuxNewChatButton, views::Button)
++ public:
++  AuxNewChatButton(base::RepeatingClosure callback,
++                   const std::u16string& shortcut_help)
++      : views::Button(std::move(callback)) {
++    SetFocusBehavior(FocusBehavior::ALWAYS);
++    button_controller()->set_notify_action(views::ButtonController::NotifyAction::kOnRelease);
++    SetNotifyEnterExitOnChild(true);
++    SetTooltipText(u"New Chat");
++    GetViewAccessibility().SetName(u"New Chat");
++    if (!shortcut_help.empty()) GetViewAccessibility().SetDescription(shortcut_help);
++    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(6, 8)));
++    layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
++    image_ = AddChildView(std::make_unique<views::ImageView>());
++    image_->SetCanProcessEventsWithinSubtree(false);
++    image_->SetPreferredSize(gfx::Size(16, 16));
++    image_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
++    label_ = AddChildView(std::make_unique<views::Label>(u"New Chat"));
++    label_->SetCanProcessEventsWithinSubtree(false);
++    label_->SetAutoColorReadabilityEnabled(false);
++    label_->SetSubpixelRenderingEnabled(false);
++    label_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
++    label_->SetElideBehavior(gfx::FADE_TAIL);
++    const gfx::FontList font;
++    label_->SetFontList(font.Derive(14 - font.GetFontSize(), gfx::Font::NORMAL,
++                                   gfx::Font::Weight::NORMAL));
++    layout->SetFlexForView(label_, 1);
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 10);
++  }
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
++    // Original selected46698f4 returns0x2000000000; normal base has min32.
++    return gfx::Size(0, 32);
++  }
++ protected:
++  void OnThemeChanged() override {
++    views::Button::OnThemeChanged();
++    const SkColor foreground = Dark(*this) ? 0xa6fafafa : 0xb80a0a0a;
++    label_->SetEnabledColor(foreground);
++    image_->SetImage(ui::ImageModel::FromVectorIcon(kNewChatIcon, foreground, 16));
++  }
++  void OnPaintBackground(gfx::Canvas* canvas) override {
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(Dark(*this) ? 0x14fafafa : 0xffffffff);
++    canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
++  }
++ private:
++  raw_ptr<views::ImageView> image_ = nullptr;
++  raw_ptr<views::Label> label_ = nullptr;
++};
++BEGIN_METADATA(AuxNewChatButton)
++END_METADATA
++AuxNewChatView::AuxNewChatView(base::RepeatingClosure new_chat,
++                               std::u16string shortcut_help) {
++  CHECK(new_chat);
++  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
++      views::BoxLayout::Orientation::kVertical, gfx::Insets::TLBR(1, 1, 0, 1)));
++  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kStretch);
++  normal_ = AddChildView(std::make_unique<AuxNewChatNormalButton>(new_chat, shortcut_help));
++  selected_ = AddChildView(std::make_unique<AuxNewChatButton>(new_chat, shortcut_help));
++  selected_->SetVisible(false);
++}
++AuxNewChatView::~AuxNewChatView() = default;
++void AuxNewChatView::SetRepresentedTab(std::optional<tabs::TabHandle> tab, bool active) {
++  tab_ = tab;
++  const bool selected = tab.has_value() && active;
++  selected_->SetVisible(selected);
++  normal_->SetVisible(!selected);
++}
++BEGIN_METADATA(AuxNewChatView)
++END_METADATA
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_new_chat_view.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NEW_CHAT_VIEW_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NEW_CHAT_VIEW_H_
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "components/tabs/public/tab_interface.h"
++#include "ui/views/view.h"
++namespace aux {
++class AuxNewChatButton;
++class AuxNewChatNormalButton;
++// Original AsideNewChatTabButtonContainer, with its normal native new-tab
++// button and selected New Chat-tab row. A real represented handle controls
++// presentation, never width/collapsed inference.
++class AuxNewChatView final : public views::View {
++  METADATA_HEADER(AuxNewChatView, views::View)
++ public:
++  AuxNewChatView(base::RepeatingClosure new_chat, std::u16string shortcut_help);
++  ~AuxNewChatView() override;
++  void SetRepresentedTab(std::optional<tabs::TabHandle> tab, bool active);
++  std::optional<tabs::TabHandle> represented_tab() const { return tab_; }
++ private:
++  raw_ptr<AuxNewChatNormalButton> normal_ = nullptr;
++  raw_ptr<AuxNewChatButton> selected_ = nullptr;
++  std::optional<tabs::TabHandle> tab_;
++};
++}  // namespace aux
++#endif
