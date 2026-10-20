@@ -1,0 +1,81 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "file": "stores-and-reader.asm",
+      "start": "0x425b128",
+      "endExclusive": "0x425b5d4",
+      "bytesSha256": "10178b066157955f14ddd9f4c0bece0c1ddc286feba7890bcd5ce95c9689e57d",
+      "sha256": "d4a99bf9b3d706d2e04f1d55dd2eceba52b63549f668812263bf5ab82b90bc42"
+    },
+    {
+      "file": "ordered-merge.asm",
+      "start": "0x425b5a4",
+      "endExclusive": "0x425b7d8",
+      "bytesSha256": "9ff124da8c81f88a2122145053524db1cc7385d44e011b8f901e5bd84096b8f0",
+      "sha256": "c758595d084d0a43ef589c92a35d64e2570ef5f5cedb6b075375503c2e8bb5cf"
+    },
+    {
+      "file": "form-fields.asm",
+      "start": "0x425b820",
+      "endExclusive": "0x425bbd0",
+      "bytesSha256": "79c530b40778d525c92403dc8261a35ab2b7dbace9da8ea92d111bfd047a3b86",
+      "sha256": "ddd56f5d2412a69832ad9dcd031ed7060d3aaf1a2d9cc08681e0e8571a74daa6"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1f2bf",
+      "text": "Login Data",
+      "endExclusive": "0xdb1f2ca",
+      "bytesSha256": "38c09178fdbb82c19eaa3ded077cf8cda8ce1f34455202d491bccea479eca70c"
+    },
+    {
+      "address": "0xdb1f2ca",
+      "text": "Login Data For Account",
+      "endExclusive": "0xdb1f2e1",
+      "bytesSha256": "a0340b332a122b259f4dccf0cadf7107d59a2ec32bae4978fb0f87be7f9e06a7"
+    },
+    {
+      "address": "0xdb1f67a",
+      "text": "SELECT origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, date_last_used, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, sender_profile_image_url, date_last_filled, actor_login_approved FROM logins",
+      "endExclusive": "0xdb1f853",
+      "bytesSha256": "a47b07da489eb049e10858165bafcec25a18d94b405f82461d5998a68ee7b16f"
+    },
+    {
+      "address": "0xd7e9443",
+      "text": "1",
+      "endExclusive": "0xd7e9445",
+      "bytesSha256": "e79e418e48623569d75e2a7b09ae88ed9b77b126a445b9ff9dc6989a08efa079"
+    },
+    {
+      "address": "0xd7e7a24",
+      "text": "\n",
+      "endExclusive": "0xd7e7a26",
+      "bytesSha256": "102b51b9765a56a3e899f7cf0ee38e5251f9c503b357b330a49183eb7b155604"
+    },
+    {
+      "address": "0xd7e8634",
+      "text": "0",
+      "endExclusive": "0xd7e8636",
+      "bytesSha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+    },
+    {
+      "address": "0xd0ce5e3",
+      "text": "scoped_dir",
+      "endExclusive": "0xd0ce5ee",
+      "bytesSha256": "ce7c6219af0975d514855ea526c5c3f15cfb05d87cc62143ebbfba7b6e82a617"
+    }
+  ],
+  "decompiler": {
+    "snapshot": "out/browser-import-password-reader-ghidra.json",
+    "evidenceId": "ev_7be444692503d511856970ec8cd877ca1e03f1e5e4dffca6fa00a2166e94a1b2",
+    "rawReaderStart": "0x425b128",
+    "rawReaderEndExclusive": "0x425cda0",
+    "rawReaderSha256": "79956a17973ff9b023cb821737a63fca5b99d8ba8915ae9dd995dca152107617",
+    "limitations": "Bounded raw target; external callees unresolved. Complete raw LLVM ranges remain authority."
+  }
+}

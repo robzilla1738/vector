@@ -1,0 +1,329 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -8,6 +8,8 @@
+ #include <algorithm>
+ #include <cstring>
+ #include <memory>
++#include <set>
++#include <vector>
+ 
+ #include "base/environment.h"
+ #include "base/files/file_enumerator.h"
+@@ -582,145 +584,174 @@
+   if (!cookies && category != "passwords") {
+     return fail("Unknown encrypted category");
+   }
+-  auto path = profile.AppendASCII(cookies ? "Network/Cookies" : "Login Data");
+-  if (cookies && !base::PathExists(path)) {
+-    path = profile.AppendASCII("Cookies");
+-  }
+-  std::string error;
+-  auto db = Snapshot(path, error);
+-  if (!db) {
+-    result.Set("error", error);
+-    return result;
+-  }
+-  int version = 0;
++  // Supplied425b1e0..425b5c0 reads profile then account login stores.
++  std::vector<base::FilePath> paths;
+   if (cookies) {
+-    auto meta = Prepare(db.get(), "SELECT value FROM meta WHERE key='version'");
+-    if (!meta || sqlite3_step(meta.get()) != SQLITE_ROW) {
+-      return fail("Cookie database version is unavailable");
+-    }
+-    version = sqlite3_column_int(meta.get(), 0);
+-    if (version < 0 || version > 100) {
+-      return fail("Cookie database version is unsupported");
+-    }
+-  }
+-  auto query = Prepare(
+-      db.get(),
+-      cookies
+-          ? "SELECT "
+-            "host_key,name,path,value,encrypted_value,creation_utc,expires_utc,"
+-            "last_access_utc,is_secure,is_httponly,samesite,priority,top_frame_"
+-            "site_key,has_cross_site_ancestor,source_scheme,source_port,source_"
+-            "type,last_update_utc FROM cookies LIMIT 50001"
+-          : "SELECT "
+-            "origin_url,action_url,signon_realm,username_element,username_"
+-            "value,password_element,password_value,date_created,date_last_used,"
+-            "date_password_modified,times_used,blacklisted_by_user,scheme FROM "
+-            "logins "
+-            "LIMIT 50001");
+-  if (!query) {
+-    return fail("Encrypted source database lacks required columns");
++    auto path = profile.AppendASCII("Network/Cookies");
++    if (!base::PathExists(path)) {
++      path = profile.AppendASCII("Cookies");
++    }
++    paths.push_back(std::move(path));
++  } else {
++    for (const char* name : {"Login Data", "Login Data For Account"}) {
++      auto path = profile.AppendASCII(name);
++      if (base::PathExists(path)) {
++        paths.push_back(std::move(path));
++      }
++    }
++    if (paths.empty()) {
++      return fail("Selected source database is unavailable");
++    }
+   }
+   base::ListValue rows;
+   size_t bytes = 0;
+-  int status;
+-  while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
+-    if (rows.size() >= 50000) {
+-      return fail("Encrypted category exceeds the 50000-row limit");
+-    }
+-    if (!cookies && sqlite3_column_int(query.get(), 11)) {
+-      continue;
+-    }
+-    int column = cookies ? 4 : 6;
+-    auto* blob = sqlite3_column_blob(query.get(), column);
+-    const int length = sqlite3_column_bytes(query.get(), column);
+-    if (length < 0 || length > 1024 * 1024) {
+-      return fail("Encrypted source row exceeds the size limit");
+-    }
+-    std::optional<std::string> plaintext;
+-    if (length) {
+-      plaintext = DecryptSourceValue(
+-          std::string_view(static_cast<const char*>(blob), length), key);
+-    } else if (cookies) {
+-      plaintext = Text(query.get(), 3);
+-    } else {
+-      plaintext = std::string();
+-    }
+-    if (!plaintext) {
+-      return fail(
+-          "Source value could not be decrypted; wrong key, denied access or "
+-          "unsupported encryption version");
+-    }
+-    const auto host = cookies ? Text(query.get(), 0) : std::string();
+-    if (cookies && length && version >= 24) {
+-      const auto digest = crypto::hash::Sha256(host);
+-      if (plaintext->size() < digest.size() ||
+-          !std::ranges::equal(plaintext->substr(0, digest.size()), digest,
+-                              [](char a, unsigned char b) {
+-                                return static_cast<unsigned char>(a) == b;
+-                              })) {
+-        return fail("Decrypted cookie does not match its source host");
+-      }
+-      plaintext->erase(0, digest.size());
+-    }
+-    if (!base::IsStringUTF8(*plaintext)) {
+-      return fail(
+-          "Decoded category exceeds its bounds or contains invalid text");
+-    }
+-    base::DictValue row;
+-    row.Set("secret", std::move(*plaintext));
++  std::set<std::string> seen_passwords;
++  for (const auto& path : paths) {
++    std::string error;
++    auto db = Snapshot(path, error);
++    if (!db) {
++      result.Set("error", error);
++      return result;
++    }
++    int version = 0;
+     if (cookies) {
+-      row.Set("host", host);
+-      row.Set("name", Text(query.get(), 1));
+-      row.Set("path", Text(query.get(), 2));
+-      for (auto [field, index] :
+-           {std::pair{"created", 5}, {"expires", 6}, {"accessed", 7}}) {
+-        row.Set(field,
+-                base::NumberToString(sqlite3_column_int64(query.get(), index)));
+-      }
+-      row.Set("secure", !!sqlite3_column_int(query.get(), 8));
+-      row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
+-      row.Set("sameSite", sqlite3_column_int(query.get(), 10));
+-      row.Set("priority", sqlite3_column_int(query.get(), 11));
+-      row.Set("partition", Text(query.get(), 12));
+-      row.Set("crossSite", !!sqlite3_column_int(query.get(), 13));
+-      row.Set("sourceScheme", sqlite3_column_int(query.get(), 14));
+-      row.Set("sourcePort", sqlite3_column_int(query.get(), 15));
+-      row.Set("sourceType", sqlite3_column_int(query.get(), 16));
+-      row.Set("updated",
+-              base::NumberToString(sqlite3_column_int64(query.get(), 17)));
+-    } else {
+-      for (auto [field, index] : {std::pair{"url", 0},
+-                                  {"action", 1},
+-                                  {"realm", 2},
+-                                  {"usernameElement", 3},
+-                                  {"username", 4},
+-                                  {"passwordElement", 5}}) {
+-        row.Set(field, Text(query.get(), index));
+-      }
+-      for (auto [field, index] :
+-           {std::pair{"created", 7}, {"used", 8}, {"modified", 9}}) {
+-        row.Set(field,
+-                base::NumberToString(sqlite3_column_int64(query.get(), index)));
+-      }
+-      row.Set("timesUsed", sqlite3_column_int(query.get(), 10));
+-      row.Set("scheme", sqlite3_column_int(query.get(), 12));
+-    }
+-    bytes += 256;
+-    for (auto [field, value] : row) {
+-      if (value.is_string()) {
+-        bytes += value.GetString().size();
+-        if (!base::IsStringUTF8(value.GetString())) {
+-          return fail("Decoded source metadata contains invalid text");
+-        }
+-      }
+-    }
+-    if (bytes > 32 * 1024 * 1024) {
+-      return fail("Decoded category exceeds the 32 MiB limit");
+-    }
+-    rows.Append(std::move(row));
+-  }
+-  if (status != SQLITE_DONE) {
+-    return fail("Encrypted source snapshot failed while reading rows");
++      auto meta = Prepare(db.get(), "SELECT value FROM meta WHERE key='version'");
++      if (!meta || sqlite3_step(meta.get()) != SQLITE_ROW) {
++        return fail("Cookie database version is unavailable");
++      }
++      version = sqlite3_column_int(meta.get(), 0);
++      if (version < 0 || version > 100) {
++        return fail("Cookie database version is unsupported");
++      }
++    }
++    auto query = Prepare(
++        db.get(),
++        cookies
++            ? "SELECT "
++              "host_key,name,path,value,encrypted_value,creation_utc,expires_utc,"
++              "last_access_utc,is_secure,is_httponly,samesite,priority,top_frame_"
++              "site_key,has_cross_site_ancestor,source_scheme,source_port,source_"
++              "type,last_update_utc FROM cookies LIMIT 50001"
++            : "SELECT "
++              "origin_url,action_url,signon_realm,username_element,username_"
++              "value,password_element,password_value,date_created,date_last_used,"
++              "date_password_modified,times_used,blacklisted_by_user,scheme FROM "
++              "logins "
++              "LIMIT 50001");
++    if (!query) {
++      return fail("Encrypted source database lacks required columns");
++    }
++    int status;
++    while ((status = sqlite3_step(query.get())) == SQLITE_ROW) {
++      if (!cookies && sqlite3_column_int(query.get(), 11)) {
++        continue;
++      }
++      int column = cookies ? 4 : 6;
++      auto* blob = sqlite3_column_blob(query.get(), column);
++      const int length = sqlite3_column_bytes(query.get(), column);
++      if (length < 0 || length > 1024 * 1024) {
++        return fail("Encrypted source row exceeds the size limit");
++      }
++      std::optional<std::string> plaintext;
++      if (length) {
++        plaintext = DecryptSourceValue(
++            std::string_view(static_cast<const char*>(blob), length), key);
++      } else if (cookies) {
++        plaintext = Text(query.get(), 3);
++      } else {
++        plaintext = std::string();
++      }
++      if (!plaintext) {
++        return fail(
++            "Source value could not be decrypted; wrong key, denied access or "
++            "unsupported encryption version");
++      }
++      const auto host = cookies ? Text(query.get(), 0) : std::string();
++      if (cookies && length && version >= 24) {
++        const auto digest = crypto::hash::Sha256(host);
++        if (plaintext->size() < digest.size() ||
++            !std::ranges::equal(plaintext->substr(0, digest.size()), digest,
++                                [](char a, unsigned char b) {
++                                  return static_cast<unsigned char>(a) == b;
++                                })) {
++          return fail("Decrypted cookie does not match its source host");
++        }
++        plaintext->erase(0, digest.size());
++      }
++      if (!base::IsStringUTF8(*plaintext)) {
++        return fail(
++            "Decoded category exceeds its bounds or contains invalid text");
++      }
++      base::DictValue row;
++      row.Set("secret", std::move(*plaintext));
++      if (cookies) {
++        row.Set("host", host);
++        row.Set("name", Text(query.get(), 1));
++        row.Set("path", Text(query.get(), 2));
++        for (auto [field, index] :
++             {std::pair{"created", 5}, {"expires", 6}, {"accessed", 7}}) {
++          row.Set(field,
++                  base::NumberToString(sqlite3_column_int64(query.get(), index)));
++        }
++        row.Set("secure", !!sqlite3_column_int(query.get(), 8));
++        row.Set("httpOnly", !!sqlite3_column_int(query.get(), 9));
++        row.Set("sameSite", sqlite3_column_int(query.get(), 10));
++        row.Set("priority", sqlite3_column_int(query.get(), 11));
++        row.Set("partition", Text(query.get(), 12));
++        row.Set("crossSite", !!sqlite3_column_int(query.get(), 13));
++        row.Set("sourceScheme", sqlite3_column_int(query.get(), 14));
++        row.Set("sourcePort", sqlite3_column_int(query.get(), 15));
++        row.Set("sourceType", sqlite3_column_int(query.get(), 16));
++        row.Set("updated",
++                base::NumberToString(sqlite3_column_int64(query.get(), 17)));
++      } else {
++        for (auto [field, index] : {std::pair{"url", 0},
++                                    {"action", 1},
++                                    {"realm", 2},
++                                    {"usernameElement", 3},
++                                    {"username", 4},
++                                    {"passwordElement", 5}}) {
++          row.Set(field, Text(query.get(), index));
++        }
++        for (auto [field, index] :
++             {std::pair{"created", 7}, {"used", 8}, {"modified", 9}}) {
++          row.Set(field,
++                  base::NumberToString(sqlite3_column_int64(query.get(), index)));
++        }
++        row.Set("timesUsed", sqlite3_column_int(query.get(), 10));
++        row.Set("scheme", sqlite3_column_int(query.get(), 12));
++      }
++      if (!cookies) {
++        // Original425b658..425b74c joins realm, UTF8 username, UTF8 password,
++        // and blocked state with newlines; its set insertion keeps the first.
++        // Blocked entries are still excluded by this existing reader above.
++        const auto identity = *row.FindString("realm") + "\n" +
++                              *row.FindString("username") + "\n" +
++                              *row.FindString("secret") + "\n0";
++        if (!seen_passwords.insert(identity).second) {
++          continue;
++        }
++      }
++      if (rows.size() >= 50000) {
++        return fail("Encrypted category exceeds the 50000-row limit");
++      }
++      bytes += 256;
++      for (auto [field, value] : row) {
++        if (value.is_string()) {
++          bytes += value.GetString().size();
++          if (!base::IsStringUTF8(value.GetString())) {
++            return fail("Decoded source metadata contains invalid text");
++          }
++        }
++      }
++      if (bytes > 32 * 1024 * 1024) {
++        return fail("Decoded category exceeds the 32 MiB limit");
++      }
++      rows.Append(std::move(row));
++    }
++    if (status != SQLITE_DONE) {
++      return fail("Encrypted source snapshot failed while reading rows");
++    }
+   }
+   result.Set(cookies ? "cookies" : "passwords", std::move(rows));
+   return result;
+@@ -737,6 +768,8 @@
+       category == "passwords" ? "Login Data" : "Network/Cookies");
+   if (category == "cookies" && !base::PathExists(database)) {
+     database = profile.AppendASCII("Cookies");
++  } else if (category == "passwords" && !base::PathExists(database)) {
++    database = profile.AppendASCII("Login Data For Account");
+   }
+   if (!base::PathExists(database)) {
+     return base::DictValue().Set("error",
