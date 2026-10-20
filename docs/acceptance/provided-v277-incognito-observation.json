@@ -1,0 +1,60 @@
+{
+  "browserPid": 87846,
+  "launcherPid": 87837,
+  "guardianPid": 87843,
+  "daemonPid": 87864,
+  "daemonLineage": [
+    87864,
+    87846,
+    87843,
+    87837,
+    87834,
+    70622,
+    70558
+  ],
+  "mode": "incognito",
+  "temporary": true,
+  "nativeAcceptanceFlagsChanged": false,
+  "health": {
+    "service": "aside-daemon",
+    "version": "1.26.1016.1852",
+    "pid": 87864,
+    "host": "127.0.0.1",
+    "port": 21520,
+    "ready": true,
+    "status": "idle",
+    "startedAt": "2026-10-20T04:59:00.505Z",
+    "runningSessionCount": 0,
+    "semaphore": {
+      "available": 200,
+      "capacity": 200
+    }
+  },
+  "windowEvidence": "out/native-integration/v277-incognito-owned-windows.json",
+  "screenshot": "out/native-integration/v277-incognito-window.png",
+  "screenshotSha256": "714b5b505380543e3bd761a13ec1c4c899e4af4770707d5cdcd8b744c2013d8d",
+  "observation": "Same genuine profile/pager/search parent is now at bottom after expanding body. Independent extra footer stays absent. Existing independent Bookmarks/Chats/Tabs body remains pending faithful original producer replacement.",
+  "normalProfileOrUIParityAccepted": false,
+  "referenceLimit": {
+    "inventory": "docs/acceptance/historical-static-reference-images.json",
+    "reference": "09 Browser shell profiles and libraries/146-browser-sidebar-restored.png",
+    "versionThemeScaleProven": false,
+    "personalReferenceContentCopiedToProduct": false
+  },
+  "stopVerification": {
+    "utc": "2026-10-20T04:59:43.542061+00:00",
+    "knownPids": {
+      "87846": "absent",
+      "87837": "absent",
+      "87843": "absent",
+      "87864": "absent"
+    },
+    "ports": {
+      "21520": "clear",
+      "21522": "clear",
+      "45203": "clear"
+    },
+    "temporaryStateRetained": true,
+    "detachedDescendantsFullyProven": false
+  }
+}
