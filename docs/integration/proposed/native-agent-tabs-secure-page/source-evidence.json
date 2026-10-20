@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [],
+  "functions": [
+    {
+      "name": "remote client metrics",
+      "rva": "0x40330d4",
+      "bytes": 60,
+      "sha256": "f676c6bfe3e8f11432676dfc247823284f4c2c7bfb4541d43e0a95844b379734"
+    },
+    {
+      "name": "capability getter",
+      "rva": "0x3faa500",
+      "bytes": 8,
+      "sha256": "d2625c08dab8a7ed6a0ec29ef5e0b21222fe8c8aa1243088ffebd3218ae29cdc"
+    },
+    {
+      "name": "default client capability",
+      "rva": "0x4032ebc",
+      "bytes": 116,
+      "sha256": "c296ab5dbdc9be67104e035acd5aa2cc5533fa696ef0ee2b19b1a7173ca2694b"
+    },
+    {
+      "name": "websocket endpoint capability",
+      "rva": "0x2f93f68",
+      "bytes": 212,
+      "sha256": "86c47271bd0ab2c727627845341d9f3f10ce99cd802ba6a45ee9c73a71b24d63"
+    },
+    {
+      "name": "browser capability copy",
+      "rva": "0x2f94280",
+      "bytes": 112,
+      "sha256": "6003decbed818cd2ff7a80f7cfb1030a02ad1a1f00f1fc8f426d5eabcf6922d2"
+    },
+    {
+      "name": "page capability copy",
+      "rva": "0x2f945a8",
+      "bytes": 108,
+      "sha256": "a1a362c93923af8c75e6b74ac761503489df4143d286dfd311c6b531ccb668fa"
+    },
+    {
+      "name": "actual client vtable",
+      "rva": "0xe0ce070",
+      "bytes": 128,
+      "sha256": "19d7a5bd6d840655b66001f3739d276c1c9f272b5a7734c0d577d89e8557af24"
+    }
+  ]
+}

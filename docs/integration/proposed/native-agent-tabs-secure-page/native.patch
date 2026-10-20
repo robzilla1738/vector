@@ -1,0 +1,12 @@
+--- a/content/browser/devtools/devtools_http_handler.cc
++++ b/content/browser/devtools/devtools_http_handler.cc
+@@ -943,7 +943,8 @@
+ 
+   connection_to_client_[connection_id] =
+       std::make_unique<DevToolsAgentHostClientImpl>(
+-          thread_->task_runner(), server_wrapper_.get(), connection_id, agent);
++          thread_->task_runner(), server_wrapper_.get(), connection_id, agent,
++          request_filter_authorizes_origins_);
+ 
+   AcceptWebSocket(connection_id, request);
+ }

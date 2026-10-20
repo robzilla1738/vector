@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "files": [
+    {
+      "path": "content/browser/devtools/devtools_http_handler.cc",
+      "baselineSha256": "6338d8c9cd4c2d1ada6d76117426fcd145a8fd6d0ad17f980e81a758e42944b3",
+      "outputSha256": "f849ed75acddafddd584c78eb9d2f09f03e289cf778208ad0a2fd90aa87b7b01"
+    }
+  ]
+}
