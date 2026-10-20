@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "kind": "evidence-only; no native patch justified",
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x45e87b4",
+      "endExclusive": "0x45e88d8",
+      "sha256": "2946eac8528cb6331db53f8d6504e95ad37307824d35b25f2deb3bb049a0431c",
+      "listing": "actual-caption-writer.asm",
+      "listingSha256": "7b755a7fcfeefa50489ac3a6dc6211e6c4166eac5b060d5c8190eeaf188dec7b"
+    },
+    {
+      "start": "0x3479904",
+      "endExclusive": "0x347997c",
+      "sha256": "0caf125ce3a178cd4288e6b1b653ca5c7b323a2b5437c9fc117388e9cf34f539",
+      "listing": "leading-coordinate-predicate.asm",
+      "listingSha256": "a64562a80c9b4f957f0143ac6f31f61f91db8bd6f1312cad7fe8fb18a687b2de"
+    },
+    {
+      "start": "0x463fde0",
+      "endExclusive": "0x463fe4c",
+      "sha256": "47d60d4547521a7e2be9f9daeb5189d7b3f2be1f9ff425141948874e666234a6",
+      "listing": "retained-caption-reset.asm",
+      "listingSha256": "2d9e6b9721a463200b495bd068f06b5eced6137dd185a55c245b1ffb7568bffa"
+    }
+  ],
+  "currentNativeExcerpts": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "fileSha256": "51f9087e02654b3d3a4854211cccfa6068576ba60896b0e6dc3aa10cbbe48302",
+      "snapshot": "actual155-caption-producer.txt",
+      "snapshotSha256": "8e8403178f389ee75e49756b1acd5f09aa26dbedfbdd7e251d4c9c4a8e4661e0",
+      "startAnchor": "  // Make final visual adjustments required for child views to paint.",
+      "endAnchor": "    const int padding ="
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "fileSha256": "c8b4f85e991e24eb4a5504a65b027e8dba8d1f9b1d54513a0769ce8083cf8684",
+      "snapshot": "actual155-leading-coordinate.txt",
+      "snapshotSha256": "7a67c8a37ebde7b887f1d85b771897135e9c31c51bc10cb16301dcaa03cd5c65",
+      "startAnchor": "    const int left_alignment =",
+      "endAnchor": "    int y_baseline ="
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view_mac.mm",
+      "fileSha256": "7c8c99cb64c7d676ab65979253a249940a11b61ea455eb952103613578aed77d",
+      "snapshot": "actual155-fullscreen-caption.txt",
+      "snapshotSha256": "f4c0f0b44a18dbcfbaabe3ef883103b5555617002e124303616d8e64a089b2b6",
+      "startAnchor": "BrowserLayoutParams BrowserFrameViewMac::GetBrowserLayoutParams() const {",
+      "endAnchor": "int BrowserFrameViewMac::GetTopInset"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "fileSha256": "cc5c329fb5249746e8db50e5b14a51661cea2a68eb23d9b741b6325c16b59e62",
+      "snapshot": "actual155-retained-reset.txt",
+      "snapshotSha256": "338ac63d2cd76a536899fb810da3ea358eb6832f03064bc5b8a6ee40493da9fb",
+      "startAnchor": "void VerticalTabStripRegionView::RetentionAcquired() {",
+      "endAnchor": "void VerticalTabStripRegionView::HoverExpandedChanged"
+    }
+  ],
+  "nativeModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,5 @@
+    const int left_alignment =
+        (wrapped_due_to_overflow || is_exiting_expand_on_hover_)
+            ? 0
+            : caption_button_width;
+

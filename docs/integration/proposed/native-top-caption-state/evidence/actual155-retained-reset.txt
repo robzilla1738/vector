@@ -1,0 +1,17 @@
+void VerticalTabStripRegionView::RetentionAcquired() {
+  // Original46505xx: retire the genuine caption exclusion geometry while the
+  // collapsed strip is retained over content, then recompute its real layout.
+  top_button_container_->SetToolbarHeightForLayout(0);
+  top_button_container_->SetCaptionButtonWidthForLayout(0);
+  top_button_container_->SetIsExitingExpandOnHoverForLayout(false);
+  top_button_container_->SetAuxProfilePreviewPresentation(
+      aux_profile_preview_admission_->VisuallyCollapsed(), true);
+}
+void VerticalTabStripRegionView::SetAuxProfilePreviewPinnedWidth() {
+  const int target = aux_profile_preview_admission_->retained()
+                         ? std::max(280, uncollapsed_width())
+                         : uncollapsed_width();
+  const auto* margins = pinned_tab_entries_->GetProperty(views::kMarginsKey);
+  pinned_tab_entries_->SetLayoutWidthOverride(
+      std::max(0, target - (margins ? margins->width() : 0)));
+}
