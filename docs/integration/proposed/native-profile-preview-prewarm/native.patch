@@ -1,0 +1,235 @@
+--- a/chrome/browser/profiles/profile_manager.h
++++ b/chrome/browser/profiles/profile_manager.h
+@@ -219,6 +219,11 @@
+   bool LoadProfileByPath(const base::FilePath& profile_path,
+                          bool incognito,
+                          ProfileLoadedCallback callback);
++  // Supplied profile-preview preload captures the actual manager WeakPtr.
++  base::WeakPtr<ProfileManager> GetWeakPtrForAuxProfilePreview() {
++    return weak_factory_.GetWeakPtr();
++  }
++
+ 
+   // Creates or loads the profile located at |profile_path|.
+   // Should be called on the UI thread.
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -113,6 +113,100 @@
+   return page;
+ }
+ 
++bool ProfilePreviewRegionOwner::PopulatePage(
++    ProfilePagePreviewPageView& page, const base::FilePath& target) {
++  auto* source = browser_.get();
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (!source || !manager) {
++    return false;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  views::ViewTracker page_lifetime(&page);
++  auto* loaded = manager->GetProfileByPath(target);
++  auto& storage = manager->GetProfileAttributesStorage();
++  auto* entry = storage.GetProfileAttributesWithPath(target);
++  size_t roster_size = 0;
++  for (auto* candidate : storage.GetAllProfilesAttributesSortedForDisplay()) {
++    if (candidate && !candidate->IsOmitted()) {
++      ++roster_size;
++    }
++  }
++  gfx::ImageSkia avatar;
++  if (entry && entry->GetAvatarIconIndex() != profiles::GetPlaceholderAvatarIndex()) {
++    avatar = entry->GetAvatarIcon(20).AsImageSkia();
++  }
++  const auto label = ProfileDisplayLabel(entry, loaded, roster_size);
++  auto tabs = GetProfilePreviewData(*source, target).tabs;
++  auto bookmarks = BookmarkTitles(loaded);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  page.SetProfile(label, avatar);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  page.SetFallbackData(std::move(tabs), std::move(bookmarks));
++  return alive && page_lifetime.view();
++}
++
++void ProfilePreviewRegionOwner::RequestPrewarm(const base::FilePath& target) {
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (!manager || target.empty() || manager->GetProfileByPath(target) ||
++      !pending_prewarm_.insert(target).second) {
++    return;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  const bool started = manager->LoadProfileByPath(
++      target, false,
++      base::BindOnce(&ProfilePreviewRegionOwner::OnPrewarmed,
++                    weak_factory_.GetWeakPtr(),
++                    manager->GetWeakPtrForAuxProfilePreview(), target));
++  if (alive && !started) {
++    pending_prewarm_.erase(target);
++  }
++}
++
++void ProfilePreviewRegionOwner::OnPrewarmed(
++    base::WeakPtr<ProfileManager> manager, base::FilePath target,
++    Profile* loaded) {
++  pending_prewarm_.erase(target);
++  if (!manager || !browser_ || !region_.view() || !loaded ||
++      loaded->GetOriginalProfile()->GetPath() != target) {
++    return;
++  }
++  auto alive = weak_factory_.GetWeakPtr();
++  auto* source = browser_.get();
++  if (!HasOtherNormalWindow(*source, *loaded)) {
++    GetOrCreateProfileSwitchWorkspace(source, loaded, false);
++    if (!alive || !browser_ || !region_.view()) {
++      return;
++    }
++  }
++  // Do not recreate an evicted/deleted page merely because loading finished.
++  // Original4680a38 updates only the existing per-path child.
++  auto found = pages_.find(target);
++  if (found == pages_.end()) {
++    return;
++  }
++  auto* page = views::AsViewClass<ProfilePagePreviewPageView>(
++      found->second.view());
++  if (!page || !PopulatePage(*page, target)) {
++    return;
++  }
++  if (!alive) {
++    return;
++  }
++  // Reapply actual current progress only for the still-selected page. No
++  // success completion is sent: this is preload readiness, not profile switch.
++  if (target_ == target && !committing_) {
++    const float progress = progress_;
++    const int direction = direction_;
++    if (Begin(target, direction) && alive) {
++      Update(progress);
++    }
++  }
++}
++
+ bool ProfilePreviewRegionOwner::Begin(const base::FilePath& target,
+                                       int direction) {
+   auto* source = browser_.get();
+@@ -132,39 +226,18 @@
+   }
+   auto* manager = g_browser_process->profile_manager();
+   auto* loaded = manager->GetProfileByPath(target);
+-  auto& storage = manager->GetProfileAttributesStorage();
+-  auto* entry = storage.GetProfileAttributesWithPath(target);
+-  size_t roster_size = 0;
+-  for (auto* candidate : storage.GetAllProfilesAttributesSortedForDisplay()) {
+-    if (candidate && !candidate->IsOmitted()) {
+-      ++roster_size;
+-    }
+-  }
+   auto* page = GetPage(target);
+-  if (!page) {
+-    return false;
+-  }
+-  gfx::ImageSkia avatar;
+-  if (entry && entry->GetAvatarIconIndex() != profiles::GetPlaceholderAvatarIndex()) {
+-    avatar = entry->GetAvatarIcon(20).AsImageSkia();
++  if (!page || !PopulatePage(*page, target)) {
++    return false;
++  }
++  if (!alive) {
++    return false;
+   }
+   views::ViewTracker page_lifetime(page);
+-  page->SetProfile(ProfileDisplayLabel(entry, loaded, roster_size), avatar);
+-  if (!alive || !page_lifetime.view()) {
+-    return false;
+-  }
+-  auto tabs = GetProfilePreviewData(*source, target).tabs;
+-  auto bookmarks = BookmarkTitles(loaded);
+-  if (!alive || !page_lifetime.view()) {
+-    return false;
+-  }
+-  page->SetFallbackData(std::move(tabs), std::move(bookmarks));
+-  if (!alive || !page_lifetime.view()) {
+-    return false;
+-  }
+   // Original4654740 can render the real metadata fallback while the target
+   // profile/cache is not ready; it does not fabricate a borrowed live view.
+   bool live = false;
++  loaded = manager->GetProfileByPath(target);
+   if (loaded) {
+     auto* cache = FindProfileSwitchWorkspace(source, target);
+     if (!cache && !HasOtherNormalWindow(*source, *loaded)) {
+@@ -203,10 +276,15 @@
+   }
+   target_ = target;
+   direction_ = direction;
+-  return true;
++  progress_ = 0;
++  if (!loaded) {
++    RequestPrewarm(target);
++  }
++  return !!alive;
+ }
+ 
+ void ProfilePreviewRegionOwner::Update(float progress) {
++  progress_ = progress;
+   presentation_.Update(progress);
+ }
+ void ProfilePreviewRegionOwner::OnPreviewFrame() {
+@@ -244,6 +322,7 @@
+   committing_ = false;
+   target_.clear();
+   direction_ = 0;
++  progress_ = 0;
+   auto sender = browser_;
+   presentation_.Reset(false);
+   // Reset or completion may close this actual owner. No member access follows
+@@ -258,5 +337,6 @@
+   presentation_.Reset(false);
+   target_.clear();
+   direction_ = 0;
++  progress_ = 0;
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
+@@ -3,6 +3,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_REGION_OWNER_H_
+ 
+ #include <map>
++#include <set>
+ 
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+@@ -11,6 +12,8 @@
+ #include "ui/views/view_tracker.h"
+ 
+ class Browser;
++class Profile;
++class ProfileManager;
+ class VerticalTabStripRegionView;
+ namespace aux {
+ class ProfilePagePreviewPageView;
+@@ -33,6 +36,11 @@
+ 
+  private:
+   ProfilePagePreviewPageView* GetPage(const base::FilePath& target);
++  bool PopulatePage(ProfilePagePreviewPageView& page,
++                    const base::FilePath& target);
++  void RequestPrewarm(const base::FilePath& target);
++  void OnPrewarmed(base::WeakPtr<ProfileManager> manager,
++                   base::FilePath target, Profile* loaded);
+   void Complete(ProfileSwitchRequest::Completion completion, Browser* result);
+ 
+   base::WeakPtr<BrowserWindowInterface> browser_;
+@@ -42,6 +50,8 @@
+   std::map<base::FilePath, views::ViewTracker> pages_;
+   base::FilePath target_;
+   int direction_ = 0;
++  float progress_ = 0;
++  std::set<base::FilePath> pending_prewarm_;
+   bool committing_ = false;
+   base::WeakPtrFactory<ProfilePreviewRegionOwner> weak_factory_{this};
+ };

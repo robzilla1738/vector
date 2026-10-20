@@ -1,0 +1,41 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "request.asm",
+      "start": "0x4654f30",
+      "stop": "0x4655058",
+      "bytesSha256": "c548581674fd4fd5934561584e2d86581e4752af0a6c970d69c5fafdafff7e6d",
+      "extractSha256": "9216ddd92292230aff1afbb81242801ab39ddcb74f097043899a265c31aedf3c"
+    },
+    {
+      "file": "load-by-path.asm",
+      "start": "0x7ac69b4",
+      "stop": "0x7ac6aec",
+      "bytesSha256": "08247a9933a9cf1622e4634864fc4f11acc2927f447e0497296f6b4f11588e3e",
+      "extractSha256": "99560530bad45cdb87289571140727e1b0ba443362c96a5f42558bab74ea5290"
+    },
+    {
+      "file": "callback.asm",
+      "start": "0x468074c",
+      "stop": "0x4680b20",
+      "bytesSha256": "f4985e1bab129ac2821e62723b38e2307a7eb9c055bdf9990d0f366d5d7b41ca",
+      "extractSha256": "0b978e3d7a1874c8396f4cfa425aac75d1ffd2f4c1fbc12359a8e9a9feb24f0a"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "sha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3",
+      "anchor": "bool ProfileManager::LoadProfileByPath",
+      "behavior": "exact missing-attribute guard, CreateProfileAsync, OnProfileInitialized with incognito=false"
+    }
+  ],
+  "remaining": [
+    "Original captured-image cache producer remains unwired; no substitute capture.",
+    "Exact input/animation and original header/search owner geometry remain separate.",
+    "No native compile/runtime/UI acceptance."
+  ]
+}

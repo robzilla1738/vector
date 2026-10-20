@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "base": "owner3213a5883 output; actual shared189 ProfileManager header (unchanged from188)",
+  "files": [
+    {
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "baselineSha256": "cba93d3f2d0c1dc9e6a0be507527543e6d5d5433bd0bd521b29f019c61ad7a9a",
+      "outputSha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba",
+      "baselineSource": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/profiles/profile_manager.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": "5d7764d3d1ad7523985b922e62bc14db46721368c7bf21160ae909b75736ef96",
+      "outputSha256": "a18861b526c411673dd19583f2a04206e890c930ae99c7e11c7eaeb300fda656",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-fallback-progress/port/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+      "baselineSha256": "e372f11440578e6732b087215a6c0e9e9f43015fb0c577187d86e238e39daa8e",
+      "outputSha256": "2a68fb79d3fd62c867486a2338bf21bde26b74b5289b260809c377299f761fa3",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-fallback-progress/port/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "inputTriggerInstalled": false
+}
