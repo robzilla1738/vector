@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "constructor",
+      "start": "0x4666440",
+      "stopExclusive": "0x4666580",
+      "bytesSha256": "b3548bde2f9ad179c40b80d25fb7415c31c5d744ae44d3f560b48b365a325856",
+      "asmSha256": "5ff8e0d1ea16f71cbdd7502ad711ed5b7d76add16178b3d990f0ec8ea19131e8"
+    },
+    {
+      "name": "metadata",
+      "start": "0x46666a0",
+      "stopExclusive": "0x46667a0",
+      "bytesSha256": "2cf3c0ac3174684b4cf8ac13b987a4926ca45b5a6d40b9a5013d6d0fb97801b0",
+      "asmSha256": "40d9d22092732c5a35b66c0368d2bacb810530a0808506c42f4485f896191364"
+    },
+    {
+      "name": "layout-preferred-invalidation",
+      "start": "0x46667a0",
+      "stopExclusive": "0x46669bc",
+      "bytesSha256": "9c753a4bd325e5e539293227fa2d55ea1432759c650f683ef524b667907307f7",
+      "asmSha256": "49746b57d25827b390054c9045a2d7fb9f9613e996249c27b3e990982b515874"
+    },
+    {
+      "name": "chats-size-owner",
+      "start": "0x4667640",
+      "stopExclusive": "0x4667728",
+      "bytesSha256": "7e59abf2f197dc6fd1757e93878b3bdb108b13e61f716c5f0a6d86654f5c2e99",
+      "asmSha256": "d0e99d27d9fd3f0dee53b5d889a68695dbb14db9f330cd53e349d1cc45b615f9"
+    }
+  ],
+  "originalFields": {
+    "child": "0x310",
+    "preferredHeight": "0x318 optional flag0x31c",
+    "contentHeight": "0x320 optional flag0x324",
+    "preferredSizeCache": "0x328 flag0x330",
+    "layoutSizeCache": "0x340 flag0x348"
+  },
+  "scope": "Shared real clipping container, no expansion owner or body mount. Existing shared sources unchanged."
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_clip_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "7394e209f70b301fbca5f97333d3e4842b46563bdcc220efc63a05474d4b33a6"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_section_clip_view.h",
+      "baselineSha256": null,
+      "outputSha256": "1605ec3e94d9f6fbc8f6494ba1cfef07af5c91b7eff859a31a8d18651ba2269e"
+    }
+  ],
+  "compiled": false,
+  "mounted": false
+}
