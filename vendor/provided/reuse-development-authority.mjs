@@ -1,5 +1,5 @@
 /** Preserve an exact previously verified signed Aux resource tree across a
- * native-only rebuild. No Apple signing, DP calls, provisioning or launch. */
+ * native rebuild with optional exact reviewed UI updates. No Apple signing, DP calls, provisioning or launch. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
