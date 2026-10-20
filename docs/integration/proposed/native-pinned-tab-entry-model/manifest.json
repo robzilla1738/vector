@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "applyAfter": "actual native161 or cumulative169; all paths new and absent in shared source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "baselineSha256": null,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputSha256": "fed71c8033f24413e95a60c2dfac7248565efa67d89bc127dae645dc1e09e7bd",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "baselineSha256": null,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputSha256": "53d26bd4b196d4af8712f72f2db8d937646447fb73dff398aa5659eb8f9a355c",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries_unittest.cc",
+      "baselineSha256": null,
+      "baselineFixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outputSha256": "c721526c91c7f4eab2331d300f0756fb08e55c722d5665f415510a970d5a9385",
+      "newFile": true
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiMounted": false
+}

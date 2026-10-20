@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-read",
+      "rva": "0x41d4660",
+      "bytes": 964,
+      "sha256": "d3eff3815f24f2b4af61a258a5796ce02ecfd0580a7fc32a546569a5999f0b67"
+    },
+    {
+      "name": "original-write",
+      "rva": "0x41d4a24",
+      "bytes": 708,
+      "sha256": "f1bbc4913d1bdaea71f1ce96b51ce6d5b4a7695e7584f1426418ca70224e93de"
+    },
+    {
+      "name": "original-view-constructor",
+      "rva": "0x4604e08",
+      "bytes": 988,
+      "sha256": "2c8acb48ec9386a3e41fefa6e493cab81b97c6e460cfc39afe57438cef710104"
+    },
+    {
+      "name": "original-rebuild-model",
+      "rva": "0x46051e4",
+      "bytes": 152,
+      "sha256": "aa7084ccc185fa5fd4c5aa2c6c65eac7a9f3fc1d82a7455c020d0cdd0ed72c48"
+    },
+    {
+      "name": "original-build-children",
+      "rva": "0xc785524",
+      "bytes": 216,
+      "sha256": "455f67712778deae5b2c1fc840220e8d694388b5fe04ef956dda93cd2cd6442c"
+    },
+    {
+      "name": "original-build-thunks",
+      "rva": "0xcbafcd4",
+      "bytes": 36,
+      "sha256": "9552f42590bd252fd051fc52a12a6c8bcea60c076460d279b0697f3b8921559f"
+    },
+    {
+      "name": "original-entry-constructor",
+      "rva": "0x460ee60",
+      "bytes": 916,
+      "sha256": "b9a1b46c79a8f9854a9ee7d84a0513b90149978d4578369b5b4a60bf55fe3223"
+    },
+    {
+      "name": "original-entry-metadata",
+      "rva": "0x4604d00",
+      "bytes": 264,
+      "sha256": "2dd6b9caae6ac0055fc69e19c8bf4c6335681d1ccb0438e922f1960b1d67f936"
+    }
+  ],
+  "strings": [
+    {
+      "rva": "0xcedc6b4",
+      "value": "pinned_tabs"
+    },
+    {
+      "rva": "0xcf019cc",
+      "value": "url"
+    },
+    {
+      "rva": "0xcf019d0",
+      "value": "title"
+    },
+    {
+      "rva": "0xdecb673",
+      "value": "VerticalPinnedTabEntriesView"
+    },
+    {
+      "rva": "0xdecb5ac",
+      "value": "VerticalPinnedTabEntriesView::EntryView"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "path": "components/prefs/pref_registry_simple.h",
+      "sha256": "af139e131aff1d369439589b0509eb44ef3e55b23978a537ab4388334f5de692"
+    },
+    {
+      "path": "components/prefs/pref_service.h",
+      "sha256": "2b76919536ecfc8f07ae580f58f507b649e83d7f5722af8646c903cdc593512f"
+    },
+    {
+      "path": "components/prefs/testing_pref_service.h",
+      "sha256": "7d4913ea934d25cdca1ea5fe2a689352bd5e60223f18b333125d5ccf6d539cb5"
+    }
+  ]
+}
