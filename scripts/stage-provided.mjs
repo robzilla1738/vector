@@ -10,6 +10,8 @@ import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
 import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
+import { resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
+import { transformProvidedPasswordManagerScope } from './lib/provided-password-manager-scope.mjs';
 import { transformProvidedUiBoundary } from './lib/provided-ui-boundary.mjs';
 import { transformProvidedNativeUi, unresolvedNativeCapabilities } from '../vendor/provided/native-ui-compat.mjs';
 
@@ -18,7 +20,7 @@ const args = process.argv.slice(2);
 const options = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--replace') { options.replace = true; continue; }
-  if (!['--output', '--app-path'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--replace]');
+  if (!['--output', '--app-path', '--source-snapshot'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--replace]');
   options[args[i]] = args[++i];
 }
 const output = resolve(options['--output'] ?? join(repository, 'out/provided-reuse'));
@@ -36,6 +38,7 @@ try {
 }
 catch (error) { if (error.code !== 'ENOENT' || outputExists) throw error; }
 const pins = JSON.parse(await readFile(join(repository, 'docs/source/provided-ui-inputs.json'), 'utf8'));
+const sourceSnapshot = await resolveProvidedSourceSnapshot({ snapshotRoot: options['--source-snapshot'] && resolve(options['--source-snapshot']), repositoryRoot: repository });
 const identities = JSON.parse(await readFile(join(repository, 'docs/design/extension-identities.json'), 'utf8'));
 const brandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
 const brandInputs = [];
@@ -45,19 +48,20 @@ for (const path of providedStageInputs) adaptationInputs.push({ path, sha256: cr
 await mkdir(dirname(output), { recursive: true });
 const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
-  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, transformText(input) {
-    const native = transformProvidedNativeUi(input);
+  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, transformText(input) {
+    const scope = transformProvidedPasswordManagerScope(input);
+    const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
-    return { text: boundary.text, anchors: [...native.anchors, ...boundary.anchors] };
+    return { text: boundary.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
   await writeFile(join(temporary, 'ui/manifest.json'), `${JSON.stringify(ui, null, 2)}\n`);
-  const apps = await stageProvidedApps({ outputRoot: join(temporary, 'apps') });
+  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps') });
   const runtimePins = JSON.parse(await readFile(join(repository, 'docs/source/provided-runtime-inputs.json'), 'utf8'));
   const distribution = await stageProvidedRuntime({
-    sourceRoot: runtimePins.components.runtime.inputRoot,
-    memoryRoot: runtimePins.components.memory.inputRoot,
+    sourceRoot: sourceSnapshot?.roots.runtime ?? runtimePins.components.runtime.inputRoot,
+    memoryRoot: sourceSnapshot?.roots.memory ?? runtimePins.components.memory.inputRoot,
     outputRoot: join(temporary, 'distribution'),
     runtimeRoot: join(finalApp, 'Contents/Resources/aux/agent-runtime'),
   });
@@ -66,7 +70,7 @@ try {
   const helperPins = JSON.parse(await readFile(join(repository, 'docs/source/provided-computer-use-inputs.json'), 'utf8'));
   await mkdir(join(temporary, 'computer-use'));
   const computerUse = await stageProvidedComputerUse({
-    sourceRoot: helperPins.inputRoot,
+    sourceRoot: sourceSnapshot?.roots.computerUse ?? helperPins.inputRoot,
     outputRoot: join(temporary, 'computer-use/Aux Computer Use.app'),
     identities: { browserBundleId: 'dev.aux.browser', canaryBundleId: 'dev.aux.browser.canary', bundleId: 'dev.aux.browser.computer-use' },
   });
@@ -86,6 +90,6 @@ try {
   try { await rename(temporary, output); }
   catch (error) { if (previous) await rename(backup, output); throw error; }
   if (previous) console.log(`Previous generated stage preserved: ${backup}`);
-  console.log(`Staged supplied Agent/Vault UI, daemon, CLI, agent/memory distributions and Computer Use helper: ${output}`);
+  console.log(`Staged supplied Agent UI and archival Vault inputs, daemon, CLI, agent/memory distributions and Computer Use helper: ${output}`);
   console.log('Incomplete integration; not a runnable production package. See manifest.json blockers.');
 } catch (error) { await rm(temporary, { recursive: true, force: true }); throw error; }

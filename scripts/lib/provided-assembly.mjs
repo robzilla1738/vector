@@ -60,7 +60,8 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   const computerUse = await json(join(stageRoot, 'computer-use/manifest.json'));
   if (distribution.runtimeRoot !== join(stack.finalApp, 'Contents/Resources/aux/agent-runtime')) throw new Error('Runtime relocation does not match the final app path');
   const components = [
-    ...['agent', 'vault'].map((name) => ({ source: `ui/${name}`, target: `apps/${name === 'agent' ? 'extension' : 'vault'}/dist`, files: ui.components[name].files })),
+    // Vault remains in the pinned source audit, but is not a shipped product.
+    { source: 'ui/agent', target: 'apps/extension/dist', files: ui.components.agent.files },
     ...['daemon', 'cli'].map((name) => {
       const component = apps.components[name];
       if (component.app !== `${name}/Aux ${name === 'daemon' ? 'Daemon' : 'CLI'}.app`) throw new Error('Unexpected supplied application layout');
@@ -73,6 +74,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp: stack.finalApp,
     brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
+    excludedProducts: ['vault'], passwordManager: 'external-extensions',
     localDevelopmentOnly: true, daemonRuntime: apps.components.daemon.nodeDevelopment ? 'provided-node-development' : 'provided-sea',
     blockers: [...new Set([...stack.blockers, 'Compiled native guard/carrier and reviewed Chromium integration', 'Disposable packaged UI/runtime acceptance'])],
   };

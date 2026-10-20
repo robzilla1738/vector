@@ -39,6 +39,8 @@ test('assembly retains immutable runtime bytes, executable mode and internal rel
   assert.equal((await lstat(join(runtime, 'runtime'))).mode & 0o777, 0o755);
   assert.equal(await readlink(join(runtime, 'current')), 'runtime');
   assert.equal(report.productionReady, false);
+  assert.deepEqual(report.excludedProducts, ['vault']);
+  await assert.rejects(lstat(join(options.outputRoot, 'apps/vault')), { code: 'ENOENT' });
   await assert.rejects(assembleProvidedResources(options), /already exists/);
 });
 
