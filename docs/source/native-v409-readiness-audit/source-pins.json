@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "nativeComposition": 409,
+  "scope": "bounded current-source readiness audit; no new recovery or native patch",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "sha256": "cec4c93f17b7114785008ceef687d9062ae5780264ca3a2ab1b18a6cd4f53324"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "cc5c329fb5249746e8db50e5b14a51661cea2a68eb23d9b741b6325c16b59e62"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+      "sha256": "3d95c6c8936ed835665f799a158e42f6061af1574c65e9479bf461963f05fb6a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "sha256": "1f86abff094bda91f2dc41e394c6f25fc4c36a27811ff8598666b0506c520259"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "sha256": "d90980366a306c3071872c8ff43060690e1d299d84cc8b593712eef3dff1d503"
+    }
+  ],
+  "runtimeExecuted": false,
+  "nativeSourceModified": false,
+  "fullParityAccepted": false
+}
