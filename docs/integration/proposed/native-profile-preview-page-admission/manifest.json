@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base": "page renderer5e548e42d cc output; disjoint from65cb pageheader",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+      "baselineSha256": "4f3821b29043641c7f6974d75cfc6dabcb057434857c9bb19f231e7e3b29f35e",
+      "outputSha256": "2f7c60e4acb090cf42a64e3055e7aa38b430d1ee50b13904f1d64965ba8eca9b"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

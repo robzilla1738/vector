@@ -1,0 +1,20 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_page.cc
+@@ -144,6 +144,9 @@
+ }  // namespace
+ 
+ ProfilePagePreviewPageView::ProfilePagePreviewPageView() {
++  // Original46536b0 clears View+0x1a9 on the whole preview page. The real
++  // borrowed tabs remain presentation-only until actual profile activation.
++  SetCanProcessEventsWithinSubtree(false);
+   SetProperty(views::kViewIgnoredByLayoutKey, true);
+   SetBackground(views::CreateSolidBackground(SK_ColorTRANSPARENT));
+   captured_image_ = AddChildView(std::make_unique<views::ImageView>());
+@@ -171,7 +174,6 @@
+   name_ = header_->AddChildView(std::make_unique<views::Label>());
+   StyleLabel(name_, 14, gfx::Font::Weight::MEDIUM);
+   header_layout->SetFlexForView(name_, 1);
+-  name_->SetVisible(false);
+   disclosure_ = header_->AddChildView(std::make_unique<views::ImageView>());
+   disclosure_->SetImageSize(gfx::Size(12, 12));
+   search_ = fallback_->AddChildView(
