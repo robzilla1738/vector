@@ -1,0 +1,30 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "only-source-registry-families",
+    "count": 1,
+    "before": "  for (const auto& family : kFamilies) {\n    auto directory",
+    "after": "  for (const auto& family : kFamilies) {\n    // Supplied42653d0 admits only its actual installed application registry.\n    // Edge remains a valid internal migrator family, not a chooser entry.\n    if (std::string_view(family.id) == \"edge\" ||\n        (!fixture && !InstalledSourceApplication(family.id))) {\n      continue;\n    }\n    auto directory"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+    "name": "safari-installed-admission-and-original-order",
+    "count": 1,
+    "before": "  sources.Append(std::move(safari));\n  return sources;\n}",
+    "after": "  if (fixture || InstalledSourceApplication(\"safari\")) {\n    sources.Append(std::move(safari));\n  }\n  // Original fixed registry order is retained even when some apps are absent.\n  base::ListValue ordered;\n  for (const char* id : {\"chrome\", \"brave\", \"safari\", \"firefox\", \"arc\", \"atlas\",\n                         \"comet\", \"dia\", \"helium\"}) {\n    for (auto& source : sources) {\n      if (source.GetDict().FindString(\"id\") &&\n          *source.GetDict().FindString(\"id\") == id) {\n        ordered.Append(source.Clone());\n        break;\n      }\n    }\n  }\n  return ordered;\n}"
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+    "name": "retire-unused-launchservices-bundle-map",
+    "count": 1,
+    "before": "const char* Bundle(std::string_view source) {\n  if (source == \"chrome\") {\n    return \"com.google.Chrome\";\n  }\n  if (source == \"brave\") {\n    return \"com.brave.Browser\";\n  }\n  if (source == \"edge\") {\n    return \"com.microsoft.edgemac\";\n  }\n  if (source == \"arc\") {\n    return \"company.thebrowser.Browser\";\n  }\n  if (source == \"dia\") {\n    return \"company.thebrowser.dia\";\n  }\n  if (source == \"atlas\") {\n    return \"com.openai.atlas\";\n  }\n  if (source == \"comet\") {\n    return \"ai.perplexity.comet\";\n  }\n  if (source == \"helium\") {\n    return \"net.imput.helium\";\n  }\n  if (source == \"firefox\") {\n    return \"org.mozilla.firefox\";\n  }\n  return nullptr;\n}\n",
+    "after": ""
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+    "name": "actual-fixed-path-bundle-admission",
+    "count": 1,
+    "before": "    const auto* bundle = Bundle(source);\n    return bundle && [[NSWorkspace sharedWorkspace]\n                         URLForApplicationWithBundleIdentifier:\n                             [NSString stringWithUTF8String:bundle]];",
+    "after": "    // Original42653d0 probes these exact named .app directories, then checks\n    // NSBundle.bundleIdentifier (or its Info.plist fallback). LaunchServices\n    // discovery by bundle ID alone admits apps the supplied chooser omits.\n    struct Application {\n      std::string_view id;\n      const char* name;\n      const char* bundle;\n    };\n    static constexpr Application applications[] = {\n        {\"chrome\", \"Google Chrome\", \"com.google.Chrome\"},\n        {\"brave\", \"Brave Browser\", \"com.brave.Browser\"},\n        {\"safari\", \"Safari\", \"com.apple.Safari\"},\n        {\"firefox\", \"Firefox\", \"org.mozilla.firefox\"},\n        {\"arc\", \"Arc\", \"company.thebrowser.Browser\"},\n        {\"atlas\", \"ChatGPT Atlas\", \"com.openai.atlas\"},\n        {\"comet\", \"Comet\", \"ai.perplexity.comet\"},\n        {\"dia\", \"Dia\", \"company.thebrowser.dia\"},\n        {\"helium\", \"Helium\", \"net.imput.helium\"},\n    };\n    for (const auto& application : applications) {\n      if (application.id != source) {\n        continue;\n      }\n      NSString* name = [NSString stringWithUTF8String:application.name];\n      if (![name hasSuffix:@\".app\"]) {\n        name = [name stringByAppendingString:@\".app\"];\n      }\n      NSString* expected = [NSString stringWithUTF8String:application.bundle];\n      for (NSString* parent in @[\n             @\"/Applications\",\n             [NSHomeDirectory() stringByAppendingPathComponent:@\"Applications\"],\n             @\"/System/Applications\"\n           ]) {\n        NSString* path = [parent stringByAppendingPathComponent:name];\n        BOOL directory = NO;\n        if (![[NSFileManager defaultManager] fileExistsAtPath:path\n                                                 isDirectory:&directory] ||\n            !directory) {\n          continue;\n        }\n        NSString* identifier = [NSBundle bundleWithPath:path].bundleIdentifier;\n        if (!identifier.length) {\n          NSDictionary* info = [NSDictionary\n              dictionaryWithContentsOfFile:\n                  [path stringByAppendingPathComponent:@\"Contents/Info.plist\"]];\n          id value = info[@\"CFBundleIdentifier\"];\n          if ([value isKindOfClass:[NSString class]]) {\n            identifier = value;\n          }\n        }\n        if ([identifier isEqualToString:expected]) {\n          return true;\n        }\n      }\n      return false;\n    }\n    return false;"
+  }
+]

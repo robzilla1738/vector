@@ -1,0 +1,146 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -258,6 +258,12 @@
+   auto support = home->AppendASCII("Library/Application Support");
+   base::ListValue sources;
+   for (const auto& family : kFamilies) {
++    // Supplied42653d0 admits only its actual installed application registry.
++    // Edge remains a valid internal migrator family, not a chooser entry.
++    if (std::string_view(family.id) == "edge" ||
++        (!fixture && !InstalledSourceApplication(family.id))) {
++      continue;
++    }
+     auto directory = support.AppendASCII(family.path);
+     base::DictValue source;
+     source.Set("id", family.id);
+@@ -348,8 +354,22 @@
+                                .Append("bookmarks")
+                                .Append("history")
+                                .Append("passwords"));
+-  sources.Append(std::move(safari));
+-  return sources;
++  if (fixture || InstalledSourceApplication("safari")) {
++    sources.Append(std::move(safari));
++  }
++  // Original fixed registry order is retained even when some apps are absent.
++  base::ListValue ordered;
++  for (const char* id : {"chrome", "brave", "safari", "firefox", "arc", "atlas",
++                         "comet", "dia", "helium"}) {
++    for (auto& source : sources) {
++      if (source.GetDict().FindString("id") &&
++          *source.GetDict().FindString("id") == id) {
++        ordered.Append(source.Clone());
++        break;
++      }
++    }
++  }
++  return ordered;
+ }
+ base::DictValue ReadCategory(const base::FilePath& profile,
+                              bool firefox,
+--- a/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
++++ b/chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm
+@@ -49,46 +49,69 @@
+   }
+   return nullptr;
+ }
+-const char* Bundle(std::string_view source) {
+-  if (source == "chrome") {
+-    return "com.google.Chrome";
+-  }
+-  if (source == "brave") {
+-    return "com.brave.Browser";
+-  }
+-  if (source == "edge") {
+-    return "com.microsoft.edgemac";
+-  }
+-  if (source == "arc") {
+-    return "company.thebrowser.Browser";
+-  }
+-  if (source == "dia") {
+-    return "company.thebrowser.dia";
+-  }
+-  if (source == "atlas") {
+-    return "com.openai.atlas";
+-  }
+-  if (source == "comet") {
+-    return "ai.perplexity.comet";
+-  }
+-  if (source == "helium") {
+-    return "net.imput.helium";
+-  }
+-  if (source == "firefox") {
+-    return "org.mozilla.firefox";
+-  }
+-  return nullptr;
+-}
+ }  // namespace
+ bool SupportsSourceKey(std::string_view source) {
+   return Service(source);
+ }
+ bool InstalledSourceApplication(std::string_view source) {
+   @autoreleasepool {
+-    const auto* bundle = Bundle(source);
+-    return bundle && [[NSWorkspace sharedWorkspace]
+-                         URLForApplicationWithBundleIdentifier:
+-                             [NSString stringWithUTF8String:bundle]];
++    // Original42653d0 probes these exact named .app directories, then checks
++    // NSBundle.bundleIdentifier (or its Info.plist fallback). LaunchServices
++    // discovery by bundle ID alone admits apps the supplied chooser omits.
++    struct Application {
++      std::string_view id;
++      const char* name;
++      const char* bundle;
++    };
++    static constexpr Application applications[] = {
++        {"chrome", "Google Chrome", "com.google.Chrome"},
++        {"brave", "Brave Browser", "com.brave.Browser"},
++        {"safari", "Safari", "com.apple.Safari"},
++        {"firefox", "Firefox", "org.mozilla.firefox"},
++        {"arc", "Arc", "company.thebrowser.Browser"},
++        {"atlas", "ChatGPT Atlas", "com.openai.atlas"},
++        {"comet", "Comet", "ai.perplexity.comet"},
++        {"dia", "Dia", "company.thebrowser.dia"},
++        {"helium", "Helium", "net.imput.helium"},
++    };
++    for (const auto& application : applications) {
++      if (application.id != source) {
++        continue;
++      }
++      NSString* name = [NSString stringWithUTF8String:application.name];
++      if (![name hasSuffix:@".app"]) {
++        name = [name stringByAppendingString:@".app"];
++      }
++      NSString* expected = [NSString stringWithUTF8String:application.bundle];
++      for (NSString* parent in @[
++             @"/Applications",
++             [NSHomeDirectory() stringByAppendingPathComponent:@"Applications"],
++             @"/System/Applications"
++           ]) {
++        NSString* path = [parent stringByAppendingPathComponent:name];
++        BOOL directory = NO;
++        if (![[NSFileManager defaultManager] fileExistsAtPath:path
++                                                 isDirectory:&directory] ||
++            !directory) {
++          continue;
++        }
++        NSString* identifier = [NSBundle bundleWithPath:path].bundleIdentifier;
++        if (!identifier.length) {
++          NSDictionary* info = [NSDictionary
++              dictionaryWithContentsOfFile:
++                  [path stringByAppendingPathComponent:@"Contents/Info.plist"]];
++          id value = info[@"CFBundleIdentifier"];
++          if ([value isKindOfClass:[NSString class]]) {
++            identifier = value;
++          }
++        }
++        if ([identifier isEqualToString:expected]) {
++          return true;
++        }
++      }
++      return false;
++    }
++    return false;
+   }
+ }
+ SourceKey DeriveSourceKey(std::string_view password) {

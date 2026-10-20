@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "1b5cff0cb discovery outputs; registry-only hunks disjoint from L2 password-store reader",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "93bf82fb3405d13356310f7d3f4fc005f58f1bec644fd88ebe8265a4955156fa",
+      "outputSha256": "039ba6119ec322eef57c1ee66308dad87899b06fb949d1b6890d77f16751f5fb"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+      "baselineSha256": "b07f68d238926fab29d448556d2c6e841460d6a8c9cb6c026116e47b55b5bbb7",
+      "outputSha256": "7c1910526be481990e4bdd622d29d8c02da5b0b23da3cc5c8c25945218c470e6"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

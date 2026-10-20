@@ -1,0 +1,188 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x42653d0",
+      "end": "0x4265aac",
+      "sha256": "1cc5de7527faa5560a7a7814bee8296db5e5043339a0684a06de524d77419478",
+      "listing": "registry-owner.asm",
+      "listingSha256": "9de780637373db3576ab284073a45bfb902344813b160f64adb4b761912bc676"
+    },
+    {
+      "start": "0x4275b40",
+      "end": "0x4276580",
+      "sha256": "52444d9e46e7a47cd65f17a2db304d85107ce09c869baa19c71fb2750d90306d",
+      "listing": "get-sources.asm",
+      "listingSha256": "97a1ce0f2a88e16f0ca37cd0a52bd17258f5e96733c963b1178e7d82b7d717a7"
+    },
+    {
+      "start": "0x4266e60",
+      "end": "0x426793c",
+      "sha256": "bc752b37bbb883356b6e12e948a173c651cc929067481c9ea099f7aa3fec86c1",
+      "listing": "profile-reader.asm",
+      "listingSha256": "64d6806c9778ae6fa30bdaf49afd5538fe023c860896bc7a4ca49110b0c08bdd"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xd975aec",
+      "text": ".app",
+      "hex": "2e61707000"
+    },
+    {
+      "address": "0xdb1fe2c",
+      "text": "/Applications",
+      "hex": "2f4170706c69636174696f6e7300"
+    },
+    {
+      "address": "0xdb1fe3a",
+      "text": "Applications",
+      "hex": "4170706c69636174696f6e7300"
+    },
+    {
+      "address": "0xdb1fe47",
+      "text": "/System/Applications",
+      "hex": "2f53797374656d2f4170706c69636174696f6e7300"
+    },
+    {
+      "address": "0xdb1fe5c",
+      "text": "Contents/Info.plist",
+      "hex": "436f6e74656e74732f496e666f2e706c69737400"
+    },
+    {
+      "address": "0xdb1fe70",
+      "text": "CFBundleIdentifier",
+      "hex": "434642756e646c654964656e74696669657200"
+    }
+  ],
+  "sourceRegistry": {
+    "address": "0xe8a7320",
+    "hex": "d3427f0d0000100079dc9b0d00002000000000000000000094fdb10d00001000e0f1b10d00001000a2fdb10d000020000000000000000000b4fdb10d00001000c2fdb10d000010005e83ab0d0000200000000000000000006f56a20d00001000c9fdb10d00001000a485a30d0000200000000000000000005a56a20d00001000be81a20d00001000d1fdb10d0000200000000000000000008684a20d00001000e6f1b10d0000100080fab10d000020000000000000000000ecfdb10d00001000ecf1b10d00001000fafdb10d000020000000000000000000a797a90d00001000f2f1b10d000010000efeb10d0000200000000000000000009efab10d00001000fbf1b10d00001000a2fab10d00002000000000000000000025feb10d00001000",
+    "rows": [
+      {
+        "id": "chrome",
+        "bundle": "com.google.Chrome",
+        "name": "Google Chrome"
+      },
+      {
+        "id": "brave",
+        "bundle": "com.brave.Browser",
+        "name": "Brave Browser"
+      },
+      {
+        "id": "safari",
+        "bundle": "com.apple.Safari",
+        "name": "Safari"
+      },
+      {
+        "id": "firefox",
+        "bundle": "org.mozilla.firefox",
+        "name": "Firefox"
+      },
+      {
+        "id": "arc",
+        "bundle": "company.thebrowser.Browser",
+        "name": "Arc"
+      },
+      {
+        "id": "atlas",
+        "bundle": "com.openai.atlas",
+        "name": "ChatGPT Atlas"
+      },
+      {
+        "id": "comet",
+        "bundle": "ai.perplexity.comet",
+        "name": "Comet"
+      },
+      {
+        "id": "dia",
+        "bundle": "company.thebrowser.dia",
+        "name": "Dia"
+      },
+      {
+        "id": "helium",
+        "bundle": "net.imput.helium",
+        "name": "Helium"
+      }
+    ]
+  },
+  "selectors": [
+    {
+      "address": "0xa26c818",
+      "resolved": "objc:stringWithUTF8String:",
+      "hex": "704a01d01002229100021fd6"
+    },
+    {
+      "address": "0xa47bcd4",
+      "resolved": "objc:length",
+      "hex": "103a01b01082079100021fd6"
+    },
+    {
+      "address": "0xa26c848",
+      "resolved": "objc:hasSuffix:",
+      "hex": "704a01d010823e9100021fd6"
+    },
+    {
+      "address": "0xb4c3af8",
+      "resolved": "objc:stringByAppendingString:",
+      "hex": "10b800901002199100021fd6"
+    },
+    {
+      "address": "0xad8785c",
+      "resolved": "objc:defaultManager",
+      "hex": "d0f100f010820e9100021fd6"
+    },
+    {
+      "address": "0xa689448",
+      "resolved": "_NSHomeDirectory",
+      "hex": "702901d010f21e9100021fd6"
+    },
+    {
+      "address": "0xc264870",
+      "resolved": "objc:stringByAppendingPathComponent:",
+      "hex": "f04a00f01082329100021fd6"
+    },
+    {
+      "address": "0xc26487c",
+      "resolved": "objc:fileExistsAtPath:isDirectory:",
+      "hex": "f04a00d010020f9100021fd6"
+    },
+    {
+      "address": "0xc264b00",
+      "resolved": "objc:dictionaryWithContentsOfFile:",
+      "hex": "104b00901002089100021fd6"
+    },
+    {
+      "address": "0x8b5ed0c",
+      "resolved": "objc:objectForKeyedSubscript:",
+      "hex": "f00202f01002389100021fd6"
+    },
+    {
+      "address": "0x86f27bc",
+      "resolved": "objc:class",
+      "hex": "5026029010022b9100021fd6"
+    },
+    {
+      "address": "0x86f27c8",
+      "resolved": "objc:isKindOfClass:",
+      "hex": "5026029010822b9100021fd6"
+    },
+    {
+      "address": "0x8003744",
+      "resolved": "objc:bundleWithPath:",
+      "hex": "b05d02f010820f9100021fd6"
+    },
+    {
+      "address": "0x8003750",
+      "resolved": "objc:bundleIdentifier",
+      "hex": "b05d02f010820e9100021fd6"
+    },
+    {
+      "address": "0xaa44da8",
+      "resolved": "objc:isEqualToString:",
+      "hex": "d00b01b01002059100021fd6"
+    }
+  ],
+  "uiInputs": []
+}
