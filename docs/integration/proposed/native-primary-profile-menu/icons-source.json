@@ -1,0 +1,26 @@
+[
+  {
+    "identifier": "kPrimaryEditIcon0",
+    "descriptorRva": "0xe9d4e38",
+    "representationRva": "0xe9d4e28",
+    "pathRva": "0xd3db4c0",
+    "elements": 96,
+    "sha256": "0614be29262310fd930c9fb5a6ec00eece909be3082765269ea89875bed176d8"
+  },
+  {
+    "identifier": "kPrimaryDeleteIcon0",
+    "descriptorRva": "0xe82eae8",
+    "representationRva": "0xe82eac8",
+    "pathRva": "0xcea0ff0",
+    "elements": 118,
+    "sha256": "b3604065198449cb7212bd0ea1c84ac683945472b39e6fcc19893fb32f8feeb2"
+  },
+  {
+    "identifier": "kPrimaryDeleteIcon1",
+    "descriptorRva": "0xe82eae8",
+    "representationRva": "0xe82ead8",
+    "pathRva": "0xcea11c8",
+    "elements": 94,
+    "sha256": "b34d255d15eddd4b965ba5b54f54c1fc56147978ef62d3042a709a32f891b9b5"
+  }
+]

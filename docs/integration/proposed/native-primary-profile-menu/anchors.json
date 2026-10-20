@@ -1,0 +1,87 @@
+[
+  {
+    "before": "#include \"base/strings/string_split.h\"",
+    "after": "#include \"base/strings/string_split.h\"\n#include \"base/strings/string_util.h\"",
+    "count": 1
+  },
+  {
+    "before": "#include \"chrome/browser/ui/views/frame/aux_icon_picker.h\"",
+    "after": "#include \"chrome/browser/ui/views/frame/aux_icon_picker.h\"\n#include \"chrome/browser/ui/views/frame/aux_profile_switch_owner.h\"\n#include \"chrome/browser/ui/views/profiles/aux_profile_display_label.h\"",
+    "count": 1
+  },
+  {
+    "before": "constexpr int kCommandEditProfile = 100;\nconstexpr int kCommandDeleteProfile = 101;\n",
+    "after": "",
+    "count": 1
+  },
+  {
+    "before": "#include \"chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc\"",
+    "after": "#include \"chrome/browser/ui/views/frame/aux_profile_indicator_context_icons.inc\"\n#include \"chrome/browser/ui/views/frame/aux_primary_profile_menu_icons.inc\"",
+    "count": 1
+  },
+  {
+    "before": "class AuxProfileMenu : public views::BubbleDialogDelegate,",
+    "after": "// The primary menu uses the same real ordered/non-omitted registry roster as\n// the supplied pager (40fd7f4,457333c), never the display-sorted UI helper.\nstd::vector<ProfileAttributesEntry*> PrimaryProfileRoster() {\n  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;\n  auto* state = g_browser_process ? g_browser_process->local_state() : nullptr;\n  std::vector<ProfileAttributesEntry*> entries;\n  if (!manager || !state)\n    return entries;\n  auto& storage = manager->GetProfileAttributesStorage();\n  for (const auto& path : aux::HorizontalProfileOrder(storage, *state)) {\n    auto* entry = storage.GetProfileAttributesWithPath(path);\n    if (entry && !entry->IsOmitted())\n      entries.push_back(entry);\n  }\n  return entries;\n}\n\nbool CanRemoveIndicatorProfile(BrowserWindowInterface* browser,\n                               const base::FilePath& path);\nvoid ConfirmRemoveIndicatorProfile(base::WeakPtr<BrowserWindowInterface> browser,\n                                    base::FilePath path);\n\nDEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kAuxEditProfileName);\n\n// Supplied45719a0 builds this DialogModel after retiring the actual menu.\nvoid ShowEditProfileDialog(base::WeakPtr<BrowserWindowInterface> browser,\n                           base::FilePath path) {\n  if (!browser)\n    return;\n  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;\n  auto* entry = manager ? manager->GetProfileAttributesStorage()\n                              .GetProfileAttributesWithPath(path) : nullptr;\n  std::u16string name = entry ? entry->GetLocalProfileName() : std::u16string();\n  ui::DialogModel::Builder builder;\n  auto* model = builder.model();\n  builder.SetInternalName(\"AuxProfileMenuEditProfile\")\n      .SetTitle(u\"Edit profile\")\n      .SetSubtitle(u\"Choose a short, recognizable name.\")\n      .AddOkButton(base::BindOnce(\n          [](base::WeakPtr<BrowserWindowInterface> sender, base::FilePath target,\n             ui::DialogModel* dialog) {\n            if (!sender)\n              return;\n            auto* profile_manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;\n            auto* target_entry = profile_manager ? profile_manager->GetProfileAttributesStorage()\n                                        .GetProfileAttributesWithPath(target) : nullptr;\n            if (!target_entry)\n              return;\n            const std::u16string normalized = base::CollapseWhitespace(\n                dialog->GetTextfieldByUniqueId(kAuxEditProfileName)->text(), true);\n            if (!normalized.empty())\n              target_entry->SetLocalProfileName(normalized, /*is_default_name=*/false);\n          }, browser, path, model),\n          ui::DialogModel::Button::Params().SetLabel(u\"Save\"))\n      .AddCancelButton(base::DoNothing(),\n                       ui::DialogModel::Button::Params().SetLabel(u\"Cancel\"))\n      .AddTextfield(kAuxEditProfileName, u\"\", name,\n                    ui::DialogModelTextfield::Params().SetAccessibleName(u\"Profile name\"))\n      .SetInitiallyFocusedField(kAuxEditProfileName);\n  constrained_window::ShowBrowserModal(builder.Build(),\n                                       browser->GetWindow()->GetNativeWindow());\n}\n\n// Supplied40fe36c chooses the first unused Profile N against both stored local\n// and displayed names, avatar26, then45838f8 dispatches in the same weak sender.\nvoid CreatePrimaryProfile(base::WeakPtr<BrowserWindowInterface> sender) {\n  if (!sender || !sender->GetProfile() || sender->GetProfile()->IsOffTheRecord())\n    return;\n  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;\n  if (!manager)\n    return;\n  const auto entries = manager->GetProfileAttributesStorage().GetAllProfilesAttributes();\n  std::u16string name;\n  for (int index = 1;; ++index) {\n    name = u\"Profile \" + base::NumberToString16(index);\n    const bool used = std::ranges::any_of(entries, [&name](auto* entry) {\n      return entry && (entry->GetLocalProfileName() == name || entry->GetName() == name);\n    });\n    if (!used)\n      break;\n  }\n  ProfileManager::CreateMultiProfileAsync(\n      name, /*icon_index=*/26, /*is_hidden=*/false,\n      base::BindOnce([](base::WeakPtr<BrowserWindowInterface> browser, Profile* profile) {\n        if (browser && profile)\n          DispatchSelectedProfile(browser, profile->GetPath());\n      }, sender));\n}\n\nclass AuxProfileMenu : public views::BubbleDialogDelegate,",
+    "count": 1
+  },
+  {
+    "before": "    ForgetAuxProfileMenu(browser_, GetWidget());\n    if (pending_switch_) {",
+    "after": "    ForgetAuxProfileMenu(browser_, GetWidget());\n    if (profile_actions_)\n      profile_actions_->CloseNow();\n    if (pending_switch_) {",
+    "count": 1
+  },
+  {
+    "before": "      case kCommandEditProfile:\n        EditProfile();\n        return;\n      case kCommandDeleteProfile:\n        DeleteProfile();\n        return;\n",
+    "after": "",
+    "count": 1
+  },
+  {
+    "before": "    for (ProfileAttributesEntry* entry : AllProfiles()) {",
+    "after": "    const auto entries = PrimaryProfileRoster();\n    for (ProfileAttributesEntry* entry : entries) {",
+    "count": 1
+  },
+  {
+    "before": "          entry->GetName()));",
+    "after": "          aux::ProfileDisplayLabel(\n              entry, g_browser_process->profile_manager()->GetProfileByPath(path),\n              entries.size())));",
+    "count": 1
+  },
+  {
+    "before": "                              base::Unretained(this), path),\n          u\"Profile actions\");",
+    "after": "                              base::Unretained(this), base::Unretained(row), path),\n          u\"Profile actions\");",
+    "count": 1
+  },
+  {
+    "before": "    contents_->AddChildView(std::make_unique<AuxMenuRow>(\n        base::BindRepeating(&AuxProfileMenu::NewProfile,\n                            base::Unretained(this)),\n        ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorSysOnSurfaceSubtle,\n                                       kMenuRowIcon),\n        u\"New profile\"));\n",
+    "after": "    if (!browser_->GetProfile()->IsOffTheRecord()) {\n      contents_->AddChildView(std::make_unique<AuxMenuRow>(\n          base::BindRepeating(&AuxProfileMenu::NewProfile,\n                              base::Unretained(this)),\n          ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorSysOnSurfaceSubtle,\n                                         kMenuRowIcon),\n          u\"New profile\"));\n    }\n",
+    "count": 1
+  },
+  {
+    "before": "  void ShowProfileActions(const base::FilePath& path) {\n    action_profile_ = path;\n    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);\n    menu_model_->AddItem(kCommandEditProfile, u\"Edit\");\n    menu_model_->AddItem(kCommandDeleteProfile, u\"Delete\");\n    if (AllProfiles().size() < 2) {\n      menu_model_->SetEnabledAt(1, false);\n    }\n    RunMenu(contents_, /*to_the_right=*/true);\n  }\n\n",
+    "after": "  void ShowProfileActions(views::View* anchor, const base::FilePath& path) {\n    if (profile_actions_)\n      profile_actions_->CloseNow();\n    action_profile_ = path;\n    auto menu = std::make_unique<views::BubbleDialogDelegate>(\n        anchor, views::BubbleBorder::LEFT_TOP);\n    menu->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));\n    menu->SetShowCloseButton(false);\n    menu->set_margins(gfx::Insets::VH(4, 4));\n    menu->set_fixed_width(240);\n    auto contents = std::make_unique<views::View>();\n    contents->SetLayoutManager(std::make_unique<views::BoxLayout>(\n        views::BoxLayout::Orientation::kVertical));\n    contents->AddChildView(std::make_unique<AuxMenuRow>(\n        base::BindRepeating(&AuxProfileMenu::EditProfile, base::Unretained(this)),\n        ui::ImageModel::FromVectorIcon(kPrimaryEditIcon, ui::kColorSysOnSurface, 16),\n        u\"Edit\"));\n    if (PrimaryProfileRoster().size() >= 2) {\n      auto* remove = contents->AddChildView(std::make_unique<AuxMenuRow>(\n          base::BindRepeating(&AuxProfileMenu::DeleteProfile, base::Unretained(this)),\n          ui::ImageModel::FromVectorIcon(kPrimaryDeleteIcon, ui::kColorSysOnSurface, 16),\n          u\"Delete\"));\n      remove->SetEnabled(CanRemoveIndicatorProfile(browser_, path));\n    }\n    menu->SetContentsView(std::move(contents));\n    auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(\n        std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);\n    profile_actions_ = widget->GetWeakPtr();\n    widget->Show();\n  }\n\n",
+    "count": 1
+  },
+  {
+    "before": "    if (pending_switch_) {\n      return;\n    }\n    // Snapshot both",
+    "after": "    if (pending_switch_ || path == browser_->GetProfile()->GetPath()) {\n      return;\n    }\n    // Snapshot both",
+    "count": 1
+  },
+  {
+    "before": "  void EditProfile() {\n    views::View* anchor = GetAnchorView();\n    const base::FilePath path = action_profile_;\n    GetWidget()->Close();\n    if (!anchor) {\n      return;\n    }\n    // The picker is a bubble that dismisses on deactivation, so it must open\n    // after this menu has finished closing.\n    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n        FROM_HERE,\n        base::BindOnce(\n            [](std::unique_ptr<views::ViewTracker> tracker,\n               base::FilePath path) {\n              views::View* anchor = tracker->view();\n              if (!anchor) {\n                return;\n              }\n              auto refresh = std::make_unique<views::ViewTracker>(anchor);\n              ShowAuxIconPicker(\n                  anchor, path,\n                  base::BindOnce(\n                      [](std::unique_ptr<views::ViewTracker> tracker) {\n                        RefreshAuxProfileButton(tracker->view());\n                      },\n                      std::move(refresh)));\n            },\n            std::make_unique<views::ViewTracker>(anchor), path));\n  }\n\n  void DeleteProfile() {\n    chrome::ShowQuestionMessageBoxAsync(\n        GetWidget()->GetNativeWindow(), u\"Delete profile?\",\n        u\"This permanently deletes this profile's bookmarks, history and \"\n        u\"passwords from this Mac.\",\n        base::BindOnce(\n            [](base::FilePath path, chrome::MessageBoxResult result) {\n              if (result == chrome::MESSAGE_BOX_RESULT_YES) {\n                webui::DeleteProfileAtPath(\n                    path, ProfileMetrics::DELETE_PROFILE_USER_MANAGER);\n              }\n            },\n            action_profile_));\n    GetWidget()->Close();\n  }\n\n  void NewProfile() {\n    ProfileManager::CreateMultiProfileAsync(\n        u\"New profile\", /*icon_index=*/0, /*is_hidden=*/false,\n        base::BindOnce([](Profile* profile) {\n          if (profile) {\n            webui::OpenNewWindowForProfile(profile);\n          }\n        }));\n    GetWidget()->Close();\n  }\n\n",
+    "after": "  void EditProfile() {\n    pending_switch_ = base::BindOnce(&ShowEditProfileDialog, sender_, action_profile_);\n    GetWidget()->Close();\n  }\n\n  void DeleteProfile() {\n    pending_switch_ = base::BindOnce(&ConfirmRemoveIndicatorProfile, sender_, action_profile_);\n    GetWidget()->Close();\n  }\n\n  void NewProfile() {\n    if (browser_->GetProfile()->IsOffTheRecord()) {\n      GetWidget()->Close();\n      return;\n    }\n    pending_switch_ = base::BindOnce(&CreatePrimaryProfile, sender_);\n    GetWidget()->Close();\n  }\n\n",
+    "count": 1
+  },
+  {
+    "before": "  base::FilePath action_profile_;\n  std::unique_ptr<ui::SimpleMenuModel> menu_model_;",
+    "after": "  base::FilePath action_profile_;\n  base::WeakPtr<views::Widget> profile_actions_;\n  std::unique_ptr<ui::SimpleMenuModel> menu_model_;",
+    "count": 1
+  },
+  {
+    "before": "    menu->set_fixed_width(240);\n    auto contents",
+    "after": "    menu->set_fixed_width(240);\n    menu->RegisterWindowClosingCallback(base::BindOnce(\n        [](std::unique_ptr<views::BubbleDialogDelegate::CloseOnDeactivatePin>) {},\n        PreventCloseOnDeactivate()));\n    auto contents",
+    "count": 1
+  },
+  {
+    "before": "#include \"ui/base/models/dialog_model_field.h\"",
+    "after": "#include \"ui/base/models/dialog_model_field.h\"\n#include \"ui/base/interaction/element_identifier.h\"",
+    "count": 1
+  }
+]

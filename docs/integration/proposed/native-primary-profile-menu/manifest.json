@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "applyAfter": "native257 (indicator-api155; primary sidebar unchanged by root257)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "f4c084c5b68971be102256954e1a01a4a3f2185f838f3ea7de88b4d06fb075d8",
+      "outputSha256": "873f6822f1f16745166d2b8bda0abdf75c0b3e4944445d315c9edecc921658a1",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_primary_profile_menu_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "f6104a55b7ec399208abef2ebe29cfce415ef3cb3dbfbeedabaa1a010116d14d",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

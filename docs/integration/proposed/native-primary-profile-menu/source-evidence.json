@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "primary-roster",
+      "rva": "0x4573250",
+      "bytes": 3784,
+      "sha256": "08183f79f679202c3d933db079d38da2fdac1ff576b4eb9efc3ffe2e7b7352f4",
+      "assemblySha256": "95d55a786097e0f1b0f910b5c28e477ecc5138f4225d2aaa61f1e4fa0cb722c5"
+    },
+    {
+      "name": "kind6-build",
+      "rva": "0x45771a8",
+      "bytes": 576,
+      "sha256": "108eb7078e37807c4ebbca8ec855145558d30f51414e3fb0cdd5c9b3e005e4b6",
+      "assemblySha256": "8537b395f6145ed5970c1d238a9dad6f4c463544a55a4c3d12152dcf5978a37c"
+    },
+    {
+      "name": "edit-name-dialog",
+      "rva": "0x45719a0",
+      "bytes": 1604,
+      "sha256": "41028bb976e63568f614e7da19f96a42986fb8f40b2ea0a5fbb629e881ce7c69",
+      "assemblySha256": "bb79fd746d2957ca6ddc9b8a0e4703e3077f46e89c135d5b8f881982ad0a4432"
+    },
+    {
+      "name": "rename-profile",
+      "rva": "0x40feffc",
+      "bytes": 208,
+      "sha256": "6a86b8b9c7dea14f2c5a610baf1e6bd2d9b268610d0d2e654c1545fef74da041",
+      "assemblySha256": "27b3342d9c58971040492a24a2d3137243d3e478a7397eadd40bd08a10468256"
+    },
+    {
+      "name": "collapse-whitespace",
+      "rva": "0x8dfdec",
+      "bytes": 660,
+      "sha256": "ceab798a80ec5a0fd6263bbbc2019a652543bc9f6816b2598d853c0e532ef9a5",
+      "assemblySha256": "c7c2cb25ec596130ea4c17345de245dff0b8ebeaeb6a5035e261b1ddcc2caf55"
+    },
+    {
+      "name": "new-profile-action",
+      "rva": "0x45718f8",
+      "bytes": 164,
+      "sha256": "eec7db32368de14f30a28e3f2270db2bb78b76b01f335cb1e99daf0ed1fe6622",
+      "assemblySha256": "2282bcd7a5bab735b023b39c103bc1f6605e8a76a09faa179a79391417b42eea"
+    },
+    {
+      "name": "create-profile",
+      "rva": "0x40fe36c",
+      "bytes": 1080,
+      "sha256": "b21ea103cbdb01a0c763b24b78acacca8a8e742ffe17ac03072fbf66fc63c47e",
+      "assemblySha256": "fc63eceb058cc614235a4128cf44a9deb33c81c9727a253c4a240b66fa0da46a"
+    },
+    {
+      "name": "create-callback",
+      "rva": "0x45838f8",
+      "bytes": 180,
+      "sha256": "5906d49c981a85bfc86e39263f051d1c4e74e39104f2c6beebdeaa428852ba34",
+      "assemblySha256": "9896b0b723b98c68dc1ec4b028eaad5ebaedd8f2bd0cfab0808feae1f3b59098"
+    },
+    {
+      "name": "show-child",
+      "rva": "0x456fae8",
+      "bytes": 1180,
+      "sha256": "e5ff8983dae0bdf201aa4095c0e5ca4f5220e90ffcabe2a2a366b5a55dccc11e",
+      "assemblySha256": "3827abde3aebd561103a1a933ee88e46a691c6bbc4ed6fc045ecef63ece65730"
+    },
+    {
+      "name": "kind-dispatch",
+      "rva": "0x4574428",
+      "bytes": 184,
+      "sha256": "fb058eeb37bfea5b958babf103aeab0ce1e28a7df82f30b3f58e0b7134f0a36f",
+      "assemblySha256": "47512027c0a73c965b11f949160d1e069360083aeb2ec5b28f2558a68ac43e47"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "ui/base/models/dialog_model.h",
+      "sha256": "59aec268d00927bcb045e2f802cbfc6fe7ed5a94d7a85c5ab5f70cc823f132ef"
+    },
+    {
+      "path": "ui/base/models/dialog_model_field.h",
+      "sha256": "3b77e6eb740f35e4cae028503c0d64a74d0773d3fb7f8ee9ab8928699116ff87"
+    },
+    {
+      "path": "base/strings/string_util.cc",
+      "sha256": "43a9ac8b689bceb88a7593f46e2dce484ebb8c18e104a5f1825e436a72c4f050"
+    },
+    {
+      "path": "base/strings/string_util_impl_helpers.h",
+      "sha256": "c2fdb48b59d55836c735a2007c1251df017c5e88cbd0250090e77eeb3408a2ac"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "sha256": "d85dd445a5445fbc4e3cc69b5a72bedab7dd9bc161cf71ab3227bfea3f24efb3"
+    },
+    {
+      "path": "ui/views/widget/widget_delegate.h",
+      "sha256": "0bbd8b38a1217f30c63825bfe241d2bcd2c35b1d4b1359e8f55076d6659f59ca"
+    },
+    {
+      "path": "ui/views/bubble/bubble_dialog_delegate_view.h",
+      "sha256": "fbd5a619c66ca5cfb952492c83027ff351155648a0d3cb058dd3689b7b7a7612"
+    },
+    {
+      "path": "ui/gfx/vector_icon_utils.cc",
+      "sha256": "adc211f37be9f8ab09965c9a1d78a0b615732872171d3b46e0278d705f42d2f9"
+    }
+  ]
+}
