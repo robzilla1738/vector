@@ -1,0 +1,691 @@
+{
+  "version": 1,
+  "kind": "local-development-signing-review-not-executable-policy",
+  "createdAt": "2026-10-20T11:09:29.890Z",
+  "packageRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local",
+  "packageReportSha256": "950825eaa3e1089136333066b6e00917529df019a6029be833bacc9173c3e4da",
+  "composition": "v416",
+  "nativeReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/native-full-build-v416.json",
+    "sha256": "e7b7bc4a49aa915f82b4f6c694333e4ec9996772a8f75a7a652b0068aa5d1530"
+  },
+  "boundaryReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-native-inbox-v413/native-build-receipt.json",
+    "sha256": "fe0387667b45c132a9d667767cbad603b52ff0e356ccb0bdef9ec84648a1e163"
+  },
+  "identity": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/signing-identity-inspection.json",
+    "sha256": "9347b4e9206bf3f576c3e115138966a624f7fcc4c2ed32f5a46c9cf43f754b7e",
+    "identityKind": "Apple Development",
+    "publicCertificateSha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "teamId": "9F2JXY8TCK",
+    "certificateAloneProvesGroupAuthority": false,
+    "teamIdSource": "Public certificate subject OU=9F2JXY8TCK, O=Robert Courson; CN parenthetical68DV3N28DS is not Team ID",
+    "availabilityCheckedReadOnly": true,
+    "checkedAt": "2026-10-20T11:09:29.900Z",
+    "currentAvailabilityRecord": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/identity-read-only.json",
+      "sha256": "f26d48978758e4ae1336a48ea832be837f1413b4f1aca05717432ba9e21b3bea"
+    }
+  },
+  "profiles": [
+    {
+      "role": "daemon",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v32-wirefix-development/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/embedded.provisionprofile",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/embedded.provisionprofile",
+      "sha256": "faa4760e2746dcea329ad272390a33d9960c3419bb8b991654a35ac5b7ee1a6d",
+      "replacedSha256": null,
+      "metadataExpirationDate": "2027-10-19T22:30:39Z",
+      "freshCmsAuthenticationRequired": true,
+      "previousProofHistorical": true
+    },
+    {
+      "role": "cli-sea",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v32-wirefix-development/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/embedded.provisionprofile",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/embedded.provisionprofile",
+      "sha256": "faa4760e2746dcea329ad272390a33d9960c3419bb8b991654a35ac5b7ee1a6d",
+      "replacedSha256": null,
+      "metadataExpirationDate": "2027-10-19T22:30:39Z",
+      "freshCmsAuthenticationRequired": true,
+      "previousProofHistorical": true
+    },
+    {
+      "role": "carrier",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v32-wirefix-development/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app/Contents/embedded.provisionprofile",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app/Contents/embedded.provisionprofile",
+      "sha256": "faa4760e2746dcea329ad272390a33d9960c3419bb8b991654a35ac5b7ee1a6d",
+      "replacedSha256": null,
+      "metadataExpirationDate": "2027-10-19T22:30:39Z",
+      "freshCmsAuthenticationRequired": true,
+      "previousProofHistorical": true
+    }
+  ],
+  "browserReview": {
+    "version": 1,
+    "executable": "Contents/MacOS/Aux",
+    "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99",
+    "signatureFlags": [
+      "adhoc",
+      "linker-signed"
+    ],
+    "observedEntitlements": {},
+    "entitlements": {
+      "preserveKeys": [],
+      "removeKeys": []
+    }
+  },
+  "targets": [
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex",
+      "executable": "Contents/MacOS/aux-password-importer-provider",
+      "kind": "bundle",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex",
+      "codeSha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507",
+      "infoPlistSha256": "10b04cfa5100c5a3ae64987b292ecdae35154fa7f3f80567bec1dfd875a9cacd",
+      "observed": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.PasswordImporter.CredentialProvider",
+          "com.apple.developer.authentication-services.autofill-credential-provider": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.app-sandbox": true
+        },
+        "unsigned": false,
+        "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507"
+      },
+      "capabilities": {
+        "preserveKeys": [
+          "com.apple.security.app-sandbox"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups",
+          "com.apple.developer.authentication-services.autofill-credential-provider"
+        ],
+        "addValues": {},
+        "values": {
+          "com.apple.security.app-sandbox": true
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/0.entitlements.plist",
+      "entitlementsSha256": "1c69c838ef92ae82faa4b7ce854628f435f9ffb7e834ab5b7d0a6dd49219602f",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/0.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "kind": "macho",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "codeSha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92",
+      "infoPlistSha256": null,
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {}
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/1.entitlements.plist",
+      "entitlementsSha256": "8ed8885e6f432dbabd6346af0da59d83ad57190f9ec5a685f247a1b9d3c1afb2",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/1.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "kind": "macho",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "codeSha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92",
+      "infoPlistSha256": null,
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "9110b2037d36032af0b1f13df02856e14f6973ecffac85ce1aab663f5b202b92"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {}
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/2.entitlements.plist",
+      "entitlementsSha256": "8ed8885e6f432dbabd6346af0da59d83ad57190f9ec5a685f247a1b9d3c1afb2",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/2.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "kind": "macho",
+      "signer": "adhoc",
+      "emptyCapabilities": true,
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "codeSha256": "4fe2e05ec0cbd55f7b10f606158d93f70bec73b45bc6cce954ddf8b807a82d58",
+      "infoPlistSha256": null,
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "4fe2e05ec0cbd55f7b10f606158d93f70bec73b45bc6cce954ddf8b807a82d58"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {}
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/3.entitlements.plist",
+      "entitlementsSha256": "8ed8885e6f432dbabd6346af0da59d83ad57190f9ec5a685f247a1b9d3c1afb2",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/3.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app",
+      "executable": "Contents/MacOS/aux-password-importer",
+      "kind": "bundle",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app",
+      "codeSha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369",
+      "infoPlistSha256": "6076b1576b3c38dbf261908feb8d97215568802928ae460f68bd1795deb66e83",
+      "observed": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.security.network.client": true,
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.PasswordImporter",
+          "com.apple.developer.authentication-services.autofill-credential-provider": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.app-sandbox": true
+        },
+        "unsigned": false,
+        "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369"
+      },
+      "capabilities": {
+        "preserveKeys": [
+          "com.apple.security.app-sandbox",
+          "com.apple.security.network.client"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups",
+          "com.apple.developer.authentication-services.autofill-credential-provider"
+        ],
+        "addValues": {},
+        "values": {
+          "com.apple.security.app-sandbox": true,
+          "com.apple.security.network.client": true
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/4.entitlements.plist",
+      "entitlementsSha256": "016d3be3b45f87cc527934f360d6e5f9c9b64974354c1170b355a35ed2fbfcb1",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/4.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "executable": "Contents/MacOS/aux-cli-sea",
+      "kind": "bundle",
+      "role": "cli-sea",
+      "signer": "development",
+      "policyPath": "Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "codeSha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71",
+      "infoPlistSha256": "be03d961847ba0984d0afdde0fe7246002e5c68b7712ea7bc14720d540787640",
+      "observed": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.cli",
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.cs.disable-library-validation": true
+        },
+        "unsigned": false,
+        "sha256": "fa2ab1bb84690c97e2bd4028bd872323977e0a7e49b5bb5ff492e8b1d98cac71"
+      },
+      "capabilities": {
+        "preserveKeys": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "addValues": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.cli",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ],
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "values": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.cli",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/5.entitlements.plist",
+      "entitlementsSha256": "b49c7f94f346814d7d32f7f03ec184935f239977549b53e60ea0ef3ce71486ce",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/5.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app",
+      "executable": "Contents/MacOS/aux-computer-use",
+      "kind": "bundle",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app",
+      "codeSha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c",
+      "infoPlistSha256": "00888a4a89923831ce1ab6ce867b690b88ddbc71961bfff96defc758482791e0",
+      "observed": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.security.automation.apple-events": true,
+          "com.apple.security.personal-information.addressbook": true
+        },
+        "unsigned": false,
+        "sha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c"
+      },
+      "capabilities": {
+        "preserveKeys": [
+          "com.apple.security.automation.apple-events",
+          "com.apple.security.personal-information.addressbook"
+        ],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {
+          "com.apple.security.automation.apple-events": true,
+          "com.apple.security.personal-information.addressbook": true
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/6.entitlements.plist",
+      "entitlementsSha256": "fd66560e1a26f7b29d1c6a3d58a137d48b30a0afae33b238823aa81231b99691",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/6.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/MacOS/aux-daemon",
+      "kind": "bundle",
+      "role": "daemon",
+      "signer": "development",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "codeSha256": "a6ae987278679ba8dbde478b8f8c3b72d6911ae6da7a35611e0a36f526512ae9",
+      "infoPlistSha256": "da6fd514d9f922df9e8585e2aa9943984f21d50a84077a3cfa4101cc940cd4e4",
+      "observed": {
+        "flags": [
+          "runtime"
+        ],
+        "entitlements": {
+          "com.apple.application-identifier": "8CPD4K4TBB.at.studio.AsideBrowser.daemon",
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "keychain-access-groups": [
+            "8CPD4K4TBB.at.studio.AsideBrowser.cryptography"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.developer.team-identifier": "8CPD4K4TBB",
+          "com.apple.security.cs.disable-library-validation": true
+        },
+        "unsigned": false,
+        "sha256": "a6ae987278679ba8dbde478b8f8c3b72d6911ae6da7a35611e0a36f526512ae9"
+      },
+      "capabilities": {
+        "preserveKeys": [
+          "com.apple.security.cs.allow-jit",
+          "com.apple.security.cs.allow-unsigned-executable-memory",
+          "com.apple.security.cs.disable-library-validation"
+        ],
+        "removeKeys": [
+          "com.apple.application-identifier",
+          "com.apple.developer.team-identifier",
+          "keychain-access-groups"
+        ],
+        "addValues": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ],
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        },
+        "values": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ],
+          "com.apple.security.cs.allow-jit": true,
+          "com.apple.security.cs.allow-unsigned-executable-memory": true,
+          "com.apple.security.cs.disable-library-validation": true,
+          "com.apple.security.cs.allow-dyld-environment-variables": true
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/7.entitlements.plist",
+      "entitlementsSha256": "51768a610d55a5091d588834b90b36969e8f86ce828df501b4bf9d269b918f37",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--options",
+          "runtime",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/7.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib",
+      "kind": "macho",
+      "signer": "adhoc",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib",
+      "codeSha256": "0cb7b98642dab352799b848b6f035e2a8251fb7ed6b54e0c15ee7a7cea325fd9",
+      "infoPlistSha256": null,
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "0cb7b98642dab352799b848b6f035e2a8251fb7ed6b54e0c15ee7a7cea325fd9"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {}
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/8.entitlements.plist",
+      "entitlementsSha256": "8ed8885e6f432dbabd6346af0da59d83ad57190f9ec5a685f247a1b9d3c1afb2",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/8.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app",
+      "executable": "Contents/MacOS/aux-native-carrier",
+      "kind": "bundle",
+      "role": "carrier",
+      "signer": "development",
+      "policyPath": "Aux.app/Contents/Resources/aux/native/aux-native-carrier",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app",
+      "codeSha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1",
+      "infoPlistSha256": "bab4fbf996d72b61ad276a8b574d57971c25cf70b95b98852cc1814fa90d7cbc",
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ]
+        },
+        "values": {
+          "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+          "com.apple.developer.team-identifier": "9F2JXY8TCK",
+          "keychain-access-groups": [
+            "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+          ]
+        }
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/9.entitlements.plist",
+      "entitlementsSha256": "9a246f5077d5302efce052fa287dbc2afe1a37b22ad13f7cab9702f97b4c2543",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/9.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    },
+    {
+      "path": "Aux.app",
+      "kind": "bundle",
+      "role": "browser",
+      "signer": "adhoc",
+      "executable": "Contents/MacOS/Aux",
+      "absolutePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app",
+      "codeSha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99",
+      "infoPlistSha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c",
+      "observed": {
+        "flags": [
+          "adhoc",
+          "linker-signed"
+        ],
+        "entitlements": {},
+        "unsigned": false,
+        "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+      },
+      "capabilities": {
+        "preserveKeys": [],
+        "removeKeys": [],
+        "addValues": {},
+        "values": {}
+      },
+      "entitlementsFile": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/10.entitlements.plist",
+      "entitlementsSha256": "8ed8885e6f432dbabd6346af0da59d83ad57190f9ec5a685f247a1b9d3c1afb2",
+      "prospectiveCommand": {
+        "tool": "/usr/bin/codesign",
+        "argv": [
+          "--force",
+          "--sign",
+          "-",
+          "--timestamp=none",
+          "--entitlements",
+          "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/10.entitlements.plist",
+          "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v416-review-local/Aux.app"
+        ],
+        "authorized": false,
+        "executed": false
+      }
+    }
+  ],
+  "scope": {
+    "home": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj",
+    "sha256": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "firstAndOnlySharedGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "homeInspected": false,
+    "existingAuthorityMustNotBeRegenerated": true
+  },
+  "proposedSequence": [
+    "Freshly authenticate the exact three public provisioning profiles against current date, certificate, current Mac and fixed Aux group; refuse any mismatch. No profile creation/update proposed.",
+    "Recheck all package, target, entitlement and profile hashes.",
+    "Only after a separate explicit execution approval, sign the eleven copied targets in recorded inside-out order; eight ad hoc and three Apple Development.",
+    "Verify copied bundle signatures and entitlements; preserve every untargeted leaf including original native addons and runtimes.",
+    "Native runtime and Keychain/OS behavior remain a separate approval: do not launch or enable either acceptance flag as part of signing."
+  ],
+  "authorization": {
+    "preparationApproved": true,
+    "signingApproved": false,
+    "provisioningApproved": false,
+    "runtimeKeychainApproved": false,
+    "text": "Prepare a local-only review"
+  },
+  "limits": [
+    "Preparation only; the old v32 approval is historical and is not execution permission for this candidate.",
+    "New Agent inbox legacy-Keychain family remains disabled and excluded.",
+    "No owner Aside/Aux home, profile, stored authority or OS grant was inspected or changed.",
+    "No password/autofill entitlement or Computer Use OS grant is conferred by this review.",
+    "Fresh authenticated provisioning evidence is required immediately before any separately approved signing."
+  ],
+  "fullReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/development-review-v416/review.json",
+    "sha256": "01bf972dc90c97e8126cdafb9d51e0691052b85ed1cfa1274c964f3645f12433",
+    "inventoryLeaves": 11232
+  },
+  "signingPerformed": false,
+  "provisioningPerformed": false,
+  "privateKeysUsed": false,
+  "keychainOperationsPerformed": false,
+  "appLaunched": false
+}

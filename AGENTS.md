@@ -18,6 +18,7 @@ Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-suppli
 
 ## Working rules
 
+- The owner approved preparation of one concrete local-only development-signing review on 2026-10-20. See `docs/integration/proposed/local-development-review-v416/`. This exception permits unsigned copied artifacts, public profile/identity inspection and review documents only; signing, provisioning, Keychain/runtime operations and OS grants remain unapproved.
 - Current development priority: preserve Aside UI and behavior 1:1 with Aux branding. Do not run signing, provisioning or release preparation as part of this work; the owner explicitly removed them from the development path. Existing scoped signing evidence is historical.
 - Commit coherent slices to local `main`; parallel lanes use separate worktrees and deliver commits. Integrator owns root manifests, packaging, patch series, shared native registration/GN files and startup.
 - Stay local. Never push, run hosted Actions, sign, provision, notarize or release during current development. Earlier authorization for the three disposable Aux authentication helpers and its resulting evidence are historical; do not resume that signing workflow as part of the current UI/behavior fidelity work.
