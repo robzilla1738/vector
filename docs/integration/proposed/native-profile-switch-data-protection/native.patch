@@ -1,0 +1,292 @@
+--- a/chrome/browser/enterprise/data_protection/data_protection_ui_controller.h
++++ b/chrome/browser/enterprise/data_protection/data_protection_ui_controller.h
+@@ -8,6 +8,10 @@
+ #include <memory>
+ 
+ #include "base/callback_list.h"
++#include "base/functional/callback_helpers.h"
++#include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/memory/raw_ptr.h"
+ #include "components/enterprise/buildflags/buildflags.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -21,6 +25,7 @@
+ class BrowserView;
+ class BrowserWindowInterface;
+ class PrefService;
++class Profile;
+ 
+ namespace enterprise_data_protection {
+ 
+@@ -35,6 +40,14 @@
+ 
+   static DataProtectionUIController* From(
+       BrowserWindowInterface* browser_window_interface);
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanPrepareForAuxProfileSwitch(Profile* target) const;
++  void PrepareForAuxProfileSwitch(Profile* target);
++  void RebindForAuxProfileSwitch();
++  void FinishForAuxProfileSwitch();
++  void AbortAuxProfileSwitch();
++#endif
+ 
+   // controller tied to a `contents_container_view` that is responsible for
+   // setting and clearing watermark on the view. It is also responsible for
+@@ -64,6 +77,7 @@
+ #endif
+ 
+    private:
++    friend class DataProtectionUIController;
+     void OnWebContentsAttached(views::WebView* web_view);
+     void OnWebContentsDetached(views::WebView* web_view);
+ 
+@@ -92,10 +106,23 @@
+ #endif
+ 
+  private:
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::ScopedClosureRunner EnterAuxMutation();
++  void LeaveAuxMutation();
++  void ResumeAuxProfileSources();
++  bool aux_profile_switch_prepared_ = false;
++  bool aux_profile_switch_rebound_ = false;
++  int aux_mutation_depth_ = 0;
++  base::WeakPtr<Profile> aux_source_profile_;
++  base::WeakPtr<Profile> aux_target_profile_;
++#endif
+   raw_ptr<BrowserView> browser_view_;
+   std::vector<std::unique_ptr<ContentsViewDataProtectionController>>
+       contents_view_data_protection_controllers_;
+   ui::ScopedUnownedUserData<DataProtectionUIController> scoped_data_holder_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<DataProtectionUIController> aux_weak_factory_{this};
++#endif
+ };
+ 
+ }  // namespace enterprise_data_protection
+--- a/chrome/browser/enterprise/data_protection/data_protection_ui_controller.cc
++++ b/chrome/browser/enterprise/data_protection/data_protection_ui_controller.cc
+@@ -6,7 +6,11 @@
+ 
+ #include <algorithm>
+ 
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/feature_list.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/enterprise/data_protection/data_protection_features.h"
+ #include "chrome/browser/enterprise/data_protection/data_protection_navigation_controller.h"
+ #include "chrome/browser/enterprise/data_protection/data_protection_navigation_observer.h"
+@@ -49,6 +53,12 @@
+ 
+ void DataProtectionUIController::ContentsViewDataProtectionController::
+     OnWebContentsAttached(views::WebView* web_view) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (owner_->aux_profile_switch_prepared_) {
++    return;
++  }
++  auto mutation = owner_->EnterAuxMutation();
++#endif
+   if (!web_view->web_contents()) {
+     return;
+   }
+@@ -94,6 +104,12 @@
+ 
+ void DataProtectionUIController::ContentsViewDataProtectionController::
+     OnWatermarkStringUpdated(const std::string& watermark_string) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (owner_->aux_profile_switch_prepared_) {
++    return;
++  }
++  auto mutation = owner_->EnterAuxMutation();
++#endif
+   contents_container_view_->ApplyWatermarkSettings(
+       watermark_string, enterprise_watermark::GetFillColor(prefs_),
+       enterprise_watermark::GetOutlineColor(prefs_),
+@@ -103,6 +119,12 @@
+ #if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)
+ void DataProtectionUIController::ContentsViewDataProtectionController::
+     OnScreenshotAllowedUpdated(bool allowed) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (owner_->aux_profile_switch_prepared_) {
++    return;
++  }
++  auto mutation = owner_->EnterAuxMutation();
++#endif
+   owner_->MaybeUpdateScreenshotSettings();
+ }
+ #endif
+@@ -145,6 +167,134 @@
+   }
+ }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++base::ScopedClosureRunner DataProtectionUIController::EnterAuxMutation() {
++  ++aux_mutation_depth_;
++  return base::ScopedClosureRunner(
++      base::BindOnce(&DataProtectionUIController::LeaveAuxMutation,
++                     aux_weak_factory_.GetWeakPtr()));
++}
++
++void DataProtectionUIController::LeaveAuxMutation() {
++  CHECK_GT(aux_mutation_depth_, 0);
++  --aux_mutation_depth_;
++}
++
++bool DataProtectionUIController::CanPrepareForAuxProfileSwitch(
++    Profile* target) const {
++  auto* window = browser_view_->browser();
++  Profile* source = browser_view_->GetProfile();
++  if (!target || !target->IsRegularProfile() || !source->IsRegularProfile() ||
++      aux_profile_switch_prepared_ || aux_mutation_depth_ ||
++      window->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      From(window) != this) {
++    return false;
++  }
++  const auto containers = browser_view_->GetContentsContainerViews();
++  if (containers.size() != contents_view_data_protection_controllers_.size()) {
++    return false;
++  }
++  for (size_t index = 0; index < containers.size(); ++index) {
++    const auto& controller = contents_view_data_protection_controllers_[index];
++    if (controller->contents_container_view_ != containers[index] ||
++        controller->prefs_ != source->GetPrefs()) {
++      return false;
++    }
++    auto* contents = containers[index]->contents_view()->web_contents();
++    if (contents &&
++        (contents->GetBrowserContext() != source ||
++         window->tab_strip_model()->GetIndexOfWebContents(contents) < 0)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++void DataProtectionUIController::PrepareForAuxProfileSwitch(Profile* target) {
++  CHECK(CanPrepareForAuxProfileSwitch(target));
++  aux_source_profile_ = browser_view_->GetProfile()->GetWeakPtr();
++  aux_target_profile_ = target->GetWeakPtr();
++  aux_profile_switch_prepared_ = true;
++  aux_profile_switch_rebound_ = false;
++  for (const auto& controller : contents_view_data_protection_controllers_) {
++    // Retire the actual source renderer callbacks, preserving per-tab policy,
++    // the stable WebView attachment subscriptions and the current window mask.
++    controller->OnWebContentsDetached(
++        controller->contents_container_view_->contents_view());
++  }
++#if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)
++  // Keep the real window protected until its genuine inserted tabs determine
++  // the final policy. This does not alter any per-tab policy or OS grant.
++  auto mutation = EnterAuxMutation();
++  browser_view_->ApplyScreenshotSettings(false);
++#endif
++}
++
++void DataProtectionUIController::RebindForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_profile_switch_rebound_);
++  CHECK(!aux_mutation_depth_);
++  CHECK(aux_target_profile_);
++  CHECK_EQ(browser_view_->GetProfile(), aux_target_profile_.get());
++  CHECK(browser_view_->browser()->tab_strip_model()->empty());
++  for (const auto& controller : contents_view_data_protection_controllers_) {
++    CHECK(
++        !controller->contents_container_view_->contents_view()->web_contents());
++    controller->prefs_ = aux_target_profile_->GetPrefs();
++  }
++  aux_profile_switch_rebound_ = true;
++}
++
++void DataProtectionUIController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(aux_profile_switch_rebound_);
++  CHECK(aux_target_profile_);
++  CHECK_EQ(browser_view_->GetProfile(), aux_target_profile_.get());
++  ResumeAuxProfileSources();
++}
++
++void DataProtectionUIController::AbortAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_profile_switch_rebound_);
++  CHECK(aux_source_profile_);
++  CHECK_EQ(browser_view_->GetProfile(), aux_source_profile_.get());
++  ResumeAuxProfileSources();
++}
++
++void DataProtectionUIController::ResumeAuxProfileSources() {
++  CHECK(!aux_mutation_depth_);
++  auto mutation = EnterAuxMutation();
++  aux_profile_switch_prepared_ = false;
++  // The core has inserted genuine target tabs or restored genuine source tabs.
++  // Reattach to those exact per-tab navigation controllers and profile prefs.
++  const auto weak_this = aux_weak_factory_.GetWeakPtr();
++  for (const auto& controller : contents_view_data_protection_controllers_) {
++    CHECK_EQ(controller->prefs_, browser_view_->GetProfile()->GetPrefs());
++    auto* web_view = controller->contents_container_view_->contents_view();
++    if (web_view->web_contents()) {
++      controller->OnWebContentsAttached(web_view);
++    } else {
++      controller->contents_container_view_->ApplyWatermarkSettings(
++          std::string(), enterprise_watermark::GetFillColor(controller->prefs_),
++          enterprise_watermark::GetOutlineColor(controller->prefs_),
++          enterprise_watermark::GetFontSize(controller->prefs_));
++    }
++    if (!weak_this) {
++      return;
++    }
++  }
++#if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)
++  MaybeUpdateScreenshotSettings();
++  if (!weak_this) {
++    return;
++  }
++#endif
++  aux_source_profile_.reset();
++  aux_target_profile_.reset();
++  aux_profile_switch_rebound_ = false;
++}
++#endif
++
+ // static
+ DataProtectionUIController* DataProtectionUIController::From(
+     BrowserWindowInterface* browser_window_interface) {
+@@ -157,6 +307,12 @@
+     SkColor fill_color,
+     SkColor outline_color,
+     int font_size) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  auto mutation = EnterAuxMutation();
++#endif
+   for (ContentsContainerView* contents_container_view :
+        browser_view_->GetContentsContainerViews()) {
+     contents_container_view->ApplyWatermarkSettings(watermark_text, fill_color,
+@@ -166,6 +322,12 @@
+ 
+ #if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)
+ void DataProtectionUIController::MaybeUpdateScreenshotSettings() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  auto mutation = EnterAuxMutation();
++#endif
+   bool disallow_screenshot =
+       std::any_of(contents_view_data_protection_controllers_.begin(),
+                   contents_view_data_protection_controllers_.end(),
+--- a/chrome/browser/enterprise/BUILD.gn
++++ b/chrome/browser/enterprise/BUILD.gn
+@@ -54,6 +54,7 @@
+ 
+   public_deps = [
+     "//base",
++    "//chrome/browser:buildflags",
+     "//chrome/browser:browser_process",
+     "//chrome/browser:main_extra_parts",
+     "//chrome/browser/enterprise/browser_management:management_identity",

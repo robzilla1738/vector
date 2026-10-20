@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h",
+      "baselineSha256": "81ccf259deecff59ddf6de24bb5df8f882dabe5388dd505b342ea65c354f8c03",
+      "outputSha256": "5c8655ba2511796f13b72329383cdcd873d44bcd1a081d33a9080f32104e50fd"
+    },
+    {
+      "path": "chrome/browser/enterprise/data_protection/data_protection_ui_controller.cc",
+      "baselineSha256": "92fa81e8ed950c42a0c950c055674d4c0b430fb7cd8fca318182529e068d7568",
+      "outputSha256": "223b34ee6e8561eb546cdb0a479491ff82c4c0af7dea06607a10c5097187e9fe"
+    },
+    {
+      "path": "chrome/browser/enterprise/BUILD.gn",
+      "baselineSha256": "e2eec0337555cd097cc11983d0e8a3805b65bacca0492306d81b79cc47e948c5",
+      "outputSha256": "7fcad426642192b1ce1d6bc174a15f811a7ac45badc76c8dee0cae606de70c9e"
+    }
+  ],
+  "compiled": false
+}
