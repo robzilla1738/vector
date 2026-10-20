@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "base": "bb76c3ad7 Actor/AiMode provider output",
+  "requiredOwnerProposal": "ea4e50b41 stable Iph owner",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "8ef46e28b7dc35826cf3893a1d2825e7bfb47432eef9a63062d230ebbd17dd7f",
+      "outputSha256": "a45b646d8b1c918f85b2e27e7479c4061a2aa902948e0862307d778b880622b4"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

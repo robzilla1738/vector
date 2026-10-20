@@ -1,0 +1,98 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -6,6 +6,7 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+ #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+ #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
+@@ -154,7 +155,6 @@
+     const BrowserWindowFeatures& features) {
+   return features.breadcrumb_manager_browser_agent_ ||
+       features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
+-      features.glic_iph_controller_ ||
+       features.glic_split_button_controller_ || features.organizer_panel_controller_ ||
+       features.ai_overlay_dialog_controller_ ||
+       features.new_tab_footer_controller_ ||
+@@ -190,6 +190,10 @@
+   }
+   if (auto* toast = ToastController::From(&browser);
+       toast && toast->HasPendingToastWork()) {
++    return nullptr;
++  }
++  if (features_->glic_iph_controller_ &&
++      !features_->glic_iph_controller_->CanPrepareForAuxProfileSwitch()) {
+     return nullptr;
+   }
+   if ((features_->actor_ui_window_controller_ &&
+@@ -293,6 +297,11 @@
+   }
+   for (auto* cache : {&previous_cache, &target_cache}) {
+     auto& features = cache->GetFeatures();
++    if (bool(features.glic_iph_controller_) != bool(features_->glic_iph_controller_) ||
++        (features.glic_iph_controller_ &&
++         !features.glic_iph_controller_->CanPrepareForAuxProfileSwitch())) {
++      return false;
++    }
+     if (bool(features.actor_ui_window_controller_) !=
+             bool(features_->actor_ui_window_controller_) ||
+         (features.actor_ui_window_controller_ &&
+@@ -393,6 +402,12 @@
+       }
+     }
+   }
++  if (features_->glic_iph_controller_) {
++    features_->glic_iph_controller_->PrepareForAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++  }
+   if (features_->ai_mode_page_action_controller_) {
+     features_->ai_mode_page_action_controller_->PrepareForAuxProfileSwitch();
+     if (!alive()) {
+@@ -602,6 +617,17 @@
+   }
+   if (features_->actor_ui_window_controller_) {
+     features_->actor_ui_window_controller_->RebindForAuxProfileSwitch(target);
++    if (!alive()) {
++      return;
++    }
++  }
++  if (features_->glic_iph_controller_) {
++    auto* service = glic::GlicKeyedService::Get(target);
++    if (!alive()) {
++      return;
++    }
++    CHECK(service);
++    features_->glic_iph_controller_->RebindForAuxProfileSwitch(*service);
+     if (!alive()) {
+       return;
+     }
+@@ -955,6 +981,12 @@
+       return;
+     }
+   }
++  if (features_->glic_iph_controller_) {
++    features_->glic_iph_controller_->FinishAuxProfileSwitch();
++    if (!alive()) {
++      return;
++    }
++  }
+   if (features_->actor_ui_window_controller_) {
+     features_->actor_ui_window_controller_->FinishForAuxProfileSwitch();
+     if (!alive()) {
+@@ -1160,6 +1192,12 @@
+   }
+   if (features_->lens_overlay_entry_point_controller_) {
+     features_->lens_overlay_entry_point_controller_->UpdateEntryPointsState(true);
++    if (!alive()) {
++      return;
++    }
++  }
++  if (features_->glic_iph_controller_) {
++    features_->glic_iph_controller_->AbortAuxProfileSwitch();
+     if (!alive()) {
+       return;
+     }

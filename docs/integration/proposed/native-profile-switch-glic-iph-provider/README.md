@@ -1,0 +1,7 @@
+# Stable Glic IPH provider phases
+
+Apply after `bb76c3ad7` Actor/AiMode provider and class port `ea4e50b41`. This one provider file cold-checks the real visible and both cache IPH owners, retaining source/target actual owner presence consistency. It never assumes a signed-out profile has no Glic owners or manufactures a target service for an ineligible graph. Mixed actual presence remains an explicit refusal pending a faithful gained/lost view-owner path.
+
+The same visible controller, userdata, WeakPtrs and actual repeating timer survive. Prepare suppresses promo dispatch before collection movement; empty commit selects the actual already-eligible target Glic service; post-insertion Finish resumes ordinary dispatch. Genuine source rollback uses the source-validated Abort. Actual pending result callbacks and queued/active promos remain cold refusals. Cached window profiles never change; their actual owner timers/services retain their original binding.
+
+The separate Split/nudge/task-bubble graph remains guarded until its complete owner port/provider phases exist. This patch does not enable profile switching UI. Exact provider baseline/output hashes and disposable replay passed; no shared native writes/build, owner data, target execution, grants, credentials or network. Runtime fidelity, dynamic feature overrides and forced native destruction are not accepted by this receipt. Original compiled defaults are established separately by `973bdb2a0`.
