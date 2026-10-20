@@ -1,0 +1,213 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "toolbar-hover-enter.asm",
+      "start": "0x41fbd60",
+      "stop": "0x41fbda4",
+      "bytesSha256": "88afbda6d4893e5f8b86662e8a43b7765ad6ddad13a21542e7c92e8cb0724976",
+      "extractSha256": "429d0066b1d30d7548890f56543f55e0df62c846e385b250407e02a9b35e701a"
+    },
+    {
+      "file": "toolbar-hover-exit.asm",
+      "start": "0x7d89b78",
+      "stop": "0x7d89bb0",
+      "bytesSha256": "adb4cd4ca5a1d2ae5ea9a748debaf13d59138c88a9c87adeeb4b18e9fd0bc5e8",
+      "extractSha256": "ac04c6585f5493657b866025833cdfc028b4ba5d92e0389e3cf721efb8c3a39e"
+    },
+    {
+      "file": "toolbar-exit-base.asm",
+      "start": "0x7d812e8",
+      "stop": "0x7d81338",
+      "bytesSha256": "ffc3f5580a9b26ad073ba23382fbc89cd0c5165df1746eceb45186eac8bb829f",
+      "extractSha256": "e3cc1ec568de6bad8c9f982e0e15c82391dd9726469f67947b65a4f481ba9d1c"
+    },
+    {
+      "file": "button-enter-base.asm",
+      "start": "0x41fbd60",
+      "stop": "0x41fbd98",
+      "bytesSha256": "8b363f6f7614061602084a4bbdc12be5a32cab704fe56e1b96d0d70f57d60afa",
+      "extractSha256": "405c6475720736f523fefcab482257a1a071f199b5c065e61276fc731c42637c"
+    },
+    {
+      "file": "toolbar-button-creation.asm",
+      "start": "0x41f8d4c",
+      "stop": "0x41f930c",
+      "bytesSha256": "77c6893332f0ef8724b8254a68249bc3d219e295727f8d312f5defa6ee6555b8",
+      "extractSha256": "962f69c326232808c1b98a60bba341732d0f321a64a0f6bc8fc946bb6d6286e5"
+    },
+    {
+      "file": "toolbar-action-lookup.asm",
+      "start": "0x41f6200",
+      "stop": "0x41f62c4",
+      "bytesSha256": "8498a9cd1c1a16b22afb2a4aed92d48239a6c76b2792028da0f51770363a319d",
+      "extractSha256": "813a0a7e866126770ff076cdb9487e5be74cfaea00297af226c1f88f03e6df90"
+    },
+    {
+      "file": "collapse-action-tooltip.asm",
+      "start": "0x41d9b98",
+      "stop": "0x41d9d84",
+      "bytesSha256": "e3edd734df78793889690c11bcbc43523af0ff8ff3c2556b7754b67440bf79ce",
+      "extractSha256": "e3737884f49a31e92330824f7de469d00f77ff39edbb23475ae7752980c6e62e"
+    },
+    {
+      "file": "base-chip-metadata.asm",
+      "start": "0x41f1410",
+      "stop": "0x41f1498",
+      "bytesSha256": "ff8070481f2ebbac8b373e4ed7f724565cfa9be0d6354f0ebe286d6a0a8f8ae2",
+      "extractSha256": "49cde783a7d170a4802b1bee653dffd74edada0ed94f1fe1136a8a60bb0f2e77"
+    },
+    {
+      "file": "browser-request.asm",
+      "start": "0x45abe40",
+      "stop": "0x45ac00c",
+      "bytesSha256": "a1193978d63f634d67499e79854a45a4cdfb6b05b590787933f27bae1a49dc25",
+      "extractSha256": "9390d44b23506dab03572772ddb6b759d0157d9bf9fcae47829eb3b2eaff3f9f"
+    },
+    {
+      "file": "native-mode.asm",
+      "start": "0x28ad220",
+      "stop": "0x28ad3c0",
+      "bytesSha256": "4e0862f5cc71471cc99e95a5296d85f5969de634d29ba30c250008b33bffa4fc",
+      "extractSha256": "78872462fc64b6c889a8da19027804bcfdd9244a55626536d2ca17a693e9c69d"
+    },
+    {
+      "file": "toolbar-native-owner.asm",
+      "start": "0x36a614c",
+      "stop": "0x36a61ac",
+      "bytesSha256": "5e79a17b245d4c17031de733a0635a7349410e59280e7b4d44aed58890ed71c2",
+      "extractSha256": "1c98c00867c4e8634574d2147cdf667caeb05845b4693d70a7ea0bd0e3fa4d27"
+    },
+    {
+      "file": "monitor-create.asm",
+      "start": "0x33f5744",
+      "stop": "0x33f5a30",
+      "bytesSha256": "28447d88d533d1e6db01efeb17b8794540972e8aaa942137f175ee34af20132a",
+      "extractSha256": "6a875af0cc57693930bcfd4a5f45d487eba94b2a9f956f2c1faa0bd175ba46ee"
+    },
+    {
+      "file": "monitor-callback.asm",
+      "start": "0x46507d8",
+      "stop": "0x46508b4",
+      "bytesSha256": "0d46f45c1816ab4bf15a759bb6303255478753012405a45105af427007bbe643",
+      "extractSha256": "8164a6c83fdae48322299f7332a0eb475e09c3d12eac33f70e97679925feca3c"
+    },
+    {
+      "file": "monitor-remove.asm",
+      "start": "0x463f960",
+      "stop": "0x463f97c",
+      "bytesSha256": "42cbf09bfcc998f9ac7f3b6d50830b4eb2b7961b81c56a2176e18522aa50c49e",
+      "extractSha256": "c83bd8a0d5e97a126947d0dc87c202fba3402efb14766158a45d077117c3533d"
+    },
+    {
+      "file": "native-pointer.asm",
+      "start": "0x465020c",
+      "stop": "0x4650500",
+      "bytesSha256": "73bef6e8cab14b77c95377be4896a16b9a181e9c2af9913213b49c7f79a0994b",
+      "extractSha256": "8f27dfadebb0b13ea9b42ae054f2ea6d5e02f85596c70f6ec74c669a8db9bf7e"
+    },
+    {
+      "file": "native-request.asm",
+      "start": "0x4650500",
+      "stop": "0x4650640",
+      "bytesSha256": "bc60a0274b38eb0b7c81bbb9aaf198e6bfb2bc132786f14afdb80ec28c83d307",
+      "extractSha256": "bef1862c5453c7d9f8759b06b3638fbcffd2f90de2bdef0059a01bc0041e52ab"
+    },
+    {
+      "file": "native-bounds.asm",
+      "start": "0x43f1040",
+      "stop": "0x43f10f8",
+      "bytesSha256": "ec58cdd9ba8d5b5a720d27e735d23fc18895fb514d5ae17a8195907a1fad4106",
+      "extractSha256": "7a20311b769cebaf5b7f3cfacdeaa1eddc000a098b054940600b85353c57efdf"
+    },
+    {
+      "file": "pointer-union.asm",
+      "start": "0x99d480",
+      "stop": "0x99d5fc",
+      "bytesSha256": "10e6bca123c45f10043172e49b5a78787a5c56db3b3b5113520833afe41f04b3",
+      "extractSha256": "e8074acee550ff3a15bd8263b238fb99b7e88bd9ebe3766dd0bc1228766ba57b"
+    },
+    {
+      "file": "terminal-retirement.asm",
+      "start": "0x4634db8",
+      "stop": "0x4634e20",
+      "bytesSha256": "1b8de69c5c95d018b0616c9a33312109ea1484922910e62ff2c6ceb0d7e08b87",
+      "extractSha256": "ffcf2983308859cd9ef3bf8d76472370153c4797d9bfedb77f2227bb3130c941"
+    },
+    {
+      "file": "model-retirement.asm",
+      "start": "0x4647c80",
+      "stop": "0x4647d40",
+      "bytesSha256": "1ac101fa9d766f7b750760843caa5c9568283a281ba3eb25c9d00b045ab2f713",
+      "extractSha256": "b2c62b5260ea1f0d46bc75b4de63e46a4219dc106263abe4a0fb33e9b465b956"
+    }
+  ],
+  "locale": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/pak/locale-en-full.txt",
+    "sha256": "9ab7eda51ed0ef5f2bd7c37a5dbc30174cb89172651da96b6d9156cecbe4169e",
+    "lines": [
+      "11294\tCollapse Tabs",
+      "11295\tExpand Tabs"
+    ]
+  },
+  "upstream": [
+    {
+      "path": "ui/views/controls/button/button.cc",
+      "sha256": "4e0f6e8121599691365ef0313764f1ef2dec0340847fa464f818ffe66f8c30d8"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_button.cc",
+      "sha256": "28cfa705739986f391ea41b66f3aab411eae3fce46ce1951806e0c0987c337b8"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_chip_button.h",
+      "sha256": "aadd1431fbb08e4bf713ac31ee8755506e5afd8c124face6da864c031485c348"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "sha256": "2951c927494201cc6fa2e6c3a3f9fbc229bfa932bba43db0563b889fedd92864"
+    },
+    {
+      "path": "ui/events/types/event_type.h",
+      "sha256": "ae3cd593be1eca7da9c786aed2cf6900f616dd06e61e163108378ed48c0da8f2"
+    },
+    {
+      "path": "ui/views/event_monitor.h",
+      "sha256": "56ba3c028edc4681b4119812aabd33619f7aecd65eb9fd70baeafa3c030e11d7"
+    },
+    {
+      "path": "ui/views/event_monitor_mac.mm",
+      "sha256": "15e2046957514140baef52a4147388cc5eae32a53190222231a518bff2c7e682"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "sha256": "65283ec7a47aa7b75d17529f1da0b606481132b54da440d967c1ccbfcf6916dd"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model_observer.h",
+      "sha256": "22b74b788b1aaef0937d6afe665f145bba9230f5c4cf6fe66c13daf51edc9ba2"
+    }
+  ],
+  "originalVtable": {
+    "addressPoint": "0xe606c30",
+    "inheritedMetadata": "0x41f1464",
+    "mouseEnteredSlot": "0xe606d88",
+    "mouseEnteredTarget": "0x41fbd60",
+    "mouseExitedSlot": "0xe606d90",
+    "mouseExitedTarget": "0x7d89b78"
+  },
+  "monitorTypes": {
+    "address": "0xd6e50ec",
+    "values": [
+      6,
+      4
+    ],
+    "bytesSha256": "4cf89882b9b9f07505dd83f21a06dfd15c4e0b85fae7a4bc2b8f31d50e95d05a"
+  },
+  "remaining": [
+    "Actual full region delegate/header/collapse/geometry hold binding must finish before admission installation.",
+    "No actual native UI or pointer/capture runtime acceptance is claimed."
+  ]
+}

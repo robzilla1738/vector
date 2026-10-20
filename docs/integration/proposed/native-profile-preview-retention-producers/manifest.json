@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "base": "actual232 ToolbarView + region04dbf5f85 exactoutput + admissionheader04db",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "baselineSha256": "8ea577e443499417efea768c233300a5b5627ffa113b7c37762f5fd8f1e5a492",
+      "outputSha256": "6e709bfdd3ae373a784ee6fe3c38067c8b3acd123828673f4b563f54f08a6ad8",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/baseline/chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_retention.cc",
+      "baselineSha256": null,
+      "outputSha256": "b652f59e54eb40c8b1790df60c75cc9d9f65845d687af39583a3423a7e536c04"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_retention.h",
+      "baselineSha256": null,
+      "outputSha256": "ea5384558473c5f666e59164541c76aff320894c6165dabbde22126792959231"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "8b46c14efb971353d54e9727e39b0cbb0875e67798a2136c1850513459982972",
+      "outputSha256": "0c06b537378229facd7eba45d7af1b0e3567bb65be4ef95d49b2010b11d7a932",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "391b55298bd22ce90cff346648abc4baef44ed212a0de9028871c52330ba1d1f",
+      "outputSha256": "6ba9fb6f0486855a5a13cf601583f3b30ba8ca804496255b37562a08945af80c",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc",
+      "baselineSha256": null,
+      "outputSha256": "0ea7b4b7dc83a5081359f4662c0c9145697daa90948af6fa6570966edd9d52a9"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h",
+      "baselineSha256": null,
+      "outputSha256": "3355b4c844c72b78ba1b6672e3f1a1075fa55da72df0efdee5d258d06276521f"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "d114c7f38bbd9a1a950f6c2a8b5047c74bf102c2bf611af821f6bc92190779e8",
+      "outputSha256": "001c768c316f6d1abf1ac4ba525f4c4f6efd6e585f3825772ab3feabfa4ac413",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/baseline/chrome/browser/ui/views/toolbar/toolbar_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineSha256": "5c444edaed9dfce7c63ba24441649595c6037ae87b5c1c4a693dfa793e716105",
+      "outputSha256": "d87675c3cd3c16321cd9c12a249efad55ddaa5b5f98037857c11499c93fc20c7",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-retention-producers/baseline/chrome/browser/ui/views/toolbar/toolbar_view.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "admissionInstalled": false
+}

@@ -1,0 +1,433 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
+@@ -47,6 +47,10 @@
+   // +a0b remain distinct: a BrowserView request and native edge-monitor request.
+   void SetBrowserRetention(bool requested);
+   void SetEdgeRetention(bool requested);
++  void ClearEdgeRetentionWithoutLayout() { edge_retention_ = false; }
++  base::WeakPtr<ProfilePreviewAdmission> GetWeakPtr() {
++    return weak_factory_.GetWeakPtr();
++  }
+   void SetHoverExpanded(bool expanded);
+   // Original nonvertical/noncollapsed early branch is a direct state reset.
+   void ResetHoverWithoutLayout() { hover_expanded_ = false; }
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_retention.cc
+@@ -0,0 +1,145 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/frame/aux_profile_preview_retention.h"
++
++#include <algorithm>
++
++#include "base/check.h"
++#include "base/i18n/rtl.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/multi_contents_view.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "ui/display/screen.h"
++#include "ui/events/event.h"
++#include "ui/views/event_monitor.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++
++namespace aux {
++ProfilePreviewRetention::ProfilePreviewRetention(
++    BrowserWindowInterface& browser, views::View& region,
++    ProfilePreviewAdmission& admission,
++    base::RepeatingCallback<bool()> force_collapse_locked)
++    : browser_(browser.GetWeakPtr()), region_(&region),
++      admission_(admission.GetWeakPtr()),
++      force_collapse_locked_(std::move(force_collapse_locked)) {
++  CHECK(force_collapse_locked_);
++  region_.SetTrackEntireViewHierarchy(true);
++  model_observation_.Observe(browser.GetTabStripModel());
++}
++ProfilePreviewRetention::~ProfilePreviewRetention() { Retire(); }
++
++bool ProfilePreviewRetention::AttachToWidget() {
++  if (retired_ || !browser_ || !admission_ || !region_.view())
++    return false;
++  if (monitor_)
++    return true;
++  auto* widget = region_.view()->GetWidget();
++  if (!widget || !widget->GetTopLevelWidget())
++    return false;
++  const auto window = widget->GetTopLevelWidget()->GetNativeWindow();
++  if (!window)
++    return false;
++  // Original33f58ec reads exactly {6,4}; callback46507d8 also tolerates
++  // dragged(2), but that is not a reason to broaden the registered monitor.
++  monitor_ = views::EventMonitor::CreateWindowMonitor(
++      this, window, {ui::EventType::kMouseMoved, ui::EventType::kMouseExited});
++  return !!monitor_;
++}
++
++void ProfilePreviewRetention::DetachFromWidget() {
++  monitor_.reset();
++  // Original RemovedFromWidget463f960 directly clears a0b, with no new task.
++  if (admission_)
++    admission_->ClearEdgeRetentionWithoutLayout();
++}
++
++void ProfilePreviewRetention::Retire() {
++  retired_ = true;
++  DetachFromWidget();
++  model_observation_.Reset();
++}
++
++void ProfilePreviewRetention::OnTabStripModelDestroyed(TabStripModel* model) {
++  CHECK_EQ(model_observation_.GetSource(), model);
++  // Original4647c94 checks SAME source model before setting terminal f90.
++  Retire();
++}
++
++void ProfilePreviewRetention::ToolbarPointerChanged(bool inside) {
++  if (retired_ || !browser_ || !admission_ || !region_.view())
++    return;
++  auto* view = BrowserView::GetBrowserViewForBrowser(browser_.get());
++  // Original45abe40 has exactly the same native mode/window-feature checks as
++  // ShouldDrawVerticalTabStrip28ad220. False always releases the real request.
++  admission_->SetBrowserRetention(inside && view &&
++                                  view->ShouldDrawVerticalTabStrip());
++}
++
++bool ProfilePreviewRetention::EdgeContains(const gfx::Point& point) const {
++  if (retired_ || !browser_ || !admission_ || !region_.view())
++    return false;
++  auto* view = BrowserView::GetBrowserViewForBrowser(browser_.get());
++  auto* widget = region_.view()->GetWidget();
++  auto* state = tabs::VerticalTabStripStateController::From(browser_.get());
++  if (!view || !widget || !view->ShouldDrawVerticalTabStrip() || !state ||
++      !state->IsCollapsed() || !widget->ShouldPaintAsActive() ||
++      force_collapse_locked_.Run() || !widget->GetNativeWindow())
++    return false;
++  gfx::Rect bounds = widget->GetWindowBoundsInScreen();
++  if (auto* contents = view->multi_contents_view();
++      contents && contents->GetVisible()) {
++    const gfx::Rect content_bounds = contents->GetBoundsInScreen();
++    if (!content_bounds.IsEmpty()) {
++      // Original keeps native window x/width while taking actual contents y/h.
++      bounds.set_y(content_bounds.y());
++      bounds.set_height(content_bounds.height());
++    }
++  }
++  if (!bounds.Contains(point))
++    return false;
++  return base::i18n::IsRTL() ? point.x() >= bounds.right() - 8
++                             : point.x() < bounds.x() + 8;
++}
++
++bool ProfilePreviewRetention::RetainedPointerInside() const {
++  if (retired_ || !browser_ || !admission_ || !admission_->retained() ||
++      !region_.view() || !region_.view()->GetWidget())
++    return false;
++  auto* view = BrowserView::GetBrowserViewForBrowser(browser_.get());
++  if (!view)
++    return false;
++  gfx::Rect bounds = region_.view()->GetBoundsInScreen();
++  // BrowserView+5b0 is the actual ToolbarView: ctor36a615c→41f3b80,
++  // same child attached to top-container then stored36a61a8.
++  if (auto* toolbar = view->toolbar(); toolbar && toolbar->GetWidget()) {
++    const int top = toolbar->GetBoundsInScreen().y();
++    bounds.Union(gfx::Rect(bounds.x(), top, bounds.width(),
++                          std::max(0, bounds.y() - top)));
++  }
++  auto* screen = display::Screen::Get();
++  if (!screen)
++    return false;
++  const gfx::Point point = screen->GetCursorScreenPoint();
++  // Original99d480 is Union (min origins/max ends), not intersection.
++  return bounds.Contains(point) || EdgeContains(point);
++}
++
++void ProfilePreviewRetention::OnEvent(const ui::Event& event) {
++  if (retired_ || !browser_ || !admission_ || !monitor_)
++    return;
++  switch (event.type()) {
++    case ui::EventType::kMouseDragged:
++    case ui::EventType::kMouseMoved:
++    case ui::EventType::kMouseExited:
++      break;
++    default:
++      return;
++  }
++  const gfx::Point point = monitor_->GetLastMouseLocation();
++  admission_->SetEdgeRetention(EdgeContains(point));
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_retention.h
+@@ -0,0 +1,47 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_RETENTION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_RETENTION_H_
++
++#include <memory>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "ui/events/event_observer.h"
++#include "ui/gfx/geometry/point.h"
++#include "ui/views/view_tracker.h"
++
++class BrowserWindowInterface;
++class TabStripModel;
++namespace views { class EventMonitor; class View; }
++namespace aux {
++class ProfilePreviewAdmission;
++// Original region+a00 window monitor and465020c/465034c native predicates.
++class ProfilePreviewRetention : public ui::EventObserver,
++                                public TabStripModelObserver {
++ public:
++  ProfilePreviewRetention(BrowserWindowInterface& browser, views::View& region,
++      ProfilePreviewAdmission& admission,
++      base::RepeatingCallback<bool()> force_collapse_locked);
++  ~ProfilePreviewRetention() override;
++  bool AttachToWidget();
++  void DetachFromWidget();
++  void Retire();
++  void ToolbarPointerChanged(bool inside);
++  bool RetainedPointerInside() const;
++  bool EdgeContains(const gfx::Point& screen_point) const;
++  void OnEvent(const ui::Event& event) override;
++  void OnTabStripModelDestroyed(TabStripModel* model) override;
++ private:
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  views::ViewTracker region_;
++  base::WeakPtr<ProfilePreviewAdmission> admission_;
++  base::RepeatingCallback<bool()> force_collapse_locked_;
++  bool retired_ = false;
++  std::unique_ptr<views::EventMonitor> monitor_;
++  base::ScopedObservation<TabStripModel, TabStripModelObserver> model_observation_{
++      this};
++};
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_PREVIEW_RETENTION_H_
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_retention.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+ 
+@@ -234,6 +235,8 @@
+ }
+ 
+ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
++  if (aux_profile_preview_retention_)
++    aux_profile_preview_retention_->Retire();
+   for (const auto& lock : hover_locks_) {
+     lock->ClearRegionViewOnDestruction();
+   }
+@@ -388,6 +391,8 @@
+ 
+ void VerticalTabStripRegionView::AddedToWidget() {
+   BaseTabStripRegionView::AddedToWidget();
++  if (aux_profile_preview_retention_)
++    aux_profile_preview_retention_->AttachToWidget();
+   paint_as_active_subscription_ =
+       GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
+           [](VerticalTabStripRegionView* view) {
+@@ -401,6 +406,8 @@
+ }
+ 
+ void VerticalTabStripRegionView::RemovedFromWidget() {
++  if (aux_profile_preview_retention_)
++    aux_profile_preview_retention_->DetachFromWidget();
+   if (GetFocusManager()) {
+     GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
+   }
+@@ -969,11 +976,25 @@
+   CHECK(admission);
+   CHECK(!aux_profile_preview_admission_);
+   aux_profile_preview_admission_ = std::move(admission);
++  aux_profile_preview_retention_ =
++      std::make_unique<aux::ProfilePreviewRetention>(
++          *browser_view()->browser(), *this, *aux_profile_preview_admission_,
++          base::BindRepeating(
++              [](VerticalTabStripRegionView* region) {
++                return region->force_collapse_lock_count_ > 0;
++              }, base::Unretained(this)));
++  if (GetWidget())
++    aux_profile_preview_retention_->AttachToWidget();
+ }
+ 
+ aux::ProfilePreviewAdmission*
+ VerticalTabStripRegionView::GetAuxProfilePreviewAdmission() const {
+   return aux_profile_preview_admission_.get();
++}
++
++aux::ProfilePreviewRetention*
++VerticalTabStripRegionView::GetAuxProfilePreviewRetention() const {
++  return aux_profile_preview_retention_.get();
+ }
+ 
+ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -40,6 +40,7 @@
+ namespace aux {
+ class ProfilePreviewRegionOwner;
+ class ProfilePreviewAdmission;
++class ProfilePreviewRetention;
+ }
+ 
+ class AuxSidebarFooter;
+@@ -111,6 +112,7 @@
+   void InstallAuxProfilePreviewAdmission(
+       std::unique_ptr<aux::ProfilePreviewAdmission> admission);
+   aux::ProfilePreviewAdmission* GetAuxProfilePreviewAdmission() const;
++  aux::ProfilePreviewRetention* GetAuxProfilePreviewRetention() const;
+   // Real delegate calls after setting actual pinned temporary width.
+   void ApplyAuxProfileHoverExpansion(bool expanded);
+ 
+@@ -358,6 +360,7 @@
+   base::CallbackListSubscription paint_as_active_subscription_;
+   std::unique_ptr<aux::ProfilePreviewRegionOwner> aux_profile_preview_owner_;
+   std::unique_ptr<aux::ProfilePreviewAdmission> aux_profile_preview_admission_;
++  std::unique_ptr<aux::ProfilePreviewRetention> aux_profile_preview_retention_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.cc
+@@ -0,0 +1,66 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
++
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/views/frame/aux_profile_preview_retention.h"
++#include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_chip_button.h"
++#include "ui/actions/actions.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/views/actions/action_view_controller.h"
++#include "ui/views/view_tracker.h"
++
++namespace aux {
++namespace {
++class ProfileRetainedCollapseButton final : public ToolbarChipButton {
++ public:
++  ProfileRetainedCollapseButton(BrowserWindowInterface& browser,
++                                actions::ActionItem& action)
++      : ToolbarChipButton(PressedCallback()), browser_(browser.GetWeakPtr()) {
++    // Final source values: common20/6 are overridden by16/8 at41f8f48..6c.
++    SetInternalPadding(gfx::Insets(8));
++    SetMinSize(gfx::Size(32, 32));
++    SetMaxSize(gfx::Size(32, 32));
++    action_controller_.CreateActionViewRelationship(this,
++                                                   action.GetAsWeakPtr());
++  }
++  void OnMouseEntered(const ui::MouseEvent& event) override {
++    views::ViewTracker alive(this);
++    ToolbarChipButton::OnMouseEntered(event);
++    if (alive.view())
++      ForwardRetention(true);
++  }
++  void OnMouseExited(const ui::MouseEvent& event) override {
++    views::ViewTracker alive(this);
++    // Source7d89b78 preserves ToolbarButton's genuine drag/pressed behavior.
++    ToolbarChipButton::OnMouseExited(event);
++    if (alive.view())
++      ForwardRetention(false);
++  }
++ protected:
++  int GetIconSize() const override { return 16; }
++ private:
++  void ForwardRetention(bool inside) {
++    if (!browser_)
++      return;
++    auto* view = BrowserView::GetBrowserViewForBrowser(browser_.get());
++    if (!view || !view->vertical_tab_strip_region_view())
++      return;
++    if (auto* retention = view->vertical_tab_strip_region_view()
++                              ->GetAuxProfilePreviewRetention())
++      retention->ToolbarPointerChanged(inside);
++  }
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  views::ActionViewController action_controller_;
++};
++}  // namespace
++
++std::unique_ptr<ToolbarChipButton> CreateProfileRetainedCollapseButton(
++    BrowserWindowInterface& browser, actions::ActionItem& collapse_action) {
++  return std::make_unique<ProfileRetainedCollapseButton>(browser,
++                                                       collapse_action);
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_VIEWS_TOOLBAR_AUX_PROFILE_RETAINED_COLLAPSE_BUTTON_H_
++#define CHROME_BROWSER_UI_VIEWS_TOOLBAR_AUX_PROFILE_RETAINED_COLLAPSE_BUTTON_H_
++
++#include <memory>
++
++class BrowserWindowInterface;
++class ToolbarChipButton;
++namespace actions { class ActionItem; }
++namespace aux {
++// Original ToolbarView+568 chip, bound to actual collapse/expand action302.
++std::unique_ptr<ToolbarChipButton> CreateProfileRetainedCollapseButton(
++    BrowserWindowInterface& browser, actions::ActionItem& collapse_action);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_TOOLBAR_AUX_PROFILE_RETAINED_COLLAPSE_BUTTON_H_
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++
++#include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_chip_button.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -562,6 +565,15 @@
+   }
+ #endif
+ 
++  // Supplied ToolbarView+568: the leading real collapse action302 chip.
++  // Its native action owns enablement, icon, title, tooltip and invocation.
++  if (auto* action = actions::ActionManager::Get().FindAction(
++          kActionToggleCollapseVertical,
++          BrowserActions::From(browser_)->root_action_item())) {
++    aux_retained_collapse_ = AddChildView(
++        aux::CreateProfileRetainedCollapseButton(*browser_, *action));
++  }
++
+   // Always add children in order from left to right, for accessibility.
+   if (!features::IsWebUIBackForwardButtonEnabled()) {
+     back_ = AddChildView(std::make_unique<BackForwardButton>(
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -64,6 +64,7 @@
+ class WebUIToolbarWebView;
+ class PinnedToolbarActionsContainer;
+ class ToolbarButton;
++class ToolbarChipButton;
+ class AvatarToolbarButtonBrowserTest;
+ class ToolbarController;
+ class ToolbarDivider;
+@@ -426,6 +427,7 @@
+   // |location_bar_| is guaranteed to exist. These pointers are owned by the
+   // view hierarchy.
+   raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
++  raw_ptr<ToolbarChipButton> aux_retained_collapse_ = nullptr;
+   raw_ptr<ToolbarButton> back_ = nullptr;
+   raw_ptr<ToolbarButton> forward_ = nullptr;
+   raw_ptr<ReloadButton> reload_ = nullptr;
