@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "recursive-copy",
+      "start": "0x425d438",
+      "endExclusive": "0x425e608",
+      "sha256": "60fa796d22782c5b3145b669eb6607cf25cba64fe70329adcddd1a44ec578d40",
+      "assembly": "recursive-copy.asm",
+      "assemblySha256": "b19301fc7717d2185fbb250886eb713bfb53728093fbcffccf00ce7aed6ce08a"
+    },
+    {
+      "name": "preferences",
+      "start": "0x425e608",
+      "endExclusive": "0x425ee14",
+      "sha256": "5feafceff2a1ee6f0b3bde719c02aa9f814cfbcef5aa95df2d17b32620a2a996",
+      "assembly": "preferences.asm",
+      "assemblySha256": "e9edc78e02e1cd9b7a13c0a4b603352601f991a7f425dfc8cba5e05aedfe9a84"
+    },
+    {
+      "name": "comet-home",
+      "start": "0x425ee14",
+      "endExclusive": "0x425f1c4",
+      "sha256": "bf1425fb09f0bf128eb8d9641dfc3d2081e7421b0c214d1a1509f991c47cf86f",
+      "assembly": "comet-home.asm",
+      "assemblySha256": "3928d137349a8488be590e9e04e7df02dad7deb8fece7333b878827bb4e16b2d"
+    },
+    {
+      "name": "worker",
+      "start": "0x4255868",
+      "endExclusive": "0x4257640",
+      "sha256": "d29edc8792b6b4d26c591d735134ab139fc0177249a2a5d5c71242f7cc615ed2",
+      "assembly": "worker.asm",
+      "assemblySha256": "d22f16973153e41721fd9faf2fa19698486a77bfd7aef071bf05d14d7ad3ac5d"
+    },
+    {
+      "name": "extension-plan",
+      "start": "0x4259adc",
+      "endExclusive": "0x425a380",
+      "sha256": "1a4ed4c2c919b26c34b8eb45a61678698dc8bd3377bdb29f594245319182373b",
+      "assembly": "extension-plan.asm",
+      "assemblySha256": "af154e88099782bafb3ce4e9019cf9ac8d4215445e4ef5a26d17c53c6c4f451a"
+    },
+    {
+      "name": "literal-dict-remove",
+      "start": "0x1ae39c0",
+      "endExclusive": "0x1ae3b40",
+      "sha256": "d66bc4f08219a8dc54e846324416ed4ce0368c6a437806b1fbf9f66b27470c1d",
+      "assembly": "literal-dict-remove.asm",
+      "assemblySha256": "c7b4f216adbd5124431273317269a161533f93fba1453052130f70d836fcc43e"
+    },
+    {
+      "name": "source-enum",
+      "start": "0x425fe90",
+      "endExclusive": "0x42600fc",
+      "sha256": "e63b8d165a034d88b6196e0f5555040db867727150e315710a4e6843b361ef00",
+      "assembly": "source-enum.asm",
+      "assemblySha256": "79a350dae468707030e087d191f8e95f3a223dae7f8ee6efefdca8adb71a61d0"
+    },
+    {
+      "name": "cryptographic-scheme",
+      "start": "0xf4c19c",
+      "endExclusive": "0xf4c250",
+      "sha256": "79e2c26dfc8d19e97da05e479fc81a36cc628eb9ad7abe20b7487ffb63a58d8e",
+      "assembly": "cryptographic-scheme.asm",
+      "assemblySha256": "2cc376a9ceca72856463b49ca053da8c12f22dad075793149f8bd239cb047294"
+    },
+    {
+      "name": "tracked-pref-initializer",
+      "start": "0x7a1f094",
+      "endExclusive": "0x7a1f240",
+      "sha256": "9abb95c9d8ed58c0aa7eaabfd6ad1997b6a4c7ed600b970cba8911834e67ad9d",
+      "assembly": "tracked-pref-initializer.asm",
+      "assemblySha256": "9621bc6a5ef2d4882160e64cec80448f87089d55a7e19d4b6a487299a5919b8b"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xced8f50",
+      "text": "profile.name",
+      "sha256": "6eab1884d40e51dc06d6d696ed4c625ce4e04d32fe805d05146d972b05eb25c5"
+    },
+    {
+      "offset": "0xcedea80",
+      "text": "extensions.theme.id",
+      "sha256": "52845f2c7dd43746e4008538e8fee32ab800639c6d8cecb865db577c9a9319f2"
+    },
+    {
+      "offset": "0xcede8f3",
+      "text": "extensions.theme.pack",
+      "sha256": "988e2ce00d6968e709fd52b9e4ef186c2f304f6d48ccc8d40cdce99a19faa222"
+    },
+    {
+      "offset": "0xced7144",
+      "text": "newtab_page_location_override",
+      "sha256": "cad7ca2b928dac826813d2e25857f78fa80880e923df362b878933c6e4388539"
+    },
+    {
+      "offset": "0xcedcaef",
+      "text": "session.startup_urls",
+      "sha256": "68c8f572c7bdcea3de32205e05061ad695f12c918f20f628abda0fb9eb20c95b"
+    },
+    {
+      "offset": "0xcedcad4",
+      "text": "session.restore_on_startup",
+      "sha256": "3ff55feb371a3c9dfe7cec1951e673a7729dd256769a67b7682f7d286e4c4407"
+    },
+    {
+      "offset": "0xcedc546",
+      "text": "homepage",
+      "sha256": "a5c5a15eec449ca189f1bdd67808dc2e3738a6851e85a931ba2ce43100195927"
+    },
+    {
+      "offset": "0xcedc54f",
+      "text": "homepage_is_newtabpage",
+      "sha256": "f44dd85e883a8465120ef133703629fb1e5b5c7c887e873387c377a33561e8ab"
+    },
+    {
+      "offset": "0xdb1f9bd",
+      "text": "extensions.commands",
+      "sha256": "94d47503caf75fffaedb8ff6a703f4c5ad2be2d77a0864279da79b60cdfd3560"
+    },
+    {
+      "offset": "0xdb1f528",
+      "text": "extensions.settings",
+      "sha256": "a9c6a3a609071c3523e5eb821946cd401a0a44e442508178cbb60f21c010bdac"
+    },
+    {
+      "offset": "0xdb1f93d",
+      "text": "chrome-extension_",
+      "sha256": "41b47fc811a9e01d62d99b8f08aa9c60432053b377f820d5fd8a0ec5d4443aa8"
+    },
+    {
+      "table": "0xe8a72b0",
+      "tableBytesHex": "1c01ac0d00001000",
+      "offset": "0xdac011c",
+      "text": "Cookies",
+      "sha256": "141395eb35564fe50baa1839eb43315ec1880ae19f53b926611a483029a5a603"
+    },
+    {
+      "table": "0xe8a72b8",
+      "tableBytesHex": "4ff9b10d00001000",
+      "offset": "0xdb1f94f",
+      "text": "Cookies-journal",
+      "sha256": "2eefb040048f90194585ba89a2754fb3764bed9a7446e5520328089f81c00940"
+    },
+    {
+      "table": "0xe8a72c0",
+      "tableBytesHex": "5ff9b10d00001000",
+      "offset": "0xdb1f95f",
+      "text": "Extension Cookies",
+      "sha256": "0ac2aec35ebffe135aedc2075bdff36561a4ee906452cbd8dfe8bb2045d8abc6"
+    },
+    {
+      "table": "0xe8a72c8",
+      "tableBytesHex": "71f9b10d00001000",
+      "offset": "0xdb1f971",
+      "text": "Extension Cookies-journal",
+      "sha256": "e94837363634711028c111f834249f67d53bd7c0539c99402c462172480293fb"
+    },
+    {
+      "table": "0xe8a72d0",
+      "tableBytesHex": "bff2b10d00001000",
+      "offset": "0xdb1f2bf",
+      "text": "Login Data",
+      "sha256": "bbd33231ce78d8e090017e2f278652e16fa66e99750465b699f5ff135d91777c"
+    },
+    {
+      "table": "0xe8a72d8",
+      "tableBytesHex": "8bf9b10d00001000",
+      "offset": "0xdb1f98b",
+      "text": "Login Data-journal",
+      "sha256": "de451d4c4ed4ea5d6083ffbecf446e44e1966a5d00f5f7b4ac08b8f2d67c37d0"
+    },
+    {
+      "table": "0xe8a72e0",
+      "tableBytesHex": "caf2b10d00001000",
+      "offset": "0xdb1f2ca",
+      "text": "Login Data For Account",
+      "sha256": "e850ea262c9fbce813c4f3d8d004dd3a85a838dcab0efa628c8efa333a6375ce"
+    },
+    {
+      "table": "0xe8a72e8",
+      "tableBytesHex": "9ef9b10d00001000",
+      "offset": "0xdb1f99e",
+      "text": "Login Data For Account-journal",
+      "sha256": "f07f75a5d065f8f13c54729d88d2bd802ce1338a132ea94a0ccf19f380eba3f7"
+    },
+    {
+      "table": "0xe8a72f0",
+      "tableBytesHex": "d1f9b10d00001000",
+      "offset": "0xdb1f9d1",
+      "text": "extensions.pinned_extensions",
+      "sha256": "c3b130ec3ef4fa4fa5c0eb3c2b0fa0f584d2a62f96cd4405d23a8063d2e823ae"
+    },
+    {
+      "table": "0xe8a72f8",
+      "tableBytesHex": "eef9b10d00001000",
+      "offset": "0xdb1f9ee",
+      "text": "extensions.toolbar",
+      "sha256": "fe7baadb17c46bd11a69a69f30128118f48ae894db942adaf49684d77fe1b72a"
+    }
+  ],
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativeApiPins": [
+    {
+      "path": "base/files/file_enumerator.h",
+      "sha256": "19ab1de1387f34f0ff1b3969ef0a43f5f22d3bbc9dbfb363188fcbef2174a1e9"
+    },
+    {
+      "path": "base/files/file_path.h",
+      "sha256": "c8e135db3b184e838d5e7413796d8f5f32aef492ca16e347da0e100783526b0c"
+    },
+    {
+      "path": "base/files/file_util.h",
+      "sha256": "008da08c7df521695e33a3164b471e17ac1e55a64e38b0d82a9ab1c61fe2e8e2"
+    },
+    {
+      "path": "base/json/json_reader.h",
+      "sha256": "cc11fc68ff19fafde085c15349a2b6d17b09d21b4a75fc81c1e158eeee648548"
+    },
+    {
+      "path": "base/json/json_writer.h",
+      "sha256": "59f2a024af5a8b303b13594f209161a728edc5bcf286d34f69a2f333f8288c12"
+    },
+    {
+      "path": "base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "path": "chrome/browser/prefs/chrome_pref_service_factory.h",
+      "sha256": "aad7f842f0d819fce2f5fdb04027ae8316684eb3d0e1a0ddde6b88141b1c1e35"
+    },
+    {
+      "path": "chrome/browser/prefs/chrome_pref_service_factory.cc",
+      "sha256": "770ca6183f416ce1561ba7832793233a6f0b48ca99002f75606a7747e1915e12"
+    },
+    {
+      "path": "chrome/browser/prefs/profile_pref_store_manager.cc",
+      "sha256": "d28b493be56ecea7d635f2942bee416755b55fe573e21c8c9d7b9eeb51c0df0e"
+    },
+    {
+      "path": "url/gurl.h",
+      "sha256": "64379fac91a7d4949e7b0c2da12e26952f36ed98dbbd5506fc4480bf8c3f88aa"
+    }
+  ],
+  "retainedSourceAndRea": [
+    {
+      "path": "clone-pref-helper-complete-snapshot.json",
+      "sha256": "461b6e6a02f052be173c556db2dc5d2f5c531f26c01aa3c793bc04e5e455bdd3"
+    },
+    {
+      "path": "clone-pref-helper-decompile.json",
+      "sha256": "958aba36655953e88b9a0b7416c3422e15e341c7faef0de88c31fc1b3396c236"
+    },
+    {
+      "path": "clone-url-helper-decompile.json",
+      "sha256": "1df00f8f84802afa593ac0a71cd56042c146d5daf7a6223a6f31eb515c27a84d"
+    },
+    {
+      "path": "original-copy-helper.c",
+      "sha256": "65bb0b1b1dbced117ce2ade528f2ebaf4f8f83972044149b546cbb5d4cd01469"
+    },
+    {
+      "path": "original-worker.c",
+      "sha256": "a2f51007f34913b84c99c9163b291ad5f322573f81b904b7928974222cf21b9d"
+    }
+  ],
+  "observed": "static only; no clone worker, profile/filesystem source, native preferences, databases or key providers executed",
+  "sourceKindMapping": {
+    "kind": 4,
+    "canonicalSourceId": "comet",
+    "labelOffset": "0xdf7a506",
+    "labelEncoding": "utf-16le",
+    "labelBytesHex": "43006f006d0065007400",
+    "label": "Comet",
+    "sha256": "d644cb20d21e328badd1fd4540a34df149839ae39e26a0e2a9194c6b23b8760f"
+  }
+}

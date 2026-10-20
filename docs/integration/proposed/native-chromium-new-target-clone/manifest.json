@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_profile_clone.cc",
+      "baselineSha256": null,
+      "outputSha256": "186a74cf745d178a5e39a92e9fe1abcb88f9e537e2a92d43203baaed96e44d3a"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_profile_clone.h",
+      "baselineSha256": null,
+      "outputSha256": "fd0df6713479da7cc5c87d5e4459b94829269969b9a07381b2d65dbd4780aa47"
+    }
+  ],
+  "patchSha256": "55c514fc86001259d5d82960dddc08295f5ce98a0c0834b36f082ab872f47fa2",
+  "compiled": false,
+  "mounted": false,
+  "dependencies": [
+    "//base",
+    "//url",
+    "chrome/browser/prefs/chrome_pref_service_factory.h real owner"
+  ]
+}
