@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Pin",
+    "definition": "0xe9d54b0",
+    "path": "0xd3e199c",
+    "elements": 146
+  },
+  {
+    "name": "Bookmark",
+    "definition": "0xe9d4af0",
+    "path": "0xd3d90f0",
+    "elements": 62
+  },
+  {
+    "name": "Globe",
+    "definition": "0xe9d5118",
+    "path": "0xd3dde9c",
+    "elements": 250
+  },
+  {
+    "name": "Disclosure",
+    "definition": "0xe9d4f50",
+    "path": "0xd3dc800",
+    "elements": 53
+  }
+]

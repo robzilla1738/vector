@@ -1,0 +1,109 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "factory.asm",
+      "start": "0x465352c",
+      "stop": "0x4654740",
+      "bytesSha256": "9c2fa1dfa66ad33573224393e234abd970c6f8eb765827f3fbfe612c4beb13b6",
+      "extractSha256": "bb541c63f13f0e04e733bfe170825910dddbc9cbecb35cc257104906b23f5dd5"
+    },
+    {
+      "file": "layout.asm",
+      "start": "0x467dc80",
+      "stop": "0x467e020",
+      "bytesSha256": "77a80da59157c6006492add4a4bc5e09e43af12aa7bd9e8489aba1198ad7d342",
+      "extractSha256": "55a36395378d8a39c391df806963edae4b9523fb8caafdd72fad7ca6a50523c1"
+    },
+    {
+      "file": "rows.asm",
+      "start": "0x467e380",
+      "stop": "0x467ea7c",
+      "bytesSha256": "f3bc9708ed24201be0ec122a2277760d723c9454d02492c7de8bab954a27eba6",
+      "extractSha256": "e1f69b451938d1f495d1bbdb0dc8dc21a97cf0b2b256c77c04c245b8c87dbbc7"
+    },
+    {
+      "file": "row-constructor.asm",
+      "start": "0x467ea7c",
+      "stop": "0x467faac",
+      "bytesSha256": "668e793fd4466c92983c7c51d41f1832aa1bec102f6aa7027b8ae130116eb530",
+      "extractSha256": "ea042bb31a67dddf52e124fe2cfbda76735b1fd604a79d6d645bf6cc3f989b67"
+    },
+    {
+      "file": "row-colors.asm",
+      "start": "0x467fbc0",
+      "stop": "0x46800c4",
+      "bytesSha256": "8776bd7f4abd7ee841046fc39cdd2226c5e792ddfb5cdf63e5a38bc422d41634",
+      "extractSha256": "9f6a8141d4f9c1f5a221c60509ee92c7d22863091a333676d3a7465aa160f082"
+    },
+    {
+      "file": "row-preferred-paint.asm",
+      "start": "0x46800c4",
+      "stop": "0x46803d4",
+      "bytesSha256": "d49e3d8d9181cc7870f0bc40f91b9d324a5e18b7533590bf6bfcf04fc7a7a441",
+      "extractSha256": "178a9b182fae259a2025886e1d2eb86788b0db15e19336e64735ca596791b24d"
+    },
+    {
+      "file": "foreground225.asm",
+      "start": "0x35e7650",
+      "stop": "0x35e7668",
+      "bytesSha256": "a18b6c13ef4f12cfb2f934b40685db61485495e33aaf729ea1a777e79483da32",
+      "extractSha256": "1d0bd3e674288418d4dd3b2a70252bf7d2c2ebed3335fc96c61c9f81e11f9098"
+    },
+    {
+      "file": "background219.asm",
+      "start": "0x35e7174",
+      "stop": "0x35e718c",
+      "bytesSha256": "de7bb4096a05f4a62dcb3b3eb97f0ecbd97375422e1dca202376b576b95ec635",
+      "extractSha256": "a15644c11e5269f27d0a91b2869cfe0d564ce163b95a4854eaf749ecce4e94e4"
+    }
+  ],
+  "icons": [
+    {
+      "name": "Pin",
+      "definition": "0xe9d54b0",
+      "path": "0xd3e199c",
+      "elements": 146,
+      "sha256": "74f527f5831383d1cfa200a3d5303ffcf9492a80fb35f345d885ac2e9a970e3a"
+    },
+    {
+      "name": "Bookmark",
+      "definition": "0xe9d4af0",
+      "path": "0xd3d90f0",
+      "elements": 62,
+      "sha256": "1f61d739dfd02403aeb67be1e2fa52c1dbae1dd8d0cc33d855944b20628a9525"
+    },
+    {
+      "name": "Globe",
+      "definition": "0xe9d5118",
+      "path": "0xd3dde9c",
+      "elements": 250,
+      "sha256": "854d40819446d60a14cce484e9326cd678efc9df130476322dd28c0a310cb76b"
+    },
+    {
+      "name": "Disclosure",
+      "definition": "0xe9d4f50",
+      "path": "0xd3dc800",
+      "elements": 53,
+      "sha256": "f8f4b5945f11373258604848ae0ead3a789fce6f582035ccc8b4eac17ad1f239"
+    }
+  ],
+  "avatarMargin": {
+    "rva": "0xdf40a90",
+    "bytesSha256": "d1249975be39efe9eb483e87e0939fdadb8be59bc210e67723e21d153a2a2190",
+    "tlbr": [
+      0,
+      0,
+      0,
+      4
+    ]
+  },
+  "limits": [
+    "Renderer only: actual profile/session/workspace data producer remains separate.",
+    "Original page live-record relayout is owned by existing155 ProfilePreviewPresentation adaptation.",
+    "Default mixer palette only; high-contrast override behavior unverified.",
+    "Not compiled or mounted; no UI/runtime acceptance."
+  ]
+}

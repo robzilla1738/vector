@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": "three new source files absent from actual170 and staged175",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_icons.inc",
+      "baselineSha256": null,
+      "outputSha256": "89dcb3fe7f93823b5f178b6c10f3c3da1f2c44a82638b4fe70a3a461862464ac"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+      "baselineSha256": null,
+      "outputSha256": "4f3821b29043641c7f6974d75cfc6dabcb057434857c9bb19f231e7e3b29f35e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.h",
+      "baselineSha256": null,
+      "outputSha256": "1bcd9b60d556fe29e101bbe22b93c852cf2206cb7c6f5af4af3d961138ae01fe"
+    }
+  ],
+  "compiled": false,
+  "uiTriggerInstalled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
