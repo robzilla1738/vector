@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "45b280fb377e73c9d3756262a0abe2b5d0e3eb9f72a24358626bb93c178562d3",
+      "outputSha256": "7c0237cf4ac57886305777ff9271a82e3c1014439556bbc7ee5c7f8ff2126b03"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "baselineSha256": "fbeaca86e7ffa4da58de1b6cc5c460ce8754fc10973d7185a2b457144272a538",
+      "outputSha256": "86d7cfd39a60f031b4205f41d3286cbc9712a68066ee5ea0b628a780dc84e034"
+    }
+  ]
+}

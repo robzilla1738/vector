@@ -1,0 +1,90 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -455,6 +455,18 @@
+       AddChildView(std::move(omnibox_additional_text_view));
+   omnibox_additional_text_view_->SetEnabledColor(kColorOmniboxResultsUrl);
+ 
++  // Read-only resting page context. The real omnibox remains the URL editor
++  // and retains its existing mouse/context-menu, focus and security behavior.
++  aux_page_title_view_ = AddChildView(std::make_unique<views::Label>(
++      std::u16string(), CONTEXT_OMNIBOX_PRIMARY, views::style::STYLE_PRIMARY));
++  aux_page_title_view_->SetFontList(font_list);
++  aux_page_title_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
++  aux_page_title_view_->SetElideBehavior(gfx::ELIDE_TAIL);
++  aux_page_title_view_->SetAutoColorReadabilityEnabled(false);
++  aux_page_title_view_->SetEnabledColor(kColorOmniboxTextDimmed);
++  aux_page_title_view_->SetCanProcessEventsWithinSubtree(false);
++  aux_page_title_view_->SetVisible(false);
++
+   selected_keyword_view_ = AddChildView(std::make_unique<SelectedKeywordView>(
+       this, profile_, omnibox_controller_.get(), font_list));
+ 
+@@ -773,6 +785,22 @@
+   if (!IsInitialized()) {
+     return;
+   }
++
++  const auto* contents = GetWebContents();
++  const auto* edit_model = GetOmniboxController()->edit_model();
++  const bool show_page_title =
++      browser_ && browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      !is_popup_mode_ && contents &&
++      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++      !contents->GetTitle().empty() && !omnibox_view_->HasFocus() &&
++      !edit_model->is_caret_visible() &&
++      !edit_model->user_input_in_progress() &&
++      !GetOmniboxController()->IsPopupOpen() &&
++      !ime_inline_autocomplete_view_->GetVisible() &&
++      !omnibox_additional_text_view_->GetVisible();
++  aux_page_title_view_->SetText(
++      show_page_title ? u"  |  " + contents->GetTitle() : std::u16string());
++  aux_page_title_view_->SetVisible(show_page_title);
+ 
+   selected_keyword_view_->SetVisible(false);
+ 
+@@ -975,7 +1003,8 @@
+   location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
+ 
+   if (!ime_inline_autocomplete_view_->GetVisible() &&
+-      !omnibox_additional_text_view_->GetVisible()) {
++      !omnibox_additional_text_view_->GetVisible() &&
++      !aux_page_title_view_->GetVisible()) {
+     // Short circuit the below logic when the additional views aren't visible.
+     // This is necessary as resizing the omnibox can throw off it's scroll,
+     // i.e., which chars are visible when its text overflows its width.
+@@ -1016,6 +1045,7 @@
+         reserve_label_width(ime_inline_autocomplete_view_);
+     int omnibox_additional_text_width =
+         reserve_label_width(omnibox_additional_text_view_);
++    const int page_title_width = reserve_label_width(aux_page_title_view_);
+ 
+     // A helper to position `view` to the right of the previous positioned
+     // `view`.
+@@ -1033,6 +1063,7 @@
+     position_view(omnibox_view_, omnibox_width);
+     position_view(ime_inline_autocomplete_view_, ime_inline_autocomplete_width);
+     position_view(omnibox_additional_text_view_, omnibox_additional_text_width);
++    position_view(aux_page_title_view_, page_title_width);
+   }
+ 
+   LayoutSuperclass<View>(this);
+@@ -2128,6 +2159,7 @@
+   omnibox_view_->SetFontList(font_list);
+   ime_inline_autocomplete_view_->SetFontList(font_list);
+   omnibox_additional_text_view_->SetFontList(font_list);
++  aux_page_title_view_->SetFontList(font_list);
+   selected_keyword_view_->SetFontList(font_list);
+   for (ContentSettingImageView* view : content_setting_views_) {
+     view->SetFontList(font_list);
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -594,6 +594,9 @@
+   // feature flag is disabled.
+   raw_ptr<views::Label> omnibox_additional_text_view_ = nullptr;
+ 
++  // Noneditable page title shown beside the real URL only while at rest.
++  raw_ptr<views::Label> aux_page_title_view_ = nullptr;
++
+   // The following views are used to provide hints and remind the user as to
+   // what is going in the edit. They are all added a children of the
+   // LocationBarView. At most one is visible at a time. These autocollapse when
