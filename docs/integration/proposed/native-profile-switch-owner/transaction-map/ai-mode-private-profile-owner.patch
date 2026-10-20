@@ -1,0 +1,284 @@
+--- a/chrome/browser/ui/omnibox/ai_mode_page_action_controller.h
++++ b/chrome/browser/ui/omnibox/ai_mode_page_action_controller.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_OMNIBOX_AI_MODE_PAGE_ACTION_CONTROLLER_H_
+ #define CHROME_BROWSER_UI_OMNIBOX_AI_MODE_PAGE_ACTION_CONTROLLER_H_
+ 
++#include <memory>
+ #include <optional>
+ #include <utility>
+ 
+@@ -13,6 +14,8 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/time/time.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+ #include "chrome/browser/ui/page_action/page_action_observer.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -48,6 +51,20 @@
+   AiModePageActionController(const AiModePageActionController&) = delete;
+   AiModePageActionController& operator=(const AiModePageActionController&) =
+       delete;
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  bool CanRetireForAuxProfileSwitch() const;
++  // Call only at the real cold boundary, then destroy this private owner before
++  // source collection transfer. Actual views/edit model/page actions survive.
++  void PrepareForAuxProfileSwitch();
++  static std::unique_ptr<AiModePageActionController>
++  CreatePreparedForAuxProfileSwitch(BrowserWindowInterface& bwi,
++                                    Profile& profile,
++                                    LocationBar& location_bar);
++  // Call only once assigned into its real window owner, after final/restored
++  // tabs settle and the same edit model has genuine profile sources.
++  void FinishForAuxProfileSwitch();
++#endif
+ 
+   // OmniboxEditModel::Observer:
+   void OnSelectionChanged(OmniboxPopupSelection old_selection,
+@@ -85,6 +102,12 @@
+       const page_actions::PageActionState& page_action) override;
+ 
+  private:
++  AiModePageActionController(BrowserWindowInterface& bwi,
++                             Profile& profile,
++                             LocationBar& location_bar,
++                             bool initially_prepared);
++  void LeaveAuxCallback();
++
+   using ImageCacheKey = std::pair<SearchEngineType, std::string>;
+ 
+   // These values are persisted to logs. Entries should not be renumbered and
+@@ -151,6 +174,8 @@
+   std::optional<ui::ImageModel> cached_image_model_;
+ 
+   bool is_visible_ = false;
++  bool aux_profile_switch_prepared_ = false;
++  int aux_callback_depth_ = 0;
+ 
+   // Used to cancel pending favicon fetches when the config changes.
+   base::WeakPtrFactory<AiModePageActionController> favicon_fetch_weak_factory_{
+@@ -158,6 +183,10 @@
+ 
+   // Lives as long as this lives. Used to subscribe to config changes.
+   base::WeakPtrFactory<AiModePageActionController> weak_factory_{this};
++
++  // Destruction-only lifetime for scoped callback leaves. Not invalidated when
++  // old-profile favicon/config callbacks are retired.
++  base::WeakPtrFactory<AiModePageActionController> aux_lifetime_factory_{this};
+ };
+ 
+ }  // namespace omnibox
+--- a/chrome/browser/ui/omnibox/ai_mode_page_action_controller.cc
++++ b/chrome/browser/ui/omnibox/ai_mode_page_action_controller.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+ 
+ #include "base/check.h"
++#include "base/check_op.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+@@ -101,11 +103,19 @@
+     BrowserWindowInterface& bwi,
+     Profile& profile,
+     LocationBar& location_bar)
++    : AiModePageActionController(bwi, profile, location_bar, false) {}
++
++AiModePageActionController::AiModePageActionController(
++    BrowserWindowInterface& bwi,
++    Profile& profile,
++    LocationBar& location_bar,
++    bool initially_prepared)
+     : page_actions::PageActionObserver(kActionAiMode),
+       bwi_(bwi),
+       profile_(profile),
+       location_bar_(location_bar),
+-      scoped_data_(bwi.GetUnownedUserDataHost(), *this) {
++      scoped_data_(bwi.GetUnownedUserDataHost(), *this),
++      aux_profile_switch_prepared_(initially_prepared) {
+   if (auto* omnibox_controller = location_bar.GetOmniboxController()) {
+     omnibox_edit_model_observation_.Observe(omnibox_controller->edit_model());
+   }
+@@ -128,11 +138,83 @@
+ 
+ AiModePageActionController::~AiModePageActionController() = default;
+ 
++void AiModePageActionController::LeaveAuxCallback() {
++  CHECK(aux_callback_depth_ > 0);
++  --aux_callback_depth_;
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool AiModePageActionController::CanRetireForAuxProfileSwitch() const {
++  auto* controller = location_bar_->GetOmniboxController();
++  return !aux_profile_switch_prepared_ && !aux_callback_depth_ &&
++         From(&bwi_.get()) == this &&
++         bwi_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++         profile_->IsRegularProfile() &&
++         bwi_->GetProfile() == &profile_.get() && controller &&
++         omnibox_edit_model_observation_.IsObserving() &&
++         omnibox_edit_model_observation_.GetSource() == controller->edit_model();
++}
++
++void AiModePageActionController::PrepareForAuxProfileSwitch() {
++  CHECK(CanRetireForAuxProfileSwitch());
++  aux_profile_switch_prepared_ = true;
++  omnibox_edit_model_observation_.Reset();
++  pref_change_registrar_.Reset();
++  ai_mode_config_subscription_ = {};
++  // Original boundaries cancel only transient old-profile UI callback work.
++  // Do not hide the per-tab action, log a fake icon result or cancel a request
++  // through a different profile's service.
++  favicon_fetch_weak_factory_.InvalidateWeakPtrs();
++  weak_factory_.InvalidateWeakPtrs();
++}
++
++std::unique_ptr<AiModePageActionController>
++AiModePageActionController::CreatePreparedForAuxProfileSwitch(
++    BrowserWindowInterface& bwi,
++    Profile& profile,
++    LocationBar& location_bar) {
++  CHECK_EQ(bwi.GetProfile(), &profile);
++  CHECK(profile.IsRegularProfile());
++  CHECK(AiModeButtonServiceFactory::GetForProfile(&profile));
++  // RegisterOnConfigChanged runs immediately. This constructor explicitly
++  // defers that UI update until the private owner is assigned and tabs settle.
++  return std::unique_ptr<AiModePageActionController>(
++      new AiModePageActionController(bwi, profile, location_bar, true));
++}
++
++void AiModePageActionController::FinishForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_prepared_);
++  CHECK(!aux_callback_depth_);
++  CHECK_EQ(From(&bwi_.get()), this);
++  CHECK_EQ(bwi_->GetProfile(), &profile_.get());
++  CHECK_EQ(bwi_->GetTabStripModel()->profile(), &profile_.get());
++  CHECK(AiModeButtonServiceFactory::GetForProfile(&profile_.get()));
++  auto* controller = location_bar_->GetOmniboxController();
++  CHECK(controller);
++  CHECK(omnibox_edit_model_observation_.IsObserving());
++  CHECK_EQ(omnibox_edit_model_observation_.GetSource(), controller->edit_model());
++  aux_profile_switch_prepared_ = false;
++  // Last operation: actual UI observers may destroy this private owner/window.
++  UpdatePageAction();
++}
++#endif
++
+ void AiModePageActionController::OnContentsChanged() {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   UpdatePageAction();
+ }
+ 
+ void AiModePageActionController::UpdatePageAction() {
++  if (aux_profile_switch_prepared_) {
++    return;
++  }
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   page_actions::PageActionController* page_action_controller =
+       GetPageActionController(*bwi_);
+   if (!page_action_controller) {
+@@ -141,6 +223,9 @@
+ 
+   // Register as observer for first time or update for tab change.
+   RegisterAsPageActionObserver(*page_action_controller);
++  // A moved real tab may already have its action visible. Registration copies
++  // the real state without generating an icon-shown event.
++  is_visible_ = GetCurrentPageActionState().showing;
+ 
+   const bool is_visible =
+       ShouldShowPageAction(base::to_address(profile_), *location_bar_);
+@@ -267,17 +352,29 @@
+ 
+ void AiModePageActionController::OnPageActionIconShown(
+     const page_actions::PageActionState& page_action) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   DCHECK_EQ(page_action.action_id, kActionAiMode);
+   is_visible_ = true;
+ }
+ 
+ void AiModePageActionController::OnPageActionIconHidden(
+     const page_actions::PageActionState& page_action) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   DCHECK_EQ(page_action.action_id, kActionAiMode);
+   is_visible_ = false;
+ }
+ 
+ void AiModePageActionController::UpdatePageActionUi(bool is_visible) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   if (!is_visible) {
+     favicon_fetch_weak_factory_.InvalidateWeakPtrs();
+     Hide(IconSource::kInvisible);
+@@ -362,6 +459,10 @@
+ }
+ 
+ void AiModePageActionController::Hide(IconSource source) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   base::UmaHistogramEnumeration(kIconSourceHistogram, source);
+   if (page_actions::PageActionController* page_action_controller =
+           GetPageActionController(*bwi_)) {
+@@ -374,6 +475,10 @@
+     const ui::ImageModel& image_model,
+     const ImageCacheKey& key,
+     IconSource source) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   base::UmaHistogramEnumeration(kIconSourceHistogram, source);
+   if (base::FeatureList::IsEnabled(features::kAiModePageActionOptimization)) {
+     cached_image_model_ = image_model;
+@@ -391,6 +496,10 @@
+ void AiModePageActionController::OnFaviconFetchedLocally(
+     const GURL& favicon_url,
+     const gfx::Image& favicon) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   // If visibility became false, this callback should have been cancelled.
+   CHECK(ShouldShowPageAction(base::to_address(profile_), *location_bar_));
+ 
+@@ -413,6 +522,10 @@
+ 
+ void AiModePageActionController::FetchFaviconFromNetwork(
+     const GURL& favicon_url) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   BitmapFetcherService* fetcher_service =
+       BitmapFetcherServiceFactory::GetForBrowserContext(
+           base::to_address(profile_));
+@@ -430,6 +543,10 @@
+ void AiModePageActionController::OnFaviconFetchedFromNetwork(
+     const GURL& favicon_url,
+     SkBitmap bitmap) {
++  ++aux_callback_depth_;
++  base::ScopedClosureRunner callback_scope(base::BindOnce(
++      &AiModePageActionController::LeaveAuxCallback,
++      aux_lifetime_factory_.GetWeakPtr()));
+   // If visibility became false, this callback should have been cancelled.
+   CHECK(ShouldShowPageAction(base::to_address(profile_), *location_bar_));
+ 

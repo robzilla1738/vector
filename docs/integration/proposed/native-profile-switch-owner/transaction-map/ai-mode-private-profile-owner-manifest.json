@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual applied Chromium155 AiModePageActionController",
+  "files": [
+    {
+      "path": "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h",
+      "baselineSha256": "0510ae10673f0eaee79b7648d60f16d164a1bf2354698e85093c44bdd20a2c65",
+      "outputSha256": "2b2803674442f580aa4f1ee8f1d48b7271db7ffc125f3884673de47c749c461d"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/ai_mode_page_action_controller.cc",
+      "baselineSha256": "b6e96aca110ad318f2cfdb7f2088ffcee18be5bc26cddbc816d27ee7851b0cd6",
+      "outputSha256": "aa1f9a6dae66dbdcff2c011a77af621c45cfa53b18e8a014ae7f9fbd2f7e9219"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "completeProfileSwitch": false
+}
