@@ -1,0 +1,113 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -59,6 +59,7 @@
+ // here. In particular this does not activate a partially migrated UI gesture.
+ struct BrowserWindowFeatures::AuxProfileSwitchProvider {
+   struct Bindings {
++    base::WeakPtr<Profile> target;
+     raw_ptr<BrowserView> view;
+     raw_ptr<ToolbarView> toolbar;
+     raw_ptr<LocationBarView> location;
+@@ -77,7 +78,8 @@
+   std::optional<aux::ProfileSwitchTransaction::PreparedBindings>
+   Prepare(Browser&, Profile&);
+   std::shared_ptr<Bindings> CollectReadyBindings(Browser&, Profile&);
+-  bool Revalidate(std::shared_ptr<Bindings>, Browser&, Profile&);
++  static bool HasUnportedProfileOwners(const BrowserWindowFeatures&);
++  bool Revalidate(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+   void Begin(std::shared_ptr<Bindings>, base::WeakPtr<Profile>,
+              Browser&, Browser&, Browser&);
+   void Commit(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+@@ -108,6 +110,21 @@
+          result == aux::ProfileSwitchTransaction::Result::kNoChange;
+ }
+ 
++bool BrowserWindowFeatures::AuxProfileSwitchProvider::HasUnportedProfileOwners(
++    const BrowserWindowFeatures& features) {
++  return features.breadcrumb_manager_browser_agent_ ||
++      features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
++      features.glic_iph_controller_ ||
++      features.glic_split_button_controller_ || features.most_recent_shared_tab_update_store_ ||
++      features.session_service_tab_group_sync_observer_ || features.organizer_panel_controller_ ||
++      features.actor_ui_window_controller_ || features.ai_overlay_dialog_controller_ ||
++      features.ai_mode_page_action_controller_ || features.data_protection_ui_controller_ ||
++      features.new_tab_footer_controller_ ||
++      features.ios_promo_controller_ ||
++      features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_ ||
++      features.find_bar_controller_;
++}
++
+ std::shared_ptr<BrowserWindowFeatures::AuxProfileSwitchProvider::Bindings>
+ BrowserWindowFeatures::AuxProfileSwitchProvider::CollectReadyBindings(
+     Browser& browser, Profile& target) {
+@@ -115,17 +132,7 @@
+   // Explicit remaining source owners. Their presence is a real unsupported
+   // graph, never permission to retain old-profile services or return success.
+   // Remove a guard only with its actual cold/commit/abort lifecycle port.
+-  if (features_->breadcrumb_manager_browser_agent_ ||
+-      features_->comments_side_panel_coordinator_ || features_->contextual_tasks_browser_controller_ ||
+-      features_->glic_iph_controller_ ||
+-      features_->glic_split_button_controller_ || features_->most_recent_shared_tab_update_store_ ||
+-      features_->session_service_tab_group_sync_observer_ || features_->organizer_panel_controller_ ||
+-      features_->actor_ui_window_controller_ || features_->ai_overlay_dialog_controller_ ||
+-      features_->ai_mode_page_action_controller_ || features_->data_protection_ui_controller_ ||
+-      features_->new_tab_footer_controller_ ||
+-      features_->ios_promo_controller_ ||
+-      features_->recent_activity_bubble_coordinator_ || features_->shared_tab_group_feedback_controller_ ||
+-      features_->find_bar_controller_) {
++  if (HasUnportedProfileOwners(features_.get())) {
+     return nullptr;
+   }
+   if ((features_->chrome_labs_coordinator_ &&
+@@ -159,6 +166,7 @@
+     return nullptr;
+   }
+   auto plan = std::make_shared<Bindings>();
++  plan->target = target.GetWeakPtr();
+   plan->view = view;
+   plan->toolbar = toolbar;
+   plan->location = location;
+@@ -206,8 +214,18 @@
+ }
+ 
+ bool BrowserWindowFeatures::AuxProfileSwitchProvider::Revalidate(
+-    std::shared_ptr<Bindings> original, Browser& browser, Profile& target) {
+-  auto current = CollectReadyBindings(browser, target);
++    std::shared_ptr<Bindings> original, Browser& browser,
++    Browser& previous_cache, Browser& target_cache) {
++  // A missing source optional owner does not prove the target is ineligible.
++  // The genuine fixed target cache has already run the original constructors
++  // and factory predicates. Reject its real unported graph before source edits.
++  if (!original->target ||
++      target_cache.GetProfile() != original->target.get() ||
++      previous_cache.GetProfile() != browser.GetProfile() ||
++      HasUnportedProfileOwners(target_cache.GetFeatures())) {
++    return false;
++  }
++  auto current = CollectReadyBindings(browser, *original->target);
+   return current && current->view == original->view &&
+          current->toolbar == original->toolbar &&
+          current->location == original->location &&
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
+@@ -20,7 +20,8 @@
+  public:
+   enum class Result { kRejected, kNoChange, kAwaitingSecurity, kSwitched };
+   using Phase = base::OnceCallback<void(Browser&, Browser&, Browser&)>;
+-  using Revalidate = base::RepeatingCallback<bool(Browser&, Profile&)>;
++  using Revalidate =
++      base::RepeatingCallback<bool(Browser&, Browser&, Browser&)>;
+ 
+   class PreparedBindings {
+    public:
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -158,7 +158,7 @@
+   // Cache creation can synchronously invoke real observers. New clients or
+   // changed source widgets must reject recoverably before any source mutation.
+   if (browser.GetProfile() != previous ||
+-      !bindings->revalidate_.Run(browser, *target)) {
++      !bindings->revalidate_.Run(browser, old_cache, next_cache)) {
+     return Result::kRejected;
+   }
+   base::AutoReset<bool> old_active(&old_cache.aux_profile_switch_in_progress_, true);

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "Ordered 4792d9086 provider plus ff2528b92 actual core output",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "438452ef1dd8906f62e6ba1716265828612593cc500319f40da9dea39607fab6",
+      "outputSha256": "019f8b1a46d95df0031ca9460e3d864be37143d9dbda0088bd3cebbcb70af5c3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h",
+      "baselineSha256": "73d6e869543552086e21d97fc7409377e62682c02773dda853280fdfc6e0eed0",
+      "outputSha256": "9350603645c387d3c89c4de3570944743931061eb53806f3add3dc8520120f6e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "a01a6a5cdae0b5ffb7b945abe733cd8fe945ed2914483ffb3cee75038a678a18",
+      "outputSha256": "f2b47252fdda1bd6e70f13cb70a342ac076fd40d3a4c6f41cfdc45deadf5df47"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
