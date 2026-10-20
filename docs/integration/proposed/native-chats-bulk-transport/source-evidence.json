@@ -1,0 +1,37 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "mark-all-read-dispatch",
+      "start": "0x4639c10",
+      "stopExclusive": "0x4639ce4",
+      "bytesSha256": "5da71b1ed179cf6a4aeec41e315c2719b4c5871e850784ef9f7cd5b64a2c9647",
+      "asmSha256": "f2436c1c56a4992bc21a2f91457dbe6aaa577c0c1e52d65dcb37cfad80f97847"
+    },
+    {
+      "name": "archive-accepted",
+      "start": "0x466fb20",
+      "stopExclusive": "0x466fc84",
+      "bytesSha256": "f69bca896afe6fda0ea3cb26140acc66c30447350c092a3a8fcb7679592ccd19",
+      "asmSha256": "27513ae174d936d9c567025ce43cf49a83329a2543116f862198fd3fcd14830f"
+    },
+    {
+      "name": "bulk-request",
+      "start": "0x463b864",
+      "stopExclusive": "0x463bc88",
+      "bytesSha256": "1f9e862596c6ac04648c6e1c64a2553537729bdbf53ac14defe4963c41125b48",
+      "asmSha256": "cd98907f7b37829820245a39a4e420ade715d1b7b4f5950c806e26b9882e5f73"
+    }
+  ],
+  "daemon": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "routes": [
+      "/session/for-chrome/mark-all-read",
+      "/session/for-chrome/archive-all-chats"
+    ]
+  }
+}

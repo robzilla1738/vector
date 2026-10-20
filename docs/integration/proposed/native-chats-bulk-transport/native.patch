@@ -1,0 +1,41 @@
+--- a/chrome/browser/ui/views/frame/aux_chats_transport.h
++++ b/chrome/browser/ui/views/frame/aux_chats_transport.h
+@@ -29,6 +29,8 @@
+     bool ok() const { return status == 200; }
+   };
+   using ActionDone = base::OnceCallback<void(ActionResult)>;
++  enum class BulkAction { kMarkAllRead, kArchiveAllChats };
++  void PerformBulkAction(BulkAction action, ActionDone done);
+   explicit AuxChatsTransport(BrowserWindowInterface& browser, Updated updated);
+   ~AuxChatsTransport();
+   void Start();
+--- a/chrome/browser/ui/views/frame/aux_chats_transport.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_transport.cc
+@@ -147,9 +147,15 @@
+ void AuxChatsTransport::Schedule() {
+   if (ScopeCurrent()) timer_.Start(FROM_HERE, kPollInterval, this, &AuxChatsTransport::Refresh);
+ }
++void AuxChatsTransport::PerformBulkAction(BulkAction action, ActionDone done) {
++  PerformAction({}, action == BulkAction::kMarkAllRead
++      ? "mark-all-read" : "archive-all-chats", {}, std::move(done));
++}
+ void AuxChatsTransport::PerformAction(std::string session, std::string action,
+                                      base::DictValue input, ActionDone done) {
+-  if (!ScopeCurrent() || session.empty() || action.empty()) {
++  const bool bulk = session.empty() &&
++      (action == "mark-all-read" || action == "archive-all-chats");
++  if (!ScopeCurrent() || (!bulk && session.empty()) || action.empty()) {
+     std::move(done).Run({}); return;
+   }
+   ResolveAccount(base::BindOnce(
+@@ -177,6 +183,10 @@
+         std::string path = "/session/for-chrome/" +
+             base::EscapeAllExceptUnreserved(session) + "/" +
+             base::EscapeAllExceptUnreserved(action);
++        if (session.empty() &&
++            (action == "mark-all-read" || action == "archive-all-chats")) {
++          path = "/session/for-chrome/" + action;
++        }
+         if (action == "resolve-popover-action") {
+           path = "/session/for-chrome/resolve-popover-action";
+           input.Set("sessionId", session);

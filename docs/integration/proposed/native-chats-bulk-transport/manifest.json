@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual327 transport after318 account fallback",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.h",
+      "baselineSha256": "6d0fc4df4f4728931dce52ab2b6e5fbd9cfed38435de48dd8986c677ed768950",
+      "outputSha256": "5b58a408a0f8496cedc018aa2eafd0e5155f3f2d71017a377e75f82b23722031"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "baselineSha256": "649d42e74eec3f004e42baabeb59cd0f3bff1f330194e5da723b833b15dccd1a",
+      "outputSha256": "066713397f30eb9178db93b99e36d4ea5a1e87ed6d56a5a519d9eb9f0fa33ba8"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
