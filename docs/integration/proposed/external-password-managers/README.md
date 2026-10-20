@@ -17,3 +17,5 @@ Native component-extension loading, startup gates, first-party save/autofill pro
 The pinned `extension-main-Dz1-AsCT.js` already admits the real local account on explicit `/u/<id>/tasks/new` and settings routes. Its profile/account resolver and authentication are retained. A narrow native UI adaptation changes bare `main.html` routing from hosted sign-in to the supplied new-chat component, using the same actual account resolver already used by sidepanel/minipopup entrypoints; no completed-onboarding or authenticated-cloud state is set.
 
 Settings must load `main.html#/u/<id>/settings/general`. Supplied `newtab.html` has the static new-tab editor and React slots, not the main extension router/root, so adding a settings hash to it cannot mount Settings. The matching native route fix is required.
+
+When a genuine local account has no available models, the supplied composer now directs the user to its existing model/provider settings instead of hosted sign-in. It uses the original connection notice component and leaves model availability and authentication untouched. Paused cloud accounts retain their existing sign-in notice.

@@ -70,6 +70,14 @@ export function transformProvidedNativeUi({ component, path, text }) {
       throw new Error('Supplied default workspace route changed');
     replace(rootRoute, 'const t=It()?"/u/$userId/sidepanel":vt()?"/u/$userId/minipopup":"/u/$userId/tasks/new";', 'integration');
   }
+  if (component === 'agent' && path === 'assets/session-composer-Dc0LRfZA.js') {
+    // No configured local model is a provider-setup action, not hosted sign-in.
+    // Preserve the supplied notice component and the actual empty model state.
+    const emptyModels = 'if(!o&&r.length===0&&(l||u))return';
+    if (text.split(emptyModels).length - 1 !== 1)
+      throw new Error('Supplied local model notice changed');
+    replace(emptyModels, 'if(!o&&r.length===0&&u)return{kind:"ai-subscription-connect",description:"Connect an AI provider to start chatting",actionLabel:"Connect",actionPath:`/u/${t}/settings/model`};if(!o&&r.length===0&&l)return', 'integration');
+  }
   // Supplied Aside.* commands and authentication wire names remain unchanged.
   for (const scheme of ['http', 'https', 'ws', 'wss']) {
     for (const host of ['127.0.0.1', 'localhost']) {
