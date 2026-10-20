@@ -75,10 +75,25 @@ bool ProfilePreviewPresentation::BindPreview(
   auto* owner = owner_.view();
   if (!owner || &target_owner == owner ||
       (direction != -1 && direction != 1) || &page == &live_host ||
-      !page.Contains(&live_host) ||
+      !page.Contains(&live_host) || !owner->Contains(&page) ||
       page.GetWidget() != owner->GetWidget() ||
       target_owner.size() != owner->size()) {
     return false;
+  }
+  // These pointers originally come only from the selected cached region's
+  // own members. Preserve that positive ownership at this typed155 seam.
+  for (size_t i = 0; i < target.size(); ++i) {
+    if (!target[i]) {
+      continue;
+    }
+    if (target[i] == &target_owner || !target_owner.Contains(target[i])) {
+      return false;
+    }
+    for (size_t j = 0; j < i; ++j) {
+      if (target[j] == target[i]) {
+        return false;
+      }
+    }
   }
   ProfilePreviewSurfaces source;
   for (size_t i = 0; i < source.size(); ++i) {

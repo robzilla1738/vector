@@ -5,7 +5,7 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc",
       "baselineSha256": null,
-      "outputSha256": "0e6706f6daa312d85955c88194cf7e6ab19ffd693255db9695c249b6e1eea95a"
+      "outputSha256": "2aeb1ab8d1fe97e107bc388caa56076026a3268b2092d4ae6c6a4fb865c17da7"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.h",
