@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "base": "account-gate-source-ownership c1ae7a703 output",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_prefs.h",
+      "baselineSha256": null,
+      "outputSha256": "8145166b2b5404edca828e8c2f8bfa02638a3c84ccda4e87bf0006a7d4b1bff1"
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_prefs.cc",
+      "baselineSha256": null,
+      "outputSha256": "39a4c0022405383ca76871597a69d6e5fd92c30beaf1685923f790e7e47b8881"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "0739874fa2349d3f2444234c056515db1a74cb4b59d94e87cd6b196049e0f4dc",
+      "outputSha256": "ebc800c92fa0478b09ca428ef5962f87f00e7edcf22ab6844b4f265570977598"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

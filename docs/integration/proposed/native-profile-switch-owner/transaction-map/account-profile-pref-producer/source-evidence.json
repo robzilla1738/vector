@@ -1,0 +1,72 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "providedSources": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/034e3f1c.c",
+      "sha256": "d378e7d60899280869ee07cab133814720404b3b365e2c4448f6eb4e8cb0a792"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0410374c.c",
+      "sha256": "b3b916e477d932e91039be07d0ca8953439006b44cfc40224e680b8a668e4c02"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103854.c",
+      "sha256": "a5381152878c62bdee70df03f04e9e654e718cb928c9c22ddb2f1fd9e539baf1"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103954.c",
+      "sha256": "915c6fb2c80172681118444ce3604d7e82991d391e1696a8b33f09fcb81b9e5d"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103a68.c",
+      "sha256": "6cb917a79a52c71bc0b5c81442b7ad84f08d770031160066da464572f276e107"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103c38.c",
+      "sha256": "40067abdb84564c8d7426baaf635f22ecd20e4d62f76784c785d4b0151dbf1c0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04103d40.c",
+      "sha256": "691a3e4d4b622799f1cc16c6feb287935be7e780e47efeaa74a85156e8700256"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/041040a4.c",
+      "sha256": "3c91ed135715fff2b48c1b6673abb45426f25d230afbedbca562bab629767926"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/041042ec.c",
+      "sha256": "b707263393c1921ce8664352c039ba0f81e4eb968fa801c28ce57b4bbce387f4"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/041043ac.c",
+      "sha256": "d46cd808e09f9f6daad7f3362105b115b067dad0eb585978ac0b8c965a036c7b"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415ebd0.c",
+      "sha256": "dc300b10f3402bb88fab372dc205a723cd209df444e0b22a85c2f0f7e04906fe"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415fec0.c",
+      "sha256": "858bd63cee82bfe5d260cf5fc328229d036f09c59ebd3db8fed213d24174498a"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04160ce0.c",
+      "sha256": "e0876e9c27147d9d37a0b7a4d21057f605a363886253514a091463355477558e"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/02e84b1c.c",
+      "sha256": "c8297b15afef602839edf5378ad60fd9e4e3246bdf8ca9be72aa2aa89d2107d5"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0415f2f4.c",
+      "sha256": "9742f948609490517c19365b160901d0a1b457173c987439245944ddf44bd197"
+    }
+  ],
+  "verification": {
+    "patchReplay": "PASS3files",
+    "nativeCompile": false,
+    "nativeExecution": false,
+    "producerMounted": false,
+    "ownerStateRead": false
+  }
+}
