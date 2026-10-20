@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "composition": "v498",
+  "packageRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-local",
+  "packageReportSha256": "c0a666b012bb7acba20de43d7a158bbd65e2196ce3b61fee98861f41ae2b4058",
+  "nativeFiles": 418,
+  "nativeInputFiles": 563,
+  "retiredRuntimeLeaves": 145,
+  "suppliedResources": 10803,
+  "sourceSnapshotManifestSha256": "c37cf10878fcb7c4f471a9b5feadd6dc79faa96da4d294255f7a6e8e4d66000d",
+  "signed": false,
+  "installed": false,
+  "launched": false,
+  "runtimeAcceptance": false
+}
