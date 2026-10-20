@@ -1,0 +1,59 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "hover-state.asm",
+      "start": "0x4650a04",
+      "stop": "0x4650cc4",
+      "bytesSha256": "e2089d3b5929617ffcdba8278bcbaa4780fc42db3305c754f079c63301468d64",
+      "extractSha256": "6cc6b3da2399be7ae6bf7e5acee7f0b2a42fdbae1af9a1ecf8ef2b0403a1ac45"
+    },
+    {
+      "file": "hover-decision.asm",
+      "start": "0x34f95e8",
+      "stop": "0x34f9bf0",
+      "bytesSha256": "eda6bf412b49c536c9abb1461c2ae3e0e2c9aa6edcfa3ba3db486f427ec5f181",
+      "extractSha256": "63ea398c01d8e674c46a129c2cfea7da48b9208f0970fd108a70733ac5d3ca91"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "ui/gfx/animation/animation_delegate.h",
+      "sha256": "5d344a5f7d614acabbe7db6dd6f3b65ef5701b6adb15d9335830faf4fc90a3ae"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.cc",
+      "sha256": "a1d6f332d438dd56939a0703361c678490b3d7494875b409403346aff01f116c"
+    },
+    {
+      "path": "ui/gfx/animation/animation.cc",
+      "sha256": "158dff731bd19a52e5a021dc7cb0fcb858f1b8fb6521a7aa76481ba58be575c2"
+    },
+    {
+      "path": "ui/gfx/animation/tween.h",
+      "sha256": "cc375d29f09935d7b09dedc5fa225b3c3f58183b680823f9a4cee17d038e5c94"
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.cc",
+      "sha256": "78785cf282b47c49a8d170ae20c4dc6a5206c4cb6fa17c9068901d5cc269b755"
+    },
+    {
+      "path": "base/timer/timer.h",
+      "sha256": "ff85d8ad819a0ce8ab6ebd1c5be671830d8bf7657f2c0d6a2c4e5d62e35837dc"
+    }
+  ],
+  "reaEvidence": "ev_018ebdcb1b2d8e0fad35c094541fe10dde0ee73c4c0f502d79a55dbcd247ae40",
+  "reaLimitations": [
+    "Bounded raw image external branches may be truncated by Ghidra; complete original LLVM instructions are authority."
+  ],
+  "remaining": [
+    "No actual admission delegate installation or input/capture trigger is introduced.",
+    "Actual collapse/layout/header state owner and original native retention producers still need complete binding before installation."
+  ]
+}

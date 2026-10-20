@@ -1,0 +1,19 @@
+# Actual region retained-hover decision followup
+
+This three-output proposal layers the actual205 `VerticalTabStripRegionView` and02ca54e05 admission header. L4 confirmed the region was not edited in its header/pager lane and will layer that proposal on these exact outputs. The205 initialized-TabContainer width-callback fix is preserved byte-for-byte outside the displayed patch. No shared native write/build occurs here.
+
+The real `UpdateExpandOnHoverState` now contains the source34f95e8 retained branches when its actual admission owner is installed. Existing ordinary-hover scheduling, feature delay, velocity heuristic, click monitor, active-frame checks and lock precedence remain in the same real method. ForceCollapse forwards the exact source a0a/latch clearing. KeepCurrentState still resets genuine hover timers. KeepExpanded and inactive-frame behavior retain their real order.
+
+The retained decision is distinct from ordinary focus: `retained && (browserRequest || edgeRequest || pointerInside)` can enter immediately even when ordinary expand-on-hover is disabled/suppressed. Focus alone counts only when the retained latch is absent. A real pointer in a retained presentation stops the SAME shared expansion/release timer. When no request/pointer/hover remains, actual admission ownership releases idle retention before the region decides collapse/reset. Its callback may destroy the hierarchy, so the continuation uses an actual ViewTracker. Immediate retained expansion runs before the existing velocity/delay branch; ordinary pointer/focus expansion keeps its genuine implementation.
+
+The actual region owns `unique_ptr<ProfilePreviewAdmission>` and exposes a one-time explicit installer/getter. `ApplyAuxProfileHoverExpansion` is the real effect-delegate callback for the current region's expanded-hover bit, original metrics, timer resets and direct layout invalidation. It does not start the independent Chromium BrowserAnimationController when the supplied owner is installed. A tiny admission-header method preserves the original nonvertical/noncollapsed early direct-state reset without inventing a hover-layout transition.
+
+## Activation prerequisites
+
+**The installer is not called by this patch.** A real delegate must bind the source collapse SlideAnimation/layout/header hold/temporary leaf width and actual controller callback ordering before installation. Native input and capture remain unmounted. Do not use this admission object as a second animation oracle while current Chromium collapse painting continues independently. L4's real header/pager mount must consume the actual owner predicates after that binding exists.
+
+No guessed native producer is added. Actual BrowserView retention producer45abe40 and edge-monitor46507d8/4650844 must retain their original eligibility/geometry. The latter includes real vertical mode, active widget, ForceCollapse, native window bounds, actual contents vertical extent and8px side predicate; this patch does not replace those with region width, focus, URL, or title. Original retained-pointer465020c also unions genuine top-boundary geometry (99d480 is Rect::Union, not intersection) before checking the real cursor and edge predicate. Source evidence for those checks remains in02ca54e05 and is still an explicit binding prerequisite.
+
+No original producer names are inferred from true/false calls. No new gesture or capture trigger, fake readiness/success, owner-state access, OS grant, Keychain access, target execution or signing is introduced. GN registration is unchanged; the parent adds the two admission sources separately. Native compilation and actual UI observation remain outstanding.
+
+`verify.py` pins the full original artifact and complete hover decision/state extracts, then independently applies all three exact outputs to disposable filesystem baselines. Replay passes; it does not run the native target.

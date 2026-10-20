@@ -1,0 +1,192 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_admission.h
+@@ -48,6 +48,8 @@
+   void SetBrowserRetention(bool requested);
+   void SetEdgeRetention(bool requested);
+   void SetHoverExpanded(bool expanded);
++  // Original nonvertical/noncollapsed early branch is a direct state reset.
++  void ResetHoverWithoutLayout() { hover_expanded_ = false; }
+   void ForceCollapseRetention();
+   void ClearRetention();
+   void ReleaseIdleRetention(bool pointer_inside);
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
++
++#include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ 
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h"
+ 
+@@ -84,6 +86,7 @@
+ #include "ui/views/layout/flex_layout_types.h"
+ #include "ui/views/layout/layout_types.h"
+ #include "ui/views/view.h"
++#include "ui/views/view_tracker.h"
+ #include "ui/views/view_class_properties.h"
+ #include "ui/views/view_utils.h"
+ 
+@@ -961,6 +964,18 @@
+   UpdateExpandOnHoverState();
+ }
+ 
++void VerticalTabStripRegionView::InstallAuxProfilePreviewAdmission(
++    std::unique_ptr<aux::ProfilePreviewAdmission> admission) {
++  CHECK(admission);
++  CHECK(!aux_profile_preview_admission_);
++  aux_profile_preview_admission_ = std::move(admission);
++}
++
++aux::ProfilePreviewAdmission*
++VerticalTabStripRegionView::GetAuxProfilePreviewAdmission() const {
++  return aux_profile_preview_admission_.get();
++}
++
+ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+     std::optional<bool> hovered) {
+   // If not collapsed, then we shouldn't be in or entering the expand on hover
+@@ -969,6 +984,8 @@
+       !state_controller_->IsCollapsed()) {
+     ResetExpandOnHoverTimers();
+     is_expanded_on_hover_ = false;
++    if (aux_profile_preview_admission_)
++      aux_profile_preview_admission_->ResetHoverWithoutLayout();
+     return;
+   }
+ 
+@@ -978,6 +995,10 @@
+ 
+   // If the force collapse lock is held, collapse the tab strip.
+   if (force_collapse_lock_count_ > 0) {
++    if (aux_profile_preview_admission_) {
++      aux_profile_preview_admission_->ForceCollapseRetention();
++      return;
++    }
+     if (is_expanded_on_hover_) {
+       AnimateExpandOnHover(/*expand=*/false);
+     }
+@@ -1009,13 +1030,34 @@
+     return;
+   }
+ 
++  const bool pointer_inside = hovered.value_or(IsMouseHovered());
++  const bool retained = aux_profile_preview_admission_ &&
++                        aux_profile_preview_admission_->retained();
++  const bool retained_should_show =
++      retained && (aux_profile_preview_admission_->browser_retention() ||
++                   aux_profile_preview_admission_->edge_retention() ||
++                   pointer_inside);
++  // Original34f97b8: focus alone cannot keep a retained presentation alive.
++  const bool focus_should_show =
++      !retained && GetFocusManager() &&
++      Contains(GetFocusManager()->GetFocusedView());
+   const bool should_expand =
+-      !suppress_expand_on_hover_ &&
+-      state_controller_->IsExpandOnHoverEnabled() &&
+-      (hovered.value_or(IsMouseHovered()) ||
+-       (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())));
++      retained_should_show ||
++      (!suppress_expand_on_hover_ &&
++       state_controller_->IsExpandOnHoverEnabled() &&
++       (pointer_inside || focus_should_show));
++
++  if (pointer_inside && retained)
++    expand_on_hover_timer_.Stop();
+ 
+   if (!should_expand) {
++    if (retained) {
++      views::ViewTracker alive(this);
++      alive.SetTrackEntireViewHierarchy(true);
++      aux_profile_preview_admission_->ReleaseIdleRetention(pointer_inside);
++      if (!alive.view())
++        return;
++    }
+     if (is_expanded_on_hover_ && keep_current_state_lock_count_ == 0) {
+       AnimateExpandOnHover(/*expand=*/false);
+     } else {
+@@ -1032,6 +1074,13 @@
+   if (!hover_card_animation_lock_) {
+     hover_card_animation_lock_ =
+         hover_card_controller()->GetHoverCardHideLock();
++  }
++
++  // Original retained request enters immediately, before the genuine velocity
++  // heuristic/delay branch. Ordinary pointer/focus keeps its existing timing.
++  if (retained_should_show) {
++    AnimateExpandOnHover(/*expand=*/true);
++    return;
+   }
+ 
+   if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
+@@ -1151,7 +1200,36 @@
+   }
+ }
+ 
++void VerticalTabStripRegionView::ApplyAuxProfileHoverExpansion(bool expanded) {
++  is_expanded_on_hover_ = expanded;
++  ResetExpandOnHoverTimers();
++  if (expanded) {
++    expand_on_hover_start_time_ = base::TimeTicks::Now();
++    base::RecordAction(
++        base::UserMetricsAction("VerticalTabs_ExpandOnHover_Show"));
++  } else {
++    if (expand_on_hover_start_time_.has_value()) {
++      base::UmaHistogramLongTimes(
++          "Tabs.VerticalTabs.ExpandOnHover.ShowDuration",
++          base::TimeTicks::Now() - expand_on_hover_start_time_.value());
++      expand_on_hover_start_time_.reset();
++    }
++    base::RecordAction(
++        base::UserMetricsAction("VerticalTabs_ExpandOnHover_Hide"));
++  }
++  // Source4650ac4 updates layout directly; hover does not start a second
++  // collapse SlideAnimation or the independent Chromium hover animator.
++  InvalidateLayout();
++  browser_view()->InvalidateLayout();
++}
++
+ void VerticalTabStripRegionView::AnimateExpandOnHover(bool expand) {
++  if (aux_profile_preview_admission_) {
++    // The installed real region delegate applies the source layout/pinned-leaf
++    // effects. Never run a second independent BrowserAnimationController here.
++    aux_profile_preview_admission_->SetHoverExpanded(expand);
++    return;
++  }
+   is_expanded_on_hover_ = expand;
+   ResetExpandOnHoverTimers();
+ 
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -39,6 +39,7 @@
+ class Browser;
+ namespace aux {
+ class ProfilePreviewRegionOwner;
++class ProfilePreviewAdmission;
+ }
+ 
+ class AuxSidebarFooter;
+@@ -105,6 +106,14 @@
+   // Exact original five role members, projected through155 live ownership.
+   std::array<views::View*, 5> GetAuxProfilePreviewSurfaces() const;
+   views::View* GetAuxProfilePreviewTopBoundary() const;
++  // Installed only with the real region effect delegate/collapse owner.
++  // Installation does not attach preview input or invoke native capture.
++  void InstallAuxProfilePreviewAdmission(
++      std::unique_ptr<aux::ProfilePreviewAdmission> admission);
++  aux::ProfilePreviewAdmission* GetAuxProfilePreviewAdmission() const;
++  // Real delegate calls after setting actual pinned temporary width.
++  void ApplyAuxProfileHoverExpansion(bool expanded);
++
+   // Genuine original page owner. The source input controller, not these
+   // methods, owns exact gesture admission, progress and frame timing.
+   bool BeginAuxProfilePreview(const base::FilePath& target, int direction);
+@@ -348,6 +357,7 @@
+ 
+   base::CallbackListSubscription paint_as_active_subscription_;
+   std::unique_ptr<aux::ProfilePreviewRegionOwner> aux_profile_preview_owner_;
++  std::unique_ptr<aux::ProfilePreviewAdmission> aux_profile_preview_admission_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_

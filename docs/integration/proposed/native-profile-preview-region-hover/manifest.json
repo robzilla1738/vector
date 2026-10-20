@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "base": "actual205 region (201 source plus original initialized-container width callback fix); admission header02ca54e05",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "baselineSha256": "6039823e6eb932ee4cf887b506d4485c1ab1c77d81adf1cd47ca0f4cdce45958",
+      "outputSha256": "8ea577e443499417efea768c233300a5b5627ffa113b7c37762f5fd8f1e5a492",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-hover/baseline/chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "a60199ce5498255211e6acb6b6de4f93ae1f4aea30ddd8c3758e60fd3da31f4d",
+      "outputSha256": "8b46c14efb971353d54e9727e39b0cbb0875e67798a2136c1850513459982972",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-hover/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "987689d249c23d8de03157cce758a97c7946a1e2fbd6a187fc2b096f95a1c9bb",
+      "outputSha256": "391b55298bd22ce90cff346648abc4baef44ed212a0de9028871c52330ba1d1f",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-region-hover/baseline/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "admissionInstalled": false
+}
