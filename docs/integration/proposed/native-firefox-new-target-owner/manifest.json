@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.h",
+      "baselineSha256": "e20f76d4c17f615ea59264228aa33d2d8acffecfcc0225214fac7f6495c37c53",
+      "outputSha256": "e8dcaeffe7492f2094036480b8e108e0068df41df83948f0a136a0897192ddb5"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+      "baselineSha256": "9cd1f0830e39b016a1c6dc69dd8df2759bf1de09956e47ef35ea25de7b53bf2b",
+      "outputSha256": "caadfbd98b6edb070923c4473fdace16e93527b0b626b0ed146692ea39ef3e50"
+    }
+  ]
+}

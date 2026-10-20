@@ -1,0 +1,92 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.h",
+    "before": "  void Start();",
+    "after": "  // Existing public extension path remains current-profile with no native UX.\n  void Start();\n  enum class TargetMode { kNewProfile = 0, kCurrentProfile = 1 };\n  using OpenProfile = base::OnceCallback<void(const base::FilePath&)>;\n  // The WebUI passes its actual chooser result and a genuine target loader.\n  struct WebUILifecycle {\n    base::RepeatingCallback<void(bool)> set_controls_enabled;\n    base::OnceClosure retire_owner;\n    OpenProfile open_profile;\n  };\n  void Start(TargetMode mode, WebUILifecycle lifecycle);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "#include \"base/functional/bind.h\"",
+    "after": "#include \"base/check.h\"\n#include \"base/files/file_util.h\"\n#include \"base/functional/bind.h\"\n#include \"base/location.h\"\n#include \"base/strings/utf_string_conversions.h\"\n#include \"base/task/single_thread_task_runner.h\"\n#include \"base/task/thread_pool.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "#include \"chrome/browser/profiles/profile.h\"",
+    "after": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/profiles/profile_attributes_entry.h\"\n#include \"chrome/browser/profiles/profile_attributes_init_params.h\"\n#include \"chrome/browser/profiles/profile_attributes_storage.h\"\n#include \"chrome/browser/profiles/profile_manager.h\"\n#include \"chrome/browser/ui/webui/aux_importer/import_completion_choice.h\"\n#include \"chrome/common/pref_names.h\"\n#include \"components/prefs/pref_service.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    stopped_ = true;\n    DetachAndCancelHost();\n  }",
+    "after": "    const bool was_running = started_ && !stopped_;\n    stopped_ = true;\n    DetachAndCancelHost();\n    if (was_running) CleanupNewTarget();\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "  void Start() {",
+    "after": "  void Start(TargetMode mode = TargetMode::kCurrentProfile,\n             bool show_completion = false, WebUILifecycle lifecycle = {}) {\n    if (started_ || stopped_) return;\n    CHECK(!show_completion || (lifecycle.set_controls_enabled && lifecycle.retire_owner));\n    CHECK(!show_completion || mode != TargetMode::kNewProfile || lifecycle.open_profile);\n    mode_ = mode;\n    show_completion_ = show_completion;\n    open_profile_ = std::move(lifecycle.open_profile);\n    controls_ = std::move(lifecycle.set_controls_enabled);\n    retire_owner_ = std::move(lifecycle.retire_owner);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "        base::BindOnce(&Impl::SourcesReady, weak_.GetWeakPtr()));\n  }",
+    "after": "        base::BindOnce(&Impl::SourcesReady, weak_.GetWeakPtr()));\n    if (!stopped_ && show_completion_) controls_.Run(false);\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    selected_source_ = *selected;\n    auto writer =",
+    "after": "    selected_source_ = *selected;\n    if (mode_ == TargetMode::kNewProfile) {\n      CreateNewTarget(items);\n      return;\n    }\n    LaunchHost(items);\n  }\n\n  void CreateNewTarget(uint16_t items) {\n    ProfileManager* manager = g_browser_process->profile_manager();\n    if (!manager) {\n      Finish(false);\n      return;\n    }\n    new_target_path_ = manager->GenerateNextProfileDirectoryPath();\n    new_target_name_ = u\"Firefox\";\n    if (!selected_source_->profile.empty())\n      new_target_name_ += u\" - \" + selected_source_->profile;\n    auto& storage = manager->GetProfileAttributesStorage();\n    ProfileAttributesInitParams attributes;\n    attributes.profile_path = new_target_path_;\n    attributes.profile_name = new_target_name_;\n    attributes.icon_index = storage.ChooseAvatarIconIndexForNewProfile();\n    auto self = weak_.GetWeakPtr();\n    storage.AddProfile(std::move(attributes));\n    if (!self) return;\n    manager->CreateProfileAsync(new_target_path_, base::BindOnce(\n        &Impl::TargetInitialized, weak_.GetWeakPtr(), items), {});\n  }\n\n  void TargetInitialized(uint16_t items, Profile* initialized) {\n    if (stopped_) return;\n    if (!initialized) {\n      Finish(false);\n      return;\n    }\n    // Original4263ddc does not copy Chromium's optional photo/theme branch.\n    auto self = weak_.GetWeakPtr();\n    initialized->GetPrefs()->SetString(prefs::kProfileName,\n                                      base::UTF16ToUTF8(new_target_name_));\n    if (!self) return;\n    if (auto* manager = g_browser_process->profile_manager()) {\n      if (auto* entry = manager->GetProfileAttributesStorage()\n                            .GetProfileAttributesWithPath(initialized->GetPath()))\n        entry->SetLocalProfileName(new_target_name_, false);\n    }\n    if (!self) return;\n    profile_ = initialized->GetWeakPtr();\n    LaunchHost(items);\n  }\n\n  void LaunchHost(uint16_t items) {\n    if (!profile_ || !selected_source_) {\n      Finish(false);\n      return;\n    }\n    auto writer =",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "  void Finish(bool succeeded) {",
+    "after": "  void CleanupNewTarget() {\n    if (new_target_path_.empty()) return;\n    const auto path = std::exchange(new_target_path_, base::FilePath());\n    if (auto* manager = g_browser_process->profile_manager())\n      manager->GetProfileAttributesStorage().RemoveProfile(path);\n    base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, base::BindOnce(\n        [](base::FilePath path) { base::DeletePathRecursively(path); }, path));\n  }\n\n  void ScheduleCompletionChoice() {\n    if (!show_completion_) return;\n    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n        FROM_HERE, base::BindOnce(\n            [](TargetMode mode, base::FilePath path, OpenProfile open_profile,\n               base::OnceClosure retire_owner) {\n              std::move(retire_owner).Run();\n              if (mode == TargetMode::kCurrentProfile) {\n                aux_importer::ShowCurrentProfileImportCompleted(u\"Firefox\");\n              } else {\n                aux_importer::ShowNewProfileImportCompleted(u\"Firefox\",\n                    base::BindOnce(std::move(open_profile), std::move(path)));\n              }\n            }, mode_, new_target_path_, std::move(open_profile_), std::move(retire_owner_)));\n  }\n\n  void Finish(bool succeeded) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    if (cancelled_) Publish(\"cancelled\");",
+    "after": "    if (succeeded) ScheduleCompletionChoice();\n    else {\n      CleanupNewTarget();\n      if (show_completion_) controls_.Run(true);\n    }\n    if (cancelled_) Publish(\"cancelled\");",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "  base::WeakPtr<Profile> profile_;",
+    "after": "  TargetMode mode_ = TargetMode::kCurrentProfile;\n  bool show_completion_ = false;\n  OpenProfile open_profile_;\n  base::RepeatingCallback<void(bool)> controls_;\n  base::OnceClosure retire_owner_;\n  base::FilePath new_target_path_;\n  std::u16string new_target_name_;\n  base::WeakPtr<Profile> profile_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "void FirefoxImport::Start() { impl_->Start(); }",
+    "after": "void FirefoxImport::Start() { impl_->Start(); }\nvoid FirefoxImport::Start(TargetMode mode, WebUILifecycle lifecycle) {\n  impl_->Start(mode, true, std::move(lifecycle));\n}",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    Publish(\"running\");",
+    "after": "    auto self = weak_.GetWeakPtr();\n    Publish(\"running\");\n    if (!self) return;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    if (!stopped_ && show_completion_) controls_.Run(false);",
+    "after": "    if (self && !stopped_ && show_completion_) controls_.Run(false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    if (started_ || stopped_) return;\n    started_ = true;",
+    "after": "    started_ = true;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+    "before": "    if (succeeded) ScheduleCompletionChoice();\n    else {\n      CleanupNewTarget();\n      if (show_completion_) controls_.Run(true);\n    }\n    if (cancelled_) Publish(\"cancelled\");\n    else if (succeeded) Publish(\"succeeded\", {}, 1.0);\n    else Publish(\"failed\", \"Firefox import failed\");",
+    "after": "    const bool cancelled = cancelled_;\n    const bool show_completion = show_completion_;\n    auto controls = controls_;\n    auto update = update_;\n    if (succeeded) ScheduleCompletionChoice();\n    else {\n      CleanupNewTarget();\n      if (show_completion) controls.Run(true);\n    }\n    // Metadata observers/window callbacks may retire this owner synchronously.\n    if (cancelled) update.Run(\"cancelled\", {}, 0.1, {});\n    else if (succeeded) update.Run(\"succeeded\", {}, 1.0, {});\n    else update.Run(\"failed\", {}, 0.1, \"Firefox import failed\");",
+    "count": 1
+  }
+]

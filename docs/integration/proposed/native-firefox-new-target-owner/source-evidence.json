@@ -1,0 +1,61 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x4262e44",
+      "end": "0x42631c0",
+      "sha256": "1cfa39a0f89fe93fcbfe1e0495e6c5e81d25737b175aa977b04dae36c0cfe3f4",
+      "listing": "start-and-window-controls.asm",
+      "listingSha256": "07ede74dcf252c4bfb71c4d920c85df686454c9cd8c61a8000f6e483197cc94f"
+    },
+    {
+      "start": "0x4263410",
+      "end": "0x4263758",
+      "sha256": "d0ba5ecba71680371c0975c7ec0cdae29b1a361f28eba245562504e8ab5dc666",
+      "listing": "target-create.asm",
+      "listingSha256": "f757f479dc3ed84c38dbeea5ea2e086bef609cc1027d9b21325905f6526a2725"
+    },
+    {
+      "start": "0x4263ddc",
+      "end": "0x4263f48",
+      "sha256": "d2562f777b90a4c58a948f2e8117ee4c51d80b3dabfa11487d7a4190f63d652e",
+      "listing": "initialized.asm",
+      "listingSha256": "aa1c12a2910e3c71f085d02a9ab4b1086dfe929d76656eecf5f388e8a4e8cec8"
+    },
+    {
+      "start": "0x4263840",
+      "end": "0x4263a68",
+      "sha256": "ba00fc5170bb0418a24ccb76e4c910b2aeb01b9dd9efd89b686f5fc714b0a092",
+      "listing": "failure-cleanup.asm",
+      "listingSha256": "d8408e9195363a7ee079e1a0bbd30b4b2054c524c11c3595fb01292a1d17885d"
+    },
+    {
+      "start": "0x4264450",
+      "end": "0x4264828",
+      "sha256": "cba85d65053e0cb96fd983c55bdcffac6577d429a26b31e7a06cc888af530ca5",
+      "listing": "success-choice.asm",
+      "listingSha256": "7f768072974bd20a66d6e0dcfc3a772761658a59fc7a4ff7ca30b705e2ac0936"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdf7a556",
+      "hex": "460069007200650066006f007800",
+      "text": "Firefox",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a566",
+      "hex": "20002d002000",
+      "text": " - ",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xced8f50",
+      "hex": "70726f66696c652e6e616d65",
+      "text": "profile.name",
+      "encoding": "utf-8"
+    }
+  ]
+}
