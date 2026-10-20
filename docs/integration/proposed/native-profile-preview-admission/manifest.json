@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "new source-owned region admission graph; no region/header mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.cc",
+      "baselineSha256": null,
+      "outputSha256": "d3a6b4f72b0a3eb27c3b21cb6f4e2df53058b3d30ae1fa1e05ed17a5ef322205"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "baselineSha256": null,
+      "outputSha256": "6039823e6eb932ee4cf887b506d4485c1ab1c77d81adf1cd47ca0f4cdce45958"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "inputTriggerInstalled": false
+}

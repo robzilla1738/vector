@@ -1,0 +1,158 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "collapse-constructor.asm",
+      "start": "0x37e4598",
+      "stop": "0x37e4640",
+      "bytesSha256": "a16303e9e0c13f65fe4857b6b7e524cdc61545d30f5339075f67878792c575ca",
+      "extractSha256": "00b67dd8208395e4cd2f1aa33cf0c9aed0b385ef41ec886d10620ac86e49a3cc"
+    },
+    {
+      "file": "collapse-change.asm",
+      "start": "0x46492a0",
+      "stop": "0x4649960",
+      "bytesSha256": "5ced397630f6d2eedc6dc0413d4489915b3f7a5fe31674ae7c90116e10f265e0",
+      "extractSha256": "a100af755b7eb8080438dfb83dbb8aaca79b2f00d3bacdda525bc2e10c55d365"
+    },
+    {
+      "file": "apply-layout.asm",
+      "start": "0x464a8c0",
+      "stop": "0x464b350",
+      "bytesSha256": "bcba92abab393f6cfbfed503185035459f8bb5dbbd40a736588886a535b532dd",
+      "extractSha256": "ae6d2581f234608039cc78220a6a0d738cf188c77160a3737e6b5ff1efacef48"
+    },
+    {
+      "file": "collapse-progress.asm",
+      "start": "0x4649960",
+      "stop": "0x4649a0c",
+      "bytesSha256": "aed18a6554e16cc60f026b87ec8cf9d3304ff66860d702ddb2c4beb76255887c",
+      "extractSha256": "42954483c782fdbc36980c6ac31ec57c0994cbbacfa5328b772d6277d0c0df9b"
+    },
+    {
+      "file": "collapse-ended.asm",
+      "start": "0x464b7b0",
+      "stop": "0x464b884",
+      "bytesSha256": "4c81d87283ceb5e52d0595da59bb3f9f431eca03a830eadd8469a99bee53ab15",
+      "extractSha256": "b9305bfd511125c27fb2844a36ed1a7aa3b2d68027263cad0c368252fa8920ca"
+    },
+    {
+      "file": "collapse-canceled.asm",
+      "start": "0x464bba0",
+      "stop": "0x464bc08",
+      "bytesSha256": "560580d61e26893bc4c265b4aed3436ca8988e95c797d9076a71d440f62b7f55",
+      "extractSha256": "cdb049b61f688708bd74e1fca2ecfe381bd70750fc14022fb445f206dbb2e1d9"
+    },
+    {
+      "file": "retained-release.asm",
+      "start": "0x4641b54",
+      "stop": "0x4641c48",
+      "bytesSha256": "d38c21c1d20f175e59fd5a67d720ddf6ea81e84c51c8a3834ee4de477e31a251",
+      "extractSha256": "a2c8660345cc0d19e23c12684bcfea6745404cbc7c14fb00ebbff50309d61757"
+    },
+    {
+      "file": "retained-pointer.asm",
+      "start": "0x465020c",
+      "stop": "0x4650500",
+      "bytesSha256": "73bef6e8cab14b77c95377be4896a16b9a181e9c2af9913213b49c7f79a0994b",
+      "extractSha256": "8f27dfadebb0b13ea9b42ae054f2ea6d5e02f85596c70f6ec74c669a8db9bf7e"
+    },
+    {
+      "file": "retained-edge.asm",
+      "start": "0x4650500",
+      "stop": "0x4650640",
+      "bytesSha256": "bc60a0274b38eb0b7c81bbb9aaf198e6bfb2bc132786f14afdb80ec28c83d307",
+      "extractSha256": "bef1862c5453c7d9f8759b06b3638fbcffd2f90de2bdef0059a01bc0041e52ab"
+    },
+    {
+      "file": "retained-check.asm",
+      "start": "0x4650640",
+      "stop": "0x46507d8",
+      "bytesSha256": "09846d8792ed440ee1ae29cca834eba3238c794a381fb91b7bb11e5ac903cd5f",
+      "extractSha256": "da1a76f63b03d91ff0b3c9699a9853aa6edf4760ae55bd3ac05d6c0f4589cfee"
+    },
+    {
+      "file": "retained-callbacks.asm",
+      "start": "0x46508b4",
+      "stop": "0x4650a04",
+      "bytesSha256": "605f6229b2c2179b135cd9eee65be0bf5992a21261a576b89db8cbe3c5377b75",
+      "extractSha256": "a9fd18c982828e8dc1bd34584d45004ecc02da255b0923a54950a3488fcab385"
+    },
+    {
+      "file": "hover-state.asm",
+      "start": "0x4650a04",
+      "stop": "0x4650cc4",
+      "bytesSha256": "e2089d3b5929617ffcdba8278bcbaa4780fc42db3305c754f079c63301468d64",
+      "extractSha256": "6cc6b3da2399be7ae6bf7e5acee7f0b2a42fdbae1af9a1ecf8ef2b0403a1ac45"
+    },
+    {
+      "file": "browser-request.asm",
+      "start": "0x465ab90",
+      "stop": "0x465ad20",
+      "bytesSha256": "b3ad6b294829ffd2909e47c1e0ef4a250f696eaeb56275ab4727ce4ab3f7412b",
+      "extractSha256": "3c6293b90dba7b37ba34436beacbb9186dec0da8b633b5034792974136e26bce"
+    },
+    {
+      "file": "hover-decision.asm",
+      "start": "0x34f95e8",
+      "stop": "0x34f9bf0",
+      "bytesSha256": "eda6bf412b49c536c9abb1461c2ae3e0e2c9aa6edcfa3ba3db486f427ec5f181",
+      "extractSha256": "63ea398c01d8e674c46a129c2cfea7da48b9208f0970fd108a70733ac5d3ca91"
+    },
+    {
+      "file": "scroll-admission.asm",
+      "start": "0x464c540",
+      "stop": "0x464c6a0",
+      "bytesSha256": "47b1829f842102650b2e20eb2f77f36be10e65dcfe5f12a3ed7237d3a3fd5293",
+      "extractSha256": "d29a9707076fd58af75ae1d8be47c9f0b788c908ea972298e4d0c369af1279a8"
+    },
+    {
+      "file": "capture-admission.asm",
+      "start": "0x4681064",
+      "stop": "0x4681190",
+      "bytesSha256": "9306c21385bf4a8f22f506806d52b8901d47890c44916d895d5b1237642a10bf",
+      "extractSha256": "be65c87f0cf783958f0dbe1e006e219b168fec648887ac3c0b4568dbd7280b41"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "ui/gfx/animation/animation_delegate.h",
+      "sha256": "5d344a5f7d614acabbe7db6dd6f3b65ef5701b6adb15d9335830faf4fc90a3ae"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.h",
+      "sha256": "1117f5f68e657b6653143d19b08f9af4bc8240dda8273c9d283f4f682d8d22ed"
+    },
+    {
+      "path": "ui/gfx/animation/slide_animation.cc",
+      "sha256": "a1d6f332d438dd56939a0703361c678490b3d7494875b409403346aff01f116c"
+    },
+    {
+      "path": "ui/gfx/animation/animation.cc",
+      "sha256": "158dff731bd19a52e5a021dc7cb0fcb858f1b8fb6521a7aa76481ba58be575c2"
+    },
+    {
+      "path": "ui/gfx/animation/tween.h",
+      "sha256": "cc375d29f09935d7b09dedc5fa225b3c3f58183b680823f9a4cee17d038e5c94"
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.cc",
+      "sha256": "78785cf282b47c49a8d170ae20c4dc6a5206c4cb6fa17c9068901d5cc269b755"
+    },
+    {
+      "path": "base/timer/timer.h",
+      "sha256": "ff85d8ad819a0ce8ab6ebd1c5be671830d8bf7657f2c0d6a2c4e5d62e35837dc"
+    }
+  ],
+  "reaEvidence": "ev_018ebdcb1b2d8e0fad35c094541fe10dde0ee73c4c0f502d79a55dbcd247ae40",
+  "reaLimitations": [
+    "Bounded raw image external branches may be truncated by Ghidra; complete original LLVM instructions are authority."
+  ],
+  "remaining": [
+    "Actual region delegate and input/capture mount are not installed.",
+    "Original a0a BrowserView caller semantic name and actual native edge monitor need producer integration.",
+    "Full original ApplyLayout and genuine header geometry holding remain region/header integration, not an independent animation oracle."
+  ]
+}
