@@ -1,0 +1,32 @@
+{
+  "originalImage": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "worker": {
+    "start": "0x7821194",
+    "endExclusive": "0x782138c",
+    "size": 504,
+    "sha256": "18fdd6938509698f6712fbcd70416445c2df648e8892ae3882e0f054d934b206",
+    "listing": "evidence/firefox-registry.asm",
+    "listingSha256": "57b50673dd2880e8fea6fcac5e2f59929a4d5a7fe3d3011d79e1aac602468d3a"
+  },
+  "nativeBaselines": [
+    {
+      "path": "chrome/browser/importer/importer_list.cc",
+      "sha256": "7e7ad47f24fb1077d47133c6b74fe535a3c8b20704f0ec8869f9b0b69e73262a"
+    },
+    {
+      "path": "chrome/browser/importer/BUILD.gn",
+      "sha256": "95f4fed3ff4070619a4c7fb3eb55a5684453e86706db2d45ac0b5aaac373886d"
+    },
+    {
+      "path": "chrome/common/importer/firefox_importer_utils.h",
+      "sha256": "f979a302ebfd8bd7412705b1f26286c66ee138547933db8eba59f8ae0b333123"
+    },
+    {
+      "path": "components/user_data_importer/common/importer_data_types.h",
+      "sha256": "6a6415c9c3d806d8177178947d3ebb5fdfe1ea2d5f3ea714d77a52cee2775b1b"
+    }
+  ]
+}

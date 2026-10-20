@@ -1,0 +1,8 @@
+{
+  "gitApplyCheck": "PASS",
+  "disposablePatchReplay": "PASS",
+  "outputSha256": "7b9401d5be77074b12343c04ef6d9114b564567a2e8086776cc606c465867f79",
+  "sharedNativeUnchanged": true,
+  "buildRun": false,
+  "runtimeRun": false
+}

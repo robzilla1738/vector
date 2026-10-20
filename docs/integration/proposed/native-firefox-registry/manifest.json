@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "reason": "Preserve the supplied Mac Firefox registry service mask 0x4b; existing155 version/path/provider ordering already matches.",
+  "files": [
+    {
+      "path": "chrome/browser/importer/importer_list.cc",
+      "baselineSha256": "7e7ad47f24fb1077d47133c6b74fe535a3c8b20704f0ec8869f9b0b69e73262a",
+      "outputSha256": "7b9401d5be77074b12343c04ef6d9114b564567a2e8086776cc606c465867f79",
+      "anchors": [
+        {
+          "find": "#include \"build/build_config.h\"\n",
+          "replace": "#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "#if !BUILDFLAG(IS_MAC)\n    // Passwords are imported by loading the NSS DLLs into the Chromium process.\n    // Restrictive code signing prevents that from ever working again in modern\n    // macOSes, so don't promise an import service that can't be delivered.\n",
+          "replace": "#if !BUILDFLAG(IS_MAC) || BUILDFLAG(ENABLE_AUX_BROWSER)\n    // The supplied Mac implementation advertises the 0x4b service mask. Aux\n    // preserves it with its native Mac password importer and result transport.\n    // Stock Mac builds retain their existing NSS loading restriction.\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "mounted": false,
+  "requiredPrerequisites": [
+    "Real Mac NSS reader, utility result transport, host result metadata and full public owner must be integrated coherently before enabling this capability."
+  ],
+  "requiredGnChanges": []
+}
