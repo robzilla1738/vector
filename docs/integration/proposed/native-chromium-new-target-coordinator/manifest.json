@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_photo.h",
+      "baselineSha256": null,
+      "outputSha256": "a01b6beb65aaa47a2bd864484827a15f4e687bb2a48db8f17af8195cd1468e47"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_photo_mac.mm",
+      "baselineSha256": null,
+      "outputSha256": "425e3f2818e19bf7d1def4e71bc649cf5a16e8e59469c36538fd42d790154ab5"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_import_destination.h",
+      "baselineSha256": null,
+      "outputSha256": "6537bebbe563183d863e6bcf679d6190e318f8b2fc2838c9abb8bb93bcfbdab6"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "57bac3d349cb5744c82a5a2ebb62055f2b959c09581ab9dc1b6a531d048d7bf9"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h",
+      "baselineSha256": null,
+      "outputSha256": "cc75adb5b815810ca772bf8b08d194503c4dee3fd72d749ebae2f42873b18a8f"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "b0b18cfc6015d9ef96ee93fe401a7f63f4d360d205a34c6997dd907174e1b016",
+      "outputSha256": "756242d6fbc4ba3167ee8accf3ff5de292a5233d0c545af9c6283ac609c1f82e",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_browser_import/import_service.h\"",
+          "count": 1
+        },
+        {
+          "find": "class SecretLookup final : public password_manager::PasswordStoreConsumer {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "a96b055b86ff7f802ee36e48b04b2d356ea8c81e314de0a769de4047f85bb87a",
+  "compiled": false,
+  "mounted": false,
+  "requires": [
+    "9477435e4 worker and af8eb1f33 primitives",
+    "native-import-initialized-profile actual metadata helpers",
+    "real WebUI owner window/selection callbacks and completion-choice helpers"
+  ],
+  "dependencies": [
+    "add chromium_new_target_import.cc and chromium_clone_photo_mac.mm to existing import target",
+    "existing import_service.cc provides native-only wrappers without changing mode1",
+    "AppKit + existing profile/password/network/gfx/theme dependencies; integrator owns GN"
+  ]
+}

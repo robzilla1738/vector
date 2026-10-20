@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "start-and-reserve",
+      "start": "0x42530c0",
+      "endExclusive": "0x4253b3c",
+      "sha256": "d5816f6ff55ff0c665489525a978491b41f73886bf88eb530882458508c9aa2f",
+      "assembly": "start-and-reserve.asm",
+      "assemblySha256": "9e4df4d98076298625929438e4b2d5e3ad21a800b284e5fa6f37e2d21a9c6fbb"
+    },
+    {
+      "name": "failure",
+      "start": "0x4253b3c",
+      "endExclusive": "0x4253d68",
+      "sha256": "8d01be4de83f15e08de72f6f8402e530cfe656506b7807878dc2a9ebee1f30df",
+      "assembly": "failure.asm",
+      "assemblySha256": "c22ea7a7ba3f2dc29fdb28e0a8d07fe60f12435f91e03f0745bb6f64f692e1af"
+    },
+    {
+      "name": "worker-reply-create",
+      "start": "0x4257640",
+      "endExclusive": "0x4257878",
+      "sha256": "524caf44be57589cbac9c93c8e0f30cf9f5f7c4db58cd0be2269ff2f211020e6",
+      "assembly": "worker-reply-create.asm",
+      "assemblySha256": "98cf58544f79645aa2b2fdcc7eea34e4f9c6819404b9534d5a566f509166dbe9"
+    },
+    {
+      "name": "initialized-profile",
+      "start": "0x4257878",
+      "endExclusive": "0x4257d74",
+      "sha256": "be5c13d8b05ec030b18042a8dba6727bab4d8aaa145951b8678f9976edbe9684",
+      "assembly": "initialized-profile.asm",
+      "assemblySha256": "ec66ebda77234c2289f8be3fcf66468484b380a8bd7bc37b4527824e13703783"
+    },
+    {
+      "name": "extension-import",
+      "start": "0x4258108",
+      "endExclusive": "0x4258618",
+      "sha256": "cd45cfefad5820fd03f9076b5b8af454bd74a573e3d9036f1db6a499d97b8fb7",
+      "assembly": "extension-import.asm",
+      "assemblySha256": "6acffec73ffdd393cf6a7c6b693025c5cd74d4a5251ffecf3124d9f1f16395fd"
+    },
+    {
+      "name": "destination",
+      "start": "0x4258618",
+      "endExclusive": "0x4258c80",
+      "sha256": "4efb81ab9a8eee01a9475df4afe2bfda6469e2b2fa9286d14405d7dc53e62f5f",
+      "assembly": "destination.asm",
+      "assemblySha256": "fb7f0cc539d43b4e73bc5a1bc03643f0f7ccef3e3179bbe26cbc02a3e712a1e9"
+    },
+    {
+      "name": "completion",
+      "start": "0x4258c80",
+      "endExclusive": "0x42591e4",
+      "sha256": "e1b72a3177c58d6620115d343820999c9b8c491eb7a79a4b07953edfd18301c6",
+      "assembly": "completion.asm",
+      "assemblySha256": "849f2af792541f38e63b27d5b2854d0d856318735d70d7878b4c729c639fbaa4"
+    },
+    {
+      "name": "cookie-callback",
+      "start": "0x425f838",
+      "endExclusive": "0x425f8e8",
+      "sha256": "5f3d0b26fab2860d401f559358bc21a118e0c408ce14fb7d8d3d5fcf1963c707",
+      "assembly": "cookie-callback.asm",
+      "assemblySha256": "5b696601295d03fad1bba25fc784b26f801dfd659067e72bee033610ac97c905"
+    },
+    {
+      "name": "attribute-default-avatar",
+      "start": "0x2ba1a30",
+      "endExclusive": "0x2ba1b40",
+      "sha256": "d8689307f178c5abc9e94157b8e5b38212e01d252dbcd8696aa397bcfce6db21",
+      "assembly": "attribute-default-avatar.asm",
+      "assemblySha256": "40daf62dee364d443642a692c53b096f6c49e5e62f1d65b678073cf709ee4fd3"
+    },
+    {
+      "name": "attribute-use-gaia",
+      "start": "0x7accc80",
+      "endExclusive": "0x7accd00",
+      "sha256": "2ed541505df37e33ec3b93db2796c10dddc76cb574eefff9cd7c57746289c884",
+      "assembly": "attribute-use-gaia.asm",
+      "assemblySha256": "01aac39eb7b82674ba7d9c1aa52a53c84041e48e683cc8bd847b8b0dd891ded2"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xcefb430",
+      "text": "last_downloaded_gaia_picture_url_with_size",
+      "sha256": "e4908621d0b243458c225f0eef1e66e5315b06efa81401cf6f70014850dad60b"
+    },
+    {
+      "offset": "0xcefb65b",
+      "text": "is_using_default_avatar",
+      "sha256": "d812162da7dc31188f77250d37672658b8b51a1d5c8f39d0d3f640027bbfe71f"
+    },
+    {
+      "offset": "0xceea158",
+      "text": "profile.using_default_avatar",
+      "sha256": "02c62646596fecf9816c5769e1622b884483d7d5a180692dafeecd0cb8477179"
+    },
+    {
+      "offset": "0xceea175",
+      "text": "profile.using_gaia_avatar",
+      "sha256": "80660e04bb6b62b7f3e493703f49b6b65698f697b51892b65a0cbdb23d87142d"
+    }
+  ],
+  "nameSeparator": {
+    "offset": "0xdf7a4c0",
+    "bytesHex": "20002d002000",
+    "text": " - "
+  },
+  "retained": [
+    {
+      "path": "original-042530c0.c",
+      "sha256": "62b8337a2832b11d2c0feafe4bae4614206401c01931d0aaba939f6a7066e0ca"
+    },
+    {
+      "path": "original-042534e8.c",
+      "sha256": "b6edefd2b936149e9f9aa19bfc5d3501bc38fd25485d05b7153f8f53408fb509"
+    },
+    {
+      "path": "original-04253b3c.c",
+      "sha256": "e21330806523169a07464d2a43d7a066e299d39657157ce9e0b6e6a64f79190e"
+    },
+    {
+      "path": "original-04258618.c",
+      "sha256": "8bb09c41e36a79db9f3f1e255046d150dda4675bbd3464b0db0ceda31d5c1291"
+    },
+    {
+      "path": "original-04258c80.c",
+      "sha256": "0b6d82f26d17f98715552e9ced8ba4a59678d1382659f9970ff39b65ad8b7cd4"
+    }
+  ],
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativeApiPins": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/extension_import.h",
+      "sha256": "f73cabff6288fc3cde2c1ae34f1364cf88aacdb14fa62107b679dac4b561d672"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/extension_import.cc",
+      "sha256": "3910652d29bff4ed4294d192b9a103fb3a7eb2e2f145b570db553879df609581"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_storage.h",
+      "sha256": "8123fe72170c6c958ccdc3a049f556c8757f625e5b0306d0603f255ef9bb4f66"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_init_params.h",
+      "sha256": "895e6b9e63b5831ca9f586dbee7836f2f4424d1d1796935ec7e2ce4026663351"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.h",
+      "sha256": "d85dd445a5445fbc4e3cc69b5a72bedab7dd9bc161cf71ab3227bfea3f24efb3"
+    },
+    {
+      "path": "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h",
+      "sha256": "c5e29afba78dd1b5f37a19c11644f53e2c97d13f435322bab81a5f5277c1db6a"
+    },
+    {
+      "path": "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h",
+      "sha256": "049a7745a7e910411a8dd50b42f1c1f990949c62f9e67db8eebea7c017333340"
+    },
+    {
+      "path": "chrome/browser/ui/webui/aux_importer/import_profile_metadata.h",
+      "sha256": "618b66d0c4c902ef1cd35afa932620fdf46453188f40a78f53274d7110bc075e"
+    },
+    {
+      "path": "ui/gfx/image/image.h",
+      "sha256": "4c6cb69420e732fc08ad2a3c3276010b9e0e434f310a7e9acc9da81f1f3f393f"
+    },
+    {
+      "path": "chrome/common/pref_names.h",
+      "sha256": "89ae6e72d45077ed8648cf3a67f1d16df3bfd50db4a2202bb3756e34227efb8f"
+    }
+  ],
+  "semantics": {
+    "reserve": "4253750 GenerateNext;4253870 chooseicon;425391c AddProfile; then post4255868. Name source label + UTF16 literal3 + selected display name.",
+    "create": "425784c CreateProfileAsync(target,initialized callback4257878,null created callback)",
+    "metadata": "name/attributes -> reset record pruning -> optional real NSImage photo metadata -> guarded Theme reset -> existing extension installer -> secret destination",
+    "photo": "4257b8c..4257c18 both actual default-avatar and GAIA booleans true; not inferred from names",
+    "completion": "4258c80 requires cookie+11 and password+12 flags; clears running and invokes callbacktrue before optional UI switching",
+    "extension": "4258108 owns registry observer/reload/enabling lifecycle; no third destination completion flag",
+    "cookies": "425f838 always enters barrier regardless of inclusion result",
+    "failure": "4253b3c removes mode0 attributes reservation and posts target deletion; callbackfalse, no fake Profile",
+    "platformLifetime": "Reuse actual155 kAuxBrowserImport ScopedProfileKeepAlive with weak UI completion. No new custom lifetime service."
+  }
+}
