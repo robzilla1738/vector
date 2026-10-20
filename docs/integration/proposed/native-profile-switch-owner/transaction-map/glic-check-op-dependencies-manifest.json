@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "glic-iph-profile-lifecycle and glic-dormant-bubble-profile outputs, immutable predecessor artifacts",
+  "files": [
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_iph_controller.cc",
+      "baselineSha256": "3d6676205f87f9644d319fd083aeb1eaf6c94c22e1e46b6621b924aa5f2575e7",
+      "outputSha256": "bb0c67dcacfc5dd0a9decd5065d98dad5e53abffb9753daa8e7c689e3667fda8"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc",
+      "baselineSha256": "44eb5d5439df8ff5fc3ad38abd63d22ef788dcca5604f50b83199a9655fc3d55",
+      "outputSha256": "0ae44faeb74d437cc4bd1c6ad4ab991e4c956f5450551449ab2fba4dbf574537"
+    }
+  ],
+  "sourceModified": false,
+  "compiled": false,
+  "runtimeTested": false,
+  "patchReplayVerified": true
+}

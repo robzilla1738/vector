@@ -1,0 +1,22 @@
+--- a/chrome/browser/glic/browser_ui/glic_iph_controller.cc
++++ b/chrome/browser/glic/browser_ui/glic_iph_controller.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
++
++#include "base/check_op.h"
+ 
+ #include "base/time/time.h"
+ #include "base/functional/callback_helpers.h"
+--- a/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc
++++ b/chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h"
++
++#include "base/check_op.h"
+ 
+ #include <memory>
+ #include <vector>
