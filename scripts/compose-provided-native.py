@@ -334,6 +334,14 @@ steps.extend([
     ('native-pinned-tab-entry-hover-color/native.patch', 'native-pinned-tab-entry-hover-color/manifest.json'),
     ('native-pinned-tab-hover-controller/native.patch', 'native-pinned-tab-hover-controller/manifest.json'),
     ('native-pinned-tab-hover-api155/native.patch', 'native-pinned-tab-hover-api155/manifest.json'),
+    ('native-pinned-cache-after-api155/native.patch', 'native-pinned-cache-after-api155/manifest.json'),
+    ('native-pinned-live-refresh-after-api155/native.patch', 'native-pinned-live-refresh-after-api155/manifest.json'),
+    ('native-bookmark-tab-task-retirement/native.patch', 'native-bookmark-tab-task-retirement/manifest.json'),
+    ('native-chat-tab-owner/native.patch', 'native-chat-tab-owner/manifest.json'),
+    ('native-chats-task-expansion/native.patch', 'native-chats-task-expansion/manifest.json'),
+    ('native-chat-split-producer/native.patch', 'native-chat-split-producer/manifest.json'),
+    ('native-chat-tab-owner-gn/native.patch', 'native-chat-tab-owner-gn/manifest.json'),
+    ('native-chat-owner-api155/native.patch', 'native-chat-owner-api155/manifest.json'),
 ])
 
 if options.through:

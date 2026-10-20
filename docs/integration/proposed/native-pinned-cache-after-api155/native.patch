@@ -1,0 +1,175 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -16,6 +16,7 @@
+ #include "base/time/time.h"
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/favicon/favicon_service_factory.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tab_ui_helper.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+@@ -29,8 +30,12 @@
+ #include "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "components/favicon/core/favicon_service.h"
++#include "components/favicon_base/favicon_types.h"
++#include "components/keyed_service/core/service_access_type.h"
+ #include "content/public/browser/web_contents.h"
+ #include "ui/base/l10n/l10n_util.h"
++#include "ui/accessibility/ax_enums.mojom.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+ #include "ui/color/color_provider_key.h"
+@@ -173,6 +178,7 @@
+     const auto& entry = owner_->entries_[index_];
+     SetTooltipText(owner_->IsEntryDragInProgress() ? std::u16string()
+                                                   : entry.title);
++    GetViewAccessibility().SetRole(ax::mojom::Role::kButton);
+     GetViewAccessibility().SetName(entry.title);
+     if (!entry.image.IsEmpty()) {
+       icon_->SetImage(entry.image);
+@@ -497,8 +503,11 @@
+     if (!weak)
+       return;
+   }
++  icon_tasks_.TryCancelAll();
++  pending_icons_.clear();
+   weak_factory_.InvalidateWeakPtrs();
+   refresh_pending_ = false;
++  refresh_after_drag_ = false;
+   ui_changes_.clear();
+   pref_changes_.Reset();
+   TabStripModelObserver::StopObservingAll(this);
+@@ -527,8 +536,12 @@
+                      weak_factory_.GetWeakPtr()));
+ }
+ void VerticalPinnedTabEntriesView::Refresh() {
+-  if (paused_ || !model_ || dragging_view_)
+-    return;
++  if (paused_ || !model_)
++    return;
++  if (dragging_view_) {
++    refresh_after_drag_ = true;
++    return;
++  }
+   ui_changes_.clear();
+   auto saved = aux::ReadPinnedTabEntries(*browser_->GetProfile()->GetPrefs());
+   std::vector<Entry> entries;
+@@ -551,7 +564,7 @@
+         if (!title.empty())
+           entry.title = title;
+         const auto icon = helper->GetFavicon();
+-        if (!icon.IsEmpty()) {
++        if (icon.IsImage() && !icon.GetImage().IsEmpty()) {
+           entry.image = icon;
+           icon_cache_.insert_or_assign(entry.saved.url.spec(), entry.image);
+         }
+@@ -561,6 +574,8 @@
+       }
+       entry.active = *entry.live_index == model_->active_index();
+     }
++    if (entry.image.IsEmpty())
++      RequestIcon(entry.saved.url);
+     entry.accent = FaviconAccent(entry.image);
+     entries.push_back(std::move(entry));
+   }
+@@ -578,6 +593,34 @@
+   SetVisible(SlotCount() != 0);
+   PreferredSizeChanged();
+   InvalidateLayout();
++}
++void VerticalPinnedTabEntriesView::RequestIcon(const GURL& url) {
++  if (paused_ || !url.is_valid() || pending_icons_.contains(url.spec()))
++    return;
++  Profile* const profile = browser_->GetProfile();
++  auto* service = FaviconServiceFactory::GetForProfile(
++      profile, ServiceAccessType::EXPLICIT_ACCESS);
++  if (!service)
++    return;
++  pending_icons_.insert(url.spec());
++  service->GetFaviconImageForPageURL(
++      url,
++      base::BindOnce(
++          [](base::WeakPtr<VerticalPinnedTabEntriesView> owner,
++             Profile* expected, std::string key,
++             const favicon_base::FaviconImageResult& result) {
++            if (!owner || owner->paused_ ||
++                owner->browser_->GetProfile() != expected)
++              return;
++            owner->pending_icons_.erase(key);
++            if (result.image.IsEmpty())
++              return;
++            owner->icon_cache_.insert_or_assign(
++                key, ui::ImageModel::FromImage(result.image));
++            owner->Refresh();
++          },
++          weak_factory_.GetWeakPtr(), profile, url.spec()),
++      &icon_tasks_);
+ }
+ void VerticalPinnedTabEntriesView::SetEntryDragCallbacks(
+     EntryDragUpdate update, EntryDragFinish finish,
+@@ -777,6 +820,8 @@
+       return;
+   }
+   SchedulePaint();
++  if (std::exchange(refresh_after_drag_, false))
++    ScheduleRefresh();
+ }
+ void VerticalPinnedTabEntriesView::CancelEntryDrag() {
+   const bool had_drag = dragging_view_ != nullptr;
+@@ -995,9 +1040,8 @@
+ }
+ void VerticalPinnedTabEntriesView::ExecuteCommand(int command_id, int) {
+   if (IsCommandIdEnabled(command_id)) {
+-    aux::RemoveFirstPinnedTabEntry(*browser_->GetProfile()->GetPrefs(),
+-                                   menu_url_);
+-    menu_url_ = GURL();
++    const GURL url = std::exchange(menu_url_, GURL());
++    aux::RemoveFirstPinnedTabEntry(*browser_->GetProfile()->GetPrefs(), url);
+   }
+ }
+ void VerticalPinnedTabEntriesView::MenuClosed(ui::SimpleMenuModel* source) {
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -7,6 +7,7 @@
+ #include <map>
+ #include <memory>
+ #include <optional>
++#include <set>
+ #include <string>
+ #include <vector>
+ 
+@@ -14,6 +15,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/task/cancelable_task_tracker.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -106,6 +108,7 @@
+   void ReorderEntry(EntryView* view, size_t destination);
+   void ScheduleRefresh();
+   void Refresh();
++  void RequestIcon(const GURL& url);
+   void Activate(size_t index);
+   void Close(size_t index);
+   void ShowEntryContextMenu(size_t index, const gfx::Point& point);
+@@ -124,6 +127,8 @@
+   std::vector<base::CallbackListSubscription> ui_changes_;
+   std::vector<Entry> entries_;
+   std::map<std::string, ui::ImageModel> icon_cache_;
++  std::set<std::string> pending_icons_;
++  base::CancelableTaskTracker icon_tasks_;
+   std::unique_ptr<TabContextMenuController> live_menu_;
+   std::unique_ptr<ExpandOnHoverLock> menu_hover_lock_;
+   GURL menu_url_;
+@@ -143,6 +148,7 @@
+   std::optional<int> width_override_;
+   bool paused_ = false;
+   bool refresh_pending_ = false;
++  bool refresh_after_drag_ = false;
+   base::WeakPtrFactory<VerticalPinnedTabEntriesView> weak_factory_{this};
+ };
+ 

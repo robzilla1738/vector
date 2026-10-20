@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "derivedFrom": "native-pinned-tab-entry-live-refresh",
+  "preservedCompatibility": "native-pinned-tab-hover-api155 explicit BubbleAnchor and iterator names",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "e402eba2b03867335028a202848c5d9b1d3a2f1ae5db91531e1a8401dc0f02ec",
+      "outputSha256": "3fd67df86d94755e24dd94588048acad2527733bb51f5305474c8b83097c9b39"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "9534d452123b91778e7c8a4a5a532c4136fb776104fcadb68de1c7d7ae4952c4",
+      "outputSha256": "0445b264555f3460ba0d74a62a7263fb37681fb539a158b1d8c9175ccf0c60af"
+    }
+  ]
+}

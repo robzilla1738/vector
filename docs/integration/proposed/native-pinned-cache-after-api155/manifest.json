@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "derivedFrom": "native-pinned-tab-entry-cache-actions/native.patch",
+  "originalPatchSha256": "5ab5bc2e5888b4b96aeb7b58448c4c6814c0c868a8720f3d9817b94f0ff68c0c",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "9a655d9fad59b6b953d5bcf7afd6066c506759812ef6c402d9154fff9c16d585",
+      "outputSha256": "e402eba2b03867335028a202848c5d9b1d3a2f1ae5db91531e1a8401dc0f02ec"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "baselineSha256": "be94c1872b4cb163495a779da68b82a6ba746401e51af59764d0773c183b6632",
+      "outputSha256": "9534d452123b91778e7c8a4a5a532c4136fb776104fcadb68de1c7d7ae4952c4"
+    }
+  ]
+}

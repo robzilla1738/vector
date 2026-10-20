@@ -1,0 +1,44 @@
+{
+  "composition": "v317",
+  "exitCode": 0,
+  "focusedBuild": {
+    "composition": "v317",
+    "exitCode": 0,
+    "elapsedSeconds": 7.172055006027222,
+    "targets": {
+      "saved_pin_live_refresh": "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+      "bookmark_task_retirement": "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+      "chat_tab_owner": "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o",
+      "task_section_expansion": "obj/chrome/browser/ui/ui/aux_chats_section.o"
+    },
+    "command": [
+      "python3",
+      "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+      "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+      "-C",
+      "out/AuxFast",
+      "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+      "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+      "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o",
+      "obj/chrome/browser/ui/ui/aux_chats_section.o",
+      "-j",
+      "16",
+      "-k",
+      "0"
+    ]
+  },
+  "priorBuild": {
+    "composition": "v316",
+    "result": "saved-pin, bookmark-association and Chats section objects compiled; Chats owner failed two API mismatches, corrected in v317"
+  },
+  "originalReplay": {
+    "matchedSources": 484,
+    "steps": 320,
+    "actualNativeHashesMatch": true
+  },
+  "fullBrowserOrUIAccepted": false,
+  "genuineFullSidebarOwnersMounted": false,
+  "crossSectionRegionDragCallbacksConnected": false,
+  "latestFullBrowser": "v277",
+  "signingOrReleasePerformed": false
+}
