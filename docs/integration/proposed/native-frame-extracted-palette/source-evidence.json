@@ -1,0 +1,224 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/runtime/colors-dark.css",
+      "sha256": "39a602af7c3aed6e2dfc073b7d726dcd9c87ecf77f5d44eaa9521d5e22be2465"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/runtime/colors-light.css",
+      "sha256": "42065bb660441e6a42084c611c830531ed782e95922d3777802ebbc95481ff65"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "kColorToolbar",
+      "css": "color-toolbar",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorToolbarBackgroundSubtleEmphasis",
+      "css": "color-toolbar-background-subtle-emphasis",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorToolbarBackgroundSubtleEmphasisHovered",
+      "css": "color-toolbar-background-subtle-emphasis-hovered",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorToolbarButtonIcon",
+      "css": "color-toolbar-button-icon",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarButtonIconDefault",
+      "css": "color-toolbar-button-icon-default",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarButtonIconDisabled",
+      "css": "color-toolbar-button-icon-disabled",
+      "dark": "#b3b3b361",
+      "light": "#00000061"
+    },
+    {
+      "id": "kColorToolbarButtonIconHovered",
+      "css": "color-toolbar-button-icon-hovered",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarButtonIconInactive",
+      "css": "color-toolbar-button-icon-inactive",
+      "dark": "#b3b3b36e",
+      "light": "#0000006e"
+    },
+    {
+      "id": "kColorToolbarButtonIconPressed",
+      "css": "color-toolbar-button-icon-pressed",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarButtonText",
+      "css": "color-toolbar-button-text",
+      "dark": "#c7c7c7ff",
+      "light": "#474747ff"
+    },
+    {
+      "id": "kColorToolbarButtonBorder",
+      "css": "color-toolbar-button-border",
+      "dark": "#b3b3b31a",
+      "light": "#0000001a"
+    },
+    {
+      "id": "kColorToolbarContentAreaSeparator",
+      "css": "color-toolbar-content-area-separator",
+      "dark": "#00000000",
+      "light": "#00000000"
+    },
+    {
+      "id": "kColorToolbarTopSeparatorFrameActive",
+      "css": "color-toolbar-top-separator-frame-active",
+      "dark": "#00000000",
+      "light": "#00000000"
+    },
+    {
+      "id": "kColorToolbarTopSeparatorFrameInactive",
+      "css": "color-toolbar-top-separator-frame-inactive",
+      "dark": "#00000000",
+      "light": "#00000000"
+    },
+    {
+      "id": "kColorToolbarText",
+      "css": "color-toolbar-text",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarTextDefault",
+      "css": "color-toolbar-text-default",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorToolbarTextDisabled",
+      "css": "color-toolbar-text-disabled",
+      "dark": "#b3b3b361",
+      "light": "#00000061"
+    },
+    {
+      "id": "kColorToolbarTextDisabledDefault",
+      "css": "color-toolbar-text-disabled-default",
+      "dark": "#b3b3b361",
+      "light": "#00000061"
+    },
+    {
+      "id": "kColorToolbarInkDropHover",
+      "css": "color-toolbar-ink-drop-hover",
+      "dark": "#b3b3b315",
+      "light": "#00000015"
+    },
+    {
+      "id": "kColorToolbarInkDropRipple",
+      "css": "color-toolbar-ink-drop-ripple",
+      "dark": "#b3b3b329",
+      "light": "#00000029"
+    },
+    {
+      "id": "kColorLocationBarBackground",
+      "css": "color-location-bar-background",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorLocationBarBackgroundHovered",
+      "css": "color-location-bar-background-hovered",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorLocationBarBorder",
+      "css": "color-location-bar-border",
+      "dark": "#b3b3b31a",
+      "light": "#0000001a"
+    },
+    {
+      "id": "kColorLocationBarBorderOnMismatch",
+      "css": "color-location-bar-border-on-mismatch",
+      "dark": "#b3b3b31a",
+      "light": "#0000001a"
+    },
+    {
+      "id": "kColorLocationBarBorderOpaque",
+      "css": "color-location-bar-border-opaque",
+      "dark": "#272727ff",
+      "light": "#e5e5e5ff"
+    },
+    {
+      "id": "kColorOmniboxIconBackground",
+      "css": "color-omnibox-icon-background",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorOmniboxIconBackgroundTonal",
+      "css": "color-omnibox-icon-background-tonal",
+      "dark": "#171717ff",
+      "light": "#ffffffff"
+    },
+    {
+      "id": "kColorOmniboxIconForeground",
+      "css": "color-omnibox-icon-foreground",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorOmniboxIconForegroundTonal",
+      "css": "color-omnibox-icon-foreground-tonal",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorOmniboxIconHover",
+      "css": "color-omnibox-icon-hover",
+      "dark": "#b3b3b31a",
+      "light": "#0000001a"
+    },
+    {
+      "id": "kColorOmniboxIconPressed",
+      "css": "color-omnibox-icon-pressed",
+      "dark": "#b3b3b329",
+      "light": "#00000029"
+    },
+    {
+      "id": "kColorOmniboxText",
+      "css": "color-omnibox-text",
+      "dark": "#b3b3b3ff",
+      "light": "#000000ff"
+    },
+    {
+      "id": "kColorOmniboxTextDimmed",
+      "css": "color-omnibox-text-dimmed",
+      "dark": "#b3b3b3b2",
+      "light": "#000000b2"
+    },
+    {
+      "id": "kColorOmniboxResultsBackground",
+      "css": "color-omnibox-results-background",
+      "dark": "#262626ff",
+      "light": "#f1f1f1ff"
+    },
+    {
+      "id": "kColorOmniboxResultsBackgroundHovered",
+      "css": "color-omnibox-results-background-hovered",
+      "dark": "#2f2f2fff",
+      "light": "#e9e9e9ff"
+    }
+  ]
+}

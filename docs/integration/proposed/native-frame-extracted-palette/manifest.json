@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/color/chrome_color_mixers.cc",
+      "baselineSha256": "edb2c1e2190700feec1b245f6c8b7110221c3b3e5e4cab0e6c72caadfde6c3c2",
+      "outputSha256": "82b0cca78a93bc8bfd71bd8cdc350279b1f75d68cd1ea1308484f7e4dac84079"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "2bf9f01d6943374101a7a3c029fca9867849a7c2517185b590ff87e4da719729",
+      "outputSha256": "0395367feeebdc2cd63b68ae9813cb0ffe1f97738a175aff6085482f7b4d6aae"
+    }
+  ]
+}

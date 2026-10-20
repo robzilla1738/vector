@@ -1,0 +1,88 @@
+--- a/chrome/browser/ui/color/chrome_color_mixers.cc
++++ b/chrome/browser/ui/color/chrome_color_mixers.cc
+@@ -10,6 +10,7 @@
+ #include "base/containers/fixed_flat_map.h"
+ #include "base/functional/bind.h"
+ #include "base/no_destructor.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/color/chrome_color_mixer.h"
+ #include "chrome/browser/ui/color/chrome_color_provider_utils.h"
+@@ -23,6 +24,8 @@
+ #include "chrome/browser/ui/color/omnibox_color_mixer.h"
+ #include "chrome/browser/ui/color/product_specifications_color_mixer.h"
+ #include "chrome/browser/ui/color/tab_strip_color_mixer.h"
++#include "ui/color/color_mixer.h"
++#include "ui/color/color_provider.h"
+ #include "ui/color/color_provider_utils.h"
+ 
+ namespace {
+@@ -88,6 +91,51 @@
+   // Must be the last one in order to override other mixer colors.
+   AddNativeChromeColorMixer(provider, key);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Exact baseline toolbar/omnibox palette from the supplied native color
++  // pipeline. Keep OS accessibility modes and later custom-theme overrides.
++  if (key.contrast_mode == ui::ColorProviderKey::ContrastMode::kNormal &&
++      key.forced_colors == ui::ColorProviderKey::ForcedColors::kNone) {
++    const bool dark = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
++    ui::ColorMixer& mixer = provider->AddMixer();
++    mixer[kColorToolbar] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorToolbarBackgroundSubtleEmphasis] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorToolbarBackgroundSubtleEmphasisHovered] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorToolbarButtonIcon] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarButtonIconDefault] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarButtonIconDisabled] = {dark ? 0x61b3b3b3 : 0x61000000};
++    mixer[kColorToolbarButtonIconHovered] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarButtonIconInactive] = {dark ? 0x6eb3b3b3 : 0x6e000000};
++    mixer[kColorToolbarButtonIconPressed] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarButtonText] = {dark ? 0xffc7c7c7 : 0xff474747};
++    mixer[kColorToolbarButtonBorder] = {dark ? 0x1ab3b3b3 : 0x1a000000};
++    mixer[kColorToolbarContentAreaSeparator] = {dark ? 0x00000000 : 0x00000000};
++    mixer[kColorToolbarTopSeparatorFrameActive] = {dark ? 0x00000000 : 0x00000000};
++    mixer[kColorToolbarTopSeparatorFrameInactive] = {dark ? 0x00000000 : 0x00000000};
++    mixer[kColorToolbarText] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarTextDefault] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorToolbarTextDisabled] = {dark ? 0x61b3b3b3 : 0x61000000};
++    mixer[kColorToolbarTextDisabledDefault] = {dark ? 0x61b3b3b3 : 0x61000000};
++    mixer[kColorToolbarInkDropHover] = {dark ? 0x15b3b3b3 : 0x15000000};
++    mixer[kColorToolbarInkDropRipple] = {dark ? 0x29b3b3b3 : 0x29000000};
++    mixer[kColorLocationBarBackground] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorLocationBarBackgroundHovered] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorLocationBarBorder] = {dark ? 0x1ab3b3b3 : 0x1a000000};
++    mixer[kColorLocationBarBorderOnMismatch] = {dark ? 0x1ab3b3b3 : 0x1a000000};
++    mixer[kColorLocationBarBorderOpaque] = {dark ? 0xff272727 : 0xffe5e5e5};
++    mixer[kColorOmniboxIconBackground] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorOmniboxIconBackgroundTonal] = {dark ? 0xff171717 : 0xffffffff};
++    mixer[kColorOmniboxIconForeground] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorOmniboxIconForegroundTonal] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorOmniboxIconHover] = {dark ? 0x1ab3b3b3 : 0x1a000000};
++    mixer[kColorOmniboxIconPressed] = {dark ? 0x29b3b3b3 : 0x29000000};
++    mixer[kColorOmniboxText] = {dark ? 0xffb3b3b3 : 0xff000000};
++    mixer[kColorOmniboxTextDimmed] = {dark ? 0xb2b3b3b3 : 0xb2000000};
++    mixer[kColorOmniboxResultsBackground] = {dark ? 0xff262626 : 0xfff1f1f1};
++    mixer[kColorOmniboxResultsBackgroundHovered] = {dark ? 0xff2f2f2f : 0xffe9e9e9};
++  }
++#endif
++
+   if (key.custom_theme) {
+     key.custom_theme->AddColorMixers(provider, key);
+   }
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -860,6 +860,14 @@
+     }
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (GetOmniboxController()->edit_model()->is_caret_visible() &&
++      !ShouldShowKeywordBubble() && !location_icon_view_->GetShowText()) {
++    // The supplied focused-address surface omits the resting search glyph.
++    // Security labels and active keyword/permission chips retain their owners.
++    location_icon_view_->SetVisible(false);
++  } else
++#endif
+   if (ShouldShowKeywordBubble()) {
+     location_icon_view_->SetVisible(false);
+     leading_decorations.AddDecoration(
