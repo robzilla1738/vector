@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "applyAfter": "native-pinned-tab-entry-model (root staged171\u2013173)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_pinned_tab_entries.cc",
+      "baselineSha256": "53d26bd4b196d4af8712f72f2db8d937646447fb73dff398aa5659eb8f9a355c",
+      "outputSha256": "f795d9b7543b4e436eec52d7188cf6746234a0a74de3a299d4f34c4b3f038c5a"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

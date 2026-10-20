@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "original-registration",
+      "rva": "0x3597aa0",
+      "bytes": 56,
+      "sha256": "f51e5eeac0c04ba1edde12dd5bc101e0452caddb1e6a19554e48d2b9616c5a6a"
+    },
+    {
+      "name": "original-list-constructor",
+      "rva": "0x5cf5b0",
+      "bytes": 116,
+      "sha256": "fc8fb55b69193d5b41ab6655e8e6c663ebfdfb0e5027b5210b6ba0969260ab85"
+    },
+    {
+      "name": "original-register-preference",
+      "rva": "0xbddc50",
+      "bytes": 848,
+      "sha256": "bf6527ce1d7a39950844c243c3dfe3e10ba9e571f84096df1acaf9b40c2bdfb6"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "components/prefs/pref_registry.h",
+      "sha256": "d6b44b3d6ae32663225851eebb61322bee58b447109cb1a5467a274413349612"
+    },
+    {
+      "path": "components/prefs/pref_registry_simple.h",
+      "sha256": "af139e131aff1d369439589b0509eb44ef3e55b23978a537ab4388334f5de692"
+    },
+    {
+      "path": "components/pref_registry/pref_registry_syncable.h",
+      "sha256": "5fefb834c68906f492974491d0de244876c568c0c45c963537e96f18e8aa9d26"
+    }
+  ]
+}
