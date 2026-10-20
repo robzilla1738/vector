@@ -1,0 +1,62 @@
+{
+  "compositionSha256": "ec2b57e82724c4c977557ab3c267599a01ce0433ce6e1531b694d14cba13af62",
+  "sourcePinsVerifiedBeforeAndAfter": true,
+  "composition": "v467",
+  "exitCode": 0,
+  "elapsedSeconds": 6.947386026382446,
+  "targets": {
+    "firefox_cookie_import": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_cookie_import.o",
+    "firefox_import": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_import.o",
+    "import_service": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "aux_browser_import_api": "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/aux_browser_import_api.o",
+    "external_process_importer_host": "obj/chrome/browser/importer/impl/external_process_importer_host.o",
+    "external_process_importer_client": "obj/chrome/browser/importer/impl/external_process_importer_client.o",
+    "in_process_importer_bridge": "obj/chrome/browser/importer/impl/in_process_importer_bridge.o",
+    "profile_writer": "obj/chrome/browser/importer/impl/profile_writer.o",
+    "importer_list": "obj/chrome/browser/importer/impl/importer_list.o",
+    "external_process_importer_bridge": "obj/chrome/utility/utility/external_process_importer_bridge.o",
+    "firefox_importer": "obj/chrome/utility/utility/firefox_importer.o",
+    "nss_decryptor": "obj/chrome/utility/utility/nss_decryptor.o",
+    "nss_decryptor_mac": "obj/chrome/utility/utility/nss_decryptor_mac.o",
+    "common_importer_bridge": "obj/chrome/common/importer/importer/importer_bridge.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_cookie_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/firefox_import.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/import_service.o",
+    "obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/aux_browser_import_api.o",
+    "obj/chrome/browser/importer/impl/external_process_importer_host.o",
+    "obj/chrome/browser/importer/impl/external_process_importer_client.o",
+    "obj/chrome/browser/importer/impl/in_process_importer_bridge.o",
+    "obj/chrome/browser/importer/impl/profile_writer.o",
+    "obj/chrome/browser/importer/impl/importer_list.o",
+    "obj/chrome/utility/utility/external_process_importer_bridge.o",
+    "obj/chrome/utility/utility/firefox_importer.o",
+    "obj/chrome/utility/utility/nss_decryptor.o",
+    "obj/chrome/utility/utility/nss_decryptor_mac.o",
+    "obj/chrome/common/importer/importer/importer_bridge.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "runtimeAcceptance": false,
+  "noSourceProfileOrKeychainOperations": true,
+  "gnGeneration": {
+    "exitCode": 0,
+    "log": "out/native-integration/v466-gn-gen.log",
+    "elapsedMilliseconds": 66398
+  },
+  "precedingAttempt": {
+    "composition": "v466",
+    "exitCode": 1,
+    "log": "out/native-integration/v466-focused-build.log",
+    "reason": "NSS ScopedTempDir::Delete nodiscard result; explicitly discarded in467",
+    "otherRequestedObjectsCompiled": 13
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+    "find": "\"safari_import.cc\", \"safari_import.h\",",
+    "replace": "\"safari_import.cc\", \"safari_import.h\", \"firefox_cookie_import.cc\", \"firefox_cookie_import.h\",",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+    "find": "\"//net\", \"//components/user_data_importer/mojom\"",
+    "replace": "\"//net\", \"//sql\", \"//components/user_data_importer/mojom\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/BUILD.gn",
+    "find": "    if (!is_mac && !is_chromeos) {\n",
+    "replace": "    if (is_mac && enable_aux_browser) {\n      sources += [\n        \"importer/nss_decryptor.cc\",\n        \"importer/nss_decryptor.h\",\n        \"importer/nss_decryptor_mac.cc\",\n        \"importer/nss_decryptor_mac.h\",\n      ]\n      deps += [ \"//crypto:buildflags\" ]\n    }\n    if (!is_mac && !is_chromeos) {\n",
+    "count": 1
+  }
+]

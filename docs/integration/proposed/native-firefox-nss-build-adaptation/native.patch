@@ -1,0 +1,11 @@
+--- a/chrome/utility/importer/nss_decryptor_mac.cc
++++ b/chrome/utility/importer/nss_decryptor_mac.cc
+@@ -32,7 +32,7 @@
+   PK11_Authenticate = nullptr;
+   PK11SDR_Decrypt = nullptr;
+   SECITEM_FreeItem = nullptr;
+-  database_copy_.Delete();
++  (void)database_copy_.Delete();
+ }
+ 
+ bool NSSDecryptor::Init(const base::FilePath& dll_path,

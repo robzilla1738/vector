@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/utility/importer/nss_decryptor_mac.cc",
+      "baselineSha256": "80fa6427d82a011a9d3a6ca2a7eb25f938629fc92c1772d776693c0211a81bb5",
+      "outputSha256": "02a4a84637cd94e012c5412c3a3bb8971029078236b9695368ef926fe25221b8",
+      "anchors": [
+        {
+          "find": "  database_copy_.Delete();",
+          "replace": "  (void)database_copy_.Delete();",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

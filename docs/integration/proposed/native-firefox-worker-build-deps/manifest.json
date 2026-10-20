@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "applyAfter": "v458",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "5af23f4ad3cb966df3f65f335611661c2179a7c4de4e3d21fd6ba7b4d0c8f830",
+      "outputSha256": "e2661a3c1fcbeffcd5b435c264c1d5c8d53bbe65c7842dbd4e2c92b250051415"
+    },
+    {
+      "path": "chrome/utility/BUILD.gn",
+      "baselineSha256": "d28edcf5f6e07c8e71d3c348c27cb5acef29b43816b026c13113b5344cf353ba",
+      "outputSha256": "4a0ea7d40b5dbb473e0583fad8a7094c40cc32cd5bb4e799544be6a87006c34c"
+    }
+  ]
+}

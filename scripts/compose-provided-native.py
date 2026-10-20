@@ -481,6 +481,17 @@ steps.extend([
     ('native-browser-import-absent-encrypted-stores/native.patch', 'native-import-source-parity-integration/manifest-v454.json'),
     ('native-firefox-host-preparation-hook/native.patch', 'native-firefox-host-preparation-hook/manifest.json'),
     ('native-firefox-host-build-deps/native.patch', 'native-firefox-host-build-deps/manifest.json'),
+    ('native-firefox-cookie-preparation/native.patch', 'native-firefox-cookie-preparation/manifest.json'),
+    ('native-firefox-mac-nss-owner/native.patch', 'native-firefox-mac-nss-owner/manifest.json'),
+    ('native-firefox-worker-build-deps/native.patch', 'native-firefox-worker-build-deps/manifest.json'),
+    ('native-firefox-password-result-transport/native.patch', 'native-firefox-password-result-transport/manifest.json'),
+    ('native-firefox-mac-password-producer/native.patch', 'native-firefox-mac-password-producer/manifest.json'),
+    ('native-firefox-registry/native.patch', 'native-firefox-registry/manifest.json'),
+    ('native-firefox-password-batch-settlement/native.patch', 'native-firefox-password-batch-settlement/manifest.json'),
+    ('native-firefox-public-owner/native.patch', 'native-firefox-public-owner/manifest.json'),
+    ('native-firefox-service-owner-integration/native.patch', 'native-firefox-service-owner-integration/manifest.json'),
+    ('native-firefox-owner-build-deps/native.patch', 'native-firefox-owner-build-deps/manifest.json'),
+    ('native-firefox-nss-build-adaptation/native.patch', 'native-firefox-nss-build-adaptation/manifest.json'),
 ])
 
 if options.through:

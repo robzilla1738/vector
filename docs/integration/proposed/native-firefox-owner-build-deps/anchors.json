@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+    "find": "\"firefox_cookie_import.cc\", \"firefox_cookie_import.h\",",
+    "replace": "\"firefox_cookie_import.cc\", \"firefox_cookie_import.h\", \"firefox_import.cc\", \"firefox_import.h\",",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+    "find": "\"//chrome/browser/profiles:profile\",",
+    "replace": "\"//chrome/browser/profiles:profile\", \"//chrome/browser/importer:importer\", \"//chrome/browser/importer:impl\",",
+    "count": 1
+  }
+]
