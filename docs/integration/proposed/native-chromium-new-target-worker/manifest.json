@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc",
+      "baselineSha256": null,
+      "outputSha256": "bda6b36e95fb24cd3ffe06bb0044f4d8506b0aca801b2f29a4497295ae0a7756"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.h",
+      "baselineSha256": null,
+      "outputSha256": "1c2cd8bb1f6b8e2eccb29a05db77acdd143d9809d03baf279d145ac438223a27"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "3c4be869878a4a0eadb7fa76db081eefa8df97b6e14298e8aedce376b99ea489",
+      "outputSha256": "9440d69ee5085636967b24dc73905de3fd76e344bd396062083208e5b62e59b2",
+      "anchors": [
+        {
+          "find": "base::DictValue ReadAuthorizedCategory(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.h",
+      "baselineSha256": "ecfd4619808480abe9acdd8c6676b2280a82bddf727af631e3ee1fdaea2c9b29",
+      "outputSha256": "b8cda0ed154ee24e4ced4401e6b414c6be7e42c5d89a550ee3e02de6004547e3",
+      "anchors": [
+        {
+          "find": "base::DictValue ReadAuthorizedCategory(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "483feeeee7dc9152e9e4699fbb4c49d6262bd9e99cf93361d9b0861bbb71c3cc",
+  "compiled": false,
+  "mounted": false,
+  "requires": [
+    "af8eb1f33 clone primitives",
+    "same real existing source_crypto and migrator private readers",
+    "genuine root mode0 UI coordinator and destination barriers"
+  ],
+  "dependencies": [
+    "//base",
+    "//url",
+    "existing aux_browser_import native target; add chromium_clone_worker.cc"
+  ]
+}

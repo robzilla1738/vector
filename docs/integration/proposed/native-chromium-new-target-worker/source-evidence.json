@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "worker",
+      "start": "0x4255868",
+      "endExclusive": "0x4257640",
+      "sha256": "d29edc8792b6b4d26c591d735134ab139fc0177249a2a5d5c71242f7cc615ed2",
+      "assembly": "worker.asm",
+      "assemblySha256": "d22f16973153e41721fd9faf2fa19698486a77bfd7aef071bf05d14d7ad3ac5d"
+    },
+    {
+      "name": "encrypted-presence",
+      "start": "0x4259690",
+      "endExclusive": "0x4259984",
+      "sha256": "4d971d3a0f5dfe085a7c60ae3c5ff841d3f24ff301b26fc4c4171b67f695e95a",
+      "assembly": "encrypted-presence.asm",
+      "assemblySha256": "7863fb80ad3b7891ab642735fb743eeffc99fefe2f8e83e4b5d3b88d2fa3886b"
+    },
+    {
+      "name": "arc-writer",
+      "start": "0x426c618",
+      "endExclusive": "0x426cd6c",
+      "sha256": "570194e061cbe63e6679b2e326dcd3e40f5ff3c7afed9f46f2339329d6107a58",
+      "assembly": "arc-writer.asm",
+      "assemblySha256": "35f708e26c6880a6281d51fd256b67b159276624b4f45ccdd22e2fba26af1b9b"
+    },
+    {
+      "name": "arc-node",
+      "start": "0x426cd6c",
+      "endExclusive": "0x426d388",
+      "sha256": "fec55c27a7794d7616ff7d006af4fc8358d6a6d15c23074cdf1829f7b9517299",
+      "assembly": "arc-node.asm",
+      "assemblySha256": "94b21884a87f4eee3cf4bad398c4daa26f3c32137e55e45a4e05b96ec0bafe63"
+    },
+    {
+      "name": "arc-root",
+      "start": "0x426dbbc",
+      "endExclusive": "0x426de00",
+      "sha256": "7de18b66e7b73b691920d599020688f71a1f49f18f4d39ae39b9888ebb19c46d",
+      "assembly": "arc-root.asm",
+      "assemblySha256": "95a031659652fee56ee0885f7b92e2b4ffc5393b49d354c6e3474861546f86eb"
+    },
+    {
+      "name": "arc-max-id",
+      "start": "0x426de00",
+      "endExclusive": "0x426df80",
+      "sha256": "673cd135b8cd7d1eac94db8844146d314e13d184d71cc0902ae018c7eeabefc9",
+      "assembly": "arc-max-id.asm",
+      "assemblySha256": "bb87409f1bed5a22a6e2a2675179f89fc171448eab7c7af4418551555f5a8dea"
+    },
+    {
+      "name": "directory-exists",
+      "start": "0x21239c0",
+      "endExclusive": "0x2123aa4",
+      "sha256": "91705dcf1def21aeb3f55d2ce8088a2ef2917951f868ead3fab0010a0f9e79c2",
+      "assembly": "directory-exists.asm",
+      "assemblySha256": "71e8f614046e3a0856ac9be7f69641919289d4ed663398393fc06495218e148a"
+    },
+    {
+      "name": "arc-max-id-dict",
+      "start": "0x426ccc0",
+      "endExclusive": "0x426cd6c",
+      "sha256": "7984f82bd2f4b454bfed04e3ab0e695f3f5cd9757dda450eff8466612786b5f2",
+      "assembly": "arc-max-id-dict.asm",
+      "assemblySha256": "8a72f6b014042a5505ac12b240714d17a13094873b54281a1824e5b73930c109"
+    },
+    {
+      "name": "random-v4-guid",
+      "start": "0x1a9cb04",
+      "endExclusive": "0x1a9cc00",
+      "sha256": "cd75269e43b77eef0b43d9f5e035a594ea6431cc5c875d243e14147da424cf58",
+      "assembly": "random-v4-guid.asm",
+      "assemblySha256": "921f72ac9cf4578d2e021b59bf5bf77100bbd573e8aafa729508f0fa64ddaeec"
+    },
+    {
+      "name": "signed-id-format",
+      "start": "0x1131240",
+      "endExclusive": "0x1131350",
+      "sha256": "84159eecabed36e5ac715f11f06fc2c93ecd823cf9db2577d09775f2ce3cb3f7",
+      "assembly": "signed-id-format.asm",
+      "assemblySha256": "363c2d66a1742d5db54ff1d659470e235d882c9032ade63b2cb76b44d7474aa5"
+    }
+  ],
+  "literals": [
+    {
+      "offset": "0xdb1fa32",
+      "text": "gaia_picture_file_name",
+      "sha256": "0f4ec483d3e045c4c3703abda5b0c8cff33a2c82dbb2b2ae647da63c407ca089"
+    },
+    {
+      "offset": "0xceea719",
+      "text": "migrated-chromium-profile-photo://",
+      "sha256": "58ae7bd129e2755d31a5385f7b676a3436ea6a0536a76beea7bb6fbba73785f1"
+    },
+    {
+      "offset": "0xdb2058e",
+      "text": "Bookmarks Bar",
+      "sha256": "d6700cd29251e1fced631890f89c5ba5964f2b2b946bae290bf333a3f93efd16"
+    },
+    {
+      "offset": "0xdb2059c",
+      "text": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+      "sha256": "eeca56ac9824a34709e787826295a83f19e9b4e382627d9e86c0219abaafdce0"
+    },
+    {
+      "offset": "0xdb205c1",
+      "text": "Other Bookmarks",
+      "sha256": "de08bd16f6a1ed64b8fb69a7a594ff9dc8f4180ef35b969c4a694d49c2e2fdde"
+    },
+    {
+      "offset": "0xdb205d1",
+      "text": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+      "sha256": "3f4b3621ac9f2baa9d710fffa12844858ad5e0f717f2b3053c3ccf245cb4ba89"
+    },
+    {
+      "offset": "0xdb205fd",
+      "text": "Mobile Bookmarks",
+      "sha256": "1267224f08fc2759278fdeaad7c10bd5f1c0acaa4685db4c0e3e315466ae6994"
+    },
+    {
+      "offset": "0xdb2060e",
+      "text": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+      "sha256": "38d49489c224396ff100b78c439bb6667927fefb36aaa4fae9db2c417fd3d607"
+    },
+    {
+      "offset": "0xd9846b1",
+      "text": "DirectoryExists",
+      "sha256": "0db1641a3cae9c1f3137361a02f2521bd8aa538cd36c7ad1e22f09819a79ca28"
+    },
+    {
+      "offset": "0xdb1f40b",
+      "text": "roots.bookmark_bar.children",
+      "sha256": "b6795c911fed5588544940255825846671b8495ce14b2d2be58247720b409450"
+    },
+    {
+      "offset": "0xdb204d9",
+      "text": "roots.bookmark_bar",
+      "sha256": "c1bd5dc30146a53804e1837c72bfe75993f40d852b72b8b958b907901e1f7728"
+    },
+    {
+      "offset": "0xd9e62b5",
+      "text": "checksum",
+      "sha256": "96fa8f226d3801741e807533552bc4b177ac4544d834073b6a5298934d34b40b"
+    },
+    {
+      "offset": "0xdb6a4ea",
+      "text": "%08x-%04x-%04x-%04x-%012llx",
+      "sha256": "a0d0f7b422474023632432ba7724025f423f9473d4aaaad42bc6bbc609709c83"
+    },
+    {
+      "offset": "0xdb6ac45",
+      "text": "../../base/files/file_util_posix.cc",
+      "sha256": "5027d8fff2377b188ef3cf0a51584781f463d25e984232fe3decafbb693b6f81"
+    }
+  ],
+  "sourceKinds": [
+    {
+      "offset": "0xdf7a4c8",
+      "text": "Arc",
+      "bytesHex": "410072006300",
+      "sha256": "54ba1a66644c8427430b8d8029948d09ef81ad07e97cb104e050ad3f461e9867"
+    },
+    {
+      "offset": "0xdf7a4d0",
+      "text": "Brave",
+      "bytesHex": "42007200610076006500",
+      "sha256": "ba9e2c5c28d91fca5d10b54ff36280655fab277ee4c3159f2f0783033c1af30f"
+    },
+    {
+      "offset": "0xdf7a4dc",
+      "text": "ChatGPT Atlas",
+      "bytesHex": "43006800610074004700500054002000410074006c0061007300",
+      "sha256": "3d7005e585f9c15c9d39e149ca77c32f2f0c1975ef84ba0f23e4dfac716c1fb8"
+    },
+    {
+      "offset": "0xdf7a4f8",
+      "text": "Chrome",
+      "bytesHex": "4300680072006f006d006500",
+      "sha256": "3993c7144d15595d7161648e5f2e60476eb5e328569aa32931982bdd8c40a93e"
+    },
+    {
+      "offset": "0xdf7a506",
+      "text": "Comet",
+      "bytesHex": "43006f006d0065007400",
+      "sha256": "d644cb20d21e328badd1fd4540a34df149839ae39e26a0e2a9194c6b23b8760f"
+    },
+    {
+      "offset": "0xdf7a512",
+      "text": "Dia",
+      "bytesHex": "440069006100",
+      "sha256": "912e5a75f9adfe5355eabf6c9cce87a0320c598b66a2869d4a425b114dd37659"
+    },
+    {
+      "offset": "0xdf7a51a",
+      "text": "Microsoft Edge",
+      "bytesHex": "4d006900630072006f0073006f006600740020004500640067006500",
+      "sha256": "d24ce1eb02246624f3980580f44e5aa0f0ea86f746f0ab2b1d48f6fc0de39a96"
+    },
+    {
+      "offset": "0xdf7a538",
+      "text": "Helium",
+      "bytesHex": "480065006c00690075006d00",
+      "sha256": "f473a320bef91f3a4e118c2d01ccbd8198493225bb80184550dad40555ef2a61"
+    }
+  ],
+  "retained": [
+    {
+      "path": "original-worker.c",
+      "sha256": "a2f51007f34913b84c99c9163b291ad5f322573f81b904b7928974222cf21b9d"
+    },
+    {
+      "path": "arc-writer-decompile.json",
+      "sha256": "29242580c2a6e94f0d9940786636636a88964a6dc98ed844f9b652ccd359cffe"
+    },
+    {
+      "path": "arc-helpers-decompile.json",
+      "sha256": "c55b05e5a67f9d6ea825f6f05c5dc3bd0177f9fe17045cf11a333361cf5ed492"
+    },
+    {
+      "path": "arc-complete-snapshot.json",
+      "sha256": "f702e9aa757a61502b093c718d9cd2ee68f8124c0db574d7e6cc5f3189c27287"
+    }
+  ],
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "nativeApiPins": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto.h",
+      "sha256": "62d8b3cee24245fae1cf01cd081ebc479071332715c5dda6766acde7a495f079"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/source_crypto_mac.mm",
+      "sha256": "fdd5242ce0f471cdcae22841cede9aaae974dcf0ed59efc74077c576df949940"
+    },
+    {
+      "path": "base/uuid.h",
+      "sha256": "52adf16c26f782c787e0528af729d93f92909acf2498c7a52cc8134bdda6ca8f"
+    },
+    {
+      "path": "base/json/json_writer.h",
+      "sha256": "59f2a024af5a8b303b13594f209161a728edc5bcf286d34f69a2f333f8288c12"
+    }
+  ],
+  "semantics": {
+    "worker": "4255868: key admission -> clone/preferences -> Arc warning-only merge -> tracked init -> optional cookie THEN password readers -> extensions -> optional Chrome photo -> worker success",
+    "atlas": "enum 2 bypasses captured key and encrypted snapshots",
+    "arcIds": "426cfa0..426cfa8 load old ID then store increment; folder IDs assigned after recursively serialized children",
+    "failure": "copy/preference/tracked/reader failure removes genuine reserved target; Arc/photo failures do not",
+    "privateBytes": "wrapper calls existing ReadEncryptedCategoryImpl(...true); no decoder or public wire change",
+    "phaseBoundary": "no initialized Profile or destination success claimed; CreateProfileAsync + real barriers still mandatory",
+    "guid": "1a9cb48..58 sets version4/variant bits; format db6a4ea uses lowercase x. Reuse actual155 GenerateRandomV4.AsLowercaseString.",
+    "signedId": "426cd18..20 signed max; 1131268..74 and 11312c0 signed int formatter. Keep unsigned increment to reproduce native32-bit wrap, cast int32_t only for text."
+  }
+}
