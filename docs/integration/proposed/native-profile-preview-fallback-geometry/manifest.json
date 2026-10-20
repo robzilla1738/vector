@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "actual397 exact native inputs; no shared region/GN change",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+      "baselineSha256": "a3662030817a380de6521b981c004b8917ae81cab55919f7dacf9f744df340e0",
+      "outputSha256": "1f86abff094bda91f2dc41e394c6f25fc4c36a27811ff8598666b0506c520259"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+      "baselineSha256": "b2f3d1986ce9c2d38a36a87ad708e978ec1efb79b6e8dd2bde69ec840d87f4a0",
+      "outputSha256": "0e8455e80269ca7d061866cc14063434c67f073d8ac371958840aca7bba163a0"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}

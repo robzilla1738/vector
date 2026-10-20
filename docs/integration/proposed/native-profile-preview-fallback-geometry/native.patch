@@ -1,0 +1,83 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc
+@@ -21,6 +21,8 @@
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/unload_controller.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_page.h"
++#include "chrome/browser/ui/views/frame/aux_profile_search_button.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+@@ -114,6 +116,40 @@
+   return page;
+ }
+ 
++bool ProfilePreviewRegionOwner::UpdatePageGeometry(
++    ProfilePagePreviewPageView& page) {
++  auto* region = views::AsViewClass<VerticalTabStripRegionView>(region_.view());
++  if (!region) {
++    return false;
++  }
++  const auto surfaces = region->GetAuxProfilePreviewSurfaces();
++  const auto bounds = ProfilePreviewPresentation::PreviewBounds(
++      *region, surfaces, region->GetAuxProfilePreviewTopBoundary());
++  // Supplied 0x4658b68/0x46407f8 projects visible role bounds into the region,
++  // then subtracts the preview's top. Chromium 155's header children are nested.
++  const auto relative_bounds = [&](views::View* child) {
++    gfx::Rect result;
++    if (child && child->GetVisible() && child->parent() &&
++        region->Contains(child)) {
++      result = views::View::ConvertRectToTarget(child->parent(), region,
++                                              child->bounds());
++    }
++    result.Offset(0, -bounds.y());
++    return result;
++  };
++  const auto header = relative_bounds(region->GetAuxSidebarProfileButton());
++  const auto search = relative_bounds(region->GetAuxSidebarSearchButton());
++  const auto scroll = relative_bounds(surfaces[2]);
++  auto alive = weak_factory_.GetWeakPtr();
++  views::ViewTracker page_lifetime(&page);
++  page.SetBoundsRect(bounds);
++  if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  page.SetFallbackGeometry(header, search, scroll);
++  return alive && page_lifetime.view();
++}
++
+ bool ProfilePreviewRegionOwner::PopulatePage(
+     ProfilePagePreviewPageView& page, const base::FilePath& target) {
+   auto* source = browser_.get();
+@@ -144,6 +180,9 @@
+   }
+   page.SetProfile(label, avatar);
+   if (!alive || !page_lifetime.view()) {
++    return false;
++  }
++  if (!UpdatePageGeometry(page)) {
+     return false;
+   }
+   page.SetFallbackData(std::move(tabs), std::move(bookmarks));
+@@ -235,6 +274,10 @@
+     return false;
+   }
+   views::ViewTracker page_lifetime(page);
++  // Original4657b7c refreshes page geometry before live/fallback admission.
++  if (!UpdatePageGeometry(*page)) {
++    return false;
++  }
+   // Original4654740 can render the real metadata fallback while the target
+   // profile/cache is not ready; it does not fabricate a borrowed live view.
+   bool live = false;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h
+@@ -40,6 +40,7 @@
+ 
+  private:
+   ProfilePagePreviewPageView* GetPage(const base::FilePath& target);
++  bool UpdatePageGeometry(ProfilePagePreviewPageView& page);
+   bool PopulatePage(ProfilePagePreviewPageView& page,
+                     const base::FilePath& target);
+   void RequestPrewarm(const base::FilePath& target);

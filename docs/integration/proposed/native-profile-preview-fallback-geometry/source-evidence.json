@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "populate-geometry-call",
+      "start": "0x4654ac4",
+      "endExclusive": "0x4654af0",
+      "size": 44,
+      "sourceBytesSha256": "8338b3ca04eaa8db4517ca6ad29a81753389a11379333c40bd9ad906ed158425",
+      "listing": "populate-geometry-call.asm",
+      "listingSha256": "50c0d6e7a90e9b07891fb92845ce226209b8dc40cd2af6eaed358da1c9823415"
+    },
+    {
+      "name": "begin-geometry-call",
+      "start": "0x4657b04",
+      "endExclusive": "0x4657bd0",
+      "size": 204,
+      "sourceBytesSha256": "1ec25e0dfd66f5c86710382af84e0cebb45e4e4ed0bc3f02f4b3fff5a50e85b6",
+      "listing": "begin-geometry-call.asm",
+      "listingSha256": "66222c684a0f969b260312cebbdcc76b194c0aa4b69b33326428942b5da79f9b"
+    },
+    {
+      "name": "actual-role-producer",
+      "start": "0x4658b68",
+      "endExclusive": "0x4658d3c",
+      "size": 468,
+      "sourceBytesSha256": "2f6526719d57df92236c22958848fb13a7238c8b6977f49a96a5668045eda577",
+      "listing": "actual-role-producer.asm",
+      "listingSha256": "87f03b2369724478a7a1dc4f18f9d55bfe5c1fc75ec0407dcc75101409cbb746"
+    },
+    {
+      "name": "relative-geometry-setter",
+      "start": "0x46407f8",
+      "endExclusive": "0x4640974",
+      "size": 380,
+      "sourceBytesSha256": "1ba624ddd8c9396ca4a56ae0ff2d6a26fbd21ddc82b57a93775247d77f70686a",
+      "listing": "relative-geometry-setter.asm",
+      "listingSha256": "65e207ca66cc857784cc8bf86ae97ac30f330993bd52608c484357cdcd2daa04"
+    },
+    {
+      "name": "page-geometry-consumer",
+      "start": "0x467de40",
+      "endExclusive": "0x467e004",
+      "size": 452,
+      "sourceBytesSha256": "2d2e78d4b803490b8c3f913df2f897d3650877f9d200f34b3bd49bc3f44f8059",
+      "listing": "page-geometry-consumer.asm",
+      "listingSha256": "e7b6dcf0e08853695dcd181a2a9fb2ba8559bbfb0297b83082f5bc3699c51846"
+    }
+  ],
+  "api155": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "snapshot": "vertical_tab_strip_region_view.h",
+      "sha256": "3b942776a8b13834460874393ac6f1d9b65099eab9ad61e6b157a70c070546f0"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h",
+      "snapshot": "aux_vertical_sidebar_profile_button.h",
+      "sha256": "35a069311a38fcf0185f121c96c3fffad64fe2d7ff7454111f8ee57a9b14aba8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_search_button.h",
+      "snapshot": "aux_profile_search_button.h",
+      "sha256": "4cbd2cf23c11fc97524a8ae7dc92f85e7861cd2cfe00d9002ded7577cb56a5f4"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_page.cc",
+      "snapshot": "aux_profile_preview_page.cc",
+      "sha256": "135f6a4fb78f410da6a2e58e552d93f6d55bcd195cce76aa69d5a9a9b6bab030"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_presentation.cc",
+      "snapshot": "aux_profile_preview_presentation.cc",
+      "sha256": "270e6235cf0919d1f470d402d8594cb4b81e36e180fc68c473cd81ca0f6c37d0"
+    },
+    {
+      "path": "ui/views/view.h",
+      "snapshot": "view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "ui/views/view_tracker.h",
+      "snapshot": "view_tracker.h",
+      "sha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692"
+    }
+  ],
+  "sourceRoleMap": {
+    "region+598": "actual profile button",
+    "region+5a0": "actual search button",
+    "region+5b0": "actual sidebar scroll"
+  },
+  "sharedNativeModified": false,
+  "nativeExecution": false
+}

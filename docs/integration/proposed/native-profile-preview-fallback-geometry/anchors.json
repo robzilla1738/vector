@@ -1,0 +1,37 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+    "name": "include-actual-profile-role-type",
+    "count": 1,
+    "before": "#include \"chrome/browser/ui/views/frame/aux_profile_preview_page.h\"\n",
+    "after": "#include \"chrome/browser/ui/views/frame/aux_profile_preview_page.h\"\n#include \"chrome/browser/ui/views/frame/aux_profile_search_button.h\"\n#include \"chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.h\"\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+    "name": "install-geometry-owner",
+    "count": 1,
+    "before": "bool ProfilePreviewRegionOwner::PopulatePage(\n",
+    "after": "bool ProfilePreviewRegionOwner::UpdatePageGeometry(\n    ProfilePagePreviewPageView& page) {\n  auto* region = views::AsViewClass<VerticalTabStripRegionView>(region_.view());\n  if (!region) {\n    return false;\n  }\n  const auto surfaces = region->GetAuxProfilePreviewSurfaces();\n  const auto bounds = ProfilePreviewPresentation::PreviewBounds(\n      *region, surfaces, region->GetAuxProfilePreviewTopBoundary());\n  // Supplied 0x4658b68/0x46407f8 projects visible role bounds into the region,\n  // then subtracts the preview's top. Chromium 155's header children are nested.\n  const auto relative_bounds = [&](views::View* child) {\n    gfx::Rect result;\n    if (child && child->GetVisible() && child->parent() &&\n        region->Contains(child)) {\n      result = views::View::ConvertRectToTarget(child->parent(), region,\n                                              child->bounds());\n    }\n    result.Offset(0, -bounds.y());\n    return result;\n  };\n  const auto header = relative_bounds(region->GetAuxSidebarProfileButton());\n  const auto search = relative_bounds(region->GetAuxSidebarSearchButton());\n  const auto scroll = relative_bounds(surfaces[2]);\n  auto alive = weak_factory_.GetWeakPtr();\n  views::ViewTracker page_lifetime(&page);\n  page.SetBoundsRect(bounds);\n  if (!alive || !page_lifetime.view()) {\n    return false;\n  }\n  page.SetFallbackGeometry(header, search, scroll);\n  return alive && page_lifetime.view();\n}\n\nbool ProfilePreviewRegionOwner::PopulatePage(\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+    "name": "populate-actual-geometry",
+    "count": 1,
+    "before": "  page.SetFallbackData(std::move(tabs), std::move(bookmarks));\n",
+    "after": "  if (!UpdatePageGeometry(page)) {\n    return false;\n  }\n  page.SetFallbackData(std::move(tabs), std::move(bookmarks));\n"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.cc",
+    "name": "begin-actual-geometry",
+    "count": 1,
+    "before": "  views::ViewTracker page_lifetime(page);\n  // Original4654740 can render",
+    "after": "  views::ViewTracker page_lifetime(page);\n  // Original4657b7c refreshes page geometry before live/fallback admission.\n  if (!UpdatePageGeometry(*page)) {\n    return false;\n  }\n  // Original4654740 can render"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_profile_preview_region_owner.h",
+    "name": "declare-geometry-owner",
+    "count": 1,
+    "before": "  bool PopulatePage(ProfilePagePreviewPageView& page,\n",
+    "after": "  bool UpdatePageGeometry(ProfilePagePreviewPageView& page);\n  bool PopulatePage(ProfilePagePreviewPageView& page,\n"
+  }
+]
