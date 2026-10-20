@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/acceptance/provided-v405-normal-observation.json",
+      "sha256": "4a28dfbd1c63a76c882ac09dd7abe1874f20e3bd9cfd162315751af8e5dc020f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v405-normal-launch.log",
+      "sha256": "e5686166bdb4514cca445830efa654550612b842fc9a70f1f3f768db0e7f6545"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-helper-availability-v257/README.md",
+      "sha256": "0b7c92edeed5e6a57889d662b2cf36cbf068970df75a44ec16e80efcc529caa2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-profile-switch-owner/transaction-map/profile-identity/source-evidence.json",
+      "sha256": "4fc2bfd172d306f797844c8046f14421d812019b7a303696f2c3f212d4c75f88"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04274bb4.c",
+      "sha256": "694867c2c028a913ffee8769a3f7c29df72804c87ed4f269dcf0a50bcd03c6b0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0410347c.c",
+      "sha256": "77f95f97ab94d49e568ead91c5312e855b245c43fd10f80c5f0bdd7a8d6b38c0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideAccount.json",
+      "sha256": "8d5559baeefe2c68823dd6dfd17aea186e2dcc6c2a499230add8d6871079a32e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "e5379af0af5ce8c461a2854349e0d9fc596625509e3103bf10216fae4349dda4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_common/aux_api.cc",
+      "sha256": "a03e70605ddee33accb3d61454016116eb86ebd8b5bdbdab05efe2ef88d55fdb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_account.json",
+      "sha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_identity.cc",
+      "sha256": "0c07e1ff9669aeb6dfb65662890e343237dbdf1c4c109347ffe364093f58f81e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/profile_gate_prefs.cc",
+      "sha256": "feb0323fdc736e792f1630356c4ee4983975343c297928b2ebae54a442c28fc5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/account_profile_source.cc",
+      "sha256": "5b8dfdd0e54b6f76bc67ec67ba004859f5b44bc5d91da2511d5f9078b8570390"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/account_profile_prefs.cc",
+      "sha256": "39a4c0022405383ca76871597a69d6e5fd92c30beaf1685923f790e7e47b8881"
+    }
+  ],
+  "anchors": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "function Tv(e) {\n  return (e?.bindingVersion ?? 0) >= 1;\n}",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "if (!Tv(e)) return;",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "const e = typeof chrome?.auxAccount?.setProfileAccount == \"function\";",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "if (e && (!t || !Pi(t))) throw new Error(",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "return await Pv(() => D.accounts.ensureProfileAccount.mutate(e),",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "globalThis.chrome?.auxAccount?.onProfileContextChanged?.addListener(",
+      "count": 2
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "text": "return (await Ps(async () => t.signDaemonAuthChallenge(e),",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "text": "let ei=AccountRegistry.resolveProfileAccount(Cn);return await ensureAccountBootstrapped(ei),ei",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "text": "profileAccountBindings:{...ii,[Cn.profileId]:ri}",
+      "count": 1
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+      "text": "provider:`anonymous`,mode:`local`,authStatus:`active`,createdAt:Date.now(),incarnationId:randomUUID()",
+      "count": 2
+    }
+  ],
+  "sourceOnly": true,
+  "nativePatch": false
+}
