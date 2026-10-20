@@ -1,0 +1,13 @@
+{
+  "method": "supplied CSS/body theme mapping plus Chromium155 paint-owner adaptation; not recovered native original code",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/ui/agent/assets/globals-B-8L9em-.css",
+      "sha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-local-browser-pass/ui/agent/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "01ca133a7732825083c635e1b903038d5b02cf155d9b3fd632e2e249cfd2d046"
+    }
+  ]
+}

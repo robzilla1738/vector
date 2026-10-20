@@ -1,0 +1,60 @@
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -7,6 +7,7 @@
+ #include <optional>
+ 
+ #include "chrome/browser/themes/theme_properties.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/top_container_view.h"
+@@ -16,6 +17,18 @@
+ #include "ui/color/color_id.h"
+ #include "ui/color/color_provider.h"
+ #include "ui/gfx/canvas.h"
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/main_background_region_view.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "content/public/browser/web_contents.h"
++#include "extensions/common/constants.h"
++#include "ui/native_theme/native_theme.h"
++#include "ui/views/view_utils.h"
++#endif
+ 
+ namespace {
+ 
+@@ -110,8 +123,28 @@
+   bool painted =
+       PaintThemeCustomImage(canvas, view, browser_view, theme_choice);
+   if (!painted) {
+-    canvas->DrawColor(view->GetColorProvider()->GetColor(
+-        GetThemeChoiceInfo(theme_choice, view).second));
++    SkColor color = view->GetColorProvider()->GetColor(
++        GetThemeChoiceInfo(theme_choice, view).second);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // Supplied normal Agent pages paint --web-content-background at 80% over
++    // the native material. Give the toolbar row one matching tint, rather than
++    // stacking the upstream toolbar, top-container and main-region mattes.
++    const auto* tab =
++        browser_view->browser()->GetTabStripModel()->GetActiveWebContents();
++    const bool supplied_page =
++        tab && tab->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
++        tab->GetLastCommittedURL().host() == aux::kAgentExtensionId;
++    if (theme_choice == ThemeChoice::kToolbarTheme && supplied_page &&
++        view->GetNativeTheme()->preferred_contrast() !=
++            ui::NativeTheme::PreferredContrast::kMore) {
++      if (view == browser_view->toolbar() ||
++          views::IsViewClass<MainBackgroundRegionView>(view)) {
++        return;
++      }
++      color = SkColorSetA(color, 204);  // Supplied CSS 80%, not a sampled color.
++    }
++#endif
++    canvas->DrawColor(color);
+   }
+ }
+ 

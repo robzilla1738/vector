@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/themed_background.cc",
+      "baselineSha256": "eb55ed6069a0c56640d8d77989cf18db06ff0f27f86ff42b6dbbcd8368410a2d",
+      "outputSha256": "cce5daa34b680ad0cadea9fd50dea08068410808ecd45166a96d640a2dc57671"
+    }
+  ]
+}
