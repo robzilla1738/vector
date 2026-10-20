@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "base": "Actual frozen native201 plus account-gate-continuation9550545b1 output for profile_gate.cc only",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "baselineSha256": null,
+      "outputSha256": "0e843424b83a9320ece6da1c0102a8a880f9704479e06315eea52be4cf742872"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": null,
+      "outputSha256": "84397ba03a734e84eacb1146babc461332c6ed23b3a5dcadadb015f1f4c65bf4"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.h",
+      "baselineSha256": "87b156f13ba46458bff99d98cc686fd1353868900e561ab926d7ce6751f330a5",
+      "outputSha256": "1204591b45ba242870d84f780de2d98d8f389bb51d0b14f1899300a1d5b4df65"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.cc",
+      "baselineSha256": "7fd321e0f22258e0264e70cd78b5f2df00fd3bb491f2aae35c88236852fa7a8a",
+      "outputSha256": "7cef93381e75386f823e2db81ca5bffd0fe0bb2e058c332348b2fd9f184f30f6"
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.h",
+      "baselineSha256": "e98e608aa1d2c4c4b0a037323a76da836a63c314a512acf02e05bbb4372bbc02",
+      "outputSha256": "4f807829f021c90c79c692b141089c1f0685df809712b26f513bc2cd796d1380"
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.cc",
+      "baselineSha256": "33598eaafc14ec82d0191c2577e2630ac5d7ecc097fc5433873b7cadfde8347c",
+      "outputSha256": "38ed1c7da8fcaa518d4940d7722c473659dedc3383af03f30a151d2dabf2effc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "5f8af9189ca1fea516217c7f1f95b9b8d6e944e9e4b4b07d6d6721c3e2438353",
+      "outputSha256": "d90980366a306c3071872c8ff43060690e1d299d84cc8b593712eef3dff1d503"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_native_task_feed.cc",
+      "baselineSha256": "2b58f67afd9a2e640eaeb81221ca63d63afb9e983af0b80df7b44ed927386317",
+      "outputSha256": "ddaa24c20d806ff33ee99aae91602d87383e7604ea27a46d3035ee9b264dbcb5"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "f8470ca3ae96134a3a64799da7463e1eee16438ad0b3daf7f0af13a9d97f1330",
+      "outputSha256": "aa8acc6517d65db401681b47ae85f2c4b3b9c6506ec00b80cc029c3ae76dcd4b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "baselineSha256": "62ba3a2f06e018d0c4b21894763bebf46cf86e8ae3f111a4117ec5b9ae490648",
+      "outputSha256": "1cb02cbea0be55dd11e35196022d9cad42bc7b3d785f76b2a64bf90259f75ad0"
+    },
+    {
+      "path": "chrome/browser/aux/passkeys/request_broker.cc",
+      "baselineSha256": "467313ecd5280cd3224a0c6cd8de52bab5f1941c19888921a7f5f1dd727a1db5",
+      "outputSha256": "0bc63fb9d2972f804a5d2766f504cc2021826c76b7893e61d7230de2e4ccb570"
+    },
+    {
+      "path": "chrome/browser/aux/profile_state_probe.cc",
+      "baselineSha256": "92c450a155d0b66e09d905decf08b44a29901dcf3f097eb42d8db80c3700b56d",
+      "outputSha256": "229b324dd8c9db1ade8ead2be58af161b4fb1a6379462b698f3228f9fffbcb23"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "3ad757fea0b40a22ee43f92878f83d7769eb7d5aaf22c07cbed0ae087ae18cc4",
+      "outputSha256": "dac291bdb7fc78cfa5fbf01daf5e6474f2572b960697caca4e5eb2f934b566b0"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "4313db825db7f9f0260d1d9261c37207be0d7ac466fa80c72292bcd466db28e6",
+      "outputSha256": "099a438e17b13fd89ce2a1169b9e1be6956b60586e89f1ed5dcf2a8a51527c48"
+    },
+    {
+      "path": "chrome/browser/devtools/protocol/aux_profile_window.cc",
+      "baselineSha256": "885e15ca4d0e97b78c87c36e528c71586ae895220edbdbca373aaa70c71bfc04",
+      "outputSha256": "ee09f6e870fe68c43b4b8fbffb93848e75a717f3af41a2755e77093b8e106c3b"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

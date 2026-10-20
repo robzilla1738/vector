@@ -1,0 +1,597 @@
+--- /dev/null
++++ b/chrome/browser/aux/profile_identity.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_PROFILE_IDENTITY_H_
++#define CHROME_BROWSER_AUX_PROFILE_IDENTITY_H_
++#include <optional>
++#include <string>
++#include "base/files/file_path.h"
++class Profile;
++namespace aux {
++// UI sequence. Original supplied persisted profile identity, never a path hash.
++// Existing nonempty IDs are retained; only the actual loaded profile is mutated.
++std::string GetProfileId(Profile* profile);
++// UI sequence, never loads a profile or reads its Preferences from disk.
++std::string GetLoadedProfileIdForPath(const base::FilePath& path);
++std::optional<int> GetProfileIndex(Profile* profile);
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -0,0 +1,41 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/aux/profile_identity.h"
++#include "base/uuid.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/browser_thread.h"
++namespace aux {
++std::string GetProfileId(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile) return {};
++  auto* prefs = profile->GetOriginalProfile()->GetPrefs();
++  if (!prefs || !prefs->FindPreference("aside.profile_id")) return {};
++  auto id = prefs->GetString("aside.profile_id");
++  if (id.empty()) {
++    id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    prefs->SetString("aside.profile_id", id);
++  }
++  return id;
++}
++std::string GetLoadedProfileIdForPath(const base::FilePath& path) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  return manager ? GetProfileId(manager->GetProfileByPath(path)) : std::string();
++}
++std::optional<int> GetProfileIndex(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (!profile || profile->IsOffTheRecord() || !manager) return std::nullopt;
++  int index = 0;
++  for (auto* entry : manager->GetProfileAttributesStorage()
++                          .GetAllProfilesAttributesSortedForDisplay()) {
++    if (entry->GetPath() == profile->GetPath()) return index;
++    ++index;
++  }
++  return std::nullopt;
++}
++}  // namespace aux
+--- a/chrome/browser/aux/profile_state.h
++++ b/chrome/browser/aux/profile_state.h
+@@ -6,8 +6,6 @@
+ 
+ #include "base/files/file_path.h"
+ namespace aux {
+-// Pure identity of ProfileManager's registered absolute profile path.
+-std::string ProfileIdForPath(const base::FilePath& path);
+ struct ProfileSecurityState {
+   std::optional<int> account_id;
+   std::optional<int> profile_index;
+@@ -36,6 +34,7 @@
+ // Blocking metadata only; call on a MayBlock task. Vault stays locked until
+ // authenticated FetchProfileSecurity verifies actual daemon accounts.list authStatus.
+ ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
+-                                         const base::FilePath& profile_path);
++                                         const base::FilePath& profile_path,
++                                         const std::string& profile_id);
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/aux/profile_state.cc
++++ b/chrome/browser/aux/profile_state.cc
+@@ -9,7 +9,6 @@
+ #include "base/files/scoped_file.h"
+ #include "base/json/json_reader.h"
+ #include "base/strings/string_number_conversions.h"
+-#include "crypto/hash.h"
+ namespace aux {
+ namespace {
+ std::optional<base::DictValue> ReadMetadata(const base::FilePath& path,
+@@ -36,13 +35,15 @@
+   return base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+ }
+ }  // namespace
+-std::string ProfileIdForPath(const base::FilePath& path) {
+-  return "aux-profile:" + base::HexEncode(crypto::hash::Sha256(
+-                              path.StripTrailingSeparators().value()));
+-}
+ ProfileSecurityState ReadProfileSecurity(const base::FilePath& home,
+-                                         const base::FilePath& path) {
++                                         const base::FilePath& path,
++                                         const std::string& id) {
+   ProfileSecurityState result;
++  if (id.empty()) {
++    result.binding_error = "Loaded profile identity is unavailable";
++    result.error = result.binding_error;
++    return result;
++  }
+   auto registry =
+       ReadMetadata(home.AppendASCII("accounts.json"), 4 * 1024 * 1024);
+   if (!registry || registry->FindInt("version") != 1) {
+@@ -57,7 +58,6 @@
+     return result;
+   }
+   const auto* bindings = registry->FindDict("profileAccountBindings");
+-  const auto id = ProfileIdForPath(path);
+   const auto* binding = bindings ? bindings->FindDict(id) : nullptr;
+   if (!binding) {
+     // Match the actual resolver's mutation scope: only this ID or exact path.
+--- a/chrome/browser/aux/profile_security_client.h
++++ b/chrome/browser/aux/profile_security_client.h
+@@ -12,6 +12,7 @@
+ void FetchProfileSecurity(
+     const base::FilePath& home,
+     const base::FilePath& profile_path,
++    std::string profile_id,
+     scoped_refptr<network::SharedURLLoaderFactory> factory,
+     uint16_t port,
+     std::string authorization,
+--- a/chrome/browser/aux/profile_security_client.cc
++++ b/chrome/browser/aux/profile_security_client.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/aux/profile_security_client.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "base/functional/bind.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+@@ -25,16 +26,18 @@
+ class StatusRequest : public base::RefCounted<StatusRequest> {
+  public:
+   StatusRequest(base::FilePath home, base::FilePath path,
++                std::string profile_id,
+                 scoped_refptr<network::SharedURLLoaderFactory> factory,
+                 uint16_t port, std::string authorization,
+                 base::OnceCallback<void(ProfileSecurityState)> done)
+       : home_(std::move(home)), path_(std::move(path)),
++        profile_id_(std::move(profile_id)),
+         factory_(std::move(factory)), port_(port),
+         authorization_(std::move(authorization)), done_(std::move(done)) {}
+   void Start() {
+     base::ThreadPool::PostTaskAndReplyWithResult(
+         FROM_HERE, {base::MayBlock()},
+-        base::BindOnce(&ReadProfileSecurity, home_, path_),
++        base::BindOnce(&ReadProfileSecurity, home_, path_, profile_id_),
+         base::BindOnce(&StatusRequest::DidRead, base::WrapRefCounted(this)));
+   }
+  private:
+@@ -106,7 +109,7 @@
+     // Rebinding/account deletion while status was in flight invalidates it.
+     base::ThreadPool::PostTaskAndReplyWithResult(
+         FROM_HERE, {base::MayBlock()},
+-        base::BindOnce(&ReadProfileSecurity, home_, path_),
++        base::BindOnce(&ReadProfileSecurity, home_, path_, profile_id_),
+         base::BindOnce(&StatusRequest::DidRevalidate, base::WrapRefCounted(this)));
+   }
+   void DidRevalidate(ProfileSecurityState current) {
+@@ -124,9 +127,16 @@
+     Finish(std::move(state_));
+   }
+   void Finish(ProfileSecurityState state) {
++    if (GetLoadedProfileIdForPath(path_) != profile_id_) {
++      state.locked = true;
++      state.configured = false;
++      state.binding_error = "Loaded profile identity changed during verification";
++      state.error = state.binding_error;
++    }
+     if (done_) std::move(done_).Run(std::move(state));
+   }
+   const base::FilePath home_, path_;
++  const std::string profile_id_;
+   const scoped_refptr<network::SharedURLLoaderFactory> factory_;
+   const uint16_t port_;
+   const std::string authorization_;
+@@ -137,10 +147,12 @@
+ }  // namespace
+ void FetchProfileSecurity(
+     const base::FilePath& home, const base::FilePath& profile_path,
++    std::string profile_id,
+     scoped_refptr<network::SharedURLLoaderFactory> factory, uint16_t port,
+     std::string authorization,
+     base::OnceCallback<void(ProfileSecurityState)> done) {
+-  base::MakeRefCounted<StatusRequest>(home, profile_path, std::move(factory),
++  base::MakeRefCounted<StatusRequest>(home, profile_path,
++      std::move(profile_id), std::move(factory),
+       port, std::move(authorization), std::move(done))->Start();
+ }
+ }  // namespace aux
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/extensions/api/aux_account/aux_account_api.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -84,7 +85,7 @@
+ base::ListValue ProfileIdentity(Profile* profile) {
+   base::DictValue row;
+   row.Set("profileId",
+-          aux::ProfileIdForPath(profile->GetOriginalProfile()->GetPath()));
++          aux::GetProfileId(profile));
+   row.Set("profilePath", profile->GetOriginalProfile()->GetPath().value());
+   base::ListValue result;
+   result.Append(std::move(row));
+--- a/chrome/browser/ui/views/frame/aux_native_task_feed.cc
++++ b/chrome/browser/ui/views/frame/aux_native_task_feed.cc
+@@ -24,6 +24,7 @@
+ #include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+@@ -153,8 +154,7 @@
+         operation_(operation),
+         input_(std::move(input)),
+         callback_(std::move(callback)),
+-        profile_id_(aux::ProfileIdForPath(
+-            feed->profile_->GetOriginalProfile()->GetPath())),
++        profile_id_(aux::GetProfileId(feed->profile_.get())),
+         mode_(feed->profile_->IsOffTheRecord() ? "incognito" : "default") {}
+   void Start() {
+     if (operation_ == AgentTabsOperation::kPolicy) {
+@@ -517,6 +517,7 @@
+   const auto authorization = aux::BrowserPlatform::Get().authorization();
+   aux::FetchProfileSecurity(
+       aux::StateHome(), profile_->GetOriginalProfile()->GetPath(),
++      aux::GetProfileId(profile_.get()),
+       profile_->GetDefaultStoragePartition()
+           ->GetURLLoaderFactoryForBrowserProcess(),
+       DaemonPort(), authorization,
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -28,6 +28,7 @@
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/aux/profile_security_client.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/favicon/favicon_service_factory.h"
+@@ -124,6 +125,7 @@
+   }
+   aux::FetchProfileSecurity(aux::StateHome(),
+       browser->GetProfile()->GetOriginalProfile()->GetPath(),
++      aux::GetProfileId(browser->GetProfile()),
+       browser->GetProfile()->GetDefaultStoragePartition()
+           ->GetURLLoaderFactoryForBrowserProcess(), port, authorization,
+       base::BindOnce(
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "content/public/browser/keyboard_event_processing_result.h"
+@@ -85,7 +86,7 @@
+     }
+     authorization_ = aux::BrowserPlatform::Get().authorization();
+     aux::FetchProfileSecurity(aux::StateHome(),
+-        profile->GetOriginalProfile()->GetPath(),
++        profile->GetOriginalProfile()->GetPath(), aux::GetProfileId(profile),
+         profile->GetDefaultStoragePartition()->GetURLLoaderFactoryForBrowserProcess(),
+         port, authorization_, base::BindOnce(&AuxSearchBubble::OnSecurity,
+                                             weak_factory_.GetWeakPtr()));
+--- a/chrome/browser/aux/passkeys/request_broker.cc
++++ b/chrome/browser/aux/passkeys/request_broker.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/passkeys/private_session_cleanup.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/buildflags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_observer.h"
+@@ -67,7 +68,7 @@
+ class ProfileSession : public ProfileObserver {
+  public:
+   explicit ProfileSession(Profile* profile)
+-      : profile_id(ProfileIdForPath(profile->GetOriginalProfile()->GetPath())),
++      : profile_id(GetProfileId(profile)),
+         incognito(profile->IsOffTheRecord()) {
+     observation_.Observe(profile);
+   }
+@@ -109,7 +110,9 @@
+   }
+   auto* pending = it->second.get();
+   auto* frame = pending->document.AsRenderFrameHostIfValid();
+-  if (!frame || !frame->IsActive() || pending->profile != profile ||
++  const auto* profile_id = pending->request.FindString("profileId");
++  if (!profile_id || *profile_id != GetProfileId(profile) ||
++      !frame || !frame->IsActive() || pending->profile != profile ||
+       frame->GetBrowserContext() != profile ||
+       frame->GetLastCommittedOrigin() != pending->origin ||
+       frame->GetMainFrame()->GetLastCommittedOrigin() != pending->top_origin ||
+@@ -168,9 +171,10 @@
+   ProfileSecurityState security;
+   std::optional<std::string> signature;
+ };
+-Proof SignRequest(base::FilePath path, std::string payload) {
++Proof SignRequest(base::FilePath path, std::string profile_id,
++                  std::string payload) {
+   Proof result;
+-  result.security = ReadProfileSecurity(StateHome(), path);
++  result.security = ReadProfileSecurity(StateHome(), path, profile_id);
+   if (!result.security.allows_browsing()) {
+     return result;
+   }
+@@ -244,7 +248,7 @@
+   request.Set("id", id);
+   request.Set("kind", create ? "create" : "get");
+   request.Set("profileId",
+-              ProfileIdForPath(profile->GetOriginalProfile()->GetPath()));
++              GetProfileId(profile));
+   request.Set("profileSession", ProfileSessionId(profile));
+   request.Set("browserMode",
+               profile->IsOffTheRecord() ? "incognito" : "default");
+@@ -338,7 +342,7 @@
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+       base::BindOnce(&ReadProfileSecurity, StateHome(),
+-                     profile->GetOriginalProfile()->GetPath()),
++                     profile->GetOriginalProfile()->GetPath(), GetProfileId(profile)),
+       base::BindOnce(
+           [](Profile* profile, std::string id, base::DictValue request,
+              base::OnceCallback<void(std::optional<base::DictValue>)> callback,
+@@ -367,7 +371,7 @@
+                 FROM_HERE, {base::MayBlock()},
+                 base::BindOnce(&SignRequest,
+                                profile->GetOriginalProfile()->GetPath(),
+-                               payload),
++                               GetProfileId(profile), payload),
+                 base::BindOnce(
+                     [](Profile* profile, std::string id, std::string payload,
+                        int account,
+@@ -400,7 +404,7 @@
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock()},
+       base::BindOnce(&ReadProfileSecurity, StateHome(),
+-                     profile->GetOriginalProfile()->GetPath()),
++                     profile->GetOriginalProfile()->GetPath(), GetProfileId(profile)),
+       base::BindOnce(
+           [](Profile* profile, std::string id, base::Value response,
+              base::OnceCallback<void(std::optional<std::string>)> callback,
+--- a/chrome/browser/aux/profile_state_probe.cc
++++ b/chrome/browser/aux/profile_state_probe.cc
+@@ -11,7 +11,7 @@
+   CHECK(temp.CreateUniqueTempDir());
+   const auto home = temp.GetPath();
+   const auto profile = home.AppendASCII("fixture-profile");
+-  const auto id = aux::ProfileIdForPath(profile);
++  const std::string id = "fixture-persisted-profile-id";
+   const auto registry_path = home.AppendASCII("accounts.json");
+   base::DictValue registry;
+   registry.Set("version", 1);
+@@ -21,13 +21,13 @@
+     const auto text = base::WriteJson(registry).value();
+     CHECK(base::WriteFile(registry_path, text));
+     CHECK(base::SetPosixFilePermissions(registry_path, 0600));
+-    auto state = aux::ReadProfileSecurity(home, profile);
++    auto state = aux::ReadProfileSecurity(home, profile, id);
+     std::string after;
+     CHECK(base::ReadFileToString(registry_path, &after));
+     CHECK(after == text);  // Classification never converts or deletes bindings.
+     return state;
+   };
+-  CHECK(!aux::ReadProfileSecurity(home, profile).local_only.has_value());
++  CHECK(!aux::ReadProfileSecurity(home, profile, id).local_only.has_value());
+   const auto fresh = read();
+   CHECK(!fresh.bound && fresh.local_only == true && fresh.binding_error.empty());
+   base::DictValue account;
+@@ -42,6 +42,8 @@
+   registry.FindDict("profileAccountBindings")->Set(id, std::move(binding));
+   const auto local = read();
+   CHECK(local.bound && local.account_id == 0 && local.local_only == true);
++  CHECK(!aux::ReadProfileSecurity(home, profile, "").bound);
++  CHECK(!aux::ReadProfileSecurity(home, profile, "wrong-canonical-id").bound);
+   CHECK(local.local_anonymous && local.onboarding_complete);
+   CHECK(local.locked && !local.configured && !local.allows_browsing());
+   // Legacy positional requests must fail on missing, stale, or reordered index.
+@@ -118,6 +120,6 @@
+   registry.Set("accounts", base::ListValue());
+   read();
+   CHECK(base::SetPosixFilePermissions(registry_path, 0644));
+-  CHECK(!aux::ReadProfileSecurity(home, profile).local_only.has_value());
++  CHECK(!aux::ReadProfileSecurity(home, profile, id).local_only.has_value());
+   return 0;
+ }
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -17,7 +17,7 @@
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
+ #include "base/timer/timer.h"
+-#include "base/uuid.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/aux/account_bootstrap_state.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+@@ -99,9 +99,7 @@
+     prefs->SetBoolean(kExtensionAvailable,
+         extensions::ExtensionRegistry::Get(profile)->enabled_extensions()
+             .Contains(kAgentExtensionId));
+-    if (prefs->GetString(kProfileId).empty()) {
+-      prefs->SetString(kProfileId, base::Uuid::GenerateRandomV4().AsLowercaseString());
+-    }
++    GetProfileId(profile);
+     // Original constructor clears automatic suppression for a genuinely new
+     // profile only when another nonomitted profile already exists.
+     if (profile->IsNewProfile()) {
+@@ -464,6 +462,7 @@
+ void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterStringPref(kProfileId, "");
+   registry->RegisterStringPref(kAccountUserId, "");
++  registry->RegisterIntegerPref("aside.account_id", -1);
+   registry->RegisterBooleanPref(kBootstrapComplete, false);
+   registry->RegisterBooleanPref(kSuppressAutomaticGate, false);
+   registry->RegisterBooleanPref(kExtensionAvailable, false);
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -18,6 +18,8 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "components/prefs/pref_service.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+@@ -35,7 +37,7 @@
+   for (auto* entry : manager->GetProfileAttributesStorage()
+                          .GetAllProfilesAttributesSortedForDisplay()) {
+     base::DictValue profile;
+-    profile.Set("profileId", aux::ProfileIdForPath(entry->GetPath()));
++    profile.Set("profileId", aux::GetLoadedProfileIdForPath(entry->GetPath()));
+     profile.Set("profilePath", entry->GetPath().value());
+     profile.Set("profileIndex", index++);
+     profile.Set("name", base::UTF16ToUTF8(entry->GetLocalProfileName()));
+@@ -52,8 +54,9 @@
+     if (!path) {
+       continue;
+     }
+-    const auto security = aux::ReadProfileSecurity(home, base::FilePath(*path));
+-    row.Set("profileId", aux::ProfileIdForPath(base::FilePath(*path)));
++    const auto* id = row.FindString("profileId");
++    const auto security = aux::ReadProfileSecurity(
++        home, base::FilePath(*path), id ? *id : std::string());
+     row.Set("isLocked", !security.allows_browsing());
+     row.Set("configured", security.configured);
+     row.Set("onboardingComplete", security.onboarding_complete);
+@@ -91,8 +94,9 @@
+       return;
+     }
+     const auto* path = rows_[index_].GetDict().FindString("profilePath");
+-    if (!path) { ++index_; Next(); return; }
+-    aux::FetchProfileSecurity(home_, base::FilePath(*path),
++    const auto* id = rows_[index_].GetDict().FindString("profileId");
++    if (!path || !id || id->empty()) { ++index_; Next(); return; }
++    aux::FetchProfileSecurity(home_, base::FilePath(*path), *id,
+         g_browser_process->system_network_context_manager()
+             ->GetSharedURLLoaderFactory(), port_, authorization_,
+         base::BindOnce(&ProfileListRequest::DidFetch, base::WrapRefCounted(this)));
+@@ -172,6 +176,27 @@
+         base::BindOnce(&aux::SignDaemonChallenge, aux::StateHome(), challenge),
+         base::BindOnce(&AuxAccountFunction::DidSign, base::RetainedRef(this)));
+     return RespondLater();
++  }
++  if (method == "auxAccount.getProfileContext") {
++    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
++    auto* current = profile()->GetOriginalProfile();
++    const auto id = aux::GetProfileId(current);
++    if (id.empty()) return RespondNow(Error("Aux account profile context unavailable"));
++    base::DictValue context;
++    context.Set("profileId", id);
++    context.Set("profilePath", current->GetPath().value());
++    if (const auto index = aux::GetProfileIndex(current))
++      context.Set("profileIndex", *index);
++    auto* prefs = current->GetPrefs();
++    if (prefs->FindPreference("aside.account_user_id")) {
++      const auto& user = prefs->GetString("aside.account_user_id");
++      if (!user.empty()) context.Set("boundUserId", user);
++    }
++    if (prefs->FindPreference("aside.account_id")) {
++      const int account = prefs->GetInteger("aside.account_id");
++      if (account >= 0) context.Set("boundAccountId", account);
++    }
++    return RespondNow(WithArguments(std::move(context)));
+   }
+   auto profiles = ProfileSnapshot(profile());
+   if (method == "auxAccount.openProfileRoute") {
+--- a/chrome/browser/devtools/protocol/aux_profile_window.cc
++++ b/chrome/browser/devtools/protocol/aux_profile_window.cc
+@@ -10,6 +10,7 @@
+ #include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_security_client.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/prefs/incognito_mode_prefs.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -44,7 +45,7 @@
+     if (!manager || index_ < 0)
+       return Finish(-32602, "Profile index is invalid");
+     auto entries = manager->GetProfileAttributesStorage()
+-                       .GetAllProfilesAttributesSortedByName();
++                       .GetAllProfilesAttributesSortedForDisplay();
+     if (static_cast<size_t>(index_) >= entries.size())
+       return Finish(-32602, "Profile does not exist");
+     path_ = entries[index_]->GetPath();
+@@ -79,7 +80,7 @@
+       return false;
+     auto entries = Manager()
+                        ->GetProfileAttributesStorage()
+-                       .GetAllProfilesAttributesSortedByName();
++                       .GetAllProfilesAttributesSortedForDisplay();
+     return index_ >= 0 && static_cast<size_t>(index_) < entries.size() &&
+            entries[index_]->GetPath() == path_ &&
+            !entries[index_]->IsSigninRequired();
+@@ -87,9 +88,14 @@
+   void DidValidatePath(bool valid) {
+     if (!valid || !Registered())
+       return Finish(-32600, "Profile route is no longer available");
+-    Verify(false);
+-  }
+-  void Verify(bool loaded) {
++    // Loading an explicitly requested registered profile is not opening it.
++    // Canonical UUIDs belong to actual loaded PrefService, not path hashes.
++    const bool accepted = Manager()->LoadProfileByPath(
++        path_, false,
++        base::BindOnce(&WindowRequest::DidLoad, base::WrapRefCounted(this)));
++    if (!accepted) Finish(-32000, "Profile could not be loaded");
++  }
++  void Verify() {
+     if (!Registered())
+       return Finish(-32600, "Profile route changed");
+     unsigned port = 21520;
+@@ -100,11 +106,12 @@
+     const auto auth = BrowserPlatform::Get().authorization();
+     if (!factory || auth.empty())
+       return Finish(-32000, "Owned daemon authentication is unavailable");
+-    FetchProfileSecurity(StateHome(), path_, std::move(factory), port, auth,
++    FetchProfileSecurity(StateHome(), path_, GetProfileId(profile_.get()),
++                         std::move(factory), port, auth,
+                          base::BindOnce(&WindowRequest::DidVerify,
+-                                        base::WrapRefCounted(this), loaded));
+-  }
+-  void DidVerify(bool loaded, ProfileSecurityState state) {
++                                        base::WrapRefCounted(this)));
++  }
++  void DidVerify(ProfileSecurityState state) {
+     if (!Registered())
+       return Finish(-32600, "Profile route changed");
+     if (!state.bound || !state.account_id || !state.error.empty())
+@@ -119,13 +126,7 @@
+     if (account_ && account_ != state.account_id)
+       return Finish(-32600, "Profile account changed");
+     account_ = state.account_id;
+-    if (loaded)
+-      return OpenWindow();
+-    const bool accepted = Manager()->LoadProfileByPath(
+-        path_, false,
+-        base::BindOnce(&WindowRequest::DidLoad, base::WrapRefCounted(this)));
+-    if (!accepted)
+-      Finish(-32000, "Profile could not be loaded");
++    OpenWindow();
+   }
+   void DidLoad(Profile* profile) {
+     if (!done_)
+@@ -138,7 +139,7 @@
+       return Finish(-32600,
+                     "A normal profile window is unavailable under policy");
+     profile_ = profile->GetWeakPtr();
+-    Verify(true);
++    Verify();
+   }
+   void OpenWindow() {
+     if (!done_ || !profile_ || !Registered())

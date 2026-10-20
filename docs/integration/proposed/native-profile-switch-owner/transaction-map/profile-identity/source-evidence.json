@@ -1,0 +1,42 @@
+{
+  "originalFrameworkSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "originalSources": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/0410347c.c",
+      "sha256": "77f95f97ab94d49e568ead91c5312e855b245c43fd10f80c5f0bdd7a8d6b38c0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04274bb4.c",
+      "sha256": "694867c2c028a913ffee8769a3f7c29df72804c87ed4f269dcf0a50bcd03c6b0"
+    }
+  ],
+  "daemonSource": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/runtime-reuse/out/reuse-inspection/installed-index.mjs",
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "calls": [
+      {
+        "method": "Browser.ensureChromiumProfile",
+        "count": 1,
+        "excerpt": "rts)),{globalCdpClient:ai}=await Promise.resolve().then(()=>(init_cdp(),cdp_exports)),oi=ri.getAccount(Cn);if(!oi)throw Error(`unavailable`);try{await ai.send(`Browser.ensureChromiumProfile`,{chromiumProfileId:ei,asideUserId:oi.userId??``,...ti?{url:ti}:{},...ni===void 0?{}:{shouldFocus:ni}})}catch(oi){if(!(oi instanceof ii)||oi.code!==-32601)throw oi;let si=ri.getAll().profileAccountBindings[ei];if(si?.accountId!==Cn||si.profileIndex===void 0)throw Error(`unavailable`);await ai.send(`"
+      },
+      {
+        "method": "Browser.ensureProfile",
+        "count": 1,
+        "excerpt": ".code!==-32601)throw oi;let si=ri.getAll().profileAccountBindings[ei];if(si?.accountId!==Cn||si.profileIndex===void 0)throw Error(`unavailable`);await ai.send(`Browser.ensureProfile`,{profileIndex:si.profileIndex,...ti?{url:ti}:{},...ni===void 0?{}:{shouldFocus:ni}})}}var init_profile_window=__esmMin((()=>{})),ExtensionBridgeProtocol,init_protocol$3=__esmMin((()=>{init_zod(),init_window_binding(),init_commands$1(),(function(Cn){let ei=Cn.routeSchema=object({accountId:number$2().int().n"
+      }
+    ]
+  },
+  "addresses": {
+    "profileUuid": "0x410347c",
+    "profileIndex": "0x41035c0",
+    "getProfileContextRun": "0x4274bb4",
+    "getProfileContextFactory": "0x46ae1c0",
+    "getProfileContextVtable": "0xe26eb08"
+  },
+  "verification": {
+    "independentPatchReplay": "PASS, 15 files exact output hashes",
+    "nativeCompile": "not run",
+    "nativeRuntime": "not run",
+    "ownerState": "not read"
+  }
+}
