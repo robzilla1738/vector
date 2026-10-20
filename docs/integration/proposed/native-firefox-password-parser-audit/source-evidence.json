@@ -1,0 +1,59 @@
+{
+  "kind": "source-only comparison; no native changes",
+  "baselineProposalCommit": "15ad38d515918351ea4d2c5583ee712084ea42c8",
+  "originalImage": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "parser": {
+    "start": "0x46bedf0",
+    "endExclusive": "0x46bfd58",
+    "sha256": "c998d38369f678fdb592323612d15326dada77b5db4928a46591e7493a3c013a"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "386ec9d9fd178c1243da5fbe5964150437688d754bcfeed34e51fc0614c8f0fd"
+    },
+    {
+      "path": "evidence/literals.json",
+      "sha256": "f1fd82421058d3240c687fdc31d8a93f6077011bc6382834c6070af80c1b3c13"
+    },
+    {
+      "path": "evidence/parser-decompile.json",
+      "sha256": "03661e8828144cf26244a12fc5f4623150f1401c7452d5c5c2ca2409883aa51c"
+    },
+    {
+      "path": "evidence/parser.asm",
+      "sha256": "9ac0ae4a1ccb1d2498ebf3e30cdd70577d0f51ab28232da79930dd8618ca0141"
+    },
+    {
+      "path": "source/nss_decryptor.cc",
+      "sha256": "a901be12ee48f2db70111d2f81dd374d1c1c9a55ec01ad146ef92c6f0f7080e7"
+    }
+  ],
+  "nativeReferences": [
+    {
+      "path": "base/json/json_reader.h",
+      "sha256": "cc11fc68ff19fafde085c15349a2b6d17b09d21b4a75fc81c1e158eeee648548"
+    },
+    {
+      "path": "url/url_canon.h",
+      "sha256": "984e920ee45edda87a1b40173716c49ae66b7fa8dacb1e18d3f6f4c0db009c61"
+    },
+    {
+      "path": "chrome/utility/importer/nss_decryptor.h",
+      "sha256": "31bdd6d1443b894142211ad430112dba8ddae94cdfeec1d773c70cd0bc2a36bb"
+    },
+    {
+      "path": "base/json/json_common.h",
+      "sha256": "f5d9250aa18fb4952b31842afebbfdac72c5e2cdc92917ce2a7438180ca75bd7"
+    }
+  ],
+  "outcome": "No concrete parser/form conversion difference found in bounded instruction comparison; retain existing155 parser.",
+  "limitations": [
+    "Raw bounded REA decompile merges vector append helper after variant exception path and warns of bad instruction; LLVM instructions and literal bytes are authoritative.",
+    "No NSS calls, JSON/profile reads, decryption, password store, runtime or builds executed.",
+    "This source comparison does not establish runtime import acceptance."
+  ]
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "use": "0x46bef30",
+    "address": "0xdef02de",
+    "value": "disabledHosts"
+  },
+  {
+    "use": "0x46bef88",
+    "address": "0xcc20044",
+    "value": ""
+  },
+  {
+    "use": "0x46bef94",
+    "address": "0xd9f9332",
+    "value": "logins"
+  },
+  {
+    "use": "0x46bf714",
+    "address": "0xd80ec74",
+    "value": "hostname"
+  },
+  {
+    "use": "0x46bf754",
+    "address": "0xdef02ec",
+    "value": "usernameField"
+  },
+  {
+    "use": "0x46bf7ac",
+    "address": "0xdef02fa",
+    "value": "passwordField"
+  },
+  {
+    "use": "0x46bf804",
+    "address": "0xdef0308",
+    "value": "encryptedUsername"
+  },
+  {
+    "use": "0x46bf84c",
+    "address": "0xdef031a",
+    "value": "encryptedPassword"
+  },
+  {
+    "use": "0x46bf894",
+    "address": "0xdef032c",
+    "value": "formSubmitURL"
+  },
+  {
+    "use": "0x46bf8dc",
+    "address": "0xdef033a",
+    "value": "httpRealm"
+  },
+  {
+    "use": "0x46bf9ac",
+    "address": "0xcc20044",
+    "value": ""
+  },
+  {
+    "use": "0x46bfa98",
+    "address": "0xd979d66",
+    "value": "http://"
+  },
+  {
+    "use": "0x46bfd40",
+    "address": "0xd7e4ef8",
+    "value": "std::get: variant is valueless"
+  },
+  {
+    "use": "0x46bfd4c",
+    "address": "0xd7e4f18",
+    "value": "std::get: wrong alternative for variant"
+  }
+]
