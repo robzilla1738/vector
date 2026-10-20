@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
++++ b/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
+@@ -56,11 +56,31 @@
+     CHECK(profile_ && tab_model_ && Bookmarks());
+     CHECK(preview.parent() == &region);
+     Pins()->SetEntryDragCallbacks(
+-        base::BindRepeating(&Impl::SavedUpdate, weak_.GetWeakPtr()),
+-        base::BindRepeating(&Impl::SavedFinish, weak_.GetWeakPtr()),
++        base::BindRepeating(
++            [](base::WeakPtr<Impl> owner,
++               const VerticalPinnedTabEntriesView::EntryDragData& data,
++               const gfx::Rect& source,
++               const gfx::Point& pointer) -> std::optional<gfx::Rect> {
++              return owner ? owner->SavedUpdate(data, source, pointer)
++                           : std::nullopt;
++            },
++            weak_.GetWeakPtr()),
++        base::BindRepeating(
++            [](base::WeakPtr<Impl> owner,
++               const VerticalPinnedTabEntriesView::EntryDragData& data) {
++              return owner && owner->SavedFinish(data);
++            },
++            weak_.GetWeakPtr()),
+         base::BindRepeating(&Impl::SavedCleanup, weak_.GetWeakPtr()));
+     Bookmarks()->SetDragCallbacks(
+-        base::BindRepeating(&Impl::BookmarkUpdate, weak_.GetWeakPtr()),
++        base::BindRepeating(
++            [](base::WeakPtr<Impl> owner, const bookmarks::BookmarkNode* node,
++               const ui::ImageModel& image, const gfx::Rect& source,
++               const gfx::Point& pointer) {
++              return owner &&
++                     owner->BookmarkUpdate(node, image, source, pointer);
++            },
++            weak_.GetWeakPtr()),
+         base::BindRepeating(&Impl::BookmarkFinish, weak_.GetWeakPtr()),
+         base::BindRepeating(&Impl::BookmarkCleanup, weak_.GetWeakPtr()));
+     Bookmarks()->SetProjectionChangedCallback(

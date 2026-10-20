@@ -1,0 +1,6 @@
+{
+  "nativeInputSha256": "d0e0d9175177766535c41bfc015cd1a1303ef48faf98a1dbe82fa4fe20143a92",
+  "buildLogSha256": "a9914dcc055a9b55820a4cae043c54b5b3b296f6f61176a0b4622beec31029a4",
+  "diagnostic": "WeakPtrs can only bind to methods without return values",
+  "adapter": "noncapturing weak-aware lambda for3 nonvoid callbacks; existing void weak bindings unchanged"
+}
