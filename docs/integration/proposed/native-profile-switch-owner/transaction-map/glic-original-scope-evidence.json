@@ -1,0 +1,49 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "featureRecords": [
+    {
+      "name": "Glic",
+      "address": "0xec960f8",
+      "nameAddress": "0xda5097a",
+      "recordBytes": "7a09a50d000020000100000000000000",
+      "defaultState": 1
+    },
+    {
+      "name": "GlicActor",
+      "address": "0xec95eb8",
+      "nameAddress": "0xdd08df3",
+      "recordBytes": "f38dd00d000020000100000000000000",
+      "defaultState": 1
+    },
+    {
+      "name": "GlicActorUi",
+      "address": "0xec95f48",
+      "nameAddress": "0xdd090ad",
+      "recordBytes": "ad90d00d000020000100000000000000",
+      "defaultState": 1
+    }
+  ],
+  "featureStateProof": {
+    "range": "0x1192e4..0x119300",
+    "effect": "when override state is zero, loads feature+8, validates <2, returns equal-to-1"
+  },
+  "actorUiCheck": "0x3007e58..0x3007e74 checks actual Actor and ActorUi records through0x119280 before owner path",
+  "flagsMenu": {
+    "range": "0xe847fa0..0xe847fe0",
+    "identifier": "glic-actor",
+    "title": "Glic actor",
+    "description": "Enables the Glic actor.",
+    "enableSwitch": "enable-features",
+    "disableSwitch": "disable-features",
+    "bothValues": "GlicActor,GlicActorUi",
+    "valueAddress": "0xda2d683"
+  },
+  "limits": [
+    "Compiled defaults and actual checks proved, no process started.",
+    "Bounded string/ADRP feature-reference audit found no unconditional startup disable; dynamic command-line, flags state, policy and Finch overrides are not excluded.",
+    "Absence of a disable proof is not proof of runtime eligibility. Provider must use actual current target eligibility and cold state."
+  ],
+  "targetExecuted": false,
+  "ownerStateRead": false
+}
