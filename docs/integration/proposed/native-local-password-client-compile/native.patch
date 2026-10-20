@@ -1,0 +1,19 @@
+--- a/chrome/browser/password_manager/chrome_password_manager_client.cc
++++ b/chrome/browser/password_manager/chrome_password_manager_client.cc
+@@ -304,7 +304,7 @@
+   // disables Chromium save prompts through IsSavingAndFillingEnabled, without
+   // deleting saved credentials or affecting extension content scripts/proxies.
+   return false;
+-#endif
++#else
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+       profile && aux::EgressController::ForProfile(profile)->IsIsolatedPage(web_contents())) {
+@@ -345,6 +345,7 @@
+   }
+   return !ssl_errors &&
+          IsPasswordManagementEnabledForCurrentPage(origin.GetURL());
++#endif
+ }
+ 
+ bool ChromePasswordManagerClient::IsFieldFilledWithOtp(

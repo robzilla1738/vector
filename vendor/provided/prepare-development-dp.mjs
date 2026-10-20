@@ -121,7 +121,9 @@ export function prepareDevelopmentDp({ resourceRoot, boundaryReceiptPath, output
   copy(artifacts.get('aux-cli-launcher'),path.join(mac,'aux-cli'));
   changes.push({action:'Preserve supplied CLI SEA bytes at aux-cli-sea; install exact compiled fixed sibling wrapper',seaSha256:sha(path.join(mac,'aux-cli-sea')),wrapperSha256:sha(path.join(mac,'aux-cli'))});
   const info = path.join(cli,'Contents/Info.plist'), old = plist(info);
-  if(old.CFBundleExecutable!=='aux-cli'||old.CFBundleIdentifier!=='dev.aux.browser.cli')throw Error('Unexpected supplied CLI plist');
+  // Accept either verified packaging topology; preparation copies the same SEA
+  // and fixed launcher, avoiding a redundant full ordinary package.
+  if(!['aux-cli','aux-cli-sea'].includes(old.CFBundleExecutable)||old.CFBundleIdentifier!=='dev.aux.browser.cli')throw Error('Unexpected supplied CLI plist');
   const before=sha(info); fs.writeFileSync(info,xmlPlist({...old,CFBundleExecutable:'aux-cli-sea'}));changes.push({path:info,beforeSha256:before,afterSha256:sha(info),action:'CLI SEA becomes profile-bearing main; wrapper remains fixed sibling'});
   const carrier=path.join(root,'native/Aux Native Carrier.app');
   copy(artifacts.get('aux-native-carrier'),path.join(carrier,'Contents/MacOS/aux-native-carrier'));

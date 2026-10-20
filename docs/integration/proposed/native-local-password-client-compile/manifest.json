@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/password_manager/chrome_password_manager_client.cc",
+      "baselineSha256": "0f3b32d50e949c7e8a58303af85e2b2a5ccd5fd2a731385c2c3e9a2af973adde",
+      "outputSha256": "ea991631790cdb758442815ac5cfa11b5df3db97202a6990fc64bbf1b2cea948"
+    }
+  ]
+}

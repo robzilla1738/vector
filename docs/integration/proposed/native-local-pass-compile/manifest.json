@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "3bf369f590eced2b53545dced70a85d823c1938fd87914c557a9f48b250dfdbc",
+      "outputSha256": "b3fac97860e5200b9446d521af56588238039ab6fd61f09822195cf90bf03fba"
+    }
+  ]
+}
