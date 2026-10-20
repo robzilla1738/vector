@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1104,6 +1104,10 @@
+ 
+   if (enable_aux_browser && is_mac) {
+     deps += [ "//chrome/browser/extensions/api/aux_mini_popup" ]
++    sources += [
++      "views/frame/aux_profile_switch_request.cc",
++      "views/frame/aux_profile_switch_request.h",
++    ]
+   }
+ 
+   allow_circular_includes_from = [

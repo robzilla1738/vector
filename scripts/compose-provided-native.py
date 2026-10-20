@@ -181,6 +181,8 @@ steps.extend([
     ('native-profile-switch-glic-split-provider/native.patch', 'native-profile-switch-glic-split-provider/manifest.json'),
     ('native-agent-group-model/native.patch', 'native-agent-group-model/manifest.json'),
     ('native-agent-group-model/build-registration/native.patch', 'native-agent-group-model/build-registration/manifest.json'),
+    ('native-profile-switch-async-owner/native.patch', 'native-profile-switch-async-owner/manifest.json'),
+    ('native-profile-switch-async-owner/build-registration/native.patch', 'native-profile-switch-async-owner/build-registration/manifest.json'),
 ])
 
 if options.through:
