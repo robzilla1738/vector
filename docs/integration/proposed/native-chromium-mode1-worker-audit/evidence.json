@@ -1,0 +1,119 @@
+{
+  "imageSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "workerRange": {
+    "start": "0x4253e58",
+    "endExclusive": "0x4255660",
+    "sha256": "16509a9e2f9818e9e2638d4c4390bbf15d5fd7531f2438a680a6db68b2fbb61a"
+  },
+  "suppliedDecompilations": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/042534e8.c",
+      "sha256": "b6edefd2b936149e9f9aa19bfc5d3501bc38fd25485d05b7153f8f53408fb509"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    }
+  ],
+  "llvmSha256": "f4471b38769a12edbc360cfc0424371b26c18338a0d5930e6bf56aefa22678ff",
+  "observedNative": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "sha256": "11ec39622811e57dc9743a933717228912d467030edc99712fd0950a6ac4b52b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "sha256": "df13d6628cadc7d9a0ca446c2cf2ee1b2420ae6d5963ecb474bdf3cb47017c11"
+    }
+  ],
+  "mode1OwnedCalls": [
+    {
+      "site": "4253f44",
+      "callee": "42600fc"
+    },
+    {
+      "site": "4253fac",
+      "callee": "425fe90"
+    },
+    {
+      "site": "4254180",
+      "callee": "425bf70"
+    },
+    {
+      "site": "42541fc",
+      "callee": "425c084"
+    },
+    {
+      "site": "4254250",
+      "callee": "425bf70"
+    },
+    {
+      "site": "42542cc",
+      "callee": "425c084"
+    },
+    {
+      "site": "4254320",
+      "callee": "425bf70"
+    },
+    {
+      "site": "425439c",
+      "callee": "425c084"
+    },
+    {
+      "site": "4254460",
+      "callee": "4259984"
+    },
+    {
+      "site": "4254478",
+      "callee": "426be60"
+    },
+    {
+      "site": "42544b0",
+      "callee": "426b3c0"
+    },
+    {
+      "site": "4254770",
+      "callee": "4259adc"
+    },
+    {
+      "site": "4254780",
+      "callee": "4259ef0"
+    },
+    {
+      "site": "42548c4",
+      "callee": "425fe90"
+    },
+    {
+      "site": "425497c",
+      "callee": "4259690"
+    },
+    {
+      "site": "42549d4",
+      "callee": "425fe90"
+    },
+    {
+      "site": "4254b04",
+      "callee": "425a380"
+    },
+    {
+      "site": "4254b20",
+      "callee": "425b128"
+    },
+    {
+      "site": "4254b78",
+      "callee": "425fe90"
+    },
+    {
+      "site": "4254c14",
+      "callee": "425fe90"
+    },
+    {
+      "site": "4254d38",
+      "callee": "425fe90"
+    },
+    {
+      "site": "4254dd4",
+      "callee": "425fe90"
+    }
+  ]
+}
