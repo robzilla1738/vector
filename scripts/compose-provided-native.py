@@ -183,6 +183,8 @@ steps.extend([
     ('native-agent-group-model/build-registration/native.patch', 'native-agent-group-model/build-registration/manifest.json'),
     ('native-profile-switch-async-owner/native.patch', 'native-profile-switch-async-owner/manifest.json'),
     ('native-profile-switch-async-owner/build-registration/native.patch', 'native-profile-switch-async-owner/build-registration/manifest.json'),
+    ('native-agent-tabs-native-ui/native.patch', 'native-agent-tabs-native-ui/manifest.json'),
+    ('native-agent-tabs-native-ui/vertical-visibility/native.patch', 'native-agent-tabs-native-ui/vertical-visibility/manifest.json'),
 ])
 
 if options.through:

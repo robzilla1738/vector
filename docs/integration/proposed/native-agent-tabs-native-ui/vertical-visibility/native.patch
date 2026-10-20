@@ -1,0 +1,29 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -15,7 +15,7 @@
+ #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+ #include "chrome/browser/ui/views/frame/aux_sidebar_view.h"
+ #include "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h"
+-#include "ui/views/controls/button/image_button.h"
++#include "ui/views/controls/button/button.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+ #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
+@@ -164,7 +164,7 @@
+     }
+ 
+     layout.child_layouts.emplace_back(aux_pill_.get(), false, gfx::Rect());
+-    if (aux_agent_tabs_) {
++    if (aux_agent_tabs_ && aux_agent_tabs_->GetVisible()) {
+       const gfx::Size size = aux_agent_tabs_->GetPreferredSize();
+       layout.child_layouts.emplace_back(aux_agent_tabs_.get(), true,
+           gfx::Rect(std::max(0, (host_size.width() - size.width()) / 2),
+@@ -284,7 +284,7 @@
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
+     }
+ 
+-    if (aux_agent_tabs_) {
++    if (aux_agent_tabs_ && aux_agent_tabs_->GetVisible()) {
+       const gfx::Size size = aux_agent_tabs_->GetPreferredSize();
+       const int activity_width = aux_pill_active_ && aux_pill_
+           ? aux_pill_->GetPreferredSize().width() + 8 : 0;

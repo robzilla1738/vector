@@ -1,0 +1,3 @@
+# Preserve actual agent-control visibility in vertical layout
+
+The retained vertical container previously added the agent control with `visible:true` in both layout branches even after the real model hid it. Both branches now require the actual child visibility, matching the normal controls around them. Empty/absent marked groups therefore consume no layout space and are not made visible again by a layout pass. The include names the actual Button base returned by the reused control. No marker, count, placement or click behavior changes. Source-only followup against actual frozen shared inputs; shared native unchanged, compilation and live observation pending.

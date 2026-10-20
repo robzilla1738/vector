@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "baselineSha256": "f8040125430fd17ceee651685fe8ec93a54c1d76f8c5ceb45e7c6acf683f8b2b",
+      "outputSha256": "eefc4adc6eec4d8a5011d66415fca90b9c6aa4d9e12c01d3a9c11a2fcfabfc85"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}
