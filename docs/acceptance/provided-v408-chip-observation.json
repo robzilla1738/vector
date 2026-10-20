@@ -1,0 +1,179 @@
+{
+  "processProof": [
+    {
+      "pid": 38172,
+      "launcher": 38170,
+      "lineage": [
+        38172,
+        38171,
+        38170,
+        38168,
+        70622,
+        70558
+      ],
+      "actualExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v408-local/Aux.app/Contents/MacOS/Aux",
+      "sameExecutableBytes": true
+    }
+  ],
+  "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v408-local/Aux.app/Contents/MacOS/Aux",
+  "verifiedPids": [
+    38172
+  ],
+  "windows": [
+    {
+      "pid": 38172,
+      "windowId": 32596,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 617.0,
+        "width": 500.0,
+        "height": 500.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32595,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32591,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32589,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32588,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 435.0,
+        "y": 40.0,
+        "width": 614.0,
+        "height": 88.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32587,
+      "title": "about:blank",
+      "onscreen": true,
+      "layer": 0,
+      "bounds": {
+        "x": 22.0,
+        "y": 55.0,
+        "width": 1200.0,
+        "height": 961.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32594,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32593,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32592,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1728.0,
+        "height": 33.0
+      }
+    },
+    {
+      "pid": 38172,
+      "windowId": 32590,
+      "title": "",
+      "onscreen": false,
+      "layer": 0,
+      "bounds": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0
+      }
+    }
+  ],
+  "screenCapturePreflight": true,
+  "composition": "v408",
+  "fullBuildPassed": true,
+  "suppliedResources": 10803,
+  "nativeLeaves": 563,
+  "interactionTool": "mcp__cua_repl",
+  "profile": "disposable incognito profile",
+  "observed": [
+    "Exact candidate path bound after live executable and launcher lineage verification.",
+    "Toolbar chip still renders as two tiny vertical dots; icon-only action binding is source-correct but insufficient for visual correction.",
+    "Clicking actual toolbar Collapse Tabs changes both toolbar and sidebar accessible labels to Expand Tabs.",
+    "Clicking same toolbar action again restores Collapse Tabs labels and sidebar resize handle."
+  ],
+  "scope": "Action invocation/accessible state observed; desired chip icon rendering remains unresolved. Hover-retained body visibility is not claimed as completed collapse proof.",
+  "launcherPid": 38170,
+  "guardianPid": 38171,
+  "browserPid": 38172,
+  "launchSessionExitCode": 143,
+  "knownPidsAbsent": true,
+  "auxPortsClear": true,
+  "completeDescendantShutdownVerified": false,
+  "temporaryStateRetained": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-BqCyzv",
+  "installedAppChanged": false,
+  "fullUiParityAccepted": false,
+  "nativeRuntimeAcceptance": false
+}
