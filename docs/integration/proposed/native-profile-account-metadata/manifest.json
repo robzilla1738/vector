@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "applyAfter": "Actual frozen native232 profile_state baseline; no overlapping pending profile_transaction reader changes",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_account_metadata.cc",
+      "baselineSha256": null,
+      "outputSha256": "f1858b79c9cfbe105326a98d21b1924879b816ab4a16f721c2e12423b5ef0c58",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/aux/profile_account_metadata.h",
+      "baselineSha256": null,
+      "outputSha256": "4f9e8e96756194018e4ac7b9118b375042673dc92dcb1bab8242134e1eb16e0c",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.cc",
+      "baselineSha256": "7cef93381e75386f823e2db81ca5bffd0fe0bb2e058c332348b2fd9f184f30f6",
+      "outputSha256": "c39a7415c545a28c3ae704afa521f984186adcf5a1188e4d313831bb19fb9b6a",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/aux/profile_state.h",
+      "baselineSha256": "1204591b45ba242870d84f780de2d98d8f389bb51d0b14f1899300a1d5b4df65",
+      "outputSha256": "9832c3b5bf5baf17f4f7cff6b5341b65e9a9e1219580061be1fe1ee7fd21b0ae",
+      "newFile": false
+    }
+  ],
+  "registration": [
+    "chrome/browser/aux/profile_account_metadata.cc",
+    "chrome/browser/aux/profile_account_metadata.h"
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "testsCompiled": false,
+  "notes": [
+    "New metadata source depends only on base and existing profile_state target; no UI/browser/ProfileManager dependency",
+    "Existing security version and identity checks unchanged; email metadata does not grant authentication/browsing",
+    "Two focused disposable/pure gtests supplied for integrator, not executed by this lane"
+  ]
+}

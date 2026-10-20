@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "worker",
+      "rva": "0x4652ee0",
+      "bytes": 664,
+      "sha256": "7456933c276f74023047960ee87920b83ea331cf87dacb0fcd7b333ba9d30e7b",
+      "assemblySha256": "dfc0d5dfbb97ff8b1a5f41b3af9eb73e4c9017c3f9d89cd3da8e2a23ccec8a01"
+    },
+    {
+      "name": "reply",
+      "rva": "0x4653178",
+      "bytes": 368,
+      "sha256": "14051b6e2bcad12a1974cd92c6331a8016ae904903e52a54cf3e7dafcfada085",
+      "assemblySha256": "c3ae1b0e91ad53317b2e18164916793bbc39653b7d61712e5dfc5e8cb4df3acb"
+    },
+    {
+      "name": "first-insertion",
+      "rva": "0xc786ea0",
+      "bytes": 240,
+      "sha256": "318c50e383717d0f332f23f865b6190f1ead495d503a8eced6e2b30252644737",
+      "assemblySha256": "121c2043fa2213c2315e8b40d4d3580f6638a3d3a71b153795ad21c5a85482ab"
+    },
+    {
+      "name": "registry-parser",
+      "rva": "0x4100b88",
+      "bytes": 6872,
+      "sha256": "796387ef5b2a1fe5f44c9a0cb96956febb557eb84c50105a97388261b87aa643",
+      "assemblySha256": "625000ad49cb191adfb6b7543f78dc9194f19a7052caa313f2c13f72c632e899"
+    }
+  ],
+  "rea": {
+    "evidenceId": "ev_ac93e5235cdd3d8eb3b1f0abc8d6dbee706762223f1215f8c162e082b70bb92c",
+    "rawInputSha256": "7456933c276f74023047960ee87920b83ea331cf87dacb0fcd7b333ba9d30e7b",
+    "pseudocodeSha256": "70d0e2580f3d4c827d5c3c31b39afdf69812a73e85105896ec251ebd72fe00d7",
+    "limitations": [
+      "Bounded target omits external registry reader; full original LLVM plus supplied04100b88.c parser evidence supply its data layout"
+    ]
+  },
+  "suppliedParser": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04100b88.c",
+    "sha256": "703baff4a4c95fcff3f8fd752edec80bd9b96d1a115cae7848990cd81e55f096"
+  }
+}
