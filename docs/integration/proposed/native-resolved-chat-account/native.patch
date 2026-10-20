@@ -1,0 +1,113 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -8,6 +8,7 @@
+ #include "base/memory/ref_counted.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/time/time.h"
++#include "base/supports_user_data.h"
+ #include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/ui/simple_message_box.h"
+@@ -42,6 +43,17 @@
+ 
+ namespace aux {
+ namespace {
++constexpr char kResolvedAccountKey[] = "aux-resolved-chat-account";
++class ResolvedAccount final : public base::SupportsUserData::Data {
++ public:
++  ResolvedAccount(Profile& profile, int value)
++      : id(value), profile_id(GetProfileId(&profile)),
++        user(profile.GetPrefs()->GetString("aside.account_user_id")),
++        bound_id(profile.GetPrefs()->GetInteger("aside.account_id")) {}
++  const int id;
++  const std::string profile_id, user;
++  const int bound_id;
++};
+ bool MatchesEntry(content::NavigationEntry* entry, const GURL& target) {
+   return entry && (entry->GetURL() == target || entry->GetVirtualURL() == target);
+ }
+@@ -157,6 +169,7 @@
+       Fail();
+       return;
+     }
++    RememberResolvedChatAccount(*profile_, *id);
+     NavigateAccountRoute(*browser_, *id, suffix_);
+   }
+   void Fail() {
+@@ -170,7 +183,18 @@
+   std::unique_ptr<network::SimpleURLLoader> loader_;
+ };
+ }  // namespace
++void RememberResolvedChatAccount(Profile& profile, int account_id) {
++  if (!profile.IsOffTheRecord() && account_id >= 0)
++    profile.SetUserData(kResolvedAccountKey,
++                       std::make_unique<ResolvedAccount>(profile, account_id));
++}
+ int ChatAccountForProfile(Profile& profile) {
++  const auto* resolved = static_cast<ResolvedAccount*>(
++      profile.GetUserData(kResolvedAccountKey));
++  if (resolved && resolved->profile_id == GetProfileId(&profile) &&
++      resolved->user == profile.GetPrefs()->GetString("aside.account_user_id") &&
++      resolved->bound_id == profile.GetPrefs()->GetInteger("aside.account_id"))
++    return resolved->id;
+   if (!profile.IsOffTheRecord()) {
+     if (auto* prefs = profile.GetPrefs();
+         prefs && prefs->FindPreference("aside.account_id")) {
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.h
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.h
+@@ -6,8 +6,11 @@
+ class Profile;
+ namespace content { class WebContents; }
+ namespace aux {
+-// Original nonnegative account pref, then stored display-order profile index,
+-// then zero. This route selection is not an authorization or Vault bypass.
++// Profile-owned presentation cache populated only from a real resolved account
++// or validated registry binding. Does not change cloud binding preferences or
++// grant authorization; account/profile changes invalidate the cached selection.
++void RememberResolvedChatAccount(Profile& profile, int account_id);
++// Prefer actual resolved account, then original source preference/index fallback.
+ int ChatAccountForProfile(Profile& profile);
+ bool IsNewChatDocument(content::WebContents&, Profile&);
+ bool CanOpenNewChat(BrowserWindowInterface& browser);
+--- a/chrome/browser/ui/views/frame/aux_chats_transport.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_transport.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/aux/installation_auth.h"
+ #include "chrome/browser/aux/profile_state.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "components/prefs/pref_service.h"
+@@ -89,12 +90,25 @@
+ }
+ void AuxChatsTransport::ResolveAccount(AccountDone done) {
+   if (!ScopeCurrent()) return;
+-  // Original463df94/463befc use41035c0 only after the actual account pref.
+-  // That helper is a display-order profile index, not currentAccountId from
+-  // the daemon registry. Keep completion asynchronous like the existing API.
+-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+-      base::BindOnce(std::move(done),
+-          std::optional<int>(ChatAccountForProfile(*profile_))));
++  const std::string profile_id = GetProfileId(profile_.get());
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&ReadProfileSecurity, StateHome(), profile_path_, profile_id),
++      base::BindOnce(
++          [](base::WeakPtr<AuxChatsTransport> self, std::string profile_id,
++             AccountDone done, ProfileSecurityState state) {
++            if (!self || !self->ScopeCurrent()) return;
++            std::optional<int> account;
++            if (GetProfileId(self->profile_.get()) == profile_id &&
++                state.bound && state.local_only.has_value() &&
++                state.binding_error.empty() && state.account_id) {
++              account = state.account_id;
++              RememberResolvedChatAccount(*self->profile_, *account);
++            }
++            // Read only real profile/account metadata, never Vault lock state.
++            // The subsequent transport request still obtains actual daemon auth.
++            std::move(done).Run(account);
++          }, weak_.GetWeakPtr(), profile_id, std::move(done)));
+ }
+ void AuxChatsTransport::Refresh() {
+   if (!ScopeCurrent() || poll_pending_) return;

@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "3c052f1dbf4ff979bd4631da3749af96cc305df7cd1efbb005240d900359d26b",
+      "outputSha256": "2ed50b6c244ab8fc86f6777902e90e9f6b53b0c143d4c203444625b81193808b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.h",
+      "baselineSha256": "98a542e48ab9a968f47b0dd0e63592ac60a7fd6b8c6e850651a6397351d74833",
+      "outputSha256": "b8eee39871845286bf6bbc72997396c98d68a45707634b24e97e43f115a953e4"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "baselineSha256": "066713397f30eb9178db93b99e36d4ea5a1e87ed6d56a5a519d9eb9f0fa33ba8",
+      "outputSha256": "0283536265bf7c22de487c4a4273bf2c08b459c3c41faacec0bdd63fc58fe341"
+    }
+  ]
+}
