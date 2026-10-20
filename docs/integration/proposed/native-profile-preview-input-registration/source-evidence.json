@@ -1,0 +1,49 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "extracts": [
+    {
+      "file": "added-to-widget.asm",
+      "start": "0x33f548c",
+      "stop": "0x33f54e8",
+      "bytesSha256": "b1ec31995d37cef7d231ea16a94837444b803c73cbf1ab0d92f5168b20831e92",
+      "extractSha256": "fc5d1f7501eb6c510b2e4f717d8a98c54a606cc5545e4bc71836865b33730c06"
+    },
+    {
+      "file": "removed-from-widget.asm",
+      "start": "0x463f920",
+      "stop": "0x463f960",
+      "bytesSha256": "a1322b1321eaee3495f57807bc871f4b4be944f2e429d9c665f7af4b1e78f335",
+      "extractSha256": "4dbbe0128f144b78c84406e081bfc2aac7e52026a4202d9f1af543524d0159a2"
+    },
+    {
+      "file": "inline-owner.asm",
+      "start": "0x37e015c",
+      "stop": "0x37e0190",
+      "bytesSha256": "ef5e94b8e0a7b5d12f218a99f715e840cdf7b90dc869f360e800408128f58e82",
+      "extractSha256": "d99c8c3629d96ce7369adaa203342a50bc78d028fe4746fc981a430864ab3697"
+    },
+    {
+      "file": "handler-destructor.asm",
+      "start": "0x4635098",
+      "stop": "0x4635130",
+      "bytesSha256": "973fb4fd44de57dda10654de18bf778144f640370dc07b6039715f889da34385",
+      "extractSha256": "015e7bf734220f67d3249b001a2bc6c13140bf0c320c344bfd39ced1ce6a592b"
+    }
+  ],
+  "originalVtable": {
+    "addressPoint": "0xe508db0",
+    "mouseSlot": "0xe508dd0",
+    "mouseTarget": "0x464c280",
+    "scrollSlot": "0xe508dd8",
+    "scrollTarget": "0x464c418"
+  },
+  "priority": {
+    "originalValue": 2,
+    "current": "ui::EventTarget::Priority::kDefault"
+  },
+  "remaining": [
+    "Actual mode/collapse callback and region mounting still not installed."
+  ]
+}

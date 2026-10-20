@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "base": "0e852edbc actual input output; no region mount overlap",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_input.h",
+      "baselineSha256": "d7d639bab3da439e82bf1cc266a062f1372f7005039d5ea34980cd90f323f100",
+      "outputSha256": "7a857eb9254c37a4569bfe8cd3abcc38a18fb177eab96b5e9f76b10eb59c2e55",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-input/port/chrome/browser/ui/views/frame/aux_profile_preview_input.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+      "baselineSha256": "5c557192541198955692ecaa00e06ab29791a6fd412d2fc62ecb5487001c1121",
+      "outputSha256": "72d845c726d86b9ca7a4a2576e5e73a8d39941c5ee16a7cb396fe96eefc4e77f",
+      "baselineSource": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/docs/integration/proposed/native-profile-preview-input/port/chrome/browser/ui/views/frame/aux_profile_preview_input.cc"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "inputTriggerInstalled": false
+}

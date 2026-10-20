@@ -1,0 +1,63 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_input.h
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_input.h
+@@ -26,6 +26,10 @@
+       VerticalTabStripScrollView& scroll, ProfilePreviewRegionOwner& preview,
+       base::RepeatingCallback<bool()> layout_admitted);
+   ~ProfilePreviewInput() override;
++  // Actual region AddedToWidget/RemovedFromWidget call these. Only its own
++  // Widget's root EventTarget is observed, at original default priority.
++  bool AttachToWidget();
++  void DetachFromWidget();
+   void OnScrollEvent(ui::ScrollEvent* event) override;
+   void OnMouseEvent(ui::MouseEvent* event) override;
+   void AnimationProgressed(const gfx::Animation* animation) override;
+@@ -55,6 +59,7 @@
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   views::ViewTracker region_;
+   views::ViewTracker scroll_;
++  views::ViewTracker event_root_;
+   base::WeakPtr<ProfilePreviewRegionOwner> preview_;
+   base::RepeatingCallback<bool()> layout_admitted_;
+   std::vector<base::FilePath> roster_;
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
+@@ -23,6 +23,7 @@
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.h"
+ #include "ui/events/event.h"
+ #include "ui/events/event_constants.h"
++#include "ui/events/event_target.h"
+ #include "ui/views/view.h"
+ #include "ui/views/view_utils.h"
+ #include "ui/views/widget/widget.h"
+@@ -57,7 +58,30 @@
+   // Original37e0288 tween1, the actual SlideAnimation EASE_OUT default.
+   animation_.SetTweenType(gfx::Tween::EASE_OUT);
+ }
+-ProfilePreviewInput::~ProfilePreviewInput() = default;
++ProfilePreviewInput::~ProfilePreviewInput() {
++  DetachFromWidget();
++}
++bool ProfilePreviewInput::AttachToWidget() {
++  auto* region = region_.view();
++  auto* widget = region ? region->GetWidget() : nullptr;
++  auto* root = widget ? widget->GetRootView() : nullptr;
++  if (!root) {
++    return false;
++  }
++  if (event_root_.view() == root) {
++    return true;
++  }
++  DetachFromWidget();
++  event_root_.SetView(root);
++  root->AddPreTargetHandler(this, ui::EventTarget::Priority::kDefault);
++  return true;
++}
++void ProfilePreviewInput::DetachFromWidget() {
++  if (auto* root = event_root_.view()) {
++    root->RemovePreTargetHandler(this);
++    event_root_.SetView(nullptr);
++  }
++}
+ 
+ bool ProfilePreviewInput::idle() const {
+   return !active_ && !committing_ && !animation_.is_animating() &&

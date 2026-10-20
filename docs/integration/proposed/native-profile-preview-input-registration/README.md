@@ -1,0 +1,9 @@
+# Original Widget-root input registration
+
+Apply after0e852edbc. The exact original inline event-handler object begins at region+bc0; owner pointer+28 is region+be8. Its vtablee508db0 has real Mouse464c280 and Scroll464c418 overrides, with ordinary EventHandler dispatch elsewhere. AddedToWidget33f548c..54e4 resolves its actual Widget root View and pushes the handler/priority2 into that root's EventTarget pre-target list. Priority2 is current kDefault. RemovedFromWidget463f920..95c removes the SAME handler from the SAME real root before region teardown. This is neither a nativewindow/global listener nor a renderer event replacement.
+
+The input object now exposes AttachToWidget/DetachFromWidget with a genuine root ViewTracker. Repeated attachment to the same live root does not duplicate handlers; reparenting removes the old registration first. Removal and destructor detach the actual existing root when alive. EventHandler's original/current dispatcher lifetime bookkeeping remains intact. No UI events or target app were executed to test this source port.
+
+Root's separate region mount must create the actual input owner with genuine mode/collapse/hover/retained/expansion admission, call AttachToWidget in its real AddedToWidget after the source base call, and DetachFromWidget before the real removal/base teardown. If that region creates the input lazily while already attached, it calls AttachToWidget at that actual creation point. No unconditional admission binding or global handler is permitted. The source metadata/preview-cell binding remains separate from the actual direct-menu free Dispatch.
+
+Only the two new input files change relative to0e852 output. No region/header file or GN dependency changes. Independent2-file replay and original static byte/extract pins pass. The mount is still not installed by this proposal; no native compile, gesture, screenshot, OS operation or full profile UI acceptance is claimed.
