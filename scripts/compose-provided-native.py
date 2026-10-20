@@ -160,6 +160,7 @@ steps.extend([
     ('native-profile-switch-owner/transaction-map/sync-model-profile-transfer.patch', 'native-profile-switch-owner/transaction-map/sync-model-profile-transfer-manifest.json'),
     ('native-profile-switch-owner/transaction-map/sync-cohort-validation.patch', 'native-profile-switch-owner/transaction-map/sync-cohort-validation-manifest.json'),
     ('native-profile-switch-data-protection/native.patch', 'native-profile-switch-data-protection/manifest.json'),
+    ('native-agent-tabs-layout/native.patch', 'native-agent-tabs-layout/manifest.json'),
 ])
 
 if options.through:
