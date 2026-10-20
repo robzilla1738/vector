@@ -1,0 +1,82 @@
+[
+  {
+    "role": "kSurfacePrimary",
+    "id": 214,
+    "rva": "0x35e6d68",
+    "bytes": 16,
+    "resultRegister": 21,
+    "dark": "0x14fafafa",
+    "light": "0xffffffff",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSurfaceBorder",
+    "id": 215,
+    "rva": "0x35e6e40",
+    "bytes": 24,
+    "resultRegister": 22,
+    "dark": "0x26fafafa",
+    "light": "0x1a0a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSurfaceBorderStrong",
+    "id": 216,
+    "rva": "0x35e6f14",
+    "bytes": 24,
+    "resultRegister": 21,
+    "dark": "0x33fafafa",
+    "light": "0x260a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kPrimaryForeground",
+    "id": 221,
+    "rva": "0x35e730c",
+    "bytes": 24,
+    "resultRegister": 22,
+    "dark": "0xd9fafafa",
+    "light": "0xd90a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSecondaryForeground",
+    "id": 222,
+    "rva": "0x35e73e0",
+    "bytes": 24,
+    "resultRegister": 27,
+    "dark": "0x8cfafafa",
+    "light": "0x8c0a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSidebarMutedForeground",
+    "id": 226,
+    "rva": "0x35e7724",
+    "bytes": 24,
+    "resultRegister": 23,
+    "dark": "0x73fafafa",
+    "light": "0x730a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kMenuHover",
+    "id": 248,
+    "rva": "0x35e8764",
+    "bytes": 24,
+    "resultRegister": 21,
+    "dark": "0x1afafafa",
+    "light": "0x140a0a0a",
+    "seedRegister23": null
+  },
+  {
+    "role": "kSidebarHover",
+    "id": 247,
+    "rva": "0x35e7240",
+    "bytes": 16,
+    "resultRegister": 22,
+    "dark": "0x14fafafa",
+    "light": "0x140a0a0a",
+    "seedRegister23": "0x14fafafa"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-applied-not-compiled",
+  "applyAfter": "native-agent-tabs-native-ui 1a23513fa (root54549077c), disjoint root vertical visibility154",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc",
+      "baselineSha256": "db507b69e4682f65334735c544397a8a37ece8788ce5bccb24281749b41c992a",
+      "outputSha256": "4e38104c8543ee251115dd22b1a9e1ad39aec16540dd582c5910359f5468fffd"
+    }
+  ]
+}

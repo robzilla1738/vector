@@ -1,0 +1,362 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_tabs_bubble.cc
+@@ -4,15 +4,18 @@
+ #include "chrome/browser/ui/views/frame/aux_agent_tabs_bubble.h"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <optional>
+ #include <utility>
+ #include <vector>
+ 
++#include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/no_destructor.h"
+ #include "base/scoped_observation.h"
+ #include "base/strings/string_number_conversions.h"
++#include "cc/paint/paint_flags.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tab_ui_helper.h"
+ #include "chrome/browser/ui/tabs/tab_group_features.h"
+@@ -30,9 +33,12 @@
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/color/color_id.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/color_utils.h"
+ #include "ui/gfx/font.h"
+ #include "ui/gfx/font_list.h"
+ #include "ui/gfx/image/image.h"
++#include "ui/gfx/scoped_canvas.h"
+ #include "ui/gfx/vector_icon_types.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/border.h"
+@@ -196,17 +202,99 @@
+   return *owners;
+ }
+ 
++// Values recovered from the supplied native mixer, not155 ColorId numbers.
++enum class AgentTabsColor {
++  kSurfacePrimary,
++  kSurfaceBorder,
++  kSurfaceBorderStrong,
++  kPrimaryForeground,
++  kSecondaryForeground,
++  kSidebarMutedForeground,
++  kSidebarHover,
++  kMenuHover,
++};
++
++SkColor ResolveColor(const views::View* view, AgentTabsColor role) {
++  CHECK(view->GetWidget());
++  const bool dark = view->GetWidget()->GetColorMode() ==
++                    ui::ColorProviderKey::ColorMode::kDark;
++  switch (role) {
++    case AgentTabsColor::kSurfacePrimary:
++      return dark ? 0x14fafafa : 0xffffffff;
++    case AgentTabsColor::kSurfaceBorder:
++      return dark ? 0x26fafafa : 0x1a0a0a0a;
++    case AgentTabsColor::kSurfaceBorderStrong:
++      return dark ? 0x33fafafa : 0x260a0a0a;
++    case AgentTabsColor::kPrimaryForeground:
++      return dark ? 0xd9fafafa : 0xd90a0a0a;
++    case AgentTabsColor::kSecondaryForeground:
++      return dark ? 0x8cfafafa : 0x8c0a0a0a;
++    case AgentTabsColor::kSidebarMutedForeground:
++      return dark ? 0x73fafafa : 0x730a0a0a;
++    case AgentTabsColor::kSidebarHover:
++      // The original mixer aliases SidebarItemBackgroundHover247 to220.
++      return dark ? 0x14fafafa : 0x140a0a0a;
++    case AgentTabsColor::kMenuHover:
++      return dark ? 0x1afafafa : 0x140a0a0a;
++  }
++}
++
++class AgentTabsLabel : public views::Label {
++  METADATA_HEADER(AgentTabsLabel, views::Label)
++ public:
++  AgentTabsLabel(const std::u16string& text, AgentTabsColor role)
++      : views::Label(text), role_(role) {}
++  void OnThemeChanged() override {
++    views::Label::OnThemeChanged();
++    if (GetWidget()) {
++      SetEnabledColor(ResolveColor(this, role_));
++    }
++  }
++
++ private:
++  const AgentTabsColor role_;
++};
++BEGIN_METADATA(AgentTabsLabel)
++END_METADATA
++
+ std::unique_ptr<views::Label> MakeLabel(const std::u16string& text,
+                                         int size,
+                                         gfx::Font::Weight weight,
+-                                        int line_height) {
+-  auto label = std::make_unique<views::Label>(text);
++                                        int line_height,
++                                        AgentTabsColor role) {
++  auto label = std::make_unique<AgentTabsLabel>(text, role);
+   label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   label->SetFontList(label->font_list().Derive(
+       size - label->font_list().GetFontSize(), gfx::Font::NORMAL, weight));
+   label->SetLineHeight(line_height);
+   return label;
+ }
++
++class AgentTabsSeparator : public views::Separator {
++  METADATA_HEADER(AgentTabsSeparator, views::Separator)
++ public:
++  void OnPaint(gfx::Canvas* canvas) override {
++    // Keep155 Separator's pixel alignment, with the recovered private color.
++    views::View::OnPaint(canvas);
++    gfx::ScopedCanvas scoped_canvas(canvas);
++    const gfx::Insets insets = GetInsets();
++    const gfx::Rect bounds = GetContentsBounds();
++    const float scale = canvas->UndoDeviceScaleFactor();
++    const int x = insets.left() == 0 ? std::floor(bounds.x() * scale)
++                                     : std::ceil(bounds.x() * scale);
++    const int y = insets.top() == 0 ? std::floor(bounds.y() * scale)
++                                    : std::ceil(bounds.y() * scale);
++    const int right = insets.right() == 0 ? std::ceil(bounds.right() * scale)
++                                          : std::floor(bounds.right() * scale);
++    const int bottom = insets.bottom() == 0
++                           ? std::ceil(bounds.bottom() * scale)
++                           : std::floor(bounds.bottom() * scale);
++    canvas->FillRect({x, y, std::max(1, right - x), std::max(1, bottom - y)},
++                     ResolveColor(this, AgentTabsColor::kSurfaceBorder));
++  }
++};
++BEGIN_METADATA(AgentTabsSeparator)
++END_METADATA
+ 
+ void ConfigureButton(views::Button* button, int radius) {
+   button->SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
+@@ -242,7 +330,8 @@
+                                       : ui::ImageModel::FromImage(image));
+     const auto title_text = TabUIHelper::From(tab)->GetTitle();
+     auto* title =
+-        AddChildView(MakeLabel(title_text, 14, gfx::Font::Weight::NORMAL, 20));
++        AddChildView(MakeLabel(title_text, 14, gfx::Font::Weight::NORMAL, 20,
++                               AgentTabsColor::kPrimaryForeground));
+     title->SetProperty(
+         views::kFlexBehaviorKey,
+         views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+@@ -256,8 +345,42 @@
+     close->GetViewAccessibility().SetName(u"Close tab");
+     close_ = AddChildView(std::move(close));
+     close_->SetVisible(false);
+-  }
+-
++    if (image.IsEmpty()) {
++      fallback_icon_ = favicon;
++    }
++  }
++
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
++    return gfx::Size(217, 32);
++  }
++  void OnThemeChanged() override {
++    views::Button::OnThemeChanged();
++    if (!GetWidget()) {
++      return;
++    }
++    const auto color = ResolveColor(this, AgentTabsColor::kSecondaryForeground);
++    if (fallback_icon_) {
++      fallback_icon_->SetImage(
++          ui::ImageModel::FromVectorIcon(kGlobeIcon, color, 16));
++    }
++    for (const auto state :
++         {STATE_NORMAL, STATE_HOVERED, STATE_PRESSED, STATE_DISABLED}) {
++      close_->SetImageModel(state, ui::ImageModel::FromVectorIcon(
++                                       vector_icons::kCloseIcon, color, 16));
++    }
++  }
++  void OnPaint(gfx::Canvas* canvas) override {
++    if (!GetColorProvider()) {
++      return;
++    }
++    auto* manager = GetFocusManager();
++    if (IsMouseHovered() || (manager && Contains(manager->GetFocusedView()))) {
++      cc::PaintFlags flags;
++      flags.setAntiAlias(true);
++      flags.setColor(ResolveColor(this, AgentTabsColor::kMenuHover));
++      canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
++    }
++  }
+   void AddedToWidget() override {
+     views::Button::AddedToWidget();
+     focus_observation_.Observe(GetFocusManager());
+@@ -295,6 +418,7 @@
+     close_->SetVisible(
+         IsMouseHovered() ||
+         (focus_manager && Contains(focus_manager->GetFocusedView())));
++    SchedulePaint();
+   }
+   void Activate() {
+     auto* tab = tab_.Get();
+@@ -316,10 +440,42 @@
+   const tabs::TabHandle tab_;
+   const base::WeakPtr<TabStrip> tab_strip_;
+   raw_ptr<views::ImageButton> close_ = nullptr;
++  raw_ptr<views::ImageView> fallback_icon_ = nullptr;
+   base::ScopedObservation<views::FocusManager, views::FocusChangeListener>
+       focus_observation_{this};
+ };
+ BEGIN_METADATA(AgentTabsRow)
++END_METADATA
++
++class AgentTabsCommandRow : public views::Button {
++  METADATA_HEADER(AgentTabsCommandRow, views::Button)
++ public:
++  explicit AgentTabsCommandRow(PressedCallback callback)
++      : views::Button(std::move(callback)) {}
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
++    return gfx::Size(217, 32);
++  }
++  void OnFocus() override {
++    views::Button::OnFocus();
++    SchedulePaint();
++  }
++  void OnBlur() override {
++    views::Button::OnBlur();
++    SchedulePaint();
++  }
++  void OnPaint(gfx::Canvas* canvas) override {
++    if (!GetColorProvider()) {
++      return;
++    }
++    if (IsMouseHovered() || HasFocus()) {
++      cc::PaintFlags flags;
++      flags.setAntiAlias(true);
++      flags.setColor(ResolveColor(this, AgentTabsColor::kMenuHover));
++      canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
++    }
++  }
++};
++BEGIN_METADATA(AgentTabsCommandRow)
+ END_METADATA
+ 
+ class AgentTabsBubble : public views::BubbleDialogDelegateView,
+@@ -338,6 +494,7 @@
+     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+     set_margins(gfx::Insets());
+     set_corner_radius(10);
++    set_fixed_width(225);
+     SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+     auto* header = AddChildView(std::make_unique<views::View>());
+@@ -345,10 +502,11 @@
+         views::CreateEmptyBorder(gfx::Insets::TLBR(10, 12, 8, 12)));
+     header->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+-    header->AddChildView(
+-        MakeLabel(u"Agent Tabs", 14, gfx::Font::Weight::MEDIUM, 20));
++    header->AddChildView(MakeLabel(u"Agent Tabs", 14, gfx::Font::Weight::MEDIUM,
++                                   20, AgentTabsColor::kPrimaryForeground));
+     header->AddChildView(MakeLabel(u"Background tabs opened for work", 12,
+-                                   gfx::Font::Weight::NORMAL, 18));
++                                   gfx::Font::Weight::NORMAL, 18,
++                                   AgentTabsColor::kSidebarMutedForeground));
+     AddSeparator();
+     rows_ = AddChildView(std::make_unique<views::View>());
+     rows_->SetBorder(views::CreateEmptyBorder(gfx::Insets(4)));
+@@ -359,15 +517,16 @@
+     footer->SetBorder(views::CreateEmptyBorder(gfx::Insets(4)));
+     footer->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetOrientation(views::LayoutOrientation::kVertical);
+-    auto close_all = std::make_unique<views::Button>(base::BindRepeating(
++    auto close_all = std::make_unique<AgentTabsCommandRow>(base::BindRepeating(
+         &AgentTabsBubble::CloseAll, base::Unretained(this)));
+     ConfigureButton(close_all.get(), 8);
+     close_all->SetBorder(
+         views::CreateEmptyBorder(gfx::Insets::TLBR(0, 8, 0, 8)));
+     close_all->SetLayoutManager(std::make_unique<views::FlexLayout>())
+         ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+-    close_all->AddChildView(
+-        MakeLabel(u"Close all", 14, gfx::Font::Weight::NORMAL, 20));
++    close_all->AddChildView(MakeLabel(u"Close all", 14,
++                                      gfx::Font::Weight::NORMAL, 20,
++                                      AgentTabsColor::kPrimaryForeground));
+     close_all->GetViewAccessibility().SetName(u"Close all");
+     footer->AddChildView(std::move(close_all));
+     observation_.Observe(model_);
+@@ -400,7 +559,7 @@
+ 
+  private:
+   void AddSeparator() {
+-    auto* separator = AddChildView(std::make_unique<views::Separator>());
++    auto* separator = AddChildView(std::make_unique<AgentTabsSeparator>());
+     separator->SetOrientation(views::Separator::Orientation::kHorizontal);
+     separator->SetBorder(
+         views::CreateEmptyBorder(gfx::Insets::TLBR(0, 4, 0, 4)));
+@@ -461,12 +620,14 @@
+         ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter)
+         .SetCollapseMargins(true)
+         .SetDefault(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 6));
+-    auto* icon = AddChildView(std::make_unique<views::ImageView>());
+-    icon->SetImageSize(gfx::Size(16, 16));
+-    icon->SetImage(
++    icon_ = AddChildView(std::make_unique<views::ImageView>());
++    icon_->SetImageSize(gfx::Size(16, 16));
++    icon_->SetImage(
+         ui::ImageModel::FromVectorIcon(kWindowSparkleIcon, ui::kColorIcon, 16));
+-    AddChildView(MakeLabel(u"Agent Tabs", 14, gfx::Font::Weight::MEDIUM, 20));
+-    count_ = AddChildView(MakeLabel(u"", 12, gfx::Font::Weight::MEDIUM, 18));
++    AddChildView(MakeLabel(u"Agent Tabs", 14, gfx::Font::Weight::MEDIUM, 20,
++                           AgentTabsColor::kSecondaryForeground));
++    count_ = AddChildView(MakeLabel(u"", 12, gfx::Font::Weight::MEDIUM, 18,
++                                    AgentTabsColor::kSidebarMutedForeground));
+     count_->SetHorizontalAlignment(gfx::ALIGN_CENTER);
+     count_->SetPreferredSize(gfx::Size(14, 18));
+     count_->SetProperty(views::kMarginsKey, gfx::Insets());
+@@ -474,6 +635,39 @@
+     GetViewAccessibility().SetName(u"Agent Tabs");
+     observation_.Observe(model_);
+     Refresh();
++  }
++  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
++    return gfx::Size(126, 28);
++  }
++  void OnThemeChanged() override {
++    views::Button::OnThemeChanged();
++    if (GetWidget()) {
++      icon_->SetImage(ui::ImageModel::FromVectorIcon(
++          kWindowSparkleIcon,
++          ResolveColor(this, AgentTabsColor::kSecondaryForeground), 16));
++    }
++  }
++  void OnPaint(gfx::Canvas* canvas) override {
++    if (!GetColorProvider()) {
++      return;
++    }
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    if (IsMouseHovered() || GetState() == STATE_PRESSED) {
++      flags.setColor(ResolveColor(this, AgentTabsColor::kSidebarHover));
++      canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
++    } else if (GetWidget()->GetColorMode() !=
++               ui::ColorProviderKey::ColorMode::kDark) {
++      flags.setColor(SkColorSetA(
++          ResolveColor(this, AgentTabsColor::kSurfacePrimary), 0x4d));
++      canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
++    }
++    flags.setColor(ResolveColor(this, AgentTabsColor::kSurfaceBorderStrong));
++    flags.setStyle(cc::PaintFlags::kStroke_Style);
++    flags.setStrokeWidth(1);
++    gfx::RectF border(GetLocalBounds());
++    border.Inset(0.5f);
++    canvas->DrawRoundRect(border, 10, flags);
+   }
+   ~AgentTabsButton() override { CloseBubble(); }
+   void OnTabStripModelChanged(TabStripModel*,
+@@ -535,6 +729,7 @@
+   raw_ptr<TabStripModel> model_;
+   const base::WeakPtr<TabStrip> tab_strip_;
+   raw_ptr<views::Label> count_ = nullptr;
++  raw_ptr<views::ImageView> icon_ = nullptr;
+   std::optional<tab_groups::TabGroupId> group_;
+   base::WeakPtr<views::Widget> widget_;
+   base::ScopedObservation<TabStripModel, TabStripModelObserver> observation_{

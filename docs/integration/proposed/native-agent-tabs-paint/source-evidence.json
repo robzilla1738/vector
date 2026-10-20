@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "framework": {
+    "path": "/Applications/Aside.app/Contents/Frameworks/Aside Framework.framework/Versions/1.0.928.1/Aside Framework",
+    "sha256": "0338d5517ac8910ff0f821f573e0b297107e0df6d914c3989986051ca6b745db",
+    "arm64Sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/color/color_provider_source.h",
+      "sha256": "38bf63410c571d5f2506ddef06fb8ab5637cbb0b5b85352bd32130992050bff0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/color/color_provider_key.h",
+      "sha256": "85a287e8cb11ff5f107cb676743ee567e7b681d78b3bcf2f35b1252419aedd5d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/separator.cc",
+      "sha256": "f4af4b83d843d7e5b27fca95c3e3b4b787980be0148d618d590b2b8ba490243c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/window/dialog_client_view.cc",
+      "sha256": "55e6445071dcd50eeeb8f4633600fa96fcd8cde30a046452f4d933b77d583878"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/window/dialog_delegate.h",
+      "sha256": "4a40b29fd9bb92ea8b8f71250819d2f39dbfc6a139e5096fcb7bfaa619760164"
+    }
+  ],
+  "functions": [
+    {
+      "name": "main button paint",
+      "rva": "0x468648c",
+      "bytes": 964,
+      "sha256": "2866f4140065ce852b781cc1932192d9ab55cb80aec64733c0218fd029fb277d"
+    },
+    {
+      "name": "row paint",
+      "rva": "0x4689690",
+      "bytes": 728,
+      "sha256": "eaf989194609acc39199fee9939bfb069046aa8a9d15871b0267614cee41a069"
+    },
+    {
+      "name": "command paint",
+      "rva": "0x4688c10",
+      "bytes": 480,
+      "sha256": "45809d23ecbaba6a2e44a1135f8095d79d404ab00558ed8f77a59f160dc1e7bb"
+    },
+    {
+      "name": "button preferred size",
+      "rva": "0x4686480",
+      "bytes": 12,
+      "sha256": "4a1819eab8cda9992815fa1619efb8eaed02b78b4e18ba6bcdc8f1c9030c1109"
+    },
+    {
+      "name": "row and command preferred size",
+      "rva": "0x4688c04",
+      "bytes": 12,
+      "sha256": "06b0a7b4e1e76383634b0fe3e6e63e1f08c2735af27c0088d86aafbfb79e5a15"
+    },
+    {
+      "name": "palette base and foreground constants",
+      "rva": "0x35e6d40",
+      "bytes": 2740,
+      "sha256": "33480004ce57240d421bc25389d1cb51dd6ea63e21c3aa1a46e6cb8fa19e68e4"
+    },
+    {
+      "name": "palette menu hover",
+      "rva": "0x35e8764",
+      "bytes": 200,
+      "sha256": "6994e337c7f3ac7e17b9949523a073f79475e6ab539ffff6f31122473db18422"
+    },
+    {
+      "name": "palette sidebar hover alias",
+      "rva": "0x35e97ac",
+      "bytes": 188,
+      "sha256": "0a6d2d0c736dad62029f6d871d5faa86cffbd892f9dd4c1b836f94c1fcb9987a"
+    },
+    {
+      "name": "palette alias invoke",
+      "rva": "0x3a8ba98",
+      "bytes": 12,
+      "sha256": "7dc400a2872c2a7200857e0bc36434d47704cae40125ca80a2ea2aaddd040599"
+    },
+    {
+      "name": "palette alias invoke binding",
+      "rva": "0x35e8b6c",
+      "bytes": 8,
+      "sha256": "370fc69f1f9768344af7cb6fccdfa71e865ca753836decbb6da76a3a2577b32b"
+    },
+    {
+      "name": "palette caller one key",
+      "rva": "0x367f9c0",
+      "bytes": 64,
+      "sha256": "01f9e247ac10f29d785f32fd45cba618fe2173785042f0fedc92314d767be399"
+    },
+    {
+      "name": "palette caller two key",
+      "rva": "0x370c240",
+      "bytes": 64,
+      "sha256": "a07b00cc38ce0c353e48aab3bebf7cd3e9a5cab1008558c78c6ca7338dcf2e50"
+    },
+    {
+      "name": "original preferred size fixed width consumer",
+      "rva": "0xa6ea180",
+      "bytes": 508,
+      "sha256": "4c6d140dfbbec0c7ee9282f7d2c4da75724c710c8dee03c2b6ccbe063ed88a9f"
+    },
+    {
+      "name": "original minimum size fixed width consumer",
+      "rva": "0xa6ea3c0",
+      "bytes": 140,
+      "sha256": "4757bb7b89d2f99672d0533312b74514172e87ce3d83842c2f681cde7675e820"
+    },
+    {
+      "name": "original DialogClientView metadata",
+      "rva": "0xa6ec050",
+      "bytes": 96,
+      "sha256": "58abde564dca1f24872eb49a041bcc4b17b30621a2aa11caea578cb6e366b69e"
+    },
+    {
+      "name": "original group bubble fixed width",
+      "rva": "0x4684dcc",
+      "bytes": 40,
+      "sha256": "8aca682f1355fca7c75cfde80e8128a4f94c999a14cea14db607dbfcc20408ea"
+    },
+    {
+      "name": "actual color name 214",
+      "rva": "0xe9100f0",
+      "bytes": 16,
+      "sha256": "2208d455dd46ec149d3f15a48a4fd9e0f51b14ae8c2969420213512f55d7d5e5"
+    },
+    {
+      "name": "actual color name 215",
+      "rva": "0xe910100",
+      "bytes": 16,
+      "sha256": "5f509cd6e6686821bdb01ab7cf1a392020ab329a03c6549e9f445564878a7b75"
+    },
+    {
+      "name": "actual color name 216",
+      "rva": "0xe910110",
+      "bytes": 16,
+      "sha256": "e9cf6079c349be14a0242b2a03fc03b7ac46629780516981ffff2b015785fe54"
+    },
+    {
+      "name": "actual color name 220",
+      "rva": "0xe910150",
+      "bytes": 16,
+      "sha256": "0418677bad0322d096eb17c2d6faa381a6480209f411c2b192ac52533d355472"
+    },
+    {
+      "name": "actual color name 221",
+      "rva": "0xe910160",
+      "bytes": 16,
+      "sha256": "b3c4d682fbc4c2107cf15591b6b3dee4d1f11a3da42e25dd4f359d386f6334b4"
+    },
+    {
+      "name": "actual color name 222",
+      "rva": "0xe910170",
+      "bytes": 16,
+      "sha256": "80191aaf0faf3fca166a92c06c24c943fb1f9d8ee3203dc04b776afbe6fa834e"
+    },
+    {
+      "name": "actual color name 225",
+      "rva": "0xe9101a0",
+      "bytes": 16,
+      "sha256": "4cc9d8216086eceb3c10db146ddf80707aaa2a3a899fe2672ad27fad185939f1"
+    },
+    {
+      "name": "actual color name 226",
+      "rva": "0xe9101b0",
+      "bytes": 16,
+      "sha256": "b95473191303051ae18ae5502b0cd4c6616aa5de2c5fd2c217b4f7e5ed313d33"
+    },
+    {
+      "name": "actual color name 247",
+      "rva": "0xe910300",
+      "bytes": 16,
+      "sha256": "631e88d9cdefa6444d03f8b19ecc57e92e9e49fc1a1d46493a0278cdb699b918"
+    },
+    {
+      "name": "actual color name 248",
+      "rva": "0xe910310",
+      "bytes": 16,
+      "sha256": "8291a9e9a4109f3bd658841069fd93dfd01ffd6aef3c329d51e972faa56a40a7"
+    }
+  ],
+  "colorNames": [
+    {
+      "id": 214,
+      "name": "kColorAsideSurfacePrimary",
+      "nameRva": "0xdbdb135",
+      "entryRva": "0xe9100f0"
+    },
+    {
+      "id": 215,
+      "name": "kColorAsideSurfaceBorder",
+      "nameRva": "0xdbdb14f",
+      "entryRva": "0xe910100"
+    },
+    {
+      "id": 216,
+      "name": "kColorAsideSurfaceBorderStrong",
+      "nameRva": "0xdbdb168",
+      "entryRva": "0xe910110"
+    },
+    {
+      "id": 220,
+      "name": "kColorAsideSurfaceQuarternary",
+      "nameRva": "0xdbdb1dc",
+      "entryRva": "0xe910150"
+    },
+    {
+      "id": 221,
+      "name": "kColorAsideSurfacePrimaryForeground",
+      "nameRva": "0xdbdb1fa",
+      "entryRva": "0xe910160"
+    },
+    {
+      "id": 222,
+      "name": "kColorAsideSurfaceSecondaryForeground",
+      "nameRva": "0xdbdb21e",
+      "entryRva": "0xe910170"
+    },
+    {
+      "id": 225,
+      "name": "kColorAsideSidebarInactiveForeground",
+      "nameRva": "0xdbdb28e",
+      "entryRva": "0xe9101a0"
+    },
+    {
+      "id": 226,
+      "name": "kColorAsideSidebarMutedForeground",
+      "nameRva": "0xdbdb2b3",
+      "entryRva": "0xe9101b0"
+    },
+    {
+      "id": 247,
+      "name": "kColorAsideSidebarItemBackgroundHover",
+      "nameRva": "0xdbdb561",
+      "entryRva": "0xe910300"
+    },
+    {
+      "id": 248,
+      "name": "kColorAsideMenuItemBackgroundHover",
+      "nameRva": "0xdbdb587",
+      "entryRva": "0xe910310"
+    }
+  ]
+}
