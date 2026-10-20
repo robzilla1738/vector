@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "reason": "Supplied public Firefox mode1 owner using actual155 ImporterList/SourceProfile/ExternalProcessImporterHost/ProfileWriter, with separate real cookie and password outcomes.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.h",
+      "baselineSha256": null,
+      "outputSha256": "e20f76d4c17f615ea59264228aa33d2d8acffecfcc0225214fac7f6495c37c53"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "877ff2b4a97f7960ee6caa79b9173528cb1fff6e96e4f3a97685009879386a86"
+    }
+  ],
+  "mounted": false,
+  "requiredPrerequisites": [
+    "native-firefox-host-preparation-hook applied456",
+    "L2 firefox_cookie_import.{h,cc} concrete dual-callback producer",
+    "L4 host AuxPasswordImportResult/aux_password_import_result() real utility/Mojo result before PASSWORDS ItemEnded",
+    "RealMacPW utility plus ImporterList PASSWORDS capability restoration; absentbittruthfullyfailsfullimport"
+  ],
+  "requiredGnChanges": {
+    "aux_browser_import.sources": [
+      "firefox_import.cc",
+      "firefox_import.h"
+    ],
+    "aux_browser_import.deps": [
+      "//chrome/browser:browser_process",
+      "//chrome/browser/importer:importer",
+      "//chrome/browser/importer:impl"
+    ]
+  },
+  "integrationOwner": "root; class proposal intentionally unmounted until coherent sourceworkers/results/servicewiring"
+}

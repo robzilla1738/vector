@@ -1,0 +1,57 @@
+{
+  "originalProof": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-firefox-public-import-owner-proof/source-evidence.json",
+    "sha256": "0678872fb845bb69043ee19140e0d0ec9876c84ec5ad5cb6e8694b17682fc84e"
+  },
+  "realPreparationHook": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/native-firefox-host-preparation-hook/manifest.json",
+    "sha256": "01593a251a8e35619e3f8b177632051ec3e42e70ad13cf7d14294a662cdb55bb"
+  },
+  "actual456Inputs": [
+    {
+      "path": "chrome/browser/importer/importer_list.h",
+      "sha256": "8b946a2e4af5ecbd42d94655eabe38d7dfd4f1c2b4ecb67860f16003f705cc46"
+    },
+    {
+      "path": "chrome/browser/importer/importer_progress_observer.h",
+      "sha256": "9cd9dd774c6ec830c646183f6c07153bf6f0e7d994adb102afa123b0730d52d4"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.h",
+      "sha256": "00ebc7c4474b5e50da39b95fecd80359c0c1b255786dd6c41fabfbc11859c36c"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.cc",
+      "sha256": "18b279098715aea8c30f0812a2423dca5d48463538d70f343f15f15dc11941fa"
+    },
+    {
+      "path": "chrome/browser/importer/profile_writer.h",
+      "sha256": "c2cd54841a317389939c68f55bb9d7df0606c83254efcc028b9d37572f44883a"
+    },
+    {
+      "path": "chrome/browser/importer/profile_writer.cc",
+      "sha256": "5249df6cd7434a8d242107962e3ee3117ccfd8c85bb1c4af658ae3ab19e018af"
+    },
+    {
+      "path": "components/user_data_importer/common/importer_data_types.h",
+      "sha256": "6a6415c9c3d806d8177178947d3ebb5fdfe1ea2d5f3ea714d77a52cee2775b1b"
+    },
+    {
+      "path": "chrome/browser/importer/BUILD.gn",
+      "sha256": "95f4fed3ff4070619a4c7fb3eb55a5684453e86706db2d45ac0b5aaac373886d"
+    }
+  ],
+  "positiveSemantics": {
+    "source": "TYPE_FIREFOX from genuine ImporterList; firstmatching optionallyexact fullpath",
+    "items": "SourceProfile.services_supported; bookmarksOnly masks FAVORITES=2",
+    "destination": "actual captured Profile weak pointer, real ProfileWriter and selfdeletinghost",
+    "observer": "start/itemstart noops; anyitemend; actual PW metadata; host/cookie/PW settlement",
+    "cookie": "prelaunchack and destinationresult separate; actualweakrunning predicate",
+    "progress": "publicrunning0.1, succeeded1, failed/cancelledretain0.1; no currentDataKind"
+  },
+  "outstanding": [
+    "Newclassnotmounted; concreteL2/L4prerequisitesmustlandbeforeproductwiring",
+    "NoactualbuildorUI/profile/DB/NSS/Keychain/OSexecution"
+  ],
+  "runtimeAcceptance": false
+}
