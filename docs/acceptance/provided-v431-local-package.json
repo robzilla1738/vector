@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "composition": "v431",
+  "packageRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v431-local",
+  "packageReportSha256": "af2afb5b3b8e0bb98638e93701e3d15b4330fc090f98f187db77b0b265af7874",
+  "nativeFiles": 418,
+  "nativeInputFiles": 563,
+  "retiredRuntimeLeaves": 145,
+  "suppliedResources": 10803,
+  "signed": false,
+  "installed": false,
+  "launched": false,
+  "runtimeAcceptance": false
+}
