@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "applyAfter": "802100102 native-bottom-sync-owner",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h",
+      "baselineSha256": "3830bc48cb4b5ac8911c50f600f257ba95fc9182a4f3247e5fcfec3c03380366",
+      "outputSha256": "e6a654231a8c23c2a46d681e5c9fc7687554ad0bed6bed4a4262abe8ae7e4b9b",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "class Throbber;",
+          "after": "class Throbber;\nclass ViewShadow;",
+          "count": 1
+        },
+        {
+          "before": "  void InitializeSyncCard();",
+          "after": "  void Layout(PassKey) override;\n  void InitializeSyncCard();",
+          "count": 1
+        },
+        {
+          "before": "  raw_ptr<syncer::SyncService> sync_service_ = nullptr;",
+          "after": "  std::unique_ptr<views::ViewShadow> sync_shadow_;\n  raw_ptr<syncer::SyncService> sync_service_ = nullptr;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+      "baselineSha256": "4981451ecfa2745e8c7ceaedd5ba3e6b73659c347d81b55de7c7ee155cfcc02a",
+      "outputSha256": "148e7072602d5788ba9e22f522876e945cd918829e5a0203531e9b7f4e9c4082",
+      "newFile": false,
+      "anchors": [
+        {
+          "before": "#include \"base/functional/bind.h\"",
+          "after": "#include <algorithm>\n\n#include \"base/functional/bind.h\"",
+          "count": 1
+        },
+        {
+          "before": "#include \"ui/color/color_provider_key.h\"",
+          "after": "#include \"ui/color/color_provider_key.h\"\n#include \"ui/gfx/geometry/rounded_corners_f.h\"",
+          "count": 1
+        },
+        {
+          "before": "#include \"ui/views/view_class_properties.h\"",
+          "after": "#include \"ui/views/view_class_properties.h\"\n#include \"ui/views/view_shadow.h\"",
+          "count": 1
+        },
+        {
+          "before": "  sync_card_->layer()->SetFillsBoundsOpaquely(false);",
+          "after": "  sync_card_->layer()->SetFillsBoundsOpaquely(false);\n  sync_card_->layer()->SetRoundedCornerRadius(gfx::RoundedCornersF(12));\n  sync_shadow_ = std::make_unique<views::ViewShadow>(sync_card_, 12);\n  sync_shadow_->SetRoundedCornerRadius(0);",
+          "count": 1
+        },
+        {
+          "before": "void VerticalTabStripBottomContainer::UpdateSyncState() {",
+          "after": "void VerticalTabStripBottomContainer::Layout(PassKey) {\n  LayoutSuperclass<views::FlexLayoutView>(this);\n  if (sync_shadow_) {\n    const int radius = std::clamp(\n        std::min(sync_card_->width(), sync_card_->height()) / 2, 0, 12);\n    sync_shadow_->SetRoundedCornerRadius(radius);\n  }\n}\n\nvoid VerticalTabStripBottomContainer::UpdateSyncState() {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

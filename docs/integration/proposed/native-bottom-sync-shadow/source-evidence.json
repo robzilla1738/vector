@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "view-shadow-constructor",
+      "rva": "0xa6ddb24",
+      "bytes": 280,
+      "sha256": "d1c45f53cfb7a1329f40721ed74c845e0fa516cfd6fc976513458494fddf6d0c",
+      "assemblySha256": "59313cfb8d5a0fcf75146908e9495d3d6c2002ac7bc1b4200ddbe8ee969a6bfe"
+    },
+    {
+      "name": "shadow-rounded-corners",
+      "rva": "0x6e01164",
+      "bytes": 164,
+      "sha256": "b67315476d4ddfcb43ca242151c2204c3b5cf2937b965605dc905fc02fe491e3",
+      "assemblySha256": "0a203f1d5029c035306e117a061e8de89e44b33c35a9975748d52493e4f972d7"
+    },
+    {
+      "name": "bottom-layout",
+      "rva": "0x4245240",
+      "bytes": 136,
+      "sha256": "f33725cfd304fa25483ead181a316915082f9ce4bc88dc774ca8b61d981a0fca",
+      "assemblySha256": "4564ac524843b121f29f8a091d9e039b54a403fa22bda1f96f43ea81fb163c92"
+    },
+    {
+      "name": "base-layout",
+      "rva": "0x1428754",
+      "bytes": 108,
+      "sha256": "cd4269938b98b6aef5392e590c247bc65ff720330acdb3878ab980597619a86f",
+      "assemblySha256": "7ce8d8dd91afe4be554f946dff715cc44227ed5fd05331f6d4f57d736cc71391"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view_shadow.h",
+      "sha256": "60548302883cf4fac58e3b958ed4e26751569df35193e33b64cf63f7f0205e22"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view_shadow.cc",
+      "sha256": "9a525f46c2d31f7888d42579c41884dbdedaea9e7f910887448f186ac52b86e7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/decoration/shadow.h",
+      "sha256": "45c853061d1f75d1b7348a4256caeaf2a6530a963e75f82a7c7b5db72af55f01"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/decoration/shadow.cc",
+      "sha256": "32254af510872cf74ed6d4d6d9505da4c6b98c0191a6c9b3d88c5d6bc145bbf6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    }
+  ]
+}
