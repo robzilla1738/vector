@@ -1,0 +1,60 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x32f48ac",
+      "endExclusive": "0x32f4ae0",
+      "file": "service-constructor.asm",
+      "bytesSha256": "fcca84e4548b0991f019dd02418aa30b5f8772ff9118c0a86a210869caccd37b",
+      "assemblySha256": "fcad69bf19ff44821f3d1e4b99f9dca85674fae4611b735dd83554c4ef2f028d"
+    },
+    {
+      "start": "0x40da744",
+      "endExclusive": "0x40daccc",
+      "file": "key-query.asm",
+      "bytesSha256": "17da3a30111694e5320e58c9a2eb35f4ca3121cbf7700945ef26b7e867d01653",
+      "assemblySha256": "05900e8bb30ba562fda4d38dfb6fcd75ebd0d0285eb4f1d2700f4bd98dd4e9ad"
+    },
+    {
+      "start": "0x40daccc",
+      "endExclusive": "0x40db348",
+      "file": "master-key.asm",
+      "bytesSha256": "5ad203f3c0888c5b582f9cc22d15e82e0a488a8224f1e17ca393191fa61be2c3",
+      "assemblySha256": "21fcef55266328e875b246e804b519fb390bc04fbaa917d69c36f964566741ee"
+    },
+    {
+      "start": "0x40f7e38",
+      "endExclusive": "0x40f8478",
+      "file": "save-worker.asm",
+      "bytesSha256": "0f01505c32ec59b1e37e73b92ca16bf0a2821c192927228540f66257cd6f4ceb",
+      "assemblySha256": "c136b5b50b41fcc55527944dea441fa3ea6208dfd6284cdb10f5d88f17cf0ff3"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0xcee67bf",
+      "text": "Aside Agent Master Key"
+    },
+    {
+      "address": "0xcee67e9",
+      "text": "Aside Agent"
+    },
+    {
+      "address": "0xda8ef5f",
+      "text": "CREATE TABLE IF NOT EXISTS inbox_entries (id INTEGER PRIMARY KEY AUTOINCREMENT,created_at INTEGER NOT NULL,site_url TEXT NOT NULL,encrypted_payload BLOB NOT NULL,is_persistent INTEGER NOT NULL)"
+    },
+    {
+      "address": "0xda8f06a",
+      "text": "INSERT INTO inbox_entries (created_at, site_url, encrypted_payload, is_persistent) VALUES (?, ?, ?, ?)"
+    }
+  ],
+  "sourceOnly": true,
+  "providedDecompile": {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/040daccc.c",
+    "sha256": "9b2a27f3bffe4b59be71554b76339203e6c3da577ebf164ac6dc1c36c60ef088",
+    "copy": "provided-master-key.c"
+  }
+}
