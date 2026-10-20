@@ -1,0 +1,50 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "new-chat-click",
+      "start": "0xc7859a8",
+      "stopExclusive": "0xc785a68",
+      "bytesSha256": "be0a63b189574cd9f546a2933b66daa5bc2b48b9f48c3aeae513a5773af9b64d",
+      "asmSha256": "25e806a2aa420c0a172bbb773b3f0651bb5b0452a8e4760ab75daf4a30bc1b9c"
+    },
+    {
+      "name": "new-chat-click-thunks",
+      "start": "0xcbafd04",
+      "stopExclusive": "0xcbafd1c",
+      "bytesSha256": "b1e919a657aeb8a5e20d11215df16f9624622247390f439f6c968944a5e1b62b",
+      "asmSha256": "3b01713f4965a99fe778a16cc5a1a1af29ab7059b049be84d8b61b590d4dd732"
+    },
+    {
+      "name": "represented-selection",
+      "start": "0x464646c",
+      "stopExclusive": "0x4646654",
+      "bytesSha256": "e8ce428a7f72a9a641bba77987b4ac89696c5d506c385f8ede37281bd2bed858",
+      "asmSha256": "fb331b2842db6e76544fd6df28d9a05cbb25626d87d042f5fb6f90a6cb511237"
+    },
+    {
+      "name": "candidate",
+      "start": "0x464df0c",
+      "stopExclusive": "0x464e0f4",
+      "bytesSha256": "d1638bb87376676861eb4ef52fd43bf09adb422712f1332fd121b4b38d1f539c",
+      "asmSha256": "3a421690d55333167174cf45e0bf9f5009b668ceeb0c8a83d335d1b6cc94090e"
+    },
+    {
+      "name": "pending-timer",
+      "start": "0x464e0f4",
+      "stopExclusive": "0x464e2e4",
+      "bytesSha256": "14de0bb01847171475c506a3b350712484f895af0ed31a81336bee69c1821e51",
+      "asmSha256": "5d4543fbbe90f9b31f2300076ded37351f6327d76982df85647112f131dbb8ee"
+    },
+    {
+      "name": "timer-delegate",
+      "start": "0x42c88ec",
+      "stopExclusive": "0x42c8910",
+      "bytesSha256": "096c599a395f33121c94857652eff4c6846d5ea22f73ef65f3590137fa3ed738",
+      "asmSha256": "b282845d4065fbf5d59410a0458f11feb95daf52f7ae3b22b24f9030b27ab120"
+    }
+  ]
+}

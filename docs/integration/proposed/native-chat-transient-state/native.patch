@@ -1,0 +1,252 @@
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.h
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.h
+@@ -9,6 +9,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
++#include "base/timer/timer.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "components/tabs/public/tab_interface.h"
+ class BrowserWindowInterface;
+@@ -26,19 +27,24 @@
+   };
+   using CurrentAccount = base::RepeatingCallback<std::optional<int>()>;
+   using Classify = base::RepeatingCallback<std::optional<Classification>()>;
+-  using IsNewChat = base::RepeatingCallback<bool(tabs::TabInterface&)>;
+   struct SourceEffects {
+     base::RepeatingCallback<void(tabs::TabHandle)> clear_1090;
+-    // Must clear source +1028/+1030 only when its real handle matches.
+-    base::RepeatingCallback<void(tabs::TabHandle)> clear_pending_1028;
+     base::RepeatingClosure expand_chats;
+   };
+   AuxChatTabOwner(BrowserWindowInterface&, TabStripModel&, BookmarkTabAssociations&,
+-                 CurrentAccount, Classify, IsNewChat, SourceEffects,
++                 CurrentAccount, Classify, SourceEffects,
+                  base::RepeatingClosure changed);
+   ~AuxChatTabOwner() override;
+   void SetChats(const std::vector<std::string>& ids);
+   bool Select(const std::string& id);
++  void SelectNewChat();
++  std::optional<tabs::TabHandle> represented_new_chat() const {
++    return ScopeCurrent() ? represented_new_chat_ : std::nullopt;
++  }
++  std::optional<tabs::TabHandle> clicked_new_chat() const {
++    return ScopeCurrent() ? clicked_new_chat_ : std::nullopt;
++  }
++  bool represented_new_chat_active() const;
+   bool OpenInNewTab(const std::string& id);
+   // Called before opening the original rename dialog, including double click.
+   void SettleForRename(const std::string& id);
+@@ -60,8 +66,14 @@
+            std::optional<tabs::TabHandle> excluded = std::nullopt) const;
+   void Bind(tabs::TabInterface&, const std::string&, int account,
+             const Classification&);
++  bool IsNewChat(tabs::TabInterface&);
+   bool Trackable(const tabs::TabInterface&, const Classification&) const;
+   void Clear(tabs::TabHandle);
++  bool RepresentsNewChat(tabs::TabHandle, int account);
++  void RefreshRepresentedNewChat(int account);
++  void SchedulePendingNewChat(tabs::TabHandle);
++  void ClearPendingNewChat(tabs::TabHandle);
++  void PendingNewChatExpired();
+   void ReconcileTab(tabs::TabInterface&, int account);
+   void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
+                              const TabStripSelectionChange&) override;
+@@ -75,7 +87,6 @@
+   SourceEffects effects_;
+   CurrentAccount account_;
+   Classify classify_;
+-  IsNewChat is_new_chat_;
+   base::RepeatingClosure changed_;
+   std::set<std::string> chats_;
+   std::set<tabs::TabHandle> split_handles_;  // Original +10d8.
+@@ -83,6 +94,10 @@
+   std::map<tabs::TabHandle, std::string> pending_navigation_;  // +1000.
+   std::map<tabs::TabHandle, base::TimeTicks> associated_at_;  // +10a8.
+   std::optional<PendingSelection> pending_selection_;  // +13d0.
++  std::optional<tabs::TabHandle> clicked_new_chat_;  // Original +1018.
++  std::optional<tabs::TabHandle> represented_new_chat_;  // Original +1020.
++  std::optional<tabs::TabHandle> pending_new_chat_;  // Original +1028.
++  base::OneShotTimer new_chat_timer_;  // Original +1030, 1250ms.
+   bool processing_snapshot_ = false;  // Original region +11e9.
+   bool retired_ = false;
+   base::WeakPtrFactory<AuxChatTabOwner> weak_{this};
+--- a/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
++++ b/chrome/browser/ui/tabs/aux_chat_tab_owner.cc
+@@ -3,6 +3,8 @@
+ #include <algorithm>
+ #include <utility>
+ #include "base/check.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+@@ -11,19 +13,20 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h"
++#include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/web_contents.h"
+ namespace aux {
+ AuxChatTabOwner::AuxChatTabOwner(BrowserWindowInterface& browser,
+     TabStripModel& model, BookmarkTabAssociations& bookmarks,
+-    CurrentAccount account, Classify classify, IsNewChat is_new_chat,
++    CurrentAccount account, Classify classify,
+     SourceEffects effects, base::RepeatingClosure changed)
+     : browser_(browser.GetWeakPtr()), profile_(browser.GetProfile()->GetWeakPtr()),
+       model_(&model), bookmarks_(&bookmarks), effects_(std::move(effects)),
+       account_(std::move(account)), classify_(std::move(classify)),
+-      is_new_chat_(std::move(is_new_chat)), changed_(std::move(changed)) {
+-  CHECK(account_ && classify_ && is_new_chat_ && changed_ &&
+-        effects_.clear_1090 && effects_.clear_pending_1028 && effects_.expand_chats);
++      changed_(std::move(changed)) {
++  CHECK(account_ && classify_ && changed_ &&
++        effects_.clear_1090 && effects_.expand_chats);
+   CHECK(browser.GetTabStripModel() == &model);
+   for (int i = 0; i < model_->count(); ++i) {
+     auto* tab = model_->GetTabAtIndex(i);
+@@ -42,6 +45,10 @@
+   StopObservingAll(this);
+   model_ = nullptr;
+   pending_selection_.reset();
++  new_chat_timer_.Stop();
++  pending_new_chat_.reset();
++  represented_new_chat_.reset();
++  clicked_new_chat_.reset();
+ }
+ void AuxChatTabOwner::SetChats(const std::vector<std::string>& ids) {
+   if (!ScopeCurrent()) return;
+@@ -146,6 +153,104 @@
+   Navigate(&params);
+   return weak && ScopeCurrent() && params.navigated_or_inserted_contents;
+ }
++bool AuxChatTabOwner::IsNewChat(tabs::TabInterface& tab) {
++  auto weak = weak_.GetWeakPtr();
++  const auto state = classify_.Run();
++  if (!weak || !ScopeCurrent() || !state || !Trackable(tab, *state)) return false;
++  return IsNewChatDocument(*tab.GetContents(), *profile_);
++}
++void AuxChatTabOwner::SelectNewChat() {
++  if (!ScopeCurrent()) return;
++  const bool had_representation = represented_new_chat_.has_value();
++  auto weak = weak_.GetWeakPtr();
++  // Original c7859a8 deliberately ignores command success; it only records an
++  // actual resulting active tab if the genuine source predicate accepts it.
++  chrome::ExecuteCommand(browser_.get(), IDC_AUX_OPEN_NEW_CHAT);
++  if (!weak || !ScopeCurrent()) return;
++  if (!had_representation) {
++    if (auto* tab = model_->GetActiveTab()) {
++      const auto handle = tab->GetHandle();
++      const bool eligible = IsNewChat(*tab);
++      if (!weak || !ScopeCurrent()) return;
++      if (eligible && Index(handle) != TabStripModel::kNoTab)
++        clicked_new_chat_ = handle;
++    }
++  }
++  Reconcile();
++}
++bool AuxChatTabOwner::represented_new_chat_active() const {
++  if (!ScopeCurrent() || !represented_new_chat_) return false;
++  auto* active = model_->GetActiveTab();
++  return active && active->GetHandle() == *represented_new_chat_;
++}
++void AuxChatTabOwner::ClearPendingNewChat(tabs::TabHandle handle) {
++  if (pending_new_chat_ != handle) return;
++  new_chat_timer_.Stop();
++  pending_new_chat_.reset();
++}
++void AuxChatTabOwner::SchedulePendingNewChat(tabs::TabHandle handle) {
++  if (!ScopeCurrent() || Index(handle) == TabStripModel::kNoTab) return;
++  // Original1060 is the timer's delayed-task handle delegate, not WebContents
++  // loading state. Repeated reconciliation retains the existing live deadline.
++  if (pending_new_chat_ == handle && new_chat_timer_.IsRunning()) return;
++  pending_new_chat_ = handle;
++  new_chat_timer_.Start(FROM_HERE, base::Milliseconds(1250), this,
++                       &AuxChatTabOwner::PendingNewChatExpired);
++}
++void AuxChatTabOwner::PendingNewChatExpired() {
++  if (!ScopeCurrent() || !pending_new_chat_) return;
++  const auto handle = *pending_new_chat_;
++  pending_new_chat_.reset();
++  if (clicked_new_chat_ == handle) clicked_new_chat_.reset();
++  if (represented_new_chat_ == handle) represented_new_chat_.reset();
++  Reconcile();
++}
++bool AuxChatTabOwner::RepresentsNewChat(tabs::TabHandle handle, int account) {
++  const int index = Index(handle);
++  if (index == TabStripModel::kNoTab || associations_.contains(handle)) return false;
++  auto weak = weak_.GetWeakPtr();
++  const bool new_chat = IsNewChat(*model_->GetTabAtIndex(index));
++  if (!weak || !ScopeCurrent()) return false;
++  if (new_chat) {
++    ClearPendingNewChat(handle);
++    return true;
++  }
++  if (pending_new_chat_ == handle) return true;
++  if (represented_new_chat_ != handle) return false;
++  const int current = Index(handle);
++  if (current == TabStripModel::kNoTab) return false;
++  const auto id = ChatIdFromWebContents(*model_->GetWebContentsAt(current), account);
++  if (!id || chats_.contains(*id)) return false;
++  SchedulePendingNewChat(handle);
++  return true;
++}
++void AuxChatTabOwner::RefreshRepresentedNewChat(int account) {
++  auto weak = weak_.GetWeakPtr();
++  std::optional<tabs::TabHandle> selected;
++  auto consider = [&](tabs::TabHandle handle) {
++    if (RepresentsNewChat(handle, account)) selected = handle;
++  };
++  if (auto* active = model_->GetActiveTab()) consider(active->GetHandle());
++  if (!weak || !ScopeCurrent()) return;
++  if (!selected && represented_new_chat_) consider(*represented_new_chat_);
++  if (!weak || !ScopeCurrent()) return;
++  if (!selected) {
++    // Source464646c priority: active, previous representation, model order.
++    std::vector<tabs::TabHandle> handles;
++    for (int i = 0; i < model_->count(); ++i)
++      handles.push_back(model_->GetTabAtIndex(i)->GetHandle());
++    for (auto handle : handles) {
++      consider(handle);
++      if (!weak || !ScopeCurrent()) return;
++      if (selected) break;
++    }
++  }
++  represented_new_chat_ = selected;
++  if (pending_new_chat_ && pending_new_chat_ != selected) {
++    new_chat_timer_.Stop();
++    pending_new_chat_.reset();
++  }
++}
+ void AuxChatTabOwner::Clear(tabs::TabHandle handle) {
+   associations_.erase(handle);
+   pending_navigation_.erase(handle);
+@@ -179,7 +284,7 @@
+ }
+ void AuxChatTabOwner::ReconcileTab(tabs::TabInterface& tab, int account) {
+   auto weak = weak_.GetWeakPtr();
+-  const bool new_chat = is_new_chat_.Run(tab);
++  const bool new_chat = IsNewChat(tab);
+   if (!weak || !ScopeCurrent()) return;
+   const auto handle = tab.GetHandle();
+   if (new_chat) {
+@@ -218,6 +323,8 @@
+   std::erase_if(associations_, [&](const auto& entry) { return !live.contains(entry.first); });
+   std::erase_if(pending_navigation_, [&](const auto& entry) { return !live.contains(entry.first); });
+   std::erase_if(associated_at_, [&](const auto& entry) { return !live.contains(entry.first); });
++  RefreshRepresentedNewChat(*account);
++  if (!weak || !ScopeCurrent()) return;
+   changed_.Run();
+ }
+ std::optional<std::string> AuxChatTabOwner::SelectedChat() {
+@@ -248,7 +355,7 @@
+     return;
+   }
+   auto weak = weak_.GetWeakPtr();
+-  effects_.clear_pending_1028.Run(handle);
++  ClearPendingNewChat(handle);
+   if (!weak || !ScopeCurrent() || Index(handle) == TabStripModel::kNoTab) return;
+   const bool represented_bookmark = bookmarks_->entries().contains(handle);
+   if (same && !represented_bookmark) {
