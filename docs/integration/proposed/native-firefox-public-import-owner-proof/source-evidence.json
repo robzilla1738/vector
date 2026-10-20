@@ -1,0 +1,197 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x427acfc",
+      "end": "0x427b13c",
+      "sha256": "8cf9c78830cacbaeea5c7a6949267cf84fc97ead9e71f309fa0694c53c5be13d",
+      "listing": "public-job-start.asm",
+      "listingSha256": "cbef144c788358f05215314542b213d015d2ed5238b04631410cfd2451c3489e"
+    },
+    {
+      "start": "0x427b13c",
+      "end": "0x427b4bc",
+      "sha256": "75a26bb01ec4358578f2e665864de301a15f5549688df88dc673204f6856d54b",
+      "listing": "public-job-cancel-finish.asm",
+      "listingSha256": "8d4a942c4ea31195beb0f378c851bea15c41f15dee3253993152234f78c840a7"
+    },
+    {
+      "start": "0x4262bc0",
+      "end": "0x42631c0",
+      "sha256": "00dd9995c9b289f749566faca0538c1cca25c9062a035d39d7168e8d84f6d7d4",
+      "listing": "firefox-ctor-start.asm",
+      "listingSha256": "58c6fb8eab173ca885cd106b383fa84bdb771eadb27463f06ef1dff757c8f3a1"
+    },
+    {
+      "start": "0x42631c0",
+      "end": "0x4263480",
+      "sha256": "163f37aeb3174d0611f6b661c1f480ebc70f13101597eb7aef8b2fe919d39d9a",
+      "listing": "ready-profile-mask.asm",
+      "listingSha256": "dbda1842187fab1ecba18e67b8164c553a849aef16e3bc91e5db77c863f6e6f4"
+    },
+    {
+      "start": "0x4263a68",
+      "end": "0x4263d44",
+      "sha256": "98e3feea9afecc0d520668cc376dc9b46bb4ddf4d4430a696ea4ae3cd27af681",
+      "listing": "public-current-profile-host.asm",
+      "listingSha256": "bdb5b4384d53fa94b40572d6707f4ca0bca314a16a3c2433370440459aebef0e"
+    },
+    {
+      "start": "0x78211b0",
+      "end": "0x782138c",
+      "sha256": "710e99676b1937683acd81e8036fe6c7e4da85a8c149b4a2dfe92218bd4a6dfd",
+      "listing": "source-profile-registry.asm",
+      "listingSha256": "cfac6ea6ee9afff4099510dab35d7a7ce0cec473b56899ef9bd58092d8ad74a0"
+    },
+    {
+      "start": "0x7820514",
+      "end": "0x7820654",
+      "sha256": "b5163ef7e058da9f0a04889f6f7b3c34539389d312505430128a8462e4f0c5e0",
+      "listing": "actual-host-ctor-cancel.asm",
+      "listingSha256": "5c35569b799bfc116e19af0344bb69c2e9f4c622a5d3ff376200d82eb7f36de6"
+    },
+    {
+      "start": "0x4106178",
+      "end": "0x4106478",
+      "sha256": "da6c177ecc59179d6743d80a8e7dd4160539877c526eee0412ffbb9c7744a5c4",
+      "listing": "actual-host-start.asm",
+      "listingSha256": "62773d57201a7f31bc53fc9fec4557f1723a9caa08706826d8183de312850b0a"
+    },
+    {
+      "start": "0x42637bc",
+      "end": "0x4263840",
+      "sha256": "812de4952fce22d3c22b9d9aa2b571ae30ec82867c330bdb86327a627dfe37d3",
+      "listing": "migrator-cancel.asm",
+      "listingSha256": "fb069c02d7b7315fa7ab0dad5a6da2dee8a308e72463cdd0ea2e170e67b1b36e"
+    },
+    {
+      "start": "0x4263f48",
+      "end": "0x4264114",
+      "sha256": "239833e959ac2a0471a188411cf23ae00e4480408509f4e17b39893d55bc0fd4",
+      "listing": "cookies-prepare-callback.asm",
+      "listingSha256": "1be5615bc53c0f5de9f490480a53953d06897cb15fb4e9b946477bcc844751c4"
+    },
+    {
+      "start": "0x42648b0",
+      "end": "0x42649e4",
+      "sha256": "9a549977c1d99fd048502ac3ce0c6c81c69acb4b339c936eb159ad0167022152",
+      "listing": "import-observer-completion.asm",
+      "listingSha256": "5bb85d999d3d05cf2b209d8e7108dc57c36772480844e94fa582f78fbfe97662"
+    },
+    {
+      "start": "0x792bcf0",
+      "end": "0x792bd50",
+      "sha256": "ffaa0db9a38d0d9201dc523fa5b25d3fff27c8f27d7994cfe3d36398f50db494",
+      "listing": "host-observer-setter.asm",
+      "listingSha256": "847a691420be1b66e334f39a847d8f62cd432b5bb066166a20f44f8611807864"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdb1fcf2",
+      "hex": "5072657061726546697265666f78436f6f6b69657300",
+      "text": "PrepareFirefoxCookies\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb1fd08",
+      "hex": "2e2e2f2e2e2f6368726f6d652f62726f777365722f75692f77656275692f61736964655f696d706f727465722f66697265666f785f70726f66696c655f696d706f727465722e636300",
+      "text": "../../chrome/browser/ui/webui/aside_importer/firefox_profile_importer.cc\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xcf0a410",
+      "hex": "63616e63656c6c656400",
+      "text": "cancelled\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xcf0a41a",
+      "hex": "73756363656564656400",
+      "text": "succeeded\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xcf0a430",
+      "hex": "6661696c656400",
+      "text": "failed\u0000",
+      "encoding": "utf-8"
+    },
+    {
+      "address": "0xdb234b0",
+      "hex": "46697265666f7820696d706f7274206661696c656400",
+      "text": "Firefox import failed\u0000",
+      "encoding": "utf-8"
+    }
+  ],
+  "vtable": [
+    {
+      "address": "0xe266d88",
+      "rawHex": "c02d010000001000",
+      "target": "0x12dc0"
+    },
+    {
+      "address": "0xe266d90",
+      "rawHex": "c02d010000001000",
+      "target": "0x12dc0"
+    },
+    {
+      "address": "0xe266d98",
+      "rawHex": "b048260400001000",
+      "target": "0x42648b0"
+    },
+    {
+      "address": "0xe266da0",
+      "rawHex": "ec48260400001000",
+      "target": "0x42648ec"
+    },
+    {
+      "address": "0xe266da8",
+      "rawHex": "282e260400001000",
+      "target": "0x4262e28"
+    },
+    {
+      "address": "0xe266db0",
+      "rawHex": "2c2e260400003000",
+      "target": "0x4262e2c"
+    }
+  ],
+  "upstream": [
+    {
+      "path": "chrome/browser/importer/importer_list.cc",
+      "sha256": "7e7ad47f24fb1077d47133c6b74fe535a3c8b20704f0ec8869f9b0b69e73262a",
+      "copy": "current155/chrome/browser/importer/importer_list.cc"
+    },
+    {
+      "path": "chrome/browser/importer/importer_list.h",
+      "sha256": "8b946a2e4af5ecbd42d94655eabe38d7dfd4f1c2b4ecb67860f16003f705cc46",
+      "copy": "current155/chrome/browser/importer/importer_list.h"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.cc",
+      "sha256": "8618e1ad9386570428ee991d13ebcd409d0a9e1ebc1da767ae0490971be11824",
+      "copy": "current155/chrome/browser/importer/external_process_importer_host.cc"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_host.h",
+      "sha256": "74c95cdd1ded376aa26de47b996fb3306ab79e1767069f79394666b990a75c6b",
+      "copy": "current155/chrome/browser/importer/external_process_importer_host.h"
+    },
+    {
+      "path": "chrome/browser/importer/importer_progress_observer.h",
+      "sha256": "9cd9dd774c6ec830c646183f6c07153bf6f0e7d994adb102afa123b0730d52d4",
+      "copy": "current155/chrome/browser/importer/importer_progress_observer.h"
+    },
+    {
+      "path": "chrome/utility/importer/firefox_importer.cc",
+      "sha256": "e12518980617da984c16059bb2d0fd7fb60a57c3cd279f6d062481d3f90af063",
+      "copy": "current155/chrome/utility/importer/firefox_importer.cc"
+    },
+    {
+      "path": "components/user_data_importer/common/importer_data_types.h",
+      "sha256": "6a6415c9c3d806d8177178947d3ebb5fdfe1ea2d5f3ea714d77a52cee2775b1b",
+      "copy": "current155/components/user_data_importer/common/importer_data_types.h"
+    }
+  ]
+}
