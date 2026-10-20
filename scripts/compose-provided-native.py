@@ -209,6 +209,7 @@ steps.extend([
     ('native-profile-label-registration/native.patch', 'native-profile-label-registration/manifest.json'),
     ('native-original-startup-readiness/native.patch', 'native-original-startup-readiness/manifest.json'),
     ('native-profile-display-pref/registration/native.patch', 'native-profile-display-pref/registration/manifest.json'),
+    ('native-pinned-tab-registration-owner/native.patch', 'native-pinned-tab-registration-owner/manifest.json'),
 ])
 
 if options.through:

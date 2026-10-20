@@ -1,0 +1,3 @@
+# One owner for the supplied pinned preference
+
+Chromium155 already registers the literal pinned_tabs through PinnedTabCodec::RegisterProfilePrefs. Replace that call for enabledAuxMac with the supplied model registration (original empty List, SYNCABLE flag1); retain the stock call elsewhere. Remove the extra call from RegisterBrowserUserPrefs. Existing browser_prefs dependencies already include browser_ui_prefs, which exports the model header/implementation. The exact account display-name registration remains in BrowserUserPrefs. The prior v178 registration was never launched in a browser. This prevents a duplicate pref registration; original persistent upsert/unpin lifecycle and stock shutdown-codec writes remain a separate follow-up.

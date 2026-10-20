@@ -1,0 +1,45 @@
+--- a/chrome/browser/ui/browser_ui_prefs.cc
++++ b/chrome/browser/ui/browser_ui_prefs.cc
+@@ -25,10 +25,6 @@
+ #include "media/media_buildflags.h"
+ #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
+ 
+-#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+-#endif
+-
+ #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+ #include "chrome/browser/win/installer_downloader/installer_downloader_pref_names.h"
+ #endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+@@ -117,7 +113,6 @@
+ 
+ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  aux::RegisterPinnedTabEntriesPrefs(registry);
+   registry->RegisterStringPref("aside.account_display_name", "");
+ #endif
+ 
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -23,6 +23,9 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/about_flags.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
+ #include "chrome/browser/ui/aux/health_recorder.h"
+@@ -2054,7 +2057,11 @@
+   MicrosoftAuthPageHandler::RegisterProfilePrefs(registry);
+   MicrosoftFilesPageHandler::RegisterProfilePrefs(registry);
+   OutlookCalendarPageHandler::RegisterProfilePrefs(registry);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::RegisterPinnedTabEntriesPrefs(registry);
++#else
+   PinnedTabCodec::RegisterProfilePrefs(registry);
++#endif
+   promos_utils::RegisterProfilePrefs(registry);
+   RegisterReadAnythingProfilePrefs(registry);
+   settings::SettingsUI::RegisterProfilePrefs(registry);
