@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/session_crashed_bubble_view.cc",
+      "baselineSha256": "fa07bf26c555825251a9ed0eda4c19740832e858cbe39c9f1560eb909bae650a",
+      "outputSha256": "f60a1b7bc9e41fff5cbf9df693a13402214b401cf872cbcd35ca7da0914ab07f"
+    }
+  ]
+}

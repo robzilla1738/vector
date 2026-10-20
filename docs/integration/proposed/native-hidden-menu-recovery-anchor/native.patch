@@ -1,0 +1,24 @@
+--- a/chrome/browser/ui/views/session_crashed_bubble_view.cc
++++ b/chrome/browser/ui/views/session_crashed_bubble_view.cc
+@@ -17,6 +17,7 @@
+ #include "base/scoped_observation.h"
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/metrics/metrics_reporting_state.h"
+ #include "chrome/browser/prefs/session_startup_pref.h"
+@@ -285,6 +286,13 @@
+   }
+ 
+   auto* control = browser_view->toolbar_button_provider()->GetAppMenuControl();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux hides the stock app menu. Its offscreen fallback element is absent
++  // from the native frame, so anchor recovery UI to the visible toolbar.
++  if (control && !control->IsDrawn()) {
++    control = nullptr;
++  }
++#endif
+   views::BubbleAnchor anchor =
+       control ? control->GetAnchor()
+               : views::BubbleAnchor(browser_view->toolbar());

@@ -4,6 +4,12 @@ Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reco
 
 On 2026-10-20 the owner explicitly authorized bounded local development signing to resolve the real account startup failure. That exception is implemented for the copied v498 development app and previously approved disposable Aux scope; see `docs/acceptance/provided-v498-local-auth-repair.json`. It does not authorize release, owner-profile access or unrelated OS grants. Broader no-signing statements below retain their ordinary-development scope outside this repair.
 
+## Native frame fidelity — owner direction 2026-10-20
+
+Where original custom C++ is absent, use the supplied recovered native functions, extracted resources/tokens and observed Aside desktop behavior to port the implementation into Aux Chromium. The owner explicitly authorized this approach after the source audit; lack of original C++ is not a blanket blocker. Keep provenance precise: recovered-function ports are not original source copies. Do not invent substitute screens or tune arbitrary geometry without reference evidence.
+
+This pass targets full-height sidebar/adjacent toolbar topology, native address-bar treatment, sidebar controls and colors. Compare actual desktop Aside and the resulting regular Aux window; keep owner content and credentials out of the Aux profile. Different account data is not a visual implementation regression. Build once with integrated changes, then fix concrete observed failures. Current no-signing scope and external-password-manager exception remain.
+
 ## Owner scope change — 2026-10-20
 
 Aux will not include its own password manager or the supplied Vault product. Users bring their existing password managers, such as 1Password, through browser extensions. This overrides all Vault reuse, UI parity and acceptance requirements below; pinned Vault inputs remain historical source evidence, not a shipping requirement.
