@@ -1,0 +1,7 @@
+# Keep pinned menus attached to the retained sidebar
+
+A concrete integration gap in the actual v539 owner: live pinned-tab menus took a keep-current-state hover lock, while closed/saved-pin menus took no lock. The recovered retained admission owner checks only KeepExpandedLocked() when its 100ms pointer check releases retention. A native menu is outside the sidebar bounds, so neither existing path reliably prevents the retained sidebar from hiding under its menu.
+
+Both paths now acquire the existing kKeepExpanded lock. The live menu already releases through its close callback; the saved-pin MenuClosed callback now releases too. CancelContextMenu already releases the lock. No timer, original admission state, menu command or pin activation behavior changes. This is a minimal integration fix using the actual existing lifetime owner, not a claimed newly decoded original menu function.
+
+Code evidence: aux_profile_preview_admission.cc CheckRetention/ClearRetention; vertical_tab_strip_region_view.cc KeepExpandedLocked and lock registration/release; vertical_pinned_tab_entries_view.cc ShowEntryContextMenu, CancelContextMenu and MenuClosed. Hash-pinned single-file patch is based on the actual native v539 file. Disposable patch replay verifies output bytes. No shared native edits, build, signing or desktop action by this lane. Actual pointer movement from a hovered sidebar into both live and saved pin menus remains the focused runtime acceptance check.

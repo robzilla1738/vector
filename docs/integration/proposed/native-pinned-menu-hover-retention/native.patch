@@ -1,0 +1,35 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -1058,7 +1058,7 @@
+           *live);
+       auto* tab_menu = menu.get();
+       menu_hover_lock_ = region->GetExpandOnHoverLock(
+-          ExpandOnHoverLockType::kKeepCurrentState);
++          ExpandOnHoverLockType::kKeepExpanded);
+       live_menu_->LoadModel(
+           std::move(menu), tab_menu,
+           base::BindRepeating(
+@@ -1078,6 +1078,15 @@
+   menu_runner_ = std::make_unique<views::MenuRunner>(
+       menu_model_.get(),
+       views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU);
++  auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
++  if (auto* region = browser_view
++                         ? browser_view->vertical_tab_strip_region_view()
++                         : nullptr) {
++    // Retained hover release honors the expanded lock while the pointer moves
++    // from the sidebar into this native menu, just like a live pinned tab.
++    menu_hover_lock_ = region->GetExpandOnHoverLock(
++        ExpandOnHoverLockType::kKeepExpanded);
++  }
+   menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+                           views::MenuAnchorPosition::kTopLeft,
+                           ui::mojom::MenuSourceType::kMouse);
+@@ -1103,6 +1112,7 @@
+     menu_runner_.reset();
+     menu_model_.reset();
+     menu_url_ = GURL();
++    menu_hover_lock_.reset();
+   }
+ }
+ void VerticalPinnedTabEntriesView::SetCompactPresentation(bool compact) {

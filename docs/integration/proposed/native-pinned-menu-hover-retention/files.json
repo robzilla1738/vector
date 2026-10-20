@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v539",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "cb7d17b9f50572a4d6b278257163d29b62fd99e85b68f6d8f0319a5cdb190253",
+      "outputSha256": "9d1eac9db8640a610301636b16c3d8b396757c3489fd13dde93b0828110be294"
+    }
+  ]
+}
