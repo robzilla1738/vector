@@ -35,7 +35,7 @@
       "sha256": "987ce699cf6138e41711513296698fb7ac8a92062fc6a1a1ac9f83df28710585"
     },
     {
-      "name": "profile close guard pending",
+      "name": "SessionRestore::IsRestoring (resolved by producer recovery)",
       "rva": "0x7adfd94",
       "bytes": 140,
       "sha256": "b24fbea11ee3ef843c00ca8779a150b10e4462be49b7c77b794c7c692b2cd530"

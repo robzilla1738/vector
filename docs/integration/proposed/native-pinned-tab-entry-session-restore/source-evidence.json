@@ -1,0 +1,76 @@
+{
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "SessionRestoreImpl constructor active registration",
+      "rva": "0x3417c64",
+      "bytes": 952,
+      "sha256": "e7aa13f08a19a2ef3c229308c0183bd57876ebcc598f2153f799dce7104347ec"
+    },
+    {
+      "name": "SessionRestoreImpl destructor active retirement",
+      "rva": "0x34185f8",
+      "bytes": 928,
+      "sha256": "3303a8d7ee785337980af774a771376ea38a51ade92ad79813dbf6ca6263f0af"
+    },
+    {
+      "name": "SessionRestore::IsRestoring",
+      "rva": "0x7adfd94",
+      "bytes": 140,
+      "sha256": "b24fbea11ee3ef843c00ca8779a150b10e4462be49b7c77b794c7c692b2cd530"
+    },
+    {
+      "name": "SessionRestore::IsRestoringSynchronously",
+      "rva": "0x7adfe40",
+      "bytes": 120,
+      "sha256": "ad2b2d54027bb9270ea999005d9b4b762150df796cdbfac3257e8882caeea7d2"
+    },
+    {
+      "name": "SessionRestore restored callback registration",
+      "rva": "0x7adfeb8",
+      "bytes": 108,
+      "sha256": "d0336fcdb943ea5917330fbcd074f1a1c939e6f8da31c3584eeeb6f3d0369c2e"
+    },
+    {
+      "name": "SessionRestore callback list",
+      "rva": "0x415b254",
+      "bytes": 108,
+      "sha256": "12abf9d80e011e97fa39f3637f3d023ad0dae970fd596051941894891ad56f01"
+    },
+    {
+      "name": "original service profile-filtered completion",
+      "rva": "0x41d5f78",
+      "bytes": 88,
+      "sha256": "2c6a5b94a497922913648ae2a5d1a161d3eae8ababc51e3e819c1623487253ea"
+    },
+    {
+      "name": "original completion emitter",
+      "rva": "0x415b014",
+      "bytes": 168,
+      "sha256": "889307947dabbcd265026f45dfb9d6de33e5fff8acf649341114e049e991f726"
+    },
+    {
+      "name": "original service constructor subscription",
+      "rva": "0x3222424",
+      "bytes": 144,
+      "sha256": "83c10795ad3ae6064b702eca5259b9d0d800d2b8ecdc747d74a7b8167865ace2"
+    }
+  ],
+  "platformSources": [
+    {
+      "path": "chrome/browser/sessions/session_restore.h",
+      "sha256": "4c567fe09ae9e697d365c537b9db62dfad25171cb148c83697e4e55722986e28"
+    },
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "sha256": "81c80e857703084b14b03d0c64050d9d4e8b4750ca551b5d93feed54ace19ea3"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h",
+      "sha256": "e13644ac4d4caed23ce00bea7273ce44d4d25f1050cf044b6ff28aa199ca8468"
+    }
+  ]
+}

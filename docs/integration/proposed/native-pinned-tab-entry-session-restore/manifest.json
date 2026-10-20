@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "applyAfter": "15fb04a43 reconciliation exact service outputs; root compiler-only201 shadow rename remains independent",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "baselineSha256": "138aa44373c9b5340799cc42f963cde959a403e0173a9ae2bd4fd8c74ce2d96b",
+      "outputSha256": "e843c0c5356fb1bba61bb5eea9af4f9653b5993e24434dcd1a90a9abb16c7934",
+      "newFile": false
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.h",
+      "baselineSha256": "08a2f997143e8a179e000f28f58caa6d750c815d1085e69d866a0a854763597a",
+      "outputSha256": "a780f14d9d644b1508bf98d2a7fb31f4d206bb3741eb4672c11e4e70e7276209",
+      "newFile": false
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "newCoordinator": false,
+  "authority": "Actual existing SessionRestore::IsRestoring + RegisterOnSessionRestoredCallback; original7adfd94 was previously misidentified as close-state",
+  "remainingGaps": [
+    "actual read of original pinned_tab_entry_url restore metadata",
+    "native drag/drop/ghost and compact presentation/hover-card seams"
+  ]
+}

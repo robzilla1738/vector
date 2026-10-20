@@ -53,7 +53,7 @@
   "sharedSourceModified": false,
   "runtimeAcceptance": false,
   "remainingGaps": [
-    "original7adfd94 profile-scoped active-close registry and completion callback; no equivalent exposed in current155, no surrogate added",
+    "historical checkpoint SessionRestore profile guard/completion; resolved by native-pinned-tab-entry-session-restore",
     "actual session restore read of pinned_tab_entry_url not ported here",
     "native drag/drop/ghost, hover card and compact parent presentation remain separate"
   ]

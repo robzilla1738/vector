@@ -51,4 +51,4 @@ assert 'entry->GetURL()' in service and 'entry->GetVirtualURL()' in service
 assert '"pinned_tab_entry_url"' in service and 'TabChangeType::kAll' in service
 # Root compiler-only fix must remain independently applicable to the18588 baseline.
 assert 'else if (auto remembered = aux::GetRememberedPinnedTabEntryUrl' in service
-print('Original coalesced unpin/adoption/session metadata pins +6-file replay PASS. C++ fixtures authored, uncompiled; profile-scoped async close registry explicitly pending.')
+print('Original coalesced unpin/adoption/session metadata pins +6-file replay PASS. C++ fixtures authored, uncompiled; historical SessionRestore guard gap resolved in native-pinned-tab-entry-session-restore.')

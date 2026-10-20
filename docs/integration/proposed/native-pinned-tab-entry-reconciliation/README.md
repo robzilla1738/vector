@@ -22,7 +22,7 @@ The155 adapter runs association on real same-profile normal-browser observation,
 
 ## Explicit remaining limit
 
-Original `07adfd94` is a **profile-scoped active asynchronous-close registry**, not155's global shutdown flag or a window's `UnloadController`. It follows the actual active-close entries and compares their profile at `+18`. Original browser/insert/all-change adoption call sites consult it, and a profile-specific completion callback (`041d5f78`) reconciles that profile's models afterward. Current Aux core exposes no proven equivalent. This proposal pins that source and leaves the registry/completion prerequisite unresolved; it adds no surrogate close-state gate. The prior global-close pin-write guard remains unchanged and is not claimed equivalent. Therefore association during a profile-scoped asynchronous close is not accepted as1:1 behavior yet.
+Producer recovery corrected the earlier interpretation of `07adfd94`: it is **SessionRestore::IsRestoring(profile)**. Its actual producer is SessionRestoreImpl, and155 already exposes the same registry query and profile-specific completion callback. The follow-up `native-pinned-tab-entry-session-restore` supplies the original three automatic-adoption guards and direct completion binding. It does not construct a close-state proxy. The earlier asynchronous-close label was an interpretation error; historical assembly filenames are retained for stable evidence paths. This historical checkpoint alone lacked those restore guards.
 
 Session restore's corresponding read of `pinned_tab_entry_url` is also outside this slice. The component's drag/drop/ghost, original hover-card controller, compact/temporary-width writer and optional custom active RGB remain separate gaps.
 

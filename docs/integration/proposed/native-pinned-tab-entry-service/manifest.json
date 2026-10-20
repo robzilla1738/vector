@@ -74,7 +74,7 @@
   "runtimeAcceptance": false,
   "remainingGaps": [
     "full source SchedulePinnedTabsReconciliation and native reorder matching",
-    "source per-profile asynchronous-closing guard beyond155 global-close callback",
+    "historical checkpoint SessionRestore profile guard/completion; resolved by native-pinned-tab-entry-session-restore",
     "root transaction hook must wire existing service weak pause/token/resume"
   ]
 }
