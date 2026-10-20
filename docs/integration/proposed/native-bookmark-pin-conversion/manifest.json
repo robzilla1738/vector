@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "780ffd651996a804bd4b1d65cfa32a1c3e797e0ed935a484b71744566b5f0a4d",
+      "outputSha256": "1cc6611e174145ce50c31ddef9fd82d5034b3a16f157fa40b536c4d69fe9a8fa"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc",
+      "baselineSha256": null,
+      "outputSha256": "47f236f9cbe6a15b462bd2d229bb871d4e0a8ea5c46230979d93a24ba0289b05"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h",
+      "baselineSha256": null,
+      "outputSha256": "5711236898116fdce92a5c9047cd8978fc0a983e3aef193cbfb2e5b32ab82bee"
+    }
+  ]
+}

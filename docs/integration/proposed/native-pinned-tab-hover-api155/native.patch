@@ -1,0 +1,43 @@
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -203,7 +203,7 @@
+            aux::FindPinnedTabEntry(*owner_->model_,
+                                   owner_->entries_[index_].saved.url).has_value();
+   }
+-  views::BubbleAnchor GetAnchor() override { return this; }
++  views::BubbleAnchor GetAnchor() override { return views::BubbleAnchor(this); }
+   views::BubbleBorder::Arrow GetAnchorPosition() const override {
+     return views::BubbleBorder::LEFT_TOP;
+   }
+@@ -619,10 +619,10 @@
+     EntryView* view, const gfx::Point& pointer, const gfx::Point& grab_offset) {
+   if (paused_ || !model_ || !GetWidget())
+     return;
+-  const auto child = std::ranges::find(children(), view);
+-  if (child == children().end())
+-    return;
+-  size_t index = child - children().begin();
++  const auto child_position = std::ranges::find(children(), view);
++  if (child_position == children().end())
++    return;
++  size_t index = child_position - children().begin();
+   if (index >= entries_.size())
+     return;
+   auto weak = weak_factory_.GetWeakPtr();
+@@ -704,13 +704,13 @@
+     view->SetDraggedBounds(local_bounds);
+     return;
+   }
+-  const auto child = std::ranges::find(children(), view);
+-  if (child == children().end())
++  const auto child_position = std::ranges::find(children(), view);
++  if (child_position == children().end())
+     return;
+   drag_ghost_->SetColorModeOverride(GetWidget()->GetColorMode());
+   if (!weak)
+     return;
+-  drag_ghost_entry_->SetIndex(child - children().begin());
++  drag_ghost_entry_->SetIndex(child_position - children().begin());
+   drag_ghost_entry_->Update();
+   if (!weak)
+     return;

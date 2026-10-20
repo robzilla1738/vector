@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "name": "predicate",
+      "address": "0x4127744",
+      "bytes": 152,
+      "sourceBytesSha256": "54f897670b26ade496f5d5d691e05fb2183e9a18f15e0aa27ed29945eae79bd6",
+      "assemblySha256": "33ed90c7141d2c99c6277d4d07d9e2a8799f5e8e0b92436d2b962c6a162abbc4"
+    },
+    {
+      "name": "marker-clear",
+      "address": "0x45f23dc",
+      "bytes": 24,
+      "sourceBytesSha256": "1188b79cb16ac9582f4e0e2ed400e0665332d3812c2b4166f063d5b87a030702",
+      "assemblySha256": "0f48c6b6d1bcaef987ffacc752fd49de9eceba6fe5567695c77809001dd529ae"
+    },
+    {
+      "name": "marker-capture",
+      "address": "0x45f4d28",
+      "bytes": 444,
+      "sourceBytesSha256": "5e879b56ed8cdc91fc05e24560668e367345b332099e170a296226a0231ddfb3",
+      "assemblySha256": "614ef85ad71b60a22f04b79e907b4a56383e943c8daf9262bb42b66fa0c16e5d"
+    },
+    {
+      "name": "marker-destructor",
+      "address": "0x45f9410",
+      "bytes": 272,
+      "sourceBytesSha256": "354cc9daf2c736186f308cce37d1206b9d0112b06db7a84e68c4a5678a41c3ca",
+      "assemblySha256": "a62170be127c23913be02ca45c2d374e020720b57b344f25de94ca059aa01ca6"
+    },
+    {
+      "name": "group-lookup",
+      "address": "0x7d472f8",
+      "bytes": 108,
+      "sourceBytesSha256": "518c30d442628efdb65fb316213b575e54bf5b2664200ba378030264be063155",
+      "assemblySha256": "f9a42fdc98531a4b9e28cd4b8f00151834970bca081335396372c47fd6bbebcb"
+    }
+  ],
+  "originalUserDataKey": "0xd6e4f6c",
+  "originalDataVtable": "0xe507da0",
+  "originalDataBytes": 96,
+  "originalStoredFields": [
+    "WebContents pointer",
+    "native TabGroupId",
+    "copied real TabGroupVisualData including native agent flag"
+  ],
+  "groupFeaturePrerequisite": "../native-agent-group-model/source-evidence.json",
+  "groupFeatureSourceProof": "group+b8 is real TabGroupFeatures; byte11 is actual agent-group marker, separate from visualdata atgroup20",
+  "currentAdaptation": "155 native TabGroupId and TabGroupVisualData stored on actual WebContents. Original unused extended visual string has no corresponding155 consumer, as documented in agent-group model integration.",
+  "genuineOriginalCaptureRestoreProducerMounted": false,
+  "runtimeAcceptance": false,
+  "limitation": "Predicate and typed storage compile as prerequisites. Do not claim the original native snapshot capture/restore owner is connected; ordinary group/URL/pin/split checks do not substitute for that producer."
+}

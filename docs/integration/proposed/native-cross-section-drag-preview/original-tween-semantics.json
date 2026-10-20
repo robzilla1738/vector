@@ -1,0 +1,43 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "staticOnly": true,
+  "dispatchAssemblySha256": "5ae110a2abccd55e104733789dc9cdfb596696c544eb5ac13ba42f8d8276b814",
+  "table": {
+    "name": "tween-table",
+    "address": "0xd2263c0",
+    "bytes": 132,
+    "sha256": "de97761ea824928306bfc31b41c4d0baf05da0536137eaa375f6bfb5f5c9558e"
+  },
+  "tableAddress": "0xd2263c0",
+  "branchBase": "0x21cffac",
+  "curves": [
+    {
+      "originalID": 1,
+      "destination": "0x21cffbc",
+      "expression": "1 - (1 - t)^2",
+      "actual155": "gfx::Tween::EASE_OUT"
+    },
+    {
+      "originalID": 7,
+      "destination": "0x21cfffc",
+      "expression": "t < 0.5 ? 0.5 * (2*t)^2 : 1 - 0.5 * (2*(t-1))^2",
+      "actual155": "gfx::Tween::EASE_IN_OUT"
+    },
+    {
+      "originalID": 11,
+      "destination": "0x21d005c",
+      "cubicBezier": [
+        0.4,
+        0,
+        0.2,
+        1
+      ],
+      "actual155": "gfx::Tween::FAST_OUT_SLOW_IN"
+    }
+  ],
+  "actual155Source": "ui/gfx/animation/tween.cc",
+  "actual155Sha256": "eee0d2d46efffbc341415e960ea74f0008bd207f03c825e0d5e9c6a2e0bab00e"
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "1cc6611e174145ce50c31ddef9fd82d5034b3a16f157fa40b536c4d69fe9a8fa",
+      "outputSha256": "5f00bc906ac66fefbad0da1430e6ef7ec1bf5b2953f469458dba26105a6b83ac"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.cc",
+      "baselineSha256": null,
+      "outputSha256": "d64b02e72c25d72b3cc7c39ab99f3f39b5cffb9a1dc80a00ecb7402b52b47e5c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h",
+      "baselineSha256": null,
+      "outputSha256": "dde412636ff84f278f3307ecda4c13ba07a10e73e6d58ea95be6adfb3b48ad6a"
+    }
+  ]
+}

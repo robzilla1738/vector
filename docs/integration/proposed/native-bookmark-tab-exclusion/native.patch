@@ -1,0 +1,98 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1137,6 +1137,8 @@
+       "views/frame/aux_section_clip_view.cc",
+       "views/frame/aux_section_clip_view.h",
+       "views/frame/aux_bookmark_drag_callbacks.h",
++      "views/frame/aux_bookmark_tab_exclusion.cc",
++      "views/frame/aux_bookmark_tab_exclusion.h",
+       "views/frame/aux_bookmark_pin_conversion.cc",
+       "views/frame/aux_bookmark_pin_conversion.h",
+       "views/frame/aux_cross_section_drag_preview.cc",
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.cc
+@@ -0,0 +1,53 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
++
++#include <memory>
++#include "base/supports_user_data.h"
++#include "chrome/browser/ui/tabs/tab_group_features.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/tabs/public/tab_group.h"
++#include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++const char kRetainedTabGroupKey = 0;
++class RetainedTabGroupData final : public base::SupportsUserData::Data {
++ public:
++  explicit RetainedTabGroupData(const RetainedTabGroup& value) : value(value) {}
++  RetainedTabGroup value;
++};
++}  // namespace
++
++void SetRetainedTabGroup(content::WebContents& contents,
++                         const RetainedTabGroup& group) {
++  contents.SetUserData(&kRetainedTabGroupKey,
++                      std::make_unique<RetainedTabGroupData>(group));
++}
++std::optional<RetainedTabGroup> GetRetainedTabGroup(
++    content::WebContents& contents) {
++  const auto* data = static_cast<const RetainedTabGroupData*>(
++      contents.GetUserData(&kRetainedTabGroupKey));
++  return data ? std::make_optional(data->value) : std::nullopt;
++}
++void ClearRetainedTabGroup(content::WebContents& contents) {
++  contents.RemoveUserData(&kRetainedTabGroupKey);
++}
++
++bool IsBookmarkTabExcluded(tabs::TabInterface* tab,
++                            const TabStripModel* model) {
++  // Original412775c..60 requires both inputs before inspecting userdata.
++  if (!tab || !model) return false;
++  if (auto* contents = tab->GetContents();
++      contents && contents->GetUserData(&kRetainedTabGroupKey)) {
++    return true;
++  }
++  const auto group_id = tab->GetGroup();
++  const auto* groups = model->group_model();
++  const auto* group = groups && group_id ? groups->GetTabGroup(*group_id) : nullptr;
++  const auto* features = group ? group->GetTabGroupFeatures() : nullptr;
++  // Original group+b8 points to actual TabGroupFeatures, marker byte+11.
++  return features && features->is_agent_group();
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_BOOKMARK_TAB_EXCLUSION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_BOOKMARK_TAB_EXCLUSION_H_
++
++#include <optional>
++#include "components/tab_groups/tab_group_id.h"
++#include "components/tab_groups/tab_group_visual_data.h"
++
++class TabStripModel;
++namespace content { class WebContents; }
++namespace tabs { class TabInterface; }
++namespace aux {
++
++// The source's original WebContents userdata retains the real group identity
++// and visual data while the original group owner temporarily detaches it.
++struct RetainedTabGroup {
++  tab_groups::TabGroupId id;
++  tab_groups::TabGroupVisualData visual_data;
++};
++void SetRetainedTabGroup(content::WebContents&, const RetainedTabGroup&);
++std::optional<RetainedTabGroup> GetRetainedTabGroup(content::WebContents&);
++void ClearRetainedTabGroup(content::WebContents&);
++
++// Original4127744: retained group snapshot OR actual native agent-group flag.
++// Ordinary grouping, pinned state, split state and URL/title are not this rule.
++bool IsBookmarkTabExcluded(tabs::TabInterface*, const TabStripModel*);
++}  // namespace aux
++#endif

@@ -322,6 +322,18 @@ steps.extend([
     ('native-sidebar-owners-gn/native.patch', 'native-sidebar-owners-gn/manifest.json'),
     ('native-chats-section-api155/native.patch', 'native-chats-section-api155/manifest.json'),
     ('native-cross-section-drag-preview-stop/native.patch', 'native-cross-section-drag-preview-stop/manifest.json'),
+    ('native-bookmark-drag-contract/native.patch', 'native-bookmark-drag-contract/manifest.json'),
+    ('native-bookmark-pin-conversion/native.patch', 'native-bookmark-pin-conversion/manifest.json'),
+    ('native-pinned-tab-entry-drag/native.patch', 'native-pinned-tab-entry-drag/manifest.json'),
+    ('native-bookmark-tab-exclusion/native.patch', 'native-bookmark-tab-exclusion/manifest.json'),
+    ('native-chat-actions/native.patch', 'native-chat-actions/manifest.json'),
+    ('native-chat-tab-association/native.patch', 'native-chat-tab-association/manifest.json'),
+    ('native-chat-actions-gn/native.patch', 'native-chat-actions-gn/manifest.json'),
+    ('native-chat-actions-api155/native.patch', 'native-chat-actions-api155/manifest.json'),
+    ('native-chat-actions-menu-api155/native.patch', 'native-chat-actions-menu-api155/manifest.json'),
+    ('native-pinned-tab-entry-hover-color/native.patch', 'native-pinned-tab-entry-hover-color/manifest.json'),
+    ('native-pinned-tab-hover-controller/native.patch', 'native-pinned-tab-hover-controller/manifest.json'),
+    ('native-pinned-tab-hover-api155/native.patch', 'native-pinned-tab-hover-api155/manifest.json'),
 ])
 
 if options.through:

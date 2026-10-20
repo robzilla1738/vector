@@ -1,0 +1,65 @@
+// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+#include "chrome/browser/ui/tabs/aux_chat_tab_association.h"
+#include <string_view>
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "chrome/browser/aux/component_bootstrap.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/web_contents.h"
+#include "extensions/common/constants.h"
+
+namespace aux {
+std::optional<std::string> ChatIdFromURL(const GURL& url, int account_id) {
+  // Original4637814 requires the exact extension host, native HTML surface and
+  // account-specific task route. Neither title nor URL similarity is used.
+  if (!url.is_valid() || account_id < 0 ||
+      !url.SchemeIs(extensions::kExtensionScheme) ||
+      url.host() != kAgentExtensionId ||
+      (url.path() != "/main.html" && url.path() != "/newtab.html"))
+    return std::nullopt;
+  std::string_view route = url.ref();
+  route = route.substr(0, route.find('?'));
+  const std::string prefix = "/u/" + base::NumberToString(account_id) + "/tasks/";
+  if (!base::StartsWith(route, prefix)) return std::nullopt;
+  route.remove_prefix(prefix.size());
+  if (!route.empty() && route.back() == '/') route.remove_suffix(1);
+  if (route.empty() || route == "new" || route.find('/') != std::string_view::npos)
+    return std::nullopt;
+  return std::string(route);
+}
+std::optional<std::string> ChatIdFromWebContents(content::WebContents& contents,
+                                               int account_id) {
+  // Original4637f20 first uses the real public visible URL, falling back to
+  // committed virtual URL only if that GURL is invalid. Preserve actual
+  // NavigationController visible-entry admission rather than reading pending
+  // renderer navigation as the first candidate.
+  const GURL& visible = contents.GetVisibleURL();
+  const GURL& first = visible.is_valid() ? visible : contents.GetLastCommittedURL();
+  if (auto id = ChatIdFromURL(first, account_id)) return id;
+  auto parse_entry = [account_id](content::NavigationEntry* entry)
+      -> std::optional<std::string> {
+    if (!entry) return std::nullopt;
+    if (auto id = ChatIdFromURL(entry->GetURL(), account_id)) return id;
+    return ChatIdFromURL(entry->GetVirtualURL(), account_id);
+  };
+  auto& controller = contents.GetController();
+  if (auto id = parse_entry(controller.GetVisibleEntry())) return id;
+  if (auto id = parse_entry(controller.GetLastCommittedEntry())) return id;
+  // Original WebContents+8f8 candidate is the current primary frame host's
+  // committed URL, distinct from the navigation-entry virtual URL.
+  if (auto* main_frame = contents.GetPrimaryMainFrame()) {
+    if (auto id = ChatIdFromURL(main_frame->GetLastCommittedURL(), account_id))
+      return id;
+  }
+  return parse_entry(controller.GetPendingEntry());
+}
+GURL ChatURL(int account_id, const std::string& session_id) {
+  if (account_id < 0) return GURL();
+  // Original4637684 joins the existing wire route without inventing a new UI.
+  return GURL("chrome-extension://" + std::string(kAgentExtensionId) +
+              "/main.html#/u/" + base::NumberToString(account_id) +
+              "/tasks/" + session_id);
+}
+}  // namespace aux

@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1150,6 +1150,10 @@
+       "views/frame/aux_new_chat_view.cc",
+       "views/frame/aux_new_chat_view.h",
+       "views/frame/aux_new_chat_icon.inc",
++      "tabs/aux_chat_tab_association.cc",
++      "tabs/aux_chat_tab_association.h",
++      "views/frame/aux_chat_actions.cc",
++      "views/frame/aux_chat_actions.h",
+       "views/frame/aux_chat_row.cc",
+       "views/frame/aux_chat_row.h",
+       "views/frame/aux_chat_icons.inc",

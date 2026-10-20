@@ -1,0 +1,34 @@
+{
+  "composition": "v299",
+  "exitCode": 0,
+  "elapsedSeconds": 14.038712978363037,
+  "targets": {
+    "bookmark_pin_conversion": "obj/chrome/browser/ui/ui/aux_bookmark_pin_conversion.o",
+    "bookmark_drag_row": "obj/chrome/browser/ui/ui/aux_vertical_bookmark_row_view.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/ui/ui/aux_bookmark_pin_conversion.o",
+    "obj/chrome/browser/ui/ui/aux_vertical_bookmark_row_view.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ],
+  "originalReplay": {
+    "matchedSources": 476,
+    "steps": 302
+  },
+  "buildGeneration": {
+    "targets": 36082,
+    "files": 5013,
+    "passed": true
+  },
+  "fullBrowserOrUIAccepted": false,
+  "regionDragCallbacksMounted": false,
+  "signingOrReleasePerformed": false
+}
