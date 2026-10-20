@@ -1,0 +1,142 @@
+--- a/ui/views/controls/scroll_view.h
++++ b/ui/views/controls/scroll_view.h
+@@ -318,6 +318,11 @@
+   bool GetUseContentsPreferredSize() const;
+   void SetUseContentsPreferredSize(bool use_contents_preferred_size);
+ 
++  // Supplied vertical-strip policy: use a real nonempty preferred size once
++  // before provisional layout when layered scrolling is available. This does
++  // not enable UseContentsPreferredSize on behalf of the caller.
++  void SetUseInitialPreferredSizeForLayout(bool enabled);
++
+  private:
+   friend class test::ScrollViewTestApi;
+ 
+@@ -474,6 +479,8 @@
+   // should eventually be true for all cases but using this bool in the interim
+   // to prevent breaking any existing ScrollView uses.
+   bool use_contents_preferred_size_ = false;
++
++  bool use_initial_preferred_size_for_layout_ = false;
+ 
+   // The layer type used for content view when scroll by layers is enabled.
+   ui::LayerType layer_type_ = ui::LAYER_TEXTURED;
+--- a/ui/views/controls/scroll_view.cc
++++ b/ui/views/controls/scroll_view.cc
+@@ -37,6 +37,7 @@
+ #include "ui/views/property_effects.h"
+ #include "ui/views/style/platform_style.h"
+ #include "ui/views/view.h"
++#include "ui/views/view_tracker.h"
+ #include "ui/views/view_utils.h"
+ #include "ui/views/widget/widget.h"
+ 
+@@ -812,7 +813,22 @@
+ 
+   gfx::Rect available_rect = GetContentsBounds();
+   views::SizeBounds available_size(available_rect.size());
+-  if (is_bounded() && contents_) {
++  std::optional<gfx::Size> initial_preferred_size;
++  if (use_initial_preferred_size_for_layout_ &&
++      use_contents_preferred_size_ && contents_ && ScrollsWithLayers() &&
++      !available_rect.IsEmpty()) {
++    ViewTracker owner_tracker(this);
++    ViewTracker contents_tracker(contents_);
++    const gfx::Size preferred = contents_->GetPreferredSize(available_size);
++    if (!owner_tracker.view()) {
++      return;
++    }
++    if (contents_ && contents_tracker.view() == contents_ &&
++        !preferred.IsEmpty()) {
++      initial_preferred_size = preferred;
++    }
++  }
++  if (!initial_preferred_size && is_bounded() && contents_) {
+     int content_width = available_rect.width();
+     int content_height = contents_->GetHeightForWidth(content_width);
+     if (content_height > available_rect.height()) {
+@@ -872,21 +888,26 @@
+   viewport_bounds.set_width(viewport_bounds.width() - vert_sb_layout_width);
+   viewport_bounds.set_height(viewport_bounds.height() - horiz_sb_layout_height);
+ 
+-  // Update the bounds right now so the inner views can fit in it.
+-  contents_viewport_->SetBoundsRect(viewport_bounds);
+-
+-  // Give |contents_| a chance to update its bounds if it depends on the
+-  // viewport.
+-  if (contents_) {
+-    contents_->DeprecatedLayoutImmediately();
++  // Normally update provisional bounds so the inner views can fit.
++  // With the supplied fast path, defer provisional viewport/content layout
++  // until the real scrollbar geometry and final bounds have been determined.
++  if (!initial_preferred_size) {
++    contents_viewport_->SetBoundsRect(viewport_bounds);
++
++    // Give |contents_| a chance to update its bounds if it depends on the
++    // viewport.
++    if (contents_) {
++      contents_->DeprecatedLayoutImmediately();
++    }
+   }
+ 
+   bool should_layout_contents = false;
+   bool horiz_sb_required = false;
+   bool vert_sb_required = false;
+   if (contents_) {
+-    gfx::Size content_size = contents_->size();
+-    if (use_contents_preferred_size_ &&
++    gfx::Size content_size =
++        initial_preferred_size.value_or(contents_->size());
++    if (!initial_preferred_size && use_contents_preferred_size_ &&
+         !contents_->GetPreferredSize(available_size).IsEmpty()) {
+       content_size = contents_->GetPreferredSize(available_size);
+     }
+@@ -947,7 +968,7 @@
+ 
+   // Update to the real client size with the visible scrollbars.
+   contents_viewport_->SetBoundsRect(viewport_bounds);
+-  if (should_layout_contents && contents_) {
++  if (!initial_preferred_size && should_layout_contents && contents_) {
+     contents_->DeprecatedLayoutImmediately();
+   }
+ 
+@@ -955,8 +976,9 @@
+   // the viewport. So ensure the scrolling layer can fill the viewport, so that
+   // events will correctly hit it, and overscroll looks correct.
+   if (contents_ && ScrollsWithLayers()) {
+-    gfx::Size container_size = contents_ ? contents_->size() : gfx::Size();
+-    if (contents_ && use_contents_preferred_size_ &&
++    gfx::Size container_size =
++        initial_preferred_size.value_or(contents_->size());
++    if (!initial_preferred_size && use_contents_preferred_size_ &&
+         !contents_->GetPreferredSize(available_size).IsEmpty()) {
+       container_size = contents_->GetPreferredSize(available_size);
+     }
+@@ -1642,6 +1664,15 @@
+   OnPropertyChanged(&use_contents_preferred_size_, PropertyEffects::kLayout);
+ }
+ 
++void ScrollView::SetUseInitialPreferredSizeForLayout(bool enabled) {
++  if (use_initial_preferred_size_for_layout_ == enabled) {
++    return;
++  }
++  use_initial_preferred_size_for_layout_ = enabled;
++  OnPropertyChanged(&use_initial_preferred_size_for_layout_,
++                    PropertyEffects::kLayout);
++}
++
+ BEGIN_METADATA(ScrollView)
+ ADD_READONLY_PROPERTY_METADATA(int, MinHeight)
+ ADD_READONLY_PROPERTY_METADATA(int, MaxHeight)
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc
+@@ -42,8 +42,7 @@
+ 
+ VerticalTabStripScrollView::VerticalTabStripScrollView()
+     : views::ScrollView(ScrollWithLayers::kEnabled) {
+-  // Supplied inherited +3a9 preferred-layout fast path needs the separate
+-  // base ScrollView adaptation; it is not SetUseContentsPreferredSize(true).
++  SetUseInitialPreferredSizeForLayout(true);
+   AddPreTargetHandler(&input_handler_);
+   contents_scrolled_subscription_ = AddContentsScrolledCallback(
+       base::BindRepeating(&VerticalTabStripScrollView::OnContentsScrolled,

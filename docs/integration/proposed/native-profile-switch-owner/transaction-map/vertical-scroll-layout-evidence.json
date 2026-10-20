@@ -1,0 +1,57 @@
+{
+  "sourceBinarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "current155Sources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scroll_view.h",
+      "sha256": "86cc206f462e97edb486b3fcf27ddd6fcd6ba4684b015fc3e6273186474c9dca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scroll_view.cc",
+      "sha256": "3a2b71a6a950420c2aa43411cd6d72968491ab07897113e6e5b1ea765b2e6efa"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.cc",
+      "sha256": "cfdcf42d0b8db697b127efca28ccb1b66b2e863a718ea332e63a50685f3df433"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view_tracker.h",
+      "sha256": "aca9752fb46b8c5aa1322d8af3267bf1cd70b2dbafe6f16110c7d86264648692"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "scroll-layout-original.txt",
+      "sha256": "9d7897611d80b48d8389aa2bb483bce35febfbe3d7aecf86892980d0a89fb279"
+    },
+    {
+      "path": "scroll-preferred-metadata-original.txt",
+      "sha256": "9c064cddf72cdabe0b42558ff4c93c306be3b52d57e9f27bf193a2ad55610486"
+    },
+    {
+      "path": "scroll-preferred-property-original.txt",
+      "sha256": "72281fdbed49a5e7bfa4f8c2d9b9c73c5fcb7acbb80f0b603a03acb40622b81d"
+    },
+    {
+      "path": "vertical-scroll-layout.patch",
+      "sha256": "233a5ffb198b18bb226ac16e82abc83bd4af9fa4bc314de19fed7ab213a4659c"
+    },
+    {
+      "path": "vertical-scroll-layout-manifest.json",
+      "sha256": "57c42397f085fbb4aee613d95a6aa9efc0b496cc8dabce5e47bb0b4cf3c53f39"
+    },
+    {
+      "path": "vertical-scroll-layout.md",
+      "sha256": "04c60a450dd47e6f88e310a48c3dd0ea1c70ba6501f555383458eb4d5e7820d6"
+    }
+  ],
+  "checks": {
+    "threeFileReplayAndSHA": true,
+    "nativeBuild": false,
+    "nativeRuntime": false,
+    "sharedSourceWrite": false
+  }
+}

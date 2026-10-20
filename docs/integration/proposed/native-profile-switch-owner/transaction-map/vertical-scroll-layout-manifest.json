@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "actual native170 base ScrollView plus a78e82997 restored class output; constructor overlap is explicit",
+  "files": [
+    {
+      "path": "ui/views/controls/scroll_view.h",
+      "baselineSha256": "86cc206f462e97edb486b3fcf27ddd6fcd6ba4684b015fc3e6273186474c9dca",
+      "outputSha256": "3ee51f79a7460c78fc34f35f49d2d68fa32f402f771ffb24b58df8a4a58eab8b"
+    },
+    {
+      "path": "ui/views/controls/scroll_view.cc",
+      "baselineSha256": "3a2b71a6a950420c2aa43411cd6d72968491ab07897113e6e5b1ea765b2e6efa",
+      "outputSha256": "7c2cd720634ab0890eeeafccc1a6628a6e2fb609db1ccecb58e36a2d0b710f64"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_view.cc",
+      "baselineSha256": "8dbeea84988445f6982a0370a99bd03c83749da68bbf9057e22a2771a5b14b37",
+      "outputSha256": "da31b942f7f420c3c418e15ebccec9b588ff661b74e4e4cf9035479c90ddcca1"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

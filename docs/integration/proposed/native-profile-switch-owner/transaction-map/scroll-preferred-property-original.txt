@@ -1,0 +1,44 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ a6a8c78: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ a6a8c7c: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ a6a8c80: 910043fd     	add	x29, sp, #0x10
+ a6a8c84: aa0803f3     	mov	x19, x8
+ a6a8c88: aa0103e0     	mov	x0, x1
+ a6a8c8c: 9618d2dd     	bl	0x2cdd800 <_ChromeMain+0x2cd8564>
+ a6a8c90: 394ea000     	ldrb	w0, [x0, #0x3a8]
+ a6a8c94: aa1303e8     	mov	x8, x19
+ a6a8c98: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ a6a8c9c: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ a6a8ca0: 17a8691d     	b	0x90c3114 <_ChromeMain+0x90bde78>
+ a6a8ca4: a9be4ff4     	stp	x20, x19, [sp, #-0x20]!
+ a6a8ca8: a9017bfd     	stp	x29, x30, [sp, #0x10]
+ a6a8cac: 910043fd     	add	x29, sp, #0x10
+ a6a8cb0: aa0203e0     	mov	x0, x2
+ a6a8cb4: aa0103f4     	mov	x20, x1
+ a6a8cb8: 97a86a70     	bl	0x90c3678 <_ChromeMain+0x90be3dc>
+ a6a8cbc: 36400100     	tbz	w0, #0x8, 0xa6a8cdc <_ChromeMain+0xa6a3a40>
+ a6a8cc0: aa0003f3     	mov	x19, x0
+ a6a8cc4: aa1403e0     	mov	x0, x20
+ a6a8cc8: aa1403e1     	mov	x1, x20
+ a6a8ccc: 9618d2cd     	bl	0x2cdd800 <_ChromeMain+0x2cd8564>
+ a6a8cd0: 394ea008     	ldrb	w8, [x0, #0x3a8]
+ a6a8cd4: 6b33011f     	cmp	w8, w19, uxtb
+ a6a8cd8: 54000081     	b.ne	0xa6a8ce8 <_ChromeMain+0xa6a3a4c>
+ a6a8cdc: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ a6a8ce0: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ a6a8ce4: d65f03c0     	ret
+ a6a8ce8: aa0003f4     	mov	x20, x0
+ a6a8cec: 390ea013     	strb	w19, [x0, #0x3a8]
+ a6a8cf0: 52800021     	mov	w1, #0x1                ; =1
+ a6a8cf4: 949393f9     	bl	0xcb8dcd8 <_ChromeMain+0xcb88a3c>
+ a6a8cf8: 9103e280     	add	x0, x20, #0xf8
+ a6a8cfc: 910ea281     	add	x1, x20, #0x3a8
+ a6a8d00: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+ a6a8d04: a8c24ff4     	ldp	x20, x19, [sp], #0x20
+ a6a8d08: 14937354     	b	0xcb85a58 <_ChromeMain+0xcb807bc>
+ a6a8d0c: 00000000     	udf	#0x0
