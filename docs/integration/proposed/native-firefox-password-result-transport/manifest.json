@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "applyAfter": "actual456; requires real client handler before compilation",
+  "files": [
+    {
+      "path": "chrome/common/importer/importer_bridge.h",
+      "baselineSha256": "d2ae14c794205f445013bc7bacd125ef0839ea8069e5cfadf0e8bf6cb8b37205",
+      "outputSha256": "49b488490194374ff235ce3200dceb7d70d8a7a4626474aeb6a4cb2d86863c52"
+    },
+    {
+      "path": "chrome/common/importer/importer_bridge.cc",
+      "baselineSha256": "9a7ef609d0524078598d9f1b6f95c76f6ffe56da8d35959baff9674a62cfb0bd",
+      "outputSha256": "cfcc3c2dbf253ab119faafea17e8df7493a55e28d2a0b279fa077a876ad94e84"
+    },
+    {
+      "path": "chrome/common/importer/profile_import.mojom",
+      "baselineSha256": "48dfb0d1f3813278a04dc110517d6050f7fcec6c507abd1fe094f84305f89344",
+      "outputSha256": "5b0a35a87dc7779a905d8242cb5cb4dff6354267447c394515b9838c57d5e7ce"
+    },
+    {
+      "path": "chrome/utility/importer/external_process_importer_bridge.h",
+      "baselineSha256": "f2e24c33c70db13c96fcf5de62a78bccc2c51679c99ce2e151f8c8fddda48af7",
+      "outputSha256": "7e3d330179d57e3575b4275b08fe03e340847285b384477c7b287b6b7e35f080"
+    },
+    {
+      "path": "chrome/utility/importer/external_process_importer_bridge.cc",
+      "baselineSha256": "199228c7dd3fcf32d96c554cdca493493385c323c0374e56818f186bbbd99ee7",
+      "outputSha256": "dc55b3508dc41164858ec88a062ef374ceca62ce3c085c0b674716aaca07b2cd"
+    },
+    {
+      "path": "chrome/browser/importer/external_process_importer_client.h",
+      "baselineSha256": "0a899b654ac77e4d48e2b8ccd9458250fb03a94b857e7f8f424be0ea5149f486",
+      "outputSha256": "65bc658a44c8b0f2d47e76a1f4bc591c207561ff07b8799ed3e601f6588bf9df"
+    }
+  ],
+  "compiled": false,
+  "applied": false,
+  "runtimeAcceptance": false
+}

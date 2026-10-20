@@ -1,0 +1,84 @@
+--- a/chrome/common/importer/importer_bridge.h
++++ b/chrome/common/importer/importer_bridge.h
+@@ -4,6 +4,8 @@
+ 
+ #ifndef CHROME_COMMON_IMPORTER_IMPORTER_BRIDGE_H_
+ #define CHROME_COMMON_IMPORTER_IMPORTER_BRIDGE_H_
++
++#include <stdint.h>
+ 
+ #include <string>
+ #include <vector>
+@@ -48,6 +50,10 @@
+   virtual void SetPasswordForm(
+       const user_data_importer::ImportedPasswordForm& form) = 0;
+ 
++  // Supplied Firefox utility result precedes PASSWORDS item-ended. Only the
++  // external-process bridge transports it; other bridges reject this call.
++  virtual void NotifyFirefoxPasswordImportResult(bool succeeded, uint32_t count);
++
+   virtual void SetAutofillFormData(
+       const std::vector<ImporterAutofillFormDataEntry>& entries) = 0;
+ 
+--- a/chrome/common/importer/importer_bridge.cc
++++ b/chrome/common/importer/importer_bridge.cc
+@@ -4,6 +4,13 @@
+ 
+ #include "chrome/common/importer/importer_bridge.h"
+ 
++#include "base/notreached.h"
++
+ ImporterBridge::ImporterBridge() = default;
+ 
+ ImporterBridge::~ImporterBridge() = default;
++
++void ImporterBridge::NotifyFirefoxPasswordImportResult(bool succeeded,
++                                                     uint32_t count) {
++  NOTREACHED();  // The real Firefox utility uses ExternalProcessImporterBridge.
++}
+--- a/chrome/common/importer/profile_import.mojom
++++ b/chrome/common/importer/profile_import.mojom
+@@ -77,6 +77,8 @@
+   OnFaviconsImportStart(uint32 total_favicons_count);
+   OnFaviconsImportGroup(FaviconUsageDataList favicons_group);
+   OnPasswordFormImportReady(ImportedPasswordForm form);
++  // Typed adaptation of the supplied utility result (bool, uint32).
++  OnFirefoxPasswordImportResult(bool succeeded, uint32 count);
+   OnKeywordsImportReady(
+       array<SearchEngineInfo> search_engines,
+       bool unique_on_host_and_path);
+--- a/chrome/utility/importer/external_process_importer_bridge.h
++++ b/chrome/utility/importer/external_process_importer_bridge.h
+@@ -62,6 +62,8 @@
+   void SetPasswordForm(
+       const user_data_importer::ImportedPasswordForm& form) override;
+ 
++  void NotifyFirefoxPasswordImportResult(bool succeeded, uint32_t count) override;
++
+   void SetAutofillFormData(
+       const std::vector<ImporterAutofillFormDataEntry>& entries) override;
+ 
+--- a/chrome/utility/importer/external_process_importer_bridge.cc
++++ b/chrome/utility/importer/external_process_importer_bridge.cc
+@@ -113,6 +113,11 @@
+   observer_->OnPasswordFormImportReady(form);
+ }
+ 
++void ExternalProcessImporterBridge::NotifyFirefoxPasswordImportResult(
++    bool succeeded, uint32_t count) {
++  observer_->OnFirefoxPasswordImportResult(succeeded, count);
++}
++
+ void ExternalProcessImporterBridge::SetAutofillFormData(
+     const std::vector<ImporterAutofillFormDataEntry>& entries) {
+   observer_->OnAutofillFormDataImportStart(entries.size());
+--- a/chrome/browser/importer/external_process_importer_client.h
++++ b/chrome/browser/importer/external_process_importer_client.h
+@@ -73,6 +73,7 @@
+       const favicon_base::FaviconUsageDataList& favicons_group) override;
+   void OnPasswordFormImportReady(
+       const user_data_importer::ImportedPasswordForm& form) override;
++  void OnFirefoxPasswordImportResult(bool succeeded, uint32_t count) override;
+   void OnKeywordsImportReady(
+       const std::vector<user_data_importer::SearchEngineInfo>& search_engines,
+       bool unique_on_host_and_path) override;

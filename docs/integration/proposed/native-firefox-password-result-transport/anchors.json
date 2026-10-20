@@ -1,0 +1,50 @@
+[
+  {
+    "path": "chrome/common/importer/importer_bridge.h",
+    "find": "#include <string>",
+    "replace": "#include <stdint.h>\n\n#include <string>",
+    "count": 1
+  },
+  {
+    "path": "chrome/common/importer/importer_bridge.h",
+    "find": "  virtual void SetAutofillFormData(",
+    "replace": "  // Supplied Firefox utility result precedes PASSWORDS item-ended. Only the\n  // external-process bridge transports it; other bridges reject this call.\n  virtual void NotifyFirefoxPasswordImportResult(bool succeeded, uint32_t count);\n\n  virtual void SetAutofillFormData(",
+    "count": 1
+  },
+  {
+    "path": "chrome/common/importer/importer_bridge.cc",
+    "find": "#include \"chrome/common/importer/importer_bridge.h\"",
+    "replace": "#include \"chrome/common/importer/importer_bridge.h\"\n\n#include \"base/notreached.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/common/importer/importer_bridge.cc",
+    "find": "ImporterBridge::~ImporterBridge() = default;",
+    "replace": "ImporterBridge::~ImporterBridge() = default;\n\nvoid ImporterBridge::NotifyFirefoxPasswordImportResult(bool succeeded,\n                                                     uint32_t count) {\n  NOTREACHED();  // The real Firefox utility uses ExternalProcessImporterBridge.\n}",
+    "count": 1
+  },
+  {
+    "path": "chrome/common/importer/profile_import.mojom",
+    "find": "  OnPasswordFormImportReady(ImportedPasswordForm form);",
+    "replace": "  OnPasswordFormImportReady(ImportedPasswordForm form);\n  // Typed adaptation of the supplied utility result (bool, uint32).\n  OnFirefoxPasswordImportResult(bool succeeded, uint32 count);",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/external_process_importer_bridge.h",
+    "find": "  void SetAutofillFormData(",
+    "replace": "  void NotifyFirefoxPasswordImportResult(bool succeeded, uint32_t count) override;\n\n  void SetAutofillFormData(",
+    "count": 1
+  },
+  {
+    "path": "chrome/utility/importer/external_process_importer_bridge.cc",
+    "find": "void ExternalProcessImporterBridge::SetAutofillFormData(",
+    "replace": "void ExternalProcessImporterBridge::NotifyFirefoxPasswordImportResult(\n    bool succeeded, uint32_t count) {\n  observer_->OnFirefoxPasswordImportResult(succeeded, count);\n}\n\nvoid ExternalProcessImporterBridge::SetAutofillFormData(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/importer/external_process_importer_client.h",
+    "find": "      const user_data_importer::ImportedPasswordForm& form) override;",
+    "replace": "      const user_data_importer::ImportedPasswordForm& form) override;\n  void OnFirefoxPasswordImportResult(bool succeeded, uint32_t count) override;",
+    "count": 1
+  }
+]
