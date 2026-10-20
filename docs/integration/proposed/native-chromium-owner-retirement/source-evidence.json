@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "kind": "source-finding-no-behavior-patch",
+  "original": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x424f238",
+      "endExclusive": "0x424f350",
+      "sha256": "e705393c2575e36b3dd0cdc74df90d458177b013de5040b81135df3b5504112a",
+      "assembly": "evidence/webui-destruction.asm",
+      "assemblySha256": "39b98ae36be4e4d96e99eb4bace8686cf98e91bff5f156d69b4f52ee42a3ab64"
+    },
+    {
+      "start": "0x4252ec0",
+      "endExclusive": "0x42530c0",
+      "sha256": "ebfb8f1974e9bcfc666563c679fda013d7d01557845af3affe20191c5b8de46d",
+      "assembly": "evidence/migrator-ctor-destructor.asm",
+      "assemblySha256": "26290500316821b07e65894d3d6df89cc2724e906648bac102d2859cfeb85342"
+    },
+    {
+      "start": "0x42532e0",
+      "endExclusive": "0x42534e8",
+      "sha256": "74e22931af042da80ed4d89cb5563908176257551e4114db5770ef5b0cb69388",
+      "assembly": "evidence/provider-posting.asm",
+      "assemblySha256": "e2efa7c6b646aa1c9d8b9d081705d7d4311d6c0e2ef31f156611b377b55109e1"
+    },
+    {
+      "start": "0x42538e0",
+      "endExclusive": "0x4253b3c",
+      "sha256": "e28eac8afae2078b4a479a3ae7b1eea5b8b02238740beb7f00bd110844ad620c",
+      "assembly": "evidence/copy-posting.asm",
+      "assemblySha256": "ce4b44ab4681a78f5a8d2f166b8c41be746acacc5f1dbafd130354b4568449fd"
+    },
+    {
+      "start": "0x4253d68",
+      "endExclusive": "0x4253e58",
+      "sha256": "759dcae2d0f39e9099fd4a4feae2d6d7cb9b73835a65368ea8f49521fea4ba64",
+      "assembly": "evidence/task-reply-wrapper.asm",
+      "assemblySha256": "00cd890cb1065b9f3cf473a08d593847b77591fa032652a2acd41b046c367c01"
+    },
+    {
+      "start": "0x41b06c8",
+      "endExclusive": "0x41b078c",
+      "sha256": "c83e0c2834fdf9e36b06956d8219145cbedd5db225881082af1fd113517d5562",
+      "assembly": "evidence/provider-reply-weak-invoke.asm",
+      "assemblySha256": "86038db68ffb9012cd05fef74e66f88586d0115ff88a28e4e68fac0d89a28fd7"
+    },
+    {
+      "start": "0x425f03c",
+      "endExclusive": "0x425f1c4",
+      "sha256": "6e822d95724040a595fcc20eea9ca98bc1285e0f7c03e453b5134f88c5327bff",
+      "assembly": "evidence/copy-reply-weak-invoke.asm",
+      "assemblySha256": "2e6fdea4546afb76592d4c253fda83e21c900b012328df2ed1f7ab83cb873917"
+    },
+    {
+      "start": "0x42577bc",
+      "endExclusive": "0x4257878",
+      "sha256": "9a9ff196ddd0efaf3f85ed9cf529c47691348fcab78705971808981915b41a13",
+      "assembly": "evidence/profile-create-weak-callback.asm",
+      "assemblySha256": "e358100e774fe49eccd37556a3cd3ea5922a59737e82407359ee4ad5c9b77c5a"
+    },
+    {
+      "start": "0x2979d00",
+      "endExclusive": "0x2979d50",
+      "sha256": "3c08a762d18462faae13db3506cd602838c5cb4d1c7186b310cbc634c51bdc63",
+      "assembly": "evidence/profile-initialized-weak-invoke.asm",
+      "assemblySha256": "84cbb3edfeedb1d895253b69602ce98722c90a1694cb76169c3805074cf53108"
+    }
+  ],
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "currentNativeSnapshots": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui.cc",
+      "sha256": "e16525da309d6d34af554c9abf74493fe809d1672752a2d85b701ae41a8dfba8",
+      "retained": "current/chrome/browser/extensions/api/aux_browser_import/import_webui.cc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h",
+      "sha256": "d830b5ed5f3cb206b05f83834cea2d312366f3286a9c003bd46b37fe3547a5f1",
+      "retained": "current/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.h"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc",
+      "sha256": "c341e20d1d3bf9b7f6aef2ce743f0a8798336ae81938acc12aa168841f30e02c",
+      "retained": "current/chrome/browser/extensions/api/aux_browser_import/chromium_new_target_import.cc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc",
+      "sha256": "c5c6a1542546cdf8a1e87a622e40b7283c087496547713bdb2b6a5293932a5b3",
+      "retained": "current/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc"
+    }
+  ],
+  "scope": "Original owner destruction/provider/copy replies. No runtime close/cancel, worker, profile, DB, key or native execution."
+}
