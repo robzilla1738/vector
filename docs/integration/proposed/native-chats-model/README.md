@@ -1,0 +1,17 @@
+# Genuine native Chats model
+
+This new two-file model ports supplied parser466e2cc and response merger463e350. It does not mount a replacement sidebar or alter the existing feed. The held body-retirement proposal remains unapplied until genuine Bookmarks, Chats, native tab rows and their actual owners are assembled.
+
+The original region polls the authenticated `/session/for-chrome/chats?accountId=N` endpoint (original21420, Aux21520). Schedule463db48 permits one in-flight request, has genuine profile/path/generation guards, waits for real authorization, uses a3s request timeout and schedules the next poll after1s. A401 permits one authorization invalidation/retry. The final response handler verifies the captured actual profile identity before accepting data. These are transport/owner requirements, not implemented by a parser or replaced with synthetic ready state.
+
+Successful original JSON dictionaries contribute `pinned` followed by `recents`; malformed or absent lists contribute no rows. Entries must be dictionaries with a nonempty string ID. A set keeps the first exact ID across both lists. Missing/empty title becomes original UTF16 `Untitled task`. Missing pinned is false; missing canPin is true. Unknown/missing status maps to idle. Original badge numeric states are0 idle,1 running,2 completed/finished-unread,3 awaiting-approval,4 awaiting-answer,5 awaiting-for-inbox-events,6 error/errored/aborted/interrupted.
+
+A popover requires only a nonempty string ID. Its kind remains the actual source string, title/body become UTF16, and actions retain source order and duplicates. Each action requires nonempty string id and label; primary defaults false. There is no invented kind/action allowlist, ID regex, required status/title,200-row limit or custom synthetic empty state. The separate existing independent `AuxNativeTaskFeed::ParseTask` imposes several such restrictions and cannot be treated as equivalent.
+
+Original region callback4635348 stores184-byte records at11a0/11a8. Native section rebuild463d314 recreates actual4671570 row children,2px spacing after the first, retains real row callbacks and adds the genuine final action row. Section4667640 calculates the source expansion height from that row count. The original native row, popup/action surfaces, expansion owner and lifecycle remain the next implementation step; this model alone does not establish body parity.
+
+## Integration
+
+`aux::ParseChatsResponse(std::string_view)` returns optional vector of genuine Chat records. Invalid JSON/top-level dictionary returns nullopt; transport errors must retain their real failure semantics. A valid empty projection returns an empty vector, as supplied. New files `chrome/browser/ui/views/frame/aux_chats_model.{h,cc}` need registration in the existing enabledMac view target, using its existing base dependency. No existing native/GN source was changed. Root owns integration and focused compilation.
+
+Verification pins the whole supplied arm64 artifact, complete bounded parser/response/rows/auth/poll LLVM ranges, source string addresses/default UTF16 title and independent two-new-file patch replay. Bounded Ghidra snapshots are retained at their exact hash/path; external literal/heap allocator paths are not fully analyzed by the raw slice, so full LLVM is authoritative. No native compile, target execution, UI observation, state/profile/credential/Keychain access or network request occurred.

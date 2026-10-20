@@ -1,0 +1,127 @@
+{
+  "artifact": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "response",
+      "start": "0x463e350",
+      "stopExclusive": "0x463e678",
+      "bytesSha256": "f39186236d3ce5b08ab203c952100573ccb2730f6947448711bbde2cb742940c",
+      "asmSha256": "67bb7c470378b54db5e8ca1f84b3cd8487ece2da685d8e222e871b40148c8b09"
+    },
+    {
+      "name": "parser",
+      "start": "0x466e2cc",
+      "stopExclusive": "0x466ee64",
+      "bytesSha256": "76f018b87d36e2ea89f28d3313cedbd97937d32be872122e70fb309073b488f4",
+      "asmSha256": "ab9c37c845ad66a723f860f41e59f2329648aba94ae5c3c8f36a670b985d299d"
+    },
+    {
+      "name": "rows",
+      "start": "0x463d314",
+      "stopExclusive": "0x463d8d0",
+      "bytesSha256": "c4ad25b4333d9bc5444f2d1d4613b2171d3c350027f95a5ca73232d841aed750",
+      "asmSha256": "d583100caef437f181ba5a129d258c1e896c15772253c04169db79cd4275bad1"
+    },
+    {
+      "name": "authorization",
+      "start": "0x463dd90",
+      "stopExclusive": "0x463e32c",
+      "bytesSha256": "36c92d1841c5a8ac4c94572d7690e75dcbcd3672bcf020ec0f778fbd007e0b44",
+      "asmSha256": "a6d3f4a4fb5765eba364c20189ad0e88283a7bd1a4ee6eb3bb68ae8a35f2cf60"
+    },
+    {
+      "name": "poll",
+      "start": "0x463db48",
+      "stopExclusive": "0x463dd70",
+      "bytesSha256": "a432f98df909043db98ceee84bfe4d96ffacdd1b6f83919c135eaa0630ef70bb",
+      "asmSha256": "c83cf0cbd47895ec250382318eb2efef6abbbf8901d24aaa723a415ab62d10dd"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0xd7ef279",
+      "value": "id",
+      "bytesSha256": "b1f1e1efa0422888346cb01744e905f325be96a2431ec34557ddc5eb50ef82f8"
+    },
+    {
+      "address": "0xd7fcc1c",
+      "value": "title",
+      "bytesSha256": "02071a726f2126e6377a8ee58efbf56e94738282fdd8cb8f87574ef1ed18792f"
+    },
+    {
+      "address": "0xd7fda3f",
+      "value": "status",
+      "bytesSha256": "afda34ac84d18210ca2fa7083fcbfcb31ad44fab7d47ec0ce7a448683cc1fded"
+    },
+    {
+      "address": "0xdb2053a",
+      "value": "pinned",
+      "bytesSha256": "8e9517412d235b3571598d123c5629a60fbdff65ec48b31c16f9dde4c680c369"
+    },
+    {
+      "address": "0xdafec0c",
+      "value": "canPin",
+      "bytesSha256": "6cfc9696280801d6be915579a09590815d3a1172212f97e397c6d3bf85c5655f"
+    },
+    {
+      "address": "0xdda36a9",
+      "value": "popover",
+      "bytesSha256": "e71631d05c0a8533722d18df071b08dcaff9dce3e637618e657de5d2db8cb356"
+    },
+    {
+      "address": "0xd7fcf72",
+      "value": "kind",
+      "bytesSha256": "3255e99c7265c5146d8652bdfc16132fc8b7e1e20edbab52cbe226ae9d63f807"
+    },
+    {
+      "address": "0xd94fda9",
+      "value": "body",
+      "bytesSha256": "533efb51d04e310a7fb38f1446b4218823f48bc5485d7409fdb05098736512c9"
+    },
+    {
+      "address": "0xd8dbfba",
+      "value": "actions",
+      "bytesSha256": "832070b670c0fe020e8d60d41363bf101f6eae8345670fa71e87d4c5480459d8"
+    },
+    {
+      "address": "0xd80a078",
+      "value": "label",
+      "bytesSha256": "3f73b82f1d3bfdbad122b3f7393f2e1a2c3a87f1cc572422951f96b2872abb67"
+    },
+    {
+      "address": "0xd8a4989",
+      "value": "primary",
+      "bytesSha256": "744d0b49f503f20340bbf23658a9788e709619c3ba4630ba6469d3d64857bb1a"
+    }
+  ],
+  "defaultTitle": {
+    "address": "0xdf87f18",
+    "value": "Untitled task",
+    "encoding": "utf-16-le"
+  },
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/native-ui-reuse/out/sidebar-body-analysis/chats-parser-ghidra.json",
+    "sha256": "865e59c7ea51995f6897e76d71c899e2d7261fceb68f649d5ee58f7a412a98dc",
+    "rawSha256": "0cb59a642ecfe20ecfbabc65e6561aca5a69bb92efa87654500f9a4d38c6b18e",
+    "limitations": "Raw bounded decompilation; unresolved globals/external calls and compiler heap paths are not source. Complete LLVM range and original artifact are authoritative."
+  },
+  "producer": {
+    "endpoint": "/session/for-chrome/chats",
+    "portBranding": "21420 original\u219221520 Aux",
+    "authorization": "Actual installation/profile authorization, not a replacement token",
+    "intervalMicros": 1000000,
+    "timeoutMicros": 3000000,
+    "retry401": "One token invalidation + reauthorization retry",
+    "arrays": [
+      "pinned",
+      "recents"
+    ],
+    "dedup": "First occurrence of exact nonempty UTF8 id wins across both arrays",
+    "rowSize": 184,
+    "rowConstructor": "0x4671570"
+  },
+  "application": "New native model parser only. No transport or existing feed/body edits; no model/task/status substitute. Real row/section owner and transport lifecycle remain next integration."
+}

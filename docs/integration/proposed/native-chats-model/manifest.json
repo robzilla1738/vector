@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_model.cc",
+      "baselineSha256": null,
+      "outputSha256": "b649ac84ccb4a8218ea3369512d4de11901b55db51ab032aa3b0b4057882d62f"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_model.h",
+      "baselineSha256": null,
+      "outputSha256": "f9b452e3e13c136b860bc713410b6f528d8ae5f217ad625952f417010e5e2fd8"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "sharedSourceModified": false
+}
