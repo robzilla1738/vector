@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.h",
+      "baselineSha256": "ba828b5433dd9ebf8da1c73c8726cc2c689bf4f7916959f515a783e1f81f48a6",
+      "outputSha256": "e4ef72e174940d55ec3f16747d7ef72aaaaaea125e6ec069cc6640ccb4277704"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_source.cc",
+      "baselineSha256": "07134bf38ac110091b219b2fbd80eb8a0c6875eaf15b922121ec19df13105114",
+      "outputSha256": "c6bca56c331dab7d91888f8e3864cb85312fd315a27801a0d279189f34a21986"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}

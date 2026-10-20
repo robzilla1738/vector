@@ -1,0 +1,19 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0xe7223d8",
+      "end": "0xe722458",
+      "sha256": "ae4fe0941e9127b04b4edc02a91e586455ae651cb98f926e05f5879143890316",
+      "meaning": "Original TabStripModelObserver source table: refresh thunk slots0,20,30,38; group metadata and grouped state are not noop."
+    },
+    {
+      "start": "0x4629df0",
+      "end": "0x4629df8",
+      "sha256": "25dbd4a6bc1598b2952c6bd09f6ff62bdde5592a2ade78024c319981503f47ef",
+      "meaning": "Same source weak deferredRefresh thunk subtracts actual310 observerbase then46271b0."
+    }
+  ],
+  "mapping": "Current155 ModelObserver sequence slots0=modelchanged,20=tabchanged,30=TabGroupedStateChanged,38=OnTabGroupChanged matches supplied source table. Slot28 pinnedchange is source noop and remains upstream default."
+}

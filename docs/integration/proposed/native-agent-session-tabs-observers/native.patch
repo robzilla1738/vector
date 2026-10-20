@@ -1,0 +1,30 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_session_tabs_source.h
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_source.h
+@@ -45,6 +45,10 @@
+   void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
+                              const TabStripSelectionChange&) override;
+   void OnTabChangedAt(tabs::TabInterface*, TabChangeType) override;
++  void TabGroupedStateChanged(TabStripModel*,
++      std::optional<tab_groups::TabGroupId>,
++      std::optional<tab_groups::TabGroupId>, tabs::TabInterface*, int) override;
++  void OnTabGroupChanged(const TabGroupChange&) override;
+   void OnTabStripModelDestroyed(TabStripModel*) override;
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   base::WeakPtr<Profile> profile_;
+--- a/chrome/browser/ui/views/frame/aux_agent_session_tabs_source.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_source.cc
+@@ -250,6 +250,14 @@
+ void AgentSessionTabsSource::OnTabChangedAt(tabs::TabInterface*, TabChangeType) {
+   Reconcile();
+ }
++void AgentSessionTabsSource::TabGroupedStateChanged(
++    TabStripModel*, std::optional<tab_groups::TabGroupId>,
++    std::optional<tab_groups::TabGroupId>, tabs::TabInterface*, int) {
++  Reconcile();
++}
++void AgentSessionTabsSource::OnTabGroupChanged(const TabGroupChange&) {
++  Reconcile();
++}
+ void AgentSessionTabsSource::OnTabStripModelDestroyed(TabStripModel*) {
+   tabs_ = nullptr;
+   Retire();
