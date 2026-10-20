@@ -1,0 +1,12 @@
+{
+  "artifactSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "menuClose": "46398c8",
+  "copyBranch": "463a9c8",
+  "literalVM": "df87da0",
+  "literalFileOffset": 234388896,
+  "literalUTF16Sha256": "fb3d6fab361c7b35b56d0f535bd1e390b39ae477b8fe0fe705674b6731378c40",
+  "toastId": 22,
+  "actual155Enum": "ToastId::kCopiedToClipboard",
+  "originalAssemblySha256": "4f90cdc9ef45a286cd67aa3994814a2630a45429a90c1a39fa8187140d3219e1",
+  "runtimeAccepted": false
+}

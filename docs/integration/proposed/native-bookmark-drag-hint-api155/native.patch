@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc
++++ b/chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc
+@@ -146,10 +146,10 @@
+   return gfx::Rect(
+       std::clamp(x, work_area.x(),
+                  std::max(work_area.x(),
+-                          base::ClampSub(work_area.right(), size.width()))),
++                          base::ClampSub(work_area.right(), size.width()).RawValue())),
+       std::clamp(y, work_area.y(),
+                  std::max(work_area.y(),
+-                          base::ClampSub(work_area.bottom(), size.height()))),
++                          base::ClampSub(work_area.bottom(), size.height()).RawValue())),
+       size.width(), size.height());
+ }
+ bool BookmarkDragHint::EnsureWidget() {

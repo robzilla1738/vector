@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1140,6 +1140,8 @@
+       "views/frame/aux_bookmark_drag_callbacks.h",
+       "views/frame/aux_bookmark_drag_hint.cc",
+       "views/frame/aux_bookmark_drag_hint.h",
++      "views/frame/aux_bookmarks_section.cc",
++      "views/frame/aux_bookmarks_section.h",
+       "views/frame/aux_bookmark_tab_exclusion.cc",
+       "views/frame/aux_bookmark_tab_exclusion.h",
+       "views/frame/aux_bookmark_pin_conversion.cc",

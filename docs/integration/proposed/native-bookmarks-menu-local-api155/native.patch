@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc
+@@ -346,7 +346,7 @@
+     int browser_command;
+     return view_->GetWidget() &&
+            TabStripModel::ContextMenuCommandToBrowserCommand(
+-               command, &browser_.get() command) &&
++               command, &browser_command) &&
+            view_->GetWidget()->GetAccelerator(browser_command, accelerator);
+   }
+   MenuState folder_menu_, url_menu_;

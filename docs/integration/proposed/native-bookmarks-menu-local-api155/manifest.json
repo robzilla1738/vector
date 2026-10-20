@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.cc",
+      "baselineSha256": "57c042a849730322c6d7378d86faa82376474c548d43c7badcc03aa5d37b3cbc",
+      "outputSha256": "17c6b33c0e5dd18b754353177579ba1237850569249d470c4ef1dba42c4bb7a9"
+    }
+  ]
+}

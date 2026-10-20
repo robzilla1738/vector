@@ -1,0 +1,25 @@
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -28,6 +28,8 @@
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++#include "chrome/browser/ui/views/frame/aux_chats_section.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h"
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
+@@ -2066,6 +2068,13 @@
+   OutlookCalendarPageHandler::RegisterProfilePrefs(registry);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   aux::RegisterPinnedTabEntriesPrefs(registry);
++  aux::AuxChatsSection::RegisterPrefs(registry);
++  aux::RegisterVerticalTabBookmarkExpansionPrefs(registry);
++  // Supplied034e3f1c: both booleans default true, flags0.
++  registry->RegisterBooleanPref(
++      "aside.vertical_tabs.bookmarks_section_enabled", true);
++  registry->RegisterBooleanPref(
++      "aside.vertical_tabs.bookmarks_section_expanded", true);
+ #else
+   PinnedTabCodec::RegisterProfilePrefs(registry);
+ #endif

@@ -1,0 +1,19 @@
+{
+  "artifactSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "function": "4646654",
+  "decompilerSha256": "9fe70bf789f82500c73a379470657d7f37e86f3744b3cfba2be0d228b2a2bef8",
+  "assemblySha256": "cdbaf342a2f2e4c68d9c4d65199885af2952c58591d2691c17898588ad4f0772",
+  "sourceOrder": [
+    "actual Agent-group guard",
+    "actual WebContents",
+    "valid visible URL, else valid last-committed URL",
+    "consume exact queued navigation",
+    "nonempty queued host or actual URL host",
+    "overwrite handle cache",
+    "set actual userdata",
+    "persist actual session extra data",
+    "erase genuine fb0 handle"
+  ],
+  "mounted": false,
+  "runtimeAccepted": false
+}

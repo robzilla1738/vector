@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "baselineSha256": "9428b4161dee7aaf72d5a2bd84a437b78a67c24277165474780ebdeb006e8d0c",
+      "outputSha256": "a8d6beac9b84311c947b9c026a1b88452321f2959b631fbba029d7f52e482832"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+--- a/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h
+@@ -6,6 +6,7 @@
+ 
+ #include <cstdint>
+ #include <map>
++#include <set>
+ 
+ #include "base/memory/raw_ref.h"
+ #include "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h"
+@@ -18,6 +19,8 @@
+ 
+ namespace aux {
+ 
++class VerticalTabBookmarksView;
++
+ // The original region's f98 cache. Keys are genuine TabInterface handles;
+ // association never depends on a tab URL, title or native extension tab ID.
+ // This owner is retired/recreated with the region's real browser/profile owner.
+@@ -28,6 +31,11 @@
+ 
+   // 4645e90: an existing cached association takes precedence over userdata.
+   void Import(tabs::TabInterface* tab);
++  // Original4646654 consumes only a real queued navigation and updates all
++  // three association stores before clearing the genuine source fb0 handle.
++  bool BindPendingNavigation(tabs::TabInterface* tab,
++                             VerticalTabBookmarksView& bookmarks,
++                             std::set<tabs::TabHandle>& handles_fb0);
+   // 4646f58: invalidate only after the real BookmarkModel is loaded and the
+   // source's transaction suppression flag is false. No synthetic model state.
+   void Reconcile(tabs::TabInterface* tab,
+--- a/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc
++++ b/chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc
+@@ -10,6 +10,11 @@
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_group_features.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmarks_view.h"
++#include "components/tabs/public/tab_group.h"
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+ #include "components/sessions/content/session_tab_helper.h"
+@@ -69,6 +74,45 @@
+   Persist(*tab, *representation);
+ }
+ 
++bool BookmarkTabAssociations::BindPendingNavigation(
++    tabs::TabInterface* tab,
++    VerticalTabBookmarksView& bookmarks,
++    std::set<tabs::TabHandle>& handles_fb0) {
++  if (!tab)
++    return false;
++  // This source branch checks the actual native Agent group only. It does
++  // not share4127744's distinct retained-group userdata exclusion.
++  auto* model = browser_->GetTabStripModel();
++  const auto group_id = tab->GetGroup();
++  const auto* groups = model ? model->group_model() : nullptr;
++  const auto* group = groups && group_id ? groups->GetTabGroup(*group_id) : nullptr;
++  const auto* features = group ? group->GetTabGroupFeatures() : nullptr;
++  if (features && features->is_agent_group())
++    return false;
++  auto* contents = tab->GetContents();
++  if (!contents)
++    return false;
++  GURL url = contents->GetVisibleURL();
++  if (!url.is_valid())
++    url = contents->GetLastCommittedURL();
++  if (!url.is_valid())
++    return false;
++  BookmarkTabRepresentation representation{};
++  if (!bookmarks.TakePendingNavigation(url, &representation))
++    return false;
++  if (representation.host.empty())
++    representation.host = std::string(url.host());
++  if (representation.host.empty())
++    return false;
++  const auto handle = tab->GetHandle();
++  associations_.insert_or_assign(handle, representation);
++  SetBookmarkTabRepresentation(contents, representation.node_id,
++                               representation.host);
++  Persist(*tab, representation);
++  handles_fb0.erase(handle);
++  return true;
++}
++
+ void BookmarkTabAssociations::Reconcile(
+     tabs::TabInterface* tab,
+     const bookmarks::BookmarkModel* bookmark_model,

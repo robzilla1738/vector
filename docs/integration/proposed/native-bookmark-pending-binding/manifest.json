@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.h",
+      "baselineSha256": "4162cf9528b56fcc959c93c179857c9b5ad54d61ea5da30314ed6d9e5a051c1e",
+      "outputSha256": "3caaf0f8c085d4b4d5952b849b4621722662edd1f9adf692fb364e695549be62"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_tab_associations.cc",
+      "baselineSha256": "f64da97801b4d4aada7df033ceb161f62514bb0fb72a0deccea0b9dd32550431",
+      "outputSha256": "2e3e53cca849823f24867f4dafe778df5460cacb7a361c3817c9f294ed5a8509"
+    }
+  ]
+}

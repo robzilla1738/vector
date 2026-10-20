@@ -1,0 +1,30 @@
+{
+  "originalArtifactSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "function": "034e3f1c",
+  "functionBytes": 1240,
+  "decompilerExport": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/034e3f1c.c",
+  "decompilerExportSha256": "d378e7d60899280869ee07cab133814720404b3b365e2c4448f6eb4e8cb0a792",
+  "registrations": {
+    "aside.vertical_tabs.bookmarks_section_enabled": {
+      "type": "boolean",
+      "default": true,
+      "flags": 0
+    },
+    "aside.vertical_tabs.bookmarks_section_expanded": {
+      "type": "boolean",
+      "default": true,
+      "flags": 0
+    },
+    "aside.vertical_tabs.chats_section_expanded": {
+      "type": "boolean",
+      "default": true,
+      "flags": 0
+    },
+    "aside.vertical_tabs.expanded_bookmark_folder_ids": {
+      "type": "list",
+      "default": [],
+      "flags": 0
+    }
+  },
+  "browserExecutionOrOwnerStateAccess": false
+}

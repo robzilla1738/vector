@@ -1,0 +1,21 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1126,6 +1126,7 @@
+       "//chrome/browser/ui/tabs:aux_bookmark_tab_representation",
+       "//chrome/browser/extensions/api/aux_mini_popup",
+       "//chrome/browser/ui/tabs:aux_pinned_tab_entries",
++      "//components/constrained_window",
+       "//ui/snapshot",
+     ]
+     sources += [
+@@ -1163,6 +1164,10 @@
+       "views/frame/aux_chat_navigation.h",
+       "views/frame/aux_chats_transport.cc",
+       "views/frame/aux_chats_transport.h",
++      "views/frame/aux_vertical_tab_bookmarks_view.cc",
++      "views/frame/aux_vertical_tab_bookmarks_view.h",
++      "views/frame/aux_bookmark_confirmation.h",
++      "views/frame/aux_bookmark_confirmation_mac.mm",
+       "views/frame/aux_vertical_bookmark_row_view.cc",
+       "views/frame/aux_vertical_bookmark_row_view.h",
+       "views/frame/aux_vertical_bookmark_row_icons.inc",

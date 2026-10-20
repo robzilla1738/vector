@@ -1,0 +1,134 @@
+{
+  "composition": "v336",
+  "originalReplay": {
+    "sources": 495,
+    "steps": 339,
+    "actualNativeSourcesMatch": true,
+    "actualArtworkMatches": 23,
+    "seed": "out/native-original-replay-v320",
+    "seedAddedPath": {
+      "path": "chrome/app/chrome_command_ids.h",
+      "source": "native-chat-command-registration/baseline exact first proposal baseline"
+    }
+  },
+  "focusedBuilds": [
+    {
+      "composition": "v320",
+      "exitCode": 0,
+      "elapsedSeconds": 26.647114992141724,
+      "targets": {
+        "new_chat_navigation": "obj/chrome/browser/ui/ui/aux_chat_navigation.o",
+        "native_chat_transport": "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "command_controller": "obj/chrome/browser/ui/ui/browser_command_controller.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chat_navigation.o",
+        "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "obj/chrome/browser/ui/ui/browser_command_controller.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v323",
+      "exitCode": 0,
+      "elapsedSeconds": 7.725656986236572,
+      "targets": {
+        "new_chat_navigation": "obj/chrome/browser/ui/ui/aux_chat_navigation.o",
+        "native_chat_transport": "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "chat_tab_owner": "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chat_navigation.o",
+        "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v330",
+      "exitCode": 0,
+      "elapsedSeconds": 62.074888944625854,
+      "targets": {
+        "bookmarks_owner": "obj/chrome/browser/ui/ui/aux_vertical_tab_bookmarks_view.o",
+        "pending_bookmark_binding": "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+        "show_all_chats": "obj/chrome/browser/ui/ui/aux_chat_navigation.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_vertical_tab_bookmarks_view.o",
+        "obj/chrome/browser/ui/ui/aux_bookmark_tab_associations.o",
+        "obj/chrome/browser/ui/ui/aux_chat_navigation.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v336",
+      "exitCode": 0,
+      "elapsedSeconds": 7.234889030456543,
+      "targets": {
+        "chat_copied_native_toast": "obj/chrome/browser/ui/ui/aux_chat_actions.o",
+        "bookmark_drag_hint": "obj/chrome/browser/ui/ui/aux_bookmark_drag_hint.o",
+        "bookmarks_section": "obj/chrome/browser/ui/ui/aux_bookmarks_section.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chat_actions.o",
+        "obj/chrome/browser/ui/ui/aux_bookmark_drag_hint.o",
+        "obj/chrome/browser/ui/ui/aux_bookmarks_section.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    }
+  ],
+  "compiledInPriorFailedBuild": {
+    "composition": "v326",
+    "successfulTargets": [
+      "bookmark row drag",
+      "native AppKit confirmation and haptics",
+      "actual sidebar profile preference registration"
+    ],
+    "failedTarget": "complete Bookmarks owner; fixed and compiled by v330"
+  },
+  "gn": {
+    "composition": "v335",
+    "exitCode": 0,
+    "targets": 36082,
+    "files": 5013,
+    "logSha256": "876dc6c14a88ef230691fd0472882c12d41d30d0127db524094226e7a90f6ac9"
+  },
+  "latestFullBrowser": "v277",
+  "fullBrowserOrUIAccepted": false,
+  "genuineSidebarMounted": false,
+  "outgoingPinToBookmarkRegionBound": false,
+  "originalAgentSessionTabOwnerComplete": false,
+  "nativeSigningProvisioningOrReleasePerformed": false
+}

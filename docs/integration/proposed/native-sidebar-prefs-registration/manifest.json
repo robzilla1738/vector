@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "baselineSha256": "d76d7c47c4413589078a9dc7ada7dac74c53ba46f09a7d2e784a71a357e8e2a7",
+      "outputSha256": "60f54a9109b84a9ffb0ef3ca6f9fe131b0aef0f06ec273228e61ce5bec5d1e57"
+    }
+  ]
+}

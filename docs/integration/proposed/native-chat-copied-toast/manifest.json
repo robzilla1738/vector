@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_actions.h",
+      "baselineSha256": "04e0755a252f4e0a021f4b3bd87144e907f93ed9862e18ff5c52d9b6a1bcef1d",
+      "outputSha256": "3425a2c29b6ba88fa8f5d7e88a0d7d37c099a47cd433f0f126ac0481fce063de"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_actions.cc",
+      "baselineSha256": "4537ccaa0a64cb4e67b5987b475b9a0e7ad16918098ad271cbc02727f1e989a2",
+      "outputSha256": "6df36dbdea51719c285b7c45d8bf7a2470410e70f4a9ed798f394297253c05dc"
+    }
+  ]
+}

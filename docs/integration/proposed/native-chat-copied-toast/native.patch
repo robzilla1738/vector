@@ -1,0 +1,69 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_actions.h
++++ b/chrome/browser/ui/views/frame/aux_chat_actions.h
+@@ -21,7 +21,7 @@
+   using CurrentAccount = base::RepeatingCallback<std::optional<int>()>;
+   using OpenNewTab = base::RepeatingCallback<void(const std::string&)>;
+   AuxChatActions(BrowserWindowInterface&, AuxChatsTransport&,
+-                 CurrentAccount, OpenNewTab, base::RepeatingClosure copied_toast);
++                 CurrentAccount, OpenNewTab);
+   ~AuxChatActions() override;
+   void SetChats(const std::vector<Chat>&);
+   void ShowContext(views::View*, Chat, const ui::MouseEvent&);
+@@ -44,7 +44,6 @@
+   raw_ptr<AuxChatsTransport> transport_;
+   CurrentAccount account_;
+   OpenNewTab open_new_tab_;
+-  base::RepeatingClosure copied_toast_;
+   std::vector<Chat> chats_;
+   std::set<std::string> pin_requests_;
+   std::optional<Chat> menu_chat_;
+--- a/chrome/browser/ui/views/frame/aux_chat_actions.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_actions.cc
+@@ -1,5 +1,8 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/ui/views/frame/aux_chat_actions.h"
++#include "chrome/browser/ui/toasts/api/toast_id.h"
++#include "chrome/browser/ui/toasts/toast_controller.h"
++#include "chrome/browser/ui/toasts/toast_service.h"
+ #include <utility>
+ #include "base/check.h"
+ #include "base/functional/bind.h"
+@@ -32,12 +35,11 @@
+   kCopy = 2005, kNewTab = 2006, kDelete = 2007 };
+ }  // namespace
+ AuxChatActions::AuxChatActions(BrowserWindowInterface& browser,
+-    AuxChatsTransport& transport, CurrentAccount account, OpenNewTab open_new_tab,
+-    base::RepeatingClosure copied_toast)
++    AuxChatsTransport& transport, CurrentAccount account, OpenNewTab open_new_tab)
+     : browser_(browser.GetWeakPtr()), profile_(browser.GetProfile()->GetWeakPtr()),
+       transport_(&transport), account_(std::move(account)),
+-      open_new_tab_(std::move(open_new_tab)), copied_toast_(std::move(copied_toast)) {
+-  CHECK(account_ && open_new_tab_ && copied_toast_);
++      open_new_tab_(std::move(open_new_tab)) {
++  CHECK(account_ && open_new_tab_);
+ }
+ AuxChatActions::~AuxChatActions() { Retire(); }
+ bool AuxChatActions::ScopeCurrent() const {
+@@ -137,10 +139,20 @@
+     case kRead: transport_->PerformAction(id, "mark-read", {}, base::DoNothing()); break;
+     case kFolder: transport_->PerformAction(id, "open-folder", {}, base::DoNothing()); break;
+     case kCopy: {
++      // Clipboard notification can retire this profile-bound owner. Retain the
++      // real weak window/profile before writing; do not access this afterward.
++      const auto browser = browser_;
++      const auto profile = profile_;
+       { ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
+         writer.WriteText(base::UTF8ToUTF16(id)); }
+-      auto toast = copied_toast_;
+-      toast.Run();
++      if (!browser || !profile || browser->GetProfile() != profile.get()) break;
++      auto* service = ToastService::From(browser.get());
++      auto* controller = service ? service->toast_controller() : nullptr;
++      if (controller) {
++        ToastParams params(ToastId::kCopiedToClipboard);
++        params.body_string_override = u"Session ID Copied!";
++        controller->MaybeShowToast(std::move(params));
++      }
+       break;
+     }
+     case kNewTab: { auto open = open_new_tab_; open.Run(id); break; }
