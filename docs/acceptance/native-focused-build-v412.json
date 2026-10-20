@@ -1,0 +1,20 @@
+{
+  "composition": "v412",
+  "exitCode": 0,
+  "elapsedSeconds": 27.88454508781433,
+  "targets": {
+    "aux_mini_popup_api": "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o"
+  },
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+    "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+    "-C",
+    "out/AuxFast",
+    "obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o",
+    "-j",
+    "16",
+    "-k",
+    "0"
+  ]
+}
