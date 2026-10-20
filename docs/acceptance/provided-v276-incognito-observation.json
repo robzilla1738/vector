@@ -1,0 +1,54 @@
+{
+  "browserPid": 82005,
+  "launcherPid": 82001,
+  "guardianPid": 82004,
+  "daemonPid": 82027,
+  "daemonLineage": [
+    82027,
+    82005,
+    82004,
+    82001,
+    81998,
+    70622,
+    70558
+  ],
+  "mode": "incognito",
+  "temporary": true,
+  "nativeAcceptanceFlagsChanged": false,
+  "health": {
+    "service": "aside-daemon",
+    "version": "1.26.1016.1852",
+    "pid": 82027,
+    "host": "127.0.0.1",
+    "port": 21520,
+    "ready": true,
+    "status": "idle",
+    "startedAt": "2026-10-20T04:48:16.183Z",
+    "runningSessionCount": 0,
+    "semaphore": {
+      "available": 200,
+      "capacity": 200
+    }
+  },
+  "windowEvidence": "out/native-integration/v276-incognito-owned-windows.json",
+  "screenshot": "out/native-integration/v276-incognito-window.png",
+  "screenshotSha256": "14111f524d0c14f6afa7ec96ba0c896d56124e71339916aa6efa7affa950c366",
+  "observation": "Extra independent bottom footer is absent in actual v276 frame. Existing independent Bookmarks/Chats/Tabs body remains pending faithful original producer replacement.",
+  "normalProfileOrUIParityAccepted": false,
+  "stopVerification": {
+    "utc": "2026-10-20T04:49:07.580215+00:00",
+    "knownPids": {
+      "82005": "absent",
+      "82001": "absent",
+      "82004": "absent",
+      "82027": "absent"
+    },
+    "ports": {
+      "21520": "clear",
+      "21522": "clear",
+      "45203": "clear"
+    },
+    "temporaryStateRetained": true,
+    "detachedDescendantsFullyProven": false
+  }
+}
