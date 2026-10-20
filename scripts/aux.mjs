@@ -98,7 +98,9 @@ function stop(code) {
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop(signal === 'SIGINT' ? 130 : 143));
 async function main() {
   if (stopping) return;
-const env = { ...process.env, ...(temporaryRoot ? { HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
+// Foundation's home/Application Support lookup on macOS does not follow HOME
+// alone. Keep those native lookups in the same disposable development home.
+const env = { ...process.env, ...(temporaryRoot ? { HOME: home, CFFIXED_USER_HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
   AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,
   AUX_BROWSER_CDP_HOST: '127.0.0.1:45203',
   AUX_AGENT_RUNTIME_DIR: join(home, 'runtime'),
