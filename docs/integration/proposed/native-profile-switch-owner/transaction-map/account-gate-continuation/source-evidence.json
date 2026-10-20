@@ -1,0 +1,27 @@
+{
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "literalAnchors": {
+    "0xdad72d9": "FinalizeNewProfileSetup",
+    "0xdad72f1": "../../chrome/browser/ui/profiles/profile_customization_util.cc"
+  },
+  "artifacts": [
+    {
+      "path": "evidence/importer-continuation.txt",
+      "sha256": "ccdf972a1455c9231aa9545510bbf8c4869598150e27e0ac43e7c7bb62a3a1b8"
+    },
+    {
+      "path": "evidence/profile-finalization.txt",
+      "sha256": "52ab7d693491da91ae2b0eed3949844420900aec77d73c9486772f577fab2121"
+    },
+    {
+      "path": "evidence/same-profile-browser-presence.txt",
+      "sha256": "e94a2267b0588ff7163f22aaa16583a6f0e5db4b675302683182f54fc02b1eae"
+    }
+  ],
+  "checks": {
+    "threeFileIncrementalReplay": true,
+    "sharedWrites": false,
+    "nativeCompile": false,
+    "runtimeAcceptance": false
+  }
+}

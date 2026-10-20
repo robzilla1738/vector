@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "base": "de300bd5d gate output plus actual190 profile_customization_util.cc",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "baselineSha256": "1ceef32eb9012da20eb93966e659e4a45be77dcdbc6497e47a83f2816382d796",
+      "outputSha256": "3ad757fea0b40a22ee43f92878f83d7769eb7d5aaf22c07cbed0ae087ae18cc4"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "baselineSha256": "6d8c72e99f222ec2a3d582c2fcf15b4d3364011ca6cb292eded9930f3170afcc",
+      "outputSha256": "9fbed7f8bea6567bfd62a0bba457c99038a2274e7d4b222b575358ed4ed88128"
+    },
+    {
+      "path": "chrome/browser/ui/profiles/profile_customization_util.cc",
+      "baselineSha256": "da677359af09b3bca5f2f62d2220efefea9122ea4c883742f34c3f18902572c9",
+      "outputSha256": "44eb61807e8c7b3157db18456d8a6251e11c75678d724fde809145254bca8f08"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

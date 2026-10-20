@@ -1,0 +1,95 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -140,6 +140,8 @@
+     }
+   }
+   bool has_profile() const { return profile_ != nullptr; }
++  base::WeakPtr<ProfileGate> GetWeakPtr() { return weak_.GetWeakPtr(); }
++  void NotifyBrowserRequested() { Refresh(); }
+   void RequestBootstrap() {
+     dismissed_ = false;
+     Refresh();
+@@ -300,6 +302,13 @@
+         break;
+       }
+     }
++    // Original417c5c4/f590 waits until at least one real same-profile Browser
++    // exists. A completed profile-creation callback may precede that window.
++    bool has_profile_browser = false;
++    for (auto* browser : GetAllBrowserWindowInterfaces()) {
++      has_profile_browser |= browser->GetProfile() == profile_.get();
++    }
++    if (!has_profile_browser) return;
+     auto* anchor = active ? active : first;
+     auto* screen = display::Screen::Get();
+     const auto area = (anchor
+@@ -424,14 +433,25 @@
+     gate = std::make_unique<ProfileGate>(original, std::move(initialize_tab));
+   }
+   gate->SetInitializer(std::move(initialize_tab));
+-  return gate->owns_bootstrap(browser) || gate->allowed();
++  auto weak_gate = gate->GetWeakPtr();
++  if (!weak_gate->owns_bootstrap(browser) && !weak_gate->allowed()) {
++    weak_gate->NotifyBrowserRequested();
++  }
++  return weak_gate &&
++         (weak_gate->owns_bootstrap(browser) || weak_gate->allowed());
+ }
+ void RequestProfileBootstrap(Profile* profile) {
+   if (!profile || profile->IsOffTheRecord()) return;
+   auto& registry = Registry();
+   if (registry.stopping) return;
+-  const auto it = registry.gates.find(profile);
+-  if (it != registry.gates.end()) it->second->RequestBootstrap();
++  auto& gate = registry.gates[profile];
++  if (!gate || !gate->has_profile()) {
++    gate = std::make_unique<ProfileGate>(profile,
++        base::RepeatingCallback<void(content::WebContents*)>());
++  }
++  if (!profile->GetPrefs()->GetBoolean(kSuppressAutomaticGate)) {
++    gate->RequestBootstrap();
++  }
+ }
+ void ShutdownProfileGates() {
+   auto& registry = Registry();
+--- a/chrome/browser/aux/profile_gate.h
++++ b/chrome/browser/aux/profile_gate.h
+@@ -18,8 +18,8 @@
+ bool CanShowBrowser(
+     BrowserWindowInterface* browser,
+     base::RepeatingCallback<void(content::WebContents*)> initialize_tab = {});
+-// Native user-action continuation corresponding to original force-bootstrap;
+-// not an authentication bypass or an extension API.
++// Native post-profile-setup continuation corresponding to original417a144;
++// not a generic new-window action, authentication bypass or extension API.
+ void RequestProfileBootstrap(Profile* profile);
+ void ShutdownProfileGates();
+ void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry);
+--- a/chrome/browser/ui/profiles/profile_customization_util.cc
++++ b/chrome/browser/ui/profiles/profile_customization_util.cc
+@@ -8,6 +8,10 @@
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/profile_gate.h"
++#endif
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+ #include "chrome/browser/profiles/profile_attributes_storage.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+@@ -78,6 +82,14 @@
+     // is forced by policy.
+     entry->SetIsEphemeral(false);
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Supplied FinalizeNewProfileSetup posts its actual weak Profile to the
++  // password/bootstrap gate after unomitting/non-ephemeral finalization.
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce([](base::WeakPtr<Profile> weak_profile) {
++        if (weak_profile) aux::RequestProfileBootstrap(weak_profile.get());
++      }, profile->GetWeakPtr()));
++#endif
+ }
+ 
+ // -- ProfileNameResolver ------------------------------------------------------
