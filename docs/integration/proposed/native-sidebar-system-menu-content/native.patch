@@ -1,0 +1,49 @@
+--- a/chrome/browser/ui/views/frame/system_menu_model_builder.cc
++++ b/chrome/browser/ui/views/frame/system_menu_model_builder.cc
+@@ -10,6 +10,7 @@
+ #include "build/build_config.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/glic/public/glic_enabling.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_commands.h"
+@@ -175,8 +176,11 @@
+                        kNameWindowOldIcon);
+ #endif  // BUILDFLAG(IS_MAC)
+   model->AddSeparator(ui::NORMAL_SEPARATOR);
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
++  // Supplied4600df4 adds Gemini pinning here, not the newer Tab Search entry.
+   model->AddItemWithStringId(IDC_TAB_SEARCH_TOGGLE_PIN,
+                              IDS_TAB_STRIP_PIN_TAB_SEARCH);
++#endif
+ 
+ #if BUILDFLAG(IS_WIN)
+   // On Windows we can not remove an item when showing the menu. So only add
+@@ -192,11 +196,14 @@
+           tabs::VerticalTabStripStateController::From(browser())) {
+     const bool display_vertical_tabs = controller->ShouldDisplayVerticalTabs();
+ 
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
++    // This unified-strip pin control is absent from the supplied menu.
+     if (!display_vertical_tabs &&
+         base::FeatureList::IsEnabled(tabs::kTabStripUnification)) {
+       model->AddItemWithStringId(IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN,
+                                  IDS_TAB_SCROLL_PIN_BUTTONS_SYSTEM_MENU);
+     }
++#endif
+ 
+     model->AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+@@ -253,8 +260,11 @@
+           kToggleVerticalTabsExpandOnHoverElementId);
+     }
+ 
++#if !BUILDFLAG(ENABLE_AUX_BROWSER) || !BUILDFLAG(IS_MAC)
++    // Supplied46013b4 proceeds directly to separator + native Task Manager.
+     model->AddItemWithStringId(IDC_VERTICAL_TABS_SEND_FEEDBACK,
+                                IDS_VERTICAL_TABS_SEND_FEEDBACK);
++#endif
+   }
+ 
+   if (chrome::CanOpenTaskManager()) {

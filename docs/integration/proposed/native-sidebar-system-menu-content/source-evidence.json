@@ -1,0 +1,84 @@
+{
+  "originalSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "dispatch": "c7836ac Init\u2192c7836fc: originalnormaltype0\u2192cbafc38thunk\u21924600df4; othersc783710separateapp/popupbuilder",
+  "normalEntries": [
+    {
+      "command": 34014,
+      "resource": 277,
+      "range": "4600e30..44"
+    },
+    {
+      "command": 34028,
+      "resource": 9012,
+      "range": "4600edc..ef0"
+    },
+    {
+      "command": 35001,
+      "resource": 176,
+      "range": "4600f78..f8c"
+    },
+    {
+      "command": 34049,
+      "resource": 9018,
+      "range": "4600fbc..fd0"
+    },
+    "separator4600fec..ff4",
+    {
+      "command": 53320,
+      "resource": 2173,
+      "range": "460100c..20",
+      "meaning": "actualGeminitogglepin, NOT53321TabSearch"
+    },
+    "ifrealverticalcontroller:separator460105c..64",
+    {
+      "command": 34058,
+      "resources": [
+        11292,
+        11293
+      ],
+      "condition": "actualdisplayverticalstate",
+      "ranges": [
+        "4601088..10b8",
+        "4601180..11a8"
+      ]
+    },
+    {
+      "command": 34061,
+      "resources": [
+        11294,
+        11295
+      ],
+      "condition": "actualvertical+collapsedstate",
+      "range": "46010d4..1108"
+    },
+    {
+      "command": 34060,
+      "resources": [
+        11300,
+        11301
+      ],
+      "condition": "actualhoverfeatureANDvertical+hoverpref",
+      "range": "46012b4..1340"
+    },
+    "separator46013b4..13bc",
+    {
+      "command": 40287,
+      "resource": 294,
+      "range": "46013d4..13e8"
+    }
+  ],
+  "delegate": "c7839e0..3a18 Glicenabled/visibleactualprofile; otherenabledactualcommandcontroller, dynamiclabelsrestore/window/group/split+vertical/collapse/hover+Glicpref c783b00..cf4",
+  "currentDifference": "155adds53321TabSearchPin, horizontalunifiedTabScrollPinandverticalFeedback; theseareabsentfromcompleteoriginalnormalbuilder",
+  "preserved": [
+    "Glicactualenabled/visiblegate",
+    "Realcontroller/prefs/stateandlocalizeddynamiclabels",
+    "Allrealcommand IDs+nativeAction dispatch",
+    "CurrentMacCanOpenTaskManager=true actualbrowser_commands.cc2700..05, sameunconditionaloriginal",
+    "NativeCocoaMenuController443\u2192FixUpWindowsStyleLabelconvertsASCII...toellipsisandstripsmnemonics; nohandwrittenlabeladapterneeded",
+    "App/popups/nonAux/nonMacunchanged"
+  ],
+  "limits": [
+    "OneAuxMacnormalwindowbuildercontentboundaryonly",
+    "No nativecompile/runtime/renderedacceptance"
+  ]
+}

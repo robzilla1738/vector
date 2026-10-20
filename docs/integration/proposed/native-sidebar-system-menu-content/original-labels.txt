@@ -1,0 +1,13 @@
+176	Bookmark All Tabs…
+277	New &Tab
+294	&Task Manager
+2173	Pin Gemini
+2174	Unpin Gemini
+9012	R&eopen Closed Tab
+9018	Name &Window…
+11292	Show Tabs Vertically
+11293	Show Tabs Horizontally
+11294	Collapse Tabs
+11295	Expand Tabs
+11300	Turn on Auto Expanding Tabs
+11301	Turn off Auto Expanding Tabs

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/system_menu_model_builder.cc",
+      "baselineSha256": "d8164c7df6b47d6621cc6089ebbc77eb51da3b1ed650805d92fde2193627d000",
+      "outputSha256": "0d3ddb5cd9814812fa88a6caa061175c23c8957797bcf1eeeb9c7e5052bb7eb7"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
