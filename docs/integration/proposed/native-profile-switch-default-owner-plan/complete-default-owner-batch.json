@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "kind": "staged-only complete known default-owner batch after actual applied provider6251",
+  "orderedPatches": [
+    {
+      "commit": "f4bf2dbde",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/ai-mode-private-profile-owner.patch",
+      "sha256": "0fa6f09ae13e9bc6ddb3d9a3464c840d279e48d94b1b2a6fcbcc4d8536156c1e"
+    },
+    {
+      "commit": "e47f5aac9",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/actor-profile-lifecycle.patch",
+      "sha256": "839ea70de3b7278f89d7e238d763cee1a97f328d9dabc5fb339df354af819b2e"
+    },
+    {
+      "commit": "bb76c3ad7",
+      "path": "docs/integration/proposed/native-profile-switch-actor-ai-provider/native.patch",
+      "sha256": "0ebc7a8bb7b0d7ebf10fc8c22d3754ecb3b9ff68f19a2d50bdbafb4a5531bd3c"
+    },
+    {
+      "commit": "ea4e50b41",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-iph-profile-lifecycle.patch",
+      "sha256": "abcd95dceb7478e44de86c7980752491f056ef6034352dbdd798bf09cf24196f"
+    },
+    {
+      "commit": "baf33cc4d",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-dormant-bubble-profile.patch",
+      "sha256": "37717866365c11397dadf7400dfd6db9fee06ffa252595491094969c6f3495f7"
+    },
+    {
+      "commit": "7ef77cb9f",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-button-profile-lifecycle.patch",
+      "sha256": "16651a3be4a5834489276dd32a8920b3e003f284c5141482eab0b5d0e5c78f96"
+    },
+    {
+      "commit": "2315a124f",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-private-graph-profile.patch",
+      "sha256": "811220b7580df72dc3cae4637f7cc3c169dc3865e686d2c3413644a9dab32c57"
+    },
+    {
+      "commit": "2315a124f",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-split-profile-lifecycle.patch",
+      "sha256": "a76b17fe6e1bc3e04eacae8602d99f94260b76ad90423bcfe6130674e0b5bdfb"
+    },
+    {
+      "commit": "f253adba9",
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/glic-check-op-dependencies.patch",
+      "sha256": "7146a5084ea532eef8a5dba05c4be9a8d32ea5bfe08967bc9f33148727765673"
+    },
+    {
+      "commit": "decc27341",
+      "path": "docs/integration/proposed/native-profile-switch-glic-iph-provider/native.patch",
+      "sha256": "a08376598444506eb136e4c18a856aeb7bd852ab6031decb2c8b57feaa4e96fd"
+    },
+    {
+      "commit": "e3c32c624",
+      "path": "docs/integration/proposed/native-profile-switch-glic-split-provider/native.patch",
+      "sha256": "af6dfdb8a40f8dfac9d8c319fa44666bd441a9f78a8df5e2fb35f94c759377d0"
+    }
+  ],
+  "providerOutput": {
+    "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+    "baselineSha256": "a45b646d8b1c918f85b2e27e7479c4061a2aa902948e0862307d778b880622b4",
+    "outputSha256": "c245d4bd6408cefa46c7ef0c2714f7a6a89691e33ce59f7d8fb32ecbe98fa82b"
+  },
+  "remainingConditionalGuards": [
+    "breadcrumb_manager_browser_agent_",
+    "comments_side_panel_coordinator_",
+    "contextual_tasks_browser_controller_",
+    "organizer_panel_controller_",
+    "ai_overlay_dialog_controller_",
+    "new_tab_footer_controller_",
+    "ios_promo_controller_",
+    "recent_activity_bubble_coordinator_",
+    "shared_tab_group_feedback_controller_"
+  ],
+  "limits": [
+    "No UI trigger installed.",
+    "Actual owner/source/target eligibility and pending-work cold guards remain.",
+    "Mixed absent/present Glic eligibility remains unsupported; do not fabricate view/service attachment.",
+    "Forced native destruction unsupported; normal retained close deferral composes separately.",
+    "Native full135 build source stays untouched.",
+    "Source-only replay is not compile/runtime/fidelity acceptance."
+  ]
+}

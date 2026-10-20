@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "verification": "eleven actual staged patches, unique actual source files, exact layer baselines/outputs, shared hashes unchanged",
+  "patchCount": 11,
+  "uniqueSourceFileCount": 31,
+  "files": [
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.cc",
+      "actualSourceSha256": "562d55ad0368ab743989bc9735743b3c7b8765769ffb0bd4ec6edb6e96aa219b",
+      "stagedOutputSha256": "022b6718f63ae2e789f21bef736bd6890640e96e324596fa64465ef9ac8c20ea"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.h",
+      "actualSourceSha256": "06ddfa4f2de7990123557bb7a75bf921ccfe06ed0b47260b6ee9106520b48611",
+      "stagedOutputSha256": "fc59f0afbefe6587e3dd737664617ba973a9a479306b61aaa18875b5b6a9521c"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "actualSourceSha256": "fc506aeae6deda1b28544639c6dbd72cf1aa25e311cb3516abea316c5641cdf1",
+      "stagedOutputSha256": "367d1808142231f6ed86af9bc6c819fcf7545d460e51dce7e5223c3c4119adec"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "actualSourceSha256": "92718076d31887b0dd4f8e6bbe911cb2239322ee3c560c896ba57cc0bce67f64",
+      "stagedOutputSha256": "d598128c5a96b9e6375875477b2daf486a46108c8acd2ad8e214021e9c5af0b7"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "actualSourceSha256": "9b238ef1a806d93dbfaf4ea55957beb232ffd136680c443ba0de558150d899ce",
+      "stagedOutputSha256": "c49dd2beaa8bc9da97a8fca35c957db24a04507dfab97739f1432dc80b55a435"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.h",
+      "actualSourceSha256": "af252bceaf85abbfa0bc5935614d440100f23722f786de2b6f6d7b7683b4a7d5",
+      "stagedOutputSha256": "267c4e5d1d3abbe1f9e73dd5501eede39a1030279334d2cac8f9e062407658b8"
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.cc",
+      "actualSourceSha256": "c56ceca5118b2312d97b2e3253dd5ce457c70e6f4fc1c52cbda2a1bc61adc595",
+      "stagedOutputSha256": "43b0999b0b07ca047c1271bc2af684aabfc4256545cdd180d98527fa8cb88d52"
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.h",
+      "actualSourceSha256": "6695e20c1d47a6ef75dae5d656e3fddf6a77fab40a71ccfb62aa49aefe42ea9e",
+      "stagedOutputSha256": "03843071c333825a16d8d3fd20d8df35cf09fdd5223ee821dc7f16dee21975cb"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.cc",
+      "actualSourceSha256": "2074c0a82aa2439650aa52d36ac5aad2afc7bc67e0f185484df3e0b3e8b7c8d5",
+      "stagedOutputSha256": "0ae44faeb74d437cc4bd1c6ad4ab991e4c956f5450551449ab2fba4dbf574537"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h",
+      "actualSourceSha256": "6bd4b30606010679fd7f266c33b959a289f5b76bcbb04b8fc7521310874c0b85",
+      "stagedOutputSha256": "84e5cf69fcc175f2053636a1c283d7246e7c3e5c43057bc6e1d60f099f9f1ac8"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.cc",
+      "actualSourceSha256": "07facdc717964106178cac5f4520c2c118c13690cd103440d923129314d557b4",
+      "stagedOutputSha256": "e3462b010e482ef990674a38973982437b8875a62bba8fcce00d61d902e8f9d5"
+    },
+    {
+      "path": "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h",
+      "actualSourceSha256": "cf9e2f88c87384b40e2eb0a653ddb90f8ef6c3e43241f40ccda4acd9d3408542",
+      "stagedOutputSha256": "25dd61afd67599de0f2eb535027f765ceac081d2671ecc5591fadc301f637b6f"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.cc",
+      "actualSourceSha256": "38ed2d81da7fffc931bafa8d5bc204a01e390245844e1912b553c66902cdb944",
+      "stagedOutputSha256": "12be24506123d5886d80c654ab0fb57ec61e9e0c653e3be9b810fa17f51231cd"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h",
+      "actualSourceSha256": "fe1f68b542249dd324b6f204df4cee128dc2e8b76d57788ba8d2920e8ee62bd6",
+      "stagedOutputSha256": "180c40d7ae37afdcca72b598af82ea6258b07dccc53f5d8b216cca4f4f12eef0"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_button_controller.cc",
+      "actualSourceSha256": "199823e7482ed1cbd12f3ff26f2e447635a4df6d23af4a6f9cb44c52e9ec411e",
+      "stagedOutputSha256": "be573cfe114c29a4a22831f750e93d66ab9c9e7907008a8e0204ecd745973085"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_button_controller.h",
+      "actualSourceSha256": "4ecc3ff388240010bbabf12681549a8d2e180d79ff5957252500f48d00039381",
+      "stagedOutputSha256": "891d99e2ffea691494bdeb53e1b3d4e59165a4dbaf1aa3f93d8021b8ac914fc7"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_iph_controller.cc",
+      "actualSourceSha256": "274084cf6d7c104d206bb39ab3ee89787af7e488c8e1553a19be55aaf06fc0ca",
+      "stagedOutputSha256": "bb0c67dcacfc5dd0a9decd5065d98dad5e53abffb9753daa8e7c689e3667fda8"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_iph_controller.h",
+      "actualSourceSha256": "a92eea2a148e59af3cf7b36857e050cbbb0a4b817bf6ae460ad2349edee8324b",
+      "stagedOutputSha256": "ed2f652dfad3a38fdb10821b3e406b40fbf9cff2b748687c5bfad41fc1407274"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.cc",
+      "actualSourceSha256": "e307aa03cfd5429b243391bf34fb32c62aa56ec594ba56c7a6e61c7013b05f9e",
+      "stagedOutputSha256": "2683e337c83874bd40dd79569e0e372ed64c19739e806323dc6ab2fe186ff8ff"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_nudge_controller_impl.h",
+      "actualSourceSha256": "6ba9885aed0af24f170fec2a8d52140e69db98ce6338e5b82f2439348062f23f",
+      "stagedOutputSha256": "9fbc586f6d93481fbc59cd1c1a7c3a815141db67187f532d3ec3d50b3eb5bc98"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_controller.cc",
+      "actualSourceSha256": "24737d2389b9a638a871247b1a2789666886cd8c5ee1dc89b86046f4e5c9a75d",
+      "stagedOutputSha256": "8b125cb003ff1bf778bbda6df9da353f3f7b31dd3be0fb9dec8b04ae6f2aa169"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_controller.h",
+      "actualSourceSha256": "99ae4ed5c87dfe9c4718185dab918230608df98f35c1ec2180d7a039e89c9c9b",
+      "stagedOutputSha256": "a01d680d34dc92fd8019aa632005c8adf8e40c7703af5a5e3df629aa1ed40d44"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_delegate.cc",
+      "actualSourceSha256": "784965aafc8b5f5421620e14a883f37bde97290cb801e7d4e197792bb5d5dd51",
+      "stagedOutputSha256": "361aa7787d7c4dc2442946f5d0840fafa7cd7a691b09ab461a53376e640381de"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/glic_split_button_delegate.h",
+      "actualSourceSha256": "69e38bd239e1b6da91b4a40243cdfaf507951d42076dd1ce9683f7ed904cfdcc",
+      "stagedOutputSha256": "a31e8945c385faf5e191ed462c3834b023238b96812782986a987266b4c90ae4"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "actualSourceSha256": "4b6539beb72e6e9f423d63768597df6f1f12a9091d9a1596f96f7fe375f501e5",
+      "stagedOutputSha256": "c245d4bd6408cefa46c7ef0c2714f7a6a89691e33ce59f7d8fb32ecbe98fa82b"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/ai_mode_page_action_controller.cc",
+      "actualSourceSha256": "b6e96aca110ad318f2cfdb7f2088ffcee18be5bc26cddbc816d27ee7851b0cd6",
+      "stagedOutputSha256": "aa1f9a6dae66dbdcff2c011a77af621c45cfa53b18e8a014ae7f9fbd2f7e9219"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h",
+      "actualSourceSha256": "0510ae10673f0eaee79b7648d60f16d164a1bf2354698e85093c44bdd20a2c65",
+      "stagedOutputSha256": "2b2803674442f580aa4f1ee8f1d48b7271db7ffc125f3884673de47c749c461d"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_action_container.cc",
+      "actualSourceSha256": "44b05142a52dc97f526f725facb3061299cbbd0fc87c3144ee0fda5f0af37786",
+      "stagedOutputSha256": "811ec180f65254bb04bb97520307196d199ee592d6064488dcb43050344e45ab"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_action_container.h",
+      "actualSourceSha256": "9ceebcd0043ff4a860f71e1166b7099338849e696aa46e6b5e37dc7176717108",
+      "stagedOutputSha256": "6d5f974121b31b012c18a16292b44e7d73542a360d8ca0b852a55d55699a8a26"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "actualSourceSha256": "545ae4daef2f590efed3f46f528f1cb0cacb8cc9040b871650101c84d2236a54",
+      "stagedOutputSha256": "d114c7f38bbd9a1a950f6c2a8b5047c74bf102c2bf611af821f6bc92190779e8"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "actualSourceSha256": "97341b579860e6cc746ac6e93e6469f23e94ba769d5ad377179f282502a8fab0",
+      "stagedOutputSha256": "5c444edaed9dfce7c63ba24441649595c6037ae87b5c1c4a693dfa793e716105"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
