@@ -1,0 +1,271 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -21,6 +21,7 @@
+ #include "base/threading/platform_thread.h"
+ #include "crypto/hash.h"
+ #include "third_party/sqlite/sqlite3.h"
++#include "url/gurl.h"
+ namespace aux_import {
+ namespace {
+ std::optional<base::FilePath> SourceHome(bool& fixture) {
+@@ -77,6 +78,55 @@
+   }
+   return base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+ }
++// Supplied04259adc/04259ef0: themes are excluded by both their unpacked
++// manifest and the persisted settings manifest. Other extension state is not
++// an eligibility filter; destination PendingExtensionManager owns admission.
++base::ListValue ReadChromiumExtensionImports(const base::FilePath& profile) {
++  std::set<std::string> themes;
++  base::FileEnumerator ids(profile.AppendASCII("Extensions"), false,
++                           base::FileEnumerator::DIRECTORIES);
++  for (auto id = ids.Next(); !id.empty(); id = ids.Next()) {
++    base::FileEnumerator versions(id, false, base::FileEnumerator::DIRECTORIES);
++    for (auto version = versions.Next(); !version.empty();
++         version = versions.Next()) {
++      const auto manifest = JSON(version.AppendASCII("manifest.json"));
++      if (manifest && manifest->FindDict("theme")) {
++        themes.insert(id.BaseName().value());
++        break;
++      }
++    }
++  }
++  base::ListValue imports;
++  const auto preferences = JSON(profile.AppendASCII("Secure Preferences"));
++  const auto* settings = preferences
++      ? preferences->FindDictByDottedPath("extensions.settings") : nullptr;
++  if (!settings) {
++    return imports;
++  }
++  for (const auto item : *settings) {
++    const auto* entry = item.second.GetIfDict();
++    if (!entry || themes.contains(item.first)) {
++      continue;
++    }
++    const auto* manifest = entry->FindDict("manifest");
++    if (manifest && manifest->FindDict("theme")) {
++      continue;
++    }
++    GURL update_url;
++    const auto* url = entry->FindStringByDottedPath("manifest.update_url");
++    if (url) {
++      update_url = GURL(*url);
++      if (!update_url.is_valid()) {
++        continue;
++      }
++    } else if (!entry->FindBool("from_webstore").value_or(false)) {
++      continue;
++    }
++    imports.Append(base::DictValue().Set("id", item.first).Set(
++        "updateUrl", update_url.spec()));
++  }
++  return imports;
++}
+ struct CloseDB {
+   void operator()(sqlite3* db) const {
+     if (db) {
+@@ -909,7 +959,8 @@
+ base::DictValue ReadChromiumMigrationSnapshot(
+     const base::FilePath& profile,
+     std::string source,
+-    std::vector<std::string> categories) {
++    std::vector<std::string> categories,
++    bool include_extensions) {
+   auto database_for = [&](std::string_view category) {
+     auto path = profile.AppendASCII(category == "passwords" ? "Login Data"
+                                                             : "Network/Cookies");
+@@ -962,6 +1013,11 @@
+     }
+     snapshots.Append(std::move(data));
+   }
+-  return base::DictValue().Set("snapshots", std::move(snapshots));
++  base::DictValue result;
++  result.Set("snapshots", std::move(snapshots));
++  if (include_extensions) {
++    result.Set("extensions", ReadChromiumExtensionImports(profile));
++  }
++  return result;
+ }
+ }  // namespace aux_import
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.h
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.h
+@@ -18,7 +18,8 @@
+ base::DictValue ReadChromiumMigrationSnapshot(
+     const base::FilePath& profile,
+     std::string source,
+-    std::vector<std::string> categories);
++    std::vector<std::string> categories,
++    bool include_extensions = false);
+ // Results remain in native worker/UI memory; never returned to extension RPC.
+ base::DictValue ReadEncryptedCategory(const base::FilePath& profile,
+                                       std::string category,
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -13,6 +13,7 @@
+ #include "base/uuid.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/migrator.h"
++#include "chrome/browser/extensions/api/aux_browser_import/extension_import.h"
+ #include "chrome/browser/extensions/api/aux_browser_import/safari_archive.h"
+ #include "chrome/browser/history/history_service_factory.h"
+ #include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+@@ -215,6 +216,7 @@
+   base::ListValue rows;
+   base::ListValue snapshots;
+   bool chromium_staged = false;
++  bool import_extensions = false;
+   bool chromium_secrets_started = false;
+   bool chromium_secrets_completed = false;
+   bool chromium_passwords_done = false, chromium_cookies_done = false;
+@@ -440,6 +442,7 @@
+   }
+   job->firefox = source->FindBool("nativeFirefox").value_or(false);
+   job->extension = extension;
++  job->import_extensions = !has_kinds && !internal_categories;
+   job->source = *source_id;
+   job->source_profile = *profile_id;
+   for (const auto& category : *categories) {
+@@ -529,7 +532,7 @@
+       base::ThreadPool::PostTaskAndReplyWithResult(
+           FROM_HERE, {base::MayBlock()},
+           base::BindOnce(&ReadChromiumMigrationSnapshot, job.path, job.source,
+-                         job.categories),
++                         job.categories, job.import_extensions),
+           base::BindOnce(&ImportService::DidStageChromium, weak_.GetWeakPtr(), id));
+     } else if (job.extension != "native-import-webui" &&
+                (job.categories[job.category] == "passwords" ||
+@@ -575,6 +578,11 @@
+     return;
+   }
+   job.snapshots = std::move(*snapshots);
++  if (job.import_extensions) {
++    if (const auto* imports = data.FindList("extensions")) {
++      InstallChromiumExtensions(profile_.get(), *imports);
++    }
++  }
+   job.chromium_staged = true;
+   Next(id);
+ }
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/extension_import.h
+@@ -0,0 +1,11 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_EXTENSION_IMPORT_H_
++#define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_IMPORT_EXTENSION_IMPORT_H_
++#include "base/values.h"
++class Profile;
++namespace aux_import {
++// UI-thread destination owner for the completely prepared native source list.
++// Queuing is distinct from successful installation and does not delay the job.
++void InstallChromiumExtensions(Profile* profile, const base::ListValue& imports);
++}  // namespace aux_import
++#endif
+--- /dev/null
++++ b/chrome/browser/extensions/api/aux_browser_import/extension_import.cc
+@@ -0,0 +1,106 @@
++// Copyright 2026 Aux Authors. BSD-3-Clause; see //LICENSE.
++#include "chrome/browser/extensions/api/aux_browser_import/extension_import.h"
++
++#include <set>
++#include <string>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/task/single_thread_task_runner.h"
++#include "chrome/browser/profiles/profile.h"
++#include "extensions/browser/extension_prefs.h"
++#include "extensions/browser/extension_registrar.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_registry_observer.h"
++#include "extensions/browser/extensions_browser_client.h"
++#include "extensions/browser/pending_extension_manager.h"
++#include "extensions/browser/disable_reason.h"
++#include "extensions/common/extension.h"
++#include "url/gurl.h"
++
++namespace aux_import {
++namespace {
++// Supplied04258108 and0425f2c0: only accepted pending IDs are observed. The
++// observer owns itself until every imported extension is ready or shutdown.
++class ImportedExtensionObserver final
++    : public extensions::ExtensionRegistryObserver {
++ public:
++  ImportedExtensionObserver(Profile* profile, std::set<std::string> pending)
++      : profile_(profile), pending_(std::move(pending)) {
++    observation_.Observe(extensions::ExtensionRegistry::Get(profile));
++  }
++
++  void OnExtensionReady(content::BrowserContext* context,
++                        const extensions::Extension* extension) override {
++    if (context != profile_ || !extension ||
++        !pending_.contains(extension->id())) {
++      return;
++    }
++    if (auto* registrar = extensions::ExtensionRegistrar::Get(context)) {
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE,
++          base::BindOnce(&extensions::ExtensionRegistrar::ReloadExtension,
++                         registrar->GetWeakPtr(), extension->id()));
++    }
++    pending_.erase(extension->id());
++    if (pending_.empty()) {
++      delete this;
++    }
++  }
++
++  void OnExtensionInstalled(content::BrowserContext* context,
++                            const extensions::Extension* extension,
++                            bool is_update) override {
++    if (context != profile_ || !extension ||
++        !pending_.contains(extension->id())) {
++      return;
++    }
++    auto* prefs = extensions::ExtensionPrefs::Get(context);
++    if (prefs && prefs->HasDisableReason(
++                     extension->id(),
++                     extensions::disable_reason::DISABLE_PERMISSIONS_INCREASE)) {
++      if (auto* registrar = extensions::ExtensionRegistrar::Get(context)) {
++        registrar->GrantPermissionsAndEnableExtension(*extension);
++      }
++    }
++  }
++
++  void OnShutdown(extensions::ExtensionRegistry* registry) override {
++    delete this;
++  }
++
++ private:
++  ~ImportedExtensionObserver() override = default;
++  raw_ptr<Profile> profile_;
++  std::set<std::string> pending_;
++  base::ScopedObservation<extensions::ExtensionRegistry,
++                          extensions::ExtensionRegistryObserver>
++      observation_{this};
++};
++}  // namespace
++
++void InstallChromiumExtensions(Profile* profile,
++                               const base::ListValue& imports) {
++  auto* manager = extensions::PendingExtensionManager::Get(profile);
++  if (!manager) {
++    return;
++  }
++  std::set<std::string> pending;
++  for (const auto& value : imports) {
++    const auto* row = value.GetIfDict();
++    const auto* id = row ? row->FindString("id") : nullptr;
++    const auto* update_url = row ? row->FindString("updateUrl") : nullptr;
++    if (id && update_url && manager->AddFromExtensionImport(
++                               *id, GURL(*update_url),
++                               [](const extensions::Extension*) { return true; })) {
++      pending.insert(*id);
++    }
++  }
++  if (!pending.empty()) {
++    new ImportedExtensionObserver(profile, std::move(pending));
++    extensions::ExtensionsBrowserClient::Get()->UpdateCheckIfEnabled(profile);
++  }
++}
++}  // namespace aux_import

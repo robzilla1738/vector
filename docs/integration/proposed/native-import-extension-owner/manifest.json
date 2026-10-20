@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "reason": "Recover supplied mode1 extension source selection and PendingExtensionManager/registry owner.",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "95ca3702012286fc81adec9827ffc1f1a02cdc21a0f85855cea4cd952c1eb01b",
+      "outputSha256": "27d98416b8c818644d6d507da851c200989a198dc56bb126e8a34244e61ff5d4",
+      "anchors": [
+        {
+          "find": "#include \"third_party/sqlite/sqlite3.h\"",
+          "replace": "#include \"third_party/sqlite/sqlite3.h\"\n#include \"url/gurl.h\"",
+          "count": 1
+        },
+        {
+          "find": "struct CloseDB {",
+          "replace": "// Supplied04259adc/04259ef0: themes are excluded by both their unpacked\n// manifest and the persisted settings manifest. Other extension state is not\n// an eligibility filter; destination PendingExtensionManager owns admission.\nbase::ListValue ReadChromiumExtensionImports(const base::FilePath& profile) {\n  std::set<std::string> themes;\n  base::FileEnumerator ids(profile.AppendASCII(\"Extensions\"), false,\n                           base::FileEnumerator::DIRECTORIES);\n  for (auto id = ids.Next(); !id.empty(); id = ids.Next()) {\n    base::FileEnumerator versions(id, false, base::FileEnumerator::DIRECTORIES);\n    for (auto version = versions.Next(); !version.empty();\n         version = versions.Next()) {\n      const auto manifest = JSON(version.AppendASCII(\"manifest.json\"));\n      if (manifest && manifest->FindDict(\"theme\")) {\n        themes.insert(id.BaseName().value());\n        break;\n      }\n    }\n  }\n  base::ListValue imports;\n  const auto preferences = JSON(profile.AppendASCII(\"Secure Preferences\"));\n  const auto* settings = preferences\n      ? preferences->FindDictByDottedPath(\"extensions.settings\") : nullptr;\n  if (!settings) {\n    return imports;\n  }\n  for (const auto item : *settings) {\n    const auto* entry = item.second.GetIfDict();\n    if (!entry || themes.contains(item.first)) {\n      continue;\n    }\n    const auto* manifest = entry->FindDict(\"manifest\");\n    if (manifest && manifest->FindDict(\"theme\")) {\n      continue;\n    }\n    GURL update_url;\n    const auto* url = entry->FindStringByDottedPath(\"manifest.update_url\");\n    if (url) {\n      update_url = GURL(*url);\n      if (!update_url.is_valid()) {\n        continue;\n      }\n    } else if (!entry->FindBool(\"from_webstore\").value_or(false)) {\n      continue;\n    }\n    imports.Append(base::DictValue().Set(\"id\", item.first).Set(\n        \"updateUrl\", update_url.spec()));\n  }\n  return imports;\n}\nstruct CloseDB {",
+          "count": 1
+        },
+        {
+          "find": "    std::vector<std::string> categories) {",
+          "replace": "    std::vector<std::string> categories,\n    bool include_extensions) {",
+          "count": 1
+        },
+        {
+          "find": "  return base::DictValue().Set(\"snapshots\", std::move(snapshots));",
+          "replace": "  base::DictValue result;\n  result.Set(\"snapshots\", std::move(snapshots));\n  if (include_extensions) {\n    result.Set(\"extensions\", ReadChromiumExtensionImports(profile));\n  }\n  return result;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.h",
+      "baselineSha256": "41df8746550d377d88947052fe311172195e4f7450ec785c19ad46165d3667f9",
+      "outputSha256": "ecfd4619808480abe9acdd8c6676b2280a82bddf727af631e3ee1fdaea2c9b29",
+      "anchors": [
+        {
+          "find": "    std::vector<std::string> categories);",
+          "replace": "    std::vector<std::string> categories,\n    bool include_extensions = false);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "9be4de8cee54d958ff30920c2b18a2786b8b5776632d66034291bdfd1b096a7e",
+      "outputSha256": "4b65c951a8f7bdfd01d52bc74fdb70cdbf4b3869eecd523364f7d6a918b76f41",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_browser_import/migrator.h\"",
+          "replace": "#include \"chrome/browser/extensions/api/aux_browser_import/migrator.h\"\n#include \"chrome/browser/extensions/api/aux_browser_import/extension_import.h\"",
+          "count": 1
+        },
+        {
+          "find": "  bool chromium_staged = false;",
+          "replace": "  bool chromium_staged = false;\n  bool import_extensions = false;",
+          "count": 1
+        },
+        {
+          "find": "  job->extension = extension;",
+          "replace": "  job->extension = extension;\n  job->import_extensions = !has_kinds && !internal_categories;",
+          "count": 1
+        },
+        {
+          "find": "                         job.categories),",
+          "replace": "                         job.categories, job.import_extensions),",
+          "count": 1
+        },
+        {
+          "find": "  job.snapshots = std::move(*snapshots);\n  job.chromium_staged = true;",
+          "replace": "  job.snapshots = std::move(*snapshots);\n  if (job.import_extensions) {\n    if (const auto* imports = data.FindList(\"extensions\")) {\n      InstallChromiumExtensions(profile_.get(), *imports);\n    }\n  }\n  job.chromium_staged = true;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/extension_import.h",
+      "baselineSha256": null,
+      "outputSha256": "f73cabff6288fc3cde2c1ae34f1364cf88aacdb14fa62107b679dac4b561d672"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/extension_import.cc",
+      "baselineSha256": null,
+      "outputSha256": "276ae10a20cd2a82642545cb62c6f28f86443e1e0219fb816dfb5e3cd04e84c0"
+    }
+  ],
+  "requiredGnChanges": {
+    "aux_browser_import.sources": [
+      "extension_import.cc",
+      "extension_import.h"
+    ],
+    "aux_browser_import.deps": [
+      "//extensions/browser",
+      "//extensions/common"
+    ],
+    "migrator.deps": [
+      "//url"
+    ]
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "binary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "pins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/pending_extension_manager.cc",
+      "sha256": "ca767969acea72f6e01662715468deb6e7bb0f05d0631509cee6ef35be7cebef"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/pending_extension_manager.h",
+      "sha256": "e338129cc919fc527f596172bb9f998c6b6ef7b1eeb943d8f54ddade9c00cc84"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_registrar.cc",
+      "sha256": "12e078d3f71b70ad739be68cb512f42d2cf52afb06760144e2bcb35069f6a4f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_registrar.h",
+      "sha256": "70d12c8d0829df5e28ab19bdd96a8d2680d42633e152b7a421c3dfcdb09a4508"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_registry_observer.h",
+      "sha256": "33ba8df587278c281ff27fd49f175c642705ebffcf055221b7d6107f17581287"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/disable_reason.h",
+      "sha256": "55fd5dbf0c45c9ae7a3b6da9e8c327601cf9f52ee700d8600af81e8455cac0c9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/chrome_extensions_browser_client.cc",
+      "sha256": "36e73d17c5d9daef697927c6a12863968dd4cf70f78c9c4f8d7b04084d52ce4f"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/04253e58.c",
+      "sha256": "2f6c179d41fef2b8899738ccdb4aa1bc3ef996fabf4ff2ecbe3a2b8f0c9f37d5"
+    }
+  ],
+  "literalAddresses": {
+    "0xdb1f4fc": "Extensions",
+    "0xdb1f507": "manifest.json",
+    "0xdb1f515": "Secure Preferences",
+    "0xdb1f528": "extensions.settings",
+    "0xdb1f53c": "manifest.update_url",
+    "0xdb1f550": "from_webstore",
+    "0xda21894": "theme",
+    "0xd9eb304": "../../extensions/browser/pending_extension_manager.cc",
+    "0xd9eb33a": "Trying to add pending extension ",
+    "0xd9eb35b": " which already exists",
+    "0xdb1fa49": "OnExtensionReady"
+  },
+  "rawHelpers": [
+    {
+      "entry": "0x4259adc",
+      "endExclusive": "0x4259ef0",
+      "sha256": "e341351862fa3fc88f747b751cc918d3b4a6e38b7f2668c37e3624b8e37a3810"
+    },
+    {
+      "entry": "0x4259ef0",
+      "endExclusive": "0x425a380",
+      "sha256": "1d247136d63558ee25583dd03e8352057815f3ecf271fede535d7b2f585925f8"
+    },
+    {
+      "entry": "0x4258108",
+      "endExclusive": "0x4258618",
+      "sha256": "cd45cfefad5820fd03f9076b5b8af454bd74a573e3d9036f1db6a499d97b8fb7"
+    },
+    {
+      "entry": "0x425f2c0",
+      "endExclusive": "0x425f5a8",
+      "sha256": "99b5c3ab00a47de97abd2c0eee192f8a4512178326367b986562fc1c3a3f87d3"
+    }
+  ],
+  "reaEvidence": [
+    "ev_985fdf0c05fd9d858e8cff91d653ed3547f2f091da29e24eb9e40d7ac38bd176",
+    "ev_c2a9b2ea0fc292bc70b1f0c4c525fb0e32e9efdcc13449f23012a609c518211f",
+    "ev_b9e3bc2d10585af4ce0e3d6c475913fac4f048bf1f898d8b080c2976a53f6f93"
+  ],
+  "reaScope": "Three bounded raw function slices only; all sessions snapshotted and closed. External helper symbols remain unmapped in those slices; LLVM/string operands and genuine155 source independently support mappings.",
+  "vtableObserverSlots": {
+    "table": "0xe266d28",
+    "OnExtensionReady": "0x425f2c0",
+    "OnExtensionInstalled": "0x425f5a8",
+    "OnShutdown": "0x425f6cc"
+  },
+  "noInstallationCompletionBarrier": true,
+  "sourceProfileRead": false,
+  "runtimeExecuted": false
+}

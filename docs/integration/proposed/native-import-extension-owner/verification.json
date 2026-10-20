@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "manifestSha256": "ac1aafd46b943d1644c6039659b059a3ee33bbef10313df505ce772afaa2abb4",
+  "patchSha256": "cec613a450ae986d368e58ba9f291a4a9dee5ae3270d7dc83e5f1e6a5eacbc55",
+  "files": 5,
+  "disposablePatchReplayPassed": true,
+  "outputsMatched": true,
+  "nativeApplied": false,
+  "compiled": false,
+  "targetExecuted": false,
+  "sourceProfileRead": false,
+  "updaterExecuted": false
+}
