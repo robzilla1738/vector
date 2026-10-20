@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "applyAfter": "actual429 migrator; service destination-skips66b295a59 output",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "95ca3702012286fc81adec9827ffc1f1a02cdc21a0f85855cea4cd952c1eb01b",
+      "outputSha256": "280cd2709c87afc29adbab95f1859f2389ad9adba08ed1d51522a12abeb6fed3"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "f9b70ff4240b4108a4cb4aece6ef2821304e8a54e2c43aa35e19306fc7489af7",
+      "outputSha256": "debd29147abb04cb75d4b7e4b66f9607b9d9dcc976f57c395960403607d0c0b7"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "sharedNativeModified": false
+}

@@ -1,0 +1,123 @@
+{
+  "thinPath": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "thinSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x42540cc",
+      "end": "0x4254438",
+      "sha256": "d14bfd052c0ffbf198c8a7e3657ef3a4918adcc59f52f195539eb34ef57de821",
+      "listing": "worker-roots-and-arc.asm",
+      "listingSha256": "60a052444012913277737b4d8a2cd650cc07b7a9abe41b257fbea1883c9b1072"
+    },
+    {
+      "start": "0x4258618",
+      "end": "0x4258840",
+      "sha256": "45bc13653b401fc3415c18425d48854d3a772115c0666bb8288096a84565bc40",
+      "listing": "mode1-bookmark-destination.asm",
+      "listingSha256": "bb49ce0bf479d58e178ae63209a75afb303c0d194358b3b82479677db00e6ef3"
+    },
+    {
+      "start": "0x41076f0",
+      "end": "0x4107b24",
+      "sha256": "df9a663d1a78dbff0dd80b107216b1ca3722ea941e2f4743e3779ca953b7659e",
+      "listing": "original-writer.asm",
+      "listingSha256": "3c38650ed1f4cd7a85910b09d5773c61080fecdc82bca4f785f2fa013d88e23e"
+    },
+    {
+      "start": "0x41073c4",
+      "end": "0x41076f0",
+      "sha256": "16e33598a0a4fad5e70f449cada47b935e60869e65feba6ee045b1be2e158f16",
+      "listing": "unique-folder-name.asm",
+      "listingSha256": "bb4854e160bbd8da00cf18b5873645f421c817ebd3db409c297e5714204c5105"
+    },
+    {
+      "start": "0x425bf70",
+      "end": "0x425c084",
+      "sha256": "a1eb09f603985994c347cede48f9e45b0a25384c38d41bd7e4a6a658dbdfad39",
+      "listing": "source-root-name.asm",
+      "listingSha256": "79257f32b323dcf87d134660301e31943993627ea1de479d397d8b3b6f589c87"
+    },
+    {
+      "start": "0x425c084",
+      "end": "0x425c99c",
+      "sha256": "e53f95c22a9af2c5a1704a78db2c3f112a46687cc6c55dcc5605bde5df7141f5",
+      "listing": "source-flatten.asm",
+      "listingSha256": "ec15238b687f1da8c3b3fe16d058decdc755fc436df4263b03d5c8a5ee198bd9"
+    },
+    {
+      "start": "0x425fe90",
+      "end": "0x42600fc",
+      "sha256": "e63b8d165a034d88b6196e0f5555040db867727150e315710a4e6843b361ef00",
+      "listing": "source-labels.asm",
+      "listingSha256": "79a350dae468707030e087d191f8e95f3a223dae7f8ee6efefdca8adb71a61d0"
+    }
+  ],
+  "literals": [
+    {
+      "address": "0xdf7a4d0",
+      "hex": "42007200610076006500",
+      "text": "Brave",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a538",
+      "hex": "480065006c00690075006d00",
+      "text": "Helium",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a4c8",
+      "hex": "410072006300",
+      "text": "Arc",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a512",
+      "hex": "440069006100",
+      "text": "Dia",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a4f8",
+      "hex": "4300680072006f006d006500",
+      "text": "Chrome",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a506",
+      "hex": "43006f006d0065007400",
+      "text": "Comet",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a546",
+      "hex": "420072006f007700730065007200",
+      "text": "Browser",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a4dc",
+      "hex": "43006800610074004700500054002000410074006c0061007300",
+      "text": "ChatGPT Atlas",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf7a51a",
+      "hex": "4d006900630072006f0073006f006600740020004500640067006500",
+      "text": "Microsoft Edge",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf793fe",
+      "hex": "20002800",
+      "text": " (",
+      "encoding": "utf-16le"
+    },
+    {
+      "address": "0xdf79404",
+      "hex": "2900",
+      "text": ")",
+      "encoding": "utf-16le"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -561,6 +561,7 @@
+     for (const auto* root : {"bookmark_bar", "other", "synced"}) {
+       if (const auto* node = roots->FindDict(root)) {
+         if (const auto* children = node->FindList("children")) {
++          const size_t first = entries.size();
+           for (const auto& child : *children) {
+             if (!child.is_dict() ||
+                 !BookmarkTree(child.GetDict(), entries, {}, root, 0)) {
+@@ -568,6 +569,18 @@
+                   "Bookmark hierarchy exceeds limits or contains invalid "
+                   "records");
+             }
++          }
++          const auto* name = node->FindString("name");
++          const std::string root_name =
++              name && !name->empty()
++                  ? name->substr(0, 1024)
++                  : std::string(std::string_view(root) == "bookmark_bar"
++                                    ? "Bookmarks Bar"
++                                    : std::string_view(root) == "other"
++                                          ? "Other Bookmarks"
++                                          : "Mobile Bookmarks");
++          for (size_t index = first; index < entries.size(); ++index) {
++            entries[index].GetDict().Set("sourceRootName", root_name);
+           }
+         }
+       }
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -2,6 +2,7 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
+ 
+ #include <algorithm>
++#include <set>
+ 
+ #include "base/barrier_closure.h"
+ #include "base/functional/bind.h"
+@@ -103,6 +104,121 @@
+   }
+   return std::move(form);
+ }
++std::u16string ChromiumImportFolderName(std::string_view source) {
++  // Original425fe90 source labels, not the public chooser's friendly labels.
++  const char* name = source == "arc"       ? "Arc"
++                     : source == "brave" ? "Brave"
++                     : source == "chrome" ? "Chrome"
++                     : source == "comet" ? "Comet"
++                     : source == "dia" ? "Dia"
++                     : source == "helium" ? "Helium"
++                     : source == "atlas" ? "ChatGPT Atlas"
++                     : source == "edge" ? "Microsoft Edge"
++                                        : "Browser";
++  return u"Imported from " + base::UTF8ToUTF16(name);
++}
++int AddCurrentProfileBookmarks(Profile* profile,
++                                 bookmarks::BookmarkModel* model,
++                                 const base::ListValue& entries,
++                                 std::string_view source) {
++  auto admitted = [](const base::Value& entry) {
++    const auto& row = entry.GetDict();
++    const auto* title = row.FindString("title");
++    if (!title || !row.FindString("root")) {
++      return false;
++    }
++    if (row.FindBool("folder").value_or(false)) {
++      return !title->empty();
++    }
++    const auto* text = row.FindString("url");
++    const GURL url(text ? *text : std::string());
++    return url.is_valid() && !url.SchemeIs("chrome") &&
++           !url.SchemeIs("chrome-extension") && !url.SchemeIs("devtools") &&
++           !url.SchemeIs("javascript");
++  };
++  // Source425c084 filters these before constructing the writer's vector.
++  if (std::ranges::none_of(entries, admitted)) {
++    return 0;
++  }
++  // Supplied41076f0 always imports to a new unique folder. Stock155's
++  // ProfileWriter empty-bookmark-bar flattening is a different implementation.
++  const auto* bar = model->account_bookmark_bar_node()
++                        ? model->account_bookmark_bar_node()
++                        : model->bookmark_bar_node();
++  std::set<std::u16string> existing;
++  for (const auto& child : bar->children()) {
++    if (child->is_folder()) {
++      existing.insert(child->GetTitle());
++    }
++  }
++  const auto base_name = ChromiumImportFolderName(source);
++  auto name = base_name;
++  for (size_t suffix = 1; existing.contains(name); ++suffix) {
++    name = base_name + u" (" + base::NumberToString16(suffix) + u")";
++  }
++  model->BeginExtensiveChanges();
++  const auto* imported = model->AddFolder(bar, bar->children().size(), name);
++  std::set<const bookmarks::BookmarkNode*> modified{imported};
++  int count = 0;
++  bool toolbar = false;
++  for (const auto& entry : entries) {
++    const auto& row = entry.GetDict();
++    const auto* title = row.FindString("title");
++    const auto* root = row.FindString("root");
++    if (!admitted(entry)) {
++      continue;
++    }
++    const bool folder = row.FindBool("folder").value_or(false);
++    const auto* url_text = row.FindString("url");
++    const GURL url(url_text ? *url_text : std::string());
++    // The retained javascript restriction is an Aux integration boundary.
++    const bookmarks::BookmarkNode* parent = imported;
++    auto descend = [&](std::u16string_view segment) {
++      for (const auto& child : parent->children()) {
++        if (child->is_folder() && child->GetTitle() == segment) {
++          parent = child.get();
++          return;
++        }
++      }
++      parent = model->AddFolder(parent, parent->children().size(),
++                                std::u16string(segment));
++    };
++    if (const auto* root_name = row.FindString("sourceRootName")) {
++      descend(base::UTF8ToUTF16(*root_name));
++    }
++    if (const auto* path = row.FindList("path")) {
++      for (const auto& value : *path) {
++        // Original flattening keeps unnamed folders out of the path.
++        if (!value.GetString().empty()) {
++          descend(base::UTF8ToUTF16(value.GetString()));
++        }
++      }
++    }
++    modified.insert(parent);
++    toolbar |= *root == "bookmark_bar";
++    if (folder) {
++      model->AddFolder(parent, parent->children().size(), base::UTF8ToUTF16(*title));
++    } else {
++      auto created = Timestamp(row, "createdWindowsMicros", false);
++      if (created.is_null() || created <= base::Time::FromDeltaSinceWindowsEpoch(
++                                             base::Microseconds(0))) {
++        created = base::Time::Now();
++      }
++      model->AddURL(parent, parent->children().size(),
++                    base::UTF8ToUTF16(title->empty() ? url.spec() : *title),
++                    url, nullptr, created);
++      ++count;
++    }
++  }
++  for (const auto* folder : modified) {
++    model->ResetDateFolderModified(folder);
++  }
++  model->EndExtensiveChanges();
++  if (toolbar) {
++    profile->GetPrefs()->SetBoolean(bookmarks::prefs::kShowBookmarkBar, true);
++  }
++  return count;
++}
+ std::unique_ptr<net::CanonicalCookie> PrepareChromiumCookie(
+     const base::DictValue& row, GURL& source) {
+   // Supplied425ab08..425ad80 skips partition parse errors and null canonical
+@@ -649,6 +765,12 @@
+     return;
+   }
+   if (const auto* entries = data.FindList("bookmarks")) {
++    if (job.chromium_staged && job.extension != "native-import-webui") {
++      job.imported += AddCurrentProfileBookmarks(profile_.get(), model, *entries,
++                                                  job.source);
++      CompleteCategory(id);
++      return;
++    }
+     for (const auto& entry : *entries) {
+       const auto& row = entry.GetDict();
+       const auto *root = row.FindString("root"),
