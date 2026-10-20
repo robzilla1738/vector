@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "staticOnly": true,
+  "arm64": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "functions": [
+    {
+      "name": "read-expanded-folders",
+      "rva": "0x461003c",
+      "bytes": 372,
+      "sha256": "d13e3aaf0439cbf863af1b59587b2fa4967115f412a5f5abaa53aa6b79f8c8d5",
+      "assemblySha256": "547e2e0c40bb8c93e811cda3474c281ea8c51cd996fa59662469e94ebd7f63a3"
+    },
+    {
+      "name": "observe-expanded-folders",
+      "rva": "0x46101b0",
+      "bytes": 356,
+      "sha256": "d346e804e7f240734eadfbeb59df251277ba2129ecfe9a32552c94ddbb3f3813",
+      "assemblySha256": "de67be8d9276d00da81bee76b380b7f7dfb51d824b79cb099df777399a14312e"
+    },
+    {
+      "name": "toggle-folder-branch",
+      "rva": "0x4614898",
+      "bytes": 1264,
+      "sha256": "2caf3eb7be3a99449a3e039a7a86a61c2a43b1e30fae79b5d70c180ab3fe7210",
+      "assemblySha256": "675d808923eea68801fbe09160893f0a41f9e636faa26adce5ab60208834e882"
+    },
+    {
+      "name": "pref-callback-rebuild",
+      "rva": "0x461dd0c",
+      "bytes": 372,
+      "sha256": "eca05ca21faa03eafd87c283353081549121a52599bf62dcfe855ac7fedcc6fa",
+      "assemblySha256": "7c760fa541f2774156a3162c7611e379c12322aca206d19c905e598b154ef32f"
+    },
+    {
+      "name": "pref-registration",
+      "rva": "0x34e3f1c",
+      "bytes": 1240,
+      "sha256": "493490ac03e9333cf85cb5b20c2a60684bf27ce2574482dee2868e16c26d71bd",
+      "assemblySha256": "67af0df255d56b4cd3cef280252497a586c1658db6ee0837eeada21ff10af761"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/bookmarks/browser/bookmark_node.h",
+      "sha256": "199c93ce8549d834b6289f6e7b04bfb184f5e720026d00cb0557783b7c4c5bff"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_service.h",
+      "sha256": "2b76919536ecfc8f07ae580f58f507b649e83d7f5722af8646c903cdc593512f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_change_registrar.h",
+      "sha256": "4a0f8d27a8ef8165c033341ff6bc8d81386a26d52a67078885cf72b9ce2a2e01"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/prefs/pref_registry_simple.h",
+      "sha256": "af139e131aff1d369439589b0509eb44ef3e55b23978a537ab4388334f5de692"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/strings/string_number_conversions.h",
+      "sha256": "dcecf9161bb1e2bd2ee0482e68c199263289bf0a60874cd50d2cc426de6b3b2c"
+    }
+  ],
+  "prefKeyRva": "0xceea647",
+  "prefKey": "aside.vertical_tabs.expanded_bookmark_folder_ids"
+}

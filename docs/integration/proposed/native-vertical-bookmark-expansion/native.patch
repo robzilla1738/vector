@@ -1,0 +1,154 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.cc
+@@ -0,0 +1,93 @@
++// Copyright 2026 The Aux Authors
++// Supplied behavior adapted to Chromium155. See the adjacent proposal evidence.
++#include "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/values.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "components/prefs/pref_registry_simple.h"
++#include "components/prefs/pref_service.h"
++
++namespace aux {
++
++void RegisterVerticalTabBookmarkExpansionPrefs(PrefRegistrySimple* registry) {
++  registry->RegisterListPref(kExpandedBookmarkFolderIdsPref);
++}
++
++VerticalTabBookmarkExpansion::VerticalTabBookmarkExpansion(
++    PrefService& prefs,
++    RebuildCallback rebuild)
++    : prefs_(prefs), rebuild_(std::move(rebuild)) {
++  CHECK(prefs_->FindPreference(kExpandedBookmarkFolderIdsPref));
++  ReadExpandedIds();
++  registrar_.Init(&prefs_.get());
++  registrar_.Add(
++      kExpandedBookmarkFolderIdsPref,
++      base::BindRepeating(&VerticalTabBookmarkExpansion::OnPreferenceChanged,
++                          base::Unretained(this)));
++}
++
++VerticalTabBookmarkExpansion::~VerticalTabBookmarkExpansion() = default;
++
++bool VerticalTabBookmarkExpansion::IsExpanded(int64_t id) const {
++  return expanded_ids_.contains(id);
++}
++
++void VerticalTabBookmarkExpansion::ReadExpandedIds() {
++  expanded_ids_.clear();
++  for (const base::Value& value :
++       prefs_->GetList(kExpandedBookmarkFolderIdsPref)) {
++    if (!value.is_string()) {
++      continue;
++    }
++    int64_t id = 0;
++    if (base::StringToInt64(value.GetString(), &id)) {
++      expanded_ids_.insert(id);
++    }
++  }
++}
++
++void VerticalTabBookmarkExpansion::OnPreferenceChanged() {
++  const auto previous = expanded_ids_;
++  ReadExpandedIds();
++  if (expanded_ids_ != previous && rebuild_) {
++    rebuild_.Run(false);
++  }
++}
++
++void VerticalTabBookmarkExpansion::SaveExpandedIds() {
++  base::ListValue values;
++  for (int64_t id : expanded_ids_) {
++    values.Append(base::NumberToString(id));
++  }
++  prefs_->SetList(kExpandedBookmarkFolderIdsPref, std::move(values));
++}
++
++bool VerticalTabBookmarkExpansion::ToggleFolder(
++    const bookmarks::BookmarkNode* folder) {
++  if (!folder || !folder->is_folder()) {
++    return false;
++  }
++  if (expanded_ids_.contains(folder->id())) {
++    // Descendant expansion is retained when only this folder is collapsed.
++    expanded_ids_.erase(folder->id());
++  } else {
++    for (const auto* ancestor = folder; ancestor && ancestor->is_folder();
++         ancestor = ancestor->parent()) {
++      expanded_ids_.insert(ancestor->id());
++    }
++  }
++  SaveExpandedIds();
++  // SetList's synchronous pref notification sees the already updated set;
++  // the original explicit folder-action rebuild is animated exactly once.
++  if (rebuild_) {
++    rebuild_.Run(true);
++  }
++  return true;
++}
++
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h
+@@ -0,0 +1,55 @@
++// Copyright 2026 The Aux Authors
++// Supplied behavior adapted to Chromium155. See the adjacent proposal evidence.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_TAB_BOOKMARK_EXPANSION_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_TAB_BOOKMARK_EXPANSION_H_
++
++#include <cstdint>
++
++#include "base/containers/flat_set.h"
++#include "base/functional/callback.h"
++#include "base/memory/raw_ref.h"
++#include "components/prefs/pref_change_registrar.h"
++
++class PrefRegistrySimple;
++class PrefService;
++namespace bookmarks {
++class BookmarkNode;
++}
++
++namespace aux {
++
++inline constexpr char kExpandedBookmarkFolderIdsPref[] =
++    "aside.vertical_tabs.expanded_bookmark_folder_ids";
++void RegisterVerticalTabBookmarkExpansionPrefs(PrefRegistrySimple* registry);
++
++// The actual per-profile folder expansion state used by
++// VerticalTabBookmarksView. The owning View handles its source coalesced
++// rebuild/animation policy.
++class VerticalTabBookmarkExpansion {
++ public:
++  using RebuildCallback = base::RepeatingCallback<void(bool animate)>;
++  VerticalTabBookmarkExpansion(PrefService& prefs, RebuildCallback rebuild);
++  ~VerticalTabBookmarkExpansion();
++
++  VerticalTabBookmarkExpansion(const VerticalTabBookmarkExpansion&) = delete;
++  VerticalTabBookmarkExpansion& operator=(const VerticalTabBookmarkExpansion&) =
++      delete;
++
++  const base::flat_set<int64_t>& expanded_ids() const { return expanded_ids_; }
++  bool IsExpanded(int64_t id) const;
++  // Only the source folder branch. URL activation is owned by the real View.
++  bool ToggleFolder(const bookmarks::BookmarkNode* folder);
++
++ private:
++  void ReadExpandedIds();
++  void OnPreferenceChanged();
++  void SaveExpandedIds();
++
++  const raw_ref<PrefService> prefs_;
++  const RebuildCallback rebuild_;
++  base::flat_set<int64_t> expanded_ids_;
++  PrefChangeRegistrar registrar_;
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_VERTICAL_TAB_BOOKMARK_EXPANSION_H_

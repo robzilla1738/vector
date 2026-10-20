@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "applyAfter": "new disjoint source modules; no region/body retirement",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.cc",
+      "baselineSha256": null,
+      "outputSha256": "1cf256c95b0e6c3f040f9ad858805a34976d5bd7ada0d3fbb0ef4ac66a359628",
+      "newFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h",
+      "baselineSha256": null,
+      "outputSha256": "0fde2b342b7940d909b40bd72a225f7f40c136bf42072a1f57311164a12a2d98",
+      "newFile": true
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "mounted": false
+}
