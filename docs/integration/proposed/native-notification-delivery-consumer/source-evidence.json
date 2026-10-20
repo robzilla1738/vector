@@ -1,0 +1,130 @@
+{
+  "originalBinary": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "start": "0x40f9eb8",
+      "endExclusive": "0x40fa214",
+      "bytesSha256": "4ffa5ccae355dc2533e06137d08b4c36c61584053cfe602d098d2f5ac8b3512f",
+      "file": "display-persistent.asm",
+      "assemblySha256": "413ea83e871916c491a80359ee046d789259f32fa6bb5fe8fa35eef7591df72a"
+    },
+    {
+      "start": "0x40fa214",
+      "endExclusive": "0x40fa608",
+      "bytesSha256": "a586a30a811a7a28b17d2c74e98efcd7b24b92c2dc3c578c9a7cdb3f04874c66",
+      "file": "build-payload.asm",
+      "assemblySha256": "7246f5be8f31017975379a8f3b4b0fece06923984574c359bc8408d9a9bc53c7"
+    },
+    {
+      "start": "0x40fa608",
+      "endExclusive": "0x40fa6cc",
+      "bytesSha256": "55556fda7dc0653b80e66f8dce04d186058c76e188a5d67305b3b57e03c5bb17",
+      "file": "read-mode.asm",
+      "assemblySha256": "e81c5b48c106fc541c516e249711d24ff30728d70ec957bc9e0778e4e1eaba07"
+    },
+    {
+      "start": "0x40f88d0",
+      "endExclusive": "0x40f8c34",
+      "bytesSha256": "a9cb3b6269ec326fc84c21ba4859116441ae91b6eb0b92bd3133150e8223b874",
+      "file": "save-dispatch.asm",
+      "assemblySha256": "13ea3643f2768c1984dfc9337782b0b532c3c79bc0bebb3d7200f0b720afc7fe"
+    },
+    {
+      "start": "0x40fa6cc",
+      "endExclusive": "0x40fabe8",
+      "bytesSha256": "c63188f6c073fa6219bd6c35c5fa3256275fbe08126ac05fc78e6b4bda86da76",
+      "file": "extension-dispatch.asm",
+      "assemblySha256": "75e746715316b5bacba6c0fbd7f6aa8046b14c297000372d1904053611fa172a"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0xda8f021",
+      "text": "../../chrome/browser/notifications/platform_notification_service_impl.cc"
+    },
+    {
+      "address": "0xda8f0e2",
+      "text": "SaveAsideInboxPayloadAndDispatch"
+    },
+    {
+      "address": "0xcee9a28",
+      "text": "persistent_notifications.ai_delivery_mode_by_origin"
+    },
+    {
+      "address": "0xcee9b37",
+      "text": "aside.inboxNotification"
+    },
+    {
+      "address": "0xcee9b4f",
+      "text": "allow_for_ai"
+    },
+    {
+      "address": "0xcee9b5c",
+      "text": "allow"
+    },
+    {
+      "address": "0xda8f125",
+      "text": "notification_id"
+    },
+    {
+      "address": "0xd9a8095",
+      "text": "site_url"
+    },
+    {
+      "address": "0xd7fcc1c",
+      "text": "title"
+    },
+    {
+      "address": "0xd94fda9",
+      "text": "body"
+    },
+    {
+      "address": "0xda8f135",
+      "text": "is_persistent"
+    },
+    {
+      "address": "0xda8f143",
+      "text": "context_url"
+    },
+    {
+      "address": "0xda8f14f",
+      "text": "click_payload_base64"
+    },
+    {
+      "address": "0xda8f164",
+      "text": "click_payload_json"
+    },
+    {
+      "address": "0xcee9adb",
+      "text": "deny"
+    }
+  ],
+  "readOnlyFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/platform_notification_service_impl.cc",
+      "sha256": "307f9a1f4b8a4d37a39f488615ba8d273b4f9a40e96b5125ccc6d6ccbf1c1a5b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/platform_notification_service_impl.h",
+      "sha256": "043bd3b6464e3e6b8a787fe3d4b05a9a6c012c8e3f5818c8034a8733bf130a2b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/persistent_notification_handler.cc",
+      "sha256": "3277ea48cd1273eeaa11f4e31b6e2d64c80f428a2181b593e0fc025cb7ca23ac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-v241-brand/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/blink/public/common/notifications/platform_notification_data.h",
+      "sha256": "7a9fc077e098d0a420a0d68a9530b859b33cc3bb55da40d32ebbbe16c47fe9d1"
+    }
+  ],
+  "sourceChanged": false,
+  "compiled": false,
+  "runtimeObserved": false
+}
