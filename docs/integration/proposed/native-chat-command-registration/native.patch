@@ -1,0 +1,57 @@
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -104,6 +104,8 @@
+ #define IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER 34060
+ #define IDC_TOGGLE_VERTICAL_TABS_COLLAPSE 34061
+ #define IDC_AUX_NEW_CHAT                34064
++// Supplied native New Chat command; separate from retired shell dispatch.
++#define IDC_AUX_OPEN_NEW_CHAT           34067
+ #define IDC_AUX_SPLIT_SIDE_BY_SIDE      34065
+ #define IDC_AUX_SPLIT_STACKED           34066
+ 
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/profile_prefs.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+@@ -679,6 +682,10 @@
+ }
+ 
+ bool BrowserCommandController::IsCommandEnabled(int id) const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (id == IDC_AUX_OPEN_NEW_CHAT && !aux::CanOpenNewChat(*browser_))
++    return false;
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+   if ((id == IDC_AUX_NEW_CHAT || id == IDC_AUX_SPLIT_SIDE_BY_SIDE ||
+        id == IDC_AUX_SPLIT_STACKED) && !CanExecuteAuxMenuCommand(id))
+@@ -852,6 +859,11 @@
+     case IDC_AUX_SPLIT_SIDE_BY_SIDE:
+     case IDC_AUX_SPLIT_STACKED:
+       DispatchAuxMenuCommand(id);
++      break;
++#endif
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    case IDC_AUX_OPEN_NEW_CHAT:
++      aux::OpenNewChat(*browser_);
+       break;
+ #endif
+     case IDC_NEW_TAB: {
+@@ -1836,6 +1848,10 @@
+   // Window management commands
+   command_updater_->UpdateCommandEnabled(IDC_CLOSE_WINDOW, true);
+   command_updater_->UpdateCommandEnabled(IDC_NEW_TAB, true);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // IsCommandEnabled reevaluates the actual profile/Agent state on invocation.
++  command_updater_->UpdateCommandEnabled(IDC_AUX_OPEN_NEW_CHAT, true);
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+   UpdateAuxMenuCommands();
+ #endif

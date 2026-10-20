@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "actual native316 controller and command IDs; af5d74606 navigation required",
+  "files": [
+    {
+      "path": "chrome/app/chrome_command_ids.h",
+      "baselineSha256": "b22a3e56b8a2b35011681020128528525cba36b0815a4694abf480ec861563f3",
+      "outputSha256": "52e80b67f21cdf7310e1c1b1d22eb04fc38f0077b2ba9f602f41c3ecc6d3657b"
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "edbd1c69d964b8c1eaa3814bd1528db9d8d85e6d3ba1456cbad7e115e0143448",
+      "outputSha256": "03c460dec7a5dcbd2c2e55962aba533fe28b0120b6013ef72d5118f24f480c4e"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
