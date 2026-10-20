@@ -1,0 +1,18 @@
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -13,11 +13,12 @@
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (!profile) return {};
+   auto* prefs = profile->GetOriginalProfile()->GetPrefs();
+-  if (!prefs || !prefs->FindPreference("aside.profile_id")) return {};
+-  auto id = prefs->GetString("aside.profile_id");
++  if (!prefs) return {};
++  const bool registered = prefs->FindPreference("aside.profile_id") != nullptr;
++  auto id = registered ? prefs->GetString("aside.profile_id") : std::string();
+   if (id.empty()) {
+     id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-    prefs->SetString("aside.profile_id", id);
++    if (registered) prefs->SetString("aside.profile_id", id);
+   }
+   return id;
+ }

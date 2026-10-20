@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "base": "profile-identity c3a130418 output",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": "84397ba03a734e84eacb1146babc461332c6ed23b3a5dcadadb015f1f4c65bf4",
+      "outputSha256": "0c07e1ff9669aeb6dfb65662890e343237dbdf1c4c109347ffe364093f58f81e"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false
+}

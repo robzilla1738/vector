@@ -1,0 +1,3 @@
+# Original optional-preference UUID behavior
+
+One-file incremental follow-up after c3a130418. Source review of original `04103374.c` and `0410347c.c` proves a missing registration returns an absent saved value but still generates a UUID; only persistence is guarded by `FindPreference`. A null PrefService returns empty. Preserve those exact semantics instead of treating missing registration as a new context error. Normal production still requires the original profile preference registration; this does not create a fallback identity derived from account/path/hash or grant private authorization. The actual canonical identity verification fails closed if an unregistered ID cannot remain stable. One-file independent replay passed; no native compile/runtime.
