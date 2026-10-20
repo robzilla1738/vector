@@ -1,0 +1,31 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "artifactSha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "staticOnly": true,
+  "keyRva": "0xceea4da",
+  "key": "aside.account_display_name",
+  "equivalent": "registry->RegisterStringPref(\"aside.account_display_name\", \"\", 0)",
+  "extracts": [
+    {
+      "file": "register.asm",
+      "start": "0x34e4014",
+      "stop": "0x34e406c",
+      "bytesSha256": "44a616587ef54a2eed7e00afb503904e6cf743da009d72816d6091b1052030a2",
+      "extractSha256": "c9b86f78c5c730de68f215a2214c0e145dd5ae3f74106594c8f1d7efaddfbbeb"
+    },
+    {
+      "file": "value-string.asm",
+      "start": "0xbddb80",
+      "stop": "0xbddc50",
+      "bytesSha256": "620cec113f9c27b912cae71a96d5faf259bcd02b4b9fb3b5083c07c525d07ef9",
+      "extractSha256": "df8cf030d3b98b919637b1921b73e367895652c13738c175e8f51047276c512b"
+    },
+    {
+      "file": "register-flags.asm",
+      "start": "0xbddc50",
+      "stop": "0xbddd58",
+      "bytesSha256": "3454517189fbb445770bd274f4bfd4370b92172238faf6fd2200958049d8578d",
+      "extractSha256": "ed4421513bf7ed82748e8db261386d9aab45a6679ae123b631c00c0c2da49943"
+    }
+  ]
+}
