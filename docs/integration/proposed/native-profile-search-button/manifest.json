@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "two new sources absent from applied169; no existing native file mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_search_button.cc",
+      "baselineSha256": null,
+      "outputSha256": "dedb6d597888acbe6b5a0d6e7578f526a687341c807dd255a8a16b9d91f8bd5d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_search_button.h",
+      "baselineSha256": null,
+      "outputSha256": "4cbd2cf23c11fc97524a8ae7dc92f85e7861cd2cfe00d9002ded7577cb56a5f4"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiTriggerInstalled": false,
+  "sharedSourceModified": false
+}

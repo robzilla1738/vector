@@ -1,0 +1,131 @@
+// Copyright 2026 Aux Authors. All rights reserved.
+#include "chrome/browser/ui/views/frame/aux_profile_search_button.h"
+
+#include <memory>
+#include <utility>
+
+#include "cc/paint/paint_flags.h"
+#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/models/image_model.h"
+#include "ui/color/color_provider_key.h"
+#include "ui/events/event_constants.h"
+#include "ui/gfx/canvas.h"
+#include "ui/gfx/vector_icon_types.h"
+#include "ui/views/accessibility/view_accessibility.h"
+#include "ui/views/controls/button/button_controller.h"
+#include "ui/views/controls/focus_ring.h"
+#include "ui/views/controls/highlight_path_generator.h"
+#include "ui/views/controls/image_view.h"
+#include "ui/views/layout/box_layout.h"
+#include "ui/views/widget/widget.h"
+
+namespace aux {
+namespace {
+// Original e9d52d0 -> e9d52c0 -> d3dff60, exactly93 PathElements.
+// clang-format off
+constexpr gfx::PathElement kSearchPath[] = {
+    gfx::CANVAS_DIMENSIONS, 16.0f,
+    gfx::MOVE_TO, 7.32999992f, 2.0f,
+    gfx::CUBIC_TO, 10.2799997f, 2.0f, 12.6700001f, 4.38999987f, 12.6700001f, 7.32999992f,
+    gfx::CUBIC_TO, 12.6700001f, 8.56999969f, 12.25f, 9.69999981f, 11.54f, 10.6000004f,
+    gfx::LINE_TO, 13.8000002f, 12.8599997f,
+    gfx::CUBIC_TO, 14.0600004f, 13.1199999f, 14.0600004f, 13.54f, 13.8000002f, 13.8000002f,
+    gfx::CUBIC_TO, 13.54f, 14.0699997f, 13.1199999f, 14.0600004f, 12.8599997f, 13.8000002f,
+    gfx::LINE_TO, 10.6000004f, 11.54f,
+    gfx::CUBIC_TO, 9.69999981f, 12.25f, 8.56999969f, 12.6700001f, 7.32999992f, 12.6700001f,
+    gfx::CUBIC_TO, 4.38999987f, 12.6700001f, 2.0f, 10.2799997f, 2.0f, 7.32999992f,
+    gfx::CUBIC_TO, 2.0f, 4.38999987f, 4.38999987f, 2.0f, 7.32999992f, 2.0f,
+    gfx::CLOSE,
+    gfx::MOVE_TO, 7.32999992f, 3.32999992f,
+    gfx::CUBIC_TO, 5.11999989f, 3.32999992f, 3.32999992f, 5.11999989f, 3.32999992f, 7.32999992f,
+    gfx::CUBIC_TO, 3.32999992f, 9.53999996f, 5.11999989f, 11.3299999f, 7.32999992f, 11.3299999f,
+    gfx::CUBIC_TO, 9.53999996f, 11.3299999f, 11.3299999f, 9.53999996f, 11.3299999f, 7.32999992f,
+    gfx::CUBIC_TO, 11.3299999f, 5.11999989f, 9.53999996f, 3.32999992f, 7.32999992f, 3.32999992f,
+    gfx::CLOSE,
+};
+// clang-format on
+const gfx::VectorIconRep kSearchReps[] = {{kSearchPath}};
+const gfx::VectorIcon kSearchIcon(kSearchReps, 1,
+                                 "kAuxMagnifyingGlassStrokeIcon");
+
+bool Dark(const views::View& view) {
+  return view.GetWidget()->GetColorMode() ==
+         ui::ColorProviderKey::ColorMode::kDark;
+}
+}  // namespace
+
+ProfileSearchButton::ProfileSearchButton(PressedCallback callback)
+    : views::Button(std::move(callback)) {
+  SetAnimateOnStateChange(false);
+  SetTriggerableEventFlags(ui::EF_LEFT_MOUSE_BUTTON);
+  button_controller()->set_notify_action(
+      views::ButtonController::NotifyAction::kOnRelease);
+  SetNotifyEnterExitOnChild(true);
+  GetViewAccessibility().SetName(u"Search");
+  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kHorizontal));
+  layout->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
+  layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
+  image_ = AddChildView(std::make_unique<views::ImageView>());
+  image_->SetImageSize(gfx::Size(16, 16));
+  views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 10);
+  if (auto* ring = views::FocusRing::Get(this)) {
+    ring->SetPathGenerator(
+        std::make_unique<views::RoundRectHighlightPathGenerator>(
+            gfx::Insets(), 10));
+  }
+}
+ProfileSearchButton::~ProfileSearchButton() = default;
+
+gfx::Size ProfileSearchButton::CalculatePreferredSize(
+    const views::SizeBounds& available_size) const {
+  return gfx::Size(28, 28);
+}
+
+void ProfileSearchButton::UpdateImage() {
+  if (!image_ || !GetWidget()) {
+    return;
+  }
+  // Original226 SidebarMutedForeground; disabled266 aliases222.
+  const SkColor color = GetEnabled()
+      ? (Dark(*this) ? 0x73fafafa : 0x730a0a0a)
+      : (Dark(*this) ? 0x8cfafafa : 0x8c0a0a0a);
+  image_->SetImage(ui::ImageModel::FromVectorIcon(kSearchIcon, color, 16));
+}
+
+void ProfileSearchButton::AddedToWidget() {
+  views::Button::AddedToWidget();
+  UpdateImage();
+}
+
+void ProfileSearchButton::OnThemeChanged() {
+  views::Button::OnThemeChanged();
+  UpdateImage();
+}
+
+void ProfileSearchButton::OnEnabledChanged() {
+  views::Button::OnEnabledChanged();
+  UpdateImage();
+}
+
+void ProfileSearchButton::StateChanged(ButtonState old_state) {
+  views::Button::StateChanged(old_state);
+  SchedulePaint();
+}
+
+void ProfileSearchButton::PaintButtonContents(gfx::Canvas* canvas) {
+  if (GetState() != STATE_HOVERED && GetState() != STATE_PRESSED) {
+    return;
+  }
+  cc::PaintFlags flags;
+  flags.setAntiAlias(true);
+  // Original247 aliases220; original269 uses the saved215 constant.
+  flags.setColor(GetState() == STATE_HOVERED
+      ? (Dark(*this) ? 0x14fafafa : 0x140a0a0a)
+      : (Dark(*this) ? 0x26fafafa : 0x1a0a0a0a));
+  canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
+}
+
+BEGIN_METADATA(ProfileSearchButton)
+END_METADATA
+}  // namespace aux

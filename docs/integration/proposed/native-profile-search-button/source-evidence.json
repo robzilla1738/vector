@@ -1,0 +1,139 @@
+{
+  "artifact": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "extracts": [
+    {
+      "file": "original-constructor.txt",
+      "start": "0x4630f80",
+      "stop": "0x46314fc",
+      "bytesSha256": "31706dc7a9a2c26f14a2f43944861cf0f3a069963e7a1ff9ebb5c88b4a24f4e8",
+      "extractSha256": "578260087022cceb66374fc2f975187ee1487d4a6a6cba0d9917db0ed1a19d76"
+    },
+    {
+      "file": "original-metadata.txt",
+      "start": "0x466c52c",
+      "stop": "0x466c630",
+      "bytesSha256": "5c51fed70487e39f0a4040869ce7d97cb8adb195c0a3cb819dfcedaa45208a65",
+      "extractSha256": "e55fcab5f985130f456bacfaf19ce0c9317f31050aff313b71e1ec477bf2f801"
+    },
+    {
+      "file": "original-paint.txt",
+      "start": "0x466c640",
+      "stop": "0x466c744",
+      "bytesSha256": "027288867712165960a028eb9ce3e7163c2a6c6d6abe5ae4c4b24303f636dded",
+      "extractSha256": "cb5e110e95eb9fd3542904ed65f747ca98aa8c229f6cbd14040e687f9ec10d0f"
+    },
+    {
+      "file": "original-image-and-state.txt",
+      "start": "0x466c840",
+      "stop": "0x466c93c",
+      "bytesSha256": "09b208efaf1d04d212ab2e0319930266fab1da01428d5b384f1c43759e0e0536",
+      "extractSha256": "6a43dee37535ba7e1633972c5e67357d2efd7e2296ccd17f5c058a3f5e7a47fe"
+    },
+    {
+      "file": "original-fallback-constructor-call.txt",
+      "start": "0x46541a0",
+      "stop": "0x46542c0",
+      "bytesSha256": "94fddd88a553725f7d3c531da49070e7b42d54b80e38069f9a8072664f438d93",
+      "extractSha256": "aee556c4f6678d8c3fb9cd3b6ae36638fe6a07278b562a9ccd2df50378de4207"
+    },
+    {
+      "file": "original-pressed-color-save.txt",
+      "start": "0x35e6e40",
+      "stop": "0x35e6e84",
+      "bytesSha256": "28ed2f4e2b84593d279d75705e1252d51da9c5d51c159791bacda85a9664cec7",
+      "extractSha256": "cc2510f1eeeaf0e8f09b4b30bea871c54cf5189defba924c09749a091c1c87d9"
+    },
+    {
+      "file": "original-disabled-alias.txt",
+      "start": "0x35e9568",
+      "stop": "0x35e961c",
+      "bytesSha256": "c9b7e6f8560dded545b10e970a9bad06b77f3581ac2cfba134b69e1c24ae03ff",
+      "extractSha256": "d39f460223430bcdf869b1604238be9a18549c56aacb7aa48e2247f7ecdcad5f"
+    },
+    {
+      "file": "original-hover-pressed-alias.txt",
+      "start": "0x35e97ac",
+      "stop": "0x35e991c",
+      "bytesSha256": "31adcdc009c885929e651ea34036cff7f10e391e56efe97d5a202d8dd9fa4ceb",
+      "extractSha256": "c2fb26f39e619365c78aae5306650d020c4c7a075f255e917c504d129be5b9c3"
+    }
+  ],
+  "staticOnly": true,
+  "metadata": {
+    "vtable": "0xe7298d0",
+    "slot58": "0x466c52c",
+    "nameRva": "0xdecc0a0",
+    "name": "ProfileSearchButton"
+  },
+  "icon": {
+    "definitionRva": "0xe9d52d0",
+    "repRva": "0xe9d52c0",
+    "pathRva": "0xd3dff60",
+    "elements": 93,
+    "sha256": "f650162f7c7cd9c2bd3656ba959b02d6ef71f6024374f4f8adea6cbf4dab0bfc",
+    "nameRva": "0xd3cfd09",
+    "name": "kAsideMagnifyingGlassStrokeIcon"
+  },
+  "colorNames": [
+    {
+      "id": 226,
+      "entryRva": "0xe9101b0",
+      "name": "kColorAsideSidebarMutedForeground"
+    },
+    {
+      "id": 247,
+      "entryRva": "0xe910300",
+      "name": "kColorAsideSidebarItemBackgroundHover"
+    },
+    {
+      "id": 266,
+      "entryRva": "0xe910430",
+      "name": "kColorAsideControlSubtleForegroundDisabled"
+    },
+    {
+      "id": 269,
+      "entryRva": "0xe910460",
+      "name": "kColorAsideControlPressedOnSubtle"
+    }
+  ],
+  "colorExpressions": [
+    {
+      "rva": "0x35e7724",
+      "bytes": 24,
+      "resultRegister": 23,
+      "seedRegister23": null,
+      "light": "0x730a0a0a",
+      "dark": "0x73fafafa"
+    },
+    {
+      "rva": "0x35e73e0",
+      "bytes": 24,
+      "resultRegister": 27,
+      "seedRegister23": null,
+      "light": "0x8c0a0a0a",
+      "dark": "0x8cfafafa"
+    },
+    {
+      "rva": "0x35e7240",
+      "bytes": 16,
+      "resultRegister": 22,
+      "seedRegister23": "0x14fafafa",
+      "light": "0x140a0a0a",
+      "dark": "0x14fafafa"
+    },
+    {
+      "rva": "0x35e6e40",
+      "bytes": 24,
+      "resultRegister": 22,
+      "seedRegister23": null,
+      "light": "0x1a0a0a0a",
+      "dark": "0x26fafafa"
+    }
+  ],
+  "limits": [
+    "Default supplied mixer only; high-contrast override parity not established.",
+    "The actual preview factory and sender action are not installed by this component.",
+    "AddedToWidget refresh is155 adaptation for explicit recovered palette vs original deferred ColorVariant."
+  ]
+}

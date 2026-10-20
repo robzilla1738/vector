@@ -1,0 +1,51 @@
+
+/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+000000000000529c <_ChromeMain>:
+ 35e9568: 52800035     	mov	w21, #0x1               ; =1
+ 35e956c: 3900c3f5     	strb	w21, [sp, #0x30]
+ 35e9570: 52800500     	mov	w0, #0x28               ; =40
+ 35e9574: 9728977d     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 35e9578: b9000015     	str	w21, [x0]
+ 35e957c: d0fed1a8     	adrp	x8, 0x101f000 <_ChromeMain+0x1019d64>
+ 35e9580: 91180108     	add	x8, x8, #0x600
+ 35e9584: a900a017     	stp	x23, x8, [x0, #0x8]
+ 35e9588: f9000c1a     	str	x26, [x0, #0x18]
+ 35e958c: 52801bc8     	mov	w8, #0xde               ; =222
+ 35e9590: b9002408     	str	w8, [x0, #0x24]
+ 35e9594: f90017e0     	str	x0, [sp, #0x28]
+ 35e9598: a9047fff     	stp	xzr, xzr, [sp, #0x40]
+ 35e959c: f9001fff     	str	xzr, [sp, #0x38]
+ 35e95a0: 52800200     	mov	w0, #0x10               ; =16
+ 35e95a4: 97289771     	bl	0xf368 <_ChromeMain+0xa0cc>
+ 35e95a8: b402cb80     	cbz	x0, 0x35eef18 <_ChromeMain+0x35e9c7c>
+ 35e95ac: aa0003f5     	mov	x21, x0
+ 35e95b0: 9100a3e1     	add	x1, sp, #0x28
+ 35e95b4: 972c1067     	bl	0xed750 <_ChromeMain+0xe84b4>
+ 35e95b8: a943f3f6     	ldp	x22, x28, [sp, #0x38]
+ 35e95bc: cb1c101b     	sub	x27, x0, x28, lsl #4
+ 35e95c0: d37cef98     	lsl	x24, x28, #4
+ 35e95c4: b50257d8     	cbnz	x24, 0x35ee0bc <_ChromeMain+0x35e8e20>
+ 35e95c8: cb1c13e8     	neg	x8, x28, lsl #4
+ 35e95cc: 52800209     	mov	w9, #0x10               ; =16
+ 35e95d0: cb080128     	sub	x8, x9, x8
+ 35e95d4: 9344fd08     	asr	x8, x8, #4
+ 35e95d8: a903a3fb     	stp	x27, x8, [sp, #0x38]
+ 35e95dc: f94027e8     	ldr	x8, [sp, #0x48]
+ 35e95e0: 52800029     	mov	w9, #0x1                ; =1
+ 35e95e4: f90027e9     	str	x9, [sp, #0x48]
+ 35e95e8: b502b096     	cbnz	x22, 0x35eebf8 <_ChromeMain+0x35e995c>
+ 35e95ec: 910042a8     	add	x8, x21, #0x10
+ 35e95f0: eb1b0108     	subs	x8, x8, x27
+ 35e95f4: 9344fd08     	asr	x8, x8, #4
+ 35e95f8: f90023e8     	str	x8, [sp, #0x40]
+ 35e95fc: 5402c8e0     	b.eq	0x35eef18 <_ChromeMain+0x35e9c7c>
+ 35e9600: aa1303e0     	mov	x0, x19
+ 35e9604: 52802141     	mov	w1, #0x10a              ; =266
+ 35e9608: 97352d19     	bl	0x334a6c <_ChromeMain+0x32f7d0>
+ 35e960c: 9100e3e1     	add	x1, sp, #0x38
+ 35e9610: 972e1a80     	bl	0x170010 <_ChromeMain+0x16ad74>
+ 35e9614: 9100e3e0     	add	x0, sp, #0x38
+ 35e9618: 972cbd7f     	bl	0x118c14 <_ChromeMain+0x113978>
