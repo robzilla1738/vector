@@ -2,7 +2,7 @@
   "original": {
     "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
     "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
-    "mount": "37e0cd4..37e0e00: add originalcustomscroll(+5b0), create actualVerticalTabStripView7fb6840 with realcontroller context+848, SetContents at37e0dec; vertical subclass7fb6840 invokes common7fb4934. Full originalregiondecompile pins remaining child hierarchy; header/savedentries/bottom surfaces separate."
+    "mount": "Corrected:37e0cd4..37e0e00 creates customscroll+5b0 and realVerticalTabStripScrollBar7fb6840; metadata7fb6fe4/constantdb10e11 proves scrollbar, notbody. Bodycontents+5c0 contains genuineBookmarks+668/content+6a0 andnativeChats. DO NOTAPPLYretirementuntilreplacementpreservesthese."
   },
   "sourcePins": [
     {
@@ -49,8 +49,10 @@
   },
   "actual155ModelOwnership": "BaseTabStripRegionView::InitializeTabStrip creates RootTabCollectionNode with actualTabStripModel, actualTabStripCollectionController; samecommonTabStripView owns actualpinned/unpinned containers; restoredVerticalTabStripScrollView is actualunpinnedscroll. Savedentries are separate regionleaf with realPinService and pause/rebind lifecycle.",
   "limits": [
+    "Previous7fb6840/7fb4934 strip identity label was incorrect: scrollbar subclasses. Current patch does not preserve complete supplied body semantics and is not ready to apply.",
     "This removes positively identified extra independent UI, not full153-v155 row paint/typography/collection parity.",
     "Exact original rowfactory, all group/tab leaf paint and full original body geometry remain unverified; no guessedrestyling.",
     "No actualUI/runtime observation by this lane; supplied screenshot is parent-owned observation."
-  ]
+  ],
+  "applicationStatus": "HOLD; root excluded proposal from composition pending complete genuine Bookmarks/Chats replacement."
 }

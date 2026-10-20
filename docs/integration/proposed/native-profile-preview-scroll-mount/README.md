@@ -1,8 +1,10 @@
-# Mount the genuine scrolling preview role in155
+> Correction (2026-10-19): constructor37e0da8 creates VerticalTabStripScrollBar7fb6840, not VerticalTabStripView;37e0dec installs that scrollbar. Original region+5c0 body contents include genuine Bookmarks/Chats. This historical155 unpinned-scroll mapping does not prove full original body/preview-role parity. See native-sidebar-real-tab-body (HOLD) and subsequent body recovery.
+
+# Historical scrolling preview mount: corrected source identity
 
 Apply after `a78e82997` and `d2dd372b7`. This changes only `common/tab_strip_view.cc`, pinned to actual native170; no existing inputs have been changed in the shared checkout.
 
-The supplied constructor `37e0cd4..37e0e00` creates one `VerticalTabStripScrollView`, adds it to the real region, then installs the genuine prior `VerticalTabStripView` as its contents. Pinned live tabs are a separate preview role externalized from the original common TabStripView. It does not create two custom scrolling views.
+The supplied constructor `37e0cd4..37e0e00` creates one `VerticalTabStripScrollView`, adds it to the real region, then installs its genuine `VerticalTabStripScrollBar`; the body contents are populated separately. Pinned live tabs are a separate preview role externalized from the original common TabStripView. It does not create two custom scrolling views.
 
 Chromium155 now places the actual live pinned/unpinned containers under its common TabStripView, each with a ScrollView. This adaptation instantiates the restored custom class **only for the actual vertical unpinned surface**. Existing155 content creation, TabCollectionNode callbacks, drag, animation, profile migration and scrolling policy remain attached to those same live contents. Horizontal and pinned scrolling retain the existing class. No wrapper or surrogate tabs are added.
 
