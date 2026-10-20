@@ -1,0 +1,43 @@
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.h
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.h
+@@ -11,5 +11,6 @@
+ bool IsNewChatDocument(content::WebContents&, Profile&);
+ bool CanOpenNewChat(BrowserWindowInterface& browser);
+ void OpenNewChat(BrowserWindowInterface& browser);
++void ShowAllChats(BrowserWindowInterface& browser);
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -66,6 +66,31 @@
+       registry && registry->GetExtensionById(kAgentExtensionId,
+           extensions::ExtensionRegistry::EVERYTHING);
+ }
++void ShowAllChats(BrowserWindowInterface& browser) {
++  auto* model = browser.GetTabStripModel();
++  if (!model) return;
++  const GURL target(std::string("chrome-extension://") + kAgentExtensionId +
++      "/main.html#/u/" + std::to_string(ChatAccountForProfile(*browser.GetProfile())) +
++      "/tasks?view=list&filter=all&order=desc");
++  // Original462f3d8 reuses the first model-order matching page, rather than
++  // preferring the active tab as the separate New Chat command does.
++  if (target.is_valid()) {
++    for (int index = 0; index < model->count(); ++index) {
++      if (MatchesTarget(model->GetWebContentsAt(index), target)) {
++        model->ActivateTabAt(index, TabStripUserGestureDetails(
++            TabStripUserGestureDetails::GestureType::kNone));
++        return;
++      }
++    }
++  }
++  auto* registry = extensions::ExtensionRegistry::Get(browser.GetProfile());
++  if (registry && registry->GetExtensionById(kAgentExtensionId,
++          extensions::ExtensionRegistry::EVERYTHING)) {
++    // Actual155's public BWI convenience invokes the real PageNavigator with
++    // LINK and renderer_initiated=false, matching the supplied OpenURL call.
++    browser.OpenGURL(target, WindowOpenDisposition::NEW_FOREGROUND_TAB);
++  }
++}
+ void OpenNewChat(BrowserWindowInterface& browser) {
+   if (!CanOpenNewChat(browser)) return;
+   const GURL target(std::string("chrome-extension://") + kAgentExtensionId +

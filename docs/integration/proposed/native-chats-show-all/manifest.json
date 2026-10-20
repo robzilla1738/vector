@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "base": "02b744993 navigation document-predicate outputs",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.h",
+      "baselineSha256": "ecdeb03f7f74d6378cb40fc7e496f62e8c490662f0e63a3374ed7882a6ab390a",
+      "outputSha256": "a8f2836d5b73989acecf592747b5cd843383e3506609b5c24b2950216cf17add"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "3f9e49d312a297496c1f03b615ed7361bdba55fe1f84b7a33f937541e1dd457d",
+      "outputSha256": "aee66c07079b6e1bc0a3a6ffd894270a57a469c85d64de1d7d311ebe21cf85da"
+    }
+  ],
+  "compiled": false,
+  "mounted": false,
+  "runtimeAcceptance": false,
+  "sharedSourceModified": false
+}
