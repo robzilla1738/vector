@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1174,6 +1174,8 @@
+       "views/frame/aux_chat_navigation.h",
+       "views/frame/aux_chats_transport.cc",
+       "views/frame/aux_chats_transport.h",
++      "views/frame/aux_chats_controller.cc",
++      "views/frame/aux_chats_controller.h",
+       "views/frame/aux_vertical_tab_bookmarks_view.cc",
+       "views/frame/aux_vertical_tab_bookmarks_view.h",
+       "views/frame/aux_bookmark_confirmation.h",

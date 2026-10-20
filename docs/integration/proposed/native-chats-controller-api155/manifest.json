@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_controller.h",
+      "baselineSha256": "8c20a26d10aa2174c16f8b4e784cccbac723121663561e79503a1074ea21c0b4",
+      "outputSha256": "0e99fdf54fee2794a19c4ef222d175e17849bce3524edf3f8cbd3fb5ca80a38a"
+    }
+  ]
+}

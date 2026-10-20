@@ -1,0 +1,140 @@
+{
+  "composition": "v351",
+  "originalReplay": {
+    "sources": 504,
+    "steps": 354,
+    "actualNativeSourcesMatch": true,
+    "actualArtworkMatches": 23,
+    "seed": "out/native-original-replay-v320"
+  },
+  "focusedBuilds": [
+    {
+      "composition": "v342",
+      "exitCode": 0,
+      "elapsedSeconds": 14.472327947616577,
+      "targets": {
+        "bulk_transport": "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "header_actions": "obj/chrome/browser/ui/ui/aux_chats_header_actions.o",
+        "section_context": "obj/chrome/browser/ui/ui/aux_section_view.o",
+        "chats_section": "obj/chrome/browser/ui/ui/aux_chats_section.o",
+        "bookmarks_section": "obj/chrome/browser/ui/ui/aux_bookmarks_section.o",
+        "native_confirmation": "obj/chrome/browser/ui/ui/aux_bookmark_confirmation_mac.o",
+        "pinned_drop_boundary": "obj/chrome/browser/ui/ui/aux_bookmark_drag_hint.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chats_transport.o",
+        "obj/chrome/browser/ui/ui/aux_chats_header_actions.o",
+        "obj/chrome/browser/ui/ui/aux_section_view.o",
+        "obj/chrome/browser/ui/ui/aux_chats_section.o",
+        "obj/chrome/browser/ui/ui/aux_bookmarks_section.o",
+        "obj/chrome/browser/ui/ui/aux_bookmark_confirmation_mac.o",
+        "obj/chrome/browser/ui/ui/aux_bookmark_drag_hint.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v343",
+      "exitCode": 0,
+      "elapsedSeconds": 7.653891086578369,
+      "targets": {
+        "chat_ordinary_projection": "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chat_tab_owner.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v348",
+      "exitCode": 0,
+      "elapsedSeconds": 12.31162977218628,
+      "targets": {
+        "agent_session_model": "obj/chrome/browser/ui/ui/aux_agent_session_tabs_model.o",
+        "agent_session_model_probe": "aux_agent_session_tabs_model_probe",
+        "bookmark_external_insertion": "obj/chrome/browser/ui/ui/aux_vertical_tab_bookmarks_view.o",
+        "saved_pin_refresh": "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+        "saved_pin_conversion": "obj/chrome/browser/ui/ui/aux_saved_pin_bookmark_conversion.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_agent_session_tabs_model.o",
+        "aux_agent_session_tabs_model_probe",
+        "obj/chrome/browser/ui/ui/aux_vertical_tab_bookmarks_view.o",
+        "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+        "obj/chrome/browser/ui/ui/aux_saved_pin_bookmark_conversion.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    },
+    {
+      "composition": "v351",
+      "exitCode": 0,
+      "elapsedSeconds": 8.978500127792358,
+      "targets": {
+        "chats_controller": "obj/chrome/browser/ui/ui/aux_chats_controller.o"
+      },
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/Users/rcourson/Documents/Code/aux-chromium-proof/depot_tools/autoninja",
+        "-C",
+        "out/AuxFast",
+        "obj/chrome/browser/ui/ui/aux_chats_controller.o",
+        "-j",
+        "16",
+        "-k",
+        "0"
+      ]
+    }
+  ],
+  "modelProbe": {
+    "composition": "v348",
+    "target": "aux_agent_session_tabs_model_probe",
+    "exitCode": 0,
+    "scope": "ASCII fixtures for real session envelope parsing, target batches and ancestry; no browser, profile, network or OS operations"
+  },
+  "latestFullBrowser": "v277",
+  "fullBrowserOrUIAccepted": false,
+  "genuineSidebarMounted": false,
+  "outgoingPinToBookmarkRegionBound": false,
+  "originalAgentSessionTabOwnerComplete": false,
+  "nativeSigningProvisioningOrReleasePerformed": false,
+  "compiledInPriorFailedBuild": {
+    "composition": "v347",
+    "successfulTargets": [
+      "complete Bookmarks owner external insertion",
+      "saved-pin native refresh",
+      "saved-pin to bookmark conversion"
+    ],
+    "failedTarget": "session model out-of-line lifetime declarations; corrected and compiled in v348"
+  },
+  "gn": {
+    "composition": "v350",
+    "exitCode": 0,
+    "targets": 36083,
+    "files": 5013,
+    "logSha256": "539e0a069684ba366c50679826403a24a17b51bf5c3aa5f6861eef923edc9245"
+  }
+}

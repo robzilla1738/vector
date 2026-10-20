@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_chats_controller.h
++++ b/chrome/browser/ui/views/frame/aux_chats_controller.h
+@@ -34,7 +34,7 @@
+   using Changed = base::RepeatingClosure;
+   AuxChatsController(BrowserWindowInterface&, BookmarkTabAssociations&,
+                      std::u16string shortcut_help, Changed projection_changed);
+-  ~AuxChatsController();
++  ~AuxChatsController() override;
+   AuxChatsController(const AuxChatsController&) = delete;
+   AuxChatsController& operator=(const AuxChatsController&) = delete;
+   std::unique_ptr<AuxChatsSection> TakeSection();

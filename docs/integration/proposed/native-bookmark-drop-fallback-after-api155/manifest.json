@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.cc",
+      "baselineSha256": "a8d6beac9b84311c947b9c026a1b88452321f2959b631fbba029d7f52e482832",
+      "outputSha256": "520aeec6bd1eb292c7789ea22927ca9ed13999814ba0ed4edb57a5420c2b1a32"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmark_drag_hint.h",
+      "baselineSha256": "33b422c785e83be587b4083a3a3221e33455cf57bf36a07024b4fe3cdee45ece",
+      "outputSha256": "0585a8523b506b24b71a5687b1c8be4ef58ea15a9d9d4fcf76008dce72ae7b83"
+    }
+  ]
+}

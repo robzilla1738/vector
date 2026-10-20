@@ -1,0 +1,30 @@
+--- a/chrome/browser/ui/views/frame/aux_chats_header_actions.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_header_actions.cc
+@@ -61,14 +61,14 @@
+   model_->AddItem(kShowAll, u"Show all chats");
+   runner_ = std::make_unique<views::MenuRunner>(model_.get(),
+       views::MenuRunner::CONTEXT_MENU | views::MenuRunner::HAS_MNEMONICS,
+-      base::BindRepeating(&AuxChatsHeaderActions::MenuClosed,
++      base::BindRepeating(&AuxChatsHeaderActions::OnMenuClosedForGeneration,
+                           weak_.GetWeakPtr(), generation_));
+   auto point = event.location();
+   views::View::ConvertPointToScreen(anchor, &point);
+   runner_->RunMenuAt(anchor->GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+       views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
+ }
+-void AuxChatsHeaderActions::MenuClosed(uint64_t generation) {
++void AuxChatsHeaderActions::OnMenuClosedForGeneration(uint64_t generation) {
+   if (generation != generation_) return;
+   const int command = std::exchange(command_, 0);
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+--- a/chrome/browser/ui/views/frame/aux_chats_header_actions.h
++++ b/chrome/browser/ui/views/frame/aux_chats_header_actions.h
+@@ -20,7 +20,7 @@
+   void ExecuteCommand(int command, int event_flags) override;
+  private:
+   bool ScopeCurrent() const;
+-  void MenuClosed(uint64_t generation);
++  void OnMenuClosedForGeneration(uint64_t generation);
+   void RunCommand(int command);
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   base::WeakPtr<Profile> profile_;

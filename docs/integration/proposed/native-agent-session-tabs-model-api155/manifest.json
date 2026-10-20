@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h",
+      "baselineSha256": "a1e43ce221901616fceb1ea8b547640710f13bb635a4411443bc20bc3114cf8b",
+      "outputSha256": "e5e28637476b467be7af8f5837c3642a42a484415ba9125ac13807a2abcf709f"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_agent_session_tabs_model.cc",
+      "baselineSha256": "b281c1aa2c69e7bd33f3e20a94bdbd03883b1efe83f62bbb788ffb4d85eafc6e",
+      "outputSha256": "1b7f7fd8694bfc2be777c92a228b3df5a3989399b6f6ce837c77c90425e6be19"
+    }
+  ]
+}

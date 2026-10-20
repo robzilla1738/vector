@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1146,6 +1146,8 @@
+       "views/frame/aux_bookmark_tab_exclusion.h",
+       "views/frame/aux_bookmark_pin_conversion.cc",
+       "views/frame/aux_bookmark_pin_conversion.h",
++      "views/frame/aux_saved_pin_bookmark_conversion.cc",
++      "views/frame/aux_saved_pin_bookmark_conversion.h",
+       "views/frame/aux_cross_section_drag_preview.cc",
+       "views/frame/aux_cross_section_drag_preview.h",
+       "views/frame/aux_bookmark_tab_associations.cc",

@@ -1,0 +1,23 @@
+--- a/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.h
+@@ -14,6 +14,8 @@
+ // supplied sessions, not native-created-tab ownership or arbitrary URL matches.
+ class AgentSessionTabsModel {
+  public:
++  AgentSessionTabsModel();
++  ~AgentSessionTabsModel();
+   struct Session {
+     std::string parent_id;
+     bool user_cli = false;
+--- a/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.cc
++++ b/chrome/browser/ui/views/frame/aux_agent_session_tabs_model.cc
+@@ -6,6 +6,9 @@
+ #include "base/json/json_reader.h"
+ 
+ namespace aux {
++AgentSessionTabsModel::AgentSessionTabsModel() = default;
++AgentSessionTabsModel::~AgentSessionTabsModel() = default;
++
+ base::DictValue AgentSessionTabsModel::ListInput(int account_id) {
+   return base::DictValue().Set("accountId", account_id)
+       .Set("ephemeral", "include").Set("archived", "include")

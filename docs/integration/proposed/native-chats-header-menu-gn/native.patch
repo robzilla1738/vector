@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1152,6 +1152,8 @@
+       "views/frame/aux_bookmark_tab_associations.h",
+       "views/frame/aux_chats_section.cc",
+       "views/frame/aux_chats_section.h",
++      "views/frame/aux_chats_header_actions.cc",
++      "views/frame/aux_chats_header_actions.h",
+       "views/frame/aux_new_chat_view.cc",
+       "views/frame/aux_new_chat_view.h",
+       "views/frame/aux_new_chat_icon.inc",

@@ -361,6 +361,21 @@ steps.extend([
     ('native-bookmarks-section/native.patch', 'native-bookmarks-section/manifest.json'),
     ('native-bookmarks-section-gn/native.patch', 'native-bookmarks-section-gn/manifest.json'),
     ('native-bookmark-drag-hint-api155/native.patch', 'native-bookmark-drag-hint-api155/manifest.json'),
+    ('native-chats-bulk-transport/native.patch', 'native-chats-bulk-transport/manifest.json'),
+    ('native-confirmation-caller-labels/native.patch', 'native-confirmation-caller-labels/manifest.json'),
+    ('native-chats-header-menu/native.patch', 'native-chats-header-menu/manifest.json'),
+    ('native-chats-header-menu-gn/native.patch', 'native-chats-header-menu-gn/manifest.json'),
+    ('native-bookmark-drop-fallback-after-api155/native.patch', 'native-bookmark-drop-fallback-after-api155/manifest.json'),
+    ('native-chats-header-menu-api155/native.patch', 'native-chats-header-menu-api155/manifest.json'),
+    ('native-chat-ordinary-projection/native.patch', 'native-chat-ordinary-projection/manifest.json'),
+    ('native-agent-session-tabs-model/native.patch', 'native-agent-session-tabs-model/manifest.json'),
+    ('native-agent-session-tabs-model-gn/native.patch', 'native-agent-session-tabs-model-gn/manifest.json'),
+    ('native-saved-pin-bookmark-drop/native.patch', 'native-saved-pin-bookmark-drop/manifest.json'),
+    ('native-saved-pin-bookmark-drop-gn/native.patch', 'native-saved-pin-bookmark-drop-gn/manifest.json'),
+    ('native-agent-session-tabs-model-api155/native.patch', 'native-agent-session-tabs-model-api155/manifest.json'),
+    ('native-chats-controller/native.patch', 'native-chats-controller/manifest.json'),
+    ('native-chats-controller-gn/native.patch', 'native-chats-controller-gn/manifest.json'),
+    ('native-chats-controller-api155/native.patch', 'native-chats-controller-api155/manifest.json'),
 ])
 
 if options.through:
