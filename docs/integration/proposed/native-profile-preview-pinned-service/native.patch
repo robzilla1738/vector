@@ -1,0 +1,62 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -24,6 +24,8 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window_theme_observer.h"
+ #include "chrome/browser/ui/sessions/session_service_browser_helper.h"
++#include "chrome/browser/ui/tabs/pinned_tab_service.h"
++#include "chrome/browser/ui/tabs/pinned_tab_service_factory.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/unload_controller.h"
+ #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
+@@ -41,6 +43,8 @@
+   std::array<raw_ptr<SessionServiceBrowserHelper>, 3> helpers{};
+   std::array<uint64_t, 3> session_generations{};
+   std::array<uint32_t, 3> empty_generations{};
++  std::array<base::WeakPtr<PinnedTabService>, 3> pinned_services{};
++  std::array<uint64_t, 3> pinned_service_tokens{};
+   raw_ptr<tabs::VerticalTabStripStateController> vertical = nullptr;
+   uint64_t vertical_generation = 0;
+   views::ViewTracker bookmark_bar;
+@@ -112,6 +116,13 @@
+   if (scope->vertical) {
+     scope->vertical->EndAuxProfileSwitch(scope->vertical_generation);
+   }
++  // Persistent saved-pin observers resume only after genuine target/source
++  // collections and all view/session finish-or-abort phases have settled.
++  for (size_t i = 0; i < scope->pinned_services.size(); ++i) {
++    if (auto* service = scope->pinned_services[i].get()) {
++      service->ResumeAfterAuxProfileSwitch(scope->pinned_service_tokens[i]);
++    }
++  }
+   // Posted weak/generation-checked clears cannot release a newer mutation.
+   for (size_t i = 0; i < scope->browsers.size(); ++i) {
+     scope->browsers[i]->PostClearAuxProfileSwitchEmptySuppression(
+@@ -215,6 +226,27 @@
+   }
+   base::ScopedClosureRunner complete(
+       base::BindOnce(&ProfileSwitchTransaction::Complete, &scope));
++  // These actual windows can share one profile service. Capture existing-only
++  // services once each; never create a new persistent observer for a transfer.
++  for (size_t i = 0; i < scope.browsers.size(); ++i) {
++    auto* service = PinnedTabServiceFactory::GetForProfileIfExists(
++        scope.browsers[i]->GetProfile());
++    if (!service) {
++      continue;
++    }
++    bool already_paused = false;
++    for (const auto& paused : scope.pinned_services) {
++      if (paused.get() == service) {
++        already_paused = true;
++        break;
++      }
++    }
++    if (already_paused) {
++      continue;
++    }
++    scope.pinned_services[i] = service->GetWeakPtrForAuxProfileSwitch();
++    scope.pinned_service_tokens[i] = service->PauseForAuxProfileSwitch();
++  }
+   scope.custom_started = true;
+   std::move(bindings->begin_).Run(browser, old_cache, next_cache);
+ 

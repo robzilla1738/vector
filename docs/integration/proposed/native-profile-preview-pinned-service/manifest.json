@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "base": "actual188 core includes65cb previewmetadata; after L4 service18588efb6 and identity seam",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "67fa6f953b55b7db9ead3b39fac36628a649b2c6a0ad9fd3c0cf60e209b97595",
+      "outputSha256": "450a7e9b1a13b3b70e6b222d86b20917732add13e5f18c54613bcc2badab8bce"
+    }
+  ],
+  "requiredServiceHeaders": [
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.h",
+      "sha256": "1732d2abdce7729665f83fd1b617264de12b3853726f5efb780adcb3ca0c0d18"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service_factory.h",
+      "sha256": "435c683841efb9332baee2ffd9e254cf700eecea2a99c135719935efd17aad98"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false
+}
