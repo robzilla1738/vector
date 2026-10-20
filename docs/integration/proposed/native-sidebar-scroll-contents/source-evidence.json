@@ -1,0 +1,92 @@
+{
+  "binary": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+  "binarySha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c",
+  "ranges": [
+    {
+      "start": "0x37e0d40",
+      "end": "0x37e1020",
+      "sha256": "4be4b28e8fbc484059e8213bdbd63254672810de5cc13a49e17e6d031bc7fa29",
+      "meaning": "Actual outer5b0 geometry/appearance/Flex and custom5c0 constructor/Flex"
+    },
+    {
+      "start": "0x46610a8",
+      "end": "0x46611d8",
+      "sha256": "99fa28b70808b61c3ce24e1ed717a261fb4fa91d6702c13a932abc8e5f81de32",
+      "meaning": "actualcontentsdestructor frees preferredsizecache and callback"
+    },
+    {
+      "start": "0x46611d8",
+      "end": "0x466121c",
+      "sha256": "b193079cbed4e8bf15f039a8c07f558e6624ed57305cb3bad87fd3ef35ff6f57",
+      "meaning": "Onlyrightbuttonpress invokesactual callback withself,event thenreturns true"
+    },
+    {
+      "start": "0x4661240",
+      "end": "0x466141c",
+      "sha256": "ca46476c5319c180a6850c3eb275815493cf4dc7cb23710a6adc613ecfd2bdb2",
+      "meaning": "Width-keyed preferredsizecache, actualwidthfallback forunboundedquery, heightunbounded, realbaseCalculatePreferredSize"
+    },
+    {
+      "start": "0x466141c",
+      "end": "0x46614ac",
+      "sha256": "0b7522891c31703336fa1a125d6f56bc776b58a81831fe41750976da0e2e35f9",
+      "meaning": "Childpreferred/visibility/hierarchy invalidation clearscache thenPreferredSizeChanged"
+    },
+    {
+      "start": "0x462bffc",
+      "end": "0x462c0a8",
+      "sha256": "b825ec879f1205f2cfe9b3180191668d9d2393e899cfebe2ba24e00b6f171550",
+      "meaning": "Realregioncallback floors eventlocation, ConvertPointToScreen thenactualBrowserWidget menu"
+    },
+    {
+      "start": "0xe724750",
+      "end": "0xe724ad8",
+      "sha256": "c311ca7dd3f1e7e8e804571b0a92821229040506521a62a04364c185d5b88a10",
+      "meaning": "ActualanonymouscontentsView primaryvtable; overriddenmethods despite inheritedViewmetadata"
+    },
+    {
+      "start": "0x7fb6fe0",
+      "end": "0x7fb7044",
+      "sha256": "e31cc4c5d4e09ba4d37bd56a1655f209f2c34eadd454ddb85ab84dd89a131c6c",
+      "meaning": "Originalcustomscrollbar metadata and exactheader/classliteral"
+    }
+  ],
+  "positiveMetadata": {
+    "0xdb10e11": "VerticalTabStripScrollBar",
+    "0xdb10e2b": "../../chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h"
+  },
+  "viewVirtuals": {
+    "0x130": "OnMousePressed",
+    "0x2e8": "CalculatePreferredSize",
+    "0x2f8": "ChildPreferredSizeChanged",
+    "0x300": "ChildVisibilityChanged",
+    "0x308": "PreferredSizeChanged (inherited; notoverridden)",
+    "0x320": "ViewHierarchyChanged"
+  },
+  "currentSourcePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/view.h",
+      "sha256": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/controls/scroll_view.h",
+      "sha256": "3ee51f79a7460c78fc34f35f49d2d68fa32f402f771ffb24b58df8a4a58eab8b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/views/layout/flex_layout_types.h",
+      "sha256": "195ee05b43a41363a87c91676d18e89365e43fedd435a96454b91dcf38c7757a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/events/event_constants.h",
+      "sha256": "faafc4e6950a16876bd631f5fd63faf8464ca2e51013e0c384c53378a85d7139"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_widget.cc",
+      "sha256": "ac57dfd43c13c4a5d38be013d6326816582a8b1153a63d67491d04494b087c33"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h",
+      "sha256": "e6817416e9c4fd5107be9c02f21b9f5f25a44cbde3c7a7b022468d4c6468ac28"
+    }
+  ]
+}

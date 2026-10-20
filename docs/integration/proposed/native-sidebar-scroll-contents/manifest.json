@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "baselineSha256": null,
+      "outputSha256": "46b29875df1113d4a304e760642b571222b43b3cfa09bf4a398c7b86257cf79d"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h",
+      "baselineSha256": null,
+      "outputSha256": "8022f93255a51a9eefb2f351276dfe56d3011d62f2287c49aa32d074958159d2"
+    }
+  ],
+  "compiled": false,
+  "sharedSourceModified": false,
+  "runtimeAcceptance": false,
+  "integration": {
+    "sources": [
+      "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc"
+    ],
+    "constructor": "aux::SidebarContentsView(RightClick callback)",
+    "callback": "void(views::View* actual_source,const ui::MouseEvent& actual_event), bind realregion lifetime; floor location_f, ConvertPointToScreen(actual_source), actualBrowserView.browser_widget()->ShowContextMenuForViewImpl(actual_source,point,kMouse).",
+    "outer": "Call ConfigureSidebarContentsScrollView(actual outer5b0) before SetContents(newSidebarContentsView); existingactualVerticalTabStripScrollView input owner remains."
+  },
+  "remainingGaps": [
+    "Source originalVerticalTabStripScrollBar+409false setter needs exact155publicadapter; no pretend hide equivalent included.",
+    "Root owns actualbodymount, callbackbinding, nativeGN and compile/UI observation.",
+    "Current155 metadata registration added for realAddChildView support; originalanonymoussubclass inheritsView metadata."
+  ]
+}
