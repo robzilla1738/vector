@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "kind": "provided-source-recovery",
+  "status": "all-seven-components-exact",
+  "snapshotRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+  "manifestSha256": "c37cf10878fcb7c4f471a9b5feadd6dc79faa96da4d294255f7a6e8e4d66000d",
+  "recoveryInventory": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/recovery-inventory.json",
+    "sha256": "6c6e99b682e28c6542a4c7ff4e151e710068c947f27f675ef0dd603aa288d9fb",
+    "records": 12371
+  },
+  "strictValidation": {
+    "module": "scripts/lib/provided-source-snapshot.mjs",
+    "sourceSha256": "d2ab4c7e5974cb0c8cca40ea1de4801a81133e9208af74ff9cf8e58a58900905",
+    "result": {
+      "root": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+      "manifestPath": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/manifest.json",
+      "manifestSha256": "c37cf10878fcb7c4f471a9b5feadd6dc79faa96da4d294255f7a6e8e4d66000d",
+      "roots": {
+        "agent": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent",
+        "vault": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/vault",
+        "daemon": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon",
+        "cli": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/cli",
+        "runtime": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime",
+        "memory": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/memory",
+        "computerUse": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/computer-use"
+      },
+      "inventories": {
+        "agent": 1215,
+        "vault": 46,
+        "daemon": 133,
+        "cli": 6,
+        "runtime": 10929,
+        "memory": 31,
+        "computerUse": 11
+      }
+    },
+    "receiptSha256": "60ee2819caac8ed4b3b3de5f2b3ca2a1f353b3981815c59af52d76fbb260bfe4"
+  },
+  "canonicalPins": {
+    "agent": {
+      "path": "agent",
+      "pinFile": "docs/source/provided-ui-inputs.json",
+      "pinSha256": "4bb1a7a5a3b4a3b3b4d7f0ef548368548ad8cd535e2a9c97f6d9f55d2d2e12db",
+      "sourceVersion": "1.26.1016.1852"
+    },
+    "vault": {
+      "path": "vault",
+      "pinFile": "docs/source/provided-ui-inputs.json",
+      "pinSha256": "4bb1a7a5a3b4a3b3b4d7f0ef548368548ad8cd535e2a9c97f6d9f55d2d2e12db",
+      "sourceVersion": "1.26.1016.1852"
+    },
+    "daemon": {
+      "path": "daemon",
+      "pinFile": "docs/source/provided-app-inputs.json",
+      "pinSha256": "21a746dcd9c0e2709ef5338bb02e69c8252f87ecbccdd192211f9f0db630ad58"
+    },
+    "cli": {
+      "path": "cli",
+      "pinFile": "docs/source/provided-app-inputs.json",
+      "pinSha256": "21a746dcd9c0e2709ef5338bb02e69c8252f87ecbccdd192211f9f0db630ad58"
+    },
+    "runtime": {
+      "path": "runtime",
+      "pinFile": "docs/source/provided-runtime-inputs.json",
+      "pinSha256": "cd49e17692d732ca1aed14d255a54c7a3ac2e4a7e1d34c5f544aa01f535bf6bd",
+      "sourceVersion": "1.26.1019.335"
+    },
+    "memory": {
+      "path": "memory",
+      "pinFile": "docs/source/provided-runtime-inputs.json",
+      "pinSha256": "cd49e17692d732ca1aed14d255a54c7a3ac2e4a7e1d34c5f544aa01f535bf6bd",
+      "sourceVersion": "catalog-1792381929"
+    },
+    "computerUse": {
+      "path": "computer-use",
+      "pinFile": "docs/source/provided-computer-use-inputs.json",
+      "pinSha256": "7e831a688edaf3b72a65ef316b27f399d7a1086dc73a632d138a21b8b78b5ef7",
+      "sourceVersion": "1.26.1020"
+    }
+  },
+  "recoveredCriticalOriginals": {
+    "daemonSEA": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+    "daemonCode": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "daemonResourceSeal": "7c4d03a25ad7a9b44d686140ff044f61b1ff65b7669f558000b782ccf10bae30",
+    "passwordImporterResourceSeal": "44095309483fc63750eaf12cece987ec233a03645363df25374880a47ca58867",
+    "computerUseBinary": "a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026"
+  },
+  "boundaries": {
+    "newSourceVersionAdopted": false,
+    "existingStageChanged": false,
+    "installedSourceChanged": false,
+    "sourceExecution": false,
+    "ownerAccountProfileCredentialRead": false,
+    "signingOrKeychainOperation": false
+  },
+  "runtimeAcceptance": false
+}
