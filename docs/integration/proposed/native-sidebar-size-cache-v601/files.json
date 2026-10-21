@@ -1,0 +1,47 @@
+{
+  "baseComposition": "v601",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h",
+      "baselineSha256": "8022f93255a51a9eefb2f351276dfe56d3011d62f2287c49aa32d074958159d2",
+      "outputSha256": "89a82c174c8752cde40af0a154f4f519c3f7f92610fb0d22058fea9142e699b4"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "baselineSha256": "46b29875df1113d4a304e760642b571222b43b3cfa09bf4a398c7b86257cf79d",
+      "outputSha256": "ac4d937fa8585f970f1ccdd3b74d390af33a3441ff6bb6727a1277596c3d917e"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h",
+      "anchorSha256": "a979a6bc0c8c6759e2554ebb234a4055b98f15da6b80cd83912ce3e1e634fb58",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h",
+      "anchorSha256": "69ddaa0fb87cd131fb93770f416460d5f6aad7e2b15138f8fea5c6152c127ff3",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h",
+      "anchorSha256": "fedb058ed9e5172d8e759f53fc73cd5eeced2e2d4c6996b2a05d57d80914b97e",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "anchorSha256": "954872df0de67ebce637517b3ae6c182ea22a03a88a25a754da00bfcc3ea0989",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "anchorSha256": "21fc034e34aa6634824ebef05a9800e47b8a75b35082d61b8720d54e01de2d3d",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "anchorSha256": "7d17ed9278139ceeb45f961a89db0bba1258c221054cc27181d7cc3257479c18",
+      "count": 1
+    }
+  ]
+}

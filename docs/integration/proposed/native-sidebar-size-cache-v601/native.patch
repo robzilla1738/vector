@@ -1,0 +1,59 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_contents_view.h
++++ b/chrome/browser/ui/views/frame/aux_sidebar_contents_view.h
+@@ -6,11 +6,12 @@
+ #include "base/functional/callback.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/views/view.h"
++#include "ui/views/view_observer.h"
+ namespace views { class ScrollView; }
+ namespace aux {
+ // Original region5c0 anonymous View (e724750). The inherited original metadata
+ // did not identify its real width cache, child invalidations or mouse callback.
+-class SidebarContentsView final : public views::View {
++class SidebarContentsView final : public views::View, private views::ViewObserver {
+   METADATA_HEADER(SidebarContentsView, views::View)
+  public:
+   using RightClick = base::RepeatingCallback<void(views::View*, const ui::MouseEvent&)>;
+@@ -22,6 +23,7 @@
+   void ChildVisibilityChanged(views::View*) override;
+   void ViewHierarchyChanged(const views::ViewHierarchyChangedDetails&) override;
+  private:
++  void OnViewLayoutInvalidated(views::View* observed_view) override;
+   void ClearSizeCache();
+   RightClick right_click_;
+   mutable std::map<std::optional<int>, gfx::Size> preferred_sizes_;
+--- a/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc
+@@ -14,6 +14,7 @@
+   // Original constructor always binds actual region462bffc. A caller cannot
+   // substitute an empty callback and claim successful native menu handling.
+   CHECK(right_click_);
++  AddObserver(this);
+   auto* layout = SetLayoutManager(std::make_unique<views::FlexLayout>());
+   layout->SetOrientation(views::LayoutOrientation::kVertical)
+       .SetCollapseMargins(true)
+@@ -24,7 +25,9 @@
+               views::MaximumFlexSizeRule::kPreferred, false,
+               views::MinimumFlexSizeRule::kPreferred));
+ }
+-SidebarContentsView::~SidebarContentsView() = default;
++SidebarContentsView::~SidebarContentsView() {
++  RemoveObserver(this);
++}
+ bool SidebarContentsView::OnMousePressed(const ui::MouseEvent& event) {
+   if (!event.IsOnlyRightMouseButton()) return false;
+   // The real callback may close this window. No owner access after dispatch.
+@@ -45,6 +48,13 @@
+   const auto size = views::View::CalculatePreferredSize(query);
+   preferred_sizes_.emplace(width_key, size);
+   return size;
++}
++void SidebarContentsView::OnViewLayoutInvalidated(views::View* observed_view) {
++  // Nested Tabs contents and collection animations propagate InvalidateLayout
++  // through their parents, without a direct ChildPreferredSizeChanged call.
++  // Preserve the supplied width cache, but retire it with the real layout cache.
++  // Do not notify or invalidate here: View is already propagating that change.
++  preferred_sizes_.clear();
+ }
+ void SidebarContentsView::ClearSizeCache() {
+   preferred_sizes_.clear();
