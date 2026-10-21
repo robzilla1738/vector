@@ -50,3 +50,17 @@ Native547 updates the four obsolete GURL path accessor calls without changing th
 ## Actual547 comparison and final551 integration
 
 547 built and launched; receipt and resource reuse verification succeeded. Actual menu/Settings/Advanced link/collapse/sidebar data observation succeeded. The final551 composition incorporates actual Cocoa shortcut dispatch,330DIP Agent default/minimum (preserving explicit saved widths), Agent-only Ask/native-close visibility, and directly observed resting-domain PageInfo plus trailing focused site controls. All four affected object checks pass; full551 build/package/live acceptance remains pending. Evidence of the newly observed reference interactions is saved in `out/pass1-ui-completion/aside-domain-info.png` and `aside-url-focused.png`. No AI request was sent.
+
+
+## Final556 build and package
+
+Full native556 build and generated-key probe passed (18 incremental steps;5m09s). Packaging assembled10,751 supplied resources and418 native leaves. Final composition includes552 canonical Aux/pinned ImageModels and themed fallback,553 recovered source-backed Ask Aux text pill,554 actual Agent main-page resting brand/title,555 Agent-page action visibility and556 the actual155 ImageModel API repair. The focused objects passed before the full build. No additional broad test suite was run.
+
+The observed547 preview is preserved as `out/provided-candidate-local-browser-pass-v547-observed-baseline`. The556 package is at the stable preview path; approved-resource reuse/native sealing and final actual-app observations are pending. Package report SHA256: `6505a34faefe2595fa3ae089893bcbe9886f19271a45f42bfce8172f84bec054`. Native receipt: `out/native-integration/native-full-build-v556.json`.
+
+
+## Actual556 comparison and final558 corrections
+
+556 resource reuse/native sealing passed: receipt SHA256 `ef1084d67fa581f7ed68ad4441c2704b51a7e4e3a2db3547d552ed5f3a6e9d53`. The bundle metadata differed only in excluded-file ordering; exact semantic proof is retained, and the final resource review pins the new hash. Actual observations are in `out/pass1-ui-completion/v556-observations.json`, with captured states under `v556/`. No AI request was sent. Transparent→Tinted→Transparent visibly changes the native frame; original preference restored. Actual current Aside also shows the same pale material, so no arbitrary darkening was introduced.
+
+Actual observation exposed four final integration bugs.557 reserves the actual Ask command before Cocoa's conflicting responder selector, refreshes the resting title on real title events and removes the exact Agent main-page duplicate neutral extension chip. Three focused objects pass.558 uses the genuine bookmark model's existing omnibox suppression exemption only for AuxMac BookmarkThisTab; all other active/enabled/visible/requested/pinned eligibility remains. Full558 build and packaging are in progress. Final runtime acceptance is pending.
