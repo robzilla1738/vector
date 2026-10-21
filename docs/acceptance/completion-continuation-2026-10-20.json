@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 585,
+  "nativeCandidate": 589,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,17 +24,16 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "candidate": 589,
-    "state": "589-corrected-daemon-signed-cache-verified-final-integration-running",
-    "batches": [
-      "587 password import exclusion",
-      "588 classic WebUI omnibox profile lifecycle",
-      "589 Agent panel draft retention",
-      "approved exact Vault backend/catalog exclusion daemon"
-    ],
+    "candidate": 594,
+    "state": "combined-native-proposal-prepared",
     "runtimeAccepted": false,
-    "correctedDaemonSigningReceiptSha256": "1d9fc0b247088edd63838efd28df6107408421f933f43f8a2eedf9668503cfe3",
-    "cacheSha256": "b39e4b998398864ae0ae49c8a9772af19e85794cbe0c5fd2f016b621e5870814"
+    "batches": [
+      "single Agent page corner owner",
+      "continuous horizontal bookmarks background",
+      "whole Agent toolbar pill visibility",
+      "used AIM settlement lifecycle",
+      "exact cache Actor diagnostics"
+    ]
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -204,7 +203,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-resumed-generated-daemon-consistency-review",
+  "executionState": "active-owner-frame-corrections-and-profile-cache-diagnostics",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -255,5 +254,21 @@
     "unacceptedPackage": "out/provided-candidate-local-browser-pass-v589-unaccepted",
     "mismatch": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
     "resumed": true
+  },
+  "actual589": {
+    "receiptSha256": "a6e74402f82d4ad320da1888648f84e7d70f357ba5f0e98eaeb30b4319c7fce1",
+    "normalStartup": true,
+    "localAuthentication": true,
+    "vaultCatalogAndRouterAbsent": true,
+    "sidepanelDraftCloseReopen": true,
+    "syntheticChromeFullImport": true,
+    "syntheticImportRestartPersistence": false,
+    "profileSwitchAccepted": false,
+    "profileRejection": "bindings.cache-actor.02",
+    "visualDefectsOpen": [
+      "duplicate panel corners",
+      "clipped Agent toolbar pill",
+      "horizontal bookmark matte"
+    ]
   }
 }
