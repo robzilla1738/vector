@@ -1,0 +1,45 @@
+{
+  "baseComposition": "v604",
+  "files": [
+    {
+      "path": "components/sessions/core/command_storage_backend.h",
+      "baselineSha256": "7c2149af72fb793b329f58e46b39b483bdd8a2d5d39220854ff5bcc8d1e3062f",
+      "outputSha256": "4edf51b323d7e8bb471006299dc55dcf44e6a1a5c02bb297980e9f8afd36f6a0"
+    },
+    {
+      "path": "components/sessions/core/command_storage_backend.cc",
+      "baselineSha256": "3f0119186045303e587055eca09b56688124fcfb3deebce03da00d14d9320901",
+      "outputSha256": "623c7d32ec7106bca0349717f89d38ee675d6b59d4b5779af9f115cddaf08a5d"
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.h",
+      "baselineSha256": "c73f785dc09e90037ef4f400192be151749e88a34f21c4fea551369d21d6d989",
+      "outputSha256": "b9c1db9f524543561dea16b28f4d12b2589746b2105f1172cf325eabd9ccfedc"
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "baselineSha256": "2d08ccae4356a3cfd1056a3efbc70086fce7de5b4078ac36b22669dc2cf29cdc",
+      "outputSha256": "29916bcfac6e954dbecc0cd5d045c8dbe0abf03d4092b21fcd013a6478d4deb0"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "baselineSha256": "70512015b080d69caee4f83a60ffebe494cfb8780bab0ce47cebaac0948a0581",
+      "outputSha256": "3aef3282d08294dcaa10179c5f043acfce060d962e3d01bb478cb7a6b659fe9b"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": "fc9730251c1d5239b7b888da0ac4f99014109f220a69940276d60e23e415e5f1",
+      "outputSha256": "8aef02f126c006e580418feb29302c6706aafebc15231586dcdc708ce6e67c37"
+    },
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "baselineSha256": "ed539e4dd6df1fd69de61f4177e9ca273f921c846e20524ba11a973aa50ebe04",
+      "outputSha256": "58fdab3641b71023ab34f8814839867557fedfda0a4ef1b6d1052401d63be25b"
+    },
+    {
+      "path": "components/sessions/core/command_storage_backend_unittest.cc",
+      "baselineSha256": "ece26f92ef37844e8af91601dda4bec771cd909804cbbc411d82fc24baa27e5b",
+      "outputSha256": "c92fa4f0cb601bda40202830534171944adb0d9569a910d7aeea461275c4ec7d"
+    }
+  ]
+}

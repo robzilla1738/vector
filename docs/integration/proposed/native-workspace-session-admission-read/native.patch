@@ -1,0 +1,278 @@
+--- a/components/sessions/core/command_storage_backend.h
++++ b/components/sessions/core/command_storage_backend.h
+@@ -123,6 +123,9 @@
+ 
+   // Returns the commands from the last session file.
+   ReadCommandsResult ReadLastSessionCommands();
++  // Admission-only read: no initialization, directory creation, migration or
++  // pruning. Later ordinary writes/reads retain their normal cleanup policy.
++  ReadCommandsResult ReadLastSessionCommandsPreservingFiles();
+ 
+   // Deletes the file containing the commands for the last session.
+   void DeleteLastSession();
+--- a/components/sessions/core/command_storage_backend.cc
++++ b/components/sessions/core/command_storage_backend.cc
+@@ -606,6 +606,23 @@
+   return result;
+ }
+ 
++CommandStorageBackend::ReadCommandsResult
++CommandStorageBackend::ReadLastSessionCommandsPreservingFiles() {
++  // FindLastSessionFile is a const directory/header/marker read. Do not call
++  // InitIfNecessary: it deletes all older and invalid session candidates.
++  const auto info = inited_ ? last_session_info_ : FindLastSessionFile();
++  SessionFileReader::ReadResult read_result;
++  if (info) {
++    read_result = SessionFileReader::Read(info->path, encryptor_.get());
++  } else {
++    read_result.status = info.error();
++  }
++  ReadCommandsResult result;
++  result.commands = std::move(read_result.commands);
++  result.error_reading = IsError(read_result.status);
++  return result;
++}
++
+ void CommandStorageBackend::DeleteLastSession() {
+   InitIfNecessary();
+   if (last_session_info_) {
+--- a/components/sessions/core/command_storage_manager.h
++++ b/components/sessions/core/command_storage_manager.h
+@@ -124,6 +124,8 @@
+   // is called once the data has arrived, and may be called after this is
+   // deleted.
+   void GetLastSessionCommands(GetCommandsCallback callback);
++  // Same encryption/fallback selection, without pruning or migration deletes.
++  void GetLastSessionCommandsPreservingFiles(GetCommandsCallback callback);
+ 
+ #if DCHECK_IS_ON()
+   // Returns the state of this class and logs for the
+@@ -137,6 +139,8 @@
+ 
+  private:
+   friend class CommandStorageManagerTestHelper;
++  void GetLastSessionCommandsImpl(GetCommandsCallback callback,
++                                 bool preserve_files);
+ 
+   // Called by the backend if writing to the file failed.
+   void OnErrorWritingToFile();
+--- a/components/sessions/core/command_storage_manager.cc
++++ b/components/sessions/core/command_storage_manager.cc
+@@ -126,6 +126,7 @@
+         CommandStorageBackend::ReadCommandsResult>> cleartext_result,
+     scoped_refptr<base::SequencedTaskRunner> backend_task_runner,
+     scoped_refptr<CommandStorageBackend> backend,
++    bool preserve_files,
+     CommandStorageManager::GetCommandsCallback callback,
+     CommandStorageBackend::ReadCommandsResult result) {
+   if (cleartext_result) {
+@@ -133,7 +134,7 @@
+   }
+   if (!result.error_reading && !result.commands.empty()) {
+     std::move(callback).Run(std::move(result.commands), result.error_reading);
+-    if (GetEncryptSessionStorageStage() ==
++    if (!preserve_files && GetEncryptSessionStorageStage() ==
+         EncryptSessionStorageStage::kWriteEncryptedReadPreferEncrypted) {
+       // Make a best effort to delete the old cleartext file (leftover from
+       // previous stage) when now in stage kWriteEncryptedReadPreferEncrypted.
+@@ -156,7 +157,9 @@
+     // Fallback to cleartext in stage kWriteEncryptedReadPreferEncrypted.
+     backend_task_runner->PostTaskAndReplyWithResult(
+         FROM_HERE,
+-        base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++        base::BindOnce(preserve_files
++                           ? &CommandStorageBackend::ReadLastSessionCommandsPreservingFiles
++                           : &CommandStorageBackend::ReadLastSessionCommands,
+                        backend.get()),
+         base::BindOnce(&OnBackendReadFinished, /*saved_result=*/nullptr,
+                        std::move(callback)));
+@@ -476,12 +479,25 @@
+ 
+ void CommandStorageManager::GetLastSessionCommands(
+     GetCommandsCallback callback) {
++  GetLastSessionCommandsImpl(std::move(callback), false);
++}
++
++void CommandStorageManager::GetLastSessionCommandsPreservingFiles(
++    GetCommandsCallback callback) {
++  GetLastSessionCommandsImpl(std::move(callback), true);
++}
++
++void CommandStorageManager::GetLastSessionCommandsImpl(
++    GetCommandsCallback callback, bool preserve_files) {
++  const auto read_method = preserve_files
++      ? &CommandStorageBackend::ReadLastSessionCommandsPreservingFiles
++      : &CommandStorageBackend::ReadLastSessionCommands;
+   EncryptSessionStorageStage encrypt_stage = GetEncryptSessionStorageStage();
+   switch (encrypt_stage) {
+     case EncryptSessionStorageStage::kClearOnly:
+       backend_task_runner_->PostTaskAndReplyWithResult(
+           FROM_HERE,
+-          base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++          base::BindOnce(read_method,
+                          backend_.get()),
+           base::BindOnce(&OnBackendReadFinished, /*saved_result=*/nullptr,
+                          std::move(callback)));
+@@ -493,14 +509,14 @@
+           base::RefCountedData<CommandStorageBackend::ReadCommandsResult>>();
+       backend_task_runner_->PostTaskAndReplyWithResult(
+           FROM_HERE,
+-          base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++          base::BindOnce(read_method,
+                          backend_.get()),
+           base::BindOnce(&OnBackendReadFinished, saved_cleartext_result,
+                          std::move(callback)));
+       if (encrypted_backend_) {
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++            base::BindOnce(read_method,
+                            encrypted_backend_.get()),
+             base::BindOnce(&CompareCleartextAndEncryptedReadResults,
+                            saved_cleartext_result));
+@@ -519,24 +535,25 @@
+             base::RefCountedData<CommandStorageBackend::ReadCommandsResult>>();
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++            base::BindOnce(read_method,
+                            backend_.get()),
+             base::BindOnce(&OnBackendReadFinished, saved_cleartext_result,
+                            base::DoNothing()));
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++            base::BindOnce(read_method,
+                            encrypted_backend_.get()),
+             base::BindOnce(&OnEncryptedBackendReadFinishedWithPreferEncrypted,
+                            saved_cleartext_result, backend_task_runner_,
+-                           backend_, std::move(callback)));
++                           backend_, preserve_files, std::move(callback)));
+       } else {
+         // This should be uncommon, but could occur if OnEncryptorReady is slow.
+         LogEncryptedBackendUninitialized(
+             SessionEncryptedBackendUninitialized::kGetLastSessionCommands);
+         pending_encrypted_ops_.push_back(
+-            base::BindOnce(&CommandStorageManager::GetLastSessionCommands,
+-                           weak_factory_.GetWeakPtr(), std::move(callback)));
++            base::BindOnce(&CommandStorageManager::GetLastSessionCommandsImpl,
++                           weak_factory_.GetWeakPtr(), std::move(callback),
++                           preserve_files));
+       }
+       break;
+     }
+@@ -544,18 +561,19 @@
+       if (encrypted_backend_) {
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::ReadLastSessionCommands,
++            base::BindOnce(read_method,
+                            encrypted_backend_.get()),
+             base::BindOnce(&OnEncryptedBackendReadFinishedWithPreferEncrypted,
+                            /*saved_cleartext_result=*/nullptr,
+-                           backend_task_runner_, backend_,
++                           backend_task_runner_, backend_, preserve_files,
+                            std::move(callback)));
+       } else {
+         LogEncryptedBackendUninitialized(
+             SessionEncryptedBackendUninitialized::kGetLastSessionCommands);
+         pending_encrypted_ops_.push_back(
+-            base::BindOnce(&CommandStorageManager::GetLastSessionCommands,
+-                           weak_factory_.GetWeakPtr(), std::move(callback)));
++            base::BindOnce(&CommandStorageManager::GetLastSessionCommandsImpl,
++                           weak_factory_.GetWeakPtr(), std::move(callback),
++                           preserve_files));
+       }
+       break;
+     }
+--- a/chrome/browser/sessions/session_service_base.h
++++ b/chrome/browser/sessions/session_service_base.h
+@@ -143,6 +143,9 @@
+   // done. If the callback is supplied an empty vector of SessionWindows
+   // it means the session could not be restored.
+   void GetLastSession(sessions::GetLastSessionCallback callback);
++  // Reads only: Aux must decide whether a saved workspace is unambiguous
++  // before ordinary session initialization may discard other candidates.
++  void GetLastSessionPreservingFiles(sessions::GetLastSessionCallback callback);
+ 
+   // Sets the application name of the specified window.
+   void SetWindowAppName(SessionID window_id, const std::string& app_name);
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -381,6 +381,13 @@
+                      weak_factory_.GetWeakPtr(), std::move(callback)));
+ }
+ 
++void SessionServiceBase::GetLastSessionPreservingFiles(
++    sessions::GetLastSessionCallback callback) {
++  command_storage_manager_->GetLastSessionCommandsPreservingFiles(
++      base::BindOnce(&SessionServiceBase::OnGotSessionCommands,
++                     weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++
+ void SessionServiceBase::SetWindowAppName(SessionID window_id,
+                                           const std::string& app_name) {
+   if (!ShouldTrackChangesToWindow(window_id)) {
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -378,9 +378,14 @@
+       SessionServiceBase* service =
+           SessionServiceFactory::GetForProfileForSessionRestore(profile_);
+       CHECK(service);
+-      service->GetLastSession(base::BindOnce(&SessionRestoreImpl::OnGotSession,
+-                                             weak_factory_.GetWeakPtr(),
+-                                             /* for_apps */ false));
++      auto callback = base::BindOnce(&SessionRestoreImpl::OnGotSession,
++                                     weak_factory_.GetWeakPtr(),
++                                     /*for_apps=*/false);
++      if (aux_workspace_restore_) {
++        service->GetLastSessionPreservingFiles(std::move(callback));
++      } else {
++        service->GetLastSession(std::move(callback));
++      }
+     }
+ 
+     if (restore_apps_) {
+--- a/components/sessions/core/command_storage_backend_unittest.cc
++++ b/components/sessions/core/command_storage_backend_unittest.cc
+@@ -956,6 +956,40 @@
+ }
+ 
+ // Test that an older valid file is selected if the newer file is invalid.
++TEST_P(CommandStorageBackendParamTest, AdmissionReadPreservesCandidates) {
++  const auto latest = WriteValidSessionFile(8888);
++  const auto older = GetFilePath(7777);
++  const auto invalid = GetFilePath(9999);
++  ASSERT_TRUE(base::CopyFile(latest, older));
++  ASSERT_TRUE(base::WriteFile(invalid, "invalid header"));
++  auto backend = CreateBackend();
++  auto result = backend->ReadLastSessionCommandsPreservingFiles();
++  EXPECT_FALSE(result.error_reading);
++  EXPECT_FALSE(backend->inited_for_testing());
++  EXPECT_TRUE(base::PathExists(latest));
++  EXPECT_TRUE(base::PathExists(older));
++  EXPECT_TRUE(base::PathExists(invalid));
++
++  // Ordinary accepted use still performs Chromium's original cleanup.
++  backend->ReadLastSessionCommands();
++  EXPECT_TRUE(backend->inited_for_testing());
++  EXPECT_TRUE(base::PathExists(latest));
++  EXPECT_FALSE(base::PathExists(older));
++  EXPECT_FALSE(base::PathExists(invalid));
++}
++
++TEST_P(CommandStorageBackendParamTest, FailedAdmissionReadPreservesCandidates) {
++  const auto first = GetFilePath(8888);
++  const auto second = GetFilePath(9999);
++  ASSERT_TRUE(base::WriteFile(first, "invalid first header"));
++  ASSERT_TRUE(base::WriteFile(second, "invalid second header"));
++  auto backend = CreateBackend();
++  EXPECT_TRUE(backend->ReadLastSessionCommandsPreservingFiles().error_reading);
++  EXPECT_FALSE(backend->inited_for_testing());
++  EXPECT_TRUE(base::PathExists(first));
++  EXPECT_TRUE(base::PathExists(second));
++}
++
+ TEST_P(CommandStorageBackendParamTest, DeterminePreviousSessionLatestValid) {
+   // Newer file is invalid.
+   const auto invalid_header_path = GetFilePath(9999);
