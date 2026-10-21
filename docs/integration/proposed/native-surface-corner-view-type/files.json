@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "41685e09255da6a4cdcdd88b5027ed006d896897ad4952bb1490fdc85063dc3f",
+      "outputSha256": "1ca047020555582756653295e01a696109d47e050af0feb613393d77666b0d80"
+    }
+  ]
+}

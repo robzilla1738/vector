@@ -1,0 +1,18 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -1405,10 +1405,11 @@
+         content_corners.set_lower_left(radius);
+       }
+     }
+-    if (aux_surface) {
+-      const float radius = views().browser_view->browser_widget()
+-                               ->GetFrameView()->GetWindowRoundedCorners()
+-                               .lower_left();
++    if (auto* browser_view =
++            views::AsViewClass<BrowserView>(views().browser_view.get());
++        aux_surface && browser_view) {
++      const float radius = browser_view->browser_widget()->GetFrameView()
++                               ->GetWindowRoundedCorners().lower_left();
+       content_corners.set_lower_left(radius);
+       content_corners.set_lower_right(radius);
+     }
