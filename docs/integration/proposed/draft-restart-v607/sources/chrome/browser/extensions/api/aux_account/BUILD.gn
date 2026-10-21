@@ -1,0 +1,10 @@
+source_set("aux_account") {
+  sources = [ "aux_account_api.cc", "aux_account_api.h" ]
+  public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+  deps = [ "//chrome/browser/extensions", "//chrome/browser/ui/aux:surface_headers", "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:profile_security_client", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/net", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
+}
+
+source_set("headers") {
+ sources = [ "aux_account_api.h" ]
+ public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+}

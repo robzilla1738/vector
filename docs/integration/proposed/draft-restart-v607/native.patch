@@ -51,3 +51,26 @@
          "returns_async": {
            "name": "callback",
            "parameters": [
+--- a/chrome/browser/extensions/api/aux_account/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_account/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_account") {
+   sources = [ "aux_account_api.cc", "aux_account_api.h" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+-  deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:profile_security_client", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/net", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
++  deps = [ "//chrome/browser/extensions", "//chrome/browser/ui/aux:surface_headers", "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:profile_security_client", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/net", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
+ }
+ 
+ source_set("headers") {
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -311,7 +311,9 @@
+ }
+ 
+ source_set("surface_headers") {
++  public_deps = [ "//content/public/browser" ]
+   sources = [
++    "page_identity.h",
+     "surface_visibility.h",
+     "auto_pip_site_policy.h",
+   ]

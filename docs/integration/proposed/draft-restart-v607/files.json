@@ -1,36 +1,63 @@
-[
-  {
-    "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
-    "beforeSha256": "3e149d60dd46ea5d1ffbb68c9d819eeb05d450f786693bcb249e6a31278e113b",
-    "afterSha256": "538700bb135e25b84a9b547f08427063c6a24646bb326d5b794eae7f7b17d3b4",
-    "anchors": [
-      {
-        "count": 1,
-        "findSha256": "4dc0ba493a4e8e0d9ff6a30279e9b3ea01d13a65a99ceddeea05fd04d720564f",
-        "replaceSha256": "312332020b783adab3fc66840c89c53470864173c3c7327136044e0083aa6882"
-      },
-      {
-        "count": 1,
-        "findSha256": "e7edd512186d6f4f3a175259c944bdf73deaf0d63bfa852b71adc0fdfe8a9073",
-        "replaceSha256": "05e0c19d6b73a48506e4dda55ca90670eb29be317b3e485e8ab8c17f35aab461"
-      },
-      {
-        "count": 1,
-        "findSha256": "08591b6686616df49d0d766bd09638208f7e1dc1f38b96834f9e671777e339a7",
-        "replaceSha256": "073a2786090200e3186981712e4fb554abfae2a6cc4eaa65e9bcca8f4e288010"
-      }
-    ]
-  },
-  {
-    "path": "chrome/common/extensions/api/aux_account.json",
-    "beforeSha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870",
-    "afterSha256": "51f05b9855cfee623d4d48ba5a1f464a504b1529bd15347c6fadaba5b55e51a9",
-    "anchors": [
-      {
-        "count": 1,
-        "findSha256": "6f3139180d748ee58f6853ad3ccca5c1d9c5a96ebaf56b2b5a16d127b9d6bf68",
-        "replaceSha256": "e708a6d1c607fddc5abf6c160104dee50695fb51705fc123c8684165ec6c4c64"
-      }
-    ]
-  }
-]
+{
+  "baseComposition": "v607",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "3e149d60dd46ea5d1ffbb68c9d819eeb05d450f786693bcb249e6a31278e113b",
+      "outputSha256": "538700bb135e25b84a9b547f08427063c6a24646bb326d5b794eae7f7b17d3b4",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "4dc0ba493a4e8e0d9ff6a30279e9b3ea01d13a65a99ceddeea05fd04d720564f",
+          "replaceSha256": "312332020b783adab3fc66840c89c53470864173c3c7327136044e0083aa6882"
+        },
+        {
+          "count": 1,
+          "findSha256": "e7edd512186d6f4f3a175259c944bdf73deaf0d63bfa852b71adc0fdfe8a9073",
+          "replaceSha256": "05e0c19d6b73a48506e4dda55ca90670eb29be317b3e485e8ab8c17f35aab461"
+        },
+        {
+          "count": 1,
+          "findSha256": "08591b6686616df49d0d766bd09638208f7e1dc1f38b96834f9e671777e339a7",
+          "replaceSha256": "073a2786090200e3186981712e4fb554abfae2a6cc4eaa65e9bcca8f4e288010"
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_account.json",
+      "baselineSha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870",
+      "outputSha256": "51f05b9855cfee623d4d48ba5a1f464a504b1529bd15347c6fadaba5b55e51a9",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "6f3139180d748ee58f6853ad3ccca5c1d9c5a96ebaf56b2b5a16d127b9d6bf68",
+          "replaceSha256": "e708a6d1c607fddc5abf6c160104dee50695fb51705fc123c8684165ec6c4c64"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/BUILD.gn",
+      "baselineSha256": "42163bcf995723a1b474bd33f0d65f4a4c561e4464627a8a035c8a480db86719",
+      "outputSha256": "a8ca9cf5d818e26ff7bb2c6932f8e6db5fa9361989f067cf97674b82be6bf641",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "daa324666ead999a27e93f55e01b6b13330ca887b2933cfd47e6ccb6d7e8ef66",
+          "replaceSha256": "8ff7c33bf999bb9264d274fe0229220cffdbec24070997015010fa168ae57c44"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "baselineSha256": "abee115d5637d0d9049141e0bab816eaef5d0195b1b78dc0576d485ee99ac73c",
+      "outputSha256": "2f3e8d9a039eca9235fbd1811e2638befebef1df6c5efd24f0f1dbf07a31ba03",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "38fdda730a4e84d5e1c381c3d4f1c0b0c29ab4531c7e4d93752220213778ce09",
+          "replaceSha256": "e0da971fadc60967d403847065d9f8b3fc88510afe1a2f2cdce1b42a7f74d64b"
+        }
+      ]
+    }
+  ]
+}

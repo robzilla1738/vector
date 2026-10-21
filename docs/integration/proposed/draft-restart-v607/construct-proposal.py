@@ -31,12 +31,16 @@ patches={
           "type": "integer",
           "optional": true
         }],''')]}
+patches['chrome/browser/extensions/api/aux_account/BUILD.gn'] = [
+ ('deps = [ "//base",', 'deps = [ "//chrome/browser/extensions", "//chrome/browser/ui/aux:surface_headers", "//base",')]
+patches['chrome/browser/ui/aux/BUILD.gn'] = [
+ ('source_set("surface_headers") {\n  sources = [', 'source_set("surface_headers") {\n  public_deps = [ "//content/public/browser" ]\n  sources = [\n    "page_identity.h",')]
 records=[]; diff=[]
 for rel, edits in patches.items():
  s=(root/rel).read_text();t=s
  for a,b in edits:
   assert t.count(a)==1,(rel,a);t=t.replace(a,b)
  p=out/'sources'/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(t)
- records.append({'path':rel,'beforeSha256':hashlib.sha256(s.encode()).hexdigest(),'afterSha256':hashlib.sha256(t.encode()).hexdigest(),'anchors':[{'count':1,'findSha256':hashlib.sha256(a.encode()).hexdigest(),'replaceSha256':hashlib.sha256(b.encode()).hexdigest()}for a,b in edits]})
+ records.append({'path':rel,'baselineSha256':hashlib.sha256(s.encode()).hexdigest(),'outputSha256':hashlib.sha256(t.encode()).hexdigest(),'anchors':[{'count':1,'findSha256':hashlib.sha256(a.encode()).hexdigest(),'replaceSha256':hashlib.sha256(b.encode()).hexdigest()}for a,b in edits]})
  diff+=list(difflib.unified_diff(s.splitlines(True),t.splitlines(True),fromfile='a/'+rel,tofile='b/'+rel))
-(out/'native.patch').write_text(''.join(diff));(out/'files.json').write_text(json.dumps(records,indent=2)+'\n')
+(out/'native.patch').write_text(''.join(diff));(out/'files.json').write_text(json.dumps({'baseComposition':'v607','files':records},indent=2)+'\n')
