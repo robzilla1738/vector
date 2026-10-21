@@ -18,6 +18,14 @@ Observed560: enabled model menu, genuine chat panel/current-page context, focuse
 
 PACKAGE audit confirms bundle-relative executable/runtime ownership. A durable explicit existing-scope launch record and reviewed final-path packaging remain separate implementation/review work. Computer Use helper is built but stopped; explicit new OS/capture approval is pending, not inferred from a status read. Third-party native messaging/content-script fixtures pass; vendor1Password companion trust remains unaccepted.
 
+## Current execution update —574 packaged,576 compiling
+
+The actual20-task Muse acceptance is complete on566 and retained without another provider run.574 full native build and supplied packaging passed.566 was quit normally and retained as an observed baseline;574 exact resource reuse/native-seal verification is running at the stable local path. Runtime Ask/menu dispatch, native shortcut capture/reset and profile forward/back remain pending, despite their completed source integrations.
+
+575–576 add effective AppKit menu/Collapse shortcut hints and preserve the accepted launcher's first-run/default-browser flags; their six changed objects are compiling. No supplied CSS, geometry or material parameters changed. The explicit existing-scope startup writer is prepared but has not created a record; normal Finder startup remains unaccepted. The approved Computer Use check is paused after the documented clipboard credential exposure; no helper startup or new OS grant occurred. No further provider calls use the exposed key. Vendor1Password companion trust remains unaccepted; native-message/content-script fixture proof is retained.
+
+Next actual checks:574 command-route diagnostics and genuine profile transitions; combine any concrete repairs with576, then one final package/real-app comparison. Final accepted startup, shortcut capture/menu consistency, profile isolation and a compact ordinary browsing/reopen journey follow on that same coherent app. Reuse existing unaffected evidence and keep full readiness false until these gates pass.
+
 ## Dependency graph
 
 Solid arrows are implementation prerequisites; dashed arrows are acceptance prerequisites. Shared native/build/app resources are serialized separately.
