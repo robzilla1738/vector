@@ -1,0 +1,87 @@
+{
+  "baseComposition": "v591",
+  "files": [
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "baselineSha256": "c49dd2beaa8bc9da97a8fca35c957db24a04507dfab97739f1432dc80b55a435",
+      "outputSha256": "f07bed8bf667767b912fca8cde1e092e43e01e642c684f70a583441836f22373"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "baselineSha256": "367d1808142231f6ed86af9bc6c819fcf7545d460e51dce7e5223c3c4119adec",
+      "outputSha256": "115ec830bf4919db461782f40b9a178c6f8bc6b75106147b52a7ffb7c93de7b5"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.cc",
+      "baselineSha256": "022b6718f63ae2e789f21bef736bd6890640e96e324596fa64465ef9ac8c20ea",
+      "outputSha256": "65932af574e93afaf7608d1e6f803d77928c6b43fb793c9a0a016f2d3e00d616"
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.cc",
+      "baselineSha256": "43b0999b0b07ca047c1271bc2af684aabfc4256545cdd180d98527fa8cb88d52",
+      "outputSha256": "8f4bfeba9bf78070139f0bc73c6aea75211e99cfdf749e3e53a450b8258113d8"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "d85e67050a74eb9c57eb1cfe3bcce517fef6d15e746a0dc4575302ef41663fe4",
+      "outputSha256": "2434ac71f00773e18fdaa70201635f8271223df878f9a9ad038b189d82897cc3"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "anchorSha256": "596b041476568e7963062456c62c30c0cdcd5228e206ca0b3312926459538a77",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "anchorSha256": "3c0f78284af0840115daa77ebf55a41275a20d4eea2180aba07e7f2b8aa83a3e",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "anchorSha256": "85331ff3dde1f4315127b768aa2f90a194b5773039f5b8f714af000fae290c84",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "anchorSha256": "abd9cb44c03dcc2cce2313a6f6f0cc718f791bc107453aedba69057328e487ae",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.cc",
+      "anchorSha256": "a246a47fa662e043c5a5df4c7b0b79c237f3c220a0255a61597d2a73e2d833bc",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.cc",
+      "anchorSha256": "c18c2efbba0953f520e8a51f611c8951e578dd877ca2f2c784a0f2fc12500991",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "anchorSha256": "df443aa1a094774abb1bb8032971a0a58ed7c9b1444b146c814575c2926525af",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_window_controller.cc",
+      "anchorSha256": "f844866aca510562539caf0339f72cc5a2328b3f9a0fb4a5f9bdc9972021c6fe",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "anchorSha256": "f844866aca510562539caf0339f72cc5a2328b3f9a0fb4a5f9bdc9972021c6fe",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_overlay_web_view.cc",
+      "anchorSha256": "f844866aca510562539caf0339f72cc5a2328b3f9a0fb4a5f9bdc9972021c6fe",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/handoff_button_controller.cc",
+      "anchorSha256": "f844866aca510562539caf0339f72cc5a2328b3f9a0fb4a5f9bdc9972021c6fe",
+      "count": 1
+    }
+  ]
+}

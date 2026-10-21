@@ -1,0 +1,191 @@
+--- a/chrome/browser/actor/ui/actor_ui_window_controller.cc
++++ b/chrome/browser/actor/ui/actor_ui_window_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/check.h"
++#include "base/logging.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/functional/bind.h"
+ #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+@@ -60,21 +61,31 @@
+     default;
+ 
+ bool ActorUiContentsContainerController::IsColdForAuxProfileSwitch() const {
+-  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
+-      aux_pending_notifications_ ||
+-      (overlay_ && !overlay_->CanRebindForAuxProfileSwitch()) ||
+-      (handoff_button_controller_ &&
+-       !handoff_button_controller_->IsColdForAuxProfileSwitch())) {
++  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
++    if (value) {
++      LOG(ERROR) << "Aux actor admission container." << name << " failed=1 count=" << count;
++    }
++    return value;
++  };
++  if (aux_guard(aux_profile_switch_prepared_, "prepared") || aux_guard(aux_callback_depth_, "callback-depth", aux_callback_depth_) ||
++      aux_guard(aux_pending_notifications_, "pending-notifications", aux_pending_notifications_) ||
++      aux_guard((overlay_ && !overlay_->CanRebindForAuxProfileSwitch()), "overlay") ||
++      aux_guard((handoff_button_controller_ &&
++       !handoff_button_controller_->IsColdForAuxProfileSwitch()), "handoff")) {
+     return false;
+   }
+   auto* contents = contents_container_view_->web_contents();
+-  if (contents != web_contents()) {
++  if (aux_guard(contents != web_contents(), "contents-observer-mismatch")) {
+     return false;
+   }
+   auto* tab = contents ? tabs::TabInterface::GetFromContents(contents) : nullptr;
+   if (tab && ActorUiTabControllerInterface::From(tab)) {
+     auto* actual = ActorUiTabController::Get(tab->GetUnownedUserDataHost());
+-    return actual && actual->IsColdForAuxProfileSwitch();
++    if (!actual) {
++      LOG(ERROR) << "Aux actor admission container.tab-owner-missing";
++      return false;
++    }
++    return actual->IsColdForAuxProfileSwitch();
+   }
+   return true;
+ }
+@@ -386,26 +397,32 @@
+ ActorUiWindowController::~ActorUiWindowController() = default;
+ 
+ bool ActorUiWindowController::CanRebindForAuxProfileSwitch() const {
+-  if (aux_profile_switch_prepared_ || aux_callback_depth_ ||
+-      aux_pending_notifications_ || is_omnibox_popup_open_ ||
+-      From(browser_window_interface_) != this ||
+-      browser_window_interface_->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+-      !browser_window_interface_->GetProfile()->IsRegularProfile()) {
++  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
++    if (value) {
++      LOG(ERROR) << "Aux actor admission window." << name << " failed=1 count=" << count;
++    }
++    return value;
++  };
++  if (aux_guard(aux_profile_switch_prepared_, "prepared") || aux_guard(aux_callback_depth_, "callback-depth", aux_callback_depth_) ||
++      aux_guard(aux_pending_notifications_, "pending-notifications", aux_pending_notifications_) || aux_guard(is_omnibox_popup_open_, "omnibox-open") ||
++      aux_guard(From(browser_window_interface_) != this, "owner-mismatch") ||
++      aux_guard(browser_window_interface_->GetType() != BrowserWindowInterface::TYPE_NORMAL, "window-type") ||
++      aux_guard(!browser_window_interface_->GetProfile()->IsRegularProfile(), "nonregular-profile")) {
+     return false;
+   }
+   auto* model = browser_window_interface_->GetTabStripModel();
+-  if (!model || model->profile() != browser_window_interface_->GetProfile()) {
++  if (aux_guard(!model, "model-missing") || aux_guard(model->profile() != browser_window_interface_->GetProfile(), "model-profile-mismatch")) {
+     return false;
+   }
+   for (int i = 0; i < model->count(); ++i) {
+     auto* tab = model->GetTabAtIndex(i);
+     auto* service = actor::ActorKeyedService::Get(tab->GetContents()->GetBrowserContext());
+-    if (service && service->GetTaskFromTab(*tab)) {
++    if (aux_guard(service && service->GetTaskFromTab(*tab), "tab-task")) {
+       return false;
+     }
+     if (actor::ui::ActorUiTabControllerInterface::From(tab)) {
+       auto* actual = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
+-      if (!actual || !actual->IsColdForAuxProfileSwitch()) {
++      if (aux_guard(!actual || !actual->IsColdForAuxProfileSwitch(), "tab-owner-or-state")) {
+         return false;
+       }
+     }
+--- a/chrome/browser/actor/ui/actor_ui_tab_controller.cc
++++ b/chrome/browser/actor/ui/actor_ui_tab_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/check.h"
++#include "base/logging.h"
+ #include "base/functional/callback_helpers.h"
+ #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+ 
+@@ -60,11 +61,17 @@
+ ActorUiTabController::~ActorUiTabController() = default;
+ 
+ bool ActorUiTabController::IsColdForAuxProfileSwitch() const {
+-  return !aux_callback_depth_ && !aux_pending_ui_work_ &&
+-         !update_scrim_background_debounce_timer_.IsRunning() &&
+-         !is_overlay_hovered_ && !should_show_scrim_background_ &&
+-         current_ui_tab_state_ == UiTabState() &&
+-         (!actor_keyed_service_ || !actor_keyed_service_->GetTaskFromTab(*tab_));
++  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
++    if (!value) {
++      LOG(ERROR) << "Aux actor admission tab." << name << " failed=1 count=" << count;
++    }
++    return value;
++  };
++  return aux_guard(!aux_callback_depth_, "callback-depth", aux_callback_depth_) && aux_guard(!aux_pending_ui_work_, "pending-ui-work", aux_pending_ui_work_) &&
++         aux_guard(!update_scrim_background_debounce_timer_.IsRunning(), "scrim-timer") &&
++         aux_guard(!is_overlay_hovered_, "overlay-hover") && aux_guard(!should_show_scrim_background_, "scrim-background") &&
++         aux_guard(current_ui_tab_state_ == UiTabState(), "nondefault-state") &&
++         aux_guard((!actor_keyed_service_ || !actor_keyed_service_->GetTaskFromTab(*tab_)), "task");
+ }
+ 
+ void ActorUiTabController::LeaveAuxCallback() {
+--- a/chrome/browser/actor/ui/actor_overlay_web_view.cc
++++ b/chrome/browser/actor/ui/actor_overlay_web_view.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/check.h"
++#include "base/logging.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/functional/bind.h"
+ #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
+@@ -30,10 +31,16 @@
+ }
+ 
+ bool ActorOverlayWebView::CanRebindForAuxProfileSwitch() const {
++  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
++    if (!value) {
++      LOG(ERROR) << "Aux actor admission overlay." << name << " failed=1 count=" << count;
++    }
++    return value;
++  };
+   // Hidden WebContents still own their source BrowserContext and WebUI/Mojo
+   // callback queues. They are not silently destroyed or marked completed.
+-  return !aux_callback_depth_ && !web_contents() && !GetVisible() &&
+-         !scoped_ignore_input_events_ && pending_webui_init_callbacks_.empty();
++  return aux_guard(!aux_callback_depth_, "callback-depth", aux_callback_depth_) && aux_guard(!web_contents(), "web-contents") && aux_guard(!GetVisible(), "visible") &&
++         aux_guard(!scoped_ignore_input_events_, "input-blocker") && aux_guard(pending_webui_init_callbacks_.empty(), "init-callbacks", static_cast<unsigned int>(pending_webui_init_callbacks_.size()));
+ }
+ 
+ void ActorOverlayWebView::RebindForAuxProfileSwitch(Profile* profile) {
+--- a/chrome/browser/actor/ui/handoff_button_controller.cc
++++ b/chrome/browser/actor/ui/handoff_button_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/check.h"
++#include "base/logging.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/functional/bind.h"
+ #include "chrome/browser/actor/ui/handoff_button_controller.h"
+@@ -224,8 +225,14 @@
+ HandoffButtonController::~HandoffButtonController() = default;
+ 
+ bool HandoffButtonController::IsColdForAuxProfileSwitch() const {
+-  return !aux_callback_depth_ && !widget_ && !delegate_ && !button_view_ &&
+-         !is_hovering_ && !is_focused_ && !view_observer_.IsObserving();
++  const auto aux_guard = [](bool value, const char* name, unsigned int count = 0) {
++    if (!value) {
++      LOG(ERROR) << "Aux actor admission handoff." << name << " failed=1 count=" << count;
++    }
++    return value;
++  };
++  return aux_guard(!aux_callback_depth_, "callback-depth", aux_callback_depth_) && aux_guard(!widget_, "widget") && aux_guard(!delegate_, "delegate") && aux_guard(!button_view_, "button-view") &&
++         aux_guard(!is_hovering_, "hover") && aux_guard(!is_focused_, "focus") && aux_guard(!view_observer_.IsObserving(), "view-observation");
+ }
+ 
+ void HandoffButtonController::LeaveAuxCallback() {
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -538,7 +538,8 @@
+     }
+     if ((features.actor_ui_window_controller_ &&
+          !features.actor_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
+-      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-actor.02";
++      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-actor.02"
++                 << " cache=" << (cache == &previous_cache ? "source" : "target");
+       return false;
+     }
+     if (bool(features.most_recent_shared_tab_update_store_) !=
