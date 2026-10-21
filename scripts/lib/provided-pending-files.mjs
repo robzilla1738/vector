@@ -1,8 +1,13 @@
 /** Preserve original file reads until attachment draft handoff completes. */
 const edits = [
   {
+    find: 'X.current=E,je?.(E,x)',
+    replace: 'X.current=E;const auxSaved=je?.(E,x);if(auxSaved===!1){auxDraftSaveFailed.current||se.error("Could not save this draft. Keep this window open and remove a large attachment, then try again."),auxDraftSaveFailed.current=!0}else auxDraftSaveFailed.current=!1;return auxSaved',
+    count: 1
+  },
+  {
     "find": "ce=(0,a.useRef)([]);(0,a.useEffect)(()=>()=>{ie.current+=1",
-    "replace": "ce=(0,a.useRef)([]),auxFileUnload=(0,a.useRef)(null);const auxSetFileBusy=c=>{if(c&&!auxFileUnload.current){const d=x=>{x.preventDefault(),x.returnValue=\"\"};auxFileUnload.current=d,window.addEventListener(\"beforeunload\",d)}else!c&&auxFileUnload.current&&(window.removeEventListener(\"beforeunload\",auxFileUnload.current),auxFileUnload.current=null)};(0,a.useEffect)(()=>()=>{auxSetFileBusy(!1),ie.current+=1",
+    "replace": "ce=(0,a.useRef)([]),auxFileUnload=(0,a.useRef)(null),auxDraftSaveFailed=(0,a.useRef)(!1);const auxSetFileBusy=c=>{if(c&&!auxFileUnload.current){const d=x=>{x.preventDefault(),x.returnValue=\"\"};auxFileUnload.current=d,window.addEventListener(\"beforeunload\",d)}else!c&&auxFileUnload.current&&(window.removeEventListener(\"beforeunload\",auxFileUnload.current),auxFileUnload.current=null)};(0,a.useEffect)(()=>()=>{auxSetFileBusy(!1),ie.current+=1",
     "count": 1
   },
   {

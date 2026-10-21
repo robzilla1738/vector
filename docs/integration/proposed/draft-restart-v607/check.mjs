@@ -9,7 +9,7 @@ const adapted = transformProvidedDraftFlush({component:'agent', path, text:origi
 const storage = () => {const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)}};
 const localStorage=storage();
 const open = (durable=localStorage) => {
- const c=vm.createContext({window:{sessionStorage:storage(),localStorage:durable},Date,crypto,console});
+ const c=vm.createContext({window:{sessionStorage:storage(),localStorage:durable,addEventListener(){},removeEventListener(){}},Date,crypto,console});
  vm.runInContext(adapted.text.replace(/import\{[^}]+\}from"[^"]+";/g,'').replace(/export\{[^}]+\};/,''),c);
  return c;
 };

@@ -1,0 +1,19 @@
+# Attachment save failure recovery (610 baseline)
+
+The actual supplied writer silently catches storage quota or access errors. A completed attachment can therefore remain visible although its latest draft cannot survive document teardown. The pending-file guard previously checked only that its write callback returned, not successful persistence.
+
+This adaptation keeps the same draft record, base64 attachment payloads, keys, browser profile storage partition and UI. The writer now returns a boolean. A failed write retains the latest record in its document module's map under the exact existing draft key; reads prefer that unsaved record, including a null tombstone after failed clearing. One beforeunload listener protects the document until every failed scope is saved or cleared successfully. Retrying a different draft cannot prematurely release protection. No draft contents enter events or logs; no new backend or disk format exists.
+
+The composer reports failure using its existing toast API, once per failure episode. Sidepanel callbacks and the existing immediate debounce writer forward write results. Existing-session/default writers already use implicit return. Original pending-file listener remains about active reads; the distinct failed-storage listener protects completed-but-unsaved records even after the read listener is removed, including when another tab is selected. Removing the oversized attachment retries through the original change pipeline. The user can still explicitly discard through normal unload handling.
+
+Scope: edits only `provided-draft-flush.mjs` and `provided-pending-files.mjs`; existing stage imports/provenance remain sufficient. Changed leaves are draft-storage, sidepanel, permission-approval, already approved stage leaves. Source pins include exact full transformation hashes/anchor counts. No native/app/source-snapshot mutation, signing, credentials, or AI requests.
+
+Focused check executes the transformed actual source writer/reader with storage failures: latest data remains recoverable, failures in two scopes share one listener, successful retry of one does not clear another, clearing removes protection, and failed clear does not resurrect old data. All three adapted modules parse. Real quota-exhaustion/UI checks remain integration work; storage remains bounded and this does not claim arbitrary-size attachment durability.
+
+## Active task and approval source ownership
+
+`provider-Cw0zhujt.js` scopes sessions.get and turns.activeMessages by accountId/sessionId. Its streaming client retains a runId/afterSeq reconnect cursor during its live lifetime; remount resynchronizes from server session/active messages. Client disposal closes the socket with "client disposed" and resets client-local state. It does not issue the separate interrupt command. This is view detachment/reconnection, not reassignment of a task to the target profile.
+
+`permission-approval-D-GTf91U.js` approval/action-confirmation submits the current accountId/sessionId/toolCallId/suspensionId and updates that same query key; ask-user answers are scoped by accountId/sessionId/toolCallId. These controls are rebuilt from the current session suspension. Pending UI mutation promises may finish after view teardown but retain their original captured IDs; this audit found no substitution with a successor profile's IDs.
+
+Native `browser_window_features_aux_profile_switch.cc` separately requires sidepanel retirement, CanSwitchAuxAgentTabsProfile, Actor and contextual-controller admission, and transaction revalidation. These checks are unchanged. Source evidence supports preserving daemon-backed session identity and reconnecting views; it does not prove every native active tool can migrate. No live inference, running approval roundtrip, or daemon runtime test was performed. No basis was found to bypass native active-work guards.

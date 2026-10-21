@@ -1,0 +1,67 @@
+[
+  {
+    "path": "assets/draft-storage-ixLojjZ5.js",
+    "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+    "outputSha256": "0c53c03476be4d201371cccf4270bff3da6984fec878ee49c82e46ea56749efb",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "38435d7830d677dda7ad315e8b53c1885d212563ac45b895620ac4e0c03adeed"
+      },
+      {
+        "count": 1,
+        "findSha256": "bf8ea63c8028436a98a4cbf49932a694401ca06cee23081c02f79dbe553dfbf3"
+      },
+      {
+        "count": 1,
+        "findSha256": "052eb015fb6394a97ada35a5a40e8fad816c562a444402f733b0935667cef9fa"
+      }
+    ]
+  },
+  {
+    "path": "assets/sidepanel-CI-CbXmY.js",
+    "sourceSha256": "c396463fc21b348469766222c767d9fd08ed68bcdd0202d6b9598fbecaea3cfe",
+    "outputSha256": "f40e2891283184f68cda28b8abf95e476923a0fbc560cf73ea94342e2c659900",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "b10a2aa26c70c51ccd91f7535ef2511bab262067a34543fff87645105193d90d"
+      },
+      {
+        "count": 1,
+        "findSha256": "4dfe0f44e5bcd08c913fa89292448c24514aa3a14f1fca19f8f81e736c3ed941"
+      },
+      {
+        "count": 1,
+        "findSha256": "37a84893a396c4ebc619508f43a7c5653c4c587c18f076e26b95b74480e253db"
+      }
+    ]
+  },
+  {
+    "path": "assets/permission-approval-D-GTf91U.js",
+    "sourceSha256": "4bd21aeaf261c71712b6fdb3d9fc52fcb347977f73332e0e4719ab990cbac4f9",
+    "outputSha256": "8b073b5942ac6fa295dfe440564895ef1df69dedc0ee617d6bc7a5c4379590c5",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "9142c8f939fe416f3ca4a89d62a7c92c46f7b8a27011de3a5f71d2e31596c9fb"
+      },
+      {
+        "count": 1,
+        "findSha256": "c681bf8fcfa2fc90f5ad72ee423ce242faa02b75db1d7946b83e740588830fb9"
+      },
+      {
+        "count": 1,
+        "findSha256": "d7934ca3eb88076e11a3313132bf360a3aa3199c5cbf16d69dbd3da194c260d3"
+      },
+      {
+        "count": 1,
+        "findSha256": "ee0eb8823aaa26b54d5dac08c689c85df70f0687283ba8999c20fda954714627"
+      },
+      {
+        "count": 1,
+        "findSha256": "dd3e49fd6f1f7ca4e2e9d47a249ffb553fe84125531bc3e3660b5dd83e2bf921"
+      }
+    ]
+  }
+]
