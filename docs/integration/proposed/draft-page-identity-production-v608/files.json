@@ -1,0 +1,83 @@
+{
+  "baseComposition": "v608",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "efdeb16042f8796c981d5e7b0f3c2c82a073c9ce55374f1f9ae129b566007b53",
+      "outputSha256": "314aaab2310e00ab4a40c5c9a00535777ae2ca2290573b4202c695775e73038a",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "17d28a4a827318c0c553de55037f42795f724829f1965c66ca0f68494ef67344"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/BUILD.gn",
+      "baselineSha256": "a8ca9cf5d818e26ff7bb2c6932f8e6db5fa9361989f067cf97674b82be6bf641",
+      "outputSha256": "e3b28cb22d3ed9faa744a11d7c294a053e614d261981e9994510c9e102aef68a",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "5eef23c04c793f9ab0503bab94530bfebd11097dec5ddce005faf954c84aafdf"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "a4bdb646fef5107f0fbc6b4aa2289cba1eb8fd273605023c87ae7556edc42282",
+      "outputSha256": "c2169c7fbcab65d2b4007ccfe49af27db747b61bddbb5c20590b2a765830dc67",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "c757de23a1b1a1924d988f2a302179f3180fe804daf0b8540462d411e2bb82c8"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "baselineSha256": "2f3e8d9a039eca9235fbd1811e2638befebef1df6c5efd24f0f1dbf07a31ba03",
+      "outputSha256": "6bd4f729b21dc6c381a844dc13ca4f74c714dbb25d73d2c8f84d3c39fff733be",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "01b3c7c81272542df44e61f847763e64e4485fcb15c4fb3f04ee6a30352f0863"
+        },
+        {
+          "count": 1,
+          "findSha256": "519eaab2aded3606f42d5ddc951836dfe183f436fad1094d1d0a034adb3b8ceb"
+        },
+        {
+          "count": 1,
+          "findSha256": "e0da971fadc60967d403847065d9f8b3fc88510afe1a2f2cdce1b42a7f74d64b"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_tabrestore.cc",
+      "baselineSha256": "523c2f14505ff7b4e5a2e044f163a6b1db9af5070c8a4b9725e716d57c90e1b7",
+      "outputSha256": "94ba29985acb56af869b1f8fc78f27a9dd18a3e7d191a5933e33b246589d17a8",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "0f92bc9a29f442968b57ab64665f80b2e6c160e9af7788d465c2f3c90b031cf4"
+        },
+        {
+          "count": 1,
+          "findSha256": "b870bb7d02c722a24cc4337e6b93a6b29a6fc556ddbe007ac36f6e5f08808c1f"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux/page_identity.cc",
+      "baselineSha256": "35e055e6a3a779210b56bed0dc955edea6133c529f45702b4300ed894994dfa1",
+      "outputSha256": "f272e5b482d9064670866d0915ab4ba9cdb6af316ba3a083eaf1450cbc356f7d",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "b2e22cf2e85263dc3780c4d6fd68a878d1c8004ad640fd45965ec7856cd5e266"
+        }
+      ]
+    }
+  ]
+}

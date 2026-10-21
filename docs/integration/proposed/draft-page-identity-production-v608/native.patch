@@ -1,0 +1,107 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -36,6 +36,23 @@
+ source_set("account_bootstrap_state") {
+   sources = [ "account_bootstrap_state.cc", "account_bootstrap_state.h" ]
+   public_deps = [ "//base" ]
++}
++
++# Stable tab metadata shared by the supplied browser and optional legacy shell.
++# Keep it outside ui/aux/BUILD.gn, which asserts enable_aux_shell.
++source_set("page_identity") {
++  sources = [
++    "../ui/aux/page_identity.cc",
++    "../ui/aux/page_identity.h",
++  ]
++  public_deps = [ "//content/public/browser" ]
++  deps = [
++    "//base",
++    "//chrome/browser/profiles:profile",
++    "//chrome/browser/sessions",
++    "//components/sessions",
++    "//ui/gfx/geometry",
++  ]
+ }
+ 
+ source_set("profile_identity") {
+--- a/chrome/browser/extensions/api/aux_account/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_account/BUILD.gn
+@@ -1,7 +1,7 @@
+ source_set("aux_account") {
+   sources = [ "aux_account_api.cc", "aux_account_api.h" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common" ]
+-  deps = [ "//chrome/browser/extensions", "//chrome/browser/ui/aux:surface_headers", "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:profile_security_client", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/net", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
++  deps = [ "//chrome/browser/extensions", "//chrome/browser/aux:page_identity", "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:profile_security_client", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/net", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/navigator", "//content/public/browser", "//extensions/common" ]
+ }
+ 
+ source_set("headers") {
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -866,6 +866,7 @@
+     "//chrome/browser/aux:profile_state",
+     "//chrome/browser/aux:account_bootstrap_state",
+     "//chrome/browser/aux:profile_identity",
++    "//chrome/browser/aux:page_identity",
+     "//chrome/browser/aux:profile_security_client",
+     ":browser_element_identifiers",
+     ":browser_otr_state",
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -150,8 +150,6 @@
+     "native_find.h",
+     "organization_store.cc",
+     "organization_store.h",
+-    "page_identity.cc",
+-    "page_identity.h",
+     "profile_library.cc",
+     "profile_library.h",
+     "profile_spaces.cc",
+@@ -207,7 +205,7 @@
+       "owned_headless_protocol.h",
+     ]
+   }
+-  public_deps = [ ":semantic" ]
++  public_deps = [ ":semantic", "//chrome/browser/aux:page_identity" ]
+   deps = [
+     "semantic:semantic_resources",
+     "//chrome/services/aux_document:types",
+@@ -311,9 +309,7 @@
+ }
+ 
+ source_set("surface_headers") {
+-  public_deps = [ "//content/public/browser" ]
+   sources = [
+-    "page_identity.h",
+     "surface_visibility.h",
+     "auto_pip_site_policy.h",
+   ]
+--- a/chrome/browser/ui/browser_tabrestore.cc
++++ b/chrome/browser/ui/browser_tabrestore.cc
+@@ -14,7 +14,7 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h"
+ #endif
+-#if BUILDFLAG(ENABLE_AUX_SHELL)
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #endif
+ #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
+@@ -99,7 +99,7 @@
+   glic::RestoreGlicStateFromExtraData(web_contents.get(), extra_data);
+   send_tab_to_self::SendTabToSelfActivationTracker::RestoreFromExtraData(
+       web_contents.get(), extra_data);
+-#if BUILDFLAG(ENABLE_AUX_SHELL)
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::PageIdentity::RestoreFromExtraData(web_contents.get(), extra_data);
+ #endif
+ 
+--- a/chrome/browser/ui/aux/page_identity.cc
++++ b/chrome/browser/ui/aux/page_identity.cc
+@@ -9,6 +9,7 @@
+ #include "base/uuid.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
++#include "chrome/browser/sessions/session_service.h"
+ #include "components/sessions/content/session_tab_helper.h"
+ #include "content/public/browser/web_contents.h"
+ #include "ui/gfx/geometry/size.h"

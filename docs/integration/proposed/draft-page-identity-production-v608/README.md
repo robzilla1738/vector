@@ -1,0 +1,9 @@
+# Production PageIdentity boundary follow-up, applied v608 baseline
+
+The first draft proposal incorrectly assumed the existing `ui/aux:runtime` PageIdentity and tab restore hook were active in the supplied-browser production build. They were guarded by the retired optional shell. This follow-up fixes that boundary without enabling or importing the old shell implementation.
+
+`chrome/browser/aux:page_identity` compiles the existing small page_identity.cc/h once, outside the BUILD file asserting enable_aux_shell. Account and UI depend on this target. The optional shell runtime removes its copy of these sources and publicly depends on the same target, preventing duplicate symbols. The earlier surface_headers addition is removed completely. The only restored behavior enabled for production Aux is `RestoreFromExtraData`; the shell's ephemeral task filtering remains behind its original shell flag.
+
+The implementation explicitly includes the SessionService definition before calling its metadata methods. Dependencies are base, Profile, the header/interface `chrome/browser/sessions` target (not sessions:impl), components/sessions, content/browser, and gfx/geometry. The sessions interface target exposes SessionService/Factory headers and depends on browser_window interfaces; it does not depend on ui's implementation. No dependency points from this independent target to ui/aux or extension APIs. Implementation symbols are included through the new direct account/UI dependency rather than assumed whole-app linkage.
+
+Six files, nine exact anchors; files.json pins the currently applied v608 source before and after. Source-only native.patch applies cleanly. No shared native source edits, build, package, or runtime operations were performed by this lane. Root should apply after v608 and run the already planned native build. Actual restart evidence remains required.

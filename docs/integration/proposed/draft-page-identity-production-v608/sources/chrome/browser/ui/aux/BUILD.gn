@@ -1,0 +1,404 @@
+# Copyright 2026 The Aux Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//chrome/browser/buildflags.gni")
+import("//testing/test.gni")
+import("//build/config/apple/swift_source_set.gni")
+
+assert(enable_aux_shell)
+
+source_set("runtime") {
+  sources = [
+    "browser_export_decode.h",
+    "browser_import_picker.h",
+    "browser_safari_window.h",
+    "browser_safari_window_mac.mm",
+    "browser_firefox_import.cc",
+    "browser_firefox_import.h",
+    "browser_firefox_snapshot.cc",
+    "browser_firefox_snapshot.h",
+    "browser_export_decode.cc",
+    "browser_export_picker.h",
+    "browser_export_picker_mac.mm",
+    "browser_profile_decode.h",
+    "browser_profile_decode.cc",
+    "browser_arc_sidebar.cc",
+    "browser_arc_sidebar.h",
+    "browser_profile_discovery.h",
+    "browser_profile_discovery.cc",
+    "browser_profile_extension_installer.h",
+    "browser_profile_extension_candidates.cc",
+    "browser_profile_extension_candidates.h",
+    "browser_profile_extension_installer.cc",
+    "browser_profile_importer.h",
+    "browser_profile_importer.cc",
+    "browser_profile_key_provider.h",
+    "browser_profile_key_provider.mm",
+    "browser_profile_readers.h",
+    "browser_profile_readers.cc",
+    "browser_profile_snapshot.h",
+    "browser_profile_snapshot.cc",
+    "desktop_context_mac.h",
+    "desktop_context_mac.mm",
+    "runtime_desktop_context_mac.cc",
+    "document_jobs.cc",
+    "document_jobs.h",
+    "image_normalize.cc",
+    "image_normalize.h",
+    "native_project.cc",
+    "native_project.h",
+    "native_project_files.cc",
+    "native_project_files.h",
+    "native_terminal.cc",
+    "native_project_listener.cc",
+    "native_project_listener.h",
+    "native_project_preview.cc",
+    "native_project_preview.h",
+    "native_project_preview_network.cc",
+    "native_terminal.h",
+    "shell_warmup_manager.cc",
+    "shell_warmup_manager.h",
+    "native_cdp_input_mac.h",
+    "native_cdp_input_mac.mm",
+    "cdp_broker.cc",
+    "cdp_broker.h",
+    "content_blocking_controller.cc",
+    "content_blocking_controller.h",
+    "content_blocking_policy.cc",
+    "content_blocking_policy.h",
+    "filter_source_snapshot.cc",
+    "filter_source_snapshot.h",
+    "filter_snapshot_store.cc",
+    "filter_snapshot_store.h",
+    "semantic_filter_popup.cc",
+    "semantic_filter_popup.h",
+    "semantic_filter_body.cc",
+    "semantic_filter_body.h",
+    "semantic_filter_cosmetics.cc",
+    "semantic_filter_cosmetics.h",
+    "semantic_filter_trusted_headers.cc",
+    "semantic_filter_trusted_headers.h",
+    "semantic_filter_headers.cc",
+    "semantic_filter_headers.h",
+    "semantic_filter_response_address.cc",
+    "semantic_filter_response_address.h",
+    "semantic_filter_decision.cc",
+    "semantic_filter_decision.h",
+    "semantic_filter_snapshot.cc",
+    "semantic_filter_snapshot.h",
+    "semantic_factory_headers.cc",
+    "semantic_factory_headers.h",
+    "semantic_loader_registry.cc",
+    "semantic_loader_registry.h",
+    "content_filter_documents.cc",
+    "content_filter_network.cc",
+    "content_filter_source_scope.cc",
+    "content_filter_source_scope.h",
+    "content_filter_resources.cc",
+    "content_filter_resources.h",
+    "cosmetic_filter_host.cc",
+    "cosmetic_filter_host.h",
+    "cookie_import.cc",
+    "cookie_import.h",
+    "credential_fill.cc",
+    "credential_fill.h",
+    "credential_fill_prompt_mac.mm",
+    "evidence_documents.cc",
+    "evidence_documents.h",
+    "egress_controller.cc",
+    "egress_controller.h",
+    "owner_mutation_fence.h",
+    "owner_mutation_fence.cc",
+    "permission_effect_receipt.cc",
+    "permission_effect_receipt.h",
+    "permission_broker.cc",
+    "permission_broker.h",
+    "egress_projection.cc",
+    "egress_projection.h",
+    "egress_url_loader.cc",
+    "health_recorder.cc",
+    "health_recorder.h",
+    "method_registry.cc",
+    "method_registry.h",
+    "methods/downloads_ai_methods.cc",
+    "download_naming.cc",
+    "download_naming.h",
+    "download_naming_mac.mm",
+    "methods/extensions_ui_methods.cc",
+    "methods/layout_methods.cc",
+    "methods/power_methods.cc",
+    "power_activity_mac.h",
+    "power_activity_mac.mm",
+    "methods/profile_routing_methods.cc",
+    "methods/shortcuts_methods.cc",
+    "methods/surfaces_methods.cc",
+    "methods/window_sync_methods.cc",
+    "methods/native_blocking_methods.cc",
+    "methods/native_cdp_methods.cc",
+    "methods/native_content_methods.cc",
+    "methods/health_methods.cc",
+    "methods/native_credentials_methods.cc",
+    "methods/native_library_methods.cc",
+    "methods/native_page_controls_methods.cc",
+    "methods/native_tabs_methods.cc",
+    "dictation_mac.h",
+    "dictation_mac.mm",
+    "dictation_session.cc",
+    "dictation_session.h",
+    "native_find.cc",
+    "native_find.h",
+    "organization_store.cc",
+    "organization_store.h",
+    "profile_library.cc",
+    "profile_library.h",
+    "profile_spaces.cc",
+    "profile_spaces.h",
+    "link_routing.cc",
+    "link_routing.h",
+    "link_router.cc",
+    "link_router.h",
+    "profile_search_engine.cc",
+    "profile_search_engine.h",
+    "little_window_controller.mm",
+    "little_window_controller.h",
+    "quick_ask_controller.cc",
+    "quick_ask_controller.h",
+    "readable_capture.cc",
+    "readable_capture.h",
+    "result_preview.cc",
+    "result_preview.h",
+    "native_creator_close_receipt.cc",
+    "native_creator_close_receipt.h",
+    "native_person_capture_controller.cc",
+    "native_person_capture_controller.h",
+    "native_person_observer_controller.cc",
+    "native_person_observer_controller.h",
+    "native_recorder_controller.cc",
+    "native_recorder_controller.h",
+    "native_recorder_script.h",
+    "runtime_child_retirement.h",
+    "runtime_host.cc",
+    "runtime_host.h",
+    "shell_events.cc",
+    "shell_events.h",
+    "surface_visibility.cc",
+    "secret_store_mac.h",
+    "secret_store_mac.mm",
+    "tab_catalog.cc",
+    "tab_catalog.h",
+    "webmcp.cc",
+    "webmcp.h",
+    "zap_controller.cc",
+    "zap_controller.h",
+  ]
+  if (is_mac) {
+    sources += [
+      "task_attention_mac.h",
+      "task_attention_mac.mm",
+      "native_foundation_models.h",
+      "native_foundation_models.mm",
+      "native_copilot_session.cc",
+      "native_copilot_session.h",
+      "native_owned_headless_process.cc",
+      "native_owned_headless_process.h",
+      "owned_headless_protocol.h",
+    ]
+  }
+  public_deps = [ ":semantic", "//chrome/browser/aux:page_identity" ]
+  deps = [
+    "semantic:semantic_resources",
+    "//chrome/services/aux_document:types",
+    "//chrome/common:ini_parser",
+    "//chrome/common/importer:importer",
+    "//chrome/common/importer:aux_firefox_profile",
+    "//components/sessions",
+    "//components/keep_alive_registry",
+    "//components/os_crypt/async/browser",
+    "//components/os_crypt/async/browser:key_provider_interface",
+    "//components/password_manager/core/browser/import:importer",
+    "//components/password_manager/core/browser/ui",
+    "//chrome/browser/extensions/api/passwords_private",
+    "//chrome/browser/extensions",
+    "//extensions/browser",
+    "//extensions/common",
+    "//components/download/public/common:public",
+    "//base",
+    "//chrome/browser:buildflags",
+    "//third_party/icu",
+    "//chrome/browser/content_settings:content_settings_factory",
+    "//chrome/browser/notifications:notifications",
+    "//chrome/browser/device_reauth:device_reauth",
+    "//chrome/browser/device_reauth:impl",
+    "//chrome/browser/password_manager/factories",
+    "//chrome/browser/profiles",
+    "//chrome/browser/profiles:profile_util",
+    "//chrome/browser/profiles/keep_alive",
+    "//chrome/browser:browser_process",
+    "//chrome/browser/lifetime",
+    "//chrome/browser/picture_in_picture",
+    ":surface_headers",
+    "//chrome/browser/ui/aux/generated:methods",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/exclusive_access",
+    "//chrome/browser/ui/login:login",
+    "//chrome/browser/ui/tabs:tabs_public",
+    "//chrome/common:mojo_bindings",
+    "//components/device_reauth",
+    "//components/content_settings/core/browser",
+    "//components/content_settings/core/common",
+    "//components/find_in_page",
+    "//components/guest_contents/browser",
+    "//components/keyed_service/content",
+    "//components/password_manager/content/browser",
+    "//components/password_manager/core/browser",
+    "//components/prefs",
+    "//components/sessions:session_id",
+    "//components/split_tabs",
+    "//components/tabs:public",
+    "//services/media_session/public/mojom",
+    "//services/data_decoder/public/cpp",
+    "//ui/gfx/codec",
+    "//ui/gfx/geometry",
+    "//skia",
+    "//components/version_info",
+    "//components/zoom",
+    "//components/permissions",
+    "//content/public/browser",
+    "//components/user_data_importer/mojom",
+    "//components/user_data_importer/utility:bookmarks",
+    "//components/strings:components_strings_grit",
+    "//third_party/zlib/google:zip",
+    "//content/public/common",
+    "//crypto",
+    "//mojo/public/cpp/bindings",
+    "//mojo/public/cpp/system",
+    "//net",
+    "//services/network/public/cpp",
+    "//services/network/public/mojom",
+    "//ui/message_center/public/cpp",
+    "//chrome/browser/bookmarks",
+    "//chrome/browser/history",
+    "//chrome/browser/search_engines",
+    "//components/bookmarks/browser",
+    "//components/bookmarks/common",
+    "//components/history/core/browser",
+    "//components/keyed_service/core",
+    "//components/search_engines",
+    "//services/network/public/cpp:cpp",
+    "//third_party/blink/public/common:common",
+    "//url",
+  ]
+  if (is_mac) {
+    deps += [ ":foundation_models_swift", "//chrome/common", "//sandbox/mac:seatbelt" ]
+    weak_frameworks = [ "FoundationModels.framework" ]
+  }
+  frameworks = [
+    "ScreenCaptureKit.framework",
+    "Vision.framework",
+    "PDFKit.framework",
+    "AVFoundation.framework",
+    "Cocoa.framework",
+    "UniformTypeIdentifiers.framework",
+    "ScriptingBridge.framework",
+    "IOKit.framework",
+    "ServiceManagement.framework",
+    "Security.framework",
+    "Speech.framework",
+  ]
+}
+
+source_set("surface_headers") {
+  sources = [
+    "surface_visibility.h",
+    "auto_pip_site_policy.h",
+  ]
+}
+
+source_set("semantic") {
+  sources = [
+    "semantic_filter_bridge.cc",
+    "semantic_filter_bridge.h",
+    "semantic_filter_document.cc",
+    "semantic_filter_document.h",
+    "semantic_filter_instance.cc",
+    "semantic_filter_instance.h",
+    "semantic_filter_network.cc",
+    "semantic_filter_network.h",
+    "semantic_filter_ui.cc",
+    "semantic_filter_ui.h",
+  ]
+  public_deps = [
+    "//chrome/common:aux_semantic_filters",
+    "//content/public/browser",
+    "//mojo/public/cpp/bindings",
+    "//ui/webui",
+  ]
+  deps = [
+    "semantic:semantic_resources",
+    "//base",
+    "//crypto",
+    "//content/public/common",
+    "//mojo/public/cpp/system",
+    "//net",
+    "//services/network/public/cpp",
+    "//services/network/public/mojom",
+    "//ui/base",
+    "//url",
+  ]
+}
+
+# Fixed launcher is copied by chrome_framework_helpers into the Framework's
+# Helpers directory regardless of verify_dynamic_libraries.
+if (is_mac) {
+  executable("owned_headless_launcher") {
+    output_name = "aux_owned_headless_launcher"
+    sources = [
+      "owned_headless_launcher.cc",
+      "owned_headless_protocol.h",
+    ]
+    # Pure POSIX launcher: no Chrome component or custom C++ runtime symbols.
+    # Keep default compiler/linker/SDK/warning configs, but do not inject the
+    # shared libc++ executable_deps or C++ module target into this relocated
+    # Framework Helpers executable.
+    libs = [ "sandbox" ]
+    no_default_deps = true
+    use_libcxx_modules = false
+  }
+}
+
+if (is_mac) {
+  import("//build/config/mac/mac_sdk.gni")
+  config("foundation_models_swift_runtime") {
+    # clang links the Swift object's genuine autolink directives. Like the
+    # existing iOS config, provide both SDK runtime stubs and the selected
+    # compiler's static compatibility libraries to the final dependent link.
+    lib_dirs = [
+      rebase_path("$mac_sdk_path/usr/lib/swift", "", root_build_dir),
+      rebase_path("$mac_bin_path/../lib/swift/macosx", "", root_build_dir),
+    ]
+  }
+  swift_source_set("foundation_models_swift") {
+    sources = [ "foundation_models.swift" ]
+    all_dependent_configs = [ ":foundation_models_swift_runtime" ]
+    swiftflags = [
+      "-Xfrontend=-disable-autolink-framework",
+      "-Xfrontend=FoundationModels",
+    ]
+    frameworks = [ "Foundation.framework" ]
+    weak_frameworks = [ "FoundationModels.framework" ]
+  }
+}
+
+# Bounded original-child process retirement; no browser/Profile/network setup.
+test("runtime_child_retirement_unittests") {
+  sources = [
+    "runtime_child_retirement.h",
+    "runtime_child_retirement_unittest.cc",
+  ]
+  deps = [
+    "//base",
+    "//testing/gtest",
+    "//testing/gtest:gtest_main",
+  ]
+}
