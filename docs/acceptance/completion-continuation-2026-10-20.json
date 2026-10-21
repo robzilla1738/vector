@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 574,
+  "nativeCandidate": 579,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,15 +24,15 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 574,
+    "packagedCandidate": 579,
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 579,
-    "nextFocusedCompile": "577 two objects and579 five objects passed",
+    "nextSourceComposition": 581,
+    "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
-    "startupRecordWritten": false,
-    "nextFullBuild": "579 full build/generated-key probe passed"
+    "startupRecordWritten": true,
+    "nextFullBuild": "581 full build running;579 full build and generated-key probe passed"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -61,12 +61,11 @@
     "paidRequest": false
   },
   "remainingObserved": [
-    "574 Ask diagnostic: real action-based command mode active, missing action map yields supports=0/enabled=0",
-    "574 profile switching next rejects unported.ios_promo_controller after contextual-owner repair",
-    "575 menu hints and576 accepted-startup flags compile; app runtime pending",
-    "577 iOS promo lifecycle adaptation applied; focused compile running",
-    "normal Finder startup acceptance pending",
-    "vendor password-manager companion and approved Computer Use execution unverified"
+    "First accepted normal launch stalled; subsequent ordinary reopen started real daemon/CDP and logging-only accepted launch also works. Initial cause remains unresolved.",
+    "579 profile switch rejects unported.recent_activity_bubble_coordinator;580 guarded dormant lifecycle and581 genuine shared-feedback subscription migration are applied;581 compilation running.",
+    "Supplied Settings catalog still displays obsolete Vault builtin skill and Aside skill title; counted corrections in progress.",
+    "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
+    "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
   ],
   "actualAiPreviousRuns": [
     {
@@ -101,7 +100,7 @@
     "computerUseHelperState": "stopped",
     "osPermissionsVerified": false,
     "approvalReview": "docs/integration/proposed/computer-use-local-readiness/README.md",
-    "ownerApproval": "reviewed bounded Computer Use check authorized; execution paused after desktop incident",
+    "ownerApproval": "reviewed bounded local check authorized; administrator prompt handoff pending",
     "localPermissionCheck": {
       "authorized": true,
       "exactHelperSha256": "3d4211d95fb5445ab2907af8bc19691a527bcbab65c08dbaaae0e33bda486665",
@@ -122,7 +121,26 @@
     "revokeRequested": true,
     "workingSecretCleared": true,
     "navigatedToBlank": true,
-    "captureCheckPaused": true,
-    "computerUseHelperStarted": false
+    "captureCheckPaused": false,
+    "computerUseHelperStarted": true,
+    "ownerConfirmedRevoked": true
+  },
+  "actual579": {
+    "commandEToggle": true,
+    "askRemapCommandShiftKAfterCaptureBlur": true,
+    "resetRestoresCommandE": true,
+    "stackedSplitOpensRealBottomChooser": true,
+    "ownedSplitAndExtraTabClosed": true,
+    "nativePasswordManagerUrl": "ERR_INVALID_URL",
+    "unpaidBrowserControl": {
+      "daemonAuth": true,
+      "snapshot": true,
+      "ownTabClosed": true,
+      "replClosed": true,
+      "paidRequest": false
+    },
+    "comparison": "out/pass1-ui-completion/compare.html",
+    "sourceCssOrMaterialChanged": false,
+    "normalStartupRecordSha256": "a645e4ef447774b03a16204b882c963a4a10ab14b6471022e867006b64090047"
   }
 }
