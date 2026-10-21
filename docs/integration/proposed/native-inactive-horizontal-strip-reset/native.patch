@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc
+@@ -692,6 +692,12 @@
+ }
+ 
+ void HorizontalTabStripRegionViewOld::ResetTabStrip() {
++  // A mode notification can arrive while the horizontal strip has never
++  // been initialized (or has already been reset). Match InitializeTabStrip
++  // and the collection-based region: retire only an owned live strip.
++  if (!tab_strip_set_) {
++    return;
++  }
+   tab_strip_set_ = false;
+   static_cast<BrowserTabStripController*>(tab_strip_->controller())->Reset();
+   tab_strip_->Reset();
