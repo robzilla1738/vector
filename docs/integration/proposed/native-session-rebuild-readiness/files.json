@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v605",
+  "files": [
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "baselineSha256": "7bbb91ce3f1159b540666686b8cbc2e887a561978f9d7ebb7aa9230e42a7dec3",
+      "outputSha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": "11b9f31ac2a1cb86a3d9718206f1fa041b38abbb389aee88372ac688d2109ae3",
+      "outputSha256": "a606f3fb6364bccd799327251a411bda8dcd4faa5d10c16fe6344c41fa630b39"
+    }
+  ]
+}
