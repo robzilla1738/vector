@@ -21,13 +21,29 @@ const edits = [
     "count": 1
   }
 ];
+// The supplied history registers a no-op beforeunload listener even when no
+// blockers exist. Native admission observes listener presence, not its return
+// value. Keep the original callback while subscribing only for live blockers.
+const routerEdits = [
+  {
+    find: 'const o=()=>i,r=m=>i=m,a=m=>me(',
+    replace: 'const o=()=>i,r=m=>{const auxHadBlockers=i.length>0;i=m;if(i.length){auxHadBlockers||(y=!1,e.addEventListener(Gt,C,{capture:!0}))}else e.removeEventListener(Gt,C,{capture:!0});return i},a=m=>me(',
+    count: 1
+  },
+  {
+    find: '},e.addEventListener(Gt,C,{capture:!0}),e.addEventListener(Kt,L),',
+    replace: '},e.addEventListener(Kt,L),',
+    count: 1
+  }
+];
 export function transformProvidedPendingFiles({ component, path, text }) {
-  if (component !== "agent" || path !== "assets/permission-approval-D-GTf91U.js")
-    return { text, anchors: [] };
-  for (const edit of edits) {
+  if (component !== "agent") return { text, anchors: [] };
+  const selected = path === "assets/permission-approval-D-GTf91U.js" ? edits
+    : path === "assets/Matches-B99cyGDb.js" ? routerEdits : [];
+  for (const edit of selected) {
     if (text.split(edit.find).length - 1 !== edit.count)
       throw new Error("Supplied pending file ownership anchor changed");
     text = text.replace(edit.find, edit.replace);
   }
-  return { text, anchors: edits.map(edit => ({ kind: "integration", ...edit })) };
+  return { text, anchors: selected.map(edit => ({ kind: "integration", ...edit })) };
 }
