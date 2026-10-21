@@ -78,6 +78,21 @@ export function transformProvidedNativeUi({ component, path, text }) {
       throw new Error('Supplied local model notice changed');
     replace(emptyModels, 'if(!o&&r.length===0&&u)return{kind:"ai-subscription-connect",description:"Connect an AI provider to start chatting",actionLabel:"Connect",actionPath:`/u/${t}/settings/model`};if(!o&&r.length===0&&l)return', 'integration');
   }
+  if (component === 'agent' && path === 'assets/skills-CfSQ7MCw.js') {
+    // The runnable signed daemon can still report this retired built-in entry.
+    // Filter its exact catalog path before all Settings skill groups consume it.
+    const catalog = 'a.projects.listSkillsForSettings.queryOptions({projectId:null,accountId:i},{select:be})';
+    if (text.split(catalog).length - 1 !== 1)
+      throw new Error('Supplied Settings skill catalog consumer changed');
+    replace(catalog, 'a.projects.listSkillsForSettings.queryOptions({projectId:null,accountId:i},{select:t=>{const p=be(t);return{...p,skills:p.skills.filter(t=>t.path!=="builtin/password-manager")}}})', 'owner-scope');
+  }
+  if (component === 'agent' && path === 'assets/utils-WfPpT5w5.js') {
+    // Preserve the supplied name/path used by skill resolution and REPL APIs.
+    const displayName = 'E=a=>{const e=s(a.path)?';
+    if (text.split(displayName).length - 1 !== 1)
+      throw new Error('Supplied skill display-name helper changed');
+    replace(displayName, 'E=a=>{if(a.name==="aside"&&a.path==="builtin/aside")return"Aux";const e=s(a.path)?', 'identity');
+  }
   // Supplied Aside.* commands and authentication wire names remain unchanged.
   for (const scheme of ['http', 'https', 'ws', 'wss']) {
     for (const host of ['127.0.0.1', 'localhost']) {

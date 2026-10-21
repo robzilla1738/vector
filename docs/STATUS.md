@@ -940,3 +940,7 @@ Owner clarified that signing/release work is not the development priority. No ne
 ## 2026-10-20 — v499 browser preview without login
 
 The owner requested seeing the actual browser before signing in. Fixed synchronous ProfileGate construction re-entry, rebuilt and locally signed v499, and visibly verified its regular disposable browser window with the supplied new-tab UI and native sidebar. The existing automatic gate suppression preference is enabled only in that disposable preview; account/Vault/onboarding state is unchanged. NTP preloading exposes a separate native delegate crash and is disabled for this preview. Evidence: `docs/acceptance/provided-v499-browser-preview.json`. Full parity remains unaccepted.
+
+### 2026-10-20 — supplied Skills catalog scope correction (source only)
+
+The pinned Agent Settings consumer now filters only `builtin/password-manager` before grouping, and its original display helper renders `{name:"aside",path:"builtin/aside"}` as Aux. Skill IDs/paths/wires, Apple Passwords, Bitwarden and user skills remain. Three count-one daemon adapter corrections cover both catalog handlers and the same title helper, but changing the adapted daemon executable needs separate integration; the current signed daemon may still return the obsolete catalog row. Four focused static/isolated-context checks pass against the pinned original source. No staging, signing, native execution, provider calls or owner state. Details: `docs/integration/provided-skill-catalog-scope.md`. Actual refreshed Agent Settings/API acceptance remains pending.
