@@ -84,7 +84,7 @@ export function transformProvidedNativeUi({ component, path, text }) {
     const catalog = 'a.projects.listSkillsForSettings.queryOptions({projectId:null,accountId:i},{select:be})';
     if (text.split(catalog).length - 1 !== 1)
       throw new Error('Supplied Settings skill catalog consumer changed');
-    replace(catalog, 'a.projects.listSkillsForSettings.queryOptions({projectId:null,accountId:i},{select:t=>{const p=be(t);return{...p,skills:p.skills.filter(t=>t.path!=="builtin/password-manager")}}})', 'owner-scope');
+    replace(catalog, 'a.projects.listSkillsForSettings.queryOptions({projectId:null,accountId:i},{select:t=>{const p=be(t);return{...p,skills:p.skills.filter(t=>t.path!=="builtin/password-manager")}}})', 'integration');
   }
   if (component === 'agent' && path === 'assets/utils-WfPpT5w5.js') {
     // Preserve the supplied name/path used by skill resolution and REPL APIs.
