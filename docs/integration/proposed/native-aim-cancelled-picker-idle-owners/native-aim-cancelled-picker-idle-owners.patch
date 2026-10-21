@@ -1,0 +1,142 @@
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_OMNIBOX_POPUP_FILE_SELECTOR_H_
+ #define CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_OMNIBOX_POPUP_FILE_SELECTOR_H_
+ 
++#include <cstdint>
+ #include <optional>
+ 
+ #include "base/files/file_path.h"
+@@ -92,6 +93,10 @@
+ 
+  private:
+   bool aux_ever_started_work_ = false;
++  // Cancellation proves no upload work only when this owner never selected files.
++  bool aux_has_selected_files_ = false;
++  bool aux_canceled_dialog_complete_ = false;
++  uint64_t aux_selection_generation_ = 0;
+   scoped_refptr<ui::SelectFileDialog> file_dialog_;
+   std::string file_info_type_;
+   base::WeakPtr<content::WebContents> web_contents_;
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
+@@ -72,7 +72,7 @@
+ }
+ 
+ bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {
+-  if (aux_ever_started_work_) {
++  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-started-work";
+     return false;
+   }
+@@ -117,6 +117,8 @@
+     OmniboxEditModel* edit_model,
+     std::optional<lens::ImageEncodingOptions> image_encoding_options,
+     bool was_ai_mode_open) {
++  ++aux_selection_generation_;
++  aux_canceled_dialog_complete_ = false;
+   aux_ever_started_work_ = true;
+   web_contents_ = web_contents ? web_contents->GetWeakPtr() : nullptr;
+   edit_model_ = edit_model;
+@@ -244,6 +246,10 @@
+ 
+ void OmniboxPopupFileSelector::MultiFilesSelected(
+     const std::vector<ui::SelectedFileInfo>& files) {
++  // Even rejected selections remain conservative: their context handoff has a
++  // separate lifecycle, and cancellation cannot attest to its completion.
++  aux_has_selected_files_ = true;
++  aux_canceled_dialog_complete_ = false;
+   aux_ever_started_work_ = true;
+   ContextualSearchboxHandler* contextual_searchbox_handler =
+       OmniboxContextMenuController::GetContextualSearchboxHandler(
+@@ -315,12 +321,29 @@
+ 
+ void OmniboxPopupFileSelector::FileSelectionCanceled() {
+   aux_ever_started_work_ = true;
++  const uint64_t generation = aux_selection_generation_;
+   NotifyFileSelectionClosed();
++  // A close callback may synchronously open another chooser. Its owners belong
++  // to the new generation and must not be reset by the old cancellation.
++  if (generation != aux_selection_generation_) {
++    return;
++  }
+   deactivation_blocker_.reset();
+   file_dialog_.reset();
+   if (was_ai_mode_open_) {
+     OpenAiMode();
+   }
++  if (generation != aux_selection_generation_ || aux_has_selected_files_ ||
++      file_dialog_ || deactivation_blocker_) {
++    return;
++  }
++  // No selection has ever scheduled reads or context handoffs for this owner.
++  // Release only the canceled dialog's inputs. Admission still checks external
++  // weak references, registered callbacks and the presenter's live idle state.
++  web_contents_.reset();
++  edit_model_ = nullptr;
++  image_encoding_options_.reset();
++  aux_canceled_dialog_complete_ = true;
+ }
+ 
+ void OmniboxPopupFileSelector::OnFileDataReady(
+--- a/components/contextual_search/footprints/public/drive_disclaimer_controller.h
++++ b/components/contextual_search/footprints/public/drive_disclaimer_controller.h
+@@ -58,6 +58,11 @@
+   void CheckDisclaimerStatusAsync(
+       base::OnceCallback<void(DisclaimerStatus status)> completion_callback);
+ 
++  // The factory is held by each outstanding Footprints response callback.
++  bool HasPendingRequestsForAuxProfileSwitch() const {
++    return weak_factory_.HasWeakPtrs();
++  }
++
+  private:
+   void OnShouldShowMobileConsentFlowResponse(
+       base::OnceCallback<void(DisclaimerStatus status)> completion_callback,
+--- a/chrome/browser/ui/views/search_ai_mode/signin_promo_controller.h
++++ b/chrome/browser/ui/views/search_ai_mode/signin_promo_controller.h
+@@ -53,6 +53,9 @@
+ 
+  protected:
+   content::WebContents* web_contents() { return web_contents_.get(); }
++  bool HasActivePromoViewForAuxProfileSwitch() const {
++    return promo_view_ != nullptr;
++  }
+ 
+   virtual bool CanShowPromo(Profile& profile) = 0;
+   virtual void UpdateAvatarButtonState(
+@@ -120,6 +123,11 @@
+   // Otherwise, shows the promo and returns true.
+   bool MaybeShowPromo(BrowserWindowInterface* browser_window_interface);
+ 
++  bool CanRetireForAuxProfileSwitch() const {
++    return !HasActivePromoViewForAuxProfileSwitch() &&
++           !weak_ptr_factory_.HasWeakPtrs();
++  }
++
+   base::WeakPtr<ComposeboxDriveSignInPromoController> GetWeakPtr() {
+     return weak_ptr_factory_.GetWeakPtr();
+   }
+--- a/chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc
++++ b/chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc
+@@ -706,13 +706,17 @@
+     return false;
+   }
+ #if !BUILDFLAG(IS_ANDROID)
+-  if (drive_picker_controller_ || drive_disclaimer_controller_ ||
++  if (drive_picker_controller_ ||
++      (drive_disclaimer_controller_ &&
++       drive_disclaimer_controller_->HasPendingRequestsForAuxProfileSwitch()) ||
+       drive_picker_deactivation_blocker_ ||
+       drive_picker_result_handler_receiver_.is_bound()) {
+     return false;
+   }
+ #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+-  if (composebox_drive_signin_promo_controller_) {
++  if (composebox_drive_signin_promo_controller_ &&
++      !composebox_drive_signin_promo_controller_->
++          CanRetireForAuxProfileSwitch()) {
+     return false;
+   }
+ #endif

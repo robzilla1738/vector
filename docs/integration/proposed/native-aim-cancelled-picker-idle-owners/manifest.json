@@ -1,0 +1,106 @@
+{
+  "baseComposition": "v603",
+  "compositionManifestSha256": "289b10a73883d1fa85f9cbee8491f3fbec518d566b1e6394b7b85207ccc2cfd3",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "baselineSha256": "7b38c84ddfb1ffcc33b411508d8df584ef10e06f4362af13bbfdae3118c612df",
+      "outputSha256": "876ea7cf771470c7b6c8fa10745d0954416e25bd1c2fd675d1c66f6ab34f1089",
+      "compositionTracked": true
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "baselineSha256": "29b9642b81e00bfc4e8fe7bda31551f35298e943316237a678e1e08e8ab6f289",
+      "outputSha256": "3392aaf768aa01566e62d7e75b3d648e61df6b44b725e1a63a95113d38d77fc4",
+      "compositionTracked": true
+    },
+    {
+      "path": "components/contextual_search/footprints/public/drive_disclaimer_controller.h",
+      "baselineSha256": "012ee013308f2ab03763c21b1d2200cc1ef0cd89bc1926c2c99ea97143c9dc9c",
+      "outputSha256": "628ccebee5249c7194183de8fbb966639e1d613ed93691d580ac8aa4b94f1042",
+      "compositionTracked": false
+    },
+    {
+      "path": "chrome/browser/ui/views/search_ai_mode/signin_promo_controller.h",
+      "baselineSha256": "ca534a8813a0cf860c5e89db89ba6a1891f921a3ae5724bf906164e88cf8d6e9",
+      "outputSha256": "26d6e823925b5640af16d2fc11cfd21d6bba8254d1d2295e1fccc5706fcf656c",
+      "compositionTracked": false
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "baselineSha256": "3236b959f7c5a4eb14a86202b2c99f7d75be11b54387a73c181f26a7d18c090a",
+      "outputSha256": "2b4ad0f54d4ce6e42145204309a48e06a3c1d77e851ea154def2b2ca5219e25e",
+      "compositionTracked": true
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "#include <optional>",
+      "replace": "#include <cstdint>\n#include <optional>",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "  bool aux_ever_started_work_ = false;",
+      "replace": "  bool aux_ever_started_work_ = false;\n  // Cancellation proves no upload work only when this owner never selected files.\n  bool aux_has_selected_files_ = false;\n  bool aux_canceled_dialog_complete_ = false;\n  uint64_t aux_selection_generation_ = 0;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (aux_ever_started_work_) {",
+      "replace": "  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_) {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "    bool was_ai_mode_open) {\n  aux_ever_started_work_ = true;",
+      "replace": "    bool was_ai_mode_open) {\n  ++aux_selection_generation_;\n  aux_canceled_dialog_complete_ = false;\n  aux_ever_started_work_ = true;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "    const std::vector<ui::SelectedFileInfo>& files) {\n  aux_ever_started_work_ = true;",
+      "replace": "    const std::vector<ui::SelectedFileInfo>& files) {\n  // Even rejected selections remain conservative: their context handoff has a\n  // separate lifecycle, and cancellation cannot attest to its completion.\n  aux_has_selected_files_ = true;\n  aux_canceled_dialog_complete_ = false;\n  aux_ever_started_work_ = true;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "void OmniboxPopupFileSelector::FileSelectionCanceled() {\n  aux_ever_started_work_ = true;\n  NotifyFileSelectionClosed();\n  deactivation_blocker_.reset();\n  file_dialog_.reset();\n  if (was_ai_mode_open_) {\n    OpenAiMode();\n  }\n}",
+      "replace": "void OmniboxPopupFileSelector::FileSelectionCanceled() {\n  aux_ever_started_work_ = true;\n  const uint64_t generation = aux_selection_generation_;\n  NotifyFileSelectionClosed();\n  // A close callback may synchronously open another chooser. Its owners belong\n  // to the new generation and must not be reset by the old cancellation.\n  if (generation != aux_selection_generation_) {\n    return;\n  }\n  deactivation_blocker_.reset();\n  file_dialog_.reset();\n  if (was_ai_mode_open_) {\n    OpenAiMode();\n  }\n  if (generation != aux_selection_generation_ || aux_has_selected_files_ ||\n      file_dialog_ || deactivation_blocker_) {\n    return;\n  }\n  // No selection has ever scheduled reads or context handoffs for this owner.\n  // Release only the canceled dialog's inputs. Admission still checks external\n  // weak references, registered callbacks and the presenter's live idle state.\n  web_contents_.reset();\n  edit_model_ = nullptr;\n  image_encoding_options_.reset();\n  aux_canceled_dialog_complete_ = true;\n}",
+      "count": 1
+    },
+    {
+      "path": "components/contextual_search/footprints/public/drive_disclaimer_controller.h",
+      "find": " private:\n  void OnShouldShowMobileConsentFlowResponse(",
+      "replace": "  // The factory is held by each outstanding Footprints response callback.\n  bool HasPendingRequestsForAuxProfileSwitch() const {\n    return weak_factory_.HasWeakPtrs();\n  }\n\n private:\n  void OnShouldShowMobileConsentFlowResponse(",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/search_ai_mode/signin_promo_controller.h",
+      "find": "  content::WebContents* web_contents() { return web_contents_.get(); }",
+      "replace": "  content::WebContents* web_contents() { return web_contents_.get(); }\n  bool HasActivePromoViewForAuxProfileSwitch() const {\n    return promo_view_ != nullptr;\n  }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/search_ai_mode/signin_promo_controller.h",
+      "find": "  base::WeakPtr<ComposeboxDriveSignInPromoController> GetWeakPtr() {",
+      "replace": "  bool CanRetireForAuxProfileSwitch() const {\n    return !HasActivePromoViewForAuxProfileSwitch() &&\n           !weak_ptr_factory_.HasWeakPtrs();\n  }\n\n  base::WeakPtr<ComposeboxDriveSignInPromoController> GetWeakPtr() {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "find": "  if (drive_picker_controller_ || drive_disclaimer_controller_ ||\n      drive_picker_deactivation_blocker_ ||",
+      "replace": "  if (drive_picker_controller_ ||\n      (drive_disclaimer_controller_ &&\n       drive_disclaimer_controller_->HasPendingRequestsForAuxProfileSwitch()) ||\n      drive_picker_deactivation_blocker_ ||",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "find": "  if (composebox_drive_signin_promo_controller_) {\n    return false;\n  }",
+      "replace": "  if (composebox_drive_signin_promo_controller_ &&\n      !composebox_drive_signin_promo_controller_->\n          CanRetireForAuxProfileSwitch()) {\n    return false;\n  }",
+      "count": 1
+    }
+  ],
+  "compiled": false,
+  "appliedToNative": false
+}
