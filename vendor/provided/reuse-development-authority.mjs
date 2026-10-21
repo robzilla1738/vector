@@ -46,6 +46,8 @@ export function reviewedUiResourceInventory(inventory, review = []) {
     'apps/extension/dist/assets/general-3dgRbrRk.js',
     'apps/extension/dist/assets/appearance-Ceuw3-j6.js',
     'apps/extension/dist/assets/privacy-BeEEt9Qu.js',
+    'apps/extension/dist/assets/skills-CfSQ7MCw.js',
+    'apps/extension/dist/assets/utils-WfPpT5w5.js',
     'bundle.json', 'provenance/manifest.json', 'provenance/ui-manifest.json',
     'provenance/apps-manifest.json', 'provenance/distribution-manifest.json',
     'provenance/computer-use-manifest.json',
