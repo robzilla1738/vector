@@ -1,0 +1,98 @@
+--- a/chrome/browser/aux/browser_platform.h
++++ b/chrome/browser/aux/browser_platform.h
+@@ -24,6 +24,10 @@
+       base::RepeatingCallback<std::string(base::DictValue,
+                                           const base::FilePath&)> installer);
+   CdpRequestFilter CreateBrowserCdpFilter(uint16_t port) const;
++  // UI sequence; fires only after the actual installation public key loads.
++  // Subscribe before trying CreateBrowserCdpFilter to cover either ordering.
++  base::CallbackListSubscription ObserveBrowserCdpAuthority(
++      base::RepeatingClosure callback);
+   const std::string& authorization() const;
+   using DaemonAuthorizationCallback = DaemonSupervisor::AuthorizationCallback;
+   // UI sequence. Asynchronous actual authorization, with optional cache
+@@ -50,6 +54,7 @@
+   bool loading_key_ = false;
+   bool authorization_was_available_ = false;
+   base::RepeatingClosureList authorization_observers_;
++  base::RepeatingClosureList cdp_authority_observers_;
+   std::unique_ptr<DaemonSupervisor> supervisor_;
+   std::vector<ComponentManifest> components_;
+   std::optional<crypto::keypair::PublicKey> public_key_;
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -104,6 +104,9 @@
+             if (self) {
+               self->loading_key_ = false;
+               self->public_key_ = std::move(key);
++              if (self->public_key_) {
++                self->cdp_authority_observers_.Notify();
++              }
+             }
+           }, weak_.GetWeakPtr()));
+ }
+@@ -194,6 +197,10 @@
+   }
+   return RegisterBundledComponents(std::move(copy), std::move(installer));
+ }
++base::CallbackListSubscription BrowserPlatform::ObserveBrowserCdpAuthority(
++    base::RepeatingClosure callback) {
++  return cdp_authority_observers_.Add(std::move(callback));
++}
+ CdpRequestFilter BrowserPlatform::CreateBrowserCdpFilter(uint16_t port) const {
+   if (!public_key_) {
+     return {};
+--- a/chrome/browser/devtools/remote_debugging_server.h
++++ b/chrome/browser/devtools/remote_debugging_server.h
+@@ -11,6 +11,7 @@
+ #include <vector>
+ #include "base/values.h"
+ 
++#include "base/callback_list.h"
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/types/expected.h"
+@@ -84,6 +85,7 @@
+   void MaybeStartOrStopServerForPrefChange();
+   void ObserveAuxPreferences(PrefService* local_state);
+   void ReconcileAuxServer();
++  void OnAuxCdpAuthorityReady();
+   void CompleteAuxRequests();
+   enum class AuxPhase { kOff, kStarting, kListening, kStopping, kFailed };
+   AuxPhase aux_phase_ = AuxPhase::kOff;
+@@ -94,6 +96,7 @@
+   void StartHttpServerInApprovalModeWithPort(const base::FilePath& output_dir,
+                                              int port);
+ 
++  base::CallbackListSubscription aux_cdp_authority_subscription_;
+   std::unique_ptr<PrefChangeRegistrar> pref_change_registrar_;
+   // Used by MaybeStartOrStopServerForPrefChange to ensure that the server is
+   // only started once.
+--- a/chrome/browser/devtools/remote_debugging_server.cc
++++ b/chrome/browser/devtools/remote_debugging_server.cc
+@@ -454,6 +454,10 @@
+   g_aux_remote_debugging_server = this;
+   pref_change_registrar_ = std::make_unique<PrefChangeRegistrar>();
+   pref_change_registrar_->Init(local_state);
++  aux_cdp_authority_subscription_ =
++      aux::BrowserPlatform::Get().ObserveBrowserCdpAuthority(base::BindRepeating(
++          &RemoteDebuggingServer::OnAuxCdpAuthorityReady,
++          weak_factory_.GetWeakPtr()));
+   for (const char* pref : {prefs::kDevToolsRemoteDebuggingEnabled,
+                            prefs::kDevToolsRemoteDebuggingAllowed}) {
+     pref_change_registrar_->Add(pref, base::BindRepeating(
+@@ -519,6 +523,14 @@
+   for (auto& request : requests)
+     std::move(request.callback).Run(request.enabled == desired &&
+         (desired ? aux_phase_ == AuxPhase::kListening : aux_phase_ == AuxPhase::kOff));
++}
++void RemoteDebuggingServer::OnAuxCdpAuthorityReady() {
++  // Startup can reach us before the daemon has loaded its installation key.
++  // Retry only when that real authority becomes available, never unfiltered.
++  if (aux_phase_ == AuxPhase::kFailed) {
++    aux_phase_ = AuxPhase::kOff;
++  }
++  ReconcileAuxServer();
+ }
+ void RemoteDebuggingServer::ReconcileAuxServer() {
+   if (aux_mutating_prefs_) return;

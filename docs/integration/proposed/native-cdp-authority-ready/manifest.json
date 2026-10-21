@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "baselineSha256": "68dfcd1eaadfe144e9b6312ec129d7020981749f66f4e1b501b96802b0b56dc3",
+      "outputSha256": "48794afe67a53c7cd60a5b317cf03e2a3d2730db8f2d2f925f1709f72f1cae40"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "1702c640c136ee471c07bfad947c75bc3672ed0ca2e4ed4a2021d12857457695",
+      "outputSha256": "cdde8579e7a32edf4e5ae3ceaa741df60f1feabca9e297b5d74a49f586fe47cc"
+    },
+    {
+      "path": "chrome/browser/devtools/remote_debugging_server.h",
+      "baselineSha256": "0e3e2bd192bea1002f014ff3ac59b2f67ff3bbb95fb5656143c28b0b8c24ebf8",
+      "outputSha256": "fd5f69a897823b8eb27c29b907f5c8f9753b0de23ed83ba0e9b420c2b1fd7a6c"
+    },
+    {
+      "path": "chrome/browser/devtools/remote_debugging_server.cc",
+      "baselineSha256": "978261bd1ecddd90516a35133d703aadf310257714eb4e9bcb55804e37c38660",
+      "outputSha256": "892f1b7e8fa94bffd1cc78e2e311899884d7c7467c280b3d23ed64d3e44f2661"
+    }
+  ]
+}
