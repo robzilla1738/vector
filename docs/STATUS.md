@@ -1,5 +1,14 @@
 # Aux implementation status
 
+## Resumed completion batch: actual586 and importer scope repair — 2026-10-21
+
+586 full build/generated-key probe passed (6 steps,5m05.77s), supplied package and complete retained-helper/native seal verification passed (receipt320e698568f64f75b1011477949ba672eddd82acf85468218a06ccf2e0284caf). Normal LaunchServices reaches daemon state3. Actual first switch passes the corrected idle AIM close guard and rejects readiness.location.16: the classic WebUI omnibox is enabled by default but has no accepted transfer lifecycle. That next concrete owner is being repaired without disabling it. No successful profile transfer is claimed.
+
+587 applies nine-file password import exclusion at public defaults/requests, Chromium current/new profile, Firefox item mask, and Safari extraction/store ownership. Eight changed objects compile (41s). Updated supplied import copy is accurate without layout changes; new stage587 is prepared. Full build awaits compatible profile owner integration. Synthetic bookmark/history fixture is prepared, no import or owner data read occurred.
+
+The composer wording audit resolves the alleged wrong new-chat state as original1852 behavior (docs/integration/provided-sidepanel-composer-state.md). Actual586 typed new-session draft did disappear after close/reopen; its supplied/native lifecycle is separately under audit, not hidden by a placeholder patch. Existing20 AI cases remain accepted and are not repeated.
+
+
 Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
 ## Paused after verified585 build — owner request,2026-10-21
