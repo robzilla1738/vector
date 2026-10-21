@@ -1,0 +1,53 @@
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -40,6 +40,7 @@
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "base/logging.h"
+ #include "chrome/browser/ui/views/frame/browser_frame_view.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/browser_widget.h"
+@@ -424,6 +425,16 @@
+     remote_cocoa::mojom::ValidateUserInterfaceItemResult* result) {
+   BrowserWindowInterface* const browser =
+       browser_view_ ? browser_view_->browser() : nullptr;
++  // One bounded diagnostic for the observed disabled Aux menu command.
++  // No browser/profile identity or content enters this message.
++  static bool logged_aux_ask_validation = false;
++  if (tag == IDC_AUX_ASK && !logged_aux_ask_validation) {
++    logged_aux_ask_validation = true;
++    LOG(ERROR) << "Aux Ask validation route=window browser=" << !!browser
++               << " supports=" << (browser && chrome::SupportsCommand(browser, tag))
++               << " enabled=" << (browser && chrome::IsCommandEnabled(browser, tag))
++               << " actions=" << features::ShouldUseActionsForBrowserCommands();
++  }
+   if (!browser || !chrome::SupportsCommand(browser, tag)) {
+     result->enable = false;
+     return;
+--- a/chrome/browser/app_controller_mac.mm
++++ b/chrome/browser/app_controller_mac.mm
+@@ -114,6 +114,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "base/logging.h"
+ #include "chrome/browser/ui/views/color_provider_browser_helper.h"
+ #include "chrome/browser/ui/webui/util/webui_util_desktop.h"
+ #include "chrome/browser/web_applications/web_app_helpers.h"
+@@ -1705,6 +1706,15 @@
+   if (action == @selector(commandDispatch:) ||
+       action == @selector(commandFromDock:)) {
+     NSInteger tag = [item tag];
++    static bool logged_aux_ask_validation = false;
++    if (tag == IDC_AUX_ASK && !logged_aux_ask_validation) {
++      logged_aux_ask_validation = true;
++      LOG(ERROR) << "Aux Ask validation route=app supports="
++                 << (_menuState && _menuState->SupportsCommand(tag))
++                 << " enabled="
++                 << (_menuState && _menuState->IsCommandEnabled(tag))
++                 << " actions=" << features::ShouldUseActionsForBrowserCommands();
++    }
+     if (_menuState &&  // NULL in tests.
+         _menuState->SupportsCommand(tag)) {
+       switch (tag) {

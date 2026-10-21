@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v566",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "baselineSha256": "33613d0888a95cf18c18f589626743e1c0e270d9fb7a525ae2fa4628fca6573a",
+      "outputSha256": "15f2c218eb8583aca07adbc0e7c774f998c6812226570c592bf7e512c8703d6a"
+    },
+    {
+      "path": "chrome/browser/app_controller_mac.mm",
+      "baselineSha256": "ecf13cc69e6ef78f2057963ce25be528e63e85acdcd43062e3c3f38f080f89e1",
+      "outputSha256": "2e5139d89df654da1b6d6b63251318d3b01ba40cf70efdc7162932a99464dfaf"
+    }
+  ]
+}
