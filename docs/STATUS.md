@@ -4,7 +4,7 @@ Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the
 
 ## Actual584 exact LocationBar rejection — 2026-10-21
 
-584 supplied package and complete retained-helper/native-seal verification passed; receiptSHA3c5e4f6b990da6ee8c4f8bb450431585453e32a8e69ba7eab6e1c65c5cf9ce95. Actual normal LaunchServices launch followed by one footer Person1 switch precisely rejects `readiness.location.14`, `bindings.source-view-toolbar-location-private-services.10`, `transaction.prepare-bindings`. Stage14 is the categorical AIM-presenter presence guard, confirming the585 cold-owner repair targets the observed blocker.585 changed native objects compiled and its full framework link is running. No profile-switch success is claimed.
+584 supplied package and complete retained-helper/native-seal verification passed; receiptSHA3c5e4f6b990da6ee8c4f8bb450431585453e32a8e69ba7eab6e1c65c5cf9ce95. Actual normal LaunchServices launch followed by one footer Person1 switch precisely rejects `readiness.location.14`, `bindings.source-view-toolbar-location-private-services.10`, `transaction.prepare-bindings`. Stage14 is the categorical AIM-presenter presence guard, confirming the585 cold-owner repair targets the observed blocker.585 full native build/generated-key probe passed (93 actual steps,9m52.63s); supplied packaging is running. No profile-switch success is claimed.
 
 ##584 diagnostics and585 cold AIM integration review — 2026-10-21
 

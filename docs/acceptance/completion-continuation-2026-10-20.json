@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 583,
+  "nativeCandidate": 584,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,15 +24,15 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 583,
+    "packagedCandidate": 584,
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": "toolbar/location/private-services lifecycle batch pending",
+    "nextSourceComposition": 585,
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
-    "nextFullBuild": "582 diagnostic build linking;581 full build and generated-key probe passed"
+    "nextFullBuild": "585 full native build/generated-key probe passed; supplied package running"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -193,5 +193,13 @@
     "profileSwitchAccepted": false,
     "profileSwitchRejection": "bindings.source-view-toolbar-location-private-services",
     "sourceCssOrMaterialChanged": false
+  },
+  "actual584": {
+    "normalLaunchServicesDaemonReady": true,
+    "receiptSha256": "3c5e4f6b990da6ee8c4f8bb450431585453e32a8e69ba7eab6e1c65c5cf9ce95",
+    "profileSwitchAccepted": false,
+    "profileSwitchRejection": "readiness.location.14",
+    "meaning": "categorical AIM presenter presence guard",
+    "normalNativeMenuQuit": true
   }
 }
