@@ -148,14 +148,14 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       : native.appFiles;
     await verifyPackageInventory(app, retainedNativeFiles);
     // Node's SEA createRequire(process.execPath) first inspects its package
-    // scope, even for an absolute .cjs target. Stop at this app rather than
+    // scope, even for an absolute .cjs target. Stop inside this app’s Resources rather than
     // opening a package report/ancestor outside the LaunchServices bundle.
     // Omit name/type/imports/exports to preserve the existing untyped scope.
-    const packageBoundaryPath = join(app, 'package.json');
+    const packageBoundaryPath = join(app, 'Contents/Resources/package.json');
     const packageBoundaryBytes = Buffer.from('{\n  "private": true\n}\n');
     await absent(packageBoundaryPath);
     await writeFile(packageBoundaryPath, packageBoundaryBytes, { flag: 'wx', mode: 0o644 });
-    const outerPackageBoundary = { path: 'package.json', sha256: hash(packageBoundaryBytes), mode: 0o644 };
+    const outerPackageBoundary = { path: 'Contents/Resources/package.json', sha256: hash(packageBoundaryBytes), mode: 0o644 };
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });

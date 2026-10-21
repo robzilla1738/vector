@@ -137,9 +137,9 @@ export function planDevelopmentResourceReuse({ cachePath, cacheSha256, packageRo
   const report = pinnedJson(path.join(packageRoot, 'package.json'), packageReportSha256);
   if (report.implementation !== 'supplied' || report.signed !== false || report.developmentDpLayout !== true || report.boundaryReceiptSha256 !== cache.boundaryReceiptSha256) throw Error('Matching current native-boundary development package required');
   const before = developmentSnapshot(packageRoot);
-  const marker = before.find(leaf => leaf.path === 'Aux.app/package.json');
+  const marker = before.find(leaf => leaf.path === 'Aux.app/Contents/Resources/package.json');
   if (report.outerPackageBoundary || marker) {
-    const expected = { path: 'package.json', sha256: hash('{\n  "private": true\n}\n'), mode: 0o644 };
+    const expected = { path: 'Contents/Resources/package.json', sha256: hash('{\n  "private": true\n}\n'), mode: 0o644 };
     if (stable(report.outerPackageBoundary) !== stable(expected) || !marker || marker.link ||
         marker.sha256 !== expected.sha256 || marker.mode !== expected.mode)
       throw Error('Exact untyped outer Node package boundary required');
