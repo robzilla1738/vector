@@ -2,6 +2,12 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Actual582 interaction-owner diagnostic — 2026-10-21
+
+Full native build/generated-key probe, supplied packaging, eight retained helper signatures, nine native seals and complete final inventory passed. ReceiptSHA6870d09e7d61faddb07036d248c750e111f39fdabf04c3156245349a574d1a9e; no new Apple signing/Keychain operation. Normal LaunchServices startup again reached actual daemon state3. One real footer switch to Person1 now precisely rejects `bindings.source-interaction-tab-strip-service` then `transaction.prepare-bindings`. The native tab-strip service client/subscription lifecycle is the identified next repair; no cross-profile active-work guard is waived.582 remains diagnostic, not accepted profile switching.
+
+The actual Mini Popup switch toggles on/off and its original off preference is restored. Explicitly raising the browser before the automated global shortcut still produces no observed popup; global keyboard delivery remains inconclusive rather than a fabricated source failure. During581c shutdown the automated CmdQ did not stop the app; exact owned browser/daemon PIDs were terminated only after identity checks, with no Aside/REA process touched. A true normal-quit acceptance is not inferred from that stop.
+
 ## Actual581c desktop launch and catalog acceptance — 2026-10-21
 
 The first marker proposal at the bundle root (581b) was rejected by ad hoc sealing as unsealed root contents and was never launched. The exact untyped marker now lives in outer `Contents/Resources/package.json`, outside all eight retained signed helper bundles.581c final resource/helper/native verification and startup acceptance passed. Actual LaunchServices start with logging opened the supplied profile picker; selecting the existing disposable Your Aux profile reached the real browser. The owned daemon reached state3 and authenticated browser CDP. This resolves the observed GUI-startup stall; the exact underlying protected-folder cause remains unproven.

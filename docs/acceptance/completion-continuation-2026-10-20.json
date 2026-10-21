@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": "581c",
+  "nativeCandidate": 582,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,11 +24,11 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": "581c",
+    "packagedCandidate": 582,
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 582,
+    "nextSourceComposition": "tab-strip client lifecycle pending",
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
@@ -62,7 +62,7 @@
   },
   "remainingObserved": [
     "581c normal desktop startup succeeds with the outer Resources package boundary; exact protected-folder cause remains unproven.",
-    "581c profile switching rejects bindings.source-interaction-owners;582 precise diagnostic build is linking.",
+    "582 actual normal profile switch rejects bindings.source-interaction-tab-strip-service; genuine client/subscription lifecycle repair pending.",
     "Settings consumer catalog is corrected; separate daemon catalog proposal remains unapplied because its executable bytes differ from retained signed helper.",
     "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
     "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
@@ -167,5 +167,13 @@
       "automatedGlobalDeliveryAccepted": false,
       "originalOffPreferenceRestored": true
     }
+  },
+  "actual582": {
+    "normalLaunchServicesDaemonReady": true,
+    "retainedSignedHelpers": 8,
+    "appleSigningPerformed": false,
+    "receiptSha256": "6870d09e7d61faddb07036d248c750e111f39fdabf04c3156245349a574d1a9e",
+    "profileSwitchAccepted": false,
+    "profileSwitchRejection": "bindings.source-interaction-tab-strip-service"
   }
 }
