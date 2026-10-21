@@ -1,0 +1,52 @@
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h
+@@ -389,6 +389,7 @@
+ 
+   bool is_updating_ = false;
+   bool is_initializing_ = false;
++  bool update_deferred_during_initialization_ = false;
+   bool was_update_requested_ = false;
+ 
+   base::ScopedObservation<signin::IdentityManager,
+--- a/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
++++ b/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
+@@ -2333,6 +2333,13 @@
+     }
+   }
+   ComputeButtonActiveState();
++  if (!alive) {
++    return;
++  }
++  if (update_deferred_during_initialization_) {
++    update_deferred_during_initialization_ = false;
++    UpdateAvatarButton();
++  }
+ }
+ 
+ StateProvider* AvatarToolbarButtonStateManager::GetActiveStateProvider() const {
+@@ -2930,6 +2937,12 @@
+ }
+ 
+ void AvatarToolbarButtonStateManager::UpdateButtonIcon() {
++  // Service observation can synchronously request a paint while the provider
++  // map is still being constructed. Replay it after active-state selection.
++  if (is_initializing_) {
++    update_deferred_during_initialization_ = true;
++    return;
++  }
+   avatar_control_->UpdateIcon();
+ }
+ 
+@@ -2939,6 +2952,12 @@
+ }
+ 
+ void AvatarToolbarButtonStateManager::UpdateButtonText() {
++  // Service observation can synchronously request a paint while the provider
++  // map is still being constructed. Replay it after active-state selection.
++  if (is_initializing_) {
++    update_deferred_during_initialization_ = true;
++    return;
++  }
+   avatar_control_->UpdateText();
+ }
+ 

@@ -1,0 +1,9 @@
+# Replay avatar updates after active-provider initialization
+
+Actual profile-switch crash: GetActiveStateProvider CHECK <- AvatarToolbarButton::UpdateIcon <- OnRefreshTokensLoaded <- CreateStatesAndListeners <- InitializeStates <- RebindForAuxProfileSwitch <- profile bindings Commit.
+
+The provider map is deliberately rebuilt for the real target profile. InitializeStates already guards normal state updates while construction runs, then computes the active provider. However CreateStatesAndListeners synchronously calls OnRefreshTokensLoaded when target tokens are loaded, and that callback uses UpdateButtonIcon directly, bypassing UpdateAvatarButton's initialization guard. At that moment current_active_state_pair_ is null and even the normal provider has not yet been inserted.
+
+Record icon/text refresh requests during initialization. After all original state constructors and Init hooks complete, ComputeButtonActiveState establishes the actual highest-priority provider; only then replay the pending refresh through UpdateAvatarButton. A weak lifetime check covers destruction during state-selection callbacks. Clear the pending marker before replay so any subsequent callback follows normal update coalescing. The original fatal CHECK, factory/observation order, target-profile identity, state priority and real paint callbacks remain intact. Requests are deferred, not discarded or replaced with a fabricated normal provider. Outside initialization the original icon/text paths are unchanged.
+
+Two exact v594 preimages/output hashes, counted replacements, isolated git-apply replay and byte comparisons passed. No shared native changes, build, runtime/profile reads or signing. Integrator owns focused avatar_toolbar_button_state_manager compilation and actual forward/back profile-switch verification after the independent cache-preparation fix. Root's bounded stack is the runtime evidence; no owner data is captured here.

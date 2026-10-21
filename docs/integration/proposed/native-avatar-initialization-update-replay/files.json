@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v594",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.h",
+      "baselineSha256": "5c72c50378f81e04e49a0869f58ec0fd127ee68a27296b72cd3d28c1f162ff5e",
+      "outputSha256": "1d7385493b9871c435a0ee24dccd5eefa3e5970d1ebae0e20d2a022138d64df8"
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc",
+      "baselineSha256": "40b0d1844648b3e1c251e0a91a7f55eaa1df2529661f39b28287f2b5b18cf7e8",
+      "outputSha256": "f97358b64a2173b6d9711478636ad1766d0c47a98139a7333bae53fa70bfd322"
+    }
+  ]
+}
