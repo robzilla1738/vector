@@ -4,7 +4,7 @@ Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the
 
 ## Combined UI pass — build in progress, 2026-10-20
 
-The sidebar, toolbar, native material, hover retention, chat entry points and Settings corrections are integrated through native545. The first combined compile exposed three Chromium155 API incompatibilities; the exact repair is integrated and the corrected build is running. The currently open app is still the preserved v533 baseline. The new pass is not yet built, packaged or accepted against the actual Aside app.
+The sidebar, toolbar, native material, hover retention, chat entry points and Settings corrections are integrated through native547. Focused compilation of the changed address bar, frame paint, sidebar menu, shortcut and internal routing components passed after correcting Chromium155 API incompatibilities. The full incremental build has reached framework linking. The currently open app remains the preserved v533 baseline; the new package and real-app acceptance are pending.
 
 Actual baseline observation established the filled external omnibox, page separator and panel inset/tint discrepancies. The integrated changes address these, restore the genuine Agent toolbar action and Command-E panel toggle, retain the complete editable URL behind a separate resting origin/title presentation, and keep pinned context menus inside the sidebar expansion lifecycle. Settings retains the supplied UI and now uses Aux internal links and an accurate bookmarks-only import description. Six focused source/boundary checks passed; final native build and real UI checks remain pending.
 
