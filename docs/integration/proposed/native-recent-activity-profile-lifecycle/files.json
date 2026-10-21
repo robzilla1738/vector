@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v579",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h",
+      "baselineSha256": "939c6da5f3ff3cf6e6287fcb0f70df6e3befd320d60f5e8b152eaa1050b41636",
+      "outputSha256": "02862e405843f8a9f6f73d9c59a8cd87d55813e3938445d83bb5698660685719"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.cc",
+      "baselineSha256": "2ca25ee20245a31ff942e209a4b33e51eb426a107e0c800e3260a7ce7d41b8bb",
+      "outputSha256": "609a08bbd30975c2bb3ad71f300e5a13cf047f3a429cccf0289bdbd08d3e6f83"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "6dc37c4210baec66fae374583a58f8381d9c9830ab509794f5cf5555ca0bb991",
+      "outputSha256": "621c0c9d158fc835e3a17b4e2410f1c51deee7442bf43952eabbeb87ce9a1bb6"
+    }
+  ]
+}

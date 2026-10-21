@@ -1,0 +1,130 @@
+--- a/chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h
++++ b/chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h
+@@ -230,10 +230,15 @@
+   RecentActivityBubbleDialogView* GetBubble() const;
+   bool IsShowing();
+ 
++  bool CanPauseForAuxProfileSwitch() const;
++  void PauseForAuxProfileSwitch();
++  void ResumeForAuxProfileSwitch();
++
+  private:
+   // Show a bubble containing the given activity log.
+   void ShowCommon(std::unique_ptr<RecentActivityBubbleDialogView> bubble);
+ 
++  bool aux_profile_switch_paused_ = false;
+   views::ViewTracker tracker_;
+   base::ScopedObservation<views::Widget, views::WidgetObserver>
+       bubble_widget_observation_{this};
+--- a/chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.cc
++++ b/chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <optional>
+ 
++#include "base/check.h"
+ #include "base/i18n/message_formatter.h"
+ #include "base/i18n/rtl.h"
+ #include "base/strings/string_util.h"
+@@ -919,6 +920,27 @@
+     : scoped_unowned_user_data_(browser->GetUnownedUserDataHost(), *this) {}
+ RecentActivityBubbleCoordinator::~RecentActivityBubbleCoordinator() = default;
+ 
++bool RecentActivityBubbleCoordinator::CanPauseForAuxProfileSwitch() const {
++  // Hide clears the tracker before asynchronous widget destruction finishes.
++  // The observation must also be gone before profile-bound rows can migrate.
++  return !aux_profile_switch_paused_ && !tracker_.view() &&
++         !bubble_widget_observation_.IsObserving();
++}
++
++void RecentActivityBubbleCoordinator::PauseForAuxProfileSwitch() {
++  CHECK(CanPauseForAuxProfileSwitch());
++  aux_profile_switch_paused_ = true;
++}
++
++void RecentActivityBubbleCoordinator::ResumeForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!tracker_.view());
++  CHECK(!bubble_widget_observation_.IsObserving());
++  // No Profile or service is cached by the dormant coordinator. Future Show
++  // calls construct their original bubble with the caller's current profile.
++  aux_profile_switch_paused_ = false;
++}
++
+ // static
+ RecentActivityBubbleCoordinator* RecentActivityBubbleCoordinator::From(
+     BrowserWindowInterface* browser) {
+@@ -936,6 +958,7 @@
+     content::WebContents* web_contents,
+     std::vector<ActivityLogItem> activity_log,
+     Profile* profile) {
++  if (aux_profile_switch_paused_) return;
+   auto bubble = std::make_unique<RecentActivityBubbleDialogView>(
+       anchor, web_contents, std::vector<ActivityLogItem>(), activity_log,
+       profile);
+@@ -950,6 +973,7 @@
+     std::vector<ActivityLogItem> tab_activity_log,
+     std::vector<ActivityLogItem> group_activity_log,
+     Profile* profile) {
++  if (aux_profile_switch_paused_) return;
+   auto bubble = std::make_unique<RecentActivityBubbleDialogView>(
+       anchor, web_contents, tab_activity_log, group_activity_log, profile);
+   bubble->SetArrow(views::BubbleBorder::Arrow::TOP_RIGHT);
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -8,6 +8,7 @@
+ #include <utility>
+ #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h"
+ #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h"
++#include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+@@ -188,8 +189,9 @@
+     LOG(ERROR) << "Aux profile transition rejected: ios-promo-owner-active";
+     return true;
+   }
+-  if (features.recent_activity_bubble_coordinator_) {
+-    LOG(ERROR) << "Aux profile transition rejected: unported.recent_activity_bubble_coordinator";
++  if (features.recent_activity_bubble_coordinator_ &&
++      !features.recent_activity_bubble_coordinator_->CanPauseForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: recent-activity-owner-active";
+     return true;
+   }
+   if (features.shared_tab_group_feedback_controller_) {
+@@ -361,6 +363,11 @@
+       LOG(ERROR) << "Aux profile transition rejected: ios-promo-cache-owner-active";
+       return false;
+     }
++    if (features.recent_activity_bubble_coordinator_ &&
++        !features.recent_activity_bubble_coordinator_->CanPauseForAuxProfileSwitch()) {
++      LOG(ERROR) << "Aux profile transition rejected: recent-activity-cache-owner-active";
++      return false;
++    }
+     if (bool(features.glic_iph_controller_) != bool(features.glic_split_button_controller_) ||
+         bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_) ||
+         (features.glic_split_button_controller_ &&
+@@ -452,6 +459,11 @@
+       promo->PauseForAuxProfileSwitch();
+       if (!alive()) return;
+     }
++    auto& activity = window->GetFeatures().recent_activity_bubble_coordinator_;
++    if (activity) {
++      activity->PauseForAuxProfileSwitch();
++      if (!alive()) return;
++    }
+   }
+   const std::array<BrowserWindowInterface*, 3> windows{
+       &browser, &previous_cache, &target_cache};
+@@ -1357,6 +1369,11 @@
+       promo->ResumeForAuxProfileSwitch();
+       if (!provider || !visible || !previous || !target) return false;
+     }
++    auto& activity = window->GetFeatures().recent_activity_bubble_coordinator_;
++    if (activity) {
++      activity->ResumeForAuxProfileSwitch();
++      if (!provider || !visible || !previous || !target) return false;
++    }
+   }
+   return true;
+ }

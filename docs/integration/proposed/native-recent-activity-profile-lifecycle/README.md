@@ -1,0 +1,9 @@
+# Dormant Recent Activity coordinator profile lifecycle
+
+Observed v579 native rejection: unported.recent_activity_bubble_coordinator. Exact source owns only a ViewTracker, a ScopedObservation of the bubble widget and window unowned userdata. The coordinator has no retained Profile, activity-log data, keyed service or asynchronous request. Those belong to RecentActivityBubbleDialogView and its rows/images: Profile pointers, activity vectors, menu runner, favicon task tracker and avatar weak callbacks. They must not cross profile identity.
+
+Keep the same dormant coordinator and userdata. Readiness requires no tracked bubble AND no observed widget. This distinction matters: Hide clears the tracker immediately after Widget::Close, but widget destruction/row callbacks can still be pending. Reject both visible and closing bubbles. Pause suppresses both Show entry points before they construct any profile-bound views. Resume asserts no bubble/observation and restores the original caller-supplied profile construction path.
+
+Transaction checks source and both cache owners before mutation, pauses all three before tab transfer, and resumes them through the existing shared Finish/Abort lifecycle after committed or restored identities. No activity data or owner profile is read/cleared, no active bubble is forcibly closed, and no feature gate is disabled. The following shared-tab-group-feedback guard remains intact and may be the next actual rejection.
+
+Validation: three file preimages from actual v579; all replacements count checked; isolated git apply and exact output comparison passed. Integrator owns focused compile of recent_activity_bubble_dialog_view.cc and browser_window_features_aux_profile_switch.cc, then one genuine forward/back switch observation. No shared native edits/build/runtime in this lane.
