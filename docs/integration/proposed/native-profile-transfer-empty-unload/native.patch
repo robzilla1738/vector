@@ -1,0 +1,22 @@
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -637,6 +637,19 @@
+ }
+ 
+ void UnloadController::TabStripEmpty() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Detaching the last tab during an in-place profile transfer is not a
++  // browser close. Match OnWindowClosing() and the Browser's empty-strip
++  // suppression for the visible window and both genuine cache windows.
++  // In particular, do not poison their future close/switch admission state.
++  if (BrowserInitState::From(browser_)) {
++    auto* browser = static_cast<Browser*>(browser_.get());
++    if (browser->aux_profile_switch_in_progress_ ||
++        browser->aux_profile_switch_suppress_empty_) {
++      return;
++    }
++  }
++#endif
+   // Set is_attempting_to_close_browser_ here, so that extensions, etc, do not
+   // attempt to add tabs to the browser before it closes.
+   is_attempting_to_close_browser_ = true;

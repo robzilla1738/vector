@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v597",
+  "files": [
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "baselineSha256": "2ba360323fc795b800c963b900e0cde9b44a3fd4142fe39f0656fea741d39512",
+      "outputSha256": "11053d90af68f181fe68059c6bf8589e420681eac14cdc62a06a98a0b5ce9f0c"
+    }
+  ]
+}
