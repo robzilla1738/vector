@@ -1,0 +1,57 @@
+{
+  "sourceKind": "Attributed decompiler output; names/translation units inferred, not original source",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/summary.txt",
+      "sha256": "dc11fc7dbf6d81ca2d2862c20cf2f24d878060873d5517859726eb113bf33fa8"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/reconstruction-index.tsv",
+      "sha256": "cbb308f987a69031e71460f25916a93cc3878841f542338a101b82edaefa1ba0"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/reconstructed/chrome/browser/ui/views/frame/browser_frame_view.cc",
+      "sha256": "99c38ebec56863d42b67a58e2ad5e93621d0fa07159accef80851811d384b7d1"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/reconstructed/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "6b65223372cfb31d7854665ef811609125cb758d520a33111ce02bb4f80d09cc"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/reconstructed/chrome/browser/ui/views/frame/contents_container_view.cc",
+      "sha256": "ad9e92775ea32d0de8021186fe5364fa79eed7325e301bc8a3a181765bc046f2"
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/reconstructed/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "685757a364e8132694aa5a983c6af3e8b59b1c97919beef3b4d8f38d0d12ba02"
+    }
+  ],
+  "indexCoverage": {
+    "browser_frame_view.cc": 8,
+    "browser_view.cc": 58,
+    "contents_container_view.cc": 106,
+    "vertical_tab_strip_region_view.cc": 672
+  },
+  "missingRadiusOwners": [
+    "browser_frame_view_mac",
+    "browser_view_tabbed_layout_impl",
+    "custom_corners_background",
+    "GetWindowRoundedCorners",
+    "045eb4 retained layout"
+  ],
+  "nonWindowEightFloatConstants": [
+    {
+      "address": "0465c5f0",
+      "attribution": "ScheduleCaptureProfilePageSnapshot"
+    },
+    {
+      "address": "0466afb0",
+      "attribution": "AsideTaskRowButton"
+    },
+    {
+      "address": "0467aeec",
+      "attribution": "AsideTaskBadgeView"
+    }
+  ],
+  "conclusion": "No positively identified window/surface radius constant; observed16-DIP proposal remains explicitly measured, not decoded."
+}

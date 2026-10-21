@@ -7,3 +7,7 @@ The existing Mac frame-surface corner query now returns 16 DIP for the Aux verti
 The actual Agent panel NativeViewHost and compositor child clipping use that shared query instead of the stock8 panel metric. Its explicitly installed empty border identifies this owner before current-entry publication; other panels retain their standard radius. No new wrapper, CSS radius or global child masking (which would clip sidebar shadows) is introduced.
 
 Pinned actual v558 three-file preimages/output hashes; disposable patch replay verified. No shared native mutation/build. Focused runtime acceptance: normal/zoomed window, sidebar hidden/expanded/floating, panel open/closed, and supplied settings/external pages show continuous16-DIP surfaces. Native fullscreen transitions and theme changes remain acceptance checks; no new material opacity claim.
+
+## Owner-supplied recovered-cpp audit
+
+The newly identified recovered-cpp folder is attributed decompiler output, not original source. Its pinned index contains the four requested units (8 frame,58 browser,106 contents,672 vertical-region functions) but no Mac frame-corner query, tabbed layout, CustomCornersBackground, or original045eb4 retained-layout owner. The recovered8.0 float constants found in vertical-region output belong profile-snapshot/task-row/badge functions, not the window surface. No positively identified radius here supersedes the measured16-DIP adaptation. The full input hashes and bounded coverage findings are recorded in recovered-cpp-audit.json; large supplied files are not copied into the proposal.
