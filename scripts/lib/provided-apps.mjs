@@ -9,6 +9,7 @@ import { adaptDaemonBinary } from '../../vendor/provided/daemon-adapter.mjs';
 import { buildDaemonNodeDevelopment } from '../../vendor/provided/daemon-node-development.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
+import { disabledSeed } from '../../vendor/provided/vault-product-exclusion.mjs';
 import { runtimeSourcePinsBytes } from '../../vendor/provided/runtime-pins.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -113,6 +114,9 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         } else if (file.path.endsWith('/Resources/AppIcon.icns')) {
           output = await readFile(join(repository, 'assets/brand/Aux.icns'));
           kinds.push('branding');
+        } else if (component === 'daemon' && file.path === 'Contents/Resources/static/skills/builtin/password-manager/SKILL.md') {
+          output = Buffer.from(disabledSeed);
+          kinds.push('integration');
         } else if (file.path.startsWith('Contents/Resources/static/skills/') && file.path.endsWith('.md')) {
           output = Buffer.from(source.toString('utf8').replaceAll('Aside', 'Aux').replace(CLI_COMMAND, 'aux '));
           if (!source.equals(output)) kinds.push('branding');

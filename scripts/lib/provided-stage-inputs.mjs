@@ -5,6 +5,7 @@ export const providedStageInputs = Object.freeze([
   'scripts/lib/provided-ui.mjs',
   'scripts/lib/provided-apps.mjs',
   'vendor/provided/daemon-adapter.mjs',
+  'vendor/provided/vault-product-exclusion.mjs',
   'vendor/provided/daemon-node-development.mjs',
   'scripts/lib/aux-mark.mjs',
   'scripts/lib/provided-wire.mjs',

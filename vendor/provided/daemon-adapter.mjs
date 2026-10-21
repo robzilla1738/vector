@@ -1,6 +1,7 @@
 /** Pinned supplied daemon adaptation. No substitute RPC handlers or plan bypasses. */
 import { createHash } from 'node:crypto';
 import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from './native-diagnostic-hook.mjs';
+import { excludeVaultProduct, edits as vaultProductEdits } from './vault-product-exclusion.mjs';
 import { brandProductPreservingWires } from './wire-brand.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -74,8 +75,8 @@ export function adaptDaemonCode(original) {
     'AsideDaemonSessionToken': 4, 'AsideSessionToken': 1,
     'Aside Daemon Auth v1': 2, 'Aside Daemon Dev Auth v1': 1, 'Aside.': 78,
   } });
-  code = branded.code;
-  applied.push(...branded.edits);
+  code = excludeVaultProduct(branded.code).code;
+  applied.push(...branded.edits, ...vaultProductEdits.map(({ name, count }) => ({ name, count })));
   return { code, applied, sha256: sha(code) };
 }
 

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { adaptDaemonCode } from './daemon-adapter.mjs';
-import { activeDaemonCodeSha256, proposeSkillCatalogCode } from '../../docs/integration/proposed/skill-catalog-daemon/catalog-patch.mjs';
+const approvedCodeSha256 = 'd5133e910653114e22484906ac524dacf449d6fc69f20837c610207f9ba6f465';
 import { transformProvidedNativeUi } from './native-ui-compat.mjs';
 
 const source = process.env.AUX_PROVIDED_DAEMON_CODE;
@@ -18,11 +18,11 @@ const rows = [
 ];
 const retained = rows.slice(1);
 
-test('pending proposal excludes retired path while active signed-daemon code remains unchanged', { skip: !source }, () => {
+test('production adapter excludes retired builtin catalog and product router', { skip: !source }, () => {
   const active = adaptDaemonCode(readFileSync(source, 'utf8'));
-  assert.equal(active.sha256, activeDaemonCodeSha256);
-  assert.equal(active.code.includes('Cn.path!==`builtin/password-manager`'), false);
-  const { code } = proposeSkillCatalogCode(active.code);
+  assert.equal(active.sha256, approvedCodeSha256);
+  assert.equal(active.code.includes('passwordManager:passwordManagerRouter'), false);
+  const { code } = active;
   const displayStart = code.indexOf('getSkillDisplayName=') + 'getSkillDisplayName='.length;
   const displayEnd = code.indexOf('.join(` `)}', displayStart) + '.join(` `)}'.length;
   const display = runInNewContext(`(${code.slice(displayStart, displayEnd)})`, { UPPERCASE_SKILL_NAME_WORDS: new Set() });
