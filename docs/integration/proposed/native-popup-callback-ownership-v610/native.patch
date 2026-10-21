@@ -1,0 +1,88 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -385,6 +385,7 @@
+       }
+       return nullptr;
+     }
++    ++options_generation_;
+     options_bounds_animation_.reset();
+     options_webview_ = nullptr;
+     if (options_) {
+@@ -488,9 +489,7 @@
+     } else if (widget != widget_.get()) {
+       return;
+     }
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(&PopupManager::FinishDeactivation,
+-                                  weak_factory_.GetWeakPtr()));
++    PostWindowTask(&PopupManager::FinishDeactivation);
+   }
+   void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override {
+     if (widget != options_.get() || visible ||
+@@ -538,6 +537,22 @@
+     kWaitingForMainActivation,
+     kWaitingForOptionsHidden,
+   };
++  // The manager outlives individual popup/options windows. A queued callback
++  // must not close or focus a successor created before it runs.
++  void PostWindowTask(void (PopupManager::*callback)()) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(
++            [](base::WeakPtr<PopupManager> manager, uint64_t generation,
++               uint64_t options_generation, void (PopupManager::*callback)()) {
++              if (manager && manager->generation_ == generation &&
++                  manager->options_generation_ == options_generation) {
++                (manager.get()->*callback)();
++              }
++            },
++            weak_factory_.GetWeakPtr(), generation_, options_generation_,
++            callback));
++  }
+   void FinishDeactivation() {
+     if (picker_pending_ || (widget_ && widget_->IsActive()) ||
+         (options_ && options_->IsActive())) {
+@@ -553,6 +568,7 @@
+     if (!options_) {
+       return;
+     }
++    ++options_generation_;
+     options_bounds_animation_.reset();
+     picker_pending_ = false;
+     options_focus_state_ = OptionsFocusState::kIdle;
+@@ -565,9 +581,7 @@
+     options_delegate_.reset();
+   }
+   void PostCloseOptions() {
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(&PopupManager::CloseOptions,
+-                                  weak_factory_.GetWeakPtr()));
++    PostWindowTask(&PopupManager::CloseOptions);
+   }
+   void ActivateMain() {
+     if (!widget_ || widget_->IsClosed() || !widget_->IsVisible() || !webview_) {
+@@ -597,14 +611,10 @@
+       return;
+     }
+     CloseOptions();
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(&PopupManager::ActivateMainWithoutOptions,
+-                                  weak_factory_.GetWeakPtr()));
++    PostWindowTask(&PopupManager::ActivateMainWithoutOptions);
+   }
+   void PostFinishOptionsFocusTransfer() {
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(&PopupManager::FinishOptionsFocusTransfer,
+-                                  weak_factory_.GetWeakPtr()));
++    PostWindowTask(&PopupManager::FinishOptionsFocusTransfer);
+   }
+   void FinishOptionsFocusTransfer() {
+     if (options_focus_state_ != OptionsFocusState::kWaitingForMainActivation) {
+@@ -694,6 +704,7 @@
+   ui::Accelerator accelerator_;
+   bool registered_ = false, picker_pending_ = false;
+   uint64_t generation_ = 0;
++  uint64_t options_generation_ = 0;
+   gfx::Size size_{440, 92};
+   GURL loaded_entry_url_;
+   std::unique_ptr<views::WidgetDelegate> delegate_, options_delegate_;

@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v610",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "ecb8be4f22341dd8aade4f112d7642f303565245c4178a9c4ae3969ac6ac0cf8",
+      "outputSha256": "e760ae0671436ad8f9c0d3c8cfa878fc025bb82002619cf8d904bfd918375607"
+    }
+  ]
+}
