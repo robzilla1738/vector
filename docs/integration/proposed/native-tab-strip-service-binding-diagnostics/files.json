@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v582",
+  "files": [
+    {
+      "path": "components/browser_apis/tab_strip/tab_strip_service_impl.cc",
+      "baselineSha256": "1d77783049d8abe9656457c635e6b7f0fa661cd0e9922dbde0bc1b361064a658",
+      "outputSha256": "ea3a6249dadc36d7a99a741af04c4ef4cc5f6b01814f0b249437e7be6edeea89"
+    },
+    {
+      "path": "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc",
+      "baselineSha256": "c3d55d7d1439a30d6c7a345ed1cbf3d31a5e74e1261709670547e9d4573d827b",
+      "outputSha256": "b9b05748f3e149776b709433600221f163de1025bec254fa892f52476c63f146"
+    }
+  ]
+}

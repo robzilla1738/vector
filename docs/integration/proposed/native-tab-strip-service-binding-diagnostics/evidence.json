@@ -1,0 +1,34 @@
+[
+  {
+    "path": "components/browser_apis/tab_strip/aggregation/tab_strip_service_aggregator.cc",
+    "sha256": "12f1ab4c789667fe5e55aa36d35b16df52b58c59b03d8e83faa5d8a37327ec2b"
+  },
+  {
+    "path": "components/browser_apis/tab_strip/aggregation/tab_strip_service_aggregator.h",
+    "sha256": "09be11018c5640a28b7be734c0e94c4ad30f88afd7fd3f4449958f65fc122468"
+  },
+  {
+    "path": "chrome/browser/ui/webui/tab_search/tab_search_page_handler.cc",
+    "sha256": "dd784336cb75bb8acb3ecd42678e73684621169b257c038dcb5fa0b447506f72"
+  },
+  {
+    "path": "chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl/browser_tab_strip_service_tracker.cc",
+    "sha256": "d696b01686c63acde89d4a935397c9e42fb41f3d02fe17adfef438cf1a826ae8"
+  },
+  {
+    "path": "chrome/browser/ui/browser_manager_service.cc",
+    "sha256": "ef9371b5f718dad5c5f344ee8c436e424fc9993237793ccf4b02faad6323d6b6"
+  },
+  {
+    "path": "chrome/browser/ui/views/tab_search_bubble_host.cc",
+    "sha256": "666f58d418ba594055b6e44afbc21e2904fd6ff2500a143f87f9cd92d732c592"
+  },
+  {
+    "path": "chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc",
+    "sha256": "d47968f90e28b8e882b105684c716aa20fc29b4eacef641ebd09f2f60bfde0db"
+  },
+  {
+    "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+    "sha256": "dc758c272827705a7a81062bae8978991ff1c0732c9562024e59bb7ce33e0082"
+  }
+]

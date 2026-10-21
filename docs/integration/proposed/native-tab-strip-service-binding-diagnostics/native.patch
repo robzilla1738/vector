@@ -1,0 +1,96 @@
+--- a/components/browser_apis/tab_strip/tab_strip_service_impl.cc
++++ b/components/browser_apis/tab_strip/tab_strip_service_impl.cc
+@@ -8,6 +8,7 @@
+ #include <optional>
+ #include <utility>
+ 
++#include "base/logging.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/to_string.h"
+ #include "base/types/expected.h"
+@@ -92,18 +93,28 @@
+ }
+ 
+ bool TabStripServiceImpl::HasExternalBindingsOrActiveInvocation() const {
+-  if (!mojo_clients_.empty() || !mojo_experiment_clients_.empty() ||
+-      !mojo_observers_.empty() || session_controller_->IsSessionInProgress()) {
+-    return true;
+-  }
+-  // The service observes its own events for Mojo forwarding. Every other
+-  // observer, including a profile-scoped TabSearch aggregator, is external.
++  // This query is used only by explicit profile-transition admission. Report
++  // counts, never receiver identities or profile/tab data, before rejecting.
++  size_t external_observers = 0;
+   for (const auto& observer : observers_) {
+     if (&observer != this) {
+-      return true;
+-    }
+-  }
+-  return false;
++      ++external_observers;
++    }
++  }
++  const bool active_session = session_controller_->IsSessionInProgress();
++  const bool rejected = !mojo_clients_.empty() ||
++                        !mojo_experiment_clients_.empty() ||
++                        !mojo_observers_.empty() || active_session ||
++                        external_observers != 0;
++  if (rejected) {
++    LOG(ERROR) << "Aux profile transition rejected: tab-strip-service-bindings"
++               << " mojo_clients=" << mojo_clients_.size()
++               << " mojo_experimental=" << mojo_experiment_clients_.size()
++               << " mojo_observers=" << mojo_observers_.size()
++               << " native_external=" << external_observers
++               << " active_session=" << active_session;
++  }
++  return rejected;
+ }
+ 
+ TabStripModelAdapter& TabStripServiceImpl::tab_strip_model_adapter() {
+--- a/chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc
++++ b/chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.cc
+@@ -35,6 +35,7 @@
+ #include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
+ #include "chrome/browser/ui/webui/top_chrome/top_chrome_webui_config.h"
+ #include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_state.h"
++#include "chrome/common/buildflags.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "components/crash/core/common/crash_key.h"
+@@ -347,9 +348,20 @@
+ 
+ std::optional<GURL> WebUIContentsPreloadManager::GetNextWebUIURLToPreload(
+     content::BrowserContext* browser_context) const {
+-  return preload_candidate_selector_->GetURLToPreload(
++  auto candidate = preload_candidate_selector_->GetURLToPreload(
+       webui::PreloadContext::From(
+           Profile::FromBrowserContext(browser_context)));
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux opens the supplied native search surface, never this stock WebUI.
++  // A speculative TabSearch WebUI still installs a profile-scoped tab-service
++  // observer. Do not create that unused owner behind the native surface.
++  // Explicit navigation/Request() remains available and retains its guards.
++  if (candidate &&
++      candidate->GetWithEmptyPath() == GURL(chrome::kChromeUITabSearchURL)) {
++    return std::nullopt;
++  }
++#endif
++  return candidate;
+ }
+ 
+ std::vector<GURL> WebUIContentsPreloadManager::GetAllPreloadableWebUIURLs() {
+@@ -358,6 +370,14 @@
+   std::vector<GURL> preloadable_urls;
+   TopChromeWebUIConfig::ForEachConfig([&preloadable_urls](
+                                           TopChromeWebUIConfig* config) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // Also omit it from smart selectors, allowing other eligible candidates
++    // to win rather than selecting an unused surface and skipping preload.
++    if (config->scheme() == "chrome" &&
++        config->host() == chrome::kChromeUITabSearchHost) {
++      return;
++    }
++#endif
+     if (config->IsPreloadable()) {
+       preloadable_urls.emplace_back(base::StrCat(
+           {config->scheme(), url::kStandardSchemeSeparator, config->host()}));
