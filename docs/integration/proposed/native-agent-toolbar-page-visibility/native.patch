@@ -1,0 +1,77 @@
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -7,6 +7,9 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/common/webui_url_constants.h"
++#include "content/public/common/url_constants.h"
++#include "extensions/common/constants.h"
+ #endif
+ 
+ #include <algorithm>
+@@ -75,6 +78,23 @@
+ 
+ namespace {
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++// Observed supplied presentation: Agent pages already contain their assistant.
++// Only committed state is used; a pending navigation cannot hide the action.
++bool IsCommittedAgentToolbarPage(BrowserWindowInterface* browser) {
++  const auto* tab = browser->GetActiveTabInterface();
++  const auto* contents = tab ? tab->GetContents() : nullptr;
++  if (!contents) {
++    return false;
++  }
++  const GURL& url = contents->GetLastCommittedURL();
++  return (url.SchemeIs(extensions::kExtensionScheme) &&
++          url.host() == aux::kAgentExtensionId) ||
++         (url.SchemeIs(content::kChromeUIScheme) &&
++          url.host() == chrome::kChromeUINewTabHost);
++}
++#endif
++
+ class IphWidgetActivationObserver : public views::WidgetObserver {
+  public:
+   IphWidgetActivationObserver(views::Widget* widget,
+@@ -354,6 +374,10 @@
+   for (const auto& icon : icons_) {
+     icon.second->UpdateState();
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Existing active-tab and committed-navigation observation enters here.
++  UpdateIconVisibility(aux::kAgentExtensionId);
++#endif
+ 
+   if (close_side_panel_button_) {
+     close_side_panel_button_->UpdateIcon();
+@@ -522,7 +546,8 @@
+   }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  if (aux_agent_panel_active_ && extension_id == aux::kAgentExtensionId) {
++  if (extension_id == aux::kAgentExtensionId &&
++      (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {
+     GetAnimatingLayoutManager()->FadeOut(action_view);
+     return;
+   }
+@@ -611,7 +636,8 @@
+ bool ExtensionsToolbarDesktop::IsActionVisibleOnToolbar(
+     const std::string& action_id) const {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {
++  if (action_id == aux::kAgentExtensionId &&
++      (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {
+     return false;
+   }
+ #endif
+@@ -706,7 +732,8 @@
+   icon->SetVisible(ToolbarActionsModel::CanShowActionsInToolbar(*browser_) &&
+                    model_->IsActionPinned(action_id));
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {
++  if (action_id == aux::kAgentExtensionId &&
++      (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {
+     icon->SetVisible(false);
+   }
+ #endif

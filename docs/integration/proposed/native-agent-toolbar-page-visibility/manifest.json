@@ -1,0 +1,38 @@
+{
+  "baseline": "native-supplied-agent-text-pill d8c634bd9 output",
+  "adaptation": "observed-supplied-Agent-page-presentation-on-Chromium155",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc",
+      "baselineSha256": "63e2b84de56e6d07bfc183dc794a9ee42302fc36929939ad1e651e32aa0dfd7a",
+      "outputSha256": "20d339a3f4b82a112256ac4ca173f27dbebe8cf7da3acdea64e8b297267e6fcc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/component_bootstrap.h\"",
+          "replace": "#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/common/webui_url_constants.h\"\n#include \"content/public/common/url_constants.h\"\n#include \"extensions/common/constants.h\"",
+          "count": 1
+        },
+        {
+          "find": "namespace {\n\nclass IphWidgetActivationObserver",
+          "replace": "namespace {\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n// Observed supplied presentation: Agent pages already contain their assistant.\n// Only committed state is used; a pending navigation cannot hide the action.\nbool IsCommittedAgentToolbarPage(BrowserWindowInterface* browser) {\n  const auto* tab = browser->GetActiveTabInterface();\n  const auto* contents = tab ? tab->GetContents() : nullptr;\n  if (!contents) {\n    return false;\n  }\n  const GURL& url = contents->GetLastCommittedURL();\n  return (url.SchemeIs(extensions::kExtensionScheme) &&\n          url.host() == aux::kAgentExtensionId) ||\n         (url.SchemeIs(content::kChromeUIScheme) &&\n          url.host() == chrome::kChromeUINewTabHost);\n}\n#endif\n\nclass IphWidgetActivationObserver",
+          "count": 1
+        },
+        {
+          "find": "  for (const auto& icon : icons_) {\n    icon.second->UpdateState();\n  }\n\n  if (close_side_panel_button_)",
+          "replace": "  for (const auto& icon : icons_) {\n    icon.second->UpdateState();\n  }\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // Existing active-tab and committed-navigation observation enters here.\n  UpdateIconVisibility(aux::kAgentExtensionId);\n#endif\n\n  if (close_side_panel_button_)",
+          "count": 1
+        },
+        {
+          "find": "  if (aux_agent_panel_active_ && extension_id == aux::kAgentExtensionId) {",
+          "replace": "  if (extension_id == aux::kAgentExtensionId &&\n      (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {",
+          "count": 1
+        },
+        {
+          "find": "  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {",
+          "replace": "  if (action_id == aux::kAgentExtensionId &&\n      (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}
