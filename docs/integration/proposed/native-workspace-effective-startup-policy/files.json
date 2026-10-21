@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v605",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "baselineSha256": "c642a87c3b012b1203488d12dd0a1ddaa116c350806fa799673d2540d0a8aeb8",
+      "outputSha256": "d460af6e95affa5d11250f9c62cabe9a987884841fc131a93a07e64bf96115d2"
+    }
+  ]
+}

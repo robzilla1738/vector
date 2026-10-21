@@ -1,0 +1,44 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -5,6 +5,9 @@
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "base/command_line.h"
++#include "base/logging.h"
++#include "chrome/browser/ui/startup/startup_browser_creator.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/prefs/session_startup_pref.h"
+ #include "chrome/browser/sessions/session_restore.h"
+@@ -161,10 +164,21 @@
+       return true;
+     });
+   }
++  // Match ordinary SessionService::RestoreIfNecessary, including genuine
++  // restart/unlock policy. A raw stored preference omits those overrides.
++  const auto startup_pref = StartupBrowserCreator::GetSessionStartupPref(
++      *base::CommandLine::ForCurrentProcess(), target);
++  if (state->aux_workspace_restore_state() == State::kNotStarted) {
++    LOG(ERROR) << "Aux profile workspace admission: existing_workspace="
++               << has_live_workspace << " cache_tabs="
++               << cache->GetTabStripModel()->count() << " already_restored="
++               << target->restored_last_session() << " startup_type="
++               << static_cast<int>(startup_pref.type);
++  }
+   if (state->aux_workspace_restore_state() == State::kReady ||
+       has_live_workspace ||
+       !cache->GetTabStripModel()->empty() || target->restored_last_session() ||
+-      !SessionStartupPref::GetStartupPref(target->GetPrefs()).ShouldRestoreLastSession()) {
++      !startup_pref.ShouldRestoreLastSession()) {
+     state->set_aux_workspace_restore_state(State::kReady);
+     std::move(completion).Run(true);
+     return;
+@@ -175,6 +189,8 @@
+          base::OnceCallback<void(bool)> completion,
+          SessionRestore::AuxWorkspaceResult result) {
+         auto* state = cache ? BrowserInitState::From(cache.get()) : nullptr;
++        LOG(ERROR) << "Aux profile workspace restore result="
++                   << static_cast<int>(result);
+         const bool ready = state &&
+             (result == SessionRestore::AuxWorkspaceResult::kRestored ||
+              result == SessionRestore::AuxWorkspaceResult::kEmpty);
