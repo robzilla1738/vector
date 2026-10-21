@@ -1,0 +1,602 @@
+[
+  {
+    "stage": "bindings.cache-actor.01",
+    "rejectsWhen": "bool(features.actor_ui_window_controller_) !=\n            bool(features_->actor_ui_window_controller_)"
+  },
+  {
+    "stage": "bindings.cache-actor.02",
+    "rejectsWhen": "(features.actor_ui_window_controller_ &&\n         !features.actor_ui_window_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.cache-glic-iph.01",
+    "rejectsWhen": "bool(features.glic_iph_controller_) != bool(features_->glic_iph_controller_)"
+  },
+  {
+    "stage": "bindings.cache-glic-iph.02",
+    "rejectsWhen": "(features.glic_iph_controller_ &&\n         !features.glic_iph_controller_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.cache-glic-pair.01",
+    "rejectsWhen": "bool(features.glic_iph_controller_) != bool(features.glic_split_button_controller_)"
+  },
+  {
+    "stage": "bindings.cache-glic-pair.02",
+    "rejectsWhen": "bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_)"
+  },
+  {
+    "stage": "bindings.cache-glic-pair.03",
+    "rejectsWhen": "(features.glic_split_button_controller_ &&\n         !features.glic_split_button_controller_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.cache-identity-and-unported-owners.01",
+    "rejectsWhen": "!original->target"
+  },
+  {
+    "stage": "bindings.cache-identity-and-unported-owners.02",
+    "rejectsWhen": "target_cache.GetProfile() != original->target.get()"
+  },
+  {
+    "stage": "bindings.cache-identity-and-unported-owners.03",
+    "rejectsWhen": "previous_cache.GetProfile() != browser.GetProfile()"
+  },
+  {
+    "stage": "bindings.cache-identity-and-unported-owners.04",
+    "rejectsWhen": "HasUnportedProfileOwners(target_cache.GetFeatures())"
+  },
+  {
+    "stage": "bindings.cache-shared-tabgroup.01",
+    "rejectsWhen": "bool(features.most_recent_shared_tab_update_store_) !=\n            bool(features.session_service_tab_group_sync_observer_)"
+  },
+  {
+    "stage": "bindings.cache-shared-tabgroup.02.1",
+    "rejectsWhen": "!features.most_recent_shared_tab_update_store_->CanBeginAuxProfileSwitch()",
+    "guard": "features.most_recent_shared_tab_update_store_"
+  },
+  {
+    "stage": "bindings.cache-shared-tabgroup.02.2",
+    "rejectsWhen": "!features.session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch()",
+    "guard": "features.most_recent_shared_tab_update_store_"
+  },
+  {
+    "stage": "bindings.cache-tabgroup-support.01",
+    "rejectsWhen": "bool(target_features.most_recent_shared_tab_update_store_) !=\n          bool(target_features.session_service_tab_group_sync_observer_)"
+  },
+  {
+    "stage": "bindings.cache-tabgroup-support.02",
+    "rejectsWhen": "browser.GetTabStripModel()->SupportsTabGroups() !=\n          target_cache.GetTabStripModel()->SupportsTabGroups()"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.01",
+    "requires": "current"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.02",
+    "requires": "current->view == original->view"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.03",
+    "requires": "current->toolbar == original->toolbar"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.04",
+    "requires": "current->location == original->location"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.05",
+    "requires": "current->vertical == original->vertical"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.06",
+    "requires": "current->avatar == original->avatar"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.07",
+    "requires": "current->media == original->media"
+  },
+  {
+    "stage": "bindings.revalidate-owner-identity.08",
+    "requires": "current->education == original->education"
+  },
+  {
+    "stage": "bindings.source-ai-owners.01",
+    "rejectsWhen": "(features_->actor_ui_window_controller_ &&\n       !features_->actor_ui_window_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-ai-owners.02",
+    "rejectsWhen": "(features_->ai_mode_page_action_controller_ &&\n       !features_->ai_mode_page_action_controller_->CanRetireForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.01",
+    "rejectsWhen": "(plan->vertical && !plan->vertical->CanRebindForAuxProfileSwitch(&target))"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.02",
+    "rejectsWhen": "(plan->avatar && !plan->avatar->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.03",
+    "rejectsWhen": "(plan->media && !plan->media->CanPrepareForAuxProfileSwitch(&target))"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.04",
+    "rejectsWhen": "!plan->education->CanPrepareForAuxProfileSwitch()"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.05",
+    "rejectsWhen": "(toolbar->reload_button() &&\n       !toolbar->reload_button()->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.06",
+    "rejectsWhen": "(features_->profile_menu_coordinator_ &&\n       !features_->profile_menu_coordinator_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.07",
+    "rejectsWhen": "(features_->signin_view_controller_ &&\n       !features_->signin_view_controller_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.08",
+    "rejectsWhen": "(features_->profile_customization_bubble_sync_controller_ &&\n       !features_->profile_customization_bubble_sync_controller_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.09",
+    "rejectsWhen": "(features_->extension_installed_watcher_ &&\n       !features_->extension_installed_watcher_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.10",
+    "rejectsWhen": "(features_->extension_browser_window_helper_ &&\n       !features_->extension_browser_window_helper_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.11",
+    "rejectsWhen": "(features_->browser_select_file_dialog_controller_ &&\n       !features_->browser_select_file_dialog_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.12",
+    "rejectsWhen": "(features_->data_sharing_bubble_controller_ &&\n       !features_->data_sharing_bubble_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.13",
+    "rejectsWhen": "(features_->tab_group_deletion_dialog_controller_ &&\n       !features_->tab_group_deletion_dialog_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.14",
+    "rejectsWhen": "(features_->tab_menu_model_delegate_ &&\n       !static_cast<chrome::BrowserTabMenuModelDelegate*>(\n            features_->tab_menu_model_delegate_.get())->CanRebindForAuxProfileSwitch(&browser))"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.15",
+    "rejectsWhen": "(features_->lens_overlay_entry_point_controller_ &&\n       !features_->lens_overlay_entry_point_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-bound-ui-owners.16",
+    "rejectsWhen": "(features_->download_toolbar_ui_controller_ &&\n       !features_->download_toolbar_ui_controller_->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-glic-pair.01",
+    "rejectsWhen": "bool(features_->glic_iph_controller_) != bool(features_->glic_split_button_controller_)"
+  },
+  {
+    "stage": "bindings.source-glic-pair.02",
+    "rejectsWhen": "(features_->glic_split_button_controller_ &&\n       !features_->glic_split_button_controller_->CanPrepareForAuxProfileSwitch())"
+  },
+  {
+    "stage": "bindings.source-tabgroup-and-data-protection.01",
+    "rejectsWhen": "!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(\n          source_windows)"
+  },
+  {
+    "stage": "bindings.source-tabgroup-and-data-protection.02",
+    "rejectsWhen": "bool(features_->most_recent_shared_tab_update_store_) !=\n          bool(features_->session_service_tab_group_sync_observer_)"
+  },
+  {
+    "stage": "bindings.source-tabgroup-and-data-protection.03.1",
+    "rejectsWhen": "!features_->most_recent_shared_tab_update_store_->CanBeginAuxProfileSwitch()",
+    "guard": "features_->most_recent_shared_tab_update_store_"
+  },
+  {
+    "stage": "bindings.source-tabgroup-and-data-protection.03.2",
+    "rejectsWhen": "!features_->session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch()",
+    "guard": "features_->most_recent_shared_tab_update_store_"
+  },
+  {
+    "stage": "bindings.source-tabgroup-and-data-protection.04",
+    "rejectsWhen": "(features_->data_protection_ui_controller_ &&\n       !features_->data_protection_ui_controller_->CanPrepareForAuxProfileSwitch(&target))"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.01",
+    "rejectsWhen": "!view"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.02",
+    "rejectsWhen": "!toolbar"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.03",
+    "rejectsWhen": "!location"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.04",
+    "rejectsWhen": "!features_->browser_actions_"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.05",
+    "rejectsWhen": "!features_->browser_focus_controller_"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.06",
+    "rejectsWhen": "!features_->user_education_"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.07",
+    "rejectsWhen": "!features_->live_tab_context_"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.08",
+    "rejectsWhen": "!view->CanRebindForAuxProfileSwitch(&target)"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.09",
+    "rejectsWhen": "!features_->browser_actions_->CanRebindForAuxProfileSwitch(&target)"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.10",
+    "rejectsWhen": "!location->CanPrepareForAuxProfileSwitch(&target)"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.11",
+    "rejectsWhen": "!toolbar->CanRebindOwnedActionsForAuxProfileSwitch()"
+  },
+  {
+    "stage": "bindings.source-view-toolbar-location-private-services.12",
+    "rejectsWhen": "!features_->CanPrepareAuxPrivateProfileServices(&target)"
+  },
+  {
+    "stage": "readiness.actions.01",
+    "requires": "!aux_profile_switch_paused_"
+  },
+  {
+    "stage": "readiness.actions.02",
+    "requires": "root_action_item_"
+  },
+  {
+    "stage": "readiness.actions.03",
+    "requires": "&profile_.get() == bwi_->GetProfile()"
+  },
+  {
+    "stage": "readiness.actions.04",
+    "requires": "profile_->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.actions.05",
+    "requires": "target"
+  },
+  {
+    "stage": "readiness.actions.06",
+    "requires": "target->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.actions.07",
+    "requires": "target != &profile_.get()"
+  },
+  {
+    "stage": "readiness.location.01",
+    "requires": "target"
+  },
+  {
+    "stage": "readiness.location.02",
+    "requires": "target->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.location.03",
+    "requires": "browser_"
+  },
+  {
+    "stage": "readiness.location.04",
+    "requires": "browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL"
+  },
+  {
+    "stage": "readiness.location.05",
+    "requires": "profile_ == browser_->GetProfile()"
+  },
+  {
+    "stage": "readiness.location.06",
+    "requires": "is_initialized_"
+  },
+  {
+    "stage": "readiness.location.07",
+    "requires": "!aux_profile_switch_paused_"
+  },
+  {
+    "stage": "readiness.location.08",
+    "requires": "!in_popup_state_transition_"
+  },
+  {
+    "stage": "readiness.location.09",
+    "requires": "!is_popup_mode_"
+  },
+  {
+    "stage": "readiness.location.10",
+    "requires": "omnibox_controller_"
+  },
+  {
+    "stage": "readiness.location.11",
+    "requires": "omnibox_view_"
+  },
+  {
+    "stage": "readiness.location.12",
+    "requires": "selected_keyword_view_"
+  },
+  {
+    "stage": "readiness.location.13",
+    "requires": "pref_registrar_"
+  },
+  {
+    "stage": "readiness.location.14",
+    "requires": "!omnibox_popup_aim_presenter_"
+  },
+  {
+    "stage": "readiness.location.15",
+    "requires": "!omnibox_popup_file_selector_"
+  },
+  {
+    "stage": "readiness.location.16",
+    "requires": "!omnibox::IsWebUIOmniboxPopupEnabled()"
+  },
+  {
+    "stage": "readiness.location.17",
+    "requires": "!omnibox::IsWebUIOmniboxInBrowserViewEnabled()"
+  },
+  {
+    "stage": "readiness.location.18",
+    "requires": "!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)"
+  },
+  {
+    "stage": "readiness.location.19",
+    "requires": "!omnibox_controller_->IsPopupOpen()"
+  },
+  {
+    "stage": "readiness.location.20",
+    "requires": "omnibox_view_->CanPrepareForAuxProfileSwitch()"
+  },
+  {
+    "stage": "readiness.private-services.01",
+    "requires": "target"
+  },
+  {
+    "stage": "readiness.private-services.02",
+    "requires": "target->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.private-services.03",
+    "requires": "browser_"
+  },
+  {
+    "stage": "readiness.private-services.04",
+    "requires": "browser_->GetProfile()->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.private-services.05",
+    "requires": "view"
+  },
+  {
+    "stage": "readiness.private-services.06",
+    "requires": "!aux_private_profile_services_.active"
+  },
+  {
+    "stage": "readiness.private-services.07",
+    "requires": "media_router::CastBrowserController::CanReleaseForAuxProfileSwitch(browser_)"
+  },
+  {
+    "stage": "readiness.private-services.08",
+    "requires": "(!extension_keybinding_registry_ || view->GetFocusManager())"
+  },
+  {
+    "stage": "readiness.private-services.09",
+    "requires": "(!incognito_clear_browsing_data_dialog_coordinator_ ||\n          incognito_clear_browsing_data_dialog_coordinator_\n              ->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "readiness.private-services.10",
+    "requires": "(!default_search_extension_controlled_controller_ ||\n          default_search_extension_controlled_controller_\n              ->CanRebindForAuxProfileSwitch())"
+  },
+  {
+    "stage": "readiness.toolbar-actions.01",
+    "requires": "!aux_owned_actions_prepared_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.02",
+    "requires": "initialized_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.03",
+    "requires": "display_mode_ == DisplayMode::kNormal"
+  },
+  {
+    "stage": "readiness.toolbar-actions.04",
+    "requires": "browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL"
+  },
+  {
+    "stage": "readiness.toolbar-actions.05",
+    "requires": "browser_->GetProfile()->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.toolbar-actions.06",
+    "requires": "!toolbar_webview_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.07",
+    "requires": "!detached_toolbar_webview_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.08",
+    "requires": "!features::IsWebUIToolbarEnabled()"
+  },
+  {
+    "stage": "readiness.toolbar-actions.09",
+    "requires": "!features::IsWebUIExtensionsContainerEnabled()"
+  },
+  {
+    "stage": "readiness.toolbar-actions.10",
+    "requires": "!features::IsWebUIPinnedToolbarActionsEnabled()"
+  },
+  {
+    "stage": "readiness.toolbar-actions.11",
+    "requires": "extensions_container_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.12",
+    "requires": "extensions_container_->parent() == this"
+  },
+  {
+    "stage": "readiness.toolbar-actions.13",
+    "requires": "pinned_toolbar_actions_container_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.14",
+    "requires": "pinned_toolbar_actions_container_->parent() == this"
+  },
+  {
+    "stage": "readiness.toolbar-actions.15",
+    "requires": "pinned_toolbar_actions_.get() == pinned_toolbar_actions_container_.get()"
+  },
+  {
+    "stage": "readiness.toolbar-actions.16",
+    "requires": "overflow_button_"
+  },
+  {
+    "stage": "readiness.toolbar-actions.17",
+    "requires": "(!toolbar_controller_ || !toolbar_controller_->IsMenuRunning())"
+  },
+  {
+    "stage": "readiness.view.01",
+    "requires": "!aux_profile_switch_paused_"
+  },
+  {
+    "stage": "readiness.view.02",
+    "requires": "GetProfile()->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.view.03",
+    "requires": "target"
+  },
+  {
+    "stage": "readiness.view.04",
+    "requires": "target->IsRegularProfile()"
+  },
+  {
+    "stage": "readiness.view.05",
+    "requires": "target != GetProfile()"
+  },
+  {
+    "stage": "readiness.view.06",
+    "requires": "registrar_.prefs() == GetProfile()->GetPrefs()"
+  },
+  {
+    "stage": "transaction.entry-state.01",
+    "rejectsWhen": "!target"
+  },
+  {
+    "stage": "transaction.entry-state.02",
+    "rejectsWhen": "!prepare"
+  },
+  {
+    "stage": "transaction.entry-state.03",
+    "rejectsWhen": "!previous->IsRegularProfile()"
+  },
+  {
+    "stage": "transaction.entry-state.04",
+    "rejectsWhen": "!target->IsRegularProfile()"
+  },
+  {
+    "stage": "transaction.entry-state.05",
+    "rejectsWhen": "!browser.is_initialized_"
+  },
+  {
+    "stage": "transaction.entry-state.06",
+    "rejectsWhen": "browser.GetType() != BrowserWindowInterface::TYPE_NORMAL"
+  },
+  {
+    "stage": "transaction.entry-state.07",
+    "rejectsWhen": "!init"
+  },
+  {
+    "stage": "transaction.entry-state.08",
+    "rejectsWhen": "init->is_aux_profile_switch_cache()"
+  },
+  {
+    "stage": "transaction.entry-state.09",
+    "rejectsWhen": "browser.aux_profile_switch_in_progress_"
+  },
+  {
+    "stage": "transaction.entry-state.10",
+    "rejectsWhen": "!unload"
+  },
+  {
+    "stage": "transaction.entry-state.11",
+    "rejectsWhen": "unload->is_attempting_to_close_browser()"
+  },
+  {
+    "stage": "transaction.entry-state.12",
+    "rejectsWhen": "browser.IsDeleteScheduled()"
+  },
+  {
+    "stage": "transaction.revalidate.01",
+    "rejectsWhen": "browser.GetProfile() != previous"
+  },
+  {
+    "stage": "transaction.revalidate.02",
+    "rejectsWhen": "!bindings->revalidate_.Run(browser, old_cache, next_cache)"
+  },
+  {
+    "stage": "transaction.transfer-source-tabs.01",
+    "rejectsWhen": "!target_tabs"
+  },
+  {
+    "stage": "transaction.transfer-source-tabs.02",
+    "rejectsWhen": "!source_tabs->InsertInto(\n          old_cache, base::PassKey<ProfileSwitchTransaction>())"
+  },
+  {
+    "stage": "transaction.workspace-identity.01",
+    "rejectsWhen": "!old_window"
+  },
+  {
+    "stage": "transaction.workspace-identity.02",
+    "rejectsWhen": "!next_window"
+  },
+  {
+    "stage": "transaction.workspace-identity.03",
+    "rejectsWhen": "old_window == next_window"
+  },
+  {
+    "stage": "transaction.workspace-identity.04",
+    "rejectsWhen": "old_window == &browser"
+  },
+  {
+    "stage": "transaction.workspace-identity.05",
+    "rejectsWhen": "next_window == &browser"
+  },
+  {
+    "stage": "transaction.workspace-identity.06",
+    "rejectsWhen": "old_window->GetProfile() != previous"
+  },
+  {
+    "stage": "transaction.workspace-identity.07",
+    "rejectsWhen": "next_window->GetProfile() != target"
+  },
+  {
+    "stage": "transaction.workspace-identity.08",
+    "rejectsWhen": "!old_window->GetTabStripModel()->empty()"
+  },
+  {
+    "stage": "transaction.workspace-initialization.01",
+    "rejectsWhen": "!old_cache.is_initialized_"
+  },
+  {
+    "stage": "transaction.workspace-initialization.02",
+    "rejectsWhen": "!next_cache.is_initialized_"
+  },
+  {
+    "stage": "transaction.workspace-initialization.03",
+    "rejectsWhen": "old_cache.aux_profile_switch_in_progress_"
+  },
+  {
+    "stage": "transaction.workspace-initialization.04",
+    "rejectsWhen": "next_cache.aux_profile_switch_in_progress_"
+  }
+]

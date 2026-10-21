@@ -1,0 +1,38 @@
+[
+  {
+    "path": "chrome/browser/ui/omnibox/omnibox_next_features.cc",
+    "sha256": "14ec5f53074ed587d42296a7bfeb9113c5215d22fb236523aab5c6ceacc8f541"
+  },
+  {
+    "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc",
+    "sha256": "a7e05829b011c44016ab4c58673eed4d7f0ccf2b3c32f5823e84b9c4b52febdf"
+  },
+  {
+    "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h",
+    "sha256": "21ce723fc90bd1d2dbea27638d3f47c84fe5d17dc8a187e4c94880e32e3140d1"
+  },
+  {
+    "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+    "sha256": "9e6751f9e40e947002f4cd33d60dcd7397a2d2820501e880eae82b6d8d85f6e5"
+  },
+  {
+    "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+    "sha256": "856b49659feef199f9a2664f3449f31958ad816289c95ee01ce8fb9c80b757dd"
+  },
+  {
+    "path": "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc",
+    "sha256": "ed6af648ea69b1f8565fd08f85e3d235e1a305fd26892b67d52f0cf32e1f42b2"
+  },
+  {
+    "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+    "sha256": "f59a558c9f904b82064196d30753dd0563234328a589669b36d692196d07a9b7"
+  },
+  {
+    "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+    "sha256": "f655a5b0925adc22ae2769af16e64bae73c494c0b95d1a3971d540564f943bfc"
+  },
+  {
+    "path": "chrome/browser/ui/views/media_router/cast_browser_controller.cc",
+    "sha256": "03518dc1d3ab4d0dc5291297104cb2d0fbba5f8ce871171d20b8b5be9d10502c"
+  }
+]
