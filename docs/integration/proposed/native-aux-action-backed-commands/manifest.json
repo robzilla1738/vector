@@ -1,0 +1,68 @@
+{
+  "baseline": "actual-native-v576",
+  "files": [
+    {
+      "path": "chrome/browser/ui/actions/chrome_action_id.h",
+      "baselineSha256": "5da18df75875110d3497316422239ad31d2025f539b85ddfed258c7cd0388231",
+      "outputSha256": "6c347d53f51b72eed6534e118660596a5a21f94524534c6fbdec63f4bf6a9a26",
+      "anchors": [
+        {
+          "find": "  E(kActionAuxNewChat, IDC_AUX_NEW_CHAT) \\\n",
+          "replace": "  E(kActionAuxNewChat, IDC_AUX_NEW_CHAT) \\\n  E(kActionAuxOpenNewChat, IDC_AUX_OPEN_NEW_CHAT) \\\n  E(kActionAuxAsk, IDC_AUX_ASK) \\\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "baselineSha256": "ade924789c9a6dbfa23057fc86aa2929e991d6b4f0a73ab00aee5d365afc703a",
+      "outputSha256": "55ad3a31b38cf3e6cad7df3d4fec14d6ce8c80a3731497e389d3c7baba850ffc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/buildflags.h\"",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/ui/views/frame/aux_chat_navigation.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)\n  const struct {",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // CommandActionUpdater routes only mapped, registered ActionItems. Keep the\n  // real owners from the legacy command path instead of calling ExecuteCommand\n  // recursively through the actions updater.\n  root_action_item_->AddChild(\n      actions::ActionItem::Builder(base::BindRepeating(\n          [](BrowserWindowInterface* browser, actions::ActionItem*,\n             actions::ActionInvocationContext) {\n            if (auto* panel = SidePanelUI::From(browser)) {\n              panel->Toggle(SidePanelEntryKey(SidePanelEntryId::kExtension,\n                                               aux::kAgentExtensionId),\n                            SidePanelOpenTrigger::kExtension);\n            }\n          }, bwi))\n          .SetActionId(kActionAuxAsk)\n          .SetText(u\"Ask Aux\")\n          .SetTooltipText(u\"Ask Aux\")\n          .SetEnabled(false)\n          .Build());\n  root_action_item_->AddChild(\n      actions::ActionItem::Builder(base::BindRepeating(\n          [](BrowserWindowInterface* browser, actions::ActionItem*,\n             actions::ActionInvocationContext) {\n            // This actual owner rechecks normal-profile/Agent eligibility and\n            // resolves the account via the authenticated supplied daemon.\n            aux::OpenNewChat(*browser);\n          }, bwi))\n          .SetActionId(kActionAuxOpenNewChat)\n          .SetText(u\"New Task\")\n          .SetTooltipText(u\"New Task\")\n          .SetEnabled(false)\n          .Build());\n#if !BUILDFLAG(ENABLE_AUX_SHELL)\n  root_action_item_->AddChild(\n      actions::ActionItem::Builder(base::BindRepeating(\n          [](BrowserWindowInterface* browser, actions::ActionItem*,\n             actions::ActionInvocationContext) {\n            auto* tab = browser->GetTabStripModel()->GetActiveTab();\n            if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&\n                tab && !tab->IsSplit()) {\n              chrome::NewSplitTab(browser, split_tabs::SplitTabLayout::kStacked,\n                  split_tabs::SplitTabCreatedSource::kKeyboardShortcut);\n            }\n          }, bwi))\n          .SetActionId(kActionAuxSplitStacked)\n          .SetText(l10n_util::GetStringUTF16(IDS_AUX_SPLIT_STACKED_MAC))\n          .SetTooltipText(l10n_util::GetStringUTF16(IDS_AUX_SPLIT_STACKED_MAC))\n          .SetEnabled(false)\n          .Build());\n#endif\n#endif\n\n#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)\n  const struct {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "31de77cce4cd82b8688b1ce4fe7a58e2562a0eff334f7aada88434171af6f189",
+      "outputSha256": "897949d1024a737c85ca6d04a88f3c5a59cdf83eed9f0569f178bb1da1a4eb9a",
+      "anchors": [
+        {
+          "find": "  command_updater_->UpdateCommandEnabled(IDC_AUX_OPEN_NEW_CHAT, true);\n  command_updater_->UpdateCommandEnabled(IDC_AUX_ASK, true);",
+          "replace": "  UpdateCommandAndActionEnabled(IDC_AUX_OPEN_NEW_CHAT, kActionAuxOpenNewChat,\n                                 true);\n  UpdateCommandAndActionEnabled(IDC_AUX_ASK, kActionAuxAsk, true);",
+          "count": 1
+        },
+        {
+          "find": "    case IDC_AUX_ASK:\n      // Original command34068 toggles the actual Agent extension panel in the",
+          "replace": "#if !BUILDFLAG(ENABLE_AUX_SHELL)\n    case IDC_AUX_SPLIT_STACKED: {\n      auto* tab = browser_->tab_strip_model()->GetActiveTab();\n      if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&\n          tab && !tab->IsSplit()) {\n        NewSplitTab(browser_, split_tabs::SplitTabLayout::kStacked,\n                    split_tabs::SplitTabCreatedSource::kKeyboardShortcut);\n      }\n      break;\n    }\n#endif\n    case IDC_AUX_ASK:\n      // Original command34068 toggles the actual Agent extension panel in the",
+          "count": 1
+        },
+        {
+          "find": "  command_updater_->UpdateCommandEnabled(\n      IDC_NEW_SPLIT_TAB,\n      browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL);",
+          "replace": "  command_updater_->UpdateCommandEnabled(\n      IDC_NEW_SPLIT_TAB,\n      browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC) && !BUILDFLAG(ENABLE_AUX_SHELL)\n  // Same real normal-window update/lock guard as native side-by-side split.\n  UpdateCommandAndActionEnabled(\n      IDC_AUX_SPLIT_STACKED, kActionAuxSplitStacked,\n      browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL);\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "e6b22be71b809edc861925e0d9187ee9db8edbac3f11beb2e5799bf5121b01bd",
+      "outputSha256": "a4bdb646fef5107f0fbc6b4aa2289cba1eb8fd273605023c87ae7556edc42282",
+      "anchors": [
+        {
+          "find": "    if (is_mac) {\n      deps += [\n        \":browser_commands_mac\",\n        \"//chrome/browser:global_keyboard_shortcuts_mac\",\n      ]\n    }",
+          "replace": "    if (is_mac) {\n      deps += [\n        \":browser_commands_mac\",\n        \"//chrome/browser:global_keyboard_shortcuts_mac\",\n      ]\n    }\n    if (is_mac && enable_aux_browser) {\n      deps += [ \"//chrome/browser/aux:platform\" ]\n    }",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

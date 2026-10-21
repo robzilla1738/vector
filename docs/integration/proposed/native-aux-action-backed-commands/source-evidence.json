@@ -1,0 +1,29 @@
+{
+  "actualDiagnostic": "route=window browser=1 supports=0 enabled=0 actions=1 (root-owned574 UI observation)",
+  "supportingOwners": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/actions/command_action_updater.cc",
+      "sha256": "329d51eb36ba7f64cbfb7ce597a00ae3b5bbde4b3b9194b0b9a7323539dc8045"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/actions/chrome_actions_unittest.cc",
+      "sha256": "ef1a22151c6169cdc72f82b982dfe70234fb04864d9ec6fa58bf7d3ea7675f1a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "sha256": "2ed50b6c244ab8fc86f6777902e90e9f6b53b0c143d4c203444625b81193808b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_commands.cc",
+      "sha256": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/split_tabs/split_tab_visual_data.h",
+      "sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "sha256": "32364b315323c8776ccf8d2645e2e01a50d53ae4ed3cc19135b19d51396201b6"
+    }
+  ]
+}
