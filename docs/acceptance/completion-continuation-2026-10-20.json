@@ -19,7 +19,9 @@
     "574 CmdS collapses and re-expands actual sidebar; settled capture retained",
     "574 actual local navigate/back/forward and tab close/reopen passed",
     "574 actual38-byte local download completed",
-    "574 genuine toolbar Ask panel/current-page context and confirmation menu work"
+    "574 genuine toolbar Ask panel/current-page context and confirmation menu work",
+    "574 actual bookmark add/remove changes native section and restores ExampleDomain-only state",
+    "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
     "packagedCandidate": 574,
@@ -27,7 +29,7 @@
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
     "nextSourceComposition": 577,
-    "nextFocusedCompile": "running",
+    "nextFocusedCompile": "577 two objects passed",
     "full576BuildPassed": true,
     "startupRecordWritten": false
   },
