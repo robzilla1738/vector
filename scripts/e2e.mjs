@@ -216,7 +216,11 @@ try {
       const output = await test.run(session, attachments);
       // Check actual session records including children, not just a parent answer.
       const records = await rpc.sessions.list.query({ accountId, archived: 'include', ephemeral: 'include', parent: 'all' });
-      for (const record of records) assert.equal(`${record.model.provider}/${record.model.modelId}`, modelSpec, 'Every disposable parent/child session must use Muse.');
+      // Supplied list rows are summaries and omit model configuration.
+      for (const record of records) {
+        const detail = await rpc.sessions.get.query({ accountId, sessionId: record.id });
+        assert.equal(`${detail.model.provider}/${detail.model.modelId}`, modelSpec, 'Every disposable parent/child session must use Muse.');
+      }
       if (index === 16) assert(records.some(record => record.parentId === session.id), 'A real persisted child session is required.');
       if (index === 17) {
         const todos = output.events.filter(event => event.type === 'tool_execution_end' && event.toolName === 'write_todos')

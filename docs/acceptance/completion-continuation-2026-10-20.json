@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 560,
+  "nativeCandidate": 566,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -13,18 +13,10 @@
     "Light and System themes",
     "zoom/fullscreen transitions",
     "fully hidden settled sidebar",
-    "shared16DIP surfaces"
+    "shared16DIP surfaces",
+    "566 Bookmarks setting toggles actual section and restores"
   ],
-  "integrationPending": 566,
-  "actualAi": {
-    "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
-    "casesAttempted": 1,
-    "casesPassed": 0,
-    "failure": "secure browser-control endpoint127.0.0.1:45203 refused connection",
-    "credentialCleanup": "removed and verified through supplied API",
-    "cleanupErrors": [],
-    "report": "out/acceptance/e2e-dc55dfcb-9b3a-4190-ac6b-209e27fa491e/report.json"
-  },
+  "integrationPending": null,
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
     "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
@@ -33,9 +25,52 @@
     "dummyFill": true,
     "fillAfterReload": true,
     "vendorIntegrationAccepted": false,
-    "cleanupPending": true
+    "cleanupPending": false,
+    "cleanup": {
+      "testExtensionsRemovedInRealUI": true,
+      "developerModeRestored": true,
+      "manifestRemoved": true,
+      "fixtureTreeRemoved": true,
+      "ownedServersStopped": true
+    }
   },
   "ownerDataAccessed": false,
   "newAppleSigningPerformed": false,
-  "releasePerformed": false
+  "releasePerformed": false,
+  "unpaidBrowserControl": {
+    "authenticatedNavigationSnapshotClose": true,
+    "unauthenticatedStatus": 401,
+    "accountId": 1,
+    "paidRequest": false
+  },
+  "remainingObserved": [
+    "CmdE and native Ask menu disabled",
+    "profile switch rejects unported contextual_tasks_browser_controller",
+    "native shortcut configuration disabled",
+    "ordinary Finder startup acceptance pending"
+  ],
+  "actualAiPreviousRuns": [
+    {
+      "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+      "casesAttempted": 1,
+      "casesPassed": 0,
+      "failure": "secure browser-control endpoint127.0.0.1:45203 refused connection",
+      "credentialCleanup": "removed and verified through supplied API",
+      "cleanupErrors": [],
+      "report": "out/acceptance/e2e-dc55dfcb-9b3a-4190-ac6b-209e27fa491e/report.json"
+    },
+    {
+      "report": "out/acceptance/e2e-4c44e156-18eb-481d-ac45-7e924b2ad11d/report.json",
+      "browserReadActuallySucceeded": true,
+      "harnessFailure": "Session summary omits model; corrected check uses full sessions.get",
+      "credentialCleanup": "removed and verified through supplied API",
+      "cleanupErrors": []
+    }
+  ],
+  "actualAi": {
+    "report": "out/acceptance/e2e-a259a3fc-2c03-4426-809a-e12db62ad274/report.json",
+    "state": "running",
+    "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "lastObservedCasesPassed": 6
+  }
 }

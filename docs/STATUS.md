@@ -2,6 +2,14 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Live566 continuation — 2026-10-20
+
+Native566 full build, packaging and exact resource/native-seal verification passed. The actual normal disposable app is running with its original preview profile explicitly selected;560 is preserved as a backup. No new Apple signatures or Keychain operations were performed by resource reuse. Secure browser control now passes real authenticated openTab/snapshot/closeTab through the supplied CLI REPL; unauthenticated `/json/version` returns401. Actual Appearance Bookmarks toggles the real native section and was restored. Existing current visual styling is preserved.
+
+The first566 real Muse task successfully opened/read the local fixture and answered correctly; the harness subsequently failed by assuming session-list summaries contain a model. The check now fetches actual full session records. Its credential cleanup passed with zero errors. A fresh actual native account is running the required suite; six browser cases were observed passed so far, not full-suite acceptance. Report: `out/acceptance/e2e-a259a3fc-2c03-4426-809a-e12db62ad274/report.json`.
+
+Concrete remaining failures: native CmdE/View Ask command is disabled, native shortcut customization controls are disabled, and actual profile switching rejects the unported Chromium155 contextual-tasks owner. Separate source lanes are repairing these lifecycle/command integrations without UI redesign or guard bypass. The package audit confirms bundle-relative daemon/helper/runtime ownership; ordinary Finder startup still needs a durable accepted home/profile configuration and reviewed final-path packaging. External password-manager vendor companion trust, new OS-granted capabilities and hosted voice remain unaccepted. Fixture cleanup is complete. Full readiness is false.
+
 ## Completion continuation — current560 observations and566 integration, 2026-10-20
 
 Owner authorized continued work through local readiness, preserving current UI quality. The maintained completion graph is `docs/ROADMAP-EXECUTION-GRAPH.md`. Built/package560 and exact-resource reuse/native sealing passed; the normal disposable app was observed with enabled model choices, genuine page-context chat, focused bookmark control, live Settings title and delayed page-title refresh. Light/System theme restoration, zoom/fullscreen and settled rail-free collapse were exercised; corresponding actual desktop captures are under `out/pass1-ui-completion/`. Shared native16DIP page/panel curvature is rendered; full parity remains open. The supplied recovered-cpp folder is now pinned/audited, corroborating sidebar geometry/retention without being misrepresented as original compilable source.
