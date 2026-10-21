@@ -1,0 +1,27 @@
+{
+  "schema": "aux-private-cache-window-menu-count-evidence/v1",
+  "applicationVersion": "v610",
+  "scope": "approved disposable Aux acceptance profiles only",
+  "logSource": "startup-v610-diagnostics/launch.log",
+  "extraction": "Only fixed Aux profile workspace admission/result and Aux workspace persistence diagnostics; no paths, IDs, titles, URLs, tab contents or credential fields",
+  "workspaceAdmission": [
+    {"existingWorkspace": false, "cacheTabs": 0, "alreadyRestored": false, "startupType": 2},
+    {"existingWorkspace": true, "cacheTabs": 0, "alreadyRestored": true, "startupType": 2}
+  ],
+  "restoreResult": 4,
+  "restoreResultMeaning": "kRestoredSeparately",
+  "persistenceDiagnostics": [
+    {"loaded": true, "service": true, "saving": true, "crashAckPending": false, "windows": 4, "caches": 2, "tabs": 3},
+    {"loaded": true, "service": true, "saving": true, "crashAckPending": false, "windows": 4, "caches": 1, "tabs": 6}
+  ],
+  "nativeTotals": {"windows": 8, "privateCaches": 3, "nonCacheWindows": 5},
+  "integratorObservedWindowMenuEntries": 5,
+  "cleartextSessionFraming": {
+    "Default": [[1, 4], [1, 4], [1, 1, 4]],
+    "AuxAcceptance20261020": [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
+  },
+  "framingMeaning": "Each outer entry is a retained Session file in sorted filename order. Inner values are surviving unique SetTabWindow associations per saved window, sorted; apply TabClosed and WindowClosed removals. No navigation payloads read. Associations are not proof of restorable navigation count.",
+  "encryptedSessionFiles": {"Default": 3, "AuxAcceptance20261020": 3},
+  "encryptedContentsInspected": false,
+  "conclusion": "Five actual non-cache native windows match five Window menu entries. Three additional positive private caches are not needed to explain menu contents. Extra NTP menu entries must not be presumed disposable cache windows or deleted by title. Historical saved snapshots already contain additional windows; no automatic data removal is justified."
+}
