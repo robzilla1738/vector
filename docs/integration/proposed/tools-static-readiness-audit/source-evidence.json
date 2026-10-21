@@ -1,0 +1,42 @@
+{
+  "mode": "static source/artifact reads only; no native execution or OS grant",
+  "baseline": "native v560 plus current static provided-reuse stage",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "sha256": "b3fac97860e5200b9446d521af56588238039ab6fd61f09822195cf90bf03fba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_notification/aux_notification_api.cc",
+      "sha256": "8286dcdfbe5186dddd4c21d67dfd225c3da8c92a8cc561b5b9176eab05d12c5c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/aux_notification_inbox.cc",
+      "sha256": "d27ba0062a880a78d755a9367b94af42ee90e7002018541c7d399fec5d40a05c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/ui/agent/assets/voice-dictation-overlay-CtbBZWfm.js",
+      "sha256": "53b7afc9a8e0381e905603281634e863039d174e54ad884b36ac2b37037d1794"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/ui/agent/assets/lasso-Chg_FuP-.js",
+      "sha256": "0ed6dbe9b101d94935556273775a9141b429c596adecb924a96fc938c2bf9b52"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "14624cffb7cd9d0852255f6557d6714b06ce6593981c2eede2bfcb2a75cdcf93"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+      "sha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c"
+    }
+  ]
+}
