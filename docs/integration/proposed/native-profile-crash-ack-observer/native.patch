@@ -1,0 +1,107 @@
+--- a/chrome/browser/sessions/exit_type_service.h
++++ b/chrome/browser/sessions/exit_type_service.h
+@@ -15,6 +15,7 @@
+ #include "components/keyed_service/core/keyed_service.h"
+ 
+ class Profile;
++class BrowserWindowInterface;
+ 
+ enum class ExitType {
+   // Chrome was shutdown cleanly.
+@@ -100,6 +101,10 @@
+   // acknowledge the crash, `callback` is dropped and is never called.
+   void AddCrashAckCallback(base::OnceClosure callback);
+ 
++  // Reconcile an existing window after an Aux profile transfer. This only
++  // rebinds observation; it never acknowledges a crash by itself.
++  void RebindAuxProfileSwitchObservation(BrowserWindowInterface* browser);
++
+   bool waiting_for_user_to_ack_crash() const {
+     return waiting_for_user_to_ack_crash_;
+   }
+--- a/chrome/browser/sessions/exit_type_service.cc
++++ b/chrome/browser/sessions/exit_type_service.cc
+@@ -9,6 +9,8 @@
+ #include "base/memory/raw_ptr.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/exit_type_service_factory.h"
+ #include "chrome/browser/sessions/session_restore.h"
+@@ -102,12 +104,35 @@
+     browsers_.erase(iter);
+   }
+ 
++  void RebindAuxProfileSwitchObservation(BrowserWindowInterface* browser) {
++    OnBrowserClosed(browser);
++    if (browser->GetProfile() != service_->profile() ||
++        BrowserInitState::From(browser)->omit_from_session_restore() ||
++        !SessionService::IsRelevantWindowType(
++            WindowTypeForBrowserType(browser->GetType()))) {
++      return;
++    }
++    // The explicit switch is outside startup, even if this persistent native
++    // window was originally constructed by StartupCreator. Await a REAL later
++    // tab insertion, not the transaction's already-completed tab transplant.
++    browsers_.insert(browser);
++    browser->GetTabStripModel()->AddObserver(this);
++  }
++
+   // TabStripModelObserver:
+   void OnTabStripModelChanged(
+       TabStripModel* tab_strip_model,
+       const TabStripModelChange& change,
+       const TabStripSelectionChange& selection) override {
+     if (change.type() == TabStripModelChange::kInserted) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++      for (BrowserWindowInterface* browser : browsers_) {
++        if (browser->GetTabStripModel() == tab_strip_model &&
++            static_cast<Browser*>(browser)->IsAuxProfileSwitchInProgress()) {
++          return;
++        }
++      }
++#endif
+       service_->OnTabAddedToNonStartupBrowser();
+     }
+   }
+@@ -254,6 +279,13 @@
+   }
+ }
+ 
++void ExitTypeService::RebindAuxProfileSwitchObservation(
++    BrowserWindowInterface* browser) {
++  if (browser_tab_observer_) {
++    browser_tab_observer_->RebindAuxProfileSwitchObservation(browser);
++  }
++}
++
+ void ExitTypeService::OnTabAddedToNonStartupBrowser() {
+   browser_tab_observer_.reset();
+   CheckUserAckedCrash();
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
++#include "chrome/browser/sessions/exit_type_service.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_command_controller.h"
+@@ -416,6 +417,14 @@
+   CHECK(browser.GetTabStripModel()->empty());
+   CHECK(target_tabs->InsertInto(browser, base::PassKey<ProfileSwitchTransaction>()));
+   scope.committed = true;
++  // Profile collection transfer emits no create/close events. Rebind the
++  // actual crash-recovery observers only after all synthetic insertions.
++  if (auto* exit_type = ExitTypeService::GetInstanceForProfile(previous)) {
++    exit_type->RebindAuxProfileSwitchObservation(&browser);
++  }
++  if (auto* exit_type = ExitTypeService::GetInstanceForProfile(target)) {
++    exit_type->RebindAuxProfileSwitchObservation(&browser);
++  }
+   rebuild_.Schedule(*previous, *target);
+   return Result::kSwitched;
+ }

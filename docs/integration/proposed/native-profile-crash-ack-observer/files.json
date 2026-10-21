@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v605",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/exit_type_service.h",
+      "baselineSha256": "89c35ef95944a1344dea08045bb89dde7a294485434f397f9f5f3cd6457d98f0",
+      "outputSha256": "249f725c61adb40ea9886fd770418f7dbef4df76bcc857c644f4be32b5430468"
+    },
+    {
+      "path": "chrome/browser/sessions/exit_type_service.cc",
+      "baselineSha256": "ba5f4b0c78c51ab1043127bcf67e3477c544abd4473fe0785dbccdc9c7b02c1a",
+      "outputSha256": "e06a3e74abbaa696fac058ab18dafe02c78c54cc7e51564894a58e5d447ccf69"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "3b492a1c00751cacb2fe58569f5662fb39b9ae88bfc9d9740cc25ffafebb1ea4",
+      "outputSha256": "f654f96dea3a4f489595215876cd0ed226ae0d21b355af3e01c40155f1f5f210"
+    }
+  ]
+}
