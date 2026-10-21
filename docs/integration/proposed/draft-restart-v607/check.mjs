@@ -26,7 +26,7 @@ console.log(JSON.stringify({checks:'stable conversation text/attachment restart,
 
 const dir=process.argv[2].slice(0,process.argv[2].lastIndexOf('/'));
 const pins=[];
-for (const name of ['draft-storage-ixLojjZ5.js','browser-binding-CzDmxQNA.js','-components-4o0FSqQ9.js']) {
+for (const name of ['draft-storage-ixLojjZ5.js','browser-binding-CzDmxQNA.js','-components-4o0FSqQ9.js','sidepanel-CI-CbXmY.js']) {
  const input=fs.readFileSync(`${dir}/${name}`,'utf8');
  const output=transformProvidedDraftFlush({component:'agent',path:`assets/${name}`,text:input});
  // Parse the full adapted module without executing renderer/API code.
@@ -45,3 +45,11 @@ assert.equal(migration.F(undefined,'sidepanel-target:old'),null);
 migration.J(undefined,null,page);migration.Ve({targetId:'old',draftPageId:'11111111-1111-4111-8111-111111111111'});
 assert.equal(migration.F(undefined,page),null);
 console.log('Stable page scopes and one-way migration/clear verified.');
+
+const panel=fs.readFileSync(`${dir}/sidepanel-CI-CbXmY.js`,'utf8');
+assert.equal((panel.match(/d=X\(\)/g)||[]).length,1);
+assert.equal((panel.match(/u=N\(d\)/g)||[]).length,1);
+const hook=fs.readFileSync(`${dir}/use-tab-context-Bi3TKsrh.js`,'utf8');
+assert.ok(hook.includes('export{p as n,R as t}'));
+assert.ok(hook.includes('m().then(n=>{u(n)}),b(n=>{u(n)})'));
+console.log('New-draft scope consumes full context hook, including non-attachable New Tab.');

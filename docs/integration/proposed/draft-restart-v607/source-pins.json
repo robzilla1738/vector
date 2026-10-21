@@ -39,5 +39,16 @@
         "findSha256": "60cbf8e7f8d70cad69bbda10fe222f5f3203c0850eaecf047f3972d610e156ff"
       }
     ]
+  },
+  {
+    "path": "assets/sidepanel-CI-CbXmY.js",
+    "sourceSha256": "c396463fc21b348469766222c767d9fd08ed68bcdd0202d6b9598fbecaea3cfe",
+    "outputSha256": "14a8b43239004d51c8df2e2b4755f5f14ee310a905873f9e5f4e5e65ab38cb11",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "b10a2aa26c70c51ccd91f7535ef2511bab262067a34543fff87645105193d90d"
+      }
+    ]
   }
 ]

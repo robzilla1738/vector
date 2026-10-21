@@ -7,6 +7,12 @@ export function transformProvidedDraftFlush({ component, path, text }) {
     return { text: text.replace(find, replacement),
       anchors: [{ kind: 'integration', find, replace: replacement, count: 1 }] };
   };
+  if (path === 'assets/sidepanel-CI-CbXmY.js') {
+    // The original hook returned only a page attachment (null on New Tab).
+    // Draft identity belongs to the active tab context, not attachable content.
+    return replaceOne('import{n as X}from"./use-tab-context-Bi3TKsrh.js";',
+      'import{t as X}from"./use-tab-context-Bi3TKsrh.js";');
+  }
   if (path === 'assets/browser-binding-CzDmxQNA.js') {
     const first = replaceOne('if(!I(r))return l=null,',
       'const auxDraftContext=await chrome.auxAccount?.getProfileContext?.(e.id).catch(()=>null),auxDraftPageId=auxDraftContext?.draftPageId;if(!I(r))return l=null,');
