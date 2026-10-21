@@ -28,10 +28,11 @@
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 577,
-    "nextFocusedCompile": "577 two objects passed",
+    "nextSourceComposition": 579,
+    "nextFocusedCompile": "577 two objects and579 five objects passed",
     "full576BuildPassed": true,
-    "startupRecordWritten": false
+    "startupRecordWritten": false,
+    "nextFullBuild": "579 running"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
