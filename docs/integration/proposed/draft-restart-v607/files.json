@@ -1,0 +1,36 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+    "beforeSha256": "3e149d60dd46ea5d1ffbb68c9d819eeb05d450f786693bcb249e6a31278e113b",
+    "afterSha256": "538700bb135e25b84a9b547f08427063c6a24646bb326d5b794eae7f7b17d3b4",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "4dc0ba493a4e8e0d9ff6a30279e9b3ea01d13a65a99ceddeea05fd04d720564f",
+        "replaceSha256": "312332020b783adab3fc66840c89c53470864173c3c7327136044e0083aa6882"
+      },
+      {
+        "count": 1,
+        "findSha256": "e7edd512186d6f4f3a175259c944bdf73deaf0d63bfa852b71adc0fdfe8a9073",
+        "replaceSha256": "05e0c19d6b73a48506e4dda55ca90670eb29be317b3e485e8ab8c17f35aab461"
+      },
+      {
+        "count": 1,
+        "findSha256": "08591b6686616df49d0d766bd09638208f7e1dc1f38b96834f9e671777e339a7",
+        "replaceSha256": "073a2786090200e3186981712e4fb554abfae2a6cc4eaa65e9bcca8f4e288010"
+      }
+    ]
+  },
+  {
+    "path": "chrome/common/extensions/api/aux_account.json",
+    "beforeSha256": "8b21b49ab312103b84fda32aa1626f08c24c450d05ee520a1aba374360aa2870",
+    "afterSha256": "51f05b9855cfee623d4d48ba5a1f464a504b1529bd15347c6fadaba5b55e51a9",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "6f3139180d748ee58f6853ad3ccca5c1d9c5a96ebaf56b2b5a16d127b9d6bf68",
+        "replaceSha256": "e708a6d1c607fddc5abf6c160104dee50695fb51705fc123c8684165ec6c4c64"
+      }
+    ]
+  }
+]

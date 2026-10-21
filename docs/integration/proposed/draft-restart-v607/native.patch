@@ -1,0 +1,53 @@
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -7,6 +7,8 @@
+ #include "base/environment.h"
+ #include "base/memory/ref_counted.h"
+ #include "chrome/browser/aux/browser_platform.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
++#include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/aux/profile_security_client.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
+ #include "base/files/file_util.h"
+@@ -187,13 +189,25 @@
+     return RespondNow(WithArguments(std::move(profiles)));
+   }
+   if (method == "auxAccount.getProfileContext") {
+-    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
++    if (args().size() > 1 || (!args().empty() && !args()[0].is_int()))
++      return RespondNow(Error("Optional draft tab ID must be an integer"));
+     auto* current = profile()->GetOriginalProfile();
+     const auto id = aux::GetProfileId(current);
+     if (id.empty()) return RespondNow(Error("Aux account profile context unavailable"));
+     base::DictValue context;
+     context.Set("profileId", id);
+     context.Set("profilePath", current->GetPath().value());
++    // Additive private draft identity; never replace the live DevTools target.
++    // OTR documents retain only their original session-scoped draft storage.
++    if (!args().empty() && profile()->IsRegularProfile() &&
++        !profile()->IsOffTheRecord() && args()[0].GetInt() > 0) {
++      content::WebContents* tab = nullptr;
++      if (ExtensionTabUtil::GetTabById(args()[0].GetInt(), profile(),
++                                      false, &tab) &&
++          tab && tab->GetBrowserContext() == profile()) {
++        context.Set("draftPageId", aux::PageIdentity::GetOrCreate(profile(), tab));
++      }
++    }
+     if (const auto index = aux::GetProfileIndex(current))
+       context.Set("profileIndex", *index);
+     auto* prefs = current->GetPrefs();
+--- a/chrome/common/extensions/api/aux_account.json
++++ b/chrome/common/extensions/api/aux_account.json
+@@ -6,7 +6,11 @@
+       {
+         "name": "getProfileContext",
+         "type": "function",
+-        "parameters": [],
++        "parameters": [{
++          "name": "draftTabId",
++          "type": "integer",
++          "optional": true
++        }],
+         "returns_async": {
+           "name": "callback",
+           "parameters": [

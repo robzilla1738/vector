@@ -1,0 +1,81 @@
+[
+  {
+    "namespace": "auxAccount",
+    "description": "Aux private native browser capability.",
+    "functions": [
+      {
+        "name": "getProfileContext",
+        "type": "function",
+        "parameters": [{
+          "name": "draftTabId",
+          "type": "integer",
+          "optional": true
+        }],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getProfiles",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "openProfileRoute",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "signDaemonAuthChallenge",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "challenge",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

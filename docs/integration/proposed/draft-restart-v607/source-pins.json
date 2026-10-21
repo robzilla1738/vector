@@ -1,0 +1,43 @@
+[
+  {
+    "path": "assets/draft-storage-ixLojjZ5.js",
+    "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+    "outputSha256": "a34ea7b178485315ff46ba4a4de0935b9972a5be8bd07b017766b3d5a92fa0e9",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "38435d7830d677dda7ad315e8b53c1885d212563ac45b895620ac4e0c03adeed"
+      },
+      {
+        "count": 1,
+        "findSha256": "755685c642d5109e14085409bd4c90bfaf17e188d28e649b0c5bcf9cc2470e4c"
+      }
+    ]
+  },
+  {
+    "path": "assets/browser-binding-CzDmxQNA.js",
+    "sourceSha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b",
+    "outputSha256": "1a1145e832243d879c04892dde789ce79c933c6592b8c93880feaea103d3c3ff",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "4fb7d71a0b8016d80e7c3b00ff38e41d188b0abc05af3db924cab7e98eec5a24"
+      },
+      {
+        "count": 2,
+        "findSha256": "e2da0ff3e321e8b621af285ba86f96279efe55b0abed545c72410fd35d88eb95"
+      }
+    ]
+  },
+  {
+    "path": "assets/-components-4o0FSqQ9.js",
+    "sourceSha256": "6310b674f032bc890715b6b0f35bd1e4983cd25886d697941b7120bc3510abfb",
+    "outputSha256": "aae85d42ce485429b9c975802f301e125ef4967f6063d1fa8c53c1fb6ce3abab",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "60cbf8e7f8d70cad69bbda10fe222f5f3203c0850eaecf047f3972d610e156ff"
+      }
+    ]
+  }
+]
