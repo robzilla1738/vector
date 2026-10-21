@@ -1,6 +1,6 @@
 # AIM canceled chooser and idle Drive owners — v603 proposal
 
-Source-only, five files, eleven unique count-checked replacements. No native checkout mutation, build, runtime, profile access or UI change. `manifest.json` records exact before/after hashes and the v603 composition manifest hash. The three composition-tracked inputs match v603. The two newly touched original headers match native upstream HEAD byte for byte; their explicit baseline hashes extend the inventory.
+Source-only, five files, twelve unique count-checked replacements. No native checkout mutation, build, runtime, profile access or UI change. `manifest.json` records exact before/after hashes and the v603 composition manifest hash. The three composition-tracked inputs match v603. The two newly touched original headers match native upstream HEAD byte for byte; their explicit baseline hashes extend the inventory.
 
 ## Fixes and ownership proof
 
@@ -21,4 +21,8 @@ The predicate changes do not clear pending work or mutate native owners during a
 
 `prepare.py` builds only proposal source copies and patch, asserts the three v603 pins and every replacement count, and records all five input/output hashes. `git apply --check native-aim-cancelled-picker-idle-owners.patch` passed against the unchanged native checkout. Both new upstream header baselines were compared with `git show HEAD:<path>` and match. No compile or actual-app evidence is claimed.
 
-Integrator: add these five paths and eleven edits to the next pinned composition, preserving existing AIM renderer/live-owner checks. Build once with the other batch changes. Lean actual-app acceptance: open/cancel native chooser without selecting a file, close settled AIM, then switch disposable profiles; verify switching remains blocked with a real selected attachment or an open picker. Where the existing test profile can reach Drive UI without new account access, confirm a settled disclaimer response or dismissed promo stops blocking, while an open picker/promo still blocks. Otherwise record that Drive behavior remains source-verified only.
+Integrator: add these five paths and twelve edits to the next pinned composition, preserving existing AIM renderer/live-owner checks. Build once with the other batch changes. Lean actual-app acceptance: open/cancel native chooser without selecting a file, close settled AIM, then switch disposable profiles; verify switching remains blocked with a real selected attachment or an open picker. Where the existing test profile can reach Drive UI without new account access, confirm a settled disclaimer response or dismissed promo stops blocking, while an open picker/promo still blocks. Otherwise record that Drive behavior remains source-verified only.
+
+## Callback lifetime self-review
+
+Cancellation now holds a local weak-self proof and checks it before every post-close, post-blocker-release, post-dialog-release and post-reopen member access; the blocker destructor can request focus. The close helper also checks weak-self and generation immediately after its registered callback, before accessing its own members. These guards return without touching a destroyed selector and preserve any synchronously opened newer chooser. The local weak pointer makes reentrant retirement conservatively fail until the cancellation stack unwinds. Drive weak references retained longer than a response only delay admission; they cannot admit pending work early.

@@ -322,19 +322,26 @@ void OmniboxPopupFileSelector::MultiFilesSelected(
 void OmniboxPopupFileSelector::FileSelectionCanceled() {
   aux_ever_started_work_ = true;
   const uint64_t generation = aux_selection_generation_;
+  const auto weak_self = weak_factory_.GetWeakPtr();
   NotifyFileSelectionClosed();
   // A close callback may synchronously open another chooser. Its owners belong
   // to the new generation and must not be reset by the old cancellation.
-  if (generation != aux_selection_generation_) {
+  if (!weak_self || generation != aux_selection_generation_) {
     return;
   }
   deactivation_blocker_.reset();
+  if (!weak_self || generation != aux_selection_generation_) {
+    return;
+  }
   file_dialog_.reset();
+  if (!weak_self || generation != aux_selection_generation_) {
+    return;
+  }
   if (was_ai_mode_open_) {
     OpenAiMode();
   }
-  if (generation != aux_selection_generation_ || aux_has_selected_files_ ||
-      file_dialog_ || deactivation_blocker_) {
+  if (!weak_self || generation != aux_selection_generation_ ||
+      aux_has_selected_files_ || file_dialog_ || deactivation_blocker_) {
     return;
   }
   // No selection has ever scheduled reads or context handoffs for this owner.
@@ -445,7 +452,12 @@ void OmniboxPopupFileSelector::UpdateSearchboxContextData(
 void OmniboxPopupFileSelector::NotifyFileSelectionClosed() {
   aux_ever_started_work_ = true;
   if (file_chooser_closed_callback_) {
+    const auto weak_self = weak_factory_.GetWeakPtr();
+    const uint64_t generation = aux_selection_generation_;
     file_chooser_closed_callback_.Run();
+    if (!weak_self || generation != aux_selection_generation_) {
+      return;
+    }
   }
   if (was_ai_mode_open_ && web_contents_ &&
       !OmniboxContextMenuController::GetOmniboxEverywhereUI(

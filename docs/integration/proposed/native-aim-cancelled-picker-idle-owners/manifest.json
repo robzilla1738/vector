@@ -11,7 +11,7 @@
     {
       "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
       "baselineSha256": "29b9642b81e00bfc4e8fe7bda31551f35298e943316237a678e1e08e8ab6f289",
-      "outputSha256": "3392aaf768aa01566e62d7e75b3d648e61df6b44b725e1a63a95113d38d77fc4",
+      "outputSha256": "28fe42d49bcafc030632cf5296447aeb64e856cf1f22019a62e7c8d75f10bb88",
       "compositionTracked": true
     },
     {
@@ -67,7 +67,13 @@
     {
       "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
       "find": "void OmniboxPopupFileSelector::FileSelectionCanceled() {\n  aux_ever_started_work_ = true;\n  NotifyFileSelectionClosed();\n  deactivation_blocker_.reset();\n  file_dialog_.reset();\n  if (was_ai_mode_open_) {\n    OpenAiMode();\n  }\n}",
-      "replace": "void OmniboxPopupFileSelector::FileSelectionCanceled() {\n  aux_ever_started_work_ = true;\n  const uint64_t generation = aux_selection_generation_;\n  NotifyFileSelectionClosed();\n  // A close callback may synchronously open another chooser. Its owners belong\n  // to the new generation and must not be reset by the old cancellation.\n  if (generation != aux_selection_generation_) {\n    return;\n  }\n  deactivation_blocker_.reset();\n  file_dialog_.reset();\n  if (was_ai_mode_open_) {\n    OpenAiMode();\n  }\n  if (generation != aux_selection_generation_ || aux_has_selected_files_ ||\n      file_dialog_ || deactivation_blocker_) {\n    return;\n  }\n  // No selection has ever scheduled reads or context handoffs for this owner.\n  // Release only the canceled dialog's inputs. Admission still checks external\n  // weak references, registered callbacks and the presenter's live idle state.\n  web_contents_.reset();\n  edit_model_ = nullptr;\n  image_encoding_options_.reset();\n  aux_canceled_dialog_complete_ = true;\n}",
+      "replace": "void OmniboxPopupFileSelector::FileSelectionCanceled() {\n  aux_ever_started_work_ = true;\n  const uint64_t generation = aux_selection_generation_;\n  const auto weak_self = weak_factory_.GetWeakPtr();\n  NotifyFileSelectionClosed();\n  // A close callback may synchronously open another chooser. Its owners belong\n  // to the new generation and must not be reset by the old cancellation.\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n  deactivation_blocker_.reset();\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n  file_dialog_.reset();\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n  if (was_ai_mode_open_) {\n    OpenAiMode();\n  }\n  if (!weak_self || generation != aux_selection_generation_ ||\n      aux_has_selected_files_ || file_dialog_ || deactivation_blocker_) {\n    return;\n  }\n  // No selection has ever scheduled reads or context handoffs for this owner.\n  // Release only the canceled dialog's inputs. Admission still checks external\n  // weak references, registered callbacks and the presenter's live idle state.\n  web_contents_.reset();\n  edit_model_ = nullptr;\n  image_encoding_options_.reset();\n  aux_canceled_dialog_complete_ = true;\n}",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (file_chooser_closed_callback_) {\n    file_chooser_closed_callback_.Run();\n  }\n  if (was_ai_mode_open_ && web_contents_ &&",
+      "replace": "  if (file_chooser_closed_callback_) {\n    const auto weak_self = weak_factory_.GetWeakPtr();\n    const uint64_t generation = aux_selection_generation_;\n    file_chooser_closed_callback_.Run();\n    if (!weak_self || generation != aux_selection_generation_) {\n      return;\n    }\n  }\n  if (was_ai_mode_open_ && web_contents_ &&",
       "count": 1
     },
     {
