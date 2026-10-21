@@ -1,0 +1,27 @@
+--- a/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h
++++ b/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h
+@@ -151,9 +151,7 @@
+                          const std::string& keyword,
+                          searchbox::mojom::InputMethod input_method) override;
+   void StopAutocomplete(bool clear_result) override;
+-  void GetAuxRetirementState(GetAuxRetirementStateCallback callback) override {
+-    std::move(callback).Run(false);
+-  }
++  void GetAuxRetirementState(GetAuxRetirementStateCallback callback) override;
+   void OpenAutocompleteMatch(uint32_t result_sequence_id,
+                              uint8_t line,
+                              const GURL& url,
+--- a/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.cc
++++ b/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.cc
+@@ -265,6 +265,11 @@
+       << "QueryAutocomplete with tab_id is only supported for the full WebUI "
+          "Omnibox.";
+ }
++void ContextualTasksExtensionHandler::GetAuxRetirementState(
++    GetAuxRetirementStateCallback callback) {
++  std::move(callback).Run(false);
++}
++
+ void ContextualTasksExtensionHandler::StopAutocomplete(bool clear_result) {}
+ void ContextualTasksExtensionHandler::OpenAutocompleteMatch(
+     uint32_t result_sequence_id,

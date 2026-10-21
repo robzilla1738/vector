@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
+      "baselineSha256": "7714c9ed3b921a4fc32f9766bce959c22186c5030697f32568af4989812bba0c",
+      "outputSha256": "08bb0990ddad4d41abb23a6da316673807c073c66933f3f98efd72190aa8bb52"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.cc",
+      "baselineSha256": "0578c7ab163e9a6b00a0d1456903e294b981dcf044c6757990f26cc02312a970",
+      "outputSha256": "3d1d1e228f335cbdb574befefd389d9e8f495f2551ad3962db998d3c5a73b8c1"
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 # Aux completion execution graph
 
-## Current pause — owner request,2026-10-21
+## Active continuation — 2026-10-21
+
+Owner resumed execution and explicitly approved the corrected three-leaf daemon signing. That signature and the fresh589 resource cache passed; final closed-app integration is running. The verified586 package/startup record is archived for recovery. The independently reviewed used-AIM lifecycle is applied in590 and compiling. Preserve current UI and retain the20 passing AI cases. Next: actual589 startup, Vault absence, draft retention, synthetic import/persistence and profile transition observation; then accept590 against its changed lifecycle. No new runtime result or full readiness is inferred.
+
+## Historical pause — owner request,2026-10-21
 
 589 native build and package passed; cache refresh correctly rejected the changed daemon node-development/index.mjs not covered by the exact signed two-leaf review.589 is preserved unaccepted; verified586 and its exact startup acceptance are restored. Aux is closed, no builds or worker jobs running. Resume with this resource/source/signing consistency issue, then one focused589 runtime/UI pass. Separate used-AIM proposal5d1c3e6be remains source-only in /private/tmp/aux-vault-unsigned-review. No full readiness claim. This pause supersedes the active entries below.
 
