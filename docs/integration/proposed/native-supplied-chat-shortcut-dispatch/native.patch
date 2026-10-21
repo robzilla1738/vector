@@ -1,0 +1,24 @@
+--- a/chrome/browser/global_keyboard_shortcuts_mac.mm
++++ b/chrome/browser/global_keyboard_shortcuts_mac.mm
+@@ -13,6 +13,7 @@
+ #include "base/no_destructor.h"
+ #include "build/buildflag.h"
+ #include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/buildflags.h"
+ #import "chrome/browser/app_controller_mac.h"
+ #include "chrome/browser/ui/cocoa/accelerators_cocoa.h"
+ #include "chrome/browser/ui/tabs/features.h"
+@@ -122,6 +123,13 @@
+       {true,  false, false, true,  kVK_LeftArrow,         IDC_SELECT_PREVIOUS_TAB},
+       {false, true,  true,  false, kVK_PageDown,          IDC_MOVE_TAB_NEXT},
+       {false, true,  true,  false, kVK_PageUp,            IDC_MOVE_TAB_PREVIOUS},
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++      // Supplied native accelerator rows cef735c/cef7368. These commands have
++      // no main-menu item, so Cocoa event dispatch needs the non-menu table.
++      {true,  false, false, false, kVK_ANSI_E,            IDC_AUX_ASK},
++      {true,  true,  false, false, kVK_ANSI_E,            IDC_AUX_OPEN_NEW_CHAT},
++#endif
+ 
+       // Cmd-0..8 select the nth tab, with cmd-9 being "last tab".
+       {true,  false, false, false, kVK_ANSI_1,            IDC_SELECT_TAB_0},

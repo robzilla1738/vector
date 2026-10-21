@@ -1,0 +1,22 @@
+{
+  "baseline": "actual-native-v547",
+  "files": [
+    {
+      "path": "chrome/browser/global_keyboard_shortcuts_mac.mm",
+      "baselineSha256": "b930252f065d4245d4390cf3bc9d7b8396a429b48c2cff63be0e02ea74205180",
+      "outputSha256": "05b3c3da516b45cc0ef30d1b53995a79528d5d3b30b7ffe2c3c97f67a87c92b4",
+      "anchors": [
+        {
+          "find": "#include \"chrome/app/chrome_command_ids.h\"",
+          "replace": "#include \"chrome/app/chrome_command_ids.h\"\n#include \"chrome/browser/buildflags.h\"",
+          "count": 1
+        },
+        {
+          "find": "      // Cmd-0..8 select the nth tab, with cmd-9 being \"last tab\".",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n      // Supplied native accelerator rows cef735c/cef7368. These commands have\n      // no main-menu item, so Cocoa event dispatch needs the non-menu table.\n      {true,  false, false, false, kVK_ANSI_E,            IDC_AUX_ASK},\n      {true,  true,  false, false, kVK_ANSI_E,            IDC_AUX_OPEN_NEW_CHAT},\n#endif\n\n      // Cmd-0..8 select the nth tab, with cmd-9 being \"last tab\".",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
