@@ -16,7 +16,16 @@
     "shared16DIP surfaces",
     "566 Bookmarks setting toggles actual section and restores"
   ],
-  "integrationPending": null,
+  "integrationPending": {
+    "packagedCandidate": 574,
+    "fullBuildPassed": true,
+    "previous566Preserved": true,
+    "resourceReuseVerification": "running",
+    "runtimeAccepted": false,
+    "nextSourceComposition": 576,
+    "nextFocusedCompile": "running",
+    "startupRecordWritten": false
+  },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
     "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
