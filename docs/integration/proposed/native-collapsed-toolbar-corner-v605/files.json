@@ -1,0 +1,16 @@
+{
+  "baseComposition": "v605",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "c389e60125d6985742e33fd68edb2855f4fd3fcbb2d10f6fe4d9550213400514",
+      "outputSha256": "4283fb8206fe74692c5c23d65e01c7c9f4ef814bdad39af93bbeca90bfa9c478"
+    }
+  ],
+  "edits": [
+    {
+      "anchorSha256": "b329924714dfa4904bc8cddb08a601f2341b108ade4981460b0f89c70659f283",
+      "count": 1
+    }
+  ]
+}

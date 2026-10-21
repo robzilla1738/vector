@@ -1,0 +1,18 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -2006,8 +2006,14 @@
+       break;
+   }
+   if (aux_surface) {
++    // With no reserved sidebar width the toolbar begins after the Mac caption
++    // buttons, inside the continuous window header. A window-radius cutout at
++    // that interior edge leaves a material wedge above the sidebar toggle.
++    // Floating hover panels reserve no width and round their own surface.
+     toolbar_corners[CornerOrientation::kTopLeading] =
+-        toolbar_background->GetWindowCorner(true);
++        layout_data_->horizontal_layout.vertical_tab_strip_width > 0
++            ? toolbar_background->GetWindowCorner(true)
++            : CustomCornersBackground::Corner{};
+     toolbar_corners[CornerOrientation::kTopTrailing] =
+         toolbar_background->GetWindowCorner(true);
+   }
