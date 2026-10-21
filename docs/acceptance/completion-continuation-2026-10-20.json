@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 566,
+  "nativeCandidate": 574,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -14,16 +14,21 @@
     "zoom/fullscreen transitions",
     "fully hidden settled sidebar",
     "shared16DIP surfaces",
-    "566 Bookmarks setting toggles actual section and restores"
+    "566 Bookmarks setting toggles actual section and restores",
+    "574 native shortcut controls: CmdShiftK persisted; menu-reserved CmdShiftJ and duplicate CmdS visibly rejected; Reset restored CmdE",
+    "574 CmdS collapses and re-expands actual sidebar; settled capture retained",
+    "574 actual local navigate/back/forward and tab close/reopen passed",
+    "574 actual38-byte local download completed",
+    "574 genuine toolbar Ask panel/current-page context and confirmation menu work"
   ],
   "integrationPending": {
     "packagedCandidate": 574,
     "fullBuildPassed": true,
-    "previous566Preserved": true,
-    "resourceReuseVerification": "running",
+    "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 576,
+    "nextSourceComposition": 577,
     "nextFocusedCompile": "running",
+    "full576BuildPassed": true,
     "startupRecordWritten": false
   },
   "extensionFixture": {
@@ -53,10 +58,12 @@
     "paidRequest": false
   },
   "remainingObserved": [
-    "CmdE and native Ask menu disabled",
-    "profile switch rejects unported contextual_tasks_browser_controller",
-    "native shortcut configuration disabled",
-    "ordinary Finder startup acceptance pending"
+    "574 Ask diagnostic: real action-based command mode active, missing action map yields supports=0/enabled=0",
+    "574 profile switching next rejects unported.ios_promo_controller after contextual-owner repair",
+    "575 menu hints and576 accepted-startup flags compile; app runtime pending",
+    "577 iOS promo lifecycle adaptation applied; focused compile running",
+    "normal Finder startup acceptance pending",
+    "vendor password-manager companion and approved Computer Use execution unverified"
   ],
   "actualAiPreviousRuns": [
     {
