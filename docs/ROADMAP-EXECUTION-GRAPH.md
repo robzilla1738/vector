@@ -1,5 +1,12 @@
 # Aux completion execution graph
 
+## Resumed substantial completion batches — 2026-10-21
+
+Owner resumed execution and requested large coherent batches with lean verification. Preserve actual585 UI as baseline. Batch1 covers profile/context ownership and chat state; batch2 closes remaining visual/interaction journeys; batch3 covers imports, native integrations and stable local delivery. Reuse the20 passing Muse cases and unaffected browser evidence. One native build resource owner; source/UI audits proceed while linking. Do not repeat broad test suites or diagnose by repeatedly rebuilding unchanged code.
+
+The first concrete correction moves the AIM invocation marker after the original idle CloseUI return: the tab-selection observer calls CloseUI when the initial tab appears. The original callback performs no work when hidden, so this must not poison unused-owner admission. Actual switching remains unaccepted until the integrated app passes. No active-work guard, UI styling or permission boundary is removed.
+
+
 Updated 2026-10-21. Owner authorized continued implementation until the local Aux browser is ready, explicitly preserving the improving UI. This graph maintains the active supplied-implementation reuse plan; it does not authorize release, new provisioning, owner-profile access or unrelated OS grants.
 
 ## Owner-requested pause — verified585,2026-10-21

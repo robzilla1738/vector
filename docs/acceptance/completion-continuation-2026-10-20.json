@@ -28,11 +28,11 @@
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": "not started; next AIM invoked-content lifecycle repair",
+    "nextSourceComposition": "v586 idle-close ownership correction",
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
-    "nextFullBuild": "585 complete, actual app open; no build running"
+    "nextFullBuild": "v586 compiling/linking"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -202,7 +202,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "paused-at-owner-request-after-build",
+  "executionState": "active-owner-requested-substantial-batches",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",

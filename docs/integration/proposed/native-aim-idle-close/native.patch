@@ -1,0 +1,20 @@
+--- a/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
+@@ -148,13 +148,16 @@
+ }
+ 
+ void OmniboxAimPopupWebUIContent::CloseUI() {
+-  aux_ever_invoked_ = true;
+   // If the popup state is not shown, don't take any action. Closing the UI
+   // multiple times can result in incorrect state transitions from OnClose.
+   if (!IsShown()) {
+     return;
+   }
+ 
++  // The tab-selection listener also calls CloseUI when the first tab becomes
++  // active. That idle notification owns no draft or context and must not mark
++  // a never-opened popup as used. Real close transitions remain sticky.
++  aux_ever_invoked_ = true;
+   set_is_shown(false);
+ 
+   // For the full WebUI, the WebUI omnibox draft state should still be open.

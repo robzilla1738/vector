@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v585",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "baselineSha256": "469797f346b6eed771ba56376dddfcbe4faa710dec088a0f100390b1497127bb",
+      "outputSha256": "4cda4f4b7ec56f00ec7dc589e4ae398fcb73efd1bcaf7deb055dba39761b0012"
+    }
+  ]
+}
