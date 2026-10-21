@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_service.cc",
+      "baselineSha256": "df13d6628cadc7d9a0ca446c2cf2ee1b2420ae6d5963ecb474bdf3cb47017c11",
+      "outputSha256": "8e9953ea9658662eda4eca49019d1db0fc650d0c15e3b096d7f6651b1e22d771"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/migrator.cc",
+      "baselineSha256": "11ec39622811e57dc9743a933717228912d467030edc99712fd0950a6ac4b52b",
+      "outputSha256": "5cfab4566bf13e5e2f7e876429b1bcaec9c0ab80e34b6e76ac2d5f8bd21c973c"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_import.cc",
+      "baselineSha256": "caadfbd98b6edb070923c4473fdace16e93527b0b626b0ed146692ea39ef3e50",
+      "outputSha256": "f615decb8ed610cf47beb98b2d8779fde12faaadfc9f4978b571498b10dc9626"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc",
+      "baselineSha256": "c5c6a1542546cdf8a1e87a622e40b7283c087496547713bdb2b6a5293932a5b3",
+      "outputSha256": "33c655209a8dd4a6f5aa6bbb8e7682e40ae40554b591e868a91da7b1f9b4c854"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.cc",
+      "baselineSha256": "7b6a5820913dc1ce9100bd41df4e16e5846faf579124d11f5e8f9f61807bfd74",
+      "outputSha256": "1642dddf4a3c06224aae821fa2de675653c6be49e9b9d8810bfca9baadd3bea9"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/chromium_profile_clone.cc",
+      "baselineSha256": "186a74cf745d178a5e39a92e9fe1abcb88f9e537e2a92d43203baaed96e44d3a",
+      "outputSha256": "ecd3c6a18fd27194e6050685035fc58695d06b26ae5ee9ad753b034154709088"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.h",
+      "baselineSha256": "d01980739073ec76ad843c6bc6493dd2f576f6e7b16cd415fc28f01e06a35c67",
+      "outputSha256": "ee4c4a1520aa3989bfdd26082cbca6a0afd0547f0693f92822fd4b6e1f6fe07f"
+    },
+    {
+      "path": "components/user_data_importer/utility/safari_data_importer.cc",
+      "baselineSha256": "0e6dc62b372301cab7555b594e548a0ae4292af255779f223587ec90c59cb4f7",
+      "outputSha256": "dc67e857c7583e3bb67820b026f09ac6b794205341bffbb6f7fff5898bff6025"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/safari_import.cc",
+      "baselineSha256": "0a4d17f3951d59e4add2650b0d46e5aa4bea91cefff8c31c68e6ca568fc94e83",
+      "outputSha256": "d6a0ad28aa1cb564aaba275431f4481da0262c2bd46535e882f5036536d7fffd"
+    }
+  ]
+}

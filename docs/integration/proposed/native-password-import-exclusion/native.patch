@@ -1,0 +1,351 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/import_service.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/import_service.cc
+@@ -419,7 +419,7 @@
+     // Original4275f60 declares Safari's four kinds;4276460 declares the five
+     // Chromium/Firefox kinds. This array drives the actual supplied UI.
+     base::ListValue supported;
+-    for (const char* kind : {"history", "bookmarks", "passwords"}) {
++    for (const char* kind : {"history", "bookmarks"}) {
+       supported.Append(kind);
+     }
+     if (file_import) {
+@@ -455,7 +455,7 @@
+   if (const auto* id = selected.FindString("id")) job->source_profile = *id;
+   // The existing supplied current-profile full path excludes preferences.
+   // Retain its actual snapshot/destination sequence and extension owner.
+-  job->categories = {"bookmarks", "history", "passwords", "cookies"};
++  job->categories = {"bookmarks", "history", "cookies"};
+   job->import_extensions = true;
+   job->native_webui = true;
+   job->native_completed = std::move(completed);
+@@ -561,6 +561,15 @@
+   const bool has_categories = options.Find("categories") != nullptr;
+   const auto* categories = has_kinds ? options.FindList("dataKinds")
+                                    : options.FindList("categories");
++  // Owner scope: user passwords remain in external password managers.
++  // Reject explicit requests before discovery/reader dispatch; never silently
++  // report an excluded password category as successfully imported.
++  if (categories && std::ranges::any_of(*categories, [](const base::Value& value) {
++        return value.is_string() && value.GetString() == "passwords";
++      })) {
++    error("Password import is disabled; use your existing password manager");
++    return;
++  }
+   // Supplied4276970..6a98 admits omission (full import) or exactly one
+   // explicit kind, bookmarks. Other explicit lists are not native capabilities.
+   // The old categories alias belongs only to the actual internal recovery
+@@ -682,7 +691,7 @@
+   // The retired recovery WebUI alias must not expand a partial request into
+   // the supplied full Safari flow. Original supports full or bookmarks only.
+   if (job->source == "safari" && internal_categories &&
+-      !job->safari_bookmarks_only && job->categories.size() != 4) {
++      !job->safari_bookmarks_only && job->categories.size() != 3) {
+     error("Safari supports full import or bookmarks only");
+     return;
+   }
+--- a/chrome/browser/extensions/api/aux_browser_import/migrator.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/migrator.cc
+@@ -730,7 +730,6 @@
+     if (!family.firefox) {
+       categories.Append("preferences");
+       if (!fixture && SupportsSourceKey(family.id)) {
+-        categories.Append("passwords");
+         categories.Append("cookies");
+       }
+     }
+@@ -747,7 +746,6 @@
+   safari.Set("categories", base::ListValue()
+                                .Append("bookmarks")
+                                .Append("history")
+-                               .Append("passwords")
+                                .Append("paymentCards"));
+   if (fixture || InstalledSourceApplication("safari")) {
+     sources.Append(std::move(safari));
+@@ -1334,6 +1332,10 @@
+     std::string source,
+     std::vector<std::string> categories,
+     bool include_extensions) {
++  if (std::ranges::find(categories, "passwords") != categories.end()) {
++    return base::DictValue().Set(
++        "error", "Password import is disabled; use your existing password manager");
++  }
+   auto database_for = [&](std::string_view category) {
+     auto path = profile.AppendASCII(category == "passwords" ? "Login Data"
+                                                             : "Network/Cookies");
+--- a/chrome/browser/extensions/api/aux_browser_import/firefox_import.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/firefox_import.cc
+@@ -103,7 +103,7 @@
+     }
+     const uint16_t items = bookmarks_only_
+         ? selected->services_supported & user_data_importer::FAVORITES
+-        : selected->services_supported;
++        : selected->services_supported & ~user_data_importer::PASSWORDS;
+     if (!items) {
+       Finish(false);
+       return;
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_clone_worker.cc
+@@ -45,9 +45,8 @@
+ 
+ // Original4259690 only tests the existence of these four database paths.
+ bool HasEncryptedData(const base::FilePath& profile) {
+-  return base::PathExists(profile.AppendASCII("Login Data")) ||
+-         base::PathExists(profile.AppendASCII("Login Data For Account")) ||
+-         base::PathExists(profile.AppendASCII("Cookies")) ||
++  // Aux imports ordinary site sessions, never stored user passwords.
++  return base::PathExists(profile.AppendASCII("Cookies")) ||
+          base::PathExists(profile.AppendASCII("Network/Cookies"));
+ }
+ 
+@@ -237,14 +236,9 @@
+   if (key) {
+     result.cookies = ReadEncryptedCategoryForClone(request.source_profile,
+                                                   "cookies", *key);
+-    if (!result.cookies.FindString("error")) {
+-      result.passwords = ReadEncryptedCategoryForClone(request.source_profile,
+-                                                      "passwords", *key);
+-    }
+-    if (result.cookies.FindString("error") ||
+-        result.passwords.FindString("error")) {
++    if (result.cookies.FindString("error")) {
+       result.error = std::string("Could not read ") + SourceName(request.source) +
+-                     " cookies or passwords";
++                     " cookies";
+       base::DeletePathRecursively(request.target_profile);
+       return result;
+     }
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_source_capture.cc
+@@ -16,9 +16,8 @@
+   }
+ }
+ bool HasEncryptedData(const base::FilePath& path) {
+-  return base::PathExists(path.AppendASCII("Login Data")) ||
+-         base::PathExists(path.AppendASCII("Login Data For Account")) ||
+-         base::PathExists(path.AppendASCII("Cookies")) ||
++  // Aux imports ordinary site sessions, never stored user passwords.
++  return base::PathExists(path.AppendASCII("Cookies")) ||
+          base::PathExists(path.AppendASCII("Network/Cookies"));
+ }
+ }  // namespace
+--- a/chrome/browser/extensions/api/aux_browser_import/chromium_profile_clone.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/chromium_profile_clone.cc
+@@ -95,10 +95,12 @@
+   if (parts.empty() ||
+       (parts.size() != 1 && (parts.size() != 2 || parts.front() != "Network")))
+     return false;
+-  constexpr std::array<std::string_view, 8> names = {
++  constexpr std::array<std::string_view, 12> names = {
+       "Cookies", "Cookies-journal", "Extension Cookies",
+       "Extension Cookies-journal", "Login Data", "Login Data-journal",
+-      "Login Data For Account", "Login Data For Account-journal"};
++      "Login Data For Account", "Login Data For Account-journal",
++      "Login Data-wal", "Login Data-shm", "Login Data For Account-wal",
++      "Login Data For Account-shm"};
+   for (auto candidate : names) {
+     if (parts.back() == candidate)
+       return true;
+--- a/components/user_data_importer/utility/safari_data_importer.h
++++ b/components/user_data_importer/utility/safari_data_importer.h
+@@ -58,6 +58,8 @@
+   using PasswordImportResults = password_manager::ImportResults;
+ 
+   // All arguments passed as pointers are expected to outlive this importer.
++  // With include_passwords=false, presenter may be null and the password
++  // archive entry is never extracted or parsed. Other categories are unchanged.
+   SafariDataImporter(SafariDataImportClient* client,
+                      password_manager::SavedPasswordsPresenter* presenter,
+                      autofill::PaymentsDataManager* payments_data_manager,
+@@ -67,7 +69,8 @@
+                      syncer::SyncService* sync_service,
+                      PrefService* pref_service,
+                      std::unique_ptr<BookmarkParser> bookmark_parser,
+-                     std::string app_locale);
++                     std::string app_locale,
++                     bool include_passwords = true);
+   ~SafariDataImporter();
+ 
+   // Opens the ZIP file provided in `path` and prepares to import the data
+--- a/components/user_data_importer/utility/safari_data_importer.cc
++++ b/components/user_data_importer/utility/safari_data_importer.cc
+@@ -282,13 +282,15 @@
+     syncer::SyncService* sync_service,
+     PrefService* pref_service,
+     std::unique_ptr<BookmarkParser> bookmark_parser,
+-    std::string app_locale)
++    std::string app_locale,
++    bool include_passwords)
+     : blocking_queue_(base::ThreadPool::CreateSequencedTaskRunner(
+           {base::MayBlock(), base::TaskPriority::USER_VISIBLE})),
+       blocking_worker_(blocking_queue_, std::move(bookmark_parser)),
+-      password_importer_(std::make_unique<password_manager::PasswordImporter>(
+-          CHECK_DEREF(presenter),
+-          /*user_confirmation_required=*/true)),
++      password_importer_(include_passwords
++          ? std::make_unique<password_manager::PasswordImporter>(
++                CHECK_DEREF(presenter), /*user_confirmation_required=*/true)
++          : nullptr),
+       client_(CHECK_DEREF(client)),
+       payments_data_manager_(CHECK_DEREF(payments_data_manager)),
+       history_service_(CHECK_DEREF(history_service)),
+@@ -393,7 +395,8 @@
+                        weak_factory_.GetWeakPtr())
+             .Then(barrier_closure));
+   } else {
+-    client_->OnPasswordsImported(password_manager::ImportResults());
++    if (password_importer_)
++      client_->OnPasswordsImported(password_manager::ImportResults());
+     // In the case where no passwords need to be imported, just run
+     // `barrier_closure` directly. This is safe because CompleteImport runs on
+     // the main sequence.
+@@ -565,12 +568,15 @@
+     return;
+   }
+ 
+-  // Passwords import may require conflict resolution, so it is done first.
+-  metrics_recorder_.password_metrics().OnPreparationStarted();
+-  blocking_worker_.AsyncCall(&BlockingWorker::Unzip)
+-      .WithArgs(FileType::Passwords)
+-      .Then(base::BindOnce(&SafariDataImporter::PreparePasswords,
+-                           weak_factory_.GetWeakPtr()));
++  // Aux excludes password import entirely. Do not even extract the entry.
++  // Upstream callers retain their original password preparation by default.
++  if (password_importer_) {
++    metrics_recorder_.password_metrics().OnPreparationStarted();
++    blocking_worker_.AsyncCall(&BlockingWorker::Unzip)
++        .WithArgs(FileType::Passwords)
++        .Then(base::BindOnce(&SafariDataImporter::PreparePasswords,
++                             weak_factory_.GetWeakPtr()));
++  }
+ 
+   metrics_recorder_.payment_card_metrics().OnPreparationStarted();
+   blocking_worker_.AsyncCall(&BlockingWorker::ParsePaymentCards)
+--- a/chrome/browser/extensions/api/aux_browser_import/safari_import.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/safari_import.cc
+@@ -5,26 +5,21 @@
+ 
+ #include <array>
+ #include <utility>
+-#include <vector>
+ 
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/task/thread_pool.h"
+-#include "chrome/browser/affiliations/affiliation_service_factory.h"
+ #include "chrome/browser/autofill/personal_data_manager_factory.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/history/history_service_factory.h"
+-#include "chrome/browser/password_manager/factories/account_password_store_factory.h"
+-#include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/reading_list/reading_list_model_factory.h"
+ #include "chrome/browser/sync/sync_service_factory.h"
+ #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
+ #include "components/keyed_service/core/service_access_type.h"
+-#include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
+ #include "components/user_data_importer/utility/bookmark_parser.h"
+ #include "components/user_data_importer/utility/safari_data_import_client.h"
+ #include "components/user_data_importer/utility/safari_data_importer.h"
+@@ -99,29 +94,22 @@
+   void InitializeImport(const base::FilePath& archive) {
+     auto* profile = profile_.get();
+     if (!profile) return;
+-    auto* affiliation = AffiliationServiceFactory::GetForProfile(profile);
+     auto* personal = autofill::PersonalDataManagerFactory::GetForBrowserContext(profile);
+     auto* history = HistoryServiceFactory::GetForProfile(
+         profile, ServiceAccessType::EXPLICIT_ACCESS);
+     auto* bookmarks = BookmarkModelFactory::GetForBrowserContext(profile);
+     auto* reading_list = ReadingListModelFactory::GetForBrowserContext(profile);
+     auto* sync = SyncServiceFactory::GetForProfile(profile);
+-    auto profile_store = ProfilePasswordStoreFactory::GetForProfile(
+-        profile, ServiceAccessType::EXPLICIT_ACCESS);
+-    auto account_store = AccountPasswordStoreFactory::GetForProfile(
+-        profile, ServiceAccessType::EXPLICIT_ACCESS);
+-    // Supplied4279f9c..427a030 checks these actual owners, including both stores.
+-    if (!affiliation || !personal || !history || !bookmarks || !reading_list ||
+-        !profile_store || !account_store) {
++    // Owner exception removes password-store/presenter startup dependencies.
++    if (!personal || !history || !bookmarks || !reading_list) {
+       Finish("failed", "Safari importer unavailable");
+       return;
+     }
+-    presenter_ = std::make_unique<password_manager::SavedPasswordsPresenter>(
+-        affiliation, std::move(profile_store), std::move(account_store));
+     importer_ = std::make_unique<user_data_importer::SafariDataImporter>(
+-        this, presenter_.get(), &personal->payments_data_manager(), history,
++        this, nullptr, &personal->payments_data_manager(), history,
+         bookmarks, reading_list, sync, profile->GetPrefs(),
+-        user_data_importer::MakeBookmarkParser(), g_browser_process->GetApplicationLocale());
++        user_data_importer::MakeBookmarkParser(),
++        g_browser_process->GetApplicationLocale(), /*include_passwords=*/false);
+     progress_ = 0.08;  // Original427a458..427a4b4.
+     auto self = weak_.GetWeakPtr();
+     Publish("running");
+@@ -133,9 +121,7 @@
+     update_.Run(std::move(state), current_kind_, progress_, std::move(error));
+   }
+   void ClearOwners() {
+-    importer_.reset();  // Importer retains the presenter and model pointers.
+-    presenter_.reset();
+-    selected_password_ids_.clear();
++    importer_.reset();  // Importer retains the nonpassword model pointers.
+     directory_.reset();
+   }
+   void Finish(std::string state, std::string error = {}) {
+@@ -154,12 +140,12 @@
+     Publish("running");
+     if (!self || stopped_) return;
+     if (committing_ || !importer_ || !ready_[0] ||
+-        (!bookmarks_only_ && (!ready_[1] || !ready_[2] || !ready_[3]))) return;
++        (!bookmarks_only_ && (!ready_[1] || !ready_[3]))) return;
+     committing_ = true;
+     progress_ = 0.5;
+     Publish("running");
+     if (!self || stopped_) return;
+-    importer_->CompleteImport(selected_password_ids_);
++    importer_->CompleteImport({});
+   }
+   void Imported(size_t kind) {
+     if (stopped_) return;
+@@ -169,7 +155,7 @@
+     Publish("running");
+     if (!self || stopped_) return;
+     if (committing_ && imported_[0] &&
+-        (bookmarks_only_ || (imported_[1] && imported_[2] && imported_[3])))
++        (bookmarks_only_ || (imported_[1] && imported_[3])))
+       Finish("succeeded");
+   }
+ 
+@@ -179,18 +165,10 @@
+   void OnPaymentCardsReady(user_data_importer::CountOrError) override { Ready(3); }
+   void OnPasswordsReady(
+       base::expected<password_manager::ImportResults,
+-                     user_data_importer::ImportPreparationError> results) override {
+-    if (stopped_) return;
+-    selected_password_ids_.clear();
+-    if (results.has_value()) {
+-      for (const auto& entry : results->displayed_entries)
+-        selected_password_ids_.push_back(entry.id);
+-    }
+-    Ready(2);
+-  }
++                     user_data_importer::ImportPreparationError>) override {}
+   void OnBookmarksImported(size_t) override { Imported(0); }
+   void OnHistoryImported(size_t) override { Imported(1); }
+-  void OnPasswordsImported(const password_manager::ImportResults&) override { Imported(2); }
++  void OnPasswordsImported(const password_manager::ImportResults&) override {}
+   void OnPaymentCardsImported(size_t) override { Imported(3); }
+   base::WeakPtr<user_data_importer::SafariDataImportClient> AsWeakPtr() override {
+     return weak_.GetWeakPtr();
+@@ -207,8 +185,6 @@
+   std::array<bool, 4> ready_{};
+   std::array<bool, 4> imported_{};
+   TempDir directory_;
+-  std::vector<int> selected_password_ids_;
+-  std::unique_ptr<password_manager::SavedPasswordsPresenter> presenter_;
+   std::unique_ptr<user_data_importer::SafariDataImporter> importer_;
+   base::WeakPtrFactory<Impl> weak_{this};
+ };

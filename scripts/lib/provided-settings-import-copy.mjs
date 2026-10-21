@@ -10,7 +10,7 @@ export function transformProvidedSettingsImportCopy({ component, path, text }) {
   };
   if (path === 'assets/general-3dgRbrRk.js') {
     replace('Bring your browser history, cookies, bookmarks, and passwords',
-            'Bring your bookmarks', 2, 'integration');
+            'Bring your bookmarks, history, and other supported browser data', 2, 'integration');
   }
   const links = {
     'assets/general-3dgRbrRk.js': ['aside://credits/'],
