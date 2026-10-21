@@ -2,6 +2,10 @@
 
 Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Actual584 exact LocationBar rejection — 2026-10-21
+
+584 supplied package and complete retained-helper/native-seal verification passed; receiptSHA3c5e4f6b990da6ee8c4f8bb450431585453e32a8e69ba7eab6e1c65c5cf9ce95. Actual normal LaunchServices launch followed by one footer Person1 switch precisely rejects `readiness.location.14`, `bindings.source-view-toolbar-location-private-services.10`, `transaction.prepare-bindings`. Stage14 is the categorical AIM-presenter presence guard, confirming the585 cold-owner repair targets the observed blocker.585 changed native objects compiled and its full framework link is running. No profile-switch success is claimed.
+
 ##584 diagnostics and585 cold AIM integration review — 2026-10-21
 
 584 full native build/generated-key probe passed (13 actual steps,6m01.47s); supplied packaging passed and retained-helper/native-seal verification is running.149 exact bounded admission stages preserve predicate order and guards across the remaining owners. The recovered agent commit50f539e0d adds a pinned never-invoked AIM lifecycle proposal on that baseline: source-profile owners retire only in Begin, and exact original constructors restore the coherent profile in End/Abort. Used/context-bearing/pending-work owners remain rejected. Root reviewed the original construction/destruction, sticky invocation and pending-work guards, applied the ten-file585 proposal with717 source+23 artwork pins, and its full native build is running while retaining actual583 UI evidence; no runtime success is inferred.
