@@ -1,0 +1,282 @@
+{
+  "baseComposition": "v589",
+  "files": [
+    {
+      "path": "components/omnibox/browser/searchbox.mojom",
+      "baselineSha256": "149602523c71a68b7810fe0f945dc53725e98049cad2f796358b1ce44ef6233a",
+      "outputSha256": "27ef6514802fb0d7ced5fd4d437cb48d858c1a84bf10845655276b0d1985f029"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h",
+      "baselineSha256": "1e348ca4fd1bb50993a60c2f33faeaf1f02894381100f507b5a9de32e6082c33",
+      "outputSha256": "b373bc0f29929825bdc6e2e0eb8a12b5221481dd644a351cdd5f8eee7cd63251"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc",
+      "baselineSha256": "a18f28f72808e48ea6b633559bc21f32d09c343bc240d7bc183fc84c6595ec8e",
+      "outputSha256": "d712c7ea239090f47a788568bbfe2e3708708f42a04b2bdf7d37f922f870b7a8"
+    },
+    {
+      "path": "components/contextual_tasks/public/query_contextualizer.h",
+      "baselineSha256": "0f03432a7a39c5edd2fae23da62b353809a53124a3d21af70614d5f6ff3e89bc",
+      "outputSha256": "3528bc75473582879008329393e6752870d9a153db6db62cf49183f26442aabb"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_screenshare_controller.h",
+      "baselineSha256": "e0347740fc4ec816459622bef142800d647e9ba8a9b3fd8e7fb9f609501ec49a",
+      "outputSha256": "dfb33e3fdb13cd7ee811c097e5f7fe4d005df591da1d4006c95ecc0f555ec45d"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h",
+      "baselineSha256": "955b85d28b3e1a12ddeaf359437987e4b150ae18193de451bf9250dd18d34f86",
+      "outputSha256": "f3621ef51ed3624012114bd7749be8bdaeaa54e8170e27bdc3e3e82d22f3c530"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "baselineSha256": "02ca5891d7d8cd580cda1038dc4b9ec92544b94e11f6269f2fcb88a7d676ec65",
+      "outputSha256": "3236b959f7c5a4eb14a86202b2c99f7d75be11b54387a73c181f26a7d18c090a"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h",
+      "baselineSha256": "b661aa7b4b7194d1dcd762460a79f7d18ea4bf0facf13164b322814c169ee0ca",
+      "outputSha256": "e9ae8a73462404b65886c53ec65918d534c44fe9d813f90bcb9cbada767f184c"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
+      "baselineSha256": "a711efc38dc5ca1272b09262f931f87322c541efceccfa31de5d8f35aeee5b32",
+      "outputSha256": "30acb3b36846061b4dea4632b2a341987266425244f6f2d678060ded95f4edb7"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/mojom/omnibox_popup_aim.mojom",
+      "baselineSha256": "f9faaf12a4c1bcd6bb39e7ffbb1f0a5eb9b6cf96418bd444a67d100c1d6a98ae",
+      "outputSha256": "b15b3c3a40ca48288f01819d7da8c714c204d57e5079a88af6b57f3066cd06b5"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.h",
+      "baselineSha256": "edaa8fdc4b258365dfce1a64ed384e05a8dae0a770c38ff1f18e9022d224e823",
+      "outputSha256": "bd27a5337e5d0663318b8ac1a497b738e6295550fbb575447f2a85a68aafb53e"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.cc",
+      "baselineSha256": "b0253cbe74926c6013c6b9f739c1c2976e7f94eff7c967a08e8aeaa9927a176b",
+      "outputSha256": "d6247c089eff10b2dd66d01079764555639cf0b8189b586f42f5fb53638e1d3e"
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "baselineSha256": "7da19f2539bff79a9ba810380c4d8957e0df40981886cf1f7c6981e888f03869",
+      "outputSha256": "0ac3a6111f37b92e3193c6889d90e86a254e23fb93dee375308900b1c1677fa0"
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "baselineSha256": "3c29ea5bd4483db9dc6c3b874f75f9996e5c11213ce10266eaa34aa5ae8ab206",
+      "outputSha256": "d46c0d102691bd76e97fc27a0fd6182cefa9b1755d0e18e183987c212fb2c35c"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "baselineSha256": "6106317fa88b5f505e25938e4fea9a1c29d1d281a4991e8ac6a3c1e6e0aa9a74",
+      "outputSha256": "e8304451a26f74a15b0b44fa087088e39cefae7422dee7344f4c19a7cca11690"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "baselineSha256": "4cda4f4b7ec56f00ec7dc589e4ae398fcb73efd1bcaf7deb055dba39761b0012",
+      "outputSha256": "2bc1f5b906ff94b13cc36de54f7d02fdededcdde00425c383f92cbe168d32ea4"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "baselineSha256": "866e5221b4f7fc0421dbfdefc26b1db4f61f51ec59da2d76b821ab3ee69e8cdd",
+      "outputSha256": "a3ae32bcac5c58f001b7ea84bd0f510db627a446f0df65a0389f373bb3896ba8"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
+      "baselineSha256": "39bb45c8dbfafb883b73c2aea4efca967954d1e9c819a53612dfdf31d8aff84b",
+      "outputSha256": "7714c9ed3b921a4fc32f9766bce959c22186c5030697f32568af4989812bba0c"
+    }
+  ],
+  "edits": [
+    {
+      "path": "components/omnibox/browser/searchbox.mojom",
+      "anchorSha256": "c62d42216b258a0d94f4a3671776a6d9069225304e95586be9283c4a1cacad86",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h",
+      "anchorSha256": "b922c29b6fec3d5900f505ca3fc3ca4e3dc88aa8152999e13112b5f676149701",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.cc",
+      "anchorSha256": "155016fcdb901f8427b0e85695360bbdb354ad851914bc3e97aa0e4359b24603",
+      "count": 1
+    },
+    {
+      "path": "components/contextual_tasks/public/query_contextualizer.h",
+      "anchorSha256": "33628d8f941c9faecf5262e63204c9519b3f480961f9b52b21f4f2c778feab21",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_screenshare_controller.h",
+      "anchorSha256": "49ebbaa597ecc35e6f7127d7d9d0e468da2aa83a86c86a14bf0b56e43d0a675e",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h",
+      "anchorSha256": "56d46352a5f853509ac9b267a0d1f2fa3b790b6f5fdb3991938258e276118ef8",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "beb25a6a57888f3a15f22138ef13ced2c4c73bfd9ad89e74b4f982258a5520ad",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h",
+      "anchorSha256": "8d656a20c286c14e559482a7b148f341451864389301e3930412c080535e6d77",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
+      "anchorSha256": "513f7cd99e5bd992229629f86905f8cb30f45175100ee58542ee2ba90a684515",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/mojom/omnibox_popup_aim.mojom",
+      "anchorSha256": "c7f4ef45ee80d969521d4f9777f4501a35b388cb3ef92c278b189cbe3ed3fc25",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.h",
+      "anchorSha256": "2755ff1d82dcebd6d23463e2ba43d0c8207e629dab29fd43dc65528cb5d2a773",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.cc",
+      "anchorSha256": "c1fa975c7753badbfbcd713b35e2c3174d76f5683c4a04e1ada57d3614e54e32",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "fe2a0a40839edd921325c88e66bd7ff77f7fea50424cc277130ee20e4df53ccc",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "be0339ca6b3db351514db2849d2d97157acca586989fbbe908c7dead109ee33c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "anchorSha256": "baae152f5e225d4ddb4473b00f0f270ea226817e71eae3cc036540bcb5bcd89b",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "anchorSha256": "8086bac520f4350bc75ff059937c779acda12719eecf840f7c6768f7ba7e381d",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "anchorSha256": "f8c49191228171c1b65c59ddd0b277a65110d74c56d933fee85670f0f175712e",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "anchorSha256": "9b20074a36dad2b28a985c472943551f541360f08ae9f35199ca93a3b57cf4bd",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "anchorSha256": "2dff187d73aa4969e0cff70cc93a85f74f308e2a76f37bded90e8b2af88b670a",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "127c37d235cea12270bb5a2a0cbc9c14b0c813aa1f93905f406745f9976f66a1",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "0b4f56c3b582cd6fbcf5bc60bee067b3ead226f2c9e91c07318f78a8944f0a15",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "5645044a66eeacb6e70940bf3e515e51cfc8a72bdbbac5d07e5ec094ff340e64",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "663dfb488a40cd042a5569e6d2d3dc3867b612772ead7cebf5628a3ee5f16e00",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "anchorSha256": "e5ff3d6cfca3e3285604146a54910c69d486c9147a17eeea181b129ff9a5ea1e",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "anchorSha256": "3df8945b6ca049fb74c58c3c706c8c92cf90e656141553f8c2d8935117eeb253",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "1a3839b2e4998a8f81ddd20c668154e0fbd95bc7641d028f2bc7e25c616e6fe9",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "c14a5add3164ad2469138fd867d5b90bd3aefab4c17a77d97f9cf1fc73751f52",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h",
+      "anchorSha256": "973c10315ad61223ec9e8ebb1192970e21527c1fe435e6764d964aa5f9fc4ea3",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h",
+      "anchorSha256": "8db0bbd96a2881c7d5dacd3e377d50bcec3a3521b7788ddd616336b99fad0654",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "50efcb07f068d75f94c281594c94fd8d7000f206c6c3458925ad6eddee548dc8",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "8dad7726487c209d84ccbb02d724006f89f296b24664a5924c88f49d224ea911",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "0fe711fbab73dd24178facfce7889da832e2d3b437d6c81a2839132f77683c52",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "a7282f72a9fb8b4dec26fdb5bfd8ebc9dfddfeccaec630515934a9c5ad1c9dd8",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "d1bf167b6f379d7a7c463fb73b63ab84ec2ed1e33ac09ccdf6a3792eedd49b09",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "anchorSha256": "70ca7cc69038c6053a0d42bb655eaf7fc42f694eef6ee3a3f8028409016d263c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
+      "anchorSha256": "b922c29b6fec3d5900f505ca3fc3ca4e3dc88aa8152999e13112b5f676149701",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
+      "anchorSha256": "75b3b4aaa4e59fcc89279bde3d1909228ef18abd5fe73f9c213f186cbfbcf942",
+      "count": 1
+    }
+  ]
+}

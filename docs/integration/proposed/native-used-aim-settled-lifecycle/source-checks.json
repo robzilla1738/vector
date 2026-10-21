@@ -1,0 +1,11 @@
+{
+  "status": "source-only-proposal",
+  "baseline": "v589",
+  "filePinsVerified": 18,
+  "countCheckedEdits": 37,
+  "gitApplyCheckPassed": true,
+  "nativeBuildPerformed": false,
+  "runtimeExecuted": false,
+  "sharedSourcesModified": false,
+  "cssOrLayoutFilesChanged": false
+}
