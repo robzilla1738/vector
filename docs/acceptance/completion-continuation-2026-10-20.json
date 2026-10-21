@@ -158,7 +158,8 @@
     "unpaidBrowserControl": true,
     "profileSwitchAccepted": false,
     "profileSwitchRejection": "bindings.source-interaction-owners",
-    "sidebarChatReadinessAccepted": false,
-    "actualVisualComparison": "out/pass1-ui-completion/compare.html"
+    "sidebarChatReadinessAccepted": true,
+    "actualVisualComparison": "out/pass1-ui-completion/compare.html",
+    "sidebarChatRowVerified": "Checking assistant availability is an actual saved test chat; click opens supplied task route"
   }
 }
