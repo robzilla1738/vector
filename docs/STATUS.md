@@ -1,5 +1,13 @@
 # Aux implementation status
 
+## Actual597 profile progress and successor repair — 2026-10-21
+
+A later597 native crash in TabStrip::Reset was traced through OnVerticalTabStripModeChanged to a preferences notification: the legacy horizontal region tears down even when never initialized.601 adds the matching initialized-ownership guard, preserving actual preference semantics and live teardown. The exact crashed597 browser and its verified orphan daemon are stopped; package/startup record archived.600 combined lifecycle build is finishing, then601 will compile the additional concrete crash repair before packaging.
+
+597 full native build/generated-key probe, packaging and complete retained-helper/native seal verification passed (receipt dfa7c4d4e41cca2376b00f62d0d186914f9697655174fcfa3d1e78f86202bc51). Actual normal disposable launch is live. Exact synthetic import-destination selection now verifies bookmark hierarchy and history counts across restart; no import or paid AI test was repeated.
+
+Actual forward Your Aux → Person1 succeeds on the second selection and loads separate profile content, establishing that the avatar initialization crash is repaired. First selection still encounters the original pending Actor scrim timer. Native598 now waits on that timer's actual completion before one guarded continuation. Reverse switching rejects transaction.entry-state.11: UnloadController receives the transaction's temporary empty-strip event as a real browser close. The target sidebar also lacks its active tab row. Both lifecycle issues are under repair; profile switching is not yet accepted. All existing visual styling and frame geometry remain unchanged. Screenshot: out/pass1-ui-completion/aux-profile-forward-v597.png.
+
 ## Profile lifecycle batch597 in progress — 2026-10-21
 
 Actual logged594 first switch rejects target Actor container.pending-notifications count1. A second attempt after settlement reaches a fatal avatar current_active_state_pair_ check: synchronous OnRefreshTokensLoaded calls UpdateIcon during CreateStatesAndListeners before the active provider exists. Both defects are repaired in the combined source597, together with the independently identified one-shot AIM settlement problem. Existing admission guards and all UI styling remain intact. Native build is running; no597 runtime acceptance yet.

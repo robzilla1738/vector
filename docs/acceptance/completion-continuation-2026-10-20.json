@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 589,
+  "nativeCandidate": 597,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,15 +24,13 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "candidate": 594,
-    "state": "combined-native-proposal-prepared",
+    "candidate": 601,
+    "state": "native600-building-601-crash-repair-prepared",
     "runtimeAccepted": false,
     "batches": [
-      "single Agent page corner owner",
-      "continuous horizontal bookmarks background",
-      "whole Agent toolbar pill visibility",
-      "used AIM settlement lifecycle",
-      "exact cache Actor diagnostics"
+      "original scrim completion-driven continuation",
+      "temporary empty-strip unload lifecycle",
+      "sidebar tab row restoration"
     ]
   },
   "extensionFixture": {
@@ -203,7 +201,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-profile-lifecycle-batch-597-building",
+  "executionState": "active-profile-lifecycle-successor-repair",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -290,5 +288,20 @@
     "nativeUiStylingChanged": false,
     "fullBuildRunning": true,
     "runtimeAccepted": false
+  },
+  "actual597": {
+    "buildPassed": true,
+    "packageAndRetainedAuthorityVerified": true,
+    "receiptSha256": "dfa7c4d4e41cca2376b00f62d0d186914f9697655174fcfa3d1e78f86202bc51",
+    "forwardSwitchSecondSelection": true,
+    "avatarCrashReproduced": false,
+    "firstSelectionPendingScrim": true,
+    "reverseSwitchAccepted": false,
+    "reverseRejection": "transaction.entry-state.11",
+    "sidebarActiveTabRowPresent": false,
+    "importRestartPersistence": true,
+    "paidAiRepeated": false,
+    "uiStylingChanged": false,
+    "laterModeChangeCrash": "TabStrip::Reset from inactive horizontal region ResetTabStrip"
   }
 }
