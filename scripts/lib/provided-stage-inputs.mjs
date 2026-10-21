@@ -13,5 +13,6 @@ export const providedStageInputs = Object.freeze([
   'scripts/lib/provided-newtab-unavailable-controls.mjs',
   'scripts/lib/provided-password-manager-scope.mjs',
   'scripts/lib/provided-settings-import-copy.mjs',
+  'scripts/lib/provided-draft-flush.mjs',
   'vendor/provided/native-ui-compat.mjs',
 ]);

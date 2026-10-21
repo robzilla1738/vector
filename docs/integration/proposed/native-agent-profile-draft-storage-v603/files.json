@@ -1,0 +1,177 @@
+{
+  "baseComposition": "v603",
+  "files": [
+    {
+      "path": "extensions/browser/extension_host.h",
+      "baselineSha256": "2431fddafc4a9f4b76c8f944bc3d3808daa8f9b9d023a24a85222a49257e67cc",
+      "outputSha256": "3fb1fb30b9ce89f921c6a18b009cb6823de0b1548e4bb763965df7b28dd46625"
+    },
+    {
+      "path": "extensions/browser/extension_host.cc",
+      "baselineSha256": "84de72c62c9e778697c2a15f6600aae6f5642c3f792bcb945b2b6911bbe25c98",
+      "outputSha256": "3aed6922e239ae32580804393889d70c2dd45638f322e7c8ffc8e14586b891e9"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host.h",
+      "baselineSha256": "fc40f559b2737cad5fdb7454effb124cfd31d75981e36e0e63a559e8f668d241",
+      "outputSha256": "613176f38396beb537dd13efd8edca31ad4dc792d8e40a7212f31ba69918fa4f"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host.cc",
+      "baselineSha256": "f907419557f45476c5d8f655aea7e307cba586d728c77a5e25248785a89d57f6",
+      "outputSha256": "eb91c564156d502e0d6b8a5aa04b946a0f8487df298179790cbf49260fb2ec3b"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.h",
+      "baselineSha256": "6dc01522a051c9789982352a4a0d1400b95b7cc91bd56170830e721c037fdc2d",
+      "outputSha256": "cbf39cc727d37c80db29a80285b4177808e3f1fdf51a2c379c8751ff297c9d6b"
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "baselineSha256": "d9c0ff13dc368f12e1fe546d8ce34022cf30015be001c56b48eb76ad5bc2c410",
+      "outputSha256": "590873190687936a247577558cc4851a62070e7042e88068878ab0f45d650912"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "baselineSha256": "e5d2cdfdca8a2c41176ae9de704aa433374573e386fc6170ea530048c8ed0307",
+      "outputSha256": "f22e507d36a2e63347aec8ca80d426f6b9e6ae285d604c8beeeb13eedae88da2"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "baselineSha256": "07dde6dbeae5d75cb781e419191db253c45973d70bd84533febb96945c885acb",
+      "outputSha256": "806437f48ba3b81e71ec919e79a534316b9aef77ba9483d3a8efade87275a29e"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc",
+      "baselineSha256": "a7d3d048903257d7a77c509c6ca7187877aa0cf7e6a52bce92af826e2980d58e",
+      "outputSha256": "13630a50f41a38259ade1d512a59cab30124c1812cbb72ffd085bf8fd5724395"
+    }
+  ],
+  "edits": [
+    {
+      "path": "extensions/browser/extension_host.h",
+      "anchorSha256": "7c60f2603940cae1a2187b74ab57382aaa24410bcc9e894b72c3148b0f7daf7c",
+      "count": 1
+    },
+    {
+      "path": "extensions/browser/extension_host.h",
+      "anchorSha256": "e69039e2ba89b6c9467fec61027812362a22d07bc16c71cf56578014634ecfb0",
+      "count": 1
+    },
+    {
+      "path": "extensions/browser/extension_host.cc",
+      "anchorSha256": "0372eb5e96cd7f859c824bcf948571479f5c478d1c66cf8a04f6f3a165867c8f",
+      "count": 1
+    },
+    {
+      "path": "extensions/browser/extension_host.cc",
+      "anchorSha256": "156983468ea5067457c5878441129cf88219abaaa8803d1fdf043780719b3f76",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host.h",
+      "anchorSha256": "5b5f6f579b3f7d3c618c94e1735828e67ef7a1ad2ce0f07134b3fbb73630300c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host.cc",
+      "anchorSha256": "2c81882b7dde0ad76c28c4245091893d75291334c8e21c2f4562137d99a49458",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host.cc",
+      "anchorSha256": "270f3341e382d1bd4512426ed16c9c97db413430e94f0a2ca4e9533895da715f",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.h",
+      "anchorSha256": "8bc3ff5c398a214afbe0c2ba78ae30c49cb45c9550295d6b15ef956aaa4a1198",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.h",
+      "anchorSha256": "14a94e9514e2f9be676a00a9475dafe2a12bb15efbde76b593935a697970e7fa",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "d5a7df91246236d9709779e11aa26e3a3e3e42e434939875c055a6d305406983",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "06e84a6165ecbfe7c9902ab87be1f33c0844311435a7d032e45958d2d179ed1c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "0dfb20acce79468fada2ee81a3d0643b8bc78ab5387f960fcc74569da7ba55f9",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "24b34f7d56db3617df5f23b7c0cd08bbe45f72370294dbe5810c9fab62664852",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "b19012fa4f1fcab9423e499e392a8093f759b244cb29240b61b03dc8a1f8f2fe",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "4291d23a251dbbe35c0b14dc965531f089156c04a269c06d2a039390f0a92d4a",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/extension_view_host_factory.cc",
+      "anchorSha256": "d6f43ae2009a45d988bca5b5e062d7038894f93d995adca6d09cfc5cc8b4590c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "anchorSha256": "c81214a694b1213b4da76c96ff167d53f14a85024b75252a2b40601ba846a5b9",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "anchorSha256": "6483c2d9d4c32591dee2b7c480a18c2dab2fc4e1e933572a7f96f3741612cbad",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "anchorSha256": "03beab2aae9bb31387343eadd05416095720b910b4964a4dcbcd23139a4d5214",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "anchorSha256": "e9b3325947913241365c70fc8dc5061be179e71e034fa4b54966ad6df9bfe2e7",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "anchorSha256": "c83704f1ba67f6cc18aca49013b75e2d8b92ea7b33212eab9dac0daf858249db",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "anchorSha256": "e6538ce45bdd8360f3d52e3328605cb306fc9aef5a499df463092e6e5327f41c",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "anchorSha256": "28eecd2ea540aca84d7af2cab50455eed9ac5bfc02933f0382a322374d3f985d",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc",
+      "anchorSha256": "b7c179e660aa8ed8362c2db8d03386881bb127186162bcdfb1c503a2a0874fc9",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc",
+      "anchorSha256": "42be1b2db98a07418e6dff56d3c33e32b80dedb803e041a6d8589016c9dfa300",
+      "count": 1
+    }
+  ]
+}

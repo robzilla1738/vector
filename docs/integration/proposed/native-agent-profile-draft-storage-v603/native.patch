@@ -1,0 +1,298 @@
+--- a/extensions/browser/extension_host.h
++++ b/extensions/browser/extension_host.h
+@@ -17,6 +17,7 @@
+ #include "base/observer_list.h"
+ #include "content/public/browser/media_stream_request.h"
+ #include "content/public/browser/web_contents_delegate.h"
++#include "content/public/browser/session_storage_namespace_handle.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "extensions/browser/deferred_start_render_host.h"
+ #include "extensions/browser/extension_function_dispatcher.h"
+@@ -60,7 +61,8 @@
+   ExtensionHost(const Extension* extension,
+                 content::BrowserContext* browser_context,
+                 const GURL& url,
+-                mojom::ViewType host_type);
++                mojom::ViewType host_type,
++                const content::SessionStorageNamespaceHandleMap& session_storage = {});
+ 
+   ExtensionHost(const ExtensionHost&) = delete;
+   ExtensionHost& operator=(const ExtensionHost&) = delete;
+--- a/extensions/browser/extension_host.cc
++++ b/extensions/browser/extension_host.cc
+@@ -132,7 +132,8 @@
+ ExtensionHost::ExtensionHost(const Extension* extension,
+                              content::BrowserContext* browser_context,
+                              const GURL& url,
+-                             mojom::ViewType host_type)
++                             mojom::ViewType host_type,
++                             const content::SessionStorageNamespaceHandleMap& session_storage)
+     : delegate_(ExtensionsBrowserClient::Get()->CreateExtensionHostDelegate()),
+       extension_(extension),
+       extension_id_(extension->id()),
+@@ -148,7 +149,11 @@
+   create_params.is_never_composited =
+       host_type == mojom::ViewType::kExtensionBackgroundPage ||
+       host_type == mojom::ViewType::kOffscreenDocument;
+-  host_contents_ = WebContents::Create(create_params);
++  // A supplied namespace is a sole-owner, same-profile reconstitution. Callers
++  // must destroy the previous WebContents before constructing its successor.
++  host_contents_ = session_storage.empty()
++      ? WebContents::Create(create_params)
++      : WebContents::CreateWithSessionStorage(create_params, session_storage);
+   host_contents_->SetOwnerLocationForDebug(FROM_HERE);
+   content::WebContentsObserver::Observe(host_contents_.get());
+   host_contents_->SetDelegate(this);
+--- a/chrome/browser/extensions/extension_view_host.h
++++ b/chrome/browser/extensions/extension_view_host.h
+@@ -69,7 +69,8 @@
+                     content::BrowserContext* browser_context,
+                     const GURL& url,
+                     mojom::ViewType host_type,
+-                    std::unique_ptr<Delegate> delegate);
++                    std::unique_ptr<Delegate> delegate,
++                    const content::SessionStorageNamespaceHandleMap& session_storage = {});
+ 
+   ExtensionViewHost(const ExtensionViewHost&) = delete;
+   ExtensionViewHost& operator=(const ExtensionViewHost&) = delete;
+--- a/chrome/browser/extensions/extension_view_host.cc
++++ b/chrome/browser/extensions/extension_view_host.cc
+@@ -28,11 +28,12 @@
+     content::BrowserContext* browser_context_param,
+     const GURL& url,
+     mojom::ViewType host_type,
+-    std::unique_ptr<Delegate> delegate)
++    std::unique_ptr<Delegate> delegate,
++    const content::SessionStorageNamespaceHandleMap& session_storage)
+     : ExtensionHost(extension,
+                     browser_context_param,
+                     url,
+-                    host_type),
++                    host_type, session_storage),
+       delegate_(std::move(delegate)) {
+   // Not used for panels, see PanelHost.
+   DCHECK(host_type == mojom::ViewType::kExtensionPopup ||
+--- a/chrome/browser/extensions/extension_view_host_factory.h
++++ b/chrome/browser/extensions/extension_view_host_factory.h
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_EXTENSIONS_EXTENSION_VIEW_HOST_FACTORY_H_
+ 
+ #include <memory>
++#include "content/public/browser/session_storage_namespace_handle.h"
+ 
+ #include "build/build_config.h"
+ #include "extensions/buildflags/buildflags.h"
+@@ -46,7 +47,8 @@
+       const Extension& extension,
+       const GURL& url,
+       BrowserWindowInterface* browser,
+-      tabs::TabInterface* tab_interface);
++      tabs::TabInterface* tab_interface,
++      const content::SessionStorageNamespaceHandleMap& session_storage = {});
+ };
+ 
+ }  // namespace extensions
+--- a/chrome/browser/extensions/extension_view_host_factory.cc
++++ b/chrome/browser/extensions/extension_view_host_factory.cc
+@@ -199,10 +199,11 @@
+     const GURL& url,
+     Profile* profile,
+     mojom::ViewType view_type,
+-    std::unique_ptr<ExtensionViewHost::Delegate> delegate) {
++    std::unique_ptr<ExtensionViewHost::Delegate> delegate,
++    const content::SessionStorageNamespaceHandleMap& session_storage = {}) {
+   DCHECK(profile);
+   return std::make_unique<ExtensionViewHost>(extension, profile, url, view_type,
+-                                             std::move(delegate));
++                                             std::move(delegate), session_storage);
+ }
+ 
+ // Creates a view host for an extension in an incognito window. Returns NULL
+@@ -237,16 +238,18 @@
+     const GURL& url,
+     Profile* profile,
+     extensions::mojom::ViewType view_type,
+-    std::unique_ptr<ExtensionViewHost::Delegate> delegate) {
++    std::unique_ptr<ExtensionViewHost::Delegate> delegate,
++    const content::SessionStorageNamespaceHandleMap& session_storage = {}) {
+   CHECK(profile);
+ 
+   if (profile->IsOffTheRecord()) {
++    CHECK(session_storage.empty());
+     return CreateViewHostForIncognito(&extension, url, profile, view_type,
+                                       std::move(delegate));
+   }
+ 
+   return CreateViewHostForExtension(&extension, url, profile, view_type,
+-                                    std::move(delegate));
++                                    std::move(delegate), session_storage);
+ }
+ 
+ }  // namespace
+@@ -275,7 +278,8 @@
+     const Extension& extension,
+     const GURL& url,
+     BrowserWindowInterface* browser,
+-    tabs::TabInterface* tab_interface) {
++    tabs::TabInterface* tab_interface,
++    const content::SessionStorageNamespaceHandleMap& session_storage) {
+   DCHECK(browser == nullptr ^ tab_interface == nullptr);
+ 
+   Profile* profile =
+@@ -295,7 +299,7 @@
+ 
+   return CreateExtensionViewHost(extension, url, profile,
+                                  mojom::ViewType::kExtensionSidePanel,
+-                                 std::move(delegate));
++                                 std::move(delegate), session_storage);
+ }
+ 
+ }  // namespace extensions
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.h
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.h
+@@ -6,6 +6,11 @@
+ #define CHROME_BROWSER_UI_EXTENSIONS_EXTENSION_SIDE_PANEL_MANAGER_H_
+ 
+ #include <optional>
++#include <vector>
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_multi_source_observation.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "content/public/browser/session_storage_namespace_handle.h"
+ 
+ #include "base/containers/flat_map.h"
+ #include "base/memory/raw_ptr.h"
+@@ -39,7 +44,8 @@
+ // when extensions are loaded or unloaded. Registration of an extension's
+ // SidePanelEntry and creating the view to be shown are delegated to each
+ // extension's ExtensionSidePanelCoordinator.
+-class ExtensionSidePanelManager : public ExtensionRegistryObserver {
++class ExtensionSidePanelManager : public ExtensionRegistryObserver,
++                                  public ProfileObserver {
+  public:
+   DECLARE_USER_DATA(ExtensionSidePanelManager);
+ 
+@@ -76,6 +82,9 @@
+   void RebindForAuxProfileSwitch(Profile* target_profile);
+   // Only before identity commits, after the real source tabs are restored.
+   void AbortForAuxProfileSwitch(Profile* source_profile);
++  content::SessionStorageNamespaceHandleMap TakeAuxAgentSessionStorage(
++      const Extension& extension, const GURL& url);
++  void OnProfileWillBeDestroyed(Profile* profile) override;
+ #endif
+ 
+   // ExtensionRegistryObserver implementation.
+@@ -110,6 +119,15 @@
+       coordinators_;
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  struct AuxAgentStorage {
++    base::WeakPtr<Profile> profile;
++    scoped_refptr<const Extension> extension;
++    GURL url;
++    content::SessionStorageNamespaceHandleMap namespaces;
++  };
++  std::vector<AuxAgentStorage> aux_agent_storage_;
++  base::ScopedMultiSourceObservation<Profile, ProfileObserver>
++      aux_storage_profiles_{this};
+   raw_ptr<Profile> aux_switch_source_profile_ = nullptr;
+   bool aux_profile_switch_prepared_ = false;
+ #endif
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.cc
+@@ -16,6 +16,10 @@
+ #include "content/public/browser/web_contents.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/side_panel/side_panel_registry.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/extensions/extension_view_host.h"
++#include "content/public/browser/navigation_controller.h"
++#include <algorithm>
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #endif
+ #include "extensions/browser/extension_registry.h"
+@@ -76,6 +80,21 @@
+   CHECK_EQ(browser_->GetProfile(), profile_);
+   CHECK_EQ(SidePanelRegistry::From(browser_), registry_);
+   CHECK(!aux_profile_switch_prepared_);
++  // Retain only the native namespace, never a live source-profile document or
++  // its window delegates. Deregistration below destroys the sole old host.
++  auto found = coordinators_.find(aux::kAgentExtensionId);
++  if (found != coordinators_.end() && found->second->host()) {
++    auto* host = found->second->host();
++    std::erase_if(aux_agent_storage_, [this](const auto& entry) {
++      return !entry.profile || entry.profile.get() == profile_;
++    });
++    aux_agent_storage_.push_back({profile_->GetWeakPtr(),
++        scoped_refptr<const Extension>(found->second->extension()),
++        host->initial_url(),
++        host->host_contents()->GetController().GetSessionStorageNamespaceMap()});
++    if (!aux_storage_profiles_.IsObservingSource(profile_))
++      aux_storage_profiles_.AddObservation(profile_);
++  }
+   aux_switch_source_profile_ = browser_->GetProfile();
+   aux_profile_switch_prepared_ = true;
+   extension_registry_observation_.Reset();
+@@ -114,6 +133,33 @@
+     CHECK_EQ(model->GetWebContentsAt(i)->GetBrowserContext(), source_profile);
+   }
+   RebuildForAuxProfileSwitch(source_profile);
++}
++
++content::SessionStorageNamespaceHandleMap
++ExtensionSidePanelManager::TakeAuxAgentSessionStorage(
++    const Extension& extension, const GURL& url) {
++  if (for_tab_ || aux_profile_switch_prepared_ ||
++      browser_->GetProfile() != profile_ ||
++      extension.id() != aux::kAgentExtensionId) return {};
++  for (auto it = aux_agent_storage_.begin(); it != aux_agent_storage_.end(); ++it) {
++    if (it->profile.get() != profile_) continue;
++    content::SessionStorageNamespaceHandleMap result;
++    // An unload/reload, option URL change, or different profile invalidates
++    // reuse; Extension object identity detects even same-version reloads.
++    if (it->extension.get() == &extension && it->url == url)
++      result = std::move(it->namespaces);
++    aux_agent_storage_.erase(it);
++    if (aux_storage_profiles_.IsObservingSource(profile_))
++      aux_storage_profiles_.RemoveObservation(profile_);
++    return result;
++  }
++  return {};
++}
++void ExtensionSidePanelManager::OnProfileWillBeDestroyed(Profile* profile) {
++  std::erase_if(aux_agent_storage_, [profile](const auto& entry) {
++    return !entry.profile || entry.profile.get() == profile;
++  });
++  aux_storage_profiles_.RemoveObservation(profile);
+ }
+ 
+ void ExtensionSidePanelManager::RebuildForAuxProfileSwitch(Profile* target_profile) {
+--- a/chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_coordinator_views.cc
+@@ -29,6 +29,7 @@
+ #include "ui/views/view.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/extensions/extension_side_panel_manager.h"
+ #include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/web_contents.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -50,9 +51,17 @@
+ 
+   // ExtensionSidePanelCoordinator::Delegate:
+   std::unique_ptr<ExtensionViewHost> CreateHost(const GURL& url) override {
++    content::SessionStorageNamespaceHandleMap session_storage;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (auto* browser = coordinator_->browser()) {
++      if (auto* manager = ExtensionSidePanelManager::From(browser))
++        session_storage = manager->TakeAuxAgentSessionStorage(
++            *coordinator_->extension(), url);
++    }
++#endif
+     auto host = ExtensionViewHostFactory::CreateSidePanelHost(
+         *coordinator_->extension(), url, coordinator_->browser(),
+-        coordinator_->tab_interface());
++        coordinator_->tab_interface(), session_storage);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+     if (host && coordinator_->extension()->id() == aux::kAgentExtensionId) {
+       // Retain the recovered popup helper's transparent renderer/host boundary
