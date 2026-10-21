@@ -1,0 +1,66 @@
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -1439,8 +1439,14 @@
+       deps += [ "//chrome/browser/chrome_for_testing:browser" ]
+     }
+ 
++    frameworks = []
+     if (is_component_build) {
+-      frameworks = [ "Carbon.framework" ]
++      frameworks += [ "Carbon.framework" ]
++    }
++    if (enable_aux_browser && !is_official_build) {
++      sources += [ "app/aux_accepted_development_startup.h" ]
++      deps += [ "//crypto" ]
++      frameworks += [ "Security.framework" ]
+     }
+ 
+     ldflags = [ "-ObjC" ]
+--- a/chrome/app/BUILD.gn
++++ b/chrome/app/BUILD.gn
+@@ -7,6 +7,7 @@
+ import("//build/config/locales.gni")
+ import("//build/config/ozone.gni")
+ import("//build/config/ui.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ import("//crypto/features.gni")
+ import("//tools/grit/grit_rule.gni")
+@@ -211,6 +212,12 @@
+       "//chrome/browser/mac",
+     ]
+ 
++    if (enable_aux_browser && !is_official_build) {
++      sources += [ "aux_accepted_development_startup.h" ]
++      deps += [ "//crypto" ]
++      frameworks = [ "Security.framework" ]
++    }
++
+     data_deps = [ "//chrome:chrome_framework" ]
+   }
+ 
+--- a/chrome/app/aux_accepted_development_startup.h
++++ b/chrome/app/aux_accepted_development_startup.h
+@@ -9,8 +9,13 @@
+ #include <sys/stat.h>
+ #include <unistd.h>
+ 
++#include <string>
++#include <string_view>
++
+ #include "base/apple/scoped_cftyperef.h"
++#include "base/base_paths.h"
+ #include "base/command_line.h"
++#include "base/containers/span.h"
+ #include "base/environment.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
+@@ -49,7 +54,7 @@
+   struct stat st;
+   if (!fd.is_valid() || fstat(fd.get(), &st) != 0 || !S_ISREG(st.st_mode) ||
+       st.st_uid != getuid() || (st.st_mode & 0777) != 0600 || st.st_nlink != 1 ||
+-      st.st_size <= 0 || st.st_size > 512 * 1024)
++      st.st_size <= 0 || st.st_size > 8 * 1024 * 1024)
+     return false;
+   bytes.resize(st.st_size);
+   size_t offset = 0;

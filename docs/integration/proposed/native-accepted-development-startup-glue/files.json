@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v571 plus native-accepted-development-startup (8bdc63447)",
+  "files": [
+    {
+      "path": "chrome/BUILD.gn",
+      "baselineSha256": "631cc63025a3fa13612c9749ba76817364beee9814817adcf457be9846ac3c32",
+      "outputSha256": "97b47b4b66c2b1e84360d339d10ba57e0a74aa08ac9f9a2a2848b21689faf246"
+    },
+    {
+      "path": "chrome/app/BUILD.gn",
+      "baselineSha256": "006b4359aa4f47842f3dab67ab4d89676d57eff07808f95191155f122681b48f",
+      "outputSha256": "8b950842faab69e162ab2dc7ec7354ceb341d57254377c353d1881cffca893e3"
+    },
+    {
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "baselineSha256": "0ae2885181d26144869e0df9e915c6468dad7a473dc94ff4d414e5dd572edf8a",
+      "outputSha256": "706e33100636cbb872502eb4e6ecd37f0a003b7d773234862f92c1208c7ad7a0"
+    }
+  ]
+}
