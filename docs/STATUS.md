@@ -1,10 +1,12 @@
 # Aux implementation status
 
-## Active-work and session persistence batch605 — 2026-10-21
+## Active-work and session persistence batch605/607 — 2026-10-21
 
 Actual603 reproduced an unsent supplied chat draft disappearing after a profile round trip. The successor retains the exact profile/extension/window session-storage namespace while destroying old native delegates normally, and flushes the supplied draft writer's latest edit immediately. No layout, CSS, glass or geometry changes.
 
-The combined source also repairs canceled-picker/idle Drive ownership, empty-cache last-window accounting, and pending session-snapshot draining before close/quit. Saved inactive single-window sessions restore through Chromium's actual asynchronous session machinery before admission; ambiguous multiwindow sessions remain a separate explicit boundary. Source/count checks are complete; native integration and actual605 acceptance are pending.604 compilation was interrupted to add a non-pruning session-admission read;605 continues the same object build.603 remains the observed app. No new paid AI, Apple signing, Keychain operation or OS grant is requested.
+The combined source also repairs canceled-picker/idle Drive ownership, empty-cache last-window accounting, and pending session-snapshot draining before close/quit. Saved inactive single-window sessions restore through Chromium's actual asynchronous session machinery before admission; ambiguous multiwindow sessions remain a separate explicit boundary. 605 native build and generated-key probe passed (116 steps,10m52.74s). Corrected-path staging/package passed with10751 resources+418 native leaves; the resource-reuse plan and final inventory/seal verification passed. Actual605 immediate unsent-draft profile isolation/return and panel close/reopen pass. The source profile restores both tabs and its selected tab after normal Quit/restart. The inactive profile loses its second tab on first switch despite an actual Continue startup setting; this remains under repair. The owner also reported a collapsed-toolbar upper-left gray corner wedge, now included in the successor batch. No overall batch-readiness claim.604 compilation was interrupted to add a non-pruning session-admission read.603 is archived as the observed baseline. No new paid AI, Apple signing, Keychain operation or OS grant is requested.
+
+Successor607 is compiling: effective Chromium startup-policy selection; drain before SessionService shutdown; profile-owned crash-acknowledgement observer rebind after synthetic transfer; and removal of the interior toolbar corner when the sidebar reserves zero width (including hover overlays). These preserve the existing UI dimensions/materials and original crash/recovery checks. Bounded readiness diagnostics distinguish inactive-profile saving gates. No607 runtime result yet.
 
 ## Actual603 batch complete and open for testing — 2026-10-21
 
