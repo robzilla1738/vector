@@ -1,0 +1,45 @@
+{
+  "baseComposition": "v603",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_restore.h",
+      "baselineSha256": "4c567fe09ae9e697d365c537b9db62dfad25171cb148c83697e4e55722986e28",
+      "outputSha256": "e2405de61a0f7fb085778821a5f211f0bc9c924b7b97f8eefc16eef94aac3299"
+    },
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "baselineSha256": "81c80e857703084b14b03d0c64050d9d4e8b4750ca551b5d93feed54ace19ea3",
+      "outputSha256": "ed539e4dd6df1fd69de61f4177e9ca273f921c846e20524ba11a973aa50ebe04"
+    },
+    {
+      "path": "chrome/browser/ui/browser_init_state.h",
+      "baselineSha256": "92490e712eb46d59cb184690bdf15a2d809c38063d6625251c527cd0b12046fb",
+      "outputSha256": "dcfbdd0519fb2a4264bcd3dc40ba8f3d4cc3dd845ee5507afaf643a4c5113c25"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h",
+      "baselineSha256": "a7df6b201e40d9c1ded2c5d020c0559715b58e16b66193f5db082bc079552d8a",
+      "outputSha256": "842c68998836225c330a04ec9d5ba8ee609b60fc4936c700baa5e9af69257ebd"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "baselineSha256": "4d479646ef6c7490b564e87b6aed3a5f85e4beaa7e50ab99ee437eeb6a33dc9e",
+      "outputSha256": "90b39ffa117dc6df0b42c556eb0ff3d4fd010c1923c862633e7ce78aa31c3282"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "baselineSha256": "1511138f6c96aacad9f2476bf213107be0a1fd2e353e0c43892b01e584d0858e",
+      "outputSha256": "f81e5a57f0ec56365b6d450b74662a68bb2e6a576c8e263a2512fc85d1afb321"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": "edd012a0c9dcb788d284eea514b7357eeaf41e4266ab1bef0234787ac02b70d0",
+      "outputSha256": "35d32173748dbe2ff97729aefcf20e9e4879fe649559c5a521595b1544992934"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "3b7df926b6c42e73c6d3d2ccf286485970ff32e0c30524f2ba1a0c4f80922128",
+      "outputSha256": "f186a35b77f0edd265b080da1c045bd11a43a3a17d3614a7d4b6da8d00e88b3d"
+    }
+  ]
+}
