@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "25e78be7a93ff1046eca5ee49545aeec964eb1dd0bbf6079544f3bbc44cd03a9"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_panel_host_desktop.cc",
+      "sha256": "199cc1b8f0b28afb8fe1fef113f52521d03d13d2da373850f0394185160a4380"
+    },
+    {
+      "path": "chrome/browser/glic/browser_ui/tab_underline_controller.cc",
+      "sha256": "e53bc08c377ab92968087e3dbd98659092797eaf675487e9b3b084007c518c5c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "sha256": "d155519d299299e32545895e1d0864213ec0f19f350d3a35cbffcd310baa7852"
+    }
+  ]
+}

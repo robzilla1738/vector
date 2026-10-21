@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h",
+      "baselineSha256": "e174ab57956d2723043a43a1484c8cee6c2c38bf4adbaca14f75ad3854d620af",
+      "outputSha256": "5645bed42f01a9d4dec46234924d6d0092d38c368c9142d62a8c7ccef1a41501"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.cc",
+      "baselineSha256": "6f819a0782e95273fbd9909917fd54c35bb139f04d0466dbddf4384aac38a9ec",
+      "outputSha256": "475f5763b3aa7eff76901b644c6043770db3c9112a8bac116c15d838211595cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h",
+      "baselineSha256": "7e86db931f7c2f76dbe16ed51e83ac3eb888a2b707d79b30d5159d42504920d6",
+      "outputSha256": "f4ae7556d3446de7c1ce98e16ea8fed69c56ac4531bbc5570a5f4f29a58b2c3c"
+    },
+    {
+      "path": "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.cc",
+      "baselineSha256": "c0938885514af2f01fff5680fd0bb758915f0e055b707ca762f59160afe4c12e",
+      "outputSha256": "7cd7dd151a317eab942e50d9fb382aa621a1bab4dbb5bd84306a2b18d38aee1e"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "86190394b890d94a28eecd47f72156b4715bea39a0a44362a810b1bff84525bf",
+      "outputSha256": "ae8a990bbd9a6a679dff0b4548076de6d19a6bd27a2c0d77051848dea2307ef9"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/active_task_context_provider_impl.h",
+      "baselineSha256": "09560049149d138d3ae8e95b54579da3feb9c30ab13c2d11649dbf490de7d73e",
+      "outputSha256": "2b6f20cc8ab85d2c799050a84843dd41d93241118c49c426f37e9f1868419a32"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/active_task_context_provider_impl.cc",
+      "baselineSha256": "791b07b4929bf47dccce4b15c07bc68854c7d5c6e7d1c71fddfab978a5d29e7c",
+      "outputSha256": "22f7678cad0786091e0ef46d01fddd288b2b1afd5965f71fc9a16df5ae4931df"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h",
+      "baselineSha256": "ef0e6761b8910b7aaabbe64a9e9a48a43493b04910b9f83bc2f8c5747ca5ea09",
+      "outputSha256": "71375782a62f926e59f1a855e4b281eb843f0fbdd1d9bfc51a92a5415635f6bd"
+    },
+    {
+      "path": "chrome/browser/contextual_tasks/entry_point_eligibility_manager.cc",
+      "baselineSha256": "dd74efb1dead66b56ee58220303cdd3cc39958a0a58253ce06b58cff8ed92ca8",
+      "outputSha256": "65d82414b36d940d8bdb364b1040a3ba2dd1aa85b0478ec77cb0498729f06fa3"
+    }
+  ]
+}

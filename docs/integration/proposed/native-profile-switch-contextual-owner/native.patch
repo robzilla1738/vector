@@ -1,0 +1,353 @@
+--- a/chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h
++++ b/chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h
+@@ -148,6 +148,8 @@
+       const base::Uuid& task_id,
+       std::unique_ptr<content::WebContents> web_contents) override;
+   std::optional<ContextualTask> GetCurrentTask() override;
++  // Only a dormant graph may be retired across an Aux profile transaction.
++  bool CanRetireForAuxProfileSwitch();
+   std::pair<std::optional<base::Uuid>,
+             contextual_search::ContextualSearchSessionHandle*>
+   GetSessionHandleForActiveTabOrPanel() override;
+--- a/chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.cc
++++ b/chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.cc
+@@ -273,6 +273,26 @@
+   }
+ }
+ 
++bool ContextualTasksSidePanelCoordinator::CanRetireForAuxProfileSwitch() {
++  for (auto* tab : TabListInterface::From(browser_window_)->GetAllTabs()) {
++    auto* contents = tab->GetContents();
++    if (!contents) continue;
++    auto* data = ContextualTasksWebContentsUserData::FromWebContents(contents);
++    if ((data && data->pending_task_id().has_value()) ||
++        (contextual_tasks_service_ &&
++         contextual_tasks_service_->GetContextualTaskForTab(
++             sessions::SessionTabHelper::IdForTab(contents)).has_value())) {
++      return false;
++    }
++  }
++  return task_id_to_web_contents_cache_.empty() && !in_cobrowsing_session_ &&
++         !closing_entry_source_ &&
++         !contextual_tasks_panel_host_->IsPanelInitialized() &&
++         !contextual_tasks_panel_host_->IsPanelOpenForContextualTask() &&
++         !contextual_tasks_panel_host_->GetWebContents() &&
++         !contextual_tasks_panel_host_->GetToolbarWebContents();
++}
++
+ ContextualTasksSidePanelCoordinator::~ContextualTasksSidePanelCoordinator() {
+   for (auto& observer : observers_) {
+     observer.OnControllerDestroyed();
+--- a/chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h
++++ b/chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h
+@@ -38,6 +38,9 @@
+       BrowserWindowInterface* browser_window_interface);
+ 
+   void Shutdown();
++  bool CanPauseForAuxProfileSwitch();
++  void PauseForAuxProfileSwitch();
++  void ResumeForAuxProfileSwitch();
+ 
+   EntryPointEligibilityManager* eligibility_manager() {
+     return eligibility_manager_.get();
+@@ -58,6 +61,8 @@
+ #endif
+ 
+  private:
++  void InitializeProfileOwners();
++  bool aux_profile_switch_paused_ = false;
+   raw_ptr<BrowserWindowInterface> browser_window_interface_;
+   ui::ScopedUnownedUserData<ContextualTasksBrowserController>
+       scoped_unowned_user_data_;
+--- a/chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.cc
++++ b/chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h"
+ 
++#include "base/check.h"
+ #include "base/functional/callback_helpers.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/contextual_tasks/active_task_context_provider_impl.h"
+@@ -16,6 +17,8 @@
+ #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+ 
+ #if !BUILDFLAG(IS_ANDROID)
++#include "chrome/browser/ui/side_panel/side_panel_registry.h"
++#include "chrome/browser/ui/side_panel/side_panel_entry.h"
+ #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_button_controller.h"
+ #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
+ #include "components/contextual_tasks/public/features.h"
+@@ -31,14 +34,29 @@
+       scoped_unowned_user_data_(
+           browser_window_interface->GetUnownedUserDataHost(),
+           *this) {
+-  active_task_context_provider_ =
++  InitializeProfileOwners();
++}
++
++void ContextualTasksBrowserController::InitializeProfileOwners() {
++  if (!active_task_context_provider_) {
++    active_task_context_provider_ =
+       std::make_unique<ActiveTaskContextProviderImpl>(
+           browser_window_interface_,
+           ContextualTasksServiceFactory::GetForProfile(
+               browser_window_interface_->GetProfile()));
++  } else {
++    static_cast<ActiveTaskContextProviderImpl*>(active_task_context_provider_.get())
++        ->RebindForAuxProfileSwitch(ContextualTasksServiceFactory::GetForProfile(
++            browser_window_interface_->GetProfile()));
++  }
+ 
++  if (!eligibility_manager_) {
+   eligibility_manager_ =
+       std::make_unique<EntryPointEligibilityManager>(browser_window_interface_);
++  } else {
++    eligibility_manager_->RebindForAuxProfileSwitch(
++        browser_window_interface_->GetProfile());
++  }
+ 
+   side_panel_coordinator_ =
+       std::make_unique<ContextualTasksSidePanelCoordinator>(
+@@ -71,6 +89,37 @@
+ }
+ 
+ 
++bool ContextualTasksBrowserController::CanPauseForAuxProfileSwitch() {
++  return !aux_profile_switch_paused_ && side_panel_coordinator_ &&
++         static_cast<ActiveTaskContextProviderImpl*>(active_task_context_provider_.get())
++             ->CanPauseForAuxProfileSwitch() &&
++         side_panel_coordinator_->CanRetireForAuxProfileSwitch();
++}
++
++void ContextualTasksBrowserController::PauseForAuxProfileSwitch() {
++  CHECK(CanPauseForAuxProfileSwitch());
++  aux_profile_switch_paused_ = true;
++  Shutdown();
++#if !BUILDFLAG(IS_ANDROID)
++  // The dormant registry entry holds a weak factory bound to the old host.
++  // Remove it so the original constructor registers the resumed host.
++  SidePanelRegistry::From(browser_window_interface_)->Deregister(
++      SidePanelEntry::Key(SidePanelEntry::Id::kContextualTasks));
++#endif
++  // These owners cache Profile-keyed services and observe the window tab list.
++  // Detach all of them before tabs or the window Profile identity can move.
++  eligibility_manager_->PauseForAuxProfileSwitch();
++  static_cast<ActiveTaskContextProviderImpl*>(active_task_context_provider_.get())
++      ->PauseForAuxProfileSwitch();
++}
++
++void ContextualTasksBrowserController::ResumeForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_paused_);
++  InitializeProfileOwners();
++  aux_profile_switch_paused_ = false;
++  eligibility_manager_->FinishForAuxProfileSwitch();
++}
++
+ void ContextualTasksBrowserController::Shutdown() {
+ #if !BUILDFLAG(IS_ANDROID)
+   actions_visibility_subscription_ = base::CallbackListSubscription();
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -6,6 +6,7 @@
+ #include <memory>
+ #include <optional>
+ #include <utility>
++#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+@@ -113,6 +114,7 @@
+   void Finish(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+   void Abort(std::shared_ptr<Bindings>, Browser&, Browser&, Browser&);
+   void ResumeCacheMetadata(std::shared_ptr<Bindings>, Browser&, Browser&);
++  bool ResumeContextualOwners(Browser&, Browser&, Browser&);
+   base::raw_ref<BrowserWindowFeatures> features_;
+   aux::ProfileSwitchTransaction transaction;
+   base::WeakPtrFactory<AuxProfileSwitchProvider> weak_factory_{this};
+@@ -163,8 +165,9 @@
+     LOG(ERROR) << "Aux profile transition rejected: unported.comments_side_panel_coordinator";
+     return true;
+   }
+-  if (features.contextual_tasks_browser_controller_) {
+-    LOG(ERROR) << "Aux profile transition rejected: unported.contextual_tasks_browser_controller";
++  if (features.contextual_tasks_browser_controller_ &&
++      !features.contextual_tasks_browser_controller_->CanPauseForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: contextual-task-owner-active";
+     return true;
+   }
+   if (features.organizer_panel_controller_) {
+@@ -346,6 +349,11 @@
+   }
+   for (auto* cache : {&previous_cache, &target_cache}) {
+     auto& features = cache->GetFeatures();
++    if (features.contextual_tasks_browser_controller_ &&
++        !features.contextual_tasks_browser_controller_->CanPauseForAuxProfileSwitch()) {
++      LOG(ERROR) << "Aux profile transition rejected: contextual-task-cache-owner-active";
++      return false;
++    }
+     if (bool(features.glic_iph_controller_) != bool(features.glic_split_button_controller_) ||
+         bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_) ||
+         (features.glic_split_button_controller_ &&
+@@ -426,6 +434,13 @@
+     return provider && visible_window && previous_window && target_window;
+   };
+   CHECK(target);
++  for (Browser* window : {&browser, &previous_cache, &target_cache}) {
++    auto& owner = window->GetFeatures().contextual_tasks_browser_controller_;
++    if (owner) {
++      owner->PauseForAuxProfileSwitch();
++      if (!alive()) return;
++    }
++  }
+   const std::array<BrowserWindowInterface*, 3> windows{
+       &browser, &previous_cache, &target_cache};
+   plan->group_transfer =
+@@ -1078,6 +1093,7 @@
+       return;
+     }
+   }
++  if (!ResumeContextualOwners(browser, previous_cache, target_cache)) return;
+   if (features_->ai_mode_page_action_controller_) {
+     // Its genuine config update may notify UI observers. Keep this the final
+     // private-owner effect after real tabs/edit model/profile services settle.
+@@ -1299,6 +1315,7 @@
+       return;
+     }
+   }
++  if (!ResumeContextualOwners(browser, previous_cache, target_cache)) return;
+   if (plan->had_ai_mode_owner) {
+     auto owner = omnibox::AiModePageActionController::CreatePreparedForAuxProfileSwitch(
+         browser, *browser.GetProfile(), *plan->location);
+@@ -1309,6 +1326,24 @@
+     features_->ai_mode_page_action_controller_->FinishForAuxProfileSwitch();
+   }
+ }
++bool BrowserWindowFeatures::AuxProfileSwitchProvider::ResumeContextualOwners(
++    Browser& browser, Browser& previous_cache, Browser& target_cache) {
++  const auto provider = weak_factory_.GetWeakPtr();
++  const auto visible = browser.GetWeakPtr();
++  const auto previous = previous_cache.GetWeakPtr();
++  const auto target = target_cache.GetWeakPtr();
++  for (Browser* window : {&browser, &previous_cache, &target_cache}) {
++    auto& owner = window->GetFeatures().contextual_tasks_browser_controller_;
++    if (owner) {
++      // The window identity and real tabs now belong to the committed target
++      // or restored source. Factory lookups must happen only at this point.
++      owner->ResumeForAuxProfileSwitch();
++      if (!provider || !visible || !previous || !target) return false;
++    }
++  }
++  return true;
++}
++
+ void BrowserWindowFeatures::AuxProfileSwitchProvider::ResumeCacheMetadata(
+     std::shared_ptr<Bindings> plan,
+     Browser& previous_cache, Browser& target_cache) {
+--- a/chrome/browser/contextual_tasks/active_task_context_provider_impl.h
++++ b/chrome/browser/contextual_tasks/active_task_context_provider_impl.h
+@@ -70,6 +70,11 @@
+                                   SessionID tab_id) override;
+   void PrimaryPageChanged(content::Page& page) override;
+ 
++ public:
++  bool CanPauseForAuxProfileSwitch() const;
++  void PauseForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(ContextualTasksService* service);
++
+  private:
+   // TabListInterfaceObserver overrides:
+   void OnActiveTabChanged(TabListInterface& tab_list,
+--- a/chrome/browser/contextual_tasks/active_task_context_provider_impl.cc
++++ b/chrome/browser/contextual_tasks/active_task_context_provider_impl.cc
+@@ -116,6 +116,32 @@
+   CHECK(contextual_tasks_service_);
+ }
+ 
++bool ActiveTaskContextProviderImpl::CanPauseForAuxProfileSwitch() const {
++  return local_tab_underlines_.empty() && backend_context_tabs_.empty() &&
++         !session_handle_ && !active_task_id_;
++}
++
++void ActiveTaskContextProviderImpl::PauseForAuxProfileSwitch() {
++  CHECK(CanPauseForAuxProfileSwitch());
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  ++callback_id_;
++  Observe(nullptr);
++  contextual_tasks_service_observation_.Reset();
++  if (auto* tabs = TabListInterface::From(browser_window_)) {
++    tabs->RemoveTabListInterfaceObserver(this);
++  }
++  contextual_tasks_panel_controller_ = nullptr;
++  contextual_tasks_service_ = nullptr;
++}
++
++void ActiveTaskContextProviderImpl::RebindForAuxProfileSwitch(
++    ContextualTasksService* service) {
++  CHECK(service);
++  CHECK(!contextual_tasks_service_);
++  contextual_tasks_service_ = service;
++  // The resumed coordinator injects itself and resumes observation normally.
++}
++
+ void ActiveTaskContextProviderImpl::SetContextualTasksPanelController(
+     ContextualTasksPanelController* contextual_tasks_panel_controller) {
+   contextual_tasks_panel_controller_ = contextual_tasks_panel_controller;
+--- a/chrome/browser/contextual_tasks/entry_point_eligibility_manager.h
++++ b/chrome/browser/contextual_tasks/entry_point_eligibility_manager.h
+@@ -24,6 +24,9 @@
+   explicit EntryPointEligibilityManager(
+       BrowserWindowInterface* browser_window_interface);
+   ~EntryPointEligibilityManager();
++  void PauseForAuxProfileSwitch();
++  void RebindForAuxProfileSwitch(Profile* profile);
++  void FinishForAuxProfileSwitch();
+ 
+   static EntryPointEligibilityManager* From(
+       BrowserWindowInterface* browser_window_interface);
+@@ -50,6 +53,7 @@
+   // Notifies observers only if the entry point or pinning eligibility has
+   // changed.
+   void MaybeNotifyEntryPointEligibilityChanged();
++  void ObserveProfileServices();
+ 
+   bool entry_points_are_eligible_ = false;
+   bool is_pinning_eligible_ = false;
+--- a/chrome/browser/contextual_tasks/entry_point_eligibility_manager.cc
++++ b/chrome/browser/contextual_tasks/entry_point_eligibility_manager.cc
+@@ -34,6 +34,12 @@
+       scoped_unowned_user_data_(
+           browser_window_interface->GetUnownedUserDataHost(),
+           *this) {
++  ObserveProfileServices();
++  entry_points_are_eligible_ = AreEntryPointsEligible();
++  is_pinning_eligible_ = IsPinningEligible(profile_);
++}
++
++void EntryPointEligibilityManager::ObserveProfileServices() {
+   ContextualTasksUiService* const contextual_tasks_ui_service =
+       ContextualTasksUiServiceFactory::GetForBrowserContext(profile_);
+   if (contextual_tasks_ui_service) {
+@@ -56,8 +62,20 @@
+                                     MaybeNotifyEntryPointEligibilityChanged,
+                                 base::Unretained(this)));
+   }
+-  entry_points_are_eligible_ = AreEntryPointsEligible();
+-  is_pinning_eligible_ = IsPinningEligible(profile_);
++}
++
++void EntryPointEligibilityManager::PauseForAuxProfileSwitch() {
++  eligibility_subscription_ = {};
++  aim_eligibility_subscription_ = {};
++}
++
++void EntryPointEligibilityManager::RebindForAuxProfileSwitch(Profile* profile) {
++  profile_ = profile;
++  ObserveProfileServices();
++}
++
++void EntryPointEligibilityManager::FinishForAuxProfileSwitch() {
++  MaybeNotifyEntryPointEligibilityChanged();
+ }
+ 
+ EntryPointEligibilityManager::~EntryPointEligibilityManager() = default;
