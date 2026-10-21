@@ -1,0 +1,47 @@
+{
+  "baseComposition": "v607",
+  "compositionSha256": "d9069829b656bc1de4b11a3fd543eb4507df63d6f5f5df55c2145b787891aa6d",
+  "files": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "baselineSha256": "f22e507d36a2e63347aec8ca80d426f6b9e6ae285d604c8beeeb13eedae88da2",
+      "outputSha256": "6206c05118b651204650412c6b84eeedf1389712d04416fc045026b83d4077bd"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "baselineSha256": "806437f48ba3b81e71ec919e79a534316b9aef77ba9483d3a8efade87275a29e",
+      "outputSha256": "bef187588c8bc5078693f76c4941e133f8cfea2d894b87319b650009ea50e03a"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "2997b54c9a786423baf548f151f7948e6f33215b1310a56dead432ec47d7de98",
+      "outputSha256": "d43471501a7f2474718014e90f617c9a9e39a9143fb845f8a8fe1f308189f6d7"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.h",
+      "find": "  void PrepareForAuxProfileSwitch();",
+      "replace": "  bool CanRetireForAuxProfileSwitch() const;\n  void PrepareForAuxProfileSwitch();",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "find": "#include \"content/public/browser/navigation_controller.h\"",
+      "replace": "#include \"content/public/browser/navigation_controller.h\"\n#include \"content/public/browser/render_frame_host.h\"\n#include \"third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_manager.cc",
+      "find": "void ExtensionSidePanelManager::PrepareForAuxProfileSwitch() {",
+      "replace": "bool ExtensionSidePanelManager::CanRetireForAuxProfileSwitch() const {\n  // The supplied Agent owns asynchronous local FileReaders in its renderer.\n  // Its beforeunload owner spans that queue and the attachment draft commit.\n  // Do not confuse ordinary visibility/pagehide listeners with pending work.\n  const auto it = coordinators_.find(aux::kAgentExtensionId);\n  if (it == coordinators_.end() || !it->second->host()) {\n    return true;\n  }\n  bool pending = false;\n  it->second->host()->host_contents()->ForEachRenderFrameHost(\n      [&](content::RenderFrameHost* frame) {\n        if (frame->IsRenderFrameLive() &&\n            frame->GetSuddenTerminationDisablerState(\n                blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler)) {\n          pending = true;\n        }\n      });\n  return !pending;\n}\n\nvoid ExtensionSidePanelManager::PrepareForAuxProfileSwitch() {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "find": "  if (!CanSwitchAuxAgentTabsProfile(&browser)) {",
+      "replace": "  if (features_->extension_side_panel_manager_ &&\n      !features_->extension_side_panel_manager_->CanRetireForAuxProfileSwitch()) {\n    LOG(ERROR) << \"Aux profile transition rejected: agent-pending-local-file-read\";\n    return nullptr;\n  }\n  if (!CanSwitchAuxAgentTabsProfile(&browser)) {",
+      "count": 1
+    }
+  ]
+}

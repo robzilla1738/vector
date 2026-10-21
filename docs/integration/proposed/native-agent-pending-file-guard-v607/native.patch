@@ -1,0 +1,62 @@
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.h
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.h
+@@ -76,6 +76,7 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Retires only this window's extension entries before changing its profile.
+   // Keeps this manager, the registry and unowned user-data registration alive.
++  bool CanRetireForAuxProfileSwitch() const;
+   void PrepareForAuxProfileSwitch();
+   // Requires the committed target profile and an empty tab model. Registers
+   // real target-profile entries without opening or navigating their views.
+--- a/chrome/browser/ui/extensions/extension_side_panel_manager.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_manager.cc
+@@ -19,6 +19,8 @@
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/extensions/extension_view_host.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h"
+ #include <algorithm>
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #endif
+@@ -73,6 +75,26 @@
+ }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++bool ExtensionSidePanelManager::CanRetireForAuxProfileSwitch() const {
++  // The supplied Agent owns asynchronous local FileReaders in its renderer.
++  // Its beforeunload owner spans that queue and the attachment draft commit.
++  // Do not confuse ordinary visibility/pagehide listeners with pending work.
++  const auto it = coordinators_.find(aux::kAgentExtensionId);
++  if (it == coordinators_.end() || !it->second->host()) {
++    return true;
++  }
++  bool pending = false;
++  it->second->host()->host_contents()->ForEachRenderFrameHost(
++      [&](content::RenderFrameHost* frame) {
++        if (frame->IsRenderFrameLive() &&
++            frame->GetSuddenTerminationDisablerState(
++                blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler)) {
++          pending = true;
++        }
++      });
++  return !pending;
++}
++
+ void ExtensionSidePanelManager::PrepareForAuxProfileSwitch() {
+   CHECK(!for_tab_);
+   CHECK_EQ(browser_->GetType(), BrowserWindowInterface::TYPE_NORMAL);
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -235,6 +235,11 @@
+     LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-chrome-labs";
+     return nullptr;
+   }
++  if (features_->extension_side_panel_manager_ &&
++      !features_->extension_side_panel_manager_->CanRetireForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: agent-pending-local-file-read";
++    return nullptr;
++  }
+   if (!CanSwitchAuxAgentTabsProfile(&browser)) {
+     LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-agent-tabs";
+     return nullptr;
