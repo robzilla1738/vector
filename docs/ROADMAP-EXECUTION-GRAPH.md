@@ -2,6 +2,10 @@
 
 Updated 2026-10-21. Owner authorized continued implementation until the local Aux browser is ready, explicitly preserving the improving UI. This graph maintains the active supplied-implementation reuse plan; it does not authorize release, new provisioning, owner-profile access or unrelated OS grants.
 
+## Owner-requested pause — verified585,2026-10-21
+
+585 build/package/final retained-signature inventory complete; normal app open. Actual profile switch remains rejected at aim-cold.content-invoked. Current UI was visually compared with actual Aside captures and preserved. Next step is the AIM startup-callback/session ownership lifecycle, then real forward/back transition acceptance. No further build is running. This pause supersedes older active-build entries below; full readiness remains pending. See STATUS and the continuation ledger.
+
 ## Current execution —581c observed,582 diagnostic build
 
 Current testable app is581c at the stable local candidate path. Actual LaunchServices startup now starts the owned daemon and authenticated CDP through the outer Resources Node package boundary. All eight signed helper signatures are retained; no new Apple signing or Keychain operation. Current final receiptSHAf3786a5cfd8db24d27170f7c2c9158a0c578037d7043bbc8772328b73c3211b8. The failed581b root-marker proposal was never launched.

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 584,
+  "nativeCandidate": 585,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,15 +24,15 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 584,
+    "packagedCandidate": 585,
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 585,
+    "nextSourceComposition": "not started; next AIM invoked-content lifecycle repair",
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
-    "nextFullBuild": "585 full native build/generated-key probe passed; supplied package running"
+    "nextFullBuild": "585 complete, actual app open; no build running"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -63,7 +63,7 @@
   },
   "remainingObserved": [
     "581c normal desktop startup succeeds with the outer Resources package boundary; exact protected-folder cause remains unproven.",
-    "583 passes the tab-strip guard and rejects bindings.source-view-toolbar-location-private-services; next genuine lifecycle batch pending.",
+    "585 rejects aim-cold.content-invoked during actual first switch; identify initial callback and safely retire/rebind genuine content state before forward/back acceptance.",
     "Settings consumer catalog is corrected; separate daemon catalog proposal remains unapplied because its executable bytes differ from retained signed helper.",
     "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
     "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
@@ -201,5 +201,17 @@
     "profileSwitchRejection": "readiness.location.14",
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
+  },
+  "executionState": "paused-at-owner-request-after-build",
+  "actual585": {
+    "normalLaunchServicesDaemonReady": true,
+    "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
+    "profileSwitchAccepted": false,
+    "profileSwitchRejection": "aim-cold.content-invoked",
+    "uiComparedAgainstActualAsideCaptures": true,
+    "comparison": "out/pass1-ui-completion/compare.html",
+    "enabledModelReasoningMenus": true,
+    "sourceCssOrMaterialChanged": false,
+    "appleSigningPerformed": false
   }
 }

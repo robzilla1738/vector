@@ -2,6 +2,14 @@
 
 Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Paused after verified585 build — owner request,2026-10-21
+
+585 full native build/generated-key probe passed (93 actual steps,9m52.63s), supplied packaging passed (10751 resources+418 native leaves), eight retained helper signatures/nine native seals/complete final inventory passed. ReceiptSHA75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9. No new Apple signing/Keychain operation. Exact existing-scope startup acceptance was written and normal LaunchServices start reaches actual daemon state3. Aux remains open in its normal disposable profile with Appearance and enabled supplied chat controls.
+
+One actual first footer switch rejects aim-cold.content-invoked, then aim-cold.aim-content, LocationBar14 and prepare-bindings. The new cold-owner contract correctly refuses already-invoked content; initial renderer lifecycle invoked one of its sticky entry points before this first switch. No admission guard was waived, user work discarded, profile transfer accepted or forward/back success claimed. Next work is to identify that exact startup callback and provide genuine safe content/session retirement/rebinding (or distinguish provably harmless initial callbacks with pending-work checks), preserving the current UI. Do not simply clear the flag or suppress AIM.
+
+Root viewed actual585 Appearance and dual-sidebar/chat screenshots against saved actual Aside captures. Native rounded surfaces/glass and supplied layout remain preserved; branding/disposable content/theme/model differences are explicit. Comparison out/pass1-ui-completion/compare.html updated. Empty composer wording/state remains a separate audit item. Build/seal/package jobs are complete; no successor rebuild started. Owner requested a pausing point after this build; implementation is paused here, not marked ready. Full evidence/remaining gates are in the continuation ledger.
+
 ## Actual584 exact LocationBar rejection — 2026-10-21
 
 584 supplied package and complete retained-helper/native-seal verification passed; receiptSHA3c5e4f6b990da6ee8c4f8bb450431585453e32a8e69ba7eab6e1c65c5cf9ce95. Actual normal LaunchServices launch followed by one footer Person1 switch precisely rejects `readiness.location.14`, `bindings.source-view-toolbar-location-private-services.10`, `transaction.prepare-bindings`. Stage14 is the categorical AIM-presenter presence guard, confirming the585 cold-owner repair targets the observed blocker.585 full native build/generated-key probe passed (93 actual steps,9m52.63s); supplied packaging is running. No profile-switch success is claimed.
