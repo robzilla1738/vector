@@ -1,0 +1,29 @@
+async function runRepl(codeParts, options) {
+	if (codeParts.includes("--help") || codeParts.includes("-h")) {
+		printReplHelp();
+		return;
+	}
+	const daemon = createDaemonClient();
+	const { trpcClient } = daemon;
+	let resolvedAccount;
+	try {
+		resolvedAccount = await resolveAccount(trpcClient, options.account);
+	} catch (error) {
+		if (!isDaemonUnavailableError(error)) throw error;
+		const spec = options.host ?? (await readCliConfig()).defaultHost;
+		if (!spec || spec === "local" || !await hasCliAuth()) throw error;
+	}
+	const getTokenSource = createApiTokenSource(resolvedAccount ? {
+		trpcClient,
+		accountId: resolvedAccount.accountId
+	} : undefined);
+	const host = await resolveHostForRun(getTokenSource, options.host);
+	if (host.kind === "cloud") {
+		throw new Error("aside repl runs on 'local' or remote hosts only — cloud sessions use their own sandboxed REPL.");
+	}
+	const client = host.kind === "local" ? trpcClient : createHostTrpcClient(daemon, host, getTokenSource);
+	const accountInstance = resolvedAccount ? {
+		accountId: resolvedAccount.accountId,
+		accountCreatedAt: resolvedAccount.account.createdAt
+	} : undefined;
+	const 

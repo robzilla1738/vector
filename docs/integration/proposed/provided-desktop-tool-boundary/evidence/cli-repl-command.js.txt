@@ -1,0 +1,21 @@
+.command("repl").description("Run Playwright-style JavaScript in Aside Browser.").allowUnknownOption().addOption(accountOption()).addOption(hostOption()).addOption(profileOption()).argument("[code...]", "JavaScript to run in Aside Browser").addHelpText("after", `
+Notes:
+  Playwright-style JavaScript, 120s timeout. page starts unset; call openTab(url) or getTabs() first.
+  Use console.log() to print return values.
+
+Examples:
+  aside repl
+  aside repl "const page = await openTab('https://example.com'); console.log(await page.title())"
+  aside repl --account u1 "const tabs = await getTabs(); console.log(tabs.length)"
+  aside repl --host my-macbook "await openTab('https://example.com')"`).action(async (code, options) => {
+		await actions.notifyUpdateIfAvailable();
+		return actions.runRepl(code, {
+			account: options.account ?? program.opts().account,
+			host: options.host ?? program.opts().host,
+			profile: options.profile ?? program.opts().profile
+		});
+	});
+	program.command("mcp").description("Start the MCP server over stdio.").addOption(accountOption()).addOption(hostOption()).addOption(profileOption()).addHelpText("after", `
+Tools:
+  exec  Run the browser agent on logged-in sites. Stays off the chat list.
+  repl  Run Playwright-style

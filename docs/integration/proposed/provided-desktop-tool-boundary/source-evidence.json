@@ -1,0 +1,92 @@
+{
+  "kind": "supplied-public-desktop-boundary-audit",
+  "version": "1.26.1016.1852",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/daemon-original.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "size": 12135744,
+      "excerpts": [
+        {
+          "path": "evidence/health-and-permissions.js.txt",
+          "byteOffset": 10442711,
+          "size": 1264,
+          "sha256": "dff6ac4d98e82f612dc5629e522a615e82b9912a91c0e9a79405314174d7bd18"
+        },
+        {
+          "path": "evidence/owned-invoke.js.txt",
+          "byteOffset": 10443975,
+          "size": 2191,
+          "sha256": "655ca82219894a7e46169e0a02fe5c0b90de0038aa70d6f4942d41f8df7fa747"
+        },
+        {
+          "path": "evidence/helper-client.js.txt",
+          "byteOffset": 10455762,
+          "size": 1610,
+          "sha256": "37f42987318892137b34dc66d99e7517ca9e48e6e5dc3c642a9ab410d592e578"
+        },
+        {
+          "path": "evidence/repl-surfaces.js.txt",
+          "byteOffset": 10899830,
+          "size": 3189,
+          "sha256": "530bd89f35c217f20564f12134f180017b084933d8588690a871b1ab47c0eaf8"
+        },
+        {
+          "path": "evidence/standard-tool-registration.js.txt",
+          "byteOffset": 11374637,
+          "size": 3174,
+          "sha256": "f3ca29a9dbaed070c1ea0668bc50b1b125306d074c56822e9b6a1c54bd21316c"
+        },
+        {
+          "path": "evidence/full-disk-access.js.txt",
+          "byteOffset": 11768084,
+          "size": 1299,
+          "sha256": "052d32cb45dec49f0b337739808af82876d30919de9b84b10213bdece8669b16"
+        },
+        {
+          "path": "evidence/context-router.js.txt",
+          "byteOffset": 11775392,
+          "size": 4691,
+          "sha256": "8e24d3a7f7c16c84c6202ebf12348623ee3cdd74e7c85cb8ae2df273dcae1de1"
+        },
+        {
+          "path": "evidence/root-router.js.txt",
+          "byteOffset": 12051197,
+          "size": 800,
+          "sha256": "b8d21fa24589889b5c7f881b4795243fc5c9882ac508572ced41dbcd075b8ed3"
+        },
+        {
+          "path": "evidence/browser-screenshot.js.txt",
+          "byteOffset": 3399215,
+          "size": 800,
+          "sha256": "aaaa0211f2fc6e629e2b87fe01a682c96ab0785cd59a3ae06d0682a79cb060e2"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/cli-original.mjs",
+      "sha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+      "size": 2597893,
+      "excerpts": [
+        {
+          "path": "evidence/cli-repl-command.js.txt",
+          "byteOffset": 2515378,
+          "size": 1253,
+          "sha256": "d01e86ac29c5b15f3b5fbad0c5ec1e40bb5e8770f6c57bb06d4f6d1c833c1afc"
+        },
+        {
+          "path": "evidence/cli-repl-transport.js.txt",
+          "byteOffset": 2583499,
+          "size": 1147,
+          "sha256": "6872082ec3cfd5d60aed146c0565039a82c4f965593ee0a156a0fbb74236d993"
+        },
+        {
+          "path": "evidence/cli-mcp-repl.js.txt",
+          "byteOffset": 2592474,
+          "size": 1476,
+          "sha256": "1b4aa7c995b855d30209d0f15d52298ed087e6fab3ecfe2a3dae71861bc337e5"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+replTool = server.registerTool("repl", {
+		description: fallbackDescription,
+		inputSchema: {
+			title: string$1().describe("Action title, e.g. \"Check page title\"."),
+			code: string$1().describe("JavaScript to run in Aside Browser.")
+		}
+	}, async ({ code }) => {
+		activeToolCalls += 1;
+		if (idleTimer) clearTimeout(idleTimer);
+		try {
+			const session = await getReplSession();
+			const result = await replTransport.client.cli.replRun.mutate({
+				...replTransport.identity,
+				id: session.id,
+				code,
+				runId: replTransport.idempotentRuns ? crypto.randomUUID() : undefined
+			});
+			if (result.error?.includes("Session not found:") || result.error?.includes("REPL session not found")) {
+				await closeReplSession();
+			}
+			return {
+				content: result.error ? [{
+					type: "text",
+					text: `Error: ${result.error}`
+				}, ...toMcpContent(result.content)] : toMcpContent(result.content),
+				isError: Boolean(result.error)
+			};
+		} catch (error) {
+			if (!isRelayFailure(error)) void closeReplSession();
+			return {
+				content: [{
+					type: "text",
+					text: mcpErrorText(error)
+				}],
+				isError: true
+			};
+		} finally {
+			activeToolCalls -= 1;
+			scheduleIdleTimeout();
+		}
+	});
+	server.registerTool("memory_search", {
+		description: "Semantically search the Aside browser user's memory — Markdown notes about the user, people, projects, sites, and past browsing. Multiple queries are OR-ed together. Returns snippets with absolute file paths; read
