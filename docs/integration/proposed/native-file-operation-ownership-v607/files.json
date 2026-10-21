@@ -1,0 +1,127 @@
+{
+  "baseComposition": "v607",
+  "compositionSha256": "d9069829b656bc1de4b11a3fd543eb4507df63d6f5f5df55c2145b787891aa6d",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "baselineSha256": "876ea7cf771470c7b6c8fa10745d0954416e25bd1c2fd675d1c66f6ab34f1089",
+      "outputSha256": "b6c0cde753d3a1adc16c65273f58365012c3e2be16c4a056d3bb352602339d5f"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "baselineSha256": "28fe42d49bcafc030632cf5296447aeb64e856cf1f22019a62e7c8d75f10bb88",
+      "outputSha256": "09057d9936c9b6aa43db15725cf5e7e1ef37f335de683031dd949b58cad39783"
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_context_menu_controller.cc",
+      "baselineSha256": "9543bfcc44945001cceb17bd107a91e7691ac7c9e870f28f7255adf659fd80aa",
+      "outputSha256": "8e933949d97d387d8ffce1818d9b85246e2dddc560c69b1c89e9b24219833c78"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "#include <cstdint>",
+      "replace": "#include <cstddef>\n#include <cstdint>",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "#include \"base/functional/callback.h\"",
+      "replace": "#include \"base/functional/callback.h\"\n#include \"base/functional/callback_helpers.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "  bool CanRetireUnusedForAuxProfileSwitch() const;",
+      "replace": "  bool CanRetireUnusedForAuxProfileSwitch() const;\n  // Reads and context handoffs use this selector's current source/options.\n  // Do not replace them until every original callback has completed or retired.\n  bool CanOpenFileUploadDialog() const;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "  bool aux_ever_started_work_ = false;",
+      "replace": "  base::ScopedClosureRunner TrackAuxPendingFileOperation();\n  size_t aux_pending_file_operations_ = 0;\n  bool aux_ever_started_work_ = false;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {",
+      "replace": "bool OmniboxPopupFileSelector::CanOpenFileUploadDialog() const {\n  return !file_dialog_ && aux_pending_file_operations_ == 0;\n}\n\nbase::ScopedClosureRunner\nOmniboxPopupFileSelector::TrackAuxPendingFileOperation() {\n  ++aux_pending_file_operations_;\n  return base::ScopedClosureRunner(base::BindOnce(\n      [](base::WeakPtr<OmniboxPopupFileSelector> self) {\n        if (self) {\n          --self->aux_pending_file_operations_;\n        }\n      }, weak_factory_.GetWeakPtr()));\n}\n\nbool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {\n  if (aux_pending_file_operations_ != 0) {\n    LOG(ERROR) << \"Aux profile transition rejected: file-read-or-context-handoff\";\n    return false;\n  }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "    bool was_ai_mode_open) {\n  ++aux_selection_generation_;",
+      "replace": "    bool was_ai_mode_open) {\n  if (!CanOpenFileUploadDialog()) {\n    return;\n  }\n  ++aux_selection_generation_;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (file_chooser_opened_callback_) {\n    file_chooser_opened_callback_.Run();\n  }\n  if (!OmniboxContextMenuController",
+      "replace": "  if (file_chooser_opened_callback_) {\n    const auto weak_self = weak_factory_.GetWeakPtr();\n    const uint64_t generation = aux_selection_generation_;\n    file_chooser_opened_callback_.Run();\n    if (!weak_self || generation != aux_selection_generation_) {\n      return;\n    }\n  }\n  if (!OmniboxContextMenuController",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  aux_has_selected_files_ = true;\n  aux_canceled_dialog_complete_ = false;",
+      "replace": "  const auto weak_self = weak_factory_.GetWeakPtr();\n  const uint64_t generation = aux_selection_generation_;\n  // Keep inputs stable through synchronous validation/close/reopen callbacks too.\n  auto selection_operation = TrackAuxPendingFileOperation();\n  aux_has_selected_files_ = true;\n  aux_canceled_dialog_complete_ = false;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "          base::unexpected(error_type));\n      break;",
+      "replace": "          base::unexpected(error_type));\n      if (!weak_self || generation != aux_selection_generation_) {\n        return;\n      }\n      break;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "        base::BindOnce(&OmniboxPopupFileSelector::OnFileDataReady,\n                       weak_factory_.GetWeakPtr()));",
+      "replace": "        base::BindOnce(\n            [](base::ScopedClosureRunner,\n               base::WeakPtr<OmniboxPopupFileSelector> self,\n               std::unique_ptr<FileData> data) {\n              if (self) {\n                self->OnFileDataReady(std::move(data));\n              }\n            }, TrackAuxPendingFileOperation(), weak_factory_.GetWeakPtr()));",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  NotifyFileSelectionClosed();\n  deactivation_blocker_.reset();\n  file_dialog_.reset();\n\n  if (!has_posted_tasks)",
+      "replace": "  NotifyFileSelectionClosed();\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n  deactivation_blocker_.reset();\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n  file_dialog_.reset();\n  if (!weak_self || generation != aux_selection_generation_) {\n    return;\n  }\n\n  if (!has_posted_tasks)",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "    std::unique_ptr<FileData> file_data) {\n  aux_ever_started_work_ = true;",
+      "replace": "    std::unique_ptr<FileData> file_data) {\n  const auto weak_self = weak_factory_.GetWeakPtr();\n  aux_ever_started_work_ = true;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "                               base::unexpected(file_data->error.value()));\n    OpenAiMode();",
+      "replace": "                               base::unexpected(file_data->error.value()));\n    if (!weak_self) {\n      return;\n    }\n    OpenAiMode();",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "                               base::ok(base::UnguessableToken::Create()));\n    OpenAiMode();",
+      "replace": "                               base::ok(base::UnguessableToken::Create()));\n    if (!weak_self) {\n      return;\n    }\n    OpenAiMode();",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "        base::BindOnce(&OmniboxPopupFileSelector::UpdateSearchboxContextData,\n                       weak_factory_.GetWeakPtr(), mime_type,\n                       std::move(image_data_url), file_name, raw_mime_type));",
+      "replace": "        base::BindOnce(\n            [](base::ScopedClosureRunner,\n               base::OnceCallback<void(base::expected<\n                   base::UnguessableToken,\n                   contextual_search::ContextUploadErrorType>)> reply,\n               base::expected<base::UnguessableToken,\n                              contextual_search::ContextUploadErrorType> result) {\n              std::move(reply).Run(std::move(result));\n            }, TrackAuxPendingFileOperation(),\n            base::BindOnce(\n                &OmniboxPopupFileSelector::UpdateSearchboxContextData,\n                weak_factory_.GetWeakPtr(), mime_type,\n                std::move(image_data_url), file_name, raw_mime_type)));",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  OpenAiMode();\n  const std::string prefix = was_ai_mode_open_",
+      "replace": "  if (!weak_self) {\n    return;\n  }\n  OpenAiMode();\n  if (!weak_self) {\n    return;\n  }\n  const std::string prefix = was_ai_mode_open_",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/omnibox/omnibox_context_menu_controller.cc",
+      "find": "bool OmniboxContextMenuController::IsCommandIdEnabled(int command_id) const {\n",
+      "replace": "bool OmniboxContextMenuController::IsCommandIdEnabled(int command_id) const {\n  const auto input = input_type_for_command_id_.find(command_id);\n  const bool is_file_command =\n      command_id == IDC_OMNIBOX_CONTEXT_ADD_IMAGE ||\n      command_id == IDC_OMNIBOX_CONTEXT_ADD_FILE ||\n      (input != input_type_for_command_id_.end() &&\n       (input->second == omnibox::InputType::INPUT_TYPE_LENS_IMAGE ||\n        input->second == omnibox::InputType::INPUT_TYPE_LENS_FILE));\n  if (is_file_command &&\n      (!file_selector_ || !file_selector_->CanOpenFileUploadDialog())) {\n    return false;\n  }\n",
+      "count": 1
+    }
+  ],
+  "compiled": false,
+  "applied": false
+}

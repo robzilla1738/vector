@@ -1,0 +1,220 @@
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
+@@ -5,11 +5,13 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_OMNIBOX_POPUP_FILE_SELECTOR_H_
+ #define CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_OMNIBOX_POPUP_FILE_SELECTOR_H_
+ 
++#include <cstddef>
+ #include <cstdint>
+ #include <optional>
+ 
+ #include "base/files/file_path.h"
+ #include "base/functional/callback.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/types/expected.h"
+ #include "components/contextual_search/contextual_search_types.h"
+@@ -49,6 +51,9 @@
+   ~OmniboxPopupFileSelector() override;
+ 
+   bool CanRetireUnusedForAuxProfileSwitch() const;
++  // Reads and context handoffs use this selector's current source/options.
++  // Do not replace them until every original callback has completed or retired.
++  bool CanOpenFileUploadDialog() const;
+ 
+   // Helper to create image encoding options from the Omnibox feature config.
+   static std::optional<lens::ImageEncodingOptions> CreateImageEncodingOptions();
+@@ -92,6 +97,8 @@
+   void FileSelectionCanceled() override;
+ 
+  private:
++  base::ScopedClosureRunner TrackAuxPendingFileOperation();
++  size_t aux_pending_file_operations_ = 0;
+   bool aux_ever_started_work_ = false;
+   // Cancellation proves no upload work only when this owner never selected files.
+   bool aux_has_selected_files_ = false;
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
+@@ -71,7 +71,26 @@
+       .compression_quality = image_upload_config.image_compression_quality()};
+ }
+ 
++bool OmniboxPopupFileSelector::CanOpenFileUploadDialog() const {
++  return !file_dialog_ && aux_pending_file_operations_ == 0;
++}
++
++base::ScopedClosureRunner
++OmniboxPopupFileSelector::TrackAuxPendingFileOperation() {
++  ++aux_pending_file_operations_;
++  return base::ScopedClosureRunner(base::BindOnce(
++      [](base::WeakPtr<OmniboxPopupFileSelector> self) {
++        if (self) {
++          --self->aux_pending_file_operations_;
++        }
++      }, weak_factory_.GetWeakPtr()));
++}
++
+ bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {
++  if (aux_pending_file_operations_ != 0) {
++    LOG(ERROR) << "Aux profile transition rejected: file-read-or-context-handoff";
++    return false;
++  }
+   if (aux_ever_started_work_ && !aux_canceled_dialog_complete_) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-started-work";
+     return false;
+@@ -117,6 +136,9 @@
+     OmniboxEditModel* edit_model,
+     std::optional<lens::ImageEncodingOptions> image_encoding_options,
+     bool was_ai_mode_open) {
++  if (!CanOpenFileUploadDialog()) {
++    return;
++  }
+   ++aux_selection_generation_;
+   aux_canceled_dialog_complete_ = false;
+   aux_ever_started_work_ = true;
+@@ -126,7 +148,12 @@
+   was_ai_mode_open_ = was_ai_mode_open;
+   is_image_ = is_image;
+   if (file_chooser_opened_callback_) {
++    const auto weak_self = weak_factory_.GetWeakPtr();
++    const uint64_t generation = aux_selection_generation_;
+     file_chooser_opened_callback_.Run();
++    if (!weak_self || generation != aux_selection_generation_) {
++      return;
++    }
+   }
+   if (!OmniboxContextMenuController::GetOmniboxEverywhereUI(web_contents)) {
+     if (auto* browser_window = webui::GetBrowserWindowInterface(web_contents)) {
+@@ -248,6 +275,10 @@
+     const std::vector<ui::SelectedFileInfo>& files) {
+   // Even rejected selections remain conservative: their context handoff has a
+   // separate lifecycle, and cancellation cannot attest to its completion.
++  const auto weak_self = weak_factory_.GetWeakPtr();
++  const uint64_t generation = aux_selection_generation_;
++  // Keep inputs stable through synchronous validation/close/reopen callbacks too.
++  auto selection_operation = TrackAuxPendingFileOperation();
+   aux_has_selected_files_ = true;
+   aux_canceled_dialog_complete_ = false;
+   aux_ever_started_work_ = true;
+@@ -299,6 +330,9 @@
+           file.path().BaseName().AsUTF8Unsafe(),
+           /*mime_string=*/"application/octet-stream",
+           base::unexpected(error_type));
++      if (!weak_self || generation != aux_selection_generation_) {
++        return;
++      }
+       break;
+     }
+     valid_files_count++;
+@@ -307,12 +341,27 @@
+         FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+         base::BindOnce(&ReadFileData, file.path(), is_image_,
+                        GetMaxAttachmentSizeBytes()),
+-        base::BindOnce(&OmniboxPopupFileSelector::OnFileDataReady,
+-                       weak_factory_.GetWeakPtr()));
++        base::BindOnce(
++            [](base::ScopedClosureRunner,
++               base::WeakPtr<OmniboxPopupFileSelector> self,
++               std::unique_ptr<FileData> data) {
++              if (self) {
++                self->OnFileDataReady(std::move(data));
++              }
++            }, TrackAuxPendingFileOperation(), weak_factory_.GetWeakPtr()));
+   }
+   NotifyFileSelectionClosed();
++  if (!weak_self || generation != aux_selection_generation_) {
++    return;
++  }
+   deactivation_blocker_.reset();
++  if (!weak_self || generation != aux_selection_generation_) {
++    return;
++  }
+   file_dialog_.reset();
++  if (!weak_self || generation != aux_selection_generation_) {
++    return;
++  }
+ 
+   if (!has_posted_tasks) {
+     OpenAiMode();
+@@ -355,6 +404,7 @@
+ 
+ void OmniboxPopupFileSelector::OnFileDataReady(
+     std::unique_ptr<FileData> file_data) {
++  const auto weak_self = weak_factory_.GetWeakPtr();
+   aux_ever_started_work_ = true;
+   if (!file_data || !web_contents_) {
+     if (was_ai_mode_open_) {
+@@ -368,6 +418,9 @@
+                                /*image_data_url=*/"", file_name,
+                                /*mime_string=*/"application/octet-stream",
+                                base::unexpected(file_data->error.value()));
++    if (!weak_self) {
++      return;
++    }
+     OpenAiMode();
+     return;
+   }
+@@ -391,6 +444,9 @@
+     UpdateSearchboxContextData(lens::MimeType::kUnknown, "", file_name,
+                                raw_mime_type,
+                                base::ok(base::UnguessableToken::Create()));
++    if (!weak_self) {
++      return;
++    }
+     OpenAiMode();
+     return;
+   }
+@@ -417,12 +473,28 @@
+     contextual_searchbox_handler->AddFileContextFromBrowser(
+         file_name, raw_mime_type, std::move(file_data_buffer),
+         image_encoding_options_,
+-        base::BindOnce(&OmniboxPopupFileSelector::UpdateSearchboxContextData,
+-                       weak_factory_.GetWeakPtr(), mime_type,
+-                       std::move(image_data_url), file_name, raw_mime_type));
+-  }
+-
++        base::BindOnce(
++            [](base::ScopedClosureRunner,
++               base::OnceCallback<void(base::expected<
++                   base::UnguessableToken,
++                   contextual_search::ContextUploadErrorType>)> reply,
++               base::expected<base::UnguessableToken,
++                              contextual_search::ContextUploadErrorType> result) {
++              std::move(reply).Run(std::move(result));
++            }, TrackAuxPendingFileOperation(),
++            base::BindOnce(
++                &OmniboxPopupFileSelector::UpdateSearchboxContextData,
++                weak_factory_.GetWeakPtr(), mime_type,
++                std::move(image_data_url), file_name, raw_mime_type)));
++  }
++
++  if (!weak_self) {
++    return;
++  }
+   OpenAiMode();
++  if (!weak_self) {
++    return;
++  }
+   const std::string prefix = was_ai_mode_open_
+                                  ? kAimContextTypeHistogramPrefix
+                                  : kClassicContextTypeHistogramPrefix;
+--- a/chrome/browser/ui/omnibox/omnibox_context_menu_controller.cc
++++ b/chrome/browser/ui/omnibox/omnibox_context_menu_controller.cc
+@@ -1844,6 +1844,17 @@
+ }
+ 
+ bool OmniboxContextMenuController::IsCommandIdEnabled(int command_id) const {
++  const auto input = input_type_for_command_id_.find(command_id);
++  const bool is_file_command =
++      command_id == IDC_OMNIBOX_CONTEXT_ADD_IMAGE ||
++      command_id == IDC_OMNIBOX_CONTEXT_ADD_FILE ||
++      (input != input_type_for_command_id_.end() &&
++       (input->second == omnibox::InputType::INPUT_TYPE_LENS_IMAGE ||
++        input->second == omnibox::InputType::INPUT_TYPE_LENS_FILE));
++  if (is_file_command &&
++      (!file_selector_ || !file_selector_->CanOpenFileUploadDialog())) {
++    return false;
++  }
+   // `IDC_OMNIBOX_CONTEXT_SHARED_TABS_SUBMENU` is a structural submenu item
+   // that behaves as a placeholder rather than an actionable clickable command.
+   // It must be handled early to bypass the standard actionable command
