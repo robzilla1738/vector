@@ -1,0 +1,91 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -22,6 +22,7 @@
+ #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/buildflags.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/command_updater.h"
+ #include "chrome/browser/page_info/merchant_trust_service_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -146,6 +147,8 @@
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/gfx/image/image.h"
+ #include "ui/gfx/paint_vector_icon.h"
++#include "ui/gfx/vector_icon_types.h"
++#include "extensions/common/constants.h"
+ #include "ui/gfx/text_utils.h"
+ #include "ui/gfx/vector_icon_types.h"
+ #include "ui/menus/simple_menu_model.h"
+@@ -176,6 +179,8 @@
+ #endif
+ 
+ namespace {
++
++#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
+ 
+ int IncrementalMinimumWidth(const views::View* view) {
+   return (view && view->GetVisible()) ? view->GetMinimumSize().width() : 0;
+@@ -803,10 +808,16 @@
+ 
+   auto* contents = GetWebContents();
+   const auto* edit_model = GetOmniboxController()->edit_model();
++  const bool aux_internal_main_page =
++      contents &&
++      contents->GetLastCommittedURL().SchemeIs(extensions::kExtensionScheme) &&
++      contents->GetLastCommittedURL().host() == aux::kAgentExtensionId &&
++      contents->GetLastCommittedURL().path() == "/main.html";
+   const bool show_page_title =
+       browser_ && browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
+       !is_popup_mode_ && contents &&
+-      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++      (contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++       aux_internal_main_page) &&
+       !contents->GetTitle().empty() && !omnibox_view_->HasFocus() &&
+       !edit_model->is_caret_visible() &&
+       !edit_model->user_input_in_progress() &&
+@@ -818,10 +829,18 @@
+   aux_page_title_view_->SetVisible(show_page_title);
+   aux_resting_origin_view_->SetText(
+       show_page_title
+-          ? url_formatter::FormatUrlForSecurityDisplay(
+-                contents->GetLastCommittedURL(),
+-                url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS)
++          ? (aux_internal_main_page
++                 ? std::u16string(u"Aux")
++                 : url_formatter::FormatUrlForSecurityDisplay(
++                       contents->GetLastCommittedURL(),
++                       url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS))
+           : std::u16string());
++  aux_resting_origin_view_->SetImage(
++      views::Button::STATE_NORMAL,
++      show_page_title && aux_internal_main_page
++          ? ui::ImageModel::FromVectorIcon(kAuxNewTabMarkIcon,
++                                           kColorOmniboxText, 16)
++          : ui::ImageModel());
+   aux_resting_origin_view_->SetVisible(show_page_title);
+   omnibox_view_->SetAuxRestingPresentation(show_page_title);
+   if (auto* bookmark =
+@@ -930,7 +949,11 @@
+   const bool aux_trailing_site_info =
+       aux_secure_page_controls && !show_page_title;
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+-  if (aux_secure_page_controls) {
++  if (show_page_title && aux_internal_main_page &&
++      !ShouldShowKeywordBubble() && !location_icon_view_->GetShowText() &&
++      !ShouldChipOverrideLocationIcon()) {
++    location_icon_view_->SetVisible(false);
++  } else if (aux_secure_page_controls) {
+     // Resting origin is the PageInfo button. Editing keeps the genuine site
+     // control, but on the trailing side as observed in the supplied browser.
+     location_icon_view_->SetVisible(aux_trailing_site_info);
+@@ -1036,8 +1059,7 @@
+ 
+   // Compute widths needed for location bar.
+   int location_needed_width = aux_resting_origin_view_->GetVisible()
+-      ? gfx::GetStringWidth(aux_resting_origin_view_->GetText(),
+-                            omnibox_view_->GetFontList())
++      ? aux_resting_origin_view_->GetPreferredSize().width()
+       : omnibox_view_->GetUnelidedTextWidth();
+ 
+   int available_width = entry_width - location_needed_width;

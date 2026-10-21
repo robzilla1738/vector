@@ -1,0 +1,7 @@
+# Supplied internal settings title in the resting toolbar
+
+The integrator's actual Aside Appearance capture shows the product mark and “Aside | Settings › Appearance” instead of the internal extension URL. This is an observed Chromium155 adaptation: exact committed Aux Agent extension identity plus /main.html is eligible for the existing resting title presentation. It shows Aux with the already-generated canonical two-path arch-mark vector and the actual WebContents title. /newtab.html and other extensions are excluded, as are editing, popup and IME states.
+
+The integrator also observed clicking the supplied internal product label opens extension PageInfo (“You’re viewing an extension page”). The origin button keeps that genuine native PageInfo route; title and remaining area retain real editor focus, while Cmd+L still displays the complete unchanged URL. Native textual security warnings and permission/keyword overrides remain authoritative. The neutral extension icon is omitted only while the branded resting button is shown. Preferred button width includes the canonical mark, rather than overlapping its title.
+
+Pinned to current v552, whose location bar is unchanged from v551. Single-file patch replay and SHA passed. No native/build/UI actions by this lane. Existing canonical aux_new_tab_mark.inc is reused without modification; exact observed title depends on the supplied document title, not a synthetic route translation.
