@@ -2,6 +2,12 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Normal-launch Node boundary investigation — 2026-10-21
+
+581 full native build/generated-key probe passed (11 actual steps,6m26.15s), fresh supplied stage/package and all8 retained-helper/native signature checks passed. Actual first normal LaunchServices start again failed daemon readiness. A logging-only LaunchServices reproduction showed the genuine owned daemon alive before opening a listener; its main thread stayed in Node GetNearestParentPackageJSON/TraverseParent/GetPackageJSON/ReadFileSync/__open for the whole sample. It had no opened private Aux state. Supervisor reached the real90-second readiness failure. This is not a profile/account success or a proven Keychain failure.
+
+The first ancestor package metadata outside the bundle is the generated package report under Documents. Terminal-started candidates work, whereas LaunchServices-started candidates stall. TCC/protected-folder responsibility is a hypothesis; the sample does not expose the open path. The minimal581b package adaptation places the exact untyped `{private:true}` Node package boundary at Aux.app/package.json, outside every retained signed helper. Source fixture establishes CommonJS.js, explicit.cjs and ESM.mjs behavior and stops malformed-parent traversal; six focused loader/resource checks pass. Packaging records and authority reuse validates its exact SHA/mode. Native581 code, supplied UI styling and all helper bytes remain unchanged.581b packaging is running; actual normal-startup/profile/Skills acceptance remains pending. No broader OS grant is requested.
+
 ## 579 actual normal reopen — 2026-10-20
 
 The owner confirmed the exposed test credential is revoked. Its working copy remains cleared; no further provider requests are authorized by that old key.

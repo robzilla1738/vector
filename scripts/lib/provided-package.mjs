@@ -147,6 +147,15 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       ? native.appFiles.filter(entry => !entry.path.startsWith(`${retiredIndependentRuntime.root}/`))
       : native.appFiles;
     await verifyPackageInventory(app, retainedNativeFiles);
+    // Node's SEA createRequire(process.execPath) first inspects its package
+    // scope, even for an absolute .cjs target. Stop at this app rather than
+    // opening a package report/ancestor outside the LaunchServices bundle.
+    // Omit name/type/imports/exports to preserve the existing untyped scope.
+    const packageBoundaryPath = join(app, 'package.json');
+    const packageBoundaryBytes = Buffer.from('{\n  "private": true\n}\n');
+    await absent(packageBoundaryPath);
+    await writeFile(packageBoundaryPath, packageBoundaryBytes, { flag: 'wx', mode: 0o644 });
+    const outerPackageBoundary = { path: 'package.json', sha256: hash(packageBoundaryBytes), mode: 0o644 };
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
@@ -199,7 +208,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       sourceRoots: sources,
       ...(sourceSnapshot ? { sourceSnapshot: { root: sourceSnapshot.root, manifestSha256: sourceSnapshot.manifestSha256, roots: sourceSnapshot.roots } } : {}),
       cliSea: `${cliExecutable}-sea`,
-      developmentDpLayout, layoutChanges,
+      developmentDpLayout, layoutChanges, outerPackageBoundary,
       localDevelopmentOnly: true,
       remaining: ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
     };
