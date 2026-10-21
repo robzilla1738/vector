@@ -23,12 +23,7 @@
     "574 actual bookmark add/remove changes native section and restores ExampleDomain-only state",
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
-  "integrationPending": {
-    "nativeComposition": "out/native-reuse-composition-v605",
-    "stage": "out/provided-reuse-v605",
-    "baseline": "out/provided-candidate-local-browser-pass-v603-observed-baseline",
-    "actualAcceptance": false
-  },
+  "integrationPending": null,
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
     "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
@@ -195,7 +190,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-work-session-batch-building",
+  "executionState": "active-work-session-batch607-open-for-user-testing",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -325,6 +320,14 @@
     "paidRequests": 0,
     "profileOrFatalErrors": [],
     "receiptSha256": "7ca5ee6ad0ff3e73657688a634e33b51845e5318fc9283e600fcdc3081c206df",
+    "fullProductReady": false
+  },
+  "latestLocalBatch": {
+    "build": 607,
+    "actualAcceptance": true,
+    "receiptSha256": "e101e582193b9a64083218dbda15e25fa9536f047fe0e6bf2b02bc5f3d4f5e44",
+    "comparison": "out/pass1-ui-completion/compare.html",
+    "evidence": "out/native-integration/v607-ui-acceptance.json",
     "fullProductReady": false
   }
 }
