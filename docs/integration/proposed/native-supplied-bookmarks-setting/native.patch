@@ -1,0 +1,12 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -96,7 +96,8 @@
+            {"getTabSwitcherSortByRecentlyUsed",
+             "setTabSwitcherSortByRecentlyUsed", kMru},
+            {"getVerticalTabsBookmarksSectionEnabled",
+-            "setVerticalTabsBookmarksSectionEnabled", kBookmarks}}) {
++            "setVerticalTabsBookmarksSectionEnabled",
++            "aside.vertical_tabs.bookmarks_section_enabled"}}) {
+     if (method == item.getter) {
+       return RespondNow(WithArguments(prefs->GetBoolean(item.key)));
+     }

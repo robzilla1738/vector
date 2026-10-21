@@ -1,0 +1,245 @@
+{
+  "baseline": "native560 and provided-reuse-pass1 static packaged sources; no user state",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/background.js",
+      "sha256": "3ab0d7201b105212b3e30e3480de552c121a2676ecc6e9a657ba58a0f85d6262",
+      "spans": [
+        {
+          "needle": "D.sessions.createAndPrompt.mutate",
+          "offset": 349472,
+          "bytes": 253,
+          "sha256": "5c11beec64a636271f18a40d980fb48921d70265b4d217e943a1664f4ee896f1",
+          "text": "role: \"user\",\n    content: e.prompt,\n    timestamp: h\n  }], v = await D.sessions.createAndPrompt.mutate({\n    accountId: s,\n    title: e.title,\n    trigger: e.trigger ?? {\n      type: \"user\",\n      source: \"remix\"\n    },\n    activeTabTargetId: l,\n    br"
+        },
+        {
+          "needle": "chrome.sidePanel.setOptions",
+          "offset": 349974,
+          "bytes": 247,
+          "sha256": "9307252fb1c921a326eba0d51664af3eb75760d439e137c35ba865b7265534f5",
+          "text": "ror ? w.message : String(w)}`);\n  }), await Vn(ub(s, l), v.id), await chrome.sidePanel.setOptions({\n    tabId: o,\n    path: `sidepanel.html#/u/${s}/sidepanel?sessionId=${v.id}`\n  })), {\n    ok: !0,\n    sessionId: v.id\n  };\n}\nfunction yb(e) {\n  ret"
+        },
+        {
+          "needle": "AsideDaemonSessionToken",
+          "offset": 83864,
+          "bytes": 243,
+          "sha256": "d6938d500eb780f57c24ee362eb1f83bf8f9e0a026ac808770b5b98153bc0ade",
+          "text": "await g(), _ = new Headers(S?.headers);\n      _.set(\"Authorization\", `AsideDaemonSessionToken ${R}`);\n      const P = {\n        ...S,\n        headers: _\n      }, k = b instanceof Request ? new Request(b, P) : b, q = await fetch(k, b instanceof"
+        },
+        {
+          "needle": "chrome.auxAccount",
+          "offset": 86074,
+          "bytes": 237,
+          "sha256": "3b3c9e5d8ea1ec6e889e6bc611bc6443f27d3fe7fbc2e3b17682622b0ba0a085",
+          "text": "e\";\nasync function Ts(e) {\n  const t = typeof chrome > \"u\" ? void 0 : chrome.auxAccount;\n  if (!t?.signDaemonAuthChallenge) throw new Error(\"Aux daemon Authorization requires chrome.auxAccount.signDaemonAuthChallenge\");\n  return (await P"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "93d01635ab40b153c0bb81fbec3b4a350d4583d5899531f061bc3f148c5e5c60",
+      "spans": [
+        {
+          "needle": "sessions.createAndPrompt.mutationOptions",
+          "offset": 304980,
+          "bytes": 260,
+          "sha256": "14c6e6906af92886beb5ab45050cedfca8cdea7f4cfc615a35874d35c2a1af69",
+          "text": ":C,isLoading:S}=on(),y=ve(u.sessions.create.mutationOptions()),k=ve(u.sessions.createAndPrompt.mutationOptions()),M=ve(u.sessions.files.uploadAttachment.mutationOptions()),[w,I]=(0,g.useState)(()=>Hn(s,o,x)),R=(0,g.useRef)(!1),j=(0,g.useRef)(o??null),N=(0,g.us"
+        },
+        {
+          "needle": "permissionMode:ae",
+          "offset": 307023,
+          "bytes": 237,
+          "sha256": "160674bb3f8fa40227e28fc62567981be805fdf0ee0adc020e95c376fa10ec65",
+          "text": "()]),Be={...$,projectId:U,browserBinding:$.browserBinding??oe,model:X,permissionMode:ae,runtimeConfig:_,incognito:E===\"incognito\",...n?{trigger:{type:\"user\",source:n}}:{}},Oe=Oh(D),Ke=t!==void 0,Re=Ke?await y.mutateAsync({...Be,accountId"
+        },
+        {
+          "needle": "draftModelOverride",
+          "offset": 284224,
+          "bytes": 238,
+          "sha256": "ed57d5ccdb7ddd704ae27b0f242096addf2cfb455edb39e07523b855ab8a1782",
+          "text": ",c):n()},[r,n,e.id]),o=(0,g.useMemo)(()=>({draftProjectId:t.projectId,draftModelOverride:t.model,draftPermissionMode:t.permissionMode}),[t.model,t.permissionMode,t.projectId]),i=(0,g.useCallback)(()=>({parentId:t.id,trigger:{type:\"sidecha"
+        },
+        {
+          "needle": "c.projects.list.queryOptions",
+          "offset": 308915,
+          "bytes": 248,
+          "sha256": "a43d9c685448e33fe4320cc49b83205bedfc461dc13d366e067382e0bf97b264",
+          "text": ">{const{accountId:s}=ge(),[o,i]=(0,g.useState)(!1),c=Ce(),l=_e(),u=Fe(c.projects.list.queryOptions({accountId:s})),h=ve(c.projects.create.mutationOptions()),d=(u.data??[]).filter(y=>!y.archivedAt),m=d.find(y=>y.id===e)??null,p=y=>{r?.(y===e?null:y)"
+        },
+        {
+          "needle": "c.projects.create.mutationOptions",
+          "offset": 308965,
+          "bytes": 253,
+          "sha256": "db5b5f6841956cbef7c92d927967e4d4789462c3271066dc3a03a45c30323aad",
+          "text": ",c=Ce(),l=_e(),u=Fe(c.projects.list.queryOptions({accountId:s})),h=ve(c.projects.create.mutationOptions()),d=(u.data??[]).filter(y=>!y.archivedAt),m=d.find(y=>y.id===e)??null,p=y=>{r?.(y===e?null:y)},f=()=>{r?.(null)},x=()=>{i(!0)},b=async()=>{try{const"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/model-select-BvZsM1Kl.js",
+      "sha256": "4c1ba8a52d570849fbb52d883d64e02882b796be9343beb5dbf0a79e250f02a2",
+      "spans": [
+        {
+          "needle": "thinkingLevel:ge",
+          "offset": 6790,
+          "bytes": 236,
+          "sha256": "be40017aff802f19601979b16b2f97767c1b1de2bb1e22143c43ce349f513a0e",
+          "text": "pportsVision?null:{provider:n,modelId:l.id,modelShortName:l.shortName,thinkingLevel:ge(y.thinkingLevel,l.availableThinkingLevels),fastMode:l.supportsFastMode?!!y.fastMode:!1,supportsFastMode:l.supportsFastMode,availableThinkingLevels:l."
+        },
+        {
+          "needle": "g.availableModels",
+          "offset": 5721,
+          "bytes": 237,
+          "sha256": "8f2ad4db485e497ea34530d00ca8071f1c0790b1c5fab07ae2295282e73b9e05",
+          "text": "rOptions:g.providerOptions,modelsByProvider:g.modelsByProvider,models:g.availableModels},f=a?!1:g.isLoading,b=j&&f,E=!a&&g.isModelCatalogError,{effectiveValue:y,isUsingDefaultValue:K}=Je(r,o,t),_=(0,d.useMemo)(()=>{const n=new Map;for(co"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/use-update-settings-ahXnGzre.js",
+      "sha256": "3a018bc2ee01bbc75b21b53e3134c29b1ad23eca6446d5a37a0ad1a575e704c2",
+      "spans": [
+        {
+          "needle": "e.settings.set.mutationOptions",
+          "offset": 556,
+          "bytes": 250,
+          "sha256": "5c0c0682bf8cb17ab34ea065d430d16f87b4b2a72987a7591c24691cba5cf335",
+          "text": "countId:o,syncGetAllCache:u=!1,onSuccess:f,onError:i,...g}=c;return p(e.settings.set.mutationOptions({...g,onSuccess:(t,n,r,s)=>{for(const m of t.warnings)a.warning(m);return u&&o!==void 0&&s.client.setQueryData(e.settings.getAll.queryKey({accountId:"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/session-list-subscription-handler-DsVvQBhS.js",
+      "sha256": "0cffea2c73cd62a35590d7da56ef31e9ee961084db2ca54c05ffff5987505d49",
+      "spans": [
+        {
+          "needle": "event-bus?pattern=",
+          "offset": 1437,
+          "bytes": 238,
+          "sha256": "0eb91a0d605d123e006eff6cdd06b0227d0f13a7359fcc3fdfa69622bd1533ac",
+          "text": "reviewItems.infiniteQueryFilter({accountId:n}))},Q))};return I({path:`event-bus?pattern=${encodeURIComponent(\"session:*\")}&pattern=${encodeURIComponent(\"routine:*\")}`,accountId:n,schema:y,onOpen({client:e}){e.invalidateQueries(r.routines."
+        },
+        {
+          "needle": "sessions.listPreviewItems.queryFilter",
+          "offset": 1277,
+          "bytes": 257,
+          "sha256": "bdc78996dd56f4ec846cccae0e6c2197e93905c3ceae702d6f5e117c5cf494da",
+          "text": "ent=setTimeout(()=>{d.current=!1,o.current=null,e.invalidateQueries(r.sessions.listPreviewItems.queryFilter({accountId:n})),e.invalidateQueries(r.sessions.listPreviewItems.infiniteQueryFilter({accountId:n}))},Q))};return I({path:`event-bus?pattern=${encodeU"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/appearance-Ceuw3-j6.js",
+      "sha256": "01c170f7f7ae1b7fd91509dd2525c4dbad466a4c3982281e674bec0954d8e80a",
+      "spans": [
+        {
+          "needle": "getVerticalTabsBookmarksSectionEnabled",
+          "offset": 17460,
+          "bytes": 258,
+          "sha256": "fd13e74dcb3c97ff214e56a0c1b4c21b55534e3cdbf53b6c6cafb21f7d42db49",
+          "text": "verticalTabsBookmarksSectionEnabled\"],va=()=>{const s=u();return!!(s?.getVerticalTabsBookmarksSectionEnabled&&s?.setVerticalTabsBookmarksSectionEnabled)},ja=()=>{const{capture:s}=j(),n=f(),c=va(),{data:a}=m({queryKey:C,queryFn:()=>g().getTabStyle(),enabled:c"
+        },
+        {
+          "needle": "setVerticalTabsBookmarksSectionEnabled",
+          "offset": 17503,
+          "bytes": 258,
+          "sha256": "97fe8b434a4ed61fe4d876250963ce9577e7ef7bafd0748bf99ae78c0a318c55",
+          "text": "=>{const s=u();return!!(s?.getVerticalTabsBookmarksSectionEnabled&&s?.setVerticalTabsBookmarksSectionEnabled)},ja=()=>{const{capture:s}=j(),n=f(),c=va(),{data:a}=m({queryKey:C,queryFn:()=>g().getTabStyle(),enabled:c}),{data:t}=m({queryKey:S,queryFn:()=>g().g"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "13722f1922f633796b7fc334301318339ee0b10b05b264802e6bacb48aaff635",
+      "spans": [
+        {
+          "needle": "createAndPrompt:accountProcedure",
+          "offset": 12023062,
+          "bytes": 252,
+          "sha256": "8be88beb6dfc8d072cfd689e4fd005d60ef1f1cc93ae2861fce3545ecdb45610",
+          "text": "AgentSessionServer.prewarm(Cn.accountId,ni.id).catch(()=>void 0),ni}),createAndPrompt:accountProcedure.input(createSessionInputSchema.extend({message:custom()})).mutation(async({ctx:Cn,input:ei})=>{let{message:ti,...ni}=ei,ri=null;try{let ei=await crea"
+        },
+        {
+          "needle": "listPreviewItems:accountProcedure",
+          "offset": 12025656,
+          "bytes": 253,
+          "sha256": "a9f59313ed2ccf7f662ae272e8351aa747ec6ae2f9304b9fd81f56b04b92ee86",
+          "text": "chema).query(({ctx:Cn,input:ei})=>SessionStore.list(Cn.accountId,ei)),listPreviewItems:accountProcedure.input(sessionPreviewItemsOptionsSchema).query(({ctx:Cn,input:ei})=>SessionStore.listPreviewItems(Cn.accountId,ei).map(ei=>{let ti=ei.trigger?.type==="
+        },
+        {
+          "needle": "projectsRouter",
+          "offset": 11986173,
+          "bytes": 234,
+          "sha256": "43f080e807fcfa68f8e096e4d09ecb5317b7ec742721bc7f8482242b6fc1a6cf",
+          "text": "i}}var projectFileNameSchema,workspacePathSchema,projectByIdProcedure,projectsRouter,init_routes$7=__esmMin((()=>{init_dist$25(),init_drizzle_orm(),init_zod(),init_procedure(),init_agent_session_server(),init_stop_coder_work(),init_di"
+        },
+        {
+          "needle": "/session/for-chrome/chats",
+          "offset": 12114833,
+          "bytes": 245,
+          "sha256": "31b5c8195377c0843e117b5ab24e6f3d578898063053929f0efcf7818975fc32",
+          "text": "n(RecentSessionsStore.list(ei).map(toChromeSidebarPreview))}),Cn.get(`/session/for-chrome/chats`,async Cn=>{let{pinned:ei,recents:ti}=RecentSessionsStore.listChats(Cn.get(`accountId`));return Cn.json({pinned:ei.map(toChromeSidebarPreview),recent"
+        },
+        {
+          "needle": "messageRows:",
+          "offset": 12012294,
+          "bytes": 232,
+          "sha256": "aabc9a6ca6fc1ef3baf5e923f362c937edcbe5e7f48928a962c56c216fac143c",
+          "text": "RE__ */ new Date()).toISOString(),accountId:Cn,session:ei,messages:ti,messageRows:await SessionStore.listMessageRows(Cn,ei.id),runs:SessionStore.listTurnsForFeedback(Cn,ei.id),tabs:listSessionTabs(Cn,ei.id)}}async function uploadSes"
+        },
+        {
+          "needle": "settingsRouter",
+          "offset": 11859455,
+          "bytes": 234,
+          "sha256": "52fc70a2b415553e894a837f12703040f30febe2c829a62c069f22cecc095f61",
+          "text": "swordManagerProcedure,portableAuthProcedures,vaultRouter,searchRouter,settingsRouter$1,auditLogRouter,syncRouter$1,downloadAttachmentProcedure,init_plaintext_routes=__esmMin((()=>{init_dist$25(),init_zod(),init_vault_appearance(),init"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sha256": "f4c061bf002fcd682d1df18ec6f9afad1539ebae447fd66ec3f01a400dd38158"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+      "sha256": "1bc512b544a1f96201d4f0a66a3204ed48ff1a5d9afb2b9864aed86fd7e6d82b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+      "sha256": "b218b7a4cfb9888e3a71fb74d42263f931e0e2d6e411b0e60596adecaa21b0dd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "3e149d60dd46ea5d1ffbb68c9d819eeb05d450f786693bcb249e6a31278e113b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_omnibox/owned_contextual_session.cc",
+      "sha256": "b8c6603c7b6d4cab069533f6de4e62087b6b562d3886cff6aaebf83659713f48"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "sha256": "0283536265bf7c22de487c4a4273bf2c08b459c3c41faacec0bdd63fc58fe341"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "sha256": "2ed50b6c244ab8fc86f6777902e90e9f6b53b0c143d4c203444625b81193808b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native-ui-compat.mjs",
+      "sha256": "c567c8747b81be750a67f620b712b936632011fd222e161dd8e14cb5d11dc7d1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/provided-ui-boundary.mjs",
+      "sha256": "125047b508f98759524f23caa4d496d44da96f9fadfdabde150b4a9d63bd93f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/daemon-adapter.mjs",
+      "sha256": "194573981c40bfda4ea488c5d84050e769da8eac837cba69b0d308b1f4b43ba0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/source/provided-webview-contract.md",
+      "sha256": "5c7239b3b8a7a87a7fab8971de0f666ac542a56e0a44df9929c69f3fc3a92d3c"
+    }
+  ]
+}

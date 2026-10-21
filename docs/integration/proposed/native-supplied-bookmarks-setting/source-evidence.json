@@ -1,0 +1,20 @@
+{
+  "inputs": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "sha256": "80622583909c4322b1554235488e9e959d52bdfd1d3a97476deffd1b11389885"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+      "sha256": "1bc512b544a1f96201d4f0a66a3204ed48ff1a5d9afb2b9864aed86fd7e6d82b"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+      "sha256": "b218b7a4cfb9888e3a71fb74d42263f931e0e2d6e411b0e60596adecaa21b0dd"
+    },
+    {
+      "path": "docs/integration/proposed/native-profile-switch-owner/transaction-map/account-profile-pref-producer/evidence/034e3f1c.c",
+      "sha256": "d378e7d60899280869ee07cab133814720404b3b365e2c4448f6eb4e8cb0a792"
+    }
+  ]
+}

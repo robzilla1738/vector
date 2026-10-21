@@ -1,0 +1,17 @@
+{
+  "baseline": "actual-native-v560",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "f4c061bf002fcd682d1df18ec6f9afad1539ebae447fd66ec3f01a400dd38158",
+      "outputSha256": "d306da6bc4abe4ef88e1a4e6a94002465100e63b99e06535ed0ded0033158cf4",
+      "anchors": [
+        {
+          "find": "           {\"getVerticalTabsBookmarksSectionEnabled\",\n            \"setVerticalTabsBookmarksSectionEnabled\", kBookmarks}}) {",
+          "replace": "           {\"getVerticalTabsBookmarksSectionEnabled\",\n            \"setVerticalTabsBookmarksSectionEnabled\",\n            \"aside.vertical_tabs.bookmarks_section_enabled\"}}) {",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
