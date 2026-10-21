@@ -22,6 +22,17 @@ assert.equal(c.J('one',one),true);assert.equal(listeners.size,1);
 assert.equal(c.J('two',null),true);assert.equal(listeners.size,0);assert.equal(c.F('two'),null);
 session.fail=true;assert.equal(c.J('one',null),false);assert.equal(c.F('one'),null);assert.equal(listeners.size,1);
 session.fail=false;assert.equal(c.J('one',null),true);assert.equal(listeners.size,0);assert.equal(c.F('one'),null);
+// Required stores cannot be silently skipped by optional chaining.
+c.window.localStorage=null;
+assert.equal(c.J('stable-without-local',one),false);
+assert.equal(c.F('stable-without-local').plainText,one.plainText);
+c.window.localStorage=local;assert.equal(c.J('stable-without-local',null),true);
+c.window.sessionStorage=null;
+assert.equal(c.J(undefined,one,'sidepanel-target:transient'),false);
+assert.equal(c.J('stable-with-local-only',one),true);
+c.window.sessionStorage=session;
+assert.equal(c.J(undefined,null,'sidepanel-target:transient'),true);
+assert.equal(listeners.size,0);
 const pins=[];
 for(const name of ['draft-storage-ixLojjZ5.js','sidepanel-CI-CbXmY.js','permission-approval-D-GTf91U.js']){
  const original=fs.readFileSync(`${dir}/${name}`,'utf8');let result=draft({component:'agent',path:`assets/${name}`,text:original});const next=pending({component:'agent',path:`assets/${name}`,text:result.text});
