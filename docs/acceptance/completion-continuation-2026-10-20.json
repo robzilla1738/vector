@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 601,
+  "nativeCandidate": 603,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -23,11 +23,7 @@
     "574 actual bookmark add/remove changes native section and restores ExampleDomain-only state",
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
-  "integrationPending": {
-    "candidate": 603,
-    "state": "building-retained-sidebar-reattachment-and-size-cache",
-    "runtimeAccepted": false
-  },
+  "integrationPending": null,
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
     "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
@@ -56,11 +52,9 @@
     "paidRequest": false
   },
   "remainingObserved": [
-    "581c normal desktop startup succeeds with the outer Resources package boundary; exact protected-folder cause remains unproven.",
-    "585 rejects aim-cold.content-invoked during actual first switch; identify initial callback and safely retire/rebind genuine content state before forward/back acceptance.",
-    "Settings consumer catalog is corrected; separate daemon catalog proposal remains unapplied because its executable bytes differ from retained signed helper.",
-    "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
-    "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
+    "Ordinary idle profile round trips and tab-row preservation pass603; broader active-work/file-picker paths retain conservative guards.",
+    "Computer Use administrator/grant completion remains unaccepted.",
+    "Vendor password-manager companion pairing, physical Mini Popup hotkey, hosted voice and final installation remain unaccepted."
   ],
   "actualAiPreviousRuns": [
     {
@@ -196,7 +190,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-profile-lifecycle-successor-repair",
+  "executionState": "batch-complete-open-for-user-testing",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -311,5 +305,21 @@
     "sidebarRowAfterRegionRecreation": true,
     "paidRequests": 0,
     "uiStylingChanged": false
+  },
+  "actual603": {
+    "nativeVersion": 603,
+    "normalDisposableProfile": true,
+    "profileForwardBackPassed": true,
+    "tabRowsVisibleBothProfiles": true,
+    "originalProfileRestored": true,
+    "suppliedChatPanelOpened": true,
+    "currentPageContextPresent": true,
+    "modelReasoningControlsEnabled": true,
+    "actualUiComparedToSavedAside": true,
+    "uiStylesChanged": false,
+    "paidRequests": 0,
+    "profileOrFatalErrors": [],
+    "receiptSha256": "7ca5ee6ad0ff3e73657688a634e33b51845e5318fc9283e600fcdc3081c206df",
+    "fullProductReady": false
   }
 }

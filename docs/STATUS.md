@@ -1,10 +1,20 @@
 # Aux implementation status
 
+## Actual603 batch complete and open for testing — 2026-10-21
+
+603 native build/generated-key probe passed (7 steps,3m36.31s), supplied packaging and full retained-helper/native-seal inventory passed. Receipt7ca5ee6ad0ff3e73657688a634e33b51845e5318fc9283e600fcdc3081c206df retains all8 helpers without new Apple signing/Keychain operations. Exact normal disposable startup is accepted; Aux is open in Your Aux with the supplied chat panel.601 app/startup acceptance is archived.
+
+Actual Person1 → Your Aux → Person1, then restoration to Your Aux, succeeds with native tab rows visible after every switch and no logged profile rejection/fatal check. This completes the observed first-click cache settlement, avatar initialization, temporary-empty close-state, retained sidebar size-cache and strip-visibility defects. Actual601 tab-style round trip passed without the horizontal Reset crash;603 retains that exact correction. Actual597 import restart persistence passed. No paid AI repetition.
+
+Actual603 supplied new tab and example.com with both sidebars open were visually compared with saved real Aside captures. Existing UI styles/materials/rounded main-surface edges remain preserved; actual chat opens with current-page context and enabled model/reasoning controls. Comparison: out/pass1-ui-completion/compare.html. Receipt/evidence: out/native-integration/v603-ui-acceptance.json. Different profile data, dimensions, backdrop and model settings remain explicit; no universal pixel-parity claim or new genuine-hover claim.
+
+This substantial local batch is complete for user testing. Full product readiness is still false: Computer Use grant completion, vendor password-manager companion pairing, physical Mini Popup hotkey, hosted voice, broader active-work profile paths and final installation remain unaccepted. No new successor build is running.
+
 ## Actual601 profile round trip and settings crash acceptance — 2026-10-21
 
 601 complete package/retained-helper verification passed and normal disposable startup is open. One controlled Your Aux → Person1 → Your Aux round trip restored original conversation/profile content with no admission rejection or fatal check. Actual Appearance San Francisco → New York tab-style transition succeeds without the prior Reset crash; original New York preference restored. No paid request.
 
-603 integrates two concrete retained-sidebar repairs: retire cached preferred sizes on nested layout invalidation, and restore the strip’s initial visible state after reparenting from the temporary region FlexLayout. Active-tab transfer synchronously invokes layout before reattachment, allowing the old scale-to-zero parent to hide the strip.602 compile/generated-key probe passed;603 final combined build is running. The post-switch tab row remains absent despite an actual eligible native tab node/view. Diagnostic snapshots report zero body/row height; recreating the tab region through the tab-style round trip restores the row. A nested preferred-size cache invalidation defect is being repaired without changing layout dimensions or styling. Full completion is not claimed. Current screenshot: out/pass1-ui-completion/aux-appearance-v601.png.
+603 integrates two concrete retained-sidebar repairs: retire cached preferred sizes on nested layout invalidation, and restore the strip’s initial visible state after reparenting from the temporary region FlexLayout. Active-tab transfer synchronously invokes layout before reattachment, allowing the old scale-to-zero parent to hide the strip.602 compile/generated-key probe passed.603 final combined build/generated-key probe passed (7 steps,3m36.31s); packaging is running. The post-switch tab row remains absent despite an actual eligible native tab node/view. Diagnostic snapshots report zero body/row height; recreating the tab region through the tab-style round trip restores the row. A nested preferred-size cache invalidation defect is being repaired without changing layout dimensions or styling. Full completion is not claimed. Current screenshot: out/pass1-ui-completion/aux-appearance-v601.png.
 
 ## Actual597 profile progress and successor repair — 2026-10-21
 
