@@ -32,7 +32,7 @@
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
-    "nextFullBuild": "v586 compiling/linking"
+    "nextFullBuild": "586 passed; packaging"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -213,5 +213,11 @@
     "enabledModelReasoningMenus": true,
     "sourceCssOrMaterialChanged": false,
     "appleSigningPerformed": false
+  },
+  "composerStateAudit": {
+    "sourceOriginal": true,
+    "nativeRouteRegressionEstablished": false,
+    "cosmeticPatchApplied": false,
+    "evidence": "docs/integration/provided-sidepanel-composer-state.md"
   }
 }
