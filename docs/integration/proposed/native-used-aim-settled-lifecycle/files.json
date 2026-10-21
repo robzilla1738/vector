@@ -44,7 +44,7 @@
     {
       "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
       "baselineSha256": "a711efc38dc5ca1272b09262f931f87322c541efceccfa31de5d8f35aeee5b32",
-      "outputSha256": "30acb3b36846061b4dea4632b2a341987266425244f6f2d678060ded95f4edb7"
+      "outputSha256": "f5bf08ad71038a9cd6fe655a08851ba497525d59f4dd9411d140a3344a000c7d"
     },
     {
       "path": "chrome/browser/ui/webui/omnibox_popup/mojom/omnibox_popup_aim.mojom",
@@ -64,7 +64,7 @@
     {
       "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
       "baselineSha256": "7da19f2539bff79a9ba810380c4d8957e0df40981886cf1f7c6981e888f03869",
-      "outputSha256": "0ac3a6111f37b92e3193c6889d90e86a254e23fb93dee375308900b1c1677fa0"
+      "outputSha256": "65b0717724169fede1ed5583a6aa89552a09003c35a1c6a32ff9b38f576a37d4"
     },
     {
       "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
@@ -90,6 +90,16 @@
       "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
       "baselineSha256": "39bb45c8dbfafb883b73c2aea4efca967954d1e9c819a53612dfdf31d8aff84b",
       "outputSha256": "7714c9ed3b921a4fc32f9766bce959c22186c5030697f32568af4989812bba0c"
+    },
+    {
+      "path": "chrome/test/data/webui/cr_components/searchbox/test_searchbox_browser_proxy.ts",
+      "baselineSha256": "b6792c3c639fce56e4dc53b189a810c1ffc6eb52ba5fa5f47bc978556c1d37a5",
+      "outputSha256": "ae032f727e3ddcce4964a775dc7fb0702f95663879ac4bbf8d0b9d8b025ebca6"
+    },
+    {
+      "path": "chrome/test/data/webui/lens/overlay/test_searchbox_browser_proxy.ts",
+      "baselineSha256": "cfdaa0cb64d3dced9bfab596fd5c996e3c07859e6d82d33209ce7b9180451fe0",
+      "outputSha256": "d3f441957f46268e4346a93b758db7765f828f4f9d88b67b3017de45ae2a9aba"
     }
   ],
   "edits": [
@@ -276,6 +286,66 @@
     {
       "path": "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h",
       "anchorSha256": "75b3b4aaa4e59fcc89279bde3d1909228ef18abd5fe73f9c213f186cbfbcf942",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "a76878b0a8ac964769c7d077526382e6ae89812bdcb10ddc6473d0269b65e0a5",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "d11b57e3c4e355cfea35d65615c6f9e074544360bfadb7645c525f5beee3a63a",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "b5d3999c5088ef4429385c5146e2ec862b14558ea6b539d0ba66871227e69aee",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "7ce6b1feedd07b1e9685a9a95f5de29e14bb092b95baed3168add9c7bad96e4d",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "07d0bbbb3408321fbfede19104d57411e5b3fca7380463b016656842e3cdfdf4",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "07b2312c1e9f0e7b0561c22a6b76073c3893781e30264c4b4bf076e2fa1fcd11",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
+      "anchorSha256": "4ffc00a659e2a2ed7d3b4255229c7fc51ef18ec84bc0c93728d5ddf17158f9fd",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
+      "anchorSha256": "7a939dc991bd77c8566ab1373d9cf72d5c531f3011a50f665d638f3a708b9b84",
+      "count": 1
+    },
+    {
+      "path": "chrome/test/data/webui/cr_components/searchbox/test_searchbox_browser_proxy.ts",
+      "anchorSha256": "064cbb9ab6c0ff026791a1522b4cd4b95c4106579447aeefa7554680ce5ef518",
+      "count": 1
+    },
+    {
+      "path": "chrome/test/data/webui/cr_components/searchbox/test_searchbox_browser_proxy.ts",
+      "anchorSha256": "e360ad2fca69e044c53307054323c2a02a29e18ce34aca64d043f133dd174557",
+      "count": 1
+    },
+    {
+      "path": "chrome/test/data/webui/lens/overlay/test_searchbox_browser_proxy.ts",
+      "anchorSha256": "064cbb9ab6c0ff026791a1522b4cd4b95c4106579447aeefa7554680ce5ef518",
+      "count": 1
+    },
+    {
+      "path": "chrome/test/data/webui/lens/overlay/test_searchbox_browser_proxy.ts",
+      "anchorSha256": "e360ad2fca69e044c53307054323c2a02a29e18ce34aca64d043f133dd174557",
       "count": 1
     }
   ]

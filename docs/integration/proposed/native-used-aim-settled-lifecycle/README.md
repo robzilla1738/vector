@@ -1,6 +1,6 @@
 # Used, settled AIM lifecycle proposal
 
-Baseline v589. **Source proposal only: not compiled, integrated or observed.** Eighteen files,37 uniquely count-checked edits, before/after SHA pins and clean `git apply --check`. Shared Chromium, UI styling, running app and build outputs are untouched.
+Baseline v589. **Source proposal only: not compiled, integrated or observed.** Twenty files, 49 uniquely count-checked edits, before/after SHA pins and clean `git apply --check`. Shared Chromium, UI styling, running app and build outputs are untouched.
 
 ## Ownership flow
 
@@ -23,3 +23,11 @@ The common searchbox method is read-only and defaults to false. The other direct
 ## Integrator acceptance
 
 Review/apply after actual589 baseline. Native/Mojo/TS compilation is still required; static pins are not compile evidence. One focused real-app sequence should open/type/close/settle/switch/back, confirming source input and identity preservation; a preserved-context/picker or pending navigation must still refuse. Check reopen-before-clear-reply behavior if an actual failure warrants it. No paid AI suite or broad UI retest is needed. Normal outer profile/draft guards can still legitimately refuse independently of this AIM owner.
+
+## Independent review correction
+
+The original proposal missed outstanding renderer actions before a file/token reached visible attachment sets. Four actual async lifetimes (`addFileContext`, `addTabContextHandleCallback`, `handleFuseboxAction`, `updateState`) now increment an outstanding-action counter before work and release it in `finally`, preserving returns/exceptions and source behavior. Retirement checks that counter after the ordered native response. File reads, delayed tab replies and pending state application cannot be mistaken for an empty settled composer.
+
+Native `ContextualSearchSessionHandle::ClearFiles(false)` only clears selected upload tokens; it does not cancel controller uploads. Admission now additionally reads the existing controller `GetFileInfoList()`. Any retained record refuses admission, including completed cached records. This intentionally does not claim full attachment-flow retirement; owners without an empty controller remain blocked until their genuine lifecycle clears it. No historical-use bit substitutes for current ownership.
+
+Two direct TS `PageHandlerInterface` fake implementations gain the new required method, defaulting to refusal. Production const getter declarations were checked against v589; no identified const compile error. Native/TS compilation and focused app observation remain integrator work. These are static fixes, not runtime evidence.

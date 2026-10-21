@@ -1,11 +1,12 @@
 {
   "status": "source-only-proposal",
   "baseline": "v589",
-  "filePinsVerified": 18,
-  "countCheckedEdits": 37,
+  "filePinsVerified": 20,
+  "countCheckedEdits": 49,
   "gitApplyCheckPassed": true,
   "nativeBuildPerformed": false,
   "runtimeExecuted": false,
   "sharedSourcesModified": false,
-  "cssOrLayoutFilesChanged": false
+  "cssOrLayoutFilesChanged": false,
+  "reviewCorrection": "Outstanding renderer actions, retained native upload records, direct TS mocks"
 }

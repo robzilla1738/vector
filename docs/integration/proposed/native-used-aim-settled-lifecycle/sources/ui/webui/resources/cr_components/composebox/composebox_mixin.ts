@@ -265,6 +265,7 @@ export const ComposeboxEmbedderMixin =
         pendingAutomaticActiveTabTitle: string = '';
         automaticActiveTab: ComposeboxFile|null = null;
         pendingUploads: Set<UnguessableToken> = new Set();
+        private auxPendingContextActions_: number = 0;
         earlyCompletedUploads: Set<UnguessableToken> = new Set();
         dragAndDropEnabled: boolean =
             loadTimeData.getBoolean('composeboxContextDragAndDropEnabled');
@@ -1480,45 +1481,50 @@ export const ComposeboxEmbedderMixin =
             tabUpload: TabUpload, _replaceAutoActiveTabToken: boolean = false,
             onBeforeUpdateFiles?: (attachment: ComposeboxFile) =>
                 void): Promise<ComposeboxFile|null> {
+          ++this.auxPendingContextActions_;
           try {
-            const token = await this.getSearchboxHandler().addTabContext(
-                tabUpload.tabId, tabUpload.delayUpload,
-                mapOriginToMojoSource(tabUpload.origin));
-            if (!token) {
+            try {
+              const token = await this.getSearchboxHandler().addTabContext(
+                  tabUpload.tabId, tabUpload.delayUpload,
+                  mapOriginToMojoSource(tabUpload.origin));
+              if (!token) {
+                return null;
+              }
+              const attachment = ComposeboxFile.createFromTab(
+                  token, tabUpload.tabId, tabUpload.title, tabUpload.url,
+                  {supportsUnimodal: true, origin: tabUpload.origin});
+
+              if (onBeforeUpdateFiles) {
+                onBeforeUpdateFiles(attachment);
+              }
+
+              this.attachedContext = new Map([
+                ...this.attachedContext.entries(),
+                [attachment.uuid, attachment],
+              ]);
+              this.addedTabsIds = new Map([
+                ...this.addedTabsIds.entries(),
+                [tabUpload.tabId, attachment.uuid],
+              ]);
+              // If the upload already completed before the async `addTabContext`
+              // call resolved, avoid adding it to pending uploads so the submit
+              // button is not stuck disabled.
+              if (!tabUpload.delayUpload &&
+                  !this.earlyCompletedUploads.delete(token)) {
+                this.addToPendingUploads(attachment.uuid);
+              }
+              this.focusInput();
+              return attachment;
+            } catch (e) {
+              const err = e as ContextUploadErrorType;
+              if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
+                this.errorMessage =
+                    this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
+              }
               return null;
             }
-            const attachment = ComposeboxFile.createFromTab(
-                token, tabUpload.tabId, tabUpload.title, tabUpload.url,
-                {supportsUnimodal: true, origin: tabUpload.origin});
-
-            if (onBeforeUpdateFiles) {
-              onBeforeUpdateFiles(attachment);
-            }
-
-            this.attachedContext = new Map([
-              ...this.attachedContext.entries(),
-              [attachment.uuid, attachment],
-            ]);
-            this.addedTabsIds = new Map([
-              ...this.addedTabsIds.entries(),
-              [tabUpload.tabId, attachment.uuid],
-            ]);
-            // If the upload already completed before the async `addTabContext`
-            // call resolved, avoid adding it to pending uploads so the submit
-            // button is not stuck disabled.
-            if (!tabUpload.delayUpload &&
-                !this.earlyCompletedUploads.delete(token)) {
-              this.addToPendingUploads(attachment.uuid);
-            }
-            this.focusInput();
-            return attachment;
-          } catch (e) {
-            const err = e as ContextUploadErrorType;
-            if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
-              this.errorMessage =
-                  this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
-            }
-            return null;
+          } finally {
+            --this.auxPendingContextActions_;
           }
         }
 
@@ -1540,67 +1546,72 @@ export const ComposeboxEmbedderMixin =
         }
 
         async handleFuseboxAction(request: ComposeboxFuseboxActionRequest) {
-          const action = request.fuseboxAction;
-          let text = request.suggestion;
-          let selectAllInput = false;
-          if (action?.queryActionOverride) {
-            switch (action.queryActionOverride) {
-              case QueryActionOverride.kHint:
-                this.fuseboxChipHint_ = request.suggestion;
-                this.updateInputPlaceholder();
-                text = '';
-                break;
-              case QueryActionOverride.kPaste:
-                this.focusInput();
-                selectAllInput = true;
-                break;
-              default:
-                break;
+          ++this.auxPendingContextActions_;
+          try {
+            const action = request.fuseboxAction;
+            let text = request.suggestion;
+            let selectAllInput = false;
+            if (action?.queryActionOverride) {
+              switch (action.queryActionOverride) {
+                case QueryActionOverride.kHint:
+                  this.fuseboxChipHint_ = request.suggestion;
+                  this.updateInputPlaceholder();
+                  text = '';
+                  break;
+                case QueryActionOverride.kPaste:
+                  this.focusInput();
+                  selectAllInput = true;
+                  break;
+                default:
+                  break;
+              }
             }
-          }
-          const fuseboxActionState: ComposeboxState = {
-            text,
-            files: request.files,
-            mode: action?.preselectedTool ?? ToolMode.kUnspecified,
-            model: action?.preselectedModel ?? ModelMode.kUnspecified,
-            suggestInventory: action?.preferredInventory ?? undefined,
-            // <if expr="not is_android">
-            smartTabSharingActive: false,
-            // </if>
-          };
-          this.state = fuseboxActionState;
-          if (action?.preselectedInputSource) {
-            switch (action.preselectedInputSource) {
-              case InputSource.kInputSourceGallery:
-                this.getFileInputsElement()?.openImagePicker();
-                break;
-              case InputSource.kInputSourceFilePicker:
-                this.getFileInputsElement()?.openFilePicker();
-                break;
-              case InputSource.kInputSourceTabPicker:
-                await this.openTabPicker();
-                break;
-              case InputSource.kInputSourceVoice:
-                this.onVoiceSearchButtonClick();
-                break;
-              default:
-                break;
+            const fuseboxActionState: ComposeboxState = {
+              text,
+              files: request.files,
+              mode: action?.preselectedTool ?? ToolMode.kUnspecified,
+              model: action?.preselectedModel ?? ModelMode.kUnspecified,
+              suggestInventory: action?.preferredInventory ?? undefined,
+              // <if expr="not is_android">
+              smartTabSharingActive: false,
+              // </if>
+            };
+            this.state = fuseboxActionState;
+            if (action?.preselectedInputSource) {
+              switch (action.preselectedInputSource) {
+                case InputSource.kInputSourceGallery:
+                  this.getFileInputsElement()?.openImagePicker();
+                  break;
+                case InputSource.kInputSourceFilePicker:
+                  this.getFileInputsElement()?.openFilePicker();
+                  break;
+                case InputSource.kInputSourceTabPicker:
+                  await this.openTabPicker();
+                  break;
+                case InputSource.kInputSourceVoice:
+                  this.onVoiceSearchButtonClick();
+                  break;
+                default:
+                  break;
+              }
             }
-          }
-          // TODO(crbug.com/565508610): Handle state updates in a more robust
-          // way to avoid this race condition.
-          if (selectAllInput) {
-            // The pasted text is applied by updateState(), which runs from
-            // updated(), and only shows up in the input after the following
-            // render. Selecting any earlier would be undone when the input is
-            // updated.
-            await this.updateComplete;
-            await this.updateStateComplete_;
-            await this.updateComplete;
-            // Bail out if a newer action has replaced this one.
-            if (this.state === fuseboxActionState) {
-              this.getInputElement().selectAll();
+            // TODO(crbug.com/565508610): Handle state updates in a more robust
+            // way to avoid this race condition.
+            if (selectAllInput) {
+              // The pasted text is applied by updateState(), which runs from
+              // updated(), and only shows up in the input after the following
+              // render. Selecting any earlier would be undone when the input is
+              // updated.
+              await this.updateComplete;
+              await this.updateStateComplete_;
+              await this.updateComplete;
+              // Bail out if a newer action has replaced this one.
+              if (this.state === fuseboxActionState) {
+                this.getInputElement().selectAll();
+              }
             }
+          } finally {
+            --this.auxPendingContextActions_;
           }
         }
 
@@ -1632,76 +1643,81 @@ export const ComposeboxEmbedderMixin =
         }
 
         async updateState(state: ComposeboxState) {
-          if (!this.inputState) {
-            const inputStateResponse =
-                await this.getSearchboxHandler().getInputState();
-            // Check if a newer updateState is running and we can quit.
-            if (state !== this.state) {
-              return;
-            }
-            if (inputStateResponse) {
-              this.inputState = inputStateResponse.state;
-            }
-          }
-
-          this.suggestInventory = state.suggestInventory ?? null;
-
-          const text = state.text || '';
-          const files = state.files || [];
-          const mode = state.mode ?? ToolMode.kUnspecified;
-          let model = state.model ?? ModelMode.kUnspecified;
-
-          this.activeQueryId = -1;
-          if (text) {
-            this.input = text;
-            this.lastQueriedInput = text;
-          }
-          if (this.showZps && files.length === 0) {
-            this.queryAutocomplete(/* clearMatches= */ false);
-          }
-          if (files.length > 0 || state.error !== undefined) {
-            const dataTransfer = new DataTransfer();
-            const driveUploads: DriveUpload[] = [];
-            for (const file of files) {
-              if ('tabId' in file) {
-                if (file.origin === TabUploadOrigin.CONTEXT_MENU) {
-                  this.keepMenuOpenForMultiSelection();
-                }
-                this.addTabContextHandleCallback(
-                    {
-                      tabId: file.tabId,
-                      title: file.title,
-                      url: file.url,
-                      delayUpload: file.delayUpload,
-                      origin: file.origin,
-                    },
-                    /*replaceAutoActiveTabToken=*/ false);
-              } else if ('mimeType' in file) {
-                driveUploads.push(file);
-              } else if (isBrowserFileUpload(file)) {
-                this.addFileContextFromBrowser(file.token, file.fileInfo);
-              } else {
-                dataTransfer.items.add(file.file);
+          ++this.auxPendingContextActions_;
+          try {
+            if (!this.inputState) {
+              const inputStateResponse =
+                  await this.getSearchboxHandler().getInputState();
+              // Check if a newer updateState is running and we can quit.
+              if (state !== this.state) {
+                return;
+              }
+              if (inputStateResponse) {
+                this.inputState = inputStateResponse.state;
               }
             }
-            this.processFiles(dataTransfer.files);
-            if (driveUploads.length > 0 || state.error !== undefined) {
-              this.addDriveUploads(driveUploads, state.error);
+
+            this.suggestInventory = state.suggestInventory ?? null;
+
+            const text = state.text || '';
+            const files = state.files || [];
+            const mode = state.mode ?? ToolMode.kUnspecified;
+            let model = state.model ?? ModelMode.kUnspecified;
+
+            this.activeQueryId = -1;
+            if (text) {
+              this.input = text;
+              this.lastQueriedInput = text;
             }
-          }
-          if (mode !== ToolMode.kUnspecified) {
-            this.handleToolClick(mode, /*allowToggleOff=*/ false);
-          }
+            if (this.showZps && files.length === 0) {
+              this.queryAutocomplete(/* clearMatches= */ false);
+            }
+            if (files.length > 0 || state.error !== undefined) {
+              const dataTransfer = new DataTransfer();
+              const driveUploads: DriveUpload[] = [];
+              for (const file of files) {
+                if ('tabId' in file) {
+                  if (file.origin === TabUploadOrigin.CONTEXT_MENU) {
+                    this.keepMenuOpenForMultiSelection();
+                  }
+                  this.addTabContextHandleCallback(
+                      {
+                        tabId: file.tabId,
+                        title: file.title,
+                        url: file.url,
+                        delayUpload: file.delayUpload,
+                        origin: file.origin,
+                      },
+                      /*replaceAutoActiveTabToken=*/ false);
+                } else if ('mimeType' in file) {
+                  driveUploads.push(file);
+                } else if (isBrowserFileUpload(file)) {
+                  this.addFileContextFromBrowser(file.token, file.fileInfo);
+                } else {
+                  dataTransfer.items.add(file.file);
+                }
+              }
+              this.processFiles(dataTransfer.files);
+              if (driveUploads.length > 0 || state.error !== undefined) {
+                this.addDriveUploads(driveUploads, state.error);
+              }
+            }
+            if (mode !== ToolMode.kUnspecified) {
+              this.handleToolClick(mode, /*allowToggleOff=*/ false);
+            }
 
-          if (!!this.inputState && model === ModelMode.kUnspecified &&
-              this.inputState.allowedModels.length > 0) {
-            model = this.inputState.allowedModels[0]!;
-          }
-          this.getSearchboxHandler().setActiveModelMode(
-              model, /*isSetByAim=*/ false);
-          this.updateInputPlaceholder();
+            if (!!this.inputState && model === ModelMode.kUnspecified &&
+                this.inputState.allowedModels.length > 0) {
+              model = this.inputState.allowedModels[0]!;
+            }
+            this.getSearchboxHandler().setActiveModelMode(
+                model, /*isSetByAim=*/ false);
+            this.updateInputPlaceholder();
 
-          await this.updateComplete;
+            await this.updateComplete;
+          } finally {
+            --this.auxPendingContextActions_;
+          }
         }
 
         async onContextMenuClosed() {
@@ -2416,7 +2432,8 @@ export const ComposeboxEmbedderMixin =
           // is a native-owner acknowledgment, not merely a rendered frame.
           const {settled} =
               await this.getSearchboxHandler().getAuxRetirementState();
-          return settled && !this.submitting && !this.inVoiceSearchMode &&
+          return settled && this.auxPendingContextActions_ === 0 &&
+              !this.submitting && !this.inVoiceSearchMode &&
               !this.contextMenuOpened && this.input.length === 0 &&
               this.attachedContext.size === 0 && this.pendingUploads.size === 0;
         }
@@ -2452,54 +2469,59 @@ export const ComposeboxEmbedderMixin =
         }
 
         async addFileContext(files: File[]) {
-          const composeboxFiles: Map<UnguessableToken, ComposeboxFile> =
-              new Map();
-          for (const file of files) {
-            const fileBuffer = await file.arrayBuffer();
-            const bigBuffer: BigBuffer = {
-              bytes: Array.from(new Uint8Array(fileBuffer)),
-            };
-            let token: UnguessableToken;
-            try {
-              token = await this.getSearchboxHandler().addFileContext(
-                  {
-                    fileName: file.name,
-                    imageDataUrl: null,
-                    mimeType: file.type,
-                    isDeletable: true,
-                    selectionTime: new Date(),
-                    thumbnailUrl: null,
-                  },
-                  bigBuffer);
-            } catch (e) {
-              const err = e as ContextUploadErrorType;
-              if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
-                this.errorMessage =
-                    this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
+          ++this.auxPendingContextActions_;
+          try {
+            const composeboxFiles: Map<UnguessableToken, ComposeboxFile> =
+                new Map();
+            for (const file of files) {
+              const fileBuffer = await file.arrayBuffer();
+              const bigBuffer: BigBuffer = {
+                bytes: Array.from(new Uint8Array(fileBuffer)),
+              };
+              let token: UnguessableToken;
+              try {
+                token = await this.getSearchboxHandler().addFileContext(
+                    {
+                      fileName: file.name,
+                      imageDataUrl: null,
+                      mimeType: file.type,
+                      isDeletable: true,
+                      selectionTime: new Date(),
+                      thumbnailUrl: null,
+                    },
+                    bigBuffer);
+              } catch (e) {
+                const err = e as ContextUploadErrorType;
+                if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
+                  this.errorMessage =
+                      this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
+                }
+                continue;
               }
-              continue;
-            }
 
-            const attachment = ComposeboxFile.createFromFile(
-                token, file, ContextUploadStatus.kNotUploaded, {
-                  dataUrl: null,
-                  objectUrl: (file.type.includes('image') ||
-                              file.type.includes('video')) ?
-                      URL.createObjectURL(file) :
-                      null,
-                  iconName: null,
-                  supportsUnimodal: true,
-                });
-            composeboxFiles.set(token, attachment);
-            const announcer = getAnnouncerInstance();
-            announcer.announce(this.i18n('composeboxFileUploadStartedText'));
+              const attachment = ComposeboxFile.createFromFile(
+                  token, file, ContextUploadStatus.kNotUploaded, {
+                    dataUrl: null,
+                    objectUrl: (file.type.includes('image') ||
+                                file.type.includes('video')) ?
+                        URL.createObjectURL(file) :
+                        null,
+                    iconName: null,
+                    supportsUnimodal: true,
+                  });
+              composeboxFiles.set(token, attachment);
+              const announcer = getAnnouncerInstance();
+              announcer.announce(this.i18n('composeboxFileUploadStartedText'));
+            }
+            this.attachedContext = new Map([
+              ...this.attachedContext.entries(),
+              ...composeboxFiles.entries(),
+            ]);
+            this.recordFileValidationMetric(ComposeboxFileValidationError.NONE);
+            this.focusInput();
+          } finally {
+            --this.auxPendingContextActions_;
           }
-          this.attachedContext = new Map([
-            ...this.attachedContext.entries(),
-            ...composeboxFiles.entries(),
-          ]);
-          this.recordFileValidationMetric(ComposeboxFileValidationError.NONE);
-          this.focusInput();
         }
 
         addFileContextFromBrowser(

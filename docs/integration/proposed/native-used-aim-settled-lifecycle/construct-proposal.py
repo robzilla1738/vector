@@ -1,5 +1,5 @@
 import pathlib,json,hashlib,difflib
-root=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src'); out=pathlib.Path('/private/tmp/aux-vault-unsigned-review/docs/integration/proposed/native-used-aim-settled-lifecycle');out.mkdir(exist_ok=True)
+root=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src'); out=pathlib.Path(__file__).resolve().parent;out.mkdir(exist_ok=True)
 files={}; edits=[]
 def edit(p,a,b):
  if p not in files: files[p]=[(root/p).read_text(),(root/p).read_text()]
@@ -39,6 +39,40 @@ edit(p,'      [](std::unique_ptr<contextual_search::ContextualSearchSessionHandl
 p='chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h';edit(p,'  void StopAutocomplete(bool clear_result) override;','  void StopAutocomplete(bool clear_result) override;\n  void GetAuxRetirementState(GetAuxRetirementStateCallback callback) override {\n    std::move(callback).Run(false);\n  }')
 
 edit('chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h','#include <string>','#include <string>\n#include <utility>')
+# Review correction: track actual outstanding renderer attachment/state work.
+p='ui/webui/resources/cr_components/composebox/composebox_mixin.ts'
+edit(p, '        pendingUploads: Set<UnguessableToken> = new Set();',
+     '        pendingUploads: Set<UnguessableToken> = new Set();\n        private auxPendingContextActions_: number = 0;')
+# Preserve every original operation, return and exception; decrement on settlement.
+for signature in [
+    '        async addFileContext(files: File[]) {',
+    '        async addTabContextHandleCallback(',
+    '        async handleFuseboxAction(request: ComposeboxFuseboxActionRequest) {',
+    '        async updateState(state: ComposeboxState) {',
+]:
+ text=files[p][1]; start=text.index(signature)
+ # Multiline signature has an inline callback type, so locate its final return type.
+ body=(text.index('): Promise<ComposeboxFile|null> {',start)+len('): Promise<ComposeboxFile|null> {')
+       if 'addTabContextHandleCallback' in signature else start+len(signature))
+ end=text.index('\n        }',body)
+ original=text[body:end]
+ wrapped='\n          ++this.auxPendingContextActions_;\n          try {'+''.join('  '+line if line.strip() else line for line in original.splitlines(True))+'\n          } finally {\n            --this.auxPendingContextActions_;\n          }'
+ edit(p,text[start:end+len('\n        }')],text[start:body]+wrapped+'\n        }')
+edit(p, '          return settled && !this.submitting && !this.inVoiceSearchMode &&',
+     '          return settled && this.auxPendingContextActions_ === 0 &&\n              !this.submitting && !this.inVoiceSearchMode &&')
+# Token selection is not upload ownership: ClearFiles(false) clears only tokens.
+p=base+'webui/omnibox_popup/omnibox_popup_ui.cc'
+edit(p, '#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"',
+     '#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"\n\n#include "components/contextual_search/contextual_search_context_controller.h"\n#include "components/contextual_search/contextual_search_session_handle.h"')
+edit(p, '  // Read existing ownership only: never create a session during admission.',
+     '  // Selection tokens can be cleared while native uploads still exist.\n  // Refuse retained records conservatively, including completed cached files;\n  // do not cancel uploads or treat renderer reset as controller settlement.\n  if (shared_session_handle_) {\n    auto* context_controller = shared_session_handle_->GetController();\n    if (context_controller && !context_controller->GetFileInfoList().empty()) {\n      return false;\n    }\n  }\n  // Read existing ownership only: never create a session during admission.')
+# Keep direct TypeScript interface implementations complete.
+for p in ['chrome/test/data/webui/cr_components/searchbox/test_searchbox_browser_proxy.ts',
+          'chrome/test/data/webui/lens/overlay/test_searchbox_browser_proxy.ts']:
+ edit(p, "      'stopAutocomplete',", "      'stopAutocomplete',\n      'getAuxRetirementState',")
+ edit(p, '  stopAutocomplete(clearResult: boolean) {',
+      "  getAuxRetirementState(): Promise<{settled: boolean}> {\n    this.methodCalled('getAuxRetirementState');\n    return Promise.resolve({settled: false});\n  }\n\n  stopAutocomplete(clearResult: boolean) {")
+
 # Generate proposal, never shared checkout edits.
 patch=''; metadata=[]
 for p,(before,after) in files.items():

@@ -4,6 +4,9 @@
 
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 
+#include "components/contextual_search/contextual_search_context_controller.h"
+#include "components/contextual_search/contextual_search_session_handle.h"
+
 #include <atomic>
 #include <string_view>
 
@@ -439,6 +442,15 @@ bool OmniboxPopupUI::CanRetireAimForAuxProfileSwitch() const {
   if (!composebox_handler_ ||
       !composebox_handler_->CanRetireForAuxProfileSwitch()) {
     return false;
+  }
+  // Selection tokens can be cleared while native uploads still exist.
+  // Refuse retained records conservatively, including completed cached files;
+  // do not cancel uploads or treat renderer reset as controller settlement.
+  if (shared_session_handle_) {
+    auto* context_controller = shared_session_handle_->GetController();
+    if (context_controller && !context_controller->GetFileInfoList().empty()) {
+      return false;
+    }
   }
   // Read existing ownership only: never create a session during admission.
   return !shared_session_handle_ ||
