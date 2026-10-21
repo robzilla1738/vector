@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Combined589 completion build and approved Vault exclusion — 2026-10-21
+
+Owner approved the exact single-daemon local signing exception. The separate signed copy validates the existing profile/identity and preserves the seven entitlements; signing changed only its executable/resource seal. All other helpers remain untouched. Receipt751bcfbb4a6ff5279d4517e4775b3b45b4484e1f3bb1c687ac005d6549b82ceb. No provisioning, release, owner credential access or runtime launch occurred in that signing step. Production staging/cache integration is in progress.
+
+Native589 combines587 password-import exclusion,588 classic WebUI omnibox profile retirement/reconstruction, and589 supplied Agent document retention across normal panel close. All744 source/artwork pins applied. The importer and classic popup changed objects passed focused compilation; the combined full build is running. No native CSS, typography, frame geometry or material settings changed. Actual586 remains open and recoverable;589 profile transitions/draft retention/import persistence remain unaccepted until the built app is observed. Existing20 AI cases are retained without another paid run.
+
 ## Resumed completion batch: actual586 and importer scope repair — 2026-10-21
 
 586 full build/generated-key probe passed (6 steps,5m05.77s), supplied package and complete retained-helper/native seal verification passed (receipt320e698568f64f75b1011477949ba672eddd82acf85468218a06ccf2e0284caf). Normal LaunchServices reaches daemon state3. Actual first switch passes the corrected idle AIM close guard and rejects readiness.location.16: the classic WebUI omnibox is enabled by default but has no accepted transfer lifecycle. That next concrete owner is being repaired without disabling it. No successful profile transfer is claimed.

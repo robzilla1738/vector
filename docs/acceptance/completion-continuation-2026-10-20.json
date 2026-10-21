@@ -24,15 +24,15 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 585,
-    "fullBuildPassed": true,
-    "resourceReuseVerification": "passed",
-    "runtimeAccepted": false,
-    "nextSourceComposition": "v587 password import exclusion applied; classic WebUI lifecycle proposal pending",
-    "nextFocusedCompile": "580 two real objects passed in1m04s",
-    "full576BuildPassed": true,
-    "startupRecordWritten": true,
-    "nextFullBuild": "587 eight changed objects compiled; full build awaits batched profile fix"
+    "candidate": 589,
+    "state": "full-native-build-running",
+    "batches": [
+      "587 password import exclusion",
+      "588 classic WebUI omnibox profile lifecycle",
+      "589 Agent panel draft retention",
+      "approved exact Vault backend/catalog exclusion daemon"
+    ],
+    "runtimeAccepted": false
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -53,7 +53,7 @@
     "vendorPrerequisites": "docs/integration/external-password-manager-vendor-readiness.md"
   },
   "ownerDataAccessed": false,
-  "newAppleSigningPerformed": false,
+  "newAppleSigningPerformed": true,
   "releasePerformed": false,
   "unpaidBrowserControl": {
     "authenticatedNavigationSnapshotClose": true,
@@ -230,5 +230,14 @@
     "chatPanelShortcut": true,
     "sourceCssOrMaterialChanged": false,
     "newSessionDraftCloseReopen": "observed lost after confirmed real typing; supplied/native lifecycle audit pending"
+  },
+  "scopedDaemonSigning20261021": {
+    "ownerApproved": true,
+    "target": "Aux Daemon.app only",
+    "receipt": "out/vault-exclusion-signed-review-20261021/signing-receipt.json",
+    "receiptSha256": "751bcfbb4a6ff5279d4517e4775b3b45b4484e1f3bb1c687ac005d6549b82ceb",
+    "otherHelpersResigned": false,
+    "provisioningPerformed": false,
+    "runtimeAccepted": false
   }
 }
