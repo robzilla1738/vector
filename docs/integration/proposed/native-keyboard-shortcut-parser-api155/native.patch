@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/aux_keyboard_shortcut_parser.h
++++ b/chrome/browser/ui/aux_keyboard_shortcut_parser.h
+@@ -4,7 +4,7 @@
+ #include <optional>
+ #include <string_view>
+ #include <utility>
+-#include "base/strings/split_string.h"
++#include "base/strings/string_split.h"
+ #include "ui/base/accelerators/accelerator.h"
+ #include "ui/events/event_constants.h"
+ namespace aux {

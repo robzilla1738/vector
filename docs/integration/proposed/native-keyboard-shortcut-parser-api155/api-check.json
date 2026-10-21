@@ -1,0 +1,135 @@
+{
+  "quotedIncludesAllPresent": true,
+  "includes": [
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcut_parser.h",
+      "include": "base/strings/string_split.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcut_parser.h",
+      "include": "ui/base/accelerators/accelerator.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcut_parser.h",
+      "include": "ui/events/event_constants.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "include": "base/values.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/ui/aux_keyboard_shortcuts.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "base/no_destructor.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "base/strings/string_number_conversions.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "base/strings/utf_string_conversions.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "base/supports_user_data.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/browser_process.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/profiles/profile.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/ui/aux_keyboard_shortcut_parser.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "components/pref_registry/pref_registry_syncable.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "components/prefs/pref_service.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "components/prefs/scoped_user_pref_update.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "content/public/browser/web_contents.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "content/public/browser/web_contents_observer.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/base/accelerators/accelerator.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/base/accelerators/platform_accelerator_cocoa.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/events/event_constants.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/events/keycodes/keyboard_code_conversion_mac.h"
+    },
+    {
+      "source": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "include": "ui/gfx/native_ui_types.h"
+    }
+  ],
+  "apiDeclarationsVerified": [
+    {
+      "path": "base/strings/string_split.h",
+      "declaration": "SplitStringPiece(std::string_view input"
+    },
+    {
+      "path": "components/prefs/pref_service.h",
+      "declaration": "const base::Value* GetDefaultPrefValue(std::string_view path) const;"
+    },
+    {
+      "path": "components/prefs/pref_registry_simple.h",
+      "declaration": "void RegisterDictionaryPref("
+    },
+    {
+      "path": "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h",
+      "declaration": "void SetShortcutHandlingSuspended(bool suspended);"
+    },
+    {
+      "path": "ui/base/accelerators/accelerator.h",
+      "declaration": "std::u16string GetShortcutText() const;"
+    },
+    {
+      "path": "content/public/browser/web_contents_observer.h",
+      "declaration": "void PrimaryMainFrameRenderProcessGone("
+    }
+  ]
+}

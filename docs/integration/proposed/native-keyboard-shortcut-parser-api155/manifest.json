@@ -1,0 +1,17 @@
+{
+  "baseline": "actual-native-v570",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcut_parser.h",
+      "baselineSha256": "8a2e80ac957600adf8938caf0ef6d915aa50a2ac02e70228c2a2984387d57860",
+      "outputSha256": "a8648e1570bd55a579747ba1e8d33fa164d17398c00c3998b0942ea3565d22c4",
+      "anchors": [
+        {
+          "find": "#include \"base/strings/split_string.h\"",
+          "replace": "#include \"base/strings/string_split.h\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
