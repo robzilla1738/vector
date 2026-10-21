@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 582,
+  "nativeCandidate": 583,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,11 +24,11 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 582,
+    "packagedCandidate": 583,
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": "tab-strip client lifecycle pending",
+    "nextSourceComposition": "toolbar/location/private-services lifecycle batch pending",
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
@@ -49,7 +49,8 @@
       "manifestRemoved": true,
       "fixtureTreeRemoved": true,
       "ownedServersStopped": true
-    }
+    },
+    "vendorPrerequisites": "docs/integration/external-password-manager-vendor-readiness.md"
   },
   "ownerDataAccessed": false,
   "newAppleSigningPerformed": false,
@@ -62,7 +63,7 @@
   },
   "remainingObserved": [
     "581c normal desktop startup succeeds with the outer Resources package boundary; exact protected-folder cause remains unproven.",
-    "582 actual normal profile switch rejects bindings.source-interaction-tab-strip-service; genuine client/subscription lifecycle repair pending.",
+    "583 passes the tab-strip guard and rejects bindings.source-view-toolbar-location-private-services; next genuine lifecycle batch pending.",
     "Settings consumer catalog is corrected; separate daemon catalog proposal remains unapplied because its executable bytes differ from retained signed helper.",
     "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
     "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
@@ -113,7 +114,9 @@
       "childShutdown": "original shutdown, stopped health, exit0, PID absent",
       "report": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj/computer-use-reviewed-check-zn3F2X/report.json",
       "captureOrActionAccepted": false
-    }
+    },
+    "suppliedPublicBoundary": "docs/integration/proposed/provided-desktop-tool-boundary/README.md",
+    "genericDesktopActionToolRequiredForParity": false
   },
   "desktopIncident": {
     "credentialSubmittedToGoogleByUnexpectedClipboardPaste": true,
@@ -174,6 +177,21 @@
     "appleSigningPerformed": false,
     "receiptSha256": "6870d09e7d61faddb07036d248c750e111f39fdabf04c3156245349a574d1a9e",
     "profileSwitchAccepted": false,
-    "profileSwitchRejection": "bindings.source-interaction-tab-strip-service"
+    "profileSwitchRejection": "bindings.source-interaction-tab-strip-service",
+    "normalNativeMenuQuit": true,
+    "isolatedPortsClosed": [
+      21520,
+      21522,
+      45203
+    ]
+  },
+  "actual583": {
+    "normalLaunchServicesDaemonReady": true,
+    "receiptSha256": "942daca6ca9dbf158e7fa46603cffbd5b1449f6f0c54b66cd2a0cfa3befc01ef",
+    "tabStripGuardPassed": true,
+    "suppliedNativeSearchOpened": true,
+    "profileSwitchAccepted": false,
+    "profileSwitchRejection": "bindings.source-view-toolbar-location-private-services",
+    "sourceCssOrMaterialChanged": false
   }
 }

@@ -2,6 +2,14 @@
 
 Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Actual583 normal launch and next profile owner — 2026-10-21
+
+583 full native build/generated-key probe passed (7 actual steps,5m08.83s). Supplied packaging, eight retained helper signatures, nine native seals and complete final inventory passed; receiptSHA942daca6ca9dbf158e7fa46603cffbd5b1449f6f0c54b66cd2a0cfa3befc01ef. Actual normal LaunchServices startup reaches daemon state3. The first private-profile switch now passes the tab-strip guard and reaches `bindings.source-view-toolbar-location-private-services`; that is the next actual blocker, not a successful switch. Supplied extension/native Search still opens `tabsearch.html` after the preload change. Remaining source/cache admission diagnostics and genuine cold-owner lifecycle work are being batched, without relaxing guards or altering UI.
+
+Actual582 native-menu Quit closed the browser, its daemon and all three isolated ports21520/21522/45203; the prior short-key automation does not invalidate that positive quit observation. The observed582 app and its exact startup record remain preserved.
+
+The pinned1852 public tool audit (`docs/integration/proposed/provided-desktop-tool-boundary/`) separates accepted browser REPL/CDP control from the Mac context/system helper. It does not expose a generic public OS screenshot/click/key tool, so inventing that feature is not a parity prerequisite. Actual observer permission/health/local observation is still blocked at the administrator handoff. No Contacts, Messages or Full Disk Access request is authorized. Public permission defaults are not proof of an OS grant. Current1Password vendor prerequisites and the development-copy mismatch are pinned in `docs/integration/external-password-manager-vendor-readiness.md`; no vendor trust changed.
+
 ##583 unused preload integration — 2026-10-21
 
 Pinned source audit identified Chromium155's speculative stock chrome://tab-search preload as an unnecessary owner alongside Aux's actual supplied extension/native Search surface.583 excludes only that stock origin from speculative candidates and final selection, preserving other preload candidates, explicit requests/navigation, the actual Aux Search implementation and every tab-service guard. Remaining rejections emit only regular/experimental Mojo client, observer, native-external and active-session counts.709 source+23 artwork pins applied; full native build is running. Actual582 sidebar Search positively opens supplied `tabsearch.html` and dismisses correctly. No583 runtime/profile-switch success is claimed before integration.
