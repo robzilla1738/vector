@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 597,
+  "nativeCandidate": 601,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,14 +24,9 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "candidate": 601,
-    "state": "native600-building-601-crash-repair-prepared",
-    "runtimeAccepted": false,
-    "batches": [
-      "original scrim completion-driven continuation",
-      "temporary empty-strip unload lifecycle",
-      "sidebar tab row restoration"
-    ]
+    "candidate": 603,
+    "state": "building-retained-sidebar-reattachment-and-size-cache",
+    "runtimeAccepted": false
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -303,5 +298,18 @@
     "paidAiRepeated": false,
     "uiStylingChanged": false,
     "laterModeChangeCrash": "TabStrip::Reset from inactive horizontal region ResetTabStrip"
+  },
+  "actual601": {
+    "buildPassed": true,
+    "packageAndRetainedAuthorityVerified": true,
+    "profileForwardBackPassed": true,
+    "originalProfileConversationRestored": true,
+    "tabStyleRoundTripPassed": true,
+    "originalTabStyleRestored": true,
+    "normalQuitClosedBrowserAndPorts": true,
+    "sidebarRowAfterProfileSwitch": false,
+    "sidebarRowAfterRegionRecreation": true,
+    "paidRequests": 0,
+    "uiStylingChanged": false
   }
 }

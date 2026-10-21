@@ -1,8 +1,14 @@
 # Aux implementation status
 
+## Actual601 profile round trip and settings crash acceptance — 2026-10-21
+
+601 complete package/retained-helper verification passed and normal disposable startup is open. One controlled Your Aux → Person1 → Your Aux round trip restored original conversation/profile content with no admission rejection or fatal check. Actual Appearance San Francisco → New York tab-style transition succeeds without the prior Reset crash; original New York preference restored. No paid request.
+
+603 integrates two concrete retained-sidebar repairs: retire cached preferred sizes on nested layout invalidation, and restore the strip’s initial visible state after reparenting from the temporary region FlexLayout. Active-tab transfer synchronously invokes layout before reattachment, allowing the old scale-to-zero parent to hide the strip.602 compile/generated-key probe passed;603 final combined build is running. The post-switch tab row remains absent despite an actual eligible native tab node/view. Diagnostic snapshots report zero body/row height; recreating the tab region through the tab-style round trip restores the row. A nested preferred-size cache invalidation defect is being repaired without changing layout dimensions or styling. Full completion is not claimed. Current screenshot: out/pass1-ui-completion/aux-appearance-v601.png.
+
 ## Actual597 profile progress and successor repair — 2026-10-21
 
-A later597 native crash in TabStrip::Reset was traced through OnVerticalTabStripModeChanged to a preferences notification: the legacy horizontal region tears down even when never initialized.601 adds the matching initialized-ownership guard, preserving actual preference semantics and live teardown. The exact crashed597 browser and its verified orphan daemon are stopped; package/startup record archived.600 combined lifecycle build is finishing, then601 will compile the additional concrete crash repair before packaging.
+A later597 native crash in TabStrip::Reset was traced through OnVerticalTabStripModeChanged to a preferences notification: the legacy horizontal region tears down even when never initialized.601 adds the matching initialized-ownership guard, preserving actual preference semantics and live teardown. The exact crashed597 browser and its verified orphan daemon are stopped; package/startup record archived.600 combined lifecycle build passed (19 steps,6m16.78s).601 additional crash repair build/generated-key probe passed (7 steps,4m44.60s); supplied packaging passed and retained-helper/native seal verification is running. Actual601 profile forward/back and sidebar row acceptance remain pending.
 
 597 full native build/generated-key probe, packaging and complete retained-helper/native seal verification passed (receipt dfa7c4d4e41cca2376b00f62d0d186914f9697655174fcfa3d1e78f86202bc51). Actual normal disposable launch is live. Exact synthetic import-destination selection now verifies bookmark hierarchy and history counts across restart; no import or paid AI test was repeated.
 
