@@ -1,0 +1,86 @@
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -754,14 +754,19 @@
+                  windows->front()->tabs.empty()) {
+         result = SessionRestore::AuxWorkspaceResult::kEmpty;
+       } else if (!std::ranges::all_of(*windows, [](const auto& window) {
+-                   return window->type == sessions::SessionWindow::TYPE_NORMAL &&
++                   // Match the browser SessionService's persisted types.
++                   // App and app-popup sessions require the separate app
++                   // service/registry readiness path and are not admitted here.
++                   return SessionService::IsRelevantWindowType(window->type) &&
+                           !window->tabs.empty();
+                  })) {
+         result = SessionRestore::AuxWorkspaceResult::kAmbiguous;
+       } else {
+-        // A profile workspace must not merge several saved windows into this
+-        // source window. Let the existing restorer recreate each independently.
+-        aux_restore_separate_windows_ = windows->size() > 1;
++        // Only a single normal browser may adopt the normal hidden cache.
++        // Popups and mixed sessions retain their actual window types through
++        // the native restorer; never turn a popup into a tabbed source window.
++        aux_restore_separate_windows_ = windows->size() > 1 ||
++            windows->front()->type != sessions::SessionWindow::TYPE_NORMAL;
+       }
+       if (result != SessionRestore::AuxWorkspaceResult::kRestored) {
+         // Do not prune, merge, create windows or delete stale session data when
+--- a/chrome/browser/sessions/session_restore.h
++++ b/chrome/browser/sessions/session_restore.h
+@@ -94,7 +94,8 @@
+   enum class AuxWorkspaceResult { kRestored, kEmpty, kAmbiguous, kFailed,
+                                   kRestoredSeparately, kCancelled };
+   // Internal Aux restore: one normal window adopts the hidden cache; multiple
+-  // normal windows reopen separately without reassigning the source window.
++  // browser windows or popups reopen separately with their original types,
++  // without reassigning the source window. App-session restore is separate.
+   // Recheck request admission after the async read and before creating tabs.
+   static void RestoreAuxProfileWorkspace(
+       BrowserWindowInterface* cache,
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -161,7 +161,8 @@
+       if (candidate != cache && !IsClosing(candidate) &&
+           !candidate->GetTabStripModel()->empty()) {
+         has_live_workspace = true;
+-        if (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++        if ((candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL ||
++             candidate->GetType() == BrowserWindowInterface::TYPE_POPUP) &&
+             !BrowserInitState::From(candidate)->is_aux_profile_switch_cache()) {
+           has_live_user_workspace = true;
+         }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -170,7 +170,8 @@
+             if (candidate->GetProfile() == target_weak.get() && candidate_state &&
+                 !candidate_state->is_aux_profile_switch_cache() && unload &&
+                 !unload->is_attempting_to_close_browser() && !unload->is_delete_scheduled() &&
+-                candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++                (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL ||
++                 candidate->GetType() == BrowserWindowInterface::TYPE_POPUP) &&
+                 !candidate->GetTabStripModel()->empty()) {
+               recovered = candidate;
+               return false;
+@@ -186,9 +187,9 @@
+         if (notify && recovered_weak && recovered_weak->GetWindow()) {
+           chrome::ShowWarningMessageBoxAsync(
+               recovered_weak->GetWindow()->GetNativeWindow(), u"Profile windows restored",
+-              u"This profile had multiple saved windows. Aux restored them "
+-              u"separately with their tabs and selections. Your original "
+-              u"window and profile are unchanged.");
++              u"Aux restored this profile's saved windows separately, "
++              u"preserving their tabs and selections. Your original window "
++              u"and profile are unchanged.");
+         }
+         if (completion) std::move(completion).Run(
+             recovered_weak ? static_cast<Browser*>(recovered_weak.get()) : nullptr);
+@@ -206,8 +207,8 @@
+       const bool ambiguous = cache_state && cache_state->aux_workspace_restore_state() ==
+           BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous;
+       ReportCurrentSwitchFailure(sender_weak, source, generation, ambiguous
+-          ? u"This profile has a saved app, popup, or incomplete window that "
+-            u"cannot be restored as a browser workspace. Aux has preserved "
++          ? u"This profile has a saved app, developer-tools, or incomplete "
++            u"window outside browser-session recovery. Aux has preserved "
+             u"that session. Open the profile separately to recover it."
+           : u"The profile's saved workspace could not be prepared. Finish any "
+             u"pending profile activity, then try again or reopen Aux.");
