@@ -25,14 +25,16 @@
   ],
   "integrationPending": {
     "candidate": 589,
-    "state": "589-built-awaiting-corrected-generated-source-signing-approval",
+    "state": "589-corrected-daemon-signed-cache-verified-final-integration-running",
     "batches": [
       "587 password import exclusion",
       "588 classic WebUI omnibox profile lifecycle",
       "589 Agent panel draft retention",
       "approved exact Vault backend/catalog exclusion daemon"
     ],
-    "runtimeAccepted": false
+    "runtimeAccepted": false,
+    "correctedDaemonSigningReceiptSha256": "1d9fc0b247088edd63838efd28df6107408421f933f43f8a2eedf9668503cfe3",
+    "cacheSha256": "b39e4b998398864ae0ae49c8a9772af19e85794cbe0c5fd2f016b621e5870814"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
