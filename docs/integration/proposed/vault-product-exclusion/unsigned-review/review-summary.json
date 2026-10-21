@@ -1,0 +1,67 @@
+{
+  "kind": "unsigned-review-only-not-launchable",
+  "source": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-browser-pass-v585-observed-baseline/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-unsigned-review-20261021/Aux Daemon.app",
+  "sourceEditCount": 5,
+  "countPerAnchor": 1,
+  "baseCodeSha256": "93084eb7eebf911b473d791e796f5d8ad740bc8befa5527a8adb0205d42a9dd0",
+  "proposedCodeSha256": "d5133e910653114e22484906ac524dacf449d6fc69f20837c610207f9ba6f465",
+  "changedArtifacts": [
+    {
+      "path": "Contents/MacOS/aux-daemon",
+      "beforeSha256": "7ab8e9a0fcc5696f136f577a5c84b9c14f5b265941212d1cdedc573df656d17a",
+      "afterSha256": "618af805eaf83f6b7d7d2de1e22a8dfc5e8e2052c291cc8dc712d5c34768ee85",
+      "bytes": 158228480
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/password-manager/SKILL.md",
+      "beforeSha256": "0be8047c194df62c61a160aafd00d33daf6d124caba60ac8c2271d432c7ffab3",
+      "afterSha256": "09732935b6f0b54ce75c5fbe3956c9f88681c4c5e3362093aed8be96e09ba3f7",
+      "bytes": 203
+    }
+  ],
+  "leafCount": 143,
+  "unchangedLeafCount": 141,
+  "seaNonCodeRoundtripPreserved": true,
+  "syntaxCompiledWithoutEvaluation": true,
+  "signingPerformed": false,
+  "runtimeExecuted": false,
+  "keychainAccessed": false,
+  "signatureStatus": "Original signature metadata retained but INVALIDATED by two changed leaves. No signature removed or added.",
+  "fullReviewSha256": "981db79f17ed9e3bdb47dfa3719c8d4294dad9b0bbb0173836a128609fe85e38",
+  "fullReviewPath": "/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-unsigned-review-20261021/review.json",
+  "seaAssets": [
+    {
+      "name": "quickjs-emscripten-module.wasm",
+      "sha256": "105c3bed22d457e43e3d1c3c1c6959fda62a8fe06f0fc8a985303c3a2be72232",
+      "bytes": 503134
+    },
+    {
+      "name": "photon_rs_bg.wasm",
+      "sha256": "10468181565c56004c867f3a4af96f89a0ef5a63a72f2b5fb12c1f1992a3615c",
+      "bytes": 1881634
+    }
+  ],
+  "toolPins": {
+    "vendor/aside/lib/sea.mjs": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6",
+    "vendor/provided/daemon-adapter.mjs": "194573981c40bfda4ea488c5d84050e769da8eac837cba69b0d308b1f4b43ba0",
+    "docs/integration/proposed/vault-product-exclusion/unsigned-review/materialize.mjs": "e07ec660316d017cf497adf9885934ee83081a9487ff68604760a3e4beb54375",
+    "docs/integration/proposed/vault-product-exclusion/proposal.mjs": "066a186894b1e3aed5e7765bd22b263a5d54aa28d81983795125b781824b147c"
+  },
+  "proposedSigning": {
+    "authorized": false,
+    "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "identityAvailability": "Historical public inspection only; not freshly enumerated",
+    "appleDevelopmentTargets": [
+      "Aux Daemon.app"
+    ],
+    "identifier": "dev.aux.browser.daemon",
+    "team": "9F2JXY8TCK",
+    "keychainAccessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+    "entitlements": "Preserve all seven keys from archived daemon; no addition",
+    "otherHelpers": "Retain CLI, carrier, guards, importer and addon bytes/signatures; no re-signing",
+    "outerBrowser": "Only after separate approved integration: refresh outer ad hoc resource seal with final native inventory; no Apple signature for browser",
+    "provisioning": "None proposed; validate existing embedded profile and existing identity before authorized signing; stop if insufficient",
+    "keychainRuntimeTest": "Not included; a separately authorized existing disposable-scope launch would be required for behavior acceptance"
+  }
+}
