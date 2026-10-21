@@ -61,9 +61,9 @@
     "paidRequest": false
   },
   "remainingObserved": [
-    "First accepted normal launch stalled; subsequent ordinary reopen started real daemon/CDP and logging-only accepted launch also works. Initial cause remains unresolved.",
-    "579 profile switch rejects unported.recent_activity_bubble_coordinator;580 guarded dormant lifecycle and581 genuine shared-feedback subscription migration are applied;581 compilation running.",
-    "Supplied Settings catalog still displays obsolete Vault builtin skill and Aside skill title; counted corrections in progress.",
+    "581c normal desktop startup succeeds with the outer Resources package boundary; exact protected-folder cause remains unproven.",
+    "581c profile switching rejects bindings.source-interaction-owners;582 precise diagnostic build is linking.",
+    "Settings consumer catalog is corrected; separate daemon catalog proposal remains unapplied because its executable bytes differ from retained signed helper.",
     "Fresh System Settings administrator prompt remains before approved helper Add; no permission changed.",
     "Vendor password-manager companion pairing, physical Mini Popup hotkey and hosted voice unaccepted."
   ],
@@ -160,6 +160,12 @@
     "profileSwitchRejection": "bindings.source-interaction-owners",
     "sidebarChatReadinessAccepted": true,
     "actualVisualComparison": "out/pass1-ui-completion/compare.html",
-    "sidebarChatRowVerified": "Checking assistant availability is an actual saved test chat; click opens supplied task route"
+    "sidebarChatRowVerified": "Checking assistant availability is an actual saved test chat; click opens supplied task route",
+    "miniPopupCheck": {
+      "enabledThroughActualUI": true,
+      "shortcut": "CommandShiftSpace",
+      "automatedGlobalDeliveryAccepted": false,
+      "originalOffPreferenceRestored": true
+    }
   }
 }
