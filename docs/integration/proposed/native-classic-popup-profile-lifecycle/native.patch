@@ -1,0 +1,298 @@
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h
+@@ -99,6 +99,9 @@
+ 
+   // Cold-only retirement: once invoked, this owner requires its live lifecycle.
+   bool CanRetireUnusedForAuxProfileSwitch() const;
++  // Classic suggestions have no retained draft/context once the native model
++  // and popup are idle. AIM callers still require never-invoked admission.
++  bool CanRetireIdleClassicForAuxProfileSwitch() const;
+ 
+   // Show or hide the popup widget with web view.
+   virtual void Show();
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
+@@ -67,6 +67,10 @@
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-invoked";
+     return false;
+   }
++  return CanRetireIdleClassicForAuxProfileSwitch();
++}
++
++bool OmniboxPopupPresenterBase::CanRetireIdleClassicForAuxProfileSwitch() const {
+   if (IsShown()) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-visible";
+     return false;
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h
+@@ -116,6 +116,10 @@
+   // focus chain.
+   void AdvanceFocus(bool reverse);
+ 
++  // Layout/load callbacks are owned by this WebContents and retire with it.
++  // Menus and file choosers hold external interactions and must finish first.
++  bool CanRetireIdleForAuxProfileSwitch() const;
++
+  protected:
+   // Callback for cleaning up the `context_menu_` field.
+   void OnMenuClosed();
+@@ -179,6 +183,9 @@
+   // Tracks the visible state of the WebUI. This is distinct from the
+   // View's visibility (GetVisible()) to handle lifecycle timing differences.
+   bool is_shown_ = false;
++  bool aux_file_chooser_pending_ = false;
++  // There is no completion signal here proving a voice/media session idle.
++  bool aux_media_requested_ = false;
+ 
+   // A handler to handle unhandled keyboard messages coming back from the
+   // renderer process.
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc
+@@ -135,6 +135,15 @@
+   location_bar_->RemoveLocationBarObserver(this);
+ }
+ 
++bool OmniboxPopupWebUIBaseContent::CanRetireIdleForAuxProfileSwitch() const {
++  auto* contents = contents_wrapper_ ? contents_wrapper_->web_contents() : nullptr;
++  auto* permission_manager = contents
++      ? permissions::PermissionRequestManager::FromWebContents(contents) : nullptr;
++  return !context_menu_ && !file_chooser_deactivation_blocker_ &&
++         !aux_file_chooser_pending_ && !aux_media_requested_ &&
++         (!permission_manager || !permission_manager->IsRequestInProgress());
++}
++
+ void OmniboxPopupWebUIBaseContent::AddedToWidget() {
+   views::WebView::AddedToWidget();
+   holder()->SetNativeViewCornerRadii(GetRoundedCornerRadii());
+@@ -427,6 +436,7 @@
+     content::WebContents* web_contents,
+     const content::MediaStreamRequest& request,
+     content::MediaResponseCallback callback) {
++  aux_media_requested_ = true;
+   // Handle the media access requests for voice search by routing them through
+   // `MediaCaptureDevicesDispatcher`.
+   MediaCaptureDevicesDispatcher::GetInstance()->ProcessMediaAccessRequest(
+@@ -637,6 +647,7 @@
+     content::RenderFrameHost* render_frame_host,
+     scoped_refptr<content::FileSelectListener> listener,
+     const blink::mojom::FileChooserParams& params) {
++  aux_file_chooser_pending_ = true;
+   // Prevent focus-loss events from closing the popup when the file dialog
+   // opens.
+   if (popup_presenter_) {
+@@ -656,6 +667,7 @@
+ }
+ 
+ void OmniboxPopupWebUIBaseContent::OnFileChooserClosed() {
++  aux_file_chooser_pending_ = false;
+   if (popup_presenter_) {
+     popup_presenter_->OnFileSelectionClosed();
+   }
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h
+@@ -41,6 +41,12 @@
+ 
+   OmniboxPopupPresenterBase* presenter() override;
+ 
++  // Only an idle classic dropdown may retire its source-profile WebUI.
++  // Keep this view/edit-model identity stable while the client is rebound.
++  bool CanPrepareForAuxProfileSwitch() const;
++  void PrepareForAuxProfileSwitch();
++  void ResumeAfterAuxProfileSwitch();
++
+   // OmniboxPopupView:
+   void InvalidateLine(size_t line) override;
+   void UpdatePopupAppearance() override;
+@@ -77,6 +83,9 @@
+  private:
+   // The location bar that owns `this`. May be nullptr in tests.
+   raw_ptr<LocationBar> location_bar_;
++  raw_ptr<OmniboxPopupPresenterDelegate> presenter_delegate_;
++  bool aux_profile_switch_paused_ = false;
++
+ 
+   // The presenter that manages its own widget and WebUI presentation.
+   std::unique_ptr<OmniboxPopupPresenterBase> presenter_;
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc
+@@ -5,6 +5,8 @@
+ #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h"
+ 
+ #include <memory>
++
++#include "base/logging.h"
+ 
+ #include "base/feature_list.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -50,6 +52,7 @@
+     : OmniboxPopupView(controller),
+       omnibox_view_(omnibox_view),
+       location_bar_(location_bar),
++      presenter_delegate_(&presenter_delegate),
+       presenter_(std::move(presenter)) {
+   controller->edit_model()->set_popup_view(this);
+   edit_model_observation_.Observe(controller->edit_model());
+@@ -59,8 +62,58 @@
+   controller()->edit_model()->set_popup_view(nullptr);
+ }
+ 
++bool OmniboxPopupViewWebUI::CanPrepareForAuxProfileSwitch() const {
++  const auto reject = [](const char* stage) {
++    LOG(ERROR) << "Aux profile transition rejected: " << stage;
++    return false;
++  };
++  if (aux_profile_switch_paused_)
++    return reject("classic-idle.view-paused");
++  if (!presenter_)
++    return reject("classic-idle.presenter-missing");
++  if (!edit_model_observation_.IsObserving())
++    return reject("classic-idle.model-observer");
++  if (controller()->edit_model()->user_input_in_progress())
++    return reject("classic-idle.input-in-progress");
++  if (!controller()->autocomplete_controller()->done())
++    return reject("classic-idle.autocomplete-running");
++  if (controller()->popup_state_manager()->popup_state() !=
++      OmniboxPopupState::kNone)
++    return reject("classic-idle.popup-state");
++  if (!presenter_->CanRetireIdleClassicForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: classic-idle.presenter";
++    return false;
++  }
++  auto* content = presenter_->GetWebUIContent();
++  if (!content || !content->CanRetireIdleForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: classic-idle.content-interaction";
++    return false;
++  }
++  return true;
++}
++
++void OmniboxPopupViewWebUI::PrepareForAuxProfileSwitch() {
++  CHECK(CanPrepareForAuxProfileSwitch());
++  aux_profile_switch_paused_ = true;
++  edit_model_observation_.Reset();
++  // Synchronous presenter destruction drains its widget deletion queue and
++  // destroys the source WebContents, Mojo handlers and profile observations
++  // before OmniboxController destroys the old AutocompleteController.
++  presenter_.reset();
++}
++
++void OmniboxPopupViewWebUI::ResumeAfterAuxProfileSwitch() {
++  CHECK(aux_profile_switch_paused_);
++  CHECK(!presenter_);
++  // Both commit and abort restore a coherent client/profile before this call.
++  presenter_ = std::make_unique<OmniboxPopupPresenter>(
++      location_bar_, *presenter_delegate_, controller());
++  edit_model_observation_.Observe(controller()->edit_model());
++  aux_profile_switch_paused_ = false;
++}
++
+ bool OmniboxPopupViewWebUI::IsOpen() const {
+-  return presenter_->IsShown();
++  return presenter_ && presenter_->IsShown();
+ }
+ 
+ OmniboxPopupPresenterBase* OmniboxPopupViewWebUI::presenter() {
+@@ -70,6 +123,8 @@
+ void OmniboxPopupViewWebUI::InvalidateLine(size_t line) {}
+ 
+ void OmniboxPopupViewWebUI::UpdatePopupAppearance() {
++  if (aux_profile_switch_paused_)
++    return;
+   const bool has_results =
+       !controller()->autocomplete_controller()->result().empty();
+   // TODO(crbug.com/498556249): Consolidate/correct chip visibility logic.
+@@ -160,6 +215,8 @@
+ void OmniboxPopupViewWebUI::StepSelection(
+     OmniboxPopupSelection::Direction direction,
+     OmniboxPopupSelection::Step step) {
++  if (aux_profile_switch_paused_)
++    return;
+   auto* controller =
+       presenter()->GetWebUIContent()->contents_wrapper()->GetWebUIController();
+   if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
+@@ -176,6 +233,8 @@
+ 
+ void OmniboxPopupViewWebUI::OpenCurrentSelection(
+     WindowOpenDisposition disposition) {
++  if (aux_profile_switch_paused_)
++    return;
+   auto* controller =
+       presenter()->GetWebUIContent()->contents_wrapper()->GetWebUIController();
+   if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -64,6 +64,7 @@
+ class OmniboxPopupFileSelector;
+ class OmniboxPopupUI;
+ class OmniboxPopupView;
++class OmniboxPopupViewWebUI;
+ class OmniboxViewViews;
+ class PermissionChipView;
+ class PermissionDashboardView;
+@@ -546,6 +547,9 @@
+   base::WeakPtr<content::WebContents> aux_profile_switch_contents_;
+   bool aux_profile_switch_had_contents_ = false;
+   bool aux_profile_switch_saved_contents_ = false;
++  // Set only by the exact classic-dropdown constructor branch; full/browser
++  // WebUI variants remain unsupported by this dormant-owner transaction.
++  raw_ptr<OmniboxPopupViewWebUI> aux_classic_webui_popup_ = nullptr;
+   bool aux_profile_switch_had_aim_presenter_ = false;
+   bool aux_profile_switch_had_file_selector_ = false;
+   void BindPrefsForAuxProfileSwitch();
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -279,6 +279,9 @@
+   // is destroyed before the omnibox controller (a member variable), since it
+   // holds a raw_ptr to the omnibox controller.
+   popup_state_changed_subscription_ = base::CallbackListSubscription();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_classic_webui_popup_ = nullptr;
++#endif
+   omnibox_popup_view_.reset();
+   RemoveChildViewT(omnibox_view_.ExtractAsDangling());
+ }
+@@ -377,10 +380,14 @@
+ 
+     if (web_ui_popup_dropdown_only &&
+         !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug)) {
+-      omnibox_popup_view_ = std::make_unique<OmniboxPopupViewWebUI>(
++      auto popup = std::make_unique<OmniboxPopupViewWebUI>(
+           /*omnibox_view=*/omnibox_view_,
+           /*controller=*/omnibox_controller_.get(), /*location_bar=*/this,
+           /*presenter_delegate=*/*this);
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++      aux_classic_webui_popup_ = popup.get();
++#endif
++      omnibox_popup_view_ = std::move(popup);
+     } else if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
+       omnibox_popup_view_ =
+           std::make_unique<OmniboxPopupViewBrowserView>(this, browser_);
+@@ -2672,7 +2679,9 @@
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.15";
+     return false;
+   }
+-  if (!(!omnibox::IsWebUIOmniboxPopupEnabled())) {
++  if (omnibox::IsWebUIOmniboxPopupEnabled() &&
++      (!aux_classic_webui_popup_ ||
++       !aux_classic_webui_popup_->CanPrepareForAuxProfileSwitch())) {
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.16";
+     return false;
+   }
+@@ -2707,6 +2716,8 @@
+   aux_profile_switch_saved_contents_ = false;
+   const uint64_t generation = ++aux_profile_switch_generation_;
+   weak_factory_.InvalidateWeakPtrs();
++  if (aux_classic_webui_popup_)
++    aux_classic_webui_popup_->PrepareForAuxProfileSwitch();
+   // Admission proved neither owner was invoked or retains pending work.
+   // Retire their source-profile WebContents only after the transaction begins.
+   aux_profile_switch_had_aim_presenter_ = !!omnibox_popup_aim_presenter_;
+@@ -2754,6 +2765,8 @@
+   // Use the exact original constructors, now against that coherent profile.
+   CHECK(!omnibox_popup_aim_presenter_);
+   CHECK(!omnibox_popup_file_selector_);
++  if (aux_classic_webui_popup_)
++    aux_classic_webui_popup_->ResumeAfterAuxProfileSwitch();
+   if (aux_profile_switch_had_aim_presenter_) {
+     omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
+         /*location_bar=*/this, omnibox_controller_.get(),

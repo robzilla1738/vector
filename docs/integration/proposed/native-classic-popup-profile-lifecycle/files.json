@@ -1,0 +1,45 @@
+{
+  "baseComposition": "v587",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h",
+      "baselineSha256": "caac60ba52ed5f4fec09f73850179e860a6c06d264c0fbda2316979afbdad49d",
+      "outputSha256": "92bd0936f684d6cd7ee6047360b1145ec4bb4680ff6839287a88fe9e5274863d"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc",
+      "baselineSha256": "a4f1921d917573cec2736017a884403b9e8d2faa673311ba9e5c3fd1a473a930",
+      "outputSha256": "8d6d91dd48c7e2711e4a0c50962eaf0eed66cb2194d54af96182c4312e50acf4"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h",
+      "baselineSha256": "567c9150e0110a20d380af7d71c4ab21f3abbf608cecc1082baa7e19e6917129",
+      "outputSha256": "d5998472944cb60aeda7140de79c3818aef1bbc5c427f5aafdb07ba3f1654ba3"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc",
+      "baselineSha256": "ed6af648ea69b1f8565fd08f85e3d235e1a305fd26892b67d52f0cf32e1f42b2",
+      "outputSha256": "5f351dc0a772aa082d70b8f106d4ee5d020515f1bc2b260bc1fd4bfad7410cca"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h",
+      "baselineSha256": "db1404daed78fcfc7a1a2b6f16b9417ecd79397d3dc4fd7c6f7ba33a1d51435c",
+      "outputSha256": "b544f423913e4b23c30cd62e3c978595d081c609aa4e6c3c46a144ead89dd18e"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.cc",
+      "baselineSha256": "1a6abb9ce74cf34a41b3538fa30ef79d93a942bdb0a74b20e7511ab748757dc5",
+      "outputSha256": "fac4a40bb29c021295844320915962c3656274bab5b272fd10d9789b68503ec7"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "baselineSha256": "07a282360bcd78dd78ab9adac648f04d16aab79aa933dca812322d890212a797",
+      "outputSha256": "7e3e869a70559bc4db865e0920337deb5d543eaee19194281af9acdfc2fba813"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "e0b64ec7cede6ab4ff614dd4bb7c3fd603c827f17143bde55e9527c1fbb56836",
+      "outputSha256": "94f57a8bac14a7d50094b9719d0c7bc92653989a437d75b1d7d9a9d33f74a054"
+    }
+  ]
+}
