@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "baselineSha256": "ffc6bee1315aca3741efede6314a5bfa8d78674dc7bef454efe24cc0e6efbe77",
+      "outputSha256": "02520049bf8030253fe509655c896c614edbf6e8914274a1a0dd50d5366bb541"
+    }
+  ]
+}
