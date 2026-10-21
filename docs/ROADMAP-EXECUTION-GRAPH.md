@@ -10,6 +10,14 @@ Current source: local main26c422f51 plus the reviewed pass1 plan update. Native5
 
 Observed560: enabled model menu, genuine chat panel/current-page context, focused bookmark control, single Aux identity, immediate Settings section-title update and delayed page-title update. Shared16DIP native page/panel surfaces now render in the real app. CmdE still fails in560;561 main-menu correction is integrated into566. First real Muse task failed because secure browser-control45203 was unavailable; credential cleanup verified.566 adds authority-ready listener reconciliation. Hover was previously owner-confirmed; this desktop tool has no genuine pointer-hover API. These scoped results are not full-product acceptance.
 
+## Current execution update —566 observed,570 building
+
+566 actual authenticated browser control passes navigation/snapshot/close; unauthenticated access is rejected. Bookmarks section preference works and restores. All20 real Muse tasks pass, including actual memory, delegation, automatic compaction and browser reporting; credential cleanup is verified. Reports retain earlier failed attempts and passing-prefix evidence rather than repeating accepted cases. See current STATUS and `docs/acceptance/completion-continuation-2026-10-20.json`.
+
+567 native command-route diagnostics and568 dormant contextual-task profile lifecycle compile/link successfully.569–570 integrate the supplied Settings shortcut capability contract with actual native persistence/capture/dispatch and required GN/schema/histogram registration;570 is building. Current UI/CSS/geometry remain the baseline. Runtime CmdE, profile forward/back and shortcut-capture checks remain pending the assembled candidate. Do not label these complete from source checks.
+
+PACKAGE audit confirms bundle-relative executable/runtime ownership. A durable explicit existing-scope launch record and reviewed final-path packaging remain separate implementation/review work. Computer Use helper is built but stopped; explicit new OS/capture approval is pending, not inferred from a status read. Third-party native messaging/content-script fixtures pass; vendor1Password companion trust remains unaccepted.
+
 ## Dependency graph
 
 Solid arrows are implementation prerequisites; dashed arrows are acceptance prerequisites. Shared native/build/app resources are serialized separately.
