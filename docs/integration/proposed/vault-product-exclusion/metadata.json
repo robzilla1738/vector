@@ -1,0 +1,16 @@
+{
+  "status": "static-proposal-only",
+  "baseCodeSha256": "93084eb7eebf911b473d791e796f5d8ad740bc8befa5527a8adb0205d42a9dd0",
+  "proposedCodeSha256": "d5133e910653114e22484906ac524dacf449d6fc69f20837c610207f9ba6f465",
+  "inspectedBinarySha256": "7ab8e9a0fcc5696f136f577a5c84b9c14f5b265941212d1cdedc573df656d17a",
+  "seedPath": "Contents/Resources/static/skills/builtin/password-manager/SKILL.md",
+  "beforeSeedSha256": "0be8047c194df62c61a160aafd00d33daf6d124caba60ac8c2271d432c7ffab3",
+  "afterSeedSha256": "09732935b6f0b54ce75c5fbe3956c9f88681c4c5e3362093aed8be96e09ba3f7",
+  "sourceEditCount": 5,
+  "countPerAnchor": 1,
+  "syntaxCompiled": true,
+  "protectedAnchorsUnchanged": true,
+  "runtimeExecuted": false,
+  "binaryWritten": false,
+  "signingPerformed": false
+}
