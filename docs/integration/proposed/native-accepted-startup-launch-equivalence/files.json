@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v574",
+  "files": [
+    {
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "baselineSha256": "ff8675ee9dc38508542523e88432cd7e28bb56b23af5e2b8cd849798b63bb321",
+      "outputSha256": "71eeda00a10220c8eea89b152ebbced38a14014a9d53e9c60e90c4d90a1487cf"
+    }
+  ]
+}

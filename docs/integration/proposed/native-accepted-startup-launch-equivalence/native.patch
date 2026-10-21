@@ -1,0 +1,12 @@
+--- a/chrome/app/aux_accepted_development_startup.h
++++ b/chrome/app/aux_accepted_development_startup.h
+@@ -204,6 +204,9 @@
+       !env->SetVar("AUX_ENABLE_PROVIDED_NATIVE_CARRIER", "1")) return false;
+   command->AppendSwitchPath("user-data-dir", data);
+   command->AppendSwitchASCII("profile-directory", profile.value());
++  // Preserve the existing scoped launcher's Chromium-only startup policy.
++  command->AppendSwitch("no-first-run");
++  command->AppendSwitch("no-default-browser-check");
+   return true;
+ }
+ }  // namespace aux::development_startup
