@@ -1,0 +1,106 @@
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
+@@ -50,7 +50,10 @@
+   OmniboxPopupFileSelector& operator=(const OmniboxPopupFileSelector&) = delete;
+   ~OmniboxPopupFileSelector() override;
+ 
+-  bool CanRetireUnusedForAuxProfileSwitch() const;
++  // `context_owners_settled` is supplied only after the location bar verifies
++  // its original renderer/native session, input and pending-context owners.
++  bool CanRetireUnusedForAuxProfileSwitch(
++      bool context_owners_settled = false) const;
+   // Reads and context handoffs use this selector's current source/options.
+   // Do not replace them until every original callback has completed or retired.
+   bool CanOpenFileUploadDialog() const;
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
+@@ -86,12 +86,16 @@
+       }, weak_factory_.GetWeakPtr()));
+ }
+ 
+-bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {
++bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch(
++    bool context_owners_settled) const {
++  const bool selected_context_released =
++      aux_has_selected_files_ && context_owners_settled;
+   if (aux_pending_file_operations_ != 0) {
+     LOG(ERROR) << "Aux profile transition rejected: file-read-or-context-handoff";
+     return false;
+   }
+-  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_) {
++  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_ &&
++      !selected_context_released) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-started-work";
+     return false;
+   }
+@@ -99,11 +103,11 @@
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-dialog";
+     return false;
+   }
+-  if (web_contents_) {
++  if (web_contents_ && !selected_context_released) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-source-tab";
+     return false;
+   }
+-  if (edit_model_) {
++  if (edit_model_ && !selected_context_released) {
+     LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-edit-model";
+     return false;
+   }
+--- a/chrome/browser/ui/contextual_search/searchbox_context_data.h
++++ b/chrome/browser/ui/contextual_search/searchbox_context_data.h
+@@ -50,6 +50,11 @@
+   // Transfers ownership of the pending context to caller.
+   std::unique_ptr<Context> TakePendingContext();
+ 
++  // Admission reads ownership only; it must not consume a pending handoff.
++  bool HasPendingContextForAuxProfileSwitch() const {
++    return pending_context_ != nullptr;
++  }
++
+  private:
+   ui::ScopedUnownedUserData<SearchboxContextData> scoped_unowned_user_data_;
+ 
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -38,6 +38,7 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/content_settings/content_setting_bubble_model.h"
+ #include "chrome/browser/ui/layout_constants.h"
+@@ -2674,11 +2675,6 @@
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.14";
+     return false;
+   }
+-  if (omnibox_popup_file_selector_ &&
+-      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch()) {
+-    LOG(ERROR) << "Aux profile transition rejected: readiness.location.15";
+-    return false;
+-  }
+   if (omnibox::IsWebUIOmniboxPopupEnabled() &&
+       (!aux_classic_webui_popup_ ||
+        !aux_classic_webui_popup_->CanPrepareForAuxProfileSwitch())) {
+@@ -2699,6 +2695,20 @@
+   }
+   if (!(omnibox_view_->CanPrepareForAuxProfileSwitch())) {
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.20";
++    return false;
++  }
++  // These checks come AFTER the original AIM renderer-reset acknowledgment,
++  // live context/session ownership, classic popup and native input guards.
++  // The intermediate window-owned handoff must also be genuinely empty.
++  const auto* context = browser_ ? SearchboxContextData::From(browser_) : nullptr;
++  if (context && context->HasPendingContextForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: readiness.location.pending-context";
++    return false;
++  }
++  if (omnibox_popup_file_selector_ &&
++      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch(
++          /*context_owners_settled=*/context != nullptr)) {
++    LOG(ERROR) << "Aux profile transition rejected: readiness.location.15";
+     return false;
+   }
+   return true;

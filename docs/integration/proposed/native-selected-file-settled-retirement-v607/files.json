@@ -1,0 +1,85 @@
+{
+  "baseComposition": "v607 + native-file-operation-ownership-v607",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "baselineSha256": "b6c0cde753d3a1adc16c65273f58365012c3e2be16c4a056d3bb352602339d5f",
+      "outputSha256": "ffe0430e99f6590c9178628b3be07d2276011c9be882aa3111eecfd311ae8806",
+      "baseline": "70073e84b"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "baselineSha256": "09057d9936c9b6aa43db15725cf5e7e1ef37f335de683031dd949b58cad39783",
+      "outputSha256": "4164456defa18f6f353db17da441d4291be69da324a67d590b3a6421935850bf",
+      "baseline": "70073e84b"
+    },
+    {
+      "path": "chrome/browser/ui/contextual_search/searchbox_context_data.h",
+      "baselineSha256": "5588d8f929bb05ed7b1a68aa0fae852c2730cd9ba8b91049219b1cd9c1089be0",
+      "outputSha256": "eca10856e5a100f9f6a55b4164ae26f7a98835c30f9d702d6d078745740cf746",
+      "baseline": "v607"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "94f57a8bac14a7d50094b9719d0c7bc92653989a437d75b1d7d9a9d33f74a054",
+      "outputSha256": "f4f555f87d08ae2c251cfea22782db6f6abc8d4f185b99831bde1c3b1ca2a49a",
+      "baseline": "v607"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "find": "  bool CanRetireUnusedForAuxProfileSwitch() const;",
+      "replace": "  // `context_owners_settled` is supplied only after the location bar verifies\n  // its original renderer/native session, input and pending-context owners.\n  bool CanRetireUnusedForAuxProfileSwitch(\n      bool context_owners_settled = false) const;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {",
+      "replace": "bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch(\n    bool context_owners_settled) const {\n  const bool selected_context_released =\n      aux_has_selected_files_ && context_owners_settled;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_) {",
+      "replace": "  if (aux_ever_started_work_ && !aux_canceled_dialog_complete_ &&\n      !selected_context_released) {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (web_contents_) {\n    LOG(ERROR) << \"Aux profile transition rejected: aim-cold.file-source-tab\";",
+      "replace": "  if (web_contents_ && !selected_context_released) {\n    LOG(ERROR) << \"Aux profile transition rejected: aim-cold.file-source-tab\";",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "find": "  if (edit_model_) {\n    LOG(ERROR) << \"Aux profile transition rejected: aim-cold.file-edit-model\";",
+      "replace": "  if (edit_model_ && !selected_context_released) {\n    LOG(ERROR) << \"Aux profile transition rejected: aim-cold.file-edit-model\";",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/contextual_search/searchbox_context_data.h",
+      "find": "  // Transfers ownership of the pending context to caller.\n  std::unique_ptr<Context> TakePendingContext();",
+      "replace": "  // Transfers ownership of the pending context to caller.\n  std::unique_ptr<Context> TakePendingContext();\n\n  // Admission reads ownership only; it must not consume a pending handoff.\n  bool HasPendingContextForAuxProfileSwitch() const {\n    return pending_context_ != nullptr;\n  }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "find": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+      "replace": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"\n#include \"chrome/browser/ui/contextual_search/searchbox_context_data.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "find": "  if (omnibox_popup_file_selector_ &&\n      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch()) {\n    LOG(ERROR) << \"Aux profile transition rejected: readiness.location.15\";\n    return false;\n  }\n",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "find": "  if (!(omnibox_view_->CanPrepareForAuxProfileSwitch())) {\n    LOG(ERROR) << \"Aux profile transition rejected: readiness.location.20\";\n    return false;\n  }\n  return true;",
+      "replace": "  if (!(omnibox_view_->CanPrepareForAuxProfileSwitch())) {\n    LOG(ERROR) << \"Aux profile transition rejected: readiness.location.20\";\n    return false;\n  }\n  // These checks come AFTER the original AIM renderer-reset acknowledgment,\n  // live context/session ownership, classic popup and native input guards.\n  // The intermediate window-owned handoff must also be genuinely empty.\n  const auto* context = browser_ ? SearchboxContextData::From(browser_) : nullptr;\n  if (context && context->HasPendingContextForAuxProfileSwitch()) {\n    LOG(ERROR) << \"Aux profile transition rejected: readiness.location.pending-context\";\n    return false;\n  }\n  if (omnibox_popup_file_selector_ &&\n      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch(\n          /*context_owners_settled=*/context != nullptr)) {\n    LOG(ERROR) << \"Aux profile transition rejected: readiness.location.15\";\n    return false;\n  }\n  return true;",
+      "count": 1
+    }
+  ]
+}
