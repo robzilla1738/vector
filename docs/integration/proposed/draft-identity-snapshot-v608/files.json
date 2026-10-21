@@ -1,0 +1,35 @@
+{
+  "baseComposition": "v608-final",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": "8aef02f126c006e580418feb29302c6706aafebc15231586dcdc708ce6e67c37",
+      "outputSha256": "a03af39ef125345cad99adfcc21f6e383d3b8d5d0cd6b1e94307020117a05411",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "82d062b89864154c45749707277a9d5aa4b66827b8ec48a977d3bf74be33b9b1"
+        },
+        {
+          "count": 1,
+          "findSha256": "f3b94ce07d6ddef3a4c732650efbd969737f5964fcb699067816137751ae8b81"
+        },
+        {
+          "count": 1,
+          "findSha256": "159a8ce10680cf6fcb2bba92f39ab304a9408976f607be0403f975d55814c446"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/sessions/BUILD.gn",
+      "baselineSha256": "f8003aef9cc4640b16074c0f287f00c29201274cd8c3c7356f481c6fe3f1df03",
+      "outputSha256": "74e50b3cdae70d7946e2e073ee790bd3e7affa3a7fdcda3e7052e8d489b782da",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "c4afe6425148b973572766d0d0a800874573df12f9663957b5cc10caef451c52"
+        }
+      ]
+    }
+  ]
+}

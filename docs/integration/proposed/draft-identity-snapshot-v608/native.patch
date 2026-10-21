@@ -1,0 +1,56 @@
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -22,6 +22,9 @@
+ #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/page_identity.h"
++#endif
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service_base_observer.h"
+ #include "chrome/browser/sessions/session_service_log.h"
+@@ -281,6 +284,15 @@
+   }
+   SetTabWindow(session_tab_helper->window_id(),
+                session_tab_helper->session_id());
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
++  // A page may have acquired its draft identity before its window was tracked.
++  // Re-emit the live identity on tracked insertion/move, independent of the
++  // PageIdentity incremental-write cache.
++  if (const auto* identity = aux::PageIdentity::FromWebContents(contents)) {
++    ScheduleCommand(sessions::CreateAddTabExtraDataCommand(
++        session_tab_helper->session_id(), "aux.page_id", identity->id()));
++  }
++#endif
+   std::string app_id = apps::GetAppIdForWebContents(contents);
+   if (!app_id.empty()) {
+     SetTabExtensionAppID(session_tab_helper->window_id(),
+@@ -623,6 +635,15 @@
+   const SessionID session_id(session_tab_helper->session_id());
+   command_storage_manager()->AppendRebuildCommand(
+       sessions::CreateSetTabWindowCommand(window_id, session_id));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
++  // A snapshot reset clears incremental commands. Serialize the actual live
++  // identity into the rebuilt session instead of relying on Persist() again.
++  if (const auto* identity = aux::PageIdentity::FromWebContents(tab)) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddTabExtraDataCommand(
++            session_id, "aux.page_id", identity->id()));
++  }
++#endif
+ 
+   const int current_index = tab->GetController().GetCurrentEntryIndex();
+   const int min_index =
+--- a/chrome/browser/sessions/BUILD.gn
++++ b/chrome/browser/sessions/BUILD.gn
+@@ -84,6 +84,9 @@
+   ]
+   if (enable_aux_browser && is_mac) {
+     deps += [ "//chrome/browser/ui/tabs:aux_bookmark_tab_representation" ]
++  }
++  if (enable_aux_browser || enable_aux_shell) {
++    deps += [ "//chrome/browser/aux:page_identity" ]
+   }
+ 
+   if (enable_extensions) {
