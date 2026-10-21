@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 579,
+  "nativeCandidate": "581c",
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -24,15 +24,15 @@
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
   "integrationPending": {
-    "packagedCandidate": 579,
+    "packagedCandidate": "581c",
     "fullBuildPassed": true,
     "resourceReuseVerification": "passed",
     "runtimeAccepted": false,
-    "nextSourceComposition": 581,
+    "nextSourceComposition": 582,
     "nextFocusedCompile": "580 two real objects passed in1m04s",
     "full576BuildPassed": true,
     "startupRecordWritten": true,
-    "nextFullBuild": "581 full build running;579 full build and generated-key probe passed"
+    "nextFullBuild": "582 diagnostic build linking;581 full build and generated-key probe passed"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -142,5 +142,23 @@
     "comparison": "out/pass1-ui-completion/compare.html",
     "sourceCssOrMaterialChanged": false,
     "normalStartupRecordSha256": "a645e4ef447774b03a16204b882c963a4a10ab14b6471022e867006b64090047"
+  },
+  "lastUpdated": "2026-10-21",
+  "actual581c": {
+    "normalLaunchServicesDaemonReady": true,
+    "authenticatedCDP": true,
+    "retainedSignedHelpers": 8,
+    "appleSigningPerformed": false,
+    "outerPackageBoundary": "Contents/Resources/package.json",
+    "acceptedStartupSha256": "09d9ef8e2b65ab6e2dd5ca089ca101aada99903f58f65acfa407811aa99b4339",
+    "skillsAuxTitle": true,
+    "skillsBuiltinVaultAbsent": true,
+    "externalPasswordSkillsRetained": true,
+    "enabledModelReasoningMenus": true,
+    "unpaidBrowserControl": true,
+    "profileSwitchAccepted": false,
+    "profileSwitchRejection": "bindings.source-interaction-owners",
+    "sidebarChatReadinessAccepted": false,
+    "actualVisualComparison": "out/pass1-ui-completion/compare.html"
   }
 }
