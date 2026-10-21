@@ -1,6 +1,16 @@
 # Aux completion execution graph
 
-Updated 2026-10-20. Owner authorized continued implementation until the local Aux browser is ready, explicitly preserving the improving UI. This graph maintains the active supplied-implementation reuse plan; it does not authorize release, new provisioning, owner-profile access or unrelated OS grants.
+Updated 2026-10-21. Owner authorized continued implementation until the local Aux browser is ready, explicitly preserving the improving UI. This graph maintains the active supplied-implementation reuse plan; it does not authorize release, new provisioning, owner-profile access or unrelated OS grants.
+
+## Current execution —581c observed,582 diagnostic build
+
+Current testable app is581c at the stable local candidate path. Actual LaunchServices startup now starts the owned daemon and authenticated CDP through the outer Resources Node package boundary. All eight signed helper signatures are retained; no new Apple signing or Keychain operation. Current final receiptSHAf3786a5cfd8db24d27170f7c2c9158a0c578037d7043bbc8772328b73c3211b8. The failed581b root-marker proposal was never launched.
+
+Actual supplied Skills catalog now shows Aux and excludes built-in Vault while retaining external password skills. The supplied chat panel/model/reasoning menus, saved sidebar conversation and unpaid authenticated browser control work. Actual Appearance/dual-panel captures have been compared with saved Aside references; the rounded/glass visual baseline remains preserved. `out/pass1-ui-completion/compare.html` is current581c evidence.
+
+ENGINE remains active: profile switch rejects `bindings.source-interaction-owners` from both NTP and a local external fixture.582 splits that stage into six precise diagnostics without relaxing guards; it is linking. TOOLS remains partially blocked at a fresh administrator prompt; no OS permission changed. Mini Popup preference toggles correctly and is restored off; automated global-key delivery is inconclusive. Vendor password-manager companion pairing and hosted voice remain unaccepted. The20-case Muse suite is retained; test credential removed and owner-confirmed revoked. READY remains pending.
+
+The sections below retain earlier baseline and execution history; they do not supersede this current state.
 
 ## Outcome and baseline
 
