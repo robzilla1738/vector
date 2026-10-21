@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Successor608 substantial profile/recovery batch packaging — 2026-10-21
+
+607 is archived as the observed fallback after normal Quit. Successor608 integrates separate restoration of multiple saved normal windows, attachment callback ownership, native selected-file retirement after original context owners settle, and supplied Agent pending-file admission. Supplied draft records now persist for stable conversation IDs and profile-local stable page IDs; transient target fallbacks remain session-only. The existing PageIdentity implementation is compiled independently of the retired shell and participates in ordinary restore, session snapshot rebuild, tracked insertion/move and closed-tab metadata. UI dimensions, CSS, glass, typography and sidebar geometry are unchanged.
+
+The first GN attempt exposed the dormant-shell dependency; it was corrected before compilation. Compilation was briefly stopped before work began to integrate snapshot/closed-tab identity preservation. Native build/generated-key probe passed (98 steps,6m06.43s). Current composition: out/native-reuse-composition-v608-ready; staged resources: out/provided-reuse-v608; native receipt: out/native-integration/native-full-build-v608.json. Package is running. Runtime restart, multiple-window and active-work acceptance are pending. Do not treat source checks as proof of a finished build or full readiness. No paid AI, Apple signing, Keychain operation or new grant.
+
 ## Actual607 active-work/session batch complete for testing — 2026-10-21
 
 607 native build/generated-key probe passed (22 steps,5m53.13s), package and full retained-helper/native-seal verification passed. Receipt e101e582193b9a64083218dbda15e25fa9536f047fe0e6bf2b02bc5f3d4f5e44 retains all8 helpers without new Apple signing or Keychain operations. Normal disposable startup is accepted; Aux remains open on Your Aux New Tab.605 app/startup acceptance is archived.
