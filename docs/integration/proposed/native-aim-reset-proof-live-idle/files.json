@@ -1,0 +1,57 @@
+{
+  "baseComposition": "v594",
+  "files": [
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "baselineSha256": "65b0717724169fede1ed5583a6aa89552a09003c35a1c6a32ff9b38f576a37d4",
+      "outputSha256": "e86ac33159a24c31165d9ccdaf649227ef0ae36cca2580dd574b735974431455"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "baselineSha256": "e8304451a26f74a15b0b44fa087088e39cefae7422dee7344f4c19a7cca11690",
+      "outputSha256": "bdbdb556d96b4f510a85bf687bb77966db5d887cdd30a434ed67b5d82e2dd6ef"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "baselineSha256": "2bc1f5b906ff94b13cc36de54f7d02fdededcdde00425c383f92cbe168d32ea4",
+      "outputSha256": "73201e7bd590ae89c0481f1c7b6b1d8073bd660278398b2d7a534dfa1063f0ff"
+    }
+  ],
+  "edits": [
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "bd43c0b277fb7316d8c572ebe36cef814c4c12cda88d0e54a8bb4923fd82f3f3",
+      "count": 1
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "08a4b4686fa3362496cfa2dbdd6e7a3c51b33af8fcd1a4e846cdbf6ccd132063",
+      "count": 4
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "anchorSha256": "7a4808ad4f2c84b4eb3557d9d0227cc74c95eb679f0d28c959924970993cf046",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "anchorSha256": "3df8945b6ca049fb74c58c3c706c8c92cf90e656141553f8c2d8935117eeb253",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "anchorSha256": "00ca32769966d1f4070c7910391bee43306c241dc523bc82c9248f87aad2a144",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "ef8e0567c27c69fa24ce4ee9c63b50cacd3b46f9b595d5dc9db7a5ebaa98ca37",
+      "count": 4
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "anchorSha256": "28e39871c7c43d7afe90c89129de8d50dbc52748ad5b1e8a387fa0743113fb2e",
+      "count": 1
+    }
+  ]
+}

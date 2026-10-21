@@ -1,0 +1,12 @@
+{
+  "baseline": "v594",
+  "pinnedFiles": 3,
+  "countCheckedAnchors": 7,
+  "gitApplyCheckPassed": true,
+  "nativeIdleAdmissionStillRequired": true,
+  "intentionalPreservedContextStillRejected": true,
+  "buildPerformed": false,
+  "runtimeExecuted": false,
+  "sharedSourcesModified": false,
+  "uiStyleModified": false
+}
