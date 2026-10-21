@@ -1,0 +1,9 @@
+# Share the observed native surface curvature
+
+The previous adapter called GetWindowCorner, but its Mac owner returned the stock kToolbarCornerRadius constant, 8 DIP, not an AppKit query. The actual supplied full-size 3424x1978 Aside external-panel-ready capture is 2x. Its main leading edge is x564; the top row becomes dark at x591, converging to x564 at y28–32. That is a 32-physical-pixel/16-DIP quarter-circle, consistent with the owner's larger-radius crop. This is an explicitly observed-reference adaptation, not a recovered original constant.
+
+The existing Mac frame-surface corner query now returns 16 DIP for the Aux vertical shell outside fullscreen, including zoomed/maximized windows. NSWindow's actual exterior shape and native glass are untouched. Existing expanded/floating sidebar corner owners already consume this query. Main toolbar and top-container both receive the same two upper radii even beside the full-height panel; actual content lower clipping uses this same query instead of stock8, independent of upstream glass eligibility. Fullscreen continues through the existing square policy.
+
+The actual Agent panel NativeViewHost and compositor child clipping use that shared query instead of the stock8 panel metric. Its explicitly installed empty border identifies this owner before current-entry publication; other panels retain their standard radius. No new wrapper, CSS radius or global child masking (which would clip sidebar shadows) is introduced.
+
+Pinned actual v558 three-file preimages/output hashes; disposable patch replay verified. No shared native mutation/build. Focused runtime acceptance: normal/zoomed window, sidebar hidden/expanded/floating, panel open/closed, and supplied settings/external pages show continuous16-DIP surfaces. Native fullscreen transitions and theme changes remain acceptance checks; no new material opacity claim.

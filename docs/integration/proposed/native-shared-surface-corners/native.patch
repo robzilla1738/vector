@@ -1,0 +1,152 @@
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -16,6 +16,7 @@
+ #include "base/numerics/safe_conversions.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/headless/headless_mode_util.h"
+ #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -359,6 +360,15 @@
+ }
+ 
+ gfx::RoundedCornersF BrowserFrameViewMac::GetWindowRoundedCorners() const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (auto* const widget = GetWidget();
++      widget && !widget->IsFullscreen() &&
++      GetBrowserView()->ShouldDrawVerticalTabStrip()) {
++    // Supplied desktop reference: 32 physical pixels at 2x, including zoomed
++    // windows. This is the browser surface, not an override of NSWindow shape.
++    return gfx::RoundedCornersF(16);
++  }
++#endif
+   if (auto* const widget = GetWidget();
+       widget && !widget->IsFullscreen() && !widget->IsMaximized()) {
+     return gfx::RoundedCornersF(
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -28,6 +28,8 @@
+ #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/browser_frame_view.h"
++#include "chrome/browser/ui/views/frame/browser_widget.h"
+ #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+@@ -1383,8 +1385,12 @@
+     }
+   }
+ 
+-  // If the window goes out of glass mode, these changes won't hurt anything.
+-  if (in_glass_mode()) {
++  const bool aux_surface =
++      BUILDFLAG(IS_MAC) &&
++      layout_data_->tab_strip_type == TabStripType::kVertical &&
++      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission();
++  // Aux surface clipping does not depend on the upstream glass feature.
++  if (in_glass_mode() || aux_surface) {
+     gfx::RoundedCornersF content_corners;
+     if (layout_data_->tab_strip_type == TabStripType::kVertical &&
+         !is_fullscreen(layout_data_->window_state)) {
+@@ -1399,11 +1405,10 @@
+         content_corners.set_lower_left(radius);
+       }
+     }
+-    if (BUILDFLAG(IS_MAC) &&
+-        layout_data_->window_state == WindowState::kNormal &&
+-        layout_data_->tab_strip_type == TabStripType::kVertical &&
+-        views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()) {
+-      const int radius = GetLayoutConstant(LayoutConstant::kToolbarCornerRadius);
++    if (aux_surface) {
++      const float radius = views().browser_view->browser_widget()
++                               ->GetFrameView()->GetWindowRoundedCorners()
++                               .lower_left();
+       content_corners.set_lower_left(radius);
+       content_corners.set_lower_right(radius);
+     }
+@@ -1640,7 +1645,9 @@
+   // Rounded corners are drawn in vertical tab strip mode when not maximized or
+   // fullscreen.
+   if (layout_data_->tab_strip_type == TabStripType::kVertical &&
+-      layout_data_->window_state == WindowState::kNormal) {
++      (layout_data_->window_state == WindowState::kNormal ||
++       (BUILDFLAG(IS_MAC) && !is_fullscreen(layout_data_->window_state) &&
++        views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()))) {
+     corners[CornerOrientation::kTopTrailing] =
+         background->GetWindowCorner(/*upper=*/true);
+     const bool vertical_tab_strip_reaches_top =
+@@ -1697,6 +1704,11 @@
+ 
+ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+     const BrowserLayoutParams& params) {
++  const bool aux_surface =
++      BUILDFLAG(IS_MAC) &&
++      layout_data_->tab_strip_type == TabStripType::kVertical &&
++      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission() &&
++      !is_fullscreen(layout_data_->window_state);
+   // Want to cut the vertical tabstrip and its decorations out of the top
+   // container in transparency mode.
+   CustomCornersBackground::Cutouts top_container_cutout_views;
+@@ -1753,7 +1765,7 @@
+ 
+     // Ensure that corners of the window remain rounded.
+     CustomCornersBackground::Corners vertical_tabs_corners;
+-    if (layout_data_->window_state == WindowState::kNormal) {
++    if (layout_data_->window_state == WindowState::kNormal || aux_surface) {
+       if (animation.top_offset == 0) {
+         vertical_tabs_corners[CornerOrientation::kTopLeading] =
+             vertical_tabs_background->GetWindowCorner(/*upper=*/true);
+@@ -1972,6 +1984,12 @@
+       // happen.
+       break;
+   }
++  if (aux_surface) {
++    toolbar_corners[CornerOrientation::kTopLeading] =
++        toolbar_background->GetWindowCorner(true);
++    toolbar_corners[CornerOrientation::kTopTrailing] =
++        toolbar_background->GetWindowCorner(true);
++  }
+   toolbar_background->SetCorners(toolbar_corners);
+ 
+   auto* const top_container_background =
+@@ -2092,8 +2110,9 @@
+ 
+     // Need to ensure the bottom of the window is properly rounded for normal
+     // windows.
+-    if (layout_data_->window_state == WindowState::kNormal) {
+-      if (layout_data_->tab_strip_type != TabStripType::kVertical) {
++    if (layout_data_->window_state == WindowState::kNormal || aux_surface) {
++      if (layout_data_->tab_strip_type != TabStripType::kVertical ||
++          aux_surface) {
+         main_background_corners[CornerOrientation::kBottomLeading] =
+             main_background->GetWindowCorner(/*upper=*/false);
+       }
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -34,6 +34,8 @@
+ #include "chrome/browser/ui/views/animations/side_panel_animations.h"
+ #include "chrome/browser/ui/views/chrome_layout_provider.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/browser_frame_view.h"
++#include "chrome/browser/ui/views/frame/browser_widget.h"
+ #include "chrome/browser/ui/views/frame/themed_background.h"
+ #include "chrome/browser/ui/views/side_panel/side_panel_animation_content_view.h"
+ #include "chrome/browser/ui/views/side_panel/side_panel_resize_area.h"
+@@ -255,6 +257,15 @@
+   }
+ 
+   gfx::RoundedCornersF GetRoundedCorners() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    // The Agent coordinator installs its empty border before attaching content,
++    // so this works before the current-entry key is published as well.
++    if (const auto* panel = views::AsViewClass<SidePanel>(parent());
++        panel && panel->GetBorder() && panel->GetInsets().IsEmpty()) {
++      return browser_view_->browser_widget()->GetFrameView()
++          ->GetWindowRoundedCorners();
++    }
++#endif
+     ChromeDistanceMetric corner_radius =
+         ChromeDistanceMetric::DISTANCE_SIDE_PANEL_CONTENT_RADIUS;
+     return GetLayoutProvider()

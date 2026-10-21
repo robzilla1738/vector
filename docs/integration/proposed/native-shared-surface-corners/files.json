@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v558",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view_mac.mm",
+      "baselineSha256": "d779364cf49adcdecbc53f14b645066a6b01aebc77b0aa86c27f3cb3669dbf0a",
+      "outputSha256": "06caf7c25d8a05f2cc8bdc1286552f8c8e8b0139c825e440d844414302d21391"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "98a615fd965648d36dae2989c9f6234573f0096a33f6f109f50773c5d0461c9e",
+      "outputSha256": "41685e09255da6a4cdcdd88b5027ed006d896897ad4952bb1490fdc85063dc3f"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+      "baselineSha256": "623e1412027177b6fef30bf16e8a9b11eab232f2e0fa839ec240d6b3c0563376",
+      "outputSha256": "41d337f46d19bc4e8ef135b3f619eb8ed07ee3a2fa18bef5b27bf933bcdc7b8e"
+    }
+  ]
+}
