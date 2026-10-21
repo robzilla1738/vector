@@ -1,6 +1,6 @@
 # Exact reviewed daemon cache refresh
 
-`vendor/provided/refresh-vault-exclusion-cache.mjs` is a separate copy-only utility. It does not edit historical signing/reuse validators or their pinned source files. It is bound to signing receipt SHA751bcfbb4a6ff5279d4517e4775b3b45b4484e1f3bb1c687ac005d6549b82ceb and approved code/binary/seed bytes.
+`vendor/provided/refresh-vault-exclusion-cache.mjs` is a separate copy-only utility. It does not edit historical signing/reuse validators or their pinned source files. It is bound to signing receipt SHA1d9fc0b247088edd63838efd28df6107408421f933f43f8a2eedf9668503cfe3 and approved code/binary/seed bytes.
 
 The integrator first stages/packages the new production adapter, then provides:
 
@@ -15,9 +15,9 @@ refreshVaultExclusionCache({
 })
 ```
 
-The unsigned resource inventory must equal the original baseline plus only the exact production-generated daemon executable, exact disabled seed and explicitly reviewed metadata/UI hashes. Existing reviewedUiResourceInventory retains its narrow allowlist. Any additional difference fails rather than being silently admitted.
+The unsigned resource inventory must equal the original baseline plus only the exact production-generated daemon executable, exact generated node-development source, exact disabled seed and explicitly reviewed metadata/UI hashes. Existing reviewedUiResourceInventory retains its narrow allowlist. Any additional difference fails rather than being silently admitted.
 
-The signed daemon bundle must exactly match its receipt; only executable, seed and CodeResources may differ from the original cached daemon. All other daemon leaves (including the nested guard), embedded profile, entitlements, flags, team and certificate are verified unchanged. All eight helper signatures are checked before/after the copy. Seven helper proofs remain byte-identical to the original cache.
+The signed daemon bundle must exactly match its receipt; only executable, generated node-development source, seed and CodeResources may differ from the original cached daemon. All other daemon leaves (including the nested guard), embedded profile, entitlements, flags, team and certificate are verified unchanged. All eight helper signatures are checked before/after the copy. Seven helper proofs remain byte-identical to the original cache.
 
 The new cache includes resourceSigningLineage naming both original cache and actual new signing receipt, original proofs, fresh package hash and changed daemon proof. It explicitly states that the compatibility field parentFinalProofs now holds seven inherited proofs plus the new daemon proof, rather than falsely attributing that daemon to the old receipt. Historical parent receipt/authority fields continue to identify original installation-authority evidence. The refresh itself performs no Apple signing; earlier daemon signing is explicitly recorded as true. No new runtime authority result is claimed.
 

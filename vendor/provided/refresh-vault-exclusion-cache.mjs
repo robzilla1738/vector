@@ -19,9 +19,11 @@ const daemonRelative = 'apps/daemon/Aux Daemon.app';
 const daemonPath = prefix+'/'+daemonRelative;
 const executable = 'Contents/MacOS/aux-daemon';
 const seed = 'Contents/Resources/static/skills/builtin/password-manager/SKILL.md';
-const receiptPin = '751bcfbb4a6ff5279d4517e4775b3b45b4484e1f3bb1c687ac005d6549b82ceb';
+const generated = 'Contents/Resources/node-development/index.mjs';
+const generatedPin = '420e50d0ec08411b738eb7f74e34e56ca0719c152431f1f5abffde5cdb219306';
+const receiptPin = '1d9fc0b247088edd63838efd28df6107408421f933f43f8a2eedf9668503cfe3';
 const sourcePin = 'd5133e910653114e22484906ac524dacf449d6fc69f20837c610207f9ba6f465';
-const signedBinaryPin = '24f8117933a3642c7a22f736b89a5c8adefa7f2ab371f9d63c88755ac2981b7f';
+const signedBinaryPin = 'b127f7ff42a84af3163cc9bde180663a50310ff3e2ccea642f97a68e49fd9b45';
 const sort = list => [...list].sort((a,b)=>a.path.localeCompare(b.path,'en'));
 const snapshot = root => developmentSnapshot(root).map(row=>({...row,path:prefix+'/'+row.path}));
 function canonical(dir) { if (!path.isAbsolute(dir)||fs.realpathSync(dir)!==dir||!fs.statSync(dir).isDirectory()) throw Error('Canonical directory required'); return dir; }
@@ -41,8 +43,9 @@ export function refreshVaultExclusionCache({ cachePath, cacheSha256, signedRecei
   pinnedJson(path.join(path.dirname(signedReceiptPath),'profile-authentication.json'),receipt.profileAuthenticationSha256);
   const signedCode=regular(path.join(signedApp,executable));
   if(hash(signedCode)!==signedBinaryPin||codeHash(signedCode)!==sourcePin||hash(regular(path.join(signedApp,seed)))!==hash(disabledSeed))throw Error('Exact approved daemon code and seed required');
+  if(hash(regular(path.join(signedApp,generated)))!==generatedPin)throw Error('Reviewed generated daemon source mismatch');
   const oldDaemon=cache.signedResources.filter(v=>v.path.startsWith(daemonPath+'/')).map(v=>({...v,path:v.path.slice(daemonPath.length+1)}));
-  const allowed=new Set([executable,seed,'Contents/_CodeSignature/CodeResources']);
+  const allowed=new Set([executable,seed,generated,'Contents/_CodeSignature/CodeResources']);
   same(sort(oldDaemon.filter(v=>!allowed.has(v.path))),sort(signedLeaves.filter(v=>!allowed.has(v.path))),'Other daemon leaves or nested helpers changed');
   const oldProof=cache.parentFinalProofs.find(v=>v.path===daemonPath);
   if(!oldProof||oldProof.signer!=='development')throw Error('Original daemon development proof missing');
@@ -55,8 +58,9 @@ export function refreshVaultExclusionCache({ cachePath, cacheSha256, signedRecei
   const freshRoot=canonical(path.join(packageRoot,prefix)), fresh=snapshot(freshRoot);
   const adapted=adaptDaemonBinary(regular(originalDaemonPath));
   if(adapted.codeSha256!==sourcePin||hash(regular(path.join(freshRoot,daemonRelative,executable)))!==hash(adapted.binary)||hash(regular(path.join(freshRoot,daemonRelative,seed)))!==hash(disabledSeed))throw Error('Fresh package is not exact production adapter output');
+  if(hash(regular(path.join(freshRoot,daemonRelative,generated)))!==generatedPin)throw Error('Fresh generated source differs from approved exact source');
   let expected=reviewedUiResourceInventory(cache.unsignedResources,resourceReview);
-  for(const relative of [executable,seed]){const key=daemonPath+'/'+relative,before=expected.find(v=>v.path===key),after=fresh.find(v=>v.path===key);if(!before||!after||before.link||after.link||before.mode!==after.mode)throw Error('Unexpected daemon baseline topology');expected=expected.map(v=>v.path===key?after:v);}
+  for(const relative of [executable,seed,generated]){const key=daemonPath+'/'+relative,before=expected.find(v=>v.path===key),after=fresh.find(v=>v.path===key);if(!before||!after||before.link||after.link||before.mode!==after.mode)throw Error('Unexpected daemon baseline topology');expected=expected.map(v=>v.path===key?after:v);}
   const expectedMap=new Map(expected.map(v=>[v.path,v])); const freshMap=new Map(fresh.map(v=>[v.path,v]));
   const differences=[...new Set([...expectedMap.keys(),...freshMap.keys()])].filter(k=>stable(expectedMap.get(k))!==stable(freshMap.get(k)));
   if(differences.length)throw Error('Unsigned package has unreviewed resource changes: '+JSON.stringify(differences));
