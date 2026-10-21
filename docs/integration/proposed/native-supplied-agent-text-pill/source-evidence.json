@@ -1,0 +1,106 @@
+{
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/aux-wt/prefs-reuse/out/prefs-reuse-analysis/Aside-Framework-arm64",
+    "sha256": "64c6c8a366d36d4c86b429de2f7fb0b7103099317f0a84f1cfded1bc87f4b31c"
+  },
+  "ranges": [
+    {
+      "rva": "0x41ef9b4",
+      "bytes": 3668,
+      "sha256": "989ab4d8647f956154f94c66612d31ede5cb4e4ebe9daa50812ed63701c3c472"
+    },
+    {
+      "rva": "0x41f0e00",
+      "bytes": 220,
+      "sha256": "2800a96073bdb7e8b7a17a304dd9c006b1198bbc77b3b7b5cfc4d9936550398d"
+    },
+    {
+      "rva": "0x41f0808",
+      "bytes": 1528,
+      "sha256": "c2f3ed3a76fc4466068474dc4464d0251c78a85f409ca9869fcd090dd74269ae"
+    },
+    {
+      "rva": "0xdf40740",
+      "bytes": 16,
+      "sha256": "bbdf3fc13a9374317859b3c7b1913f345c7e675dd3569500a3db2ceba3ca5680"
+    },
+    {
+      "rva": "0xdf50c0c",
+      "bytes": 4,
+      "sha256": "b438fd3a67fa223f053f24183a08ed2b94fd3d11d304e084199fe97ca190cf3d"
+    },
+    {
+      "rva": "0xdf50c1c",
+      "bytes": 4,
+      "sha256": "e3240789d3977b50a78d77e89539a42677373423fa57cac8b0515af67e74738c"
+    },
+    {
+      "rva": "0xdcec40",
+      "bytes": 292,
+      "sha256": "e85672606ec3a0db00828310c42b55799429fb9435422b0412547c8712fa00c2"
+    },
+    {
+      "rva": "0xe5ff8d0",
+      "bytes": 1144,
+      "sha256": "50c2da9bd87f1245ba0163ecebff81832492e30e7aba0f90c6c6461ebcbfad69"
+    }
+  ],
+  "colorNames": [
+    {
+      "id": 1637,
+      "name": "kColorToolbar",
+      "entryRva": "0xe861738",
+      "nameRva": "0xda5a81b"
+    },
+    {
+      "id": 1642,
+      "name": "kColorToolbarButtonIcon",
+      "entryRva": "0xe861788",
+      "nameRva": "0xda5a8c6"
+    },
+    {
+      "id": 1645,
+      "name": "kColorToolbarButtonIconHovered",
+      "entryRva": "0xe8617b8",
+      "nameRva": "0xda5a91d"
+    },
+    {
+      "id": 1646,
+      "name": "kColorToolbarButtonIconInactive",
+      "entryRva": "0xe8617c8",
+      "nameRva": "0xda5a93c"
+    },
+    {
+      "id": 1647,
+      "name": "kColorToolbarButtonIconPressed",
+      "entryRva": "0xe8617d8",
+      "nameRva": "0xda5a95c"
+    }
+  ],
+  "files": [
+    {
+      "path": "visibility.asm",
+      "sha256": "5cf13e599c6a07c7662f92456478e2709107efbef8eac0b19da05d9ea9bb3fe8"
+    },
+    {
+      "path": "ctor.asm",
+      "sha256": "0e566d02b13e143999652d3cd23a55cca994513213a68e278074681b93631768"
+    },
+    {
+      "path": "041f01f8.c",
+      "sha256": "e6c3231cd26b735819d3c114f55d7772bb72d38ca5f1dfa196adcb660ff35bd1"
+    },
+    {
+      "path": "preferred-size.asm",
+      "sha256": "95346f592f1ada992b3154a563fcfa180712175a723a2003531de391f8dea5c1"
+    },
+    {
+      "path": "041ef9b4.c",
+      "sha256": "ce0923ed7a56614bb456153f0803c90afeacf9dece22f4e53f6e2a8e5703ec16"
+    },
+    {
+      "path": "border-and-theme.asm",
+      "sha256": "b4fee24c16a7b4b3c2bf37879057f1d2c52f730fea555938250eb386631c762c"
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+--- a/chrome/browser/ui/views/toolbar/toolbar_action_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.h
+@@ -128,6 +128,7 @@
+   void OnDragDone() override;
+   void AddedToWidget() override;
+   void RemovedFromWidget() override;
++  void OnThemeChanged() override;
+ 
+   void OnContextMenuShown();
+   void OnContextMenuClosed();
+--- a/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_action_view.cc
+@@ -7,6 +7,11 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/color/chrome_color_id.h"
++#include "ui/color/color_provider.h"
++#include "ui/gfx/color_utils.h"
++#include "ui/views/background.h"
++#include "ui/views/controls/highlight_path_generator.h"
+ #endif
+ 
+ #include <string>
+@@ -104,6 +109,16 @@
+       extensions::ExtensionContextMenuModel::ContextMenuSource::kToolbarAction);
+   set_context_menu_controller(context_menu_controller_.get());
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (view_model_->GetId() == aux::kAgentExtensionId) {
++    SetText(u"Ask Aux");
++    label()->SetFontList(label()->font_list()
++                            .DeriveWithSizeDelta(14 - label()->font_list().GetFontSize())
++                            .DeriveWithWeight(gfx::Font::Weight::MEDIUM));
++    SetBorder(CreateDefaultBorder());
++    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 999);
++  }
++#endif
+   UpdateState();
+ }
+ 
+@@ -125,6 +140,12 @@
+   // Toolbar action buttons have no insets because the badges are drawn right at
+   // the edge of the view's area. Other padding (such as centering the icon) is
+   // handled directly by the Image.
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (view_model_->GetId() == aux::kAgentExtensionId) {
++    border->set_insets(gfx::Insets::VH(4, 10));
++    return border;
++  }
++#endif
+   border->set_insets(gfx::Insets());
+   return border;
+ }
+@@ -206,6 +227,22 @@
+       ? u"Ask Aux" : view_model_->GetAccessibleName(web_contents));
+   if (supplied_agent) {
+     SetTooltipText(u"Ask Aux");
++    SetText(u"Ask Aux");
++    SetTextColor(views::Button::STATE_NORMAL, kColorToolbarButtonIcon);
++    SetTextColor(views::Button::STATE_HOVERED, kColorToolbarButtonIconHovered);
++    SetTextColor(views::Button::STATE_PRESSED, kColorToolbarButtonIconPressed);
++    SetTextColor(views::Button::STATE_DISABLED, kColorToolbarButtonIconInactive);
++    for (auto state : {views::Button::STATE_NORMAL, views::Button::STATE_HOVERED,
++                       views::Button::STATE_PRESSED, views::Button::STATE_DISABLED}) {
++      SetImageModel(state, ui::ImageModel());
++    }
++    if (const auto* colors = GetColorProvider()) {
++      // Supplied normal-state pill: blend toolbar icon into toolbar at 26/255.
++      SetBackground(views::CreateRoundedRectBackground(
++          color_utils::AlphaBlend(colors->GetColor(kColorToolbarButtonIcon),
++                                  colors->GetColor(kColorToolbar), 26.0f / 255.0f),
++          999));
++    }
+   }
+ #else
+   GetViewAccessibility().SetName(view_model_->GetAccessibleName(web_contents));
+@@ -214,6 +251,9 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!supplied_agent) {
++#endif
+   ui::ImageModel icon = view_model_->GetIcon(web_contents, GetPreferredSize());
+   if (!icon.IsEmpty()) {
+     SetImageModel(views::Button::STATE_NORMAL, icon);
+@@ -221,6 +261,10 @@
+                   ui::GetDefaultDisabledIconFromImageModel(icon));
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  }
++#endif
++
+   if (!base::FeatureList::IsEnabled(
+           extensions_features::kExtensionsMenuAccessControl)) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+@@ -242,7 +286,21 @@
+ 
+ gfx::Size ToolbarActionView::CalculatePreferredSize(
+     const views::SizeBounds& available_size) const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (view_model_->GetId() == aux::kAgentExtensionId) {
++    return LabelButton::CalculatePreferredSize(available_size);
++  }
++#endif
+   return delegate_->GetToolbarActionSize();
++}
++
++void ToolbarActionView::OnThemeChanged() {
++  MenuButton::OnThemeChanged();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (view_model_->GetId() == aux::kAgentExtensionId) {
++    UpdateState();
++  }
++#endif
+ }
+ 
+ bool ToolbarActionView::OnMousePressed(const ui::MouseEvent& event) {
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -675,8 +675,18 @@
+     ReorderChildView(close_side_panel_button_, button_index--);
+   }
+ 
+-  // The extension button is always second to last if `close_side_panel_button_`
+-  // exists, or last otherwise.
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Supplied reference presentation: the genuine Agent action trails Extensions.
++  // Keep all other actions in their existing order and retain the pin preference.
++  if (model_->IsActionPinned(aux::kAgentExtensionId)) {
++    if (auto* agent = GetViewForId(aux::kAgentExtensionId)) {
++      ReorderChildView(agent, button_index--);
++    }
++  }
++#endif
++
++  // The extension button precedes the supplied Agent action when it is pinned;
++  // ordinary Chromium ordering is otherwise retained.
+   ReorderChildView(main_item(), button_index--);
+ 
+   if (request_access_button_) {
