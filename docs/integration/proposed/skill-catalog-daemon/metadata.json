@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-staged",
+  "targetVersion": "1.26.1016.1852",
+  "activeAdapterSourceSha256": "194573981c40bfda4ea488c5d84050e769da8eac837cba69b0d308b1f4b43ba0",
+  "activeAdaptedDaemonCodeSha256": "93084eb7eebf911b473d791e796f5d8ad740bc8befa5527a8adb0205d42a9dd0",
+  "proposedDaemonCodeSha256": "71b02b3255a016f4438a5deb1b99332cdc7269679e2ff96c725bc3ec04b9a7b5",
+  "patchSourceSha256": "742758a5e34454945d58974fed78c1950fd4409d64da2bc32419e611876dd468",
+  "countPerAnchor": 1,
+  "anchorCount": 3,
+  "productionImports": false
+}

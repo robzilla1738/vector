@@ -6,11 +6,11 @@ The Agent adapter now wraps that actual Settings query's existing selector, reta
 
 The display helper title-cases the original `name: aside`, which produces the observed “Aside” despite prose branding. The Agent helper and proposed daemon helper map exactly `{name:"aside", path:"builtin/aside"}` to display title “Aux”. The original lowercase name, path, REPL identifier and public protocol stay intact. Other skills named `aside` retain their supplied display behavior.
 
-The daemon adapter also contains two count-one catalog filters for its actual `listSkills` and `listSkillsForSettings` handlers. These are **pending executable integration**: applying the adapter changes the adapted daemon code SHA to `71b02b3255a016f4438a5deb1b99332cdc7269679e2ff96c725bc3ec04b9a7b5`. A newly injected SEA cannot reuse the currently signed daemon executable hash/signature. No executable, signing, stage, native helper or addon was modified here. The current runnable daemon can still expose the obsolete row until that separate boundary is resolved; the Agent filter removes it from the actual Settings consumer meanwhile. No Node fallback is proposed for the normal product.
+The separate proposal `docs/integration/proposed/skill-catalog-daemon/catalog-patch.mjs` contains two count-one catalog filters for its actual `listSkills` and `listSkillsForSettings` handlers. These are **pending executable integration**, outside the active daemon adapter and staging imports: applying the proposal changes the adapted daemon code SHA to `71b02b3255a016f4438a5deb1b99332cdc7269679e2ff96c725bc3ec04b9a7b5`. A newly injected SEA cannot reuse the currently signed daemon executable hash/signature. No executable, signing, stage, native helper or addon was modified here. The current runnable daemon can still expose the obsolete row until that separate boundary is resolved; the Agent filter removes it from the actual Settings consumer meanwhile. No Node fallback is proposed for the normal product.
 
 ## Pinned input and count checks
 
-Original daemon code: `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5` (whole-source check). Each of the three new daemon anchors must match once. Existing wire-preserving branding counts still pass.
+Original daemon code: `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5` (whole-source check). Each of the three proposed daemon anchors must match once. The active adapter is byte-identical to pre-slice base34193fa55 (source SHA256 `194573981c40bfda4ea488c5d84050e769da8eac837cba69b0d308b1f4b43ba0`) and still generates daemon code SHA256 `93084eb7eebf911b473d791e796f5d8ad740bc8befa5527a8adb0205d42a9dd0`. The proposal asserts that exact input hash before applying. Production staging imports no proposal code, so the UI refresh does not change daemon executable provenance.
 
 Agent inputs and output of **only** `transformProvidedNativeUi` (not final packaged/branding output):
 
@@ -23,6 +23,6 @@ Each asset-specific anchor must match exactly once or staging refuses it. Change
 
 ## Verification
 
-Four focused checks passed: existing UI transform replay/wire preservation (two checks), the actual adapted daemon query handlers plus title helper evaluated in isolated JS contexts, and the actual Agent query selector/title helper evaluated with inert catalog fixtures. Inputs came only from the frozen supplied source snapshot. No daemon, original native command, credential/provider request or owner state was accessed. The default `password-manager` built-in row is absent; external-manager and user rows remain.
+Four focused checks passed: existing UI transform replay/wire preservation (two checks), the proposed daemon query handlers plus title helper, with a separate active-code hash assertion evaluated in isolated JS contexts, and the actual Agent query selector/title helper evaluated with inert catalog fixtures. Inputs came only from the frozen supplied source snapshot. No daemon, original native command, credential/provider request or owner state was accessed. The default `password-manager` built-in row is absent; external-manager and user rows remain.
 
 Actual catalog API/UI observation after root stages the Agent change remains required. Source-level fixture success does not prove the running daemon catalog has changed.

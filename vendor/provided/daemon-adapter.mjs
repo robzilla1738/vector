@@ -53,9 +53,6 @@ export const platformEdits = [
 // Owner-directed product exception: no built-in Vault. Keep installation and
 // provider authentication intact, and retain external-manager integration.
 export const passwordManagerScopeEdits = [
-  edit('omit obsolete built-in Vault from runtime skill catalog', '.filter(Cn=>Cn.enabled&&isAsideSkill(Cn.metadata??{}))', '.filter(Cn=>Cn.path!==`builtin/password-manager`&&Cn.enabled&&isAsideSkill(Cn.metadata??{}))', 1),
-  edit('omit obsolete built-in Vault from settings skill catalog', 'markOverriddenSkills(collectSkillsForSettings(ei,getBuiltinSkillPaths(ei)))', 'markOverriddenSkills(collectSkillsForSettings(ei,getBuiltinSkillPaths(ei)).filter(Cn=>Cn.path!==`builtin/password-manager`))', 1),
-  edit('built-in system skill display title', 'getSkillDisplayName=({name:Cn,path:ei})=>{let ti=', 'getSkillDisplayName=({name:Cn,path:ei})=>{if(Cn===`aside`&&ei===`builtin/aside`)return`Aux`;let ti=', 1),
   edit('disable built-in password manager default', 'useBuiltinPasswordManager:!0', 'useBuiltinPasswordManager:!1', 1),
   edit('disable built-in password manager in persisted settings', 'let ti={...DEFAULT_APP_SETTINGS,...Cn},ni=appSettingsSchema.safeParse(ti)', 'let ti={...DEFAULT_APP_SETTINGS,...Cn,useBuiltinPasswordManager:!1},ni=appSettingsSchema.safeParse(ti)', 1),
   edit('omit built-in password manager REPL', 'ui=Cn.incognito?null:new PasswordManagerRepl(ei,ai,Cn.agentSessionId)', 'ui=null', 1),
