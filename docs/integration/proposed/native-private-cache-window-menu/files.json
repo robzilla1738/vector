@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v608",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "baselineSha256": "32364b315323c8776ccf8d2645e2e01a50d53ae4ed3cc19135b19d51396201b6",
+      "outputSha256": "19829e8c4872b5a662f192a5c897604cb674da8532c941bf323f4c6874149593"
+    }
+  ]
+}

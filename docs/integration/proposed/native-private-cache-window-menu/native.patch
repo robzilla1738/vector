@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -795,6 +795,12 @@
+   CHECK(browser_view_);
+   NativeWidgetMacNSWindow* ns_window = NativeWidgetMac::CreateNSWindow(params);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Private workspace caches are real native owners for parked tabs, not user
++  // windows. A normal titled NSWindow otherwise participates in AppKit's Window
++  // menu even though the Aux cache factory never presents it.
++  if (BrowserInitState::From(browser_view_->browser())->is_aux_profile_switch_cache()) {
++    ns_window.excludedFromWindowsMenu = YES;
++  }
+   const auto popup = GetAuxPopupKind(browser_view_);
+   if (popup != AuxPopupKind::kNone) {
+     // Original4551750 uses the real BrowserNativeWidgetWindow and its frame.
