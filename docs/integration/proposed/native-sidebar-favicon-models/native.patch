@@ -1,0 +1,154 @@
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_fallback_page_icon.inc
+@@ -0,0 +1,58 @@
++// Exact supplied fallback-page geometry reused from bookmark rows.
++// clang-format off
++constexpr gfx::PathElement kPagePath[] = {
++    gfx::CANVAS_DIMENSIONS, 24.0f,
++    gfx::FILL_RULE_NONZERO,
++    gfx::MOVE_TO, 12.0f, 22.0f,
++    gfx::R_ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, -3.9000001f, -0.790000021f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, -3.18000007f, -2.1400001f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, -2.1400001f, -3.18000007f,
++    gfx::ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, 2.0f, 12.0f,
++    gfx::R_CUBIC_TO, 0.0f, -1.38f, 0.25999999f, -2.68000007f, 0.790000021f, -3.9000001f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, 2.1400001f, -3.18000007f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, 3.18000007f, -2.1400001f,
++    gfx::ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, 12.0f, 2.0f,
++    gfx::R_CUBIC_TO, 1.38f, 0.0f, 2.68000007f, 0.25999999f, 3.9000001f, 0.790000021f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, 3.18000007f, 2.1400001f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, 2.1400001f, 3.18000007f,
++    gfx::ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, 22.0f, 12.0f,
++    gfx::R_ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, -0.790000021f, 3.9000001f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, -2.1400001f, 3.18000007f,
++    gfx::R_ARC_TO, 9.98999977f, 9.98999977f, 0.0f, 0.0f, 1.0f, -3.18000007f, 2.1400001f,
++    gfx::ARC_TO, 9.68999958f, 9.68999958f, 0.0f, 0.0f, 1.0f, 12.0f, 22.0f,
++    gfx::CLOSE,
++    gfx::R_MOVE_TO, 0.0f, -2.0f,
++    gfx::R_CUBIC_TO, 2.23000002f, 0.0f, 4.13000011f, -0.769999981f, 5.67999983f, -2.31999993f,
++    gfx::CUBIC_TO, 19.2299995f, 16.1299992f, 20.0f, 14.2299995f, 20.0f, 12.0f,
++    gfx::R_CUBIC_TO, 0.0f, -0.119999997f, 0.0f, -0.239999995f, -0.00999999978f, -0.360000014f,
++    gfx::R_ARC_TO, 5.0999999f, 5.0999999f, 0.0f, 0.0f, 1.0f, -0.00999999978f, -0.310000002f,
++    gfx::R_ARC_TO, 1.99000001f, 1.99000001f, 0.0f, 0.0f, 1.0f, -0.680000007f, 1.20000005f,
++    gfx::ARC_TO, 1.92999995f, 1.92999995f, 0.0f, 0.0f, 1.0f, 18.0f, 13.0f,
++    gfx::R_H_LINE_TO, -2.0f,
++    gfx::R_CUBIC_TO, -0.550000012f, 0.0f, -1.01999998f, -0.189999998f, -1.40999997f, -0.589999974f,
++    gfx::ARC_TO, 1.94000006f, 1.94000006f, 0.0f, 0.0f, 1.0f, 14.0f, 11.0f,
++    gfx::R_V_LINE_TO, -1.0f,
++    gfx::R_H_LINE_TO, -4.0f,
++    gfx::V_LINE_TO, 8.0f,
++    gfx::R_CUBIC_TO, 0.0f, -0.550000012f, 0.200000003f, -1.01999998f, 0.589999974f, -1.40999997f,
++    gfx::CUBIC_TO, 10.9799995f, 6.19999981f, 11.4499998f, 6.0f, 12.0f, 6.0f,
++    gfx::R_H_LINE_TO, 1.0f,
++    gfx::R_ARC_TO, 1.70000005f, 1.70000005f, 0.0f, 0.0f, 1.0f, 0.310000002f, -1.00999999f,
++    gfx::R_CUBIC_TO, 0.209999993f, -0.289999992f, 0.460000008f, -0.529999971f, 0.75999999f, -0.709999979f,
++    gfx::R_ARC_TO, 11.0200005f, 11.0200005f, 0.0f, 0.0f, 0.0f, -1.00999999f, -0.200000003f,
++    gfx::ARC_TO, 7.19999981f, 7.19999981f, 0.0f, 0.0f, 0.0f, 12.0f, 4.0f,
++    gfx::R_CUBIC_TO, -2.23000002f, 0.0f, -4.11999989f, 0.769999981f, -5.67999983f, 2.31999993f,
++    gfx::CUBIC_TO, 4.76999998f, 7.88000011f, 4.0f, 9.77000046f, 4.0f, 12.0f,
++    gfx::R_H_LINE_TO, 5.0f,
++    gfx::R_CUBIC_TO, 1.10000002f, 0.0f, 2.03999996f, 0.389999986f, 2.81999993f, 1.17999995f,
++    gfx::CUBIC_TO, 12.6099997f, 13.96f, 13.0f, 14.8999996f, 13.0f, 16.0f,
++    gfx::R_V_LINE_TO, 1.0f,
++    gfx::R_H_LINE_TO, -3.0f,
++    gfx::R_V_LINE_TO, 2.75f,
++    gfx::R_CUBIC_TO, 0.330000013f, 0.0799999982f, 0.660000026f, 0.140000001f, 0.99000001f, 0.189999998f,
++    gfx::R_CUBIC_TO, 0.330000013f, 0.0399999991f, 0.660000026f, 0.0599999987f, 1.00999999f, 0.0599999987f,
++    gfx::CLOSE,
++};
++const gfx::VectorIconRep kPageReps[] = {{kPagePath}};
++const gfx::VectorIcon kPageIcon(kPageReps, 1, "kAuxBookmarkPageIcon");
++// clang-format on
+--- a/chrome/browser/ui/tab_ui_helper.cc
++++ b/chrome/browser/ui/tab_ui_helper.cc
+@@ -15,6 +15,9 @@
+ #include "base/process/kill.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/favicon/favicon_utils.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "content/public/browser/render_frame_host.h"
++#include "ui/gfx/vector_icon_types.h"
+ #include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
+ #include "chrome/browser/sessions/session_restore.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -44,6 +47,8 @@
+ #include "url/gurl.h"
+ 
+ namespace {
++#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
++#include "chrome/browser/ui/tabs/aux_fallback_page_icon.inc"
+ 
+ // Returns the tab-background color id for the default globe favicon, resolved
+ // from the tab's active state and the window's active state. Bound into the
+@@ -197,6 +202,13 @@
+ }
+ 
+ ui::ImageModel TabUIHelper::GetFavicon() {
++  // Canonical transparent product artwork for every actual bundled Agent page.
++  const auto* frame = web_contents()->GetPrimaryMainFrame();
++  if (frame && frame->GetLastCommittedURL().SchemeIs("chrome-extension") &&
++      frame->GetLastCommittedURL().host() == aux::kAgentExtensionId) {
++    return ui::ImageModel::FromVectorIcon(
++        kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16);
++  }
+   const tab_groups::SavedTabGroupWebContentsListener* wc_listener =
+       tab().GetTabFeatures()->saved_tab_group_web_contents_listener();
+   if (wc_listener) {
+@@ -231,6 +243,12 @@
+   const favicon::FaviconDriver* const favicon_driver =
+       favicon::ContentFaviconDriver::FromWebContents(web_contents());
+   if (!favicon_driver || !favicon_driver->FaviconIsValid()) {
++    if (web_contents()->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      // The supplied sidebar's neutral page glyph is theme-colored. Do not
++      // choose a raster variant from its translucent tab background alone.
++      return ui::ImageModel::FromVectorIcon(
++          kPageIcon, kColorToolbarButtonIcon, 16);
++    }
+     // Cache the model so repeated calls return an equal ImageModel; TabData
+     // compares favicons by value, and a fresh BindRepeating each call would
+     // never compare equal. The bound resolver still re-runs at raster time, so
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -16,6 +16,9 @@
+ #include "base/time/time.h"
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/ui/color/chrome_color_id.h"
++#include "ui/gfx/vector_icon_types.h"
+ #include "chrome/browser/favicon/favicon_service_factory.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tab_ui_helper.h"
+@@ -67,6 +70,7 @@
+ #include "ui/gfx/skia_util.h"
+ 
+ namespace {
++#include "chrome/browser/ui/tabs/aux_new_tab_mark.inc"
+ constexpr int kEntryHeight = 40;
+ constexpr int kPreferredWidth = 32;
+ constexpr int kGap = 6;
+@@ -563,7 +567,7 @@
+         if (!title.empty())
+           entry.title = title;
+         const auto icon = helper->GetFavicon();
+-        if (icon.IsImage() && !icon.GetImage().IsEmpty()) {
++        if (!icon.IsEmpty()) {
+           entry.image = icon;
+           icon_cache_.insert_or_assign(entry.saved.url.spec(), entry.image);
+         }
+@@ -572,6 +576,15 @@
+                                 weak_factory_.GetWeakPtr())));
+       }
+       entry.active = *entry.live_index == model_->active_index();
++    }
++    // Stored application PNGs must not replace the canonical product glyph,
++    // including a saved Agent tile whose live tab is currently closed.
++    if ((entry.saved.url.SchemeIs("chrome-extension") &&
++         entry.saved.url.host() == aux::kAgentExtensionId) ||
++        (entry.saved.url.SchemeIs("chrome") &&
++         entry.saved.url.host() == "newtab")) {
++      entry.image = ui::ImageModel::FromVectorIcon(
++          kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16);
+     }
+     if (entry.image.IsEmpty())
+       RequestIcon(entry.saved.url);

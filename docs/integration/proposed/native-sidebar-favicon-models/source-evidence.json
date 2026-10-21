@@ -1,0 +1,7 @@
+{
+  "reusedGlyphSource": "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_icons.inc",
+  "sourceSha256": "080d028425e6b9df8baef5cae323dc030879e468970627544f688f35609c024f",
+  "copiedPagePathAndDescriptorSha256": "f162577f057302b57dd49a4ce0e4be81d961b9c7e0a47551c94a101d431a611d",
+  "canonicalBrandSource": "assets/brand/arch-mark.svg",
+  "runtimeFindings": "TabUIHelper missing-favicon generator selects against translucent background; TabIcon compares to separately bound default model so does not recognize this generator as its default. Live pinned row accepts only IsImage, dropping vectors and generators. Saved pins load stale raster product icons."
+}

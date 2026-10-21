@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/aux_fallback_page_icon.inc",
+      "baselineSha256": null,
+      "outputSha256": "1988a0fdb386d1fa59ca3e6a06340743dc32b9cc57a38f29ee4df100f33c5c9e"
+    },
+    {
+      "path": "chrome/browser/ui/tab_ui_helper.cc",
+      "baselineSha256": "bfb3e55a9825a327e360c3a06dd263671c1ef9acabb4febf493b62c08797cd8c",
+      "outputSha256": "73038f36997722fb8d6ee0d8c5e108357066b13cff2fd8236eb27cbe85bf01bc"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "baselineSha256": "9d1eac9db8640a610301636b16c3d8b396757c3489fd13dde93b0828110be294",
+      "outputSha256": "c73a582b06c121ca1ab23a10da0ba65a9ab1d9712bc6ec530175c3f9afb542ce"
+    }
+  ]
+}
