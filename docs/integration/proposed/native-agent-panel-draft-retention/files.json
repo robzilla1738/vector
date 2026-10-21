@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v587",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_coordinator.h",
+      "baselineSha256": "0751377a760896603c07561dbf7ce1befb11cce5f4b8b8eb39169f6069d10ca8",
+      "outputSha256": "05de99d8a411e6f10c8bb762b623f8ec469a3ca1e53111dbf16757cfd85f2579"
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel_coordinator.cc",
+      "baselineSha256": "1180575c605a118414678c0928f1a75f0b6479f80a7cdf7889772ef9e72b7cba",
+      "outputSha256": "12b2d57ff75f42dda266019c0a4ff30d8ef8710a243a33f964be9f858894ddfb"
+    },
+    {
+      "path": "chrome/browser/ui/extensions/extension_side_panel_coordinator.cc",
+      "baselineSha256": "cd343f64883dc6fb4a90da39ac69e0cf3270ca8250b1021b748e43f52e9aa082",
+      "outputSha256": "e496a6c55530a35b2aba2f1b2959c760b66c7e27353fde26463aaa5e59f22bdb"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+--- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.h
++++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.h
+@@ -118,6 +118,9 @@
+ 
+   SidePanel* GetSidePanel();
+ 
++  // A closing window must destroy, not retain, its Agent document.
++  bool aux_window_tearing_down_ = false;
++
+   const raw_ref<BrowserWindowInterface> browser_;
+ 
+   std::unique_ptr<SidePanelToolbarPinningController>
+--- a/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel_coordinator.cc
+@@ -90,8 +90,10 @@
+ #endif
+ 
+ void SidePanelCoordinator::TearDownPreBrowserWindowDestruction() {
++  aux_window_tearing_down_ = true;
+   Close(SidePanelEntryHideReason::kSidePanelClosed,
+         /*suppress_animations=*/true);
++  ClearCachedEntryViews();
+   side_panel_toolbar_pinning_controller_.reset();
+ }
+ 
+@@ -462,6 +464,19 @@
+   // callback inside current_entry->OnEntryHidden() is calling Close() to
+   // trigger race condition.
+   SidePanelEntry* previous_entry = GetEntryForUniqueKey(*current_key());
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The supplied Agent stores drafts in the document's sessionStorage. Keep
++  // this exact global entry's view on a normal hide, never move its host to
++  // another profile or registry. Weak identity survives reentrant observers.
++  const bool retain_aux_agent =
++      !aux_window_tearing_down_ && !current_key()->tab_handle && previous_entry &&
++      previous_entry->key() ==
++          SidePanelEntryKey(SidePanelEntryId::kExtension, aux::kAgentExtensionId);
++  const auto aux_previous_entry =
++      previous_entry ? previous_entry->GetWeakPtr()
++                     : base::WeakPtr<SidePanelEntry>();
++  Profile* const aux_source_profile = browser_->GetProfile();
++#endif
+   SetCurrentKey(std::nullopt);
+   if (previous_entry) {
+     previous_entry->OnEntryHidden();
+@@ -481,7 +496,18 @@
+   // exists.
+   auto* content_wrapper = side_panel->GetContentParentView();
+   if (!content_wrapper->children().empty()) {
+-    content_wrapper->RemoveChildViewT(content_wrapper->children().front());
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (retain_aux_agent && aux_previous_entry && !IsSidePanelShowing() &&
++        browser_->GetProfile() == aux_source_profile &&
++        SidePanelRegistry::From(browser())->GetEntryForKey(
++            aux_previous_entry->key()) == aux_previous_entry.get()) {
++      aux_previous_entry->CacheView(content_wrapper->RemoveChildViewT(
++          content_wrapper->children().front()));
++    } else
++#endif
++    {
++      content_wrapper->RemoveChildViewT(content_wrapper->children().front());
++    }
+   }
+   side_panel->RemoveHeaderView();
+   SidePanelMetrics::RecordSidePanelClosed(opened_timestamp());
+--- a/chrome/browser/ui/extensions/extension_side_panel_coordinator.cc
++++ b/chrome/browser/ui/extensions/extension_side_panel_coordinator.cc
+@@ -5,6 +5,10 @@
+ #include "chrome/browser/ui/extensions/extension_side_panel_coordinator.h"
+ 
+ #include "base/check.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/component_bootstrap.h"
++#endif
+ #include "base/check_op.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/extensions/extension_tab_util.h"
+@@ -356,8 +360,15 @@
+ void ExtensionSidePanelCoordinator::OnEntryWillHide(
+     SidePanelEntry* entry,
+     SidePanelEntryHideReason reason) {
+-  if (entry->key() != GetEntryKey() ||
+-      reason != SidePanelEntryHideReason::kReplaced) {
++  bool notify_on_hide = reason == SidePanelEntryHideReason::kReplaced;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The Aux global Agent can keep its view while closed to retain draft
++  // sessionStorage. Closure events must not depend on destroying that view.
++  notify_on_hide |= IsGlobalCoordinator() &&
++                    extension_->id() == aux::kAgentExtensionId &&
++                    reason == SidePanelEntryHideReason::kSidePanelClosed;
++#endif
++  if (entry->key() != GetEntryKey() || !notify_on_hide) {
+     return;
+   }
+ 
