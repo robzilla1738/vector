@@ -1,0 +1,16 @@
+{
+  "baseComposition": "v602 (body unchanged from v601)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "baselineSha256": "f3588e76ecbea22cd81c0b52eb6e6a2b9ac55eb873e647f4ef9778a669187878",
+      "outputSha256": "c38fef2a80f1e7b700c5690bf7dc2204b2b877d7a9ef413ce79189b8f7626207"
+    }
+  ],
+  "edits": [
+    {
+      "anchorSha256": "091ebb5a622e5bedac51c0d15ce0781e228810b60183a4249456985d8cdd8c0c",
+      "count": 1
+    }
+  ]
+}

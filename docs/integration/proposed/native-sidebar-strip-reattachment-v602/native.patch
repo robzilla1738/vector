@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -105,6 +105,12 @@
+   // Source464ccfc: actual native collection root under Tabs, external pinned
+   // container under region, Agent5d0 under the actual unpinned collection.
+   tabs_contents->AddChildView(strip_.get());
++  // Retire temporarily returns the strip to the region's FlexLayout. Active
++  // tab changes can synchronously lay out that empty/space-constrained host,
++  // hiding its scale-to-zero child. That layout-owned visibility must not
++  // become permanent when the same strip returns to this BoxLayout. Section
++  // presentation owns collapsed visibility; the projection owns row exclusions.
++  strip_->SetVisible(true);
+   strip_->SetExternalScrollMode(true);
+   strip_->SetExternalParents(region_, this);
+   auto* unpinned = strip_->GetUnpinnedTabsContainer();
