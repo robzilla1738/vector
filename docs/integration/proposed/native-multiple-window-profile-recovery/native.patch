@@ -1,0 +1,340 @@
+--- a/chrome/browser/sessions/session_restore.h
++++ b/chrome/browser/sessions/session_restore.h
+@@ -91,11 +91,14 @@
+       BehaviorBitmask behavior,
+       const StartupTabs& startup_tabs);
+ 
+-  enum class AuxWorkspaceResult { kRestored, kEmpty, kAmbiguous, kFailed };
+-  // Internal Aux cache-only restore. Never creates or activates another window;
+-  // refuses multiple/non-normal saved windows before restoring any tab.
++  enum class AuxWorkspaceResult { kRestored, kEmpty, kAmbiguous, kFailed,
++                                  kRestoredSeparately, kCancelled };
++  // Internal Aux restore: one normal window adopts the hidden cache; multiple
++  // normal windows reopen separately without reassigning the source window.
++  // Recheck request admission after the async read and before creating tabs.
+   static void RestoreAuxProfileWorkspace(
+       BrowserWindowInterface* cache,
++      base::OnceCallback<bool()> admission,
+       base::OnceCallback<void(AuxWorkspaceResult)> completion);
+ 
+   // Restores the last session when the last session crashed. It's a wrapper
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -366,8 +366,10 @@
+   }
+ 
+   void SetAuxWorkspaceCompletion(
++      base::OnceCallback<bool()> admission,
+       base::OnceCallback<void(SessionRestore::AuxWorkspaceResult)> completion) {
+     aux_workspace_restore_ = true;
++    aux_workspace_admission_ = std::move(admission);
+     aux_workspace_completion_ = std::move(completion);
+   }
+ 
+@@ -741,15 +743,25 @@
+           browser_->GetProfile() == profile_ &&
+           browser_->GetTabStripModel()->empty();
+       auto result = SessionRestore::AuxWorkspaceResult::kRestored;
+-      if (!valid || read_error_) {
++      if (!aux_workspace_admission_ || !std::move(aux_workspace_admission_).Run()) {
++        result = SessionRestore::AuxWorkspaceResult::kCancelled;
++      } else if (!valid || read_error_) {
+         result = SessionRestore::AuxWorkspaceResult::kFailed;
+       } else if (windows->empty()) {
+         result = SessionRestore::AuxWorkspaceResult::kEmpty;
+-      } else if (windows->size() != 1 ||
+-                 windows->front()->type != sessions::SessionWindow::TYPE_NORMAL) {
++      } else if (windows->size() == 1 &&
++                 windows->front()->type == sessions::SessionWindow::TYPE_NORMAL &&
++                 windows->front()->tabs.empty()) {
++        result = SessionRestore::AuxWorkspaceResult::kEmpty;
++      } else if (!std::ranges::all_of(*windows, [](const auto& window) {
++                   return window->type == sessions::SessionWindow::TYPE_NORMAL &&
++                          !window->tabs.empty();
++                 })) {
+         result = SessionRestore::AuxWorkspaceResult::kAmbiguous;
+-      } else if (windows->front()->tabs.empty()) {
+-        result = SessionRestore::AuxWorkspaceResult::kEmpty;
++      } else {
++        // A profile workspace must not merge several saved windows into this
++        // source window. Let the existing restorer recreate each independently.
++        aux_restore_separate_windows_ = windows->size() > 1;
+       }
+       if (result != SessionRestore::AuxWorkspaceResult::kRestored) {
+         // Do not prune, merge, create windows or delete stale session data when
+@@ -776,7 +788,9 @@
+         profile_, static_cast<int>(restored_tabs.size()));
+     if (aux_workspace_restore_) {
+       profile_->set_restored_last_session(true);
+-      CompleteAuxWorkspace(SessionRestore::AuxWorkspaceResult::kRestored);
++      CompleteAuxWorkspace(aux_restore_separate_windows_
++          ? SessionRestore::AuxWorkspaceResult::kRestoredSeparately
++          : SessionRestore::AuxWorkspaceResult::kRestored);
+     }
+     return result;
+   }
+@@ -1022,7 +1036,8 @@
+     ash::BootTimesRecorder::Get()->AddLoginTimeMarker(
+         "SessionRestore-CreatingTabs-End", false);
+ #endif
+-    if (browser_to_activate && !aux_workspace_restore_) {
++    if (browser_to_activate &&
++        (!aux_workspace_restore_ || aux_restore_separate_windows_)) {
+       browser_to_activate->GetWindow()->Activate();
+     }
+ 
+@@ -1530,7 +1545,7 @@
+     // Assume that if the window is not-visible the browser is about to
+     // be deleted. This is necessitated by browser destruction first hiding
+     // the window, and then asynchronously deleting it.
+-    return browser_ &&
++    return browser_ && !aux_restore_separate_windows_ &&
+            browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL &&
+            !browser_->GetProfile()->IsOffTheRecord() &&
+            (aux_workspace_restore_ || browser_->GetWindow()->IsVisible());
+@@ -1540,6 +1555,8 @@
+   raw_ptr<Profile> profile_;
+ 
+   bool aux_workspace_restore_ = false;
++  bool aux_restore_separate_windows_ = false;
++  base::OnceCallback<bool()> aux_workspace_admission_;
+   base::OnceCallback<void(SessionRestore::AuxWorkspaceResult)>
+       aux_workspace_completion_;
+ 
+@@ -1616,8 +1633,10 @@
+ 
+ void SessionRestore::RestoreAuxProfileWorkspace(
+     BrowserWindowInterface* cache,
++    base::OnceCallback<bool()> admission,
+     base::OnceCallback<void(AuxWorkspaceResult)> completion) {
+   CHECK(completion);
++  CHECK(admission);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   const auto* state = cache ? BrowserInitState::From(cache) : nullptr;
+   const auto* unload = cache ? UnloadController::From(cache) : nullptr;
+@@ -1631,7 +1650,8 @@
+     auto* restorer = new SessionRestoreImpl(
+         cache->GetProfile(), cache, false, false, false, false, true, true,
+         StartupTabs());
+-    restorer->SetAuxWorkspaceCompletion(std::move(completion));
++    restorer->SetAuxWorkspaceCompletion(std::move(admission),
++                                        std::move(completion));
+     restorer->Restore();
+     return;
+   }
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -120,7 +120,7 @@
+     return std::exchange(aux_workspace_setup_pending_, false);
+   }
+   void MarkAuxWorkspaceSetupPending() { aux_workspace_setup_pending_ = true; }
+-  enum class AuxWorkspaceRestoreState { kNotStarted, kPending, kReady, kBlocked, kAmbiguous };
++  enum class AuxWorkspaceRestoreState { kNotStarted, kPending, kReady, kBlocked, kAmbiguous, kRestoredSeparately };
+   AuxWorkspaceRestoreState aux_workspace_restore_state() const {
+     return aux_workspace_restore_state_;
+   }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h
+@@ -1,6 +1,8 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_SWITCH_WORKSPACES_H_
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_PROFILE_SWITCH_WORKSPACES_H_
++
++#include <cstdint>
+ 
+ #include "base/files/file_path.h"
+ #include "base/functional/callback.h"
+@@ -19,6 +21,7 @@
+ // Existing real tab collections are never restored over or replaced.
+ void PrepareProfileSwitchWorkspace(BrowserWindowInterface* owner,
+                                    Profile* target,
++                                   uint64_t request_generation,
+                                    base::OnceCallback<void(bool)> completion);
+ 
+ // Original455cfec: creates a real hidden normal browser, or returns its exact
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -137,6 +137,7 @@
+ }
+ void PrepareProfileSwitchWorkspace(BrowserWindowInterface* owner,
+                                    Profile* target,
++                                   uint64_t request_generation,
+                                    base::OnceCallback<void(bool)> completion) {
+   auto* cache = GetOrCreateProfileSwitchWorkspace(owner, target, false);
+   auto* state = cache ? BrowserInitState::From(cache) : nullptr;
+@@ -154,15 +155,30 @@
+     return;
+   }
+   bool has_live_workspace = false;
++  bool has_live_user_workspace = false;
+   if (auto* manager = BrowserManagerServiceFactory::GetForProfile(target)) {
+     manager->ForEach([&](BrowserWindowInterface* candidate) {
+       if (candidate != cache && !IsClosing(candidate) &&
+           !candidate->GetTabStripModel()->empty()) {
+         has_live_workspace = true;
+-        return false;
++        if (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++            !BrowserInitState::From(candidate)->is_aux_profile_switch_cache()) {
++          has_live_user_workspace = true;
++        }
+       }
+       return true;
+     });
++  }
++  if (state->aux_workspace_restore_state() == State::kRestoredSeparately) {
++    if (has_live_user_workspace) {
++      // Repeated selection focuses an already recovered window, never creates
++      // a duplicate recovery or an unrelated empty target workspace.
++      std::move(completion).Run(false);
++      return;
++    }
++    // The user has since closed those actual recovered windows. The ordinary
++    // new-workspace path may now proceed without replaying the old session.
++    state->set_aux_workspace_restore_state(State::kReady);
+   }
+   // Match ordinary SessionService::RestoreIfNecessary, including genuine
+   // restart/unlock policy. A raw stored preference omits those overrides.
+@@ -184,7 +200,35 @@
+     return;
+   }
+   state->set_aux_workspace_restore_state(State::kPending);
+-  SessionRestore::RestoreAuxProfileWorkspace(cache, base::BindOnce(
++  auto admission = base::BindOnce(
++      [](base::WeakPtr<BrowserWindowInterface> owner,
++         base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
++         base::WeakPtr<BrowserWindowInterface> cache, uint64_t generation) {
++        const auto* state = owner ? BrowserInitState::From(owner.get()) : nullptr;
++        if (!owner || !source || !target || !cache || !state ||
++            owner->GetProfile() != source.get() ||
++            !state->IsCurrentAuxProfileSwitchRequest(generation) ||
++            IsClosing(owner.get()) || browser_shutdown::HasShutdownStarted() ||
++            browser_shutdown::IsTryingToQuit() ||
++            profiles::IsProfileLocked(target->GetPath())) {
++          return false;
++        }
++        // Another user window may have opened while the disk read was pending.
++        // It owns that profile's current state; never duplicate recovery over it.
++        auto* manager = BrowserManagerServiceFactory::GetForProfile(target.get());
++        bool unchanged = manager != nullptr;
++        if (manager) manager->ForEach([&](BrowserWindowInterface* candidate) {
++          if (candidate != cache.get() && !IsClosing(candidate) &&
++              !candidate->GetTabStripModel()->empty()) {
++            unchanged = false;
++            return false;
++          }
++          return true;
++        });
++        return unchanged;
++      }, owner->GetWeakPtr(), owner->GetProfile()->GetWeakPtr(),
++      target->GetWeakPtr(), cache->GetWeakPtr(), request_generation);
++  SessionRestore::RestoreAuxProfileWorkspace(cache, std::move(admission), base::BindOnce(
+       [](base::WeakPtr<BrowserWindowInterface> cache,
+          base::OnceCallback<void(bool)> completion,
+          SessionRestore::AuxWorkspaceResult result) {
+@@ -196,6 +240,10 @@
+              result == SessionRestore::AuxWorkspaceResult::kEmpty);
+         if (state) state->set_aux_workspace_restore_state(
+             ready ? State::kReady
++                  : result == SessionRestore::AuxWorkspaceResult::kRestoredSeparately
++                        ? State::kRestoredSeparately
++                  : result == SessionRestore::AuxWorkspaceResult::kCancelled
++                        ? State::kNotStarted
+                   : result == SessionRestore::AuxWorkspaceResult::kAmbiguous
+                         ? State::kAmbiguous : State::kBlocked);
+         // Feedback belongs to the current request, which rechecks generation
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -23,6 +23,7 @@
+ #include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
+ 
+ namespace aux {
+@@ -137,7 +138,7 @@
+     }
+     return;
+   }
+-  PrepareProfileSwitchWorkspace(sender, target,
++  PrepareProfileSwitchWorkspace(sender, target, generation,
+       base::BindOnce(&ProfileSwitchRequest::OnWorkspaceReady, sender_weak, source,
+                      target->GetWeakPtr(), generation, allow_cache_continuation,
+                      std::move(completion)));
+@@ -150,6 +151,51 @@
+     Completion completion, bool ready) {
+   auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+   const auto* state = sender ? BrowserInitState::From(sender) : nullptr;
++  const auto* source_unload = sender ? UnloadController::From(sender) : nullptr;
++  if (!ready && sender && state && source && target_weak && source_unload &&
++      !source_unload->is_attempting_to_close_browser() &&
++      !source_unload->is_delete_scheduled() &&
++      sender->GetProfile() == source.get() &&
++      state->IsCurrentAuxProfileSwitchRequest(generation) &&
++      !browser_shutdown::HasShutdownStarted() && !browser_shutdown::IsTryingToQuit()) {
++    auto* cache = FindProfileSwitchWorkspace(sender, target_weak->GetPath());
++    auto* cache_state = cache ? BrowserInitState::From(cache) : nullptr;
++    if (cache_state && cache_state->aux_workspace_restore_state() ==
++                           BrowserInitState::AuxWorkspaceRestoreState::kRestoredSeparately) {
++      BrowserWindowInterface* recovered = nullptr;
++      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
++          [&](BrowserWindowInterface* candidate) {
++            const auto* candidate_state = BrowserInitState::From(candidate);
++            const auto* unload = UnloadController::From(candidate);
++            if (candidate->GetProfile() == target_weak.get() && candidate_state &&
++                !candidate_state->is_aux_profile_switch_cache() && unload &&
++                !unload->is_attempting_to_close_browser() && !unload->is_delete_scheduled() &&
++                candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++                !candidate->GetTabStripModel()->empty()) {
++              recovered = candidate;
++              return false;
++            }
++            return true;
++          });
++      if (recovered && recovered->GetWindow()) {
++        auto recovered_weak = recovered->GetWeakPtr();
++        const bool notify = cache_state->TakeAuxWorkspaceSetupPending();
++        recovered->GetWindow()->Activate();
++        // Activation can dispatch observers and close either native window.
++        // Re-resolve the destination before touching its view again.
++        if (notify && recovered_weak && recovered_weak->GetWindow()) {
++          chrome::ShowWarningMessageBoxAsync(
++              recovered_weak->GetWindow()->GetNativeWindow(), u"Profile windows restored",
++              u"This profile had multiple saved windows. Aux restored them "
++              u"separately with their tabs and selections. Your original "
++              u"window and profile are unchanged.");
++        }
++        if (completion) std::move(completion).Run(
++            recovered_weak ? static_cast<Browser*>(recovered_weak.get()) : nullptr);
++        return;
++      }
++    }
++  }
+   if (!ready || !sender || !state || !source || !target_weak ||
+       sender->GetProfile() != source.get() ||
+       !state->IsCurrentAuxProfileSwitchRequest(generation)) {
+@@ -160,9 +206,9 @@
+       const bool ambiguous = cache_state && cache_state->aux_workspace_restore_state() ==
+           BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous;
+       ReportCurrentSwitchFailure(sender_weak, source, generation, ambiguous
+-          ? u"This profile has multiple saved windows or a popup. Aux has left "
+-            u"that session untouched. Open the profile in its own window to "
+-            u"restore and organize those windows before switching it here."
++          ? u"This profile has a saved app, popup, or incomplete window that "
++            u"cannot be restored as a browser workspace. Aux has preserved "
++            u"that session. Open the profile separately to recover it."
+           : u"The profile's saved workspace could not be prepared. Finish any "
+             u"pending profile activity, then try again or reopen Aux.");
+     }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -274,7 +274,8 @@
+       BrowserInitState::From(next_window)->aux_workspace_restore_state();
+   if (restore_state == BrowserInitState::AuxWorkspaceRestoreState::kPending ||
+       restore_state == BrowserInitState::AuxWorkspaceRestoreState::kBlocked ||
+-      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous) {
++      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous ||
++      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kRestoredSeparately) {
+     LOG(ERROR) << "Aux profile transition rejected: transaction.workspace-session-not-ready";
+     return Result::kRejected;
+   }
