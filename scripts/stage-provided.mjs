@@ -12,6 +12,7 @@ import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
 import { transformProvidedSettingsImportCopy } from './lib/provided-settings-import-copy.mjs';
+import { transformProvidedPendingFiles } from './lib/provided-pending-files.mjs';
 import { transformProvidedDraftFlush } from './lib/provided-draft-flush.mjs';
 import { transformProvidedPasswordManagerScope } from './lib/provided-password-manager-scope.mjs';
 import { transformProvidedUiBoundary } from './lib/provided-ui-boundary.mjs';
@@ -58,7 +59,8 @@ try {
     const controls = transformProvidedNewTabUnavailableControls({ ...input, text: boundary.text });
     const settings = transformProvidedSettingsImportCopy({ ...input, text: controls.text });
     const drafts = transformProvidedDraftFlush({ ...input, text: settings.text });
-    return { text: drafts.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors] };
+    const pendingFiles = transformProvidedPendingFiles({ ...input, text: drafts.text });
+    return { text: pendingFiles.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors, ...pendingFiles.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);

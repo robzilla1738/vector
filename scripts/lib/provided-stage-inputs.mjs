@@ -14,5 +14,6 @@ export const providedStageInputs = Object.freeze([
   'scripts/lib/provided-password-manager-scope.mjs',
   'scripts/lib/provided-settings-import-copy.mjs',
   'scripts/lib/provided-draft-flush.mjs',
+  'scripts/lib/provided-pending-files.mjs',
   'vendor/provided/native-ui-compat.mjs',
 ]);
