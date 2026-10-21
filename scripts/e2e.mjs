@@ -15,7 +15,7 @@ const options = {};
 for (let i = 2; i < process.argv.length; i++) {
   const name = process.argv[i];
   if (name === '--check') { options.check = true; continue; }
-  assert(['--profile', '--account', '--limit', '--cli-source', '--adapter'].includes(name) && process.argv[i + 1], 'Usage: node scripts/e2e.mjs --cli-source PATH [--check | --account uN --profile ID [--limit 1..20]]');
+  assert(['--profile', '--account', '--limit', '--cli-source', '--adapter', '--resume'].includes(name) && process.argv[i + 1], 'Usage: node scripts/e2e.mjs --cli-source PATH [--check | --account uN --profile ID [--limit 1..20]]');
   options[name.slice(2)] = process.argv[++i];
 }
 assert(options['cli-source'], 'Explicit pinned supplied CLI source is required.');
@@ -40,6 +40,13 @@ const endpoint = new URL(process.env.DAEMON_BASE_URL);
 assert(endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1' && endpoint.port === '21520' && endpoint.pathname === '/', 'Only isolated Aux loopback daemon port21520 is accepted.');
 const limit = Number(options.limit ?? 20);
 assert(Number.isInteger(limit) && limit >= 1 && limit <= 20, 'Limit must be1..20.');
+const resumed = options.resume ? JSON.parse(await readFile(resolve(options.resume), 'utf8')) : null;
+if (resumed) {
+  assert(resolve(options.resume).startsWith(join(root, 'out/acceptance/') + 'e2e-'));
+  assert(resumed.complete === false && resumed.credentialCleanup === 'removed and verified through supplied credential API' && resumed.cleanupErrors.length === 0);
+  assert(resumed.cases.length > 0 && resumed.cases.length <= 14, 'Resume only before cross-session memory cases.');
+  assert(resumed.cases.slice(0, -1).every(row => row.passed) && resumed.cases.at(-1).passed === false);
+}
 const runId = randomUUID();
 const reportDirectory = join(root, 'out/acceptance', `e2e-${runId}`);
 await mkdir(reportDirectory, { recursive: true, mode: 0o700 });
@@ -55,7 +62,15 @@ assert.equal(localRegistry.profileAccountBindings?.[options.profile]?.accountId,
 const registry = await rpc.accounts.summary.query();
 const binding = registry.accounts.find(row => row.id === accountId)?.profileBindings.find(row => row.profileId === options.profile);
 assert(binding?.profilePath && isDisposable(await realpath(binding.profilePath)), 'Exact account binding must point to a disposable native profile.');
-assert.equal((await rpc.sessions.list.query({ accountId, archived: 'include', ephemeral: 'include', parent: 'all' })).length, 0, 'Fresh account without existing sessions required.');
+const initialSessions = await rpc.sessions.list.query({ accountId, archived: 'include', ephemeral: 'include', parent: 'all' });
+if (resumed) {
+  assert.deepEqual(initialSessions.map(row => row.id).sort(), (resumed.sessionIds ?? [...resumed.cases.map(row => row.sessionId), ...(resumed.previousFailedAttempt ? [resumed.previousFailedAttempt.sessionId] : [])]).sort(), 'Resume account must contain exactly the prior acceptance sessions.');
+  for (const row of initialSessions) {
+    const detail = await rpc.sessions.get.query({ accountId, sessionId: row.id });
+    assert.equal(`${detail.model.provider}/${detail.model.modelId}`, resumed.model);
+    assert(isDisposable(await realpath(detail.cwd)));
+  }
+} else assert.equal(initialSessions.length, 0, 'Fresh account without existing sessions required.');
 const browserBinding = await rpc.cli.resolveBrowserBinding.query({ accountId, profileId: options.profile });
 assert(browserBinding.profileId === options.profile && browserBinding.browserMode === 'default', 'Exact ordinary profile binding required.');
 const providerId = 'vercel-ai-gateway';
@@ -66,7 +81,17 @@ assert(process.env.AUX_E2E_GATEWAY_KEY, 'Inject AUX_E2E_GATEWAY_KEY explicitly; 
 let key = process.env.AUX_E2E_GATEWAY_KEY;
 delete process.env.AUX_E2E_GATEWAY_KEY;
 const site = await fixtures();
-const report = { runId, model: modelSpec, startedAt: new Date().toISOString(), requested: limit, cases: [], complete: false };
+const report = { runId, accountId, profileId: options.profile, accountCreatedAt: resolvedAccount.account.createdAt,
+  model: modelSpec, startedAt: new Date().toISOString(), requested: limit,
+  cases: resumed ? resumed.cases.slice(0, -1) : [], sessionIds: initialSessions.map(row => row.id), complete: false };
+if (resumed) {
+  assert.equal(resumed.model, modelSpec);
+  if (resumed.accountId !== undefined) assert.equal(resumed.accountId, accountId);
+  if (resumed.profileId !== undefined) assert.equal(resumed.profileId, options.profile);
+  if (resumed.accountCreatedAt !== undefined) assert.equal(resumed.accountCreatedAt, resolvedAccount.account.createdAt);
+  report.resumedFrom = resolve(options.resume);
+  report.previousFailedAttempt = resumed.cases.at(-1);
+}
 const save = () => writeFile(join(reportDirectory, 'report.json'), JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
 const scopes = new Map();
 const previousSettings = new Map();
@@ -150,7 +175,7 @@ const cases = [
   { title: 'Read a second page of data', run: async s => { const r = await prompt(s, browserInstruction('pagination') + 'Open the next record and report its species and crate quantity.'); browserEvidence(r); has('pagination', e => e.action === 'page' && e.page === 2); assert(/Cedar/.test(r.answer) && /27/.test(r.answer)); return r; } },
   { title: 'Sort a browser table', run: async s => { const r = await prompt(s, browserInstruction('sort') + 'Sort by quantity and report the smallest and largest inventory entries.'); browserEvidence(r); has('sort', e => e.action === 'sorted'); assert(/Cedar/.test(r.answer) && /Birch/.test(r.answer)); return r; } },
   { title: 'Edit a disposable basket', run: async s => { const r = await prompt(s, browserInstruction('basket') + 'Add exactly two notebooks and one pencil to the disposable test basket, then verify the counts. Do not purchase anything.'); browserEvidence(r); has('basket', e => e.action === 'basket' && e.notebook === 2 && e.pencil === 1); return r; } },
-  { title: 'Create a browser list entry', run: async s => { const r = await prompt(s, browserInstruction('todo') + 'Add the task Inspect cedar shipment and verify it appears in the list.'); browserEvidence(r); has('todo', e => e.action === 'added' && e.title === 'Inspect cedar shipment'); return r; } },
+  { title: 'Create a browser list entry', run: async s => { const r = await prompt(s, browserInstruction('todo') + 'Add one task with the exact title "Inspect cedar shipment". Then verify that exact task appears in the list.'); browserEvidence(r); has('todo', e => e.action === 'added' && e.title === 'Inspect cedar shipment'); return r; } },
   { title: 'Reveal and read hidden details', run: async s => { const r = await prompt(s, browserInstruction('details') + 'Expand dispatch details and report the reference and gate.'); browserEvidence(r); has('details', e => e.action === 'expanded'); assert(r.answer.includes(site.marker) && /7/.test(r.answer)); return r; } },
   { title: 'Follow a browser link', run: async s => { const r = await prompt(s, browserInstruction('directory') + 'Follow Cedar team details and report the contact code and storage room.'); browserEvidence(r); has('detail', e => e.action === 'visit'); assert(r.answer.includes(site.marker) && /42/.test(r.answer)); return r; } },
   { title: 'Write and edit a working file', run: async s => { const r = await prompt(s, 'In your working directory use write_file to create note.md containing Shipment status: pending, then use edit_file to change pending to ready. Read the file back and report its content.'); assert((await readFile(join(working(s), "note.md"), 'utf8')).includes('Shipment status: ready')); assert(toolNames(r).includes('write_file') && toolNames(r).includes('edit_file') && toolNames(r).includes('read_file')); return r; } },
@@ -197,20 +222,23 @@ try {
   memoryDirectory = await rpc.memory.getDirectory.query({ accountId });
   await mkdir(memoryDirectory, { recursive: true, mode: 0o700 });
   assert(isDisposable(await realpath(memoryDirectory)), 'Actual memory directory must be disposable.');
+  const completedPrefix = report.cases.length;
   for (const [index, test] of cases.slice(0, limit).entries()) {
+    if (index < completedPrefix) continue;
     const startedAt = Date.now();
     const result = { number: index + 1, title: test.title, passed: false };
     report.cases.push(result);
     try {
       const session = await create(`Acceptance ${index + 1}: ${test.title}`);
       result.sessionId = session.id;
+      report.sessionIds.push(session.id);
       if (test.seed) await writeFile(join(working(session), test.seed.name), test.seed.content, { mode: 0o600, flag: 'wx' });
       const attachments = [];
       if (test.attachment) {
         const attachment = { id: randomUUID(), type: 'file', name: test.attachment.fileName,
           mimeType: test.attachment.mediaType, data: Buffer.from(test.attachment.text).toString('base64') };
         const uploaded = await rpc.sessions.files.uploadAttachment.mutate({ accountId, sessionId: session.id, attachment });
-        assert(uploaded.path.startsWith('attachments/') && !uploaded.data, 'Actual stored attachment required.');
+        assert(uploaded.path.startsWith('./attachments/') && !uploaded.data, 'Actual stored attachment required.');
         attachments.push(uploaded);
       }
       const output = await test.run(session, attachments);
@@ -231,7 +259,9 @@ try {
       result.passed = true;
       scopes.get(session.id).chat.dispose();
       scopes.delete(session.id);
-    } catch {
+    } catch (error) {
+      result.failureName = error.name;
+      result.failureFrames = String(error.stack ?? '').split('\n').slice(1, 5).map(line => line.trim());
       result.error = 'Acceptance assertion or supplied operation failed; inspect private local raw events.';
       throw Error(`Acceptance case ${index + 1} failed: ${test.title}`);
     } finally { result.durationMs = Date.now() - startedAt; await save(); }
