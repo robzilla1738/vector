@@ -1,0 +1,46 @@
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -408,8 +408,17 @@
+   if (std::optional<int> width_from_pref = dict.FindInt(panel_id)) {
+     SetPanelWidth(width_from_pref.value());
+   } else {
+-    SetPanelWidth(side_panel_ui->GetCurrentEntryDefaultContentWidth() +
+-                  GetContentSizingInsets(this).width());
++    int default_content_width =
++        side_panel_ui->GetCurrentEntryDefaultContentWidth();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (side_panel_ui->IsSidePanelEntryShowing(
++            SidePanelEntryKey(SidePanelEntryId::kExtension,
++                              aux::kAgentExtensionId))) {
++      // Measured supplied desktop default, in DIPs (660px at 2x).
++      default_content_width = 330;
++    }
++#endif
++    SetPanelWidth(default_content_width + GetContentSizingInsets(this).width());
+   }
+ }
+ 
+@@ -419,9 +428,20 @@
+ 
+ gfx::Size SidePanel::GetMinimumSize() const {
+   const int min_height = 0;
+-  return gfx::Size(
+-      SidePanelEntry::kSidePanelDefaultContentWidth + GetContentSizingInsets(this).width(),
+-      min_height);
++  int minimum_content_width = SidePanelEntry::kSidePanelDefaultContentWidth;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Avoid querying the UI during construction, before a border is installed.
++  if (GetBorder()) {
++    const auto* panel_ui = SidePanelUI::From(browser_view_->browser());
++    if (panel_ui && panel_ui->IsSidePanelEntryShowing(
++            SidePanelEntryKey(SidePanelEntryId::kExtension,
++                              aux::kAgentExtensionId))) {
++      minimum_content_width = 330;
++    }
++  }
++#endif
++  return gfx::Size(minimum_content_width + GetContentSizingInsets(this).width(),
++                   min_height);
+ }
+ 
+ bool SidePanel::IsClosing() {

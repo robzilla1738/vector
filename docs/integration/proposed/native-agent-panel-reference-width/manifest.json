@@ -1,0 +1,9 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+      "baselineSha256": "7acc301223759233de2193457d641254b085c280396821c7381f1b3bd196b4b0",
+      "outputSha256": "623e1412027177b6fef30bf16e8a9b11eab232f2e0fa839ec240d6b3c0563376"
+    }
+  ]
+}
