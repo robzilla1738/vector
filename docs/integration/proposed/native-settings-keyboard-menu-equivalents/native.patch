@@ -1,0 +1,344 @@
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.h
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.h
+@@ -6,6 +6,7 @@
+ #include <string>
+ #include "base/values.h"
+ class Profile;
++namespace ui { class Accelerator; }
+ namespace content {
+ class WebContents;
+ }
+@@ -15,6 +16,7 @@
+ #if defined(__OBJC__)
+ @class NSEvent;
+ @class NSWindow;
++@class NSMenuItem;
+ #endif
+ namespace aux {
+ void RegisterKeyboardShortcutPrefs(user_prefs::PrefRegistrySyncable* registry);
+@@ -24,11 +26,15 @@
+                                                const std::string& shortcut);
+ std::optional<std::string> ResetKeyboardShortcut(Profile* profile, int command);
+ void SetShortcutCapture(content::WebContents* sender, bool suspended);
++// Pure query: no registration, preference writes or capture state.
++bool GetKeyboardShortcut(Profile* profile, int command, ui::Accelerator* accelerator);
+ #if defined(__OBJC__)
+ // nullopt: normal Chromium dispatch; 0: deliver directly to the responder for
+ // capture/displaced defaults; positive: real browser command, enabled as usual.
+ std::optional<int> ResolveKeyboardShortcut(NSEvent* event, NSWindow* window);
+ bool IsKeyboardShortcutCommandForWindow(int command, NSWindow* window);
++void RefreshKeyboardShortcutMenu(Profile* profile);
++void UpdateKeyboardShortcutMenuItem(NSMenuItem* item, NSWindow* window);
+ #endif
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.mm
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.mm
+@@ -2,6 +2,8 @@
+ #include "chrome/browser/ui/aux_keyboard_shortcuts.h"
+ 
+ #import <AppKit/AppKit.h>
++#import <objc/runtime.h>
++#include "ui/base/cocoa/command_dispatcher.h"
+ #include <algorithm>
+ #include <iterator>
+ #include <set>
+@@ -59,6 +61,7 @@
+ std::string Effective(Profile* profile, const Binding& binding) {
+   if (binding.command == kPopup)
+     return g_browser_process->local_state()->GetString(kPopupShortcut);
++  if (!profile->GetPrefs()->FindPreference(kOverrides)) return Default(binding);
+   const auto* saved = profile->GetPrefs()
+                           ->GetDict(kOverrides)
+                           .FindString(base::NumberToString(binding.command));
+@@ -105,16 +108,97 @@
+   }
+   void WebContentsDestroyed() override { Set(false); }
+ };
+-bool MenuConflict(NSMenu* menu,
+-                  KeyEquivalentAndModifierMask* key,
+-                  int command) {
++const char kOriginalMenuEquivalent = 0;
++NSDictionary* OriginalMenuEquivalent(NSMenuItem* item) {
++  NSDictionary* original = objc_getAssociatedObject(item, &kOriginalMenuEquivalent);
++  // Respect a real native owner changing a menu item after our last update;
++  // only our own last-written equivalent may be restored from the snapshot.
++  if (!original || ![original[@"lastKey"] isEqualToString:item.keyEquivalent] ||
++      [original[@"lastModifiers"] unsignedIntegerValue] != item.keyEquivalentModifierMask) {
++    original = @{@"key": item.keyEquivalent ?: @"",
++                 @"modifiers": @(item.keyEquivalentModifierMask),
++                 @"lastKey": item.keyEquivalent ?: @"",
++                 @"lastModifiers": @(item.keyEquivalentModifierMask)};
++    objc_setAssociatedObject(item, &kOriginalMenuEquivalent, original,
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++  }
++  return original;
++}
++void SetMenuEquivalent(NSMenuItem* item, NSString* key, NSUInteger modifiers) {
++  NSDictionary* original = OriginalMenuEquivalent(item);
++  item.keyEquivalent = key;
++  item.keyEquivalentModifierMask = modifiers;
++  objc_setAssociatedObject(item, &kOriginalMenuEquivalent,
++      @{@"key": original[@"key"], @"modifiers": original[@"modifiers"],
++        @"lastKey": key, @"lastModifiers": @(modifiers)},
++      OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++bool SameEquivalent(NSString* key, NSUInteger modifiers,
++                    KeyEquivalentAndModifierMask* other) {
++  return [key isEqualToString:other.keyEquivalent] && modifiers == other.modifierMask;
++}
++void UpdateMenuItem(Profile* profile, NSMenuItem* item) {
++  if (item.action != @selector(commandDispatch:) &&
++      item.action != @selector(commandDispatchUsingKeyModifiers:))
++    return;
++  const auto* binding = FindBinding(item.tag);
++  NSDictionary* original = OriginalMenuEquivalent(item);
++  if (binding && binding->command != kPopup) {
++    const auto parsed = ParseKeyboardShortcut(Effective(profile, *binding));
++    if (!parsed) return;
++    auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed);
++    SetMenuEquivalent(item, equivalent.keyEquivalent, equivalent.modifierMask);
++    return;
++  }
++  NSString* key = original[@"key"];
++  NSUInteger modifiers = [original[@"modifiers"] unsignedIntegerValue];
++  // A supplied/profile shortcut may displace an unrelated upstream default
++  // (e.g. Toggle Sidebar / Save Page). Remove only its misleading key hint,
++  // retaining the actual menu item and all native click/enabled validation.
++  if (key.length) {
++    for (const auto& candidate : kBindings) {
++      if (candidate.command == kPopup) continue;
++      const auto parsed = ParseKeyboardShortcut(Effective(profile, candidate));
++      if (parsed && SameEquivalent(key, modifiers,
++          ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed))) {
++        key = @"";
++        modifiers = 0;
++        break;
++      }
++    }
++  }
++  SetMenuEquivalent(item, key, modifiers);
++}
++void UpdateMenu(Profile* profile, NSMenu* menu) {
+   for (NSMenuItem* item in menu.itemArray) {
+-    if (item.submenu && MenuConflict(item.submenu, key, command))
++    UpdateMenuItem(profile, item);
++    if (item.submenu) UpdateMenu(profile, item.submenu);
++  }
++}
++void RefreshActiveMenu() {
++  auto* browser = GlobalBrowserCollection::GetInstance()->GetActiveBrowser();
++  if (browser) RefreshKeyboardShortcutMenu(browser->GetProfile());
++}
++bool MenuConflict(Profile* profile, NSMenu* menu,
++                  KeyEquivalentAndModifierMask* key, int command) {
++  for (NSMenuItem* item in menu.itemArray) {
++    if (item.submenu && MenuConflict(profile, item.submenu, key, command))
+       return true;
+-    if (item.tag != command &&
+-        [item.keyEquivalent isEqualToString:key.keyEquivalent] &&
+-        item.keyEquivalentModifierMask == key.modifierMask)
+-      return true;
++    if (item.tag == command) continue;
++    const auto* binding = FindBinding(item.tag);
++    if (binding && binding->command != kPopup) {
++      const auto effective = ParseKeyboardShortcut(Effective(profile, *binding));
++      if (effective) {
++        auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*effective);
++        if (SameEquivalent(equivalent.keyEquivalent, equivalent.modifierMask, key))
++          return true;
++      }
++    } else {
++      NSDictionary* original = OriginalMenuEquivalent(item);
++      if (SameEquivalent(original[@"key"],
++                         [original[@"modifiers"] unsignedIntegerValue], key))
++        return true;
++    }
+   }
+   return false;
+ }
+@@ -160,17 +244,23 @@
+   // menu default (notably Toggle Sidebar / Save Page). Reject other menu
+   // clashes.
+   if (value != Default(*binding) &&
+-      MenuConflict(NSApp.mainMenu,
++      MenuConflict(profile, NSApp.mainMenu,
+                    ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed),
+                    command))
+     return "This shortcut is already used by a browser menu command.";
+-  if (command == kPopup)
+-    return extensions::SetAuxMiniPopupShortcut(profile, value);
++  if (command == kPopup) {
++    auto error = extensions::SetAuxMiniPopupShortcut(profile, value);
++    if (!error) RefreshActiveMenu();
++    return error;
++  }
+   auto* prefs = profile->GetPrefs();
+   if (prefs->IsManagedPreference(kOverrides))
+     return "Shortcuts are managed";
+-  ScopedDictPrefUpdate update(prefs, kOverrides);
+-  update->Set(base::NumberToString(command), value);
++  {
++    ScopedDictPrefUpdate update(prefs, kOverrides);
++    update->Set(base::NumberToString(command), value);
++  }
++  RefreshActiveMenu();
+   return std::nullopt;
+ }
+ std::optional<std::string> ResetKeyboardShortcut(Profile* profile,
+@@ -232,4 +322,20 @@
+          GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
+              gfx::NativeWindow(window));
+ }
++bool GetKeyboardShortcut(Profile* profile, int command, ui::Accelerator* accelerator) {
++  const auto* binding = FindBinding(command);
++  if (!binding) return false;
++  const auto parsed = ParseKeyboardShortcut(Effective(profile->GetOriginalProfile(), *binding));
++  if (!parsed) return false;
++  *accelerator = *parsed;
++  return true;
++}
++void RefreshKeyboardShortcutMenu(Profile* profile) {
++  UpdateMenu(profile->GetOriginalProfile(), NSApp.mainMenu);
++}
++void UpdateKeyboardShortcutMenuItem(NSMenuItem* item, NSWindow* window) {
++  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
++      gfx::NativeWindow(window));
++  if (browser) UpdateMenuItem(browser->GetProfile()->GetOriginalProfile(), item);
++}
+ }  // namespace aux
+--- a/chrome/browser/ui/cocoa/browser_window_command_handler.mm
++++ b/chrome/browser/ui/cocoa/browser_window_command_handler.mm
+@@ -11,6 +11,10 @@
+ #include "chrome/app/chrome_command_ids.h"
+ #import "chrome/browser/app_controller_mac.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++#endif
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_window.h"
+ #include "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
+@@ -89,6 +93,9 @@
+   }
+ 
+   if (NSMenuItem* menuItem = base::apple::ObjCCast<NSMenuItem>(item)) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    aux::UpdateKeyboardShortcutMenuItem(menuItem, window);
++#endif
+     if (result->disable_if_has_no_key_equivalent) {
+       result->enable &= !![[menuItem keyEquivalent] length];
+     }
+--- a/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_native_widget_mac.mm
+@@ -26,6 +26,9 @@
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_init_state.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++#endif
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #import "chrome/browser/ui/cocoa/browser_window_command_handler.h"
+@@ -878,6 +881,10 @@
+ 
+ void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,
+                                                        bool active) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (active && browser_view_ && browser_view_->browser())
++    aux::RefreshKeyboardShortcutMenu(browser_view_->browser()->GetProfile());
++#endif
+   last_theme_color_.reset();
+   UpdateBackgroundColor();
+ }
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2772,6 +2772,9 @@
+       "//components/remote_cocoa/app_shim:features",
+       "//components/remote_cocoa/browser",
+     ]
++    if (enable_aux_browser) {
++      deps += [ "//chrome/browser/aux:keyboard_shortcuts" ]
++    }
+     include_dirs = [ "$target_gen_dir" ]
+     frameworks = [
+       "Carbon.framework",
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -8,6 +8,9 @@
+ #endif
+ 
+ #include "chrome/browser/aux/profile_gate.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++#endif
+ #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+ #include "chrome/browser/aux/ntp_prerender_service.h"
+ #include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
+@@ -1524,6 +1527,10 @@
+     cmd_id = IDC_TASK_MANAGER_SHORTCUT;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux::GetKeyboardShortcut(browser_->GetProfile(), cmd_id, accelerator))
++    return true;
++#endif
+ #if BUILDFLAG(IS_MAC)
+   // On macOS, most accelerators are defined in MainMenu.xib and are user
+   // configurable. Furthermore, their values and enabled state depends on the
+--- a/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
++++ b/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+@@ -3,8 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++#endif
+ 
+ #include <optional>
++#include "chrome/app/chrome_command_ids.h"
+ 
+ #include "base/check_op.h"
+ #include "base/i18n/rtl.h"
+@@ -92,6 +96,14 @@
+ 
+ void VerticalTabStripStateController::InitProfilePrefObservers() {
+   pref_change_registrar_.Init(pref_service_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (pref_service_->FindPreference("aux.browser.keyboard_shortcuts")) {
++    pref_change_registrar_.Add(
++        "aux.browser.keyboard_shortcuts",
++        base::BindRepeating(&VerticalTabStripStateController::UpdateCollapseActionItem,
++                            base::Unretained(this)));
++  }
++#endif
+ 
+   is_vertical_tabs_enabled_ =
+       pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
+@@ -509,6 +521,11 @@
+         chrome::GetCleanTitleAndTooltipText(l10n_util::GetStringUTF16(text)));
+ 
+     ui::Accelerator accelerator = collapse_action->GetAccelerator();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++    if (aux::GetKeyboardShortcut(browser_window_->GetProfile(),
++                                 IDC_TOGGLE_VERTICAL_TABS_COLLAPSE, &accelerator))
++      collapse_action->SetAccelerator(accelerator);
++#endif
+     const std::u16string shortcut_text = accelerator.GetShortcutText();
+     const std::u16string tooltip_text =
+         shortcut_text.empty()
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -675,6 +675,9 @@
+       "//ui/base/unowned_user_data",
+       "//ui/webui",
+     ]
++    if (is_mac && enable_aux_browser) {
++      deps += [ "//chrome/browser/aux:keyboard_shortcuts" ]
++    }
+ 
+     if (use_ozone) {
+       deps += [ "//ui/ozone" ]

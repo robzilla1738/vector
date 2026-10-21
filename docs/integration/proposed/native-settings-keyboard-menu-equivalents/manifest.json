@@ -1,0 +1,171 @@
+{
+  "baseline": "actual-native-v574; shortcut helper API571 and native Ask validator567 retained",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "baselineSha256": "f3d1890905bbf5b238ca11c95deca7a5fc21c3330cbf2fb6140276135693a5da",
+      "outputSha256": "c2ddb76106759eec41d3fc4c2218583e98a8a366df509963c6d3fa953c8e3e91",
+      "anchors": [
+        {
+          "find": "class Profile;",
+          "replace": "class Profile;\nnamespace ui { class Accelerator; }",
+          "count": 1
+        },
+        {
+          "find": "@class NSWindow;",
+          "replace": "@class NSWindow;\n@class NSMenuItem;",
+          "count": 1
+        },
+        {
+          "find": "void SetShortcutCapture(content::WebContents* sender, bool suspended);",
+          "replace": "void SetShortcutCapture(content::WebContents* sender, bool suspended);\n// Pure query: no registration, preference writes or capture state.\nbool GetKeyboardShortcut(Profile* profile, int command, ui::Accelerator* accelerator);",
+          "count": 1
+        },
+        {
+          "find": "bool IsKeyboardShortcutCommandForWindow(int command, NSWindow* window);",
+          "replace": "bool IsKeyboardShortcutCommandForWindow(int command, NSWindow* window);\nvoid RefreshKeyboardShortcutMenu(Profile* profile);\nvoid UpdateKeyboardShortcutMenuItem(NSMenuItem* item, NSWindow* window);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "baselineSha256": "30f2f092327da3d2fc4a2217275c7c8b7398950cdf2fe8ce8e0c23a28a423c89",
+      "outputSha256": "0deb0d52a5efb3282f4b98196bdf27d00ac3f9c3d2fe1d8a9ae6cd162b496477",
+      "anchors": [
+        {
+          "find": "#import <AppKit/AppKit.h>",
+          "replace": "#import <AppKit/AppKit.h>\n#import <objc/runtime.h>\n#include \"ui/base/cocoa/command_dispatcher.h\"",
+          "count": 1
+        },
+        {
+          "find": "bool MenuConflict(NSMenu* menu,\n                  KeyEquivalentAndModifierMask* key,\n                  int command) {\n  for (NSMenuItem* item in menu.itemArray) {\n    if (item.submenu && MenuConflict(item.submenu, key, command))\n      return true;\n    if (item.tag != command &&\n        [item.keyEquivalent isEqualToString:key.keyEquivalent] &&\n        item.keyEquivalentModifierMask == key.modifierMask)\n      return true;\n  }\n  return false;\n}",
+          "replace": "const char kOriginalMenuEquivalent = 0;\nNSDictionary* OriginalMenuEquivalent(NSMenuItem* item) {\n  NSDictionary* original = objc_getAssociatedObject(item, &kOriginalMenuEquivalent);\n  // Respect a real native owner changing a menu item after our last update;\n  // only our own last-written equivalent may be restored from the snapshot.\n  if (!original || ![original[@\"lastKey\"] isEqualToString:item.keyEquivalent] ||\n      [original[@\"lastModifiers\"] unsignedIntegerValue] != item.keyEquivalentModifierMask) {\n    original = @{@\"key\": item.keyEquivalent ?: @\"\",\n                 @\"modifiers\": @(item.keyEquivalentModifierMask),\n                 @\"lastKey\": item.keyEquivalent ?: @\"\",\n                 @\"lastModifiers\": @(item.keyEquivalentModifierMask)};\n    objc_setAssociatedObject(item, &kOriginalMenuEquivalent, original,\n                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);\n  }\n  return original;\n}\nvoid SetMenuEquivalent(NSMenuItem* item, NSString* key, NSUInteger modifiers) {\n  NSDictionary* original = OriginalMenuEquivalent(item);\n  item.keyEquivalent = key;\n  item.keyEquivalentModifierMask = modifiers;\n  objc_setAssociatedObject(item, &kOriginalMenuEquivalent,\n      @{@\"key\": original[@\"key\"], @\"modifiers\": original[@\"modifiers\"],\n        @\"lastKey\": key, @\"lastModifiers\": @(modifiers)},\n      OBJC_ASSOCIATION_RETAIN_NONATOMIC);\n}\nbool SameEquivalent(NSString* key, NSUInteger modifiers,\n                    KeyEquivalentAndModifierMask* other) {\n  return [key isEqualToString:other.keyEquivalent] && modifiers == other.modifierMask;\n}\nvoid UpdateMenuItem(Profile* profile, NSMenuItem* item) {\n  if (item.action != @selector(commandDispatch:) &&\n      item.action != @selector(commandDispatchUsingKeyModifiers:))\n    return;\n  const auto* binding = FindBinding(item.tag);\n  NSDictionary* original = OriginalMenuEquivalent(item);\n  if (binding && binding->command != kPopup) {\n    const auto parsed = ParseKeyboardShortcut(Effective(profile, *binding));\n    if (!parsed) return;\n    auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed);\n    SetMenuEquivalent(item, equivalent.keyEquivalent, equivalent.modifierMask);\n    return;\n  }\n  NSString* key = original[@\"key\"];\n  NSUInteger modifiers = [original[@\"modifiers\"] unsignedIntegerValue];\n  // A supplied/profile shortcut may displace an unrelated upstream default\n  // (e.g. Toggle Sidebar / Save Page). Remove only its misleading key hint,\n  // retaining the actual menu item and all native click/enabled validation.\n  if (key.length) {\n    for (const auto& candidate : kBindings) {\n      if (candidate.command == kPopup) continue;\n      const auto parsed = ParseKeyboardShortcut(Effective(profile, candidate));\n      if (parsed && SameEquivalent(key, modifiers,\n          ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed))) {\n        key = @\"\";\n        modifiers = 0;\n        break;\n      }\n    }\n  }\n  SetMenuEquivalent(item, key, modifiers);\n}\nvoid UpdateMenu(Profile* profile, NSMenu* menu) {\n  for (NSMenuItem* item in menu.itemArray) {\n    UpdateMenuItem(profile, item);\n    if (item.submenu) UpdateMenu(profile, item.submenu);\n  }\n}\nvoid RefreshActiveMenu() {\n  auto* browser = GlobalBrowserCollection::GetInstance()->GetActiveBrowser();\n  if (browser) RefreshKeyboardShortcutMenu(browser->GetProfile());\n}\nbool MenuConflict(Profile* profile, NSMenu* menu,\n                  KeyEquivalentAndModifierMask* key, int command) {\n  for (NSMenuItem* item in menu.itemArray) {\n    if (item.submenu && MenuConflict(profile, item.submenu, key, command))\n      return true;\n    if (item.tag == command) continue;\n    const auto* binding = FindBinding(item.tag);\n    if (binding && binding->command != kPopup) {\n      const auto effective = ParseKeyboardShortcut(Effective(profile, *binding));\n      if (effective) {\n        auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*effective);\n        if (SameEquivalent(equivalent.keyEquivalent, equivalent.modifierMask, key))\n          return true;\n      }\n    } else {\n      NSDictionary* original = OriginalMenuEquivalent(item);\n      if (SameEquivalent(original[@\"key\"],\n                         [original[@\"modifiers\"] unsignedIntegerValue], key))\n        return true;\n    }\n  }\n  return false;\n}",
+          "count": 1
+        },
+        {
+          "find": "MenuConflict(NSApp.mainMenu,",
+          "replace": "MenuConflict(profile, NSApp.mainMenu,",
+          "count": 1
+        },
+        {
+          "find": "  if (command == kPopup)\n    return extensions::SetAuxMiniPopupShortcut(profile, value);\n  auto* prefs = profile->GetPrefs();\n  if (prefs->IsManagedPreference(kOverrides))\n    return \"Shortcuts are managed\";\n  ScopedDictPrefUpdate update(prefs, kOverrides);\n  update->Set(base::NumberToString(command), value);\n  return std::nullopt;",
+          "replace": "  if (command == kPopup) {\n    auto error = extensions::SetAuxMiniPopupShortcut(profile, value);\n    if (!error) RefreshActiveMenu();\n    return error;\n  }\n  auto* prefs = profile->GetPrefs();\n  if (prefs->IsManagedPreference(kOverrides))\n    return \"Shortcuts are managed\";\n  {\n    ScopedDictPrefUpdate update(prefs, kOverrides);\n    update->Set(base::NumberToString(command), value);\n  }\n  RefreshActiveMenu();\n  return std::nullopt;",
+          "count": 1
+        },
+        {
+          "find": "}  // namespace aux",
+          "replace": "bool GetKeyboardShortcut(Profile* profile, int command, ui::Accelerator* accelerator) {\n  const auto* binding = FindBinding(command);\n  if (!binding) return false;\n  const auto parsed = ParseKeyboardShortcut(Effective(profile->GetOriginalProfile(), *binding));\n  if (!parsed) return false;\n  *accelerator = *parsed;\n  return true;\n}\nvoid RefreshKeyboardShortcutMenu(Profile* profile) {\n  UpdateMenu(profile->GetOriginalProfile(), NSApp.mainMenu);\n}\nvoid UpdateKeyboardShortcutMenuItem(NSMenuItem* item, NSWindow* window) {\n  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(\n      gfx::NativeWindow(window));\n  if (browser) UpdateMenuItem(browser->GetProfile()->GetOriginalProfile(), item);\n}\n}  // namespace aux",
+          "count": 1
+        },
+        {
+          "find": "  const auto* saved = profile->GetPrefs()\n",
+          "replace": "  if (!profile->GetPrefs()->FindPreference(kOverrides)) return Default(binding);\n  const auto* saved = profile->GetPrefs()\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/browser_window_command_handler.mm",
+      "baselineSha256": "571a6c7f4226ea6b9fc61d7b3b79c81476a46c84177306d8604443630abee7af",
+      "outputSha256": "5ad42cbd3c7c0f65546c68507ca95bd6e5e30f3053007d79cd58bf050dde5412",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/profiles/profile.h\"",
+          "replace": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  if (NSMenuItem* menuItem = base::apple::ObjCCast<NSMenuItem>(item)) {",
+          "replace": "  if (NSMenuItem* menuItem = base::apple::ObjCCast<NSMenuItem>(item)) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n    aux::UpdateKeyboardShortcutMenuItem(menuItem, window);\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_native_widget_mac.mm",
+      "baselineSha256": "15f2c218eb8583aca07adbc0e7c774f998c6812226570c592bf7e512c8703d6a",
+      "outputSha256": "32364b315323c8776ccf8d2645e2e01a50d53ae4ed3cc19135b19d51396201b6",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/browser_init_state.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_init_state.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,\n                                                       bool active) {\n  last_theme_color_.reset();",
+          "replace": "void BrowserNativeWidgetMac::OnWidgetActivationChanged(views::Widget* widget,\n                                                       bool active) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  if (active && browser_view_ && browser_view_->browser())\n    aux::RefreshKeyboardShortcutMenu(browser_view_->browser()->GetProfile());\n#endif\n  last_theme_color_.reset();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "baselineSha256": "e58e393e9ee40d77339bbffdc70dade95e213c7b187f7fafead54887c0be2f7f",
+      "outputSha256": "e6b22be71b809edc861925e0d9187ee9db8edbac3f11beb2e5799bf5121b01bd",
+      "anchors": [
+        {
+          "find": "    include_dirs = [ \"$target_gen_dir\" ]\n    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]",
+          "replace": "    if (enable_aux_browser) {\n      deps += [ \"//chrome/browser/aux:keyboard_shortcuts\" ]\n    }\n    include_dirs = [ \"$target_gen_dir\" ]\n    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "f17182dc8df3d55e0b6cdb59f505e330d0ecd9ff0f19b1da3b40f76868a8bf4b",
+      "outputSha256": "0ee1868da660c57cdb805a1a71d804478729723fe330531bf7744a921d36d7ca",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/profile_gate.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_gate.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "#if BUILDFLAG(IS_MAC)\n  // On macOS, most accelerators are defined in MainMenu.xib",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (aux::GetKeyboardShortcut(browser_->GetProfile(), cmd_id, accelerator))\n    return true;\n#endif\n#if BUILDFLAG(IS_MAC)\n  // On macOS, most accelerators are defined in MainMenu.xib",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "baselineSha256": "2951c927494201cc6fa2e6c3a3f9fbc229bfa932bba43db0563b889fedd92864",
+      "outputSha256": "a494d381429895fc47388587474bcfb566a143e36da17bf9adddbc783cf1e981",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h\"",
+          "replace": "#include \"chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  pref_change_registrar_.Init(pref_service_);\n",
+          "replace": "  pref_change_registrar_.Init(pref_service_);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (pref_service_->FindPreference(\"aux.browser.keyboard_shortcuts\")) {\n    pref_change_registrar_.Add(\n        \"aux.browser.keyboard_shortcuts\",\n        base::BindRepeating(&VerticalTabStripStateController::UpdateCollapseActionItem,\n                            base::Unretained(this)));\n  }\n#endif\n",
+          "count": 1
+        },
+        {
+          "find": "    ui::Accelerator accelerator = collapse_action->GetAccelerator();\n",
+          "replace": "    ui::Accelerator accelerator = collapse_action->GetAccelerator();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n    if (aux::GetKeyboardShortcut(browser_window_->GetProfile(),\n                                 IDC_TOGGLE_VERTICAL_TABS_COLLAPSE, &accelerator))\n      collapse_action->SetAccelerator(accelerator);\n#endif\n",
+          "count": 1
+        },
+        {
+          "find": "#include <optional>",
+          "replace": "#include <optional>\n#include \"chrome/app/chrome_command_ids.h\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/BUILD.gn",
+      "baselineSha256": "94014b2acd0e9032c124e49c505af021f4c09a9a0de14ada3c11720363c13a39",
+      "outputSha256": "3bd2bbad09d73ce477ecde0f7720028cf9d2624fa921495f88f3c68c6918ada3",
+      "anchors": [
+        {
+          "find": "    deps = [\n      \":tab_group\",\n      \":tab_model\",\n      \":tab_strip\",\n      \":tabs\",\n      \":utils\",\n      \"//chrome/app:command_ids\",\n      \"//chrome/app/vector_icons\",\n      \"//chrome/browser/actor\",\n      \"//chrome/browser/actor/ui\",\n      \"//chrome/browser/banners\",\n      \"//chrome/browser/bookmarks\",\n      \"//chrome/browser/collaboration/messaging\",\n      \"//chrome/browser/commerce\",\n      \"//chrome/browser/commerce/in_stock_notification\",\n      \"//chrome/browser/content_settings:content_settings_factory\",\n      \"//chrome/browser/contextual_tasks\",\n      \"//chrome/browser/favicon\",\n      \"//chrome/browser/geic\",\n      \"//chrome/browser/geic:ui\",\n      \"//chrome/browser/glic\",\n      \"//chrome/browser/glic/browser_ui\",\n      \"//chrome/browser/glic/suggestions\",\n      \"//chrome/browser/image_fetcher\",\n      \"//chrome/browser/indigo\",\n      \"//chrome/browser/lifetime\",\n      \"//chrome/browser/media/webrtc\",\n      \"//chrome/browser/metrics\",\n      \"//chrome/browser/net\",\n      \"//chrome/browser/payments\",\n      \"//chrome/browser/preloading/bookmarkbar_preload\",\n      \"//chrome/browser/preloading/new_tab_page_preload\",\n      \"//chrome/browser/preloading/prefetch:zero_suggest_prefetch\",\n      \"//chrome/browser/profiles\",\n      \"//chrome/browser/profiles:profile\",\n      \"//chrome/browser/profiles:profile_manager\",\n      \"//chrome/browser/search\",\n      \"//chrome/browser/sessions\",\n      \"//chrome/browser/signin\",\n      \"//chrome/browser/skills:public\",\n      \"//chrome/browser/skills:ui\",\n      \"//chrome/browser/ssl\",\n      \"//chrome/browser/sync\",\n      \"//chrome/browser/sync:factories\",\n      \"//chrome/browser/tab_contents\",\n      \"//chrome/browser/tab_group_sync:factories\",\n      \"//chrome/browser/task_manager\",\n      \"//chrome/browser/themes\",\n      \"//chrome/browser/ui:accelerator_table\",\n      \"//chrome/browser/ui:browser_actions\",\n      \"//chrome/browser/ui:browser_live_tab_context\",\n      \"//chrome/browser/ui:focus_tab_after_navigation_helper\",\n      \"//chrome/browser/ui:layout_constants\",\n      \"//chrome/browser/ui:sad_tab\",\n      \"//chrome/browser/ui:tab_ui_helper\",\n      \"//chrome/browser/ui:ui_features\",\n      \"//chrome/browser/ui/actions:actions_util\",\n      \"//chrome/browser/ui/autofill\",\n      \"//chrome/browser/ui/blocked_content\",\n      \"//chrome/browser/ui/browser_window\",\n      \"//chrome/browser/ui/commerce\",\n      \"//chrome/browser/ui/context_highlight\",\n      \"//chrome/browser/ui/contextual_search\",\n      \"//chrome/browser/ui/interaction\",\n      \"//chrome/browser/ui/lens\",\n      \"//chrome/browser/ui/performance_controls\",\n      \"//chrome/browser/ui/read_anything\",\n      \"//chrome/browser/ui/search_engine_choice\",\n      \"//chrome/browser/ui/side_panel\",\n      \"//chrome/browser/ui/side_panel:side_panel_views_dependent\",\n      \"//chrome/browser/ui/sync\",\n      \"//chrome/browser/ui/tabs/alert:tab_alert\",\n      \"//chrome/browser/ui/tabs/back_to_opener\",\n      \"//chrome/browser/ui/tabs/back_to_opener:impl\",\n      \"//chrome/browser/ui/tabs/organizer:impl\",\n      \"//chrome/browser/ui/tabs/saved_tab_groups\",\n      \"//chrome/browser/ui/thumbnails\",\n      \"//chrome/browser/ui/toolbar\",\n      \"//chrome/browser/ui/toolbar/pinned_toolbar\",\n      \"//chrome/browser/ui/user_education\",\n      \"//chrome/browser/ui/views:device_chooser_content_view\",\n      \"//chrome/browser/ui/views/bookmarks\",\n      \"//chrome/browser/ui/views/commerce\",\n      \"//chrome/browser/ui/views/contextual_tasks\",\n      \"//chrome/browser/ui/views/file_system_access\",\n      \"//chrome/browser/ui/views/intent_picker:intent_picker_page_action\",\n      \"//chrome/browser/ui/views/interaction\",\n      \"//chrome/browser/ui/views/location_bar\",\n      \"//chrome/browser/ui/views/location_bar/cookie_controls\",\n      \"//chrome/browser/ui/views/page_action\",\n      \"//chrome/browser/ui/views/page_info\",\n      \"//chrome/browser/ui/views/passwords\",\n      \"//chrome/browser/ui/views/side_panel\",\n      \"//chrome/browser/ui/views/side_panel/customize_chrome\",\n      \"//chrome/browser/ui/views/toolbar\",\n      \"//chrome/browser/ui/views/translate\",\n      \"//chrome/browser/ui/web_applications\",\n      \"//chrome/browser/ui/webui:webui_util\",\n      \"//chrome/browser/ui/webui_browser:headers\",\n      \"//chrome/browser/vr\",\n      \"//chrome/browser/web_applications\",\n      \"//components/content_settings/core/browser\",\n      \"//components/contextual_tasks/public\",\n      \"//components/enterprise\",\n      \"//components/favicon/content\",\n      \"//components/favicon/core\",\n      \"//components/history/core/common\",\n      \"//components/image_fetcher/core\",\n      \"//components/lens\",\n      \"//components/metrics:content\",\n      \"//components/multistep_filter/core:features\",\n      \"//components/optimization_guide/content/browser:page_context_eligibility\",\n      \"//components/passage_embeddings/core\",\n      \"//components/payments/core\",\n      \"//components/performance_manager\",\n      \"//components/permissions\",\n      \"//components/pref_registry\",\n      \"//components/privacy_sandbox:features\",\n      \"//components/security_interstitials/content:security_interstitial_page\",\n      \"//components/sessions\",\n      \"//components/skills:features\",\n      \"//components/sync_sessions\",\n      \"//components/tab_groups\",\n      \"//components/tabs:impl\",\n      \"//components/wallet/core/common:features\",\n      \"//net\",\n      \"//ui/base/unowned_user_data\",\n      \"//ui/webui\",\n    ]",
+          "replace": "    deps = [\n      \":tab_group\",\n      \":tab_model\",\n      \":tab_strip\",\n      \":tabs\",\n      \":utils\",\n      \"//chrome/app:command_ids\",\n      \"//chrome/app/vector_icons\",\n      \"//chrome/browser/actor\",\n      \"//chrome/browser/actor/ui\",\n      \"//chrome/browser/banners\",\n      \"//chrome/browser/bookmarks\",\n      \"//chrome/browser/collaboration/messaging\",\n      \"//chrome/browser/commerce\",\n      \"//chrome/browser/commerce/in_stock_notification\",\n      \"//chrome/browser/content_settings:content_settings_factory\",\n      \"//chrome/browser/contextual_tasks\",\n      \"//chrome/browser/favicon\",\n      \"//chrome/browser/geic\",\n      \"//chrome/browser/geic:ui\",\n      \"//chrome/browser/glic\",\n      \"//chrome/browser/glic/browser_ui\",\n      \"//chrome/browser/glic/suggestions\",\n      \"//chrome/browser/image_fetcher\",\n      \"//chrome/browser/indigo\",\n      \"//chrome/browser/lifetime\",\n      \"//chrome/browser/media/webrtc\",\n      \"//chrome/browser/metrics\",\n      \"//chrome/browser/net\",\n      \"//chrome/browser/payments\",\n      \"//chrome/browser/preloading/bookmarkbar_preload\",\n      \"//chrome/browser/preloading/new_tab_page_preload\",\n      \"//chrome/browser/preloading/prefetch:zero_suggest_prefetch\",\n      \"//chrome/browser/profiles\",\n      \"//chrome/browser/profiles:profile\",\n      \"//chrome/browser/profiles:profile_manager\",\n      \"//chrome/browser/search\",\n      \"//chrome/browser/sessions\",\n      \"//chrome/browser/signin\",\n      \"//chrome/browser/skills:public\",\n      \"//chrome/browser/skills:ui\",\n      \"//chrome/browser/ssl\",\n      \"//chrome/browser/sync\",\n      \"//chrome/browser/sync:factories\",\n      \"//chrome/browser/tab_contents\",\n      \"//chrome/browser/tab_group_sync:factories\",\n      \"//chrome/browser/task_manager\",\n      \"//chrome/browser/themes\",\n      \"//chrome/browser/ui:accelerator_table\",\n      \"//chrome/browser/ui:browser_actions\",\n      \"//chrome/browser/ui:browser_live_tab_context\",\n      \"//chrome/browser/ui:focus_tab_after_navigation_helper\",\n      \"//chrome/browser/ui:layout_constants\",\n      \"//chrome/browser/ui:sad_tab\",\n      \"//chrome/browser/ui:tab_ui_helper\",\n      \"//chrome/browser/ui:ui_features\",\n      \"//chrome/browser/ui/actions:actions_util\",\n      \"//chrome/browser/ui/autofill\",\n      \"//chrome/browser/ui/blocked_content\",\n      \"//chrome/browser/ui/browser_window\",\n      \"//chrome/browser/ui/commerce\",\n      \"//chrome/browser/ui/context_highlight\",\n      \"//chrome/browser/ui/contextual_search\",\n      \"//chrome/browser/ui/interaction\",\n      \"//chrome/browser/ui/lens\",\n      \"//chrome/browser/ui/performance_controls\",\n      \"//chrome/browser/ui/read_anything\",\n      \"//chrome/browser/ui/search_engine_choice\",\n      \"//chrome/browser/ui/side_panel\",\n      \"//chrome/browser/ui/side_panel:side_panel_views_dependent\",\n      \"//chrome/browser/ui/sync\",\n      \"//chrome/browser/ui/tabs/alert:tab_alert\",\n      \"//chrome/browser/ui/tabs/back_to_opener\",\n      \"//chrome/browser/ui/tabs/back_to_opener:impl\",\n      \"//chrome/browser/ui/tabs/organizer:impl\",\n      \"//chrome/browser/ui/tabs/saved_tab_groups\",\n      \"//chrome/browser/ui/thumbnails\",\n      \"//chrome/browser/ui/toolbar\",\n      \"//chrome/browser/ui/toolbar/pinned_toolbar\",\n      \"//chrome/browser/ui/user_education\",\n      \"//chrome/browser/ui/views:device_chooser_content_view\",\n      \"//chrome/browser/ui/views/bookmarks\",\n      \"//chrome/browser/ui/views/commerce\",\n      \"//chrome/browser/ui/views/contextual_tasks\",\n      \"//chrome/browser/ui/views/file_system_access\",\n      \"//chrome/browser/ui/views/intent_picker:intent_picker_page_action\",\n      \"//chrome/browser/ui/views/interaction\",\n      \"//chrome/browser/ui/views/location_bar\",\n      \"//chrome/browser/ui/views/location_bar/cookie_controls\",\n      \"//chrome/browser/ui/views/page_action\",\n      \"//chrome/browser/ui/views/page_info\",\n      \"//chrome/browser/ui/views/passwords\",\n      \"//chrome/browser/ui/views/side_panel\",\n      \"//chrome/browser/ui/views/side_panel/customize_chrome\",\n      \"//chrome/browser/ui/views/toolbar\",\n      \"//chrome/browser/ui/views/translate\",\n      \"//chrome/browser/ui/web_applications\",\n      \"//chrome/browser/ui/webui:webui_util\",\n      \"//chrome/browser/ui/webui_browser:headers\",\n      \"//chrome/browser/vr\",\n      \"//chrome/browser/web_applications\",\n      \"//components/content_settings/core/browser\",\n      \"//components/contextual_tasks/public\",\n      \"//components/enterprise\",\n      \"//components/favicon/content\",\n      \"//components/favicon/core\",\n      \"//components/history/core/common\",\n      \"//components/image_fetcher/core\",\n      \"//components/lens\",\n      \"//components/metrics:content\",\n      \"//components/multistep_filter/core:features\",\n      \"//components/optimization_guide/content/browser:page_context_eligibility\",\n      \"//components/passage_embeddings/core\",\n      \"//components/payments/core\",\n      \"//components/performance_manager\",\n      \"//components/permissions\",\n      \"//components/pref_registry\",\n      \"//components/privacy_sandbox:features\",\n      \"//components/security_interstitials/content:security_interstitial_page\",\n      \"//components/sessions\",\n      \"//components/skills:features\",\n      \"//components/sync_sessions\",\n      \"//components/tab_groups\",\n      \"//components/tabs:impl\",\n      \"//components/wallet/core/common:features\",\n      \"//net\",\n      \"//ui/base/unowned_user_data\",\n      \"//ui/webui\",\n    ]\n    if (is_mac && enable_aux_browser) {\n      deps += [ \"//chrome/browser/aux:keyboard_shortcuts\" ]\n    }",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

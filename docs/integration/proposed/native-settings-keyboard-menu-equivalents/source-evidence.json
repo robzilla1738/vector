@@ -1,0 +1,21 @@
+{
+  "provenance": "155 actual owner integration; supplied1852 shortcut hook remains default/ID contract, not recovered native customization C++",
+  "supportingConsumers": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_widget.cc",
+      "sha256": "74f3783fbea63c7c91433b3382665914e600ad8c69f522e5732bf103c78a6bad"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "sha256": "001c768c316f6d1abf1ac4ba525f4c4f6efd6e585f3825772ab3feabfa4ac413"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_actions.cc",
+      "sha256": "ade924789c9a6dbfa23057fc86aa2929e991d6b4f0a73ab00aee5d365afc703a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/cocoa/command_dispatcher.h",
+      "sha256": "cc10df8d32e28902ff1d51d352b1759906c51017f9fec45a841dfed535eaf649"
+    }
+  ]
+}
