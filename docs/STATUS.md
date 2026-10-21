@@ -1,6 +1,10 @@
 # Aux implementation status
 
-Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
+Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
+
+##583 unused preload integration — 2026-10-21
+
+Pinned source audit identified Chromium155's speculative stock chrome://tab-search preload as an unnecessary owner alongside Aux's actual supplied extension/native Search surface.583 excludes only that stock origin from speculative candidates and final selection, preserving other preload candidates, explicit requests/navigation, the actual Aux Search implementation and every tab-service guard. Remaining rejections emit only regular/experimental Mojo client, observer, native-external and active-session counts.709 source+23 artwork pins applied; full native build is running. Actual582 sidebar Search positively opens supplied `tabsearch.html` and dismisses correctly. No583 runtime/profile-switch success is claimed before integration.
 
 ## Actual582 interaction-owner diagnostic — 2026-10-21
 
