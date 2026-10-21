@@ -1,0 +1,20 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/search_engines/template_url_service.h",
+      "sha256": "d510058b1fba0da65717ca669856af03b6587bedb95a46ab87d58aec56057db6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/search_engines/template_url_service.cc",
+      "sha256": "c9332205403a49b19bf0e6412efd31b30b429fc436bb1e59b3d7f060be939ea8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_function.cc",
+      "sha256": "0f743b865e291a3a3173fc931550d5e4624301a7b44e88ffd052da9c89845016"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/extensions/browser/extension_function.h",
+      "sha256": "b7d21adba7e74da120ead3ea1136e5a03046f29009a6ba92965f670c4b3b0b3a"
+    }
+  ]
+}

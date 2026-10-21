@@ -1,0 +1,76 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #ifndef CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_PREFERENCES_AUX_BROWSER_PREFERENCES_API_H_
+ #define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_PREFERENCES_AUX_BROWSER_PREFERENCES_API_H_
++#include "base/callback_list.h"
+ #include "chrome/browser/extensions/api/aux_common/aux_api.h"
+ #include "chrome/browser/shell_integration.h"
+ class PrefRegistrySimple;
+@@ -14,8 +15,12 @@
+  protected:
+   ~AuxBrowserPreferencesFunction() override = default;
+   ResponseAction RunAux() override;
++  void OnBrowserContextShutdown() override;
+ 
+  private:
++  void DidLoadSearchEngines();
++  base::CallbackListSubscription search_engines_loaded_subscription_;
++  bool search_engines_pending_ = false;
+   void DidDefaultBrowser(shell_integration::DefaultWebClientState state);
+   void DidDock(base::DictValue state);
+ };
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -43,7 +43,6 @@
+ constexpr char kBookmarks[] = "aux.browser.sidebar_bookmarks";
+ base::DictValue SearchEngines(Profile* profile) {
+   auto* service = TemplateURLServiceFactory::GetForProfile(profile);
+-  service->Load();
+   base::ListValue engines;
+   const auto* current = service->GetDefaultSearchProvider();
+   for (const auto& engine : service->GetTemplateURLs()) {
+@@ -382,7 +381,18 @@
+     return RespondNow(NoArguments());
+   }
+   if (method == "getSearchEngines") {
+-    return RespondNow(WithArguments(SearchEngines(profile())));
++    auto* service = TemplateURLServiceFactory::GetForProfile(profile());
++    service->Load();
++    if (service->loaded()) {
++      return RespondNow(WithArguments(SearchEngines(profile())));
++    }
++    // Load() is asynchronous when backed by KeywordWebDataService. Returning
++    // the pre-load vector would disable the supplied chooser with empty data.
++    search_engines_pending_ = true;
++    search_engines_loaded_subscription_ = service->RegisterOnLoadedCallback(
++        base::BindOnce(&AuxBrowserPreferencesFunction::DidLoadSearchEngines,
++                       base::RetainedRef(this)));
++    return RespondLater();
+   }
+   if (method == "setDefaultSearchEngine") {
+     if (!args()[0].is_string()) {
+@@ -404,6 +414,22 @@
+     return RespondNow(Error("Search engine no longer exists"));
+   }
+   return RespondNow(Error("Unsupported Aux preference method"));
++}
++void AuxBrowserPreferencesFunction::DidLoadSearchEngines() {
++  search_engines_pending_ = false;
++  search_engines_loaded_subscription_ = {};
++  Respond(WithArguments(SearchEngines(profile())));
++}
++void AuxBrowserPreferencesFunction::OnBrowserContextShutdown() {
++  if (!search_engines_pending_) {
++    return;
++  }
++  // ExtensionFunction::Shutdown retains this instance through this cleanup.
++  // Remove the callback before its profile/service can disappear; never take
++  // a snapshot or report success for a retired profile.
++  search_engines_pending_ = false;
++  search_engines_loaded_subscription_ = {};
++  Respond(Error("Profile closed before search engines finished loading"));
+ }
+ void AuxBrowserPreferencesFunction::DidDefaultBrowser(
+     shell_integration::DefaultWebClientState state) {

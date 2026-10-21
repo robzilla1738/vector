@@ -1,0 +1,85 @@
+{
+  "baseline": "actual563 + provided-reuse-pass1 static inputs",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sha256": "d306da6bc4abe4ef88e1a4e6a94002465100e63b99e06535ed0ded0033158cf4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api_mac.mm",
+      "sha256": "ac1d7e119d496c7e7ebb426e4bf3954eea90da979b5719d6847038d699019b06"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "60f54a9109b84a9ffb0ef3ca6f9fe131b0aef0f06ec273228e61ce5bec5d1e57"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_prefs.h",
+      "sha256": "d91f80f846fd0700c00c723529f9913a60673dd134e165fdef82f05dd49bdb03"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/tab_strip_prefs.cc",
+      "sha256": "08cd68e87aa52bdecf1642650f06ac4828302a5e81ef45aead854709b0899e7c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "sha256": "2951c927494201cc6fa2e6c3a3f9fbc229bfa932bba43db0563b889fedd92864"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_commands.cc",
+      "sha256": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/navigator/browser_navigator.cc",
+      "sha256": "e19ef7eb70bfe922e65c2023f5c7ca05f62a3b0d6b5c9647a08ebe209a32def2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_tab_switcher.cc",
+      "sha256": "b869696d8e541ad0a9bbabff3d1e8da50bd61fd08cfef57419f12a679a319247"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "sha256": "f3e0b7ae6bf3f5b06433b3f01bed23041fb8ff01c89bc77998eb64cf3451d70a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/tabs/tab_strip.cc",
+      "sha256": "f0584b8e0a982e22952a47c645f393d6926447c991bc8a98888e4839540c26e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "sha256": "5ab62d3ef3e1e94aec68908906bda041615a8e2846a4ba41d8b7e4bda2328e66"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+      "sha256": "1bc512b544a1f96201d4f0a66a3204ed48ff1a5d9afb2b9864aed86fd7e6d82b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chats_transport.cc",
+      "sha256": "0283536265bf7c22de487c4a4273bf2c08b459c3c41faacec0bdd63fc58fe341"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm",
+      "sha256": "9410b8992cce952afe26c4f4cf260e031d57c12acdf93f5167e0a0146f6833ca"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/appearance-Ceuw3-j6.js",
+      "sha256": "01c170f7f7ae1b7fd91509dd2525c4dbad466a4c3982281e674bec0954d8e80a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/general-3dgRbrRk.js",
+      "sha256": "2d420ef4af5fe14301a10e360da0e7fb681e9afc0f90331e4a0be7980dd1b42e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "13722f1922f633796b7fc334301318339ee0b10b05b264802e6bacb48aaff635"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/provided-ui-boundary.mjs",
+      "sha256": "125047b508f98759524f23caa4d496d44da96f9fadfdabde150b4a9d63bd93f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/daemon-adapter.mjs",
+      "sha256": "194573981c40bfda4ea488c5d84050e769da8eac837cba69b0d308b1f4b43ba0"
+    }
+  ]
+}

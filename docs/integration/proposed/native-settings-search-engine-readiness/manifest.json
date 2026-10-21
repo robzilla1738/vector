@@ -1,0 +1,44 @@
+{
+  "baseline": "actual-native-v563 (includes supplied Bookmarks pref fix)",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
+      "baselineSha256": "847160d0dd5f122c7c7eb49b9aaf4f4f62a4be474601b603c8243bbe5a1a1f46",
+      "outputSha256": "58767c81a10650de1ef144fff3039fa944743294713a9911d284abbe7889a2f5",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_common/aux_api.h\"",
+          "replace": "#include \"base/callback_list.h\"\n#include \"chrome/browser/extensions/api/aux_common/aux_api.h\"",
+          "count": 1
+        },
+        {
+          "find": "  ResponseAction RunAux() override;\n\n private:\n  void DidDefaultBrowser",
+          "replace": "  ResponseAction RunAux() override;\n  void OnBrowserContextShutdown() override;\n\n private:\n  void DidLoadSearchEngines();\n  base::CallbackListSubscription search_engines_loaded_subscription_;\n  bool search_engines_pending_ = false;\n  void DidDefaultBrowser",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "d306da6bc4abe4ef88e1a4e6a94002465100e63b99e06535ed0ded0033158cf4",
+      "outputSha256": "131783c13c2cdd6f6500a60d32b7008dc7500ff3e7b5e38e60e318c7ff7c59aa",
+      "anchors": [
+        {
+          "find": "  auto* service = TemplateURLServiceFactory::GetForProfile(profile);\n  service->Load();\n  base::ListValue engines;",
+          "replace": "  auto* service = TemplateURLServiceFactory::GetForProfile(profile);\n  base::ListValue engines;",
+          "count": 1
+        },
+        {
+          "find": "  if (method == \"getSearchEngines\") {\n    return RespondNow(WithArguments(SearchEngines(profile())));\n  }",
+          "replace": "  if (method == \"getSearchEngines\") {\n    auto* service = TemplateURLServiceFactory::GetForProfile(profile());\n    service->Load();\n    if (service->loaded()) {\n      return RespondNow(WithArguments(SearchEngines(profile())));\n    }\n    // Load() is asynchronous when backed by KeywordWebDataService. Returning\n    // the pre-load vector would disable the supplied chooser with empty data.\n    search_engines_pending_ = true;\n    search_engines_loaded_subscription_ = service->RegisterOnLoadedCallback(\n        base::BindOnce(&AuxBrowserPreferencesFunction::DidLoadSearchEngines,\n                       base::RetainedRef(this)));\n    return RespondLater();\n  }",
+          "count": 1
+        },
+        {
+          "find": "void AuxBrowserPreferencesFunction::DidDefaultBrowser(",
+          "replace": "void AuxBrowserPreferencesFunction::DidLoadSearchEngines() {\n  search_engines_pending_ = false;\n  search_engines_loaded_subscription_ = {};\n  Respond(WithArguments(SearchEngines(profile())));\n}\nvoid AuxBrowserPreferencesFunction::OnBrowserContextShutdown() {\n  if (!search_engines_pending_) {\n    return;\n  }\n  // ExtensionFunction::Shutdown retains this instance through this cleanup.\n  // Remove the callback before its profile/service can disappear; never take\n  // a snapshot or report success for a retired profile.\n  search_engines_pending_ = false;\n  search_engines_loaded_subscription_ = {};\n  Respond(Error(\"Profile closed before search engines finished loading\"));\n}\nvoid AuxBrowserPreferencesFunction::DidDefaultBrowser(",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
