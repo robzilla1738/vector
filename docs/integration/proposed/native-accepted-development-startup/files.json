@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v567",
+  "files": [
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "baselineSha256": "9d00b802e192124724f9e955b471660e4db41a2d94134153d6de172ee5517e23",
+      "outputSha256": "6bf7e17f89cbd242d621260c0d540c0937c2521ea5ceb7c76b569234b67684b2"
+    },
+    {
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "baselineSha256": null,
+      "outputSha256": "0ae2885181d26144869e0df9e915c6468dad7a473dc94ff4d414e5dd572edf8a"
+    }
+  ]
+}
