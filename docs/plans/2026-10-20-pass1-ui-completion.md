@@ -46,3 +46,7 @@ Settings links now use the six counted Aux internal URLs, with compatible legacy
 The v545 full build then found a non-const top-container accessor in the frame paint adapter. Native546 replaces it with the existing const-safe view-type check. The targeted address-bar and frame-paint objects now compile; the routing object is compiling before the full incremental build resumes. No runtime acceptance is inferred from these compile results.
 
 Native547 updates the four obsolete GURL path accessor calls without changing the Settings allowlist. All six targeted native object checks pass. The full incremental build reached framework linking; final package and actual desktop comparison remain pending.
+
+## Actual547 comparison and final551 integration
+
+547 built and launched; receipt and resource reuse verification succeeded. Actual menu/Settings/Advanced link/collapse/sidebar data observation succeeded. The final551 composition incorporates actual Cocoa shortcut dispatch,330DIP Agent default/minimum (preserving explicit saved widths), Agent-only Ask/native-close visibility, and directly observed resting-domain PageInfo plus trailing focused site controls. All four affected object checks pass; full551 build/package/live acceptance remains pending. Evidence of the newly observed reference interactions is saved in `out/pass1-ui-completion/aside-domain-info.png` and `aside-url-focused.png`. No AI request was sent.
