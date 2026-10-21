@@ -32,7 +32,7 @@
     "nextFocusedCompile": "577 two objects and579 five objects passed",
     "full576BuildPassed": true,
     "startupRecordWritten": false,
-    "nextFullBuild": "579 running"
+    "nextFullBuild": "579 full build/generated-key probe passed"
   },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
@@ -101,7 +101,20 @@
     "computerUseHelperState": "stopped",
     "osPermissionsVerified": false,
     "approvalReview": "docs/integration/proposed/computer-use-local-readiness/README.md",
-    "ownerApproval": "reviewed bounded Computer Use check authorized; execution paused after desktop incident"
+    "ownerApproval": "reviewed bounded Computer Use check authorized; execution paused after desktop incident",
+    "localPermissionCheck": {
+      "authorized": true,
+      "exactHelperSha256": "3d4211d95fb5445ab2907af8bc19691a527bcbab65c08dbaaae0e33bda486665",
+      "directOriginalPipeProtocol": true,
+      "contextAwarenessSettingChanged": false,
+      "cloudInferencePerformed": false,
+      "health": "paused; accessibility/inputMonitoring/screenRecording false",
+      "grantChanged": false,
+      "blockedBy": "macOS administrator authentication before adding helper",
+      "childShutdown": "original shutdown, stopped health, exit0, PID absent",
+      "report": "/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj/computer-use-reviewed-check-zn3F2X/report.json",
+      "captureOrActionAccepted": false
+    }
   },
   "desktopIncident": {
     "credentialSubmittedToGoogleByUnexpectedClipboardPaste": true,
