@@ -57,7 +57,9 @@ export function refreshVaultExclusionCache({ cachePath, cacheSha256, signedRecei
   if(adapted.codeSha256!==sourcePin||hash(regular(path.join(freshRoot,daemonRelative,executable)))!==hash(adapted.binary)||hash(regular(path.join(freshRoot,daemonRelative,seed)))!==hash(disabledSeed))throw Error('Fresh package is not exact production adapter output');
   let expected=reviewedUiResourceInventory(cache.unsignedResources,resourceReview);
   for(const relative of [executable,seed]){const key=daemonPath+'/'+relative,before=expected.find(v=>v.path===key),after=fresh.find(v=>v.path===key);if(!before||!after||before.link||after.link||before.mode!==after.mode)throw Error('Unexpected daemon baseline topology');expected=expected.map(v=>v.path===key?after:v);}
-  same(sort(expected),sort(fresh),'Unsigned package has unreviewed resource changes');
+  const expectedMap=new Map(expected.map(v=>[v.path,v])); const freshMap=new Map(fresh.map(v=>[v.path,v]));
+  const differences=[...new Set([...expectedMap.keys(),...freshMap.keys()])].filter(k=>stable(expectedMap.get(k))!==stable(freshMap.get(k)));
+  if(differences.length)throw Error('Unsigned package has unreviewed resource changes: '+JSON.stringify(differences));
   const repository=path.resolve(new URL('../../',import.meta.url).pathname);
   output=path.resolve(output);if(!output.startsWith(path.join(repository,'out')+'/'))throw Error('Project-owned fresh cache output required');
   freshOutput(output,[packageRoot,path.dirname(cachePath),signedApp,scope.policy.core.home]);
