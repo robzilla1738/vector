@@ -44,7 +44,7 @@ const resumed = options.resume ? JSON.parse(await readFile(resolve(options.resum
 if (resumed) {
   assert(resolve(options.resume).startsWith(join(root, 'out/acceptance/') + 'e2e-'));
   assert(resumed.complete === false && resumed.credentialCleanup === 'removed and verified through supplied credential API' && resumed.cleanupErrors.length === 0);
-  assert(resumed.cases.length > 0 && resumed.cases.length <= 14, 'Resume only before cross-session memory cases.');
+  assert(resumed.cases.length > 0 && resumed.cases.length <= 20, 'Bounded acceptance cases required.');
   assert(resumed.cases.slice(0, -1).every(row => row.passed) && resumed.cases.at(-1).passed === false);
 }
 const runId = randomUUID();
@@ -64,7 +64,14 @@ const binding = registry.accounts.find(row => row.id === accountId)?.profileBind
 assert(binding?.profilePath && isDisposable(await realpath(binding.profilePath)), 'Exact account binding must point to a disposable native profile.');
 const initialSessions = await rpc.sessions.list.query({ accountId, archived: 'include', ephemeral: 'include', parent: 'all' });
 if (resumed) {
-  assert.deepEqual(initialSessions.map(row => row.id).sort(), (resumed.sessionIds ?? [...resumed.cases.map(row => row.sessionId), ...(resumed.previousFailedAttempt ? [resumed.previousFailedAttempt.sessionId] : [])]).sort(), 'Resume account must contain exactly the prior acceptance sessions.');
+  const expectedIds = new Set(resumed.sessionIds ?? [...resumed.cases.map(row => row.sessionId), ...(resumed.previousFailedAttempt ? [resumed.previousFailedAttempt.sessionId] : [])]);
+  assert([...expectedIds].every(id => initialSessions.some(row => row.id === id)), 'Every prior acceptance session must still exist.');
+  const remaining = initialSessions.filter(row => !expectedIds.has(row.id));
+  while (remaining.length) {
+    const index = remaining.findIndex(row => row.parentId && expectedIds.has(row.parentId));
+    assert(index >= 0, 'Resume account may contain only prior acceptance sessions and their real descendants.');
+    expectedIds.add(remaining.splice(index, 1)[0].id);
+  }
   for (const row of initialSessions) {
     const detail = await rpc.sessions.get.query({ accountId, sessionId: row.id });
     assert.equal(`${detail.model.provider}/${detail.model.modelId}`, resumed.model);
@@ -80,9 +87,17 @@ assert(!(await rpc.models.getCredentialStatus.query({ accountId, providerId })).
 assert(process.env.AUX_E2E_GATEWAY_KEY, 'Inject AUX_E2E_GATEWAY_KEY explicitly; the harness never opens workspace/owner credential files.');
 let key = process.env.AUX_E2E_GATEWAY_KEY;
 delete process.env.AUX_E2E_GATEWAY_KEY;
-const site = await fixtures();
+let fixtureMarker = resumed?.fixtureMarker;
+const memorySourceRunId = resumed?.memorySourceRunId ?? (resumed?.cases.some(row => row.number === 15 && row.passed) ? resumed.runId : null);
+if (memorySourceRunId && !fixtureMarker) {
+  assert(/^[a-f0-9-]{36}$/.test(memorySourceRunId));
+  const note = await rpc.memory.readFile.query({accountId, filePath: `acceptance-${memorySourceRunId}.md`});
+  fixtureMarker = note.content.match(/dispatch code (CEDAR-[a-f0-9]{8})/)?.[1];
+  assert(fixtureMarker, 'The actual prior acceptance memory source must retain its fixture marker.');
+}
+const site = await fixtures({marker: fixtureMarker});
 const report = { runId, accountId, profileId: options.profile, accountCreatedAt: resolvedAccount.account.createdAt,
-  model: modelSpec, startedAt: new Date().toISOString(), requested: limit,
+  model: modelSpec, fixtureMarker: site.marker, memorySourceRunId, startedAt: new Date().toISOString(), requested: limit,
   cases: resumed ? resumed.cases.slice(0, -1) : [], sessionIds: initialSessions.map(row => row.id), complete: false };
 if (resumed) {
   assert.equal(resumed.model, modelSpec);
@@ -210,6 +225,8 @@ try {
   await setting('modelCategories', Object.fromEntries(['fast', 'standard', 'deep', 'visual'].map(category => [category, model])));
   // Supplied production threshold clamps to64000 tokens. No fake tiny runtime
   // window or explicit manual-compaction call may satisfy automatic acceptance.
+  const experimental = await rpc.settings.get.query({ accountId, key: 'experimental' });
+  await setting('experimental', { ...experimental, compactionLimits: true });
   const compaction = await rpc.settings.get.query({ accountId, key: 'compaction' });
   await setting('compaction', { ...compaction, enabled: true, reserveTokens: 2048, keepRecentTokens: 2048,
     modelThresholdTokens: { ...compaction.modelThresholdTokens, [modelSpec]: 64000 } });
@@ -219,6 +236,7 @@ try {
   key = '';
   const available = await rpc.models.listAvailable.query({ accountId });
   assert(available.length > 0 && available.every(row => row.provider === providerId && row.id === model.modelId), 'Only Muse may be available to parent, child or background inference.');
+  assert(available.every(row => row.maxTokens > 0 && row.maxTokens <= 131072), 'Effective Muse output limit must fit the supplied model contract before inference.');
   memoryDirectory = await rpc.memory.getDirectory.query({ accountId });
   await mkdir(memoryDirectory, { recursive: true, mode: 0o700 });
   assert(isDisposable(await realpath(memoryDirectory)), 'Actual memory directory must be disposable.');
@@ -245,6 +263,7 @@ try {
       // Check actual session records including children, not just a parent answer.
       const records = await rpc.sessions.list.query({ accountId, archived: 'include', ephemeral: 'include', parent: 'all' });
       // Supplied list rows are summaries and omit model configuration.
+      report.sessionIds = records.map(record => record.id);
       for (const record of records) {
         const detail = await rpc.sessions.get.query({ accountId, sessionId: record.id });
         assert.equal(`${detail.model.provider}/${detail.model.modelId}`, modelSpec, 'Every disposable parent/child session must use Muse.');

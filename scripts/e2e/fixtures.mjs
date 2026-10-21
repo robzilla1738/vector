@@ -1,9 +1,10 @@
 import { createServer } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 
-export async function fixtures() {
+export async function fixtures(options = {}) {
   const nonce = randomUUID();
-  const marker = `CEDAR-${randomUUID().slice(0, 8)}`;
+  const marker = options.marker ?? `CEDAR-${randomUUID().slice(0, 8)}`;
+  if (!/^CEDAR-[a-f0-9]{8}$/.test(marker)) throw Error('Invalid disposable fixture marker');
   const events = new Map();
   const record = (id, value) => events.set(id, [...(events.get(id) ?? []), value]);
   const server = createServer(async (request, response) => {

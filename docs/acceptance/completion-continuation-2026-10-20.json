@@ -68,9 +68,19 @@
     }
   ],
   "actualAi": {
-    "report": "out/acceptance/e2e-a259a3fc-2c03-4426-809a-e12db62ad274/report.json",
-    "state": "running",
+    "report": "out/acceptance/e2e-035e9825-0dd5-46d1-b157-d9420417b0d1/report.json",
+    "state": "complete",
     "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
-    "lastObservedCasesPassed": 6
+    "casesPassed": 20,
+    "resumedWithPriorPassingEvidence": true,
+    "automaticCompaction": true,
+    "credentialCleanup": "removed and verified through supplied credential API",
+    "cleanupErrors": []
+  },
+  "toolReadiness": {
+    "computerUseHelperBuilt": true,
+    "computerUseHelperState": "stopped",
+    "osPermissionsVerified": false,
+    "approvalReview": "docs/integration/proposed/computer-use-local-readiness/README.md"
   }
 }
