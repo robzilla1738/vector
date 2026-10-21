@@ -1,0 +1,3 @@
+# Commit the complete Agent toolbar pill
+
+Actual589 retains a clipped trailing Aux fragment while its native extension action slides away on Agent pages/panel activation. Existing visibility policy already hides this action in those states. Finish that target layout synchronously for this text pill, including full preferred-width restoration on ordinary pages. Other extension visibility policies and label/font/padding remain unchanged. Original animation layout ResetLayout API clears intermediate slide/clipping state. Runtime panel-open/close and page transitions must verify this correction; no acceptance from source alone.

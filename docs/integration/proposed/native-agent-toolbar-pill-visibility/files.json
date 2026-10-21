@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc",
+      "baselineSha256": "20d339a3f4b82a112256ac4ca173f27dbebe8cf7da3acdea64e8b297267e6fcc",
+      "outputSha256": "071c9442642ebd056873406528fe2abad74c8dcbcbe1ded71f9cf8269cf6997e"
+    }
+  ],
+  "edits": [
+    {
+      "anchorSha256": "854fc6e2e03d2b7cb604faf48c1b430ee87bd6c3396248d4dc7beecdb6422143",
+      "count": 1
+    },
+    {
+      "anchorSha256": "d4c9ed6a4d2c85f0e7988518c195d1d84b3a2700f8dffabefefcebe43327bbe8",
+      "count": 1
+    }
+  ]
+}

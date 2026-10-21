@@ -1,0 +1,25 @@
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -549,6 +549,9 @@
+   if (extension_id == aux::kAgentExtensionId &&
+       (aux_agent_panel_active_ || IsCommittedAgentToolbarPage(browser_))) {
+     GetAnimatingLayoutManager()->FadeOut(action_view);
++    // The supplied text pill disappears as a whole when the Agent owns the
++    // page/panel. Sliding an icon-sized slice leaves a clipped "Aux" fragment.
++    GetAnimatingLayoutManager()->ResetLayout();
+     return;
+   }
+ #endif
+@@ -597,6 +600,12 @@
+   } else {
+     GetAnimatingLayoutManager()->FadeOut(action_view);
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (extension_id == aux::kAgentExtensionId) {
++    // Restore the complete preferred-width pill when returning to a page.
++    GetAnimatingLayoutManager()->ResetLayout();
++  }
++#endif
+ }
+ 
+ void ExtensionsToolbarDesktop::AnchorAndShowWidgetImmediately(
