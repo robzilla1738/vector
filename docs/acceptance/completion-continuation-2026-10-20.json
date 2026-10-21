@@ -25,7 +25,7 @@
   ],
   "integrationPending": {
     "candidate": 589,
-    "state": "full-native-build-running",
+    "state": "native-build-and-package-passed-cache-baseline-rejected-before-launch",
     "batches": [
       "587 password import exclusion",
       "588 classic WebUI omnibox profile lifecycle",
@@ -202,7 +202,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-owner-requested-substantial-batches",
+  "executionState": "paused-owner-requested-after-built589",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -239,5 +239,18 @@
     "otherHelpersResigned": false,
     "provisioningPerformed": false,
     "runtimeAccepted": false
+  },
+  "pauseCheckpoint": {
+    "builtCandidate": 589,
+    "lastVerifiedCandidate": 586,
+    "newCandidateLaunched": false,
+    "next": "Reconcile node-development generated source with exact approved daemon payload/signing review; do not waive resource guard. Then retained-helper verification and focused actual app checks.",
+    "sourceOnlyAimProposal": "5d1c3e6be",
+    "sourceOnlyAimWorktree": "/private/tmp/aux-vault-unsigned-review",
+    "restored": true,
+    "appOpen": false,
+    "buildJobsRunning": false,
+    "unacceptedPackage": "out/provided-candidate-local-browser-pass-v589-unaccepted",
+    "mismatch": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs"
   }
 }

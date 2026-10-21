@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Owner-requested pause checkpoint — built589, restore verified586 — 2026-10-21
+
+Owner requested a pausing point during combined589 packaging. Full native589 build/generated-key probe passed (97 steps,9m41.43s) and supplied package assembled10751 resources+418 native leaves. The new daemon signature is approved and statically verified, but its refreshed resource cache rejected the unsigned package inventory before copying/launch. This is an integration mismatch, not runtime acceptance. The diagnostic isolated Contents/Resources/node-development/index.mjs inside the daemon: fresh production staging updated that source alongside the SEA, but the exact approved two-leaf signed review retains its earlier bytes. No guard is waived.589 is retained at out/provided-candidate-local-browser-pass-v589-unaccepted;586 and its exact accepted startup record are restored at the stable candidate path. Aux is closed. No589 profile/draft/import/API/UI acceptance is claimed.
+
+Used-AIM settlement work is saved separately at commit5d1c3e6be in /private/tmp/aux-vault-unsigned-review, 18 pinned files/37 edits, applicability checked only. It is not integrated, compiled or runtime accepted. No successor native build is planned during this pause. Resume with exact resource mismatch resolution,589 retained-helper verification, one disposable launch and focused profile/draft/import/API/UI checks; then evaluate the separate AIM proposal.
+
 ## Combined589 completion build and approved Vault exclusion — 2026-10-21
 
 Owner approved the exact single-daemon local signing exception. The separate signed copy validates the existing profile/identity and preserves the seven entitlements; signing changed only its executable/resource seal. All other helpers remain untouched. Receipt751bcfbb4a6ff5279d4517e4775b3b45b4484e1f3bb1c687ac005d6549b82ceb. No provisioning, release, owner credential access or runtime launch occurred in that signing step. Production staging/cache integration is in progress.

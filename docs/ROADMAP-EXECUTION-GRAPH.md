@@ -1,5 +1,9 @@
 # Aux completion execution graph
 
+## Current pause — owner request,2026-10-21
+
+589 native build and package passed; cache refresh correctly rejected the changed daemon node-development/index.mjs not covered by the exact signed two-leaf review.589 is preserved unaccepted; verified586 and its exact startup acceptance are restored. Aux is closed, no builds or worker jobs running. Resume with this resource/source/signing consistency issue, then one focused589 runtime/UI pass. Separate used-AIM proposal5d1c3e6be remains source-only in /private/tmp/aux-vault-unsigned-review. No full readiness claim. This pause supersedes the active entries below.
+
 ## Resumed substantial completion batches — 2026-10-21
 
 Owner resumed execution and requested large coherent batches with lean verification. Preserve actual585 UI as baseline. Batch1 covers profile/context ownership and chat state; batch2 closes remaining visual/interaction journeys; batch3 covers imports, native integrations and stable local delivery. Reuse the20 passing Muse cases and unaffected browser evidence. One native build resource owner; source/UI audits proceed while linking. Do not repeat broad test suites or diagnose by repeatedly rebuilding unchanged code.
