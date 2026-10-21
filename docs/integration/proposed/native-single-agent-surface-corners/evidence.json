@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/shadow_overlay_view.cc",
+    "sha256": "99297ed6f0fe1acfcac4f9580a0563f82ed973c4ac0cbcb415e0d3cdd21af7c8"
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/themed_background.cc",
+    "sha256": "96e8b3bb01e1256224008c8fd0e9ee108c76a7614c00f407a5f2f0fdd452d9d6"
+  },
+  {
+    "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+    "sha256": "41d337f46d19bc4e8ef135b3f619eb8ed07ee3a2fa18bef5b27bf933bcdc7b8e"
+  }
+]

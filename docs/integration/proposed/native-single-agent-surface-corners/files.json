@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v591",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "baselineSha256": "1ca047020555582756653295e01a696109d47e050af0feb613393d77666b0d80",
+      "outputSha256": "c389e60125d6985742e33fd68edb2855f4fd3fcbb2d10f6fe4d9550213400514"
+    }
+  ]
+}

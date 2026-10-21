@@ -1,0 +1,11 @@
+# One main-surface corner owner beside the Agent panel
+
+Actual owner report from v589: nested curved seams at both top corners when the left sidebar and right Agent panel are open. Pinned current v591 source confirms two independent corner painters occupy the main toolbar/page edge.
+
+The existing Aux adaptation removes Agent side-panel padding and gives toolbar/top-container the shared16DIP window-surface radius. CalculateSeparatorInfo still enables Chromium's `shadow_box` for an open panel, however. MainShadowOverlay is consequently visible over the same surface. ShadowOverlayView constructs four CornerView cutouts, paints their toolbar-themed backing, and lays them out using a separate Emphasis::kHigh radius, with corner outset/overpaint and a ShadowFrameView. This remaining stock inset-panel decoration conflicts with the single flush surface specified by the earlier supplied-reference adaptation. It is especially visible with both sidebars because both upper edges are internal edges.
+
+For the exact Aux Agent entry in the admitted Mac vertical shell, outside fullscreen, with no infobar or split view, stop requesting that redundant shadow box. Its top-padding flag is also cleared; the existing Agent zero-padding policy and native16DIP surface owners remain intact. Other panel entries, fullscreen, split content and infobars keep their current policies. No changes to the sidebar overlay, native glass, shadow of the hover sidebar, page CSS, panel dimensions, divider or toolbar controls.
+
+This is an integration correction grounded in actual current paint owners and the existing observed-reference surface contract, not a claim of recovered original C++ implementation. Prior evidence: native-page-frame-continuity and native-shared-surface-corners. The existing toolbar/top-container rounded backgrounds and lower WebContents clipping remain the sole main-surface geometry; Agent content retains its own16DIP clip.
+
+One counted replacement, actual v591 baseline/output hashes and isolated patch replay passed. No native checkout/build/app/signing/runtime changes. Integrator should visually compare both upper main-surface edges with Agent panel open/closed, including a supplied page and external page. This patch does not address the separately owned Ask Aux toolbar clipping report.

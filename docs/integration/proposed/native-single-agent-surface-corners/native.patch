@@ -1,0 +1,29 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -271,6 +271,26 @@
+       break;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Aux's toolbar/page already owns the shared window-radius surface. The
++  // stock side-panel shadow box paints another set of corner cutouts over it,
++  // even though the supplied Agent panel has no inset. Keep one corner owner.
++  if (has_side_panel && !has_infobar && !is_split_view &&
++      !is_fullscreen(layout_data_->window_state) &&
++      layout_data_->tab_strip_type == TabStripType::kVertical &&
++      views().vertical_tab_strip_region_view->GetAuxProfilePreviewAdmission()) {
++    auto* browser_view =
++        views::AsViewClass<BrowserView>(views().browser_view.get());
++    auto* panel_ui =
++        browser_view ? SidePanelUI::From(browser_view->browser()) : nullptr;
++    if (panel_ui && panel_ui->IsSidePanelEntryShowing(SidePanelEntryKey(
++            SidePanelEntryId::kExtension, aux::kAgentExtensionId))) {
++      info.shadow_box = false;
++      info.side_panel_top_padding = false;
++    }
++  }
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   // A transparent separator still reserves a pixel exposing untinted native
+   // material between the supplied page and its matching toolbar tint.
