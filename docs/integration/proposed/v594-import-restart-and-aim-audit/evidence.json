@@ -1,0 +1,46 @@
+{
+  "kind": "static-audit-and-scoped-synthetic-destination-read",
+  "pins": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/launch-v594-fixture.py",
+      "sha256": "7fc9af78ce7aa6480d93072b4d41427fd5ff9e6f3e1faf5014af3ea74c57a877"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/native-integration/v594-local-client.mjs",
+      "sha256": "9a2a9eb627067b67d49bcac711a7ae8d6b16903ca6d5bc316300eb16958743dc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/synthetic-import-acceptance/probe.mjs",
+      "sha256": "ec809056784ee8ea8517fbf3b4f3045856d42b9e1fb2cd28a84f76f49bde71c4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/app/aux_accepted_development_startup.h",
+      "sha256": "71eeda00a10220c8eea89b152ebbced38a14014a9d53e9c60e90c4d90a1487cf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "sha256": "2bc1f5b906ff94b13cc36de54f7d02fdededcdde00425c383f92cbe168d32ea4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "sha256": "3236b959f7c5a4eb14a86202b2c99f7d75be11b54387a73c181f26a7d18c090a"
+    }
+  ],
+  "fixtureBookmarkPersisted": true,
+  "fixtureBookmarkParentCorrect": true,
+  "fixtureHistoryMainFilePersisted": true,
+  "fixtureHistoryVisitCounts": [
+    2,
+    1
+  ],
+  "fixtureHistoryHiddenFlags": [
+    0,
+    0
+  ],
+  "historyReadMode": "read-only immutable committed main file; live database locked",
+  "apiTargetProfileVerified": false,
+  "persistenceFailureProven": false,
+  "runtimeExecuted": false,
+  "dataWritten": false,
+  "nativeSourcesModified": false
+}
