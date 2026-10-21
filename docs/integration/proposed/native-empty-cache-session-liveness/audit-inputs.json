@@ -1,0 +1,37 @@
+{
+  "composition": "v603",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service.cc",
+      "sha256": "024f72420c95260a60d7e88ecfd000a6f4a0c8de3efbe5f173f865e907be646e"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "sha256": "fc9730251c1d5239b7b888da0ac4f99014109f220a69940276d60e23e415e5f1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "sha256": "4d479646ef6c7490b564e87b6aed3a5f85e4beaa7e50ab99ee437eeb6a33dc9e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "sha256": "edd012a0c9dcb788d284eea514b7357eeaf41e4266ab1bef0234787ac02b70d0"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "4093fb68195b5971a63318a8adfe39ed5f799416f4cb9e480ea98bcc8ed587cb"
+    },
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "sha256": "c90f04cfde3c7114691a53a113eab15d15212ef9e532357159a34c2dc5812b70"
+    },
+    {
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "sha256": "71eeda00a10220c8eea89b152ebbced38a14014a9d53e9c60e90c4d90a1487cf"
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.cc",
+      "sha256": "b1099adb1866610c63632817196f28499642836b901026acf161ab813eab42ba"
+    }
+  ]
+}

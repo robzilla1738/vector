@@ -1,0 +1,40 @@
+--- a/chrome/browser/sessions/session_service.cc
++++ b/chrome/browser/sessions/session_service.cc
+@@ -122,6 +122,19 @@
+   int session_service_count_ = 0;
+ };
+ 
++// A profile transfer retains an empty cache for the active profile. That
++// placeholder is not another open workspace when deciding whether the last
++// real window/tab should be preserved for session restore.
++bool IsEmptyAuxProfileSwitchCache(BrowserWindowInterface* browser) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  const auto* state = BrowserInitState::From(browser);
++  return state && state->is_aux_profile_switch_cache() &&
++         browser->GetTabStripModel()->empty();
++#else
++  return false;
++#endif
++}
++
+ bool ShouldTriggerSessionRestoreForBrowser(BrowserWindowInterface* browser) {
+ #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+   if (base::FeatureList::IsEnabled(
+@@ -739,6 +752,7 @@
+        &window_count](BrowserWindowInterface* browser) {
+         const SessionID window_id = browser->GetSessionID();
+         if (ShouldTrackBrowser(browser) &&
++            !IsEmptyAuxProfileSwitchCache(browser) &&
+             !window_closing_ids_.contains(window_id)) {
+           if (++window_count > 1) {
+             is_only_one_tab_left = false;
+@@ -767,7 +781,8 @@
+         const SessionID browser_id = browser->GetSessionID();
+         if (browser_id != window_id &&
+             !window_closing_ids_.contains(browser_id)) {
+-          if (ShouldTrackBrowser(browser)) {
++          if (ShouldTrackBrowser(browser) &&
++              !IsEmptyAuxProfileSwitchCache(browser)) {
+             has_open_trackable = true;
+           }
+         }

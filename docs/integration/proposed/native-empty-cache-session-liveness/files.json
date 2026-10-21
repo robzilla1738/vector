@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v603",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service.cc",
+      "baselineSha256": "024f72420c95260a60d7e88ecfd000a6f4a0c8de3efbe5f173f865e907be646e",
+      "outputSha256": "1054788725b8a3d89b272cd8ab86e8dce8d0bee7ae6fd86b5d193ecd7ee24ce7"
+    }
+  ]
+}
