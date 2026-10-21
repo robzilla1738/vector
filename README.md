@@ -6,6 +6,10 @@ Owner-directed exception (2026-10-20): Aux will not ship its own password manage
 
 Read the [supplied contract](docs/design/aside-contract.md), [active reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), [workspace rules](AGENTS.md) and [current progress](docs/STATUS.md). Preserve the supplied components and matching runtime contracts. Independent replacements remain recoverable in Git and must not displace the supplied UI.
 
+## Current local preview
+
+The current copied app is `out/provided-candidate-local-browser-pass/Aux.app`. It uses an explicitly accepted, isolated disposable development profile; it is not installed or released. Ordinary opening now has an accepted-startup record for the exact reviewed app bytes. Replacing that app requires a verified successor record, not copying the old acceptance to new code. See [current status](docs/STATUS.md) and the [actual comparison](out/pass1-ui-completion/compare.html). Functional acceptance and remaining gaps are recorded in [the continuation ledger](docs/acceptance/completion-continuation-2026-10-20.json); this preview is not declared complete.
+
 ## Development
 
 The supplied implementation now has a pinned, atomic staging path:

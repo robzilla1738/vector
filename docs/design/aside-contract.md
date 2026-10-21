@@ -8,7 +8,7 @@ The owner explicitly excludes the built-in password manager from Aside parity. D
 
 Normal browsing and agent/chat startup must not depend on setting up or unlocking a password vault. Separate those dependencies before removing shared code. Browser/daemon installation authentication, AI provider credentials and ordinary site sessions remain necessary and are not user-password-manager features. Do not remove their security controls or fabricate unlocked/account state. Do not delete existing owner credentials or profiles.
 
-This exception supersedes Vault preservation and acceptance requirements elsewhere in older plans/status records. Removing the shipped Vault surfaces and dependencies is pending implementation.
+This exception supersedes Vault preservation and acceptance requirements elsewhere in older plans/status records. The runnable package excludes the Vault extension and its onboarding/storage UI, and native save/fill/manager surfaces are disabled or removed. Direct password-manager page navigation is rejected in the actual579 app. A remaining obsolete Vault builtin skill is being excluded from the supplied Settings consumer; daemon catalog corrections are separately proposed because they change the signed executable. Vendor companion pairing remains unverified. See current STATUS for exact artifact acceptance.
 
 ## Source and identity
 
