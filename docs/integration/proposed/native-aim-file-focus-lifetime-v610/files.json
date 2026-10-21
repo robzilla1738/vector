@@ -1,0 +1,49 @@
+{
+  "baseComposition": "v610",
+  "compositionSha256": "92e49e8914a7a45ff134a467a6df3138343aa687e7ba31c0e3feb38cc2b1c69b",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "baselineSha256": "a3ae32bcac5c58f001b7ea84bd0f510db627a446f0df65a0389f373bb3896ba8",
+      "outputSha256": "873f86a780a6a81b696ee300973980903b7d105653e419d23bafceb8df319cde"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "  widget_observation_.Reset();\n  // Update the popup state manager",
+      "replace": "  widget_observation_.Reset();\n  ResetFocusRestorationState();\n  // Update the popup state manager",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "  is_restoring_focus_after_file_selection_ = true;\n  if (!location_bar()) {",
+      "replace": "  // Retire the previous focus cycle before observing the next one. Its queued\n  // callback must not focus a hidden popup or a later picker session.\n  ResetFocusRestorationState();\n  if (!location_bar()) {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "    if (auto* fm = location_bar_widget->GetFocusManager()) {\n      focus_manager_observation_.Observe(fm);",
+      "replace": "    if (auto* fm = location_bar_widget->GetFocusManager()) {\n      is_restoring_focus_after_file_selection_ = true;\n      focus_manager_observation_.Observe(fm);",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "  controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);\n\n  // Reset state and stop observing focus transitions.\n  ResetFocusRestorationState();",
+      "replace": "  const auto weak_self = weak_factory_.GetWeakPtr();\n  controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);\n\n  // Hide may already have retired this focus cycle or destroyed its owner.\n  if (weak_self) {\n    ResetFocusRestorationState();\n  }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "void OmniboxPopupAimPresenter::FinishFocusRestoration() {\n  // Activate popup widget and focus WebContents.\n  RequestFocus();\n  // Focus the WebUI's text input element.\n  if (auto* content =\n          static_cast<OmniboxAimPopupWebUIContent*>(GetWebUIContent())) {\n    content->FocusInput();\n  }\n  ResetFocusRestorationState();\n}",
+      "replace": "void OmniboxPopupAimPresenter::FinishFocusRestoration() {\n  if (!is_restoring_focus_after_file_selection_ || !IsShown() ||\n      controller()->popup_state_manager()->popup_state() !=\n          OmniboxPopupState::kAim) {\n    ResetFocusRestorationState();\n    return;\n  }\n  const auto weak_self = weak_factory_.GetWeakPtr();\n  // Activation can synchronously hide/destroy the popup or start another cycle.\n  RequestFocus();\n  if (!weak_self) {\n    return;\n  }\n  if (auto* content =\n          static_cast<OmniboxAimPopupWebUIContent*>(GetWebUIContent())) {\n    content->FocusInput();\n  }\n  if (weak_self) {\n    ResetFocusRestorationState();\n  }\n}",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "find": "void OmniboxPopupAimPresenter::ResetFocusRestorationState() {\n  is_restoring_focus_after_file_selection_ = false;",
+      "replace": "void OmniboxPopupAimPresenter::ResetFocusRestorationState() {\n  // This dedicated factory owns only deferred focus-restoration callbacks.\n  // File reads, uploads and context handoffs have separate original owners.\n  weak_factory_.InvalidateWeakPtrs();\n  is_restoring_focus_after_file_selection_ = false;",
+      "count": 1
+    }
+  ]
+}

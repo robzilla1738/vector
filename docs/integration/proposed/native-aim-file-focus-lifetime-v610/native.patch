@@ -1,0 +1,74 @@
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
+@@ -183,6 +183,7 @@
+   // Drop the observation before the widget goes away; `Show()` re-establishes
+   // it against the new widget.
+   widget_observation_.Reset();
++  ResetFocusRestorationState();
+   // Update the popup state manager if widget was destroyed externally, e.g., by
+   // the OS. This ensures the popup state manager stays in sync. Skip this when
+   // `Hide()` is discarding the widget on purpose, since clearing the state here
+@@ -202,12 +203,15 @@
+   // When a file picker is closed, the browser window will regain focus shortly.
+   // We set `is_restoring_focus_after_file_selection_` to true and start
+   // observing the FocusManager to intercept the upcoming focus restoration.
+-  is_restoring_focus_after_file_selection_ = true;
++  // Retire the previous focus cycle before observing the next one. Its queued
++  // callback must not focus a hidden popup or a later picker session.
++  ResetFocusRestorationState();
+   if (!location_bar()) {
+     return;
+   }
+   if (views::Widget* location_bar_widget = delegate().GetLocationBarWidget()) {
+     if (auto* fm = location_bar_widget->GetFocusManager()) {
++      is_restoring_focus_after_file_selection_ = true;
+       focus_manager_observation_.Observe(fm);
+     }
+   }
+@@ -242,24 +246,41 @@
+ 
+   // Focus intentionally went to a completely different view (e.g., a toolbar
+   // button). We should ensure the popup closes.
++  const auto weak_self = weak_factory_.GetWeakPtr();
+   controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
+ 
+-  // Reset state and stop observing focus transitions.
+-  ResetFocusRestorationState();
++  // Hide may already have retired this focus cycle or destroyed its owner.
++  if (weak_self) {
++    ResetFocusRestorationState();
++  }
+ }
+ 
+ void OmniboxPopupAimPresenter::FinishFocusRestoration() {
+-  // Activate popup widget and focus WebContents.
++  if (!is_restoring_focus_after_file_selection_ || !IsShown() ||
++      controller()->popup_state_manager()->popup_state() !=
++          OmniboxPopupState::kAim) {
++    ResetFocusRestorationState();
++    return;
++  }
++  const auto weak_self = weak_factory_.GetWeakPtr();
++  // Activation can synchronously hide/destroy the popup or start another cycle.
+   RequestFocus();
+-  // Focus the WebUI's text input element.
++  if (!weak_self) {
++    return;
++  }
+   if (auto* content =
+           static_cast<OmniboxAimPopupWebUIContent*>(GetWebUIContent())) {
+     content->FocusInput();
+   }
+-  ResetFocusRestorationState();
++  if (weak_self) {
++    ResetFocusRestorationState();
++  }
+ }
+ 
+ void OmniboxPopupAimPresenter::ResetFocusRestorationState() {
++  // This dedicated factory owns only deferred focus-restoration callbacks.
++  // File reads, uploads and context handoffs have separate original owners.
++  weak_factory_.InvalidateWeakPtrs();
+   is_restoring_focus_after_file_selection_ = false;
+   focus_manager_observation_.Reset();
+ }
