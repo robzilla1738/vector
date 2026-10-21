@@ -4,7 +4,7 @@ Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the
 
 ##584 diagnostics and585 cold AIM integration review — 2026-10-21
 
-584 full native build/generated-key probe passed (13 actual steps,6m01.47s); packaging is running.149 exact bounded admission stages preserve predicate order and guards across the remaining owners. The recovered agent commit50f539e0d adds a pinned never-invoked AIM lifecycle proposal on that baseline: source-profile owners retire only in Begin, and exact original constructors restore the coherent profile in End/Abort. Used/context-bearing/pending-work owners remain rejected. Root is reviewing/compiling this substantive repair while retaining actual583 UI evidence; no new success is inferred.
+584 full native build/generated-key probe passed (13 actual steps,6m01.47s); supplied packaging passed and retained-helper/native-seal verification is running.149 exact bounded admission stages preserve predicate order and guards across the remaining owners. The recovered agent commit50f539e0d adds a pinned never-invoked AIM lifecycle proposal on that baseline: source-profile owners retire only in Begin, and exact original constructors restore the coherent profile in End/Abort. Used/context-bearing/pending-work owners remain rejected. Root reviewed the original construction/destruction, sticky invocation and pending-work guards, applied the ten-file585 proposal with717 source+23 artwork pins, and its full native build is running while retaining actual583 UI evidence; no runtime success is inferred.
 
 ## Actual583 normal launch and next profile owner — 2026-10-21
 
