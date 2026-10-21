@@ -1,0 +1,19 @@
+{
+  "proposalOnly": true,
+  "installed": false,
+  "launched": false,
+  "files": [
+    {
+      "path": "vendor/provided/direct-native-launch-plan.mjs",
+      "baselineSha256": null,
+      "outputSha256": "698c6435dc09c67887382cd14a31bf1019b13307e1f51626efb5d6d4b3ab0815",
+      "newFile": true
+    },
+    {
+      "path": "vendor/provided/direct-native-launch-plan.test.mjs",
+      "baselineSha256": null,
+      "outputSha256": "8577968668cf0c993eba976a12917f181355e837a71c71313d1b1b584c574ed5",
+      "newFile": true
+    }
+  ]
+}

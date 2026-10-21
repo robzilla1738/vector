@@ -1,0 +1,39 @@
+# Self-contained local package and launch readiness
+
+Read-only source audit while566 packages; public package observation is the existing560 candidate. No app/cache/home/profile was changed, installed, moved, launched, signed or revalidated through Keychain. This does not authorize a new authority scope or replace the supplied native startup owner.
+
+## What actually depends on the workspace
+
+| Path / operation | Dependency | Product consequence |
+|---|---|---|
+| package-provided / assembler / preservation audit | repository, Node, pinned stage/native/build receipts and optional frozen source snapshot | **Build-time only.** The report's sourceRoots are provenance, not a runtime search path. Assembly copies complete inventories and refuses escaping/absolute dependency links. |
+| accepted preview handoff → `node scripts/aux.mjs` | external Node, repo-relative script/cwd, owned-process guardian; Python reopen wrapper also reads repo receipts | **Development tooling dependency.** It is unnecessary for the bundled browser executable once the same explicit accepted environment/flags are supplied. |
+| native BundlePaths / daemon supervisor | real browser executable → Contents/Resources/aux; SEA, addon, guard, carrier, Agent and Computer Use are contained bundle-relative paths | No external Node or installed Aside package is selected. Actual560 bundle daemonRuntime is **provided-sea**; development authority explicitly forces that signed daemon identity. The accepted handoff has no --aux-development-runtime. Do not add fallback merely because Node exists. |
+| bundled Node / Python / memory seed | immutable agent-runtime and memory-distribution under bundle; mutable cache under canonical AUX_HOME | Node is bundled runtime infrastructure, not a developer-machine Node dependency. Bootstrap derives the actual source root from __dirname. Nine allowed text relocations are reverse-checked using provenance runtimeRoot, then reapplied to the actual private cache. This is controlled seeding, not a search of the old source install. |
+| current authority startup | explicit inherited AUX_HOME, HOME/CFFIXED_USER_HOME, exact approved profile, gate and scope | **Real unresolved ordinary-launch contract.** Finder launch does not inherit these reviewed values. StateHome defaults ~/.aux; native auth and original-addon wrapper deliberately refuse absent acceptance. Existing approval is for the retained disposable scope, not automatic permission to create/reset a normal home or reuse owner profiles. |
+
+The package is materially self-contained, but ordinary Finder startup and final install acceptance are not complete merely because the preview works. Native Launch also requires its selected canonical home to exist; the repo launcher currently creates the development home. A future native first-run owner must explicitly validate/create an authorized private Aux home before daemon launch. This audit does not create one or relax authentication.
+
+## Small tooling correction proposal
+
+`source/vendor/provided/direct-native-launch-plan.mjs` derives a **non-executing plan** from the exact hashed accepted inherited launch handoff. It replaces external `node scripts/aux.mjs` with `Aux.app/Contents/MacOS/Aux`, retains exact browser flags/profile and accepted environment, and explicitly adds AUX_HOME (previously supplied by the Node launcher). It refuses changed home/scope, missing gate, new inbox permission, arbitrary browser flags or changed probe exclusions.
+
+This is a tooling handoff improvement, not an installer, native Finder-startup implementation or new authority proof. The consumer must still validate the accepted receipt, canonical existing home/app and scope, own process lifetime, and ensure no intervening app mutation. It never executes, reads a profile, signs, calls a provider, initializes/resets keys or writes to a home. Existing guardian/reopen behavior is not silently replaced. Root may use the direct argv from the already accepted handoff after those checks, without installing Node on a consumer machine.
+
+Two pure fixture tests validate derivation and critical boundary refusals. They access no real home/app/receipt.
+
+## Concrete integration and recovery plan
+
+1. **Keep current preview recoverable.** Preserve its native/package/authority receipts and exact app baseline. Do not move its approved home/cache or copy profile/credential data. Finish acceptance against566 before choosing the install artifact.
+2. **Make same-scope launch independent of the repo.** Derive direct native argv/env from the accepted package handoff. Preserve exact same existing home/profile, scope and acceptance. Root remains process-lifetime owner; stop only its verified process identity and confirm Aux ports21520/21522/45203 clear before replacing that candidate. This changes neither Keychain scope nor product bytes. No shell-global environment or LaunchServices global setting is needed.
+3. **Review the final path explicitly.** The current public bundle finalApp and distribution runtimeRoot name the preview path. Current resource-reuse validation deliberately requires nextFinalApp===cache.finalApp; only exact reviewed UI/metadata exceptions exist. Do not weaken that check or claim a directory rename produces a matching ~/Applications package receipt. Prepare a fresh stage for the intended final path, or a separately reviewed exact relocation plan covering only the pinned nine text-root anchors and provenance/bundle path fields. All other bytes/links/modes and retained eight helper signatures must remain exact; any unexpected binary/helper change refuses reuse. Root owns that review and any separately authorized sealing. No new Apple signing or authority reset is implied here.
+4. **Resolve the genuine native ordinary-launch owner.** Choose explicitly whether installed local development remains on the existing approved scope or a separately reviewed normal Aux home. The native owner must bind that choice to real startup configuration/acceptance, canonical private ownership/mode checks, actual user-data-dir and original crypto. It must not silently manufacture the env gate, infer approval from existence of a bundle, inherit Aside state, export keys or point Finder at an owner profile. No existing source establishes a durable approved-startup record yet; do not invent a generic automatic success path.
+5. **Install only the accepted artifact.** Root should preserve an identified existing ~/Applications/Aux.app as a recoverable sibling before copying an accepted final-path app; never overwrite an unknown app or use a symlink into the repo as the installed product. Final direct native/Finder launch must resolve helpers from the installed bundle and obey the exact chosen scope. Actual startup/account/bridge/provider/UI acceptance remains required; file/hash success alone is insufficient.
+6. **Recovery stays exact.** If launch fails, stop only the newly identified owned process set, retain its private state and logs, restore the known app/receipt pair, and reuse the same approved home. Do not delete caches/Keychain rows, rerun initialization, swap in an old bundle containing the removed password product, stop Aside, or broaden resource exceptions to get past validation.
+
+### Bounded remaining work
+
+- Native durable startup/first-run acceptance and home creation/selection is the primary functional install gap.
+- Final-path packaging/relocation receipt and resource-cache review are required before an honest ~/Applications install claim.
+- The existing Node/Python development launcher is removable from launch orchestration; it is not proof that the daemon depends on external Node.
+- No new product code patch is justified for bundle-relative helper resolution in the paths inspected. Original source/helper/runtime bytes remain unchanged.
