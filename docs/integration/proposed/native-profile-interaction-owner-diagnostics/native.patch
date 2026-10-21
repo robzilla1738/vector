@@ -1,0 +1,48 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -222,18 +222,33 @@
+     LOG(ERROR) << "Aux profile transition rejected: shared-feedback-target-service";
+     return nullptr;
+   }
+-  if ((features_->chrome_labs_coordinator_ &&
+-       !features_->chrome_labs_coordinator_->CanRebindForAuxProfileSwitch()) ||
+-      !CanSwitchAuxAgentTabsProfile(&browser) ||
+-      (features_->tab_strip_service_feature_ &&
+-       features_->tab_strip_service_feature_->HasExternalBindingsOrActiveInvocation()) ||
+-      (features_->tab_strip_ui_controller_ &&
+-       features_->tab_strip_ui_controller_->HasClientsOrActiveCommand()) ||
+-      (features_->context_highlight_window_feature_ &&
+-       !features_->context_highlight_window_feature_->CanPauseForAuxProfileSwitch()) ||
+-      (features_->skills_ui_window_controller_ &&
+-       !features_->skills_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
+-    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-owners";
++  if (features_->chrome_labs_coordinator_ &&
++      !features_->chrome_labs_coordinator_->CanRebindForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-chrome-labs";
++    return nullptr;
++  }
++  if (!CanSwitchAuxAgentTabsProfile(&browser)) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-agent-tabs";
++    return nullptr;
++  }
++  if (features_->tab_strip_service_feature_ &&
++      features_->tab_strip_service_feature_->HasExternalBindingsOrActiveInvocation()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-tab-strip-service";
++    return nullptr;
++  }
++  if (features_->tab_strip_ui_controller_ &&
++      features_->tab_strip_ui_controller_->HasClientsOrActiveCommand()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-tab-strip-ui";
++    return nullptr;
++  }
++  if (features_->context_highlight_window_feature_ &&
++      !features_->context_highlight_window_feature_->CanPauseForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-context-highlight";
++    return nullptr;
++  }
++  if (features_->skills_ui_window_controller_ &&
++      !features_->skills_ui_window_controller_->CanRebindForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-skills-ui";
+     return nullptr;
+   }
+   if (auto* toast = ToastController::From(&browser);

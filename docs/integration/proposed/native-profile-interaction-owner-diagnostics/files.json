@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v581",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "4b046df126c2835e524ad2da59f2bbf0454df95b33597708f66be098c2c08460",
+      "outputSha256": "965a916d721fde1db6ca4295bd376fc1e4e6c21465d65b14fd79e731c04b7b8e"
+    }
+  ]
+}
