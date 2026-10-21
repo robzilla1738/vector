@@ -1,0 +1,106 @@
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.h
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.h
+@@ -31,6 +31,10 @@
+   // retain all touched original-profile paths until the latest delayed task.
+   void Schedule(Profile& previous_profile, Profile& target_profile);
+ 
++  // Drain completed transfers while their real windows still own their tabs.
++  // Does not create profiles/services or run a nested event loop.
++  static void FlushPendingBeforeClose();
++
+  private:
+   void Rebuild(uint64_t generation);
+ 
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -4,6 +4,9 @@
+ #include "chrome/browser/ui/aux_profile_switch_session_rebuild.h"
+ 
+ #include <utility>
++#include <vector>
++
++#include "base/no_destructor.h"
+ 
+ #include "base/functional/bind.h"
+ #include "base/location.h"
+@@ -17,8 +20,34 @@
+ 
+ namespace aux {
+ 
+-ProfileSwitchSessionRebuild::ProfileSwitchSessionRebuild() = default;
+-ProfileSwitchSessionRebuild::~ProfileSwitchSessionRebuild() = default;
++namespace {
++auto& LiveRebuildOwners() {
++  static base::NoDestructor<std::set<ProfileSwitchSessionRebuild*>> owners;
++  return *owners;
++}
++}  // namespace
++
++ProfileSwitchSessionRebuild::ProfileSwitchSessionRebuild() {
++  LiveRebuildOwners().insert(this);
++}
++ProfileSwitchSessionRebuild::~ProfileSwitchSessionRebuild() {
++  LiveRebuildOwners().erase(this);
++}
++
++void ProfileSwitchSessionRebuild::FlushPendingBeforeClose() {
++  std::vector<base::WeakPtr<ProfileSwitchSessionRebuild>> owners;
++  for (auto* owner : LiveRebuildOwners()) {
++    DCHECK_CALLED_ON_VALID_SEQUENCE(owner->sequence_checker_);
++    owners.push_back(owner->weak_ptr_factory_.GetWeakPtr());
++  }
++  for (auto& owner : owners) {
++    if (owner && !owner->pending_paths_.empty()) {
++      // Invalidate every older delayed generation, then snapshot actual
++      // settled collections before close callbacks detach them.
++      owner->Rebuild(++owner->generation_);
++    }
++  }
++}
+ 
+ void ProfileSwitchSessionRebuild::Schedule(Profile& previous_profile,
+                                          Profile& target_profile) {
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -24,6 +24,9 @@
+ #include "chrome/browser/sessions/tab_restore_service_factory.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_profile_switch_session_rebuild.h"
++#endif
+ #include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ #include "chrome/browser/ui/browser_manager_service.h"
+@@ -169,6 +172,9 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::ProfileSwitchSessionRebuild::FlushPendingBeforeClose();
++#endif
+   // Don't use GetForProfileIfExisting here, we want to force creation of the
+   // session service so that user can restore what was open.
+   SessionServiceBase* service =
+--- a/chrome/browser/lifetime/browser_shutdown.cc
++++ b/chrome/browser/lifetime/browser_shutdown.cc
+@@ -25,6 +25,9 @@
+ #include "build/config/compiler/compiler_buildflags.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_profile_switch_session_rebuild.h"
++#endif
+ #include "chrome/browser/profiles/nuke_profile_directory_utils.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "chrome/common/pref_names.h"
+@@ -124,6 +127,9 @@
+   static crash_reporter::CrashKeyString<11> shutdown_type_key("shutdown-type");
+   shutdown_type_key.Set(ToShutdownTypeString(type));
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::ProfileSwitchSessionRebuild::FlushPendingBeforeClose();
++#endif
+   g_shutdown_type = type;
+   // For now, we're only counting the number of renderer processes
+   // since we can't safely count the number of plugin processes from this
