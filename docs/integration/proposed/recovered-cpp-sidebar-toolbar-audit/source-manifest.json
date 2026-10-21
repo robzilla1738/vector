@@ -1,0 +1,21 @@
+{
+  "source_root": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp",
+  "files": [
+    {
+      "path": "summary.txt",
+      "sha256": "dc11fc7dbf6d81ca2d2862c20cf2f24d878060873d5517859726eb113bf33fa8"
+    },
+    {
+      "path": "reconstruct.py",
+      "sha256": "cf175b2ea1ac7c647b4955edc92d838ec9da16534b07745b38b4a35a044be6ae"
+    },
+    {
+      "path": "reconstructed/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "685757a364e8132694aa5a983c6af3e8b59b1c97919beef3b4d8f38d0d12ba02"
+    },
+    {
+      "path": "reconstructed/chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "58abf6089c91fbfcf886cdcb15ad21a591438727beacbb70ad0c002df2cfe61a"
+    }
+  ]
+}
