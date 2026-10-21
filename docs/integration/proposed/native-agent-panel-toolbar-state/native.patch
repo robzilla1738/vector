@@ -1,0 +1,81 @@
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h
+@@ -378,6 +378,9 @@
+   raw_ptr<ToolbarActionViewModel> popup_owner_ = nullptr;
+   // Extension with an open context menu, if any.
+   std::optional<extensions::ExtensionId> extension_with_open_context_menu_id_;
++  // Observed supplied Agent presentation: hide its action while its actual
++  // panel is open. This changes no pin preference or other extension action.
++  bool aux_agent_panel_active_ = false;
+   // View for closing the extension side panel.
+   raw_ptr<ToolbarButton> close_side_panel_button_ = nullptr;
+   // Used to ensure the button remains highlighted while active.
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h"
++
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/component_bootstrap.h"
++#endif
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -516,6 +521,13 @@
+     return;
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_agent_panel_active_ && extension_id == aux::kAgentExtensionId) {
++    GetAnimatingLayoutManager()->FadeOut(action_view);
++    return;
++  }
++#endif
++
+   // Popped out action uses a flex rule that causes it to always be visible
+   // regardless of space; default for actions is to drop out when there is
+   // insufficient space. So if an action is being forced visible, it should have
+@@ -598,6 +610,11 @@
+ 
+ bool ExtensionsToolbarDesktop::IsActionVisibleOnToolbar(
+     const std::string& action_id) const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {
++    return false;
++  }
++#endif
+   return model_->IsActionPinned(action_id) || ShouldForceVisibility(action_id);
+ }
+ 
+@@ -678,6 +695,11 @@
+   // Set visibility before adding to prevent extraneous animation.
+   icon->SetVisible(ToolbarActionsModel::CanShowActionsInToolbar(*browser_) &&
+                    model_->IsActionPinned(action_id));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {
++    icon->SetVisible(false);
++  }
++#endif
+   views::FocusRing::Get(icon.get())->SetOutsetFocusRingDisabled(true);
+   ObserveButton(icon.get());
+   icons_.insert({action_id, AddChildView(std::move(icon))});
+@@ -1174,6 +1196,16 @@
+ }
+ 
+ void ExtensionsToolbarDesktop::UpdateSidePanelState(bool is_active) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  auto* panel = SidePanelUI::From(browser_);
++  aux_agent_panel_active_ = is_active && panel &&
++      panel->IsSidePanelEntryShowing(SidePanelEntryKey(
++          SidePanelEntryId::kExtension, aux::kAgentExtensionId));
++  // The supplied Agent has its own close affordance. Chromium155's extra
++  // extension-panel close button is retained for every other extension.
++  is_active = is_active && !aux_agent_panel_active_;
++  UpdateIconVisibility(aux::kAgentExtensionId);
++#endif
+   close_side_panel_button_->SetVisible(is_active);
+   if (is_active) {
+     close_side_panel_button_anchor_highlight_ =

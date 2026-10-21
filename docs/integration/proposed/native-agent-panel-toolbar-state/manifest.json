@@ -1,0 +1,50 @@
+{
+  "baseline": "actual-native-v547",
+  "adaptation": "observed-supplied-presentation-on-Chromium155-not-recovered-original-predicate",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h",
+      "baselineSha256": "2f9a0d2c069cd79f84fff839c69f02180489a780c96fae257dc00ca0be4d8021",
+      "outputSha256": "0831930cd39695ccc51b9ac961fd8d143ed39ead2bdc1d2d5dbd0bf63e6badd1",
+      "anchors": [
+        {
+          "find": "  // View for closing the extension side panel.",
+          "replace": "  // Observed supplied Agent presentation: hide its action while its actual\n  // panel is open. This changes no pin preference or other extension action.\n  bool aux_agent_panel_active_ = false;\n  // View for closing the extension side panel.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc",
+      "baselineSha256": "a970cbff93a8c655135ccc757aa68b9546a9807f0afc6d7fe247d57010690600",
+      "outputSha256": "63c1564c76fee7573b544d7b4d20f767b1b48db45428af78d71b9ce25d5a8b87",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h\"",
+          "replace": "#include \"chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h\"\n\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  return model_->IsActionPinned(action_id) || ShouldForceVisibility(action_id);",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {\n    return false;\n  }\n#endif\n  return model_->IsActionPinned(action_id) || ShouldForceVisibility(action_id);",
+          "count": 1
+        },
+        {
+          "find": "                   model_->IsActionPinned(action_id));",
+          "replace": "                   model_->IsActionPinned(action_id));\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (aux_agent_panel_active_ && action_id == aux::kAgentExtensionId) {\n    icon->SetVisible(false);\n  }\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  // Popped out action uses a flex rule that causes it to always be visible",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (aux_agent_panel_active_ && extension_id == aux::kAgentExtensionId) {\n    GetAnimatingLayoutManager()->FadeOut(action_view);\n    return;\n  }\n#endif\n\n  // Popped out action uses a flex rule that causes it to always be visible",
+          "count": 1
+        },
+        {
+          "find": "void ExtensionsToolbarDesktop::UpdateSidePanelState(bool is_active) {\n  close_side_panel_button_->SetVisible(is_active);\n  if (is_active) {",
+          "replace": "void ExtensionsToolbarDesktop::UpdateSidePanelState(bool is_active) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  auto* panel = SidePanelUI::From(browser_);\n  aux_agent_panel_active_ = is_active && panel &&\n      panel->IsSidePanelEntryShowing(SidePanelEntryKey(\n          SidePanelEntryId::kExtension, aux::kAgentExtensionId));\n  // The supplied Agent has its own close affordance. Chromium155's extra\n  // extension-panel close button is retained for every other extension.\n  is_active = is_active && !aux_agent_panel_active_;\n  UpdateIconVisibility(aux::kAgentExtensionId);\n#endif\n  close_side_panel_button_->SetVisible(is_active);\n  if (is_active) {",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
