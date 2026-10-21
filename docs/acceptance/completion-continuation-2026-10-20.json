@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "date": "2026-10-20",
+  "nativeCandidate": 560,
+  "fullReady": false,
+  "uiObserved": [
+    "enabled model menu",
+    "actual supplied chat panel with current-page context",
+    "focused bookmark action",
+    "single Aux identity",
+    "live Settings title",
+    "delayed page title",
+    "Light and System themes",
+    "zoom/fullscreen transitions",
+    "fully hidden settled sidebar",
+    "shared16DIP surfaces"
+  ],
+  "integrationPending": 566,
+  "actualAi": {
+    "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "casesAttempted": 1,
+    "casesPassed": 0,
+    "failure": "secure browser-control endpoint127.0.0.1:45203 refused connection",
+    "credentialCleanup": "removed and verified through supplied API",
+    "cleanupErrors": [],
+    "report": "out/acceptance/e2e-dc55dfcb-9b3a-4190-ac6b-209e27fa491e/report.json"
+  },
+  "extensionFixture": {
+    "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
+    "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
+    "allowedRoundtrip": true,
+    "deniedOriginForbidden": true,
+    "dummyFill": true,
+    "fillAfterReload": true,
+    "vendorIntegrationAccepted": false,
+    "cleanupPending": true
+  },
+  "ownerDataAccessed": false,
+  "newAppleSigningPerformed": false,
+  "releasePerformed": false
+}
