@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Profile lifecycle batch597 in progress — 2026-10-21
+
+Actual logged594 first switch rejects target Actor container.pending-notifications count1. A second attempt after settlement reaches a fatal avatar current_active_state_pair_ check: synchronous OnRefreshTokensLoaded calls UpdateIcon during CreateStatesAndListeners before the active provider exists. Both defects are repaired in the combined source597, together with the independently identified one-shot AIM settlement problem. Existing admission guards and all UI styling remain intact. Native build is running; no597 runtime acceptance yet.
+
+The synthetic import destination is committed in the disposable Default profile, including bookmark parent and history counts2/1. The API harness selected the first newtab across cached profiles, so its missing-data failure does not establish lost import. Target selection is corrected to the exact synthetic bookmark sentinel for the next read-only destination check.594 package/startup acceptance are archived; the crash-left owned Aux daemon was verified and stopped. No owner Aside daemon/profile was touched.
+
 ## Actual594 frame correction acceptance — 2026-10-21
 
 Native594 full build/generated-key probe passed (14 steps,5m38.56s). Packaging assembled10751 supplied resources and418 native leaves. Complete retained-resource/native seal verification passed with receipt8cca21cd067da426de30b5f08b0df06986d82e5d8f62e12745d1f65e5d626725; all8 existing signed helpers are retained without new Apple signing or Keychain operations. The existing disposable startup scope is accepted for these exact bytes;589 and its startup record remain archived.

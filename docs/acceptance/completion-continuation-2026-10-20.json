@@ -203,7 +203,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-owner-frame-corrections-and-profile-cache-diagnostics",
+  "executionState": "active-profile-lifecycle-batch-597-building",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -270,5 +270,25 @@
       "clipped Agent toolbar pill",
       "horizontal bookmark matte"
     ]
+  },
+  "actual594": {
+    "receiptSha256": "8cca21cd067da426de30b5f08b0df06986d82e5d8f62e12745d1f65e5d626725",
+    "frameCornerBookmarkAndAgentActionObserved": true,
+    "profileSwitchAccepted": false,
+    "firstSwitchGuard": "container.pending-notifications count=1 cache=target",
+    "settledSecondAttempt": "fatal current_active_state_pair_ during avatar reinitialization",
+    "importPersistenceOnDisk": true,
+    "importAPIProbeWrongTarget": true,
+    "ownerProfilesAccessed": false
+  },
+  "pending597": {
+    "changes": [
+      "fresh cache setup queue settlement with complete revalidation and stale request cancellation",
+      "avatar initialization refresh replay after active provider selection",
+      "AIM renderer reset proof separated from live native activity checks"
+    ],
+    "nativeUiStylingChanged": false,
+    "fullBuildRunning": true,
+    "runtimeAccepted": false
   }
 }
