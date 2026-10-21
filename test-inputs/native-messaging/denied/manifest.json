@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Aux dummy denied",
+  "version": "1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnB9WlOsFMq4h/bJG3jhxjKBlWzKfekB6sVK3Sg4KHbrMUlkfeY4GML6tkc7lX/L+jrUf197z1BWDakSgdnC0O7GW3/CDi+m/K07u6eD61x8ra+PoIiDd/BRVWSupGHUTZlqT1dw4CcY4AUdLsyjd6/Hb8glsDYkCgljpzRg8DWoD1Gggq1Sry8GS1qe6ocsfZBqnnPJa2LA3SUOEPUhT3C52cXcuW05FjG248c77tNBFkAbayRnNY0LXvGTz6HElNrCdjpiZuV1xngY48wi7cYeflsq1wQ0MqZ1v7frQOYwtxJw5arjCGXcOCIFBkH4RbGbhIMGZoelwSTu5ENbmfQIDAQAB",
+  "permissions": [
+    "nativeMessaging"
+  ],
+  "action": {
+    "default_popup": "check.html"
+  }
+}
