@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -170,7 +170,7 @@
+         view->GetNativeTheme()->preferred_contrast() !=
+             ui::NativeTheme::PreferredContrast::kMore &&
+         (view == browser_view->toolbar() ||
+-         view == browser_view->top_container())) {
++         views::IsViewClass<TopContainerView>(view))) {
+       if (const auto page_background = tab->GetBackgroundColor();
+           page_background && SkColorGetA(*page_background) == SK_AlphaOPAQUE) {
+         color = *page_background;

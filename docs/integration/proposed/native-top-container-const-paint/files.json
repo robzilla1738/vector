@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v545",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/themed_background.cc",
+      "baselineSha256": "b3236b43f274f3dc631aa7b620ae55bfadf82d3c37312062f560e2ef18ee25d8",
+      "outputSha256": "96e8b3bb01e1256224008c8fd0e9ee108c76a7614c00f407a5f2f0fdd452d9d6"
+    }
+  ]
+}
