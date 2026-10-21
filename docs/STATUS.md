@@ -1,5 +1,19 @@
 # Aux implementation status
 
+## Actual609 recovery and durable drafts verified;610 menu correction building — 2026-10-21
+
+Actual609 normal launch recovered two saved Person1 normal windows separately with their original harmless fixture URLs/titles; the original Your Aux window retained its two tabs. A real completed174-byte local attachment no longer blocks the Your Aux→Person2 transition. Returning Your Aux restores its Example tab draft and attachment; the separate New Tab draft remains independent. After normal Quit/relaunch, both tab-specific drafts and the small attachment restore through the actual supplied panel. Test drafts were cleared without sending. Evidence: out/native-integration/v609-multiwindow-recovery.txt, v609-draft-profile-return.txt, v609-restart-draft-a.txt and v609-restart-draft-b.txt. No paid inference repeated.
+
+The native Window menu exposed parked private workspace caches as extra New Tab entries.610 excludes only positively identified cache NSWindows from AppKit's Window menu, preserving their lifecycle and genuine restored windows. One-file pinned replay passed; native incremental build is running.610 is not yet packaged or runtime-accepted.609 visual captures retain the collapsed corner correction and existing dual-sidebar geometry/materials; no style/layout changes. Current candidate609 remains observed, with607 archived as the earlier fallback.
+
+Limits: actual completed small-file transfer and unsent drafts are accepted; this does not establish arbitrary-size attachment durability, every in-flight file-read race or running paid-agent task migration. Popup/app-window mixtures retain the explicit refusal boundary. No new genuine hover test.
+
+## Successor609 corrects actual608 draft/router findings — 2026-10-21
+
+608 native build and complete package/retained-helper verification passed; actual app launched. A real small attachment completed and remained visible, but profile switching rejected `agent-pending-local-file-read`. Source tracing found the supplied router installs an unconditional no-op beforeunload listener; native presence-based admission therefore cannot distinguish idle router from pending uploads.609 preserves the original handler while registering it only for actual router blockers. The upload listener remains through completed draft handoff.
+
+Actual608 also exposed that the sidepanel consumes the attachment-only tab hook, so the new stable draft ID did not reach its scope function.609 selects the existing full-context hook solely for draft scoping; attachment chips use their unchanged hook. Both corrections are count-checked supplied JavaScript changes; no additional native build or visual style change.609 stage/package passed, six UI leaves plus provenance reviewed, retained-resource verification passed (all8 helpers retained; no new Apple signing/Keychain).608 was quit normally and archived as a runtime-check candidate. Two harmless Person1 recovery windows and the original Your Aux window were saved separately. Runtime acceptance remains pending;607 is the earlier observed fallback.
+
 ## Successor608 substantial profile/recovery batch packaging — 2026-10-21
 
 607 is archived as the observed fallback after normal Quit. Successor608 integrates separate restoration of multiple saved normal windows, attachment callback ownership, native selected-file retirement after original context owners settle, and supplied Agent pending-file admission. Supplied draft records now persist for stable conversation IDs and profile-local stable page IDs; transient target fallbacks remain session-only. The existing PageIdentity implementation is compiled independently of the retired shell and participates in ordinary restore, session snapshot rebuild, tracked insertion/move and closed-tab metadata. UI dimensions, CSS, glass, typography and sidebar geometry are unchanged.
