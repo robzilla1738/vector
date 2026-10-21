@@ -1,0 +1,9 @@
+# Correct native shortcut dispatch and live resting title
+
+Actual v556 observation: Cmd+E on focused external content does nothing, but clicking Ask Aux opens the genuine panel. The global Cocoa mapping and execution case exist. BrowserNativeWidgetMac::WillExecuteCommand rejects before-first-responder commands unless BrowserCommandController::IsReservedCommandOrKey accepts them. Aux Ask was absent; meanwhile main_menu_builder.mm registers Cmd+E to copyToFindPboard:. Reserve only IDC_AUX_ASK on Aux Mac through the existing path, after its existing app/fullscreen policy checks. It now reaches the genuine SidePanelUI toggle before AppKit can consume it. No new command or duplicate toggle owner.
+
+Actual supplied settings SPA updates the window/tab title while Aux toolbar remains General on Appearance. BrowserView::TitleWasSet previously only refreshed accessibility. Invalidate the actual location bar there so its existing title presentation rereads the active WebContents title; no independent title cache or synthesized route text.
+
+Actual Aux also shows the upstream extension-name label beside the new canonical Aux label. The exact committed Agent /main.html resting branch no longer requires GetShowText=false, because that extension identity is itself textual. It still preserves keyword/permission overrides and every non-neutral security state; other extensions, external warning labels, focused URLs and the real branded PageInfo callback are untouched.
+
+Three exact v556 files are pinned; disposable patch replay/output hashes passed. No shared native edits or build. Runtime acceptance: Cmd+E opens/closes on external content, supplied settings title changes live, single Aux identity at rest with extension PageInfo click retained. The supplied focused search popup is a separate owner: this patch does not claim to restore its missing bookmark action merely by altering the underlying location bar.

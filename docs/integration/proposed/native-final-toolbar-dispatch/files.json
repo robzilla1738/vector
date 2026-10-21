@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v556",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "8fbc846b5a40ca414979a2d82e1826981b3582665ad215a7b1a6f2d5f7bada6d",
+      "outputSha256": "31de77cce4cd82b8688b1ce4fe7a58e2562a0eff334f7aada88434171af6f189"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "a7771db0b2b276d40edfa34c0fccd88878cdc01d444cef69630f53efb5f5885d",
+      "outputSha256": "f17182dc8df3d55e0b6cdb59f505e330d0ecd9ff0f19b1da3b40f76868a8bf4b"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "6bbbd48664549896b9cea7e1e0451d06459ab2772dc8f605043ec690186560fd",
+      "outputSha256": "3963d965b81411dccc3674755643376762e1caa3b7221e2098bd3d50a292529c"
+    }
+  ]
+}

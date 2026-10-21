@@ -1,0 +1,50 @@
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -583,6 +583,14 @@
+   }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Cmd+E also belongs to AppKit's copyToFindPboard: responder command.
++  // Execute the Aux panel command before that responder consumes the event.
++  if (command_id == IDC_AUX_ASK) {
++    return true;
++  }
++#endif
++
+   return command_id == IDC_CLOSE_TAB || command_id == IDC_CLOSE_WINDOW ||
+          command_id == IDC_NEW_INCOGNITO_WINDOW ||
+          command_id == IDC_NEW_ISOLATED_WINDOW || command_id == IDC_NEW_TAB ||
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3081,6 +3081,14 @@
+ 
+ void BrowserView::TitleWasSet(content::NavigationEntry* entry) {
+   UpdateAccessibleNameForRootView();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Supplied settings update their title without navigating the document.
++  // The resting toolbar reads that active title during layout.
++  if (auto* location_bar = GetLocationBarView()) {
++    location_bar->InvalidateLayout();
++    location_bar->SchedulePaint();
++  }
++#endif
+ }
+ 
+ void BrowserView::DidFinishNavigation(
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -949,8 +949,12 @@
+       aux_secure_page_controls && !show_page_title;
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   if (show_page_title && aux_internal_main_page &&
+-      !ShouldShowKeywordBubble() && !location_icon_view_->GetShowText() &&
++      !ShouldShowKeywordBubble() &&
++      GetOmniboxController()->client()->GetSecurityLevel() ==
++          security_state::NONE &&
+       !ShouldChipOverrideLocationIcon()) {
++    // This exact trusted Agent document already exposes its branded PageInfo
++    // button. The upstream extension-name label duplicates that identity.
+     location_icon_view_->SetVisible(false);
+   } else if (aux_secure_page_controls) {
+     // Resting origin is the PageInfo button. Editing keeps the genuine site
