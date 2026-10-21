@@ -5,6 +5,11 @@
       "path": "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
       "baselineSha256": "1ca047020555582756653295e01a696109d47e050af0feb613393d77666b0d80",
       "outputSha256": "c389e60125d6985742e33fd68edb2855f4fd3fcbb2d10f6fe4d9550213400514"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/themed_background.cc",
+      "baselineSha256": "96e8b3bb01e1256224008c8fd0e9ee108c76a7614c00f407a5f2f0fdd452d9d6",
+      "outputSha256": "f83214a6ee24e79ba135fa47318fd4852a97807bcd6bfd488eff2b9dc2edcf01"
     }
   ]
 }

@@ -27,3 +27,34 @@
  #if BUILDFLAG(ENABLE_AUX_BROWSER)
    // A transparent separator still reserves a pixel exposing untinted native
    // material between the supplied page and its matching toolbar tint.
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/ui/views/frame/main_background_region_view.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "extensions/common/constants.h"
+@@ -129,6 +130,20 @@
+     SkColor color = view->GetColorProvider()->GetColor(
+         GetThemeChoiceInfo(theme_choice, view).second);
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++#if BUILDFLAG(IS_MAC)
++    // The visible bookmarks row is part of the same top-container surface.
++    // Its parent already paints the actual page color or supplied 80% tint;
++    // another bookmark-row fill would create a separate strip/double tint.
++    if (theme_choice == ThemeChoice::kToolbarTheme &&
++        views::IsViewClass<BookmarkBarView>(view) && view->parent() &&
++        views::IsViewClass<TopContainerView>(view->parent()) &&
++        browser_view->ShouldDrawVerticalTabStrip() &&
++        !view->GetWidget()->GetCustomTheme() &&
++        view->GetNativeTheme()->preferred_contrast() !=
++            ui::NativeTheme::PreferredContrast::kMore) {
++      return;
++    }
++#endif
+     // The Agent panel has its own single native tint. Do not put Chromium's
+     // opaque main-region matte behind it, including beside ordinary web pages.
+     const auto* panel_ui = SidePanelUI::From(browser_view->browser());
