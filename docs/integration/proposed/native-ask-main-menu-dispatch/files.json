@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v560",
+  "files": [
+    {
+      "path": "chrome/browser/ui/cocoa/main_menu_builder.mm",
+      "baselineSha256": "2a70c712ad54da4adfdedf9f477bfbf8153aa88e5296d657a5f864469260e1d4",
+      "outputSha256": "9d571c274cfa52191208a63ed6f2d8830b8eb86384712c1e2791932b5e666acc"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+--- a/chrome/browser/ui/cocoa/main_menu_builder.mm
++++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
+@@ -285,7 +285,12 @@
+                           .command_id(IDC_FIND_PREVIOUS),
+                       Item(IDS_EDIT_USE_SELECTION_MAC)
+                           .action(@selector(copyToFindPboard:))
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++                          .key_equivalent(is_pwa ? @"e" : @"",
++                                          NSEventModifierFlagCommand),
++#else
+                           .key_equivalent(@"e", NSEventModifierFlagCommand),
++#endif
+                       Item(IDS_EDIT_JUMP_TO_SELECTION_MAC)
+                           .action(@selector(centerSelectionInVisibleArea:))
+                           .key_equivalent(@"j", NSEventModifierFlagCommand),
+@@ -419,6 +424,19 @@
+         })
+         .Build();
+   // clang-format on
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!is_pwa) {
++    // Make AppKit and Chrome dispatch the same command. A synthetic shortcut
++    // alone does not replace an existing main-menu responder key equivalent.
++    NSMenuItem* ask_aux =
++        [[NSMenuItem alloc] initWithTitle:@"Ask Aux"
++                                   action:@selector(commandDispatch:)
++                            keyEquivalent:@"e"];
++    ask_aux.tag = IDC_AUX_ASK;
++    ask_aux.keyEquivalentModifierMask = NSEventModifierFlagCommand;
++    [item.submenu insertItem:ask_aux atIndex:0];
++  }
++#endif
+   return item;
+ }
+ 
