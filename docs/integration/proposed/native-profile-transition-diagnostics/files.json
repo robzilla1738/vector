@@ -1,0 +1,15 @@
+{
+  "baseComposition": "v563",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "c245d4bd6408cefa46c7ef0c2714f7a6a89691e33ce59f7d8fb32ecbe98fa82b",
+      "outputSha256": "86190394b890d94a28eecd47f72156b4715bea39a0a44362a810b1bff84525bf"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "baselineSha256": "e964cd8170055591c81cc7424eaa191be8495da5ccd34385f6708a02925410c5",
+      "outputSha256": "d155519d299299e32545895e1d0864213ec0f19f350d3a35cbffcd310baa7852"
+    }
+  ]
+}

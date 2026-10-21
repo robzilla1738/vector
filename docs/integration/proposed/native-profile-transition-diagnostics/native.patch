@@ -1,0 +1,268 @@
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -18,6 +18,7 @@
+ #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
+ #include "chrome/browser/skills/skills_ui_window_controller.h"
+ #include "base/check_op.h"
++#include "base/logging.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/raw_ref.h"
+ #include "base/memory/weak_ptr.h"
+@@ -154,13 +155,43 @@
+ 
+ bool BrowserWindowFeatures::AuxProfileSwitchProvider::HasUnportedProfileOwners(
+     const BrowserWindowFeatures& features) {
+-  return features.breadcrumb_manager_browser_agent_ ||
+-      features.comments_side_panel_coordinator_ || features.contextual_tasks_browser_controller_ ||
+-      features.organizer_panel_controller_ ||
+-      features.ai_overlay_dialog_controller_ ||
+-      features.new_tab_footer_controller_ ||
+-      features.ios_promo_controller_ ||
+-      features.recent_activity_bubble_coordinator_ || features.shared_tab_group_feedback_controller_;
++  if (features.breadcrumb_manager_browser_agent_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.breadcrumb_manager_browser_agent";
++    return true;
++  }
++  if (features.comments_side_panel_coordinator_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.comments_side_panel_coordinator";
++    return true;
++  }
++  if (features.contextual_tasks_browser_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.contextual_tasks_browser_controller";
++    return true;
++  }
++  if (features.organizer_panel_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.organizer_panel_controller";
++    return true;
++  }
++  if (features.ai_overlay_dialog_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.ai_overlay_dialog_controller";
++    return true;
++  }
++  if (features.new_tab_footer_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.new_tab_footer_controller";
++    return true;
++  }
++  if (features.ios_promo_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.ios_promo_controller";
++    return true;
++  }
++  if (features.recent_activity_bubble_coordinator_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.recent_activity_bubble_coordinator";
++    return true;
++  }
++  if (features.shared_tab_group_feedback_controller_) {
++    LOG(ERROR) << "Aux profile transition rejected: unported.shared_tab_group_feedback_controller";
++    return true;
++  }
++  return false;
+   // FindBarController retains the same window command controller and observes
+   // actual tab helpers. Genuine Browser::TabDetachedAtImpl already detaches it,
+   // and target/source insertion reattaches real state; no Profile is cached.
+@@ -174,6 +205,7 @@
+   // graph, never permission to retain old-profile services or return success.
+   // Remove a guard only with its actual cold/commit/abort lifecycle port.
+   if (HasUnportedProfileOwners(features_.get())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-unported-owners";
+     return nullptr;
+   }
+   if ((features_->chrome_labs_coordinator_ &&
+@@ -187,25 +219,30 @@
+        !features_->context_highlight_window_feature_->CanPauseForAuxProfileSwitch()) ||
+       (features_->skills_ui_window_controller_ &&
+        !features_->skills_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-interaction-owners";
+     return nullptr;
+   }
+   if (auto* toast = ToastController::From(&browser);
+       toast && toast->HasPendingToastWork()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-toast";
+     return nullptr;
+   }
+   if (bool(features_->glic_iph_controller_) != bool(features_->glic_split_button_controller_) ||
+       (features_->glic_split_button_controller_ &&
+        !features_->glic_split_button_controller_->CanPrepareForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-glic-pair";
+     return nullptr;
+   }
+   if (features_->glic_iph_controller_ &&
+       !features_->glic_iph_controller_->CanPrepareForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-glic-iph";
+     return nullptr;
+   }
+   if ((features_->actor_ui_window_controller_ &&
+        !features_->actor_ui_window_controller_->CanRebindForAuxProfileSwitch()) ||
+       (features_->ai_mode_page_action_controller_ &&
+        !features_->ai_mode_page_action_controller_->CanRetireForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-ai-owners";
+     return nullptr;
+   }
+   const std::array<BrowserWindowInterface*, 1> source_windows{&browser};
+@@ -218,6 +255,7 @@
+         !features_->session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch())) ||
+       (features_->data_protection_ui_controller_ &&
+        !features_->data_protection_ui_controller_->CanPrepareForAuxProfileSwitch(&target))) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-tabgroup-and-data-protection";
+     return nullptr;
+   }
+   auto* view = BrowserView::GetBrowserViewForBrowser(&browser);
+@@ -231,6 +269,7 @@
+       !location->CanPrepareForAuxProfileSwitch(&target) ||
+       !toolbar->CanRebindOwnedActionsForAuxProfileSwitch() ||
+       !features_->CanPrepareAuxPrivateProfileServices(&target)) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-view-toolbar-location-private-services";
+     return nullptr;
+   }
+   auto plan = std::make_shared<Bindings>();
+@@ -273,10 +312,12 @@
+        !features_->lens_overlay_entry_point_controller_->CanRebindForAuxProfileSwitch()) ||
+       (features_->download_toolbar_ui_controller_ &&
+        !features_->download_toolbar_ui_controller_->CanRebindForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-bound-ui-owners";
+     return nullptr;
+   }
+   if (features_->cookie_controls_bubble_coordinator_ &&
+       !features_->cookie_controls_bubble_coordinator_->CanRebindForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.source-cookie-controls";
+     return nullptr;
+   }
+   return plan;
+@@ -292,6 +333,7 @@
+       target_cache.GetProfile() != original->target.get() ||
+       previous_cache.GetProfile() != browser.GetProfile() ||
+       HasUnportedProfileOwners(target_cache.GetFeatures())) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.cache-identity-and-unported-owners";
+     return false;
+   }
+   auto& target_features = target_cache.GetFeatures();
+@@ -299,6 +341,7 @@
+           bool(target_features.session_service_tab_group_sync_observer_) ||
+       browser.GetTabStripModel()->SupportsTabGroups() !=
+           target_cache.GetTabStripModel()->SupportsTabGroups()) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.cache-tabgroup-support";
+     return false;
+   }
+   for (auto* cache : {&previous_cache, &target_cache}) {
+@@ -307,17 +350,20 @@
+         bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_) ||
+         (features.glic_split_button_controller_ &&
+          !features.glic_split_button_controller_->CanPrepareForAuxProfileSwitch())) {
++      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-glic-pair";
+       return false;
+     }
+     if (bool(features.glic_iph_controller_) != bool(features_->glic_iph_controller_) ||
+         (features.glic_iph_controller_ &&
+          !features.glic_iph_controller_->CanPrepareForAuxProfileSwitch())) {
++      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-glic-iph";
+       return false;
+     }
+     if (bool(features.actor_ui_window_controller_) !=
+             bool(features_->actor_ui_window_controller_) ||
+         (features.actor_ui_window_controller_ &&
+          !features.actor_ui_window_controller_->CanRebindForAuxProfileSwitch())) {
++      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-actor";
+       return false;
+     }
+     if (bool(features.most_recent_shared_tab_update_store_) !=
+@@ -325,12 +371,14 @@
+         (features.most_recent_shared_tab_update_store_ &&
+          (!features.most_recent_shared_tab_update_store_->CanBeginAuxProfileSwitch() ||
+           !features.session_service_tab_group_sync_observer_->CanBeginAuxProfileSwitch()))) {
++      LOG(ERROR) << "Aux profile transition rejected: bindings.cache-shared-tabgroup";
+       return false;
+     }
+   }
+   const std::array<BrowserWindowInterface*, 3> windows{
+       &browser, &previous_cache, &target_cache};
+   if (!tab_groups::SavedTabGroupModelListener::CanPrepareAuxProfileModelTransfer(windows)) {
++    LOG(ERROR) << "Aux profile transition rejected: bindings.cache-model-transfer";
+     return false;
+   }
+   original->target_ai_mode_owner =
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "base/check.h"
+ #include "base/check_op.h"
++#include "base/logging.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+@@ -141,6 +142,7 @@
+       !init || init->is_aux_profile_switch_cache() ||
+       browser.aux_profile_switch_in_progress_ || !unload ||
+       unload->is_attempting_to_close_browser() || browser.IsDeleteScheduled()) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.entry-state";
+     return Result::kRejected;
+   }
+   if (target == previous) {
+@@ -155,6 +157,7 @@
+   // creation, menus, tabs, identity or auth/bootstrap side effects.
+   auto bindings = std::move(prepare).Run(browser, *target);
+   if (!bindings) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.prepare-bindings";
+     return Result::kRejected;
+   }
+   // Supplied4559f80 does not run account bootstrap/Vault admission here.
+@@ -164,6 +167,7 @@
+   auto active_keep_alive = ScopedProfileKeepAlive::TryAcquire(
+       target, ProfileKeepAliveOrigin::kBrowserWindow);
+   if (!active_keep_alive) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.target-keepalive";
+     return Result::kRejected;
+   }
+   // These fixed-identity caches are real Browsers, never arbitrary user windows.
+@@ -173,6 +177,7 @@
+       old_window == &browser || next_window == &browser ||
+       old_window->GetProfile() != previous || next_window->GetProfile() != target ||
+       !old_window->GetTabStripModel()->empty()) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.workspace-identity";
+     return Result::kRejected;
+   }
+   // CreateBrowserWindow on this desktop path constructs the actual Browser;
+@@ -182,11 +187,13 @@
+   if (!old_cache.is_initialized_ || !next_cache.is_initialized_ ||
+       old_cache.aux_profile_switch_in_progress_ ||
+       next_cache.aux_profile_switch_in_progress_) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.workspace-initialization";
+     return Result::kRejected;
+   }
+   if (next_cache.GetTabStripModel()->empty()) {
+     chrome::AddAndReturnTabAt(&next_cache, GURL(), -1, true);
+     if (next_cache.GetTabStripModel()->empty()) {
++      LOG(ERROR) << "Aux profile transition rejected: transaction.target-tab-creation";
+       return Result::kRejected;
+     }
+   }
+@@ -194,6 +201,7 @@
+   // changed source widgets must reject recoverably before any source mutation.
+   if (browser.GetProfile() != previous ||
+       !bindings->revalidate_.Run(browser, old_cache, next_cache)) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.revalidate";
+     return Result::kRejected;
+   }
+   old_cache.aux_profile_switch_in_progress_ = true;
+@@ -264,12 +272,14 @@
+   auto source_tabs = ProfileSwitchTabCollection::Take(
+       browser, base::PassKey<ProfileSwitchTransaction>());
+   if (!source_tabs) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.take-source-tabs";
+     return Result::kRejected;
+   }
+   auto target_tabs = ProfileSwitchTabCollection::Take(
+       next_cache, base::PassKey<ProfileSwitchTransaction>());
+   if (!target_tabs || !source_tabs->InsertInto(
+           old_cache, base::PassKey<ProfileSwitchTransaction>())) {
++    LOG(ERROR) << "Aux profile transition rejected: transaction.transfer-source-tabs";
+     return Result::kRejected;
+   }
+   const bool moved = BrowserManagerService::TransferForAuxProfileSwitch(
+@@ -284,6 +294,7 @@
+         old_cache, base::PassKey<ProfileSwitchTransaction>());
+     CHECK(rollback);
+     CHECK(rollback->InsertInto(browser, base::PassKey<ProfileSwitchTransaction>()));
++    LOG(ERROR) << "Aux profile transition rejected: transaction.transfer-browser-identity";
+     return Result::kRejected;
+   }
+   // All following operations are prevalidated, synchronous and cannot fail.
