@@ -25,7 +25,7 @@
   ],
   "integrationPending": {
     "nativeComposition": "out/native-reuse-composition-v605",
-    "stage": "out/provided-reuse-v604",
+    "stage": "out/provided-reuse-v605",
     "baseline": "out/provided-candidate-local-browser-pass-v603-observed-baseline",
     "actualAcceptance": false
   },
