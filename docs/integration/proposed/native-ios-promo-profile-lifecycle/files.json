@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v576",
+  "files": [
+    {
+      "path": "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h",
+      "baselineSha256": "7215f66fdfb224734f3ed31a44e6b9dc35579fe5c15c8e7535bf17431017c551",
+      "outputSha256": "51a9b7ac59d2c3b829aa3c7d776570c643204835735adf76aa6131eb5e4d44c9"
+    },
+    {
+      "path": "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.cc",
+      "baselineSha256": "ee663690c6c805b355b43fa3e3242481646e61024716e288544b7d6683d36cba",
+      "outputSha256": "e3c7dc7885ab03383a2150154c36e120d607ddffae30719a91e5a536b96107b6"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "ae8a990bbd9a6a679dff0b4548076de6d19a6bd27a2c0d77051848dea2307ef9",
+      "outputSha256": "6dc37c4210baec66fae374583a58f8381d9c9830ab509794f5cf5555ca0bb991"
+    }
+  ]
+}

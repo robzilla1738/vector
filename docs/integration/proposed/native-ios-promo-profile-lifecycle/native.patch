@@ -1,0 +1,148 @@
+--- a/chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h
++++ b/chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h
+@@ -37,7 +37,14 @@
+   // Returns true if the IOS promos can be shown.
+   bool CanShowIOSPromo(desktop_to_mobile_promos::PromoType promo_type);
+ 
++  // Keep this window owner, but suspend its profile-keyed trigger subscription.
++  bool CanPauseForAuxProfileSwitch() const;
++  void PauseForAuxProfileSwitch();
++  void ResumeForAuxProfileSwitch();
++
+  private:
++  void SubscribeToCurrentProfile();
++
+   void OnPromoTriggered(desktop_to_mobile_promos::PromoType promo_type);
+ 
+   void MaybeShowTabGroupsPromo();
+@@ -48,6 +55,7 @@
+ 
+   const raw_ptr<BrowserWindowInterface> browser_;
+ 
++  bool aux_profile_switch_paused_ = false;
+   base::CallbackListSubscription promo_trigger_subscription_;
+   base::CallbackListSubscription tab_group_editor_hidden_subscription_;
+ 
+--- a/chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.cc
++++ b/chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h"
+ 
++#include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "chrome/browser/browser_process.h"
+@@ -58,6 +59,10 @@
+ IOSPromoController::IOSPromoController(BrowserWindowInterface* browser)
+     : browser_(browser),
+       scoped_unowned_user_data_(browser->GetUnownedUserDataHost(), *this) {
++  SubscribeToCurrentProfile();
++}
++
++void IOSPromoController::SubscribeToCurrentProfile() {
+   IOSPromoTriggerService* service =
+       IOSPromoTriggerServiceFactory::GetForProfile(browser_->GetProfile());
+   if (service) {
+@@ -69,6 +74,27 @@
+ 
+ IOSPromoController::~IOSPromoController() = default;
+ 
++bool IOSPromoController::CanPauseForAuxProfileSwitch() const {
++  const auto* education = BrowserUserEducationInterface::From(browser_);
++  return !aux_profile_switch_paused_ && !weak_ptr_factory_.HasWeakPtrs() &&
++         !tab_group_editor_hidden_subscription_ &&
++         (!education || !education->IsAnyFeaturePromoActive());
++}
++
++void IOSPromoController::PauseForAuxProfileSwitch() {
++  CHECK(CanPauseForAuxProfileSwitch());
++  aux_profile_switch_paused_ = true;
++  promo_trigger_subscription_ = {};
++  weak_ptr_factory_.InvalidateWeakPtrs();
++}
++
++void IOSPromoController::ResumeForAuxProfileSwitch() {
++  CHECK(aux_profile_switch_paused_);
++  // Original service factory uses the now committed or restored window profile.
++  SubscribeToCurrentProfile();
++  aux_profile_switch_paused_ = false;
++}
++
+ // static
+ IOSPromoController* IOSPromoController::From(
+     BrowserWindowInterface* browser_window_interface) {
+@@ -76,6 +102,7 @@
+ }
+ 
+ bool IOSPromoController::CanShowIOSPromo(PromoType promo_type) {
++  if (aux_profile_switch_paused_) return false;
+   // TODO(crbug.com/485862381): Remove once check is integrated with user
+   // education system.
+   PrefService* local_state = g_browser_process->local_state();
+@@ -143,6 +170,7 @@
+ }
+ 
+ void IOSPromoController::ShowIOSPromo(PromoType promo_type) {
++  if (aux_profile_switch_paused_) return;
+   tab_group_editor_hidden_subscription_ = {};
+ 
+   auto* user_education_interface =
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -7,6 +7,7 @@
+ #include <optional>
+ #include <utility>
+ #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h"
++#include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+ #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+ #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+@@ -182,8 +183,9 @@
+     LOG(ERROR) << "Aux profile transition rejected: unported.new_tab_footer_controller";
+     return true;
+   }
+-  if (features.ios_promo_controller_) {
+-    LOG(ERROR) << "Aux profile transition rejected: unported.ios_promo_controller";
++  if (features.ios_promo_controller_ &&
++      !features.ios_promo_controller_->CanPauseForAuxProfileSwitch()) {
++    LOG(ERROR) << "Aux profile transition rejected: ios-promo-owner-active";
+     return true;
+   }
+   if (features.recent_activity_bubble_coordinator_) {
+@@ -354,6 +356,11 @@
+       LOG(ERROR) << "Aux profile transition rejected: contextual-task-cache-owner-active";
+       return false;
+     }
++    if (features.ios_promo_controller_ &&
++        !features.ios_promo_controller_->CanPauseForAuxProfileSwitch()) {
++      LOG(ERROR) << "Aux profile transition rejected: ios-promo-cache-owner-active";
++      return false;
++    }
+     if (bool(features.glic_iph_controller_) != bool(features.glic_split_button_controller_) ||
+         bool(features.glic_split_button_controller_) != bool(features_->glic_split_button_controller_) ||
+         (features.glic_split_button_controller_ &&
+@@ -438,6 +445,11 @@
+     auto& owner = window->GetFeatures().contextual_tasks_browser_controller_;
+     if (owner) {
+       owner->PauseForAuxProfileSwitch();
++      if (!alive()) return;
++    }
++    auto& promo = window->GetFeatures().ios_promo_controller_;
++    if (promo) {
++      promo->PauseForAuxProfileSwitch();
+       if (!alive()) return;
+     }
+   }
+@@ -1340,6 +1352,11 @@
+       owner->ResumeForAuxProfileSwitch();
+       if (!provider || !visible || !previous || !target) return false;
+     }
++    auto& promo = window->GetFeatures().ios_promo_controller_;
++    if (promo) {
++      promo->ResumeForAuxProfileSwitch();
++      if (!provider || !visible || !previous || !target) return false;
++    }
+   }
+   return true;
+ }
