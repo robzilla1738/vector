@@ -1,0 +1,128 @@
+{
+  "baseline": "actual-native-v579",
+  "sourceOnly": true,
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "0ee1868da660c57cdb805a1a71d804478729723fe330531bf7744a921d36d7ca",
+      "anchors": [
+        {
+          "text": "extensions::InitializeAuxMiniPopup(GetProfile());",
+          "count": 1
+        },
+        {
+          "text": "!BrowserInitState::From(browser())->is_aux_profile_switch_cache()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "sha256": "ecb8be4f22341dd8aade4f112d7642f303565245c4178a9c4ae3969ac6ac0cf8",
+      "anchors": [
+        {
+          "text": "registry->RegisterBooleanPref(kEnabled, false);",
+          "count": 1
+        },
+        {
+          "text": "registry->RegisterStringPref(kShortcut, \"Command+Shift+Space\");",
+          "count": 1
+        },
+        {
+          "text": "listener->RegisterAccelerator(accelerator, this)",
+          "count": 1
+        },
+        {
+          "text": "ShowFor(active->GetProfile());",
+          "count": 1
+        },
+        {
+          "text": "ShowFor(profile_.get());",
+          "count": 1
+        },
+        {
+          "text": "/minipopup.html#/",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+      "anchors": [
+        {
+          "text": "extensions::ShutdownAuxMiniPopup();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "60f54a9109b84a9ffb0ef3ca6f9fe131b0aef0f06ec273228e61ce5bec5d1e57",
+      "anchors": [
+        {
+          "text": "extensions::RegisterAuxPopupLocalStatePrefs(registry);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/accelerators/global_accelerator_listener/global_accelerator_listener_mac.mm",
+      "sha256": "e2999fc5a8ad0aa215570531d9e78222439afdc636d8f94c2ab7914ab7c86b80",
+      "anchors": [
+        {
+          "text": "OSStatus status = RegisterEventHotKey(",
+          "count": 1
+        },
+        {
+          "text": "void GlobalAcceleratorListenerMac::OnHotKeyEvent(EventHotKeyID hot_key_id)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.cc",
+      "sha256": "a823bb40ee3746a1ee3cd343e9df298d0f09adba185deab51c868321c0a861d7",
+      "anchors": [
+        {
+          "text": "iter->second->OnKeyPressed(accelerator);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "idl": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/idl/idl-asideMiniPopup.json",
+      "sha256": "f7f4a4dc60007840a4d58fb209760d10393f4e938d9299ae6403ba5432d97b1b",
+      "functions": [
+        "hide",
+        "getEnabled",
+        "setEnabled",
+        "getShortcut",
+        "setShortcut",
+        "setState",
+        "setSize",
+        "setOptionWindowSize",
+        "pickDirectory",
+        "switchProfile"
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_mini_popup.json",
+      "sha256": "6c505ae4ed39a75d142bc90b9e81c6b478b68f44cdca171249e215b760ddfd06",
+      "functions": [
+        "hide",
+        "getEnabled",
+        "setEnabled",
+        "getShortcut",
+        "setShortcut",
+        "setState",
+        "setSize",
+        "setOptionWindowSize",
+        "pickDirectory",
+        "switchProfile"
+      ]
+    }
+  ]
+}
