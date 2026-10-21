@@ -1,0 +1,114 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -1,4 +1,5 @@
+ # Independent native implementation: docs/spec/native/platform.md P1/P2/P4.
++import("//chrome/browser/buildflags.gni")
+ source_set("platform") {
+   sources = [
+     "installation_auth.cc",
+@@ -117,3 +118,37 @@
+   sources = [ "account_profile_source_probe.cc" ]
+   deps = [ ":account_profile_source", "//base" ]
+ }
++
++# Supplied Settings keyboard shortcut contract: parser is deliberately below
++# both MiniPopup and the command resolver, so neither depends on full UI.
++if (is_mac && enable_aux_browser) {
++  source_set("keyboard_shortcut_parser") {
++    public = [ "../ui/aux_keyboard_shortcut_parser.h" ]
++    public_deps = [
++      "//base",
++      "//ui/base",
++      "//ui/events",
++    ]
++  }
++
++  source_set("keyboard_shortcuts") {
++    public = [ "../ui/aux_keyboard_shortcuts.h" ]
++    sources = [ "../ui/aux_keyboard_shortcuts.mm" ]
++    public_deps = [ "//base" ]
++    deps = [
++      ":keyboard_shortcut_parser",
++      "//chrome/browser:browser_process",
++      "//chrome/browser/extensions/api/aux_mini_popup",
++      "//chrome/browser/profiles:profile",
++      "//chrome/browser/ui/browser_window",
++      "//components/pref_registry",
++      "//components/prefs",
++      "//content/public/browser",
++      "//ui/base",
++      "//ui/base/accelerators/global_accelerator_listener",
++      "//ui/events",
++      "//ui/gfx",
++    ]
++    frameworks = [ "AppKit.framework" ]
++  }
++}
+--- a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+@@ -1,7 +1,12 @@
++import("//chrome/browser/buildflags.gni")
++
+ source_set("aux_browser_preferences") {
+   sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+   deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
++  if (is_mac && enable_aux_browser) {
++    deps += [ "//chrome/browser/aux:keyboard_shortcuts" ]
++  }
+   frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
+ }
+ 
+--- a/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_mini_popup/BUILD.gn
+@@ -1,7 +1,12 @@
++import("//chrome/browser/buildflags.gni")
++
+ source_set("aux_mini_popup") {
+   sources = [ "aux_mini_popup_api.cc", "aux_mini_popup_api.h", "aux_mini_popup_api_mac.mm" ]
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//ui/shell_dialogs" ]
+   deps = [ "//base", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:platform", "//chrome/browser:browser_process", "//chrome/browser/extensions/api/aux_account", "//chrome/browser/profiles:profile_manager", "//chrome/browser/profiles:profile_util", "//chrome/browser/ui/browser_window", "//chrome/browser/ui/select_file_policy", "//components/keep_alive_registry", "//components/prefs", "//content/public/browser", "//net", "//skia", "//ui/base", "//ui/base/accelerators/global_accelerator_listener", "//ui/display", "//ui/gfx", "//ui/gfx/animation", "//ui/views", "//ui/views/controls/webview" ]
++  if (is_mac && enable_aux_browser) {
++    deps += [ "//chrome/browser/aux:keyboard_shortcut_parser" ]
++  }
+   frameworks = [ "AppKit.framework" ]
+ }
+ 
+--- a/chrome/browser/ui/cocoa/BUILD.gn
++++ b/chrome/browser/ui/cocoa/BUILD.gn
+@@ -214,6 +214,9 @@
+     # tab_group_menu_bridge.mm includes chrome/browser/ui/chrome_pages.h.
+     deps += [ "//chrome/browser/ui:chrome_pages" ]
+   }
++  if (enable_aux_browser) {
++    deps += [ "//chrome/browser/aux:keyboard_shortcuts" ]
++  }
+ }
+ 
+ source_set("unit_tests") {
+--- a/extensions/browser/extension_function_histogram_value.h
++++ b/extensions/browser/extension_function_histogram_value.h
+@@ -2151,6 +2151,10 @@
+   AUXCREDENTIALS_COMPLETE = 2086,
+   AUXCREDENTIALS_REJECT = 2087,
+   MANAGEMENT_LAUNCHEXTENSION = 2088,
++  AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS = 2089,
++  AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT = 2090,
++  AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT = 2091,
++  AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED = 2092,
+   // Last entry: Add new entries above, then run:
+   // tools/metrics/histograms/update_extension_histograms.py
+   ENUM_BOUNDARY
+--- a/tools/metrics/histograms/metadata/extensions/enums.xml
++++ b/tools/metrics/histograms/metadata/extensions/enums.xml
+@@ -3023,6 +3023,10 @@
+   <int value="2086" label="AUXCREDENTIALS_COMPLETE"/>
+   <int value="2087" label="AUXCREDENTIALS_REJECT"/>
+   <int value="2088" label="MANAGEMENT_LAUNCHEXTENSION"/>
++  <int value="2089" label="AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS"/>
++  <int value="2090" label="AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT"/>
++  <int value="2091" label="AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT"/>
++  <int value="2092" label="AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->

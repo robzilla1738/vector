@@ -1,0 +1,92 @@
+{
+  "baseline": "actual-native-v568; follows 601f9aeb8 source-only bridge",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "8b6717a747d5f9a5b741590f305e3c8ee439f3174cfa98b869af39b900f5e63b",
+      "outputSha256": "efdeb16042f8796c981d5e7b0f3c2c82a073c9ce55374f1f9ae129b566007b53",
+      "anchors": [
+        {
+          "find": "# Independent native implementation: docs/spec/native/platform.md P1/P2/P4.",
+          "replace": "# Independent native implementation: docs/spec/native/platform.md P1/P2/P4.\nimport(\"//chrome/browser/buildflags.gni\")",
+          "count": 1
+        },
+        {
+          "find": "executable(\"account_profile_source_probe\") {\n  testonly = true\n  sources = [ \"account_profile_source_probe.cc\" ]\n  deps = [ \":account_profile_source\", \"//base\" ]\n}\n",
+          "replace": "executable(\"account_profile_source_probe\") {\n  testonly = true\n  sources = [ \"account_profile_source_probe.cc\" ]\n  deps = [ \":account_profile_source\", \"//base\" ]\n}\n\n# Supplied Settings keyboard shortcut contract: parser is deliberately below\n# both MiniPopup and the command resolver, so neither depends on full UI.\nif (is_mac && enable_aux_browser) {\n  source_set(\"keyboard_shortcut_parser\") {\n    public = [ \"../ui/aux_keyboard_shortcut_parser.h\" ]\n    public_deps = [\n      \"//base\",\n      \"//ui/base\",\n      \"//ui/events\",\n    ]\n  }\n\n  source_set(\"keyboard_shortcuts\") {\n    public = [ \"../ui/aux_keyboard_shortcuts.h\" ]\n    sources = [ \"../ui/aux_keyboard_shortcuts.mm\" ]\n    public_deps = [ \"//base\" ]\n    deps = [\n      \":keyboard_shortcut_parser\",\n      \"//chrome/browser:browser_process\",\n      \"//chrome/browser/extensions/api/aux_mini_popup\",\n      \"//chrome/browser/profiles:profile\",\n      \"//chrome/browser/ui/browser_window\",\n      \"//components/pref_registry\",\n      \"//components/prefs\",\n      \"//content/public/browser\",\n      \"//ui/base\",\n      \"//ui/base/accelerators/global_accelerator_listener\",\n      \"//ui/events\",\n      \"//ui/gfx\",\n    ]\n    frameworks = [ \"AppKit.framework\" ]\n  }\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
+      "baselineSha256": "29323445d806a1a156ff0b4fa72067f18fcf8231d9baaab3a691e5d69cf593cf",
+      "outputSha256": "081065a319d876a98ae377d515f595303b09b5574c9f0f15b16c983b34a689c0",
+      "anchors": [
+        {
+          "find": "source_set(\"aux_browser_preferences\") {",
+          "replace": "import(\"//chrome/browser/buildflags.gni\")\n\nsource_set(\"aux_browser_preferences\") {",
+          "count": 1
+        },
+        {
+          "find": "  frameworks = [ \"Foundation.framework\", \"CoreFoundation.framework\" ]",
+          "replace": "  if (is_mac && enable_aux_browser) {\n    deps += [ \"//chrome/browser/aux:keyboard_shortcuts\" ]\n  }\n  frameworks = [ \"Foundation.framework\", \"CoreFoundation.framework\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/BUILD.gn",
+      "baselineSha256": "9e3efe369707eaf22dc7d32fb57e7f6a629e4b46dcd332d3f806e187c012e9c0",
+      "outputSha256": "c01923cd4dc6c4b1a6a8280ea25cb816cc46a8681d8939aabce4643510d4780a",
+      "anchors": [
+        {
+          "find": "source_set(\"aux_mini_popup\") {",
+          "replace": "import(\"//chrome/browser/buildflags.gni\")\n\nsource_set(\"aux_mini_popup\") {",
+          "count": 1
+        },
+        {
+          "find": "  frameworks = [ \"AppKit.framework\" ]",
+          "replace": "  if (is_mac && enable_aux_browser) {\n    deps += [ \"//chrome/browser/aux:keyboard_shortcut_parser\" ]\n  }\n  frameworks = [ \"AppKit.framework\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/BUILD.gn",
+      "baselineSha256": "b1845ca8d757e55719e031fb0df05f2d7bdf12b04f0f77791d17bbe12e5e57bb",
+      "outputSha256": "e59ba744ab424963468268471da1df1fdddad1f1b97ef221b77c4db6271b18a9",
+      "anchors": [
+        {
+          "find": "    deps += [ \"//chrome/browser/ui:chrome_pages\" ]\n  }\n}\n\nsource_set(\"unit_tests\")",
+          "replace": "    deps += [ \"//chrome/browser/ui:chrome_pages\" ]\n  }\n  if (enable_aux_browser) {\n    deps += [ \"//chrome/browser/aux:keyboard_shortcuts\" ]\n  }\n}\n\nsource_set(\"unit_tests\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_function_histogram_value.h",
+      "baselineSha256": "91e622592c90d044dc3908c37d66376fe431e53467515ed00ea2337c82b46862",
+      "outputSha256": "91638c848bd71e47fcd867fe12215da1df1f1e0a8927132794e5b5ba438733af",
+      "anchors": [
+        {
+          "find": "  MANAGEMENT_LAUNCHEXTENSION = 2088,",
+          "replace": "  MANAGEMENT_LAUNCHEXTENSION = 2088,\n  AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS = 2089,\n  AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT = 2090,\n  AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT = 2091,\n  AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED = 2092,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "baselineSha256": "7de2a49c8bfe32275e35f91d42d628333e796d29c6379d7a90477d327f44fcef",
+      "outputSha256": "73fc3e1b3009c1c79df2326b99559967bc034e5fbe473d3b038931e9fd76b02d",
+      "anchors": [
+        {
+          "find": "  <int value=\"2088\" label=\"MANAGEMENT_LAUNCHEXTENSION\"/>",
+          "replace": "  <int value=\"2088\" label=\"MANAGEMENT_LAUNCHEXTENSION\"/>\n  <int value=\"2089\" label=\"AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS\"/>\n  <int value=\"2090\" label=\"AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT\"/>\n  <int value=\"2091\" label=\"AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT\"/>\n  <int value=\"2092\" label=\"AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED\"/>",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
