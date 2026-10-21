@@ -81,6 +81,16 @@
     "computerUseHelperBuilt": true,
     "computerUseHelperState": "stopped",
     "osPermissionsVerified": false,
-    "approvalReview": "docs/integration/proposed/computer-use-local-readiness/README.md"
+    "approvalReview": "docs/integration/proposed/computer-use-local-readiness/README.md",
+    "ownerApproval": "reviewed bounded Computer Use check authorized; execution paused after desktop incident"
+  },
+  "desktopIncident": {
+    "credentialSubmittedToGoogleByUnexpectedClipboardPaste": true,
+    "ownerInformed": true,
+    "revokeRequested": true,
+    "workingSecretCleared": true,
+    "navigatedToBlank": true,
+    "captureCheckPaused": true,
+    "computerUseHelperStarted": false
   }
 }

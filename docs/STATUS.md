@@ -2,6 +2,10 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Desktop paste incident and paused capture check — 2026-10-20
+
+During preparation of the owner-approved Computer Use permission check, a desktop paste action intended to enter a harmless test URL instead submitted the clipboard's test API credential to Google Search. The owner was informed immediately and asked to revoke it. No credential value is recorded here. The private working transfer copy had already been cleared after successful Agent acceptance; no further provider request uses it. The actual Aux address was then set directly to about:blank and observed. Computer Use helper execution/capture remains paused; its approval is retained but no grant, startup or recording was performed. Future address entry uses direct setValue with observation before navigation, avoiding clipboard paste. No owner history is deleted or credential rotated automatically.
+
 ## Actual Agent acceptance —566, 2026-10-20
 
 All20 required Muse tasks now pass through the actual packaged supplied daemon/CLI/runtime/browser, including ten browser action cases, file/command work, attachments, durable/indexed cross-session memory, real child delegation, task plans, genuine automatic compaction and a report from observed page facts. Final report: `out/acceptance/e2e-035e9825-0dd5-46d1-b157-d9420417b0d1/report.json`. Passing cases were retained across explicit bounded retries rather than repeated; the report links earlier attempts. Session model identity was checked from full records, including children. The sole allowed provider/model was `vercel-ai-gateway/meta/muse-spark-1.3-contributor`. The test credential was removed and verified through the supplied API, cleanup errors are empty, and its private in-memory transfer copy has been cleared.
