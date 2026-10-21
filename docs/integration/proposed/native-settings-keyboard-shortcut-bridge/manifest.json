@@ -1,0 +1,127 @@
+{
+  "baseline": "actual-native-v566",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "131783c13c2cdd6f6500a60d32b7008dc7500ff3e7b5e38e60e318c7ff7c59aa",
+      "outputSha256": "f58f760732815b71b17b67a3498c25a03f41a37ec74c3fad7441709d68790fb6",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"",
+          "replace": "#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_prefs.h\"",
+          "count": 1
+        },
+        {
+          "find": "void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {",
+          "replace": "void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {\n  aux::RegisterKeyboardShortcutPrefs(registry);",
+          "count": 1
+        },
+        {
+          "find": "  const bool setter = base::StartsWith(method, \"set\");",
+          "replace": "  if (method == \"getKeyboardShortcuts\") {\n    if (!args().empty()) return RespondNow(Error(\"This method takes no arguments\"));\n    return RespondNow(WithArguments(aux::GetKeyboardShortcuts(profile()->GetOriginalProfile())));\n  }\n  if (method == \"setShortcutHandlingSuspended\") {\n    if (args().size() != 1 || !args()[0].is_bool() || !GetSenderWebContents())\n      return RespondNow(Error(\"Capture flag and live calling page required\"));\n    aux::SetShortcutCapture(GetSenderWebContents(), args()[0].GetBool());\n    return RespondNow(NoArguments());\n  }\n  if (method == \"setKeyboardShortcut\" || method == \"resetKeyboardShortcut\") {\n    const bool reset = method == \"resetKeyboardShortcut\";\n    if (args().size() != (reset ? 1u : 2u) || !args()[0].is_int() ||\n        (!reset && !args()[1].is_string()))\n      return RespondNow(Error(\"Shortcut command and value required\"));\n    auto error = reset\n        ? aux::ResetKeyboardShortcut(profile()->GetOriginalProfile(), args()[0].GetInt())\n        : aux::SetKeyboardShortcut(profile()->GetOriginalProfile(), args()[0].GetInt(), args()[1].GetString());\n    if (error) return RespondNow(Error(*error));\n    return RespondNow(NoArguments());\n  }\n  const bool setter = base::StartsWith(method, \"set\");",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
+      "baselineSha256": "58767c81a10650de1ef144fff3039fa944743294713a9911d284abbe7889a2f5",
+      "outputSha256": "7c3dc71b4a325259cf2cf3c4971c3c3f23a6a4874492304d8c74463fb363e6f3",
+      "anchors": [
+        {
+          "find": "}  // namespace extensions",
+          "replace": "class AuxBrowserPreferencesGetKeyboardShortcutsFunction final : public AuxBrowserPreferencesFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.getKeyboardShortcuts\",\n                             AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS)\n protected:\n  ~AuxBrowserPreferencesGetKeyboardShortcutsFunction() override = default;\n};\nclass AuxBrowserPreferencesSetKeyboardShortcutFunction final : public AuxBrowserPreferencesFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.setKeyboardShortcut\",\n                             AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT)\n protected:\n  ~AuxBrowserPreferencesSetKeyboardShortcutFunction() override = default;\n};\nclass AuxBrowserPreferencesResetKeyboardShortcutFunction final : public AuxBrowserPreferencesFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.resetKeyboardShortcut\",\n                             AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT)\n protected:\n  ~AuxBrowserPreferencesResetKeyboardShortcutFunction() override = default;\n};\nclass AuxBrowserPreferencesSetShortcutHandlingSuspendedFunction final : public AuxBrowserPreferencesFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.setShortcutHandlingSuspended\",\n                             AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED)\n protected:\n  ~AuxBrowserPreferencesSetShortcutHandlingSuspendedFunction() override = default;\n};\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "baselineSha256": "42b5d90cfcb115da723e6effa4e86f0a5a8e5b6330f9bf4dd250a65c545a4ba3",
+      "outputSha256": "7890978bb93a6721c792f2ff2961f0ed369bc9734ac148cec63f26fd779032cb",
+      "anchors": [
+        {
+          "find": "    \"functions\": [",
+          "replace": "    \"functions\": [\n      {\"name\": \"getKeyboardShortcuts\", \"type\": \"function\", \"parameters\": [], \"returns_async\": {\"name\": \"callback\", \"parameters\": [{\"name\": \"result\", \"type\": \"array\", \"items\": {\"type\": \"any\"}}]}},\n      {\"name\": \"setKeyboardShortcut\", \"type\": \"function\", \"parameters\": [{\"name\": \"commandId\", \"type\": \"integer\"}, {\"name\": \"shortcut\", \"type\": \"string\"}], \"returns_async\": {\"name\": \"callback\", \"parameters\": []}},\n      {\"name\": \"resetKeyboardShortcut\", \"type\": \"function\", \"parameters\": [{\"name\": \"commandId\", \"type\": \"integer\"}], \"returns_async\": {\"name\": \"callback\", \"parameters\": []}},\n      {\"name\": \"setShortcutHandlingSuspended\", \"type\": \"function\", \"parameters\": [{\"name\": \"suspended\", \"type\": \"boolean\"}], \"returns_async\": {\"name\": \"callback\", \"parameters\": []}},",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h",
+      "baselineSha256": "77c2c4973df03325a33cf1e231ab1cb7ccdd2e5079cff13fb3bd49f330c4da05",
+      "outputSha256": "7ec23917e956bb0d49bbab79a71ddd526a49c5e2ec4de86d3f5c462eee452cef",
+      "anchors": [
+        {
+          "find": "void ShutdownAuxMiniPopup();",
+          "replace": "void ShutdownAuxMiniPopup();\n// Shares the real atomic registration/persistence path with Settings.\nstd::optional<std::string> SetAuxMiniPopupShortcut(Profile* profile,\n                                                  const std::string& shortcut);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "b3fac97860e5200b9446d521af56588238039ab6fd61f09822195cf90bf03fba",
+      "outputSha256": "ecb8be4f22341dd8aade4f112d7642f303565245c4178a9c4ae3969ac6ac0cf8",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h\"",
+          "replace": "#include \"chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h\"\n#include \"chrome/browser/ui/aux_keyboard_shortcut_parser.h\"",
+          "count": 1
+        },
+        {
+          "find": "const auto accelerator = ui::Command::StringToAccelerator(shortcut);",
+          "replace": "const auto accelerator = aux::ParseKeyboardShortcut(shortcut).value_or(\n        ui::Command::StringToAccelerator(shortcut));",
+          "count": 1
+        },
+        {
+          "find": "ExtensionFunction::ResponseAction AuxMiniPopupFunction::RunAux() {",
+          "replace": "std::optional<std::string> SetAuxMiniPopupShortcut(Profile* profile,\n                                                  const std::string& shortcut) {\n  auto* prefs = g_browser_process->local_state();\n  if (prefs->IsManagedPreference(kShortcut)) return \"Shortcut is managed\";\n  if (shortcut.size() > 128 ||\n      ( !aux::ParseKeyboardShortcut(shortcut) &&\n        ui::Command::StringToAccelerator(shortcut).key_code() == ui::VKEY_UNKNOWN))\n    return \"Shortcut is not valid\";\n  auto* listener = ui::GlobalAcceleratorListener::GetInstance();\n  const bool suspended = listener && listener->IsShortcutHandlingSuspended();\n  // Capture suspends global delivery. Registration still must really succeed;\n  // preserve that suspension while updating the genuine registered owner.\n  if (suspended) listener->SetShortcutHandlingSuspended(false);\n  auto& manager = PopupManager::Get();\n  auto error = manager.Configure(profile, prefs->GetBoolean(kEnabled), shortcut);\n  if (suspended) listener->SetShortcutHandlingSuspended(true);\n  if (!error) manager.SetShortcutPreference(prefs, shortcut);\n  return error;\n}\nExtensionFunction::ResponseAction AuxMiniPopupFunction::RunAux() {",
+          "count": 1
+        },
+        {
+          "find": "    if (prefs->IsManagedPreference(kShortcut)) {\n      return RespondNow(Error(\"Shortcut is managed\"));\n    }\n    if (auto error = manager.Configure(profile(), prefs->GetBoolean(kEnabled),\n                                       args()[0].GetString())) {\n      return RespondNow(Error(*error));\n    }\n    manager.SetShortcutPreference(prefs, args()[0].GetString());",
+          "replace": "    if (auto error = SetAuxMiniPopupShortcut(profile(), args()[0].GetString())) {\n      return RespondNow(Error(*error));\n    }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm",
+      "baselineSha256": "dbb3ae9c5974d0336e4d10c8efee2c40f2e46a88edd4e200d4fc3b524e409efc",
+      "outputSha256": "49d0389b581095e433839b4d7b7ca8da5878ea9a70bead4581b0cc74b194bfc4",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/global_keyboard_shortcuts_mac.h\"",
+          "replace": "#include \"chrome/browser/global_keyboard_shortcuts_mac.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/aux_keyboard_shortcuts.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  if ([self eventHandledByViewsFocusManager:event\n                                   priority:ui::AcceleratorManager::\n                                                kHighPriority]) {",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  const auto aux_command = aux::ResolveKeyboardShortcut(event, window);\n  if (aux_command) {\n    if (*aux_command == 0) {\n      // Give the supplied capture input the real keyDown, bypassing AppKit\n      // menu equivalents and the browser's own accelerator registrations.\n      [[window firstResponder] keyDown:event];\n    } else if (auto* bridge =\n                   remote_cocoa::NativeWidgetNSWindowBridge::GetFromNSWindow(window)) {\n      bool executed = false;\n      bridge->host()->ExecuteCommand(*aux_command,\n          WindowOpenDisposition::CURRENT_TAB,\n          /*is_before_first_responder=*/false, &executed);\n    }\n    return ui::PerformKeyEquivalentResult::kHandled;\n  }\n  // A customized command must not also fire through its old main-menu or\n  // hidden accelerator. Let the focused view consume that displaced key.\n  if (aux::IsKeyboardShortcutCommandForWindow(CommandForKeyEvent(event).chrome_command, window)) {\n    [[window firstResponder] keyDown:event];\n    return ui::PerformKeyEquivalentResult::kHandled;\n  }\n#endif\n\n  if ([self eventHandledByViewsFocusManager:event\n                                   priority:ui::AcceleratorManager::\n                                                kHighPriority]) {",
+          "count": 1
+        },
+        {
+          "find": "  if ([self eventHandledByViewsFocusManager:event\n                                   priority:ui::AcceleratorManager::\n                                                kNormalPriority]) {",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  if (aux::IsKeyboardShortcutCommandForWindow(CommandForKeyEvent(event).chrome_command, window))\n    return ui::PerformKeyEquivalentResult::kHandled;\n#endif\n\n  if ([self eventHandledByViewsFocusManager:event\n                                   priority:ui::AcceleratorManager::\n                                                kNormalPriority]) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "baselineSha256": null,
+      "outputSha256": "f3d1890905bbf5b238ca11c95deca7a5fc21c3330cbf2fb6140276135693a5da"
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "baselineSha256": null,
+      "outputSha256": "30f2f092327da3d2fc4a2217275c7c8b7398950cdf2fe8ce8e0c23a28a423c89"
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcut_parser.h",
+      "baselineSha256": null,
+      "outputSha256": "8a2e80ac957600adf8938caf0ef6d915aa50a2ac02e70228c2a2984387d57860"
+    }
+  ]
+}

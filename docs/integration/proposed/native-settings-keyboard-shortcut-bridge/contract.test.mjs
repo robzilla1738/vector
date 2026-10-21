@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {createHash} from 'node:crypto';
+const root = new URL('./', import.meta.url);
+const evidence = JSON.parse(fs.readFileSync(new URL('source-evidence.json', root)));
+let hook = fs.readFileSync(evidence.suppliedHook.path, 'utf8');
+assert.equal(createHash('sha256').update(hook).digest('hex'), evidence.suppliedHook.sha256);
+hook = hook.replace(/import\{[^}]*\}from"[^"]+";/g, '')
+    .replace(/export\{[^}]*\};/, 'globalThis.contract={h,I,w,p,A};');
+const context = {K:x=>x,P:()=>({}),C:()=>true,E:x=>x,m:{error:()=>{}}};
+vm.createContext(context);vm.runInContext(hook, context);
+const {h,I,w,p,A} = context.contract;
+const methods=['getKeyboardShortcuts','setKeyboardShortcut','resetKeyboardShortcut','setShortcutHandlingSuspended'];
+const calls=[];
+const bridge=Object.fromEntries(methods.map(name=>[name,(...args)=>{
+ calls.push([name,...args]);return Promise.resolve(name==='getKeyboardShortcuts'?w():undefined);
+}]));
+assert.equal(h(bridge),true);
+for(const method of methods) assert.equal(h({...bridge,[method]:undefined}),false);
+assert.deepEqual(Array.from(w(),r=>r.commandId),[34061,52500,34068,34067,34071,34057,34066,34069]);
+await I(bridge,p.askAux.commandId,'Command+Shift+J');
+assert.deepEqual(calls.at(-1),['setKeyboardShortcut',34068,'Command+Shift+J']);
+await I(bridge,p.askAux.commandId,undefined);
+assert.deepEqual(calls.at(-1),['resetKeyboardShortcut',34068]);
+await assert.rejects(I(bridge,p.askAux.commandId,'Command+S'),/already in use/);
+assert.equal(A({code:'Backslash',ctrlKey:false,altKey:false,metaKey:true,shiftKey:true},true),'Command+Shift+\\');
+const schema=JSON.parse(fs.readFileSync(new URL('source/chrome/common/extensions/api/aux_browser_preferences.json',root)))[0];
+for(const name of methods) assert.equal(schema.functions.filter(f=>f.name===name).length,1);
+console.log('PASS: actual supplied four-method gate, command IDs, setter/reset/conflict/capture serialization and schema');

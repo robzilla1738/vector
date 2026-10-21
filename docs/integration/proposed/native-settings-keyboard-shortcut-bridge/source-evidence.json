@@ -1,0 +1,41 @@
+{
+  "suppliedHook": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-pass1/ui/agent/assets/use-shortcut-capture-DGr8Ws5Z.js",
+    "sha256": "77946a7fa9d48fcb546f04d345c9eeed2ece6e332bdad4f35e9c91565d2aa652"
+  },
+  "nativePins": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm",
+      "sha256": "dbb3ae9c5974d0336e4d10c8efee2c40f2e46a88edd4e200d4fc3b524e409efc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/browser_command_controller.cc",
+      "sha256": "31de77cce4cd82b8688b1ce4fe7a58e2562a0eff334f7aada88434171af6f189"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/global_keyboard_shortcuts_mac.mm",
+      "sha256": "05b3c3da516b45cc0ef30d1b53995a79528d5d3b30b7ffe2c3c97f67a87c92b4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/cocoa/command_dispatcher.mm",
+      "sha256": "4114660fe90b0034a7ed964f1facf1f64562c61449ae03b638ab53d6dfaaa8f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.cc",
+      "sha256": "a823bb40ee3746a1ee3cd343e9df298d0f09adba185deab51c868321c0a861d7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/ui/base/accelerators/command.cc",
+      "sha256": "4f41dcaf3305f67c9ad76c754644a7b41852000745196917b3f740a8f51332a8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_common/aux_api.cc",
+      "sha256": "a03e70605ddee33accb3d61454016116eb86ebd8b5bdbdab05efe2ef88d55fdb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/content/public/browser/web_contents_observer.h",
+      "sha256": "da8805b5e0ef00648a58f8c4b395b29b91a0c5f13dfd2cddc9160592c5051d26"
+    }
+  ],
+  "provenance": "Supplied1852 capability/serialization contract. Explicit Chromium155 integration; original C++ implementation of these four optional methods not recovered. UI/CSS unchanged."
+}

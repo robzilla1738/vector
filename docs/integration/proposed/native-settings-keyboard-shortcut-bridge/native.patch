@@ -1,0 +1,566 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/search_engines/template_url_service_factory.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
+ #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
+ #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
+ #include "chrome/common/pref_names.h"
+@@ -65,6 +66,7 @@
+ }
+ }  // namespace
+ void RegisterAuxProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
++  aux::RegisterKeyboardShortcutPrefs(registry);
+   registry->RegisterListPref("aux.browser.sidebar.expanded_bookmark_folders");
+   registry->RegisterListPref("aux.browser.sidebar.collapsed_sections");
+   registry->RegisterListPref("aux.browser.import.source_profiles");
+@@ -79,6 +81,27 @@
+ ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
+   const std::string_view method = std::string_view(name()).substr(22);
+   auto* prefs = profile()->GetPrefs();
++  if (method == "getKeyboardShortcuts") {
++    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
++    return RespondNow(WithArguments(aux::GetKeyboardShortcuts(profile()->GetOriginalProfile())));
++  }
++  if (method == "setShortcutHandlingSuspended") {
++    if (args().size() != 1 || !args()[0].is_bool() || !GetSenderWebContents())
++      return RespondNow(Error("Capture flag and live calling page required"));
++    aux::SetShortcutCapture(GetSenderWebContents(), args()[0].GetBool());
++    return RespondNow(NoArguments());
++  }
++  if (method == "setKeyboardShortcut" || method == "resetKeyboardShortcut") {
++    const bool reset = method == "resetKeyboardShortcut";
++    if (args().size() != (reset ? 1u : 2u) || !args()[0].is_int() ||
++        (!reset && !args()[1].is_string()))
++      return RespondNow(Error("Shortcut command and value required"));
++    auto error = reset
++        ? aux::ResetKeyboardShortcut(profile()->GetOriginalProfile(), args()[0].GetInt())
++        : aux::SetKeyboardShortcut(profile()->GetOriginalProfile(), args()[0].GetInt(), args()[1].GetString());
++    if (error) return RespondNow(Error(*error));
++    return RespondNow(NoArguments());
++  }
+   const bool setter = base::StartsWith(method, "set");
+   const bool requires_value = setter && method != "setAsDefaultBrowser";
+   if (requires_value && args().size() != 1) {
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h
+@@ -308,5 +308,33 @@
+  protected:
+   ~AuxBrowserPreferencesSetDefaultSearchEngineFunction() override = default;
+ };
++class AuxBrowserPreferencesGetKeyboardShortcutsFunction final : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.getKeyboardShortcuts",
++                             AUXBROWSERPREFERENCES_GETKEYBOARDSHORTCUTS)
++ protected:
++  ~AuxBrowserPreferencesGetKeyboardShortcutsFunction() override = default;
++};
++class AuxBrowserPreferencesSetKeyboardShortcutFunction final : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setKeyboardShortcut",
++                             AUXBROWSERPREFERENCES_SETKEYBOARDSHORTCUT)
++ protected:
++  ~AuxBrowserPreferencesSetKeyboardShortcutFunction() override = default;
++};
++class AuxBrowserPreferencesResetKeyboardShortcutFunction final : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.resetKeyboardShortcut",
++                             AUXBROWSERPREFERENCES_RESETKEYBOARDSHORTCUT)
++ protected:
++  ~AuxBrowserPreferencesResetKeyboardShortcutFunction() override = default;
++};
++class AuxBrowserPreferencesSetShortcutHandlingSuspendedFunction final : public AuxBrowserPreferencesFunction {
++ public:
++  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.setShortcutHandlingSuspended",
++                             AUXBROWSERPREFERENCES_SETSHORTCUTHANDLINGSUSPENDED)
++ protected:
++  ~AuxBrowserPreferencesSetShortcutHandlingSuspendedFunction() override = default;
++};
+ }  // namespace extensions
+ #endif
+--- a/chrome/common/extensions/api/aux_browser_preferences.json
++++ b/chrome/common/extensions/api/aux_browser_preferences.json
+@@ -3,6 +3,10 @@
+     "namespace": "auxBrowserPreferences",
+     "description": "Aux private native browser capability.",
+     "functions": [
++      {"name": "getKeyboardShortcuts", "type": "function", "parameters": [], "returns_async": {"name": "callback", "parameters": [{"name": "result", "type": "array", "items": {"type": "any"}}]}},
++      {"name": "setKeyboardShortcut", "type": "function", "parameters": [{"name": "commandId", "type": "integer"}, {"name": "shortcut", "type": "string"}], "returns_async": {"name": "callback", "parameters": []}},
++      {"name": "resetKeyboardShortcut", "type": "function", "parameters": [{"name": "commandId", "type": "integer"}], "returns_async": {"name": "callback", "parameters": []}},
++      {"name": "setShortcutHandlingSuspended", "type": "function", "parameters": [{"name": "suspended", "type": "boolean"}], "returns_async": {"name": "callback", "parameters": []}},
+       {
+         "name": "getWindowBackgroundVibrancyEnabled",
+         "type": "function",
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h
+@@ -11,6 +11,9 @@
+ namespace extensions {
+ void InitializeAuxMiniPopup(Profile* profile);
+ void ShutdownAuxMiniPopup();
++// Shares the real atomic registration/persistence path with Settings.
++std::optional<std::string> SetAuxMiniPopupShortcut(Profile* profile,
++                                                  const std::string& shortcut);
+ void RegisterAuxPopupLocalStatePrefs(PrefRegistrySimple* registry);
+ class AuxMiniPopupFunction : public AuxFunction,
+                              public ui::SelectFileDialog::Listener {
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ // Independently authored native popup and global shortcut: apis-core A4.
+ #include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
++#include "chrome/browser/ui/aux_keyboard_shortcut_parser.h"
+ 
+ #include "base/auto_reset.h"
+ #include "base/functional/bind.h"
+@@ -202,7 +203,8 @@
+                                        bool enabled,
+                                        std::string shortcut) {
+     auto* listener = ui::GlobalAcceleratorListener::GetInstance();
+-    const auto accelerator = ui::Command::StringToAccelerator(shortcut);
++    const auto accelerator = aux::ParseKeyboardShortcut(shortcut).value_or(
++        ui::Command::StringToAccelerator(shortcut));
+     if (enabled) {
+       if (accelerator.key_code() == ui::VKEY_UNKNOWN) {
+         return "Shortcut is not valid";
+@@ -714,6 +716,25 @@
+   registry->RegisterBooleanPref(kEnabled, false);
+   registry->RegisterStringPref(kShortcut, "Command+Shift+Space");
+ }
++std::optional<std::string> SetAuxMiniPopupShortcut(Profile* profile,
++                                                  const std::string& shortcut) {
++  auto* prefs = g_browser_process->local_state();
++  if (prefs->IsManagedPreference(kShortcut)) return "Shortcut is managed";
++  if (shortcut.size() > 128 ||
++      ( !aux::ParseKeyboardShortcut(shortcut) &&
++        ui::Command::StringToAccelerator(shortcut).key_code() == ui::VKEY_UNKNOWN))
++    return "Shortcut is not valid";
++  auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++  const bool suspended = listener && listener->IsShortcutHandlingSuspended();
++  // Capture suspends global delivery. Registration still must really succeed;
++  // preserve that suspension while updating the genuine registered owner.
++  if (suspended) listener->SetShortcutHandlingSuspended(false);
++  auto& manager = PopupManager::Get();
++  auto error = manager.Configure(profile, prefs->GetBoolean(kEnabled), shortcut);
++  if (suspended) listener->SetShortcutHandlingSuspended(true);
++  if (!error) manager.SetShortcutPreference(prefs, shortcut);
++  return error;
++}
+ ExtensionFunction::ResponseAction AuxMiniPopupFunction::RunAux() {
+   const auto method = std::string_view(name()).substr(13);
+   auto* prefs = g_browser_process->local_state();
+@@ -750,14 +771,9 @@
+         args()[0].GetString().size() > 128) {
+       return RespondNow(Error("Shortcut string required"));
+     }
+-    if (prefs->IsManagedPreference(kShortcut)) {
+-      return RespondNow(Error("Shortcut is managed"));
+-    }
+-    if (auto error = manager.Configure(profile(), prefs->GetBoolean(kEnabled),
+-                                       args()[0].GetString())) {
++    if (auto error = SetAuxMiniPopupShortcut(profile(), args()[0].GetString())) {
+       return RespondNow(Error(*error));
+     }
+-    manager.SetShortcutPreference(prefs, args()[0].GetString());
+     return RespondNow(NoArguments());
+   }
+   if (method == "setState") {
+--- a/chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm
++++ b/chrome/browser/ui/cocoa/chrome_command_dispatcher_delegate.mm
+@@ -8,6 +8,10 @@
+ #include "base/check.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/browser/global_keyboard_shortcuts_mac.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++#endif
+ #include "components/input/native_web_keyboard_event.h"
+ #include "components/remote_cocoa/app_shim/native_widget_ns_window_bridge.h"
+ #include "components/remote_cocoa/common/native_widget_ns_window_host.mojom.h"
+@@ -76,6 +80,30 @@
+     }
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  const auto aux_command = aux::ResolveKeyboardShortcut(event, window);
++  if (aux_command) {
++    if (*aux_command == 0) {
++      // Give the supplied capture input the real keyDown, bypassing AppKit
++      // menu equivalents and the browser's own accelerator registrations.
++      [[window firstResponder] keyDown:event];
++    } else if (auto* bridge =
++                   remote_cocoa::NativeWidgetNSWindowBridge::GetFromNSWindow(window)) {
++      bool executed = false;
++      bridge->host()->ExecuteCommand(*aux_command,
++          WindowOpenDisposition::CURRENT_TAB,
++          /*is_before_first_responder=*/false, &executed);
++    }
++    return ui::PerformKeyEquivalentResult::kHandled;
++  }
++  // A customized command must not also fire through its old main-menu or
++  // hidden accelerator. Let the focused view consume that displaced key.
++  if (aux::IsKeyboardShortcutCommandForWindow(CommandForKeyEvent(event).chrome_command, window)) {
++    [[window firstResponder] keyDown:event];
++    return ui::PerformKeyEquivalentResult::kHandled;
++  }
++#endif
++
+   if ([self eventHandledByViewsFocusManager:event
+                                    priority:ui::AcceleratorManager::
+                                                 kHighPriority]) {
+@@ -144,6 +172,11 @@
+ - (ui::PerformKeyEquivalentResult)postPerformKeyEquivalent:(NSEvent*)event
+                                                     window:(NSWindow*)window
+                                               isRedispatch:(BOOL)isRedispatch {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux::IsKeyboardShortcutCommandForWindow(CommandForKeyEvent(event).chrome_command, window))
++    return ui::PerformKeyEquivalentResult::kHandled;
++#endif
++
+   if ([self eventHandledByViewsFocusManager:event
+                                    priority:ui::AcceleratorManager::
+                                                 kNormalPriority]) {
+--- /dev/null
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_AUX_KEYBOARD_SHORTCUTS_H_
++#define CHROME_BROWSER_UI_AUX_KEYBOARD_SHORTCUTS_H_
++
++#include <optional>
++#include <string>
++#include "base/values.h"
++class Profile;
++namespace content {
++class WebContents;
++}
++namespace user_prefs {
++class PrefRegistrySyncable;
++}
++#if defined(__OBJC__)
++@class NSEvent;
++@class NSWindow;
++#endif
++namespace aux {
++void RegisterKeyboardShortcutPrefs(user_prefs::PrefRegistrySyncable* registry);
++base::ListValue GetKeyboardShortcuts(Profile* profile);
++std::optional<std::string> SetKeyboardShortcut(Profile* profile,
++                                               int command,
++                                               const std::string& shortcut);
++std::optional<std::string> ResetKeyboardShortcut(Profile* profile, int command);
++void SetShortcutCapture(content::WebContents* sender, bool suspended);
++#if defined(__OBJC__)
++// nullopt: normal Chromium dispatch; 0: deliver directly to the responder for
++// capture/displaced defaults; positive: real browser command, enabled as usual.
++std::optional<int> ResolveKeyboardShortcut(NSEvent* event, NSWindow* window);
++bool IsKeyboardShortcutCommandForWindow(int command, NSWindow* window);
++#endif
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.mm
+@@ -0,0 +1,235 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#include "chrome/browser/ui/aux_keyboard_shortcuts.h"
++
++#import <AppKit/AppKit.h>
++#include <algorithm>
++#include <iterator>
++#include <set>
++#include <string_view>
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/supports_user_data.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux_keyboard_shortcut_parser.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "components/pref_registry/pref_registry_syncable.h"
++#include "components/prefs/pref_service.h"
++#include "components/prefs/scoped_user_pref_update.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
++#include "ui/base/accelerators/platform_accelerator_cocoa.h"
++#include "ui/events/event_constants.h"
++#include "ui/events/keycodes/keyboard_code_conversion_mac.h"
++#include "ui/gfx/native_ui_types.h"
++
++namespace aux {
++namespace {
++constexpr char kOverrides[] = "aux.browser.keyboard_shortcuts";
++constexpr char kPopupShortcut[] = "aux.popup.shortcut";
++constexpr int kPopup = 34069;
++struct Binding {
++  int command;
++  std::string_view shortcut;
++};
++constexpr Binding kBindings[] = {
++    {34061, "Command+S"},       {52500, "Command+Shift+A"},
++    {34068, "Command+E"},       {34067, "Command+Shift+E"},
++    {34071, "Command+Shift+C"}, {34057, "Command+Shift+\\"},
++    {34066, "Command+Shift+-"}, {kPopup, "Alt+Space"}};
++
++const Binding* FindBinding(int command) {
++  const auto it = std::ranges::find(kBindings, command, &Binding::command);
++  return it == std::end(kBindings) ? nullptr : it;
++}
++
++std::string Default(const Binding& binding) {
++  if (binding.command != kPopup)
++    return std::string(binding.shortcut);
++  // Preserve the real registered global owner's default, not the UI fallback.
++  return g_browser_process->local_state()
++      ->GetDefaultPrefValue(kPopupShortcut)
++      ->GetString();
++}
++std::string Effective(Profile* profile, const Binding& binding) {
++  if (binding.command == kPopup)
++    return g_browser_process->local_state()->GetString(kPopupShortcut);
++  const auto* saved = profile->GetPrefs()
++                          ->GetDict(kOverrides)
++                          .FindString(base::NumberToString(binding.command));
++  return saved && ParseKeyboardShortcut(*saved) ? *saved : Default(binding);
++}
++class Capture;
++std::set<Capture*>& Captures() {
++  static base::NoDestructor<std::set<Capture*>> captures;
++  return *captures;
++}
++bool& PreviouslySuspended() {
++  static bool value = false;
++  return value;
++}
++const char kCaptureKey = 0;
++class Capture : public base::SupportsUserData::Data,
++                public content::WebContentsObserver {
++ public:
++  explicit Capture(content::WebContents* contents)
++      : WebContentsObserver(contents) {}
++  ~Capture() override { Set(false); }
++  void Set(bool suspended) {
++    auto& captures = Captures();
++    if (suspended == captures.contains(this))
++      return;
++    auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++    if (suspended) {
++      if (captures.empty()) {
++        PreviouslySuspended() =
++            listener && listener->IsShortcutHandlingSuspended();
++        if (listener)
++          listener->SetShortcutHandlingSuspended(true);
++      }
++      captures.insert(this);
++    } else {
++      captures.erase(this);
++      if (captures.empty() && listener && !PreviouslySuspended())
++        listener->SetShortcutHandlingSuspended(false);
++    }
++  }
++  void PrimaryPageChanged(content::Page&) override { Set(false); }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    Set(false);
++  }
++  void WebContentsDestroyed() override { Set(false); }
++};
++bool MenuConflict(NSMenu* menu,
++                  KeyEquivalentAndModifierMask* key,
++                  int command) {
++  for (NSMenuItem* item in menu.itemArray) {
++    if (item.submenu && MenuConflict(item.submenu, key, command))
++      return true;
++    if (item.tag != command &&
++        [item.keyEquivalent isEqualToString:key.keyEquivalent] &&
++        item.keyEquivalentModifierMask == key.modifierMask)
++      return true;
++  }
++  return false;
++}
++}  // namespace
++
++void RegisterKeyboardShortcutPrefs(user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterDictionaryPref(kOverrides);
++}
++base::ListValue GetKeyboardShortcuts(Profile* profile) {
++  base::ListValue result;
++  for (const auto& binding : kBindings) {
++    const auto effective = Effective(profile, binding);
++    const auto initial = Default(binding);
++    base::DictValue row;
++    row.Set("commandId", binding.command);
++    row.Set("serializedShortcut", effective);
++    row.Set("defaultSerializedShortcut", initial);
++    const auto effective_key = ParseKeyboardShortcut(effective);
++    row.Set("shortcut",
++            effective_key ? base::UTF16ToUTF8(effective_key->GetShortcutText())
++                          : effective);
++    row.Set(
++        "defaultShortcut",
++        base::UTF16ToUTF8(ParseKeyboardShortcut(initial)->GetShortcutText()));
++    row.Set("isCustomized", effective != initial);
++    result.Append(std::move(row));
++  }
++  return result;
++}
++std::optional<std::string> SetKeyboardShortcut(Profile* profile,
++                                               int command,
++                                               const std::string& value) {
++  const auto* binding = FindBinding(command);
++  const auto parsed = ParseKeyboardShortcut(value);
++  if (!binding || !parsed)
++    return "Shortcut is not valid";
++  for (const auto& other : kBindings) {
++    if (other.command != command &&
++        ParseKeyboardShortcut(Effective(profile, other)) == parsed)
++      return "This shortcut is already in use. Choose a different shortcut.";
++  }
++  // Allow a command's own supplied default even when it replaces a Chromium
++  // menu default (notably Toggle Sidebar / Save Page). Reject other menu
++  // clashes.
++  if (value != Default(*binding) &&
++      MenuConflict(NSApp.mainMenu,
++                   ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed),
++                   command))
++    return "This shortcut is already used by a browser menu command.";
++  if (command == kPopup)
++    return extensions::SetAuxMiniPopupShortcut(profile, value);
++  auto* prefs = profile->GetPrefs();
++  if (prefs->IsManagedPreference(kOverrides))
++    return "Shortcuts are managed";
++  ScopedDictPrefUpdate update(prefs, kOverrides);
++  update->Set(base::NumberToString(command), value);
++  return std::nullopt;
++}
++std::optional<std::string> ResetKeyboardShortcut(Profile* profile,
++                                                 int command) {
++  const auto* binding = FindBinding(command);
++  if (!binding)
++    return "Unknown shortcut command";
++  if (auto error = SetKeyboardShortcut(profile, command, Default(*binding)))
++    return error;
++  if (command != kPopup) {
++    ScopedDictPrefUpdate update(profile->GetPrefs(), kOverrides);
++    update->Remove(base::NumberToString(command));
++  }
++  return std::nullopt;
++}
++void SetShortcutCapture(content::WebContents* sender, bool suspended) {
++  auto* capture = static_cast<Capture*>(sender->GetUserData(&kCaptureKey));
++  if (!capture) {
++    auto owned = std::make_unique<Capture>(sender);
++    capture = owned.get();
++    sender->SetUserData(&kCaptureKey, std::move(owned));
++  }
++  capture->Set(suspended);
++}
++std::optional<int> ResolveKeyboardShortcut(NSEvent* event, NSWindow* window) {
++  if (event.type != NSEventTypeKeyDown)
++    return std::nullopt;
++  for (auto* capture : Captures()) {
++    if (capture->web_contents() &&
++        capture->web_contents()->GetTopLevelNativeWindow() ==
++            gfx::NativeWindow(window))
++      return 0;
++  }
++  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
++      gfx::NativeWindow(window));
++  if (!browser)
++    return std::nullopt;
++  auto* profile = browser->GetProfile()->GetOriginalProfile();
++  int flags = 0;
++  if (event.modifierFlags & NSEventModifierFlagCommand)
++    flags |= ui::EF_COMMAND_DOWN;
++  if (event.modifierFlags & NSEventModifierFlagControl)
++    flags |= ui::EF_CONTROL_DOWN;
++  if (event.modifierFlags & NSEventModifierFlagOption)
++    flags |= ui::EF_ALT_DOWN;
++  if (event.modifierFlags & NSEventModifierFlagShift)
++    flags |= ui::EF_SHIFT_DOWN;
++  const ui::Accelerator pressed(ui::KeyboardCodeFromKeyCode(event.keyCode),
++                                flags);
++  for (const auto& binding : kBindings) {
++    if (binding.command != kPopup &&
++        ParseKeyboardShortcut(Effective(profile, binding)) == pressed)
++      return binding.command;
++  }
++  return std::nullopt;
++}
++bool IsKeyboardShortcutCommandForWindow(int command, NSWindow* window) {
++  return command != kPopup && FindBinding(command) &&
++         GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
++             gfx::NativeWindow(window));
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/aux_keyboard_shortcut_parser.h
+@@ -0,0 +1,63 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_UI_AUX_KEYBOARD_SHORTCUT_PARSER_H_
++#define CHROME_BROWSER_UI_AUX_KEYBOARD_SHORTCUT_PARSER_H_
++#include <optional>
++#include <string_view>
++#include <utility>
++#include "base/strings/split_string.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/events/event_constants.h"
++namespace aux {
++// Match precisely the key vocabulary emitted by the supplied capture hook,
++// including backslash/minus, which ui::Command's extension grammar omits.
++inline std::optional<ui::Accelerator> ParseKeyboardShortcut(
++    std::string_view value) {
++  const auto parts = base::SplitStringPiece(value, "+", base::KEEP_WHITESPACE,
++                                            base::SPLIT_WANT_ALL);
++  if (parts.size() < 2 || parts.size() > 5)
++    return std::nullopt;
++  int flags = 0;
++  for (size_t i = 0; i + 1 < parts.size(); ++i) {
++    int flag = 0;
++    if (parts[i] == "Ctrl")
++      flag = ui::EF_CONTROL_DOWN;
++    else if (parts[i] == "Alt")
++      flag = ui::EF_ALT_DOWN;
++    else if (parts[i] == "Command")
++      flag = ui::EF_COMMAND_DOWN;
++    else if (parts[i] == "Shift")
++      flag = ui::EF_SHIFT_DOWN;
++    else
++      return std::nullopt;
++    if (flags & flag)
++      return std::nullopt;
++    flags |= flag;
++  }
++  if (!(flags & (ui::EF_CONTROL_DOWN | ui::EF_ALT_DOWN | ui::EF_COMMAND_DOWN)))
++    return std::nullopt;
++  const auto key = parts.back();
++  ui::KeyboardCode code = ui::VKEY_UNKNOWN;
++  if (key.size() == 1 && key[0] >= 'A' && key[0] <= 'Z')
++    code = static_cast<ui::KeyboardCode>(ui::VKEY_A + key[0] - 'A');
++  else if (key.size() == 1 && key[0] >= '0' && key[0] <= '9')
++    code = static_cast<ui::KeyboardCode>(ui::VKEY_0 + key[0] - '0');
++  else {
++    constexpr std::pair<std::string_view, ui::KeyboardCode> keys[] = {
++        {"Down", ui::VKEY_DOWN},     {"Left", ui::VKEY_LEFT},
++        {"Right", ui::VKEY_RIGHT},   {"Up", ui::VKEY_UP},
++        {"\\", ui::VKEY_OEM_5},      {"Comma", ui::VKEY_OEM_COMMA},
++        {"Delete", ui::VKEY_DELETE}, {"End", ui::VKEY_END},
++        {"Home", ui::VKEY_HOME},     {"Insert", ui::VKEY_INSERT},
++        {"-", ui::VKEY_OEM_MINUS},   {"PageDown", ui::VKEY_NEXT},
++        {"PageUp", ui::VKEY_PRIOR},  {"Period", ui::VKEY_OEM_PERIOD},
++        {"Space", ui::VKEY_SPACE},   {"Tab", ui::VKEY_TAB}};
++    for (const auto& [name, candidate] : keys)
++      if (key == name)
++        code = candidate;
++  }
++  if (code == ui::VKEY_UNKNOWN)
++    return std::nullopt;
++  return ui::Accelerator(code, flags);
++}
++}  // namespace aux
++#endif
