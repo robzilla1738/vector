@@ -1,0 +1,68 @@
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -691,6 +691,13 @@
+ }
+ 
+ bool BrowserCommandController::IsCommandEnabled(int id) const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Aux delegates password management to the user's chosen extension.
++  if (id == IDC_SHOW_PASSWORD_MANAGER ||
++      id == IDC_SAFETY_HUB_SHOW_PASSWORD_CHECKUP) {
++    return false;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   if (id == IDC_AUX_OPEN_NEW_CHAT && !aux::CanOpenNewChat(*browser_))
+     return false;
+--- a/chrome/browser/ui/toolbar/app_menu_model.cc
++++ b/chrome/browser/ui/toolbar/app_menu_model.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/defaults.h"
+ #include "chrome/browser/enterprise/isolated_mode/isolated_mode_settings_service_factory.h"
+ #include "chrome/browser/enterprise/util/managed_browser_utils.h"
+@@ -740,6 +741,7 @@
+ PasswordsAndAutofillSubMenuModel::PasswordsAndAutofillSubMenuModel(
+     ui::SimpleMenuModel::Delegate* delegate)
+     : SimpleMenuModel(delegate) {
++#if !BUILDFLAG(ENABLE_AUX_BROWSER)
+   AddItemWithStringIdAndVectorIcon(this, IDC_SHOW_PASSWORD_MANAGER,
+                                    IDS_VIEW_PASSWORDS,
+                                    features::IsRoundedIconsEnabled()
+@@ -747,6 +749,7 @@
+                                        : vector_icons::kPasswordManagerOldIcon);
+   SetElementIdentifierAt(GetIndexOfCommandId(IDC_SHOW_PASSWORD_MANAGER).value(),
+                          AppMenuModel::kPasswordManagerMenuItem);
++#endif
+ 
+   AddItemWithStringIdAndVectorIcon(this, IDC_SHOW_PAYMENT_METHODS,
+                                    IDS_YOUR_SAVED_INFO_PAYMENTS_SUBMENU_OPTION,
+@@ -2138,7 +2141,12 @@
+         std::make_unique<PasswordsAndAutofillSubMenuModel>(this));
+     AddSubMenuWithStringIdAndVectorIcon(
+         this, kPasswordsAndAutofillMenuPlaceholder,
+-        IDS_PASSWORDS_AND_AUTOFILL_MENU, sub_menus_.back().get(),
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++        IDS_SYNC_CONFIRMATION_TANGIBLE_SYNC_AUTOFILL,
++#else
++        IDS_PASSWORDS_AND_AUTOFILL_MENU,
++#endif
++        sub_menus_.back().get(),
+         features::IsRoundedIconsEnabled()
+             ? vector_icons::kPasswordManagerIcon
+             : vector_icons::kPasswordManagerOldIcon);
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -403,7 +403,9 @@
+   map.AddWebUIConfig(
+       std::make_unique<on_device_internals::OnDeviceInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<PageActionInternalsUIConfig>());
++#if !BUILDFLAG(ENABLE_AUX_BROWSER)
+   map.AddWebUIConfig(std::make_unique<PasswordManagerUIConfig>());
++#endif
+   map.AddWebUIConfig(std::make_unique<ProfileInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<ReadingListUIConfig>());
+   map.AddWebUIConfig(std::make_unique<SearchEngineChoiceUIConfig>());

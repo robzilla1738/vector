@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "baselineSha256": "897949d1024a737c85ca6d04a88f3c5a59cdf83eed9f0569f178bb1da1a4eb9a",
+      "outputSha256": "36be4a8a12ebe9b9320788d15cd462b5ffb6998e0277c0e97f5a23f21f61d929"
+    },
+    {
+      "path": "chrome/browser/ui/toolbar/app_menu_model.cc",
+      "baselineSha256": "5cb254d4614c5e99ad284212f5ce9734398422e8ead43fbdcfe732c99cae9c20",
+      "outputSha256": "843e87d1a216efc931a0fa6c9cd5bab131ac98f3e42c43f766c3e944282db6fc"
+    },
+    {
+      "path": "chrome/browser/ui/webui/chrome_web_ui_configs.cc",
+      "baselineSha256": "4696045b87f3867c4ea3dbf11a2c163a08287804e208bdd82aaeeeccf8ce3b79",
+      "outputSha256": "44ce0fc4a6612fb150454ad20751f9b9237945bcf5feadd1a3607f1dd0464d09"
+    }
+  ]
+}
