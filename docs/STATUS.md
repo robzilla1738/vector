@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Active-work and session persistence batch605 — 2026-10-21
+
+Actual603 reproduced an unsent supplied chat draft disappearing after a profile round trip. The successor retains the exact profile/extension/window session-storage namespace while destroying old native delegates normally, and flushes the supplied draft writer's latest edit immediately. No layout, CSS, glass or geometry changes.
+
+The combined source also repairs canceled-picker/idle Drive ownership, empty-cache last-window accounting, and pending session-snapshot draining before close/quit. Saved inactive single-window sessions restore through Chromium's actual asynchronous session machinery before admission; ambiguous multiwindow sessions remain a separate explicit boundary. Source/count checks are complete; native integration and actual605 acceptance are pending.604 compilation was interrupted to add a non-pruning session-admission read;605 continues the same object build.603 remains the observed app. No new paid AI, Apple signing, Keychain operation or OS grant is requested.
+
 ## Actual603 batch complete and open for testing — 2026-10-21
 
 603 native build/generated-key probe passed (7 steps,3m36.31s), supplied packaging and full retained-helper/native-seal inventory passed. Receipt7ca5ee6ad0ff3e73657688a634e33b51845e5318fc9283e600fcdc3081c206df retains all8 helpers without new Apple signing/Keychain operations. Exact normal disposable startup is accepted; Aux is open in Your Aux with the supplied chat panel.601 app/startup acceptance is archived.

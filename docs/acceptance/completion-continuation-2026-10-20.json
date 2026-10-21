@@ -23,7 +23,12 @@
     "574 actual bookmark add/remove changes native section and restores ExampleDomain-only state",
     "574 actual context-menu Pin moves tab into favorites; Unpin restores original tab state"
   ],
-  "integrationPending": null,
+  "integrationPending": {
+    "nativeComposition": "out/native-reuse-composition-v605",
+    "stage": "out/provided-reuse-v604",
+    "baseline": "out/provided-candidate-local-browser-pass-v603-observed-baseline",
+    "actualAcceptance": false
+  },
   "extensionFixture": {
     "allowedId": "gonhppmcelokacpkhcdomonppbhchdgj",
     "deniedId": "ficbokeeaigghanhmimenlhonebpbdda",
@@ -190,7 +195,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "batch-complete-open-for-user-testing",
+  "executionState": "active-work-session-batch-building",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
