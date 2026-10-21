@@ -1,5 +1,9 @@
 # Aux implementation status
 
+## Resumed: exact generated daemon consistency review — 2026-10-21
+
+The generated node-development/index.mjs differs by exactly the same five approved Vault exclusion edits, each once; it equals production589 staging byte for byte. A corrected unsigned copy has143 verified leaves, with three changed product leaves rather than the two in the original approval. ReviewSHA b13b0f0e5bab17bd53bae61be402dfc6b9a5efce2509b3f70179cf16c899c3e6. Supplemental scoped signing approval is requested before signing that additional generated source file.586 remains restored and closed,589 remains built/unaccepted. The separate used-AIM source proposal is being reviewed without mutating the verified app.
+
 ## Owner-requested pause checkpoint — built589, restore verified586 — 2026-10-21
 
 Owner requested a pausing point during combined589 packaging. Full native589 build/generated-key probe passed (97 steps,9m41.43s) and supplied package assembled10751 resources+418 native leaves. The new daemon signature is approved and statically verified, but its refreshed resource cache rejected the unsigned package inventory before copying/launch. This is an integration mismatch, not runtime acceptance. The diagnostic isolated Contents/Resources/node-development/index.mjs inside the daemon: fresh production staging updated that source alongside the SEA, but the exact approved two-leaf signed review retains its earlier bytes. No guard is waived.589 is retained at out/provided-candidate-local-browser-pass-v589-unaccepted;586 and its exact accepted startup record are restored at the stable candidate path. Aux is closed. No589 profile/draft/import/API/UI acceptance is claimed.

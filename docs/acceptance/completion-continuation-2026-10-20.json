@@ -25,7 +25,7 @@
   ],
   "integrationPending": {
     "candidate": 589,
-    "state": "native-build-and-package-passed-cache-baseline-rejected-before-launch",
+    "state": "589-built-awaiting-corrected-generated-source-signing-approval",
     "batches": [
       "587 password import exclusion",
       "588 classic WebUI omnibox profile lifecycle",
@@ -202,7 +202,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "paused-owner-requested-after-built589",
+  "executionState": "active-resumed-generated-daemon-consistency-review",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -251,6 +251,7 @@
     "appOpen": false,
     "buildJobsRunning": false,
     "unacceptedPackage": "out/provided-candidate-local-browser-pass-v589-unaccepted",
-    "mismatch": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs"
+    "mismatch": "Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "resumed": true
   }
 }
