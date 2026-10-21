@@ -1,0 +1,213 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.h
+@@ -20,7 +20,9 @@
+ // until BrowserWindowFeatures supplies every real profile/view binding plan.
+ class ProfileSwitchTransaction {
+  public:
+-  enum class Result { kRejected, kNoChange, kAwaitingSecurity, kSwitched };
++  enum class Result {
++    kRejected, kNoChange, kAwaitingSecurity, kAwaitingCacheSetup, kSwitched
++  };
+   using Phase = base::OnceCallback<void(Browser&, Browser&, Browser&)>;
+   using Revalidate =
+       base::RepeatingCallback<bool(Browser&, Browser&, Browser&)>;
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -209,6 +209,11 @@
+     LOG(ERROR) << "Aux profile transition rejected: transaction.target-keepalive";
+     return Result::kRejected;
+   }
++  // Initial native cache construction/attachment posts real Actor UI work.
++  // Do not reinterpret those outstanding callbacks as idle or cancel them.
++  bool cache_setup_changed =
++      !FindProfileSwitchWorkspace(&browser, previous->GetPath()) ||
++      !FindProfileSwitchWorkspace(&browser, target->GetPath());
+   // These fixed-identity caches are real Browsers, never arbitrary user windows.
+   auto* old_window = GetOrCreateProfileSwitchWorkspace(&browser, previous, false);
+   auto* next_window = GetOrCreateProfileSwitchWorkspace(&browser, target, true);
+@@ -265,11 +270,18 @@
+     return Result::kRejected;
+   }
+   if (next_cache.GetTabStripModel()->empty()) {
++    cache_setup_changed = true;
+     chrome::AddAndReturnTabAt(&next_cache, GURL(), -1, true);
+     if (next_cache.GetTabStripModel()->empty()) {
+       LOG(ERROR) << "Aux profile transition rejected: transaction.target-tab-creation";
+       return Result::kRejected;
+     }
++  }
++  if (cache_setup_changed) {
++    // No source binding phase, tab transfer or identity mutation has begun.
++    // The caller may resume once after original posted setup work. It must
++    // create a fresh binding plan and pass every existing admission check.
++    return Result::kAwaitingCacheSetup;
+   }
+   // Cache creation can synchronously invoke real observers. New clients or
+   // changed source widgets must reject recoverably before any source mutation.
+--- a/chrome/browser/ui/browser_window/public/browser_window_features.h
++++ b/chrome/browser/ui/browser_window/public/browser_window_features.h
+@@ -288,7 +288,8 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   // Internal native owner entry; no UI/API trigger is registered. False also
+   // covers a real security gate that is not ready; no success is synthesized.
+-  bool RunAuxProfileSwitch(Profile* target);
++  bool RunAuxProfileSwitch(Profile* target,
++                           bool* awaiting_cache_setup = nullptr);
+ #endif
+ 
+   BrowserWindowFeatures(const BrowserWindowFeatures&) = delete;
+--- a/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
++++ b/chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc
+@@ -128,7 +128,11 @@
+   delete provider;
+ }
+ 
+-bool BrowserWindowFeatures::RunAuxProfileSwitch(Profile* target) {
++bool BrowserWindowFeatures::RunAuxProfileSwitch(Profile* target,
++                                               bool* awaiting_cache_setup) {
++  if (awaiting_cache_setup) {
++    *awaiting_cache_setup = false;
++  }
+   if (!browser_ || browser_->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+     return false;
+   }
+@@ -140,6 +144,10 @@
+       base::BindOnce(&AuxProfileSwitchProvider::PrepareIfAlive,
+                      aux_profile_switch_provider_->weak_factory_.GetWeakPtr()),
+       base::PassKey<BrowserWindowFeatures>());
++  if (awaiting_cache_setup) {
++    *awaiting_cache_setup =
++        result == aux::ProfileSwitchTransaction::Result::kAwaitingCacheSetup;
++  }
+   return result == aux::ProfileSwitchTransaction::Result::kSwitched ||
+          result == aux::ProfileSwitchTransaction::Result::kNoChange;
+ }
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -105,6 +105,13 @@
+   bool is_aux_profile_switch_cache() const {
+     return browser_window_create_params_.aux_profile_switch_cache;
+   }
++  // Cancels stale asynchronous selections without cancelling profile loading.
++  uint64_t BeginAuxProfileSwitchRequest() {
++    return ++aux_profile_switch_request_generation_;
++  }
++  bool IsCurrentAuxProfileSwitchRequest(uint64_t generation) const {
++    return generation == aux_profile_switch_request_generation_;
++  }
+   uint64_t aux_profile_switch_workspace_id() const {
+     return aux_profile_switch_workspace_id_;
+   }
+@@ -143,6 +150,7 @@
+ 
+   // Original Browser+0xf8, separate from the real browser SessionID.
+   const uint64_t aux_profile_switch_workspace_id_;
++  uint64_t aux_profile_switch_request_generation_ = 0;
+   std::map<base::FilePath, std::unique_ptr<ScopedProfileKeepAlive>>
+       aux_profile_switch_keep_alives_;
+ 
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.h
+@@ -52,7 +52,12 @@
+   void Complete(Completion completion, Browser* result);
+   static void OnProfileLoaded(
+       base::WeakPtr<BrowserWindowInterface> sender,
+-      Completion completion, Profile* target);
++      base::WeakPtr<Profile> source, uint64_t generation,
++      bool allow_cache_continuation, Completion completion, Profile* target);
++  static void ContinueAfterCacheSetup(
++      base::WeakPtr<BrowserWindowInterface> sender,
++      base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
++      uint64_t generation, Completion completion);
+ 
+   base::WeakPtr<BrowserWindowInterface> sender_;
+   base::raw_ref<ProfilePreviewViews> preview_;
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -6,6 +6,7 @@
+ #include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "base/time/time.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_window.h"
+ #include "chrome/browser/ui/browser.h"
+@@ -60,6 +61,7 @@
+     }
+     return;
+   }
++  const uint64_t generation = state->BeginAuxProfileSwitchRequest();
+   if (target == profile->GetOriginalProfile()->GetPath()) {
+     if (auto* window = BrowserWindow::FromBrowser(sender)) {
+       window->Activate();
+@@ -75,7 +77,9 @@
+   // It does not find/open another Browser or cancel an underlying load.
+   profiles::LoadProfileAsync(
+       target, base::BindOnce(&ProfileSwitchRequest::OnProfileLoaded,
+-                            sender_weak, std::move(completion)));
++                            sender_weak, profile->GetWeakPtr(), generation,
++                            /*allow_cache_continuation=*/true,
++                            std::move(completion)));
+ }
+ 
+ void ProfileSwitchRequest::Complete(Completion completion, Browser* result) {
+@@ -87,15 +91,36 @@
+ 
+ void ProfileSwitchRequest::OnProfileLoaded(
+     base::WeakPtr<BrowserWindowInterface> sender_weak,
+-    Completion completion, Profile* target) {
++    base::WeakPtr<Profile> source, uint64_t generation,
++    bool allow_cache_continuation, Completion completion, Profile* target) {
+   auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+-  if (!sender || !target) {
++  const auto* state = sender ? BrowserInitState::From(sender) : nullptr;
++  if (!sender || !source || !target || !state ||
++      sender->GetProfile() != source.get() ||
++      !state->IsCurrentAuxProfileSwitchRequest(generation)) {
+     if (completion) {
+       std::move(completion).Run(nullptr);
+     }
+     return;
+   }
+-  const bool switched = sender->GetFeatures().RunAuxProfileSwitch(target);
++  const auto target_weak = target->GetWeakPtr();
++  bool awaiting_cache_setup = false;
++  const bool switched = sender->GetFeatures().RunAuxProfileSwitch(
++      target, &awaiting_cache_setup);
++  if (sender_weak && target_weak && awaiting_cache_setup && allow_cache_continuation) {
++    // First turn runs native attachment notifications. Their original
++    // ConcurrentClosures::Done posts its completion behind this first turn.
++    // Second turn then re-enters all guards; queue turns are not idle proof.
++    auto resume = base::BindOnce(&ProfileSwitchRequest::ContinueAfterCacheSetup,
++                                sender_weak, source, target_weak,
++                                generation, std::move(completion));
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce([](base::OnceClosure continuation) {
++          base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++              FROM_HERE, std::move(continuation));
++        }, std::move(resume)));
++    return;
++  }
+   if (!sender_weak || !switched) {
+     // Rejection and awaiting the genuine profile security gate both preserve
+     // the original null Browser completion; a loaded Profile is not success.
+@@ -110,6 +135,19 @@
+   if (completion) {
+     std::move(completion).Run(sender_weak ? sender : nullptr);
+   }
++}
++
++void ProfileSwitchRequest::ContinueAfterCacheSetup(
++    base::WeakPtr<BrowserWindowInterface> sender,
++    base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
++    uint64_t generation, Completion completion) {
++  // No raw browser/profile survives the asynchronous boundary. Changed source,
++  // newer selection, teardown or active work rejects through the original path.
++  // Exactly one continuation; a recreated cache or genuine busy owner cannot
++  // turn this into an automatic retry loop.
++  OnProfileLoaded(sender, source, generation,
++                  /*allow_cache_continuation=*/false,
++                  std::move(completion), target.get());
+ }
+ 
+ void ProfileSwitchRequest::QueuePreviewCommit(base::FilePath target,
