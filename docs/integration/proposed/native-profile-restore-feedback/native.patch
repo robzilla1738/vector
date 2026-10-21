@@ -1,0 +1,195 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -14,6 +14,10 @@
+ #include "base/time/time.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/ui/simple_message_box.h"
++#include "chrome/browser/ui/unload_controller.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "chrome/browser/profiles/profile_window.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_init_state.h"
+@@ -22,6 +26,24 @@
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
+ 
+ namespace aux {
++namespace {
++void ReportCurrentSwitchFailure(
++    base::WeakPtr<BrowserWindowInterface> sender,
++    base::WeakPtr<Profile> source, uint64_t generation,
++    const std::u16string& message) {
++  const auto* state = sender ? BrowserInitState::From(sender.get()) : nullptr;
++  const auto* unload = sender ? UnloadController::From(sender.get()) : nullptr;
++  if (!sender || !source || !state || !unload || !sender->GetWindow() ||
++      sender->GetProfile() != source.get() ||
++      !state->IsCurrentAuxProfileSwitchRequest(generation) ||
++      unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||
++      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) {
++    return;
++  }
++  chrome::ShowWarningMessageBoxAsync(sender->GetWindow()->GetNativeWindow(),
++                                    u"Couldn't switch profiles", message);
++}
++}  // namespace
+ ProfileSwitchRequest::ProfileSwitchRequest(BrowserWindowInterface& sender,
+                                          ProfilePreviewViews& preview)
+     : sender_(sender.GetWeakPtr()), preview_(preview) {}
+@@ -82,10 +104,12 @@
+   // completion for initialized profiles and null-load callback destruction.
+   // It does not find/open another Browser or cancel an underlying load.
+   profiles::LoadProfileAsync(
+-      target, base::BindOnce(&ProfileSwitchRequest::OnProfileLoaded,
+-                            sender_weak, profile->GetWeakPtr(), generation,
+-                            /*allow_cache_continuation=*/true,
+-                            std::move(completion)));
++      target, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(&ProfileSwitchRequest::OnProfileLoaded,
++                         sender_weak, profile->GetWeakPtr(), generation,
++                         /*allow_cache_continuation=*/true,
++                         std::move(completion)),
++          static_cast<Profile*>(nullptr)));
+ }
+ 
+ void ProfileSwitchRequest::Complete(Completion completion, Browser* result) {
+@@ -104,6 +128,10 @@
+   if (!sender || !source || !target || !state ||
+       sender->GetProfile() != source.get() ||
+       !state->IsCurrentAuxProfileSwitchRequest(generation)) {
++    if (!target) {
++      ReportCurrentSwitchFailure(sender_weak, source, generation,
++          u"The selected profile could not be loaded. Try selecting it again.");
++    }
+     if (completion) {
+       std::move(completion).Run(nullptr);
+     }
+@@ -125,6 +153,19 @@
+   if (!ready || !sender || !state || !source || !target_weak ||
+       sender->GetProfile() != source.get() ||
+       !state->IsCurrentAuxProfileSwitchRequest(generation)) {
++    if (!ready) {
++      auto* cache = sender && target_weak
++          ? FindProfileSwitchWorkspace(sender, target_weak->GetPath()) : nullptr;
++      const auto* cache_state = cache ? BrowserInitState::From(cache) : nullptr;
++      const bool ambiguous = cache_state && cache_state->aux_workspace_restore_state() ==
++          BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous;
++      ReportCurrentSwitchFailure(sender_weak, source, generation, ambiguous
++          ? u"This profile has multiple saved windows or a popup. Aux has left "
++            u"that session untouched. Open the profile in its own window to "
++            u"restore and organize those windows before switching it here."
++          : u"The profile's saved workspace could not be prepared. Finish any "
++            u"pending profile activity, then try again or reopen Aux.");
++    }
+     if (completion) std::move(completion).Run(nullptr);
+     return;
+   }
+@@ -147,6 +188,9 @@
+     return;
+   }
+   if (!sender_weak || !switched) {
++    ReportCurrentSwitchFailure(sender_weak, source, generation,
++        u"Aux could not safely switch this window yet. Finish open dialogs "
++        u"or pending browser activity, then select the profile again.");
+     // Rejection and awaiting the genuine profile security gate both preserve
+     // the original null Browser completion; a loaded Profile is not success.
+     if (completion) {
+@@ -216,6 +260,9 @@
+     base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
+     uint64_t generation, Completion completion, std::vector<bool> completed) {
+   if (!std::ranges::all_of(completed, [](bool value) { return value; })) {
++    ReportCurrentSwitchFailure(sender, source, generation,
++        u"The profile workspace was closed before preparation finished. "
++        u"Select the profile again to retry.");
+     if (completion) {
+       std::move(completion).Run(nullptr);
+     }
+--- a/chrome/browser/ui/browser_init_state.h
++++ b/chrome/browser/ui/browser_init_state.h
+@@ -120,7 +120,7 @@
+     return std::exchange(aux_workspace_setup_pending_, false);
+   }
+   void MarkAuxWorkspaceSetupPending() { aux_workspace_setup_pending_ = true; }
+-  enum class AuxWorkspaceRestoreState { kNotStarted, kPending, kReady, kBlocked };
++  enum class AuxWorkspaceRestoreState { kNotStarted, kPending, kReady, kBlocked, kAmbiguous };
+   AuxWorkspaceRestoreState aux_workspace_restore_state() const {
+     return aux_workspace_restore_state_;
+   }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -8,7 +8,6 @@
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/prefs/session_startup_pref.h"
+ #include "chrome/browser/sessions/session_restore.h"
+-#include "chrome/browser/ui/simple_message_box.h"
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -146,7 +145,8 @@
+   if (state->aux_workspace_restore_state() == State::kNotStarted)
+     state->MarkAuxWorkspaceSetupPending();
+   if (state->aux_workspace_restore_state() == State::kPending ||
+-      state->aux_workspace_restore_state() == State::kBlocked) {
++      state->aux_workspace_restore_state() == State::kBlocked ||
++      state->aux_workspace_restore_state() == State::kAmbiguous) {
+     std::move(completion).Run(false);
+     return;
+   }
+@@ -171,8 +171,7 @@
+   }
+   state->set_aux_workspace_restore_state(State::kPending);
+   SessionRestore::RestoreAuxProfileWorkspace(cache, base::BindOnce(
+-      [](base::WeakPtr<BrowserWindowInterface> owner,
+-         base::WeakPtr<BrowserWindowInterface> cache,
++      [](base::WeakPtr<BrowserWindowInterface> cache,
+          base::OnceCallback<void(bool)> completion,
+          SessionRestore::AuxWorkspaceResult result) {
+         auto* state = cache ? BrowserInitState::From(cache.get()) : nullptr;
+@@ -180,15 +179,12 @@
+             (result == SessionRestore::AuxWorkspaceResult::kRestored ||
+              result == SessionRestore::AuxWorkspaceResult::kEmpty);
+         if (state) state->set_aux_workspace_restore_state(
+-            ready ? State::kReady : State::kBlocked);
+-        if (!ready && owner && result == SessionRestore::AuxWorkspaceResult::kAmbiguous) {
+-          chrome::ShowWarningMessageBoxAsync(
+-              owner->GetWindow()->GetNativeWindow(), u"Profile session needs attention",
+-              u"This profile has multiple saved windows or a popup. Aux has left "
+-              u"that session untouched. Open the profile in its own window to "
+-              u"restore and organize those windows before switching it here.");
+-        }
++            ready ? State::kReady
++                  : result == SessionRestore::AuxWorkspaceResult::kAmbiguous
++                        ? State::kAmbiguous : State::kBlocked);
++        // Feedback belongs to the current request, which rechecks generation
++        // and source identity. A superseded async restore must stay silent.
+         std::move(completion).Run(ready);
+-      }, owner->GetWeakPtr(), cache->GetWeakPtr(), std::move(completion)));
++      }, cache->GetWeakPtr(), std::move(completion)));
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -272,7 +272,8 @@
+   const auto restore_state =
+       BrowserInitState::From(next_window)->aux_workspace_restore_state();
+   if (restore_state == BrowserInitState::AuxWorkspaceRestoreState::kPending ||
+-      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kBlocked) {
++      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kBlocked ||
++      restore_state == BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous) {
+     LOG(ERROR) << "Aux profile transition rejected: transaction.workspace-session-not-ready";
+     return Result::kRejected;
+   }
+--- a/chrome/browser/sessions/session_service.cc
++++ b/chrome/browser/sessions/session_service.cc
+@@ -433,7 +433,10 @@
+ }
+ 
+ void SessionService::WindowOpened(BrowserWindowInterface* browser) {
+-  if (!ShouldTrackBrowser(browser)) {
++  // Empty cache construction must not advance an inactive profile's session,
++  // commit its pending closes or block a later ordinary restore. Nonempty
++  // workspace snapshots are registered by the completed-transfer rebuild.
++  if (IsEmptyAuxProfileSwitchCache(browser) || !ShouldTrackBrowser(browser)) {
+     return;
+   }
+ 
