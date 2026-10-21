@@ -1,0 +1,17 @@
+{
+  "baseline": "actual-native-v546",
+  "files": [
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "baselineSha256": "0161c04a28dedf184c19f43d0d3a727affaa5843594abf7213c1e700c65dd948",
+      "outputSha256": "74c5fe253dc279db8b4808476cd6c28ef0f726adfaff8e3276ca0bddd4d62523",
+      "anchors": [
+        {
+          "find": "url->path_piece()",
+          "replace": "url->path()",
+          "count": 4
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -5185,12 +5185,12 @@
+           target_host = "aux-import-data";
+ #if BUILDFLAG(IS_MAC)
+         } else if ((url->host() == "credits" || url->host() == "history") &&
+-                   url->path_piece() == "/") {
++                   url->path() == "/") {
+           target_host = url->host();
+         } else if (url->host() == "settings" &&
+-                   (url->path_piece() == "/appearance" ||
+-                    url->path_piece() == "/content" ||
+-                    url->path_piece() == "/security")) {
++                   (url->path() == "/appearance" ||
++                    url->path() == "/content" ||
++                    url->path() == "/security")) {
+           target_host = "settings";
+ #endif
+         } else {
