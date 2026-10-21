@@ -1,0 +1,82 @@
+{
+  "baseComposition": "v597",
+  "files": [
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "baselineSha256": "d598128c5a96b9e6375875477b2daf486a46108c8acd2ad8e214021e9c5af0b7",
+      "outputSha256": "0e3a7904c922235cd12fddb24ac1a85d61be48ed43cbfe9883c6f5cef540ae70"
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "baselineSha256": "115ec830bf4919db461782f40b9a178c6f8bc6b75106147b52a7ffb7c93de7b5",
+      "outputSha256": "d70be68b045009d8adf7a055f5d3a4c9a1ad6ba32cc258fe263117ab235508b0"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "baselineSha256": "420f513676808e478552676607e1921e19b0a06e61b3c85f558e0e0a1a4a048c",
+      "outputSha256": "1511138f6c96aacad9f2476bf213107be0a1fd2e353e0c43892b01e584d0858e"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": "973a3e88b58f3f97d9730bfe99660a42ef0ac5c7f12def42cd4da86297ec1994",
+      "outputSha256": "edd012a0c9dcb788d284eea514b7357eeaf41e4266ab1bef0234787ac02b70d0"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "anchorSha256": "c64516236b67645501ef89cfe1c61b9f3ad1237ae09b7697a33e859960f4a4c6",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "anchorSha256": "8b45ed22ed10a33819abdbaa8a858c55e781a99d7e4041063dfcc9cc02bf26d3",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.h",
+      "anchorSha256": "2b0b161ea97c276d18200c9cef93929d2b9e122f38b2a9829738c1fb0c8500dd",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "anchorSha256": "5c9530e454838ea1c964d1e970faf7ac3090f73879e3299c3d7d1e23d4f13619",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "anchorSha256": "00e8c695185c301f6f09a916b4a5a73ca902b09d11c25dca3180f6e01c7c07d6",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/actor/ui/actor_ui_tab_controller.cc",
+      "anchorSha256": "31aca3deb3b0ae163987048323d80170ee624df2fab85ff8e821f7710df11504",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "anchorSha256": "7bd9ab49ebd13ead2a6f751fd7327fc4892fd420024a5716623a5275c07b1d04",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "anchorSha256": "c81214a694b1213b4da76c96ff167d53f14a85024b75252a2b40601ba846a5b9",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchorSha256": "d3e40941e4948441860889ad1d1e13d18b5bba2ee9b1f15fdeeb8e5f3f3b8080",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchorSha256": "f844866aca510562539caf0339f72cc5a2328b3f9a0fb4a5f9bdc9972021c6fe",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchorSha256": "868fe5bbfc48a737688f9d3b3404cc4c9e854c38bb002588dc86c6c678048b9f",
+      "count": 1
+    }
+  ]
+}
