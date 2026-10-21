@@ -2,6 +2,14 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+##579 actual normal reopen — 2026-10-20
+
+The owner confirmed the exposed test credential is revoked. Its working copy remains cleared; no further provider requests are authorized by that old key.
+
+579 packaging, exact eight-helper resource reuse and native sealing passed. A private accepted-startup record was created for the existing disposable scope after inventory verification. The first ordinary LaunchServices process opened the correct profile but lacked daemon/CDP listeners; its stderr was /dev/null and unified-log access was unavailable. After normal quit/reopen, a bare-argv LaunchServices process (parent1) started its actual daemon and authenticated CDP listener. This is one successful normal reopen, not proof the initial startup failure is resolved. Actual Command-E opens the genuine supplied side panel with enabled model/reasoning controls and closes it after animation. Profile switching, final comparison and remaining acceptance are still pending; full readiness remains false.
+
+The owner reported administrator unlock, but reopening System Settings and clicking Input Monitoring Add produced a fresh locked administrator prompt. No helper permission has changed; a new direct user handoff is pending. The exact helper remains stopped.
+
 ## Desktop paste incident and paused capture check — 2026-10-20
 
 During preparation of the owner-approved Computer Use permission check, a desktop paste action intended to enter a harmless test URL instead submitted the clipboard's test API credential to Google Search. The owner was informed immediately and asked to revoke it. No credential value is recorded here. The private working transfer copy had already been cleared after successful Agent acceptance; no further provider request uses it. The actual Aux address was then set directly to about:blank and observed. Computer Use helper execution/capture remains paused; its approval is retained but no grant, startup or recording was performed. Future address entry uses direct setValue with observation before navigation, avoiding clipboard paste. No owner history is deleted or credential rotated automatically.
