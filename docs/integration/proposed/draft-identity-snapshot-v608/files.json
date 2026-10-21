@@ -30,6 +30,21 @@
           "findSha256": "c4afe6425148b973572766d0d0a800874573df12f9663957b5cc10caef451c52"
         }
       ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.cc",
+      "baselineSha256": "00a4285c02c73d7c6f67189de859f376053242af91a34629b74bdd1f717f5ec3",
+      "outputSha256": "395478a3f73870f66e7a3c9ce7db05d3e8c7c5f1670448ca6d53ce89d03a90ff",
+      "anchors": [
+        {
+          "count": 1,
+          "findSha256": "82d062b89864154c45749707277a9d5aa4b66827b8ec48a977d3bf74be33b9b1"
+        },
+        {
+          "count": 1,
+          "findSha256": "3f16aa7bd375032def2d4c81458b319bc45c3ab0545ccf408100c47d10083231"
+        }
+      ]
     }
   ]
 }

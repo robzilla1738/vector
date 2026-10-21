@@ -38,6 +38,9 @@ patches={
     deps += [ "//chrome/browser/aux:page_identity" ]
   }''')]
 }
+patches['chrome/browser/ui/browser_live_tab_context.cc'] = [
+ ('#include "chrome/browser/buildflags.h"', '#include "chrome/browser/buildflags.h"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)\n#include "chrome/browser/ui/aux/page_identity.h"\n#endif'),
+ ('  std::map<std::string, std::string> extra_data;\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)', '  std::map<std::string, std::string> extra_data;\n#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)\n  if (const auto* identity = aux::PageIdentity::FromWebContents(\n          tab_strip_model_->GetWebContentsAt(index))) {\n    extra_data["aux.page_id"] = identity->id();\n  }\n#endif\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)')]
 records=[];diff=[]
 for rel,edits in patches.items():
  s=(root/rel).read_text();t=s

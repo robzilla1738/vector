@@ -54,3 +54,28 @@
    }
  
    if (enable_extensions) {
+--- a/chrome/browser/ui/browser_live_tab_context.cc
++++ b/chrome/browser/ui/browser_live_tab_context.cc
+@@ -6,6 +6,9 @@
+ 
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/page_identity.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h"
+ #endif
+@@ -206,6 +209,12 @@
+ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
+     int index) const {
+   std::map<std::string, std::string> extra_data;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
++  if (const auto* identity = aux::PageIdentity::FromWebContents(
++          tab_strip_model_->GetWebContentsAt(index))) {
++    extra_data["aux.page_id"] = identity->id();
++  }
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   aux::PopulateBookmarkTabRepresentationExtraData(
+       tab_strip_model_->GetWebContentsAt(index), &extra_data);
