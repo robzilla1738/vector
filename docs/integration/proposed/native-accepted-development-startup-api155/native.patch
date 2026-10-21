@@ -1,0 +1,67 @@
+--- a/chrome/app/aux_accepted_development_startup.h
++++ b/chrome/app/aux_accepted_development_startup.h
+@@ -12,6 +12,7 @@
+ #include <string>
+ #include <string_view>
+ 
++#include "base/apple/foundation_util.h"
+ #include "base/apple/scoped_cftyperef.h"
+ #include "base/base_paths.h"
+ #include "base/command_line.h"
+@@ -20,7 +21,9 @@
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
+ #include "base/json/json_reader.h"
++#include "base/numerics/safe_conversions.h"
+ #include "base/path_service.h"
++#include "base/strings/cstring_view.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "crypto/hash.h"
+@@ -56,13 +59,14 @@
+       st.st_uid != getuid() || (st.st_mode & 0777) != 0600 || st.st_nlink != 1 ||
+       st.st_size <= 0 || st.st_size > 8 * 1024 * 1024)
+     return false;
+-  bytes.resize(st.st_size);
++  bytes.resize(base::checked_cast<size_t>(st.st_size));
+   size_t offset = 0;
+   while (offset < bytes.size()) {
+-    ssize_t size = read(fd.get(), bytes.data() + offset, bytes.size() - offset);
++    auto remaining = base::span(bytes).subspan(offset);
++    ssize_t size = read(fd.get(), remaining.data(), remaining.size());
+     if (size < 0 && errno == EINTR) continue;
+     if (size <= 0) return false;
+-    offset += size;
++    offset += base::checked_cast<size_t>(size);
+   }
+   char extra;
+   return read(fd.get(), &extra, 1) == 0;
+@@ -91,9 +95,10 @@
+     return false;
+   auto hash = static_cast<CFDataRef>(
+       CFDictionaryGetValue(info.get(), kSecCodeInfoUnique));
+-  return hash && CFGetTypeID(hash) == CFDataGetTypeID() &&
+-      base::ToLowerASCII(base::HexEncode(base::span(
+-          CFDataGetBytePtr(hash), CFDataGetLength(hash)))) == *expected;
++  if (!hash || CFGetTypeID(hash) != CFDataGetTypeID() ||
++      CFDataGetLength(hash) < 0) return false;
++  return base::ToLowerASCII(base::HexEncode(base::apple::CFDataToSpan(hash))) ==
++         *expected;
+ }
+ // Returns false only for a present but invalid acceptance, before state access.
+ // Absence leaves the ordinary startup/auth behavior unchanged.
+@@ -186,9 +191,11 @@
+   if (command->HasSwitch("user-data-dir") || command->HasSwitch("profile-directory") ||
+       env->HasVar("AUX_NATIVE_KEYCHAIN_SCOPE") ||
+       env->HasVar("AUX_ENABLE_PROVIDED_NATIVE_CARRIER")) return false;
+-  for (const char* key : {"AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN",
+-                         "AUX_PROVIDED_DP_PROBE", "AUX_DP_PROBE_APPROVED",
+-                         "AUX_DP_PROBE_OPERATION", "AUX_PROVIDED_NATIVE_LOAD_ONLY"})
++  constexpr base::cstring_view kProbeKeys[] = {
++      "AUX_ENABLE_PROVIDED_AGENT_INBOX_KEYCHAIN", "AUX_PROVIDED_DP_PROBE",
++      "AUX_DP_PROBE_APPROVED", "AUX_DP_PROBE_OPERATION",
++      "AUX_PROVIDED_NATIVE_LOAD_ONLY"};
++  for (base::cstring_view key : kProbeKeys)
+     env->UnSetVar(key);
+   if (!env->SetVar("HOME", home.value()) ||
+       !env->SetVar("CFFIXED_USER_HOME", home.value()) ||
