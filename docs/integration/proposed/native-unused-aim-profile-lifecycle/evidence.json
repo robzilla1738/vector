@@ -1,0 +1,30 @@
+[
+  {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/omnibox/omnibox_next_features.cc",
+    "sha256": "14ec5f53074ed587d42296a7bfeb9113c5215d22fb236523aab5c6ceacc8f541"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.cc",
+    "sha256": "ed6af648ea69b1f8565fd08f85e3d235e1a305fd26892b67d52f0cf32e1f42b2"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.cc",
+    "sha256": "7342cb9ad939c00ecd7e642f2022117c4848ee6d656ae87cb0510efbd379716c"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.cc",
+    "sha256": "b0253cbe74926c6013c6b9f739c1c2976e7f94eff7c967a08e8aeaa9927a176b"
+  },
+  {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/literal-owners.tsv",
+    "sha256": "97fde151c8cafcc419b6700d41654b87c6ac0f9ef288bcc33f5e09aeee41674b"
+  },
+  {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/named-functions.txt",
+    "sha256": "db5afde169ffc0fca54bb4ef02a983bab83d1dee118451f2c587b6f582395717"
+  },
+  {
+    "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/string-xref-map.txt",
+    "sha256": "dbbe64de53ef2cdc9cccf426fc333afd2d6b9abe1cf2ce92b35d60d147ff433c"
+  }
+]

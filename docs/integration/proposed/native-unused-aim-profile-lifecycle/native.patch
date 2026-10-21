@@ -1,0 +1,496 @@
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h
+@@ -97,6 +97,9 @@
+   virtual void NotifyEscapeKeyPressed() {}
+   bool has_active_blockers() const { return deactivation_blockers_count_ > 0; }
+ 
++  // Cold-only retirement: once invoked, this owner requires its live lifecycle.
++  bool CanRetireUnusedForAuxProfileSwitch() const;
++
+   // Show or hide the popup widget with web view.
+   virtual void Show();
+   virtual void Hide();
+@@ -333,6 +336,7 @@
+   // True if `ShowWidget()` execution is currently being deferred until the
+   // WebUI has produced a new frame.
+   bool is_deferred_ = false;
++  bool aux_ever_invoked_ = false;
+ 
+   // True only for the duration of the deliberate widget teardown performed by
+   // `Hide()` when `ShouldDestroyWidgetOnHide()` holds. See
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <optional>
+ 
++#include "base/logging.h"
+ #include "base/auto_reset.h"
+ #include "base/check_op.h"
+ #include "base/feature_list.h"
+@@ -61,7 +62,48 @@
+   widgets_pending_deletion_.clear();
+ }
+ 
++bool OmniboxPopupPresenterBase::CanRetireUnusedForAuxProfileSwitch() const {
++  if (aux_ever_invoked_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-invoked";
++    return false;
++  }
++  if (IsShown()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-visible";
++    return false;
++  }
++  if (is_destroying_widget_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-destroying";
++    return false;
++  }
++  if (!(widgets_pending_deletion_.empty())) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-pending-widget";
++    return false;
++  }
++  if (permission_observation_.IsObserving()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-observer";
++    return false;
++  }
++  if (is_prompt_showing_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-prompt";
++    return false;
++  }
++  if (is_handling_prompt_dismissal_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-permission-dismissal";
++    return false;
++  }
++  if (!(deactivation_blockers_count_ == 0)) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-blockers";
++    return false;
++  }
++  if (focus_requested_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.presenter-focus";
++    return false;
++  }
++  return true;
++}
++
+ void OmniboxPopupPresenterBase::Show() {
++  aux_ever_invoked_ = true;
+   if (IsShown()) {
+     // If a re-entrant `Show()` occurs while the widget is still visible but
+     // WebContents was set to hidden by a preceding `Hide()`, ensure it is woken
+@@ -215,6 +257,7 @@
+ }
+ 
+ void OmniboxPopupPresenterBase::RequestFocus() {
++  aux_ever_invoked_ = true;
+   if (ShouldPreserveRequestedFocus()) {
+     focus_requested_ = true;
+   }
+@@ -610,6 +653,7 @@
+ }
+ 
+ void OmniboxPopupPresenterBase::RegisterBlocker() {
++  aux_ever_invoked_ = true;
+   deactivation_blockers_count_++;
+ }
+ 
+@@ -626,7 +670,9 @@
+   }
+ }
+ 
+-void OmniboxPopupPresenterBase::OnFileSelectionClosed() {}
++void OmniboxPopupPresenterBase::OnFileSelectionClosed() {
++  aux_ever_invoked_ = true;
++}
+ 
+ void OmniboxPopupPresenterBase::SetPermissionPromptShowing(bool showing) {
+   is_prompt_showing_ = showing;
+@@ -638,6 +684,7 @@
+ }
+ 
+ void OmniboxPopupPresenterBase::HandlePermissionPromptDismissal() {
++  aux_ever_invoked_ = true;
+   SetPermissionPromptShowing(false);
+   is_handling_prompt_dismissal_ = true;
+   if (location_bar()) {
+@@ -647,6 +694,7 @@
+ }
+ 
+ void OmniboxPopupPresenterBase::OnPromptAdded() {
++  aux_ever_invoked_ = true;
+   SetPermissionPromptShowing(true);
+ }
+ 
+@@ -673,6 +721,7 @@
+ }
+ 
+ void OmniboxPopupPresenterBase::OnWidgetActivated() {
++  aux_ever_invoked_ = true;
+   is_handling_prompt_dismissal_ = false;
+ }
+ 
+--- a/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h
+@@ -31,6 +31,8 @@
+   OmniboxAimPopupWebUIContent& operator=(const OmniboxAimPopupWebUIContent&) =
+       delete;
+   ~OmniboxAimPopupWebUIContent() override;
++
++  bool CanRetireUnusedForAuxProfileSwitch() const;
+ 
+   // OmniboxPopupWebUIBaseContent:
+   // The call flow for hiding the popup is:
+@@ -86,6 +88,7 @@
+   FRIEND_TEST_ALL_PREFIXES(OmniboxAimPopupBrowserTest,
+                            DraftTextPreservedOnTabSwitch);
+ 
++  bool aux_ever_invoked_ = false;
+   base::WeakPtr<content::WebContents> active_web_contents_;
+ 
+   base::WeakPtrFactory<OmniboxAimPopupWebUIContent> weak_factory_{this};
+--- a/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <string_view>
+ 
++#include "base/logging.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
+@@ -43,6 +44,22 @@
+ 
+ OmniboxAimPopupWebUIContent::~OmniboxAimPopupWebUIContent() = default;
+ 
++bool OmniboxAimPopupWebUIContent::CanRetireUnusedForAuxProfileSwitch() const {
++  if (aux_ever_invoked_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.content-invoked";
++    return false;
++  }
++  if (active_web_contents_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.content-source-tab";
++    return false;
++  }
++  if (weak_factory_.HasWeakPtrs()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.content-clear-callback";
++    return false;
++  }
++  return true;
++}
++
+ void OmniboxAimPopupWebUIContent::Clear() {
+   auto* handler = popup_aim_handler();
+   if (handler) {
+@@ -57,6 +74,7 @@
+ }
+ 
+ void OmniboxAimPopupWebUIContent::OnContextMenuClosed() {
++  aux_ever_invoked_ = true;
+   if (auto* handler = popup_aim_handler()) {
+     handler->OnContextMenuClosed();
+   }
+@@ -65,6 +83,7 @@
+ void OmniboxAimPopupWebUIContent::OnClearCallback(
+     base::WeakPtr<content::WebContents> original_web_contents,
+     const std::string& input) {
++  aux_ever_invoked_ = true;
+   // Now that the WebUI has painted, it is safe to detach and cleanup.
+   Detach();
+ 
+@@ -88,6 +107,7 @@
+ 
+ void OmniboxAimPopupWebUIContent::ApplyInputAndCleanup(
+     const std::string& input) {
++  aux_ever_invoked_ = true;
+   // For the full WebUI, the WebUI omnibox will still be open when `CloseUI`
+   // is called from aim popup. The state needs to be reverted.
+   if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+@@ -102,6 +122,7 @@
+ }
+ 
+ void OmniboxAimPopupWebUIContent::FocusInput() {
++  aux_ever_invoked_ = true;
+   if (auto* handler = popup_aim_handler()) {
+     handler->FocusInput();
+   }
+@@ -127,6 +148,7 @@
+ }
+ 
+ void OmniboxAimPopupWebUIContent::CloseUI() {
++  aux_ever_invoked_ = true;
+   // If the popup state is not shown, don't take any action. Closing the UI
+   // multiple times can result in incorrect state transitions from OnClose.
+   if (!IsShown()) {
+@@ -154,6 +176,7 @@
+ bool OmniboxAimPopupWebUIContent::HandleContextMenu(
+     content::RenderFrameHost& render_frame_host,
+     const content::ContextMenuParams& params) {
++  aux_ever_invoked_ = true;
+   // Suppress the context menu unless it's on an editable element (e.g. a
+   // text field). This allows users to use spellcheck and other text-editing
+   // features in text fields, but hides the menu otherwise.
+@@ -161,6 +184,7 @@
+ }
+ 
+ void OmniboxAimPopupWebUIContent::ShowUI() {
++  aux_ever_invoked_ = true;
+   OmniboxPopupWebUIBaseContent::ShowUI();
+ 
+   // Capture the web contents when UI is first shown.
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h
+@@ -30,6 +30,8 @@
+   OmniboxPopupAimPresenter(const OmniboxPopupAimPresenter&) = delete;
+   OmniboxPopupAimPresenter& operator=(const OmniboxPopupAimPresenter&) = delete;
+   ~OmniboxPopupAimPresenter() override;
++
++  bool CanRetireUnusedForAuxProfileSwitch() const;
+ 
+   // OmniboxPopupPresenterBase:
+   void Show() override;
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc
+@@ -7,6 +7,7 @@
+ #include <optional>
+ #include <string_view>
+ 
++#include "base/logging.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "chrome/browser/ui/location_bar/location_bar.h"
+ #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+@@ -29,6 +30,35 @@
+ }
+ 
+ OmniboxPopupAimPresenter::~OmniboxPopupAimPresenter() = default;
++
++bool OmniboxPopupAimPresenter::CanRetireUnusedForAuxProfileSwitch() const {
++  if (!(OmniboxPopupPresenterBase::CanRetireUnusedForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-presenter-base";
++    return false;
++  }
++  if (widget_observation_.IsObserving()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-widget-observer";
++    return false;
++  }
++  if (focus_manager_observation_.IsObserving()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-focus-observer";
++    return false;
++  }
++  if (is_restoring_focus_after_file_selection_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-focus-restoration";
++    return false;
++  }
++  if (!(GetWebUIContent() != nullptr)) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-content-present";
++    return false;
++  }
++  if (!(static_cast<const OmniboxAimPopupWebUIContent*>(GetWebUIContent())
++           ->CanRetireUnusedForAuxProfileSwitch())) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.aim-content";
++    return false;
++  }
++  return true;
++}
+ 
+ void OmniboxPopupAimPresenter::Show() {
+   const bool was_shown = IsShown();
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h
+@@ -47,6 +47,8 @@
+   OmniboxPopupFileSelector& operator=(const OmniboxPopupFileSelector&) = delete;
+   ~OmniboxPopupFileSelector() override;
+ 
++  bool CanRetireUnusedForAuxProfileSwitch() const;
++
+   // Helper to create image encoding options from the Omnibox feature config.
+   static std::optional<lens::ImageEncodingOptions> CreateImageEncodingOptions();
+ 
+@@ -89,6 +91,7 @@
+   void FileSelectionCanceled() override;
+ 
+  private:
++  bool aux_ever_started_work_ = false;
+   scoped_refptr<ui::SelectFileDialog> file_dialog_;
+   std::string file_info_type_;
+   base::WeakPtr<content::WebContents> web_contents_;
+--- a/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
++++ b/chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h"
+ 
++#include "base/logging.h"
+ #include "base/base64.h"
+ #include "base/containers/span.h"
+ #include "base/files/file_util.h"
+@@ -70,12 +71,53 @@
+       .compression_quality = image_upload_config.image_compression_quality()};
+ }
+ 
++bool OmniboxPopupFileSelector::CanRetireUnusedForAuxProfileSwitch() const {
++  if (aux_ever_started_work_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-started-work";
++    return false;
++  }
++  if (file_dialog_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-dialog";
++    return false;
++  }
++  if (web_contents_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-source-tab";
++    return false;
++  }
++  if (edit_model_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-edit-model";
++    return false;
++  }
++  if (deactivation_blocker_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-blocker";
++    return false;
++  }
++  if (weak_factory_.HasWeakPtrs()) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-async-work";
++    return false;
++  }
++  if (open_ai_mode_callback_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-open-callback";
++    return false;
++  }
++  if (file_chooser_opened_callback_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-chooser-open-callback";
++    return false;
++  }
++  if (file_chooser_closed_callback_) {
++    LOG(ERROR) << "Aux profile transition rejected: aim-cold.file-chooser-close-callback";
++    return false;
++  }
++  return true;
++}
++
+ void OmniboxPopupFileSelector::OpenFileUploadDialog(
+     content::WebContents* web_contents,
+     bool is_image,
+     OmniboxEditModel* edit_model,
+     std::optional<lens::ImageEncodingOptions> image_encoding_options,
+     bool was_ai_mode_open) {
++  aux_ever_started_work_ = true;
+   web_contents_ = web_contents ? web_contents->GetWeakPtr() : nullptr;
+   edit_model_ = edit_model;
+   image_encoding_options_ = image_encoding_options;
+@@ -196,11 +238,13 @@
+ 
+ void OmniboxPopupFileSelector::FileSelected(const ui::SelectedFileInfo& file,
+                                             int index) {
++  aux_ever_started_work_ = true;
+   MultiFilesSelected({file});
+ }
+ 
+ void OmniboxPopupFileSelector::MultiFilesSelected(
+     const std::vector<ui::SelectedFileInfo>& files) {
++  aux_ever_started_work_ = true;
+   ContextualSearchboxHandler* contextual_searchbox_handler =
+       OmniboxContextMenuController::GetContextualSearchboxHandler(
+           web_contents_.get());
+@@ -270,6 +314,7 @@
+ }
+ 
+ void OmniboxPopupFileSelector::FileSelectionCanceled() {
++  aux_ever_started_work_ = true;
+   NotifyFileSelectionClosed();
+   deactivation_blocker_.reset();
+   file_dialog_.reset();
+@@ -280,6 +325,7 @@
+ 
+ void OmniboxPopupFileSelector::OnFileDataReady(
+     std::unique_ptr<FileData> file_data) {
++  aux_ever_started_work_ = true;
+   if (!file_data || !web_contents_) {
+     if (was_ai_mode_open_) {
+       OpenAiMode();
+@@ -364,6 +410,7 @@
+     const std::string& mime_string,
+     base::expected<base::UnguessableToken,
+                    contextual_search::ContextUploadErrorType> result) {
++  aux_ever_started_work_ = true;
+   if (!web_contents_) {
+     return;
+   }
+@@ -373,6 +420,7 @@
+ }
+ 
+ void OmniboxPopupFileSelector::NotifyFileSelectionClosed() {
++  aux_ever_started_work_ = true;
+   if (file_chooser_closed_callback_) {
+     file_chooser_closed_callback_.Run();
+   }
+@@ -402,6 +450,7 @@
+ }
+ 
+ void OmniboxPopupFileSelector::OpenAiMode() {
++  aux_ever_started_work_ = true;
+   if (open_ai_mode_callback_) {
+     open_ai_mode_callback_.Run();
+   } else if (edit_model_) {
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -2662,11 +2662,13 @@
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.13";
+     return false;
+   }
+-  if (!(!omnibox_popup_aim_presenter_)) {
++  if (omnibox_popup_aim_presenter_ &&
++      !omnibox_popup_aim_presenter_->CanRetireUnusedForAuxProfileSwitch()) {
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.14";
+     return false;
+   }
+-  if (!(!omnibox_popup_file_selector_)) {
++  if (omnibox_popup_file_selector_ &&
++      !omnibox_popup_file_selector_->CanRetireUnusedForAuxProfileSwitch()) {
+     LOG(ERROR) << "Aux profile transition rejected: readiness.location.15";
+     return false;
+   }
+@@ -2705,6 +2707,12 @@
+   aux_profile_switch_saved_contents_ = false;
+   const uint64_t generation = ++aux_profile_switch_generation_;
+   weak_factory_.InvalidateWeakPtrs();
++  // Admission proved neither owner was invoked or retains pending work.
++  // Retire their source-profile WebContents only after the transaction begins.
++  aux_profile_switch_had_aim_presenter_ = !!omnibox_popup_aim_presenter_;
++  aux_profile_switch_had_file_selector_ = !!omnibox_popup_file_selector_;
++  omnibox_popup_file_selector_.reset();
++  omnibox_popup_aim_presenter_.reset();
+   pref_registrar_->Reset();
+   omnibox_view_->PrepareForAuxProfileSwitch();
+   omnibox_controller_->StopAutocomplete(/*clear_result=*/true);
+@@ -2742,6 +2750,21 @@
+     return;
+   }
+   CHECK_EQ(profile_, browser_->GetProfile());
++  // End follows either committed client rebinding or Abort's source restore.
++  // Use the exact original constructors, now against that coherent profile.
++  CHECK(!omnibox_popup_aim_presenter_);
++  CHECK(!omnibox_popup_file_selector_);
++  if (aux_profile_switch_had_aim_presenter_) {
++    omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
++        /*location_bar=*/this, omnibox_controller_.get(),
++        /*presenter_delegate=*/*this);
++  }
++  if (aux_profile_switch_had_file_selector_) {
++    omnibox_popup_file_selector_ = std::make_unique<OmniboxPopupFileSelector>(
++        GetWidget()->GetNativeWindow());
++  }
++  aux_profile_switch_had_aim_presenter_ = false;
++  aux_profile_switch_had_file_selector_ = false;
+   aux_profile_switch_paused_ = false;
+   aux_profile_switch_source_.reset();
+   aux_profile_switch_contents_.reset();
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -546,6 +546,8 @@
+   base::WeakPtr<content::WebContents> aux_profile_switch_contents_;
+   bool aux_profile_switch_had_contents_ = false;
+   bool aux_profile_switch_saved_contents_ = false;
++  bool aux_profile_switch_had_aim_presenter_ = false;
++  bool aux_profile_switch_had_file_selector_ = false;
+   void BindPrefsForAuxProfileSwitch();
+ #endif
+ 

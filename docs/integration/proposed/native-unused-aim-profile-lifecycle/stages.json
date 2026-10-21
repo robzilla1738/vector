@@ -1,0 +1,110 @@
+[
+  {
+    "stage": "aim-cold.presenter-invoked",
+    "requires": "!aux_ever_invoked_"
+  },
+  {
+    "stage": "aim-cold.presenter-visible",
+    "requires": "!IsShown()"
+  },
+  {
+    "stage": "aim-cold.presenter-destroying",
+    "requires": "!is_destroying_widget_"
+  },
+  {
+    "stage": "aim-cold.presenter-pending-widget",
+    "requires": "widgets_pending_deletion_.empty()"
+  },
+  {
+    "stage": "aim-cold.presenter-permission-observer",
+    "requires": "!permission_observation_.IsObserving()"
+  },
+  {
+    "stage": "aim-cold.presenter-permission-prompt",
+    "requires": "!is_prompt_showing_"
+  },
+  {
+    "stage": "aim-cold.presenter-permission-dismissal",
+    "requires": "!is_handling_prompt_dismissal_"
+  },
+  {
+    "stage": "aim-cold.presenter-blockers",
+    "requires": "deactivation_blockers_count_ == 0"
+  },
+  {
+    "stage": "aim-cold.presenter-focus",
+    "requires": "!focus_requested_"
+  },
+  {
+    "stage": "aim-cold.content-invoked",
+    "requires": "!aux_ever_invoked_"
+  },
+  {
+    "stage": "aim-cold.content-source-tab",
+    "requires": "!active_web_contents_"
+  },
+  {
+    "stage": "aim-cold.content-clear-callback",
+    "requires": "!weak_factory_.HasWeakPtrs()"
+  },
+  {
+    "stage": "aim-cold.aim-presenter-base",
+    "requires": "OmniboxPopupPresenterBase::CanRetireUnusedForAuxProfileSwitch()"
+  },
+  {
+    "stage": "aim-cold.aim-widget-observer",
+    "requires": "!widget_observation_.IsObserving()"
+  },
+  {
+    "stage": "aim-cold.aim-focus-observer",
+    "requires": "!focus_manager_observation_.IsObserving()"
+  },
+  {
+    "stage": "aim-cold.aim-focus-restoration",
+    "requires": "!is_restoring_focus_after_file_selection_"
+  },
+  {
+    "stage": "aim-cold.aim-content-present",
+    "requires": "GetWebUIContent() != nullptr"
+  },
+  {
+    "stage": "aim-cold.aim-content",
+    "requires": "static_cast<const OmniboxAimPopupWebUIContent*>(GetWebUIContent())\n           ->CanRetireUnusedForAuxProfileSwitch()"
+  },
+  {
+    "stage": "aim-cold.file-started-work",
+    "requires": "!aux_ever_started_work_"
+  },
+  {
+    "stage": "aim-cold.file-dialog",
+    "requires": "!file_dialog_"
+  },
+  {
+    "stage": "aim-cold.file-source-tab",
+    "requires": "!web_contents_"
+  },
+  {
+    "stage": "aim-cold.file-edit-model",
+    "requires": "!edit_model_"
+  },
+  {
+    "stage": "aim-cold.file-blocker",
+    "requires": "!deactivation_blocker_"
+  },
+  {
+    "stage": "aim-cold.file-async-work",
+    "requires": "!weak_factory_.HasWeakPtrs()"
+  },
+  {
+    "stage": "aim-cold.file-open-callback",
+    "requires": "!open_ai_mode_callback_"
+  },
+  {
+    "stage": "aim-cold.file-chooser-open-callback",
+    "requires": "!file_chooser_opened_callback_"
+  },
+  {
+    "stage": "aim-cold.file-chooser-close-callback",
+    "requires": "!file_chooser_closed_callback_"
+  }
+]

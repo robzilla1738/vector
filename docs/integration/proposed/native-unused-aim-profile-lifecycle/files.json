@@ -1,0 +1,55 @@
+{
+  "baseComposition": "v584",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h",
+      "baselineSha256": "21ce723fc90bd1d2dbea27638d3f47c84fe5d17dc8a187e4c94880e32e3140d1",
+      "outputSha256": "caac60ba52ed5f4fec09f73850179e860a6c06d264c0fbda2316979afbdad49d"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc",
+      "baselineSha256": "a7e05829b011c44016ab4c58673eed4d7f0ccf2b3c32f5823e84b9c4b52febdf",
+      "outputSha256": "a4f1921d917573cec2736017a884403b9e8d2faa673311ba9e5c3fd1a473a930"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h",
+      "baselineSha256": "6bec75e1748f28f9b42b49ace70884ed611c6c2962c03f1d8a4fbcace8630a50",
+      "outputSha256": "6106317fa88b5f505e25938e4fea9a1c29d1d281a4991e8ac6a3c1e6e0aa9a74"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "baselineSha256": "856b49659feef199f9a2664f3449f31958ad816289c95ee01ce8fb9c80b757dd",
+      "outputSha256": "469797f346b6eed771ba56376dddfcbe4faa710dec088a0f100390b1497127bb"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h",
+      "baselineSha256": "96946757e23d9bd222770c05d42ac2a333a683e595a0949fbf0078a07c1c07bf",
+      "outputSha256": "1b4e3bcb67347e46483a69b97be6ff3c6cb57df76af2d88102a08ae3b7e49939"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "baselineSha256": "9e6751f9e40e947002f4cd33d60dcd7397a2d2820501e880eae82b6d8d85f6e5",
+      "outputSha256": "866e5221b4f7fc0421dbfdefc26b1db4f61f51ec59da2d76b821ab3ee69e8cdd"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h",
+      "baselineSha256": "f655a5b0925adc22ae2769af16e64bae73c494c0b95d1a3971d540564f943bfc",
+      "outputSha256": "7b38c84ddfb1ffcc33b411508d8df584ef10e06f4362af13bbfdae3118c612df"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.cc",
+      "baselineSha256": "f59a558c9f904b82064196d30753dd0563234328a589669b36d692196d07a9b7",
+      "outputSha256": "29b9642b81e00bfc4e8fe7bda31551f35298e943316237a678e1e08e8ab6f289"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "baselineSha256": "0bbbc9c6a46970fdffa3849613910a394569ff05b4e7c8709dcdde741bfe8d15",
+      "outputSha256": "e0b64ec7cede6ab4ff614dd4bb7c3fd603c827f17143bde55e9527c1fbb56836"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "baselineSha256": "a5a7624b50234a03a82b6eb1aa692e7d6799b923c9f3b0f6c441c1c93d68f33e",
+      "outputSha256": "07a282360bcd78dd78ab9adac648f04d16aab79aa933dca812322d890212a797"
+    }
+  ]
+}
