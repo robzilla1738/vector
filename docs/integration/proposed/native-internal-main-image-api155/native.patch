@@ -1,0 +1,19 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -147,7 +147,6 @@
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/gfx/image/image.h"
+ #include "ui/gfx/paint_vector_icon.h"
+-#include "ui/gfx/vector_icon_types.h"
+ #include "extensions/common/constants.h"
+ #include "ui/gfx/text_utils.h"
+ #include "ui/gfx/vector_icon_types.h"
+@@ -835,7 +834,7 @@
+                        contents->GetLastCommittedURL(),
+                        url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS))
+           : std::u16string());
+-  aux_resting_origin_view_->SetImage(
++  aux_resting_origin_view_->SetImageModel(
+       views::Button::STATE_NORMAL,
+       show_page_title && aux_internal_main_page
+           ? ui::ImageModel::FromVectorIcon(kAuxNewTabMarkIcon,
