@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v580",
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/shared_tab_group_feedback_controller.h",
+      "baselineSha256": "f0fd63ef90091d318965eaa4bd6be7ba3c29cc853e9756ca751e98084c21a6cc",
+      "outputSha256": "a4c85ae245a11c035da9e712dffe68dd0f16ff69cd9e78f2bb4373cb57801b76"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/saved_tab_groups/shared_tab_group_feedback_controller.cc",
+      "baselineSha256": "a1a6b5bb6863ba74d192a954375a41e2e4cca112517648dcf86ee880dd661fda",
+      "outputSha256": "408a7720d747f702c2443184d39c62b26cadb70ccf7aa658759f9d7303616ad7"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features_aux_profile_switch.cc",
+      "baselineSha256": "621c0c9d158fc835e3a17b4e2410f1c51deee7442bf43952eabbeb87ce9a1bb6",
+      "outputSha256": "4b046df126c2835e524ad2da59f2bbf0454df95b33597708f66be098c2c08460"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Retain shared-tab-group feedback owner through profile switch
+
+The actual RecentActivity runtime presence establishes the shared-group construction branch; in a normal BrowserView the same branch also constructs and initializes SharedTabGroupFeedbackController. Its prior unconditional guard would be the next rejection. This is a profile-dependent controller: it caches TabGroupSyncService, observes that service and TabStripModel, and registers active-tab callbacks for IPH.
+
+Retain the same controller and unowned-userdata identity. Readiness rejects paused/torn-down owners, active feedback callbacks and active feature promos. Existing visible-window user-education preparation independently rejects queued promos. Source target admission also requires the original TabGroupSyncServiceFactory to provide a genuine target service and tab-group support. Pause detaches all three observations/subscriptions and clears the old service pointer before tab movement. Source and both caches are checked and paused; Resume in shared Finish/Abort resolves the actual final window profile's service, reinstalls original subscriptions and recomputes feedback action visibility only after toolbar restoration. It does not fabricate active-tab/intro-promo events. TearDown now handles both dormant and paused owners without duplicate observer removal.
+
+Other immediate unported predicates (breadcrumb, comments, organizer, AI overlay, NTP footer) remain guarded: no actual presence or dormant lifecycle evidence warrants changing them in this batch. No feature is disabled or profile data read/cleared.
+
+Pinned actual v580 preimages after RecentActivity integration. Three-file count-checked patch, isolated replay and exact output comparison passed. No shared build/runtime. Integrator should compile shared_tab_group_feedback_controller.cc and browser_window_features_aux_profile_switch.cc, then use the existing bounded diagnostic to verify one forward/back transition.
