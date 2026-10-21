@@ -1,0 +1,121 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -81,6 +81,7 @@
+ #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_content.h"
+ #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
+ #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
++#include "chrome/browser/ui/views/page_action/page_action_view.h"
+ #include "chrome/browser/ui/views/page_action/page_action_view_params.h"
+ #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
+ #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
+@@ -459,19 +460,14 @@
+ 
+   aux_resting_origin_view_ = AddChildView(std::make_unique<views::LabelButton>(
+       base::BindRepeating([](LocationBarView* owner) {
+-        // Never map a click on the shortened origin onto URL text offsets.
+-        owner->aux_resting_origin_view_->SetVisible(false);
+-        owner->aux_page_title_view_->SetVisible(false);
+-        owner->omnibox_view_->SetAuxRestingPresentation(false);
+-        owner->FocusLocation(true, false);
+-        owner->SelectAll();
+-        owner->InvalidateLayout();
++        // Observed supplied domain button opens the actual native site panel.
++        owner->ShowPageInfoDialog();
+       }, base::Unretained(this)), std::u16string(), CONTEXT_OMNIBOX_PRIMARY));
+   aux_resting_origin_view_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+   aux_resting_origin_view_->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
+   aux_resting_origin_view_->SetEnabledTextColors(kColorOmniboxText);
+-  aux_resting_origin_view_->SetFocusBehavior(views::View::FocusBehavior::NEVER);
+-  aux_resting_origin_view_->GetViewAccessibility().SetIsIgnored(true);
++  aux_resting_origin_view_->SetFocusBehavior(
++      views::View::FocusBehavior::ACCESSIBLE_ONLY);
+   aux_resting_origin_view_->SetVisible(false);
+ 
+   // Read-only resting page context. The real omnibox remains the URL editor
+@@ -828,6 +824,13 @@
+           : std::u16string());
+   aux_resting_origin_view_->SetVisible(show_page_title);
+   omnibox_view_->SetAuxRestingPresentation(show_page_title);
++  if (auto* bookmark =
++          page_action_container_->GetPageActionView(kActionBookmarkThisTab)) {
++    // Logical eligibility is owned by the model, independent of SetVisible.
++    // Only the resting presentation suppresses this decoration; Cmd+D and
++    // bookmark model state remain unchanged.
++    bookmark->SetVisible(bookmark->GetDeclaredVisible() && !show_page_title);
++  }
+ 
+   selected_keyword_view_->SetVisible(false);
+ 
+@@ -916,8 +919,22 @@
+     }
+   }
+ 
++  const bool aux_secure_page_controls =
++      browser_ && browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      !is_popup_mode_ && contents &&
++      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++      GetOmniboxController()->client()->GetSecurityLevel() ==
++          security_state::SECURE &&
++      !ShouldShowKeywordBubble() && !location_icon_view_->GetShowText() &&
++      !ShouldChipOverrideLocationIcon();
++  const bool aux_trailing_site_info =
++      aux_secure_page_controls && !show_page_title;
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+-  if (GetOmniboxController()->edit_model()->is_caret_visible() &&
++  if (aux_secure_page_controls) {
++    // Resting origin is the PageInfo button. Editing keeps the genuine site
++    // control, but on the trailing side as observed in the supplied browser.
++    location_icon_view_->SetVisible(aux_trailing_site_info);
++  } else if (GetOmniboxController()->edit_model()->is_caret_visible() &&
+       !ShouldShowKeywordBubble() && !location_icon_view_->GetShowText()) {
+     // The supplied focused-address surface omits the resting search glyph.
+     // Security labels and active keyword/permission chips retain their owners.
+@@ -983,6 +1000,10 @@
+                                 ? kTrailingEdgePaddingForAim
+                                 : trailing_decorations_edge_padding);
+   }
++  if (aux_trailing_site_info) {
++    add_trailing_decoration(location_icon_view_, /*intra_item_padding=*/0,
++                            /*edge_padding=*/trailing_decorations_edge_padding);
++  }
+   add_trailing_decoration(ai_mode_hint_label_, /*intra_item_padding=*/0,
+                           /*edge_padding=*/trailing_decorations_edge_padding);
+   for (ContentSettingImageView* view :
+@@ -1031,10 +1052,14 @@
+   // |omnibox_view_| has an opaque background, so ensure it doesn't paint atop
+   // the rounded ends.
+   location_bounds.Intersect(GetLocalBoundsWithoutEndcaps());
+-  // The presentation owner covers the URL/title area for intentional editing
+-  // clicks. The underlying full URL field stays focusable and accessible.
+-  if (aux_resting_origin_view_->GetVisible())
+-    aux_resting_origin_view_->SetBoundsRect(location_bounds);
++  // Only the domain opens PageInfo; title and remaining URL area retain the
++  // underlying genuine editor's click/focus behavior.
++  if (aux_resting_origin_view_->GetVisible()) {
++    gfx::Rect origin_bounds = location_bounds;
++    origin_bounds.set_width(
++        std::min(location_bounds.width(), location_needed_width));
++    aux_resting_origin_view_->SetBoundsRect(origin_bounds);
++  }
+ 
+   if (!ime_inline_autocomplete_view_->GetVisible() &&
+       !omnibox_additional_text_view_->GetVisible() &&
+@@ -2413,6 +2438,18 @@
+   }
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (browser_ && browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++      !is_popup_mode_ && GetWebContents() &&
++      GetWebContents()->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++      GetOmniboxController()->client()->GetSecurityLevel() ==
++          security_state::SECURE &&
++      !ShouldShowKeywordBubble() &&
++      GetOmniboxController()->edit_model()->is_caret_visible()) {
++    // This trailing button describes the committed page, not a search query.
++    return ui::ImageModel::FromVectorIcon(
++        GetLocationBarModel()->GetVectorIcon(),
++        location_icon_view_->GetForegroundColor(), dip_size);
++  }
+   if (!GetLocationBarModel()->ShouldDisplayURL() &&
+       !GetOmniboxController()->edit_model()->is_caret_visible() &&
+       !GetOmniboxController()->edit_model()->user_input_in_progress() &&
