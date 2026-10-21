@@ -2,6 +2,14 @@
 
 Updated 2026-10-20. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+## Actual581c desktop launch and catalog acceptance — 2026-10-21
+
+The first marker proposal at the bundle root (581b) was rejected by ad hoc sealing as unsealed root contents and was never launched. The exact untyped marker now lives in outer `Contents/Resources/package.json`, outside all eight retained signed helper bundles.581c final resource/helper/native verification and startup acceptance passed. Actual LaunchServices start with logging opened the supplied profile picker; selecting the existing disposable Your Aux profile reached the real browser. The owned daemon reached state3 and authenticated browser CDP. This resolves the observed GUI-startup stall; the exact underlying protected-folder cause remains unproven.
+
+Actual supplied Settings → Plugins & MCPs → Skills now shows the system skill as Aux, omits the retired built-in password-manager/Vault row, and retains Apple Passwords and Bitwarden integrations. Screenshot: `out/pass1-ui-completion/aux-skills-v581c.png`. This verifies the UI consumer; the separate backend catalog proposal remains unapplied because it changes signed daemon bytes.
+
+Actual profile switching still fails at `bindings.source-interaction-owners`, both on Agent New Tab and after navigating the same owned tab to the harmless local fixture. No guard was relaxed.582 adds six literal rejection stages with identical predicate ordering and behavior; native build is running. Full readiness is not claimed. The API key revocation is owner-confirmed; no further credential use is planned. System Settings still presents a fresh locked administrator sheet, so no helper permission has changed.
+
 ## Normal-launch Node boundary investigation — 2026-10-21
 
 581 full native build/generated-key probe passed (11 actual steps,6m26.15s), fresh supplied stage/package and all8 retained-helper/native signature checks passed. Actual first normal LaunchServices start again failed daemon readiness. A logging-only LaunchServices reproduction showed the genuine owned daemon alive before opening a listener; its main thread stayed in Node GetNearestParentPackageJSON/TraverseParent/GetPackageJSON/ReadFileSync/__open for the whole sample. It had no opened private Aux state. Supervisor reached the real90-second readiness failure. This is not a profile/account success or a proven Keychain failure.
