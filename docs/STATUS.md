@@ -2,6 +2,10 @@
 
 Updated 2026-10-21. The owner explicitly replaced the clean-room goal: reuse the supplied implementation, preserve its UI and behavior, and change branding, assets and identifiers to Aux. Active plan: `docs/plans/2026-10-19-supplied-implementation-reuse.md`. Fidelity is not yet achieved.
 
+##584 diagnostics and585 cold AIM integration review — 2026-10-21
+
+584 full native build/generated-key probe passed (13 actual steps,6m01.47s); packaging is running.149 exact bounded admission stages preserve predicate order and guards across the remaining owners. The recovered agent commit50f539e0d adds a pinned never-invoked AIM lifecycle proposal on that baseline: source-profile owners retire only in Begin, and exact original constructors restore the coherent profile in End/Abort. Used/context-bearing/pending-work owners remain rejected. Root is reviewing/compiling this substantive repair while retaining actual583 UI evidence; no new success is inferred.
+
 ## Actual583 normal launch and next profile owner — 2026-10-21
 
 583 full native build/generated-key probe passed (7 actual steps,5m08.83s). Supplied packaging, eight retained helper signatures, nine native seals and complete final inventory passed; receiptSHA942daca6ca9dbf158e7fa46603cffbd5b1449f6f0c54b66cd2a0cfa3befc01ef. Actual normal LaunchServices startup reaches daemon state3. The first private-profile switch now passes the tab-strip guard and reaches `bindings.source-view-toolbar-location-private-services`; that is the next actual blocker, not a successful switch. Supplied extension/native Search still opens `tabsearch.html` after the preload change. Remaining source/cache admission diagnostics and genuine cold-owner lifecycle work are being batched, without relaxing guards or altering UI.
