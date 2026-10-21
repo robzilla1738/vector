@@ -1,0 +1,16 @@
+{
+  "currentNativeInputs": [
+    {
+      "path": "chrome/browser/ui/page_action/page_action_model.cc",
+      "sha256": "6ca9cd5bce93a7bc7fe436a9ece470af8c6f871a5b5a9fbf21c24539166e2a2a"
+    },
+    {
+      "path": "chrome/browser/ui/page_action/page_action_properties_provider.cc",
+      "sha256": "cf7c6ed35cfa7bf54d9c69c1fe5d38efc4beef8039f5777e38f81f7e5561849f"
+    },
+    {
+      "path": "chrome/browser/ui/page_action/page_action_properties_provider.h",
+      "sha256": "d16f9c657a3f30962b2f0203bf0b14350962e7e0899427588160b100a990cde7"
+    }
+  ]
+}

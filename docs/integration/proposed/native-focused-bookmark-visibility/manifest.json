@@ -1,0 +1,23 @@
+{
+  "baseline": "actual-native-v557",
+  "adaptation": "observed-supplied-focused-bookmark-presence-on-Chromium155",
+  "files": [
+    {
+      "path": "chrome/browser/ui/page_action/page_action_controller.cc",
+      "baselineSha256": "130b1b9504c08e24d0449c5cd8f0100c132b09db6394a2eb9216f57c5b60f516",
+      "outputSha256": "492a755a4e1fcb1d1ca18094e83b65c9b530e91b4903eb2b2234fd806b44b002",
+      "anchors": [
+        {
+          "find": "#include \"base/functional/bind.h\"",
+          "replace": "#include \"base/functional/bind.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/ui/actions/chrome_action_id.h\"",
+          "count": 1
+        },
+        {
+          "find": "  model->SetTabActive(PageActionPassKey(), is_tab_active);\n  model->SetExemptFromOmniboxSuppression(PageActionPassKey(),",
+          "replace": "  model->SetTabActive(PageActionPassKey(), is_tab_active);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // The supplied focused address surface keeps its genuine bookmark action.\n  // Exempt only omnibox suppression; every model eligibility guard remains.\n  if (action_id == kActionBookmarkThisTab) {\n    is_exempt_from_omnibox_suppression = true;\n  }\n#endif\n  model->SetExemptFromOmniboxSuppression(PageActionPassKey(),",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

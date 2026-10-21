@@ -1,0 +1,26 @@
+--- a/chrome/browser/ui/page_action/page_action_controller.cc
++++ b/chrome/browser/ui/page_action/page_action_controller.cc
+@@ -9,6 +9,9 @@
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "base/functional/callback_forward.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/ui/browser_actions.h"
+@@ -153,6 +156,13 @@
+   std::unique_ptr<PageActionModelInterface> model =
+       CreateModel(action_id, is_ephemeral);
+   model->SetTabActive(PageActionPassKey(), is_tab_active);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // The supplied focused address surface keeps its genuine bookmark action.
++  // Exempt only omnibox suppression; every model eligibility guard remains.
++  if (action_id == kActionBookmarkThisTab) {
++    is_exempt_from_omnibox_suppression = true;
++  }
++#endif
+   model->SetExemptFromOmniboxSuppression(PageActionPassKey(),
+                                          is_exempt_from_omnibox_suppression);
+   page_actions_.emplace(action_id, std::move(model));
