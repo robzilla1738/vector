@@ -1,0 +1,52 @@
+{
+  "status": "static-audit-no-safe-patch-yet",
+  "nativeBaseline": "589",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.cc",
+      "sha256": "4cda4f4b7ec56f00ec7dc589e4ae398fcb73efd1bcaf7deb055dba39761b0012"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.cc",
+      "sha256": "866e5221b4f7fc0421dbfdefc26b1db4f61f51ec59da2d76b821ab3ee69e8cdd"
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.cc",
+      "sha256": "8d6d91dd48c7e2711e4a0c50962eaf0eed66cb2194d54af96182c4312e50acf4"
+    },
+    {
+      "path": "chrome/browser/resources/omnibox_popup/aim_app.ts",
+      "sha256": "3c29ea5bd4483db9dc6c3b874f75f9996e5c11213ce10266eaa34aa5ae8ab206"
+    },
+    {
+      "path": "ui/webui/resources/cr_components/composebox/composebox_mixin.ts",
+      "sha256": "7da19f2539bff79a9ba810380c4d8957e0df40981886cf1f7c6981e888f03869"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.cc",
+      "sha256": "b0253cbe74926c6013c6b9f739c1c2976e7f94eff7c967a08e8aeaa9927a176b"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.cc",
+      "sha256": "a711efc38dc5ca1272b09262f931f87322c541efceccfa31de5d8f35aeee5b32"
+    },
+    {
+      "path": "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h",
+      "sha256": "b661aa7b4b7194d1dcd762460a79f7d18ea4bf0facf13164b322814c169ee0ca"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.cc",
+      "sha256": "4a6963544917136a5709eaa7b91f28c4a5f6452cd1ef03794305de236b529053"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.cc",
+      "sha256": "02ca5891d7d8cd580cda1038dc4b9ec92544b94e11f6269f2fcb88a7d676ec65"
+    },
+    {
+      "path": "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h",
+      "sha256": "955b85d28b3e1a12ddeaf359437987e4b150ae18193de451bf9250dd18d34f86"
+    }
+  ],
+  "sourceModified": false,
+  "runtimeExecuted": false
+}
