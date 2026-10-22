@@ -12,8 +12,22 @@ export function transformProvidedDraftFlush({ component, path, text }) {
       'onDraftRecordChange:(d,j)=>(o.mode==="ask"||j)?o.draftWriter.write(d,j):void 0');
   }
   if (path === 'assets/newtab-editor-u_GbForB.js') {
-    return replaceOne('const s=v(),i=D(x(void 0,y),e=>P(void 0,e,y));',
+    const first = replaceOne('const s=v(),i=D(x(void 0,y),e=>P(void 0,e,y));',
       'let auxScope=y;try{if(!chrome.extension?.inIncognitoContext){const auxTab=await chrome.tabs.getCurrent();if(Number.isInteger(auxTab?.id)&&auxTab.id>0){const auxContext=await chrome.auxAccount.getProfileContext(auxTab.id),auxId=auxContext?.draftPageId;if(typeof auxId==="string"&&/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(auxId))auxScope="newtab-page:"+auxId}}}catch{}let auxInitial=x(void 0,auxScope);if(auxScope!==y)try{if(!auxInitial&&(window.sessionStorage.getItem("aside.chat-draft.v2:"+y)!==null||window.sessionStorage.getItem("aside.chat-draft.v1:"+y)!==null)){auxInitial=x(void 0,y);if(P(void 0,auxInitial,auxScope)===!0)P(void 0,null,y)}else if(auxInitial)P(void 0,null,y)}catch{}const s=v(),i=D(auxInitial,e=>P(void 0,e,auxScope));');
+    const edits = [
+      ['const g=c.textContent||o.get("q")||"";c.replaceChildren()',
+       'const g=c.textContent||o.get("q")||"";let auxRestorePending=a!=="ask"&&!g&&!!i.getDraft();c.replaceChildren()'],
+      ['setMode:e=>{i.flush(),l(!1),a=e,',
+       'setMode:e=>{if(auxRestorePending&&e==="ask"){auxRestorePending=!1;r.isEmpty&&m.setSnapshot(M(i.getDraft()),{emitUpdate:!1})}i.flush(),l(!1),a=e,'],
+      ['s.callbacks.onChange=e=>{a==="ask"',
+       's.callbacks.onChange=e=>{auxRestorePending=!1;a==="ask"'],
+    ];
+    for (const [find,replacement] of edits) {
+      if (first.text.split(find).length - 1 !== 1) throw new Error('Supplied New Tab hydration anchor changed');
+      first.text = first.text.replace(find,replacement);
+      first.anchors.push({kind:'integration',find,replace:replacement,count:1});
+    }
+    return first;
   }
   if (path === 'assets/minipopup-LkDLFvnq.js') {
     // A singleton per actual UI account, inside the real Profile origin store.
