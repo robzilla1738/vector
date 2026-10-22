@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-crypto-stage/Aux.app",
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "packageReceiptSha256": "caf6c240f90585704d70efdb08c36364029caa3a7b4ef92be5e5b2d887d2a8c4",
+  "frameworkSha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
+  "nativeInputFiles": 563,
+  "nativeRetainedLeafCount": 418,
+  "nativeLeafFilesCompared": 0,
+  "fullNativeInventoryRepeated": false,
+  "nativeFrameworkCompared": true,
+  "retiredIndependentRuntime": {
+    "root": "Contents/Resources/aux-runtime",
+    "exactReceiptFiles": 145,
+    "absent": true
+  },
+  "crypto": {
+    "profile": "development",
+    "generatedManifestSha256": "e73acd7134d847b60c18f972e6576e8da062f49bfbe3d585cb565c1e520e4dc0",
+    "assets": [
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-csk-v2-runtime.mjs",
+        "bytes": 2067,
+        "sha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26",
+        "modeBits": 420,
+        "imports": [
+          "./aux-dk-crypto.mjs",
+          "./aux-json-tokens.mjs"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-live-dk-runtime.mjs",
+        "bytes": 3696,
+        "sha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto",
+          "./aux-dk-crypto.mjs"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-dk-crypto.mjs",
+        "bytes": 3251,
+        "sha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-json-tokens.mjs",
+        "bytes": 1538,
+        "sha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8",
+        "modeBits": 420,
+        "imports": []
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-csk-v2-runtime.mjs",
+        "bytes": 2067,
+        "sha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26",
+        "modeBits": 420,
+        "imports": [
+          "./aux-dk-crypto.mjs",
+          "./aux-json-tokens.mjs"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-live-dk-runtime.mjs",
+        "bytes": 3696,
+        "sha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto",
+          "./aux-dk-crypto.mjs"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-dk-crypto.mjs",
+        "bytes": 3251,
+        "sha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-json-tokens.mjs",
+        "bytes": 1538,
+        "sha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8",
+        "modeBits": 420,
+        "imports": []
+      }
+    ],
+    "entrypointsImported": false,
+    "activation": false
+  },
+  "pdf": {
+    "moduleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+    "moduleBytes": 9474752,
+    "loaderSha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+    "pinFileSha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f",
+    "loaded": false,
+    "extractionRepeated": false
+  },
+  "ui": {
+    "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-owned-helper-drain/Aux.app",
+    "comparedFiles": 1215,
+    "stylesheets": 5,
+    "allBytesEqual": true,
+    "inventorySha256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005",
+    "renderedComparison": false
+  },
+  "coldRefusals": [
+    {
+      "label": "daemon-sea",
+      "codeSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    },
+    {
+      "label": "cli-sea",
+      "codeSha256": "3e17ca461994700242d4bdf4e6f4b5c547fc2de7c3bbdd12ac75b41fbee17835",
+      "firstRefusal": true,
+      "preservedCliShebang": true,
+      "evaluated": false
+    },
+    {
+      "label": "node-development",
+      "codeSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    }
+  ],
+  "nativeOrPdfFixturesRepeated": false,
+  "appLaunched": false,
+  "entrypointsEvaluated": false,
+  "protectedOrOSOrCloudOperations": false,
+  "productionReady": false,
+  "signed": false,
+  "state2Authorized": false
+}

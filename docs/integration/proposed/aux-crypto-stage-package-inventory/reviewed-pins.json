@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "nativeReceiptPath": "out/aux-owned-helper-native-build.json",
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "frameworkSha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
+  "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+  "pdfModuleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+  "pdfModuleBytes": 9474752,
+  "pdfLoaderSha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+  "pdfPinsSha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f",
+  "uiFiles": 1215,
+  "stylesheets": 5,
+  "uiInventorySha256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005",
+  "crypto": {
+    "stageInputsSha256": "04ba60db4d0bff27682ea882ac4bad7eda148504e8165765b9fa0702b4d95f59",
+    "assetsSpecSha256": "d76aec791ba845885c6f2ec7d2923946e2808784ff4f2be15291daed3ec3fa6f",
+    "variants": {
+      "local": {
+        "sea": {
+          "inputSha256": "d69b87e91e30edadaef456b63d7f4751a09ce4c997f31b6129d01b5801a3e6d4",
+          "outputSha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa"
+        },
+        "node-development": {
+          "inputSha256": "9ac746f4dd4a8c8848b5ee5cd229dad65d0df1e0d97f5a73d945ed9fb347ab99",
+          "outputSha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835"
+        }
+      },
+      "development": {
+        "sea": {
+          "inputSha256": "dc1b3ac054c280bc63481a365601bc2a24f074160a48206d56a399df89a47c3b",
+          "outputSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb"
+        },
+        "node-development": {
+          "inputSha256": "655ff1d4c6d19cea6bf710f9c8c36ab7650f9cc1c4d0f02f0e88f9b01f087b0b",
+          "outputSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b"
+        }
+      }
+    },
+    "preloads": {
+      "sea": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst {pathToFileURL:__auxCryptoPathToFileURL}=await import(\"node:url\");\nconst __auxCryptoBaseURL=new URL(\"../Resources/aux-crypto/\",__auxCryptoPathToFileURL(process.execPath));\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
+      "node-development": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst __auxCryptoBaseURL=new URL(\"./aux-crypto/\",import.meta.url);\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n"
+    },
+    "assets": [
+      {
+        "name": "aux-csk-v2-runtime.mjs",
+        "outputSha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26"
+      },
+      {
+        "name": "aux-live-dk-runtime.mjs",
+        "outputSha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e"
+      },
+      {
+        "name": "aux-dk-crypto.mjs",
+        "outputSha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680"
+      },
+      {
+        "name": "aux-json-tokens.mjs",
+        "outputSha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8"
+      }
+    ]
+  }
+}

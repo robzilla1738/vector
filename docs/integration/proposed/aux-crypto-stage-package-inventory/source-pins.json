@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": {
+    "probe.mjs": "bfdc7608a6ad61b55e40b28d0596bbbd55c20db7e990d08c0f0abf1057a97bf3",
+    "check.sh": "19496299c8206687d1a0799ded6135e7382cafb9cfc48914f9cfee54daa11cdd",
+    "reviewed-pins.json": "e0fd48cdefa786502071059b3be3168aa6d2e879459136deca2e4a428c03b2ca",
+    "README.md": "4d7746652f78f403792b289e537c7dac6c413e8c0dcc9258c2ce91286921e9aa",
+    "evidence/package-inventory.json": "92ed4c3f15a20173167ac4f72a3296a10f7fc5f0b508b6cac350410c2cce512c"
+  },
+  "seaReaderSha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+}
