@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "scope": "static supplied source and current native source; no owner state",
+  "records": [
+    {
+      "role": "original-daemon-sea",
+      "path": "/tmp/aux-provider-daemon1852.js",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "bytes": 12135744,
+      "asideUserIdOccurrences": [
+        {
+          "offset": 2291596,
+          "line": 316,
+          "excerpt": ":number$2().int().positive().optional(),chromiumProfileId:string$3().min(1).optional(),syncProfileId:string$3().min(1).optional(),asideUserId:string$3().min(1).optional(),localOnly:boolean$1().optional(),profileId:string$3().min(1),profilePath:string$3().optional(),profileIndex:number$2().int().nonnegative().optional(),boundUserId:string$3().min(1)"
+        },
+        {
+          "offset": 2972412,
+          "line": 947,
+          "excerpt": ")),oi=ri.getAccount(Cn);if(!oi)throw Error(`unavailable`);try{await ai.send(`Browser.ensureChromiumProfile`,{chromiumProfileId:ei,asideUserId:oi.userId??``,...ti?{url:ti}:{},...ni===void 0?{}:{shouldFocus:ni}})}catch(oi){if(!(oi instanceof ii)||oi.code!==-32601)throw oi;let si=ri.getAll().profileAccountBindings[ei];if(si?.accountId!==Cn||si.profile"
+        },
+        {
+          "offset": 11663820,
+          "line": 12296,
+          "excerpt": "2:0)+ +!!ei.sessions[String(Cn.id)];return ni(ti)-ni(Cn)||Cn.id-ti.id})[0]}function resolveFreshSignInAccount(Cn){return Cn&&!(Cn.asideUserId??Cn.boundUserId)?AccountRegistry.resolveProfileAccount({profileId:Cn.chromiumProfileId??Cn.profileId,profilePath:Cn.profilePath,profileIndex:Cn.profileIndex,localOnly:!0}):AccountRegistry.addAccount({name:`As"
+        },
+        {
+          "offset": 11664328,
+          "line": 12296,
+          "excerpt": "s.size>100;)attempts.delete(attempts.keys().next().value)}function assertChromiumSignInAccountAvailable(Cn,ei,ti=Cn.id){let ni=ei.asideUserId??ei.boundUserId;if(Cn.mode===`cloud`&&Cn.userId!==ni)throw new AsideLocalAccountConflictError(LOCAL_ACCOUNT_ALREADY_SIGNED_IN_ERROR_CODE,`This account is already signed in on this device.`,{accountId:ti,authe"
+        },
+        {
+          "offset": 11664916,
+          "line": 12296,
+          "excerpt": "=ti),ii;if(ri?.email===ni&&ri)try{assertSignInAccountOwner(ri.owner),ii=AccountRegistry.getAccount(ri.accountId)}catch{}let ai=Cn.asideUserId??Cn.boundUserId,oi=findReusableAsideAccount(Cn=>ni?Cn.email?.trim().toLowerCase()===ni:!!ai&&Cn.userId===ai);oi&&assertChromiumSignInAccountAvailable(oi,Cn);let si=oi??ii??resolveFreshSignInAccount(Cn);if(ii?"
+        },
+        {
+          "offset": 11665165,
+          "line": 12296,
+          "excerpt": ");oi&&assertChromiumSignInAccountAvailable(oi,Cn);let si=oi??ii??resolveFreshSignInAccount(Cn);if(ii?.id===si.id&&ri&&(ri.context.asideUserId??ri.context.boundUserId)===ai)return si;for(let[Cn,ei]of attempts)profileIdOf(ei.context)===ti&&attempts.delete(Cn);let ci=crypto.randomUUID(),li=Date.now()+ATTEMPT_TTL_MS;return attempts.set(ci,{accountId:si"
+        },
+        {
+          "offset": 11666169,
+          "line": 12296,
+          "excerpt": "InAccountOwner(ri.owner),ri.context}function assertAccountOnlyCallbackAllowed(Cn,ei){let ti=AccountRegistry.getAccount(Cn),ni=ei?.asideUserId??ei?.boundUserId,ri=profileIdOf(ei);if(ti?.browserSignInRequired||ti?.incarnationId&&!ti.userId&&!ei||(ei?.bindingVersion??0)>=1&&(!ni||ti?.userId!==ni)||ri&&[...attempts.values()].some(Cn=>profileIdOf(Cn.con"
+        },
+        {
+          "offset": 11666608,
+          "line": 12296,
+          "excerpt": "){if(!Cn||Cn.accountId!==ei||ni!==void 0&&Cn.email!==ni.trim().toLowerCase()||ti&&(profileIdOf(ti)!==profileIdOf(Cn.context)||(ti.asideUserId??ti.boundUserId)!==(Cn.context.asideUserId??Cn.context.boundUserId)))throw new SignInAttemptExpiredError}function completeChromiumSignIn(Cn){Cn&&attempts.delete(Cn)}var ATTEMPT_TTL_MS,attempts,profileIdOf,Sig"
+        },
+        {
+          "offset": 11666651,
+          "line": 12296,
+          "excerpt": "n.email!==ni.trim().toLowerCase()||ti&&(profileIdOf(ti)!==profileIdOf(Cn.context)||(ti.asideUserId??ti.boundUserId)!==(Cn.context.asideUserId??Cn.context.boundUserId)))throw new SignInAttemptExpiredError}function completeChromiumSignIn(Cn){Cn&&attempts.delete(Cn)}var ATTEMPT_TTL_MS,attempts,profileIdOf,SignInAttemptExpiredError,init_browser_sign_in"
+        },
+        {
+          "offset": 11678296,
+          "line": 12296,
+          "excerpt": "xports));await si(oi),assertSignInAccountOwner(ii),assertSignInAccountOwner(oi),Cn=oi.id}if((ti?.bindingVersion??0)>=1){let ni=ti.asideUserId??ti.boundUserId;if(ni&&ni!==ei.user.id)throw new SignInAttemptExpiredError;let ri=findReusableAsideAccount(Cn=>Cn.userId===ei.user.id);ri&&(assertChromiumSignInAccountAvailable(ri,ti,Cn),Cn=ri.id)}ni||getChro"
+        },
+        {
+          "offset": 11679278,
+          "line": 12296,
+          "excerpt": "ror:ei})),ai}async function exchangeToken(Cn,ei,ti,ni){if(!ni&&(ti?.bindingVersion??0)>=1){getChromiumSignInContext(Cn);let ei=ti.asideUserId??ti.boundUserId,ni=ei?findReusableAsideAccount(Cn=>Cn.userId===ei):void 0;ni&&(assertChromiumSignInAccountAvailable(ni,ti,Cn),Cn=ni.id,getChromiumSignInContext(Cn,void 0,ti))}else ti=getChromiumSignInContext("
+        },
+        {
+          "offset": 11691693,
+          "line": 12296,
+          "excerpt": "le for removed account`,{accountId:Cn,error:ei})}}async function ensureProfileAccount(Cn){if((Cn.bindingVersion??0)>=1){let ei=Cn.asideUserId??Cn.boundUserId;if(Cn.localOnly||!ei){let ei=AccountRegistry.resolveProfileAccount({profileId:Cn.chromiumProfileId??Cn.profileId,profilePath:Cn.profilePath,profileIndex:Cn.profileIndex,localOnly:!0});return a"
+        },
+        {
+          "offset": 12094057,
+          "line": 12407,
+          "excerpt": "n.json({error:ei.error.message},ei.error.code===`NOT_FOUND`?404:400);let ti=getAuthenticatedUserId(ei.accountId),ni=Cn.req.query(`asideUserId`);if(!ti||ni!==void 0&&ni!==ti)return Cn.json({error:`Account binding changed.`},401);try{let ni=await fetchAccountSyncPassphrase(ei.accountId);return!ni||getAuthenticatedUserId(ei.accountId)!==ti?Cn.json({er"
+        },
+        {
+          "offset": 12094364,
+          "line": 12407,
+          "excerpt": "icatedUserId(ei.accountId)!==ti?Cn.json({error:`Sync passphrase unavailable.`},401):Cn.json({accountId:ei.accountId,passphrase:ni,asideUserId:ti})}catch(ei){let ti=ei??/* @__PURE__ */ Error(`Unknown error`);if(isAuthorizationError$1(ti))return Cn.json({error:ti instanceof Error?ti.message:`Sync passphrase unavailable.`},401);throw ti}}),Cn}var oaut"
+        }
+      ]
+    },
+    {
+      "role": "original-cli-sea",
+      "path": "/tmp/aux-provider-cli1852.js",
+      "sha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+      "bytes": 2597893,
+      "asideUserIdOccurrences": []
+    },
+    {
+      "role": "original-agent/background.js",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/background.js",
+      "sha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "bytes": 363220,
+      "asideUserIdOccurrences": [
+        {
+          "offset": 268627,
+          "line": 9233,
+          "excerpt": ";\n}\nfunction Pi(e) {\n  return e.chromiumProfileId || e.profileId;\n}\nasync function Ov(e, t) {\n  if (!Tv(e)) return;\n  const r = e.asideUserId || e.boundUserId;\n  if (e.localOnly || !r) return -1;\n  const n = e.boundAccountId;\n  if (n === void 0 || !Number.isInteger(n) || n < 0) throw new Ai(\"The account connected to this profile is unavailable. Sig"
+        },
+        {
+          "offset": 271154,
+          "line": 9292,
+          "excerpt": "\nfunction zv(e) {\n  return JSON.stringify({\n    bindingVersion: e.bindingVersion,\n    chromiumProfileId: e.chromiumProfileId,\n    asideUserId: e.asideUserId,\n    localOnly: e.localOnly,\n    boundAccountId: e.boundAccountId,\n    boundUserId: e.boundUserId,\n    profileId: e.profileId,\n    profileIndex: e.profileIndex,\n    profilePath: e.profilePath\n "
+        },
+        {
+          "offset": 271169,
+          "line": 9292,
+          "excerpt": " {\n  return JSON.stringify({\n    bindingVersion: e.bindingVersion,\n    chromiumProfileId: e.chromiumProfileId,\n    asideUserId: e.asideUserId,\n    localOnly: e.localOnly,\n    boundAccountId: e.boundAccountId,\n    boundUserId: e.boundUserId,\n    profileId: e.profileId,\n    profileIndex: e.profileIndex,\n    profilePath: e.profilePath\n  });\n}\nfunction"
+        }
+      ]
+    },
+    {
+      "role": "original-agent/assets/queries-ldd77hNk.js",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/queries-ldd77hNk.js",
+      "sha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "bytes": 73090,
+      "asideUserIdOccurrences": [
+        {
+          "offset": 28095,
+          "line": 1,
+          "excerpt": "e?.bindingVersion??0)>=1}function de(e){return e.chromiumProfileId||e.profileId}async function Dr(e,t){if(!pe(e))return;const r=e.asideUserId||e.boundUserId;if(e.localOnly||!r)return-1;const n=e.boundAccountId;if(n===void 0||!Number.isInteger(n)||n<0)throw new Ve(\"The account connected to this profile is unavailable. Sign in again.\");const i=await "
+        },
+        {
+          "offset": 66517,
+          "line": 1,
+          "excerpt": "nged during lookup.\")}function Ai(e){return JSON.stringify({bindingVersion:e.bindingVersion,chromiumProfileId:e.chromiumProfileId,asideUserId:e.asideUserId,localOnly:e.localOnly,boundAccountId:e.boundAccountId,boundUserId:e.boundUserId,profileId:e.profileId,profileIndex:e.profileIndex,profilePath:e.profilePath})}function qt(e){return e instanceof E"
+        },
+        {
+          "offset": 66531,
+          "line": 1,
+          "excerpt": "okup.\")}function Ai(e){return JSON.stringify({bindingVersion:e.bindingVersion,chromiumProfileId:e.chromiumProfileId,asideUserId:e.asideUserId,localOnly:e.localOnly,boundAccountId:e.boundAccountId,boundUserId:e.boundUserId,profileId:e.profileId,profileIndex:e.profileIndex,profilePath:e.profilePath})}function qt(e){return e instanceof Error?e.name:\"E"
+        },
+        {
+          "offset": 72254,
+          "line": 1,
+          "excerpt": "pdate Aside to connect this account.\");await chrome?.asideAccount?.setProfileAccount(e)}jt()}function Ui(e,t){const r=pe(t)&&((e?.asideUserId??e?.boundUserId)!==(t.asideUserId??t.boundUserId)||!!e?.localOnly!=!!t.localOnly);if(!e||de(e)!==de(t)||e.bindingVersion!==t.bindingVersion||r)throw new Error(\"Profile account changed during sign-in.\")}global"
+        },
+        {
+          "offset": 72288,
+          "line": 1,
+          "excerpt": "t.\");await chrome?.asideAccount?.setProfileAccount(e)}jt()}function Ui(e,t){const r=pe(t)&&((e?.asideUserId??e?.boundUserId)!==(t.asideUserId??t.boundUserId)||!!e?.localOnly!=!!t.localOnly);if(!e||de(e)!==de(t)||e.bindingVersion!==t.bindingVersion||r)throw new Error(\"Profile account changed during sign-in.\")}globalThis.chrome?.asideAccount?.onProfi"
+        }
+      ]
+    },
+    {
+      "role": "original-agent/assets/-types-Wy38XkNB.js",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/-types-Wy38XkNB.js",
+      "sha256": "22df7f0ce3efd4eacb8df317b81c139c8b86c52aab1563e9dc335205f39d8e32",
+      "bytes": 4185,
+      "asideUserIdOccurrences": [
+        {
+          "offset": 3142,
+          "line": 1,
+          "excerpt": "),U=a({bindingVersion:n().int().positive().optional(),chromiumProfileId:e().min(1).optional(),syncProfileId:e().min(1).optional(),asideUserId:e().min(1).optional(),localOnly:r().optional(),profileId:e().min(1),profilePath:e().optional(),profileIndex:n().int().nonnegative().optional(),boundUserId:e().min(1).optional(),boundAccountId:n().int().nonneg"
+        },
+        {
+          "offset": 3861,
+          "line": 1,
+          "excerpt": ".int().positive(),provider:i([\"email\",\"google\"]).default(\"email\")}),F=U.pick({profileId:!0,chromiumProfileId:!0,bindingVersion:!0,asideUserId:!0,boundUserId:!0,boundAccountId:!0,localOnly:!0}),T=[\"+\"],L=\"Email address contains invalid characters\",H=a({email:s(\"Please enter a valid email address\").refine(o=>T.every(d=>!o.includes(d)),L)});export{c a"
+        }
+      ]
+    },
+    {
+      "role": "native/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "d009dc7a6e6db9884858eb858b8f4a858fb80c7dd75b49f0d46dd2d5104333f4",
+      "bytes": 14842,
+      "asideUserIdOccurrences": []
+    },
+    {
+      "role": "native/chrome/common/extensions/api/aux_account.json",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/common/extensions/api/aux_account.json",
+      "sha256": "51f05b9855cfee623d4d48ba5a1f464a504b1529bd15347c6fadaba5b55e51a9",
+      "bytes": 1703,
+      "asideUserIdOccurrences": []
+    },
+    {
+      "role": "native/chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "sha256": "68b7ef2ca33c2ff7faa82ff6e97806d6e40de3887696e2b99ab896f830498c58",
+      "bytes": 11405,
+      "asideUserIdOccurrences": []
+    },
+    {
+      "role": "native/chrome/browser/aux/account_bootstrap_state.cc",
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/account_bootstrap_state.cc",
+      "sha256": "2d4dd52989898f1e93fde59bc20937a4f3d5fcf13b2836c3ab94a771947b6606",
+      "bytes": 11229,
+      "asideUserIdOccurrences": []
+    }
+  ]
+}
