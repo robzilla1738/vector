@@ -35,12 +35,18 @@
   },
   "providerDeliveryVerified": true,
   "productionDomainsUnassignedAfterAutomaticFirstDeploy": true,
-  "developmentDeployment": "dpl_4TuJxsAZwA2WWaszmpqqzYF6wsUZ",
+  "developmentDeployment": "dpl_4zMADkDCB1YEqx5YzJFNX42qpXXq",
   "developmentPreviewVerifiedReady": true,
   "maintenanceEndpointVerified": true,
   "cron": {
     "sourceSchedule": "*/5 * * * *",
     "executesOnPreview": false,
     "productionActivationPending": true
+  },
+  "finalPreviewSmoke": {
+    "health": 200,
+    "unauthenticatedIdentity": 401,
+    "optionalProviderCatalog": 404,
+    "providerRequests": 0
   }
 }
