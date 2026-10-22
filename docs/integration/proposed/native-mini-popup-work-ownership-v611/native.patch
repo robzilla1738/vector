@@ -1,0 +1,115 @@
+--- a/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
++++ b/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc
+@@ -32,10 +32,12 @@
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_registry_simple.h"
+ #include "components/prefs/pref_service.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_delegate.h"
+ #include "net/base/url_util.h"
++#include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h"
+ #include "third_party/skia/include/core/SkColor.h"
+ #include "third_party/skia/include/core/SkRegion.h"
+ #include "ui/base/accelerators/accelerator.h"
+@@ -202,6 +204,11 @@
+   std::optional<std::string> Configure(Profile* profile,
+                                        bool enabled,
+                                        std::string shortcut) {
++    // Configuration may replace/destroy the old profile's renderer. Validate
++    // its original pending owners before changing registration or preferences.
++    if ((!enabled || profile_.get() != profile) && HasPendingWork()) {
++      return "Finish the current popup file selection or pending work first";
++    }
+     auto* listener = ui::GlobalAcceleratorListener::GetInstance();
+     const auto accelerator = aux::ParseKeyboardShortcut(shortcut).value_or(
+         ui::Command::StringToAccelerator(shortcut));
+@@ -222,6 +229,7 @@
+       }
+       registered_ = true;
+       accelerator_ = accelerator;
++      LOG(INFO) << "Aux mini popup global shortcut registered";
+       if (!keep_alive_) {
+         keep_alive_ = std::make_unique<ScopedKeepAlive>(
+             KeepAliveOrigin::AUX_MINI_POPUP, KeepAliveRestartOption::ENABLED);
+@@ -251,12 +259,19 @@
+     profile_ = profile->GetWeakPtr();
+     profile_observer_.Observe(profile);
+   }
+-  void ShowFor(Profile* profile) {
++  std::optional<std::string> ShowFor(Profile* profile) {
++    if (!profile) {
++      return "Mini popup profile is unavailable";
++    }
++    if (profile_.get() != profile && HasPendingWork()) {
++      return "Finish the current popup file selection or pending work first";
++    }
+     BindProfile(profile);
+     ++generation_;
+     // The supplied popup resolves its account itself. A discarded Vault status
+     // request must not delay a local tool that no longer has a built-in vault.
+     Show();
++    return std::nullopt;
+   }
+ 
+   void Show() {
+@@ -457,11 +472,16 @@
+     }
+   }
+   void OnKeyPressed(const ui::Accelerator&) override {
++    LOG(INFO) << "Aux mini popup global shortcut dispatched";
++    Profile* selected = profile_.get();
+     if (auto* active =
+             GlobalBrowserCollection::GetInstance()->GetActiveBrowser()) {
+-      ShowFor(active->GetProfile());
+-    } else if (profile_) {
+-      ShowFor(profile_.get());
++      selected = active->GetProfile();
++    }
++    if (selected) {
++      if (auto error = ShowFor(selected)) {
++        LOG(WARNING) << "Aux mini popup could not open: " << *error;
++      }
+     }
+   }
+   void ExecuteCommand(const std::string&, const std::string&) override {
+@@ -532,6 +552,27 @@
+   }
+ 
+  private:
++  bool HasPendingWork() const {
++    if (picker_pending_) {
++      return true;
++    }
++    bool pending = false;
++    for (const auto* view : {webview_.get(), options_webview_.get()}) {
++      if (!view || !view->web_contents()) {
++        continue;
++      }
++      view->web_contents()->ForEachRenderFrameHost(
++          [&](content::RenderFrameHost* frame) {
++            if (frame->IsRenderFrameLive() &&
++                frame->GetSuddenTerminationDisablerState(
++                    blink::mojom::SuddenTerminationDisablerType::
++                        kBeforeUnloadHandler)) {
++              pending = true;
++            }
++          });
++    }
++    return pending;
++  }
+   enum class OptionsFocusState {
+     kIdle,
+     kWaitingForMainActivation,
+@@ -835,7 +876,9 @@
+     if (!selected) {
+       return RespondNow(Error("Selected profile is not loaded"));
+     }
+-    manager.ShowFor(selected);
++    if (auto error = manager.ShowFor(selected)) {
++      return RespondNow(Error(*error));
++    }
+     return RespondNow(NoArguments());
+   }
+   if (method == "pickDirectory") {

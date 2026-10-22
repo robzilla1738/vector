@@ -1,0 +1,67 @@
+{
+  "baseComposition": "v611",
+  "compositionSha256": "1ebc0ea5599015c5af5d74f340ff81476317b3f7fcd0e3c9eeb49447cc08cd6a",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "baselineSha256": "e760ae0671436ad8f9c0d3c8cfa878fc025bb82002619cf8d904bfd918375607",
+      "outputSha256": "770961af963c05c7079872a234b5e00ea22f667c18288b8fae4bea1f234da9b7"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "#include \"content/public/browser/render_widget_host_view.h\"",
+      "replace": "#include \"content/public/browser/render_frame_host.h\"\n#include \"content/public/browser/render_widget_host_view.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "#include \"third_party/skia/include/core/SkColor.h\"",
+      "replace": "#include \"third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h\"\n#include \"third_party/skia/include/core/SkColor.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "    auto* listener = ui::GlobalAcceleratorListener::GetInstance();\n    const auto accelerator = aux::ParseKeyboardShortcut(shortcut).value_or(",
+      "replace": "    // Configuration may replace/destroy the old profile's renderer. Validate\n    // its original pending owners before changing registration or preferences.\n    if ((!enabled || profile_.get() != profile) && HasPendingWork()) {\n      return \"Finish the current popup file selection or pending work first\";\n    }\n    auto* listener = ui::GlobalAcceleratorListener::GetInstance();\n    const auto accelerator = aux::ParseKeyboardShortcut(shortcut).value_or(",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "      registered_ = true;\n      accelerator_ = accelerator;",
+      "replace": "      registered_ = true;\n      accelerator_ = accelerator;\n      LOG(INFO) << \"Aux mini popup global shortcut registered\";",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "  void ShowFor(Profile* profile) {\n    BindProfile(profile);",
+      "replace": "  std::optional<std::string> ShowFor(Profile* profile) {\n    if (!profile) {\n      return \"Mini popup profile is unavailable\";\n    }\n    if (profile_.get() != profile && HasPendingWork()) {\n      return \"Finish the current popup file selection or pending work first\";\n    }\n    BindProfile(profile);",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "    Show();\n  }\n\n  void Show()",
+      "replace": "    Show();\n    return std::nullopt;\n  }\n\n  void Show()",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "  void OnKeyPressed(const ui::Accelerator&) override {\n    if (auto* active =\n            GlobalBrowserCollection::GetInstance()->GetActiveBrowser()) {\n      ShowFor(active->GetProfile());\n    } else if (profile_) {\n      ShowFor(profile_.get());\n    }\n  }",
+      "replace": "  void OnKeyPressed(const ui::Accelerator&) override {\n    LOG(INFO) << \"Aux mini popup global shortcut dispatched\";\n    Profile* selected = profile_.get();\n    if (auto* active =\n            GlobalBrowserCollection::GetInstance()->GetActiveBrowser()) {\n      selected = active->GetProfile();\n    }\n    if (selected) {\n      if (auto error = ShowFor(selected)) {\n        LOG(WARNING) << \"Aux mini popup could not open: \" << *error;\n      }\n    }\n  }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": " private:\n  enum class OptionsFocusState {",
+      "replace": " private:\n  bool HasPendingWork() const {\n    if (picker_pending_) {\n      return true;\n    }\n    bool pending = false;\n    for (const auto* view : {webview_.get(), options_webview_.get()}) {\n      if (!view || !view->web_contents()) {\n        continue;\n      }\n      view->web_contents()->ForEachRenderFrameHost(\n          [&](content::RenderFrameHost* frame) {\n            if (frame->IsRenderFrameLive() &&\n                frame->GetSuddenTerminationDisablerState(\n                    blink::mojom::SuddenTerminationDisablerType::\n                        kBeforeUnloadHandler)) {\n              pending = true;\n            }\n          });\n    }\n    return pending;\n  }\n  enum class OptionsFocusState {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.cc",
+      "find": "    manager.ShowFor(selected);\n    return RespondNow(NoArguments());",
+      "replace": "    if (auto error = manager.ShowFor(selected)) {\n      return RespondNow(Error(*error));\n    }\n    return RespondNow(NoArguments());",
+      "count": 1
+    }
+  ]
+}

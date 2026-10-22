@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/daemon-original.mjs",
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/voice-dictation-overlay-CtbBZWfm.js",
+    "sha256": "53b7afc9a8e0381e905603281634e863039d174e54ad884b36ac2b37037d1794"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/scroll-area-DxAxP4Y6.js",
+    "sha256": "2d1852f5302d7927a1ee4c35f902cf2756145b4c50d595b88aa7b1348bf77d06"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/mini-popup-BBLwe-a8.js",
+    "sha256": "88d713ad57680cc14752afa3ea704ce3b9e418bc2a9ff992097b47c9e8783f35"
+  },
+  {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/agent/assets/minipopup-LkDLFvnq.js",
+    "sha256": "8fd650df3497acc5e8a5c34ab5990f45c9e97c0c920e4a7735f7b28aba72469e"
+  }
+]
