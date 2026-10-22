@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "source/ExistingInstallationMigrationStepCaller.swift",
-      "sha256": "ac3cc8e5540f793ebe236bddb787271f2692325b072ea861840345b047902126"
+      "sha256": "ff614edc90df4da8533c1d57d73c21978a1acf84750878404c30d504121c104b"
     },
     {
       "path": "tests/main.swift",
-      "sha256": "da57acc77b2ba6be03a3643546755bfc819c237cd9d956fa3782dad57fdbe55d"
+      "sha256": "8b9e2ce3ef8328d66118e88592e82db4d8eafd33c13b68ede5654e931bad9bca"
     },
     {
       "path": "check.mjs",
-      "sha256": "99a2b5391d9d0a8d0840020cf95153ff086aae0422946267f25f8c378d6ad45c"
+      "sha256": "ee86bee07bfd63f1871e975377270ca231bc9938b8d37c627f89ff051b822e66"
     },
     {
       "path": "../aux-native-four-row-preparation/source/CapturedInstallation.swift",

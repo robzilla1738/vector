@@ -14,5 +14,6 @@ assert source.index('store.loadCurrent()?.sha256==current.sha256')<source.index(
 assert source.index('capturedAddStatus(current.journal')<source.index('captures=try capture()',source.index('status=try security.addOnly'))
 for boundary in ['ExternalInstallationSecurityExecutor.captureOriginals(review)','ExternalInstallationSecurityExecutor.addOnly(request,review:review)','ExistingP256SigningAuthority','ExistingP256Authority','ExistingPqSigningAuthority','ExistingPqAuthority','AuxNativeEnvelopeV2.open(envelope,authority:kem)','AuxNativePqEnvelopeV2.open(envelope,authority:kem)','case uncertainAdd','let activeSelectionPerformed=false','let authorityProvenanceVerified=false']:
     assert boundary in source
+assert source.index('if enteredPhase == .intent{return .uncertainAdd')<source.index('status=try security.addOnly')
 assert source.count('defer{root.resetBytes(in:0..<root.count)}')==2
 print('PASS: pinned existing-only caller composition, durable-intent/status ordering, concrete readback authentication and no default activation.')

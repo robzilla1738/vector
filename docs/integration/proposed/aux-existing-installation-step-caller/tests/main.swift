@@ -11,7 +11,7 @@ let review=try ReviewedInstallationSelectorBindings(reviewId:"8A29FDA3-F730-47C2
 let id="D1CCAAE0-661B-45C5-AE07-10D6F518233C",root=CommandLine.arguments[2]
 enum SyntheticStepFailure:Error {case uncertain,ordering}
 final class CapturedMemoryBoundary:ExistingInstallationSecurityBoundary {
-    enum Mode {case normal,uncertainAfterAddOnce,duplicateWithMatching,tamperFinalReadback}
+    enum Mode {case normal,uncertainBeforeAddOnce,uncertainAfterAddOnce,duplicateWithMatching,tamperFinalReadback}
     let store:PrivateInstallationJournalStore
     let originals:CapturedInstallationRows
     var targets:[String:Data]=[:]
@@ -35,6 +35,7 @@ final class CapturedMemoryBoundary:ExistingInstallationSecurityBoundary {
         let checkpoint=try store.loadCurrent()
         guard checkpoint?.journal.phase == .intent,checkpoint?.sha256==request.intentCheckpointSha256 else{throw SyntheticStepFailure.ordering}
         verifiedIntentOrder += 1;adds += 1
+        if mode == .uncertainBeforeAddOnce {mode = .normal;throw SyntheticStepFailure.uncertain}
         guard targets[request.row]==nil else{return -25299}
         targets[request.row]=request.payload
         if mode == .uncertainAfterAddOnce {mode = .normal;throw SyntheticStepFailure.uncertain}
@@ -67,6 +68,15 @@ if case .progress=try resumed.performOneStep(){check(crashSecurity.adds==1)}else
 _ = try resumed.performOneStep();_ = try resumed.performOneStep()
 if case .authenticated=try resumed.performOneStep(){checks += 1}else{preconditionFailure()}
 check(crashSecurity.adds==4 && crashSecurity.verifiedIntentOrder==4 && crashSecurity.verifiedStatusOrder==3)
+// A thrown call with no observed target is unresolved, even with a fresh
+// caller and a now-successful boundary. Neither path may replay the Add.
+let (unresolved,unresolvedSecurity,unresolvedStore)=try instance("uncertain-absent",mode:.uncertainBeforeAddOnce)
+_ = try unresolved.start(transactionId:id)
+if case .uncertainAdd=try unresolved.performOneStep(){check(unresolvedSecurity.adds==1 && unresolvedSecurity.targets.isEmpty)}else{preconditionFailure()}
+if case .uncertainAdd=try unresolved.performOneStep(){check(unresolvedSecurity.adds==1 && unresolvedSecurity.targets.isEmpty)}else{preconditionFailure()}
+let unresolvedResumed=try ExistingInstallationMigrationStepCaller(candidate:candidate,review:review,bindings:bindings,store:unresolvedStore,security:unresolvedSecurity,readbackChallenge:bytes("syntheticChallenge"))
+if case .uncertainAdd=try unresolvedResumed.performOneStep(){check(unresolvedSecurity.adds==1 && unresolvedSecurity.targets.isEmpty)}else{preconditionFailure()}
+check(try unresolvedStore.loadCurrent()!.journal.phase == .intent)
 let (duplicate,duplicateSecurity,_)=try instance("duplicate",mode:.duplicateWithMatching)
 _ = try duplicate.start(transactionId:id)
 if case .stopped(let state)=try duplicate.performOneStep(){check(state.journal.failure=="add-status:metadata:-25299")}else{preconditionFailure()}

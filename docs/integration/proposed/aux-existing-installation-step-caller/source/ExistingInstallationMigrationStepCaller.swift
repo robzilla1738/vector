@@ -124,6 +124,10 @@ final class ExistingInstallationMigrationStepCaller {
         if stopped(current){return .stopped(current)}
         if current.journal.phase == .ready{return try authenticate(current,captures:captures)}
         if current.journal.phase != .intent{return .progress(current)}
+        // An intent loaded on entry may already have reached Security before a
+        // lost response/crash. Absence cannot prove no prior attempt occurred.
+        // Only the intent newly persisted by THIS invocation can issue Add.
+        if enteredPhase == .intent{return .uncertainAdd(current,row:current.journal.intended.last!)}
         let request=try AdditiveInstallationTransaction.addRequest(current.journal,checkpoint:current.acknowledgement,candidate:candidate,originals:captures.0,targets:captures.1)
         // Detect cooperative journal progress before the OS operation. This is
         // NOT an atomic fence covering the external Keychain operation/writers.

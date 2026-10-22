@@ -19,9 +19,9 @@ try {
  const storageRoot=path.join(await realpath(temporary),'journal-fixtures');await mkdir(storageRoot,{mode:0o700});
  const result=spawnSync('/usr/bin/xcrun',['swift','-module-cache-path',path.join(temporary,'module-cache'),script,fixturePath,storageRoot],{encoding:'utf8',timeout:90000,maxBuffer:1024*1024});
  if(result.error||result.status!==0)throw Error(`Synthetic software fixture failed: ${result.error?.message??result.stderr}`);
- const output=JSON.parse(result.stdout);assert.equal(output.checks,18);for(const field of ['actualSecurityExecuted','enclaveExecuted','pqExecuted','activeSelectionPerformed'])assert.equal(output[field],false);
+ const output=JSON.parse(result.stdout);assert.equal(output.checks,22);for(const field of ['actualSecurityExecuted','enclaveExecuted','pqExecuted','activeSelectionPerformed'])assert.equal(output[field],false);
  const record=JSON.parse(Buffer.from(output.normalTargetWrapper,'base64'));assert.equal(record.format,'aux.wrap.dk.v2');
  const wrapping=Buffer.from(hkdfSync('sha256',kem.computeSecret(Buffer.from(record.ephemeral_public_key,'base64')),Buffer.alloc(0),'aux.wrap.dk.v2',32)),combined=Buffer.from(record.ciphertext,'base64'),decipher=createDecipheriv('chacha20-poly1305',wrapping,Buffer.from(record.nonce,'base64'),{authTagLength:16});
  decipher.setAAD(Buffer.from('aux.wrap.dk.v2'));decipher.setAuthTag(combined.subarray(-16));assert.deepEqual(Buffer.concat([decipher.update(combined.subarray(0,-16)),decipher.final()]),syntheticRoot);
- console.log('PASS: 18 caller sequencing assertions with captured Security and real disposable journals; independently verified target same-DK. No actual Security, SE/PQ or active-selection operation.');
+ console.log('PASS: 22 caller sequencing assertions with captured Security and real disposable journals; independently verified target same-DK. No actual Security, SE/PQ or active-selection operation.');
 } finally { await rm(temporary,{recursive:true,force:true}); }
