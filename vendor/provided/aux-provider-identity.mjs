@@ -45,6 +45,7 @@ function renameKey(object, from, to) {
 function selections(value) {
   if (!value || typeof value !== 'object') return;
   if (Array.isArray(value)) { value.forEach(selections); return; }
+  if (value.visibleModelIdsByProvider) renameKey(value.visibleModelIdsByProvider, 'aside', 'aux');
   if (value.providerId === 'aside') value.providerId = 'aux';
   if (value.modelProvider === 'aside' && typeof value.modelId === 'string') value.modelProvider = 'aux';
   if (Array.isArray(value.providerOptions)) for (const provider of value.providerOptions) if (provider?.id === 'aside') provider.id = 'aux';
