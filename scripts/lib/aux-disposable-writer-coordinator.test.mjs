@@ -62,7 +62,7 @@ test('unclean participating writer exit keeps admission blocked',async()=>{
  const coordinator=await createAuxDisposableWriterCoordinator({participantSources:[{id:'writer',bytes,sha256:sha(bytes)}],initialFiles:[{path:'ticks',bytes:Buffer.alloc(0)}]});
  try {
   await coordinator.start('writer').ready;
-  await assert.rejects(()=>coordinator.freeze(),/cleanly/);
+  await assert.rejects(()=>coordinator.freeze(),/cleanly|blocked/);
   assert.equal(coordinator.snapshot().phase,'blocked');
   assert.throws(()=>coordinator.start('writer'),/closed/);
  }finally{await coordinator.dispose();await rm(coordinator.root,{recursive:true,force:true});}
@@ -80,6 +80,19 @@ test('early abnormal writer exit closes admission before any freeze request',asy
   assert.throws(()=>coordinator.freeze(),/drain/);
   await assert.rejects(()=>coordinator.migrate({id:'3'.repeat(32),files:[{path:'data/state',expectedSha256:sha(initial),bytes:next}]}),/drain/);
   await assert.rejects(()=>coordinator.reopen({expectedReceiptSha256:'a'.repeat(64)}),/terminal/);
+  assert.equal((await readFile(join(coordinator.root,'data','state'))).toString(),'old');
+ }finally{await coordinator.dispose();await rm(coordinator.root,{recursive:true,force:true});}
+});
+
+test('dispose during an empty drain remains closed and cannot migrate',async()=>{
+ const coordinator=await fixture();
+ try {
+  const pending=coordinator.freeze();
+  const rejected=assert.rejects(pending,/closed/);
+  await coordinator.dispose();await rejected;
+  assert.equal(coordinator.snapshot().phase,'closed');
+  assert.throws(()=>coordinator.freeze(),/disposed/);
+  await assert.rejects(()=>coordinator.migrate({id:'4'.repeat(32),files:[{path:'data/state',expectedSha256:sha(initial),bytes:next}]}),/disposed/);
   assert.equal((await readFile(join(coordinator.root,'data','state'))).toString(),'old');
  }finally{await coordinator.dispose();await rm(coordinator.root,{recursive:true,force:true});}
 });

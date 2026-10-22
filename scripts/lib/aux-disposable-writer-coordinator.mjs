@@ -81,6 +81,7 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
     return {ready,done};
   }
   function freeze() {
+    if(disposed)throw Error('Coordinator is disposed');
     if(draining)return draining;
     if(phase!=='open')throw Error('Coordinator cannot start another drain');
     phase='draining';epoch++;
@@ -90,17 +91,20 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
       let timer;
       try {
         const outcomes=await Promise.race([Promise.all(owned.map(item=>item.done)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Direct participant drain deadline exceeded')),2000);})]);
+        if(disposed||phase!=='draining')throw Error('Coordinator closed or blocked during drain');
         if(phase==='blocked'||outcomes.some(result=>result.code!==0||result.signal||result.error)||children.size)throw Error('Direct participant did not stop cleanly');
-        await ownRoot();phase='frozen';
+        await ownRoot();
+        if(disposed||phase!=='draining')throw Error('Coordinator closed or blocked during drain');
+        phase='frozen';
         return {format:'aux.owned-direct-writers.v1',epoch,stopped:outcomes,authorityScope:'owned-direct-participants-only',nativeWritersVerified:false,descendantsVerified:false};
-      } catch(error){phase='blocked';throw error;}
+      } catch(error){phase=disposed?'closed':'blocked';throw error;}
       finally{clearTimeout(timer);}
     })();
     return draining;
   }
   async function migrate({id,files,onCheckpoint}) {
     await freeze();
-    if(phase!=='frozen'||transactionId)throw Error('A single stopped transaction is required');
+    if(disposed||phase!=='frozen'||transactionId)throw Error('A single stopped transaction is required');
     transactionId=id;phase='transaction';
     try {
       await prepareStateMigration({root,capability,transactionId:id,files,onCheckpoint});
