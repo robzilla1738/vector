@@ -27,3 +27,8 @@ The original full CLI source SHA, exact function input/output hashes and count1 
 ## Focused evidence
 
 `node --experimental-vm-modules --test vendor/provided/aux-cli-device-registration.test.mjs` passes four focused tests. They extract the actual pinned CLI SEA source, apply the real existing state2 composition and this exact function patch, parse both whole modules, and prove every byte outside that function is unchanged. The actual original/replacement function runs in an isolated VM with only synthetic platform/native responses. Tests cover real synthetic EC public bytes, PQ public-format fixture bytes (no PQ operation), scheme pairing/refusals/cache, unsupported platform and old-versus-new Windows equality. No real login, device registration or native authority availability is claimed.
+
+
+## Root pipeline integration
+
+The state2 CLI adapter now applies the reviewed function patch after provider/runtime identity transforms and before cold-entry refusal. Its helper, input pin, both exact function texts and the actual cloud auth schema are included in staging provenance. The four focused tests pass with the real integrated adapter (the repeated-generation check now expects the composed entry to reject a second application). State1 behavior is unchanged. This integration is newer than the CLI-prehome packaged candidate; a new stage/package remains required before claiming delivered device-registration behavior. No actual sign-in or authority was invoked.

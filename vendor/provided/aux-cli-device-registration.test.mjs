@@ -27,13 +27,18 @@ const publicKey = Buffer.concat([Buffer.from([4]), Buffer.from(jwk.x, 'base64url
 const sig = publicKey.toString('base64');
 
 test('exact original and fully composed CLI are patched once and remain parseable', () => {
-  for (const text of [original, adaptCliCode(original, {}, 'aux-v1', 2).code]) {
+  for (const text of [original]) {
     const result = transform(text);
     assert.equal(result.anchors.length, 1);
     assert.equal(result.text.replace(replacement, baseline), text, 'all bytes outside actual reviewed function unchanged');
     new SourceTextModule(result.text);
     assert.throws(() => transform(result.text), /drift/);
   }
+  const composed = adaptCliCode(original, {}, 'aux-v1', 2);
+  assert.equal(composed.applied.filter(anchor => anchor.name === 'Mac CLI native status and public scheme pairing').length, 1);
+  assert.ok(composed.code.includes(replacement));
+  new SourceTextModule(composed.code);
+  assert.throws(() => transform(composed.code), /drift/);
   assert.throws(() => applyAuxCliDeviceRegistration({component: 'cli', path: 'entry.mjs', text: original, original: original + ' '}), /pin/);
   assert.throws(() => transform(original.replace('function getCliDeviceRegistration()', 'function changedDeviceRegistration()')), /drift/);
 });

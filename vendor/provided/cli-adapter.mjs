@@ -1,3 +1,4 @@
+import { applyAuxCliDeviceRegistration } from './aux-cli-device-registration.mjs';
 import { applyAuxColdEntryAdmission } from './aux-cold-entry-admission.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
@@ -60,6 +61,8 @@ export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'com
     const provider = applyAuxProviderIdentity({ component: 'cli', path: 'entry.mjs', text: code, original, branding: 'aux' });
     const runtime = applyAuxRuntimeContractIdentity({ component: 'cli', path: 'entry.mjs', text: provider.text, original, branding: 'aux' });
     code = runtime.text; applied.push(...provider.anchors, ...runtime.anchors);
+    const registration = applyAuxCliDeviceRegistration({component: 'cli', path: 'entry.mjs', text: code, original});
+    code = registration.text; applied.push(...registration.anchors);
   }
   const admission = applyAuxColdEntryAdmission({component: 'cli', path: 'entry.mjs', text: code, original, stateIdentityVersion});
   code = admission.text; applied.push(...admission.anchors);
