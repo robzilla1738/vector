@@ -1,0 +1,110 @@
+// Copyright 2026 Aux Authors. All rights reserved.
+// Early packaged identity refusal. Header-only: no user state or native authority.
+#ifndef CHROME_APP_AUX_PACKAGED_STATE_IDENTITY_H_
+#define CHROME_APP_AUX_PACKAGED_STATE_IDENTITY_H_
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <set>
+#include <string>
+#include <string_view>
+#include "base/apple/foundation_util.h"
+#include "base/base_paths.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
+#include "base/json/json_reader.h"
+#include "base/numerics/safe_conversions.h"
+#include "base/path_service.h"
+#include "base/strings/string_util.h"
+namespace aux::state_identity {
+// No accepted-startup record, inherited environment or process-type switch can
+// authorize an unaccepted state generation. This pure parser also serves the
+// standalone synthetic native probe; it does not access user state or Keychain.
+inline bool PackagedIdentityMarkerAllowed(std::string_view json) {
+  if (json.empty() || json.size() > 16 * 1024 * 1024) return false;
+  auto marker = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+  if (!marker || marker->FindInt("version") != 1 ||
+      !marker->FindString("implementation") ||
+      *marker->FindString("implementation") != "supplied") return false;
+  // JSONReader accepts duplicate object keys. Reject duplicate TOP-LEVEL keys,
+  // including escaped spellings, rather than let the parser select a generation.
+  std::set<std::string> keys;
+  int depth = 0;
+  for (size_t index = 0; index < json.size(); ++index) {
+    const char ch = json[index];
+    if (ch == '"') {
+      const size_t start = index++;
+      while (index < json.size()) {
+        if (json[index] == '\\') { index += 2; continue; }
+        if (json[index] == '"') break;
+        ++index;
+      }
+      if (index >= json.size()) return false;
+      size_t next = index + 1;
+      while (next < json.size() && base::IsAsciiWhitespace(json[next])) ++next;
+      if (depth == 1 && next < json.size() && json[next] == ':') {
+        auto key = base::JSONReader::Read(json.substr(start, index - start + 1),
+                                         base::JSON_PARSE_RFC);
+        if (!key || !key->is_string() || !keys.insert(key->GetString()).second)
+          return false;
+      }
+    } else if (ch == '{' || ch == '[') {
+      ++depth;
+    } else if (ch == '}' || ch == ']') {
+      --depth;
+    }
+  }
+  const auto* profile_value = marker->Find("identityProfile");
+  if (profile_value && !profile_value->is_string()) return false;
+  const std::string_view profile = profile_value
+      ? std::string_view(profile_value->GetString()) : std::string_view("compatibility");
+  const auto* state_value = marker->Find("stateIdentityVersion");
+  if (state_value && !state_value->is_int()) return false;
+  const int state = state_value ? state_value->GetInt() : 1;
+  // Deliberate unconditional refusal: no acceptance Boolean, environment flag
+  // or command-line override exists for state2 (or a future unknown version).
+  return state == 1 && (profile == "compatibility" || profile == "aux-v1");
+}
+inline bool PackagedIdentityMarkerAllowedAt(const base::FilePath& path) {
+  if (!path.IsAbsolute() || base::MakeAbsoluteFilePath(path) != path)
+    return false;
+  base::ScopedFD fd(open(path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
+  struct stat before, after;
+  if (!fd.is_valid() || fstat(fd.get(), &before) != 0 ||
+      !S_ISREG(before.st_mode) ||
+      (before.st_uid != getuid() && before.st_uid != 0) ||
+      (before.st_mode & 0022) || before.st_nlink != 1 || before.st_size <= 0 ||
+      before.st_size > 16 * 1024 * 1024) return false;
+  std::string bytes(base::checked_cast<size_t>(before.st_size), '\0');
+  size_t offset = 0;
+  while (offset < bytes.size()) {
+    const ssize_t size = read(fd.get(), bytes.data() + offset, bytes.size() - offset);
+    if (size < 0 && errno == EINTR) continue;
+    if (size <= 0) return false;
+    offset += base::checked_cast<size_t>(size);
+  }
+  char extra;
+  if (read(fd.get(), &extra, 1) != 0 || fstat(fd.get(), &after) != 0 ||
+      before.st_dev != after.st_dev || before.st_ino != after.st_ino ||
+      before.st_size != after.st_size || before.st_mode != after.st_mode ||
+      before.st_uid != after.st_uid || before.st_nlink != after.st_nlink ||
+      before.st_mtimespec.tv_sec != after.st_mtimespec.tv_sec ||
+      before.st_mtimespec.tv_nsec != after.st_mtimespec.tv_nsec ||
+      before.st_ctimespec.tv_sec != after.st_ctimespec.tv_sec ||
+      before.st_ctimespec.tv_nsec != after.st_ctimespec.tv_nsec) return false;
+  return PackagedIdentityMarkerAllowed(bytes);
+}
+inline bool PackagedIdentityAllowsStartup() {
+  base::FilePath executable;
+  if (!base::PathService::Get(base::FILE_EXE, &executable)) return false;
+  // GetAppBundlePath selects the OUTERMOST .app, including nested Helper.app
+  // executables. Never search parent homes, accepted records or environment.
+  const auto app = base::apple::GetAppBundlePath(executable);
+  if (app.empty()) return false;
+  return PackagedIdentityMarkerAllowedAt(
+      app.AppendASCII("Contents/Resources/aux/bundle.json"));
+}
+
+}  // namespace aux::state_identity
+#endif

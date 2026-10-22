@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chrome/BUILD.gn",
+      "baselineSha256": "97b47b4b66c2b1e84360d339d10ba57e0a74aa08ac9f9a2a2848b21689faf246",
+      "outputSha256": "e8841f5e0f3ff5dc26ec4cedbd5dfa2fe0a349f5e6128d77fefa4a7dfd6fc9c1"
+    },
+    {
+      "path": "chrome/app/BUILD.gn",
+      "baselineSha256": "8b950842faab69e162ab2dc7ec7354ceb341d57254377c353d1881cffca893e3",
+      "outputSha256": "481744279b7d2aef8807e55ed5a13f0e1600d4c8b27248ce06f5dc0042702fb2"
+    },
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "baselineSha256": null,
+      "outputSha256": "bfd82fc96e130fcc8afa302d050d295ad91f605b272369bd522fc3d2801ee80d"
+    },
+    {
+      "path": "chrome/app/aux_startup_identity_probe.cc",
+      "baselineSha256": null,
+      "outputSha256": "a5fdd18e9b71b1dd151fdfff1397b403ce48a211a04d065c49ee6b4365e7f4a3"
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "baselineSha256": "6bf7e17f89cbd242d621260c0d540c0937c2521ea5ceb7c76b569234b67684b2",
+      "outputSha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "314aaab2310e00ab4a40c5c9a00535777ae2ca2290573b4202c695775e73038a",
+      "outputSha256": "4b2a3cc2c1ba807fcc076c757ef9f21d4ae1326aca8e33f8c505ad9d8e96edea"
+    }
+  ],
+  "parentComposition": "out/native-reuse-composition-aux-quiesce",
+  "sourceProposal": "docs/integration/proposed/aux-native-state2-launch-refusal",
+  "rootIntegrationChanges": [
+    "GN header registration for browser/framework/separate renderer",
+    "base-only synthetic probe target",
+    "pure predicate shares16MiB reader bound"
+  ],
+  "patchSha256": "950635ba036cc1ac3065776b9593e9bbaa6a847f1e73a6c8f2263c5697acda36"
+}

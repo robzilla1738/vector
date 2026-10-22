@@ -1,0 +1,265 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -1443,6 +1443,9 @@
+     if (is_component_build) {
+       frameworks += [ "Carbon.framework" ]
+     }
++    if (enable_aux_browser) {
++      sources += [ "app/aux_packaged_state_identity.h" ]
++    }
+     if (enable_aux_browser && !is_official_build) {
+       sources += [ "app/aux_accepted_development_startup.h" ]
+       deps += [ "//crypto" ]
+@@ -2153,6 +2156,10 @@
+     "common/chrome_content_client.h",
+   ]
+ 
++  if (is_mac && enable_aux_browser) {
++    _chrome_renderer_sources += [ "app/aux_packaged_state_identity.h" ]
++  }
++
+   _chrome_renderer_deps = [
+     "//base",
+     "//base:i18n",
+diff --git a/chrome/app/BUILD.gn b/chrome/app/BUILD.gn
+--- a/chrome/app/BUILD.gn
++++ b/chrome/app/BUILD.gn
+@@ -212,6 +212,9 @@
+       "//chrome/browser/mac",
+     ]
+ 
++    if (enable_aux_browser) {
++      sources += [ "aux_packaged_state_identity.h" ]
++    }
+     if (enable_aux_browser && !is_official_build) {
+       sources += [ "aux_accepted_development_startup.h" ]
+       deps += [ "//crypto" ]
+diff --git a/chrome/app/aux_packaged_state_identity.h b/chrome/app/aux_packaged_state_identity.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/app/aux_packaged_state_identity.h
+@@ -0,0 +1,110 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Early packaged identity refusal. Header-only: no user state or native authority.
++#ifndef CHROME_APP_AUX_PACKAGED_STATE_IDENTITY_H_
++#define CHROME_APP_AUX_PACKAGED_STATE_IDENTITY_H_
++#include <errno.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <set>
++#include <string>
++#include <string_view>
++#include "base/apple/foundation_util.h"
++#include "base/base_paths.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_file.h"
++#include "base/json/json_reader.h"
++#include "base/numerics/safe_conversions.h"
++#include "base/path_service.h"
++#include "base/strings/string_util.h"
++namespace aux::state_identity {
++// No accepted-startup record, inherited environment or process-type switch can
++// authorize an unaccepted state generation. This pure parser also serves the
++// standalone synthetic native probe; it does not access user state or Keychain.
++inline bool PackagedIdentityMarkerAllowed(std::string_view json) {
++  if (json.empty() || json.size() > 16 * 1024 * 1024) return false;
++  auto marker = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++  if (!marker || marker->FindInt("version") != 1 ||
++      !marker->FindString("implementation") ||
++      *marker->FindString("implementation") != "supplied") return false;
++  // JSONReader accepts duplicate object keys. Reject duplicate TOP-LEVEL keys,
++  // including escaped spellings, rather than let the parser select a generation.
++  std::set<std::string> keys;
++  int depth = 0;
++  for (size_t index = 0; index < json.size(); ++index) {
++    const char ch = json[index];
++    if (ch == '"') {
++      const size_t start = index++;
++      while (index < json.size()) {
++        if (json[index] == '\\') { index += 2; continue; }
++        if (json[index] == '"') break;
++        ++index;
++      }
++      if (index >= json.size()) return false;
++      size_t next = index + 1;
++      while (next < json.size() && base::IsAsciiWhitespace(json[next])) ++next;
++      if (depth == 1 && next < json.size() && json[next] == ':') {
++        auto key = base::JSONReader::Read(json.substr(start, index - start + 1),
++                                         base::JSON_PARSE_RFC);
++        if (!key || !key->is_string() || !keys.insert(key->GetString()).second)
++          return false;
++      }
++    } else if (ch == '{' || ch == '[') {
++      ++depth;
++    } else if (ch == '}' || ch == ']') {
++      --depth;
++    }
++  }
++  const auto* profile_value = marker->Find("identityProfile");
++  if (profile_value && !profile_value->is_string()) return false;
++  const std::string_view profile = profile_value
++      ? std::string_view(profile_value->GetString()) : std::string_view("compatibility");
++  const auto* state_value = marker->Find("stateIdentityVersion");
++  if (state_value && !state_value->is_int()) return false;
++  const int state = state_value ? state_value->GetInt() : 1;
++  // Deliberate unconditional refusal: no acceptance Boolean, environment flag
++  // or command-line override exists for state2 (or a future unknown version).
++  return state == 1 && (profile == "compatibility" || profile == "aux-v1");
++}
++inline bool PackagedIdentityMarkerAllowedAt(const base::FilePath& path) {
++  if (!path.IsAbsolute() || base::MakeAbsoluteFilePath(path) != path)
++    return false;
++  base::ScopedFD fd(open(path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat before, after;
++  if (!fd.is_valid() || fstat(fd.get(), &before) != 0 ||
++      !S_ISREG(before.st_mode) ||
++      (before.st_uid != getuid() && before.st_uid != 0) ||
++      (before.st_mode & 0022) || before.st_nlink != 1 || before.st_size <= 0 ||
++      before.st_size > 16 * 1024 * 1024) return false;
++  std::string bytes(base::checked_cast<size_t>(before.st_size), '\0');
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    const ssize_t size = read(fd.get(), bytes.data() + offset, bytes.size() - offset);
++    if (size < 0 && errno == EINTR) continue;
++    if (size <= 0) return false;
++    offset += base::checked_cast<size_t>(size);
++  }
++  char extra;
++  if (read(fd.get(), &extra, 1) != 0 || fstat(fd.get(), &after) != 0 ||
++      before.st_dev != after.st_dev || before.st_ino != after.st_ino ||
++      before.st_size != after.st_size || before.st_mode != after.st_mode ||
++      before.st_uid != after.st_uid || before.st_nlink != after.st_nlink ||
++      before.st_mtimespec.tv_sec != after.st_mtimespec.tv_sec ||
++      before.st_mtimespec.tv_nsec != after.st_mtimespec.tv_nsec ||
++      before.st_ctimespec.tv_sec != after.st_ctimespec.tv_sec ||
++      before.st_ctimespec.tv_nsec != after.st_ctimespec.tv_nsec) return false;
++  return PackagedIdentityMarkerAllowed(bytes);
++}
++inline bool PackagedIdentityAllowsStartup() {
++  base::FilePath executable;
++  if (!base::PathService::Get(base::FILE_EXE, &executable)) return false;
++  // GetAppBundlePath selects the OUTERMOST .app, including nested Helper.app
++  // executables. Never search parent homes, accepted records or environment.
++  const auto app = base::apple::GetAppBundlePath(executable);
++  if (app.empty()) return false;
++  return PackagedIdentityMarkerAllowedAt(
++      app.AppendASCII("Contents/Resources/aux/bundle.json"));
++}
++
++}  // namespace aux::state_identity
++#endif
+diff --git a/chrome/app/aux_startup_identity_probe.cc b/chrome/app/aux_startup_identity_probe.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/app/aux_startup_identity_probe.cc
+@@ -0,0 +1,58 @@
++// Synthetic-only probe. Never calls Apply(), opens an Aux profile or Keychain.
++#include "chrome/app/aux_packaged_state_identity.h"
++#include "base/at_exit.h"
++#include "base/files/scoped_temp_dir.h"
++#include <iostream>
++#include <utility>
++#include <vector>
++int main() {
++  base::AtExitManager exit_manager;
++  using aux::state_identity::PackagedIdentityMarkerAllowed;
++  using aux::state_identity::PackagedIdentityMarkerAllowedAt;
++  const std::vector<std::pair<std::string, bool>> cases = {
++    {R"({"version":1,"implementation":"supplied"})", true},
++    {R"({"version":1,"implementation":"supplied","identityProfile":"compatibility","stateIdentityVersion":1})", true},
++    {R"({"version":1,"implementation":"supplied","identityProfile":"aux-v1","stateIdentityVersion":1})", true},
++    {R"({"version":1,"implementation":"supplied","identityProfile":"aux-v1","stateIdentityVersion":2})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":2})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":3})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":"1"})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":true})", false},
++    {R"({"version":1,"implementation":"supplied","identityProfile":null})", false},
++    {R"({"version":1,"implementation":"supplied","identityProfile":"unknown"})", false},
++    {R"({"version":1,"implementation":"other"})", false},
++    {R"({"implementation":"supplied"})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":2,"stateIdentityVersion":1})", false},
++    {R"({"version":1,"implementation":"supplied","stateIdentityVersion":2,"stateIdentity\u0056ersion":1})", false},
++    {R"({"version":1,"implementation":"supplied","identityProfile":"aux-v1","identityProfile":"compatibility"})", false},
++    {R"({"version":1,"implementation":"supplied","nested":{"stateIdentityVersion":2},"text":"{\"stateIdentityVersion\":2}"})", true},
++    {"{}", false}, {"[]", false}, {"{", false}, {"", false}
++  };
++  if (PackagedIdentityMarkerAllowed(std::string(16 * 1024 * 1024 + 1, ' '))) return 10;
++  for (const auto& [bytes, allowed] : cases) {
++    if (PackagedIdentityMarkerAllowed(bytes) != allowed) {
++      std::cerr << "Synthetic marker policy fixture failed\n"; return 1;
++    }
++  }
++  base::ScopedTempDir directory;
++  if (!directory.CreateUniqueTempDir()) return 2;
++  const auto root = base::MakeAbsoluteFilePath(directory.GetPath());
++  const auto marker = root.AppendASCII("bundle.json");
++  if (PackagedIdentityMarkerAllowedAt(marker)) return 3;
++  if (!base::WriteFile(marker, cases[0].first) ||
++      !base::SetPosixFilePermissions(marker, 0600) ||
++      !PackagedIdentityMarkerAllowedAt(marker)) return 4;
++  if (!base::WriteFile(marker, cases[3].first) ||
++      PackagedIdentityMarkerAllowedAt(marker)) return 5;
++  if (!base::WriteFile(marker, cases[0].first) ||
++      !base::SetPosixFilePermissions(marker, 0666) ||
++      PackagedIdentityMarkerAllowedAt(marker)) return 6;
++  if (!base::SetPosixFilePermissions(marker, 0600)) return 7;
++  const auto link = root.AppendASCII("bundle-link.json");
++  if (!base::CreateSymbolicLink(marker, link) ||
++      PackagedIdentityMarkerAllowedAt(link)) return 8;
++  const auto nested = root.AppendASCII("Aux.app/Contents/Frameworks/Aux Helper.app/Contents/MacOS/Aux Helper");
++  if (base::apple::GetAppBundlePath(nested) != root.AppendASCII("Aux.app")) return 9;
++  std::cout << "20 marker fixtures, size bound, 5 file-policy checks and outer helper path passed\n";
++  return 0;
++}
+diff --git a/chrome/app/chrome_main_delegate.cc b/chrome/app/chrome_main_delegate.cc
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -181,8 +181,11 @@
+ #include "chrome/child/pdf_child_init.h"
+ #endif
+ 
++#include "chrome/browser/buildflags.h"  // nogncheck
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/app/aux_packaged_state_identity.h"
++#endif
+ #if !defined(BUILDING_CHROME_RENDERER)
+-#include "chrome/browser/buildflags.h"  // nogncheck
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER) && !defined(OFFICIAL_BUILD)
+ #include "chrome/app/aux_accepted_development_startup.h"
+ #endif
+@@ -1123,6 +1126,14 @@
+ }
+ 
+ std::optional<int> ChromeMainDelegate::BasicStartupComplete() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Runs in browser and helper processes before acceptance, user-data paths,
++  // singleton forwarding, preferences, daemon or installation authority.
++  if (!aux::state_identity::PackagedIdentityAllowsStartup()) {
++    LOG(ERROR) << "Aux packaged state identity is unsupported or unaccepted";
++    return 1;
++  }
++#endif
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER) && !defined(OFFICIAL_BUILD)
+ #if !defined(BUILDING_CHROME_RENDERER)
+   if (!aux::development_startup::Apply()) {
+diff --git a/chrome/browser/aux/BUILD.gn b/chrome/browser/aux/BUILD.gn
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -169,3 +169,15 @@
+     frameworks = [ "AppKit.framework" ]
+   }
+ }
++
++# Synthetic packaged-generation predicate; no browser, Keychain or user state.
++if (is_mac) {
++  executable("startup_identity_probe") {
++    testonly = true
++    sources = [
++      "../../app/aux_packaged_state_identity.h",
++      "../../app/aux_startup_identity_probe.cc",
++    ]
++    deps = [ "//base" ]
++  }
++}
