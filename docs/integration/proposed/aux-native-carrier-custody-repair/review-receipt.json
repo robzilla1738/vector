@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "parentCompositionSha256": "9dfa2bbafb42ec82044af7ece1a97d7121e5dbe5ede2ee811de2fa6a2c22552c",
+  "parentAppliedNotCompiled": true,
+  "currentFrameworkSha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a",
+  "successorCompositionSha256": "be9f5836946dd28d2264701f9c6c7ff0a3ce4e2c6cebefe6e2f820f08d2d4a6a",
+  "verifiedParentSources": 771,
+  "successorSources": 772,
+  "unchangedBinaryAssets": 23,
+  "changedSources": 3,
+  "appliedToNative": false,
+  "compiled": false,
+  "fixturesRepeated": false,
+  "uiAssetModification": false,
+  "backupMapping": [
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.h",
+      "beforeSha256": "53db925f86120de15bbdc09b27b7e70c901bb6582738c6debaab02d3fd336f4d",
+      "afterSha256": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+      "backup": "review-before/chrome/browser/aux/installation_carrier_custody.h"
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.cc",
+      "beforeSha256": null,
+      "afterSha256": "4a14085dacd761ec17f3a14e44440d24502da2cbd42eea31846fdb0dcf369622",
+      "backup": null
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "beforeSha256": "fe3d7b45967707e3187712d33e704f6e5632ffe829c687c37add0f9ce4e5cdd4",
+      "afterSha256": "4bc653b8d4927e84b94c59206dec45592b3b682eebe20a116535c2e573101bb1",
+      "backup": "review-before/chrome/browser/aux/BUILD.gn"
+    }
+  ]
+}

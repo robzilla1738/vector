@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "inputs": {
+    "out/native-reuse-composition-aux-carrier-custody-review/manifest.json": "9dfa2bbafb42ec82044af7ece1a97d7121e5dbe5ede2ee811de2fa6a2c22552c",
+    "scripts/extend-provided-native.py": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+    "out/aux-carrier-lifecycle-build.log": "81c311ffcb93f2101a841599912ebb471faa1eef52e446c913737a34d63ccc2b"
+  },
+  "nativeInputs": {
+    "chrome/browser/aux/installation_carrier_custody.h": "53db925f86120de15bbdc09b27b7e70c901bb6582738c6debaab02d3fd336f4d",
+    "chrome/browser/aux/BUILD.gn": "fe3d7b45967707e3187712d33e704f6e5632ffe829c687c37add0f9ce4e5cdd4"
+  },
+  "frameworkSha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a",
+  "newSource": "chrome/browser/aux/installation_carrier_custody.cc"
+}

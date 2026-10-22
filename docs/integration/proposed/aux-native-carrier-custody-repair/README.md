@@ -1,0 +1,9 @@
+# Chromium carrier style repair
+
+The first real Chromium fixture build failed with four `chromium-style` diagnostics: complex owner class requires explicit out-of-line constructor/destructor, and Call's complex constructor/destructor cannot have inline bodies. Actual log pinned in `inputs.json`; no suppressions are introduced.
+
+The production header now declares the owner and Call constructors/destructors. The new `.cc` contains the same six method bodies, Call initializer and shared State construction; State is forward-declared in the header. GN adds the actual `.cc` to `platform`. `move-proof.json` records whitespace-normalized equality of all six moved behavioral bodies and equivalent State initialization. Neither the production reaper nor native fixture changed.
+
+`prepare.py --artifact-root /Users/rcourson/Documents/Vibe/web --output <fresh-output>` pins the CURRENT APPLIED 771-source carrier composition, its native header/GN bytes, prior failure log and existing extender. It checks the current framework remains the earlier `89c128...` artifact; the applied parent has no successful compile receipt. It independently verifies/replays the772-source successor and23 unchanged artwork entries on temporary copies. No checkout mutation/build/fixture execution occurs. Exact backup mapping and before/after copies are in the output.
+
+Prepared output: `out/native-reuse-composition-aux-carrier-custody-style-repair`. `review-receipt.json` records its manifest hash and all three changed paths. Root owns applying this repair and retrying `//chrome/browser/aux:installation_carrier_lifecycle_tests` through the native serializer. The old five standard-library fixtures remain historical and were not repeated; actual native fixture acceptance remains pending. UI assets and geometry are untouched. Carrier-only custody is not whole-profile admission.

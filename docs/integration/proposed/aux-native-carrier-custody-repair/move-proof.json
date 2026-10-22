@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "normalizedBodiesEqual": {
+    "~Call()": true,
+    "LaunchIfAdmitted(": true,
+    "ObservedChildExit()": true,
+    "BeginCall()": true,
+    "CloseAdmission()": true,
+    "Inspect() const": true
+  },
+  "stateInitializationEquivalent": true,
+  "compiled": false,
+  "fixturesRepeated": false
+}
