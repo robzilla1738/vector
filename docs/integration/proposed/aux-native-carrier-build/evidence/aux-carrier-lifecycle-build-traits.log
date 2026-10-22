@@ -1,0 +1,34 @@
+offline mode
+ninja: Entering directory `out/AuxFast'
+
+
+disable fast local for non-interactive: fastlocal=1->0
+ use `--fast_local` to enable fast local with non-interactive mode
+schedule pending:1+ready:0 (node:85700 edge:2)
+build start: Ready 1 Pending 1
+rebuild manifest finished
+
+loading build.ninja... done 16.784557375s
+load siso config done 26.929958ms
+schedule pending:1+ready:0 (node:415809 edge:2)
+build start: Ready 1 Pending 1
+rebuild manifest finished
+schedule pending:1+ready:0 (node:415809 edge:5)
+build start: Ready 1677 Pending 14108
+[0/155] 18.65s S CXX obj/chrome/browser/aux/installation_carrier_lifecycle_tests/installation_carrier_lifecycle_unittest.o
+[0/84] 18.65s S CXX obj/chrome/browser/aux/platform/installation_auth.o
+[0/4] 22.49s F CXX obj/chrome/browser/aux/installation_carrier_lifecycle_tests/installation_carrier_lifecycle_unittest.o
+[1/3] 24.32s F CXX obj/chrome/browser/aux/platform/installation_auth.o
+[2/3] 24.32s S LINK ./installation_carrier_lifecycle_tests
+[2/3] 31.10s F LINK ./installation_carrier_lifecycle_tests
+build finished
+
+	
+noexec:0 local:3 remote:0 cache:0 skip:15782
+  cache-write:0(err:0) fallback:0 retry:0
+fs: ops: 329(err:5) / r:30(err:0) 8.59MiB / w:1(err:0) 226.02KiB
+
+
+shutdown cloud logging/monitoring done 31.709µs
+
+31.35s Build Succeeded: 3 steps - 0.10/s

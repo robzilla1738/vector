@@ -1,0 +1,75 @@
+{
+  "format": "aux.native.carrier.build.execution.v1",
+  "composition": "out/native-reuse-composition-aux-carrier-wait-traits",
+  "compositionSha256": "2b2affe740d6da1b13176bc05200bbac6de820a2e72ba70e5ea14d463338ad11",
+  "nativeBuildReceipt": {
+    "path": "out/aux-carrier-native-build.json",
+    "sha256": "ad239340ef205d30a0a26d7014404a0b73b88c44a203cf9a71b0db4a77ec3ab4",
+    "exitCode": 0,
+    "session": "62701",
+    "generatedKeyProbePassed": true
+  },
+  "actualNativeFixture": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/installation_carrier_lifecycle_tests",
+    "sha256": "c742acfd27dc5a207801462c4955c0ac8b92e263c099bf416cf91b68d8ec51ce",
+    "buildSession": "83554",
+    "buildExitCode": 0,
+    "executed": true,
+    "exitCode": 0,
+    "passedCases": 2,
+    "actualOwnedSyntheticChildLaunchAndProductionWaitReaper": true,
+    "closedBeforeLaunchRefusesActualCallback": true,
+    "disposableHome": true,
+    "runtimeLogSha256": "cf2fa0be764e2299e866fac3102f34c1613cdfb2fa1cd2919311b7c82dcc9189"
+  },
+  "repairHistory": [
+    {
+      "buildSession": "92425",
+      "exitCode": 1,
+      "reason": "Chromium complex-class out-of-line style",
+      "fixedWithoutSuppression": true
+    },
+    {
+      "buildSession": "56517",
+      "exitCode": 0,
+      "fixtureNotExecuted": true,
+      "reason": "Actual blocking-wait task requirements inspected before execution; required traits added"
+    },
+    {
+      "composition": "out/native-reuse-composition-aux-carrier-wait-traits",
+      "requiredProductionAndFixtureTraits": "base::WithBaseSyncPrimitives()"
+    }
+  ],
+  "files": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "e0f02e34745f5dd28505d75f7b80515c0af79fe6cfa45ec0b2dc402cf1d2dc5a"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "283163c2d8375fc10b64ceb2292e837a7f14edb32dc0758fc97a740d95de2e74"
+    }
+  ],
+  "scope": {
+    "acceptedAppReplaced": false,
+    "appLaunched": false,
+    "installationCarrierLaunched": false,
+    "actualKeychainOrPrivateAuthorityAccess": false,
+    "newSigningOrProvisioning": false,
+    "ownerProfilesAccessed": false,
+    "OSGrantsChanged": false,
+    "cloudOrPaidInferenceOrEmail": false,
+    "nativeVisualSourcesOrAssetsChanged": false,
+    "allWriterAdmissionProven": false,
+    "state2Authorized": false
+  },
+  "sourceReview": [
+    "docs/integration/proposed/aux-native-carrier-custody/composition-review.json",
+    "docs/integration/proposed/aux-native-carrier-custody-repair/move-proof.json",
+    "docs/integration/proposed/aux-native-carrier-wait-traits/review-receipt.json"
+  ]
+}

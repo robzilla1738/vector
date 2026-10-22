@@ -1,0 +1,13 @@
+Note: Google Test filter = InstallationCarrierLifecycle.*
+[==========] Running 2 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 2 tests from InstallationCarrierLifecycle
+[ RUN      ] InstallationCarrierLifecycle.CloseBeforeActualLaunchDoesNotCreateChild
+[       OK ] InstallationCarrierLifecycle.CloseBeforeActualLaunchDoesNotCreateChild (0 ms)
+[ RUN      ] InstallationCarrierLifecycle.RealOwnedChildReaperKeepsPendingUntilWait
+[       OK ] InstallationCarrierLifecycle.RealOwnedChildReaperKeepsPendingUntilWait (7 ms)
+[----------] 2 tests from InstallationCarrierLifecycle (8 ms total)
+
+[----------] Global test environment tear-down
+[==========] 2 tests from 1 test suite ran. (9 ms total)
+[  PASSED  ] 2 tests.
