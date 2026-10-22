@@ -1,0 +1,34 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import {transformProvidedDraftFlush as transform} from '../../../../scripts/lib/provided-draft-flush.mjs';
+const dir=process.argv[2],names=['newtab-editor-u_GbForB.js','ask-omnibox-panel-DkxXbN8c.js','draft-storage-ixLojjZ5.js'];
+const results=names.map(name=>{const source=fs.readFileSync(`${dir}/${name}`,'utf8');return {name,source,...transform({component:'agent',path:`assets/${name}`,text:source})}});
+const init=results[0].anchors[0].replace;
+async function run({privateContext=false,id='p_fixture_page_123',old=false}={}){
+ const records=new Map(old?[['new-tab',{version:2,plainText:'legacy fixture'}]]:[]),calls=[],writes=[];
+ const context=vm.createContext({chrome:{extension:{inIncognitoContext:privateContext},tabs:{getCurrent:async()=>({id:17})},auxAccount:{getProfileContext:async tabId=>{calls.push(tabId);return {draftPageId:id}}}},window:{sessionStorage:{getItem:key=>old&&key==='aside.chat-draft.v2:new-tab'?'fixture':null}},y:'new-tab',x:(unused,scope)=>records.get(scope)??null,P:(unused,record,scope)=>{writes.push(scope);record?records.set(scope,record):records.delete(scope);return true},v:()=>({}),D:(initial,write)=>({initial,write})});
+ const result=await vm.runInContext(`(async()=>{${init}return {scope:auxScope,writer:i}})()`,context);
+ return {result,calls,writes,records};
+}
+const normal=await run({old:true});assert.equal(normal.result.scope,'newtab-page:p_fixture_page_123');assert.deepEqual(normal.calls,[17]);assert.equal(normal.result.writer.initial.plainText,'legacy fixture');assert.equal(normal.records.has('new-tab'),false);
+normal.result.writer.write({version:2,plainText:'changed'});assert.equal(normal.records.get(normal.result.scope).plainText,'changed');
+const other=await run({id:'p_other_page_123'});assert.notEqual(other.result.scope,normal.result.scope);assert.equal(other.result.writer.initial,null);
+const priv=await run({privateContext:true});assert.equal(priv.result.scope,'new-tab');assert.equal(priv.calls.length,0);
+assert.equal((await run({id:'invalid'})).result.scope,'new-tab');
+const callback=results[1].anchors[0].replace;
+const c=vm.createContext({o:{mode:'ask',draftWriter:{write:()=>false}}});
+const config=vm.runInContext(`({${callback}})`,c);assert.equal(config.onDraftRecordChange({},true),false);c.o.mode='search';assert.equal(config.onDraftRecordChange({},false),undefined);
+const store=()=>{const m=new Map;return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)}};
+const session=store(),local=store(),listeners=new Set;
+const storage=vm.createContext({window:{sessionStorage:session,localStorage:local,addEventListener:(t,f)=>listeners.add(f),removeEventListener:(t,f)=>listeners.delete(f)}});
+vm.runInContext(results[2].text.replace(/import\{[^}]+\}from"[^"]+";/g,'').replace(/export\{[^}]+\};/,''),storage);
+const draft={version:2,plainText:'newtab fixture',attachments:[]};
+assert.equal(storage.J(undefined,draft,normal.result.scope),true);
+assert.ok(local.getItem('aside.chat-draft.v2:'+normal.result.scope));
+local.setItem=()=>{throw Error('quota')};assert.equal(storage.J(undefined,draft,normal.result.scope),false);assert.equal(listeners.size,1);
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+fs.writeFileSync(new URL('./source-pins.json',import.meta.url),JSON.stringify(results.map(r=>({path:`assets/${r.name}`,sourceSha256:hash(r.source),outputSha256:hash(r.text),anchors:r.anchors.map(a=>({count:a.count,findSha256:hash(a.find)}))})),null,2)+'\n');
+for(const r of results)fs.writeFileSync(`/tmp/aux-ntp-recovery-${r.name}.mjs`,r.text);
+console.log('PASS: exact current-tab identity, distinct scopes, original legacy migration, private/invalid fallback, and failed writer result propagation.');

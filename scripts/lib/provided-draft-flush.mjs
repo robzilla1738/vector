@@ -7,6 +7,14 @@ export function transformProvidedDraftFlush({ component, path, text }) {
     return { text: text.replace(find, replacement),
       anchors: [{ kind: 'integration', find, replace: replacement, count: 1 }] };
   };
+  if (path === 'assets/ask-omnibox-panel-DkxXbN8c.js') {
+    return replaceOne('onDraftRecordChange:(d,j)=>{(o.mode==="ask"||j)&&o.draftWriter.write(d,j)}',
+      'onDraftRecordChange:(d,j)=>(o.mode==="ask"||j)?o.draftWriter.write(d,j):void 0');
+  }
+  if (path === 'assets/newtab-editor-u_GbForB.js') {
+    return replaceOne('const s=v(),i=D(x(void 0,y),e=>P(void 0,e,y));',
+      'let auxScope=y;try{if(!chrome.extension?.inIncognitoContext){const auxTab=await chrome.tabs.getCurrent();if(Number.isInteger(auxTab?.id)&&auxTab.id>0){const auxContext=await chrome.auxAccount.getProfileContext(auxTab.id),auxId=auxContext?.draftPageId;if(typeof auxId==="string"&&/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(auxId))auxScope="newtab-page:"+auxId}}}catch{}let auxInitial=x(void 0,auxScope);if(auxScope!==y)try{if(!auxInitial&&(window.sessionStorage.getItem("aside.chat-draft.v2:"+y)!==null||window.sessionStorage.getItem("aside.chat-draft.v1:"+y)!==null)){auxInitial=x(void 0,y);if(P(void 0,auxInitial,auxScope)===!0)P(void 0,null,y)}else if(auxInitial)P(void 0,null,y)}catch{}const s=v(),i=D(auxInitial,e=>P(void 0,e,auxScope));');
+  }
   if (path === 'assets/minipopup-LkDLFvnq.js') {
     // A singleton per actual UI account, inside the real Profile origin store.
     // Captured owners keep late callbacks from writing a successor account.
@@ -117,7 +125,7 @@ export function transformProvidedDraftFlush({ component, path, text }) {
   if (text.split(find).length - 1 !== 1)
     throw new Error('Supplied draft persistence anchor changed');
   const durableFind = 'function J(e,n,t){const r=f(),o=N();if(!(!r&&!o))try{const s=c(e,l,t),i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i);return}r?.setItem(s,JSON.stringify(n)),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}catch{}}';
-  const durableReplacement = 'var auxUnsavedDrafts=new Map,auxDraftUnload=e=>{e.preventDefault(),e.returnValue=""};function J(e,n,t){const s=c(e,l,t);try{const r=f(),o=N(),auxDurable=(typeof e==="string"&&e.length>0||typeof t==="string"&&/^mini-popup-account:(?:0|[1-9][0-9]{0,15}):new$/.test(t)||typeof t==="string"&&/^sidepanel-page:(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(t));if(auxDurable?!o:!r)throw new Error("Draft storage unavailable");const i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}else{const a=JSON.stringify(n);r?.setItem(s,a),r?.removeItem(i),auxDurable?o.setItem(s,a):o?.removeItem(s),o?.removeItem(i)}auxUnsavedDrafts.delete(s);if(auxUnsavedDrafts.size===0&&typeof window!=="undefined")window.removeEventListener("beforeunload",auxDraftUnload);return true}catch{auxUnsavedDrafts.set(s,n);if(typeof window!=="undefined")window.addEventListener("beforeunload",auxDraftUnload);return false}}';
+  const durableReplacement = 'var auxUnsavedDrafts=new Map,auxDraftUnload=e=>{e.preventDefault(),e.returnValue=""};function J(e,n,t){const s=c(e,l,t);try{const r=f(),o=N(),auxDurable=(typeof e==="string"&&e.length>0||typeof t==="string"&&/^mini-popup-account:(?:0|[1-9][0-9]{0,15}):new$/.test(t)||typeof t==="string"&&/^(?:sidepanel-page|newtab-page):(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(t));if(auxDurable?!o:!r)throw new Error("Draft storage unavailable");const i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}else{const a=JSON.stringify(n);r?.setItem(s,a),r?.removeItem(i),auxDurable?o.setItem(s,a):o?.removeItem(s),o?.removeItem(i)}auxUnsavedDrafts.delete(s);if(auxUnsavedDrafts.size===0&&typeof window!=="undefined")window.removeEventListener("beforeunload",auxDraftUnload);return true}catch{auxUnsavedDrafts.set(s,n);if(typeof window!=="undefined")window.addEventListener("beforeunload",auxDraftUnload);return false}}';
   const readFind = 'function F(e,n){const t=f(),r=N();';
   const readReplacement = 'function F(e,n){const auxKey=c(e,l,n);if(auxUnsavedDrafts.has(auxKey))return auxUnsavedDrafts.get(auxKey);const t=f(),r=N();';
   const edits = [[find,replacement],[durableFind,durableReplacement],[readFind,readReplacement]];

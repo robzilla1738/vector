@@ -1,0 +1,43 @@
+[
+  {
+    "path": "assets/newtab-editor-u_GbForB.js",
+    "sourceSha256": "243f687f9b3dfe34faa764533bb528d4c58b0571a25e945842d3824b747813a5",
+    "outputSha256": "ffb5f46b355d2a5efc744738d066d2b892dbc310f7000f4a01df6a62be993320",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "8410cdccaf173013d43a59a5c5aa06de7dced6a2bdd2eb42145b491e41c4c741"
+      }
+    ]
+  },
+  {
+    "path": "assets/ask-omnibox-panel-DkxXbN8c.js",
+    "sourceSha256": "5517774f87c3a2ef72c95c5e6e8a6eb8c784497a1d17f61988d5903a165a69c1",
+    "outputSha256": "9426307e44f31c6e90f03845d8685436ac069794983ca02c389c395d8659ccf5",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "e3365eb0c17aaa00ad51cf7cfa18fe78b8f26648c0290fde74f96c9600fb06c0"
+      }
+    ]
+  },
+  {
+    "path": "assets/draft-storage-ixLojjZ5.js",
+    "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+    "outputSha256": "c8764a4bcd325509d1074bc90dd1ce37360e76a7c2ab4665935687cf963625e5",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "38435d7830d677dda7ad315e8b53c1885d212563ac45b895620ac4e0c03adeed"
+      },
+      {
+        "count": 1,
+        "findSha256": "bf8ea63c8028436a98a4cbf49932a694401ca06cee23081c02f79dbe553dfbf3"
+      },
+      {
+        "count": 1,
+        "findSha256": "052eb015fb6394a97ada35a5a40e8fad816c562a444402f733b0935667cef9fa"
+      }
+    ]
+  }
+]
