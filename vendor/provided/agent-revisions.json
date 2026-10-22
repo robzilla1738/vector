@@ -21,5 +21,12 @@
     "profile": "development",
     "identityProfile": "aux-v1",
     "fingerprint": "7a1f9ff8bd21629d8914dce1651e4f2a09a87896a5f91b9676eac6dea46cd1e5"
+  },
+  {
+    "revision": 6,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "070752fb7a4099411680f6d1daad6b5d77865c751513ee7dbf2a84effc259bb4"
   }
 ]

@@ -8,12 +8,14 @@ import {applyAuxProviderIdentity,auxProviderIdentityInputs,migrateAuxProviderSta
 const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
 const binary=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary);
 const daemon=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
+const cliBinary=readFileSync(root+'/cli/Contents/MacOS/aside'),cliSection=findMachOSeaSection(cliBinary);
+const cli=readSeaBlob(cliBinary.subarray(cliSection.offset,cliSection.offset+cliSection.size)).code;
 const brand=t=>t.replaceAll('ASIDE_','AUX_').replaceAll('Aside','Aux');
 const z=createRequire(new URL('../../services/aux-cloud/package.json',import.meta.url))('zod').z;
 
 test('all pinned actual provider modules replay in supplied and Aux symbol variants, preserving syntax and HTML',()=>{
  for(const input of auxProviderIdentityInputs){
-  const original=input.component==='daemon'?daemon:readFileSync(root+'/agent/'+input.path,'utf8');
+  const original=input.component==='daemon'?daemon:input.component==='cli'?cli:readFileSync(root+'/agent/'+input.path,'utf8');
   for(const branding of ['supplied','aux']){
    const text=branding==='aux'?brand(original):original;
    const result=applyAuxProviderIdentity({...input,original,text,branding});

@@ -1,4 +1,6 @@
-import { applyAuxProtocolIdentity, resolveProtocolIdentity } from './aux-protocol-identity.mjs';
+import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
+import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
+import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from './aux-protocol-identity.mjs';
 /** Rebrand the pinned supplied CLI without replacing its commands or RPC implementation. */
 import { createHash } from 'node:crypto';
 import { composeCloudDesktop } from './cloud-desktop-composition.mjs';
@@ -13,8 +15,9 @@ export const CLI_BINARY_SHA256 = '17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38
 export const CLI_CODE_SHA256 = '013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'compatibility') {
+export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1) {
   resolveProtocolIdentity(identityProfile);
+  resolveStateIdentityVersion(stateIdentityVersion, identityProfile);
   if (sha(original) !== CLI_CODE_SHA256) throw new Error('Supplied CLI code hash mismatch');
   let code = original;
   const applied = [];
@@ -52,14 +55,19 @@ export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'com
   const identity = applyAuxProtocolIdentity({ component: 'cli', text: cloud.text }, identityProfile, cloud.policy.mode);
   code = identity.text;
   applied.push(...cloud.anchors, ...identity.anchors);
+  if (stateIdentityVersion === 2) {
+    const provider = applyAuxProviderIdentity({ component: 'cli', path: 'entry.mjs', text: code, original, branding: 'aux' });
+    const runtime = applyAuxRuntimeContractIdentity({ component: 'cli', path: 'entry.mjs', text: provider.text, original, branding: 'aux' });
+    code = runtime.text; applied.push(...provider.anchors, ...runtime.anchors);
+  }
   return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 
-export function adaptCliBinary(original, cloudOptions = {}, identityProfile = 'compatibility') {
+export function adaptCliBinary(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1) {
   if (sha(original) !== CLI_BINARY_SHA256) throw new Error('Supplied CLI binary hash mismatch');
   const section = findMachOSeaSection(original);
   const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
-  const result = adaptCliCode(blob.code, cloudOptions, identityProfile);
+  const result = adaptCliCode(blob.code, cloudOptions, identityProfile, stateIdentityVersion);
   const sea = writeSeaBlob({ ...blob, code: result.code });
   const binary = result.cloudPolicy ? embedCloudSeaBlob(original, sea) : Buffer.from(original);
   if (!result.cloudPolicy) injectMachOSeaBlob(binary, sea);

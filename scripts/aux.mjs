@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { assertAuxLaunchIdentity } from './lib/aux-launch-identity.mjs';
 // Development launcher. Production startup belongs to the native browser.
 import { launchOwnedProcess } from './lib/owned-process.mjs';
 import { existsSync } from 'node:fs';
@@ -38,7 +39,7 @@ const app = dirname(dirname(dirname(executable))), resources = join(app, 'Conten
 let supplied;
 try { supplied = JSON.parse(await readFile(join(resources, 'bundle.json'), 'utf8')); }
 catch { throw new Error('Assemble the supplied app first with package:provided, then select it with --app.'); }
-if (supplied.version !== 1 || supplied.implementation !== 'supplied') throw new Error('A packaged supplied Aux implementation is required.');
+const launchIdentity = assertAuxLaunchIdentity(supplied);
 if (options.temporary && (options.profile || args.includes('--home'))) throw new Error('Temporary profile cannot be combined with explicit home/profile.');
 // macOS tmpdir may begin with /var, a symlink. Cache guards require the
 // actual canonical disposable root before the supplied daemon seeds resources.
@@ -128,7 +129,7 @@ if (options.noBrowser) {
       if (response.ok) {
         const health = await response.json();
         if (stopping) return;
-        if (health.service !== 'aside-daemon' || health.pid !== daemon.pid) throw new Error('Port is occupied by another daemon.');
+        if (health.service !== launchIdentity.service || health.pid !== daemon.pid) throw new Error('Port is occupied by another daemon.');
         if (health.ready) { ready = true; break; }
       }
     } catch (error) {

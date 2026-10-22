@@ -1,3 +1,4 @@
+import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 /** Static app staging. Incomplete native integration is explicit and never silently substituted. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -75,7 +76,7 @@ function brandPlist(bytes, path, target) {
   return Buffer.from(JSON.stringify(data));
 }
 
-export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot, cloudOptions = {}, identityProfile = 'compatibility' }) {
+export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1 }) {
   const pinned = JSON.parse(await readFile(join(repository, 'docs/source/provided-app-inputs.json'), 'utf8'));
   const actual = await inventoryProvidedApps(sourceRoots);
   if (JSON.stringify(actual) !== JSON.stringify(pinned)) throw new Error('Supplied app resources differ from pinned inputs');
@@ -88,7 +89,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   await mkdir(dirname(destination), { recursive: true });
   const temporary = await mkdtemp(join(dirname(destination), '.provided-apps-'));
-  const report = { version: 1, identityProfile, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Guarded native/runtime and packaged acceptance required'], components: {} };
+  const report = { version: 1, identityProfile, stateIdentityVersion, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Guarded native/runtime and packaged acceptance required'], components: {} };
   try {
     for (const [component, target] of Object.entries(targets)) {
       const app = join(temporary, component, target.app), files = [], removed = [];
@@ -101,11 +102,13 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
           removed.push({ path: file.path, sha256: file.sha256, reason: 'Original signatures cannot authenticate modified local artifacts' });
           continue;
         }
-        const path = outputPath(file.path, target), kinds = [];
+        let path = outputPath(file.path, target);
+        const kinds = [];
+        if (stateIdentityVersion === 2) path = path.replace('Contents/Resources/static/skills/builtin/aside/', 'Contents/Resources/static/skills/builtin/aux/');
         let output = source;
         if (file.path === `Contents/MacOS/${target.sourceExecutable}`) {
-          executable = target.adapt(source, cloudOptions, identityProfile);
-          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source, cloudOptions, identityProfile);
+          executable = target.adapt(source, cloudOptions, identityProfile, stateIdentityVersion);
+          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source, cloudOptions, identityProfile, stateIdentityVersion);
           output = executable.binary;
           kinds.push('identity', 'integration');
         } else if (file.path.endsWith('/Info.plist')) {
@@ -118,7 +121,12 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
           output = Buffer.from(disabledSeed);
           kinds.push('integration');
         } else if (file.path.startsWith('Contents/Resources/static/skills/') && file.path.endsWith('.md')) {
-          output = Buffer.from(source.toString('utf8').replaceAll('Aside', 'Aux').replace(CLI_COMMAND, 'aux '));
+          let text = source.toString('utf8').replaceAll('Aside', 'Aux');
+          if (stateIdentityVersion === 2) {
+            const runtime = applyAuxRuntimeContractIdentity({component: 'skill', path: file.path.slice('Contents/Resources/static/skills/'.length), text, original: source.toString('utf8'), branding: 'aux'});
+            text = runtime.text;
+          }
+          output = Buffer.from(text.replace(CLI_COMMAND, 'aux '));
           if (!source.equals(output)) kinds.push('branding');
         }
         if (path !== file.path) kinds.push('identity');

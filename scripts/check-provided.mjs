@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Preservation audit: unchanged source equality is expected, never a clean-room failure.
-import { resolveProtocolIdentity } from '../vendor/provided/aux-protocol-identity.mjs';
+import { resolveProtocolIdentity, resolveStateIdentityVersion } from '../vendor/provided/aux-protocol-identity.mjs';
 import { createHash } from 'node:crypto';
 import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -33,6 +33,7 @@ async function files(root, directory = '') {
 }
 const stack = await json(join(output, 'manifest.json'));
 const identityProfile = resolveProtocolIdentity(stack.identityProfile);
+const stateIdentityVersion = resolveStateIdentityVersion(stack.stateIdentityVersion ?? 1, identityProfile);
 const cloudOptions = stack.cloudPolicy ? { enableCloud: true, profile: stack.cloudPolicy.mode } : {};
 if (JSON.stringify(resolveCloudServicePolicy(cloudOptions)) !== JSON.stringify(stack.cloudPolicy ?? resolveCloudServicePolicy())) throw new Error('Unreviewed stage cloud policy');
 if (stack.version !== 1 || stack.implementation !== 'supplied') throw new Error('Not a supplied implementation stage');
@@ -48,7 +49,7 @@ for (const input of stack.brandInputs) {
 }
 const pins = await json(join(repository, 'docs/source/provided-ui-inputs.json'));
 const ui = await json(join(output, 'ui/manifest.json'));
-if (resolveProtocolIdentity(ui.identityProfile) !== identityProfile) throw Error('UI protocol profile mismatch');
+if ((ui.stateIdentityVersion ?? 1) !== stateIdentityVersion || resolveProtocolIdentity(ui.identityProfile) !== identityProfile) throw Error('UI protocol profile mismatch');
 let unchanged = 0, changed = 0, css = 0;
 for (const component of ['agent', 'vault']) {
   const pinned = pins.components[component], report = ui.components[component], root = join(output, 'ui', component);
@@ -86,7 +87,7 @@ for (const component of ['agent', 'vault']) {
   }
 }
 const apps = await json(join(output, 'apps/manifest.json'));
-if (resolveProtocolIdentity(apps.identityProfile) !== identityProfile) throw Error('Apps protocol profile mismatch');
+if ((apps.stateIdentityVersion ?? 1) !== stateIdentityVersion || resolveProtocolIdentity(apps.identityProfile) !== identityProfile) throw Error('Apps protocol profile mismatch');
 const appPins = await json(join(repository, 'docs/source/provided-app-inputs.json'));
 let appFiles = 0;
 for (const component of ['daemon', 'cli']) {
@@ -99,12 +100,12 @@ for (const component of ['daemon', 'cli']) {
   const root = join(output, 'apps', report.app);
   const binary = await readFile(join(sourceSnapshot?.roots[component] ?? providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
   const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
-  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode, cloudOptions, identityProfile);
+  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode, cloudOptions, identityProfile, stateIdentityVersion);
   if (JSON.stringify(expected.cloudPolicy) !== JSON.stringify(report.executable.cloudPolicy) || JSON.stringify(expected.cloudAnchors) !== JSON.stringify(report.executable.cloudAnchors)) throw new Error('Unreported executable cloud composition');
   if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
-  const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary, cloudOptions, identityProfile) : null;
+  const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary, cloudOptions, identityProfile, stateIdentityVersion) : null;
   const developmentFiles = new Map((development?.files ?? []).map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
   if (development && JSON.stringify(report.nodeDevelopment) !== JSON.stringify(development.manifest)) throw new Error('Restage current supplied daemon development code/assets');
   if (report.files.filter(file => file.generatedBy).length !== developmentFiles.size) throw new Error('Missing or unexpected generated daemon development resources');

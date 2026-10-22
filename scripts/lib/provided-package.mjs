@@ -1,3 +1,4 @@
+import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
 import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
 /** Assemble a copied native app and the supplied resources. Never install or launch. */
 import { createHash } from 'node:crypto';
@@ -99,7 +100,10 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   const nativeRaw = await readFile(nativeReceiptPath), native = JSON.parse(nativeRaw);
   const compositionRaw = await readFile(join(compositionRoot, 'manifest.json')), composition = JSON.parse(compositionRaw);
   const boundaryRaw = await readFile(boundaryReceiptPath), boundary = JSON.parse(boundaryRaw);
-  const stageIdentity = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8')).identityProfile ?? 'compatibility';
+  const stageDeclaration = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8'));
+  const stageIdentity = stageDeclaration.identityProfile;
+  const stateIdentityVersion = stageDeclaration.stateIdentityVersion;
+  const stateIdentityEvidence = await verifyAuxStateIdentityContract({stageRoot, composition, identityProfile: stageIdentity, stateIdentityVersion});
   // Match actual source/SEA/Agent protocol bytes in both directions before
   // copying. Old stages without explicit declarations must be restaged.
   const identityEvidence = await verifyAuxIdentityContract({ stageRoot, composition, identityProfile: stageIdentity });
@@ -220,7 +224,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const report = {
       version: 1, implementation: 'supplied', productionReady: false, signed: false,
       app: 'Aux.app', finalApp: assembled.finalApp,
-      identityProfile: stageIdentity, ...(identityEvidence ? { identityEvidence, visualEvidence } : {}),
+      identityProfile: stageIdentity, stateIdentityVersion, stateIdentityEvidence, ...(identityEvidence ? { identityEvidence, visualEvidence } : {}),
       ...(assembled.cloudPolicy ? { cloudPolicy: assembled.cloudPolicy } : {}),
       nativeReceiptSha256: hash(nativeRaw), compositionSha256: hash(compositionRaw), boundaryReceiptSha256: hash(boundaryRaw),
       preservationAudit: audit.stdout.trim(),

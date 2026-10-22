@@ -12,7 +12,7 @@ count-checked anchors to the composed Aux text. It supports supplied symbols for
 fixtures and already Aux-capital-branded symbols for integration. Apply after
 `applyAuxProviderIdentity` and before unrelated lower-case renames. Both existing
 local and cloud-development daemon compositions replay14 runtime anchors after
-provider migration. Pins cover15 source leaves and52 anchors in total. Mixed,
+provider migration. Pins cover16 source leaves and58 anchors in total, including the CLI MCP identity and user-facing command guidance. Mixed,
 changed, twice-applied and unknown inputs containing covered contracts fail closed.
 Unrelated files are untouched. Original/aux variants parse without running startup.
 

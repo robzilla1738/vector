@@ -1,4 +1,6 @@
-import { applyAuxProtocolIdentity, resolveProtocolIdentity } from '../../vendor/provided/aux-protocol-identity.mjs';
+import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
+import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
+import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from '../../vendor/provided/aux-protocol-identity.mjs';
 import { reviseAgentManifest } from '../../docs/integration/proposed/provided-agent-worker-revision/revision.mjs';
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { restoreProvidedWireNames } from './provided-wire.mjs';
@@ -112,8 +114,10 @@ export async function stageProvidedUi({
   transformText,
   cloudProfile,
   identityProfile = 'compatibility',
+  stateIdentityVersion = 1,
 }) {
   resolveProtocolIdentity(identityProfile);
+  resolveStateIdentityVersion(stateIdentityVersion, identityProfile);
   const pinned = JSON.parse(
     await readFile(
       join(repository, 'docs/source/provided-ui-inputs.json'),
@@ -169,7 +173,7 @@ export async function stageProvidedUi({
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  const report = { version: 1, identityProfile, components: {} };
+  const report = { version: 1, identityProfile, stateIdentityVersion, components: {} };
   const mark = await readAuxMark();
   const temporary = await mkdtemp(join(dirname(destination), '.provided-ui-'));
   try {
@@ -240,6 +244,15 @@ export async function stageProvidedUi({
           const protocol = applyAuxProtocolIdentity({ component, text }, identityProfile, cloudProfile);
           text = protocol.text;
           anchors.push(...protocol.anchors);
+          if (stateIdentityVersion === 2) {
+            const provider = applyAuxProviderIdentity({ component, path: file.path, text, original: source.toString('utf8'), branding: 'aux' });
+            const runtime = applyAuxRuntimeContractIdentity({ component, path: file.path, text: provider.text, original: source.toString('utf8'), branding: 'aux', nativeAdapted: true });
+            text = runtime.text; anchors.push(...provider.anchors, ...runtime.anchors);
+            if (component === 'agent' && file.path === 'assets/utils-WfPpT5w5.js') {
+              const anchor = {kind: 'identity', find: 'if(a.name==="aside"&&a.path==="builtin/aside")return"Aux"', replace: 'if(a.name==="aux"&&a.path==="builtin/aux")return"Aux"', count: 1};
+              text = apply(text, anchor); anchors.push(anchor);
+            }
+          }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];
@@ -369,7 +382,7 @@ export async function stageProvidedUi({
         const manifestPath = join(temporary, component, 'manifest.json');
         const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
         if (!revisions.length || revisions.some((r, i) => r.revision !== i + 1)) throw new Error('Agent revision ledger must be consecutive');
-        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile && (review.identityProfile ?? 'compatibility') === identityProfile).at(-1)});
+        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile && (review.identityProfile ?? 'compatibility') === identityProfile && (review.stateIdentityVersion ?? 1) === stateIdentityVersion).at(-1)});
         const entry = files.find(f => f.path === 'manifest.json');
         entry.anchors = [...(entry.anchors ?? []), revised.anchor];
         entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];

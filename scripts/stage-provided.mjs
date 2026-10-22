@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { resolveProtocolIdentity } from '../vendor/provided/aux-protocol-identity.mjs';
+import { resolveProtocolIdentity, resolveStateIdentityVersion } from '../vendor/provided/aux-protocol-identity.mjs';
 // Stage the supplied implementation. Never launch it or silently insert reconstructed components.
 import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -29,10 +29,11 @@ const args = process.argv.slice(2);
 const options = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--replace') { options.replace = true; continue; }
-  if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile', '--identity-profile'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--identity-profile compatibility|aux-v1] [--replace]');
+  if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile', '--identity-profile', '--state-identity-version'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--identity-profile compatibility|aux-v1] [--state-identity-version 1|2] [--replace]');
   options[args[i]] = args[++i];
 }
 const identityProfile = resolveProtocolIdentity(options['--identity-profile']);
+const stateIdentityVersion = resolveStateIdentityVersion(options['--state-identity-version'] === undefined ? 1 : Number(options['--state-identity-version']), identityProfile);
 const cloudOptions = options['--cloud-profile'] ? { enableCloud: true, profile: options['--cloud-profile'] } : {};
 const cloudPolicy = resolveCloudServicePolicy(cloudOptions);
 const output = resolve(options['--output'] ?? join(repository, 'out/provided-reuse'));
@@ -60,7 +61,7 @@ for (const path of providedStageInputs) adaptationInputs.push({ path, sha256: cr
 await mkdir(dirname(output), { recursive: true });
 const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
-  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, identityProfile, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
+  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, identityProfile, stateIdentityVersion, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
     const scope = transformProvidedPasswordManagerScope(input);
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
@@ -76,7 +77,7 @@ try {
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
   await writeFile(join(temporary, 'ui/manifest.json'), `${JSON.stringify(ui, null, 2)}\n`);
-  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps'), cloudOptions, identityProfile });
+  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps'), cloudOptions, identityProfile, stateIdentityVersion });
   const runtimePins = JSON.parse(await readFile(join(repository, 'docs/source/provided-runtime-inputs.json'), 'utf8'));
   const distribution = await stageProvidedRuntime({
     sourceRoot: sourceSnapshot?.roots.runtime ?? runtimePins.components.runtime.inputRoot,
@@ -99,7 +100,7 @@ try {
     if (createHash('sha256').update(await readFile(join(repository, input.path))).digest('hex') !== input.sha256) throw new Error('Aux artwork or adaptation code changed during staging; retry with stable inputs');
   }
   const report = {
-    version: 1, implementation: 'supplied', identityProfile, productionReady: false, finalApp, brandInputs, adaptationInputs,
+    version: 1, implementation: 'supplied', identityProfile, stateIdentityVersion, productionReady: false, finalApp, brandInputs, adaptationInputs,
     ...(cloudPolicy.mode !== 'local' ? { cloudPolicy } : {}),
     components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', computerUse: 'computer-use/manifest.json' },
     blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', ...computerUse.remaining, 'Packaged local UI and behavior acceptance'],

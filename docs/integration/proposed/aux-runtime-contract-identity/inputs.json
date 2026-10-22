@@ -365,6 +365,43 @@
           "count": 8
         }
       ]
+    },
+    {
+      "component": "cli",
+      "path": "entry.mjs",
+      "sourceSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+      "rules": [
+        {
+          "find": "If \\`aside\\` is not installed",
+          "replace": "If \\`aux\\` is not installed",
+          "count": 1
+        },
+        {
+          "find": "permission to run 'aside' outside",
+          "replace": "permission to run 'aux' outside",
+          "count": 1
+        },
+        {
+          "find": "https://docs.aside.com/help/troubleshooting#cli-cannot-open-the-windows-installation-key",
+          "replace": "https://docs.getaux.co/help/troubleshooting#cli-cannot-open-the-windows-installation-key",
+          "count": 1
+        },
+        {
+          "find": "source: \"aside-mcp\"",
+          "replace": "source: \"aux-mcp\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside-cli-update-\"",
+          "replace": "\"aux-cli-update-\"",
+          "count": 1
+        },
+        {
+          "find": "name: \"aside\",",
+          "replace": "name: \"aux\",",
+          "count": 1
+        }
+      ]
     }
   ]
 }

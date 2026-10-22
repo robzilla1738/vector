@@ -12,8 +12,9 @@ import{adaptDaemonCode}from'./daemon-adapter.mjs';
 import{applyAuxRuntimeContractIdentity,auxRuntimeContractInputs,migrateAuxRuntimeReference,migrateAuxRuntimeStorage,migrateAuxSkillMetadata}from'./aux-runtime-contract-identity.mjs';
 const root='/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852';
 const binary=readFileSync(root+'/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),daemon=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
+const cliBinary=readFileSync(root+'/cli/Contents/MacOS/aside'),cliSection=findMachOSeaSection(cliBinary),cli=readSeaBlob(cliBinary.subarray(cliSection.offset,cliSection.offset+cliSection.size)).code;
 const brand=t=>t.replaceAll('ASIDE_','AUX_').replaceAll('Aside','Aux');
-const originalFor=pin=>pin.component==='daemon'?daemon:readFileSync(root+(pin.component==='agent'?'/agent/':'/daemon/Contents/Resources/static/skills/')+pin.path,'utf8');
+const originalFor=pin=>pin.component==='daemon'?daemon:pin.component==='cli'?cli:readFileSync(root+(pin.component==='agent'?'/agent/':'/daemon/Contents/Resources/static/skills/')+pin.path,'utf8');
 const transform=(component,path)=>{const pin=auxRuntimeContractInputs.find(p=>p.component===component&&p.path===path),original=originalFor(pin);return applyAuxRuntimeContractIdentity({...pin,original,text:brand(original)}).text};
 
 test('all actual pinned contracts replay after provider migration and preserve valid code/HTML',()=>{
@@ -82,5 +83,15 @@ test('existing local and cloud composed daemon remain compatible with provider-t
   const composed=adaptDaemonCode(daemon,cloud).code;
   const provider=applyAuxProviderIdentity({component:'daemon',path:'entry.mjs',text:composed,original:daemon}).text;
   const runtime=applyAuxRuntimeContractIdentity({component:'daemon',path:'entry.mjs',text:provider,original:daemon});assert.equal(runtime.anchors.length,14);new SourceTextModule(runtime.text);
+ }
+});
+
+test('runtime staging verifies already paired native Google Docs events without double rewriting',()=>{
+ for(const path of ['content/content.js','content/google-docs-selection-bridge.js']){
+  const pin=auxRuntimeContractInputs.find(p=>p.component==='agent'&&p.path===path),original=originalFor(pin);
+  const text=brand(original).replaceAll('aside:google-docs-','aux:google-docs-');
+  const result=applyAuxRuntimeContractIdentity({...pin,original,text,nativeAdapted:true});
+  assert.equal(result.text,text);assert.equal(result.anchors.length,0);
+  assert.throws(()=>applyAuxRuntimeContractIdentity({...pin,original,text:text.replace('aux:google-docs-selection-request','aside:google-docs-selection-request'),nativeAdapted:true}),/Preapplied/);
  }
 });

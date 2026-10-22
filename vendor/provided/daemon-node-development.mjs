@@ -66,7 +66,7 @@ export function getAsset(name, encoding) {
 `;
 }
 
-export function buildDaemonNodeDevelopment(originalBinary, cloudOptions = {}, identityProfile = 'compatibility') {
+export function buildDaemonNodeDevelopment(originalBinary, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1) {
   if (!Buffer.isBuffer(originalBinary) || hash(originalBinary) !== DAEMON_BINARY_SHA256) throw new Error('Supplied daemon binary hash mismatch');
   const section = findMachOSeaSection(originalBinary);
   const blob = readSeaBlob(originalBinary.subarray(section.offset, section.offset + section.size));
@@ -78,7 +78,7 @@ export function buildDaemonNodeDevelopment(originalBinary, cloudOptions = {}, id
   if (new Set(blob.assets.map(([name]) => name)).size !== 2) throw new Error('Duplicate supplied daemon asset');
   const tail = Buffer.from('020000000000000011000000000000002d2d64697361626c652d736967757372310f000000000000002d2d7573652d73797374656d2d6361', 'hex');
   if (!blob.tail.equals(tail)) throw new Error('Unexpected supplied daemon Node execution arguments');
-  const adapted = adaptDaemonCode(blob.code, cloudOptions, identityProfile);
+  const adapted = adaptDaemonCode(blob.code, cloudOptions, identityProfile, stateIdentityVersion);
   let code = adapted.code;
   if (code.includes('__auxDaemon') || code.includes('__auxProvidedGetAsset')) throw new Error('Development binding name collision');
   const applied = [];

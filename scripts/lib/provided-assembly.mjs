@@ -1,3 +1,4 @@
+import { assertAuxStateIdentityDeclarations } from './aux-state-identity-contract.mjs';
 import { createAuxDeliveryProvenance } from './aux-delivery-provenance.mjs';
 /** Assemble verified staged components into Chromium's Resources/aux layout. */
 import { constants, createReadStream } from 'node:fs';
@@ -57,6 +58,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   if (stack.version !== 1 || stack.implementation !== 'supplied' || !isAbsolute(stack.finalApp)) throw new Error('A supplied implementation stage with a final app path is required');
   const ui = await json(join(stageRoot, 'ui/manifest.json'));
   const apps = await json(join(stageRoot, 'apps/manifest.json'));
+  assertAuxStateIdentityDeclarations({identityProfile: stack.identityProfile, stateIdentityVersion: stack.stateIdentityVersion, declarations: {stage: stack, ui, apps}});
   const distribution = await json(join(stageRoot, 'distribution/manifest.json'));
   const computerUse = await json(join(stageRoot, 'computer-use/manifest.json'));
   if (distribution.runtimeRoot !== join(stack.finalApp, 'Contents/Resources/aux/agent-runtime')) throw new Error('Runtime relocation does not match the final app path');
@@ -73,7 +75,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   ];
   const temporary = await mkdtemp(join(dirname(outputRoot), '.provided-resources-'));
   const report = {
-    version: 1, implementation: 'supplied', identityProfile: stack.identityProfile ?? 'compatibility', productionReady: false, finalApp: stack.finalApp,
+    version: 1, implementation: 'supplied', identityProfile: stack.identityProfile, stateIdentityVersion: stack.stateIdentityVersion, productionReady: false, finalApp: stack.finalApp,
     brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
     ...(stack.cloudPolicy ? { cloudPolicy: stack.cloudPolicy } : {}),
     excludedProducts: ['vault', 'password-importer'], excludedFiles: [], passwordManager: 'external-extensions',

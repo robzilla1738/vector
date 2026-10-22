@@ -7,13 +7,20 @@ const brand=(text,branding)=>branding==='aux'?text.replaceAll('ASIDE_','AUX_').r
 const covered=/aside\.(?:verticalTabsTidy|inboxNotification|notificationPermissionChanged|oauth\.openai-codex\.callback|device\.approveConnection|sessions\.|routines\.)|aside:task|#aside-(?:task|file|routine)|aside:google-docs-|aside:web-sidebar-state|aside:billing-embedded-checkout/;
 export const auxRuntimeContractInputs=Object.freeze(pins.files.map(({component,path,sourceSha256})=>Object.freeze({component,path,sourceSha256})));
 
-export function applyAuxRuntimeContractIdentity({component,path,text,original,branding='aux'}) {
+export function applyAuxRuntimeContractIdentity({component,path,text,original,branding='aux',nativeAdapted=false}) {
  if(!['supplied','aux'].includes(branding))throw Error('Unknown Aux runtime contract branding');
  const pin=pins.files.find(file=>file.component===component&&file.path===path);
  if(!pin){if(covered.test(text))throw Error('Unpinned runtime contract input');return{text,path,anchors:[]};}
  if(typeof original!=='string'||sha(original)!==pin.sourceSha256)throw Error('Aux runtime contract source pin mismatch');
  let output=text;const anchors=[];
- for(const rule of pin.rules){const find=brand(rule.find,branding),replace=brand(rule.replace,branding);if(output.split(find).length-1!==rule.count)throw Error(`Aux runtime contract drift: ${component}/${path}: ${find}`);output=output.split(find).join(replace);anchors.push({kind:'identity',name:'Aux runtime contract',find,replace,count:rule.count});}
+ for(const rule of pin.rules){const find=brand(rule.find,branding),replace=brand(rule.replace,branding);
+  // The existing native UI adapter already pairs these content-script events.
+  // Authenticate the source and verify that exact prior result; do not apply twice.
+  if(nativeAdapted&&component==='agent'&&['content/content.js','content/google-docs-selection-bridge.js'].includes(path)&&rule.find.startsWith('aside:google-docs-')){
+   if(output.includes(find)||output.split(replace).length-1!==rule.count)throw Error('Preapplied Google Docs identity drift');
+   continue;
+  }
+  if(output.split(find).length-1!==rule.count)throw Error(`Aux runtime contract drift: ${component}/${path}: ${find}`);output=output.split(find).join(replace);anchors.push({kind:'identity',name:'Aux runtime contract',find,replace,count:rule.count});}
  const outputPath=component==='skill'?path.replace(/^builtin\/aside\//,'builtin/aux/'):path;
  return{text:output,path:outputPath,anchors};
 }

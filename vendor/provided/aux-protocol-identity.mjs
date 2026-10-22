@@ -61,3 +61,10 @@ export function applyAuxProtocolIdentity({ component, text }, profile = 'compati
   }
   return { text, anchors };
 }
+
+export function resolveStateIdentityVersion(version = 1, protocolProfile = 'compatibility') {
+  resolveProtocolIdentity(protocolProfile);
+  if (![1, 2].includes(version) || (version === 2 && protocolProfile !== 'aux-v1'))
+    throw Error('State identity v2 requires coordinated Aux protocol identity');
+  return version;
+}
