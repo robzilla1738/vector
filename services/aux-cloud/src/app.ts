@@ -43,6 +43,8 @@ app.onError((error,c)=>{
   if(error instanceof ZodError) return c.json({error:'Invalid request',fields:error.issues.map(i=>i.path.join('.'))},400);
   if(error instanceof HTTPException) return error.res?error.getResponse():c.json({error:error.message},error.status);
   // Do not log bodies, tokens, email addresses, database URLs or provider errors.
-  console.error(JSON.stringify({event:'aux_request_failed',path:c.req.routePath,name:error.name}));
+  const detail=error as Error&{code?:unknown;statusCode?:unknown};
+  const safeLabel=(value:unknown)=>typeof value==='string'&&/^[A-Za-z0-9_]{1,64}$/.test(value)?value:undefined;
+  console.error(JSON.stringify({event:'aux_request_failed',path:c.req.routePath,name:safeLabel(error.name),kind:safeLabel(error.constructor.name),code:safeLabel(detail.code),providerStatus:typeof detail.statusCode==='number'&&detail.statusCode>=400&&detail.statusCode<=599?detail.statusCode:undefined}));
   return c.json({error:'The service could not complete this request. Please retry.'},503);
 });

@@ -25,7 +25,7 @@ try{
  const request={lookupKey:'aside_pro_month',returnUrl:origin+'/account'};
  const first=await call(0,'checkout',request),retry=await call(0,'checkout',request);
  assert.ok(typeof first.clientSecret==='string'&&first.clientSecret===retry.clientSecret,'Checkout retry must reuse one session.');assert.ok(first.checkoutId===retry.checkoutId);
- let current=await session(first.checkoutId);assert.equal(current.mode,'subscription');assert.equal(current.ui_mode,'embedded');assert.ok(current.return_url===request.returnUrl);
+ let current=await session(first.checkoutId);assert.equal(current.mode,'subscription');assert.equal(current.ui_mode,'embedded_page');assert.ok(current.return_url===request.returnUrl);
  const lines=await stripe.checkout.sessions.listLineItems(current.id,{limit:10});assert.ok(lines.data.length===1&&lines.data[0].price?.id===process.env.STRIPE_PRICE_PRO_MONTH);
  checks.push('actual deployed embedded subscription checkout, intended Aux price/return URL, owner mapping and idempotent retry');
  await call(1,'checkout/cancel',{checkoutId:current.id});assert.equal((await session(current.id)).status,'open');checks.push('cross-account cancellation cannot expire another customer checkout');
