@@ -23,19 +23,22 @@ try {
   for (const user of users) await sql`INSERT INTO aux_users(id,clerk_id,email,name) VALUES(${user},${`fixture_${user}`},${`${user}@example.invalid`},'Disposable session fixture')`;
   for (const blob of blobs) await sql`INSERT INTO aux_attachments(id,user_id,pathname,name,content_type,expected_size,expected_sha256,purpose,state,expires_at) VALUES(${blob},${users[0]},${`fixture/${users[0]}/${blob}`},'encrypted-session.json','application/json',0,${'a'.repeat(64)},'attachment','ready',now()+interval '15 minutes')`;
   const put = (app: typeof apps[number], blobId: string, match?: string) => app.request('/sync/sessions/disposable-session', { method: 'PUT', headers: match ? { 'If-Match': match } : { 'If-None-Match': '*' }, body: JSON.stringify({ blobId, generation: 0 }) });
-  const first = await put(apps[0], blobs[0]); assert.equal(first.status, 200); assert.equal((await first.json()).revision, 1); checks.push('owner creates opaque snapshot');
+  const first = await put(apps[0], blobs[0]); assert.equal(first.status, 200, 'owner create status'); assert.equal((await first.json()).revision, 1); checks.push('owner creates opaque snapshot');
   assert.equal((await apps[1].request('/sync/sessions/disposable-session')).status, 404);
   assert.equal((await put(apps[1], blobs[0])).status, 409); checks.push('cross-user reads and blob references denied');
   const race = await Promise.all([put(apps[0], blobs[1], '"1"'), put(apps[0], blobs[2], '"1"')]);
   assert.deepEqual(race.map(r => r.status).sort(), [200, 412]); checks.push('two devices cannot overwrite the same revision');
-  const latest = await (await apps[0].request('/sync/sessions/disposable-session')).json(); assert.equal(latest.revision, 2);
-  const staleDelete = await apps[0].request('/sync/sessions/disposable-session', { method: 'DELETE', headers: { 'If-Match': '"1"' } }); assert.equal(staleDelete.status, 412);
-  const removed = await apps[0].request('/sync/sessions/disposable-session', { method: 'DELETE', headers: { 'If-Match': '"2"' } }); assert.equal(removed.status, 200); assert.ok((await removed.json()).deletedAt);
-  assert.equal((await put(apps[0], blobs[0])).status, 412); checks.push('tombstones prevent offline resurrection and stale deletion');
-  const retired = await sql`SELECT count(*) AS count FROM aux_retired_session_blobs WHERE user_id=${users[0]}`; assert.equal(Number(retired[0].count), 2); checks.push('replaced/deleted blobs enter delayed retirement');
+  const latest = await (await apps[0].request('/sync/sessions/disposable-session')).json(); assert.equal(latest.revision, 2, 'post-CAS revision');
+  const staleDelete = await apps[0].request('/sync/sessions/disposable-session', { method: 'DELETE', headers: { 'If-Match': '"1"' } }); assert.equal(staleDelete.status, 412, 'stale delete status');
+  const removed = await apps[0].request('/sync/sessions/disposable-session', { method: 'DELETE', headers: { 'If-Match': '"2"' } }); assert.equal(removed.status, 200, 'current delete status'); assert.ok((await removed.json()).deletedAt);
+  assert.equal((await put(apps[0], blobs[race[0].status === 200 ? 2 : 1])).status, 412, 'tombstone resurrection status'); checks.push('tombstones prevent offline resurrection and stale deletion');
+  const retired = await sql`SELECT count(*) AS count FROM aux_retired_session_blobs WHERE user_id=${users[0]}`; assert.equal(Number(retired[0].count), 2, 'retired blob count'); checks.push('replaced/deleted blobs enter delayed retirement');
+  const unclaimed = blobs[race[0].status === 200 ? 2 : 1];
+  await sql`INSERT INTO aux_attachment_bindings(user_id,session_id,local_path,attachment_id,blob_id) VALUES(${users[0]},'disposable-session','attachments/fixture.json','fixture',${unclaimed})`;
+  assert.equal((await put(apps[0], unclaimed)).status, 409, 'bound attachment cannot become an encrypted snapshot'); checks.push('attachment bindings and snapshot lifecycle stay disjoint');
 } catch (error) {
-  const value = error as { code?: unknown; constraint?: unknown; table?: unknown };
-  console.error(JSON.stringify({ success: false, errorType: error instanceof Error ? error.name : 'Unknown', code: value.code, constraint: value.constraint, table: value.table }));
+  const value = error as { code?: unknown; constraint?: unknown; table?: unknown; actual?: unknown; expected?: unknown; message?: unknown };
+  console.error(JSON.stringify({ success: false, errorType: error instanceof Error ? error.name : 'Unknown', code: value.code, constraint: value.constraint, table: value.table, assertion: error instanceof assert.AssertionError ? { label: value.message, actual: value.actual, expected: value.expected } : undefined }));
   process.exitCode = 1;
 } finally {
   try { for (const user of users) await sql`DELETE FROM aux_users WHERE id=${user} AND clerk_id=${`fixture_${user}`}`; const rows = await sql`SELECT count(*) AS count FROM aux_users WHERE id=ANY(${users}::uuid[])`; cleaned = Number(rows[0].count) === 0; }
