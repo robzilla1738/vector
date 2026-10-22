@@ -1,0 +1,55 @@
+# Remaining delivered identity audit
+
+Read-only follow-up of the original frozen1852 source and the staged `out/provided-reuse-aux-protocol-v1` product. The latter has Aux protocol names but predates the ongoing state2 provider/runtime transforms. Counts below describe that actual protocol1 stage, **not** proof of the unfinished state2 output. No owner state, addon execution, binary mutation or UI edit occurred.
+
+## Runtime-sensitive items outside the current provider/runtime text rules
+
+| Boundary | Actual producers and consumers | Required coordinated change / evidence |
+| --- | --- | --- |
+| DOM automation globals | Staged daemon generated entry contains68 `__aside` substrings; two injected scripts assign `globalThis.__aside`,36 references use it. Original browser-automation snapshot/element operations test/invoke that global. Separate injected console script produces `window.__asideConsole`; Console methods invoke `drain/clear`. Other exact names include `__asideWaitDomMonitor`, `__asideDragDataTransfer`, `__aside_annotations__`, `__aside_native_ec`, `__aside_ec`, `__aside_utility`, `__aside_image_worker`, `__asideBufferModule`. | These are private JS contracts, not HTML tags. Count-pin each injector, caller and returned/reference field together; preserve script behavior and invalidate/reinitialize the matching isolated-world cache. Renaming only a script assignment breaks all existing CDP calls. Do not globally replace legitimate `<aside>` elements. |
+| Context awareness event source | Daemon has15 `aside_dom` occurrences, including14 quoted literals. `contextAwarenessEventSourceSchema`, event discriminated-union schema and actual capture production emit it; recent-event SQL filters `ContextAwarenessEventTable.source` by it. `context_awareness_events` has text PK `id`, text `source`, and JSON `payload`/`target`. The ledger is `<accountRoot>/context-awareness/ledger.db`, not the provider JSON files. | Pair new `aux_dom` production/schema/queries and an explicit SQLite source-field migration or supported legacy read. Never rewrite transcript prose or treat ledger.db as JSON. Verify persisted old events remain visible and new events accepted. |
+| Background task identities | Protocol1 daemon still creates Agent session IDs `aside:aux:context-awareness-summary` and `aside:aux:memory-dream`. | Replace these exact internal runtime identity values in producers and any matching consumer/telemetry filter. These do not match the narrower current `aside:task/` reference adapter. Preserve model/agent behavior. |
+| Account/auth globals | Protocol1 has `globalThis.__asideAccountRegistry` plus `__asideAuthInflightRefreshes`, `__asideAuthPendingGoogleOAuthAttempts`, `__asideAuthRecentRefreshes`, `__asideAuthRefreshBackoffs`. | Pair singleton producers/consumers, including startup module initialization; avoid retaining two independent mutable authorities after renaming. These are runtime object identities, not persisted JSON map names. |
+| Native addon ABI and Swift identity | `native/native-carrier.mm` resolves `dlsym(...,"AsideNativeRun")` and `"AsideNativeFree"`. Original addons export those names and contain actual `AsideNativeSwift` module descriptors, mangled symbols, export tries and `@rpath/aside-native.node` install names. | Both roles plus carrier/guard/client hashes must agree. The bounded [addon recovery](../native-addon-identity-recovery/README.md) pins exports, module descriptor/relative-name fields, original group and review-only initializer instructions. This is not addressed by the JS provider migration; do not blind-swap bytes or accept a renamed wrapper around unchanged internals as complete branding. |
+| Native selectors and cryptographic labels | Original native constructors synthesize `aside.` / `aside-canary.` small strings and `aside.wrap.dk.v1`; DK JS derives `aside.dk.${purpose}.v1`. | Versioned, private-authority-preserving migration is required before activation. The instruction plan is review-only. Original PQ, Secure Enclave and cipher implementations remain required; no resets, substitute crypto or downgrade. |
+| Memory runtime payload identity | Protocol1 daemon's `runtimeManifestSchema` expects id `aside-memory-runtime-v1` and executable `aside-memory` / `.exe`. Bundled `distribution/memory/memory-catalog.json` carries those exact strings in its signed payload; the installed seed `runtime.json` and actual binary basename also use them. Daemon verifies catalog with signature domain `aside-memory-catalog-v1\n`. | Coordinate parser, installer, executable lookup, runtime manifest, signed catalog payload/domain and integrity pins. Existing supplied catalog signatures cannot remain valid after payload/domain edits. Use an explicit reviewed Aux catalog/trust transition; never disable verification or describe changed signed metadata as unchanged original payload. The compiled memory executable needs its own bounded identity audit. |
+| Agent runtime update metadata | Daemon runtime resolver fetches `/runtime/aside-runtime-${platform}-latest.json` under the configured release origin. | Rename producer URL path, update service metadata publication and parser/pins together. Existing local immutable seeds may remain truthful static inputs outside delivery; a disabled loopback update origin does not remove the old delivered path string. Production update/distribution activation remains separate. |
+
+The ongoing `aux-runtime-contract-identity` rules cover notification/tidy/device-approval/OAuth events, task/file/routine reference prefixes, Google Docs RPC tags, sidebar storage, billing messages and builtin skill metadata/path. The `covered` pattern currently does **not** cover the DOM globals, `aside_dom`, memory/runtime catalog identities or task IDs above. Verify the final composed output rather than assuming a helper's name means every contract is migrated.
+
+## Active UI links, permission origins and asset names
+
+These references were observed in the real protocol1 Agent output. They are product links, not required third-party legal attribution.
+
+| Delivered file | Reference | Follow-up |
+| --- | --- | --- |
+| `manifest.json` → web_accessible_resources matches | `https://api.aside.com/*`, `https://api.asidehq.com/*` | Replace with narrowly intended Aux origins and pair actual sign-in/main.html embedding callers. Do not keep old service permissions merely because the main API URL was rebranded. |
+| `assets/channels-CJn5l9_T.js` | `https://static.asidehq.com/bots/${platform}.jpg` | Bot-avatar UI fetch. Supply Aux-controlled equivalent static assets and update every template caller; preserve dimensions, pixels/layout where applicable. |
+| `assets/ai-CzEX5E7S.js`, `assets/add-on-credits-dialog-Dn5FxOyZ.js` | `https://asidehq.com/policy/terms`, `/policy/privacy`; latter also links `https://asidehq.com` | Aux-owned policy/home links need valid real destinations. Preserve existing UI copy/layout; do not direct Aux users to another product's terms. Legal policy authoring/approval is distinct from changing the href. |
+| `assets/route-TQyeTEXE.js` | `https://docs.aside.com`; community `https://discord.gg/2h4cNW6ayc` | Settings/help navigation must use Aux destinations. An unbranded Discord invite may still point to the original product; verify ownership before retaining it. |
+| `assets/chat-wBzshK0k.js`, `assets/artifact-test-CdjpLuI1.js` | `https://aside.com` inside supplied demo content | Product demo/reference content, not an upstream license. Replace only known demo identity/href, preserving its component styling and behavior. |
+| Original CLI troubleshooting error | `https://docs.aside.com/help/troubleshooting#cli-cannot-open-the-windows-installation-key` | User-facing failure/support path needs Aux documentation destination; update the exact error anchor without exposing or weakening native authority. |
+
+Seven protocol1 Agent asset basenames still mention the original product:
+
+| Asset basename | Actual import caller |
+| --- | --- |
+| `aside-mini-popup-DpI8c-u_.webp` | `assets/mini-popup-BBLwe-a8.js` (one reference) |
+| `aside-cli-3UABIqGq.webp` | `assets/developers-DTvaoVBC.js` (one) |
+| `aside-payment-use-BBKr-NnX.webp` | `assets/payment-use-CqnbXHDE.js` (one) |
+| `aside-CeBDTZrg.webp` | `assets/browser-icon-DvnonVC4.js` (one) |
+| `aside-lasso-BhzH82rC.webp` | `assets/lasso-LoarCzmz.js` (one) |
+| `aside-context-awareness-CQFhCmYA.webp` | `assets/context-awareness-BocPTg31.js` (one) |
+| `aside-password-manager-CZ9IYl_W.webp` | No JS reference found in the staged Agent; verify full delivered reachability before removing it. Vault product exclusion does not justify altering unrelated assets. |
+
+A filename does not prove its pixels still show the original brand; that visual-content check was not performed here. Renaming these basenames requires a reviewable path-relocation map, exact importer rewrites and preserved asset hashes. The current exact visual baseline is path-keyed; update its identity mapping transparently rather than deleting an asset or changing its pixels merely to pass that gate. Current UI geometry, CSS, glass, fonts and interactions remain the preservation target.
+
+## Already neutralized, excluded and historical material
+
+- Daemon and CLI adapters replace the original API/share/release origins with Aux cloud origins or deliberate local-unavailable endpoints. Their original `https://api.aside.com`, `https://api.asidehq.com`, `https://share.aside.com` and `https://releases.aside.com` occurrences in adapter **find anchors** are truthful patch inputs, not proof the delivered app still contacts them. Inspect actual final emitted code and active endpoints separately.
+- The source-audited Password Importer extension path still includes `AsidePasswordImporterProvider.appex` inside the **stage**. Assembly explicitly excludes the whole Password Importer product, so this is not a delivered failure unless the final package inventory proves it was copied.
+- Raw stage/source audit manifests preserve original source paths, hashes and find/replace anchors. Full historical evidence remains external. The compact Aux delivery provenance helper records hashes only; audit an assembled app before declaring those old paths shipped.
+- HTML/JSX `aside` elements, CSS semantics that select real aside elements, and required third-party license/copyright notices are not product identity bugs. Do not alter language semantics or erase attribution. A real product URL in a settings policy link is different from a legally required upstream attribution.
+- Signed seed catalog originals and frozen original binary inventories are historical/static evidence. Their preservation outside the delivered product stays truthful; do not falsify provenance to obtain an empty repository grep.
+
+This is a focused follow-up inventory, not an exhaustive all-file absence proof. Final state2 emitted source, compressed/native resources, asset contents and actual app behavior still require their scoped acceptance. No current accepted app or UI was changed.
