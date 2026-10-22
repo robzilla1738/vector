@@ -13,8 +13,8 @@ export const attachmentRoutes = new Hono<{ Variables: AuthVariables }>();
 export const blobCallbackRoutes = new Hono();
 const MAX_FILE = 100 * 1024 * 1024;
 const MAX_SHARE = 50_000_000;
-const types = ['application/octet-stream', 'application/pdf', 'application/json', 'text/plain', 'text/markdown', 'text/csv', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/wav', 'audio/webm'] as const;
-const intentSchema = z.object({ name: z.string().min(1).max(255).refine(v => !/[\r\n\0]/.test(v)), contentType: z.enum(types), size: z.number().int().min(0).max(MAX_FILE), sha256: z.string().regex(/^[a-f0-9]{64}$/), purpose: z.enum(['attachment', 'share']).default('attachment') }).strict();
+const types = ['application/octet-stream', 'application/pdf', 'application/json', 'text/plain', 'text/markdown', 'text/csv', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/mp3', 'audio/x-wav', 'audio/ogg', 'audio/flac'] as const;
+const intentSchema = z.object({ name: z.string().min(1).max(255).refine(v => !/[\r\n\0]/.test(v)), contentType: z.enum(types), size: z.number().int().min(0).max(MAX_FILE), sha256: z.string().regex(/^[a-f0-9]{64}$/), purpose: z.enum(['attachment', 'share', 'inference']).default('attachment') }).strict();
 const uuid = z.string().uuid();
 type Attachment = { id: string; user_id: string; pathname: string; name: string; content_type: string; expected_size: number | string; expected_sha256: string; purpose: string; state: string; expires_at: string };
 function reject(status: 400 | 403 | 404 | 409 | 413 | 416 | 503, code: string, message: string): never { throw new HTTPException(status, { res: Response.json({ error: { code, message } }, { status }) }); }
@@ -65,7 +65,7 @@ async function verifiedBytes(row: Attachment) {
   return row.purpose === 'share' ? Buffer.concat(chunks) : null;
 }
 async function complete(row: Attachment) {
-  if (row.state === 'ready') return;
+  if (row.state === 'ready') { if (row.purpose === 'inference' && new Date(row.expires_at).getTime() <= Date.now()) reject(409, 'UPLOAD_EXPIRED', 'Inference input expired.'); return; }
   if (row.state !== 'issued' || new Date(row.expires_at).getTime() <= Date.now()) {
     await del(row.pathname);
     reject(409, 'UPLOAD_EXPIRED', 'Upload reservation expired or was canceled.');
@@ -81,10 +81,11 @@ attachmentRoutes.post('/attachments/intents', async c => {
   if (!parsed.success) reject(400, 'INVALID_INPUT', 'Provide name, permitted MIME type, size and SHA-256.');
   const value = parsed.data, user = c.get('user').id, attachmentId = randomUUID();
   if (value.purpose === 'share' && (value.size > MAX_SHARE || value.contentType !== 'application/json')) reject(400, 'INVALID_SHARE_UPLOAD', 'Shared transcript imports must be application/json and no larger than 50 MB.');
+  if (value.purpose === 'inference' && (value.size < 1 || value.size > 20 * 1024 * 1024 || !/^(?:image\/(?:png|jpeg|webp)|audio\/(?:webm|mp4|m4a|x-m4a|mpeg|mp3|wav|x-wav|ogg|flac))$/.test(value.contentType))) reject(400, 'INVALID_INFERENCE_UPLOAD', 'Inference inputs must be supported image/audio files no larger than 20 MiB.');
   const pathname = `aux/${user}/${attachmentId}/content`;
   const results = await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`,
-    sql`INSERT INTO aux_attachments (id, user_id, pathname, name, content_type, expected_size, expected_sha256, purpose, expires_at) SELECT ${attachmentId}, ${user}, ${pathname}, ${value.name}, ${value.contentType}, ${value.size}, ${value.sha256}, ${value.purpose}, now() + interval '15 minutes' WHERE (SELECT coalesce(sum(expected_size), 0) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR (state IN ('pending','issued') AND expires_at > now()))) + ${value.size} <= (SELECT CASE WHEN plan = 'max' AND status IN ('active','trialing') THEN 21474836480::bigint WHEN plan = 'pro' AND status IN ('active','trialing') THEN 5368709120::bigint ELSE 104857600::bigint END FROM (SELECT (SELECT plan FROM aux_subscriptions WHERE user_id = ${user}) AS plan, (SELECT status FROM aux_subscriptions WHERE user_id = ${user}) AS status) subscription) AND (SELECT count(*) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR (state IN ('pending','issued') AND expires_at > now()))) < 10000 RETURNING *`,
+    sql`INSERT INTO aux_attachments (id, user_id, pathname, name, content_type, expected_size, expected_sha256, purpose, expires_at) SELECT ${attachmentId}, ${user}, ${pathname}, ${value.name}, ${value.contentType}, ${value.size}, ${value.sha256}, ${value.purpose}, now() + interval '15 minutes' WHERE (SELECT coalesce(sum(expected_size), 0) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) + ${value.size} <= (SELECT CASE WHEN plan = 'max' AND status IN ('active','trialing') THEN 21474836480::bigint WHEN plan = 'pro' AND status IN ('active','trialing') THEN 5368709120::bigint ELSE 104857600::bigint END FROM (SELECT (SELECT plan FROM aux_subscriptions WHERE user_id = ${user}) AS plan, (SELECT status FROM aux_subscriptions WHERE user_id = ${user}) AS status) subscription) AND (SELECT count(*) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) < 10000 RETURNING *`,
   ]);
   const row = results[1]?.[0] as Attachment | undefined;
   if (!row) reject(413, 'STORAGE_QUOTA', 'Attachment quota reached. Delete files or choose a larger plan.');
@@ -106,7 +107,7 @@ attachmentRoutes.post('/attachments/upload', async c => {
     if (!claimed.length) reject(409, 'INTENT_ALREADY_USED', 'Create a fresh upload intent; this one was consumed or expired.');
     const origin = process.env.AUX_API_ORIGIN;
     if (!origin || new URL(origin).protocol !== 'https:') reject(503, 'STORAGE_UNAVAILABLE', 'An HTTPS callback origin must be configured.');
-    return { allowedContentTypes: [row.content_type], maximumSizeInBytes: Number(row.expected_size), addRandomSuffix: false, allowOverwrite: false, validUntil: Date.now() + 10 * 60_000, tokenPayload: JSON.stringify({ intentId: row.id, userId: user }), callbackUrl: new URL('/attachments/callback', origin).toString() };
+    return { allowedContentTypes: [row.content_type], maximumSizeInBytes: Number(row.expected_size), addRandomSuffix: false, allowOverwrite: false, validUntil: Math.min(Date.now() + 10 * 60_000, new Date(row.expires_at).getTime()), tokenPayload: JSON.stringify({ intentId: row.id, userId: user }), callbackUrl: new URL('/attachments/callback', origin).toString() };
   }, onUploadCompleted: async () => { throw new Error('Completion callback must use the signed callback route'); } });
   return c.json(response);
 });
@@ -116,7 +117,7 @@ attachmentRoutes.post('/attachments/:id/upload-url', async c => {
   const row = await owned(c.get('user').id, c.req.param('id'));
   const claimed = await sql`UPDATE aux_attachments SET state = 'issued' WHERE id = ${row.id} AND user_id = ${row.user_id} AND state = 'pending' AND expires_at > now() RETURNING id`;
   if (!claimed.length) reject(409, 'INTENT_ALREADY_USED', 'Create a fresh upload intent; this one was consumed or expired.');
-  const validUntil = Date.now() + 10 * 60_000;
+  const validUntil = Math.min(Date.now() + 10 * 60_000, new Date(row.expires_at).getTime());
   const token = await issueSignedToken({ pathname: row.pathname, operations: ['put'], validUntil, allowedContentTypes: [row.content_type], maximumSizeInBytes: Number(row.expected_size) });
   const signed = await presignUrl(token, { operation: 'put', pathname: row.pathname, access: 'private', validUntil, allowedContentTypes: [row.content_type], maximumSizeInBytes: Number(row.expected_size), addRandomSuffix: false, allowOverwrite: false });
   return c.json({ url: signed.presignedUrl, method: 'PUT', headers: { 'Content-Type': row.content_type }, expiresAt: new Date(validUntil).toISOString() });
@@ -213,6 +214,7 @@ export function rangeStream(source: ReadableStream<Uint8Array>, start: number, e
 }
 attachmentRoutes.get('/attachments/:id/content', async c => {
   const row = await owned(c.get('user').id, c.req.param('id'));
+  if (row.purpose === 'inference') reject(403, 'EPHEMERAL_INPUT', 'Ephemeral inputs are only readable by an inference operation.');
   if (row.state !== 'ready') reject(409, 'UPLOAD_INCOMPLETE', 'Commit the verified upload before reading it.');
   const size = Number(row.expected_size), range = parseByteRange(c.req.header('Range'), size);
   blobReady();
@@ -232,7 +234,7 @@ attachmentRoutes.delete('/attachments/:id', async c => {
   blobReady();
   const row = await owned(c.get('user').id, c.req.param('id'));
   await del(row.pathname);
-  await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND user_id = ${row.user_id}`;
+  await sql`UPDATE aux_attachments SET state = CASE WHEN purpose = 'inference' AND expires_at > now() THEN 'failed' ELSE 'deleted' END WHERE id = ${row.id} AND user_id = ${row.user_id}`;
   return c.json({ ok: true });
 });
 
@@ -240,11 +242,11 @@ attachmentRoutes.delete('/attachments/:id', async c => {
 export async function cleanExpiredAttachmentUploads(limit = 50) {
   blobReady();
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Cleanup limit must be between 1 and 100');
-  const rows = await sql`SELECT id, pathname FROM aux_attachments WHERE state IN ('pending','issued','failed') AND expires_at < now() ORDER BY expires_at LIMIT ${limit}`;
+  const rows = await sql`SELECT id, pathname FROM aux_attachments WHERE (state IN ('pending','issued','failed') OR (purpose = 'inference' AND state = 'ready')) AND expires_at < now() ORDER BY expires_at LIMIT ${limit}`;
   let cleaned = 0;
   for (const row of rows) {
     await del(row.pathname);
-    await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND state IN ('pending','issued','failed') AND expires_at < now()`;
+    await sql`UPDATE aux_attachments SET state = 'deleted' WHERE id = ${row.id} AND (state IN ('pending','issued','failed') OR (purpose = 'inference' AND state = 'ready')) AND expires_at < now()`;
     cleaned += 1;
   }
   return { cleaned };

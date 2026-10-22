@@ -1,6 +1,8 @@
 import { Hono, type Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { reserveUsage, settleUsage } from './usage';
+import { audioReservationSeconds } from './audio-duration';
+import { withInferenceUploads, MAX_INFERENCE_BYTES, assertInputSignature } from './inference-uploads';
 
 type Env = { Variables: { user: { id: string; clerkId: string; email: string; sessionId: string } } };
 type Json = Record<string, unknown>;
@@ -223,6 +225,11 @@ inferenceRoutes.post('/ai/v1/chat/completions', c => forwardText(c, 'chat'));
 
 const audioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/flac']);
 inferenceRoutes.post('/stt/transcribe', async c => {
+  if (c.req.header('content-type')?.toLowerCase().startsWith('application/json')) {
+    const body = await jsonBody(c);
+    if (typeof body.uploadId !== 'string' || Object.keys(body).some(key => !['uploadId','language'].includes(key))) fail(400, 'Expected a private audio input reference.');
+    return withInferenceUploads(c.get('user').id, [body.uploadId], async ([input]) => transcribeFile(c, new File([new Uint8Array(input!.bytes)], 'recording', { type: input!.mimeType }), body.language ?? null));
+  }
   if (!c.req.header('content-type')?.toLowerCase().startsWith('multipart/form-data;')) fail(415, 'Expected an audio upload.');
   const bytes = await boundedBody(c.req.raw);
   let form: FormData;
@@ -231,34 +238,40 @@ inferenceRoutes.post('/stt/transcribe', async c => {
   const file = form.get('file');
   if (!(file instanceof File) || file.size === 0) fail(400, 'Missing audio file.');
   if (file.size > maxAudio) fail(413, 'Audio must be 3 MB or smaller.');
+  return transcribeFile(c, file, form.get('language'));
+});
+
+async function transcribeFile(c: Context<Env>, file: File, language: unknown) {
   const mediaType = file.type.split(';')[0]!.toLowerCase();
   if (!audioTypes.has(mediaType)) fail(415, 'This audio format is not supported.');
-  const language = form.get('language');
   if (language !== null && (typeof language !== 'string' || !/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}$/.test(language))) fail(400, 'Invalid transcription language.');
+  const audio = Buffer.from(await file.arrayBuffer());
+  assertInputSignature(audio, mediaType);
+  const reservedSeconds = await audioReservationSeconds(audio, mediaType);
   const model = await verifiedModel(process.env.AUX_STT_MODEL || 'spacexai/grok-stt', 'transcription');
   if (model.id.startsWith('microsoft/') && ['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'].includes(mediaType)) fail(415, 'The configured transcription model does not accept this recording format.');
   verifyUnitPrice('transcription', model.pricing?.transcription_duration_cost_per_second, 28);
   gatewayKey();
-  const reservation = await reserveUsage(c.get('user').id, 'transcription', 90);
+  const reservation = await reserveUsage(c.get('user').id, 'transcription', reservedSeconds);
   let dispatched = false;
   try {
     const providerOptions: Json = { gateway: strictGateway };
-    if (language) providerOptions[model.id.startsWith('microsoft/') ? 'azure' : 'xai'] = model.id.startsWith('microsoft/') ? { locales: [language] } : { language: language.split('-')[0] };
+    if (language) providerOptions[model.id.startsWith('microsoft/') ? 'azure' : 'xai'] = model.id.startsWith('microsoft/') ? { locales: [language] } : { language: String(language).split('-')[0] };
     dispatched = true;
-    const response = await upstream({ audio: Buffer.from(await file.arrayBuffer()).toString('base64'), mediaType, providerOptions }, '/v4/ai/transcription-model', c.req.raw,
+    const response = await upstream({ audio: audio.toString('base64'), mediaType, providerOptions }, '/v4/ai/transcription-model', c.req.raw,
       { 'ai-gateway-protocol-version': '0.0.1', 'ai-transcription-model-specification-version': '4', 'ai-model-id': model.id });
     if (!response.ok) return await safeUpstreamError(response);
     const result = await response.json() as Json;
     if (typeof result.text !== 'string') fail(502, 'The transcription service returned an invalid response.');
-    const duration = typeof result.durationInSeconds === 'number' && Number.isFinite(result.durationInSeconds) ? result.durationInSeconds : 90;
+    const duration = typeof result.durationInSeconds === 'number' && Number.isFinite(result.durationInSeconds) ? result.durationInSeconds : reservedSeconds;
     // Charge the actual duration, including recordings longer than the UI's 90-second limit.
     await settleUsage(reservation, { succeeded: true, units: Math.max(1, Math.ceil(duration)) });
     dispatched = false;
     return c.json({ text: result.text.trim() });
   } catch (error) { await settleUsage(reservation, { succeeded: dispatched }); throw error; }
-});
+}
 
-inferenceRoutes.get('/speech/config', async c => c.json({ transcription: { enabled: true, maxUploadBytes: maxAudio }, speech: { enabled: true }, realtime: { enabled: false, reason: 'No desktop consumer; ZDR-locked delegated sessions are not enabled.' } }));
+inferenceRoutes.get('/speech/config', async c => c.json({ transcription: { enabled: true, maxUploadBytes: MAX_INFERENCE_BYTES, inlineUploadBytes: maxAudio, privateUploadPurpose: 'inference' }, speech: { enabled: true }, realtime: { enabled: false, reason: 'No desktop consumer; ZDR-locked delegated sessions are not enabled.' } }));
 inferenceRoutes.post('/tts/synthesize', async c => {
   const body = await jsonBody(c);
   if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 10_000) fail(400, 'Speech text must contain 1 to 10000 characters.');
@@ -283,11 +296,33 @@ inferenceRoutes.post('/tts/synthesize', async c => {
 
 inferenceRoutes.post('/ai/images/generations', async c => {
   const body = await jsonBody(c);
-  if (body.model !== 'aux-image') fail(400, 'Choose an available Aux image model.');
-  if (typeof body.prompt !== 'string' || !body.prompt.trim() || body.prompt.length > 32_000) fail(400, 'An image prompt must contain 1 to 32000 characters.');
   const inputs = body.inputImages ?? [];
   if (!Array.isArray(inputs) || inputs.length > 16) fail(400, 'At most 16 reference images are supported.');
-  for (const image of inputs) if (!image || !['image/png', 'image/jpeg', 'image/webp'].includes(image.mimeType) || typeof image.data !== 'string' || image.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.data)) fail(400, 'Invalid reference image.');
+  const ids: string[] = [];
+  for (const input of inputs) {
+    if (!input || typeof input !== 'object') fail(400, 'Invalid reference image.');
+    if ('uploadId' in input) {
+      if (typeof input.uploadId !== 'string' || Object.keys(input).length !== 1) fail(400, 'Invalid private image input reference.');
+      ids.push(input.uploadId);
+    }
+  }
+  return withInferenceUploads(c.get('user').id, ids, async uploaded => {
+    const resolved = inputs.map(image => 'uploadId' in image ? { data: uploaded.find(input => input.id === image.uploadId)!.bytes.toString('base64'), mimeType: uploaded.find(input => input.id === image.uploadId)!.mimeType } : image);
+    return generateImages(c, { ...body, inputImages: resolved });
+  });
+});
+
+async function generateImages(c: Context<Env>, body: Json) {
+  if (body.model !== 'aux-image') fail(400, 'Choose an available Aux image model.');
+  if (typeof body.prompt !== 'string' || !body.prompt.trim() || body.prompt.length > 32_000) fail(400, 'An image prompt must contain 1 to 32000 characters.');
+  const inputs = (body.inputImages ?? []) as { data: string; mimeType: string }[];
+  let total = 0;
+  for (const image of inputs) {
+    if (!image || !['image/png', 'image/jpeg', 'image/webp'].includes(image.mimeType) || typeof image.data !== 'string' || image.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.data)) fail(400, 'Invalid reference image.');
+    const bytes = Buffer.from(image.data, 'base64'); total += bytes.length;
+    if (total > MAX_INFERENCE_BYTES) fail(413, 'Reference images must total 20 MiB or less.');
+    assertInputSignature(bytes, image.mimeType);
+  }
   const model = await verifiedModel(process.env.AUX_IMAGE_MODEL || 'meta/muse-image-1.0', 'image');
   verifyUnitPrice('images', model.pricing?.image, 100000);
   gatewayKey();
@@ -306,7 +341,7 @@ inferenceRoutes.post('/ai/images/generations', async c => {
     dispatched = false;
     return c.json({ model: 'aux-image', images });
   } catch (error) { await settleUsage(reservation, { succeeded: dispatched }); throw error; }
-});
+}
 
 export function imageMimeType(base64: string): string {
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return fail(502, 'The image service returned invalid image data.');
