@@ -1,11 +1,13 @@
 {
   "origin": "https://dev-cloud.getaux.co",
-  "checkedAt": "2026-10-22T05:28:35.700Z",
+  "checkedAt": "2026-10-22T05:54:19.780Z",
   "checks": [
     "real database identity and signed-session validation",
     "encrypted object storage, ETag/304, stale CAS/412 and cross-account denial",
+    "actual shipped1852 Drive formatVersion2, encrypted create, ownership and hash-CAS delete",
     "public share publication, ownership and revocation",
     "actual private Blob upload, independent hash verification, ranges and ownership",
+    "real private inference input ownership, one-use claim, downstream-failure cleanup and replay denial without provider dispatch",
     "truthful free billing snapshot",
     "actual session revocation"
   ],

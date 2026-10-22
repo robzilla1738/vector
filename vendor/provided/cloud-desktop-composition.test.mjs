@@ -4,13 +4,13 @@ import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { composeCloudDesktop } from './cloud-desktop-composition.mjs';
 
-const sourcePath='out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs';
+const sourcePath=new URL('../../out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs',import.meta.url);
 test('complete actual shipped daemon composition preserves supplied replacement tokens and parses',async()=>{
   const text=await readFile(sourcePath,'utf8');
   const input={component:'daemon',path:'entry.mjs',text};
   assert.equal(composeCloudDesktop(input).text,text);
   const result=composeCloudDesktop(input,{enableCloud:true,profile:'development'});
-  assert.equal(result.anchors.length,21);
+  assert.equal(result.anchors.length,24);
   let replay=text;
   for(const anchor of result.anchors){assert.equal(replay.split(anchor.find).length-1,anchor.count);replay=replay.split(anchor.find).join(anchor.replace);}
   assert.equal(replay,result.text);

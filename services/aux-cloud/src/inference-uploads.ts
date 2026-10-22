@@ -55,7 +55,7 @@ export async function withInferenceUploads<T>(userId: string, ids: string[], run
   if (ids.length > 16 || new Set(ids).size !== ids.length || ids.some(id => !uuid.test(id))) invalid(400, 'Invalid private model input references.');
   const results = await query.transaction([
     query`SELECT pg_advisory_xact_lock(hashtextextended(${userId},0))`,
-    query`UPDATE aux_attachments SET state='failed' WHERE id=ANY(${ids}::uuid[]) AND user_id=${userId} AND purpose='inference' AND state='ready' AND expires_at>now()
+    query`UPDATE aux_attachments SET state='failed',expires_at=greatest(expires_at,now()+interval '3 minutes') WHERE id=ANY(${ids}::uuid[]) AND user_id=${userId} AND purpose='inference' AND state='ready' AND expires_at>now()
       AND (SELECT count(*) FROM aux_attachments WHERE id=ANY(${ids}::uuid[]) AND user_id=${userId} AND purpose='inference' AND state='ready' AND expires_at>now())=${ids.length}
       RETURNING id,user_id,pathname,content_type,expected_size,expected_sha256`,
   ]);

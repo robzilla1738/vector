@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { reserveUsage, settleUsage } from './usage';
 import { audioReservationSeconds } from './audio-duration';
+import { generateGatewayImages } from './image-generation';
 import { withInferenceUploads, MAX_INFERENCE_BYTES, assertInputSignature } from './inference-uploads';
 
 type Env = { Variables: { user: { id: string; clerkId: string; email: string; sessionId: string } } };
@@ -260,7 +261,7 @@ async function transcribeFile(c: Context<Env>, file: File, language: unknown) {
     dispatched = true;
     const response = await upstream({ audio: audio.toString('base64'), mediaType, providerOptions }, '/v4/ai/transcription-model', c.req.raw,
       { 'ai-gateway-protocol-version': '0.0.1', 'ai-transcription-model-specification-version': '4', 'ai-model-id': model.id });
-    if (!response.ok) return await safeUpstreamError(response);
+    if (!response.ok) { dispatched = false; return await safeUpstreamError(response); }
     const result = await response.json() as Json;
     if (typeof result.text !== 'string') fail(502, 'The transcription service returned an invalid response.');
     const duration = typeof result.durationInSeconds === 'number' && Number.isFinite(result.durationInSeconds) ? result.durationInSeconds : reservedSeconds;
@@ -285,7 +286,7 @@ inferenceRoutes.post('/tts/synthesize', async c => {
     dispatched = true;
     const response = await upstream({ text: body.text, voice, outputFormat: 'mp3', providerOptions: { gateway: strictGateway } }, '/v4/ai/speech-model', c.req.raw,
       { 'ai-gateway-protocol-version': '0.0.1', 'ai-speech-model-specification-version': '4', 'ai-model-id': model.id });
-    if (!response.ok) return await safeUpstreamError(response);
+    if (!response.ok) { dispatched = false; return await safeUpstreamError(response); }
     const result = await response.json() as Json;
     if (typeof result.audio !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(result.audio)) fail(502, 'The speech service returned invalid audio.');
     await settleUsage(reservation, { succeeded: true, units: body.text.length });
@@ -329,18 +330,17 @@ async function generateImages(c: Context<Env>, body: Json) {
   const reservation = await reserveUsage(c.get('user').id, 'images', 1);
   let dispatched = false;
   try {
-    const request: Json = { model: model.id, prompt: body.prompt, n: 1, response_format: 'b64_json', providerOptions: { gateway: strictGateway } };
-    if (inputs.length) request.images = inputs.map(image => ({ image_url: `data:${image.mimeType};base64,${image.data}` }));
     dispatched = true;
-    const response = await upstream(request, inputs.length ? '/v1/images/edits' : '/v1/images/generations', c.req.raw);
-    if (!response.ok) return await safeUpstreamError(response);
-    const result = await response.json() as { data?: { b64_json?: string }[] };
-    const images = result.data?.filter(image => typeof image.b64_json === 'string').map(image => ({ type: 'image', data: image.b64_json!, mimeType: imageMimeType(image.b64_json!) }));
+    const result = await generateGatewayImages({ modelId:model.id, prompt:body.prompt as string, inputs, apiKey:gatewayKey(), signal:AbortSignal.any([c.req.raw.signal,AbortSignal.timeout(150_000)]) });
+    const images = result.map(data => ({ type: 'image', data, mimeType: imageMimeType(data) }));
     if (!images?.length) fail(502, 'The image service returned no image.');
     await settleUsage(reservation, { succeeded: true, units: 1 });
     dispatched = false;
     return c.json({ model: 'aux-image', images });
-  } catch (error) { await settleUsage(reservation, { succeeded: dispatched }); throw error; }
+  } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400) dispatched=false;
+    await settleUsage(reservation, { succeeded: dispatched }); throw error;
+  }
 }
 
 export function imageMimeType(base64: string): string {

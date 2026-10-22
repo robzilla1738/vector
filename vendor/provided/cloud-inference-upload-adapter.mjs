@@ -44,7 +44,7 @@ export function applyCloudInferenceUploadAdapter(source) {
   const anchors = [];
   const edit = (find, replace) => {
     if (text.split(find).length - 1 !== 1) throw Error(`Cloud inference upload anchor changed: ${find.slice(0,100)}`);
-    text = text.replace(find,replace); anchors.push({find,replace,count:1,kind:'integration'});
+    text = text.replace(find,()=>replace); anchors.push({find,replace,count:1,kind:'integration'});
   };
   edit('async function generateAuxImages(Cn,ei,ti,ni){let ri=', cloudInferenceUploadHelpers+'\nasync function generateAuxImages(Cn,ei,ti,ni){let ri=');
   edit('await fetchAuxAPIAuthenticatedJson(Cn,`/ai/images/generations`,{body:asideImageGenerationRequestSchema.parse(', 'await auxCloudImageJSON(Cn,`/ai/images/generations`,{body:asideImageGenerationRequestSchema.parse(');

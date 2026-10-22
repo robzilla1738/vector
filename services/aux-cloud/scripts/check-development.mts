@@ -48,6 +48,14 @@ try {
   await json(0,'/sync/agent-files/head',manifest,412,'PUT',{[remoteOrigin?'X-Aux-If-Match':'If-Match']:'"stale"'});
   await call(1,'/sync/agent-files/head',404);await call(1,`/sync/agent-files/objects/${objectHash}`,404);
   checks.push('encrypted object storage, ETag/304, stale CAS/412 and cross-account denial');
+  const drive={entry:manifest.files[0],object:Buffer.from(encrypted).toString('base64')};
+  const conditionalFirst={[remoteOrigin?'X-Aux-If-None-Match':'If-None-Match']:'*'};
+  await json(0,'/drive/files?path=AGENTS.md',drive,200,'PUT',conditionalFirst);
+  const driveHead=await(await call(0,'/drive/head',200)).json();assert.equal(driveHead.formatVersion,2);assert.equal(driveHead.files[0].sha256,hash(plain));
+  await call(1,'/drive/files?path=AGENTS.md',404);
+  await call(0,'/drive/files?path=AGENTS.md',200,{method:'DELETE',headers:{[remoteOrigin?'X-Aux-If-Match':'If-Match']:'"'+hash(plain)+'"'}});
+  checks.push('actual shipped1852 Drive formatVersion2, encrypted create, ownership and hash-CAS delete');
+
   const shared=await json(0,'/shared-sessions',{sourceSessionId:'disposable-fixture',title:'Aux disposable fixture',messages:[{role:'user',content:'An inert fixture.',timestamp:Date.now()}]});
   assert.ok(await getPublicShare(shared.id));
   await call(1,'/shared-sessions/source/disposable-fixture',200).then(async r=>assert.equal(await r.json(),null));
@@ -61,6 +69,21 @@ try {
   assert.equal(await(await call(0,`/attachments/${intent.id}/content`,206,{headers:{Range:'bytes=4-13'}})).text(),bytes.subarray(4,14).toString());
   await call(1,`/attachments/${intent.id}/content`,404);
   await call(0,`/attachments/${intent.id}`,200,{method:'DELETE'});checks.push('actual private Blob upload, independent hash verification, ranges and ownership');
+  // Resolve a real private model input, then deliberately reject the model
+  // before any provider dispatch. This checks Blob claims/cleanup at zero AI spend.
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4i8AAAAASUVORK5CYII=','base64');
+  const media=await json(0,'/attachments/intents',{name:'synthetic.png',contentType:'image/png',size:png.length,sha256:hash(png),purpose:'inference'},201);
+  const mediaUpload=await json(0,`/attachments/${media.id}/upload-url`,{});
+  const mediaPut=await fetch(mediaUpload.url,{method:'PUT',headers:mediaUpload.headers,body:png,redirect:'error',signal:AbortSignal.timeout(30000)});assert.ok(mediaPut.ok);
+  await json(0,`/attachments/${media.id}/commit`,{});
+  await call(0,`/attachments/${media.id}/content`,403);
+  const mediaRequest={model:'invalid-disposable-fixture',prompt:'No provider request is permitted.',inputImages:[{uploadId:media.id}]};
+  await json(1,'/ai/images/generations',mediaRequest,404);
+  await json(0,'/ai/images/generations',mediaRequest,400);
+  await json(0,'/ai/images/generations',mediaRequest,404);
+  const mediaRows=await sql`SELECT state,pathname FROM aux_attachments WHERE id=${media.id} AND user_id=${ids[0]}`;assert.equal(mediaRows[0]?.state,'failed');
+  const {get}=await import('@vercel/blob');assert.equal(await get(mediaRows[0].pathname,{access:'private',useCache:false}),null);
+  checks.push('real private inference input ownership, one-use claim, downstream-failure cleanup and replay denial without provider dispatch');
   const billing=await(await call(0,'/billing/subscription',200)).json();assert.equal(billing.subscription,null);assert.match(billing.credit.balance_micros,/^\d+$/);checks.push('truthful free billing snapshot');
   await json(0,'/auth/signout',{refreshToken:refresh,revokeScope:'refresh_token'});await call(0,'/auth/me',401);checks.push('actual session revocation');
 } finally {

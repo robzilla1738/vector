@@ -4,6 +4,7 @@ import { transformReviewedCloudServicePolicy } from './cloud-service-policy.mjs'
 import { applyCloudDrive1852Adapter } from './cloud-drive-1852-adapter.mjs';
 import { applyCloudAttachmentAdapter } from './cloud-attachment-adapter.mjs';
 import { applyCloudSessionAdapter } from './cloud-session-adapter.mjs';
+import { applyCloudInferenceUploadAdapter } from './cloud-inference-upload-adapter.mjs';
 import { transformCloudBillingCopy } from './cloud-billing-adapter.mjs';
 
 export function composeCloudDesktop(input, options = {}) {
@@ -18,6 +19,7 @@ export function composeCloudDesktop(input, options = {}) {
   if (input.component === 'daemon') {
     apply(text => applyCloudDrive1852Adapter(text, { branding: 'aux' }));
     apply(text => applyCloudAttachmentAdapter(text, { branding: 'aux' }));
+    apply(text => applyCloudInferenceUploadAdapter(text));
     apply(text => applyCloudSessionAdapter(text, { version: '1852', branding: 'aux' }));
   } else if (input.component === 'agent') {
     apply(text => transformCloudBillingCopy({ ...input, text }));

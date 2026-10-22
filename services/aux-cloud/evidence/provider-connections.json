@@ -23,7 +23,8 @@
     ],
     "signedExampleMessage": "msg_3L2KrsnB6dcSf4gakefSIy2kOzf",
     "signedExamplePersisted": true,
-    "providerSucceededFilterConfirmed": true
+    "providerSucceededFilterConfirmed": true,
+    "backendKeyInstanceVerified": true
   },
   "secrets": {
     "storedPrivately": true,
@@ -33,5 +34,13 @@
     ]
   },
   "providerDeliveryVerified": true,
-  "productionDomainsUnassignedAfterAutomaticFirstDeploy": true
+  "productionDomainsUnassignedAfterAutomaticFirstDeploy": true,
+  "developmentDeployment": "dpl_4TuJxsAZwA2WWaszmpqqzYF6wsUZ",
+  "developmentPreviewVerifiedReady": true,
+  "maintenanceEndpointVerified": true,
+  "cron": {
+    "sourceSchedule": "*/5 * * * *",
+    "executesOnPreview": false,
+    "productionActivationPending": true
+  }
 }
