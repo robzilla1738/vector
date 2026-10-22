@@ -15,5 +15,7 @@ export const providedStageInputs = Object.freeze([
   'scripts/lib/provided-settings-import-copy.mjs',
   'scripts/lib/provided-draft-flush.mjs',
   'scripts/lib/provided-pending-files.mjs',
+  'scripts/lib/provided-lasso-ownership.mjs',
+  'docs/integration/proposed/provided-lasso-request-ownership/patch.json',
   'vendor/provided/native-ui-compat.mjs',
 ]);

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-20",
-  "nativeCandidate": 603,
+  "nativeCandidate": 611,
   "fullReady": false,
   "uiObserved": [
     "enabled model menu",
@@ -52,9 +52,10 @@
     "paidRequest": false
   },
   "remainingObserved": [
-    "Ordinary idle profile round trips and tab-row preservation pass603; broader active-work/file-picker paths retain conservative guards.",
-    "Computer Use administrator/grant completion remains unaccepted.",
-    "Vendor password-manager companion pairing, physical Mini Popup hotkey, hosted voice and final installation remain unaccepted."
+    "611 no-argument native profile context rejects normalized null; target new-tab UI falls back to account0. Correction prepared in next batch.",
+    "Installed-app session ownership/readiness and pending Mini Popup work protections are being integrated.",
+    "Live paid-task/approval switching needs configured provider credentials; conservative native guards remain.",
+    "Context Awareness grants, real vendor companion pairing, physical global shortcut and hosted voice/services remain separate setup/acceptance boundaries."
   ],
   "actualAiPreviousRuns": [
     {
@@ -190,7 +191,7 @@
     "meaning": "categorical AIM presenter presence guard",
     "normalNativeMenuQuit": true
   },
-  "executionState": "active-work-session-batch607-open-for-user-testing",
+  "executionState": "parallel-completion-batch-after611-in-progress",
   "actual585": {
     "normalLaunchServicesDaemonReady": true,
     "receiptSha256": "75e056be2efabfe35427128be8cd90e8f105e5795d8cc5154b01c5618714a1e9",
@@ -323,11 +324,12 @@
     "fullProductReady": false
   },
   "latestLocalBatch": {
-    "build": 607,
+    "build": 611,
     "actualAcceptance": true,
-    "receiptSha256": "e101e582193b9a64083218dbda15e25fa9536f047fe0e6bf2b02bc5f3d4f5e44",
+    "receiptSha256": "bfba0a40d580d47b30421cfd7aaec15e1bd8bef97618ee9ba5ea001fac4f585d",
     "comparison": "out/pass1-ui-completion/compare.html",
-    "evidence": "out/native-integration/v607-ui-acceptance.json",
+    "evidence": "out/native-integration/v611-ui-acceptance.json",
     "fullProductReady": false
-  }
+  },
+  "setupChecklist": "docs/plans/remaining-readiness-2026-10-21.md"
 }

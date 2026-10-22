@@ -1,5 +1,11 @@
 # Aux implementation status
 
+## Parallel completion batch612 in progress — 2026-10-21
+
+Actual611 bounded native queries confirmed that normalized null in the omitted optional draft-tab argument rejects every no-argument getProfileContext call. The supplied NTP then falls back to account0.612 accepts absent/null while retaining explicit-ID validation. It also composes AppSessionService/WebAppProvider restoration with installed-owner validation, Mini Popup pending-work admission, and supplied tab-context/Lasso asynchronous request ownership. No visual CSS/layout changes. Native build is in progress; supplied stage passed. New app/runtime acceptance is pending.
+
+A disposable local PWA installed successfully in Person3 via the real app UI, but clicking its installed tile has not opened an app window; that boundary is under investigation, not accepted recovery. Owner/backend prerequisites are tracked in docs/plans/remaining-readiness-2026-10-21.md and the source-backed provided-lasso-request-ownership/owner-setup-dependencies.md. Full readiness remains false.
+
 ## Actual611 recovery batch built and open for testing — 2026-10-21
 
 Native611 build/generated-key probe passed (39 steps,7m48.22s), package/exact supplied-source replay and complete retained-helper/native-seal verification passed. Receipt bfba0a40d580d47b30421cfd7aaec15e1bd8bef97618ee9ba5ea001fac4f585d retains all8 signed helpers with no new Apple signing or Keychain operation.610 is archived;611 is open in the normal disposable Your Aux profile with its original two tabs.

@@ -54,6 +54,8 @@ export function reviewedUiResourceInventory(inventory, review = []) {
     'apps/extension/dist/assets/sidepanel-CI-CbXmY.js',
     'apps/extension/dist/assets/permission-approval-D-GTf91U.js',
     'apps/extension/dist/assets/Matches-B99cyGDb.js',
+    'apps/extension/dist/assets/use-tab-context-Bi3TKsrh.js',
+    'apps/extension/dist/background.js',
     'bundle.json', 'provenance/manifest.json', 'provenance/ui-manifest.json',
     'provenance/apps-manifest.json', 'provenance/distribution-manifest.json',
     'provenance/computer-use-manifest.json',
