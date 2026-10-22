@@ -1,0 +1,16 @@
+{
+  "source": "out/provided-source-audit/daemon-original.mjs",
+  "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "occurrencesIncludingDefinitions": {
+    "saveSecureStorageItem": 10,
+    "readSecureStorageItem": 12,
+    "clearSecureStorageItem": 11,
+    "getChromeSyncKeyStorageKey": 5,
+    "credentialKey": 8,
+    "credentialIndexKey": 4,
+    "secretKey": 4,
+    "sessionAccount": 4
+  },
+  "coverage": "literal named callers only; dynamic callers not ruled out",
+  "passwordManagerConsumersExcludedFromProduct": true
+}
