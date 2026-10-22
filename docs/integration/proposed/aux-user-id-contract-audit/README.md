@@ -91,3 +91,34 @@ to process memory and request payloads. Other state2 migrations still apply.
 Vault static inputs also contain the old field but the password-manager product
 is excluded; do not restore or ship it to make a count disappear. No crypto label,
 credential envelope, provider catalog, UI CSS/image or legal notice is changed.
+
+## Bounded receiver follow-up: original native sync consumer found
+
+Additional authorized static-source search found a concrete original native
+caller in `native-fork/decompiled/040b003c.c`, function address040b003c, size1036.
+The recovered indices name it `FetchPassphraseWithAuthorization` in original
+`chrome/browser/sync/aside_sync_encryption_controller.cc`. It formats
+`%s/auth/sync-passphrase?accountId=%d` against the old local daemon URL, sets GET
+and passes its supplied Authorization header. **It does not pass an asideUserId
+query parameter.** Thus renaming that optional query alone does not require
+changing this actual original URL format. The response output field remains a
+separate contract: this function installs callback label `LAB_040b0450`, whose
+body is not present in the supplied selected decompilation set. This review
+cannot prove which JSON response fields that callback consumes. No callback
+behavior was guessed or newly recovered from a binary.
+
+`receiver-followup.json` pins the function/indices/current native fallback and
+records exact search coverage. A complete binary-inclusive literal search of
+recovered-cpp, Blueprint06 and frozen1852 packages found ensureChromiumProfile
+only in the daemon sources/binary, with no recovered native receiver. Current
+native BrowserHandler implements `EnsureProfile` and delegates to authenticated
+`aux::EnsureProfileWindow` by index; it does not implement EnsureChromiumProfile.
+Current native sync sources have no sync-passphrase URL/caller. The original
+caller is therefore an implementation-reuse lead, not proof that the current
+Aux app has hosted/native sync working.
+
+Finite next steps: either locate/recover that exact response callback under a
+separate bounded review, or explicitly review/port the original sync controller
+before claiming the response-field pair. For the CDP path retain and test the
+existing -32601/index fallback; adding a canonical-ID custom receiver would be
+new native implementation and needs its own pinned caller/receiver review.

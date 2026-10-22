@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/native-fork/decompiled/040b003c.c",
+      "sha256": "3c5ffd6cb690f4dd25f115fa7b99978ce5bc789dae832a783b7b4861c9785127",
+      "bytes": 7008,
+      "counts": {
+        "sync-passphrase": 1,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 0,
+        "FetchPassphraseWithAuthorization": 1,
+        "asideUserId": 0
+      }
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/literal-owners.tsv",
+      "sha256": "97fde151c8cafcc419b6700d41654b87c6ac0f9ef288bcc33f5e09aeee41674b",
+      "bytes": 7233742,
+      "counts": {
+        "sync-passphrase": 1,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 0,
+        "FetchPassphraseWithAuthorization": 1,
+        "asideUserId": 0
+      }
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/function-inventory.tsv",
+      "sha256": "91fc3447d783647369a120fcd9bdc9d0e9d6ca86e816e1904fa3f88770b5cd9b",
+      "bytes": 62304526,
+      "counts": {
+        "sync-passphrase": 0,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 0,
+        "FetchPassphraseWithAuthorization": 0,
+        "asideUserId": 0
+      }
+    },
+    {
+      "path": "/Users/rcourson/Downloads/aside-rea 2/recovered-cpp/function-class-names.tsv",
+      "sha256": "d42aac67afa9ff2bd953a214e0b4cb2382074acd140ffc90beed2b74b1aa05dd",
+      "bytes": 1181038,
+      "counts": {
+        "sync-passphrase": 0,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 0,
+        "FetchPassphraseWithAuthorization": 1,
+        "asideUserId": 0
+      }
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/protocol/browser_handler.cc",
+      "sha256": "37007c1063ede9b7534f4314f2944accf513e2e2515f9637907734f9eed20be2",
+      "bytes": 11814,
+      "counts": {
+        "sync-passphrase": 0,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 4,
+        "FetchPassphraseWithAuthorization": 0,
+        "asideUserId": 0
+      }
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/protocol/aux_profile_window.cc",
+      "sha256": "ee09f6e870fe68c43b4b8fbffb93848e75a717f3af41a2755e77093b8e106c3b",
+      "bytes": 9185,
+      "counts": {
+        "sync-passphrase": 0,
+        "ensureChromiumProfile": 0,
+        "EnsureProfile": 1,
+        "FetchPassphraseWithAuthorization": 0,
+        "asideUserId": 0
+      }
+    }
+  ],
+  "searchCoverage": {
+    "fullLiteralBinaryInclusive": [
+      "Downloads/aside-rea 2/recovered-cpp",
+      "AI Blueprints/06",
+      "web/out/provided-source-snapshot-1.26.1016.1852"
+    ],
+    "currentNative": [
+      "chrome/browser/devtools",
+      "content/browser/devtools",
+      "chrome/browser/aux",
+      "chrome/browser/extensions/api/aux_account",
+      "chrome/browser/sync",
+      "third_party/blink/public/devtools_protocol/browser_protocol.pdl"
+    ]
+  },
+  "findings": {
+    "originalSyncProducer": "040b003c GET formatted URL has accountId only, with Authorization header; optional asideUserId query is not used",
+    "syncResponseReceiver": "callback label LAB_040b0450 identified, decompilation body unavailable in supplied selected function set; no parsed JSON field proof",
+    "customBrowserReceiver": "not found; current native has BrowserHandler::EnsureProfile index fallback only"
+  }
+}
