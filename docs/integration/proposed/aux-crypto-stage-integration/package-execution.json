@@ -1,0 +1,30 @@
+{
+  "format": "aux.crypto.stage.package.execution.v1",
+  "stageExitCode": 0,
+  "stageSession": "81041",
+  "initialPackageExitCode": 1,
+  "initialPackageCreatedOutput": false,
+  "initialPackageReason": "Exact generated-entry prefix needed reviewed crypto preload integration; fixed by complete source-hash and prefix validation",
+  "finalPackageExitCode": 0,
+  "finalPackageSession": "60015",
+  "package": {
+    "path": "out/provided-candidate-aux-crypto-stage/package.json",
+    "sha256": "caf6c240f90585704d70efdb08c36364029caa3a7b4ef92be5e5b2d887d2a8c4"
+  },
+  "stage": {
+    "path": "out/provided-reuse-aux-crypto-stage/manifest.json",
+    "sha256": "76e8806a72d695b52d44ea1b32c6885673f5a5a1ba13dbb137e8d1cdce5ebb61"
+  },
+  "suppliedResources": 10758,
+  "nativeLeaves": 418,
+  "nativeBuildReused": true,
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "signed": false,
+  "launched": false,
+  "state2Accepted": false,
+  "acceptedAppReplaced": false,
+  "uiSourceChanged": false,
+  "actualVisualComparison": false,
+  "staticPackageProbe": "pending"
+}

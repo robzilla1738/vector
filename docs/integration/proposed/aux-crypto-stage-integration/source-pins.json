@@ -9,6 +9,7 @@
     "docs/integration/proposed/aux-crypto-stage-integration/inputs.json": "04ba60db4d0bff27682ea882ac4bad7eda148504e8165765b9fa0702b4d95f59",
     "docs/integration/proposed/aux-crypto-stage-integration/check.mjs": "4847d6d2859da5328e39f5b55dec4950cec30e4bbc1d27904e9a5f5145317955",
     "docs/integration/proposed/aux-crypto-stage-integration/focused-check.json": "794a4a2c762e80141fe00373edb692c2eddaecef96da9d8d739d49546bbd2e12",
-    "docs/integration/proposed/aux-crypto-stage-integration/README.md": "3fac2c4fe5d1e409acc393f1ce71851a6030699ddc729a3be2b889cea7646504"
+    "docs/integration/proposed/aux-crypto-stage-integration/README.md": "3fac2c4fe5d1e409acc393f1ce71851a6030699ddc729a3be2b889cea7646504",
+    "docs/integration/proposed/aux-crypto-stage-integration/package-execution.json": "60118d124ab531b5e0fd995b29663f3df81ed9298cc8336c328c4d869f6a6a7c"
   }
 }
