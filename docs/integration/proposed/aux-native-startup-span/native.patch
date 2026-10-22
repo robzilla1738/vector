@@ -1,0 +1,21 @@
+diff --git a/chrome/app/aux_packaged_state_identity.h b/chrome/app/aux_packaged_state_identity.h
+--- a/chrome/app/aux_packaged_state_identity.h
++++ b/chrome/app/aux_packaged_state_identity.h
+@@ -11,6 +11,7 @@
+ #include <string_view>
+ #include "base/apple/foundation_util.h"
+ #include "base/base_paths.h"
++#include "base/containers/span.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
+ #include "base/json/json_reader.h"
+@@ -79,7 +80,8 @@
+   std::string bytes(base::checked_cast<size_t>(before.st_size), '\0');
+   size_t offset = 0;
+   while (offset < bytes.size()) {
+-    const ssize_t size = read(fd.get(), bytes.data() + offset, bytes.size() - offset);
++    auto remaining = base::span(bytes).subspan(offset);
++    const ssize_t size = read(fd.get(), remaining.data(), remaining.size());
+     if (size < 0 && errno == EINTR) continue;
+     if (size <= 0) return false;
+     offset += base::checked_cast<size_t>(size);

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "parentComposition": "out/native-reuse-composition-aux-native-fence",
+  "reason": "Chromium unsafe-buffer compiler failure; use span without warning suppression",
+  "files": [
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "baselineSha256": "bfd82fc96e130fcc8afa302d050d295ad91f605b272369bd522fc3d2801ee80d",
+      "outputSha256": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7"
+    }
+  ],
+  "patchSha256": "47e55cbe80fe518d1d0664f2f59688ec87abb0cb82784534387e5f71587a4d6c"
+}
