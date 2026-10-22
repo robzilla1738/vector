@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "component": "agent",
+  "path": "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+  "sourceSha256": "c303b278cb4536eedee05f941eb557c002dc287e357a3a8f8f96f60f50bed889",
+  "find": "if(typeof window>\"u\")return\"https://asidehq.com\";",
+  "count": 1,
+  "appOrigins": {
+    "development": "https://dev-cloud.getaux.co",
+    "production": "https://app.getaux.co"
+  },
+  "route": "/account",
+  "cloudContractSources": [
+    {
+      "path": "services/aux-cloud/src/billing.ts",
+      "sha256": "1895c2a40a249b5d08e34196064417e658923bfc5c157a2ca1b8232d73d7083c"
+    },
+    {
+      "path": "services/aux-cloud/app/account/page.tsx",
+      "sha256": "e1c9bcea8fa4756aae14872738a48cf69b01eaba07002e0b8cb5792d49423de2"
+    },
+    {
+      "path": "services/aux-cloud/config/deployment-resources.json",
+      "sha256": "852a514287b3dc55472555889a8960092a3fa74e4bae672c551aa42b1dabd911"
+    },
+    {
+      "path": "services/aux-cloud/evidence/production-public-origins.json",
+      "sha256": "272dbea7974ca4aba3d27204bc6316955ff4c844a6530695e36d8e3a31311613"
+    }
+  ]
+}
