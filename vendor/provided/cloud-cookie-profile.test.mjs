@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import test from 'node:test';
 import { applyCloudCookieProfileAdapter, cloudCookieProfileDaemonHelpers, cloudCookieProfileAgentHelpers } from './cloud-cookie-profile.mjs';
@@ -92,4 +93,84 @@ test('capture rejects binding races and native epoch/context changes before uplo
     assert.equal(fixture.reads,0);
   }
   const canceled=captureFixture();await canceled.context.syncCookies(1,()=>false);assert.equal(canceled.nativeCalls,0);assert.equal(canceled.reads,0);
+});
+
+function restoreFixture(options={}) {
+  const fixture=captureFixture(options),context=fixture.context;
+  const schemaStart=daemon.indexOf('cookieParamSchema=object('),schemaEnd=daemon.indexOf(',discriminatedUnion(`encryption`',schemaStart);
+  assert.ok(schemaStart>=0&&schemaEnd>schemaStart);
+  const schema=new vm.Script(daemon.slice(schemaStart+'cookieParamSchema='.length,schemaEnd)).runInNewContext({object:z.object,string$3:z.string,boolean$1:z.boolean,number$2:z.number,_enum:z.enum,unknown$1:z.unknown});
+  const cloudFilterStart=daemon.indexOf('function isCloudExcludedCookieDomain('),cloudFilterEnd=daemon.indexOf('var EXCLUDED_COOKIE_DOMAIN',cloudFilterStart);
+  const regexStart=daemon.indexOf('EXCLUDED_COOKIE_DOMAIN=/',cloudFilterEnd),regexEnd=daemon.indexOf('}));',regexStart);
+  assert.ok(cloudFilterStart>=0&&cloudFilterEnd>cloudFilterStart&&regexStart>cloudFilterEnd&&regexEnd>regexStart);
+  new vm.Script(daemon.slice(cloudFilterStart,cloudFilterEnd)+daemon.slice(regexStart,regexEnd)+';').runInContext(context);
+  const filterStart=daemon.indexOf('function isExcludedDomain('),filterEnd=daemon.indexOf('async function syncCookies(',filterStart);
+  assert.ok(filterStart>=0&&filterEnd>filterStart);
+  new vm.Script(daemon.slice(filterStart,filterEnd)).runInContext(context);
+  context.URL=URL;
+  context.globalCdpClient={ensureConnected(){throw Error('Restore preflight must not access CDP.');},send(){throw Error('Restore preflight must not access CDP.');}};
+  context.EXCLUDED_HOSTS=new Set(['localhost','127.0.0.1','dev-cloud.getaux.co']);
+  context.init_cookies=()=>{};
+  context.auxCloudCookieSnapshot=value=>({...value,cookies:value.cookies.map(cookie=>schema.parse(cookie))});
+  const good={name:'synthetic',value:'private-fixture',domain:'.example.invalid',path:'/',priority:'High',sourceScheme:'Secure',sourcePort:443,partitionKey:{topLevelSite:'https://example.invalid',hasCrossSiteAncestor:true}};
+  const recovered={userId:'user-fixture',generation:0,metadata:{revision:3},snapshot:{formatVersion:1,encryption:'none',capturedAt:1,cookies:options.cookies??[good]}};
+  let reads=0;
+  context.auxCloudReadCookieSnapshot=async()=>{reads++;if(options.onRead)await options.onRead(context,recovered);return options.missing?null:recovered;};
+  return {...fixture,context,recovered,good,get snapshotReads(){return reads;}};
+}
+
+test('restore preflight reuses original filters and preserves eligible CDP fields without cookie access', async () => {
+  const fixture=restoreFixture();
+  fixture.recovered.snapshot.cookies.push(...['localhost','127.0.0.1','127.0.0.2','[::1]','accounts.GETAUX.co','.getaux.co','getaux.co.','clerk.com','fixture.clerk.accounts.dev','google.com','mail.google.com','youtube.com','images.googleusercontent.com'].map(domain=>({...fixture.good,domain})),{...fixture.good,name:'expired',expires:1});
+  const plan=await fixture.context.auxCloudPrepareCookieRestore(1,()=>true);
+  assert.equal(plan.cookies.length,1);assert.equal(plan.cookies[0].sourcePort,443);assert.equal(plan.cookies[0].priority,'High');assert.equal(plan.cookies[0].partitionKey.topLevelSite,'https://example.invalid');
+  assert.equal(plan.binding.generation,0);assert.equal(plan.nativeContext.browserContextId,'native-fixture');
+  assert.equal(fixture.recovered.snapshot.cookies.length,0);
+  // The helper must not touch even the fake CDP jar or extension cookie API.
+  assert.equal(fixture.context.chrome,undefined);
+  assert.equal(fixture.context.auxCloudCookieDomainExcluded('getaux.co.evil.invalid'),false);
+  assert.equal(fixture.context.auxCloudCookieDomainExcluded('www.example.invalid'),false);
+});
+
+test('restore preflight refuses changed native/remote ownership and invalid partition/domain parameters', async () => {
+  for(const mutateAt of ['native-await','epoch','context']) {
+    const fixture=restoreFixture({mutateAt});
+    await assert.rejects(fixture.context.auxCloudPrepareCookieRestore(1,()=>true),/changed/);
+    if(mutateAt!=='native-await')assert.equal(fixture.recovered.snapshot.cookies.length,0);
+  }
+  for(const change of [{userId:'wrong-user'},{generation:2}]) {
+    const fixture=restoreFixture({onRead:(_context,recovered)=>Object.assign(recovered,change)});
+    await assert.rejects(fixture.context.auxCloudPrepareCookieRestore(1,()=>true),/owner or generation/);
+    assert.equal(fixture.recovered.snapshot.cookies.length,0);
+  }
+  for(const change of [{domain:undefined},{domain:'example.invalid/path'},{sourcePort:65536},{partitionKey:{topLevelSite:'null',hasCrossSiteAncestor:false}},{partitionKey:{topLevelSite:'https://example.invalid',hasCrossSiteAncestor:true,opaque:true}},{partitionKey:{topLevelSite:'https://example.invalid/path',hasCrossSiteAncestor:false}}]) {
+    const fixture=restoreFixture();fixture.recovered.snapshot.cookies=[{...fixture.good,...change}];
+    await assert.rejects(fixture.context.auxCloudPrepareCookieRestore(1,()=>true));
+    assert.equal(fixture.recovered.snapshot.cookies.length,0);
+  }
+  const canceled=restoreFixture();assert.equal(await canceled.context.auxCloudPrepareCookieRestore(1,()=>false),null);assert.equal(canceled.snapshotReads,0);
+  const missing=restoreFixture({missing:true});assert.equal(await missing.context.auxCloudPrepareCookieRestore(1,()=>true),null);
+  const lateCancel=restoreFixture();let active=true;lateCancel.context.auxCloudReadCookieSnapshot=async()=>{active=false;return lateCancel.recovered;};assert.equal(await lateCancel.context.auxCloudPrepareCookieRestore(1,()=>active),null);assert.equal(lateCancel.recovered.snapshot.cookies.length,0);
+});
+
+test('actual complete capture excludes Aux/Clerk and retains original expiry/opaque-partition filtering', async () => {
+  const fixture=restoreFixture(),context=fixture.context;
+  const cookies=[fixture.good,...['accounts.GETAUX.co.','fixture.clerk.accounts.dev','[::1]','127.0.0.2','google.com'].map(domain=>({...fixture.good,domain})),{...fixture.good,expires:1},{...fixture.good,partitionKeyOpaque:true}];
+  context.globalCdpClient={ensureConnected:async()=>{},send:async(method,params)=>{assert.equal(method,'Storage.getCookies');assert.equal(params.browserContextId,'native-fixture');return {cookies};}};
+  context.TextEncoder=TextEncoder;
+  context.sha256Hex=bytes=>createHash('sha256').update(bytes).digest('hex');
+  context.loadCookieSnapshotSha=()=>null;
+  let uploaded,saved;
+  context.putRemoteCookies=async(accountId,snapshot)=>{assert.equal(accountId,1);uploaded=snapshot;};
+  context.saveCookieSnapshotSha=(_accountId,hash)=>{saved=hash;};
+  context.logger={info(){}};
+  const encodeStart=daemon.indexOf('function encodeCookies('),encodeEnd=daemon.indexOf('var cipherAlgorithmSchema',encodeStart);
+  assert.ok(encodeStart>=0&&encodeEnd>encodeStart);
+  new vm.Script(daemon.slice(encodeStart,encodeEnd)).runInContext(context);
+  const composed=composeCloudDesktop({component:'daemon',path:'entry.mjs',text:daemon},{enableCloud:true,profile:'development'}).text;
+  const start=composed.indexOf('async function syncCookies('),end=composed.indexOf('async function clearRemoteCookies(',start);
+  assert.ok(start>=0&&end>start);
+  new vm.Script(composed.slice(start,end)).runInContext(context);
+  await context.syncCookies(1,()=>true);
+  assert.equal(uploaded.cookies.length,1);assert.equal(uploaded.cookies[0].value,'private-fixture');assert.equal(uploaded.cookies[0].priority,'High');assert.equal(uploaded.cookies[0].sourcePort,443);assert.equal(saved,context.sha256Hex(new TextEncoder().encode(JSON.stringify(uploaded.cookies))));
 });

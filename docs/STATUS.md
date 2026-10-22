@@ -1,5 +1,13 @@
 # Aux implementation status
 
+## Cookie restore preparation and authentication exclusions — 2026-10-22
+
+Added source-only restore preparation around the actual encrypted reader: it requires the original account/profile binding and owning sync lifetime, verifies native epoch/context before and after recovery, checks owner/key generation, and reuses the supplied cookie expiry/exclusion/conversion functions. Concrete domains, source ports and nonopaque partition metadata are checked before returning native-write preconditions. This helper is not an importer, native write capability or automatic lifecycle consumer.
+
+The source review also found capture excluded only the configured API host, not all Aux/Clerk authentication hosts. Cloud capture and restore preparation now exclude `getaux.co`, `clerk.com`, `clerk.accounts.dev` and their subdomains, case/trailing-dot equivalents, and loopback IPv4/IPv6. Original Google, localhost, expiry and opaque-partition exclusions remain. This protects installation/cloud authentication from ordinary website-session sync; unrelated lookalike domains remain eligible. Local-only composition is byte-identical, and no UI changes are included.
+
+Fourteen focused checks passed, including execution of the actual complete patched capture function with synthetic CDP cookies and original conversion/encoding helpers, plus restore ownership/cancellation/partition checks and full supplied Agent/daemon syntax/replay. Cloud daemon composition now has29 anchors. Evidence: `docs/integration/proposed/cloud-cookie-restore/restore-preflight-evidence.json`. No browser cookie jar, provider, owner data, signing candidate or running app was accessed or changed. No native source changed in this slice, so the previous compiled native receipts remain historical evidence for those exact native bytes. Native write serialization with binding/teardown, local/remote conflict and startup policy, and real two-profile desktop acceptance still remain unfinished. Full readiness is not claimed.
+
 ## Explicit cookie profile capture built; desktop acceptance pending — 2026-10-22
 
 Cloud capture now requires one original registry binding, obtains matching native profile/account/user/session metadata through the original Agent bridge, and sends `Storage.getCookies` with that profile's explicit native context. It rechecks registry lifetime/generation and native epoch/context after asynchronous capture, refusing private, paused, ambiguous or changed bindings. Original cookie fields, filters and upload remain intact. Default local composition remains byte-identical; no UI/style/geometry/glass changes are included.

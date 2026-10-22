@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-22T16:54:54.201954+00:00",
+  "kind": "cookie-restore-preflight-and-authentication-exclusions",
+  "sourceHashes": {
+    "vendor/provided/cloud-cookie-profile.mjs": "f9f0f5151feb85a5d44e6d000b413755cc83a7c830fabaa5289f1c5c68236e15",
+    "vendor/provided/cloud-cookie-profile.test.mjs": "6d4f633aa3b5acaa3695de1f82aaa963f539fa5bad79246b1881ce88c031ed85",
+    "vendor/provided/cloud-desktop-composition.test.mjs": "2429560311616e9bcb9c9270e33b598e370dcf7916e08eaf22f473182448e9d9"
+  },
+  "focusedChecks": {
+    "command": "node --test vendor/provided/cloud-cookie-profile.test.mjs vendor/provided/cloud-desktop-composition.test.mjs vendor/provided/cloud-drive-1852-adapter.test.mjs",
+    "passed": 14,
+    "failed": 0,
+    "cloudDaemonAnchors": 29
+  },
+  "implemented": [
+    "Profile/account/user/generation and owning sync lifetime checks around encrypted recovery",
+    "Native epoch/context verification before and after recovery",
+    "Original expiry, domain, opaque-partition and CookieParam conversion reuse",
+    "Concrete domain, source port and partition shape validation",
+    "Aux/Clerk authentication and loopback capture/restore exclusions",
+    "Actual patched complete capture executes with synthetic CDP and original conversion/encode helpers"
+  ],
+  "notImplemented": [
+    "Native cookie write transaction and binding/teardown serialization",
+    "Automatic restore lifecycle and local/remote conflict handling",
+    "Disposable integrated native browser cloud cookie acceptance"
+  ],
+  "browserCookieAccess": false,
+  "nativeSourceChangedThisSlice": false,
+  "acceptedDesktopChanged": false,
+  "preparedSigningCandidateChanged": false,
+  "signingPerformed": false,
+  "productionActivation": false,
+  "uiChanged": false
+}
