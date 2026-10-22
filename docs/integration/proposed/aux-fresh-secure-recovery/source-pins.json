@@ -8,7 +8,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
-      "sha256": "36b26260d28eed14b5b4ae2ecfa4bf8864032de307e1d9565533e4380ac4dbd3"
+      "sha256": "f114495d85c93b9d83abcf9d4e9e4d72570aeaef4144094fc58a59055c19a291"
     },
     {
       "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
@@ -22,5 +22,17 @@
   "newSelectorAuthorized": false,
   "securityOperationsExecuted": false,
   "secretFilesystemWrites": false,
-  "runtimeIntegrationPerformed": false
+  "runtimeIntegrationPerformed": false,
+  "integratedDependencyReview": {
+    "baselineCommit": "84992b4ce",
+    "accessorCommit": "5dbe8c8fa",
+    "changes": [
+      {
+        "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
+        "previousSha256": "36b26260d28eed14b5b4ae2ecfa4bf8864032de307e1d9565533e4380ac4dbd3",
+        "sha256": "f114495d85c93b9d83abcf9d4e9e4d72570aeaef4144094fc58a59055c19a291"
+      }
+    ],
+    "check": "check.sh software synthetic fixture exited 0; hardware compiled only"
+  }
 }
