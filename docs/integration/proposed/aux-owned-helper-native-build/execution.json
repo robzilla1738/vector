@@ -1,0 +1,40 @@
+{
+  "format": "aux.native.owned-helper.build.v1",
+  "session": "27758",
+  "exitCode": 0,
+  "nativeBuildReceipt": {
+    "path": "out/aux-owned-helper-native-build.json",
+    "sha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362"
+  },
+  "composition": {
+    "path": "out/native-reuse-composition-aux-owned-helper-drain-gn",
+    "sha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+    "sources": 774,
+    "unchangedAssets": 23
+  },
+  "generatedKeyProbePassed": true,
+  "files": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "e0f02e34745f5dd28505d75f7b80515c0af79fe6cfa45ec0b2dc402cf1d2dc5a"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b"
+    }
+  ],
+  "retainedBuildLogSha256": "3b05c2c87d97efa58f969446ab5320574b2419c3f1741d2d9ad23f0c05f4f410",
+  "applyBackup": "out/native-reuse-composition-aux-owned-helper-drain-gn/native-before-apply-wn6xqwpp",
+  "focusedProductionStateCasesPreviouslyPassed": 27,
+  "aggregateBrowserAPIRuntimeInvoked": false,
+  "realCarrierChildLaunchedThisFixture": false,
+  "actualProtectedAuthorityOrOSGrantsOrSigning": false,
+  "ownerStateRead": false,
+  "allWriterCustodyProven": false,
+  "state2LaunchAuthorized": false,
+  "acceptedAppReplaced": false
+}

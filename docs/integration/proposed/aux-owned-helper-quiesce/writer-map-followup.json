@@ -1,0 +1,16 @@
+{
+  "format": "aux.native.writer-map.followup.v1",
+  "historicalMapSha256": "e2feb2b640bc0875e121c4cb448e0b87d990b6b754d83a44f9aea1f00d8ebb65",
+  "newCompositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "unchangedMappedFiles": 19,
+  "changedMappedFiles": [
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "historicalMapSha256": "ed9cdedb091d76e7c40f4d270fdfe40db3e178014374e7929128e0bbe0572736",
+      "currentCompositionSha256": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2"
+    }
+  ],
+  "wholeWriterCustodyProven": false,
+  "historicalMapRewritten": false,
+  "scope": "exact owned-helper source evolution only; no new profile/renderer/storage admission"
+}

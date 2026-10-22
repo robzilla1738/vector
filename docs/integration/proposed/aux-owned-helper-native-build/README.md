@@ -1,0 +1,7 @@
+# Applied native owned-helper aggregation build
+
+The exact774-source/23-asset successor is applied with all prior target bytes backed up. Both new headers are registered in the actual platform GN target. The full browser build and generated-key probe passed, session27758 exit0. `execution.json` pins the actual successful receipt, final framework and retained log. No native view, geometry, styling or artwork source changed.
+
+The new BrowserPlatform API combines this browser's direct-daemon result with its separate real carrier-custody snapshot. Failed, conflicting, pending and unresolved observations remain distinct; ordinary direct-daemon APIs remain compatible. This is compiled native integration, with27 preceding production-state fixture cases. The new aggregate browser API itself has not been invoked in a real app, and that fixture launched no carrier child. Prior actual owned-child carrier evidence remains separate.
+
+The source map's historical evidence stays unchanged; `../aux-owned-helper-quiesce/writer-map-followup.json` records the one mapped file advanced by this exact source composition, with19 mapped files unchanged. This bounded participant does not establish renderer/extension/storage/independent-process exclusion, native authority, a trusted bootstrap or state2 readmission. Accepted app/UI remain intact. Successor packaging/inventory evidence is separate; no signing, owner-state operation, OS grant, cloud mutation or release occurred.

@@ -1,0 +1,149 @@
+offline mode
+ninja: Entering directory `out/AuxFast'
+
+
+disable fast local for non-interactive: fastlocal=1->0
+ use `--fast_local` to enable fast local with non-interactive mode
+schedule pending:1+ready:0 (node:85700 edge:2)
+build start: Ready 1 Pending 1
+[0/2] 0.78s S Regenerating ninja files
+[0/2] 45.67s F Regenerating ninja files
+rebuild manifest finished
+45.37s Regenerating ninja files
+
+
+
+loading build.ninja... done 16.775828666s
+load siso config done 1.088646542s
+schedule pending:1+ready:0 (node:415809 edge:2)
+build start: Ready 1 Pending 1
+rebuild manifest finished
+schedule pending:1+ready:0 (node:415809 edge:9)
+build start: Ready 8327 Pending 79094
+[0/32848] 1m06.65s S CXX obj/chrome/browser/aux/platform/component_bootstrap.o
+[0/32841] 1m06.65s S CXX obj/chrome/browser/aux/platform/browser_platform.o
+[0/32823] 1m06.65s S CXX obj/chrome/browser/aux/platform/daemon_supervisor.o
+[0/32815] 1m06.65s S CXX obj/chrome/browser/aux/platform/installation_auth.o
+[0/11553] 1m07.10s S CXX obj/chrome/browser/extensions/api/aux_credentials/aux_credentials/aux_credentials_api.o
+[0/11126] 1m07.11s S CXX obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/aux_browser_import_api.o
+[0/10436] 1m07.12s S CXX obj/chrome/browser/ui/tab_ui_helper/tab_ui_helper.o
+[0/10237] 1m07.12s S CXX obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o
+[0/8789] 1m07.15s S CXX obj/chrome/browser/aux/passkeys/passkeys/request_broker.o
+[0/8684] 1m07.15s S CXX obj/chrome/browser/aux/passkeys/passkeys/private_session_cleanup.o
+[0/8432] 1m07.16s S CXX obj/chrome/browser/extensions/api/aux_common/aux_common/aux_api.o
+[0/8008] 1m07.17s S CXX obj/chrome/browser/ui/views/side_panel/side_panel/side_panel.o
+[0/7966] 1m07.17s S CXX obj/chrome/browser/ui/views/side_panel/side_panel/side_panel_coordinator.o
+[0/6502] 1m07.19s S CXX obj/chrome/browser/devtools/devtools/aux_profile_window.o
+[0/6499] 1m07.19s S CXX obj/chrome/browser/devtools/devtools/remote_debugging_server.o
+[0/6005] 1m07.20s S CXX obj/chrome/browser/extensions/extensions/chrome_extension_system.o
+[0/5928] 1m07.20s S CXX obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o
+[0/5924] 1m07.20s S CXX obj/chrome/browser/ui/ui/aux_chat_tab_association.o
+[0/5916] 1m07.20s S CXX obj/chrome/browser/ui/ui/aux_tabs_actions.o
+[0/5893] 1m07.20s S CXX obj/chrome/browser/ui/ui/ntp_prerender_service.o
+[0/5891] 1m07.20s S CXX obj/chrome/browser/ui/ui/aux_chat_navigation.o
+[0/5788] 1m07.21s S CXX obj/chrome/browser/ui/ui/aux_profile_page_indicator.o
+[0/5467] 1m07.22s S CXX obj/chrome/browser/ui/ui/aux_tab_search_bubble.o
+[0/4980] 1m07.23s S CXX obj/chrome/browser/ui/ui/browser_view_tabbed_layout_impl.o
+[0/4548] 1m07.23s S CXX obj/chrome/browser/ui/ui/aux_chats_controller.o
+[0/4396] 1m07.24s S CXX obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o
+[0/4353] 1m07.24s S CXX obj/chrome/browser/ui/browser_actions_impl/browser_actions.o
+[0/4353] 1m07.24s S CXX obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o
+[0/4349] 1m07.24s S CXX obj/chrome/browser/ui/ui/aux_chats_transport.o
+[0/4342] 1m07.24s S CXX obj/chrome/browser/ui/ui/aux_ntp_transition_state.o
+[0/4255] 1m07.24s S CXX obj/chrome/browser/ui/ui/aux_chats_header_actions.o
+[0/4935] 1m07.23s S CXX obj/chrome/browser/ui/toolbar/impl/toolbar_actions_model.o
+[0/4133] 1m07.24s S CXX obj/chrome/browser/ui/views/frame/themed_background_impl/themed_background.o
+[0/4056] 1m07.25s S CXX obj/chrome/browser/ui/ui/aux_native_task_feed.o
+[0/3940] 1m07.25s S CXX obj/chrome/browser/ui/startup/impl/startup_browser_creator_impl.o
+[0/3757] 1m07.25s S CXX obj/chrome/browser/ui/ui/browser_command_controller.o
+[0/3561] 1m07.26s S CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_manager.o
+[0/3092] 1m07.27s S CXX obj/chrome/browser/ui/views/location_bar/impl/location_bar_view.o
+[0/3034] 1m07.27s S CXX obj/chrome/browser/ui/views/extensions/extensions_toolbar_desktop/extensions_toolbar_desktop.o
+[0/2994] 1m07.27s S CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_coordinator.o
+[0/2988] 1m07.27s S CXX obj/chrome/browser/extensions/api/aux_account/aux_account/aux_account_api.o
+[0/3349] 1m07.26s S CXX obj/chrome/browser/notifications/impl/aux_notification_inbox.o
+[0/3249] 1m07.26s S CXX obj/chrome/browser/ui/views/toolbar/impl/toolbar_action_view.o
+[0/2235] 1m07.28s S CXX obj/chrome/browser/ui/navigator/impl/browser_navigator.o
+[0/3243] 1m07.26s S CXX obj/chrome/browser/ui/tabs/impl/tab_data.o
+[0/3239] 1m07.26s S CXX obj/chrome/browser/ui/ui/aux_sidebar_view.o
+[0/2712] 1m07.28s S CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_coordinator_views.o
+[0/1981] 1m07.29s S CXX obj/chrome/browser/core/chrome_browser_main.o
+[0/909] 1m12.81s F CXX obj/chrome/browser/aux/platform/installation_auth.o
+[1/909] 1m13.28s F CXX obj/chrome/browser/aux/platform/browser_platform.o
+[2/909] 1m14.37s F CXX obj/chrome/browser/aux/platform/component_bootstrap.o
+[3/909] 1m16.66s F CXX obj/chrome/browser/extensions/api/aux_common/aux_common/aux_api.o
+[4/901] 1m18.06s F CXX obj/chrome/browser/aux/platform/daemon_supervisor.o
+[5/897] 1m18.06s S LINK ./auth_scheme_probe
+[5/897] 1m20.65s F CXX obj/chrome/browser/devtools/devtools/aux_profile_window.o
+[6/897] 1m24.25s F CXX obj/chrome/browser/devtools/devtools/remote_debugging_server.o
+[7/897] 1m24.26s S AR obj/chrome/browser/devtools/libdevtools.a
+[7/888] 1m27.19s F CXX obj/chrome/browser/ui/tab_ui_helper/tab_ui_helper.o
+[8/888] 1m34.04s F CXX obj/chrome/browser/ui/views/side_panel/side_panel/side_panel.o
+[9/882] 1m34.50s F AR obj/chrome/browser/devtools/libdevtools.a
+[10/864] 1m39.12s F CXX obj/chrome/browser/ui/views/side_panel/side_panel/side_panel_coordinator.o
+[11/835] 1m43.00s F CXX obj/chrome/browser/extensions/extensions/chrome_extension_system.o
+[12/569] 1m46.59s F CXX obj/chrome/browser/ui/ui/aux_tab_search_bubble.o
+[13/569] 1m47.77s F CXX obj/chrome/browser/ui/tabs/impl/tab_data.o
+[14/568] 1m49.89s F CXX obj/chrome/browser/notifications/impl/aux_notification_inbox.o
+[15/568] 1m52.54s F CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_coordinator.o
+[16/568] 1m54.70s F CXX obj/chrome/browser/ui/ui/aux_chat_tab_association.o
+[17/567] 1m56.98s F CXX obj/chrome/browser/extensions/api/aux_account/aux_account/aux_account_api.o
+[18/567] 2m00.51s F LINK ./auth_scheme_probe
+[19/566] 2m01.72s F CXX obj/chrome/browser/ui/toolbar/impl/toolbar_actions_model.o
+[20/566] 2m04.06s F CXX obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o
+[21/565] 2m11.26s F CXX obj/chrome/browser/ui/views/frame/themed_background_impl/themed_background.o
+[22/565] 2m15.36s F CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_manager.o
+[23/548] 2m19.72s F CXX obj/chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup/aux_mini_popup_api.o
+[24/548] 2m21.17s F CXX obj/chrome/browser/ui/ui/browser_command_controller.o
+[25/548] 2m22.66s F CXX obj/chrome/browser/ui/ui/aux_chats_header_actions.o
+[26/548] 2m24.86s F CXX obj/chrome/browser/ui/ui/aux_chat_navigation.o
+[27/548] 2m25.06s F CXX obj/chrome/browser/aux/passkeys/passkeys/private_session_cleanup.o
+[28/548] 2m28.93s F CXX obj/chrome/browser/ui/ui/aux_agent_session_tabs_source.o
+[29/548] 2m32.48s F CXX obj/chrome/browser/ui/ui/aux_chats_controller.o
+[30/548] 2m34.53s F CXX obj/chrome/browser/ui/ui/browser_view_tabbed_layout_impl.o
+[31/548] 2m41.71s F CXX obj/chrome/browser/ui/ui/aux_profile_page_indicator.o
+[32/548] 2m45.08s F CXX obj/chrome/browser/ui/ui/ntp_prerender_service.o
+[33/546] 2m54.87s F CXX obj/chrome/browser/ui/views/location_bar/impl/location_bar_view.o
+[34/546] 2m55.00s F CXX obj/chrome/browser/ui/ui/aux_sidebar_view.o
+[35/546] 2m57.69s F CXX obj/chrome/browser/ui/ui/aux_tabs_actions.o
+[36/545] 3m02.66s F CXX obj/chrome/browser/ui/startup/impl/startup_browser_creator_impl.o
+[37/537] 3m06.14s F CXX obj/chrome/browser/aux/passkeys/passkeys/request_broker.o
+[38/531] 3m06.72s F CXX obj/chrome/browser/ui/views/extensions/extensions_toolbar_desktop/extensions_toolbar_desktop.o
+[39/531] 3m09.76s F CXX obj/chrome/browser/ui/ui/aux_chats_transport.o
+[40/530] 3m10.74s F CXX obj/chrome/browser/ui/extensions/impl/extension_side_panel_coordinator_views.o
+[41/528] 3m15.23s F CXX obj/chrome/browser/ui/views/toolbar/impl/toolbar_action_view.o
+[42/528] 3m18.86s F CXX obj/chrome/browser/ui/ui/aux_ntp_transition_state.o
+[43/528] 3m19.47s F CXX obj/chrome/browser/ui/ui/aux_native_task_feed.o
+[44/528] 3m19.47s S AR obj/chrome/browser/ui/libui.a
+[44/527] 3m20.84s F CXX obj/chrome/browser/extensions/api/aux_browser_import/aux_browser_import/aux_browser_import_api.o
+[45/490] 3m21.54s F AR obj/chrome/browser/ui/libui.a
+[46/446] 3m21.64s F CXX obj/chrome/browser/extensions/api/aux_credentials/aux_credentials/aux_credentials_api.o
+[47/444] 3m29.17s F CXX obj/chrome/browser/aux/account_profile_updater/account_profile_updater.o
+[48/444] 3m38.73s F CXX obj/chrome/browser/core/chrome_browser_main.o
+[49/443] 3m40.34s F CXX obj/chrome/browser/ui/navigator/impl/browser_navigator.o
+[50/438] 4m06.71s F CXX obj/chrome/browser/ui/browser_actions_impl/browser_actions.o
+[51/438] 4m06.75s S SOLINK 'obj/chrome/chrome_framework_shared_library/Aux Framework' 'obj/chrome/chrome_framework_shared_library/Aux Framework.TOC'
+[51/131] 7m45.39s F SOLINK 'obj/chrome/chrome_framework_shared_library/Aux Framework' 'obj/chrome/chrome_framework_shared_library/Aux Framework.TOC'
+[51/131] 7m45.39s S COPY_BUNDLE_DATA 'obj/chrome/chrome_framework_shared_library/Aux Framework' 'Aux Framework.framework/Versions/155.0.8059.85/Aux Framework'
+[52/131] 7m45.52s F COPY_BUNDLE_DATA 'obj/chrome/chrome_framework_shared_library/Aux Framework' 'Aux Framework.framework/Versions/155.0.8059.85/Aux Framework'
+[53/129] 7m45.52s S ACTION //chrome:verify_chrome_framework_order(//build/toolchain/mac:clang_arm64)
+[53/129] 7m48.45s F ACTION //chrome:verify_chrome_framework_order(//build/toolchain/mac:clang_arm64)
+[53/60] 7m48.46s S COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+[54/60] 7m49.14s F COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+[55/59] 7m49.14s S ACTION //chrome:verify_libraries_chrome_app(//build/toolchain/mac:clang_arm64)
+[55/59] 7m49.23s F ACTION //chrome:verify_libraries_chrome_app(//build/toolchain/mac:clang_arm64)
+build finished
+
+	
+noexec:2 local:54 remote:0 cache:0 skip:87365
+  cache-write:0(err:0) fallback:0 retry:0
+fs: ops: 5122(err:680) / r:727(err:0) 983.61MiB / w:6(err:0) 433.48MiB
+
+
+ resource/capa used(err)  wait-avg |   s m |  serv-avg |   s m |
+   localexec/2     50(0)  1m08.15s |▂  ▃▅█ |     6.67s |  ▂█▃  |
+   pool=link/2      2(0)     0.00s |▆      |  2m10.43s |    ▅▅ |
+shutdown cloud logging/monitoring done 47.917µs
+
+7m49.50s Build Succeeded: 56 steps - 0.12/s
+{"receipt": "/Users/rcourson/Documents/Vibe/web/out/aux-owned-helper-native-build.json", "artifacts": 3, "generatedKeyProbePassed": true, "productionReady": false}
