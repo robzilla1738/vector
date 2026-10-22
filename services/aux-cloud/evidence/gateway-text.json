@@ -1,0 +1,8 @@
+{
+  "status": 403,
+  "privacyRequested": {
+    "zeroDataRetention": true,
+    "disallowPromptTraining": true
+  },
+  "errorType": "no_providers_available"
+}

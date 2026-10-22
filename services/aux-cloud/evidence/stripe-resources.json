@@ -1,0 +1,27 @@
+{
+  "account": "acct_1UTDA5GzjaZQfViz",
+  "prices": {
+    "STRIPE_PRICE_PRO_MONTH": "price_1UTE4BGzjaZQfVizUFd3UTNZ",
+    "STRIPE_PRICE_PRO_YEAR": "price_1UTE4BGzjaZQfVizIZWhwBNQ",
+    "STRIPE_PRICE_MAX_MONTH": "price_1UTE4CGzjaZQfViz2Ub5LIQX",
+    "STRIPE_PRICE_MAX_YEAR": "price_1UTE4DGzjaZQfVizrhy9ITC7",
+    "STRIPE_PORTAL_CONFIGURATION_ID": "bpc_1UTE4DGzjaZQfVizJnmJ2cum"
+  },
+  "products": [
+    {
+      "product": "aux_pro_v1",
+      "prices": [
+        "price_1UTE4BGzjaZQfVizUFd3UTNZ",
+        "price_1UTE4BGzjaZQfVizIZWhwBNQ"
+      ]
+    },
+    {
+      "product": "aux_max_v1",
+      "prices": [
+        "price_1UTE4CGzjaZQfViz2Ub5LIQX",
+        "price_1UTE4DGzjaZQfVizrhy9ITC7"
+      ]
+    }
+  ],
+  "sandbox": true
+}

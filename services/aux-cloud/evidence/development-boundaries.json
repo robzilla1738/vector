@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-22T05:01:38.231Z",
+  "checks": [
+    "real database identity and signed-session validation",
+    "encrypted object storage, ETag/304, stale CAS/412 and cross-account denial",
+    "public share publication, ownership and revocation",
+    "actual private Blob upload, independent hash verification, ranges and ownership",
+    "truthful free billing snapshot",
+    "actual session revocation"
+  ],
+  "fixtureRemoved": true,
+  "realClerkSignInTested": false
+}
