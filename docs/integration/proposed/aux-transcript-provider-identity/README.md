@@ -1,6 +1,6 @@
 # Transcript and queued-message identity contract
 
-This is offline preparation, not an activated app migration. The current accepted UI and app are unchanged. The source is the supplied 1.26.1016.1852 daemon, SHA-256 `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5`. [source-audit.json](source-audit.json) pins 19 exact counted anchors and their UTF-16 offsets. No owner profile, credential, native helper, provider or complete daemon was executed/read.
+This is offline preparation, not an activated app migration. The current accepted UI and app are unchanged. The source is the supplied 1.26.1016.1852 daemon, SHA-256 `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5`. [source-audit.json](source-audit.json) pins 22 exact counted anchors and their UTF-16 offsets. No owner profile, credential, native helper, provider or complete daemon was executed/read.
 
 ## Actual contracts
 
@@ -47,11 +47,11 @@ AUX_PINNED_DAEMON_SOURCE=/Users/rcourson/Documents/Vibe/web/out/provided-source-
   node --test vendor/provided/aux-transcript-provider-identity.test.mjs
 ```
 
-The source-backed test validates all 19 anchors and the complete daemon hash, then executes **only** its inspected pure `transformMessages` function in a VM with an identity image-downgrader. Its fixture contains no images. Before metadata migration the actual transformer removes signatures against the Aux execution model; afterward the original thinking/text/tool signatures survive. This is a bounded consumer-contract check, not full daemon or provider execution. The source-backed test is explicitly skipped when no source path is provided; the recorded run supplied it and had no skips.
+The source-backed test validates all 22 anchors and the complete daemon hash, then executes **only** its inspected pure `transformMessages` function in a VM with an identity image-downgrader. Its fixture contains no images. Before metadata migration the actual transformer removes signatures against the Aux execution model; afterward the original thinking/text/tool signatures survive. This is a bounded consumer-contract check, not full daemon or provider execution. The source-backed test is explicitly skipped when no source path is provided; the recorded run supplied it and had no skips.
 
 ## Still separate work
 
-1. Connect transcript snapshots and prepared bytes to the existing durable stopped-state journal. Require exact authorized disposable paths, original hashes, real startup/writer exclusion and completed verified receipt before any daemon opens the files. This helper cannot establish that exclusion itself.
+1. The companion handoff now accepts explicit transcript snapshots and adds their prepared bytes to the existing durable stopped-state journal. Require exact authorized disposable paths, original hashes, real startup/writer exclusion and completed verified receipt before any daemon opens the files. This helper cannot establish that exclusion itself.
 2. Inspect/migrate **typed executable tool arguments** separately. `subagentModelOverrideSchema` explicitly permits `{provider,modelId}` inside the subagent tool's `model` argument. `rerunSuspendedToolCall` retrieves original assistant `toolCall.arguments`, prepares them and can execute them. Its crash-rerun gate has a safe-tool list and suspension conditions; this does not mean every historical subagent call automatically reruns. Arbitrary recursive rewriting would be unsafe and is deliberately absent.
 3. Review SQLite cached assistant projections such as `session_turns.final_assistant_message`. The authoritative agent-context reader loads JSONL, but cached typed metadata may still contain the old identity. This helper does not edit projection columns or invalidate their application-level revision metadata.
 4. Other persisted references, cloud copies and opaque queue/tool content are not proven absent. Keep those boundaries explicit rather than declaring all transcript/history identity complete. The standalone SQLite provider migration remains limited to its two reviewed JSON columns.

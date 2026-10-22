@@ -115,6 +115,24 @@
       "find": "let ii=ti.get(ri.messageId);ii&&ni.update(RoutineTable).set({metadata:{...ei.metadata,origin:{...ri,messageId:ii}}})",
       "count": 1,
       "characterOffset": 2657818
+    },
+    {
+      "name": "account-local-directory",
+      "find": "getAccountRoot=Cn=>typeof Cn==`number`?path.join(ASIDE_HOME_PATH,`u`,String(Cn)):Cn",
+      "count": 1,
+      "characterOffset": 33046
+    },
+    {
+      "name": "local-dated-session-directory",
+      "find": "getExpectedSessionStorageDir=(Cn,ei)=>path.join(getAccountRoot(ei),`sessions`,isCloudRuntime()?Cn.id:`${(0,import_dayjs_min$2.default)(Cn.createdAt).format(`YYYY-MM-DD`)}_${Cn.id}`)",
+      "count": 1,
+      "characterOffset": 36087
+    },
+    {
+      "name": "session-id-schema",
+      "find": "sessionIdSchema=string$3().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/,`Session ID may contain only letters, numbers, underscores, and hyphens`)",
+      "count": 1,
+      "characterOffset": 2581717
     }
   ],
   "offsetUnit": "UTF-16 code units",

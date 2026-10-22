@@ -10,6 +10,8 @@ import { createStateMigrationId, commitStateMigration, recoverStateMigration, ve
 import { PINNED_PROVIDER_STATE_TARGET_DDL } from './aux-sqlite-provider-identity-schema.mjs';
 import { PINNED_CONTEXT_LEDGER_DDL } from './aux-context-ledger-schema.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const transcriptPath = 'home/u/1/sessions/2026-10-22_fixture-session/messages.jsonl';
+const transcript = Buffer.from(JSON.stringify({role:'user',content:'aside prose remains unchanged',timestamp:1}) + '\r\n' + JSON.stringify({role:'assistant',provider:'aside',api:'aside-provider',model:'fixture-only-model',content:[{type:'text',text:'original',textSignature:'retain'},{type:'toolCall',id:'unchanged',name:'subagent',arguments:{model:{provider:'aside',modelId:'opaque-retain'}}}],timestamp:2,stopReason:'toolUse'}) + '\n');
 const model = { provider: 'aside', modelId: 'fixture-only-model', thinkingLevel: 'medium', fastMode: true };
 async function fixture(t) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'aux-handoff-fixture-'));
@@ -25,6 +27,7 @@ async function fixture(t) {
     dbBytes = await fs.readFile(producer); walBytes = await fs.readFile(`${producer}-wal`); shmBytes = await fs.readFile(`${producer}-shm`);
   } finally { db.close(); }
   const files = [
+    [transcriptPath, transcript],
     ['home/u/1/state.db', dbBytes], ['home/u/1/state.db-wal', walBytes], ['home/u/1/state.db-shm', shmBytes],
     ['home/u/1/settings.json', Buffer.from(JSON.stringify({ defaultModel: model, glass: { opacity: 0.22 } }))],
     ['home/u/1/credentials.json', Buffer.from('{"aside":{"type":"api_key","key":"synthetic-private-fixture"}}')],
@@ -36,6 +39,7 @@ async function fixture(t) {
   return {
     root, transactionId: createStateMigrationId(), paths: { auxHome: 'home', browserUserData: 'browser' }, files,
     capability: { root, id: 'fixture-stopped-exclusive-root', disposable: true, exclusive: true, rollbackJournalAbsent: true, assertStopped: async () => true },
+    transcriptSnapshots: [{ accountId: 1, sessionId: 'fixture-session', storageDate: '2026-10-22', ...value(transcriptPath) }],
     jsonSnapshots: [
       { kind: 'provider-json', logicalPath: 'u/1/settings.json', ...value('home/u/1/settings.json') },
       { kind: 'provider-json', logicalPath: 'u/1/credentials.json', ...value('home/u/1/credentials.json') },
@@ -63,6 +67,16 @@ test('WAL-only row + JSON/prefs migrate through crash recovery before any fixtur
   const committed = await recoverStateMigration({ ...f, action: 'complete' });
   assert.equal((await verifyStateMigration({ ...f, expectedReceiptSha256: committed.receiptSha256 })).verified, true);
   await verifyBackups(f, prepared);
+  const migratedTranscript = await fs.readFile(path.join(f.root, transcriptPath));
+  assert.equal(migratedTranscript.length, transcript.length);
+  const offsets = bytes => { const entries = []; let start = 0; for (let end = bytes.indexOf(10); end !== -1; end = bytes.indexOf(10, start)) { entries.push({ id: String(start), jsonlReadSize: end-start+1, msg: JSON.parse(bytes.toString('utf8', start, end)) }); start = end+1; } return entries; };
+  const beforeRows = offsets(transcript), afterRows = offsets(migratedTranscript);
+  assert.deepEqual(afterRows.map(({id,jsonlReadSize})=>({id,jsonlReadSize})), beforeRows.map(({id,jsonlReadSize})=>({id,jsonlReadSize})));
+  assert.deepEqual(afterRows[0], beforeRows[0]);
+  assert.deepEqual(afterRows[1].msg, {...beforeRows[1].msg, provider:'aux', api:'aux-provider'});
+  assert.equal(afterRows[1].msg.content[1].arguments.model.provider, 'aside');
+  const transcriptReceipt = prepared.receipt.transformations.find(entry=>entry.path===transcriptPath).transcriptMigration;
+  assert.equal(transcriptReceipt.byteOffsetsPreserved, true); assert.equal(transcriptReceipt.sourceSha256, sha(transcript));
   for (const sidecar of ['wal', 'shm']) assert.equal((await fs.readFile(path.join(f.root, `home/u/1/state.db-${sidecar}`))).length, 0);
   const prefs = JSON.parse(await fs.readFile(path.join(f.root, 'browser/Default/Preferences'), 'utf8'));
   assert.equal(prefs.aux.profile_id, 'stable-fixture-profile'); assert.equal(prefs.aux.vertical_tabs.bookmarks_section_expanded, false);
@@ -154,4 +168,11 @@ test('context-ledger WAL-only historical events pair with the same crash journal
     assert.equal(reader.prepare('PRAGMA foreign_key_check').all().length, 0);
   } finally { reader.close(); }
   assert.equal(prepared.receipt.startupVerified, false);
+});
+
+test('transcript route and combined target budget refuse unreviewed layouts before journal writes', async t => {
+  const f = await fixture(t), descriptor = f.transcriptSnapshots[0];
+  for (const patch of [{sessionId:'../escape'},{storageDate:'2026-02-30'},{storageDate:'fixture-session'},{accountId:-1}]) await assert.rejects(prepareAuxDisposableStateHandoff({...f,transcriptSnapshots:[{...descriptor,...patch}]}),/canonical/);
+  await assert.rejects(prepareAuxDisposableStateHandoff({...f,transcriptSnapshots:Array.from({length:122},()=>descriptor)}),/bounded/);
+  for (const [relative, bytes] of f.files) assert.deepEqual(await fs.readFile(path.join(f.root, relative)), bytes);
 });

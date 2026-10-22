@@ -7,6 +7,7 @@ import { migrateAuxPreferenceDocument } from './aux-preference-identity.mjs';
 import { checkpointPrivateSqliteSnapshot } from './aux-sqlite-wal-copy.mjs';
 import { prepareSqliteProviderIdentity } from './aux-sqlite-provider-identity.mjs';
 import { prepareContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
+import { prepareAuxTranscriptProviderIdentity } from './aux-transcript-provider-identity.mjs';
 import { prepareStateMigration } from './aux-state-migration-transaction.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function prefix(value) {
@@ -50,15 +51,17 @@ async function scope(capability, root, transactionId, hashes, phase) {
  * {kind:'provider-json',logicalPath:'u/1/settings.json',bytes,expectedSha256}
  * {kind:'profile-preferences',profileDirectory:'Default',bytes,expectedSha256}
  * {kind:'local-state',bytes,expectedSha256}
+ * Transcript descriptors: {accountId,sessionId,storageDate:'YYYY-MM-DD',bytes,expectedSha256};
+ * local dated layout only; date is supplied from reviewed snapshot, not inferred.
  * SQLite descriptors: {accountId,database,wal,shm,rollbackJournal:'absent'};
  * database={bytes,expectedSha256}; wal/shm also require disposition:'present',
  * replacement:'empty-reviewed'. Missing/unknown sidecars are never inferred.
  */
-export async function prepareAuxDisposableStateHandoff({ root, capability, transactionId, paths, jsonSnapshots = [], sqliteSnapshots = [], onCheckpoint }) {
+export async function prepareAuxDisposableStateHandoff({ root, capability, transactionId, paths, jsonSnapshots = [], sqliteSnapshots = [], transcriptSnapshots = [], onCheckpoint }) {
   const home = prefix(paths?.auxHome), browser = prefix(paths?.browserUserData);
   if (home.toLowerCase() === browser.toLowerCase() || home.toLowerCase().startsWith(browser.toLowerCase() + '/') || browser.toLowerCase().startsWith(home.toLowerCase() + '/')) throw Error('Disposable state roots must be distinct and nonoverlapping');
-  if (!Array.isArray(jsonSnapshots) || !Array.isArray(sqliteSnapshots) || jsonSnapshots.length + sqliteSnapshots.length < 1 || jsonSnapshots.length + sqliteSnapshots.length * 3 > 128) throw Error('Explicit bounded handoff snapshot list required');
-  const sources = [], jsonPlans = [], databasePlans = [], buffers = [], names = new Set(); let inputBytes = 0;
+  if (!Array.isArray(jsonSnapshots) || !Array.isArray(sqliteSnapshots) || !Array.isArray(transcriptSnapshots) || jsonSnapshots.length + sqliteSnapshots.length + transcriptSnapshots.length < 1 || jsonSnapshots.length + sqliteSnapshots.length * 3 + transcriptSnapshots.length > 128) throw Error('Explicit bounded handoff snapshot list required');
+  const sources = [], jsonPlans = [], databasePlans = [], transcriptPlans = [], buffers = [], names = new Set(); let inputBytes = 0;
   function add(path, bytes, expectedSha256, kind) {
     inputBytes += bytes.length;
     if (inputBytes > 128 * 1024 * 1024) throw Error('Disposable handoff snapshot budget exceeded');
@@ -85,6 +88,12 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
       add(`${target}-wal`, wal, input.wal.expectedSha256, 'sqlite-wal-reviewed-empty');
       add(`${target}-shm`, shm, input.shm.expectedSha256, 'sqlite-shm-reviewed-empty');
       databasePlans.push({ input, databaseKind, target, database, wal, shm });
+    }
+    for (const input of transcriptSnapshots) {
+      if (!Number.isSafeInteger(input.accountId) || input.accountId < 0 || typeof input.sessionId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(input.sessionId) || typeof input.storageDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.storageDate) || !Number.isFinite(Date.parse(input.storageDate + 'T00:00:00Z')) || new Date(input.storageDate + 'T00:00:00Z').toISOString().slice(0, 10) !== input.storageDate) throw Error('Explicit canonical local transcript account/session/date required');
+      const before = snapshot(input, 'transcript', 64 * 1024 * 1024);
+      const target = `${home}/u/${input.accountId}/sessions/${input.storageDate}_${input.sessionId}/messages.jsonl`;
+      add(target, before, input.expectedSha256, 'transcript-jsonl'); transcriptPlans.push({ input, target, before });
     }
     await scope(capability, root, transactionId, sources, 'handoff-snapshots-validated');
     const files = [], transformations = [];
@@ -116,13 +125,19 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
       files.push({ path: `${plan.target}-shm`, expectedSha256: sha(plan.shm), bytes: Buffer.alloc(0) });
       transformations.push({ path: plan.target, databaseKind: plan.databaseKind, checkpoint: checkpointed.receipt, ...(plan.databaseKind === 'provider' ? { providerMigration: migrated.receipt } : { contextLedgerMigration: migrated.receipt }), lineage: { originalMainSha256: sha(plan.database), originalWalSha256: sha(plan.wal), checkpointedMainSha256: checkpointed.receipt.outputSha256, identitySourceSha256: migrated.receipt.sourceSha256, preparedMainSha256: migrated.receipt.outputSha256, walCheckpointLineageVerified: true }, sidecars: { wal: 'reviewed-empty-replacement', shm: 'reviewed-empty-replacement', originalBackupsRequired: true } });
     }
+    for (const plan of transcriptPlans) {
+      const derivedCapability = { ...capability, assertStopped: async ({ phase }) => { await scope(capability, root, transactionId, sources, `handoff-${phase}`); return true; } };
+      const prepared = await prepareAuxTranscriptProviderIdentity({ bytes: plan.before, expectedSha256: sha(plan.before), capability: derivedCapability });
+      buffers.push(prepared.bytes); files.push({ path: plan.target, expectedSha256: sha(plan.before), bytes: prepared.bytes });
+      transformations.push({ path: plan.target, transcriptMigration: prepared.receipt });
+    }
     await scope(capability, root, transactionId, sources, 'handoff-before-journal');
     const forwarded = { ...capability, assertStopped: context => capability.assertStopped({ ...context, snapshotHashes: sources }) };
     const handle = await prepareStateMigration({ root, capability: forwarded, transactionId, files, onCheckpoint });
     const preparedFiles = files.map(file => ({ path: file.path, beforeSha256: file.expectedSha256, afterSha256: sha(file.bytes) }));
     return {
       ...handle,
-      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'queued/transcript provider reference audit', 'actual app restart acceptance'] },
+      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'typed historical tool arguments and cached assistant projections', 'actual app restart acceptance'] },
     };
   } finally { for (const bytes of buffers) bytes.fill(0); }
 }
