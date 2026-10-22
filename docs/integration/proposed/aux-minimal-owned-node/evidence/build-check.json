@@ -1,0 +1,17 @@
+{
+  "format": "aux.minimal-owned-node.fixture-check.v1",
+  "artifactSha256": "a5650e84fa1651543acf7a2780efd65ee479326a02b045f58281fa30db78013b",
+  "compiledNodeAddon": true,
+  "nodeChecks": 39,
+  "caseInsensitiveReferenceProductSubstringOccurrences": 0,
+  "externalMigrationInputsCompiled": false,
+  "legacyEnvelopeReadersCompiled": false,
+  "originalAddonExecuted": false,
+  "securityExecuted": false,
+  "softwareCryptoExecuted": true,
+  "nativeBuildSerialized": true,
+  "fixtureOnlyModuleInitializer": true,
+  "productionHostProducerProvided": false,
+  "activated": false,
+  "artifactRetained": false
+}

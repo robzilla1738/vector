@@ -51,3 +51,7 @@ The declaration-only Swift flag `AUX_RECOVERED_FRESH_DISPATCH` includes a second
 ## Optional scope-bound credential commands
 
 `AUX_SCOPED_SECURE_STORE_DISPATCH` adds only the concrete `ScopedAuxCommandContext` owner/entry constructor and optional per-instance credential core. Its private typed factory validates the terminal's exact scope/group/review binding and finite native logical-key policy; no arbitrary core/JS policy setter exists. The same acquired entry routes only secure-save/read/clear to that capability, otherwise preserving installation routing. Entry lifetime/drain applies to both. The default non-capability path additionally passed its24 checks after this factoring; scoped actual Node integration passed39 checks. See `aux-scoped-secure-dispatch` for the exact composition and remaining host authorization gaps. This flag is not a runtime admission grant.
+
+## Minimal runtime declaration graph
+
+`AUX_MINIMAL_RUNTIME_DISPATCH` selects the narrow `AuxRuntimeCapturedCommandContext` entry/owner constructor and excludes default external captured-terminal constructors. The scoped runtime factory uses the same validated runtime selection; no generic core injection or fabricated journal receipt is added. See `aux-minimal-owned-node` for the actual minimal source list,39-check real addon execution and raw compiled-byte brand scan. This declaration flag supplies no runtime authority, and default lifetime checks were not repeated for this slice.

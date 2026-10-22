@@ -15,7 +15,7 @@
   "files": [
     {
       "path": "source/ScopedAuxCommandContext.swift",
-      "sha256": "41849ea2395c6c63c7a4b0324480baa532d6ee8a8bb491838ee994c55b37d6cc"
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
     },
     {
       "path": "tests/SyntheticScopedOwner.swift",
@@ -151,5 +151,10 @@
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
       "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
     }
-  ]
+  ],
+  "minimalRuntimeComposition": {
+    "swiftFlag": "AUX_MINIMAL_RUNTIME_DISPATCH",
+    "review": "docs/integration/proposed/aux-minimal-owned-node",
+    "journalEvidenceForRuntimeMode": null
+  }
 }

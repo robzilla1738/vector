@@ -8,7 +8,7 @@
   "files": [
     {
       "path": "source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "dda41a2feb44fd50fdcc0c9855fe5887d22f1703f93b31eb8c11694a687f3f79"
+      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569"
     },
     {
       "path": "source/aux-owned-command-dispatcher.h",
@@ -117,6 +117,12 @@
   "optionalScopedSecureStoreComposition": {
     "swiftFlag": "AUX_SCOPED_SECURE_STORE_DISPATCH",
     "review": "docs/integration/proposed/aux-scoped-secure-dispatch",
+    "runtimeAdmissionGranted": false
+  },
+  "minimalRuntimeComposition": {
+    "swiftFlag": "AUX_MINIMAL_RUNTIME_DISPATCH",
+    "review": "docs/integration/proposed/aux-minimal-owned-node",
+    "externalCapturedConstructorsExcluded": true,
     "runtimeAdmissionGranted": false
   }
 }

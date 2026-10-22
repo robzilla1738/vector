@@ -17,12 +17,22 @@ final class AuxCommandDispatcherRegistry {
         let execution=NSLock() // Serialize operations on one imported authority.
         var phase=Phase.open
         var active=0
+#if !AUX_MINIMAL_RUNTIME_DISPATCH
         init(_ context:CapturedTerminalCommandContext){
             core=context.core
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
             secureStore=nil
 #endif
         }
+#endif
+#if AUX_MINIMAL_RUNTIME_DISPATCH
+        init(_ context:AuxRuntimeCapturedCommandContext){
+            core=context.core
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+            secureStore=nil
+#endif
+        }
+#endif
 #if AUX_RECOVERED_FRESH_DISPATCH
         init(_ context:RecoveredFreshTerminalCommandContext){
             core=context.core
@@ -40,9 +50,14 @@ final class AuxCommandDispatcherRegistry {
     private var next:UInt64=1
     private let threadKey="aux.native.dispatcher.active-handles.v1"
     private init(){}
+#if !AUX_MINIMAL_RUNTIME_DISPATCH
     fileprivate func install(_ context:CapturedTerminalCommandContext)throws->UInt64 {
         try insert(Entry(context))
     }
+#endif
+#if AUX_MINIMAL_RUNTIME_DISPATCH
+    fileprivate func install(_ context:AuxRuntimeCapturedCommandContext)throws->UInt64 {try insert(Entry(context))}
+#endif
 #if AUX_RECOVERED_FRESH_DISPATCH
     fileprivate func install(_ context:RecoveredFreshTerminalCommandContext)throws->UInt64 {
         try insert(Entry(context))
@@ -128,9 +143,16 @@ final class AuxCommandDispatcherRegistry {
 // context. No C/JS factory accepts scope, JSON rows or arbitrary core callbacks.
 final class AuxOwnedCommandDispatcher {
     let handle:UInt64
+#if !AUX_MINIMAL_RUNTIME_DISPATCH
     init(capturedTerminal:CapturedTerminalCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(capturedTerminal)
     }
+#endif
+#if AUX_MINIMAL_RUNTIME_DISPATCH
+    init(runtimeCaptured:AuxRuntimeCapturedCommandContext)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(runtimeCaptured)
+    }
+#endif
 #if AUX_RECOVERED_FRESH_DISPATCH
     // Declaration composition only: the sealed type validates actual recovered
     // terminal evidence. This flag supplies no runtime admission or bypass.

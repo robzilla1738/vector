@@ -39,3 +39,7 @@ The default non-capability lifetime build separately passed its24 software/C ABI
 ## Remaining boundary
 
 The production trusted host, finite account/session/MCP key-policy producer, all-writer custody, signer/provisioning approval, current row ownership, actual Security execution and explicit existing-record migration remain separate work/authorization. Root's minimal runtime-capture type can receive another narrow typed factory later; this composition does not pull legacy migration fallback into a production entrypoint. Original PDF/OS addon routes remain separate and untouched. No product-readiness or native activation claim is made.
+
+## Narrow minimal runtime factory
+
+With `AUX_MINIMAL_RUNTIME_DISPATCH`, external captured/migration factory declarations are excluded and `.runtime(terminal:AuxRuntimeCapturedCommandContext,policy:boundary:)` is available. It binds the exact selection's four fixed targets, scope/group, public authority and target hashes; records generation/selection digest; and leaves transaction/journal/security-review fields nil. Those fields are now optional specifically to avoid presenting a runtime selection as a durable migration receipt. Existing modes still fill their actual fields. The private constructor, immutable finite key policy, physical selector separation and admission-false evidence remain unchanged. Exact minimal compilation/Node/byte-scan evidence is in `aux-minimal-owned-node`.
