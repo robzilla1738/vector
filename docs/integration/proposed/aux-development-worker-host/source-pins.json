@@ -1,6 +1,6 @@
 {
   "format": "aux.development.worker.host.source.v1",
-  "baseCommit": "b8c579a65",
+  "baseCommit": "b74056977",
   "requiredOSCustodyCommit": "b8c579a65",
   "files": [
     {
@@ -33,11 +33,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
-      "sha256": "df6b9637777576e710606472291453bb80be13ce04a9f2712bc6d2ab45800ac3"
+      "sha256": "543012ef79d269920565f4002a1027791be1d3e41288c620564065ee2d0e67d0"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
-      "sha256": "93f586278d25325221f562089a08ba8db12f8b97af63b531abbf6f4f9a3c50df"
+      "sha256": "287b5667f40d45d4f905f71ddf6ba37ca136ad72f41cefaa7abb05ee47b37956"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
@@ -45,7 +45,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
-      "sha256": "8482d39f0c0a641fe72b97feb25e08e1267a815f62dde503023b4110472e7cdf"
+      "sha256": "750de61feb31600dd1d89821105d71d86571394cbfb9717045278ffa2d254d51"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
@@ -57,15 +57,15 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/tests/main.swift",
-      "sha256": "33b0901ab2ce132b5b5ec1109b2b0f312de97460c4abf8fa7f3001faa2192f96"
+      "sha256": "c77601451c06ea2b4120851a1a7e8f162fd98236fcddfae22a8e0063b3ddcb1d"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/build.sh",
-      "sha256": "7369ffedb559a68078e893bffa8cdeb61a62c49939eaca38d6aef087a33da267"
+      "sha256": "2d69829c63dab07d752ff5d704343025a22746536e332e37c590cc280826812c"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/check.mjs",
-      "sha256": "ed6808ea16c91b0bd09beebbc3802e3349e501f2d10ff8dff5471c9028bd71a2"
+      "sha256": "dda0d2d8aadfeed35c7ec0373f6a98be68b756c6b0338cb039880aed76a21c9f"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
@@ -166,6 +166,21 @@
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/tests/fixture-module.cc",
       "sha256": "d7c7b5337e211178fab938df9509f71a4b8a7f50bba783277f8e410e5b53600d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/tests/check-build-modes.mjs",
+      "sha256": "e5cd1cb730ccbfb787b7293313495857d91f6141f0c3dbbf59dfee652df7fba9"
     }
-  ]
+  ],
+  "reviewedDependencyUpdate": {
+    "commit": "b74056977",
+    "paths": [
+      "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "docs/integration/proposed/aux-development-host/build.sh",
+      "docs/integration/proposed/aux-development-host/tests/main.swift"
+    ],
+    "reason": "Explicit signed optional-PDF image policy successor plus unconditional pure OS result compiler dependency; actual composed production-only compile, no lifecycle rerun.",
+    "historicalUnexecutedPublicFixtureNote": "Parent policy proposal added captured PDF-policy cases in b74056977; this dependency is pinned for source-list consistency but not compiled/executed by the composed production-only mode."
+  }
 }

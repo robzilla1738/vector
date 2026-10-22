@@ -21,4 +21,9 @@ assert(cc.includes('return status == napi_ok && closed ? napi_closing : status;'
 assert(swift.includes('closeOSAdmissionAndDrain(timeout:0)'));assert(swift.includes('case .notPresent,.drained:return 0'));assert(swift.includes('case .untracked:return 2'));
 const evidence=JSON.parse(await readFile(path.join(here,'evidence/check.json')));
 assert.equal(evidence.productionSourceCompiled,true);assert.equal(evidence.signedLoaderExecuted,false);assert.equal(evidence.actualSecurityCalls,0);assert(evidence.actualNodeLifecycleChecks>=23);assert.equal(evidence.state2Authorized,false);
+const compiled=JSON.parse(await readFile(path.join(here,'evidence/compile-only.json')));
+assert.equal(compiled.mode,'--compile-only');assert.equal(compiled.productionSourceCompiled,true);
+assert.equal(compiled.actualTranslationUnits,compiled.swiftTranslationUnits+compiled.cppTranslationUnits);
+assert.equal(compiled.lifecycleChecksRun,0);assert.equal(compiled.fixtureCompiled,false);assert.equal(compiled.historicalLifecycleEvidenceUpdated,false);
+assert.equal(compiled.productionArtifactLoaded,false);assert.equal(compiled.actualSecurityCalls,0);assert.equal(compiled.state2Authorized,false);
 console.log(`PASS ${pins.files.length} exact source pins; native callback/lifetime source and recorded bounded evidence`);
