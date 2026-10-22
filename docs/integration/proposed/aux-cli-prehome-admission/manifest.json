@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "scope": "new packaged CLI wrapper before-home admission only",
+  "compiled": false,
+  "runtimeTested": false,
+  "allWritersVerified": false,
+  "files": [
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "action": "modify",
+      "baselineSha256": "efcf3feff62575db879be9c913f91aa0c5d26c9309b553c6970497e87da8d436",
+      "outputSha256": "a7f5e0c0c58c144bc5901f15a8786c034ffb55873408d7a8a7f8129479b95f35"
+    },
+    {
+      "path": "vendor/provided/native/packaged-identity-admission-test.mm",
+      "action": "add",
+      "baselineSha256": null,
+      "outputSha256": "e8e262271742ff98268865d3875ce31f842a74766a06e380dbc43c03bef7227f"
+    },
+    {
+      "path": "vendor/provided/native/packaged-identity-admission.h",
+      "action": "add",
+      "baselineSha256": null,
+      "outputSha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a"
+    }
+  ],
+  "patchSha256": "1aaebc3d4ad260782676658f699fd250abbb659b534ab08dc47bf46f1eb42e56",
+  "browserPolicy": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/app/aux_packaged_state_identity.h",
+    "sha256": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7"
+  },
+  "browserDepth": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/json/json_common.h",
+    "sha256": "f5d9250aa18fb4952b31842afebbfdac72c5e2cdc92917ce2a7438180ca75bd7",
+    "maximum": 200
+  }
+}

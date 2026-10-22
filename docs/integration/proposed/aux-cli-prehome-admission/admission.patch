@@ -1,0 +1,350 @@
+--- a/vendor/provided/native/cli-launcher.mm
++++ b/vendor/provided/native/cli-launcher.mm
+@@ -1,5 +1,6 @@
+ // Native exec boundary only. The sibling SEA remains the supplied CLI.
+ #include <CommonCrypto/CommonDigest.h>
++#include "packaged-identity-admission.h"
+ #include <mach-o/dyld.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
+@@ -32,6 +33,9 @@
+   if (self.size() <= suffix.size() || self.compare(self.size() - suffix.size(), suffix.size(), suffix))
+     return Fail("Unexpected Aux CLI bundle layout");
+   const std::string root = self.substr(0, self.size() - suffix.size());
++  // Match browser admission before reading or creating any mutable home.
++  if (!aux::packaged_identity::MarkerAllowedAt(root + "/bundle.json"))
++    return Fail("Aux packaged state identity is unsupported or unaccepted");
+   const std::string sea = root + "/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea";
+   const std::string boundary = root + "/native/libaux-native-boundary.dylib";
+   if (!Regular(sea) || !Canonical(sea) || access(sea.c_str(), X_OK) || !Regular(boundary) || !Canonical(boundary))
+--- /dev/null
++++ b/vendor/provided/native/packaged-identity-admission-test.mm
+@@ -0,0 +1,98 @@
++// Synthetic immutable markers/private files only. No wrapper exec or Aux home.
++#include "packaged-identity-admission.h"
++#include <cstdio>
++#include <vector>
++namespace {
++struct Case { const char* name; std::string json; bool allowed; };
++bool Write(const std::string& path, const std::string& bytes) {
++  int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
++  if (fd < 0) return false;
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    const ssize_t size = write(fd, bytes.data() + offset, bytes.size() - offset);
++    if (size <= 0) { close(fd); return false; }
++    offset += static_cast<size_t>(size);
++  }
++  return close(fd) == 0;
++}
++}
++int main() {
++  @autoreleasepool {
++    const std::string valid = R"({"version":1,"implementation":"supplied"})";
++    const std::vector<Case> cases = {
++      {"defaults", valid, true},
++      {"compatibility", R"({"version":1,"implementation":"supplied","identityProfile":"compatibility","stateIdentityVersion":1})", true},
++      {"aux-v1", R"({"version":1,"implementation":"supplied","identityProfile":"aux-v1","stateIdentityVersion":1})", true},
++      {"nested-state-ignored", R"({"version":1,"implementation":"supplied","metadata":{"stateIdentityVersion":2}})", true},
++      {"nested-duplicates-not-top-level", R"({"version":1,"implementation":"supplied","metadata":{"x":1,"x":2}})", true},
++      {"extra-acceptance-not-authority", R"({"version":1,"implementation":"supplied","accepted":true,"stateIdentityVersion":2})", false},
++      {"state2", R"({"version":1,"implementation":"supplied","stateIdentityVersion":2})", false},
++      {"unknown-state", R"({"version":1,"implementation":"supplied","stateIdentityVersion":3})", false},
++      {"state-string", R"({"version":1,"implementation":"supplied","stateIdentityVersion":"1"})", false},
++      {"state-bool", R"({"version":1,"implementation":"supplied","stateIdentityVersion":true})", false},
++      {"state-null", R"({"version":1,"implementation":"supplied","stateIdentityVersion":null})", false},
++      {"state-array", R"({"version":1,"implementation":"supplied","stateIdentityVersion":[1]})", false},
++      {"state-float", R"({"version":1,"implementation":"supplied","stateIdentityVersion":1.0})", false},
++      {"state-exponent", R"({"version":1,"implementation":"supplied","stateIdentityVersion":1e0})", false},
++      {"version-float", R"({"version":1.0,"implementation":"supplied"})", false},
++      {"version-bool", R"({"version":true,"implementation":"supplied"})", false},
++      {"version-missing", R"({"implementation":"supplied"})", false},
++      {"wrong-implementation", R"({"version":1,"implementation":"other"})", false},
++      {"implementation-type", R"({"version":1,"implementation":1})", false},
++      {"unknown-profile", R"({"version":1,"implementation":"supplied","identityProfile":"aux-v2"})", false},
++      {"profile-null", R"({"version":1,"implementation":"supplied","identityProfile":null})", false},
++      {"profile-number", R"({"version":1,"implementation":"supplied","identityProfile":1})", false},
++      {"duplicate-state", R"({"version":1,"implementation":"supplied","stateIdentityVersion":2,"stateIdentityVersion":1})", false},
++      {"escaped-duplicate-state", R"({"version":1,"implementation":"supplied","state\u0049dentityVersion":2,"stateIdentityVersion":1})", false},
++      {"escaped-duplicate-version", R"({"v\u0065rsion":1,"version":1,"implementation":"supplied"})", false},
++      {"duplicate-unknown-key", R"({"version":1,"implementation":"supplied","x":1,"x":2})", false},
++      {"duplicate-empty-key", R"({"version":1,"implementation":"supplied","":1,"":2})", false},
++      {"nul-in-unknown-key", R"({"version":1,"implementation":"supplied","stateIdentityVersion\u0000extra":2})", true},
++      {"braces-in-string", R"({"version":1,"implementation":"supplied","note":"} [ \"quoted\""})", true},
++      {"trailing-comma", R"({"version":1,"implementation":"supplied",})", false},
++      {"nested-trailing-comma", R"({"version":1,"implementation":"supplied","x":[1,]})", false},
++      {"comment", R"({"version":1,/*x*/"implementation":"supplied"})", false},
++      {"trailing-document", valid + "{}", false},
++      {"leading-zero", R"({"version":1,"implementation":"supplied","x":01})", false},
++      {"invalid-number", R"({"version":1,"implementation":"supplied","x":NaN})", false},
++      {"array-root", "[]", false},
++      {"string-root", "\"test\"", false},
++      {"empty", "", false},
++      {"utf8-bom", std::string("\xEF\xBB\xBF") + valid, false},
++      {"invalid-utf8", std::string("{\"version\":1,\"implementation\":\"supplied\",\"x\":\"") + char(0xff) + "\"}", false},
++      {"oversized", std::string(aux::packaged_identity::kMaxMarkerBytes + 1, ' '), false},
++    };
++    for (const auto& item : cases) {
++      if (aux::packaged_identity::MarkerAllowed(item.json) != item.allowed) {
++        std::fprintf(stderr, "Marker policy failed: %s\n", item.name); return 1;
++      }
++    }
++    char temporary[] = "/tmp/aux-marker-fixture-XXXXXX";
++    if (!mkdtemp(temporary)) return 2;
++    char canonical[PATH_MAX];
++    if (!realpath(temporary, canonical)) return 2;
++    const std::string root(canonical), marker = root + "/bundle.json";
++    size_t files = 0;
++    auto expect = [&](bool actual, bool expected) {
++      ++files; return actual == expected;
++    };
++    if (!Write(marker, valid) ||
++        !expect(aux::packaged_identity::MarkerAllowedAt(marker), true)) return 3;
++    if (symlink(marker.c_str(), (root + "/alias").c_str()) ||
++        !expect(aux::packaged_identity::MarkerAllowedAt(root + "/alias"), false)) return 3;
++    if (link(marker.c_str(), (root + "/hardlink").c_str()) ||
++        !expect(aux::packaged_identity::MarkerAllowedAt(marker), false)) return 3;
++    unlink((root + "/hardlink").c_str());
++    if (chmod(marker.c_str(), 0620) ||
++        !expect(aux::packaged_identity::MarkerAllowedAt(marker), false)) return 3;
++    chmod(marker.c_str(), 0600);
++    if (mkfifo((root + "/fifo").c_str(), 0600) ||
++        !expect(aux::packaged_identity::MarkerAllowedAt(root + "/fifo"), false)) return 3;
++    if (!expect(aux::packaged_identity::MarkerAllowedAt(root + "/missing"), false)) return 3;
++    if (!expect(aux::packaged_identity::MarkerAllowedAt("relative/bundle.json"), false)) return 3;
++    unlink((root + "/alias").c_str()); unlink((root + "/fifo").c_str());
++    unlink(marker.c_str()); rmdir(root.c_str());
++    std::printf("{\"policyCases\":%zu,\"syntheticFileCases\":%zu,\"allWritersVerified\":false}\n", cases.size(), files);
++    return 0;
++  }
++}
+--- /dev/null
++++ b/vendor/provided/native/packaged-identity-admission.h
+@@ -0,0 +1,227 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Read-only immutable bundle admission. Never inspects a mutable Aux home.
++#ifndef AUX_PROVIDED_PACKAGED_IDENTITY_ADMISSION_H_
++#define AUX_PROVIDED_PACKAGED_IDENTITY_ADMISSION_H_
++#import <Foundation/Foundation.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <cstdint>
++#include <cstdlib>
++#include <set>
++#include <string>
++#include <string_view>
++namespace aux::packaged_identity {
++constexpr size_t kMaxMarkerBytes = 16 * 1024 * 1024;
++inline bool Whitespace(char ch) {
++  return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
++}
++// Constrain Foundation's parser to RFC JSON syntax (no comments, trailing
++// commas, fragments, invalid number tokens or extra trailing documents).
++class StrictJsonSyntax {
++ public:
++  explicit StrictJsonSyntax(std::string_view input) : input_(input) {}
++  bool Valid() {
++    Skip();
++    if (!Value(0)) return false;
++    Skip();
++    return offset_ == input_.size();
++  }
++ private:
++  void Skip() { while (offset_ < input_.size() && Whitespace(input_[offset_])) ++offset_; }
++  bool Take(char ch) {
++    if (offset_ == input_.size() || input_[offset_] != ch) return false;
++    ++offset_; return true;
++  }
++  bool String() {
++    if (!Take('"')) return false;
++    while (offset_ < input_.size()) {
++      const unsigned char ch = input_[offset_++];
++      if (ch == '"') return true;
++      if (ch < 0x20) return false;
++      if (ch != '\\') continue;
++      if (offset_ == input_.size()) return false;
++      const char escape = input_[offset_++];
++      if (escape == 'u') {
++        for (int count = 0; count < 4; ++count) {
++          if (offset_ == input_.size()) return false;
++          const char digit = input_[offset_++];
++          if (!((digit >= '0' && digit <= '9') ||
++                (digit >= 'a' && digit <= 'f') ||
++                (digit >= 'A' && digit <= 'F'))) return false;
++        }
++      } else if (std::string_view("\"\\/bfnrt").find(escape) == std::string_view::npos) {
++        return false;
++      }
++    }
++    return false;
++  }
++  bool Digits() {
++    const size_t start = offset_;
++    while (offset_ < input_.size() && input_[offset_] >= '0' && input_[offset_] <= '9') ++offset_;
++    return offset_ != start;
++  }
++  bool Number() {
++    Take('-');
++    if (!Take('0')) {
++      if (offset_ == input_.size() || input_[offset_] < '1' || input_[offset_] > '9' || !Digits()) return false;
++    }
++    if (Take('.') && !Digits()) return false;
++    if (Take('e') || Take('E')) {
++      if (!Take('+')) Take('-');
++      if (!Digits()) return false;
++    }
++    return true;
++  }
++  bool Value(unsigned depth) {
++    Skip();
++    if (offset_ == input_.size()) return false;
++    const char ch = input_[offset_];
++    if (ch == '{' || ch == '[') {
++      if (depth >= 200) return false;
++      ++offset_;
++      const char end = ch == '{' ? '}' : ']';
++      Skip(); if (Take(end)) return true;
++      for (;;) {
++        if (ch == '{') { Skip(); if (!String()) return false; Skip(); if (!Take(':')) return false; }
++        if (!Value(depth + 1)) return false;
++        Skip(); if (Take(end)) return true;
++        if (!Take(',')) return false;
++      }
++    }
++    if (ch == '"') return String();
++    for (const auto token : {std::string_view("true"), std::string_view("false"), std::string_view("null")}) {
++      if (input_.substr(offset_, token.size()) == token) { offset_ += token.size(); return true; }
++    }
++    return Number();
++  }
++  const std::string_view input_;
++  size_t offset_ = 0;
++};
++inline bool MarkerAllowed(std::string_view json) {
++  @autoreleasepool {
++    if (json.empty() || json.size() > kMaxMarkerBytes ||
++        json.substr(0, 3) == "\xEF\xBB\xBF") return false;
++    if (!StrictJsonSyntax(json).Valid()) return false;
++    NSData* data = [NSData dataWithBytes:json.data() length:json.size()];
++    // Foundation also supports other JSON encodings. The browser accepts UTF-8;
++    // reject any encoding conversion or invalid UTF-8 instead of broadening it.
++    NSString* utf8 = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
++    if (!utf8 || ![[utf8 dataUsingEncoding:NSUTF8StringEncoding] isEqualToData:data])
++      return false;
++    id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
++    if (![object isKindOfClass:[NSDictionary class]]) return false;
++    NSDictionary* marker = object;
++    std::set<std::string> keys;
++    std::string version_token, state_token;
++    bool has_version_token = false, has_state_token = false;
++    int depth = 0;
++    // JSON parsing validates structure. This second pass rejects duplicate
++    // decoded TOP-LEVEL keys (including escaped spellings), which Foundation
++    // otherwise resolves by selecting a value. It also retains exact numeric
++    // lexemes so 1.0, 1e0, strings and booleans cannot masquerade as an int.
++    for (size_t index = 0; index < json.size(); ++index) {
++      const char ch = json[index];
++      if (ch == '"') {
++        const size_t start = index++;
++        while (index < json.size()) {
++          if (json[index] == '\\') { index += 2; continue; }
++          if (json[index] == '"') break;
++          ++index;
++        }
++        if (index >= json.size()) return false;
++        size_t next = index + 1;
++        while (next < json.size() && Whitespace(json[next])) ++next;
++        if (depth == 1 && next < json.size() && json[next] == ':') {
++          NSData* encoded_key = [NSData dataWithBytes:json.data() + start
++                                               length:index - start + 1];
++          id decoded = [NSJSONSerialization JSONObjectWithData:encoded_key
++                   options:NSJSONReadingFragmentsAllowed error:nil];
++          if (![decoded isKindOfClass:[NSString class]]) return false;
++          NSData* decoded_bytes = [decoded dataUsingEncoding:NSUTF8StringEncoding];
++          if (!decoded_bytes) return false;
++          std::string key;
++          if (decoded_bytes.length) key.assign(
++              static_cast<const char*>(decoded_bytes.bytes), decoded_bytes.length);
++          if (!keys.insert(key).second) return false;
++          if (key == "version" || key == "stateIdentityVersion") {
++            size_t value_start = next + 1;
++            while (value_start < json.size() && Whitespace(json[value_start]))
++              ++value_start;
++            size_t value_end = value_start;
++            while (value_end < json.size() && !Whitespace(json[value_end]) &&
++                   json[value_end] != ',' && json[value_end] != '}' &&
++                   json[value_end] != ']') ++value_end;
++            const std::string token(json.substr(value_start, value_end - value_start));
++            if (key == "version") {
++              version_token = token;
++              has_version_token = true;
++            } else {
++              state_token = token;
++              has_state_token = true;
++            }
++          }
++        }
++      } else if (ch == '{' || ch == '[') {
++        ++depth;
++      } else if (ch == '}' || ch == ']') {
++        --depth;
++      }
++    }
++    if (!has_version_token || version_token != "1" ||
++        ![marker[@"version"] isKindOfClass:[NSNumber class]]) return false;
++    id implementation = marker[@"implementation"];
++    if (![implementation isKindOfClass:[NSString class]] ||
++        ![implementation isEqualToString:@"supplied"]) return false;
++    id profile = marker[@"identityProfile"];
++    if (profile && ![profile isKindOfClass:[NSString class]]) return false;
++    if (profile && ![profile isEqualToString:@"compatibility"] &&
++        ![profile isEqualToString:@"aux-v1"]) return false;
++    id state = marker[@"stateIdentityVersion"];
++    if (state && (![state isKindOfClass:[NSNumber class]] ||
++                  !has_state_token || state_token != "1")) return false;
++    // No acceptance record, environment or process switch can authorize state2.
++    return true;
++  }
++}
++inline bool SameMetadata(const struct stat& before, const struct stat& after) {
++  return before.st_dev == after.st_dev && before.st_ino == after.st_ino &&
++      before.st_size == after.st_size && before.st_mode == after.st_mode &&
++      before.st_uid == after.st_uid && before.st_nlink == after.st_nlink &&
++      before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec &&
++      before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec &&
++      before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec &&
++      before.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec;
++}
++inline bool MarkerAllowedAt(const std::string& path) {
++  if (path.empty() || path[0] != '/' || path.find('\0') != std::string::npos)
++    return false;
++  char canonical[PATH_MAX];
++  if (!realpath(path.c_str(), canonical) || path != canonical) return false;
++  struct ScopedFd {
++    explicit ScopedFd(int value) : value(value) {}
++    ~ScopedFd() { if (value >= 0) close(value); }
++    int value;
++  } fd(open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK));
++  struct stat before, after;
++  if (fd.value < 0 || fstat(fd.value, &before) || !S_ISREG(before.st_mode) ||
++      (before.st_uid != getuid() && before.st_uid != 0) ||
++      (before.st_mode & 0022) || before.st_nlink != 1 || before.st_size <= 0 ||
++      static_cast<uint64_t>(before.st_size) > kMaxMarkerBytes) return false;
++  std::string bytes(static_cast<size_t>(before.st_size), '\0');
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    const ssize_t size = read(fd.value, bytes.data() + offset, bytes.size() - offset);
++    if (size < 0 && errno == EINTR) continue;
++    if (size <= 0) return false;
++    offset += static_cast<size_t>(size);
++  }
++  char extra;
++  if (read(fd.value, &extra, 1) != 0 || fstat(fd.value, &after) ||
++      !SameMetadata(before, after)) return false;
++  return MarkerAllowed(bytes);
++}
++}  // namespace aux::packaged_identity
++#endif
