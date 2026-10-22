@@ -56,6 +56,7 @@ const builtFramework=nativeReceipt.files.find(item=>item.path==='Aux.app/Content
 assert.equal(builtFramework?.sha256,expected.framework);
 const packageReceipt=JSON.parse(await readFile(path.join(path.dirname(app),'package.json'),'utf8'));
 assert.equal(packageReceipt.signed,false);assert.equal(packageReceipt.productionReady,false);assert.equal(packageReceipt.stateIdentityVersion,2);
+assert.equal(packageReceipt.identityEvidence?.coldEntryQuarantineChecked,true);
 assert.equal(await hashFile(process.execPath),expected.node,'Use actual pinned packaged Node');
 for(const [file,digest]of[[loader,expected.loader],[pinFile,expected.pins],[moduleFile,expected.module]]){await regular(file);assert.equal(await hashFile(file),digest);}
 assert.equal((await lstat(moduleFile)).size,expected.moduleBytes);
