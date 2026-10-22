@@ -1,6 +1,6 @@
 {
   "format": "aux.development.worker.host.source.v1",
-  "baseCommit": "d3b72ce4b",
+  "baseCommit": "5a362a087",
   "requiredOSCustodyCommit": "b8c579a65",
   "files": [
     {
@@ -37,7 +37,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
-      "sha256": "287b5667f40d45d4f905f71ddf6ba37ca136ad72f41cefaa7abb05ee47b37956"
+      "sha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
@@ -45,7 +45,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
-      "sha256": "750de61feb31600dd1d89821105d71d86571394cbfb9717045278ffa2d254d51"
+      "sha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
@@ -125,7 +125,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
     },
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
@@ -161,7 +161,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
-      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/tests/fixture-module.cc",
@@ -204,5 +204,35 @@
     "path": "docs/integration/proposed/aux-worker-os-compile/evidence/compile-only.json",
     "sha256": "5df40b857ce38b023e53d2023ae0fb95509a9b12000ff9676fa062ba7437aa3d",
     "historicalLifecycleEvidenceUpdated": false
+  },
+  "reviewedCurrentHostCompilation": {
+    "changedPins": [
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+        "previousSha256": "287b5667f40d45d4f905f71ddf6ba37ca136ad72f41cefaa7abb05ee47b37956",
+        "sha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa",
+        "reviewedCommit": "28c5f86e2"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+        "previousSha256": "750de61feb31600dd1d89821105d71d86571394cbfb9717045278ffa2d254d51",
+        "sha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd",
+        "reviewedCommit": "28c5f86e2"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+        "previousSha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e",
+        "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252",
+        "reviewedCommit": "f70d73897"
+      },
+      {
+        "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+        "previousSha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
+        "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664",
+        "reviewedCommit": "f70d73897"
+      }
+    ],
+    "additionalTranslationUnits": 0,
+    "reason": "Source-known credential key families and sealed host-policy v3, no worker lifecycle source changes; current production-only compile receipt is separate from historical runtime fixtures."
   }
 }
