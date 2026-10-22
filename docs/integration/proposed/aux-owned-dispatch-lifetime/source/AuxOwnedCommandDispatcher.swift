@@ -11,12 +11,28 @@ final class AuxCommandDispatcherRegistry {
     private enum Phase { case open,retiring,closed }
     private final class Entry {
         let core:AuxInstallationCommandCore
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+        let secureStore:AuxSecureStoreCommandCore?
+#endif
         let execution=NSLock() // Serialize operations on one imported authority.
         var phase=Phase.open
         var active=0
-        init(_ context:CapturedTerminalCommandContext){core=context.core}
+        init(_ context:CapturedTerminalCommandContext){
+            core=context.core
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+            secureStore=nil
+#endif
+        }
 #if AUX_RECOVERED_FRESH_DISPATCH
-        init(_ context:RecoveredFreshTerminalCommandContext){core=context.core}
+        init(_ context:RecoveredFreshTerminalCommandContext){
+            core=context.core
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+            secureStore=nil
+#endif
+        }
+#endif
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+        init(_ context:ScopedAuxCommandContext){core=context.installation;secureStore=context.secureStore}
 #endif
     }
     private let condition=NSCondition()
@@ -32,6 +48,9 @@ final class AuxCommandDispatcherRegistry {
         try insert(Entry(context))
     }
 #endif
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+    fileprivate func install(_ context:ScopedAuxCommandContext)throws->UInt64 {try insert(Entry(context))}
+#endif
     private func insert(_ entry:Entry)throws->UInt64 {
         condition.lock();defer{condition.unlock()}
         guard next<UInt64.max else{throw AuxDispatcherLifetimeError.exhaustedHandles}
@@ -39,6 +58,21 @@ final class AuxCommandDispatcherRegistry {
     }
     // Trusted in-process operation seam. Scope is not an action argument.
     func withContext<T>(_ handle:UInt64,_ action:(AuxInstallationCommandCore)throws->T)throws->T {
+        try withEntry(handle){try action($0.core)}
+    }
+    fileprivate func withCommandHandler<T>(_ handle:UInt64,_ action:((String,String)->String)throws->T)throws->T {
+        try withEntry(handle){entry in
+            try action({command,input in
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+                if let secure=entry.secureStore,["secure-save","secure-read","secure-clear"].contains(command) {
+                    return secure.run(command:command,input:input)
+                }
+#endif
+                return entry.core.run(command:command,input:input)
+            })
+        }
+    }
+    private func withEntry<T>(_ handle:UInt64,_ action:(Entry)throws->T)throws->T {
         let threadActive=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
         guard threadActive[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantCall}
         condition.lock()
@@ -61,7 +95,7 @@ final class AuxCommandDispatcherRegistry {
             }
             condition.broadcast();condition.unlock()
         }
-        return try action(entry.core)
+        return try action(entry)
     }
     // Owner destruction cannot wait on its own lease; close now and let the
     // last acquired operation remove the entry. No further acquisition succeeds.
@@ -104,6 +138,11 @@ final class AuxOwnedCommandDispatcher {
         handle=try AuxCommandDispatcherRegistry.shared.install(recoveredFreshTerminal)
     }
 #endif
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+    init(scopedTerminal:ScopedAuxCommandContext)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal)
+    }
+#endif
     func retire()throws{try AuxCommandDispatcherRegistry.shared.retire(handle)}
     deinit{AuxCommandDispatcherRegistry.shared.closeOwner(handle)}
 }
@@ -133,10 +172,10 @@ private func dispatcherString(_ pointer:UnsafePointer<UInt8>?,_ length:Int,_ max
 func auxNativeContextRun(_ handle:UInt64,_ command:UnsafePointer<UInt8>?,_ commandLength:Int,
                          _ input:UnsafePointer<UInt8>?,_ inputLength:Int)->UnsafeMutablePointer<CChar>? {
     do {
-        return try AuxCommandDispatcherRegistry.shared.withContext(handle){core in
+        return try AuxCommandDispatcherRegistry.shared.withCommandHandler(handle){run in
             let name=try dispatcherString(command,commandLength,128)
             let value=try dispatcherString(input,inputLength,16_384)
-            return dispatcherCString(core.run(command:name,input:value))
+            return dispatcherCString(run(name,value))
         }
     }catch{return dispatcherError(error)}
 }

@@ -8,7 +8,7 @@
   "files": [
     {
       "path": "source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "e4c00045cc5f4283218ded2319e0f5d43c0e906bd6ec747976b2c4b3a368fdcc"
+      "sha256": "dda41a2feb44fd50fdcc0c9855fe5887d22f1703f93b31eb8c11694a687f3f79"
     },
     {
       "path": "source/aux-owned-command-dispatcher.h",
@@ -112,6 +112,11 @@
   "optionalRecoveredFreshDeclarationComposition": {
     "swiftFlag": "AUX_RECOVERED_FRESH_DISPATCH",
     "review": "docs/integration/proposed/aux-recovered-fresh-owned-handoff",
+    "runtimeAdmissionGranted": false
+  },
+  "optionalScopedSecureStoreComposition": {
+    "swiftFlag": "AUX_SCOPED_SECURE_STORE_DISPATCH",
+    "review": "docs/integration/proposed/aux-scoped-secure-dispatch",
     "runtimeAdmissionGranted": false
   }
 }

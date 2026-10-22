@@ -1,0 +1,87 @@
+// Inactive native-only capability pairing. No JS factory or runtime admission.
+import Foundation
+import CryptoKit
+
+enum ScopedAuxCommandContextError:Error {case binding,scope,logicalPolicy}
+struct ImmutableAuxLogicalKeyPolicy {
+    fileprivate let keys:Set<String>
+    let sha256:String
+    init(allowedLogicalKeys:Set<String>)throws {
+        guard !allowedLogicalKeys.isEmpty,allowedLogicalKeys.count<=1024,
+              allowedLogicalKeys.allSatisfy({!$0.isEmpty && $0.utf8.count<=512 && !$0.utf8.contains(0)}) else{throw ScopedAuxCommandContextError.logicalPolicy}
+        keys=allowedLogicalKeys
+        // Canonical exact UTF8 bytes; no Unicode normalization or raw-key receipt.
+        let encoded=allowedLogicalKeys.map{Data($0.utf8)}.sorted{$0.lexicographicallyPrecedes($1)}.map{$0.base64EncodedString()}
+        sha256=SHA256.hash(data:try JSONSerialization.data(withJSONObject:["format":"aux.secure.logical-key-policy.v1","utf8Base64":encoded],options:[.sortedKeys,.withoutEscapingSlashes])).map{String(format:"%02x",$0)}.joined()
+    }
+}
+struct ScopedAuxCommandEvidence {
+    let mode:String;let transactionId:String;let journalSha256:String
+    let installationBindingsSha256:String;let scope:String;let accessGroupSha256:String
+    let logicalKeyPolicySha256:String;let securityReviewSha256:String?
+    let runtimeAdmissionVerified=false
+}
+struct ScopedAuxCommandContext {
+    let installation:AuxInstallationCommandCore
+    let secureStore:AuxSecureStoreCommandCore
+    let evidence:ScopedAuxCommandEvidence
+    private struct Selector {let service:String;let account:String;let group:String}
+    private init(installation:AuxInstallationCommandCore,mode:String,transactionId:String,journal:String,
+                 bindingHash:String,selectors:[Selector],expectedScope:String?,securityReview:String?,reserved:[Selector]=[],
+                 policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws {
+        guard selectors.count==4,let first=selectors.first else{throw ScopedAuxCommandContextError.binding}
+        func prefix(_ value:String)throws->String {
+            let parts=value.split(separator:".",omittingEmptySubsequences:false)
+            guard parts.count>=3,parts[0]=="aux",parts[1].utf8.count==64,
+                  parts[1].utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}) else{throw ScopedAuxCommandContextError.scope}
+            return String(parts[1])
+        }
+        let scope=try prefix(first.service)
+        guard expectedScope==nil || expectedScope==scope else{throw ScopedAuxCommandContextError.scope}
+        var identities=Set<String>()
+        for s in selectors {
+            guard try prefix(s.service)==scope,try prefix(s.account)==scope,s.group==first.group,
+                  !s.group.isEmpty,s.group.utf8.count<=512,s.group.contains(".aux."),s.group.utf8.allSatisfy({(48...57).contains($0)||(65...90).contains($0)||(97...122).contains($0)||[45,46,95].contains($0)}),
+                  identities.insert(try JSONEncoder().encode([s.service,s.account,s.group]).base64EncodedString()).inserted else{throw ScopedAuxCommandContextError.binding}
+        }
+        let review=try ReviewedAuxSecureStoreScope(scope:scope,accessGroup:first.group,allowedLogicalKeys:policy.keys)
+        // Fixed logical keys must not select any installation/stage/source row.
+        let protected=Set((selectors+reserved).map{AuxSecureStoreSelector(service:$0.service,account:$0.account,accessGroup:$0.group)})
+        for key in policy.keys {guard !protected.contains(try review.selector(key)) else{throw ScopedAuxCommandContextError.binding}}
+        self.installation=installation;secureStore = .init(review:review,boundary:boundary)
+        evidence = .init(mode:mode,transactionId:transactionId,journalSha256:journal,installationBindingsSha256:bindingHash,scope:scope,
+            accessGroupSha256:Self.hash(Data(first.group.utf8)),logicalKeyPolicySha256:policy.sha256,securityReviewSha256:securityReview)
+    }
+    private static func hash(_ data:Data)->String{SHA256.hash(data:data).map{String(format:"%02x",$0)}.joined()}
+    private static func bindingHash<T:Encodable>(_ value:T)throws->String {
+        let e=JSONEncoder();e.outputFormatting=[.sortedKeys,.withoutEscapingSlashes];return hash(try e.encode(value))
+    }
+    static func existing(terminal:CapturedTerminalCommandContext,bindings:[InstallationRowBinding],
+                         policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws->Self {
+        let digest=try bindingHash(bindings)
+        guard terminal.evidence.mode=="existing-migration",bindings.map(\.row)==freshRoles,
+              digest==terminal.evidence.selectorBindingsSha256 else{throw ScopedAuxCommandContextError.binding}
+        return try .init(installation:terminal.core,mode:terminal.evidence.mode,transactionId:terminal.evidence.transactionId,journal:terminal.evidence.journalSha256,
+            bindingHash:digest,selectors:bindings.map{.init(service:$0.target.service,account:$0.target.account,group:$0.target.accessGroup)},expectedScope:nil,securityReview:nil,reserved:bindings.map{.init(service:$0.original.service,account:$0.original.account,group:$0.original.accessGroup)},policy:policy,boundary:boundary)
+    }
+    static func capturedFresh(terminal:CapturedTerminalCommandContext,bindings:[FreshTargetBinding],
+                              policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws->Self {
+        let digest=try bindingHash(bindings)
+        guard terminal.evidence.mode=="fresh",bindings.map(\.row)==freshRoles,
+              digest==terminal.evidence.selectorBindingsSha256 else{throw ScopedAuxCommandContextError.binding}
+        return try .init(installation:terminal.core,mode:terminal.evidence.mode,transactionId:terminal.evidence.transactionId,journal:terminal.evidence.journalSha256,
+            bindingHash:digest,selectors:bindings.map{.init(service:$0.target.service,account:$0.target.account,group:$0.target.accessGroup)},expectedScope:nil,securityReview:nil,policy:policy,boundary:boundary)
+    }
+#if AUX_RECOVERED_FRESH_DISPATCH
+    static func recoveredFresh(terminal:RecoveredFreshTerminalCommandContext,review:ReviewedFreshSecurityBoundary,
+                               policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws->Self {
+        let digest=try bindingHash(review.targetBindings)
+        guard terminal.evidence.scope==review.scope,terminal.evidence.transactionId==review.transactionId,
+              terminal.evidence.securityReviewSha256==review.reviewSha256,
+              terminal.evidence.selectorBindingsSha256==digest,
+              review.targetBindings.allSatisfy({$0.target.accessGroup==review.stage.accessGroup}) else{throw ScopedAuxCommandContextError.binding}
+        return try .init(installation:terminal.core,mode:terminal.evidence.mode,transactionId:terminal.evidence.transactionId,journal:terminal.evidence.journalSha256,
+            bindingHash:digest,selectors:review.targetBindings.map{.init(service:$0.target.service,account:$0.target.account,group:$0.target.accessGroup)},expectedScope:review.scope,securityReview:review.reviewSha256,reserved:[.init(service:review.stage.service,account:review.stage.account,group:review.stage.accessGroup)],policy:policy,boundary:boundary)
+    }
+#endif
+}
