@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "source/PrivateInstallationJournalStore.swift",
-      "sha256": "88ce68ba951d49965a0c25e3b68a54a10bb3dc9ddce071c699781e460c9ecab4"
+      "sha256": "1aede47a990c622149ad863c53407b8f7999b63ae531c000861ea4cb00baf1ae"
     },
     {
       "path": "tests/main.swift",
-      "sha256": "fb5c1326fab628a0166fdbadb0872b5cbbb85e1b6b927f34848199ccc4da693c"
+      "sha256": "cf48f927298bc8c3a82a1df3cad193db863e6029968baa991b8e5bc4850b50f2"
     },
     {
       "path": "check.mjs",
-      "sha256": "52d21a4737ceb1af9524c3ae4b894958d4059fe77e477b98bb6177ca225b30e0"
+      "sha256": "31872f3564f332ebe40b5a88f8d0b5504269e5bb90fef4d9e15d1a1d859e35cc"
     },
     {
       "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
@@ -31,13 +31,14 @@
     }
   ],
   "coverage": {
-    "disposableFilesystemAssertions": 20,
+    "disposableFilesystemAssertions": 22,
     "fileAndDirectoryFsyncExecuted": true,
     "deterministicInterruptedPublicationChecked": true,
     "processKillTested": false,
     "powerFailureTested": false,
     "securityExecuted": false,
     "authorityExclusiveProof": false,
-    "activated": false
+    "activated": false,
+    "nonblockingFifoRefusalChecked": true
   }
 }

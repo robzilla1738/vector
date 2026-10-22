@@ -57,4 +57,8 @@ let persistedBlocked=try blockedStore.commit(blocked,expectedHead:nil)
 check(persistedBlocked.journal.phase == .blocked)
 var counterfeit=blocked;counterfeit.revision += 1;counterfeit.phase = .draft;counterfeit.failure=nil
 fails{_ = try blockedStore.commit(counterfeit,expectedHead:persistedBlocked.sha256)}
+let fifoRoot=try privateRoot("fifo-head"),fifoStore=try PrivateInstallationJournalStore(canonicalDisposableRoot:fifoRoot,transactionId:id)
+let fifoPath=fifoRoot+"/"+directory+"/HEAD.json";precondition(mkfifo(fifoPath,0o600)==0)
+fails{_ = try fifoStore.loadCurrent()}
+var fifoStat=stat();check(lstat(fifoPath,&fifoStat)==0 && fifoStat.st_mode & mode_t(S_IFMT)==mode_t(S_IFIFO))
 print(String(data:try JSONSerialization.data(withJSONObject:["checks":checks,"filesystemOnly":true,"securityExecuted":false,"interruptedEvidenceRetained":true,"authorityExclusiveProof":false]),encoding:.utf8)!)

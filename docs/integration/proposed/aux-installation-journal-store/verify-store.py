@@ -12,4 +12,5 @@ for token in ['O_NOFOLLOW','O_EXCL','AT_SYMLINK_NOFOLLOW','LOCK_EX|LOCK_NB','fsy
 assert not re.search(r'\bSecItem\w*\s*\(|\bunlink(?:at)?\s*\(|\brmdir\s*\(|PrivateKey\(',source)
 assert 'try Self.sync(directoryFD)' in source
 assert 'try journal.encoded()==bytes' in source
+assert source.count('openat(directoryFD,name,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)')==2
 print('PASS: pinned typed journal storage, no-follow/private/CAS/fsync/retention boundaries and no Security or deletion executor.')

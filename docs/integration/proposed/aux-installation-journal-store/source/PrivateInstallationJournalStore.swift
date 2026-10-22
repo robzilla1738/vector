@@ -88,7 +88,7 @@ final class PrivateInstallationJournalStore {
         let result=try action();try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories();return result
     }
     private func readFile(_ name:String)throws->Data? {
-        let fd=openat(directoryFD,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC)
+        let fd=openat(directoryFD,name,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)
         if fd<0 {if errno==ENOENT{return nil};throw InstallationJournalStoreError.io(errno)}
         defer{close(fd)};try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:name,fd:fd)
         let before=try Self.statFD(fd);let size=Int(before.st_size);var bytes=[UInt8](repeating:0,count:size);var offset=0
@@ -113,7 +113,7 @@ final class PrivateInstallationJournalStore {
         try Self.sync(fd);try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:name,fd:fd);try Self.sync(directoryFD)
     }
     private func syncFile(_ name:String)throws {
-        let fd=openat(directoryFD,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw InstallationJournalStoreError.io(errno)};defer{close(fd)}
+        let fd=openat(directoryFD,name,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw InstallationJournalStoreError.io(errno)};defer{close(fd)}
         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:name,fd:fd);try Self.sync(fd);try Self.sync(directoryFD)
     }
     private func filename(_ journal:AdditiveInstallationJournal,hash:String)->String { String(format:"revision-%07d-",journal.revision)+hash+".json" }
