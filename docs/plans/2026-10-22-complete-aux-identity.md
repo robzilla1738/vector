@@ -6,7 +6,7 @@ This supersedes the earlier compatibility-name exceptions in the reuse plan. Reu
 
 ## Fixed visual baseline
 
-Preserve current component structure, assets derived from the canonical Aux SVG, typography, spacing, glass, corner clipping, toolbar, sidebar transitions, chat panel and settings. No visual redesign. Compare CSS/font/image inventories byte for byte and observe the actual successor app before accepting it. Original static source and historical evidence remain unchanged and truthfully attributed. Standard HTML `aside` semantics and required third-party legal attribution remain intact.
+Preserve current component structure, assets derived from the canonical Aux SVG, typography, spacing, glass, corner clipping, toolbar, sidebar transitions, chat panel and settings. No visual redesign. The134 accepted visual asset hashes (including all five stylesheets) are pinned in `docs/acceptance/aux-identity-ui-baseline.json`. Compare CSS/font/image inventories byte for byte and observe the actual successor app before accepting it. Original static source and historical evidence remain unchanged and truthfully attributed. Standard HTML `aside` semantics and required third-party legal attribution remain intact.
 
 ## Implementation sequence
 
@@ -20,5 +20,7 @@ Preserve current component structure, assets derived from the canonical Aux SVG,
 ## Current evidence and gaps
 
 The existing accepted desktop app is unchanged and still contains compatibility spellings. No full identity migration is activated. The first inventory runs against `out/provided-reuse-cloud-cookie-restore`, an intermediate unsigned resource stage; it is not a deliverable or accepted runtime. The read-only report is `out/aux-identity-baseline-2026-10-22.json` once its scan finishes. It deliberately reports `complete:false`: raw counts can overlap and cannot prove embedded/compressed/native absence. Native cookie recovery work is a separate prerequisite and adds no UI changes.
+
+A seven-file native protocol patch and matching count-pinned JavaScript transformation are prepared in `docs/integration/proposed/complete-aux-protocol-identity/` and `vendor/provided/aux-protocol-identity.mjs`. The native patch replays to all seven pinned outputs in a temporary tree; its source is not applied or compiled. One focused fixture verifies replay, drift/mixed-generation rejection and complete19-/23-byte Aux challenge domains. It does not prove a runtime handshake.
 
 The prior pipeline explicitly restored compatibility names after branding. Removing that behavior alone would break native receivers and existing stored data. Keep the working product intact until all dependent changes above form a coherent successor. No “everything is Aux” or complete parity claim is warranted yet.
