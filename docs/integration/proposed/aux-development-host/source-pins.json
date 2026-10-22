@@ -35,7 +35,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/README.md",
-      "sha256": "3d04010919b335079688f0e6aa7e9e54dd8ef0faa56da9f31e10a5659d43b38a"
+      "sha256": "8559b921fb26d128909f5f7b61e021a0971a5e45ecf56ff21bd769ca73891ad9"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
@@ -51,11 +51,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source-contract.json",
-      "sha256": "16be00c9780d623e0c46e324d7805b27f80d127d6cbeae99301d6b254fc2c050"
+      "sha256": "cc90141b23e38b5ea9cc4eb7ec31d9a1cb35b68fa512bb643f96b2aec3a8258c"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
-      "sha256": "287b5667f40d45d4f905f71ddf6ba37ca136ad72f41cefaa7abb05ee47b37956"
+      "sha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
@@ -63,7 +63,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
-      "sha256": "750de61feb31600dd1d89821105d71d86571394cbfb9717045278ffa2d254d51"
+      "sha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
@@ -103,7 +103,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
     },
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
@@ -131,7 +131,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
-      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
     },
     {
       "path": "scripts/native-build.py",
@@ -151,7 +151,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/verify.mjs",
-      "sha256": "d9e897597df8e70ce1aa49bf21d1a0646b91897134157b6f235b16657eb1f53c"
+      "sha256": "8aae77b3d9d8f13d50ddbfa7027f504d8f1dd470358788207027d84b48fb8d37"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
@@ -192,6 +192,18 @@
     {
       "path": "docs/integration/proposed/aux-development-host/verify-os-owner.mjs",
       "sha256": "ff9547659e87fea7a7a2ddb83db329db7134fc7912112be62f24d7b77cd28890"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/evidence/sealed-key-policy-v3.json",
+      "sha256": "68381f5c28a8146caf00726880431eb4ed64bdb757a6fa9b41b46fc4295fb09d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/check-v3.py",
+      "sha256": "88231193c06bc5810f46712956eab798d9cd152cf399834e8c22c13c722affa7"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/tests/v3/main.swift",
+      "sha256": "dd71d2cf134c49ad639d8e1668836a5f157f28cc27420cb5e1ac62359b8c5801"
     }
   ],
   "optionalOSProjectionReview": {
@@ -229,5 +241,18 @@
     "combinedCompilationPending": true,
     "sameScopedOwner": true,
     "sourceOnlyCheck": "verify-os-owner.mjs"
+  },
+  "sealedKeyPolicyV3Successor": {
+    "capturedChecks": 14,
+    "nativeSourceKnownFamiliesSelected": true,
+    "v1V2Preserved": true,
+    "protectedExecution": false,
+    "dependencyChanges": [
+      {
+        "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+        "priorSha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
+        "currentSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
+      }
+    ]
   }
 }

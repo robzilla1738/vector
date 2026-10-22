@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
-      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
+      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664",
       "anchors": [
         {
           "anchor": "static func runtime(terminal:AuxRuntimeCapturedCommandContext",
@@ -137,6 +137,13 @@
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
       "priorSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
       "currentSha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    }
+  ],
+  "sealedKeyPolicyV3DependencyChanges": [
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "priorSha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
+      "currentSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
     }
   ]
 }

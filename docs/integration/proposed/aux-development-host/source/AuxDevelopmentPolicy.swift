@@ -27,6 +27,15 @@ enum AuxReviewedDevelopmentPdfIdentity {
               let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxDevelopmentHostError.policy}
     }
 }
+enum AuxReviewedDevelopmentPdfV3Identity {
+    static let sha256="ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0"
+    static let bytes=9_474_752
+    static func validate(_ value:Any?)throws {
+        guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
+              object["path"] as? String==AuxReviewedDevelopmentPdfIdentity.relativePath,object["identifier"] as? String==AuxReviewedDevelopmentPdfIdentity.identifier,object["sha256"] as? String==sha256,
+              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxDevelopmentHostError.policy}
+    }
+}
 struct AuxDevelopmentPolicyContents {
     enum Role:String {case daemon,cli
         var identifier:String{self == .daemon ? "dev.aux.browser.daemon":"dev.aux.browser.cli"}
@@ -36,22 +45,38 @@ struct AuxDevelopmentPolicyContents {
     let selection:AuxRuntimeSelection
     let logicalKeys:ImmutableAuxLogicalKeyPolicy
     let includesPdf:Bool
+    let usesSourceKnownFamiliesV2:Bool
+    var pdfSha256:String{usesSourceKnownFamiliesV2 ? AuxReviewedDevelopmentPdfV3Identity.sha256:AuxReviewedDevelopmentPdfIdentity.sha256}
+    var pdfBytes:Int{usesSourceKnownFamiliesV2 ? AuxReviewedDevelopmentPdfV3Identity.bytes:AuxReviewedDevelopmentPdfIdentity.bytes}
     // Only content validation. Possessing this value cannot create a sealed
     // policy, observation or owner; the actual loader authenticates exact bytes.
     static func decode(_ bytes:Data)throws->Self {
         let object=try strictEnvelopeObject(bytes)
-        let format=object["format"] as? String,includesPdf=format=="aux.development.host.policy.v2"
-        var expectedKeys:Set<String>=["format","role","home","scope","accessGroup","generationId","scheme","signingPublicKey","kemPublicKey","targetHashes","logicalKeys"]
-        if includesPdf {expectedKeys.insert("pdfModule");try AuxReviewedDevelopmentPdfIdentity.validate(object["pdfModule"])}
-        guard Set(object.keys)==expectedKeys,(format=="aux.development.host.policy.v1" || includesPdf),let roleText=object["role"] as? String,let role=Role(rawValue:roleText),(!includesPdf || role == .daemon),
+        let format=object["format"] as? String,sourceKnown=format=="aux.development.host.policy.v3"
+        guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText)else{throw AuxDevelopmentHostError.policy}
+        let includesPdf=format=="aux.development.host.policy.v2" || (sourceKnown && role == .daemon)
+        var expectedKeys:Set<String>=["format","role","home","scope","accessGroup","generationId","scheme","signingPublicKey","kemPublicKey","targetHashes"]
+        expectedKeys.insert(sourceKnown ? "sourceKnownFamiliesV2":"logicalKeys")
+        if includesPdf {
+            expectedKeys.insert("pdfModule")
+            if sourceKnown {try AuxReviewedDevelopmentPdfV3Identity.validate(object["pdfModule"])}else{try AuxReviewedDevelopmentPdfIdentity.validate(object["pdfModule"])}
+        }
+        guard Set(object.keys)==expectedKeys,(format=="aux.development.host.policy.v1" || format=="aux.development.host.policy.v2" || sourceKnown),(!includesPdf || role == .daemon),
               object["home"] as? String==AuxReviewedDevelopmentIdentity.home,object["scope"] as? String==AuxReviewedDevelopmentIdentity.scope,
               object["accessGroup"] as? String==AuxReviewedDevelopmentIdentity.group,
               developmentDigest(Data(AuxReviewedDevelopmentIdentity.home.utf8))==AuxReviewedDevelopmentIdentity.scope,
-              let generation=object["generationId"] as? String,let scheme=object["scheme"] as? String,let hashes=object["targetHashes"] as? [String:String],
-              let keys=object["logicalKeys"] as? [String],!keys.isEmpty,keys.count<=128,Set(keys).count==keys.count,Set(keys.map{Data($0.utf8)}).count==keys.count else{throw AuxDevelopmentHostError.policy}
+              let generation=object["generationId"] as? String,let scheme=object["scheme"] as? String,let hashes=object["targetHashes"] as? [String:String] else{throw AuxDevelopmentHostError.policy}
+        let logicalPolicy:ImmutableAuxLogicalKeyPolicy
+        if sourceKnown {
+            guard object["sourceKnownFamiliesV2"] as? String==AuxSourceKnownLogicalKeyFamilies.format else{throw AuxDevelopmentHostError.policy}
+            logicalPolicy = .sourceKnownV2()
+        } else {
+            guard let keys=object["logicalKeys"] as? [String],!keys.isEmpty,keys.count<=128,Set(keys).count==keys.count,Set(keys.map{Data($0.utf8)}).count==keys.count else{throw AuxDevelopmentHostError.policy}
+            logicalPolicy=try .init(allowedLogicalKeys:Set(keys))
+        }
         func publicKey(_ name:String)throws->Data{guard let text=object[name] as? String,let value=Data(base64Encoded:text),value.base64EncodedString()==text else{throw AuxDevelopmentHostError.policy};return value}
         let selection=try AuxRuntimeSelection(scope:AuxReviewedDevelopmentIdentity.scope,generationId:generation,accessGroup:AuxReviewedDevelopmentIdentity.group,scheme:scheme,signingPublicKey:publicKey("signingPublicKey"),kemPublicKey:publicKey("kemPublicKey"),targetHashes:hashes)
-        return try .init(role:role,selection:selection,logicalKeys:ImmutableAuxLogicalKeyPolicy(allowedLogicalKeys:Set(keys)),includesPdf:includesPdf)
+        return .init(role:role,selection:selection,logicalKeys:logicalPolicy,includesPdf:includesPdf,usesSourceKnownFamiliesV2:sourceKnown)
     }
 }
 struct AuxCapturedDevelopmentSignature {
@@ -96,4 +121,8 @@ func validateCapturedDevelopmentPdfSignature(_ captured:AuxCapturedDevelopmentSi
 }
 func validateCapturedDevelopmentPdfBytes(sha256:String,bytes:Int)throws {
     guard sha256==AuxReviewedDevelopmentPdfIdentity.sha256,bytes==AuxReviewedDevelopmentPdfIdentity.bytes else{throw AuxDevelopmentHostError.image}
+}
+
+func validateCapturedDevelopmentPdfBytes(sha256:String,bytes:Int,policy:AuxDevelopmentPolicyContents)throws {
+    guard policy.includesPdf,sha256==policy.pdfSha256,bytes==policy.pdfBytes else{throw AuxDevelopmentHostError.image}
 }
