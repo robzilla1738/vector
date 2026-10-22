@@ -1,0 +1,23 @@
+--- a/chrome/browser/extensions/browser_extension_window_controller.cc
++++ b/chrome/browser/extensions/browser_extension_window_controller.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/extensions/window_controller_list.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/tab_list/tab_list_interface.h"
++#include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+ #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+@@ -183,6 +184,12 @@
+ bool BrowserExtensionWindowController::IsVisibleToTabsAPIForExtension(
+     const Extension* extension,
+     bool allow_dev_tools_windows) const {
++  // A profile-switch cache is an internal tab owner, not an extension window.
++  // Keep ordinary hidden/minimized windows and non-cache omitted windows visible.
++  if (const auto* state = BrowserInitState::From(&browser_.get());
++      state && state->is_aux_profile_switch_cache()) {
++    return false;
++  }
+   // TODO(joelhockey): We are assuming that the caller is webui when |extension|
+   // is null and allowing access to all windows. It would be better if we could
+   // pass in mojom::ContextType or some way to detect caller type.

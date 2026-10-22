@@ -1,0 +1,27 @@
+{
+  "baseComposition": "v612",
+  "upstreamCommit": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+  "uncomposedSourceVerified": true,
+  "compositionSha256": "2f709971e56569422b382318cd1da26cbf06c91644e685740bfa5dcd6e459707",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/browser_extension_window_controller.cc",
+      "baselineSha256": "e832081fba9c4e59a8a7bdd61077065439b2760a25e8d2eb3d78de57a652fd48",
+      "outputSha256": "3444e94691d7aebff99023d2b66a648e3891ccca8522006b09d817ed48573e30"
+    }
+  ],
+  "edits": [
+    {
+      "path": "chrome/browser/extensions/browser_extension_window_controller.cc",
+      "find": "#include \"chrome/browser/tab_list/tab_list_interface.h\"",
+      "replace": "#include \"chrome/browser/tab_list/tab_list_interface.h\"\n#include \"chrome/browser/ui/browser_init_state.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/extensions/browser_extension_window_controller.cc",
+      "find": "    bool allow_dev_tools_windows) const {\n  // TODO(joelhockey):",
+      "replace": "    bool allow_dev_tools_windows) const {\n  // A profile-switch cache is an internal tab owner, not an extension window.\n  // Keep ordinary hidden/minimized windows and non-cache omitted windows visible.\n  if (const auto* state = BrowserInitState::From(&browser_.get());\n      state && state->is_aux_profile_switch_cache()) {\n    return false;\n  }\n  // TODO(joelhockey):",
+      "count": 1
+    }
+  ]
+}
