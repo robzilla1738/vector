@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "purpose": "Synthetic layout fixture only; no real credentials or claimed runtime acceptance. Materialize files only under a new disposable root.",
+  "homeFiles": {
+    "accounts.json": {
+      "version": 1,
+      "currentAccountId": 0,
+      "accounts": [
+        {
+          "id": 0,
+          "name": "Fixture Local",
+          "provider": "anonymous",
+          "mode": "local",
+          "authStatus": "active",
+          "createdAt": 0,
+          "incarnationId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "id": 1,
+          "name": "Fixture Cloud",
+          "provider": "email",
+          "mode": "cloud",
+          "authStatus": "active",
+          "createdAt": 0,
+          "userId": "fixture-user-1",
+          "incarnationId": "00000000-0000-4000-8000-000000000002"
+        }
+      ],
+      "sessions": {
+        "1": {
+          "accessToken": "synthetic-access-fixture",
+          "refreshToken": "synthetic-refresh-fixture",
+          "expiresAt": 0
+        }
+      },
+      "localBootstraps": {},
+      "profileBindings": {},
+      "profileAccountBindings": {}
+    },
+    "u/0/settings.json": {
+      "defaultModel": {
+        "provider": "aside",
+        "modelId": "gpt-6-luna",
+        "thinkingLevel": "medium",
+        "fastMode": false
+      },
+      "modelCategories": {
+        "fast": {
+          "provider": "aside",
+          "modelId": "gpt-6-luna",
+          "thinkingLevel": "medium",
+          "fastMode": false
+        }
+      },
+      "asideModelCatalog": {
+        "added": [
+          "fixture-model"
+        ],
+        "removed": []
+      }
+    },
+    "u/0/models.json": {
+      "providers": {
+        "aside": {
+          "name": "Fixture Managed Provider",
+          "models": []
+        },
+        "vercel-ai-gateway": {
+          "baseUrl": "https://ai-gateway.vercel.sh/v1",
+          "models": []
+        }
+      }
+    },
+    "u/0/credentials.json": {
+      "aside": {
+        "type": "api_key",
+        "key": "synthetic-fixture-only-not-a-secret"
+      },
+      "vercel-ai-gateway": {
+        "type": "api_key",
+        "key": "second-synthetic-fixture-only"
+      }
+    },
+    "u/0/cache/models.json": {
+      "[\"models\",\"provider-catalog\",\"aside\"]": {
+        "value": {
+          "models": [],
+          "visibleModelIds": []
+        },
+        "updatedAt": 0
+      }
+    }
+  },
+  "sqliteRecords": {
+    "path": "u/0/state.db",
+    "instruction": "Create the database through supplied migrations; these are selected existing-table row values, not a substitute full schema.",
+    "tables": {
+      "sessions": {
+        "column": "model",
+        "jsonValue": {
+          "provider": "aside",
+          "modelId": "gpt-6-luna",
+          "thinkingLevel": "medium",
+          "fastMode": false
+        }
+      },
+      "routines": {
+        "column": "session_config",
+        "jsonValue": {
+          "model": {
+            "provider": "aside",
+            "modelId": "gpt-6-luna",
+            "thinkingLevel": "medium",
+            "fastMode": false
+          }
+        }
+      }
+    }
+  },
+  "extensionOriginStorage": {
+    "localStorage": {
+      "aside.agent-settings.v2:0": "{\"modelProvider\":\"aside\",\"modelId\":\"gpt-6-luna\",\"thinkingLevel\":\"medium\",\"fastMode\":false,\"proactiveMode\":false}",
+      "aside.settings-inventory.v1:0": "{\"subscriptionPlan\":\"free\",\"availableModels\":[],\"connectedProviders\":[{\"providerId\":\"aside\",\"type\":\"oauth\",\"linked\":false,\"state\":\"active\"}],\"visibleModelIdsByProvider\":{\"aside\":[\"fixture-model\"]}}"
+    },
+    "sessionStorage": {
+      "aside.sidepanel-new-session-settings.v1:0": "{\"version\":1,\"draftModelOverride\":{\"provider\":\"aside\",\"modelId\":\"gpt-6-luna\",\"thinkingLevel\":\"medium\",\"fastMode\":false},\"draftProjectId\":null}"
+    }
+  },
+  "notFilesystemJson": [
+    "extensionOriginStorage",
+    "sqliteRecords"
+  ],
+  "runtimeAcceptance": false
+}

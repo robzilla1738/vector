@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "daemonCodeSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "cliCodeSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+  "anchors": [
+    {
+      "name": "account-root",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 33046,
+      "count": 1,
+      "find": "getAccountRoot=Cn=>typeof Cn==`number`?path.join(ASIDE_HOME_PATH,`u`,String(Cn)):Cn"
+    },
+    {
+      "name": "settings-path",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 34612,
+      "count": 1,
+      "find": "getSettingsJsonPath=Cn=>path.join(getAccountRoot(Cn),`settings.json`)"
+    },
+    {
+      "name": "credentials-path",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 35119,
+      "count": 1,
+      "find": "getCredentialsJsonPath=Cn=>path.join(getAccountRoot(Cn),`credentials.json`)"
+    },
+    {
+      "name": "models-path",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 35329,
+      "count": 1,
+      "find": "getModelsPath=Cn=>path.join(getAccountRoot(Cn),`models.json`)"
+    },
+    {
+      "name": "state-db-path",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 34898,
+      "count": 1,
+      "find": "getStateDbPath=Cn=>path.join(getAccountRoot(Cn),`state.db`)"
+    },
+    {
+      "name": "registry-path",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2298146,
+      "count": 1,
+      "find": "ACCOUNTS_JSON_PATH=path.join(ASIDE_HOME_PATH,`accounts.json`)"
+    },
+    {
+      "name": "json-backend",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 1731604,
+      "count": 1,
+      "find": "readCurrentOrRecover(){let Cn=retryFileOperationSync(this.path,()=>readFileSync(this.path,`utf-8`));try{return JSON.parse(Cn)}"
+    },
+    {
+      "name": "credential-loader",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6364891,
+      "count": 1,
+      "find": "return new Cn(new FileJsonStoreBackend(ei??getCredentialsJsonPath(ti),{}),ti)"
+    },
+    {
+      "name": "credential-write",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6366326,
+      "count": 1,
+      "find": "persistProviderChange(Cn,ei){if(!this.loadError)try{this.storage.withLock(ti=>{let ni={...ti};return ei?ni[Cn]=ei:delete ni[Cn],{result:void 0,next:ni}})"
+    },
+    {
+      "name": "credential-api-key",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6368685,
+      "count": 1,
+      "find": "if(ei?.type===`api_key`)return{apiKey:ei.key}"
+    },
+    {
+      "name": "models-json-schema",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6380045,
+      "count": 1,
+      "find": "modelsJsonConfigSchema=object({providers:record(string$3(),modelsJsonProviderSchema).prefault({})})"
+    },
+    {
+      "name": "models-json-loader",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6381484,
+      "count": 1,
+      "find": "modelsJsonConfigSchema.parse(JSON.parse(stripJsonComments(readFileSync(this.filePath,`utf-8`))))"
+    },
+    {
+      "name": "settings-schema",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 1718967,
+      "count": 1,
+      "find": "modelCategories:modelCategoriesSchema.default({}),asideModelCatalog:"
+    },
+    {
+      "name": "settings-backend",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 1720582,
+      "count": 1,
+      "find": "static fromFile(ei){return new Cn(new FileJsonStoreBackend(ei,DEFAULT_SETTINGS))}"
+    },
+    {
+      "name": "session-auth-schema",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2289999,
+      "count": 1,
+      "find": "accountSessionSchema=object({accessToken:string$3(),refreshToken:string$3(),expiresAt:number$2().int().nonnegative()})"
+    },
+    {
+      "name": "registry-loader",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2298988,
+      "count": 1,
+      "find": "static fromFile(ei=ACCOUNTS_JSON_PATH){return new Cn(new FileJsonStoreBackend(ei,createDefaultAccountRegistry(),"
+    },
+    {
+      "name": "registry-login-provider-schema",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2289103,
+      "count": 1,
+      "find": "accountProviderSchema=_enum([`google`,`email`,`anonymous`])"
+    },
+    {
+      "name": "cache-file",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6057048,
+      "count": 1,
+      "find": "new FileJsonStoreBackend(path.join(getAccountCacheDir(Cn),`${ti}.json`),{})"
+    },
+    {
+      "name": "cache-key",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6409315,
+      "count": 2,
+      "find": "key:[`models`,`provider-catalog`,Cn],schema:storedEntrySchema"
+    },
+    {
+      "name": "cache-schema",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6056662,
+      "count": 1,
+      "find": "entrySchema=object({value:json$2(),updatedAt:number$2(),invalidated:boolean$1().optional()})"
+    },
+    {
+      "name": "inventory-value",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 6433368,
+      "count": 1,
+      "find": "availableModels:[...fi,...pi],connectedProviders:hi,visibleModelIdsByProvider:"
+    },
+    {
+      "name": "sqlite-session-model",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2501543,
+      "count": 1,
+      "find": "model:text$9(`model`,{mode:`json`}).notNull().$type()"
+    },
+    {
+      "name": "sqlite-routine-config",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2508168,
+      "count": 1,
+      "find": "sessionConfig:text$9(`session_config`,{mode:`json`}).notNull().$type()"
+    },
+    {
+      "name": "dk-purpose-info",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2904478,
+      "count": 1,
+      "find": "function getPurposeInfoBytes(Cn){return new TextEncoder().encode(`${DK_SUBKEY_INFO_PREFIX}${Cn}.v1`)}"
+    },
+    {
+      "name": "dk-envelope-check",
+      "artifact": "daemon-sea-code",
+      "byteOffset": 2905355,
+      "count": 1,
+      "find": "if(ti.purpose!==ei)throw Error(`EncryptedBlob purpose mismatch: expected \"${ei}\", got \"${ti.purpose}\"`)"
+    }
+  ],
+  "agentSources": [
+    {
+      "path": "assets/use-agent-settings-DiedG0R1.js",
+      "sha256": "4acd8450d7c7c4d5ddbf6104192d2fd2d1a6eaf90564e12be3c0550e7bb83897",
+      "bytes": 7170
+    },
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "sha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+      "bytes": 4185
+    },
+    {
+      "path": "assets/use-default-permission-mode-DKp05vFQ.js",
+      "sha256": "291f3f3d14671581455d8909b713305374043389ec5eef9f21885ab523a9ecb9",
+      "bytes": 6117
+    }
+  ],
+  "absentLiteralFieldNamesInDaemon": [
+    "credentialStore",
+    "providerCache",
+    "modelCatalog"
+  ],
+  "runtimeAcceptance": false
+}
