@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "stageExitCode": 0,
+  "packageExitCode": 0,
+  "packagedCheckExitCode": 0,
+  "files": [
+    {
+      "path": "out/aux-ui-origins-packaged-evidence.json",
+      "sha256": "dd4664f628b16f37cfb3271b48d259f619fdc61dcac812349f0015a0e415c643"
+    },
+    {
+      "path": "out/provided-candidate-aux-ui-origins/package.json",
+      "sha256": "75c1498f08b1b055d29151298b23b69a556bc4dea91ed4999630bae18cc02781"
+    },
+    {
+      "path": "out/provided-reuse-aux-ui-origins/ui/manifest.json",
+      "sha256": "5bcaa327e3141716cfcd6a3eefdc6b7ff75cdae7170936db28cd048eb97de299"
+    },
+    {
+      "path": "out/aux-lifecycle-native-build.json",
+      "sha256": "de41b4b9630e214b0368cc094917be7fc0321ecfbf57f977f02d59db733aef16"
+    },
+    {
+      "path": "out/check-ui-origins-package.mjs",
+      "sha256": "1749ad80529a2764467db28292a645b6d31d4f2e54066d751e0488b9717432cb"
+    }
+  ],
+  "visualAssetsPreserved": 135,
+  "stylesheetsPreserved": 5,
+  "packagedModulesParsed": 12,
+  "agentRevision": 10,
+  "agentFingerprint": "ea3bd2d5ba0f592015c673c9c74db3c52f3374614a6caf2edc703b8bf2a2c78e",
+  "nativeBuildReused": true,
+  "nativeSourcesChangedThisBatch": false,
+  "signed": false,
+  "launched": false,
+  "runtimeAcceptance": false,
+  "acceptedAppReplaced": false,
+  "allWritersVerified": false,
+  "cliWrapperPreSeaStateAccessVerified": false
+}
