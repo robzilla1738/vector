@@ -1,0 +1,33 @@
+# Profile-bound cloud cookie bootstrap restoration
+
+This implements native writes and the supplied sync consumer. It is not actual desktop/cloud acceptance. The current accepted app and older exact-byte signing review remain unchanged.
+
+## Native implementation
+
+The existing private `auxBrowserImport.startImport` accepts the new `source: aux-cloud-cookies` request only from the Agent component. All existing import sources keep their existing path. There is no new public UI, extension permission, histogram registration, profile-path selector, last-used fallback or global CDP write.
+
+The request carries the expected persisted profile ID, local account ID, cloud user ID, opaque browser-context ID and native binding epoch. The actual calling regular profile must match every field and have a persisted, unpaused session. Private/nonregular or closing profiles are rejected. The generation/revision/hash come from the authenticated encrypted reader; native validation checks their shape and bounds, not the server CSK cryptography itself.
+
+All input cookies are validated before reading or writing the destination jar. Conversion uses Chromium155's `CanonicalCookie::CreateSanitizedCookie`, source-scheme/port rules and untrusted partition-key conversion, following upstream `MakeCookieFromProtocolValues`. It preserves supported CDP attributes and reapplies the original Google/expiry exclusions plus Aux/Clerk/loopback exclusions. Opaque/invalid partitions and source port0 are rejected. The write callback barrier follows the reused Firefox importer pattern, with every result's inclusion status checked rather than counting enqueue as completion.
+
+A profile-owned gate and `ScopedProfileKeepAlive` protect the operation. `AccountProfileUpdater` defers both new refreshes and reads already in flight while the gate is held. It discards that stale projection and refreshes actual source state when the gate finishes. Native binding is rechecked after read, writes and flush. A15-second native timeout or pipe loss with unacknowledged writes/flush leaves rebinding blocked until browser restart; closing a Mojo pipe does not prove queued remote writes were canceled. No cookie jar is cleared or rolled back on failure.
+
+Successful writes wait for `FlushCookieStore` before recording the per-profile `aux.cloud_cookie_restore` marker. Lost markers are harmless: a retry preserves existing cookie keys. The marker never contains cookie values or provider credentials. Chrome's normal cookie persistence/session/clear-on-exit policy remains in force.
+
+## Merge and lifecycle policy
+
+This is bootstrap recovery once per local profile/cloud user/key generation, followed by the original one-way capture/upload. It does not implement continuous bidirectional per-cookie merge. Existing destination keys at the native read win; missing keys are imported. Duplicate remote keys are skipped after the first. Concurrent website writes retain normal cookie-store ordering; this is not an atomic compare-and-set or whole-jar transaction. Explicit cookie clearing is not silently undone on every poll.
+
+`Aside.restoreCookieSnapshot` uses the original authenticated daemon/Agent bridge, routed to the account's exact persisted profile in normal mode. Agent metadata is checked before and after calling the native importer. The import source is fixed after spreading parameters so a passthrough field cannot select another importer. Native cookie writes already queued are not undone by cancellation.
+
+The original `syncCookies` consumer now restores before its first capture, under its original runtime ownership and actual sync-enabled predicate. Restore failure prevents capture/upload from overwriting the remote backup with an empty destination. Successful work is deduplicated per binding/epoch/context/generation; failed/canceled/rebound work is not cached. Temporary received cookie references are dropped after the local request; immutable JavaScript strings are not claimed to be securely erased. Existing filters, encoding, upload and hash-state updates remain.
+
+## Provenance and checks
+
+`baseline/`, `source/`, `native.patch` and `manifest.json` pin the initial eight-file change. Follow-ups in `../cloud-native-cookie-restore-trim/` and `../cloud-native-cookie-restore-dispatch/` correct the current Chromium trim API and extension-name content comparison found by compilation. `../cloud-native-cookie-restore-flush/` adds the backing-store flush barrier found during final review. `../cloud-native-cookie-restore-read-fence/` discards reads started before restoration even if their callback arrives after the gate reopens. `../cloud-native-cookie-restore-capture-fence/` exposes a separate restore epoch and pending flag; capture/preflight reject an interleaved restore, while the operation’s own successful write may rotate that epoch. Use the final `out/native-reuse-composition-cloud-cookie-restore-complete` composition, not an intermediate patch by itself. All applications use the native build lock and preserve prior native bytes. This cookie-boundary slice retains the current compatibility protocol/crypto labels and runtime/addon bytes. The owner’s subsequent complete Aux identity override is tracked separately; the isolated cookie build is not the final rebranded successor.
+
+Focused JavaScript checks pass using actual pinned/shipped schemas, complete source replay and synthetic bridge/CDP/native replies. They cover metadata routing, exclusions, attributes, cancellation, sync disable, failure/retry, restore-before-capture and cache lifetime. These checks do not execute the C++ callback/gate logic or access a browser cookie jar. Default local composition is byte-identical; Agent styling/layout/assets are unchanged. The new cloud Agent worker needs a settled1857 fingerprint after the cookie fence and coordinated identity changes; the intermediate stage is not a final package.
+
+The complete composition compiled successfully; `out/cloud-cookie-restore-native-build-complete.json` verifies three artifacts and the generated-key probe. No final successor was staged/packaged because the owner’s coordinated identity migration must settle its actual bytes and Agent fingerprint first.
+
+Actual native callback ordering, partial writes, interrupted flush/restart, persistence and two disposable profiles still require the integrated development app and matching scoped signing review. Compilation and static preservation do not prove those behaviors or full sync/UI parity. No owner profiles, browser cookies, Keychain contents, OS grants, paid AI requests, production activation or final release are part of this build/preparation pass.

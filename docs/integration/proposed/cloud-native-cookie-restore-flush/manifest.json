@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "cookie-store-flush-before-generation-marker",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+      "baselineSha256": "78142b34e099ef33d6eabbbb67f8faff1236dc455eb78be6d8caaa96963a645e",
+      "outputSha256": "43ac0d54164845a11320577deb32e536b4d570de5dc24b661c4b524015b4bdae"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

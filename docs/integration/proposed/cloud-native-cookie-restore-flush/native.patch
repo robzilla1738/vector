@@ -1,0 +1,49 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
+@@ -219,7 +219,7 @@
+     }
+     cookies_.clear();
+     pending_ = missing.size();
+-    if (!pending_) return Finish(true, "");
++    if (!pending_) return FlushBeforeReceipt();
+     issued_writes_ = true;
+     // Existing-at-start entries win. Concurrent website writes use the normal
+     // store ordering; this is not an atomic compare-and-set or jar replacement.
+@@ -236,7 +236,19 @@
+     else ++failed_;
+     if (--pending_) return;
+     if (!Current()) return Finish(false, "Cookie restore profile binding changed");
+-    Finish(failed_ == 0, failed_ ? "Some cookies could not be restored; existing cookies were retained" : "");
++    if (failed_) return Finish(false, "Some cookies could not be restored; existing cookies were retained");
++    FlushBeforeReceipt();
++  }
++  void FlushBeforeReceipt() {
++    flush_pending_ = true;
++    manager_->FlushCookieStore(base::BindOnce(&CookieRestore::DidFlush,
++                                             base::RetainedRef(this)));
++  }
++  void DidFlush() {
++    if (!reply_) return;
++    flush_pending_ = false;
++    if (!Current()) return Finish(false, "Cookie restore profile binding changed");
++    Finish(true, "");
+   }
+   void Finish(bool success, std::string error) {
+     if (!reply_) return;
+@@ -249,7 +261,7 @@
+         receipt.Set(key, expected_.Find(key)->Clone());
+       profile_->GetPrefs()->SetDict(kReceipt, std::move(receipt));
+     }
+-    if (lease_ && profile_ && (!issued_writes_ || pending_ == 0))
++    if (lease_ && profile_ && (!issued_writes_ || (pending_ == 0 && !flush_pending_)))
+       aux::FinishProfileCookieRestore(profile_.get());
+     keep_alive_.reset();
+     if (!success) { std::move(reply).Run(std::nullopt, std::move(error)); return; }
+@@ -270,6 +282,7 @@
+   size_t pending_ = 0;
+   int imported_ = 0, skipped_ = 0, failed_ = 0;
+   bool lease_ = false, issued_writes_ = false, already_applied_ = false;
++  bool flush_pending_ = false;
+   base::WeakPtrFactory<CookieRestore> weak_{this};
+ };
+ }  // namespace

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "chromium155-string-trim-api-correction",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+      "baselineSha256": "19c96218bb648750e9204ab1a516bbdc65e6e331b1da84ff10639aba7f0008a6",
+      "outputSha256": "78142b34e099ef33d6eabbbb67f8faff1236dc455eb78be6d8caaa96963a645e"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

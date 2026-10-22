@@ -1,0 +1,75 @@
+--- a/chrome/browser/aux/profile_identity.h
++++ b/chrome/browser/aux/profile_identity.h
+@@ -16,6 +16,9 @@
+ // Opaque in-memory epoch; changes on native account/session binding changes.
+ // Regular profiles only; never reads another profile or grants cookie access.
+ std::string GetProfileCookieBindingEpoch(Profile* profile);
++// Changes whenever a native cookie restore begins, even if it finishes between
++// two context reads. Used to reject capture interleaved with restoration.
++std::string GetProfileCookieRestoreEpoch(Profile* profile);
+ // Serializes native cloud-cookie writes with account-profile projection.
+ // A failed operation with unacknowledged writes deliberately remains pending
+ // until shutdown, rather than allowing profile rebinding against queued writes.
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -38,9 +38,11 @@
+   bool BeginRestore(const std::string& expected) {
+     if (value_.empty() || value_ != expected || restoring_) return false;
+     restoring_ = true;
++    restore_epoch_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+     return true;
+   }
+   bool restoring() const { return restoring_; }
++  const std::string& restore_epoch() const { return restore_epoch_; }
+   void FinishRestore() {
+     if (!restoring_ || value_.empty()) return;
+     restoring_ = false;
+@@ -53,10 +55,12 @@
+     registrar_.RemoveAll();
+     observation_.Reset();
+     value_.clear();
++    restore_epoch_.clear();
+   }
+  private:
+   void Rotate() { value_ = base::Uuid::GenerateRandomV4().AsLowercaseString(); }
+   bool restoring_ = false;
++  std::string restore_epoch_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   base::RepeatingClosureList restored_;
+   std::string value_;
+   PrefChangeRegistrar registrar_;
+@@ -75,6 +79,11 @@
+     profile->SetUserData(&kCookieBindingEpochKey, std::move(owned));
+   }
+   return epoch->value();
++}
++std::string GetProfileCookieRestoreEpoch(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (GetProfileCookieBindingEpoch(profile).empty()) return {};
++  return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->restore_epoch();
+ }
+ bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -207,6 +207,10 @@
+       context.Set("cookieBindingEpoch",
+                   aux::GetProfileCookieBindingEpoch(profile()));
+       context.Set("browserContextId", current->UniqueId());
++      context.Set("cookieRestoreEpoch",
++                  aux::GetProfileCookieRestoreEpoch(profile()));
++      context.Set("cookieRestorePending",
++                  aux::IsProfileCookieRestorePending(profile()));
+     }
+     // Additive private draft identity; never replace the live DevTools target.
+     // OTR documents retain only their original session-scoped draft storage.
+--- a/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
+@@ -176,6 +176,8 @@
+   void Start() {
+     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+     if (!Current()) return Finish(false, "Cookie restore profile binding changed");
++    if (aux::IsProfileCookieRestorePending(profile_.get()))
++      return Finish(false, "Cookie restore profile is busy or requires restart");
+     const auto& receipt = profile_->GetPrefs()->GetDict(kReceipt);
+     if (receipt.FindString("userId") &&
+         *receipt.FindString("userId") == *expected_.FindString("userId") &&

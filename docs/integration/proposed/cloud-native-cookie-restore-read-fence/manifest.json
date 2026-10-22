@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "discard-pre-restore-account-read-after-gate-release",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": "eb494fe4d745c64c384acf08db42da6b0d32e87d80d26d0dbc64f2c8aee53ab4",
+      "outputSha256": "896f0b52419990a7bef2ae9ab1e10cb55ed3e9a54beb56d726ddf3da7932b360"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

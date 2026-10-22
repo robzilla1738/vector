@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "kind": "native-bound-cookie-restore",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": "fbdca579d5396cf363a2c9dee550174bf341b13077eab98791d26f9212caa234",
+      "outputSha256": "eb494fe4d745c64c384acf08db42da6b0d32e87d80d26d0dbc64f2c8aee53ab4"
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "feb0323fdc736e792f1630356c4ee4983975343c297928b2ebae54a442c28fc5",
+      "outputSha256": "79d560c39bd0c50da0e40b3d2fc994df1053f53e924016f8b4dfd80e20bf5d2d"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": "eb5bd6312fcad2b72f100c457f7a363328450ee9e6f888d3eb7800e575fa6686",
+      "outputSha256": "ec87c052993a4aa65160663ff16bf60816fd5dee1748462aca62b82dcc757da2"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "baselineSha256": "ed5e2d7911dbe980d4cc61b3aaa250a3fb809a7052050f82ed765e6d1163fa45",
+      "outputSha256": "e5738a419072e0880ee5f4cb0538b84cc61a379e3185460123c47f5f97cd7251"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/BUILD.gn",
+      "baselineSha256": "a01290569e2ce67608a6746564324c4c074d97e6f5d3bcb195eba3e20f0ff580",
+      "outputSha256": "88b608fbc746e8f21fb44c48295a82f47a3d26909109abd8bf69c5e1515d0abf"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc",
+      "baselineSha256": "0f670a25085e6059b6b9d16ffe8e93bebd8ef0a2c64d342be9f6d718594c9e4b",
+      "outputSha256": "4fb8b02e8645c417495d1ebda0cc10e4a24f02a19d24bbdde7d9e3642fc7c936"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+      "baselineSha256": null,
+      "outputSha256": "19c96218bb648750e9204ab1a516bbdc65e6e331b1da84ff10639aba7f0008a6"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.h",
+      "baselineSha256": null,
+      "outputSha256": "220f786ab6894db0c7a4dc994f84e3a3b084aa116b1c31b42ce9190356a82431"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "cookieWritesImplemented": true,
+  "cookieWritesExecuted": false,
+  "uiChanges": false
+}

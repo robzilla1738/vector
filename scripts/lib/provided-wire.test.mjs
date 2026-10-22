@@ -21,3 +21,10 @@ test('native permission identity changes are distinct from quoted command wire n
   const branded = '"dev.aux.blink.expose-wv" "Aux.controlTab"';
   assert.equal(restoreProvidedWireNames(original, branded).text, '"dev.aux.blink.expose-wv" "Aside.controlTab"');
 });
+
+test('new reviewed integration commands retain their protocol names through UI branding',()=>{
+  const integrated='Welcome to Aside. "Aside.listTabs" "Aside.getCookieSyncContext" "Aside.restoreCookieSnapshot"';
+  const result=restoreProvidedWireNames(integrated,integrated.replaceAll('Aside','Aux'));
+  assert.equal(result.text,integrated.replace('Welcome to Aside.','Welcome to Aux.'));
+  assert.equal(result.text.includes('Aux.restoreCookieSnapshot'),false);
+});

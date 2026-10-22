@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "content/browser/devtools/protocol/network_handler.cc",
+      "sha256": "3f3b1b9f1de2ead47dd212f8bca3148d62b63b3bf44e175907b38ab811bd058c"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/firefox_cookie_import.cc",
+      "sha256": "dd733e544b8d9050ba4a696a543f47e6e5fd8acfdf81c7abbc80ad4d4ae233fa"
+    },
+    {
+      "path": "services/network/public/mojom/cookie_manager.mojom",
+      "sha256": "949209b259acbc23844112f6d0a94e84f70d01c62525c8607360e04bef6b1ad5"
+    }
+  ],
+  "purpose": "Static conversion, callback completion and flush contract inputs; not runtime evidence"
+}

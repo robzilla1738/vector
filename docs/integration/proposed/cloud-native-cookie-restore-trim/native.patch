@@ -1,0 +1,11 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
+@@ -45,7 +45,7 @@
+ bool DomainExcluded(std::string host) {
+   host = base::ToLowerASCII(host);
+   if (!host.empty() && host.front() == '.') host.erase(0, 1);
+-  base::TrimString(host, ".", base::TRIM_TRAILING, &host);
++  host = std::string(base::TrimString(host, ".", base::TRIM_TRAILING));
+   net::IPAddress ip;
+   if (ip.AssignFromIPLiteral(host) && ip.IsLoopback()) return true;
+   if (host == "[::1]") return true;

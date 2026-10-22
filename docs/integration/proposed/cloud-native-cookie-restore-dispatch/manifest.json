@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "extension-name-content-comparison",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc",
+      "baselineSha256": "4fb8b02e8645c417495d1ebda0cc10e4a24f02a19d24bbdde7d9e3642fc7c936",
+      "outputSha256": "fa59ddedcc95ea44d510389d9ba2444c444c4b99c571631540e84cff645054da"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

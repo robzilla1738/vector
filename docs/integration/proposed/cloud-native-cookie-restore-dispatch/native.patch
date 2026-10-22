@@ -1,0 +1,11 @@
+--- a/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/aux_browser_import_api.cc
+@@ -7,7 +7,7 @@
+ #include "chrome/browser/extensions/api/aux_browser_import/import_service.h"
+ namespace extensions {
+ ExtensionFunction::ResponseAction AuxBrowserImportFunction::RunAux() {
+-  if (name() == "auxBrowserImport.startImport" && args().size() == 1 &&
++  if (std::string_view(name()) == "auxBrowserImport.startImport" && args().size() == 1 &&
+       args()[0].is_dict() && args()[0].GetDict().FindString("source") &&
+       *args()[0].GetDict().FindString("source") == "aux-cloud-cookies") {
+     if (extension_id() != aux::kAgentExtensionId)

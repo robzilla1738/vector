@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "reject-capture-across-native-cookie-restore",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "baselineSha256": "e5738a419072e0880ee5f4cb0538b84cc61a379e3185460123c47f5f97cd7251",
+      "outputSha256": "aecd4902b984a42ae2a6256949049050e42e99fe657bdecfdf845dde41732b5f"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": "ec87c052993a4aa65160663ff16bf60816fd5dee1748462aca62b82dcc757da2",
+      "outputSha256": "df5e1d7529d7ae78b717832eeb476e1d39a1b58132775464f99f94b9e0431072"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "27b0a6cc94fe347c2965638ee24f602d417d7575ea7e417c63101aea1aa1602a",
+      "outputSha256": "4e1581efa8bc258194f1ea4378e7a580bebff41fe0e73785872bb8aebe079d03"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+      "baselineSha256": "43ac0d54164845a11320577deb32e536b4d570de5dc24b661c4b524015b4bdae",
+      "outputSha256": "ef8be224dbd3e5f7b3b1b77089285b81c7b0579c14c4576638b72318ce3507a2"
+    }
+  ],
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

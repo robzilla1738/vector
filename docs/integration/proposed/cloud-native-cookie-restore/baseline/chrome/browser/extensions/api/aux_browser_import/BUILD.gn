@@ -1,0 +1,39 @@
+source_set("standalone_window") {
+ public = [ "//chrome/browser/ui/webui/aux_importer/import_standalone_window.h" ]
+ public_deps = [ "//chrome/browser/profiles:profile", "//chrome/browser/ui/browser_window" ]
+}
+source_set("headers") { sources = [ "aux_browser_import_api.h" ] public_deps = [ "//chrome/browser/extensions/api/aux_common" ] }
+source_set("aux_browser_import") {
+ sources = [ "chromium_clone_worker.cc", "chromium_clone_worker.h", "chromium_clone_photo.h", "chromium_clone_photo_mac.mm", "chromium_import_destination.h", "chromium_new_target_import.h", "chromium_new_target_import.cc", "chromium_source_capture.h", "chromium_source_capture.cc", "//chrome/browser/ui/webui/aux_importer/import_window_lifecycle.h", "//chrome/browser/ui/webui/aux_importer/import_window_lifecycle.mm", "source_profile_picker_mac.h", "source_profile_picker_mac.mm", "aux_browser_import_api.cc", "aux_browser_import_api.h",  "import_service.cc", "import_service.h", "safari_import.cc", "safari_import.h", "safari_webui_import.cc", "safari_webui_import.h", "firefox_cookie_import.cc", "firefox_cookie_import.h", "firefox_import.cc", "firefox_import.h", "chromium_profile_clone.cc", "chromium_profile_clone.h", "//chrome/browser/ui/webui/aux_importer/import_profile_metadata.h", "//chrome/browser/ui/webui/aux_importer/import_profile_metadata.cc", "//chrome/browser/ui/webui/aux_importer/import_completion_choice.h", "//chrome/browser/ui/webui/aux_importer/import_completion_choice.mm", "extension_import.cc", "extension_import.h", "import_webui.cc", "import_webui.h", "import_webui_resources.h", "//chrome/browser/ui/webui/aux_importer/safari_archive_picker.h", "//chrome/browser/ui/webui/aux_importer/safari_archive_picker.cc", "//chrome/browser/ui/webui/aux_importer/import_target_chooser.h", "//chrome/browser/ui/webui/aux_importer/import_target_chooser.mm" ]
+ public_deps = [ ":headers" ]
+ frameworks = [ "AppKit.framework" ]
+ deps = [ "//base", "//content/public/browser", "//services/network/public/mojom", "//chrome/browser/profiles:profile", "//chrome/browser/profiles", "//chrome/browser/profiles:profile_manager", "//chrome/browser/aux:profile_gate", "//chrome/browser/ui/browser_window", "//ui/views", "//ui/gfx", "//chrome/browser/prefs", "//chrome/browser/themes", "//services/preferences/public/cpp/tracked", "//chrome/browser/importer:importer", "//chrome/browser/importer:impl", "//chrome/browser/bookmarks", "//chrome/browser/history", "//chrome/browser/password_manager/factories", "//components/password_manager/core/browser/password_store:password_store_interface", "//components/password_manager/core/common", "//net", "//sql", "//components/user_data_importer/mojom", "//components/user_data_importer/utility:bookmarks", "//components/bookmarks/browser", "//components/bookmarks/common", "//components/history/core/common", "//components/history/core/browser", "//components/keyed_service/core", "//components/prefs", "//chrome/browser:browser_process", "//chrome/browser/affiliations", "//chrome/browser/autofill", "//chrome/browser/reading_list", "//chrome/browser/sync", "//components/autofill/core/browser", "//components/password_manager/core/browser/ui", "//components/user_data_importer/content", "//components/user_data_importer/utility:safari_data_importer", "//extensions/browser", "//extensions/common", ":migrator", "//ui/base", "//ui/shell_dialogs", "//chrome/browser/ui/select_file_policy", "//url" ]
+}
+
+source_set("migrator") {
+ sources = [ "migrator.cc", "migrator.h", "encrypted_source_bytes.h", "source_crypto.h", "source_crypto_mac.mm" ]
+ frameworks = [ "AppKit.framework", "Security.framework", "LocalAuthentication.framework" ]
+ public_deps = [ "//base" ]
+ deps = [ "//third_party/sqlite", "//crypto", "//third_party/boringssl", "//url", "//chrome/common:ini_parser", "//chrome/common/importer", "//sql" ]
+}
+executable("migrator_probe") {
+ testonly=true
+ sources=[ "migrator_probe.cc" ]
+ deps=[ ":migrator", "//base", "//third_party/sqlite" ]
+}
+executable("encrypted_probe") {
+ testonly=true
+ sources=[ "encrypted_probe.mm" ]
+ deps=[ ":migrator", "//base", "//crypto", "//third_party/sqlite" ]
+}
+
+source_set("safari_archive") {
+ sources=[ "safari_archive.h", "safari_archive.cc" ]
+ deps=[ "//base", "//url", "//third_party/zlib/google:zip", "//components/password_manager/core/browser/import:csv" ]
+ public_deps=[ "//base" ]
+}
+executable("safari_archive_probe") {
+ testonly=true
+ sources=[ "safari_archive_probe.cc" ]
+ deps=[ ":safari_archive", "//base", "//third_party/zlib/google:zip" ]
+}

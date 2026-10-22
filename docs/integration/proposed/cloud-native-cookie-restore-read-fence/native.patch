@@ -1,0 +1,46 @@
+--- a/chrome/browser/aux/account_profile_updater.cc
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -169,7 +169,11 @@
+   }
+  private:
+   void CookieRestoreFinished() {
+-    if (!profile_ || !cookie_restore_queued_) return;
++    if (!profile_) return;
++    // A registry read started before the restore may return after its gate
++    // opens. Discard it too, rather than briefly replaying stale ownership.
++    if (reading_) discard_cookie_read_ = true;
++    if (!cookie_restore_queued_) return;
+     cookie_restore_queued_ = false;
+     const bool allow = std::exchange(cookie_restore_allow_binding_, false);
+     Refresh(allow);
+@@ -264,11 +268,22 @@
+   void DidRead(bool allow_binding, std::optional<base::DictValue> state) {
+     if (!profile_) return;
+     reading_ = false;
++    const bool stale_cookie_read = std::exchange(discard_cookie_read_, false);
+     if (IsProfileCookieRestorePending(profile_)) {
+       cookie_restore_queued_ = true;
+       cookie_restore_allow_binding_ |= allow_binding || queued_allow_binding_;
+       queued_ = false;
+       queued_allow_binding_ = false;
++      return;
++    }
++    if (stale_cookie_read) {
++      const bool allow = allow_binding || queued_allow_binding_ ||
++                         cookie_restore_allow_binding_;
++      queued_ = false;
++      queued_allow_binding_ = false;
++      cookie_restore_queued_ = false;
++      cookie_restore_allow_binding_ = false;
++      Refresh(allow);
+       return;
+     }
+     auto weak = weak_.GetWeakPtr();
+@@ -365,6 +380,7 @@
+   base::CallbackListSubscription authorization_subscription_;
+   base::CallbackListSubscription cookie_restore_subscription_;
+   bool cookie_restore_queued_ = false;
++  bool discard_cookie_read_ = false;
+   bool cookie_restore_allow_binding_ = false;
+   base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
+   base::ScopedObservation<ProfileAttributesStorage,

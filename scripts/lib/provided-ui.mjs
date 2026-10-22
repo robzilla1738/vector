@@ -208,6 +208,9 @@ export async function stageProvidedUi({
             text = replayed;
             anchors.push(...result.anchors);
           }
+          // Reviewed integration may add protocol commands. Preserve those
+          // spellings too, rather than discovering wires only in the baseline.
+          const wireSource = text;
           const replacements = [
             ...['agent', 'vault'].map((peer) => ({
               kind: 'identity',
@@ -228,7 +231,7 @@ export async function stageProvidedUi({
             text = apply(text, anchor);
             anchors.push(anchor);
           }
-          const wire = restoreProvidedWireNames(source.toString('utf8'), text);
+          const wire = restoreProvidedWireNames(wireSource, text);
           text = wire.text;
           anchors.push(...wire.anchors);
           const marks = file.inlineMarkCount
