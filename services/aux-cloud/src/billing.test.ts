@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
-import { billingPlansSnapshot, billingRoutes, invoiceSubscription, paymentMethodSnapshot, returnUrl } from './billing';
+import { billingPlansSnapshot, billingRoutes, invoiceSubscription, invoiceLineSubscription, paymentMethodSnapshot, returnUrl } from './billing';
 import type Stripe from 'stripe';
 
 test('checkout returns only to the fixed native callback or configured HTTPS origin', () => {
@@ -15,6 +15,10 @@ test('checkout returns only to the fixed native callback or configured HTTPS ori
 
 test('billing wire helpers preserve actual invoice and payment-method shapes', () => {
   assert.equal(invoiceSubscription({ parent: { subscription_details: { subscription: 'sub_fixture' } } } as Stripe.Invoice), 'sub_fixture');
+  assert.equal(invoiceLineSubscription({parent:{type:'subscription_item_details',subscription_item_details:{subscription:'sub_current'}}} as Stripe.InvoiceLineItem),'sub_current');
+  assert.equal(invoiceLineSubscription({subscription:'sub_legacy'} as Stripe.InvoiceLineItem),'sub_legacy');
+  assert.equal(invoiceLineSubscription({subscription:'sub_legacy',parent:{type:'subscription_item_details',subscription_item_details:{subscription:'sub_current'}}} as Stripe.InvoiceLineItem),'sub_current');
+  assert.equal(invoiceLineSubscription({subscription:'sub_legacy',parent:{type:'invoice_item_details'}} as Stripe.InvoiceLineItem),null);
   assert.equal(paymentMethodSnapshot(null), null);
   assert.deepEqual(paymentMethodSnapshot({ type: 'card', card: { brand: 'visa', exp_month: 12, exp_year: 2030, last4: '4242' } } as Stripe.PaymentMethod), { type: 'card', brand: 'visa', expMonth: 12, expYear: 2030, last4: '4242' });
   assert.deepEqual(paymentMethodSnapshot({ type: 'link' } as Stripe.PaymentMethod), { type: 'link' });

@@ -50,6 +50,10 @@ async function customer(client: Stripe, user: Pick<AuthUser, 'id' | 'email'>) {
 }
 
 export function invoiceSubscription(invoice: Stripe.Invoice): string | null { return idOf(invoice.parent?.subscription_details?.subscription); }
+export function invoiceLineSubscription(line: Stripe.InvoiceLineItem): string | null {
+  if(line.parent)return line.parent.type==='subscription_item_details'?idOf(line.parent.subscription_item_details?.subscription):null;
+  return idOf(line.subscription);
+}
 async function reconcileSubscription(client: Stripe, subscription: Stripe.Subscription, eventCreated = 0) {
   const customerId = idOf(subscription.customer);
   if (!customerId) return null;
@@ -81,7 +85,7 @@ async function registerPaidInvoice(client: Stripe, invoice: Stripe.Invoice, even
   if (!userId) return;
   // Read subscription invoice lines so a proration or tax line cannot choose an unrelated plan.
   const lines = await client.invoices.listLineItems(invoice.id, { limit: 100 }).autoPagingToArray({ limit: 1000 });
-  const candidates = lines.filter(line => line.amount >= 0 && idOf(line.subscription) === current.id && line.pricing?.type === 'price_details' && line.pricing.price_details?.price && planForPrice(String(line.pricing.price_details.price)));
+  const candidates = lines.filter(line => line.amount >= 0 && invoiceLineSubscription(line) === current.id && line.pricing?.type === 'price_details' && line.pricing.price_details?.price && planForPrice(String(line.pricing.price_details.price)));
   const line = candidates.sort((a, b) => b.period.end - a.period.end || b.period.start - a.period.start)[0];
   if (!line?.pricing?.price_details?.price || line.amount < 0) return;
   const paidPlan = planForPrice(String(line.pricing.price_details.price));
