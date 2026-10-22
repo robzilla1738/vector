@@ -1,0 +1,12 @@
+# Aux PDF-only module. Separate local fixture target; no browser registration.
+loadable_module("aux_pdf_four") {
+  output_extension = "node"
+  sources = [ "AuxPdfFour.cc", "RecoveredPdfPageSelection.cc", "RecoveredPdfPageSelectionNapi.cc", "RecoveredPngCodec.cc" ]
+  include_dirs = [ "node_headers", "//third_party/pdfium/public" ]
+  defines = [ "NAPI_VERSION=8" ]
+  configs -= [ "//build/config/compiler:no_exceptions", "//build/config/compiler:no_rtti", "//build/config/compiler:no_unresolved_symbols" ]
+  configs += [ "//build/config/compiler:exceptions", "//build/config/compiler:rtti", "//build/config/compiler:no_exit_time_destructors" ]
+  cflags_cc = [ "-Wno-deprecated-declarations" ]
+  ldflags = [ "-Wl,-undefined,dynamic_lookup" ]
+  deps = [ "//third_party/pdfium:pdfium", "//third_party/zlib" ]
+}

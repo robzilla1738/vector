@@ -1,0 +1,98 @@
+{
+  "format": "aux.pdf.linked.runtime.evidence.v1",
+  "module": {
+    "path": "out/aux-native-pdf-link/aux-pdf.node",
+    "sha256": "6febb242a074317dba3edc1848fdfb77da468e32bb87acffdaa7f6143afece8e",
+    "bytes": 9457632,
+    "retained": true
+  },
+  "compiledMethods": [
+    "extractText",
+    "merge",
+    "rotate",
+    "split",
+    "getFormFields",
+    "fillFormFields",
+    "renderPages"
+  ],
+  "actualPdfiumLinked": true,
+  "actualFrozenNodeFixturePassed": true,
+  "actualFixtureLog": {
+    "path": "out/aux-native-pdf-engine-runtime.log",
+    "sha256": "c3a824a548aff563e92464e329de2fcc8e966fbcba175c042e4d841140c253a9"
+  },
+  "fixtureCovered": [
+    "synchronous-object-contract",
+    "text-order-duplicates",
+    "merge-reopened-text",
+    "rotation-response-and-reopen",
+    "split-reopen",
+    "input-errors",
+    "no-form-schema",
+    "PNG-dimensions-inflate-alpha-and-red-white-dark-pixels",
+    "missing-field-output",
+    "text-field-schema-and-fill-saved-readback",
+    "last-duplicate-field-wins"
+  ],
+  "scope": {
+    "home": "disposable",
+    "documents": "synthetic-only",
+    "originalAddonExecuted": false,
+    "ownerDocumentsAccessed": false,
+    "protectedSecurityOperations": false,
+    "signingWorkflow": false,
+    "appReplaced": false,
+    "cloudOperations": false
+  },
+  "artifactReferenceProductSubstringCount": 0,
+  "unresolvedPdfiumAndProtectedSecuritySymbols": 0,
+  "nativeCheckoutNewTarget": "aux_native_pdf_bridge",
+  "nativeCheckoutNewOutput": "out/AuxPdfBridge",
+  "nativeBrowserFilesAndOutputModified": false,
+  "buildSerialized": true,
+  "buildWorkers": 2,
+  "pdfiumRevision": "39f0ed4a657e53ed743a16d10d77dec086a08e03",
+  "currentSources": [
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-link/BUILD.gn",
+      "sha256": "e73b06bf90f3657615018242b3975eab7f4e9be3267a8fe787ea9cc27aa16764"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-link/args.gn",
+      "sha256": "0bb89c471ef291d151868fce83aaf767e11dcff88df916f7b7505e943378d11e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/tests/pdf-four.mjs",
+      "sha256": "07c5b46175099bde14054d0884f544021533a6302fe4c52ef6c8ec3816fb8bfc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/RecoveredPngCodec.h",
+      "sha256": "a8fffba76d00b653782d2f1d7727f1a9c3b8f58ef1e58e83286448244a73b276"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/AuxPdfFour.cc",
+      "sha256": "c65f0da801a6d3c53514b0b263290acdc94692635bb640bd1b47067dac514ecb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/RecoveredPngCodec.cc",
+      "sha256": "a28db13406987a3ba3563240f27a2a0d90d03b4fd02fc7ab1f7cc4d6c08c2daa"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelection.h",
+      "sha256": "ee80a69e97a2033ae92629d514e79f66dbcf62e22939e188b5194b782c219d31"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelection.cc",
+      "sha256": "2b2e87e6d7770f060124114fa110dc7073762caaa1fd3cae8295f625c3136401"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelectionNapi.cc",
+      "sha256": "42d52d38f84f56695d6916b676f7c131ab08b6578e96d508a28d7014046e9c12"
+    }
+  ],
+  "remaining": [
+    "exact-original-engine-revision-and-representative-font-pixel-fidelity",
+    "choice-radio-checkbox-specialized-runtime-cases",
+    "trusted-production-loader-packaging-and-real-app-acceptance"
+  ]
+}
