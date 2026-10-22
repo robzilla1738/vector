@@ -55,3 +55,18 @@ The finite next actions are:
 5. Verify actual disposable native migration and private-authority behavior only after a concrete exact-byte signing/Keychain review is authorized. Compile, symbols and source fixtures alone do not prove it.
 
 No deployable successor addon, complete original-source recovery, binary patch, migration execution or runtime acceptance is claimed by this investigation.
+
+## Review-only small-string instruction plan
+
+`small-string-prefix-review.json` pins exactly two proven prefix construction sites in each original role: the shared record initializer and separate wrapping-context initializer. It records each normal/canary range's complete old/new bytes and hashes, instruction addresses, decoded UTF-8 lengths and Swift small-string discriminators, plus the predicted SHA of an in-memory partial successor. Only MOVZ/MOVK immediate fields change: `aside.`/6/`0xe6` becomes `aux.`/4/`0xe4`; `aside-canary.`/13/`0xed` becomes `aux-canary.`/11/`0xeb`. There are24 instruction slots per role. No actual successor binary is written.
+
+The plan preserves all other instruction/data bytes, branch targets, original P256/PQ/enclave code and existing call sites. It intentionally changes the selected selectors and authenticated wrap context, so **it must not be activated** before the explicit versioned migration and authority review. The plan is not a complete identity patch. `unhandled-identity-targets.json` separately pins the actual module descriptor and relative name field, original46-byte Keychain group literal, symbol-table/export-trie locations and Mach-O install name that remain unhandled. That split prevents calling a partial instruction rewrite a fully Aux addon.
+
+Read-only reproduction:
+
+```sh
+python3 docs/integration/proposed/native-addon-identity-recovery/check-prefix-review.py \
+  --source-snapshot /Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852
+```
+
+The checker authenticates original binary hashes, every instruction range/hash, unchanged opcode/register/shift fields, decoded old/new strings and length discriminators, and each predicted partial output hash. It modifies a bytearray only in memory and emits no binary. Its successful result proves the finite review arithmetic, not migration correctness, complete branding, a valid signature or runtime behavior.

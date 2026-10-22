@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "roles": [
+    {
+      "role": "daemon",
+      "moduleDescriptor": {
+        "address": "0x71b474",
+        "fileOffset": 7451764,
+        "originalBytesHex": "0000000000000000c4f9e0ff",
+        "nameRelativeFieldFileOffset": 7451772,
+        "nameSignedRelativeDisplacement": -2033212,
+        "nameFileOffset": 5418560,
+        "name": "AsideNativeSwift",
+        "moduleNameUtf8Bytes": 16,
+        "targetAuxModuleName": "AuxNativeSwift",
+        "targetAuxModuleNameUtf8Bytes": 14
+      },
+      "accessGroup": {
+        "fileOffset": 5346864,
+        "address": "0x519630",
+        "originalUtf8": "8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
+        "utf8Bytes": 46,
+        "nulTerminated": true,
+        "doNotModifyBeforeAuthorityMigration": true
+      },
+      "linkEdit": {
+        "installName": {
+          "fileOffset": 3464,
+          "value": "@rpath/aside-native.node"
+        },
+        "exportTrie": {
+          "fileOffset": 7679552,
+          "size": 9568
+        },
+        "symbolTable": {
+          "fileOffset": 7714360,
+          "count": 19905,
+          "stringTableOffset": 8038000,
+          "stringTableSize": 1180856
+        }
+      },
+      "unhandledIdentityTargets": [
+        "Dynamic exports and export trie",
+        "Swift mangled symbol names and their encoded lengths",
+        "Swift module/type/reflection metadata",
+        "Original access-group literal and reviewed authority mapping",
+        "Mach-O install name",
+        "Other generated identity and storage label constructors"
+      ]
+    },
+    {
+      "role": "cli",
+      "moduleDescriptor": {
+        "address": "0x71b074",
+        "fileOffset": 7450740,
+        "originalBytesHex": "000000000000000044f5e0ff",
+        "nameRelativeFieldFileOffset": 7450748,
+        "nameSignedRelativeDisplacement": -2034364,
+        "nameFileOffset": 5416384,
+        "name": "AsideNativeSwift",
+        "moduleNameUtf8Bytes": 16,
+        "targetAuxModuleName": "AuxNativeSwift",
+        "targetAuxModuleNameUtf8Bytes": 14
+      },
+      "accessGroup": {
+        "fileOffset": 5344096,
+        "address": "0x518b60",
+        "originalUtf8": "8CPD4K4TBB.at.studio.AsideBrowser.cryptography",
+        "utf8Bytes": 46,
+        "nulTerminated": true,
+        "doNotModifyBeforeAuthorityMigration": true
+      },
+      "linkEdit": {
+        "installName": {
+          "fileOffset": 3224,
+          "value": "@rpath/aside-native.node"
+        },
+        "exportTrie": {
+          "fileOffset": 7665944,
+          "size": 11952
+        },
+        "symbolTable": {
+          "fileOffset": 7703200,
+          "count": 19907,
+          "stringTableOffset": 8026880,
+          "stringTableSize": 1183352
+        }
+      },
+      "unhandledIdentityTargets": [
+        "Dynamic exports and export trie",
+        "Swift mangled symbol names and their encoded lengths",
+        "Swift module/type/reflection metadata",
+        "Original access-group literal and reviewed authority mapping",
+        "Mach-O install name",
+        "Other generated identity and storage label constructors"
+      ]
+    }
+  ],
+  "binaryMutation": false,
+  "completeIdentityMigration": false
+}
