@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "scope": "necessary admission boundary; no complete native writer authority",
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/aux.mjs",
+      "sha256": "3fc12255e044bb8f5e8dd1beb78b52cdb1eb6b60e61ca4bd04ef4379343b7dca",
+      "bytes": 8458
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/owned-process.mjs",
+      "sha256": "56924bc57f03393723f429d2f402a31e05751fc690571c52094c2ea01dbdcdec",
+      "bytes": 3739
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/owned-process-guardian.mjs",
+      "sha256": "d32ebcba0ec7f37936fd6a4c7f263aa5c90a48f0548b2b6df6c327bf6cec0f23",
+      "bytes": 2798
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/lib/aux-launch-identity.mjs",
+      "sha256": "baa6db4084307920f67bc25d2473afd35a0262c8d2512d50c92a0c85f73311d6",
+      "bytes": 1064
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-state-migration-transaction.mjs",
+      "sha256": "96ef4a34f91522102272308ccda5cd10fe86c2572691a3926fa412ac40a8205c",
+      "bytes": 19101
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-disposable-state-handoff.mjs",
+      "sha256": "669f53abac47febe54fa79b1469fe256fd1696ed2a233a231f95f6287bdb4d61",
+      "bytes": 14250
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "693a76b3958f95acfd4b7c138230c2f8fdd35f42703bb7a2ccf399094f79eb19",
+      "bytes": 18340
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "db0bf4f7bdf3ac8c2810e4b6e0aec3f39ab054a60bc755a4296c391e0351ae57",
+      "bytes": 3427
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc",
+      "sha256": "47cd095d36a83c76658e5b22ff52735da4046c6f10628f7d9267d03d79e1efda",
+      "bytes": 7899
+    }
+  ]
+}
