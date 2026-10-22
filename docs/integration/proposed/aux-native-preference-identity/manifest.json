@@ -1,0 +1,1120 @@
+{
+  "version": 1,
+  "kind": "aux-native-preference-identity",
+  "parentComposition": "out/native-reuse-composition-aux-protocol-v1",
+  "parentCompositionSha256": "0134a3ec997a72dcf68277a93a37ff241a29ef8afe68ea959c355a3e4bea319f",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_avatar.cc",
+      "baselineSha256": "3e9c4e148076d2ec4c6e1dd26c1d93558eeaf3ef2fae567590eb8b2e257df71a",
+      "outputSha256": "edb0e31fd9fdaf2f56742d865f5b94ee09629fa5d6b28f3fc314b40c74f09b56",
+      "edits": [
+        {
+          "find": "\"aside.account_email\"",
+          "replace": "\"aux.account_email\"",
+          "count": 2
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_prefs.cc",
+      "baselineSha256": "39a4c0022405383ca76871597a69d6e5fd92c30beaf1685923f790e7e47b8881",
+      "outputSha256": "1852947e031bc7eb0987d340d72f51774c10618815c56393290f311a6855e05a",
+      "edits": [
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 3
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 6
+        },
+        {
+          "find": "\"aside.account_email\"",
+          "replace": "\"aux.account_email\"",
+          "count": 3
+        },
+        {
+          "find": "\"aside.account_display_name\"",
+          "replace": "\"aux.account_display_name\"",
+          "count": 3
+        },
+        {
+          "find": "\"aside.account_profile_url\"",
+          "replace": "\"aux.account_profile_url\"",
+          "count": 3
+        },
+        {
+          "find": "\"aside.account_has_persisted_session\"",
+          "replace": "\"aux.account_has_persisted_session\"",
+          "count": 4
+        },
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 4
+        },
+        {
+          "find": "\"aside.sync_auth_diagnostic_message\"",
+          "replace": "\"aux.sync_auth_diagnostic_message\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.sync_encryption_diagnostic_message\"",
+          "replace": "\"aux.sync_encryption_diagnostic_message\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": "95164d9f21b9b090193a2f2a3b04abee1ba7bcf24f354da0f125154fddbb70b7",
+      "outputSha256": "df48f424f69fba3e684022f1ee8c930acc61989827c2354e2fdf4964ad4112ee",
+      "edits": [
+        {
+          "find": "\"aside.onboarding_completed\"",
+          "replace": "\"aux.onboarding_completed\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.profile_id\"",
+          "replace": "\"aux.profile_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.bootstrap_complete\"",
+          "replace": "\"aux.bootstrap_complete\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/aux/ntp_prerender_service.cc",
+      "baselineSha256": "60ab01e3eb21ee50c9cf516889c5926450c298b82bc387e58244f2cd401f1b3e",
+      "outputSha256": "89407f5982a2e1c2b2e01acde9706d2433789cf3ab0921c9c52451fd5c4a5da5",
+      "edits": [
+        {
+          "find": "\"aside.account_password_extension_available\"",
+          "replace": "\"aux.account_password_extension_available\"",
+          "count": 3
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate_prefs.cc",
+      "baselineSha256": "79d560c39bd0c50da0e40b3d2fc994df1053f53e924016f8b4dfd80e20bf5d2d",
+      "outputSha256": "2fa0e8e5a31c4b7aa4d698ba25d66a41ab0f355b3ffd7eb5d731a04f1c5a6a67",
+      "edits": [
+        {
+          "find": "\"aside.onboarding_completed\"",
+          "replace": "\"aux.onboarding_completed\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.profile_id\"",
+          "replace": "\"aux.profile_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_email\"",
+          "replace": "\"aux.account_email\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_display_name\"",
+          "replace": "\"aux.account_display_name\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_profile_url\"",
+          "replace": "\"aux.account_profile_url\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_has_persisted_session\"",
+          "replace": "\"aux.account_has_persisted_session\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.sync_auth_diagnostic_message\"",
+          "replace": "\"aux.sync_auth_diagnostic_message\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.sync_encryption_diagnostic_message\"",
+          "replace": "\"aux.sync_encryption_diagnostic_message\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.bootstrap_complete\"",
+          "replace": "\"aux.bootstrap_complete\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.automatic_password_gate_suppressed\"",
+          "replace": "\"aux.automatic_password_gate_suppressed\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_password_extension_available\"",
+          "replace": "\"aux.account_password_extension_available\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": "df5e1d7529d7ae78b717832eeb476e1d39a1b58132775464f99f94b9e0431072",
+      "outputSha256": "0484f233a2e4660de483a49e77591be3ab69ea2ad9ca2a542688c1fbc0b24270",
+      "edits": [
+        {
+          "find": "\"aside.profile_id\"",
+          "replace": "\"aux.profile_id\"",
+          "count": 4
+        },
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_has_persisted_session\"",
+          "replace": "\"aux.account_has_persisted_session\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "4e1581efa8bc258194f1ea4378e7a580bebff41fe0e73785872bb8aebe079d03",
+      "outputSha256": "d009dc7a6e6db9884858eb858b8f4a858fb80c7dd75b49f0d46dd2d5104333f4",
+      "edits": [
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 2
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 2
+        },
+        {
+          "find": "\"aside.account_has_persisted_session\"",
+          "replace": "\"aux.account_has_persisted_session\"",
+          "count": 2
+        },
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 2
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+      "baselineSha256": "ef8be224dbd3e5f7b3b1b77089285b81c7b0579c14c4576638b72318ce3507a2",
+      "outputSha256": "838b2906744ce92522f3fa38ef48588e20aea3960a440e7a8ef45063f1d33c81",
+      "edits": [
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_has_persisted_session\"",
+          "replace": "\"aux.account_has_persisted_session\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "baselineSha256": "f58f760732815b71b17b67a3498c25a03f41a37ec74c3fad7441709d68790fb6",
+      "outputSha256": "4c3fb8f52dd86bedf6915c20b33c6b1f512038ca82362fabd7c9023ae257afb3",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_enabled\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_enabled\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "baselineSha256": "60f54a9109b84a9ffb0ef3ca6f9fe131b0aef0f06ec273228e61ce5bec5d1e57",
+      "outputSha256": "d81b4d34e4aac2a734850164a60939b3e6859b8ba524269a9be71535ec2d3808",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_enabled\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_enabled\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_expanded\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_expanded\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/browser_ui_prefs.cc",
+      "baselineSha256": "b595008aa67ae993065d45ae1db7dbb3afc004650527bdc4ef766d2b788556cc",
+      "outputSha256": "b689379338b0e34119bd8c38be43c6cafe1b0123fb77c5dd95dfd63de1e286ca",
+      "edits": [
+        {
+          "find": "\"aside.account_display_name\"",
+          "replace": "\"aux.account_display_name\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "baselineSha256": "80622583909c4322b1554235488e9e959d52bdfd1d3a97476deffd1b11389885",
+      "outputSha256": "3014c1a99030f2985f01ee8a146bbc577ff2f21c4e2db2e02fd930be5dcaaecf",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_enabled\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_enabled\"",
+          "count": 1
+        },
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_expanded\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_expanded\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "6a6b3b05959052bd1c2a2ea6072cc29d21057820b98d1a685e766b6c941e2314",
+      "outputSha256": "68b7ef2ca33c2ff7faa82ff6e97806d6e40de3887696e2b99ab896f830498c58",
+      "edits": [
+        {
+          "find": "\"aside.account_user_id\"",
+          "replace": "\"aux.account_user_id\"",
+          "count": 4
+        },
+        {
+          "find": "\"aside.account_id\"",
+          "replace": "\"aux.account_id\"",
+          "count": 6
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+      "baselineSha256": "5ab62d3ef3e1e94aec68908906bda041615a8e2846a4ba41d8b7e4bda2328e66",
+      "outputSha256": "0a0537040f4e4a150ba21e22467d6f27c4f286ee247497ffe96f5da9a31871a3",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.chats_section_expanded\"",
+          "replace": "\"aux.vertical_tabs.chats_section_expanded\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+      "baselineSha256": "b218b7a4cfb9888e3a71fb74d42263f931e0e2d6e411b0e60596adecaa21b0dd",
+      "outputSha256": "ed18e9d0906e83afd2c9a1e79ee75e70df789bd8722f637155fe581aad426635",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_enabled\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_enabled\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+      "baselineSha256": "a42edf0b860a3c3b17a518363bdc895c4724fa85091cd2afff77807e186c1b52",
+      "outputSha256": "56b1fb93ee768ac3b3bfa9fcccbf249b5a07297cf59425c9602796d414088848",
+      "edits": [
+        {
+          "find": "\"aside.account_email\"",
+          "replace": "\"aux.account_email\"",
+          "count": 2
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.h",
+      "baselineSha256": "03ba431485e17b771be4628caa68fe14fa194da536a70d1c518c7cb73cc62ace",
+      "outputSha256": "7fe7d6473393700f2140dbeb844956c718c56bc6832d9a4eaca9623a9cd12504",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.profile_order\"",
+          "replace": "\"aux.vertical_tabs.profile_order\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "baselineSha256": "c38fef2a80f1e7b700c5690bf7dc2204b2b877d7a9ef413ce79189b8f7626207",
+      "outputSha256": "720831396054fc08c6161ca9ad7f813ef379793a6646d490fb0cad64077cc945",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.bookmarks_section_enabled\"",
+          "replace": "\"aux.vertical_tabs.bookmarks_section_enabled\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc",
+      "baselineSha256": "221937f8a9ee28b867a591b209d69417a13e27bfe83482f3602f6a175489624e",
+      "outputSha256": "0d9a6f542228db06c2d2e191d072c244c9b53b9b878367b87f338b2e09c9f12f",
+      "edits": [
+        {
+          "find": "\"aside.account_auth_paused\"",
+          "replace": "\"aux.account_auth_paused\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h",
+      "baselineSha256": "0fde2b342b7940d909b40bd72a225f7f40c136bf42072a1f57311164a12a2d98",
+      "outputSha256": "71f065b1144f13cc418999d95a00c2e5261f05ab0c057eb560a1b4e32f6314d1",
+      "edits": [
+        {
+          "find": "\"aside.vertical_tabs.expanded_bookmark_folder_ids\"",
+          "replace": "\"aux.vertical_tabs.expanded_bookmark_folder_ids\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    },
+    {
+      "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.h",
+      "baselineSha256": "b70445a0b89ada76b597ca6e5dc6e10646361f680c656693ad304743051448b9",
+      "outputSha256": "9b694e1cc518335c8fd9595953ea728980098a2e96f73f39bc0aaa839fc8025d",
+      "edits": [
+        {
+          "find": "\"aside.account_display_name\"",
+          "replace": "\"aux.account_display_name\"",
+          "count": 1
+        }
+      ],
+      "parentCompositionFile": true
+    }
+  ],
+  "keys": [
+    {
+      "from": "aside.onboarding_completed",
+      "to": "aux.onboarding_completed",
+      "scope": "local-state",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_updater.cc",
+          "line": 54,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 7,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.vertical_tabs.profile_order",
+      "to": "aux.vertical_tabs.profile_order",
+      "scope": "local-state",
+      "type": "array",
+      "occurrences": [
+        {
+          "path": "chrome/browser/ui/views/frame/aux_profile_switch_owner.h",
+          "line": 21,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.profile_id",
+      "to": "aux.profile_id",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_updater.cc",
+          "line": 237,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 10,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 27,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 116,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 117,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 120,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_user_id",
+      "to": "aux.account_user_id",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 31,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 38,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 67,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_updater.cc",
+          "line": 51,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 12,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 28,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 236,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 237,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+          "line": 172,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 51,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 127,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 128,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 195,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_id",
+      "to": "aux.account_id",
+      "scope": "profile",
+      "type": "integer",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 32,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 33,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 37,
+          "count": 2
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 68,
+          "count": 2
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_updater.cc",
+          "line": 52,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 13,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 27,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 240,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 241,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+          "line": 171,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 52,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 131,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 132,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 196,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 200,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+          "line": 201,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_email",
+      "to": "aux.account_email",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_avatar.cc",
+          "line": 67,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_avatar.cc",
+          "line": 68,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 39,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 50,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 51,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 14,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+          "line": 147,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+          "line": 148,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_display_name",
+      "to": "aux.account_display_name",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 40,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 62,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 73,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 15,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/browser_ui_prefs.cc",
+          "line": 116,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/profiles/aux_profile_display_label.h",
+          "line": 12,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_profile_url",
+      "to": "aux.account_profile_url",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 41,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 63,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 76,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 16,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_has_persisted_session",
+      "to": "aux.account_has_persisted_session",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 42,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 53,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 54,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 69,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 17,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 29,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 230,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 231,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+          "line": 173,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_auth_paused",
+      "to": "aux.account_auth_paused",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 43,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 57,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 58,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 70,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 18,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_identity.cc",
+          "line": 30,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 232,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+          "line": 233,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc",
+          "line": 174,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc",
+          "line": 30,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.sync_auth_diagnostic_message",
+      "to": "aux.sync_auth_diagnostic_message",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 44,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 19,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.sync_encryption_diagnostic_message",
+      "to": "aux.sync_encryption_diagnostic_message",
+      "scope": "profile",
+      "type": "string",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_prefs.cc",
+          "line": 45,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 20,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.bootstrap_complete",
+      "to": "aux.bootstrap_complete",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/account_profile_updater.cc",
+          "line": 53,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 21,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.automatic_password_gate_suppressed",
+      "to": "aux.automatic_password_gate_suppressed",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 22,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.account_password_extension_available",
+      "to": "aux.account_password_extension_available",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/aux/ntp_prerender_service.cc",
+          "line": 157,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/ntp_prerender_service.cc",
+          "line": 248,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/ntp_prerender_service.cc",
+          "line": 256,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/aux/profile_gate_prefs.cc",
+          "line": 23,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.vertical_tabs.bookmarks_section_enabled",
+      "to": "aux.vertical_tabs.bookmarks_section_enabled",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+          "line": 122,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/prefs/browser_prefs.cc",
+          "line": 2075,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+          "line": 22,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+          "line": 59,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+          "line": 291,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.vertical_tabs.bookmarks_section_expanded",
+      "to": "aux.vertical_tabs.bookmarks_section_expanded",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/prefs/browser_prefs.cc",
+          "line": 2077,
+          "count": 1
+        },
+        {
+          "path": "chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+          "line": 24,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.vertical_tabs.chats_section_expanded",
+      "to": "aux.vertical_tabs.chats_section_expanded",
+      "scope": "profile",
+      "type": "boolean",
+      "occurrences": [
+        {
+          "path": "chrome/browser/ui/views/frame/aux_chats_section.cc",
+          "line": 18,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "aside.vertical_tabs.expanded_bookmark_folder_ids",
+      "to": "aux.vertical_tabs.expanded_bookmark_folder_ids",
+      "scope": "profile",
+      "type": "array",
+      "occurrences": [
+        {
+          "path": "chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h",
+          "line": 22,
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.cc",
+      "value": "aside.inboxNotification",
+      "reason": "Not a registered/consumed preference key in this migration"
+    },
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.cc",
+      "value": "aside.notificationPermissionChanged",
+      "reason": "Not a registered/consumed preference key in this migration"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "value": "aside.verticalTabsTidy",
+      "reason": "Not a registered/consumed preference key in this migration"
+    }
+  ],
+  "applied": false,
+  "compiled": false,
+  "patchSha256": "274eb1f0b73dc353cee99377e029fee4983d5215765a8138a8869e1769ee28fc"
+}

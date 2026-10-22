@@ -1,0 +1,454 @@
+--- a/chrome/browser/aux/account_profile_avatar.cc
++++ b/chrome/browser/aux/account_profile_avatar.cc
+@@ -64,8 +64,8 @@
+ void AccountProfileAvatar::RestoreFromPrefs() {
+   if (!profile_) return;
+   auto* prefs = profile_->GetPrefs();
+-  const auto email = prefs->FindPreference("aside.account_email")
+-      ? prefs->GetString("aside.account_email") : std::string();
++  const auto email = prefs->FindPreference("aux.account_email")
++      ? prefs->GetString("aux.account_email") : std::string();
+   if (!HasAccountProfileSession(prefs) || email.empty()) {
+     auto weak = weak_.GetWeakPtr();
+     ClearOwnedPicture();
+--- a/chrome/browser/aux/account_profile_prefs.cc
++++ b/chrome/browser/aux/account_profile_prefs.cc
+@@ -28,51 +28,51 @@
+                              std::optional<int> account_id) {
+   if (!prefs) return;
+   if (user_id.empty()) return ClearAccountProfileBinding(prefs);
+-  SetString(prefs, "aside.account_user_id", user_id);
+-  if (prefs->FindPreference("aside.account_id"))
+-    prefs->SetInteger("aside.account_id", account_id && *account_id >= 0 ? *account_id : -1);
++  SetString(prefs, "aux.account_user_id", user_id);
++  if (prefs->FindPreference("aux.account_id"))
++    prefs->SetInteger("aux.account_id", account_id && *account_id >= 0 ? *account_id : -1);
+ }
+ void ClearAccountProfileBinding(PrefService* prefs) {
+   if (!prefs) return;
+-  if (prefs->FindPreference("aside.account_id")) prefs->SetInteger("aside.account_id", -1);
+-  SetString(prefs, "aside.account_user_id", "");
+-  SetString(prefs, "aside.account_email", "");
+-  SetString(prefs, "aside.account_display_name", "");
+-  SetString(prefs, "aside.account_profile_url", "");
+-  SetBoolean(prefs, "aside.account_has_persisted_session", false);
+-  SetBoolean(prefs, "aside.account_auth_paused", false);
+-  SetString(prefs, "aside.sync_auth_diagnostic_message", "");
+-  SetString(prefs, "aside.sync_encryption_diagnostic_message", "");
++  if (prefs->FindPreference("aux.account_id")) prefs->SetInteger("aux.account_id", -1);
++  SetString(prefs, "aux.account_user_id", "");
++  SetString(prefs, "aux.account_email", "");
++  SetString(prefs, "aux.account_display_name", "");
++  SetString(prefs, "aux.account_profile_url", "");
++  SetBoolean(prefs, "aux.account_has_persisted_session", false);
++  SetBoolean(prefs, "aux.account_auth_paused", false);
++  SetString(prefs, "aux.sync_auth_diagnostic_message", "");
++  SetString(prefs, "aux.sync_encryption_diagnostic_message", "");
+ }
+ void SetAccountProfileEmail(PrefService* prefs, const std::string& email,
+                            bool has_persisted_session) {
+   if (!prefs) return;
+-  if (ReadString(prefs, "aside.account_email") != email)
+-    SetString(prefs, "aside.account_email", email);
++  if (ReadString(prefs, "aux.account_email") != email)
++    SetString(prefs, "aux.account_email", email);
+   const bool persisted = has_persisted_session && !email.empty();
+-  if (ReadBoolean(prefs, "aside.account_has_persisted_session") != persisted)
+-    SetBoolean(prefs, "aside.account_has_persisted_session", persisted);
++  if (ReadBoolean(prefs, "aux.account_has_persisted_session") != persisted)
++    SetBoolean(prefs, "aux.account_has_persisted_session", persisted);
+ }
+ void SetAccountProfileAuthPaused(PrefService* prefs, bool paused) {
+-  if (ReadBoolean(prefs, "aside.account_auth_paused") != paused)
+-    SetBoolean(prefs, "aside.account_auth_paused", paused);
++  if (ReadBoolean(prefs, "aux.account_auth_paused") != paused)
++    SetBoolean(prefs, "aux.account_auth_paused", paused);
+ }
+ void SetAccountProfileDisplay(PrefService* prefs, const std::string& display_name,
+                              const std::string& profile_url) {
+-  SetString(prefs, "aside.account_display_name", display_name);
+-  SetString(prefs, "aside.account_profile_url", profile_url);
++  SetString(prefs, "aux.account_display_name", display_name);
++  SetString(prefs, "aux.account_profile_url", profile_url);
+ }
+ bool HasAccountProfileSession(const PrefService* prefs) {
+   if (!prefs) return false;
+-  const bool bound = !ReadString(prefs, "aside.account_user_id").empty() ||
+-      (prefs->FindPreference("aside.account_id") && prefs->GetInteger("aside.account_id") >= 0);
+-  return bound && (ReadBoolean(prefs, "aside.account_has_persisted_session") ||
+-                   ReadBoolean(prefs, "aside.account_auth_paused"));
++  const bool bound = !ReadString(prefs, "aux.account_user_id").empty() ||
++      (prefs->FindPreference("aux.account_id") && prefs->GetInteger("aux.account_id") >= 0);
++  return bound && (ReadBoolean(prefs, "aux.account_has_persisted_session") ||
++                   ReadBoolean(prefs, "aux.account_auth_paused"));
+ }
+ std::optional<std::string> GetAccountProfileDisplayName(const PrefService* prefs) {
+-  return DisplayValue(prefs, "aside.account_display_name");
++  return DisplayValue(prefs, "aux.account_display_name");
+ }
+ std::optional<std::string> GetAccountProfilePictureUrl(const PrefService* prefs) {
+-  return DisplayValue(prefs, "aside.account_profile_url");
++  return DisplayValue(prefs, "aux.account_profile_url");
+ }
+ }  // namespace aux
+--- a/chrome/browser/aux/account_profile_updater.cc
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -48,10 +48,10 @@
+ #include "url/gurl.h"
+ namespace aux {
+ namespace {
+-constexpr char kUser[] = "aside.account_user_id";
+-constexpr char kAccount[] = "aside.account_id";
+-constexpr char kBootstrap[] = "aside.bootstrap_complete";
+-constexpr char kOnboarding[] = "aside.onboarding_completed";
++constexpr char kUser[] = "aux.account_user_id";
++constexpr char kAccount[] = "aux.account_id";
++constexpr char kBootstrap[] = "aux.bootstrap_complete";
++constexpr char kOnboarding[] = "aux.onboarding_completed";
+ constexpr auto kBindingAnnotation = net::DefineNetworkTrafficAnnotation(
+     "aux_native_account_profile_binding",
+     R"(semantics {sender:"Aux account profile updater" description:"Preserve the real native profile-to-account metadata binding in the local supplied daemon." trigger:"Actual account metadata changes or actual profile removal." data:"Canonical profile ID/path, optional native display-order index and actual selected user/account ID. Installation authorization authenticates the local request. No Vault values." destination:LOCAL} policy {cookies_allowed:NO setting:"Follows actual local browser profile/account binding." policy_exception_justification:"Browser-owned authenticated loopback daemon only."})");
+@@ -234,7 +234,7 @@
+   void OnProfileWillBeRemoved(const base::FilePath& path) override {
+     if (path != path_ || !profile_) return;
+     base::DictValue input;
+-    const auto& id = profile_->GetPrefs()->GetString("aside.profile_id");
++    const auto& id = profile_->GetPrefs()->GetString("aux.profile_id");
+     if (!id.empty()) input.Set("profileId", id);
+     if (!path_.empty()) input.Set("profilePath", path_.value());
+     BindingRequest::Start("/accounts/profile-binding/delete", std::move(input));
+--- a/chrome/browser/aux/ntp_prerender_service.cc
++++ b/chrome/browser/aux/ntp_prerender_service.cc
+@@ -154,7 +154,7 @@
+     profile_observation_.Observe(profile);
+     auto* registry = extensions::ExtensionRegistry::Get(profile);
+     extension_observation_.Observe(registry);
+-    profile->GetPrefs()->SetBoolean("aside.account_password_extension_available",
++    profile->GetPrefs()->SetBoolean("aux.account_password_extension_available",
+         registry->enabled_extensions().Contains(kAgentExtensionId));
+     browser_observation_.Observe(
+         ProfileBrowserCollection::GetForProfile(profile));
+@@ -245,7 +245,7 @@
+   void OnExtensionLoaded(content::BrowserContext*,
+                          const extensions::Extension* extension) override {
+     if (profile_ && extension->id() == kAgentExtensionId) {
+-      profile_->GetPrefs()->SetBoolean("aside.account_password_extension_available", true);
++      profile_->GetPrefs()->SetBoolean("aux.account_password_extension_available", true);
+       PreferenceChanged();
+     }
+   }
+@@ -253,7 +253,7 @@
+                            const extensions::Extension* extension,
+                            extensions::UnloadedExtensionReason) override {
+     if (profile_ && extension->id() == kAgentExtensionId) {
+-      profile_->GetPrefs()->SetBoolean("aside.account_password_extension_available", false);
++      profile_->GetPrefs()->SetBoolean("aux.account_password_extension_available", false);
+       PreferenceChanged();
+     }
+   }
+--- a/chrome/browser/aux/profile_gate_prefs.cc
++++ b/chrome/browser/aux/profile_gate_prefs.cc
+@@ -4,23 +4,23 @@
+ #include "components/pref_registry/pref_registry_syncable.h"
+ namespace aux {
+ void RegisterProfileGateLocalStatePrefs(PrefRegistrySimple* registry) {
+-  registry->RegisterBooleanPref("aside.onboarding_completed", false);
++  registry->RegisterBooleanPref("aux.onboarding_completed", false);
+ }
+ void RegisterProfileGateProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+-  registry->RegisterStringPref("aside.profile_id", "");
++  registry->RegisterStringPref("aux.profile_id", "");
+   registry->RegisterDictionaryPref("aux.cloud_cookie_restore");
+-  registry->RegisterStringPref("aside.account_user_id", "");
+-  registry->RegisterIntegerPref("aside.account_id", -1);
+-  registry->RegisterStringPref("aside.account_email", "");
+-  registry->RegisterStringPref("aside.account_display_name", "");
+-  registry->RegisterStringPref("aside.account_profile_url", "");
+-  registry->RegisterBooleanPref("aside.account_has_persisted_session", false);
+-  registry->RegisterBooleanPref("aside.account_auth_paused", false);
+-  registry->RegisterStringPref("aside.sync_auth_diagnostic_message", "");
+-  registry->RegisterStringPref("aside.sync_encryption_diagnostic_message", "");
+-  registry->RegisterBooleanPref("aside.bootstrap_complete", false);
+-  registry->RegisterBooleanPref("aside.automatic_password_gate_suppressed", false);
+-  registry->RegisterBooleanPref("aside.account_password_extension_available", false);
++  registry->RegisterStringPref("aux.account_user_id", "");
++  registry->RegisterIntegerPref("aux.account_id", -1);
++  registry->RegisterStringPref("aux.account_email", "");
++  registry->RegisterStringPref("aux.account_display_name", "");
++  registry->RegisterStringPref("aux.account_profile_url", "");
++  registry->RegisterBooleanPref("aux.account_has_persisted_session", false);
++  registry->RegisterBooleanPref("aux.account_auth_paused", false);
++  registry->RegisterStringPref("aux.sync_auth_diagnostic_message", "");
++  registry->RegisterStringPref("aux.sync_encryption_diagnostic_message", "");
++  registry->RegisterBooleanPref("aux.bootstrap_complete", false);
++  registry->RegisterBooleanPref("aux.automatic_password_gate_suppressed", false);
++  registry->RegisterBooleanPref("aux.account_password_extension_available", false);
+   registry->RegisterDictionaryPref(
+       "persistent_notifications.ai_delivery_mode_by_origin");
+ }
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -24,10 +24,10 @@
+     observation_.Observe(profile);
+     auto* prefs = profile->GetPrefs();
+     registrar_.Init(prefs);
+-    for (const char* name : {"aside.profile_id", "aside.account_id",
+-                            "aside.account_user_id",
+-                            "aside.account_has_persisted_session",
+-                            "aside.account_auth_paused"}) {
++    for (const char* name : {"aux.profile_id", "aux.account_id",
++                            "aux.account_user_id",
++                            "aux.account_has_persisted_session",
++                            "aux.account_auth_paused"}) {
+       if (prefs->FindPreference(name))
+         registrar_.Add(name, base::BindRepeating(&CookieBindingEpoch::Rotate,
+                                                 base::Unretained(this)));
+@@ -113,11 +113,11 @@
+   if (!profile) return {};
+   auto* prefs = profile->GetOriginalProfile()->GetPrefs();
+   if (!prefs) return {};
+-  const bool registered = prefs->FindPreference("aside.profile_id") != nullptr;
+-  auto id = registered ? prefs->GetString("aside.profile_id") : std::string();
++  const bool registered = prefs->FindPreference("aux.profile_id") != nullptr;
++  auto id = registered ? prefs->GetString("aux.profile_id") : std::string();
+   if (id.empty()) {
+     id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-    if (registered) prefs->SetString("aside.profile_id", id);
++    if (registered) prefs->SetString("aux.profile_id", id);
+   }
+   return id;
+ }
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -227,18 +227,18 @@
+       context.Set("profileIndex", *index);
+     auto* prefs = current->GetPrefs();
+     const bool persisted =
+-        prefs->FindPreference("aside.account_has_persisted_session") &&
+-        prefs->GetBoolean("aside.account_has_persisted_session");
+-    const bool paused = prefs->FindPreference("aside.account_auth_paused") &&
+-                        prefs->GetBoolean("aside.account_auth_paused");
++        prefs->FindPreference("aux.account_has_persisted_session") &&
++        prefs->GetBoolean("aux.account_has_persisted_session");
++    const bool paused = prefs->FindPreference("aux.account_auth_paused") &&
++                        prefs->GetBoolean("aux.account_auth_paused");
+     context.Set("hasAccountSession", persisted);
+     context.Set("accountAuthPaused", paused);
+-    if (prefs->FindPreference("aside.account_user_id")) {
+-      const auto& user = prefs->GetString("aside.account_user_id");
++    if (prefs->FindPreference("aux.account_user_id")) {
++      const auto& user = prefs->GetString("aux.account_user_id");
+       if (!user.empty()) context.Set("boundUserId", user);
+     }
+-    if (prefs->FindPreference("aside.account_id")) {
+-      const int account = prefs->GetInteger("aside.account_id");
++    if (prefs->FindPreference("aux.account_id")) {
++      const int account = prefs->GetInteger("aux.account_id");
+       if (account >= 0) context.Set("boundAccountId", account);
+     }
+     return RespondNow(WithArguments(std::move(context)));
+--- a/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
++++ b/chrome/browser/extensions/api/aux_browser_import/cloud_cookie_restore.cc
+@@ -168,10 +168,10 @@
+     return aux::GetProfileId(profile_.get()) == *expected_.FindString("profileId") &&
+         profile_->UniqueId() == *expected_.FindString("browserContextId") &&
+         aux::GetProfileCookieBindingEpoch(profile_.get()) == *expected_.FindString("cookieBindingEpoch") &&
+-        prefs->GetInteger("aside.account_id") == *expected_.FindInt("accountId") &&
+-        prefs->GetString("aside.account_user_id") == *expected_.FindString("userId") &&
+-        prefs->GetBoolean("aside.account_has_persisted_session") &&
+-        !prefs->GetBoolean("aside.account_auth_paused");
++        prefs->GetInteger("aux.account_id") == *expected_.FindInt("accountId") &&
++        prefs->GetString("aux.account_user_id") == *expected_.FindString("userId") &&
++        prefs->GetBoolean("aux.account_has_persisted_session") &&
++        !prefs->GetBoolean("aux.account_auth_paused");
+   }
+   void Start() {
+     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -119,7 +119,7 @@
+             "setTabSwitcherSortByRecentlyUsed", kMru},
+            {"getVerticalTabsBookmarksSectionEnabled",
+             "setVerticalTabsBookmarksSectionEnabled",
+-            "aside.vertical_tabs.bookmarks_section_enabled"}}) {
++            "aux.vertical_tabs.bookmarks_section_enabled"}}) {
+     if (method == item.getter) {
+       return RespondNow(WithArguments(prefs->GetBoolean(item.key)));
+     }
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -2072,9 +2072,9 @@
+   aux::RegisterVerticalTabBookmarkExpansionPrefs(registry);
+   // Supplied034e3f1c: both booleans default true, flags0.
+   registry->RegisterBooleanPref(
+-      "aside.vertical_tabs.bookmarks_section_enabled", true);
++      "aux.vertical_tabs.bookmarks_section_enabled", true);
+   registry->RegisterBooleanPref(
+-      "aside.vertical_tabs.bookmarks_section_expanded", true);
++      "aux.vertical_tabs.bookmarks_section_expanded", true);
+ #else
+   PinnedTabCodec::RegisterProfilePrefs(registry);
+ #endif
+--- a/chrome/browser/ui/browser_ui_prefs.cc
++++ b/chrome/browser/ui/browser_ui_prefs.cc
+@@ -113,7 +113,7 @@
+ 
+ void RegisterBrowserUserPrefs(user_prefs::PrefRegistrySyncable* registry) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  registry->RegisterStringPref("aside.account_display_name", "");
++  registry->RegisterStringPref("aux.account_display_name", "");
+ #endif
+ 
+ #if BUILDFLAG(IS_ANDROID)
+--- a/chrome/browser/ui/views/frame/aux_bookmarks_section.h
++++ b/chrome/browser/ui/views/frame/aux_bookmarks_section.h
+@@ -19,9 +19,9 @@
+ class AuxSectionClipView;
+ class VerticalTabBookmarksView;
+ inline constexpr char kBookmarksSectionEnabledPref[] =
+-    "aside.vertical_tabs.bookmarks_section_enabled";
++    "aux.vertical_tabs.bookmarks_section_enabled";
+ inline constexpr char kBookmarksSectionExpandedPref[] =
+-    "aside.vertical_tabs.bookmarks_section_expanded";
++    "aux.vertical_tabs.bookmarks_section_expanded";
+ 
+ // Original region668 wrapper around the genuine inner BookmarksView6a0.
+ // The region supplies its actual enabled-state cleanup and layout effects.
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -48,8 +48,8 @@
+  public:
+   ResolvedAccount(Profile& profile, int value)
+       : id(value), profile_id(GetProfileId(&profile)),
+-        user(profile.GetPrefs()->GetString("aside.account_user_id")),
+-        bound_id(profile.GetPrefs()->GetInteger("aside.account_id")) {}
++        user(profile.GetPrefs()->GetString("aux.account_user_id")),
++        bound_id(profile.GetPrefs()->GetInteger("aux.account_id")) {}
+   const int id;
+   const std::string profile_id, user;
+   const int bound_id;
+@@ -124,12 +124,12 @@
+     if (auto index = GetProfileIndex(profile_.get()))
+       context.Set("profileIndex", *index);
+     auto* prefs = profile_->GetPrefs();
+-    if (prefs->FindPreference("aside.account_user_id")) {
+-      const auto& user = prefs->GetString("aside.account_user_id");
++    if (prefs->FindPreference("aux.account_user_id")) {
++      const auto& user = prefs->GetString("aux.account_user_id");
+       if (!user.empty()) context.Set("boundUserId", user);
+     }
+-    if (prefs->FindPreference("aside.account_id")) {
+-      const int id = prefs->GetInteger("aside.account_id");
++    if (prefs->FindPreference("aux.account_id")) {
++      const int id = prefs->GetInteger("aux.account_id");
+       if (id >= 0) context.Set("boundAccountId", id);
+     }
+     auto request = std::make_unique<network::ResourceRequest>();
+@@ -192,13 +192,13 @@
+   const auto* resolved = static_cast<ResolvedAccount*>(
+       profile.GetUserData(kResolvedAccountKey));
+   if (resolved && resolved->profile_id == GetProfileId(&profile) &&
+-      resolved->user == profile.GetPrefs()->GetString("aside.account_user_id") &&
+-      resolved->bound_id == profile.GetPrefs()->GetInteger("aside.account_id"))
++      resolved->user == profile.GetPrefs()->GetString("aux.account_user_id") &&
++      resolved->bound_id == profile.GetPrefs()->GetInteger("aux.account_id"))
+     return resolved->id;
+   if (!profile.IsOffTheRecord()) {
+     if (auto* prefs = profile.GetPrefs();
+-        prefs && prefs->FindPreference("aside.account_id")) {
+-      const int id = prefs->GetInteger("aside.account_id");
++        prefs && prefs->FindPreference("aux.account_id")) {
++      const int id = prefs->GetInteger("aux.account_id");
+       if (id >= 0) return id;
+     }
+     if (auto* manager = g_browser_process->profile_manager()) {
+--- a/chrome/browser/ui/views/frame/aux_chats_section.cc
++++ b/chrome/browser/ui/views/frame/aux_chats_section.cc
+@@ -15,7 +15,7 @@
+ #include "ui/views/view_class_properties.h"
+ namespace aux {
+ namespace {
+-constexpr char kExpanded[] = "aside.vertical_tabs.chats_section_expanded";
++constexpr char kExpanded[] = "aux.vertical_tabs.chats_section_expanded";
+ }  // namespace
+ void AuxChatsSection::RegisterPrefs(user_prefs::PrefRegistrySyncable* registry) {
+   // Original034e3f1c: booleantrue, flags0; not a new Aux-default invention.
+--- a/chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc
++++ b/chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc
+@@ -56,7 +56,7 @@
+   // Original4642084 is bookmark representation eligibility only; not a
+   // generic visibility predicate or URL-derived association.
+   auto* prefs = profile_->GetPrefs();
+-  constexpr char kEnabled[] = "aside.vertical_tabs.bookmarks_section_enabled";
++  constexpr char kEnabled[] = "aux.vertical_tabs.bookmarks_section_enabled";
+   if (prefs && prefs->FindPreference(kEnabled) && !prefs->GetBoolean(kEnabled))
+     return false;
+   const auto handle = tab.GetHandle();
+--- a/chrome/browser/ui/views/frame/aux_profile_page_indicator.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_page_indicator.cc
+@@ -144,8 +144,8 @@
+       if (loaded && !loaded->IsOffTheRecord()) {
+         auto* prefs = loaded->GetOriginalProfile()->GetPrefs();
+         if (HasAccountProfileSession(prefs) &&
+-            prefs->FindPreference("aside.account_email")) {
+-          email = prefs->GetString("aside.account_email");
++            prefs->FindPreference("aux.account_email")) {
++          email = prefs->GetString("aux.account_email");
+         }
+       }
+       if (email.empty()) {
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_owner.h
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_owner.h
+@@ -18,7 +18,7 @@
+ namespace aux {
+ // This supplied internal key lives only in Aux's isolated browser local state.
+ inline constexpr char kHorizontalProfileOrder[] =
+-    "aside.vertical_tabs.profile_order";
++    "aux.vertical_tabs.profile_order";
+ void RegisterProfileSwitchLocalStatePrefs(PrefRegistrySimple* registry);
+ // Returns only paths from the actual registry. Preference strings cannot
+ // introduce/load a new filesystem path. This order is NOT profileIndex.
+--- a/chrome/browser/ui/views/frame/aux_sidebar_body.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_body.cc
+@@ -288,7 +288,7 @@
+     int chat_excluded = 0, agent_excluded = 0, ordinary = 0;
+     auto& tasks = self->chats_->tabs();
+     auto* prefs = self->browser_->GetProfile()->GetPrefs();
+-    constexpr char bookmark_pref[] = "aside.vertical_tabs.bookmarks_section_enabled";
++    constexpr char bookmark_pref[] = "aux.vertical_tabs.bookmarks_section_enabled";
+     const bool bookmarks_enabled = !prefs->FindPreference(bookmark_pref) ||
+         prefs->GetBoolean(bookmark_pref);
+     for (int i = 0; i < model->count(); ++i) {
+--- a/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button_controller.cc
+@@ -27,7 +27,7 @@
+ namespace aux {
+ namespace {
+ // Original profile-local key, isolated by Aux's actual profile directory.
+-constexpr char kAuthPaused[] = "aside.account_auth_paused";
++constexpr char kAuthPaused[] = "aux.account_auth_paused";
+ ProfileAttributesEntry* GetEntry(Profile* profile,
+                                  ProfileAttributesStorage* storage) {
+   return storage ? storage->GetProfileAttributesWithPath(
+--- a/chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h
++++ b/chrome/browser/ui/views/frame/aux_vertical_tab_bookmark_expansion.h
+@@ -19,7 +19,7 @@
+ namespace aux {
+ 
+ inline constexpr char kExpandedBookmarkFolderIdsPref[] =
+-    "aside.vertical_tabs.expanded_bookmark_folder_ids";
++    "aux.vertical_tabs.expanded_bookmark_folder_ids";
+ void RegisterVerticalTabBookmarkExpansionPrefs(PrefRegistrySimple* registry);
+ 
+ // The actual per-profile folder expansion state used by
+--- a/chrome/browser/ui/views/profiles/aux_profile_display_label.h
++++ b/chrome/browser/ui/views/profiles/aux_profile_display_label.h
+@@ -9,7 +9,7 @@
+ class ProfileAttributesEntry;
+ namespace aux {
+ // Preserved supplied internal preference, scoped by actual Aux profile prefs.
+-inline constexpr char kAccountDisplayName[] = "aside.account_display_name";
++inline constexpr char kAccountDisplayName[] = "aux.account_display_name";
+ // Original040fde94, shared by the actual profile menu and preview page.
+ // `loaded_profile` may be null; this function never loads a profile.
+ std::u16string ProfileDisplayLabel(const ProfileAttributesEntry* entry,
