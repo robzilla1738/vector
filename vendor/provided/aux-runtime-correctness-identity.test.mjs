@@ -5,8 +5,15 @@ import test from 'node:test';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';
 import {applyAuxRuntimeCorrectnessIdentity} from './aux-runtime-correctness-identity.mjs';
 const binary=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon'),section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
-const apply=text=>applyAuxRuntimeCorrectnessIdentity({text,original});
+const apply=text=>applyAuxRuntimeCorrectnessIdentity({text,original,scope:'complete-review'});
 const result=apply(original);
+test('default behavior scope leaves process recovery matcher inactive',()=>{
+ const safe=applyAuxRuntimeCorrectnessIdentity({text:original,original});
+ assert.equal(safe.anchors.length,3);
+ assert.ok(safe.text.includes('/aside[- ]?daemon/i.test(Cn)'));
+ assert.ok(!safe.text.includes('Cn.replaceAll(`/Aux Daemon.app/`'));
+ assert.throws(()=>applyAuxRuntimeCorrectnessIdentity({text:original,original,scope:'unknown'}),/scope/);
+});
 function extract(source,regex){const match=source.match(regex);assert.ok(match,'Actual supplied function anchor must match');return runInNewContext(`(${match[1]})`)}
 
 test('actual pinned daemon edits pair coding skill selector and preserve every other byte',()=>{
