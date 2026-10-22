@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "date": "2026-10-22",
+  "command": "bash docs/integration/proposed/aux-owned-macos-utility-dispatch/check.sh",
+  "nativeBuildSerialized": true,
+  "actualNodeAddon": true,
+  "softwareInstallationCrypto": true,
+  "capturedSecureStore": true,
+  "capturedOSBoundary": true,
+  "checks": 23,
+  "nativeAbsentCapabilityAndRetiredHandleAssertions": true,
+  "actualAppKitSourceCompiled": true,
+  "actualAppKitActions": 0,
+  "SecurityExecuted": false,
+  "ownerStateOperations": 0,
+  "productionInitializerProvided": false,
+  "referenceProductSubstringOccurrences": 0,
+  "artifactSHA256": "6d35dcd1e459fb5f25266f2ba69c0e16b87d6f45dfd980497ba6da8f0db4eb59",
+  "warnings": "Two existing kSecUseAuthenticationUIFail deprecation warnings in unchanged runtime/secure-store source.",
+  "scopeLimit": "Retirement drains synchronous commands only, not OS jobs/callbacks after timeout."
+}

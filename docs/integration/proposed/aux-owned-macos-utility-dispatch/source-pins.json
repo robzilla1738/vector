@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "baseCommit": "048652e64",
+  "priorOwnedDispatcherSHA256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+  "source": [
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "016abce71fa964f9a33c23b15e7c4755cf7dab6a54e8ed07986b4c1fbaa8e10a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "53dc09a6d1180de1cc8b51ffc229b0608a13798d099ffbd8ecbf17e48e7dde4a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "3292f0a0a054efc5b8b9637b90fc1bed90376ff665d0b1f778aa01226e3f8d95"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h",
+      "sha256": "0b29119faab1cc987c70643fad924a87b1cb80ab554020e983de7af4bf01422e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-macos-utility-dispatch/tests/RuntimeUtilitySyntheticOwner.swift",
+      "sha256": "6c0ae9d20a848a6b92f3f3991c34e8c5d72bf295f779e29cc3598a18440dc55a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-macos-utility-dispatch/tests/fixture-module.cc",
+      "sha256": "ac427ef26dcdc28996e3f6a1c8fa3abd8402da5d8b4169b2b951c7adb2ed5783"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
+      "sha256": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+    }
+  ],
+  "fixture": [
+    {
+      "path": "docs/integration/proposed/aux-owned-macos-utility-dispatch/tests/RuntimeUtilitySyntheticOwner.swift",
+      "sha256": "6c0ae9d20a848a6b92f3f3991c34e8c5d72bf295f779e29cc3598a18440dc55a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-macos-utility-dispatch/tests/check.cjs",
+      "sha256": "ef9fa0a7ae8cbecd2727f2f8fa2ebc3ac68a99581684b70d860f96fb43437f2d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-macos-utility-dispatch/tests/fixture-module.cc",
+      "sha256": "ac427ef26dcdc28996e3f6a1c8fa3abd8402da5d8b4169b2b951c7adb2ed5783"
+    }
+  ]
+}

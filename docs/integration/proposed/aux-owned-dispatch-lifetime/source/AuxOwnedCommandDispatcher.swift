@@ -11,6 +11,9 @@ final class AuxCommandDispatcherRegistry {
     private enum Phase { case open,retiring,closed }
     private final class Entry {
         let core:AuxInstallationCommandCore
+#if AUX_MACOS_UTILITY_DISPATCH
+        let macOSUtilities:AuxMacOSUtilityCommandCore?
+#endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
         let secureStore:AuxSecureStoreCommandCore?
 #endif
@@ -20,6 +23,9 @@ final class AuxCommandDispatcherRegistry {
 #if !AUX_MINIMAL_RUNTIME_DISPATCH
         init(_ context:CapturedTerminalCommandContext){
             core=context.core
+#if AUX_MACOS_UTILITY_DISPATCH
+            macOSUtilities=nil
+#endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
             secureStore=nil
 #endif
@@ -28,6 +34,9 @@ final class AuxCommandDispatcherRegistry {
 #if AUX_MINIMAL_RUNTIME_DISPATCH
         init(_ context:AuxRuntimeCapturedCommandContext){
             core=context.core
+#if AUX_MACOS_UTILITY_DISPATCH
+            macOSUtilities=nil
+#endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
             secureStore=nil
 #endif
@@ -36,13 +45,31 @@ final class AuxCommandDispatcherRegistry {
 #if AUX_RECOVERED_FRESH_DISPATCH
         init(_ context:RecoveredFreshTerminalCommandContext){
             core=context.core
+#if AUX_MACOS_UTILITY_DISPATCH
+            macOSUtilities=nil
+#endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
             secureStore=nil
 #endif
         }
 #endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
-        init(_ context:ScopedAuxCommandContext){core=context.installation;secureStore=context.secureStore}
+        init(_ context:ScopedAuxCommandContext){
+            core=context.installation;secureStore=context.secureStore
+#if AUX_MACOS_UTILITY_DISPATCH
+            macOSUtilities=nil
+#endif
+        }
+#endif
+#if AUX_MACOS_UTILITY_DISPATCH
+        // This wrapper only composes an already sealed context with a host-owned
+        // immutable utility capability. It cannot create an installation authority.
+        init(wrapping entry:Entry,utilities:AuxMacOSUtilityCommandCore){
+            core=entry.core;macOSUtilities=utilities
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+            secureStore=entry.secureStore
+#endif
+        }
 #endif
     }
     private let condition=NSCondition()
@@ -66,6 +93,20 @@ final class AuxCommandDispatcherRegistry {
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
     fileprivate func install(_ context:ScopedAuxCommandContext)throws->UInt64 {try insert(Entry(context))}
 #endif
+#if AUX_MACOS_UTILITY_DISPATCH
+#if !AUX_MINIMAL_RUNTIME_DISPATCH
+    fileprivate func install(_ context:CapturedTerminalCommandContext,utilities:AuxMacOSUtilityCommandCore)throws->UInt64 {try insert(Entry(wrapping:Entry(context),utilities:utilities))}
+#endif
+#if AUX_MINIMAL_RUNTIME_DISPATCH
+    fileprivate func install(_ context:AuxRuntimeCapturedCommandContext,utilities:AuxMacOSUtilityCommandCore)throws->UInt64 {try insert(Entry(wrapping:Entry(context),utilities:utilities))}
+#endif
+#if AUX_RECOVERED_FRESH_DISPATCH
+    fileprivate func install(_ context:RecoveredFreshTerminalCommandContext,utilities:AuxMacOSUtilityCommandCore)throws->UInt64 {try insert(Entry(wrapping:Entry(context),utilities:utilities))}
+#endif
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+    fileprivate func install(_ context:ScopedAuxCommandContext,utilities:AuxMacOSUtilityCommandCore)throws->UInt64 {try insert(Entry(wrapping:Entry(context),utilities:utilities))}
+#endif
+#endif
     private func insert(_ entry:Entry)throws->UInt64 {
         condition.lock();defer{condition.unlock()}
         guard next<UInt64.max else{throw AuxDispatcherLifetimeError.exhaustedHandles}
@@ -82,6 +123,9 @@ final class AuxCommandDispatcherRegistry {
                 if let secure=entry.secureStore,["secure-save","secure-read","secure-clear"].contains(command) {
                     return secure.run(command:command,input:input)
                 }
+#endif
+#if AUX_MACOS_UTILITY_DISPATCH
+                if let reply=entry.macOSUtilities?.run(command:command,input:input){return reply}
 #endif
                 return entry.core.run(command:command,input:input)
             })
@@ -164,6 +208,28 @@ final class AuxOwnedCommandDispatcher {
     init(scopedTerminal:ScopedAuxCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal)
     }
+#endif
+#if AUX_MACOS_UTILITY_DISPATCH
+#if !AUX_MINIMAL_RUNTIME_DISPATCH
+    init(capturedTerminal:CapturedTerminalCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(capturedTerminal,utilities:macOSUtilities)
+    }
+#endif
+#if AUX_MINIMAL_RUNTIME_DISPATCH
+    init(runtimeCaptured:AuxRuntimeCapturedCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(runtimeCaptured,utilities:macOSUtilities)
+    }
+#endif
+#if AUX_RECOVERED_FRESH_DISPATCH
+    init(recoveredFreshTerminal:RecoveredFreshTerminalCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(recoveredFreshTerminal,utilities:macOSUtilities)
+    }
+#endif
+#if AUX_SCOPED_SECURE_STORE_DISPATCH
+    init(scopedTerminal:ScopedAuxCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal,utilities:macOSUtilities)
+    }
+#endif
 #endif
     func retire()throws{try AuxCommandDispatcherRegistry.shared.retire(handle)}
     deinit{AuxCommandDispatcherRegistry.shared.closeOwner(handle)}
