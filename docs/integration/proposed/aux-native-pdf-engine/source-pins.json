@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
@@ -36,23 +36,74 @@
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_save.h",
       "sha256": "96a78a3e3eb8a387dc4a35c1e87b430618e9ee8e7ceae9fea424baf1de6b497a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_annot.h",
+      "sha256": "40add618da4d09ee1f8eaa2c1ff301dab90ec8315d94af673feabdb67abfce3b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/zlib/zlib.h",
+      "sha256": "0ff41598d145693759a8322bb90bc4f2c57dcdcb3635fdf5b2195bf13df15b54"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/zlib/zconf.h",
+      "sha256": "89d9cc22a35302e71d512ee93a1374378afb9924929f1684bdeb9a0013e9e336"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/zlib/chromeconf.h",
+      "sha256": "f5fff056ec46cf99ae26676e1a16b71d2ad5d96dd56918d3e110fdab13b4d461"
     }
   ],
   "evidence": {
-    "evidence/library.asm": "e966d7ddbb46977024743a89691ff3648f8661ea5c16dbccfa041f1fabbc3ed8",
-    "evidence/utf16.asm": "b75ad88be6175ec5528150d6ec75263f6a6c8582984fe269a3383e1c092a73f1",
+    "evidence/activate.asm": "e829a6fa37dc4258277274d519d39d901e2fa74ee0e66af7cbd285dd94b95a10",
+    "evidence/annotation-string.asm": "00592a67f29ef382ba9d50f64abeccba5feb287ab2b409e4a3ce7fd6ad2c1e35",
+    "evidence/bitmap.asm": "1bd3845205c2cdd0746d1af366977dc795c4cf93cecbcf9dfeac7ca200dc1a34",
+    "evidence/checkbox-state.asm": "8a7b573e419efdfb9d9afb56e2dc7a897992999bcc5af780d78991f83df7754d",
+    "evidence/document-close.asm": "9a6cf00b67dfc22554f3323856c3a2fb547d30dee18b42afb166524ced6b138e",
     "evidence/document.asm": "850313bd8373cd19d4516584e777fe43891d9be34a5d79402903951a7239ff29",
-    "evidence/writer.asm": "cbe16ea99f8dae813067ee9e2d6a62d5f80a929cfd291787c318c2bba5fb08c1",
-    "evidence/page-close.asm": "8cedd28a93dcd9f3382efd5464e4acbd89a6b98c3666337c409c503cc6b0558d",
+    "evidence/export-value.asm": "e3e4241fef390290fbafe79ebf13fc8d5ded0e76bdb487ccb4d39f7da33b1cf4",
+    "evidence/field-sort.asm": "3035178c6df4f9f6123a8948024033b060b93d7b22548dce81a6b3622d646d5b",
+    "evidence/field-type.asm": "fadc9c28bae6d31b1e5e09fe35679a07df5908f2c54519b7e12dbb86a0a4a8fa",
+    "evidence/field-value.asm": "c2889a811a24e113ed62fcf649f307b8d9bd2e638740cbf62454572eb506ae74",
+    "evidence/fill-widget.asm": "01409ebd5b5c9c729065b322bdaaed7e1f6c527b4c10749ed8885b0fd45cd6d5",
+    "evidence/form-type.asm": "7e6534e270ba290ff1ab6236be9ca0d7bf9476cd708a8e16778a1e95e9a3a1c4",
+    "evidence/form-value.asm": "0428d04a95e21cca2bf42f71464bca6af05a554ef7d8f0c690f9a8a4e2e41f1e",
+    "evidence/inspect-field.asm": "9f55b5d83c92e0078b37a6211e4e0e4cae319b4ac05ee2dfa34083b35c3ccd10",
+    "evidence/inspect-fields.asm": "1f73d0bac909401d3c68910cfa9c8a63a95f903f14397dc6c6ab9b68f97d3c6b",
+    "evidence/library.asm": "e966d7ddbb46977024743a89691ff3648f8661ea5c16dbccfa041f1fabbc3ed8",
     "evidence/new-document.asm": "9c73533903cb21975d56a89386367757eee622311f80d0c32f0ac07c44e6564e",
+    "evidence/page-close.asm": "8cedd28a93dcd9f3382efd5464e4acbd89a6b98c3666337c409c503cc6b0558d",
     "evidence/page.asm": "978d7a25699488b6d530b0f55d38c9f61e9d35560cb6b360f52d722b12ac289d",
-    "evidence/save.asm": "fe7ad3a694cbbc467f3b21e04c398a06bf38d4996655a809dfee0bdcf945ccd2",
+    "evidence/raw-type.asm": "c4f8aec9416c2b57b1db52542fa669a91e0732c885c755ec9babb747b5a40a17",
+    "evidence/read-fill.asm": "e152beb9d6f23ee5108a6f1156fb5f5c670d9713562df35567d6bac05ca7c46f",
     "evidence/required-string.asm": "91a7ab917c6308ae8fb34b0c12aeac57c623b95dc2778f52d512dc4ed4eb93ef",
-    "evidence/document-close.asm": "9a6cf00b67dfc22554f3323856c3a2fb547d30dee18b42afb166524ced6b138e"
+    "evidence/save.asm": "fe7ad3a694cbbc467f3b21e04c398a06bf38d4996655a809dfee0bdcf945ccd2",
+    "evidence/set-choice.asm": "7cf82b003f73a1b270228344e98ccfba3f318dd78e879cd1c6d688f597913027",
+    "evidence/set-text.asm": "f0a609f0a0ab84562cac5cc416a5ec35106cfa7253d8dd089f2736e45bea9bc3",
+    "evidence/text-value.asm": "4b9f364b9a28429d28a115d04b54a923d5d8624b9da650b03a9619ff20516d38",
+    "evidence/utf16.asm": "b75ad88be6175ec5528150d6ec75263f6a6c8582984fe269a3383e1c092a73f1",
+    "evidence/write-png.asm": "92fffd1770cfe6f14d851032471c43bacff3223f3802a126a3844d16909d7887",
+    "evidence/writer.asm": "cbe16ea99f8dae813067ee9e2d6a62d5f80a929cfd291787c318c2bba5fb08c1"
   },
   "objectCompilePassed": true,
   "pdfiumLinkPerformed": false,
   "engineRuntimeFixtureExecuted": false,
   "originalAddonExecuted": false,
-  "sharedCheckoutChanged": false
+  "sharedCheckoutChanged": false,
+  "implementation": {
+    "source/AuxPdfFour.cc": "c65f0da801a6d3c53514b0b263290acdc94692635bb640bd1b47067dac514ecb",
+    "source/RecoveredPngCodec.cc": "a28db13406987a3ba3563240f27a2a0d90d03b4fd02fc7ab1f7cc4d6c08c2daa",
+    "source/RecoveredPngCodec.h": "a8fffba76d00b653782d2f1d7727f1a9c3b8f58ef1e58e83286448244a73b276"
+  },
+  "compiledMethods": [
+    "extractText",
+    "merge",
+    "rotate",
+    "split",
+    "getFormFields",
+    "fillFormFields",
+    "renderPages"
+  ],
+  "compileLanguage": "c++17",
+  "preparedRuntimeFixtureSyntaxChecked": true
 }
