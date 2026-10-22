@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "activated": false,
+  "securityExecuted": false,
+  "hostAdmissionVerified": false,
+  "napiAdapterImplemented": false,
+  "syntheticChecks": 24,
+  "files": [
+    {
+      "path": "source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "232bfce8dc6d200a18770d190a517d3f204594d5ef9a2d2b5568166dcbe41ddf"
+    },
+    {
+      "path": "source/aux-owned-command-dispatcher.h",
+      "sha256": "0b29119faab1cc987c70643fad924a87b1cb80ab554020e983de7af4bf01422e"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "cf804c80c13a9f3edafe62f403fac07f24443818f0c11ac51fa25ba3025ed9a0"
+    },
+    {
+      "path": "tests/probe.c",
+      "sha256": "368fd3a296d3f186caa8d28480592af5d38c4f73c1363e5c2942da89d719682c"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "65145f9d1fce74c7fecd9b55fd46d6f0d7dea17f3982178a283c776402ae783e"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/LegacyNativeEnvelopeReader.swift",
+      "sha256": "dc42bfb7be9bb16f06ef0abcf76ae1c6ef8332af8b57a45bc7427106be4e7988"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/LegacyNativePqEnvelopeReader.swift",
+      "sha256": "92ce422fb7ebfb094a9397f54f8e30790004434d5933daec57654a2a2894c61f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-install-storage-port/source/RecoveredInstallStorageQueries.swift",
+      "sha256": "8ba312eca2c4aaf83342ba3149d83f34fd0d09947985d8362767df7d1856aad2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-four-row-preparation/source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "3b19168564bad03e277efaab1e4c22e43897eb7bab516e426756144d338d7011"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-security-executor/source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+      "sha256": "936772ca173e49092a2d5e1a2f700de2af0a7bbe8afb556513f40f989bd9ed2b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
+      "sha256": "f114495d85c93b9d83abcf9d4e9e4d72570aeaef4144094fc58a59055c19a291"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+      "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+    },
+    {
+      "path": "docs/integration/proposed/aux-terminal-command-context/source/CapturedTerminalCommandContext.swift",
+      "sha256": "e8f91eaeb0f56134f1d0e3a8303b6097f74f4af598a587f14748de0b7bacaa23"
+    }
+  ]
+}
