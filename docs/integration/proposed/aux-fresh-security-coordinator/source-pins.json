@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "baselineCommit": "0366b3401",
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
+      "sha256": "f114495d85c93b9d83abcf9d4e9e4d72570aeaef4144094fc58a59055c19a291"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+      "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-secure-recovery/source/FreshSecureStage.swift",
+      "sha256": "1d0d8b9df36c37855f310cb0e551be4fc0ec7aad4914595146d3b796855e532d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-secure-stage-binding-store/source/PrivateFreshSecureStageBindingStore.swift",
+      "sha256": "9fa235708ef2d5641e421c486a775d3577013e7cd43c6d851a932965bd20e997"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-terminal-command-context/source/CapturedTerminalCommandContext.swift",
+      "sha256": "e8f91eaeb0f56134f1d0e3a8303b6097f74f4af598a587f14748de0b7bacaa23"
+    }
+  ],
+  "actualSecurityExecutorExecuted": false,
+  "fifthSelectorAuthorized": false,
+  "newScopeCustodyProven": false,
+  "secretFilesystemWrites": false,
+  "activationPerformed": false
+}
