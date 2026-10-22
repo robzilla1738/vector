@@ -7,6 +7,25 @@ export function transformProvidedDraftFlush({ component, path, text }) {
     return { text: text.replace(find, replacement),
       anchors: [{ kind: 'integration', find, replace: replacement, count: 1 }] };
   };
+  if (path === 'assets/minipopup-LkDLFvnq.js') {
+    // The supplied singleton keeps its new-chat draft only in module memory.
+    // Hide/reopen retains that owner; disable/profile replacement destroys it.
+    // Advertise unsaved work through the native admission's existing signal.
+    const edits = [
+      ['k=null,is=({onHeightChange:s,onSessionChange:n})=>',
+       'k=null,auxMiniPopupDraftUnload=e=>{e.preventDefault(),e.returnValue=""},auxSetMiniPopupDraft=a=>{k=a;if(a?.plainText?.length||a?.attachments?.length)window.addEventListener("beforeunload",auxMiniPopupDraftUnload);else window.removeEventListener("beforeunload",auxMiniPopupDraftUnload)},is=({onHeightChange:s,onSessionChange:n})=>'],
+      ['a=>{k=null,n(a)}', 'a=>{auxSetMiniPopupDraft(null),n(a)}'],
+      ['a=>{k=a}', 'a=>auxSetMiniPopupDraft(a)'],
+    ];
+    const anchors = [];
+    for (const [find, replacement] of edits) {
+      if (text.split(find).length - 1 !== 1)
+        throw new Error('Supplied Mini Popup draft ownership anchor changed');
+      text = text.replace(find, replacement);
+      anchors.push({ kind: 'integration', find, replace: replacement, count: 1 });
+    }
+    return { text, anchors };
+  }
   if (path === 'assets/sidepanel-CI-CbXmY.js') {
     // The original hook returned only a page attachment (null on New Tab).
     // Draft identity belongs to the active tab context, not attachable content.
