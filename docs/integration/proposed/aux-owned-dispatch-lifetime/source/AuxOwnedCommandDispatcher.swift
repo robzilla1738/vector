@@ -162,6 +162,9 @@ final class AuxCommandDispatcherRegistry {
         condition.lock();defer{condition.unlock()}
         guard let entry=entries[handle]else{return}
         entry.phase = .retiring
+#if AUX_MACOS_UTILITY_DISPATCH
+        entry.macOSUtilities?.closeAdmission()
+#endif
         if entry.active==0{entry.phase = .closed;entries.removeValue(forKey:handle)}
         condition.broadcast()
     }
@@ -175,6 +178,9 @@ final class AuxCommandDispatcherRegistry {
         condition.lock();defer{condition.unlock()}
         guard let entry=entries[handle]else{throw AuxDispatcherLifetimeError.invalidHandle}
         entry.phase = .retiring
+#if AUX_MACOS_UTILITY_DISPATCH
+        entry.macOSUtilities?.closeAdmission()
+#endif
         while entry.active>0 {condition.wait()}
         entry.phase = .closed
         // A simultaneous retiring caller can still hold the same entry, but
@@ -187,14 +193,32 @@ final class AuxCommandDispatcherRegistry {
 // context. No C/JS factory accepts scope, JSON rows or arbitrary core callbacks.
 final class AuxOwnedCommandDispatcher {
     let handle:UInt64
+#if AUX_MACOS_UTILITY_DISPATCH
+    // Retain exact immutable custody after registry retirement. This is a native
+    // query capability, not a new JS handle or host acceptance declaration.
+    private let macOSUtilities:AuxMacOSUtilityCommandCore?
+#endif
+    func closeOSAdmissionAndDrain(timeout:TimeInterval)->AuxOSDrainResult {
+#if AUX_MACOS_UTILITY_DISPATCH
+        macOSUtilities?.closeAdmissionAndDrain(timeout:timeout) ?? .notPresent
+#else
+        .notPresent
+#endif
+    }
 #if !AUX_MINIMAL_RUNTIME_DISPATCH
     init(capturedTerminal:CapturedTerminalCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(capturedTerminal)
+#if AUX_MACOS_UTILITY_DISPATCH
+        macOSUtilities=nil
+#endif
     }
 #endif
 #if AUX_MINIMAL_RUNTIME_DISPATCH
     init(runtimeCaptured:AuxRuntimeCapturedCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(runtimeCaptured)
+#if AUX_MACOS_UTILITY_DISPATCH
+        macOSUtilities=nil
+#endif
     }
 #endif
 #if AUX_RECOVERED_FRESH_DISPATCH
@@ -202,32 +226,42 @@ final class AuxOwnedCommandDispatcher {
     // terminal evidence. This flag supplies no runtime admission or bypass.
     init(recoveredFreshTerminal:RecoveredFreshTerminalCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(recoveredFreshTerminal)
+#if AUX_MACOS_UTILITY_DISPATCH
+        macOSUtilities=nil
+#endif
     }
 #endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
     init(scopedTerminal:ScopedAuxCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal)
+#if AUX_MACOS_UTILITY_DISPATCH
+        macOSUtilities=nil
+#endif
     }
 #endif
 #if AUX_MACOS_UTILITY_DISPATCH
 #if !AUX_MINIMAL_RUNTIME_DISPATCH
     init(capturedTerminal:CapturedTerminalCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(capturedTerminal,utilities:macOSUtilities)
+        self.macOSUtilities=macOSUtilities
     }
 #endif
 #if AUX_MINIMAL_RUNTIME_DISPATCH
     init(runtimeCaptured:AuxRuntimeCapturedCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(runtimeCaptured,utilities:macOSUtilities)
+        self.macOSUtilities=macOSUtilities
     }
 #endif
 #if AUX_RECOVERED_FRESH_DISPATCH
     init(recoveredFreshTerminal:RecoveredFreshTerminalCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(recoveredFreshTerminal,utilities:macOSUtilities)
+        self.macOSUtilities=macOSUtilities
     }
 #endif
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
     init(scopedTerminal:ScopedAuxCommandContext,macOSUtilities:AuxMacOSUtilityCommandCore)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal,utilities:macOSUtilities)
+        self.macOSUtilities=macOSUtilities
     }
 #endif
 #endif

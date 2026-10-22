@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "date": "2026-10-22",
+  "command": "bash docs/integration/proposed/aux-os-job-custody/check-owned.sh",
+  "checks": 15,
+  "nativeBuildSerialized": true,
+  "actualOwnedCRoute": true,
+  "actualAppKitSourceCompiled": true,
+  "softwareAuthorityOnly": true,
+  "actualOSActions": 0,
+  "SecurityExecuted": false,
+  "ownerStateOperations": 0,
+  "hostActivated": false,
+  "originalSyncTimeoutsPreserved": true,
+  "closeIsFinal": true,
+  "cancelIsNotCompletion": true,
+  "drainAfterRegistryRetirement": true,
+  "missingCallbackRemainsPending": true,
+  "scopeLimit": "Tracked utility jobs only, not whole host admission or launched application lifetime."
+}

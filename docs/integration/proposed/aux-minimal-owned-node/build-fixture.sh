@@ -17,6 +17,7 @@ xcrun swiftc -target arm64-apple-macos13.0 -module-name AuxMinimalOwnedFixture -
  "$proposal/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift" \
  "$proposal/aux-native-secure-store/source/AuxSecureStore.swift" \
  "$proposal/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift" \
+ "$proposal/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift" \
  "$proposal/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift" \
  "$proposal/aux-minimal-owned-node/tests/RuntimeSyntheticOwner.swift" \
  "$output/adapter.o" "$output/module.o" -Xlinker -undefined -Xlinker dynamic_lookup -Xlinker -lc++ \

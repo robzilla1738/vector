@@ -3,6 +3,7 @@ import Foundation
 /// Native-host capability. Construction/attachment belongs to the trusted host, never JS.
 /// Methods may perform OS effects; captured fixtures implement this interface without them.
 public protocol AuxMacOSUtilityBoundary {
+    var jobCustody: AuxOSJobCustody? { get }
     func fileExists(_ path: String) -> Bool
     func prepareIconDirectory(_ path: String)
     func applications(for file: URL) -> [URL]
@@ -16,14 +17,28 @@ public protocol AuxMacOSUtilityBoundary {
     func generatePreview(file: String, icon: String, thumbnail: String) -> (thumbnail: Bool, icon: Bool)
 }
 
+public extension AuxMacOSUtilityBoundary { var jobCustody: AuxOSJobCustody? { nil } }
+
 public struct AuxMacOSUtilityCommandCore {
     public static let commands: Set<String> = ["generate-thumbnail", "list-open-apps", "app-icons", "copy-file", "open-with"]
     private let boundary: any AuxMacOSUtilityBoundary
-    public init(boundary: any AuxMacOSUtilityBoundary) { self.boundary = boundary }
+    private let custody: AuxOSJobCustody?
+    public init(boundary: any AuxMacOSUtilityBoundary) { self.boundary = boundary; custody = boundary.jobCustody }
+    public func closeAdmissionAndDrain(timeout: TimeInterval) -> AuxOSDrainResult { custody?.closeAdmissionAndDrain(timeout: timeout) ?? .untracked }
+    public func closeAdmission() { custody?.closeAdmission() }
 
     /// nil means this is another command's route. Recognized commands always return JSON text.
     public func run(command: String, input: String) -> String? {
         guard Self.commands.contains(command) else { return nil }
+        var commandJob: AuxOSJobToken?
+        if let custody {
+            guard let job = custody.begin(.command) else { return "{\"error\":\"Native OS utility admission is closed\"}" }
+            commandJob = job
+        }
+        defer { commandJob?.complete() }
+        return runAdmitted(command: command, input: input)
+    }
+    private func runAdmitted(command: String, input: String) -> String {
         let object = input.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any] ?? [:]
         func encode(_ value: [String: Any]) -> String {
             guard let bytes = try? JSONSerialization.data(withJSONObject: value),

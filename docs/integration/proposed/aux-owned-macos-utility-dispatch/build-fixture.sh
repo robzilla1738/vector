@@ -17,7 +17,9 @@ xcrun swiftc -target arm64-apple-macos13.0 -module-name AuxOwnedUtilityFixture -
  "$proposal/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift" \
  "$proposal/aux-native-secure-store/source/AuxSecureStore.swift" \
  "$proposal/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift" \
+ "$proposal/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift" \
  "$proposal/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift" \
+ "$proposal/aux-native-macos-utilities/source/AuxOSJobCustody.swift" \
  "$proposal/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift" \
  "$proposal/aux-native-macos-utilities/source/AuxUtilityCompletion.swift" \
  "$proposal/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift" \

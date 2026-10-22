@@ -26,6 +26,7 @@ xcrun swiftc -target arm64-apple-macos13.0 -module-name AuxRecoveredNapiFixture 
  "$proposal/aux-fresh-installation-journal/source/FreshInstallationJournal.swift" \
  "$proposal/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift" \
  "$proposal/aux-terminal-command-context/source/CapturedTerminalCommandContext.swift" \
+ "$proposal/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift" \
  "$proposal/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift" \
  "$proposal/aux-fresh-secure-recovery/source/FreshSecureStage.swift" \
  "$proposal/aux-secure-stage-binding-store/source/PrivateFreshSecureStageBindingStore.swift" \

@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "baseCommit": "52b783f1b",
+  "priorOwnedDispatcherSHA256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+  "source": [
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "d940b0d7e1f369a38c0f038679323b76cbe794dd8a88f9f84c53d835887e7d9f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "1d123697f3d30f4263ba25e99c186784655ca0ffeea10605f00a658cae060031"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-os-job-custody/tests/owned/main.swift",
+      "sha256": "4972750698acad483355918ff646512900a467b2cce5286cc4f5d17abf65e5c3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    }
+  ]
+}
