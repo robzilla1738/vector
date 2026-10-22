@@ -59,6 +59,7 @@ final class PreparedCapturedAuxCredentialCopy {
     private let lock=NSRecursiveLock()
     private var journal:AuxCredentialCopyJournal
     private var addAvailable:Bool
+    private var inFlight=false
     private init(binding:CapturedHistoricalAuxCredentialBinding,payload:Data,journal:AuxCredentialCopyJournal,addAvailable:Bool){self.binding=binding;self.payload=payload;self.journal=journal;self.addAvailable=addAvailable}
     private static func bytes(_ row:CapturedAuxCredentialRow)throws->Data {
         guard case .bytes(let data)=row,data.count<=16_384 else{throw AuxCredentialCopyError.capture};return data
@@ -87,8 +88,9 @@ final class PreparedCapturedAuxCredentialCopy {
         guard addAvailable,journal.phase == .draft,try checkpoint.bytes==journal.canonicalBytes()else{throw AuxCredentialCopyError.phase}
         journal.phase = .intent;journal.revision += 1;return journal
     }
-    private func blocked(_ reason:String)->AuxCredentialCopyOutcome {journal.phase = .blocked;journal.revision += 1;journal.reason=reason;addAvailable=false;return .blocked(journal)}
+    private func blocked(_ reason:String)->AuxCredentialCopyOutcome {lock.lock();defer{lock.unlock()};journal.phase = .blocked;journal.revision += 1;journal.reason=reason;addAvailable=false;return .blocked(journal)}
     private func observe(_ source:CapturedAuxCredentialRow,_ target:CapturedAuxCredentialRow)->AuxCredentialCopyOutcome {
+        lock.lock();defer{lock.unlock()}
         if journal.phase == .blocked{return .blocked(journal)}
         guard case .bytes(let old)=source,old.count==journal.payloadBytes,credentialCopyHash(old)==journal.payloadHash else{return blocked("source-changed-or-unavailable")}
         switch target {
@@ -100,14 +102,20 @@ final class PreparedCapturedAuxCredentialCopy {
         }
     }
     func attemptAdd(afterIntent checkpoint:CapturedCredentialCopyCheckpoint,boundary:AuxCopyOnlyCredentialBoundary)throws->AuxCredentialCopyOutcome {
-        lock.lock();defer{lock.unlock()}
-        guard addAvailable,journal.phase == .intent,try checkpoint.bytes==journal.canonicalBytes()else{return .refused}
+        lock.lock()
+        let accepted:Bool
+        do{let current=try journal.canonicalBytes();accepted = addAvailable && !inFlight && journal.phase == .intent && checkpoint.bytes == current}catch{lock.unlock();throw error}
+        guard accepted else{lock.unlock();return .refused}
         addAvailable=false // Consume BEFORE executor: errors and reentry never replay.
+        inFlight=true;lock.unlock()
+        defer{lock.lock();inFlight=false;lock.unlock()}
+        // No mutex crosses a source/target/executor callback. Reconciliation
+        // refuses while this exact attempt is active, so it cannot change phase.
         let source=boundary.readSource(binding.source),target=boundary.readTarget(binding.target)
         guard case .bytes(let current)=source,current==payload else{return blocked("source-changed-or-unavailable")}
         guard case .missing=target else{return blocked("target-not-absent")}
         let status:CapturedAuxCredentialAddStatus
-        do{status=try boundary.addTarget(binding.target,bytes:payload)}catch{return .unresolved(journal)}
+        do{status=try boundary.addTarget(binding.target,bytes:payload)}catch{lock.lock();defer{lock.unlock()};return .unresolved(journal)}
         switch status {
         case .duplicate:return blocked("add-duplicate")
         case .failure:return blocked("add-failed")
@@ -116,7 +124,7 @@ final class PreparedCapturedAuxCredentialCopy {
     }
     // Restart/unknown-outcome reconciliation is read-only and never calls Add.
     func reconcile(source:CapturedAuxCredentialRow,target:CapturedAuxCredentialRow)->AuxCredentialCopyOutcome {
-        lock.lock();defer{lock.unlock()};addAvailable=false
+        lock.lock();defer{lock.unlock()};guard !inFlight else{return .refused};addAvailable=false
         return observe(source,target)
     }
 }

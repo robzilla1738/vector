@@ -1,0 +1,20 @@
+{
+  "format": "aux.captured.credential-copy.reentry.v1",
+  "actualSeparateSwiftSourcesCompiled": true,
+  "session": "70750",
+  "exitCode": 0,
+  "assertionsPassed": 16,
+  "callbackPoints": [
+    "source-read",
+    "target-read",
+    "target-add"
+  ],
+  "callbackOnSeparateSynchronousDispatchQueue": true,
+  "noMutexAcrossBoundaryCallback": true,
+  "inFlightReconciliationRefused": true,
+  "outerWriteCompletesOnce": true,
+  "initialCompileSyntaxFailureCorrected": true,
+  "historical51CaseSuiteRepeated": false,
+  "realSecurityOrOwnerDataOrSecretFilesystemWrites": false,
+  "durableCustodyClaim": false
+}

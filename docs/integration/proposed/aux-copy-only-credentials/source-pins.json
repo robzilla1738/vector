@@ -23,7 +23,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift",
-      "sha256": "5a71bef07645ad034dbc9fef43705df7fe17dbf6f735133071a5768ef616d065"
+      "sha256": "7d4d765391fdbb2f687c50aab3e6ba9776c9048fe6ae7cc48feb66ec446432d6"
     },
     {
       "path": "docs/integration/proposed/aux-copy-only-credentials/tests/main.swift",
@@ -35,11 +35,23 @@
     },
     {
       "path": "docs/integration/proposed/aux-copy-only-credentials/README.md",
-      "sha256": "a5dfa2f089b96890b1cb4f9b612890796c8cb060abfd3f993f84075b8bbe426d"
+      "sha256": "73d5c160590223e3ad55277e5e34fb41de256351b8a1a2368a02b12072de15dd"
     },
     {
       "path": "docs/integration/proposed/aux-copy-only-credentials/evidence.json",
       "sha256": "2cdd33e4722b11ea0f22e09d2fb3193df7c3f0d78d9753330a59c59cf16583e8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/tests/reentry/main.swift",
+      "sha256": "bd8cff5f298a7831aa5960b2410f4b4623b4745af8816120fa7c66933cb34329"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/check-reentry.sh",
+      "sha256": "9d810c062d4c15f8bd2128eaf79e0deb73f1a223711d6b6dfaf1dc9a54cd1e3e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/reentry-evidence.json",
+      "sha256": "bd094e0ff102b39dab406a7f2d06dffca1890c634e7f58ab77497e79bdd32314"
     }
   ],
   "oldSelectorsAreCandidatesNotObservedRows": true,
