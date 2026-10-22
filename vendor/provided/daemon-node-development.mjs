@@ -1,5 +1,6 @@
 /** Exact supplied daemon on unchanged Node; source-only local development output. */
 import { createHash } from 'node:crypto';
+import { AUX_COLD_ENTRY_REFUSAL } from './aux-cold-entry-admission.mjs';
 import { adaptDaemonCode, DAEMON_BINARY_SHA256, DAEMON_CODE_SHA256 } from './daemon-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../aside/lib/sea.mjs';
 
@@ -88,7 +89,20 @@ export function buildDaemonNodeDevelopment(originalBinary, cloudOptions = {}, id
     code = code.split(change.from).join(change.to);
     applied.push({ name: change.name, count });
   }
+  if (stateIdentityVersion === 2) {
+    // Static ESM imports run before the entry body, even before its first throw.
+    // Keep the copied asset module uninitialized until admission has succeeded.
+    if (!code.startsWith(AUX_COLD_ENTRY_REFUSAL) ||
+        code.split(AUX_COLD_ENTRY_REFUSAL).length !== 2) {
+      throw new Error('State2 generated daemon requires its exact cold entry refusal');
+    }
+    code = AUX_COLD_ENTRY_REFUSAL +
+      'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n' +
+      code.slice(AUX_COLD_ENTRY_REFUSAL.length);
+    applied.push({name: 'defer nonbuiltin asset initialization until admitted', count: 1});
+  } else {
   code = 'import { daemonResources as __auxDaemonResources, daemonMacOS as __auxDaemonMacOS, daemonAppRoot as __auxDaemonAppRoot, getAsset as __auxProvidedGetAsset } from "./assets.mjs";\n' + code;
+  }
   const files = [
     { path: daemonNodeDevelopmentPaths.script, bytes: Buffer.from(code), mode: 0o644 },
     { path: `${directory}/assets.mjs`, bytes: Buffer.from(assetModule()), mode: 0o644 },

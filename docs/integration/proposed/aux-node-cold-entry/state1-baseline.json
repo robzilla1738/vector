@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "generatorSourceSha256": "0a52e453560661b9719e3c8ea4ef75a6aaf610298691ed32ccc1ad9927cda6cd",
+  "identityProfile": "aux-v1",
+  "stateIdentityVersion": 1,
+  "files": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "bytes": 12133776,
+      "mode": 420,
+      "sha256": "d6363fcffbd26acd97125cb84c159eba29aeb56481d453e89db3071ae0b0d8e2"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets.mjs",
+      "bytes": 2177,
+      "mode": 420,
+      "sha256": "cb292b3e549e2b90495d12fe0e55e3be66de1a6fef8d686cc2266bc11403615d"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/quickjs-emscripten-module.wasm",
+      "bytes": 503134,
+      "mode": 420,
+      "sha256": "105c3bed22d457e43e3d1c3c1c6959fda62a8fe06f0fc8a985303c3a2be72232"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/photon_rs_bg.wasm",
+      "bytes": 1881634,
+      "mode": 420,
+      "sha256": "10468181565c56004c867f3a4af96f89a0ef5a63a72f2b5fb12c1f1992a3615c"
+    }
+  ]
+}
