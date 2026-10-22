@@ -1,4 +1,5 @@
 import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
+import { applyAuxCaptureContractIdentity } from '../../vendor/provided/aux-capture-contract-identity.mjs';
 import { loadAuxBrowserIconReplacement } from './aux-browser-icon.mjs';
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
@@ -261,6 +262,8 @@ export async function stageProvidedUi({
             }
             const assetReferences = applyAuxAssetReferenceIdentity({component, path: file.path, text, original: source.toString('utf8')});
             text = assetReferences.text; anchors.push(...assetReferences.anchors);
+            const capture = applyAuxCaptureContractIdentity({component, path: file.path, text, original: source.toString('utf8')});
+            text = capture.text; anchors.push(...capture.anchors);
           }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
