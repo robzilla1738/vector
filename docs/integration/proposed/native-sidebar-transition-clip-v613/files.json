@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v613 (build614 native unchanged)",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "7f87aa5419222d18cdb464ae6b0e7daa0e021c84c3d41fec0bc0131b95d82f3a",
+      "outputSha256": "2e6272a8eef6d1689c1ec88eef126a7f1a3f682c6769d2b38daf0bc032146ed5"
+    }
+  ]
+}

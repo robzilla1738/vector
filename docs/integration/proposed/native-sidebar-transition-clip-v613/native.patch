@@ -1,0 +1,13 @@
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -1635,6 +1635,10 @@
+   const bool narrow = !admission->AdmitsProfilePreview(width());
+   const bool animating = admission->collapse_animating() ||
+                          admission->expanding_from_collapsed();
++  // The held header and pinned layout retain their expanded width while this
++  // region shrinks. Their compositor layers must not paint outside the current
++  // region bounds. Restore unclipped layers for the retained overlay's shadow.
++  layer()->SetMasksToBounds(animating && !admission->retained());
+   top_button_container_->SetAuxProfilePreviewPresentation(
+       compact, admission->retained());
+   pinned_tab_entries_->SetCompactPresentation(compact);
