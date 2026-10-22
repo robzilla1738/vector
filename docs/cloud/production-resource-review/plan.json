@@ -1,0 +1,81 @@
+{
+  "kind": "proposed-aux-production-resource-bootstrap",
+  "preparedAt": "2026-10-22",
+  "status": "unexecuted-awaiting-resource-approval",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "teamSlug": "robzilla1738s-projects",
+  "vercelProjectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "vercelEnvironment": "production",
+  "database": {
+    "name": "aux-cloud-prod",
+    "provider": "Neon",
+    "plan": "Launch",
+    "region": "aws-us-east-1",
+    "postgresVersion": 18,
+    "minimumComputeUnits": 0.25,
+    "maximumComputeUnits": 0.25,
+    "autosuspendSeconds": 300,
+    "historyWindowDays": 7,
+    "neonAuthEnabled": false,
+    "realtimeEnabled": false,
+    "copyDevelopmentData": false,
+    "copyOwnerData": false
+  },
+  "blob": {
+    "name": "aux-private-prod",
+    "provider": "Vercel Blob",
+    "access": "private",
+    "region": "iad1",
+    "copyDevelopmentObjects": false
+  },
+  "connections": {
+    "project": "aux-cloud",
+    "environments": ["production"],
+    "databaseAccess": "new production database only",
+    "blobAccess": "new private production store only",
+    "credentialsStoredPrivately": true,
+    "generateIndependentAuthEncryptionCronSecrets": true,
+    "reuseDevelopmentSecrets": false,
+    "changeExistingProviderCredentials": false,
+    "changeMarketingProject": false
+  },
+  "setupChecks": {
+    "migrateOnlyNewEmptyDatabase": true,
+    "restoreOnlySyntheticDataIntoNewTemporaryBranch": true,
+    "restoreBranchExpiresWithinHours": 1,
+    "restoreBranchMaximumComputeUnits": 0.25,
+    "maximumSyntheticBlobBytes": 10485760,
+    "removeOnlyGeneratedFixtures": true,
+    "writeOwnerOrExistingUserData": false,
+    "runPaidAI": false
+  },
+  "cost": {
+    "currency": "USD",
+    "initialMonthlyTarget": 25,
+    "guaranteedProviderSpendingCap": false,
+    "neonComputePerCuHour": 0.106,
+    "neonStoragePerGbMonth": 0.35,
+    "neonHistoryPerGbMonth": 0.20,
+    "neonAlwaysAwakeCompute31Days": 19.716,
+    "blobStoragePerGbMonth": 0.023,
+    "blobSimpleOperationsPerMillion": 0.40,
+    "blobAdvancedOperationsPerMillion": 5,
+    "blobTransferPerGbIad1": 0.05,
+    "includesExistingVercelSubscription": false,
+    "includesPaidAI": false,
+    "includesTaxOrUnboundedTraffic": false
+  },
+  "excluded": [
+    "desktop signing, provisioning, notarization and distribution",
+    "live Stripe account creation, legal identity, bank or financial-account changes",
+    "production deployment/promotion or public domain activation",
+    "existing database, Blob, marketing, credentials or owner-profile changes",
+    "team-wide spend controls that could pause unrelated projects",
+    "new external log drains, backup vendors or unrelated OS permissions"
+  ],
+  "priceSources": [
+    "https://neon.com/pricing",
+    "https://neon.com/docs/postgres/backup-restore/history-window",
+    "https://vercel.com/docs/vercel-blob/usage-and-pricing"
+  ]
+}
