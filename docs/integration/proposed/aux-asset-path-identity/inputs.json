@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "component": "agent",
+  "assets": [
+    {
+      "from": "assets/aside-CeBDTZrg.webp",
+      "to": "assets/aux-CeBDTZrg.webp",
+      "sha256": "d0d55a418b2a03bffc682d95f11a2f79579fd46ca053a9b893a974f3a3e4c66d",
+      "bytes": 21648,
+      "references": [
+        {
+          "path": "assets/browser-icon-DvnonVC4.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-cli-3UABIqGq.webp",
+      "to": "assets/aux-cli-3UABIqGq.webp",
+      "sha256": "db6fb47432183500d909ef238a9aa1b5b049813c9124bfef70c6b5ea1711ac7d",
+      "bytes": 14742,
+      "references": [
+        {
+          "path": "assets/developers-DTvaoVBC.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-context-awareness-CQFhCmYA.webp",
+      "to": "assets/aux-context-awareness-CQFhCmYA.webp",
+      "sha256": "3fadbde7d02a0e3f17e818caa17f458675af904df36710bee90e38cdd8f02083",
+      "bytes": 45924,
+      "references": [
+        {
+          "path": "assets/context-awareness-BocPTg31.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-lasso-BhzH82rC.webp",
+      "to": "assets/aux-lasso-BhzH82rC.webp",
+      "sha256": "461ebc4b5ebf105e7b5e3385d817ee5a644a927ffe0d95e153cf4f572e8a2c40",
+      "bytes": 26560,
+      "references": [
+        {
+          "path": "assets/lasso-LoarCzmz.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-mini-popup-DpI8c-u_.webp",
+      "to": "assets/aux-mini-popup-DpI8c-u_.webp",
+      "sha256": "7604e760fc60e4fd326cd580fb256da8358124525b1896a3c03636ec571135ac",
+      "bytes": 52466,
+      "references": [
+        {
+          "path": "assets/mini-popup-BBLwe-a8.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-password-manager-CZ9IYl_W.webp",
+      "to": "assets/aux-password-manager-CZ9IYl_W.webp",
+      "sha256": "c4c6863dd777896d065ef903603a73a0499afe26eaa327f4b13e02054ce1934d",
+      "bytes": 13242,
+      "references": [
+        {
+          "path": "assets/password-LjdLcSRV.js",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "from": "assets/aside-payment-use-BBKr-NnX.webp",
+      "to": "assets/aux-payment-use-BBKr-NnX.webp",
+      "sha256": "d99ab01ac5740dc3cd5b6572471587608e2a3ae02e010a026905871e68855549",
+      "bytes": 35200,
+      "references": [
+        {
+          "path": "assets/payment-use-CqnbXHDE.js",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "importers": [
+    {
+      "path": "assets/browser-icon-DvnonVC4.js",
+      "sourceSha256": "282c98a4d261ada1d68d8f1b875d7d5549cb6b864b6a5388345ee16f7cc81516",
+      "rules": [
+        {
+          "find": "aside-CeBDTZrg.webp",
+          "replace": "aux-CeBDTZrg.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    },
+    {
+      "path": "assets/developers-DTvaoVBC.js",
+      "sourceSha256": "c5f9e7bb2a2c1439ac9d28fa5c56f22b97e78a148ae8a1b516287073d8ab807d",
+      "rules": [
+        {
+          "find": "aside-cli-3UABIqGq.webp",
+          "replace": "aux-cli-3UABIqGq.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    },
+    {
+      "path": "assets/context-awareness-BocPTg31.js",
+      "sourceSha256": "dbb10064b0dc8fd8c391ee1354f70ef4e812acb078407e07f7490f76a3085e14",
+      "rules": [
+        {
+          "find": "aside-context-awareness-CQFhCmYA.webp",
+          "replace": "aux-context-awareness-CQFhCmYA.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    },
+    {
+      "path": "assets/lasso-LoarCzmz.js",
+      "sourceSha256": "585081a9abff29b897ceef3dd1211b644f397f09cb724a123d5f29142ee4da30",
+      "rules": [
+        {
+          "find": "aside-lasso-BhzH82rC.webp",
+          "replace": "aux-lasso-BhzH82rC.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    },
+    {
+      "path": "assets/mini-popup-BBLwe-a8.js",
+      "sourceSha256": "88d713ad57680cc14752afa3ea704ce3b9e418bc2a9ff992097b47c9e8783f35",
+      "rules": [
+        {
+          "find": "aside-mini-popup-DpI8c-u_.webp",
+          "replace": "aux-mini-popup-DpI8c-u_.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    },
+    {
+      "path": "assets/password-LjdLcSRV.js",
+      "sourceSha256": "e00998141c347fa2ff29dfe5b62b6e6b797fc50aff0112ddc77cfc86b7bbb7ed",
+      "rules": [
+        {
+          "find": "aside-password-manager-CZ9IYl_W.webp",
+          "replace": "aux-password-manager-CZ9IYl_W.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": true
+        }
+      ]
+    },
+    {
+      "path": "assets/payment-use-CqnbXHDE.js",
+      "sourceSha256": "2564e46302b1d213dbb3e64aec43c8f2ab05c697e7fc65a2188e27af4791e656",
+      "rules": [
+        {
+          "find": "aside-payment-use-BBKr-NnX.webp",
+          "replace": "aux-payment-use-BBKr-NnX.webp",
+          "count": 1,
+          "mayAlreadyBeRelocatedByExistingBranding": false
+        }
+      ]
+    }
+  ],
+  "assetByteChanges": false
+}
