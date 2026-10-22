@@ -1,6 +1,6 @@
 # Historical subagent model override: exact contract and unresolved migration
 
-This is a source-only review of the supplied 1.26.1016.1852 daemon, SHA-256 `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5`. The [audit](source-audit.json) verifies16 exact unique anchors/UTF-16 offsets. No complete daemon, native addon, owner state, provider request or app was executed. No payload mutation or integration is included.
+This is a source-only review of the supplied 1.26.1016.1852 daemon, SHA-256 `5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5`. The [audit](source-audit.json) verifies16 exact unique anchors/UTF-16 offsets. No complete daemon, native addon, owner state, provider request or app was executed. This document remains the source-only review. The later [unsigned-only preparer](../aux-unsigned-subagent-identity/README.md) implements its restricted unsigned subset; signed candidates still refuse.
 
 ## Exact authoritative location
 
@@ -43,7 +43,7 @@ The fixed-offset padding technique solves **offset preservation only**. It canno
 2. Signed matching candidates require a reviewed signature-aware policy before modifying them. Preserve immutable originals outside the delivered successor and prove the chosen replay strategy against the actual adapter/provider contract. That policy must also preserve existing suspension identity, beforeExecution status and existing results/child work. Do not infer safety merely from SQLite integrity or JSON parsing.
 3. Couple acceptance to exact affected records. An empty candidate set is useful evidence only for explicitly supplied reviewed snapshots, never an assertion about owner or undiscovered profiles.
 
-These are implementation choices still requiring work; none has been activated here. The accepted app and UI remain unchanged.
+The unsigned-only subset is now prepared by the companion external tool and paired with the disposable journal. Its signed policy and actual app activation still require separate work. The accepted app and UI remain unchanged.
 
 ## Adjacent persisted caches: separate scope
 

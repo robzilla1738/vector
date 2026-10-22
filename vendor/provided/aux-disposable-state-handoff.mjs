@@ -8,6 +8,7 @@ import { checkpointPrivateSqliteSnapshot } from './aux-sqlite-wal-copy.mjs';
 import { prepareSqliteProviderIdentity } from './aux-sqlite-provider-identity.mjs';
 import { prepareSessionTurnCacheIdentity } from './aux-session-turn-cache-identity.mjs';
 import { prepareContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
+import { prepareUnsignedSubagentIdentity } from './aux-unsigned-subagent-identity.mjs';
 import { prepareAuxTranscriptProviderIdentity } from './aux-transcript-provider-identity.mjs';
 import { prepareStateMigration } from './aux-state-migration-transaction.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -132,8 +133,12 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
     for (const plan of transcriptPlans) {
       const derivedCapability = { ...capability, assertStopped: async ({ phase }) => { await scope(capability, root, transactionId, sources, `handoff-${phase}`); return true; } };
       const prepared = await prepareAuxTranscriptProviderIdentity({ bytes: plan.before, expectedSha256: sha(plan.before), capability: derivedCapability });
-      buffers.push(prepared.bytes); files.push({ path: plan.target, expectedSha256: sha(plan.before), bytes: prepared.bytes });
-      transformations.push({ path: plan.target, transcriptMigration: prepared.receipt });
+      buffers.push(prepared.bytes);
+      const unsigned = await prepareUnsignedSubagentIdentity({ bytes: prepared.bytes, expectedSha256: prepared.receipt.outputSha256, capability: derivedCapability });
+      buffers.push(unsigned.bytes);
+      if (unsigned.receipt.sourceSha256 !== prepared.receipt.outputSha256) throw Error('Unsigned-subagent metadata lineage mismatch');
+      files.push({ path: plan.target, expectedSha256: sha(plan.before), bytes: unsigned.bytes });
+      transformations.push({ path: plan.target, transcriptMigration: prepared.receipt, unsignedSubagentMigration: unsigned.receipt, lineage: { originalTranscriptSha256: sha(plan.before), assistantMetadataOutputSha256: prepared.receipt.outputSha256, unsignedSubagentSourceSha256: unsigned.receipt.sourceSha256, preparedTranscriptSha256: unsigned.receipt.outputSha256 } });
     }
     await scope(capability, root, transactionId, sources, 'handoff-before-journal');
     const forwarded = { ...capability, assertStopped: context => capability.assertStopped({ ...context, snapshotHashes: sources }) };
@@ -141,7 +146,7 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
     const preparedFiles = files.map(file => ({ path: file.path, beforeSha256: file.expectedSha256, afterSha256: sha(file.bytes) }));
     return {
       ...handle,
-      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'typed historical tool arguments and other cached projection columns', 'actual app restart acceptance'] },
+      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'signed historical tool arguments, subagent tracking cache and other cached projection columns', 'actual app restart acceptance'] },
     };
   } finally { for (const bytes of buffers) bytes.fill(0); }
 }

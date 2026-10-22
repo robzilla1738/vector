@@ -101,3 +101,8 @@ The primary real-SQLite crash fixture also includes a complete synthetic JSONL f
 ## Cached assistant stage
 
 Provider cohorts now require the pinned `session_turns` cache schema and apply `prepareSessionTurnCacheIdentity` after the session/routine provider migration. The provider output hash must match cache input; `cacheMigration` records its evidence and lineage's final prepared main hash is the cache output. Original main/WAL/SHM CAS/backups and journal target counts remain unchanged. The source-derived cached value is nullable or a single-assistant array containing its final text/error projection, not a plain assistant object. Only direct provider/API metadata changes; every other cached/database value is checked. See [the source/schema review and scoped evidence](../aux-session-turn-cache-identity/README.md). Typed tool overrides and other cached projection columns remain outside the cohort.
+
+
+## Unsigned typed spawn stage
+
+After direct assistant metadata, each explicit transcript now passes the [unsigned-only subagent override preparer](../aux-unsigned-subagent-identity/README.md). Only a validated subagent/spawn/model provider selector changes. Signed, ambiguous or unknown matching candidates refuse the entire cohort before journal creation. Receipt lineage chains the two prepared hashes while original transcript bytes remain journal CAS/backup authority. Other tools and opaque results/prompts remain unchanged. This does not resolve signed historical arguments or runtime startup fencing.

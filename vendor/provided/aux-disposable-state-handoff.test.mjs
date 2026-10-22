@@ -12,7 +12,7 @@ import { PINNED_SESSION_TURN_CACHE_DDL } from './aux-session-turn-cache-schema.m
 import { PINNED_CONTEXT_LEDGER_DDL } from './aux-context-ledger-schema.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const transcriptPath = 'home/u/1/sessions/2026-10-22_fixture-session/messages.jsonl';
-const transcript = Buffer.from(JSON.stringify({role:'user',content:'aside prose remains unchanged',timestamp:1}) + '\r\n' + JSON.stringify({role:'assistant',provider:'aside',api:'aside-provider',model:'fixture-only-model',content:[{type:'text',text:'original',textSignature:'retain'},{type:'toolCall',id:'unchanged',name:'subagent',arguments:{model:{provider:'aside',modelId:'opaque-retain'}}}],timestamp:2,stopReason:'toolUse'}) + '\n');
+const transcript = Buffer.from(JSON.stringify({role:'user',content:'aside prose remains unchanged',timestamp:1}) + '\r\n' + JSON.stringify({role:'assistant',provider:'aside',api:'aside-provider',model:'fixture-only-model',content:[{type:'text',text:'original',textSignature:'retain'},{type:'toolCall',id:'unchanged',name:'fixture_tool',arguments:{model:{provider:'aside',modelId:'opaque-retain'}}},{type:'toolCall',id:'unsigned-spawn',name:'subagent',arguments:{action:'spawn',description:'fixture task',prompt:'aside is prompt text',model:{provider:'aside',modelId:'keep-spawn-model'}}}],timestamp:2,stopReason:'toolUse'}) + '\n');
 const model = { provider: 'aside', modelId: 'fixture-only-model', thinkingLevel: 'medium', fastMode: true };
 async function fixture(t) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'aux-handoff-fixture-'));
@@ -76,9 +76,11 @@ test('WAL-only row + JSON/prefs migrate through crash recovery before any fixtur
   const beforeRows = offsets(transcript), afterRows = offsets(migratedTranscript);
   assert.deepEqual(afterRows.map(({id,jsonlReadSize})=>({id,jsonlReadSize})), beforeRows.map(({id,jsonlReadSize})=>({id,jsonlReadSize})));
   assert.deepEqual(afterRows[0], beforeRows[0]);
-  assert.deepEqual(afterRows[1].msg, {...beforeRows[1].msg, provider:'aux', api:'aux-provider'});
+  const expectedAssistant = structuredClone(beforeRows[1].msg); expectedAssistant.provider='aux'; expectedAssistant.api='aux-provider'; expectedAssistant.content[2].arguments.model.provider='aux';
+  assert.deepEqual(afterRows[1].msg, expectedAssistant);
   assert.equal(afterRows[1].msg.content[1].arguments.model.provider, 'aside');
   const transcriptReceipt = prepared.receipt.transformations.find(entry=>entry.path===transcriptPath).transcriptMigration;
+  const unsignedReceipt = prepared.receipt.transformations.find(entry=>entry.path===transcriptPath); assert.equal(unsignedReceipt.unsignedSubagentMigration.changedCalls,1); assert.equal(unsignedReceipt.lineage.assistantMetadataOutputSha256, unsignedReceipt.lineage.unsignedSubagentSourceSha256);
   assert.equal(transcriptReceipt.byteOffsetsPreserved, true); assert.equal(transcriptReceipt.sourceSha256, sha(transcript));
   for (const sidecar of ['wal', 'shm']) assert.equal((await fs.readFile(path.join(f.root, `home/u/1/state.db-${sidecar}`))).length, 0);
   const prefs = JSON.parse(await fs.readFile(path.join(f.root, 'browser/Default/Preferences'), 'utf8'));
@@ -186,4 +188,13 @@ test('transcript route and combined target budget refuse unreviewed layouts befo
   for (const patch of [{sessionId:'../escape'},{storageDate:'2026-02-30'},{storageDate:'fixture-session'},{accountId:-1}]) await assert.rejects(prepareAuxDisposableStateHandoff({...f,transcriptSnapshots:[{...descriptor,...patch}]}),/canonical/);
   await assert.rejects(prepareAuxDisposableStateHandoff({...f,transcriptSnapshots:Array.from({length:122},()=>descriptor)}),/bounded/);
   for (const [relative, bytes] of f.files) assert.deepEqual(await fs.readFile(path.join(f.root, relative)), bytes);
+});
+test('signed matching transcript refuses the whole handoff before a durable journal is prepared', async t => {
+  const f=await fixture(t), rows=transcript.toString().split('\n'), assistant=JSON.parse(rows[1]);
+  assistant.content[2].thoughtSignature='YWJj';rows[1]=JSON.stringify(assistant);const signed=Buffer.from(rows.join('\n'));
+  f.transcriptSnapshots[0]={...f.transcriptSnapshots[0],bytes:signed,expectedSha256:sha(signed)};
+  await fs.writeFile(path.join(f.root,transcriptPath),signed,{mode:0o600});
+  await assert.rejects(prepareAuxDisposableStateHandoff(f),/Signed or unreviewed/);
+  assert.deepEqual(await fs.readFile(path.join(f.root,transcriptPath)),signed);
+  assert.equal((await fs.readdir(f.root)).some(name=>name.startsWith('.aux-state-migration-')),false);
 });
