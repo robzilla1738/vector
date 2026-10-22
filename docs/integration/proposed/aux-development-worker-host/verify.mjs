@@ -31,3 +31,18 @@ assert.equal(compiled.actualTranslationUnits,compiled.swiftTranslationUnits+comp
 assert.equal(compiled.lifecycleChecksRun,0);assert.equal(compiled.fixtureCompiled,false);assert.equal(compiled.historicalLifecycleEvidenceUpdated,false);
 assert.equal(compiled.productionArtifactLoaded,false);assert.equal(compiled.actualSecurityCalls,0);assert.equal(compiled.state2Authorized,false);
 console.log(`PASS ${pins.files.length} exact source pins; native callback/lifetime source and recorded bounded evidence`);
+// Current refusal successor evidence is distinct from all earlier compile and
+// lifecycle receipts; source inventories authenticate what was compiled only.
+const refusalBuild=JSON.parse(await readFile(path.join(here,'evidence/current-direct-attach-refusal-compile-only.json')));
+assert.equal(refusalBuild.mode,'--compile-only');assert.equal(refusalBuild.productionSourceCompiled,true);
+assert.equal(refusalBuild.swiftTranslationUnits,21);assert.equal(refusalBuild.cppTranslationUnits,5);
+assert.equal(refusalBuild.actualTranslationUnits,26);assert.equal(refusalBuild.inputs.length,26);
+assert.equal(refusalBuild.sourcePinsSha256,createHash('sha256').update(await readFile(path.join(here,'source-pins.json'))).digest('hex'));
+assert.equal(refusalBuild.hostSourcePinsSha256,createHash('sha256').update(await readFile(path.join(root,'docs/integration/proposed/aux-development-host/source-pins.json'))).digest('hex'));
+for(const input of refusalBuild.inputs)assert.equal(createHash('sha256').update(await readFile(path.join(root,'docs/integration/proposed',input.path))).digest('hex'),input.sha256,input.path);
+for(const [file,sha] of Object.entries(refusalBuild.historicalReceiptHashes))assert.equal(createHash('sha256').update(await readFile(path.join(root,file))).digest('hex'),sha,file);
+for(const field of ['artifactRetained','fixtureCompiled','historicalEvidenceUpdated','productionArtifactLoaded','signedPolicyProducerExecuted','nativeAttachmentExecuted','signingPerformed','state2Authorized'])assert.equal(refusalBuild[field],false,field);
+assert.equal(refusalBuild.actualSecurityCalls,0);assert.equal(refusalBuild.lifecycleChecksRun,0);assert.equal(refusalBuild.capturedPolicyChecksRun,0);
+assert.equal(refusalBuild.architecture,'arm64');assert.equal(refusalBuild.minimumMacOS,'13.0');assert.equal(refusalBuild.terminalExitCode,0);
+assert.equal(refusalBuild.attachObjectUndefinedImports,0);assert.equal(refusalBuild.retainedAttachABIExports,1);assert.equal(refusalBuild.compiledOldProductLiteralCount,0);
+console.log('PASS: current21-Swift/5-C++ refusal successor compile receipt/input hashes; unsigned output removed, no graph load or protected operation.');

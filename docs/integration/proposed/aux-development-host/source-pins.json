@@ -67,11 +67,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
-      "sha256": "9ebd16d6f2d05ea2cf800d83063ef6a4858dbaa9ee5be3c25b1280156767af10"
+      "sha256": "c1940718232b7a5502e508d08bc8726ce5b4d8b1d7518a856a1b61e0459990e9"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.h",
-      "sha256": "c3a88b6b6a8b4492e0853f1e0d074fd805c19dd4fd720a489bf347b55af17c47"
+      "sha256": "4133d4ca5d23458944f77f5ef7431fb1e7ec86e4905f52720a30dd98a9ca5582"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/tests/main.swift",
@@ -151,7 +151,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/verify.mjs",
-      "sha256": "8aae77b3d9d8f13d50ddbfa7027f504d8f1dd470358788207027d84b48fb8d37"
+      "sha256": "70fa5bb340b5511d36d0e2dbf1fd73c473d48225bf36b92af30490e18db08b36"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
@@ -254,5 +254,27 @@
         "currentSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
       }
     ]
+  },
+  "directAttachRefusalSuccessor": {
+    "reviewedProposalCommit": "6d7f444bf",
+    "changes": [
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
+        "previousSha256": "9ebd16d6f2d05ea2cf800d83063ef6a4858dbaa9ee5be3c25b1280156767af10",
+        "sha256": "c1940718232b7a5502e508d08bc8726ce5b4d8b1d7518a856a1b61e0459990e9"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.h",
+        "previousSha256": "c3a88b6b6a8b4492e0853f1e0d074fd805c19dd4fd720a489bf347b55af17c47",
+        "sha256": "4133d4ca5d23458944f77f5ef7431fb1e7ec86e4905f52720a30dd98a9ca5582"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/verify.mjs",
+        "previousSha256": "8aae77b3d9d8f13d50ddbfa7027f504d8f1dd470358788207027d84b48fb8d37",
+        "sha256": "70fa5bb340b5511d36d0e2dbf1fd73c473d48225bf36b92af30490e18db08b36"
+      }
+    ],
+    "historicalEvidenceUpdated": false,
+    "reason": "Retain old C ABI as fixed refusal; no protected factory/adapter bypass; actual WorkerHost source unchanged."
   }
 }
