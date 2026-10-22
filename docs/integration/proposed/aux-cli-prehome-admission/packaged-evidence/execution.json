@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "scope": "packaged CLI pre-home refusal, not complete startup or authority migration",
+  "sourceBytesMatchProposal": true,
+  "boundaryBuildExitCode": 0,
+  "markerPolicyCases": 41,
+  "syntheticFileCases": 7,
+  "stageExitCode": 0,
+  "packageExitCode": 0,
+  "packagedCheckExitCode": 0,
+  "visualAssetsPreserved": 135,
+  "stylesheetsPreserved": 5,
+  "wrapperRefusal": {
+    "actualPackagedWrapperExecuted": true,
+    "exitCode": 1,
+    "exactPreHomeDiagnostic": true,
+    "homeCreated": false,
+    "auxHomeCreated": false,
+    "markerUnchanged": true,
+    "seaExecuted": false,
+    "browserLaunched": false,
+    "keychainOperationInvoked": false,
+    "existingCarrierOptInCannotBypassMarker": true
+  },
+  "chromiumBuildReused": true,
+  "chromiumUiChanged": false,
+  "newBoundaryRebuilt": true,
+  "runtimeAcceptance": false,
+  "acceptedAppReplaced": false,
+  "signed": false,
+  "allWritersVerified": false,
+  "files": [
+    {
+      "path": "out/provided-native-cli-admission/native-build-receipt.json",
+      "sha256": "9ad4332f34ae2cd757d6eb050bba131a4cca24cb4ff60286f2e291a20b02bd80"
+    },
+    {
+      "path": "out/provided-candidate-aux-cli-admission/package.json",
+      "sha256": "361e52fd2d55e61d558ed7e8498fc0712b354959aeb04802deceb570073f763b"
+    },
+    {
+      "path": "out/aux-cli-admission-packaged-evidence.json",
+      "sha256": "b79e4a14b863d6342030c8995059a56876744c18349a108cbc13003313428e9c"
+    },
+    {
+      "path": "out/check-cli-admission-package.mjs",
+      "sha256": "6b8b060759181fe910825e7489d3e528aa97865f6d043a080b46a1ae6aa5999c"
+    },
+    {
+      "path": "out/aux-cli-admission-boundary-build.log",
+      "sha256": "6242d333d16febd18d4e3e6bc5bf70b5254c811e3e795ed23028e73a2b3e3380"
+    }
+  ]
+}
