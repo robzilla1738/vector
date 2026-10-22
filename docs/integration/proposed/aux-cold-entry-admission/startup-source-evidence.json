@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "scope": "Static native lifecycle and packaged entry inventory; no owner state/process inspection",
+  "sources": [
+    {
+      "kind": "native",
+      "path": "content/app/content_main_runner_impl.cc",
+      "sha256": "742c7e6d80584e4aa172771615a5602063aab66fed8254d11375f55db5fb49d0",
+      "anchors": [
+        {
+          "anchor": "delegate_->BasicStartupComplete()",
+          "found": true,
+          "offset": 38487,
+          "context": ")\n    ContentClientCreator::Create(delegate_);\n  std::optional<int> basic_startup_exit_code =\n      delegate_->BasicStartupComplete();\n  if (basic_startup_exit_code.has_value())\n    return basic_startup_exit_code.value();\n\n  if (!delegate_->IsInitFeatureListEarly()) {\n    base::allocator::PartitionAllocSupport::"
+        },
+        {
+          "anchor": "delegate_->PreSandboxStartup()",
+          "found": true,
+          "offset": 42479,
+          "context": "e::debug::VerifyDebugger();\n#endif  // !defined(OFFICIAL_BUILD) || BUILDFLAG(CHROME_FOR_TESTING)\n\n  delegate_->PreSandboxStartup();\n\n#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)\n  // Set environment variables for fontconfig fontations indexing and before\n  // creating threads.\n  if (process_type.empty())"
+        },
+        {
+          "anchor": "delegate_->PostEarlyInitialization(invoked_in_browser)",
+          "found": true,
+          "offset": 52376,
+          "context": "faultClock>());\n      }\n    }\n\n    std::optional<int> post_early_initialization_exit_code =\n        delegate_->PostEarlyInitialization(invoked_in_browser);\n    if (post_early_initialization_exit_code.has_value())\n      return post_early_initialization_exit_code.value();\n\n    if (HasDisableBestEffortTasksSwitch()) {\n      best_effort"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "sha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+      "anchors": [
+        {
+          "anchor": "std::optional<int> ChromeMainDelegate::BasicStartupComplete()",
+          "found": true,
+          "offset": 45211,
+          "context": "racingSamplerProfiler::CreateOnMainThread(\n          std::move(tracing_factory), unwinder_type);\n}\n\nstd::optional<int> ChromeMainDelegate::BasicStartupComplete() {\n#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)\n  // Runs in browser and helper processes before acceptance, user-data paths,\n  // singleton forwarding, preferences, daem"
+        },
+        {
+          "anchor": "PackagedIdentityAllowsStartup()",
+          "found": true,
+          "offset": 45510,
+          "context": "// singleton forwarding, preferences, daemon or installation authority.\n  if (!aux::state_identity::PackagedIdentityAllowsStartup()) {\n    LOG(ERROR) << \"Aux packaged state identity is unsupported or unaccepted\";\n    return 1;\n  }\n#endif\n#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER) && !defined(OFFICI"
+        },
+        {
+          "anchor": "std::optional<int> ChromeMainDelegate::PostEarlyInitialization(",
+          "found": true,
+          "offset": 32824,
+          "context": "IS_ANDROID)\nChromeMainDelegate::~ChromeMainDelegate() = default;\n#endif  // !BUILDFLAG(IS_ANDROID)\n\nstd::optional<int> ChromeMainDelegate::PostEarlyInitialization(\n    InvokedIn invoked_in) {\n  DUMP_WILL_BE_CHECK(base::ThreadPoolInstance::Get());\n  const auto* invoked_in_browser =\n      std::get_if<InvokedInBrowserProcess>(&invoked_in);\n  if"
+        },
+        {
+          "anchor": "AcquireProcessSingleton(user_data_dir)",
+          "found": true,
+          "offset": 33645,
+          "context": " running browser\n  // instance that handled the command-line.\n  if (auto process_singleton_result = AcquireProcessSingleton(user_data_dir);\n      process_singleton_result.has_value()) {\n    // To ensure that the histograms emitted in this process are reported in\n    // case of early exit, report the metrics accumulat"
+        },
+        {
+          "anchor": "NotifyOtherProcessOrCreate()",
+          "found": true,
+          "offset": 21668,
+          "context": "endif\n  ProcessSingleton::NotifyResult notify_result =\n      ChromeProcessSingleton::GetInstance()->NotifyOtherProcessOrCreate();\n  UMA_HISTOGRAM_ENUMERATION(\"Chrome.ProcessSingleton.NotifyResult\",\n                            notify_result, ProcessSingleton::kNumNotifyResults);\n\n  switch (notify_result) {\n "
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+      "anchors": [
+        {
+          "anchor": "int ChromeBrowserMainParts::PreCreateThreadsImpl()",
+          "found": true,
+          "offset": 51172,
+          "context": " // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)\n  return content::RESULT_CODE_NORMAL_EXIT;\n}\n\nint ChromeBrowserMainParts::PreCreateThreadsImpl() {\n  TRACE_EVENT0(\"startup\", \"ChromeBrowserMainParts::PreCreateThreadsImpl\");\n\n  if (startup_data_->chrome_feature_list_creator()->actual_locale().empty()) {\n    ShowMissingLocaleM"
+        },
+        {
+          "anchor": "browser_process_->Init()",
+          "found": true,
+          "offset": 52317,
+          "context": "     \"startup\",\n        \"ChromeBrowserMainParts::PreCreateThreadsImpl:InitBrowserProcessImpl\");\n    browser_process_->Init();\n  }\n\n#if !BUILDFLAG(IS_CHROMEOS)\n  std::optional<std::string> managed_by =\n      policy::GetManagedBy(browser_process_->browser_policy_connector()\n                               "
+        },
+        {
+          "anchor": "aux::BrowserPlatform::Get().Start(",
+          "found": true,
+          "offset": 77121,
+          "context": ". The supplied\n  // startup readiness gate runs after profile extension services initialize.\n  if (!aux::BrowserPlatform::Get().Start(\n          browser_process_->system_network_context_manager()\n              ->GetSharedURLLoaderFactory())) {\n    LOG(ERROR) << \"Aux local browser startup failed\";\n    return CHROM"
+        },
+        {
+          "anchor": "PreProfileInit();",
+          "found": true,
+          "offset": 62587,
+          "context": "ORT_PRODUCT_NAME));\n\n  for (auto& chrome_extra_part : chrome_extra_parts_) {\n    chrome_extra_part->PreProfileInit();\n  }\n\n  DisallowKeyedServiceFactoryRegistration();\n\n#if !BUILDFLAG(IS_ANDROID)\n  // Ephemeral profiles may have been left behind if the browser crashed.\n  g_browser_process->profil"
+        },
+        {
+          "anchor": "browser_process_->profile_manager()->AutoloadProfiles()",
+          "found": true,
+          "offset": 78632,
+          "context": "ing background apps.\n  // TODO(rlp): Do this on a separate thread. See http://crbug.com/41474467.\n  browser_process_->profile_manager()->AutoloadProfiles();\n#endif\n\n  // Post-profile init ---------------------------------------------------------\n\n  TranslateService::Initialize();\n  if (language::GetOverrideLanguageModel() ==\n      la"
+        },
+        {
+          "anchor": "ChromeProcessSingleton::GetInstance()->Unlock(",
+          "found": true,
+          "offset": 70281,
+          "context": "in message loop's start\n  // to avoid rendezvous in RunLoops that may precede MainMessageLoopRun.\n  ChromeProcessSingleton::GetInstance()->Unlock(\n      base::BindRepeating(&ProcessSingletonNotificationCallback));\n#endif\n\n  // Set up a task to delete old WebRTC log files for all profiles. Use a delay\n  // to reduce the impac"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "vendor/provided/memory-bootstrap.cjs",
+      "sha256": "aa21945643d6396f235ceee7b27bced9007dcba688b9fae1e4f2ba8aa4070f3f",
+      "anchors": [
+        {
+          "anchor": "module.exports = async function provisionBundledMemory()",
+          "found": true,
+          "offset": 188,
+          "context": "\nconst crypto = require('node:crypto');\nconst { seedBundledMemory } = require('./memory-seed.cjs');\nmodule.exports = async function provisionBundledMemory() {\n  const directory = await fs.realpath(__dirname);\n  const root = path.resolve(directory, '../../../../../..');\n  if (directory !== path.join(root, 'apps/daemon/Aux Daemon.app/Co"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "vendor/provided/runtime-bootstrap.cjs",
+      "sha256": "14624cffb7cd9d0852255f6557d6714b06ce6593981c2eede2bfcb2a75cdcf93",
+      "anchors": [
+        {
+          "anchor": "module.exports = function provisionBundledRuntime(destination)",
+          "found": true,
+          "offset": 597,
+          "context": "d runtime metadata');\n    return await h.readFile();\n  } finally { await h.close(); }\n}\nlet active;\nmodule.exports = function provisionBundledRuntime(destination) {\n  if (active) return active;\n  active = (async () => {\n    const directory = await fs.realpath(__dirname), root = path.resolve(directory, '../../../../../..');\n    if (directory"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "vendor/provided/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af",
+      "anchors": [
+        {
+          "anchor": "await fs.writeFile(path.join(staging, e.path)",
+          "found": true,
+          "offset": 6706,
+          "context": "tput = relocate(original, e, runtime);\n        if (e.anchors?.length) relocatedTextFiles++;\n        await fs.writeFile(path.join(staging, e.path), output, { flag: 'wx', mode: e.mode });\n        await fs.chmod(path.join(staging, e.path), e.mode);\n      }\n    }));\n    // Never remove staging while another worker can still wri"
+        },
+        {
+          "anchor": "await fs.rename(path.join(staging, name)",
+          "found": true,
+          "offset": 8452,
+          "context": "t stat(path.join(runtime, name))) throw new Error('Runtime publication destination changed');\n      await fs.rename(path.join(staging, name), path.join(runtime, name));\n    }\n    return { seeded: true, retained: false, runtime, relocatedTextFiles };\n  } finally {\n    await fs.rm(staging, { recursive: true, force: true "
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "vendor/provided/memory-seed.cjs",
+      "sha256": "26b01830cd0d2d5a40b73e3de3406f9bd5de666ef2fa850a50bd0a844588aebe",
+      "anchors": [
+        {
+          "anchor": "async function seedBundledMemory(",
+          "found": true,
+          "offset": 1076,
+          "context": "|| !s.isDirectory()) throw new Error('Memory cache path traverses non-directory or symlink');\n  }\n}\nasync function seedBundledMemory({ source, home, entries }) {\n  if (!path.isAbsolute(source) || !path.isAbsolute(home)) throw new Error('Absolute memory source/home required');\n  source = path.resolve(source); hom"
+        },
+        {
+          "anchor": "await fs.mkdir(home",
+          "found": true,
+          "offset": 1696,
+          "context": "('Memory source and destination must be disjoint');\n  await chain(source);\n  if (!await stat(home)) await fs.mkdir(home, { mode: 0o700 });\n  await chain(home); await directory(home, true);\n  const groups = new Map(), seen = new Set();\n  for (const e of entries) {\n    if (typeof e.path !== 'string' "
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "scripts/lib/provided-computer-use.mjs",
+      "sha256": "410d2c3b0a9705708864ec2e1d758d962a7074181bde53bcbec96a218f3ed37c",
+      "anchors": [
+        {
+          "anchor": "export const providedComputerUseSha256",
+          "found": true,
+          "offset": 233,
+          "context": "'node:fs/promises';\nimport { join, relative, sep, isAbsolute, resolve, dirname } from 'node:path';\n\nexport const providedComputerUseSha256 =\n  'a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026';\nconst sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');\n\nexport async function verifyPr"
+        },
+        {
+          "anchor": "verifyProvidedComputerUse",
+          "found": true,
+          "offset": 443,
+          "context": "\nconst sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');\n\nexport async function verifyProvidedComputerUse(appRoot) {\n  if ((await lstat(appRoot)).isSymbolicLink())\n    throw new Error('Helper root cannot be a symlink');\n  appRoot = await realpath(appRoot);\n  const inventory = JSON.par"
+        }
+      ]
+    }
+  ]
+}
