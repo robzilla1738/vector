@@ -21,6 +21,9 @@ class AuxDevelopmentWorkerHost final {
   // Permanently closes this host's registrations; actual Swift retirement
   // closes command admission and drains acquired synchronous calls. OS utility
   // admission is also closed; pending/untracked async work is NOT drained.
+  // In-flight factory/attachment also yields pending; a late owner is retired
+  // rather than published as a live command capability. No mutex crosses a
+  // producer or NAPI publication callback (which may reenter native close).
   // Native embedding must retain this object until drained before teardown.
   AuxDevelopmentWorkerDrain CloseAndDrain();
  private:

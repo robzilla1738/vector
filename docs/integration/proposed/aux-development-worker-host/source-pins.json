@@ -1,7 +1,7 @@
 {
   "format": "aux.development.worker.host.source.v1",
-  "baseCommit": "52b783f1b",
-  "requiredOSCustodyCommit": "b0062957d",
+  "baseCommit": "b8c579a65",
+  "requiredOSCustodyCommit": "b8c579a65",
   "files": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
@@ -65,7 +65,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/check.mjs",
-      "sha256": "3b3525370f94a73e1a3672918ec5d67769224ce89cf08a6a7069cecf3491b721"
+      "sha256": "ed6808ea16c91b0bd09beebbc3802e3349e501f2d10ff8dff5471c9028bd71a2"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
@@ -73,11 +73,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
-      "sha256": "22bdc3dadc1be8b053b759df0727fe68842303aff18f2584aeb033a1e92222bc"
+      "sha256": "5d0cc7c74106cd2116aa6bb9b872f22d2c4cd8d4ccfc30709cbb9930d653e16c"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
-      "sha256": "501bb42c9c1899f88b3b0978b439f85fe95c3981cb98e61d58e8a60cc4b28036"
+      "sha256": "a78268bd9d0f9b2d3c78c258a9612d1591a938527dc05bb3bfe3e5742493c6e2"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/tests/BlockingLease.swift",
@@ -85,11 +85,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/tests/check.cjs",
-      "sha256": "16faefd21dda09ccc6d837cbde8e02c823c36265306e0292c3f9dcd9c7203718"
+      "sha256": "4befed9b6597394fb57e866c0a60f1f907a48cb35cd734c6de7b813ffba02389"
     },
     {
       "path": "docs/integration/proposed/aux-development-worker-host/tests/fixture-module.cc",
-      "sha256": "0419b628c1ce483c46510eeb4ed36ffb780f5a3eaff4112a0dcd0d63984ccc21"
+      "sha256": "ab5e339ba3c7ce565462e9f16fa6a7d44ac9e228e429a7dc58fdc91ffaf7f470"
     },
     {
       "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",

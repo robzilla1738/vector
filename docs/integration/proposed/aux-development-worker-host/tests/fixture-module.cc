@@ -3,12 +3,20 @@
 #include <node_api.h>
 #include <atomic>
 #include <cstdint>
+#include <condition_variable>
+#include <mutex>
+#include <chrono>
 extern "C" void* AuxFixtureCreateOwner(uint64_t*);
 extern "C" void AuxFixtureReleaseOwner(void*);
 extern "C" uint64_t AuxFixtureCreatedCount();
 extern "C" uint64_t AuxFixtureReleasedCount();
 static AuxDevelopmentWorkerHost host;
 static AuxDevelopmentWorkerHost other;
+static AuxDevelopmentWorkerHost proxy_host;
+static AuxDevelopmentWorkerHost race_host;
+static std::mutex race_mutex;
+static std::condition_variable race_condition;
+static bool block_next_factory=false, factory_entered=false, factory_released=false;
 static std::atomic<bool> fail_next{false};
 static std::atomic<int32_t> drain_status{0};
 extern "C" int32_t AuxFixtureActualOwnerOSAdmission(void*);
@@ -22,6 +30,13 @@ extern "C" int32_t AuxFixtureBeginBlockingLease(uint64_t);
 extern "C" int32_t AuxFixtureLeaseCompleted();
 extern "C" int32_t AuxCreateSignedDevelopmentOwner(uint64_t* handle, void** owner) {
   *handle=0;*owner=nullptr;++attempted;
+  {
+    std::unique_lock<std::mutex> lock(race_mutex);
+    if(block_next_factory){
+      block_next_factory=false;factory_entered=true;race_condition.notify_all();
+      if(!race_condition.wait_for(lock,std::chrono::seconds(3),[]{return factory_released;}))return -1;
+    }
+  }
   if (fail_next.exchange(false)) return -1;
   *owner=AuxFixtureCreateOwner(handle);worker_handle=*handle;
   return *owner && *handle ? 0:-1;
@@ -31,7 +46,8 @@ static napi_value Register(napi_env env,napi_callback_info info) {
   size_t argc=1;napi_value arg;void* data=nullptr;
   napi_get_cb_info(env,info,&argc,&arg,nullptr,&data);
   napi_value out;
-  auto& current=data?other:host;
+  auto choice=reinterpret_cast<uintptr_t>(data);
+  auto& current=choice==1?other:choice==2?proxy_host:choice==3?race_host:host;
   napi_create_int32(env,argc?current.RegisterCurrentWorker(env,arg):napi_invalid_arg,&out);
   return out;
 }
@@ -41,8 +57,24 @@ static napi_value BeginLease(napi_env env,napi_callback_info) {
 static napi_value LeaseCompleted(napi_env env,napi_callback_info) {
   napi_value out;napi_create_int32(env,AuxFixtureLeaseCompleted(),&out);return out;
 }
-static napi_value Close(napi_env env,napi_callback_info) {
-  napi_value out;napi_create_int32(env,static_cast<int32_t>(host.CloseAndDrain()),&out);return out;
+static napi_value Close(napi_env env,napi_callback_info info) {
+  size_t argc=0;void* data=nullptr;napi_get_cb_info(env,info,&argc,nullptr,nullptr,&data);
+  auto choice=reinterpret_cast<uintptr_t>(data);
+  auto& current=choice==2?proxy_host:choice==3?race_host:host;
+  napi_value out;napi_create_int32(env,static_cast<int32_t>(current.CloseAndDrain()),&out);return out;
+}
+static napi_value ArmRace(napi_env env,napi_callback_info) {
+  std::lock_guard<std::mutex> lock(race_mutex);
+  block_next_factory=true;factory_entered=false;factory_released=false;
+  napi_value out;napi_get_undefined(env,&out);return out;
+}
+static napi_value RaceEntered(napi_env env,napi_callback_info) {
+  std::lock_guard<std::mutex> lock(race_mutex);
+  napi_value out;napi_get_boolean(env,factory_entered,&out);return out;
+}
+static napi_value ReleaseRace(napi_env env,napi_callback_info) {
+  {std::lock_guard<std::mutex> lock(race_mutex);factory_released=true;}
+  race_condition.notify_all();napi_value out;napi_get_undefined(env,&out);return out;
 }
 static napi_value FailNext(napi_env env,napi_callback_info) {
   fail_next=true;napi_value out;napi_get_undefined(env,&out);return out;
@@ -70,7 +102,14 @@ static napi_value Init(napi_env env,napi_value exports) {
     {"counts",nullptr,Counts,nullptr,nullptr,nullptr,napi_default,nullptr},
     {"beginLease",nullptr,BeginLease,nullptr,nullptr,nullptr,napi_default,nullptr},
     {"leaseCompleted",nullptr,LeaseCompleted,nullptr,nullptr,nullptr,napi_default,nullptr},
-    {"setDrain",nullptr,SetDrain,nullptr,nullptr,nullptr,napi_default,nullptr}};
-  napi_define_properties(env,exports,8,props);return exports;
+    {"setDrain",nullptr,SetDrain,nullptr,nullptr,nullptr,napi_default,nullptr},
+    {"registerProxy",nullptr,Register,nullptr,nullptr,nullptr,napi_default,reinterpret_cast<void*>(2)},
+    {"closeProxy",nullptr,Close,nullptr,nullptr,nullptr,napi_default,reinterpret_cast<void*>(2)},
+    {"registerRace",nullptr,Register,nullptr,nullptr,nullptr,napi_default,reinterpret_cast<void*>(3)},
+    {"closeRace",nullptr,Close,nullptr,nullptr,nullptr,napi_default,reinterpret_cast<void*>(3)},
+    {"armRace",nullptr,ArmRace,nullptr,nullptr,nullptr,napi_default,nullptr},
+    {"raceEntered",nullptr,RaceEntered,nullptr,nullptr,nullptr,napi_default,nullptr},
+    {"releaseRace",nullptr,ReleaseRace,nullptr,nullptr,nullptr,napi_default,nullptr}};
+  napi_define_properties(env,exports,15,props);return exports;
 }
 NAPI_MODULE(AuxWorkerLifecycleFixture,Init)

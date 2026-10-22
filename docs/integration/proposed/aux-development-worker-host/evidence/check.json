@@ -1,7 +1,7 @@
 {
   "format": "aux.development.worker.host.check.v1",
   "productionSourceCompiled": true,
-  "actualNodeLifecycleChecks": 31,
+  "actualNodeLifecycleChecks": 43,
   "actualSwiftRegistryAndNapiAdapter": true,
   "syntheticSoftwareAuthorityOnly": true,
   "capturedPendingUntrackedStatuses": true,
@@ -15,8 +15,15 @@
   "signingPerformed": false,
   "state2Authorized": false,
   "nativeBootstrapActivated": false,
-  "buildSession": "32761",
+  "buildSession": "59407",
   "terminalExitCode": 0,
   "artifactRetained": false,
-  "dependency": "b0062957d"
+  "dependency": "b0062957d",
+  "previousBuildSession": "32761",
+  "previousActualNodeLifecycleChecks": 31,
+  "actualProxyDefinePropertyReentrantClose": true,
+  "actualCrossThreadFactoryCloseRace": true,
+  "lateFactoryResultAttached": false,
+  "nativeLocksHeldAcrossCallbacks": false,
+  "sameAuthorityCohortExclusionProven": false
 }

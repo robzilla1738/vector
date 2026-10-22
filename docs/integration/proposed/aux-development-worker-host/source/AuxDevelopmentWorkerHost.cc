@@ -32,25 +32,50 @@ struct Worker {
   std::mutex mutex;
   std::shared_ptr<Owner> owner;
   bool terminal = false;
+  bool initializing = true;
+  bool retiring = false;
   bool cleanup_completed = false;
   bool environment_detached = false;
   Worker(uint64_t g, node::Environment* e, v8::Isolate* i, uv_loop_t* l)
       : generation(g), process(getpid()), environment(e), isolate(i), loop(l), thread(pthread_self()) {}
   AuxDevelopmentWorkerDrain Close() {
-    std::lock_guard<std::mutex> lock(mutex);
-    terminal = true;
-    if (!owner) return AuxDevelopmentWorkerDrain::drained;
-    // No record lock is held by a run callback. The actual Swift registry
-    // handles acquired operations, not this C++ mutex or a claimed PID.
-    int32_t status = AuxNativeContextRetire(owner->handle);
-    if (status == -2) return AuxDevelopmentWorkerDrain::reentrant;
-    if (status != 0 && status != -1) return AuxDevelopmentWorkerDrain::pending;
-    const int32_t os = AuxCloseDevelopmentOwnerOSAdmission(owner->retained);
-    if (os == 2) return AuxDevelopmentWorkerDrain::untracked;
-    if (os != 0) return AuxDevelopmentWorkerDrain::pending;
-    owner.reset();
-    return AuxDevelopmentWorkerDrain::drained;
+    std::shared_ptr<Owner> captured;
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      terminal = true;
+      if (retiring) return AuxDevelopmentWorkerDrain::pending;
+      if (!owner) return initializing ? AuxDevelopmentWorkerDrain::pending : AuxDevelopmentWorkerDrain::drained;
+      captured = owner;
+      retiring = true;
+    }
+    // No host/worker lock crosses native retirement, OS drain or owner release.
+    // A concurrent/reentrant close observes pending instead of deadlocking.
+    int32_t status = AuxNativeContextRetire(captured->handle);
+    auto result = AuxDevelopmentWorkerDrain::drained;
+    if (status == -2) result = AuxDevelopmentWorkerDrain::reentrant;
+    else if (status != 0 && status != -1) result = AuxDevelopmentWorkerDrain::pending;
+    else {
+      const int32_t os = AuxCloseDevelopmentOwnerOSAdmission(captured->retained);
+      if (os == 2) result = AuxDevelopmentWorkerDrain::untracked;
+      else if (os != 0) result = AuxDevelopmentWorkerDrain::pending;
+    }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      retiring = false;
+      if (result == AuxDevelopmentWorkerDrain::drained) {
+        // In-flight factory/attachment is not drained, even if the current
+        // handle is already retired. Keep ownership until it unwinds.
+        if (initializing) result = AuxDevelopmentWorkerDrain::pending;
+        else owner.reset(); // captured retains it until after this lock exits.
+      }
+    }
+    return result;
   }
+  bool CanContinue() {
+    std::lock_guard<std::mutex> lock(mutex);
+    return !terminal;
+  }
+
 };
 // Process-local real Environment identities, not serializable credentials.
 // Active identities are removed at actual cleanup. Dead Environment addresses
@@ -84,7 +109,7 @@ void DetachCompletedEnvironment(const std::shared_ptr<Worker>& worker) {
         entry->second->generation == worker->generation) Registry().active.erase(entry);
     worker->environment_detached = true;
   }
-  if (!worker->owner) Registry().retained.erase(worker->generation);
+  if (!worker->owner && !worker->initializing) Registry().retained.erase(worker->generation);
 }
 struct Observation {
   napi_env expected;
@@ -138,6 +163,28 @@ void Cleanup(void* value) {
   DetachCompletedEnvironment(worker);
   delete retained;
 }
+class Initialization {
+ public:
+  explicit Initialization(std::shared_ptr<Worker> value) : worker(std::move(value)) {}
+  ~Initialization() { if (!completed) Complete(false); }
+  bool Complete(bool success) {
+    bool closed;
+    {
+      std::lock_guard<std::mutex> lock(worker->mutex);
+      worker->initializing = false;
+      if (!success) worker->terminal = true;
+      closed = worker->terminal;
+      completed = true;
+    }
+    if (closed) worker->Close();
+    DetachCompletedEnvironment(worker);
+    return closed;
+  }
+ private:
+  std::shared_ptr<Worker> worker;
+  bool completed = false;
+};
+
 }
 
 struct AuxDevelopmentWorkerHost::State {
@@ -186,38 +233,51 @@ napi_status AuxDevelopmentWorkerHost::RegisterCurrentWorker(napi_env env, napi_v
     }
     return napi_generic_failure;
   }
+  host_lock.unlock();
+  Initialization initialization(worker);
   // Install lifetime ownership before any protected factory. Failure stays
   // reserved/closed for this environment rather than permitting a new attempt.
   napi_status status = napi_add_env_cleanup_hook(env, Cleanup, cleanup_retain);
   if (status != napi_ok) {
-    worker->terminal = true;
     // NAPI failure did not register ownership. The current actual Node
     // Environment still supports its native cleanup hook; preserve the failed
     // reservation until teardown without leaking the record or retrying it.
     node::AddEnvironmentCleanupHook(isolate, Cleanup, cleanup_retain);
     return status;
   }
+  if (!worker->CanContinue()) return napi_closing;
   uint64_t handle = 0;
   void* retained_owner = nullptr;
   int32_t prepared = AuxCreateSignedDevelopmentOwner(&handle, &retained_owner);
   if (prepared || !handle || !retained_owner) {
     if (handle) AuxNativeContextRetire(handle);
     if (retained_owner) AuxReleaseSignedDevelopmentOwner(retained_owner);
-    worker->terminal = true;
     return napi_generic_failure;
   }
-  try { worker->owner = std::make_shared<Owner>(handle, retained_owner); }
+  std::shared_ptr<Owner> captured;
+  try { captured = std::make_shared<Owner>(handle, retained_owner); }
   catch (...) {
     AuxNativeContextRetire(handle);
     AuxReleaseSignedDevelopmentOwner(retained_owner);
-    worker->terminal = true;
     return napi_generic_failure;
   }
-  auto* adapter_retain = new (std::nothrow) std::shared_ptr<Owner>(worker->owner);
-  if (!adapter_retain) { worker->Close(); return napi_generic_failure; }
+  {
+    std::lock_guard<std::mutex> lock(worker->mutex);
+    worker->owner = captured;
+  }
+  // A factory finishing after host close is retained only for retirement;
+  // it must never reach the NAPI attachment/publication path.
+  if (!worker->CanContinue()) return napi_closing;
+  auto* adapter_retain = new (std::nothrow) std::shared_ptr<Owner>(captured);
+  if (!adapter_retain) return napi_generic_failure;
+  // DefineProperty may synchronously execute a Proxy trap. There is NO host
+  // or worker mutex held here. Close retires captured's handle immediately,
+  // reports pending while initialization is active, and cannot be bypassed by
+  // a trap retaining the function object. Completion refuses success if closed.
   status = AuxAttachOwnedDispatcher(env, target, handle, adapter_retain, ReleaseAdapterOwner);
-  if (status != napi_ok) worker->Close();
-  return status;
+  const bool closed = initialization.Complete(status == napi_ok);
+  return status == napi_ok && closed ? napi_closing : status;
+
 }
 
 AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() {

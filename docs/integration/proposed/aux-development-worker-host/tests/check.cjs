@@ -54,5 +54,22 @@ function exited(child){return new Promise((resolve,reject)=>{child.once('exit',r
  // its closed Swift dispatcher has already refused every further command.
  check(()=>assert.equal(native.counts().released,3));
  check(()=>assert.equal(native.counts().created,4));
+ // Real Proxy trap: close is reentrant inside the actual NAPI publication.
+ const proxied=worker(`let trapCount=0,trapClose,trappedRun,trapError;const proxy=new Proxy({}, {defineProperty(object,key,descriptor){trapCount++;trappedRun=descriptor.value;trapClose=native.closeProxy();trapError=JSON.parse(trappedRun('install-status')).error;return Reflect.defineProperty(object,key,descriptor);}});const status=native.registerProxy(proxy);const drained=native.closeProxy();parentPort.postMessage({trapCount,trapClose,trapError,status,drained,afterError:trappedRun&&JSON.parse(trappedRun('install-status')).error});`);
+ const proxyExit=exited(proxied),proxyResult=await message(proxied);await proxyExit;
+ check(()=>assert.equal(proxyResult.trapCount,1));check(()=>assert.equal(proxyResult.trapClose,1));
+ check(()=>assert.equal(typeof proxyResult.trapError,'string'));check(()=>assert.notEqual(proxyResult.status,0));
+ check(()=>assert.equal(proxyResult.drained,0));check(()=>assert.equal(typeof proxyResult.afterError,'string'));
+ // True cross-thread close while the native factory is still in flight.
+ native.armRace();
+ const late=worker(`parentPort.postMessage('starting');const t={};const status=native.registerRace(t);parentPort.postMessage({status,published:typeof t.run==='function'});`);
+ const lateExit=exited(late);await message(late);
+ const deadline=Date.now()+1500;
+ while(!native.raceEntered()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
+ check(()=>assert.equal(native.raceEntered(),true));
+ check(()=>assert.equal(native.closeRace(),1));check(()=>assert.equal(native.closeRace(),1));
+ const lateResult=message(late);native.releaseRace();const lateState=await lateResult;await lateExit;
+ check(()=>assert.notEqual(lateState.status,0));check(()=>assert.equal(lateState.published,false));
+ check(()=>assert.equal(native.closeRace(),0));
  console.log(`${checks} actual Node environment/worker lifecycle checks; synthetic software authority only; signed loader/Security never invoked`);
 })().catch(error=>{console.error(error);process.exit(1);});
