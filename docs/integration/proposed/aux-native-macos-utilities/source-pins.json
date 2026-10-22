@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "originalAddon": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+    "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+  },
+  "evidence": [
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/app-icon.asm",
+      "sha256": "11585dfedea477177df786231e55369e0e1a298a1d08e43c9647558db22fac2b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/apps.asm",
+      "sha256": "8ef579d8f4fbc218be27f1506382407d81a2a34b3741f1a744cc9290011dfeec"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/display-name.asm",
+      "sha256": "a2b43c4a053a9a4eb8b0f034091c58fc746fe9efdd304e8ad604d40f7cf1d32a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/icons.asm",
+      "sha256": "896746d1e7ba0405fc0986e19641862838168b7c9291b9322affcee7a4c3d32b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/png.asm",
+      "sha256": "a8602bf05ab9a184f38211006f72b2cec3d52c8fa4b01ad552bfe8650ca08880"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/preview.asm",
+      "sha256": "e854b4d62fd1bd933d1e009a248ec471fa311004f5a4e21f92a848f02cca1002"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/quicklook.asm",
+      "sha256": "005d1ab051fe1998cec9a39cd7e09033cfc6b0f8930bf9b0dca56e6612bcb1ce"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/sort.asm",
+      "sha256": "8b4e905ef0ce5c237134839f56ea1e61bf37e850c23b4edf18891386cd2588d3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/thumbnail.asm",
+      "sha256": "da3589c15ff403220ef2338492dbf7114ef5e73976490526256653c1fe9478bb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/evidence/copy-literals.asm",
+      "sha256": "0d2a7ef11b9cd10c28a0835aeae3445205810bd06083bb72639b3e9a39456743"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/evidence/open-with-literals.asm",
+      "sha256": "9c9b0a417f0e6d91a6e8e7c68178c3f424ea2d7f581a2ae62335cef815cfdabf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/open-completion.asm",
+      "sha256": "afbb886dc0cf7f90df225d2bedf1fe8eb62e3bc076ac5e11b5991dbd6090e5b3"
+    }
+  ],
+  "source": [
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "016abce71fa964f9a33c23b15e7c4755cf7dab6a54e8ed07986b4c1fbaa8e10a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "53dc09a6d1180de1cc8b51ffc229b0608a13798d099ffbd8ecbf17e48e7dde4a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "3292f0a0a054efc5b8b9637b90fc1bed90376ff665d0b1f778aa01226e3f8d95"
+    }
+  ],
+  "consumer": {
+    "sourceSHA256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "offsets": {
+      "listOpenApps": 11817756,
+      "appIcons": 11765818,
+      "copyFile": 11818504,
+      "openWith": 11818863,
+      "heicThumbnail": 10954255,
+      "previewThumbnail": 12104173
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "date": "2026-10-22",
+  "command": "bash docs/integration/proposed/aux-native-macos-utilities/check.sh",
+  "nativeBuildSerialized": true,
+  "actualFrameworkSourceCompiled": ["AppKit", "QuickLookThumbnailing", "ImageIO"],
+  "capturedChecks": 31,
+  "result": "passed",
+  "actualOSBoundaryConstructed": false,
+  "clipboardOperations": 0,
+  "workspaceEnumerationOrOpenOperations": 0,
+  "quickLookRequests": 0,
+  "ownerStateOperations": 0,
+  "activation": false
+}
