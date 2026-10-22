@@ -19,7 +19,7 @@ app.use('*',cors({origin:origin=>{
   const allowed=(process.env.AUX_ALLOWED_ORIGINS||process.env.NEXT_PUBLIC_APP_URL||'https://app.getaux.co').split(',');
   allowed.push('chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm');
   return allowed.includes(origin)?origin:undefined;
-},allowHeaders:['Authorization','Content-Type','If-Match','If-None-Match','X-Aside-Auth-Protocol','X-Aux-Sync-Encryption','X-Aux-If-Match','X-Aux-If-None-Match'],exposeHeaders:['ETag','Content-Range','Accept-Ranges','X-Aux-Cookie-Revision'],maxAge:600}));
+},allowHeaders:['Authorization','Content-Type','If-Match','If-None-Match','X-Aux-Auth-Protocol','X-Aux-Sync-Encryption','X-Aux-If-Match','X-Aux-If-None-Match'],exposeHeaders:['ETag','Content-Range','Accept-Ranges','X-Aux-Cookie-Revision'],maxAge:600}));
 app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');c.header('X-Content-Type-Options','nosniff');await next();});
 app.get('/health',c=>c.json({service:'aux-cloud',status:'ok',version:1}));
 app.route('/auth',authRoutes);

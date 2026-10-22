@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { sql } from './db';
 import { ensureWallet } from './usage';
 import type { AuthVariables, AuthUser } from './auth';
+import { canonicalBillingLookup, canonicalBillingRequestKey } from './billing-identity-transition';
 
 export const plans = [
   { slug: 'free', name: 'Aux Free', tier: 0, monthlyPriceCents: 0, yearlyPriceCents: 0, monthlyCreditMicros: 250000, features: ['Bring your own AI provider', 'Local browser and chat', '25¢ introductory hosted allowance'] },
@@ -13,7 +14,7 @@ export const plans = [
   { slug: 'max', name: 'Aux Max', tier: 2, monthlyPriceCents: 6000, yearlyPriceCents: 60000, monthlyCreditMicros: 20000000, features: ['$20 hosted service credits per month', 'Unused credits roll over', 'Expanded attachment storage', 'Encrypted sync', 'Public sharing'] },
 ] as const;
 const addOn = { autoReload: { defaultChargeCents: 1000, defaultSpendLimitCents: 5000, defaultThresholdCents: 200, minChargeCents: 500, minSpendLimitCents: 1000 }, creditMicrosPerUsd: 1000000, discountTiers: [], maxChargeCents: 10000, minChargeCents: 1000, presets: [1000, 2500, 5000].map(creditCents => ({ creditCents, creditMicros: String(creditCents * 10000), discountPercent: 0 })) };
-const lookup = z.enum(['aside_pro_month', 'aside_pro_year', 'aside_max_month', 'aside_max_year']);
+const lookup = z.preprocess(canonicalBillingLookup, z.enum(['aux_pro_month', 'aux_pro_year', 'aux_max_month', 'aux_max_year']));
 const idOf = (object: string | { id: string } | null | undefined): string | null => typeof object === 'string' ? object : object?.id ?? null;
 const terminal = new Set(['canceled', 'incomplete_expired']);
 function stripe() {
@@ -21,7 +22,7 @@ function stripe() {
   if (!key || (!/^(?:sk|rk)_test_/.test(key) && process.env.AUX_LIVE_BILLING !== 'true')) throw new HTTPException(503, { message: 'Aux billing is not enabled in this environment.' });
   return new Stripe(key, { maxNetworkRetries: 2, timeout: 20000 });
 }
-function priceEnv(key: string) { return `STRIPE_PRICE_${key.replace('aside_', '').toUpperCase()}`; }
+function priceEnv(key: string) { return `STRIPE_PRICE_${key.replace(/^aux_/, '').toUpperCase()}`; }
 function planForPrice(price: string) { return plans.find(plan => plan.slug !== 'free' && ['MONTH', 'YEAR'].some(interval => process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_${interval}`] === price)); }
 
 export function returnUrl(value: string) {
@@ -170,7 +171,7 @@ async function checkoutRequest(client: Stripe, userId: string, mode: 'subscripti
       WHERE aux_checkout_requests.expires_at<now()`;
     const rows = await sql`SELECT * FROM aux_checkout_requests WHERE user_id=${userId} AND mode=${mode}`;
     const request = rows[0] as CheckoutRequest;
-    if (request.request_key === key) return request;
+    if (canonicalBillingRequestKey(request.request_key) === key) return request;
     if (attempt) break;
     // A new plan/amount explicitly replaces the user's abandoned checkout,
     // including supplied desktop dialogs which have no cancellation callback.
@@ -184,8 +185,8 @@ export function billingPlansSnapshot() {
   return { plans: plans.map(plan => ({
     slug: plan.slug, name: plan.name, tier: plan.tier, active: true, features: plan.features,
     prices: {
-      month: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.monthlyPriceCents, interval: 'month', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_MONTH`] ? `aside_${plan.slug}_month` : null },
-      year: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.yearlyPriceCents, interval: 'year', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_YEAR`] ? `aside_${plan.slug}_year` : null },
+      month: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.monthlyPriceCents, interval: 'month', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_MONTH`] ? `aux_${plan.slug}_month` : null },
+      year: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.yearlyPriceCents, interval: 'year', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_YEAR`] ? `aux_${plan.slug}_year` : null },
     },
   })) };
 }

@@ -110,9 +110,9 @@ test('the actual pinned Agent pricing consumer renders the hosted plans and chec
     assert.equal(rendered.length, 3);
     assert.equal(rendered[0].id, 'free');
     assert.equal(rendered[0].prices.monthly.amount, '$0');
-    assert.deepEqual(rendered[1].prices.monthly, { amount: '$20', lookupKey: 'aside_pro_month', suffix: '/mo' });
-    assert.deepEqual(rendered[1].prices.yearly, { amount: '$200', lookupKey: 'aside_pro_year', suffix: '/yr' });
-    assert.deepEqual(rendered[2].prices.monthly, { amount: '$60', lookupKey: 'aside_max_month', suffix: '/mo' });
+    assert.deepEqual(rendered[1].prices.monthly, { amount: '$20', lookupKey: 'aux_pro_month', suffix: '/mo' });
+    assert.deepEqual(rendered[1].prices.yearly, { amount: '$200', lookupKey: 'aux_pro_year', suffix: '/yr' });
+    assert.deepEqual(rendered[2].prices.monthly, { amount: '$60', lookupKey: 'aux_max_month', suffix: '/mo' });
     assert.equal(rendered[2].features[0].text, '$20 hosted service credits per month');
     delete process.env.STRIPE_PRICE_MAX_YEAR;
     assert.equal(billingPlansSnapshot().plans[2]!.prices.year?.lookupKey, null);

@@ -95,7 +95,7 @@ async function hostedCatalog() {
       maxTokens: Math.min(model.max_tokens || 8192, 8192), availableThinkingLevels: reasoning ? ['low', 'medium', 'high'] : ['off'] };
   }));
   const imageModel = (await catalog()).find(model => model.id === (process.env.AUX_IMAGE_MODEL || 'meta/muse-image-1.0') && model.type === 'image' && ['all','some'].includes(model.zdr ?? ''));
-  return { provider: 'aside', models, visibleModelIds: models.map(model => model.id), imageModels: imageModel ? [{ id: 'aux-image', name: imageModel.name || 'Aux Image' }] : [] };
+  return { provider: 'aux', models, visibleModelIds: models.map(model => model.id), imageModels: imageModel ? [{ id: 'aux-image', name: imageModel.name || 'Aux Image' }] : [] };
 }
 
 inferenceRoutes.get('/ai/catalog/v1', async c => c.json(await hostedCatalog()));
