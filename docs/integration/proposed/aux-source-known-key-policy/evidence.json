@@ -1,0 +1,21 @@
+{
+  "format": "aux.source-known.logical-keys.v2.captured-check",
+  "publicSyntheticChecks": 149,
+  "labelsGeneratedFromActualPinnedCallerFunctions": 21,
+  "actualCurrentNativeGraphTypecheck": "passed",
+  "serializedBy": "scripts/native-build.py and /tmp/aux-build.lock",
+  "v1ExactPolicyUnchanged": true,
+  "trustedNativeRuntimeProducer": "ScopedAuxCommandContext.runtimeSourceKnownFamiliesV2(terminal:boundary:)",
+  "hostSealedPolicyWired": false,
+  "ownerStateRead": false,
+  "actualSecurityCalls": false,
+  "OSOrCloudCalls": false,
+  "signing": false,
+  "UIChanged": false,
+  "knownLimits": [
+    "Family policy identifies source-known labels, not proof of caller account ownership or writer custody.",
+    "Current development host still selects exact v1 logicalKeys until explicit versioned native integration.",
+    "Noncanonical preexisting channel IDs outside generated UUID grammar are not admitted or silently migrated.",
+    "PWM/Vault session labels and legacy installation DK/META are intentionally excluded; provider credential files are separate."
+  ]
+}

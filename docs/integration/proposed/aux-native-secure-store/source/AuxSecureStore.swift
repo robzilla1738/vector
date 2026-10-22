@@ -5,20 +5,52 @@ import Security
 
 enum AuxSecureStoreError:Error { case invalidReview, deniedKey, failed }
 struct AuxSecureStoreSelector:Hashable { let service:String;let account:String;let accessGroup:String }
+// Native, source-known grammar; not account enumeration or writer provenance.
+// No caller supplies prefixes, regexes, service/account/group selectors or grants.
+struct AuxSourceKnownLogicalKeyFamilies {
+    static let format="aux.secure.logical-key-families.v2"
+    private init(){}
+    static func reviewedV2()->Self{Self()}
+    private func account(_ value:Substring)->Bool {
+        guard !value.isEmpty,value.utf8.allSatisfy({(48...57).contains($0)}),value=="0" || value.first != "0",
+              let number=UInt64(value),number<=9_007_199_254_740_991 else{return false};return true
+    }
+    func allows(_ key:String)->Bool {
+        guard !key.isEmpty,key.utf8.count<=512,key.utf8.allSatisfy({$0>0 && $0<128})else{return false}
+        if key.hasPrefix("aux.csk_"){return account(key.dropFirst(8))}
+        let mcp=key.split(separator:":",omittingEmptySubsequences:false)
+        if mcp.count==3,mcp[0]=="mcp" {
+            if mcp[1]=="index" {return account(mcp[2])}
+            return account(mcp[1]) && (1...32).contains(mcp[2].utf8.count) && mcp[2].utf8.allSatisfy({(48...57).contains($0)||(65...90).contains($0)||(97...122).contains($0)||$0==45||$0==95})
+        }
+        let channel=key.split(separator:".",omittingEmptySubsequences:false)
+        guard channel.count==7,channel[0]=="aux",channel[1]=="channel",channel[2]=="v1",channel[3].first=="u",account(channel[3].dropFirst()),
+              let uuid=UUID(uuidString:String(channel[4])),uuid.uuidString.lowercased()==channel[4],channel[4].count==36,
+              ["slack","telegram","discord"].contains(channel[5]) else{return false}
+        return channel[6]=="bot" || (channel[5]=="slack" && channel[6]=="app")
+    }
+}
 struct ReviewedAuxSecureStoreScope {
     let scope:String
     private let group:String
     private let allowedKeys:Set<Data>
+    private let families:AuxSourceKnownLogicalKeyFamilies?
     init(scope:String,accessGroup:String,allowedLogicalKeys:Set<String>)throws {
+        try self.init(scope:scope,accessGroup:accessGroup,keys:allowedLogicalKeys,families:nil)
+    }
+    init(scope:String,accessGroup:String,sourceKnownFamilies:AuxSourceKnownLogicalKeyFamilies)throws {
+        try self.init(scope:scope,accessGroup:accessGroup,keys:[],families:sourceKnownFamilies)
+    }
+    private init(scope:String,accessGroup:String,keys allowedLogicalKeys:Set<String>,families:AuxSourceKnownLogicalKeyFamilies?)throws {
         guard scope.utf8.count==64,scope.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),
               !accessGroup.isEmpty,accessGroup.utf8.count<=512,!accessGroup.utf8.contains(0),accessGroup.contains(".aux.") && accessGroup.utf8.allSatisfy({(48...57).contains($0)||(65...90).contains($0)||(97...122).contains($0)||$0==45||$0==46}),
-              !allowedLogicalKeys.isEmpty,allowedLogicalKeys.count<=1024,
+              (!allowedLogicalKeys.isEmpty || families != nil),allowedLogicalKeys.count<=1024,
               allowedLogicalKeys.allSatisfy({!$0.isEmpty && $0.utf8.count<=512 && !$0.utf8.contains(0)})
         else{throw AuxSecureStoreError.invalidReview}
-        self.scope=scope;group=accessGroup;allowedKeys=Set(allowedLogicalKeys.map{Data($0.utf8)})
+        self.scope=scope;group=accessGroup;allowedKeys=Set(allowedLogicalKeys.map{Data($0.utf8)});self.families=families
     }
     func selector(_ key:String)throws->AuxSecureStoreSelector {
-        guard allowedKeys.contains(Data(key.utf8)) else{throw AuxSecureStoreError.deniedKey}
+        guard allowedKeys.contains(Data(key.utf8)) || families?.allows(key)==true else{throw AuxSecureStoreError.deniedKey}
         let digest=SHA256.hash(data:Data(key.utf8)).map{String(format:"%02x",$0)}.joined()
         let name="aux."+scope+".secure.v2."+digest
         return .init(service:name,account:name,accessGroup:group)

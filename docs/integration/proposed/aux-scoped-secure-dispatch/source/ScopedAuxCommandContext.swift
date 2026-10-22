@@ -6,14 +6,23 @@ enum ScopedAuxCommandContextError:Error {case binding,scope,logicalPolicy}
 struct ImmutableAuxLogicalKeyPolicy {
     fileprivate let keys:Set<String>
     let sha256:String
+    fileprivate let sourceKnownFamilies:AuxSourceKnownLogicalKeyFamilies?
     init(allowedLogicalKeys:Set<String>)throws {
         guard !allowedLogicalKeys.isEmpty,allowedLogicalKeys.count<=1024,
               allowedLogicalKeys.allSatisfy({!$0.isEmpty && $0.utf8.count<=512 && !$0.utf8.contains(0)}) else{throw ScopedAuxCommandContextError.logicalPolicy}
-        keys=allowedLogicalKeys
+        keys=allowedLogicalKeys;sourceKnownFamilies=nil
         // Canonical exact UTF8 bytes; no Unicode normalization or raw-key receipt.
         let encoded=allowedLogicalKeys.map{Data($0.utf8)}.sorted{$0.lexicographicallyPrecedes($1)}.map{$0.base64EncodedString()}
         sha256=SHA256.hash(data:try JSONSerialization.data(withJSONObject:["format":"aux.secure.logical-key-policy.v1","utf8Base64":encoded],options:[.sortedKeys,.withoutEscapingSlashes])).map{String(format:"%02x",$0)}.joined()
     }
+    private init(sourceKnownFamilies:AuxSourceKnownLogicalKeyFamilies) {
+        keys=[];self.sourceKnownFamilies=sourceKnownFamilies
+        sha256=SHA256.hash(data:Data(AuxSourceKnownLogicalKeyFamilies.format.utf8)).map{String(format:"%02x",$0)}.joined()
+    }
+    // Trusted native producer only: future valid accounts do not change this
+    // versioned source grammar or require per-account policy resource signing.
+    static func sourceKnownV2()->Self{Self(sourceKnownFamilies:.reviewedV2())}
+
 }
 struct ScopedAuxCommandEvidence {
     let mode:String;let transactionId:String?;let journalSha256:String?
@@ -45,7 +54,14 @@ struct ScopedAuxCommandContext {
                   !s.group.isEmpty,s.group.utf8.count<=512,s.group.contains(".aux."),s.group.utf8.allSatisfy({(48...57).contains($0)||(65...90).contains($0)||(97...122).contains($0)||[45,46,95].contains($0)}),
                   identities.insert(try JSONEncoder().encode([s.service,s.account,s.group]).base64EncodedString()).inserted else{throw ScopedAuxCommandContextError.binding}
         }
-        let review=try ReviewedAuxSecureStoreScope(scope:scope,accessGroup:first.group,allowedLogicalKeys:policy.keys)
+        let review:ReviewedAuxSecureStoreScope
+        if let families=policy.sourceKnownFamilies {
+            // Every accepted key maps only to this hash namespace. Refuse any
+            // protected selector already occupying it, without enumerating keys.
+            let securePrefix="aux."+scope+".secure.v2."
+            guard (selectors+reserved).allSatisfy({!$0.service.hasPrefix(securePrefix) && !$0.account.hasPrefix(securePrefix)}) else{throw ScopedAuxCommandContextError.binding}
+            review=try .init(scope:scope,accessGroup:first.group,sourceKnownFamilies:families)
+        } else {review=try .init(scope:scope,accessGroup:first.group,allowedLogicalKeys:policy.keys)}
         // Fixed logical keys must not select any installation/stage/source row.
         let protected=Set((selectors+reserved).map{AuxSecureStoreSelector(service:$0.service,account:$0.account,accessGroup:$0.group)})
         for key in policy.keys {guard !protected.contains(try review.selector(key)) else{throw ScopedAuxCommandContextError.binding}}
@@ -88,6 +104,9 @@ struct ScopedAuxCommandContext {
     }
 #endif
 #if AUX_MINIMAL_RUNTIME_DISPATCH
+    static func runtimeSourceKnownFamiliesV2(terminal:AuxRuntimeCapturedCommandContext,boundary:AuxSecureStoreBoundary)throws->Self {
+        try runtime(terminal:terminal,policy:.sourceKnownV2(),boundary:boundary)
+    }
     static func runtime(terminal:AuxRuntimeCapturedCommandContext,
                         policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws->Self {
         let selection=terminal.selection
