@@ -1,0 +1,367 @@
+{
+  "binarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "daemonJsSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "artifacts": [
+    {
+      "path": "evidence/cdp-sign.asm",
+      "sha256": "cfc9443a11c0733011ebfe2eb426ac8445f748ca979fe9b392742fc789fd0ba7",
+      "start": 262496,
+      "end": 268476,
+      "instructionCount": 1495
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "sha256": "7a0114350a54bb100eaf1a9cf11729d5140241fe4fe045ab5450c5d3da1bd536",
+      "start": 268476,
+      "end": 274704,
+      "instructionCount": 1557
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "sha256": "0799d6cae55dc03b10cb6e37fb2c17061c277ff34b335a5a3530075c57ecb5d3",
+      "start": 212028,
+      "end": 215104,
+      "instructionCount": 769
+    }
+  ],
+  "anchors": [
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 263992,
+      "instruction": "mov\tx0, #0x6863"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264008,
+      "instruction": "mov\tx1, #0x65"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264164,
+      "instruction": "mov\tx2, #0x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264168,
+      "instruction": "bl\t0x514110 ; symbol stub for: _$s10Foundation4DataV13base64Encoded7optionsACSgSSh_So27NSDataBase64DecodingOptionsVtcfC",
+      "blTarget": 5325072
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264172,
+      "instruction": "mov\tx23, x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264176,
+      "instruction": "mov\tx26, x1"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 264700,
+      "instruction": "bl\t_$s16AsideNativeSwift18requireInstallMetaAA0eF0VyKF",
+      "blTarget": 211480
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265196,
+      "instruction": "mov\tx20, x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265220,
+      "instruction": "add\tx8, x8, #0xe58"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265228,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265736,
+      "instruction": "and\tw8, w20, #0xff"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265740,
+      "instruction": "cmp\tw8, #0x1"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265744,
+      "instruction": "b.ne\t0x40ee0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265760,
+      "instruction": "bl\t0x51474c ; symbol stub for: _$ss26_stdlib_isOSVersionAtLeastyBi1_Bw_BwBwtF",
+      "blTarget": 5326668
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265876,
+      "instruction": "mov\tx1, #0x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265884,
+      "instruction": "bl\t0x514314 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO7MLDSA65O10PrivateKeyV18dataRepresentation21authenticationContextAGx_So9LAContextCSgtKc10Foundation12DataProtocolRzlufC",
+      "blTarget": 5325588
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265900,
+      "instruction": "stp\tx23, x8, [x29, #-0x100]"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265920,
+      "instruction": "bl\t0x514320 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO7MLDSA65O10PrivateKeyV9signature3for10Foundation4DataVx_tKAJ0K8ProtocolRzlF",
+      "blTarget": 5325600
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265952,
+      "instruction": "and\tw8, w20, #0xff00"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265956,
+      "instruction": "cmp\tw8, #0x100"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 265968,
+      "instruction": "b.ne\t0x412e4"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266072,
+      "instruction": "bl\t0x514440 ; symbol stub for: _$s9CryptoKit4P256O7SigningO10PrivateKeyV17rawRepresentationAGx_tKc10Foundation15ContiguousBytesRzlufC",
+      "blTarget": 5325888
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266148,
+      "instruction": "stp\tx23, x26, [x29, #-0x100]"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266176,
+      "instruction": "bl\t0x514458 ; symbol stub for: _$s9CryptoKit4P256O7SigningO10PrivateKeyV9signature3forAE14ECDSASignatureVx_tK10Foundation12DataProtocolRzlF",
+      "blTarget": 5325912
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266240,
+      "instruction": "mov\tx8, #0x6973"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266256,
+      "instruction": "mov\tx26, x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266280,
+      "instruction": "bl\t0x514470 ; symbol stub for: _$s9CryptoKit4P256O7SigningO14ECDSASignatureV17derRepresentation10Foundation4DataVvg",
+      "blTarget": 5325936
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 266304,
+      "instruction": "bl\t0x514158 ; symbol stub for: _$s10Foundation4DataV19base64EncodedString7optionsSSSo27NSDataBase64EncodingOptionsV_tF",
+      "blTarget": 5325144
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267064,
+      "instruction": "mov\tx2, #0x0"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267068,
+      "instruction": "bl\t0x5142c0 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO4P256O7SigningO10PrivateKeyV18dataRepresentation21authenticationContextAI10Foundation4DataV_So9LAContextCSgtKcfC",
+      "blTarget": 5325504
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267280,
+      "instruction": "stp\tx23, x26, [x29, #-0x100]"
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267308,
+      "instruction": "bl\t0x5142d8 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO4P256O7SigningO10PrivateKeyV9signature3forAaDOAFO14ECDSASignatureVx_tK10Foundation12DataProtocolRzlF",
+      "blTarget": 5325528
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267468,
+      "instruction": "bl\t0x514158 ; symbol stub for: _$s10Foundation4DataV19base64EncodedString7optionsSSSo27NSDataBase64EncodingOptionsV_tF",
+      "blTarget": 5325144
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267836,
+      "instruction": "bl\t0x514470 ; symbol stub for: _$s9CryptoKit4P256O7SigningO14ECDSASignatureV17derRepresentation10Foundation4DataVvg",
+      "blTarget": 5325936
+    },
+    {
+      "path": "evidence/cdp-sign.asm",
+      "at": 267860,
+      "instruction": "bl\t0x514158 ; symbol stub for: _$s10Foundation4DataV19base64EncodedString7optionsSSSo27NSDataBase64EncodingOptionsV_tF",
+      "blTarget": 5325144
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212088,
+      "instruction": "cmp\tw8, #0x1"
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212092,
+      "instruction": "b.ne\t0x33d18"
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212232,
+      "instruction": "bl\t0x514314 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO7MLDSA65O10PrivateKeyV18dataRepresentation21authenticationContextAGx_So9LAContextCSgtKc10Foundation12DataProtocolRzlufC",
+      "blTarget": 5325588
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212248,
+      "instruction": "and\tw8, w0, #0xff00"
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212252,
+      "instruction": "cmp\tw8, #0x100"
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212256,
+      "instruction": "b.ne\t0x33f60"
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212368,
+      "instruction": "bl\t0x514440 ; symbol stub for: _$s9CryptoKit4P256O7SigningO10PrivateKeyV17rawRepresentationAGx_tKc10Foundation15ContiguousBytesRzlufC",
+      "blTarget": 5325888
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 212932,
+      "instruction": "bl\t0x5142c0 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO4P256O7SigningO10PrivateKeyV18dataRepresentation21authenticationContextAI10Foundation4DataV_So9LAContextCSgtKcfC",
+      "blTarget": 5325504
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 213524,
+      "instruction": "bl\t0x514488 ; symbol stub for: _$s9CryptoKit4P256O7SigningO9PublicKeyV18x963Representation10Foundation4DataVvg",
+      "blTarget": 5325960
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 214112,
+      "instruction": "bl\t0x5144ac ; symbol stub for: _$s9CryptoKit7MLDSA65O9PublicKeyV17rawRepresentation10Foundation4DataVvg",
+      "blTarget": 5325996
+    },
+    {
+      "path": "evidence/public-response.asm",
+      "at": 214700,
+      "instruction": "bl\t0x514488 ; symbol stub for: _$s9CryptoKit4P256O7SigningO9PublicKeyV18x963Representation10Foundation4DataVvg",
+      "blTarget": 5325960
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 268532,
+      "instruction": "bl\t_$s16AsideNativeSwift18requireInstallMetaAA0eF0VyKF",
+      "blTarget": 211480
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 269088,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 269692,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 270280,
+      "instruction": "bl\t0x514314 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO7MLDSA65O10PrivateKeyV18dataRepresentation21authenticationContextAGx_So9LAContextCSgtKc10Foundation12DataProtocolRzlufC",
+      "blTarget": 5325588
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 270500,
+      "instruction": "bl\t0x514440 ; symbol stub for: _$s9CryptoKit4P256O7SigningO10PrivateKeyV17rawRepresentationAGx_tKc10Foundation15ContiguousBytesRzlufC",
+      "blTarget": 5325888
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 271136,
+      "instruction": "bl\t0x5142c0 ; symbol stub for: _$s9CryptoKit13SecureEnclaveO4P256O7SigningO10PrivateKeyV18dataRepresentation21authenticationContextAI10Foundation4DataV_So9LAContextCSgtKcfC",
+      "blTarget": 5325504
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 272024,
+      "instruction": "bl\t0x5144ac ; symbol stub for: _$s9CryptoKit7MLDSA65O9PublicKeyV17rawRepresentation10Foundation4DataVvg",
+      "blTarget": 5325996
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 272812,
+      "instruction": "bl\t0x514488 ; symbol stub for: _$s9CryptoKit4P256O7SigningO9PublicKeyV18x963Representation10Foundation4DataVvg",
+      "blTarget": 5325960
+    },
+    {
+      "path": "evidence/get-public-keys.asm",
+      "at": 273624,
+      "instruction": "bl\t0x514488 ; symbol stub for: _$s9CryptoKit4P256O7SigningO9PublicKeyV18x963Representation10Foundation4DataVvg",
+      "blTarget": 5325960
+    }
+  ],
+  "jsAnchors": [
+    {
+      "text": "runMacInstallHelper(`cdp-sign`,{challenge:toBase64(Cn)}).signature",
+      "count": 1
+    },
+    {
+      "text": "if(ei.length!==32)throw Error(`Unexpected CDP challenge length: expected 32 bytes, got ${ei.length}`)",
+      "count": 1
+    },
+    {
+      "text": "return{scheme:Cn.scheme,sig:Cn.sig,kem:Cn.kem}",
+      "count": 1
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    }
+  ],
+  "runtimeCoverage": {
+    "syntheticSoftwareChecks": 8,
+    "nodeSwiftInteroperability": true,
+    "secureEnclaveExecuted": false,
+    "pqExecuted": false,
+    "keychainExecuted": false,
+    "originalAddonExecuted": false,
+    "dispatcherActivated": false
+  }
+}
