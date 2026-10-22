@@ -1,0 +1,22 @@
+{
+  "input": "Chromium third_party/sqlite/src/src/wal.c",
+  "sha256": "0c0467f7c4de773512b3327b0d3973fc31d50cf74603d6aec0e3b3e1c787e217",
+  "checksumFunctionSha256": "3ab53c36cf9192f8bb115d8ce2e323eae56fd3daaf5de347e39e06e961af0224",
+  "formatHeaderLines": [
+    13,
+    151
+  ],
+  "checksumFunctionLines": [
+    856,
+    913
+  ],
+  "frameValidationLines": [
+    1008,
+    1055
+  ],
+  "headerValidationLines": [
+    1440,
+    1480
+  ],
+  "executedOriginalSource": false
+}
