@@ -1,0 +1,32 @@
+{
+  "format": "aux.install.additive.transaction.source.v1",
+  "files": [
+    {
+      "path": "source/AdditiveInstallationTransaction.swift",
+      "sha256": "22d793f1f0400557d48f2299d9c201e70f02734d71cf4535e71f5a0968101e55"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "71fa7584fec7aef4b1983ebaf8bcc2936840a4fd54c16a86f5a104349fa63769"
+    },
+    {
+      "path": "check.mjs",
+      "sha256": "5e3d106f8fc5db2d96898e838e0eef3a0c70e51ab16198a557bf842f0db21b31"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/preparation-evidence.json",
+      "sha256": "d650c15be218c14fca80831e8a433c41536c829a974f3d48d879621206ab34ef"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    }
+  ],
+  "coverage": {
+    "syntheticAssertions": 23,
+    "filesystemDurabilityTested": false,
+    "securityExecutorImplemented": false,
+    "activeSelectionImplemented": false,
+    "originalsModified": false
+  }
+}
