@@ -1,0 +1,31 @@
+--- a/chrome/browser/ui/views/frame/aux_tabs_actions.cc
++++ b/chrome/browser/ui/views/frame/aux_tabs_actions.cc
+@@ -39,7 +39,7 @@
+ 
+ namespace aux {
+ namespace {
+-constexpr char kTidyMessage[] = "aside.verticalTabsTidy";
++constexpr char kTidyMessage[] = "aux.verticalTabsTidy";
+ 
+ // Original e509180/467938c: completion means the one-shot port has finished,
+ // not that the Agent reported success. Response content is deliberately ignored.
+--- a/chrome/browser/notifications/aux_notification_inbox.cc
++++ b/chrome/browser/notifications/aux_notification_inbox.cc
+@@ -41,7 +41,7 @@
+ 
+ namespace aux {
+ namespace {
+-constexpr char kInboxMessage[] = "aside.inboxNotification";
++constexpr char kInboxMessage[] = "aux.inboxNotification";
+ constexpr char kDeliveryModes[] =
+     "persistent_notifications.ai_delivery_mode_by_origin";
+ constexpr char kCreateTable[] =
+@@ -279,7 +279,7 @@
+     payload.Set("permission", state);
+     payload.Set("source", source);
+     payload.Set("timestamp", base::Time::Now().InMillisecondsFSinceUnixEpoch());
+-    Dispatch(*profile_, "aside.notificationPermissionChanged", std::move(payload));
++    Dispatch(*profile_, "aux.notificationPermissionChanged", std::move(payload));
+     if (!self) return;
+   }
+ }

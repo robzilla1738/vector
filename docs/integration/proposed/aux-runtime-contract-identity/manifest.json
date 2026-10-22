@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "kind": "aux-native-runtime-event-identity",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "baselineSha256": "5a47def30f1091743749990bc45fefb4c9ba3370e061dd1405f53d67d3262375",
+      "outputSha256": "aa9a2159194a22191932df62759c746f7386763be75f59126332c34785a496bb",
+      "edits": [
+        {
+          "find": "aside.verticalTabsTidy",
+          "replace": "aux.verticalTabsTidy",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/notifications/aux_notification_inbox.cc",
+      "baselineSha256": "d27ba0062a880a78d755a9367b94af42ee90e7002018541c7d399fec5d40a05c",
+      "outputSha256": "6485cdd5bcf46ca1007a82cad7f96de36ac5bc093ee41cdd703f6148bf53a91d",
+      "edits": [
+        {
+          "find": "aside.inboxNotification",
+          "replace": "aux.inboxNotification",
+          "count": 1
+        },
+        {
+          "find": "aside.notificationPermissionChanged",
+          "replace": "aux.notificationPermissionChanged",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "applied": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}

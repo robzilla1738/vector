@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "component": "agent",
+      "path": "assets/_skillId-CAwCRjA8.js",
+      "sourceSha256": "c1ed5ec1684bcf8b7bd2c758ef949eff885fa583c892fa58a9ecfa87bb50151e",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 2
+        },
+        {
+          "find": "\"aside-code\"",
+          "replace": "\"aux-code\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sourceSha256": "c303b278cb4536eedee05f941eb557c002dc287e357a3a8f8f96f60f50bed889",
+      "rules": [
+        {
+          "find": "aside:billing-embedded-checkout",
+          "replace": "aux:billing-embedded-checkout",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/ai-CzEX5E7S.js",
+      "sourceSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "rules": [
+        {
+          "find": "aside:billing-embedded-checkout",
+          "replace": "aux:billing-embedded-checkout",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/conversation-D9Q3VEsl.js",
+      "sourceSha256": "d41aea06eb2f7a06e83a284fa82b160357b329cb7418895df4996e23e8bc7811",
+      "rules": [
+        {
+          "find": "aside:task",
+          "replace": "aux:task",
+          "count": 5
+        },
+        {
+          "find": "#aside-",
+          "replace": "#aux-",
+          "count": 4
+        },
+        {
+          "find": "a.url.slice(11)",
+          "replace": "a.url.slice(\"aux:task/\".length)",
+          "count": 1
+        },
+        {
+          "find": "e.slice(17)",
+          "replace": "e.slice(\"#aux-task-file/\".length)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/openai-codex-oauth-DBNnab2L.js",
+      "sourceSha256": "60461fded424f53ca949539dfe3fa99f4d43becd0583abb06ebe8783f8adae05",
+      "rules": [
+        {
+          "find": "aside.oauth.openai-codex.callback.ack",
+          "replace": "aux.oauth.openai-codex.callback.ack",
+          "count": 1
+        },
+        {
+          "find": "aside.oauth.openai-codex.callback",
+          "replace": "aux.oauth.openai-codex.callback",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/sidebar-Cj9gldy1.js",
+      "sourceSha256": "4c736bfa452d8a6d8b148c67f0322d61aaf11ca51b8f3a43fedf59ac94d1d50d",
+      "rules": [
+        {
+          "find": "aside:web-sidebar-state-change",
+          "replace": "aux:web-sidebar-state-change",
+          "count": 1
+        },
+        {
+          "find": "aside:web-sidebar-state",
+          "replace": "aux:web-sidebar-state",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/skill-activation-fields-wmmVsYeN.js",
+      "sourceSha256": "222ac81a4778ccf5b7ad5fe8e95944ee379d83fb96788734e4174bd88d6963db",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/tool-definition-registry-Cc6FCFb2.js",
+      "sourceSha256": "447f1b5ee47d922f82f0f0b3aa347f0e1ee036da0b7cd1e54806b0b4e90e5f8e",
+      "rules": [
+        {
+          "find": "#aside-",
+          "replace": "#aux-",
+          "count": 7
+        },
+        {
+          "find": "c.slice(12)",
+          "replace": "c.slice(\"#aux-file:\".length)",
+          "count": 1
+        },
+        {
+          "find": "c.slice(15)",
+          "replace": "c.slice(\"#aux-routine:\".length)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "rules": [
+        {
+          "find": "aside.verticalTabsTidy",
+          "replace": "aux.verticalTabsTidy",
+          "count": 1
+        },
+        {
+          "find": "aside.inboxNotification",
+          "replace": "aux.inboxNotification",
+          "count": 1
+        },
+        {
+          "find": "aside.notificationPermissionChanged",
+          "replace": "aux.notificationPermissionChanged",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "rules": [
+        {
+          "find": "aside:google-docs-selection-request",
+          "replace": "aux:google-docs-selection-request",
+          "count": 1
+        },
+        {
+          "find": "aside:google-docs-selection-response",
+          "replace": "aux:google-docs-selection-response",
+          "count": 3
+        },
+        {
+          "find": "aside:google-docs-set-selection-request",
+          "replace": "aux:google-docs-set-selection-request",
+          "count": 1
+        },
+        {
+          "find": "aside:google-docs-set-selection-response",
+          "replace": "aux:google-docs-set-selection-response",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "content/google-docs-selection-bridge.js",
+      "sourceSha256": "e1bf6144de4c4f3210cf8a3441b65fe6bbefe3edcf6217dbdce8b48e6c4b6e0e",
+      "rules": [
+        {
+          "find": "aside:google-docs-selection-request",
+          "replace": "aux:google-docs-selection-request",
+          "count": 1
+        },
+        {
+          "find": "aside:google-docs-selection-response",
+          "replace": "aux:google-docs-selection-response",
+          "count": 1
+        },
+        {
+          "find": "aside:google-docs-set-selection-request",
+          "replace": "aux:google-docs-set-selection-request",
+          "count": 1
+        },
+        {
+          "find": "aside:google-docs-set-selection-response",
+          "replace": "aux:google-docs-set-selection-response",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "newtab-theme.js",
+      "sourceSha256": "27df830a06aa56e620818234c2ea5d73d735108321a888d8fc0510896d3b2da9",
+      "rules": [
+        {
+          "find": "aside:web-sidebar-state",
+          "replace": "aux:web-sidebar-state",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "daemon",
+      "path": "entry.mjs",
+      "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "rules": [
+        {
+          "find": "aside.oauth.openai-codex.callback.ack",
+          "replace": "aux.oauth.openai-codex.callback.ack",
+          "count": 1
+        },
+        {
+          "find": "aside.oauth.openai-codex.callback",
+          "replace": "aux.oauth.openai-codex.callback",
+          "count": 1
+        },
+        {
+          "find": "aside:task",
+          "replace": "aux:task",
+          "count": 5
+        },
+        {
+          "find": "#aside-",
+          "replace": "#aux-",
+          "count": 2
+        },
+        {
+          "find": "aside.device.approveConnection",
+          "replace": "aux.device.approveConnection",
+          "count": 1
+        },
+        {
+          "find": "aside:billing-embedded-checkout",
+          "replace": "aux:billing-embedded-checkout",
+          "count": 1
+        },
+        {
+          "find": "aside:hardenReplSurface(new AsideRepl(",
+          "replace": "aux:hardenReplSurface(new AsideRepl(",
+          "count": 1
+        },
+        {
+          "find": "SKILL_AGENTS=[`aside`,`aside-code`]",
+          "replace": "SKILL_AGENTS=[`aux`,`aux-code`]",
+          "count": 1
+        },
+        {
+          "find": "Cn.agents.includes(`aside`)",
+          "replace": "Cn.agents.includes(`aux`)",
+          "count": 1
+        },
+        {
+          "find": "new Set([`aside`,`google-accounts`,`google-docs`",
+          "replace": "new Set([`aux`,`google-accounts`,`google-docs`",
+          "count": 1
+        },
+        {
+          "find": "- `aside`: account settings",
+          "replace": "- `aux`: account settings",
+          "count": 2
+        },
+        {
+          "find": "See the `aside` skill.",
+          "replace": "See the `aux` skill.",
+          "count": 2
+        },
+        {
+          "find": "aside.sessions.messages(",
+          "replace": "aux.sessions.messages(",
+          "count": 1
+        },
+        {
+          "find": "aside.routines.list()/get(id)",
+          "replace": "aux.routines.list()/get(id)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "skill",
+      "path": "builtin/aside/SKILL.md",
+      "sourceSha256": "05a28f498776693740b737d4f435259aedf8c345a16f38f90a9e479bd66be6a3",
+      "rules": [
+        {
+          "find": "aside.device.approveConnection",
+          "replace": "aux.device.approveConnection",
+          "count": 1
+        },
+        {
+          "find": "aside.settings",
+          "replace": "aux.settings",
+          "count": 8
+        },
+        {
+          "find": "aside.projects",
+          "replace": "aux.projects",
+          "count": 2
+        },
+        {
+          "find": "aside.sessions",
+          "replace": "aux.sessions",
+          "count": 17
+        },
+        {
+          "find": "aside.routines",
+          "replace": "aux.routines",
+          "count": 4
+        },
+        {
+          "find": "aside.channels",
+          "replace": "aux.channels",
+          "count": 5
+        },
+        {
+          "find": "aside.device",
+          "replace": "aux.device",
+          "count": 1
+        },
+        {
+          "find": "name: aside\n",
+          "replace": "name: aux\n",
+          "count": 1
+        },
+        {
+          "find": "Use the `aside` global",
+          "replace": "Use the `aux` global",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "skill",
+      "path": "builtin/pdf/SKILL.md",
+      "sourceSha256": "b72b147c4193036cb7abbb5f84b2ce41a29539ee5aab77ffe68a6c846742b0e5",
+      "rules": [
+        {
+          "find": "aside.pdf",
+          "replace": "aux.pdf",
+          "count": 8
+        }
+      ]
+    }
+  ]
+}
