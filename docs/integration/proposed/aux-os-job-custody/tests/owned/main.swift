@@ -26,15 +26,16 @@ func run(_ handle: UInt64, _ command: String, _ input: String = "") -> String {
 final class CapturedOS: AuxMacOSUtilityBoundary {
     let jobCustody: AuxOSJobCustody?
     var deliver: (() -> Void)?, writes = 0
+    var closeOnApps = false, closeOnCopy = false
     init(custody: AuxOSJobCustody?) { jobCustody = custody }
     func fileExists(_ path: String) -> Bool { true }
     func prepareIconDirectory(_ path: String) {}
-    func applications(for file: URL) -> [URL] { [] }
+    func applications(for file: URL) -> [URL] { if closeOnApps { jobCustody?.closeAdmission() }; return [] }
     func defaultApplication(for file: URL) -> URL? { nil }
     func applicationName(_ application: URL) -> String { "Captured" }
     func iconPath(for application: URL, directory: URL) -> String? { nil }
     func application(bundleIdentifier: String) -> URL? { nil }
-    func copyFileURL(_ file: URL) -> Bool { false }
+    func copyFileURL(_ file: URL) -> Bool { if closeOnCopy { jobCustody?.closeAdmission(); return true }; return false }
     func openFile(_ file: URL, with application: URL) -> String? { "Captured failure" }
     func generatePreview(file: String, icon: String, thumbnail: String) -> (thumbnail: Bool, icon: Bool) {
         guard let custody = jobCustody else { return (false, false) }
@@ -88,4 +89,23 @@ check(pending(cancelled.closeAdmissionAndDrain(timeout: 0)))
 finishCancel.signal()
 check(done.wait(timeout: .now() + 2) == .success)
 check(drained(cancelled.closeAdmissionAndDrain(timeout: 0)))
+// Controlled real begin->close->start race through the production start helper.
+let raced = AuxOSJobCustody(), unusedJob = raced.begin(.openWith)!
+raced.closeAdmission()
+var osStarted = false
+let refusedStart = AuxUtilityCompletion.tracked(job: unusedJob, initial: Optional<String>.none, timeout: 0) { _, complete in
+    osStarted = true; complete(nil)
+}
+check(refusedStart == nil && !osStarted)
+check(drained(raced.closeAdmissionAndDrain(timeout: 0)))
+
+let partialApps = CapturedOS(custody: AuxOSJobCustody()); partialApps.closeOnApps = true
+let partialCore = AuxMacOSUtilityCommandCore(boundary: partialApps)
+let appResult = partialCore.run(command: "list-open-apps", input: #"{"filePath":"/fixture"}"#)!
+check(appResult.contains("admission is closed") && !appResult.contains("apps"))
+check(drained(partialCore.closeAdmissionAndDrain(timeout: 0)))
+let partialCopy = CapturedOS(custody: AuxOSJobCustody()); partialCopy.closeOnCopy = true
+let copyCore = AuxMacOSUtilityCommandCore(boundary: partialCopy)
+let copyResult = copyCore.run(command: "copy-file", input: #"{"filePath":"/fixture"}"#)!
+check(copyResult.contains("admission is closed") && !copyResult.contains("success"))
 print("\(checks) actual owned C-route/custody checks passed; software authority and captured OS only")

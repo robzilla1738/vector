@@ -7,15 +7,23 @@ enum AuxUtilityCompletion {
     /// discharge the callback's job; only its delivered completion can do that.
     static func tracked<Value>(custody: AuxOSJobCustody, kind: AuxOSJobKind, initial: Value, timeout: TimeInterval, cancel: (AuxOSJobToken) -> Void = { _ in }, start: (AuxOSJobToken, @escaping (Value) -> Void) -> Void) -> (completed: Bool, value: Value)? {
         guard let job = custody.begin(kind) else { return nil }
-        return wait(initial: initial, timeout: timeout, cancel: {
-            job.markTimedOut(); _ = job.performCancellation { cancel(job) }
-        }) { complete in
-            let started = job.performIfAdmitted {
-                start(job) { value in job.complete(); complete(value) }
-                return true
-            }
-            if started != true { job.complete(); complete(initial) }
+        return tracked(job: job, initial: initial, timeout: timeout, cancel: cancel, start: start)
+    }
+
+    // Internal actual start boundary, also usable by a controlled native fixture
+    // with a real token closed between begin and start. No synthetic admission flag.
+    static func tracked<Value>(job: AuxOSJobToken, initial: Value, timeout: TimeInterval, cancel: (AuxOSJobToken) -> Void = { _ in }, start: (AuxOSJobToken, @escaping (Value) -> Void) -> Void) -> (completed: Bool, value: Value)? {
+        let semaphore = DispatchSemaphore(value: 0), result = CallbackResult(initial)
+        let started = job.performIfAdmitted {
+            start(job) { value in result.set(value); job.complete(); semaphore.signal() }
+            return true
         }
+        // No OS request began. Discharge the unused job, not an invented callback
+        // completion that could be interpreted as successful open-with(nil).
+        guard started == true else { job.complete(); return nil }
+        let completed = semaphore.wait(timeout: .now() + timeout) == .success
+        if !completed { job.markTimedOut(); _ = job.performCancellation { cancel(job) } }
+        return (completed, result.get())
     }
 
     static func wait<Value>(initial: Value, timeout: TimeInterval, cancel: () -> Void = {}, start: (@escaping (Value) -> Void) -> Void) -> (completed: Bool, value: Value) {

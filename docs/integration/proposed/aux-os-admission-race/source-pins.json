@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "baseCommit": "7d32247e2",
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "beforeSHA256": "1d123697f3d30f4263ba25e99c186784655ca0ffeea10605f00a658cae060031",
+      "afterSHA256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "beforeSHA256": "d940b0d7e1f369a38c0f038679323b76cbe794dd8a88f9f84c53d835887e7d9f",
+      "afterSHA256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-os-job-custody/tests/owned/main.swift",
+      "beforeSHA256": "4972750698acad483355918ff646512900a467b2cce5286cc4f5d17abf65e5c3",
+      "afterSHA256": "bd94b93eae92bfe03b4aafc5663527d5b5cb1e974a1a69a9f7322f02cb5d73ab"
+    }
+  ],
+  "verification": {
+    "command": "bash docs/integration/proposed/aux-os-job-custody/check-owned.sh",
+    "checks": 20,
+    "actualSourceCompiled": true,
+    "actualOSActions": 0,
+    "nativeOwnerInterfaceChanged": false
+  }
+}

@@ -36,7 +36,11 @@ public struct AuxMacOSUtilityCommandCore {
             commandJob = job
         }
         defer { commandJob?.complete() }
-        return runAdmitted(command: command, input: input)
+        let result = runAdmitted(command: command, input: input)
+        // Closure can refuse nested effects midway through an admitted command.
+        // Never present a partial app list or an initial nil-open value as success.
+        if let custody, !custody.isAccepting { return "{\"error\":\"Native OS utility admission is closed\"}" }
+        return result
     }
     private func runAdmitted(command: String, input: String) -> String {
         let object = input.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any] ?? [:]
