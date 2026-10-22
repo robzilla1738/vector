@@ -1,0 +1,37 @@
+{
+  "kind": "bounded-static-cookie-profile-contract",
+  "checkedAt": "2026-10-22T07:38:51.251Z",
+  "files": [
+    {
+      "path": "out/provided-source-audit/daemon-original.mjs",
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/devtools/devtools_browser_context_manager.cc",
+      "sha256": "8c291eacfaddac309b38a1e797b62eaec6f422b846423b41af82301d7efcede5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "sha256": "67ba08e52316b17596287a9d0d594873000c7f769a4751918c106ea38529344a"
+    }
+  ],
+  "snippets": {
+    "suppliedCookieUpload": "async function syncCookies(Cn,ei){if(!ei())return;await globalCdpClient.ensureConnected();let ti=Date.now()/1e3,{cookies:ni}=await globalCdpClient.send(`Storage.getCookies`);if(!ei())return;let ri=ni.map(Cn=>toCookieParam(Cn,ti)).filter(Cn=>Cn!==null),ii=sha256Hex(new TextEncoder().encode(JSON.stringify(ri)));ii!==loadCookieSnapshotSha(Cn)&&(await putRemoteCookies(Cn,encodeCookies(ri,null,Date.now())),ei()&&(saveCookieSnapshotSha(Cn,ii),logger.info(`[CookieSync] uploaded cookie snapshot`,{accountId:Cn,cookies:ri.length,sha256:ii})))}",
+    "explicitNativeContextLookup": "Profile* DevToolsBrowserContextManager::GetProfileById(\n    const std::string& context_id) {\n  Profile* default_profile =\n      ProfileManager::GetLastUsedProfile()->GetOriginalProfile();\n  if (context_id == default_profile->UniqueId()) {\n    return default_profile;\n  }\n  auto it = otr_profiles_.find(context_id);\n  if (it == otr_profiles_.end())\n    return nullptr;\n  return it->second;\n}\n\n",
+    "defaultNativeContext": "content::BrowserContext*\nDevToolsBrowserContextManager::GetDefaultBrowserContext() {\n  // Do not force profile loading (or it will blow up if called on shutdown).\n  auto* last_profile = ProfileManager::GetLastUsedProfileIfLoaded();\n  return last_profile ? last_profile->GetOriginalProfile() : nullptr;\n}\n\n",
+    "extensionProfileContext": "  if (method == \"auxAccount.getProfileContext\") {\n    // Extension bindings may normalize an omitted optional argument to null.\n    const bool has_draft_tab_id = !args().empty() && !args()[0].is_none();\n    if (args().size() > 1 || (has_draft_tab_id && !args()[0].is_int()))\n      return RespondNow(Error(\"Optional draft tab ID must be an integer\"));\n    auto* current = profile()->GetOriginalProfile();\n    const auto id = aux::GetProfileId(current);\n    if (id.empty()) return RespondNow(Error(\"Aux account profile context unavailable\"));\n    base::DictValue context;\n    context.Set(\"profileId\", id);\n    context.Set(\"profilePath\", current->GetPath().value());\n    // Additive private draft identity; never replace the live DevTools target.\n    // OTR documents retain only their original session-scoped draft storage.\n    if (has_draft_tab_id && profile()->IsRegularProfile() &&\n        !profile()->IsOffTheRecord() && args()[0].GetInt() > 0) {\n      content::WebContents* tab = nullptr;\n      if (ExtensionTabUtil::GetTabById(args()[0].GetInt(), profile(),\n                                      false, &tab) &&\n          tab && tab->GetBrowserContext() == profile()) {\n        context.Set(\"draftPageId\", aux::PageIdentity::GetOrCreate(profile(), tab));\n      }\n    }\n    if (const auto index = aux::GetProfileIndex(current))\n      context.Set(\"profileIndex\", *index);\n    auto* prefs = current->GetPrefs();\n    if (prefs->FindPreference(\"aside.account_user_id\")) {\n      const auto& user = prefs->GetString(\"aside.account_user_id\");\n      if (!user.empty()) context.Set(\"boundUserId\", user);\n    }\n    if (prefs->FindPreference(\"aside.account_id\")) {\n      const int account = prefs->GetInteger(\"aside.account_id\");\n      if (account >= 0) context.Set(\"boundAccountId\", account);\n    }\n    return RespondNow(WithArguments(std::move(context)));\n  }\n"
+  },
+  "findings": [
+    "supplied upload reads Storage.getCookies with no explicit browserContextId",
+    "examined native default context follows last-used loaded original profile",
+    "examined explicit context lookup resolves last-used original profile or a registered off-the-record context",
+    "extension profile context exposes persisted profile and bound account/user identifiers; these differ from a proven writable CDP browser context"
+  ],
+  "completeNativeCommandInventory": false,
+  "nativeRuntimeObserved": false,
+  "cookiesReadOrWritten": false,
+  "ownerStateRead": false,
+  "signingPlanSha256": "43415d770be82878ab4a5ef0ded4ac525b0f0c8f667246ed652464c42af5d5a9",
+  "signingPerformed": false,
+  "implementationStatus": "backend encrypted retrieval implemented separately; native importer/profile routing still unimplemented"
+}

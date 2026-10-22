@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-10-22T07:44:09.652Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "checks": [
+    "actual deployed upload/metadata/versioned ciphertext download preserves authenticated encrypted bytes",
+    "other account denied, and stale revision/wrong generation/missing precondition refused",
+    "actual deletion makes encrypted snapshot unavailable"
+  ],
+  "fixtureRemoved": true,
+  "syntheticSessions": true,
+  "browserCookiesAccessed": false,
+  "nativeCookieImportVerified": false,
+  "paidProviderCalls": 0
+}

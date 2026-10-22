@@ -45,7 +45,7 @@
   },
   "providerDeliveryVerified": true,
   "productionDomainsUnassignedAfterAutomaticFirstDeploy": true,
-  "developmentDeployment": "dpl_9qinXYe8RqN1zzJV3Tig6Nt785CU",
+  "developmentDeployment": "dpl_2qGBmTpS24wxyxtQ6Ff81Zn6u2J9",
   "developmentPreviewVerifiedReady": true,
   "maintenanceEndpointVerified": true,
   "cron": {
@@ -58,5 +58,11 @@
     "unauthenticatedIdentity": 401,
     "optionalProviderCatalog": 404,
     "providerRequests": 0
+  },
+  "cookieSnapshotTransport": {
+    "encryptedDownloadVerified": true,
+    "explicitRevisionHeaderVerified": true,
+    "nativeImportVerified": false,
+    "ownerCookiesAccessed": false
   }
 }
