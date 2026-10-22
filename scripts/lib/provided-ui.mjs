@@ -1,3 +1,5 @@
+import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
+import { loadAuxBrowserIconReplacement } from './aux-browser-icon.mjs';
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
 import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from '../../vendor/provided/aux-protocol-identity.mjs';
@@ -175,6 +177,8 @@ export async function stageProvidedUi({
   }
   const report = { version: 1, identityProfile, stateIdentityVersion, components: {} };
   const mark = await readAuxMark();
+  const browserIcon = stateIdentityVersion === 2 ? await loadAuxBrowserIconReplacement() : null;
+  const reviewedReplacements = browserIcon ? [browserIcon] : [];
   const temporary = await mkdtemp(join(dirname(destination), '.provided-ui-'));
   try {
     for (const component of ['agent', 'vault']) {
@@ -190,11 +194,14 @@ export async function stageProvidedUi({
           throw new Error(
             `Supplied input changed while staging: ${component}/${file.path}`,
           );
-        const path = file.path.replaceAll('Aside', 'Aux');
-        if (outputPaths.has(path))
-          throw new Error(`Renamed supplied UI path collision: ${path}`);
-        outputPaths.add(path);
+        let path = file.path.replaceAll('Aside', 'Aux');
         let output = source;
+        let brandingReplacement;
+        if (component === 'agent' && browserIcon && file.path === browserIcon.receipt.path) {
+          if (sha256(source) !== browserIcon.receipt.originalSha256) throw Error('Browser icon original pin mismatch');
+          output = browserIcon.bytes;
+          brandingReplacement = {repositorySource: browserIcon.repositorySource, receiptSha256: browserIcon.receiptSha256};
+        }
         const anchors = [],
           changeKinds = [];
         if (textFile.test(file.path)) {
@@ -252,6 +259,8 @@ export async function stageProvidedUi({
               const anchor = {kind: 'identity', find: 'if(a.name==="aside"&&a.path==="builtin/aside")return"Aux"', replace: 'if(a.name==="aux"&&a.path==="builtin/aux")return"Aux"', count: 1};
               text = apply(text, anchor); anchors.push(anchor);
             }
+            const assetReferences = applyAuxAssetReferenceIdentity({component, path: file.path, text, original: source.toString('utf8')});
+            text = assetReferences.text; anchors.push(...assetReferences.anchors);
           }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
@@ -364,6 +373,11 @@ export async function stageProvidedUi({
           );
           changeKinds.push('branding');
         }
+        const relocation = stateIdentityVersion === 2 ? relocateAuxAssetPath({component, path: file.path, bytes: output, reviewedReplacements}) : null;
+        if (relocation) path = relocation.path.replaceAll('Aside', 'Aux');
+        if (outputPaths.has(path)) throw Error(`Renamed supplied UI path collision: ${path}`);
+        outputPaths.add(path);
+        if (brandingReplacement) changeKinds.push('branding');
         changeKinds.push(...anchors.map((anchor) => anchor.kind));
         if (path !== file.path) changeKinds.push('identity');
         const target = join(temporary, component, path);
@@ -376,6 +390,8 @@ export async function stageProvidedUi({
           outputSha256: sha256(output),
           changeKinds: [...new Set(changeKinds)],
           ...(anchors.length ? { anchors } : {}),
+          ...(relocation?.anchors.length ? {assetRelocation: relocation.anchors} : {}),
+          ...(brandingReplacement ? {brandingReplacement} : {}),
         });
       }
       if (component === 'agent') {

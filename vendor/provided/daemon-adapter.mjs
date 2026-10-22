@@ -1,3 +1,5 @@
+import { applyAuxContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
+import { applyAuxAutomationIdentity } from './aux-automation-identity.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
 import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from './aux-protocol-identity.mjs';
@@ -91,7 +93,9 @@ export function adaptDaemonCode(original, cloudOptions = {}, identityProfile = '
   if (stateIdentityVersion === 2) {
     const provider = applyAuxProviderIdentity({ component: 'daemon', path: 'entry.mjs', text: code, original, branding: 'aux' });
     const runtime = applyAuxRuntimeContractIdentity({ component: 'daemon', path: 'entry.mjs', text: provider.text, original, branding: 'aux' });
-    code = runtime.text; applied.push(...provider.anchors, ...runtime.anchors);
+    const automation = applyAuxAutomationIdentity({component: 'daemon', path: 'entry.mjs', text: runtime.text, original});
+    const ledger = applyAuxContextLedgerIdentity({text: automation.text, original});
+    code = ledger.text; applied.push(...provider.anchors, ...runtime.anchors, ...automation.anchors, ...ledger.anchors);
     const find = 'if(Cn===`aside`&&ei===`builtin/aside`)return`Aux`';
     const replace = 'if(Cn===`aux`&&ei===`builtin/aux`)return`Aux`';
     if (code.split(find).length - 1 !== 1) throw Error('Aux builtin skill display integration drift');

@@ -53,7 +53,7 @@ catch (error) { if (error.code !== 'ENOENT' || outputExists) throw error; }
 const pins = JSON.parse(await readFile(join(repository, 'docs/source/provided-ui-inputs.json'), 'utf8'));
 const sourceSnapshot = await resolveProvidedSourceSnapshot({ snapshotRoot: options['--source-snapshot'] && resolve(options['--source-snapshot']), repositoryRoot: repository });
 const identities = JSON.parse(await readFile(join(repository, 'docs/design/extension-identities.json'), 'utf8'));
-const brandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
+const brandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`), ...(stateIdentityVersion === 2 ? ['assets/brand/Aux.iconset/icon_512x512.png', 'vendor/provided-ui/branding/aux-browser-icon.webp'] : [])];
 const brandInputs = [];
 for (const path of brandPaths) brandInputs.push({ path, sha256: createHash('sha256').update(await readFile(join(repository, path))).digest('hex') });
 const adaptationInputs = [];

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import {relocateAuxAssetPath} from '../vendor/provided/aux-asset-path-identity.mjs';
+import {loadAuxBrowserIconReplacement} from './lib/aux-browser-icon.mjs';
 // Preservation audit: unchanged source equality is expected, never a clean-room failure.
 import { resolveProtocolIdentity, resolveStateIdentityVersion } from '../vendor/provided/aux-protocol-identity.mjs';
 import { createHash } from 'node:crypto';
@@ -42,7 +44,7 @@ for (const input of stack.adaptationInputs) {
   if (hash(await readFile(join(repository, input.path))) !== input.sha256) throw new Error(`Restage changed adaptation: ${input.path}`);
 }
 if (!stack.brandInputs?.length) throw new Error('Restage: updated canonical Aux logo provenance is missing');
-const expectedBrandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`)];
+const expectedBrandPaths = ['assets/brand/arch-mark.svg', 'assets/brand/aux-mark-white.svg', 'assets/brand/Aux.icns', 'vendor/provided-ui/branding/icon48.png', ...[16, 32, 128].map((size) => `assets/brand/Aux.iconset/icon_${size}x${size}.png`), ...(stateIdentityVersion === 2 ? ['assets/brand/Aux.iconset/icon_512x512.png', 'vendor/provided-ui/branding/aux-browser-icon.webp'] : [])];
 if (JSON.stringify(stack.brandInputs.map((file) => file.path).sort()) !== JSON.stringify(expectedBrandPaths.sort())) throw new Error('Incomplete Aux branding provenance');
 for (const input of stack.brandInputs) {
   if (!safe(input.path) || !/^(assets\/brand\/|vendor\/provided-ui\/branding\/)/.test(input.path) || hash(await readFile(join(repository, input.path))) !== input.sha256) throw new Error('Restage: Aux branding assets changed');
@@ -50,6 +52,8 @@ for (const input of stack.brandInputs) {
 const pins = await json(join(repository, 'docs/source/provided-ui-inputs.json'));
 const ui = await json(join(output, 'ui/manifest.json'));
 if ((ui.stateIdentityVersion ?? 1) !== stateIdentityVersion || resolveProtocolIdentity(ui.identityProfile) !== identityProfile) throw Error('UI protocol profile mismatch');
+const browserIcon = stateIdentityVersion === 2 ? await loadAuxBrowserIconReplacement() : null;
+const reviewedReplacements = browserIcon ? [browserIcon] : [];
 let unchanged = 0, changed = 0, css = 0;
 for (const component of ['agent', 'vault']) {
   const pinned = pins.components[component], report = ui.components[component], root = join(output, 'ui', component);
@@ -67,6 +71,12 @@ for (const component of ['agent', 'vault']) {
     if (!file || file.sourceSha256 !== input.sourceSha256) throw new Error('UI source pin mismatch');
     const source = await readFile(join(sourceSnapshot?.roots[component] ?? pinned.inputRoot, input.path)), bytes = await readFile(join(root, file.path));
     if (hash(source) !== input.sourceSha256 || hash(bytes) !== file.outputSha256) throw new Error(`Preservation hash mismatch: ${component}/${file.path}`);
+    const relocation = stateIdentityVersion === 2 ? relocateAuxAssetPath({component, path: input.path, bytes, reviewedReplacements}) : null;
+    if (file.path !== (relocation?.path ?? input.path).replaceAll('Aside', 'Aux') || JSON.stringify(file.assetRelocation) !== JSON.stringify(relocation?.anchors.length ? relocation.anchors : undefined)) throw Error('Unreported or incorrect UI path identity');
+    const brandingReplacement = component === 'agent' && browserIcon && input.path === browserIcon.receipt.path
+      ? {repositorySource: browserIcon.repositorySource, receiptSha256: browserIcon.receiptSha256} : undefined;
+    if (JSON.stringify(file.brandingReplacement) !== JSON.stringify(brandingReplacement)) throw Error('Unreviewed browser icon replacement');
+    if (brandingReplacement && (hash(source) !== browserIcon.receipt.originalSha256 || !bytes.equals(browserIcon.bytes))) throw Error('Canonical browser icon mismatch');
     if (source.equals(bytes)) unchanged++;
     else {
       changed++;
@@ -78,7 +88,7 @@ for (const component of ['agent', 'vault']) {
           text = text.split(anchor.find).join(anchor.replace);
         }
         if (!Buffer.from(text).equals(bytes)) throw new Error('Unreported UI implementation change');
-      } else if (!/^icons\/(?:icon-?\d+|favicon-(?:dark|light))\.png$/.test(input.path)) throw new Error('Unanchored UI implementation change');
+      } else if (!/^icons\/(?:icon-?\d+|favicon-(?:dark|light))\.png$/.test(input.path) && !brandingReplacement) throw new Error('Unanchored UI implementation change');
     }
     if (input.path.endsWith('.css')) {
       css++;

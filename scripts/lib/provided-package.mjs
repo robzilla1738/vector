@@ -108,7 +108,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   // copying. Old stages without explicit declarations must be restaged.
   const identityEvidence = await verifyAuxIdentityContract({ stageRoot, composition, identityProfile: stageIdentity });
   const visualEvidence = stageIdentity === 'aux-v1'
-    ? await assertAuxVisualAssets({ agentRoot: join(stageRoot, 'ui/agent') }) : null;
+    ? await assertAuxVisualAssets({ agentRoot: join(stageRoot, 'ui/agent'), assetIdentity: stateIdentityVersion === 2 ? 'aux' : 'compatibility' }) : null;
 
   if (native.version !== 1 || native.implementation !== 'supplied' || native.buildExitCode !== 0 || native.generatedKeyProbePassed !== true || native.compositionSha256 !== hash(compositionRaw) || native.app !== 'Aux.app') throw new Error('An actual matching supplied native build receipt is required');
   if (boundary.version !== 1 || boundary.implementation !== 'supplied-boundary' || boundary.buildExitCode !== 0 || boundary.mapFixturePassed !== true) throw new Error('An actual native boundary build and pure-map fixture receipt is required');

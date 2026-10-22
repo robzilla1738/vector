@@ -1,3 +1,5 @@
+import {relocateAuxVisualBaseline, canonicalizeAuxVisualAssetInventory} from '../../vendor/provided/aux-asset-path-identity.mjs';
+import {loadAuxBrowserIconReplacement} from './aux-browser-icon.mjs';
 /** Read-only, fail-closed identity pairing and accepted visual payload checks.
  * These checks prove static agreement only, never an authenticated runtime handshake.
  */
@@ -140,11 +142,14 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
 }
 const visual = path => /\.(?:css|svg|png|jpe?g|webp|gif|avif|ico|icns|woff2?|ttf|otf)$/i.test(path);
 /** Explicit successor only: the acceptedRoot field is documentary and is never read. */
-export async function compareAuxVisualAssets({ agentRoot, baselinePath = join(repository, 'docs/acceptance/aux-identity-ui-baseline.json') }) {
+export async function compareAuxVisualAssets({ agentRoot, baselinePath = join(repository, 'docs/acceptance/aux-identity-ui-baseline.json'), assetIdentity = 'compatibility' }) {
   const baseline = JSON.parse(await regular(baselinePath));
   if (baseline.version !== 1 || !Array.isArray(baseline.files) || !baseline.files.length) throw Error('Invalid visual preservation baseline');
+  if (!['compatibility','aux'].includes(assetIdentity)) throw Error('Explicit supported visual asset identity required');
+  const reviewedReplacements = assetIdentity === 'aux' ? [await loadAuxBrowserIconReplacement()] : [];
+  const relocation = assetIdentity === 'aux' ? relocateAuxVisualBaseline(baseline.files,{reviewedReplacements}) : null;
   const expected = new Map();
-  for (const entry of baseline.files) {
+  for (const entry of relocation?.files ?? baseline.files) {
     if (!safe(entry.path) || !visual(entry.path) || expected.has(entry.path) || !/^[a-f0-9]{64}$/.test(entry.sha256) || !Number.isSafeInteger(entry.bytes)) throw Error('Invalid visual preservation entry');
     expected.set(entry.path, entry);
   }
@@ -163,13 +168,18 @@ export async function compareAuxVisualAssets({ agentRoot, baselinePath = join(re
     }
   }
   await walk();
+  if (relocation) canonicalizeAuxVisualAssetInventory([...observed.values()],{reviewedReplacements});
   const missing = [...expected.keys()].filter(path => !observed.has(path)).sort();
   const extra = [...observed.keys()].filter(path => !expected.has(path)).sort();
   const changed = [...expected.keys()].filter(path => observed.has(path) && (expected.get(path).sha256 !== observed.get(path).sha256 || expected.get(path).bytes !== observed.get(path).bytes)).sort().map(path => ({ path, expected: expected.get(path), actual: observed.get(path) }));
-  return { version: 1, unchanged: !missing.length && !extra.length && !changed.length, expectedFiles: expected.size, actualFiles: observed.size, cssFiles: [...observed.keys()].filter(path => path.endsWith('.css')).length, missing, changed, extra, scope: 'Exact Agent visual assets only; rendered/native UI behavior remains separate.' };
+  const preserved = !missing.length && !extra.length && !changed.length;
+  return { version: 1, preserved, unchanged: preserved && !(relocation?.assetByteChanges), expectedFiles: expected.size, actualFiles: observed.size, cssFiles: [...observed.keys()].filter(path => path.endsWith('.css')).length, missing, changed, extra,
+    ...(relocation ? {assetIdentity, pathRelocations: relocation.relocations, explicitBrandingReplacements: relocation.explicitBrandingReplacements, expectedUnchangedVisualFiles: relocation.expectedUnchangedVisualFiles} : {}),
+    scope: 'Agent visual payload with explicit reviewed identity mapping only; rendered/native UI behavior remains separate.' };
+
 }
 export async function assertAuxVisualAssets(options) {
   const report = await compareAuxVisualAssets(options);
-  if (!report.unchanged) throw Object.assign(Error('Accepted Aux visual payload changed'), { report });
+  if (!report.preserved) throw Object.assign(Error('Accepted Aux visual payload changed'), { report });
   return report;
 }
