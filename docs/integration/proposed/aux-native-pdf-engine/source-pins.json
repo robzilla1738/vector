@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelection.cc",
+      "sha256": "2b2e87e6d7770f060124114fa110dc7073762caaa1fd3cae8295f625c3136401"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelectionNapi.cc",
+      "sha256": "42d52d38f84f56695d6916b676f7c131ab08b6578e96d508a28d7014046e9c12"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdfview.h",
+      "sha256": "c001b029e3b026e1704a30bca8335211b3bad374676c9946113696dc6dcbc305"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_text.h",
+      "sha256": "4682f8553dc1d29bbee95cdcddefebbd96522c5be654807906240f8571593726"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_formfill.h",
+      "sha256": "8792ed53df3f5852f1a8b98d2b6e140898ab595888df8a2f70bc8c165d188c12"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_edit.h",
+      "sha256": "10d671c35f8a769e103308f6f7d9d77a08436219040db51ce1e21133d90c3caf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_ppo.h",
+      "sha256": "931cccda62d725280b86020c4663df7a4f16bb6cc4fac55f9db26cc657e74556"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_save.h",
+      "sha256": "96a78a3e3eb8a387dc4a35c1e87b430618e9ee8e7ceae9fea424baf1de6b497a"
+    }
+  ],
+  "evidence": {
+    "evidence/library.asm": "e966d7ddbb46977024743a89691ff3648f8661ea5c16dbccfa041f1fabbc3ed8",
+    "evidence/utf16.asm": "b75ad88be6175ec5528150d6ec75263f6a6c8582984fe269a3383e1c092a73f1",
+    "evidence/document.asm": "850313bd8373cd19d4516584e777fe43891d9be34a5d79402903951a7239ff29",
+    "evidence/writer.asm": "cbe16ea99f8dae813067ee9e2d6a62d5f80a929cfd291787c318c2bba5fb08c1",
+    "evidence/page-close.asm": "8cedd28a93dcd9f3382efd5464e4acbd89a6b98c3666337c409c503cc6b0558d",
+    "evidence/new-document.asm": "9c73533903cb21975d56a89386367757eee622311f80d0c32f0ac07c44e6564e",
+    "evidence/page.asm": "978d7a25699488b6d530b0f55d38c9f61e9d35560cb6b360f52d722b12ac289d",
+    "evidence/save.asm": "fe7ad3a694cbbc467f3b21e04c398a06bf38d4996655a809dfee0bdcf945ccd2",
+    "evidence/required-string.asm": "91a7ab917c6308ae8fb34b0c12aeac57c623b95dc2778f52d512dc4ed4eb93ef",
+    "evidence/document-close.asm": "9a6cf00b67dfc22554f3323856c3a2fb547d30dee18b42afb166524ced6b138e"
+  },
+  "objectCompilePassed": true,
+  "pdfiumLinkPerformed": false,
+  "engineRuntimeFixtureExecuted": false,
+  "originalAddonExecuted": false,
+  "sharedCheckoutChanged": false
+}
