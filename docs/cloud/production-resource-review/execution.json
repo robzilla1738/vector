@@ -1,0 +1,87 @@
+{
+  "approvedAt": "2026-10-22",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "environment": [
+    "production"
+  ],
+  "productionActivated": false,
+  "monthlyTargetUsd": 25,
+  "guaranteedSpendingCap": false,
+  "database": {
+    "name": "aux-cloud-prod",
+    "storeId": "store_mK6YWm9VwmXhdUDF",
+    "projectId": "ancient-river-76453764",
+    "branchId": "br-red-hall-b857cl2i",
+    "endpoint": "ep-red-snow-b8ctxcyx",
+    "region": "aws-us-east-1",
+    "postgresVersion": 18,
+    "billingPlan": "launch_v3",
+    "minCu": 0.25,
+    "maxCu": 0.25,
+    "autosuspendSeconds": 300,
+    "defaultBranchComputeCu": 0.25,
+    "historyDays": 7,
+    "authEnabled": false,
+    "realtimeEnabled": false,
+    "migrationsVerified": 11,
+    "initialProviderDefaultCu": 1,
+    "initialDefaultCorrectedBeforeMigration": true
+  },
+  "blob": {
+    "name": "aux-private-prod",
+    "storeId": "store_UUr9bRkRQm4lu0Z2",
+    "region": "iad1",
+    "access": "private",
+    "proof": {
+      "store": "store_UUr9bRkRQm4lu0Z2",
+      "access": "private",
+      "bytes": 1048576,
+      "sha256": "26d34196f5b99a337281062d2bce9fc02b0f811c008a9d4950bb95a9daad9a17",
+      "downloaded": true,
+      "deleted": true,
+      "at": "2026-10-22T15:44:54.476Z"
+    }
+  },
+  "productionSecrets": [
+    "AUX_AUTH_SECRET",
+    "AUX_DATA_ENCRYPTION_KEY",
+    "CRON_SECRET"
+  ],
+  "restore": {
+    "proof": {
+      "project": "ancient-river-76453764",
+      "branch": "br-plain-haze-b8ll44ol",
+      "restoredMarker": "before",
+      "primaryMarker": "after",
+      "migrations": 11,
+      "checkedAt": "2026-10-22T15:49:28.395Z"
+    },
+    "selectedLocalMinute": "2026-10-22T10:44 America/Chicago",
+    "firstProbe": "First branch returned later marker; not accepted. Corrected earlier minute returned before marker.",
+    "temporaryBranches": [
+      "br-restless-sun-b8b9yvyd",
+      "br-plain-haze-b8ll44ol"
+    ],
+    "bothBranchesDeleted": true,
+    "primaryProbeTableDropped": true,
+    "branchExpiryHours": 1,
+    "computeCu": 0.25
+  },
+  "preserved": {
+    "developmentDatabase": "bitter-scene-07426810",
+    "developmentBlob": "store_6KOQaUOaHm1IvxeQ",
+    "productionBuildProfile": null,
+    "desktopUiUnchanged": true
+  },
+  "remaining": [
+    "Production Clerk/Resend secret recipient binding revalidation before use; sensitive stored keys were not pulled or used",
+    "Cross-store backups and wrapping-key recovery",
+    "Live Aux Stripe setup",
+    "Actual email delivery",
+    "Funded strict-ZDR AI and speech checks",
+    "Separately approved desktop cloud signing and real native acceptance",
+    "Native cookie restore implementation",
+    "Full production configuration review and activation"
+  ]
+}

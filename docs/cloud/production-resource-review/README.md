@@ -1,6 +1,16 @@
 # Separate Aux production resources
 
-Prepared2026-10-22, unexecuted. Exact requested bootstrap: [plan.json](plan.json). This review does not activate production, change the accepted desktop or represent production readiness.
+Prepared2026-10-22; owner approved and bootstrap executed2026-10-22. Exact requested bootstrap: [plan.json](plan.json). Nonsecret execution receipt: [execution.json](execution.json). This bootstrap does not activate production, change the accepted desktop or represent production readiness.
+
+## Executed bootstrap
+
+Created separate Neon `aux-cloud-prod` (`ancient-river-76453764`, Vercel `store_mK6YWm9VwmXhdUDF`) and private Blob `aux-private-prod` (`store_UUr9bRkRQm4lu0Z2`). Both connections are only to `aux-cloud` Production. Neon is Postgres18/us-east-1/Launch, fixed0.25 CU with five-minute autosuspend, seven-day history, Auth and Realtime off. Neon initially provisioned its1 CU default; this was corrected before migrations or synthetic checks. New branch compute defaults are also fixed0.25 CU.
+
+Verified the database was empty before applying001–011; all11 applied hashes match the immutable manifest. Generated independent production authentication, data-encryption and cron secrets and stored them as Vercel Secrets, Production only. Existing production Clerk/Resend secrets were not pulled or used; their exact recipient bindings still need revalidation before production use.
+
+The1MiB private Blob upload/read/hash/delete passed, with no fixture remaining. The first historical-branch probe returned the later marker and was rejected. A corrected earlier-minute branch returned the earlier marker and all11 exact migration hashes. Both disposable branches used0.25 CU with one-hour expiry and were deleted after checks; the primary synthetic table was dropped. This verifies a narrow database point-in-time branch recovery, not Blob recovery or full disaster recovery.
+
+`config/deployment-resources.json.production` stays null. No production deployment, alias, live payment change, funded AI request, desktop signing or desktop UI change occurred. Current local private bootstrap material is ignored by Git and mode0600; a durable wrapping-key recovery arrangement remains outstanding.
 
 ## Proposed action
 
