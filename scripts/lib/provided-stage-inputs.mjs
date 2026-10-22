@@ -12,6 +12,7 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/cloud-sea-embedding.mjs',
   'vendor/provided/cloud-service-policy.mjs',
   'vendor/provided/cloud-drive-1852-adapter.mjs',
+  'vendor/provided/cloud-cookie-restore.mjs',
   'vendor/provided/cloud-sync-adapter.mjs',
   'vendor/provided/cloud-attachment-adapter.mjs',
   'vendor/provided/cloud-session-adapter.mjs',

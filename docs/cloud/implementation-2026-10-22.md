@@ -14,6 +14,8 @@ Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speec
 
 ## Latest storage/recovery acceptance — later 2026-10-22
 
+Cookie source follow-up: found and corrected the cloud adapter's reference to a declared-but-uninitialized supplied `cookieEnvelopeSchema`. It now reuses the actual initialized parameter schema and original envelope structure. Added an account-scoped, bounded, revision-pinned reader with authenticated decryption and asynchronous account-change guards. Seven focused source/composition tests and typecheck passed; the actual reader recovered synthetic cookies through the deployed root rewrite and cleaned its fixtures. No browser cookie jar was accessed. The accepted desktop and prepared signing candidate are unchanged; they do not yet contain these source corrections. Native routing/import and multiple-profile mapping remain unfinished. See `docs/integration/proposed/cloud-cookie-restore/` and the updated cookie-export evidence.
+
 Separate production resources are provisioned with Production-only connections; their complete receipt is `production-resource-review/execution.json`. The build's Production profile stays null. No activation, production alias or desktop change occurred.
 
 Actual chunked private-file reads uncovered an SDK zero-size fallback when `Content-Length` is absent. Backend commit/input verification now uses bounded streamed counts/hashes for unknown length; normal/ranged downloads use authoritative HEAD metadata when necessary. The updated development Preview `dpl_9Bsm6J11Y5AKQ3ms9L4NStSBMNhB` passed remote build/typecheck and actual1MiB commit/full/range/cross-owner/deletion checks, with fixture cleanup. Evidence: `services/aux-cloud/evidence/chunked-private-blob.json`.

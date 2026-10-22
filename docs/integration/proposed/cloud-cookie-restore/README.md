@@ -1,6 +1,16 @@
 # Encrypted cookie restoration boundary
 
-Status: encrypted backend retrieval implemented; native import is unfinished. This proposal has not changed the accepted desktop, its UI, the Chromium checkout or the exact cloud signing candidate.
+Status: encrypted backend retrieval and account-scoped adapter decryption implemented; native import is unfinished. These source changes have not changed the accepted desktop, its UI, the Chromium checkout or the exact cloud signing candidate.
+
+## Verified adapter reader and actual source defect
+
+The pinned supplied daemon declares `cookieEnvelopeSchema` but never assigns it; its actual `init_envelope` does initialize `cookieParamSchema`. The previous cloud upload adapter added a call to the uninitialized envelope variable. Its earlier cookie test supplied a mock parser and therefore missed that runtime failure. The adapter now validates the original format1/unencrypted envelope structure and reuses the actual initialized parameter schema. Focused tests construct that parameter schema from its exact pinned source expression, rather than replacing validation with an identity stub.
+
+New `auxCloudReadCookieSnapshot(accountId)` obtains the actual CSK context, pins metadata/revision/generation, downloads bounded ciphertext and verifies the explicit revision header, object length/hash, canonical AES-GCM envelope, owner/generation AAD, plaintext length/hash and original cookie schema/capture time. It rechecks account scope after asynchronous response/body work and clears temporary key/plaintext buffers on success and failure. It returns an internal validated snapshot; it does not access CDP, select a profile, import cookies or change the original sync lifecycle. Native import still must enforce the original domain/expiry/partition exclusions at the verified destination.
+
+Seven focused adapter/composition tests passed: original/shipped count-checked replay, byte-identical local composition, full composed daemon syntax, encrypted upload/delete, valid/missing snapshot recovery, integrity/key/revision/generation/schema failures, oversized-stream cancellation and account rebinding during response/body work. The actual reader also recovered a synthetic snapshot through the deployed development root rewrite, using the real backend ownership/revision checks and original parameter schema. Fixture users/sessions/ciphertext were removed; no browser cookie jar or paid provider was accessed. See `services/aux-cloud/evidence/cookie-export.json`.
+
+The new helper is included in future stage provenance. The existing unsigned cloud/signing candidate and its plan bytes are unchanged and do **not** contain these fixes. A rebuilt candidate and its corresponding review will be required before complete cloud acceptance; do not treat an approval for the older exact bytes as covering newly rebuilt daemon bytes.
 
 ## Established source facts
 

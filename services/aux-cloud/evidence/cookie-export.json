@@ -1,13 +1,15 @@
 {
-  "checkedAt": "2026-10-22T07:44:09.652Z",
+  "checkedAt": "2026-10-22T16:24:21.798Z",
   "origin": "https://dev-cloud.getaux.co",
   "checks": [
     "actual deployed upload/metadata/versioned ciphertext download preserves authenticated encrypted bytes",
+    "actual supplied-structure adapter reads/decrypts the deployed root rewrite with synthetic CSK and original parameter schema, without browser import",
     "other account denied, and stale revision/wrong generation/missing precondition refused",
     "actual deletion makes encrypted snapshot unavailable"
   ],
   "fixtureRemoved": true,
   "syntheticSessions": true,
+  "actualAdapterReaderVerified": true,
   "browserCookiesAccessed": false,
   "nativeCookieImportVerified": false,
   "paidProviderCalls": 0

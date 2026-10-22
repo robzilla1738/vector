@@ -1,6 +1,6 @@
 {
   "kind": "bounded-static-cookie-profile-contract",
-  "checkedAt": "2026-10-22T07:38:51.251Z",
+  "checkedAt": "2026-10-22T16:26:36.212Z",
   "files": [
     {
       "path": "out/provided-source-audit/daemon-original.mjs",
@@ -33,5 +33,5 @@
   "ownerStateRead": false,
   "signingPlanSha256": "43415d770be82878ab4a5ef0ded4ac525b0f0c8f667246ed652464c42af5d5a9",
   "signingPerformed": false,
-  "implementationStatus": "backend encrypted retrieval implemented separately; native importer/profile routing still unimplemented"
+  "implementationStatus": "backend retrieval and account-scoped adapter decryption verified separately; native importer/profile routing still unimplemented"
 }
