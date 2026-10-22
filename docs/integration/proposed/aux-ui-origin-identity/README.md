@@ -95,3 +95,12 @@ service test. No successful response or credential action was simulated as real.
 Production activation, public policy authoring, help/community setup, artwork
 production, actual sign-in/embedding acceptance and external account changes
 remain separate work. Historical supplied-source manifests stay truthful.
+
+
+## Development revision10 integration
+
+The staging pipeline now applies the exact manifest/demo-href transform within state2, after existing integration transforms, and validates the completed manifest against both actual final API producer modules. The development revision10 fingerprint is `ea3bd2d5ba0f592015c673c9c74db3c52f3374614a6caf2edc703b8bf2a2c78e`.
+
+`revision10/derive.mjs` records the bounded derivation: verifies all six inspected actual predecessor files against the revision9 report and original source pins, reverses only the last manifest-version anchor, authenticates the complete predecessor inventory against the append-only revision9 fingerprint, then updates exactly the four reviewed outputs (including the separately reviewed hosted billing fallback). It deliberately refuses if the ledger is no longer at revision9; it is a historical derivation tool, not a repeatable migration or a second ledger append. The three-origin-file predecessor derivation and cohort were independently reproduced read-only before adding the separately source-pinned billing fallback. Fresh staging verifies the final combined fingerprint. See `revision10/review.json`.
+
+No layout, CSS, glass or artwork bytes are changed by this origin integration. Full fresh staging/packaging is still required; the derivation alone is not final-output or hosted sign-in acceptance. Production/local policies require separate revision reviews and are not covered by this development revision.

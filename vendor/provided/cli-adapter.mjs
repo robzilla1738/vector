@@ -1,3 +1,4 @@
+import { applyAuxColdEntryAdmission } from './aux-cold-entry-admission.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
 import { applyAuxProtocolIdentity, resolveProtocolIdentity, resolveStateIdentityVersion } from './aux-protocol-identity.mjs';
@@ -60,6 +61,8 @@ export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'com
     const runtime = applyAuxRuntimeContractIdentity({ component: 'cli', path: 'entry.mjs', text: provider.text, original, branding: 'aux' });
     code = runtime.text; applied.push(...provider.anchors, ...runtime.anchors);
   }
+  const admission = applyAuxColdEntryAdmission({component: 'cli', path: 'entry.mjs', text: code, original, stateIdentityVersion});
+  code = admission.text; applied.push(...admission.anchors);
   return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 

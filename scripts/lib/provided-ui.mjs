@@ -1,7 +1,9 @@
+import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
 import { applyAuxCaptureContractIdentity } from '../../vendor/provided/aux-capture-contract-identity.mjs';
 import { applyAuxProfileContextIdentity } from '../../vendor/provided/aux-profile-context-identity.mjs';
 import { applyAuxSelectionContractIdentity } from '../../vendor/provided/aux-selection-contract-identity.mjs';
+import { applyAuxUiOriginIdentity, assertAuxUiOriginPairing } from '../../vendor/provided/aux-ui-origin-identity.mjs';
 import { loadAuxBrowserIconReplacement } from './aux-browser-icon.mjs';
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from '../../vendor/provided/aux-provider-identity.mjs';
@@ -182,11 +184,15 @@ export async function stageProvidedUi({
   const mark = await readAuxMark();
   const browserIcon = stateIdentityVersion === 2 ? await loadAuxBrowserIconReplacement() : null;
   const reviewedReplacements = browserIcon ? [browserIcon] : [];
+  const originCloudOptions = cloudProfile ? {enableCloud: true, profile: cloudProfile} : {};
+  const originPaths = new Set(['manifest.json', 'background.js', 'assets/strip-markdown-DRcmtuJc.js']);
   const temporary = await mkdtemp(join(dirname(destination), '.provided-ui-'));
   try {
     for (const component of ['agent', 'vault']) {
       const input = actual.components[component];
       const files = [];
+      const originOriginals = new Map();
+      let originPairing;
       const sourceManifest = JSON.parse(
         await readFile(join(input.inputRoot, 'manifest.json'), 'utf8'),
       );
@@ -197,6 +203,8 @@ export async function stageProvidedUi({
           throw new Error(
             `Supplied input changed while staging: ${component}/${file.path}`,
           );
+        if (component === 'agent' && stateIdentityVersion === 2 && originPaths.has(file.path))
+          originOriginals.set(file.path, source.toString('utf8'));
         let path = file.path.replaceAll('Aside', 'Aux');
         let output = source;
         let brandingReplacement;
@@ -270,6 +278,10 @@ export async function stageProvidedUi({
             text = profileContext.text; anchors.push(...profileContext.anchors);
             const selection = applyAuxSelectionContractIdentity({component, path: file.path, text, original: source.toString('utf8')});
             text = selection.text; anchors.push(...selection.anchors);
+            const origins = applyAuxUiOriginIdentity({component, path: file.path, text, original: source.toString('utf8')}, originCloudOptions);
+            text = origins.text; anchors.push(...origins.anchors);
+            const billingFallback = applyAuxBillingReturnFallback({component, path: file.path, text, original: source.toString('utf8')}, originCloudOptions);
+            text = billingFallback.text; anchors.push(...billingFallback.anchors);
           }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
@@ -413,12 +425,20 @@ export async function stageProvidedUi({
         entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];
         entry.outputSha256 = revised.outputSha256;
         await writeFile(manifestPath, revised.text);
+        if (stateIdentityVersion === 2) {
+          const callers = [];
+          for (const path of ['background.js', 'assets/strip-markdown-DRcmtuJc.js']) {
+            callers.push({path, original: originOriginals.get(path), text: await readFile(join(temporary, component, path), 'utf8')});
+          }
+          originPairing = assertAuxUiOriginPairing({manifestText: revised.text, manifestOriginal: originOriginals.get('manifest.json'), callers}, originCloudOptions);
+        }
       }
       report.components[component] = {
         sourceVersion: input.sourceVersion,
         inputRoot: input.inputRoot,
         outputRoot: join(destination, component),
         files,
+        ...(originPairing ? {originPairing} : {}),
       };
     }
     await writeFile(

@@ -1,3 +1,4 @@
+import { AUX_COLD_ENTRY_REFUSAL } from '../../vendor/provided/aux-cold-entry-admission.mjs';
 import {relocateAuxVisualBaseline, canonicalizeAuxVisualAssetInventory} from '../../vendor/provided/aux-asset-path-identity.mjs';
 import {loadAuxBrowserIconReplacement} from './aux-browser-icon.mjs';
 /** Read-only, fail-closed identity pairing and accepted visual payload checks.
@@ -133,12 +134,24 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
       for (const token of [n.daemonToken, n.sessionToken, n.challenge, n.devChallenge, n.service]) requireIncludes(generated, token, 'daemon development entry');
     }
   }
+  let coldEntryQuarantineChecked = false;
+  if (stage.stateIdentityVersion === 2) {
+    for (const label of ['daemon', 'cli']) {
+      const prefix = (label === 'cli' ? '#!/usr/bin/env node\n' : '') + AUX_COLD_ENTRY_REFUSAL;
+      if (!texts[label].startsWith(prefix) || texts[label].split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
+        throw Error(`Missing exact state2 cold-entry quarantine: ${label}`);
+    }
+    const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
+    if (typeof developmentText !== 'string' || !developmentText.startsWith(generatedPrefix) || developmentText.split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
+      throw Error('Missing state2 generated-entry quarantine before asset initialization');
+    coldEntryQuarantineChecked = true;
+  }
   const nativeSources = {};
   for (const path of nativeIdentityPaths) nativeSources[path] = (await pinnedText(nativeRoot, path, composition?.files)).toString();
   const declaredProfiles = { stage: stage.identityProfile, ui: ui.identityProfile, apps: apps.identityProfile };
   const report = assertAuxIdentityPairing({ identityProfile, declaredProfiles, texts, nativeSources });
   if (developmentText) assertAuxIdentityPairing({ identityProfile, declaredProfiles, texts: {...texts, daemon:developmentText}, nativeSources });
-  return {...report, developmentEntrypointChecked: Boolean(developmentText)};
+  return {...report, developmentEntrypointChecked: Boolean(developmentText), coldEntryQuarantineChecked};
 }
 const visual = path => /\.(?:css|svg|png|jpe?g|webp|gif|avif|ico|icns|woff2?|ttf|otf)$/i.test(path);
 /** Explicit successor only: the acceptedRoot field is documentary and is never read. */

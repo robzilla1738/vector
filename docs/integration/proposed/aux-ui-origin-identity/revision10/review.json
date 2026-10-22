@@ -1,0 +1,29 @@
+{
+  "priorRevision": 9,
+  "priorFingerprint": "4fe50040685ffa97bdecc842a2092fff66b3ec251007e60bb7240039a89ec688",
+  "review": {
+    "revision": 10,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "ea3bd2d5ba0f592015c673c9c74db3c52f3374614a6caf2edc703b8bf2a2c78e"
+  },
+  "changedPaths": [
+    "manifest.json",
+    "assets/chat-wBzshK0k.js",
+    "assets/artifact-test-CdjpLuI1.js",
+    "assets/add-on-credits-dialog-Dn5FxOyZ.js"
+  ],
+  "pairing": {
+    "format": "aux.ui-origin-pairing.v1",
+    "mode": "development",
+    "mainExposureOrigins": [
+      "https://dev-cloud.getaux.co"
+    ],
+    "callerPaths": [
+      "background.js",
+      "assets/strip-markdown-DRcmtuJc.js"
+    ],
+    "hostedEmbeddingVerified": false
+  }
+}
