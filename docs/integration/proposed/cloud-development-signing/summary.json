@@ -1,0 +1,29 @@
+{
+  "kind": "exact-local-cloud-signing-plan",
+  "unsignedReviewSha256": "69cd9eaf9af25c6dd86c950b11f1712fb14e1357f49025ed6c826a9e529f7b96",
+  "sourcePackageReportSha256": "d562c0be3dc9184ddaf2666617a54315900ede0104b204961560b8fbbd8bb79b",
+  "cloudPolicy": {
+    "mode": "development",
+    "origins": {
+      "api": "https://dev-cloud.getaux.co",
+      "share": "https://dev-cloud.getaux.co"
+    }
+  },
+  "minimumTargets": 3,
+  "privateKeySigningCommands": 2,
+  "adHocCommands": 1,
+  "profilesVerifiedAgainstApprovedCache": true,
+  "signingIdentityUnchanged": true,
+  "signingCapabilitiesUnchanged": true,
+  "currentAppUnchanged": true,
+  "disposableScopeOnly": true,
+  "provisioning": false,
+  "release": false,
+  "ownerProfileAccess": false,
+  "newOSGrants": false,
+  "signingPerformed": false,
+  "launched": false,
+  "planSha256": "43415d770be82878ab4a5ef0ded4ac525b0f0c8f667246ed652464c42af5d5a9",
+  "planPath": "/Users/rcourson/Documents/Vibe/web/out/cloud-development-signing-review/signing-plan.json",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/cloud-development-signing-review/Aux.app"
+}

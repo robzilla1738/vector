@@ -109,6 +109,7 @@ export async function stageProvidedUi({
   outputRoot,
   identities,
   transformText,
+  cloudProfile,
 }) {
   const pinned = JSON.parse(
     await readFile(
@@ -359,7 +360,7 @@ export async function stageProvidedUi({
         const manifestPath = join(temporary, component, 'manifest.json');
         const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
         if (!revisions.length || revisions.some((r, i) => r.revision !== i + 1)) throw new Error('Agent revision ledger must be consecutive');
-        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.at(-1)});
+        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile).at(-1)});
         const entry = files.find(f => f.path === 'manifest.json');
         entry.anchors = [...(entry.anchors ?? []), revised.anchor];
         entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];

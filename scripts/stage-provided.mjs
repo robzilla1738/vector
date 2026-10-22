@@ -5,6 +5,8 @@ import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { composeCloudDesktop } from '../vendor/provided/cloud-desktop-composition.mjs';
+import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-policy.mjs';
 import { stageProvidedUi } from './lib/provided-ui.mjs';
 import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
@@ -26,9 +28,11 @@ const args = process.argv.slice(2);
 const options = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--replace') { options.replace = true; continue; }
-  if (!['--output', '--app-path', '--source-snapshot'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--replace]');
+  if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--replace]');
   options[args[i]] = args[++i];
 }
+const cloudOptions = options['--cloud-profile'] ? { enableCloud: true, profile: options['--cloud-profile'] } : {};
+const cloudPolicy = resolveCloudServicePolicy(cloudOptions);
 const output = resolve(options['--output'] ?? join(repository, 'out/provided-reuse'));
 const finalApp = resolve(options['--app-path'] ?? join(homedir(), 'Applications/Aux.app'));
 let previous = false;
@@ -54,7 +58,7 @@ for (const path of providedStageInputs) adaptationInputs.push({ path, sha256: cr
 await mkdir(dirname(output), { recursive: true });
 const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
-  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, transformText(input) {
+  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
     const scope = transformProvidedPasswordManagerScope(input);
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
@@ -64,12 +68,13 @@ try {
     const pendingFiles = transformProvidedPendingFiles({ ...input, text: drafts.text });
     const lasso = transformProvidedLassoOwnership({ ...input, text: pendingFiles.text });
     const notifications = transformProvidedNotificationRouting({ ...input, text: lasso.text });
-    return { text: notifications.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors, ...pendingFiles.anchors, ...lasso.anchors, ...notifications.anchors] };
+    const cloud = input.component === 'agent' ? composeCloudDesktop({ ...input, text: notifications.text }, cloudOptions) : { text: notifications.text, anchors: [] };
+    return { text: cloud.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors, ...pendingFiles.anchors, ...lasso.anchors, ...notifications.anchors, ...cloud.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
   await writeFile(join(temporary, 'ui/manifest.json'), `${JSON.stringify(ui, null, 2)}\n`);
-  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps') });
+  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps'), cloudOptions });
   const runtimePins = JSON.parse(await readFile(join(repository, 'docs/source/provided-runtime-inputs.json'), 'utf8'));
   const distribution = await stageProvidedRuntime({
     sourceRoot: sourceSnapshot?.roots.runtime ?? runtimePins.components.runtime.inputRoot,
@@ -93,6 +98,7 @@ try {
   }
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp, brandInputs, adaptationInputs,
+    ...(cloudPolicy.mode !== 'local' ? { cloudPolicy } : {}),
     components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', computerUse: 'computer-use/manifest.json' },
     blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', ...computerUse.remaining, 'Packaged local UI and behavior acceptance'],
   };

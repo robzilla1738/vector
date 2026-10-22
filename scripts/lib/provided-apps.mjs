@@ -75,7 +75,7 @@ function brandPlist(bytes, path, target) {
   return Buffer.from(JSON.stringify(data));
 }
 
-export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot }) {
+export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot, cloudOptions = {} }) {
   const pinned = JSON.parse(await readFile(join(repository, 'docs/source/provided-app-inputs.json'), 'utf8'));
   const actual = await inventoryProvidedApps(sourceRoots);
   if (JSON.stringify(actual) !== JSON.stringify(pinned)) throw new Error('Supplied app resources differ from pinned inputs');
@@ -104,8 +104,8 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         const path = outputPath(file.path, target), kinds = [];
         let output = source;
         if (file.path === `Contents/MacOS/${target.sourceExecutable}`) {
-          executable = target.adapt(source);
-          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source);
+          executable = target.adapt(source, cloudOptions);
+          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source, cloudOptions);
           output = executable.binary;
           kinds.push('identity', 'integration');
         } else if (file.path.endsWith('/Info.plist')) {
@@ -166,7 +166,8 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       }
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
         ...(nodeDevelopment ? { nodeDevelopment: nodeDevelopment.manifest } : {}),
-        executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets } };
+        executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets,
+          ...(executable.cloudPolicy ? { cloudPolicy: executable.cloudPolicy, cloudAnchors: executable.cloudAnchors } : {}) } };
     }
     await writeFile(join(temporary, 'manifest.json'), `${JSON.stringify(report, null, 2)}\n`);
     await rename(temporary, destination);

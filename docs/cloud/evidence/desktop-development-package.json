@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-10-22T06:14:00.206Z",
+  "stage": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-cloud-development",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-cloud-development",
+  "packageReportSha256": "d562c0be3dc9184ddaf2666617a54315900ede0104b204961560b8fbbd8bb79b",
+  "policy": {
+    "mode": "development",
+    "origins": {
+      "api": "https://dev-cloud.getaux.co",
+      "share": "https://dev-cloud.getaux.co"
+    }
+  },
+  "nativeBuildReused": true,
+  "nativeReceiptSha256": "41ccd81e6a8cbbe1335f9fde986651afc811d1cc8483917aad7e5eb323fb1cec",
+  "preservationAudit": "Frozen sources verified: /Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/manifest.json; SHA256 c37cf10878fcb7c4f471a9b5feadd6dc79faa96da4d294255f7a6e8e4d66000d.\nPreservation verified: 1129 unchanged UI files; 132 explicitly changed; 7 stylesheets preserve layout; 160 app resource records.\nDistribution preservation: 9346 runtime files and 19 memory files, with declared relocations only.\nHelper preservation: 11 files with 44 exact binary patch ranges and current Aux artwork.\nProduction ready: false. This audit verifies recorded preservation, not native integration or runtime/UI acceptance.",
+  "scripts": [
+    {
+      "role": "daemon",
+      "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "840d4bd7e14cf53420dc2376cc59fd29fdc235a9314445a5d397346f73d3538a",
+      "codeSha256": "aacde80a12f22456407056088f3eb1a212277351f4adff054af511422d90f302",
+      "cloudAnchors": 24,
+      "syntaxChecked": true
+    },
+    {
+      "role": "cli",
+      "path": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "753665237af07b9697605f255bc5a59e21d767c5711a90ec0ff23b814ed43337",
+      "codeSha256": "b5f7757e6d40b63356e66297683f0d0122fe311916f9339579a6ccd83570955b",
+      "cloudAnchors": 2,
+      "syntaxChecked": true
+    }
+  ],
+  "generatedEntry": {
+    "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "sha256": "cad20d4f4a8f59c4784a30ad735e5427d498bd93b58e8d0a0b70dc379d5e8893",
+    "syntaxChecked": true
+  },
+  "agentChangedFiles": [
+    "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+    "assets/strip-markdown-DRcmtuJc.js",
+    "background.js",
+    "manifest.json"
+  ],
+  "agentStylesheetsUnchanged": true,
+  "otherAgentAssetsUnchanged": true,
+  "installed": false,
+  "signed": false,
+  "launched": false,
+  "paidProviderRequests": 0,
+  "ownerDataAccessed": false,
+  "remaining": [
+    "Exact copied-helper signing/resource review and new scope approval",
+    "Actual disposable desktop sign-in and runtime acceptance",
+    "Funded ZDR inference and synthetic dictation",
+    "Physical two-state sync/conflict/restore and sharing/attachment acceptance",
+    "Production resources, live payment business setup and operational acceptance"
+  ]
+}

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-policy.mjs';
 import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
@@ -30,6 +31,8 @@ async function files(root, directory = '') {
   return result.sort();
 }
 const stack = await json(join(output, 'manifest.json'));
+const cloudOptions = stack.cloudPolicy ? { enableCloud: true, profile: stack.cloudPolicy.mode } : {};
+if (JSON.stringify(resolveCloudServicePolicy(cloudOptions)) !== JSON.stringify(stack.cloudPolicy ?? resolveCloudServicePolicy())) throw new Error('Unreviewed stage cloud policy');
 if (stack.version !== 1 || stack.implementation !== 'supplied') throw new Error('Not a supplied implementation stage');
 if (JSON.stringify(stack.adaptationInputs?.map((input) => input.path)) !== JSON.stringify(providedStageInputs)) throw new Error('Restage: current adaptation provenance is missing');
 for (const input of stack.adaptationInputs) {
@@ -92,11 +95,12 @@ for (const component of ['daemon', 'cli']) {
   const root = join(output, 'apps', report.app);
   const binary = await readFile(join(sourceSnapshot?.roots[component] ?? providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
   const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
-  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode);
+  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode, cloudOptions);
+  if (JSON.stringify(expected.cloudPolicy) !== JSON.stringify(report.executable.cloudPolicy) || JSON.stringify(expected.cloudAnchors) !== JSON.stringify(report.executable.cloudAnchors)) throw new Error('Unreported executable cloud composition');
   if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
-  const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary) : null;
+  const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary, cloudOptions) : null;
   const developmentFiles = new Map((development?.files ?? []).map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
   if (development && JSON.stringify(report.nodeDevelopment) !== JSON.stringify(development.manifest)) throw new Error('Restage current supplied daemon development code/assets');
   if (report.files.filter(file => file.generatedBy).length !== developmentFiles.size) throw new Error('Missing or unexpected generated daemon development resources');

@@ -1,5 +1,7 @@
 /** Rebrand the pinned supplied CLI without replacing its commands or RPC implementation. */
 import { createHash } from 'node:crypto';
+import { composeCloudDesktop } from './cloud-desktop-composition.mjs';
+import { embedCloudSeaBlob } from './cloud-sea-embedding.mjs';
 import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from './native-diagnostic-hook.mjs';
 import { brandProductPreservingWires } from './wire-brand.mjs';
 import { CLI_COMMAND } from '../aside/patches/brand.mjs';
@@ -10,7 +12,7 @@ export const CLI_BINARY_SHA256 = '17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38
 export const CLI_CODE_SHA256 = '013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-export function adaptCliCode(original) {
+export function adaptCliCode(original, cloudOptions = {}) {
   if (sha(original) !== CLI_CODE_SHA256) throw new Error('Supplied CLI code hash mismatch');
   let code = original;
   const applied = [];
@@ -44,16 +46,21 @@ export function adaptCliCode(original) {
   if (commands.length !== 82) throw new Error(`CLI command branding drift: ${commands.length}`);
   for (const find of new Set(commands.map((match) => match[0])))
     edit('documented CLI command', 'branding', find, 'aux ', code.split(find).length - 1);
-  return { code, applied, sha256: sha(code) };
+  const cloud = composeCloudDesktop({ component: 'cli', path: 'entry.mjs', text: code }, cloudOptions);
+  code = cloud.text;
+  applied.push(...cloud.anchors);
+  return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 
-export function adaptCliBinary(original) {
+export function adaptCliBinary(original, cloudOptions = {}) {
   if (sha(original) !== CLI_BINARY_SHA256) throw new Error('Supplied CLI binary hash mismatch');
   const section = findMachOSeaSection(original);
   const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
-  const result = adaptCliCode(blob.code);
-  const binary = Buffer.from(original);
-  injectMachOSeaBlob(binary, writeSeaBlob({ ...blob, code: result.code }));
+  const result = adaptCliCode(blob.code, cloudOptions);
+  const sea = writeSeaBlob({ ...blob, code: result.code });
+  const binary = result.cloudPolicy ? embedCloudSeaBlob(original, sea) : Buffer.from(original);
+  if (!result.cloudPolicy) injectMachOSeaBlob(binary, sea);
   return { binary, codeSha256: result.sha256, applied: result.applied,
+    ...(result.cloudPolicy ? { cloudPolicy: result.cloudPolicy, cloudAnchors: result.cloudAnchors } : {}),
     assets: blob.assets.map(([name, bytes]) => ({ name, bytes: bytes.length, sha256: sha(bytes) })) };
 }

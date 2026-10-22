@@ -1,5 +1,7 @@
 /** Pinned supplied daemon adaptation. No substitute RPC handlers or plan bypasses. */
 import { createHash } from 'node:crypto';
+import { composeCloudDesktop } from './cloud-desktop-composition.mjs';
+import { embedCloudSeaBlob } from './cloud-sea-embedding.mjs';
 import { nativeDiagnosticExpression, nativeDiagnosticPredicate } from './native-diagnostic-hook.mjs';
 import { excludeVaultProduct, edits as vaultProductEdits } from './vault-product-exclusion.mjs';
 import { brandProductPreservingWires } from './wire-brand.mjs';
@@ -61,7 +63,7 @@ export const passwordManagerScopeEdits = [
     'async function resolveSessionSkills(Cn,ei){let ti=ei.filter(Cn=>Cn.name!==`password-manager`);if(Cn.session.incognito)return ti.filter(Cn=>!INCOGNITO_BLOCKED_SKILL_NAMES.has(Cn.name));let ni=settings(Cn.accountId).get(`externalPasswordManagers`).map(Cn=>Cn.provider);return prependConnectedExternalPasswordManagerSkills(await Cn.skills.list(),ti,ni)}', 1),
 ];
 
-export function adaptDaemonCode(original) {
+export function adaptDaemonCode(original, cloudOptions = {}) {
   if (sha(original) !== DAEMON_CODE_SHA256) throw new Error('Supplied daemon code hash mismatch');
   let code = original;
   const applied = [];
@@ -77,17 +79,22 @@ export function adaptDaemonCode(original) {
   } });
   code = excludeVaultProduct(branded.code).code;
   applied.push(...branded.edits, ...vaultProductEdits.map(({ name, count }) => ({ name, count })));
-  return { code, applied, sha256: sha(code) };
+  const cloud = composeCloudDesktop({ component: 'daemon', path: 'entry.mjs', text: code }, cloudOptions);
+  code = cloud.text;
+  applied.push(...cloud.anchors);
+  return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 
-export function adaptDaemonBinary(original) {
+export function adaptDaemonBinary(original, cloudOptions = {}) {
   if (sha(original) !== DAEMON_BINARY_SHA256) throw new Error('Supplied daemon binary hash mismatch');
   const section = findMachOSeaSection(original);
   const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
-  const result = adaptDaemonCode(blob.code);
-  const binary = Buffer.from(original);
-  injectMachOSeaBlob(binary, writeSeaBlob({ ...blob, code: result.code }));
+  const result = adaptDaemonCode(blob.code, cloudOptions);
+  const sea = writeSeaBlob({ ...blob, code: result.code });
+  const binary = result.cloudPolicy ? embedCloudSeaBlob(original, sea) : Buffer.from(original);
+  if (!result.cloudPolicy) injectMachOSeaBlob(binary, sea);
   return { binary, codeSha256: result.sha256, applied: result.applied,
+    ...(result.cloudPolicy ? { cloudPolicy: result.cloudPolicy, cloudAnchors: result.cloudAnchors } : {}),
     assets: blob.assets.map(([name, data]) => ({ name, bytes: data.length, sha256: sha(data) })) };
 }
 

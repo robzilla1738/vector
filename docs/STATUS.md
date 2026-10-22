@@ -1,5 +1,12 @@
 # Aux implementation status
 
+## Cloud development package prepared — 2026-10-22
+
+Separate unsigned candidate `out/provided-candidate-cloud-development/Aux.app` assembled10,751 supplied resources and418 native leaves, reusing the accepted616 native build. Complete preservation audit passed; actual embedded daemon/CLI and generated Node source parse, and `otool` accepts the grown SEA layout. The fixed development cloud policy now participates in staging, binary adaptation, preservation checking, assembly and package provenance. Default local daemon output remains byte-identical to617. Cloud Agent1856 has exactly four changed files versus617 (two API-routing modules, annual-pricing copy and version manifest); all Agent stylesheets and other assets are unchanged. Native UI geometry/glass/corners are unchanged. Evidence: `docs/cloud/evidence/desktop-development-package.json`.
+
+This candidate is not installed, signed or launched. Exact copied-helper signing review is complete: six retained helpers verify; the two existing profiles and seven entitlements each match the approved cache. Three-command plan SHA43415d770be82878ab4a5ef0ded4ac525b0f0c8f667246ed652464c42af5d5a9 is awaiting a new scoped approval; prior approvals do not cover these cloud-modified daemon/CLI bytes. Real desktop sign-in, funded ZDR inference/dictation, cross-device sync/restore, checkout and production operational acceptance remain outstanding. The current local app is unchanged. The approved$11.58 Gateway purchase remains unsubmitted pending checkout AI Product Terms confirmation; no paid provider request occurred in this pass.
+
+
 ## Actual617 local stabilization built and open — 2026-10-21
 
 Native616 build/generated-key check passed (7 steps,5m48s). Final617 supplied package,12 counted source/manifest replays and complete retained-helper verification passed. Receipt `92aad892f0caeccf3f8348082be45241918a13d3e9d4786a6d5a34abc024fef3`; all8 helpers retained without new Apple signing or Keychain operations.616 is archived.617 is running in the normal disposable Your Aux scope; its exact launched child owns CDP45203.

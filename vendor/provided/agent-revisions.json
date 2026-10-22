@@ -10,5 +10,10 @@
   {
     "revision": 3,
     "fingerprint": "b2edf1afa0fe28da8cd33d4597f851260a18114faab2f5cb34db0a5d4bb1c79d"
+  },
+  {
+    "revision": 4,
+    "profile": "development",
+    "fingerprint": "7cf0131a34e1d064119fbde8bf0b4e1263c94f6bb9dc362388659e16ab4f0a0e"
   }
 ]

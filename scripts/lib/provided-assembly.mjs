@@ -74,6 +74,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   const report = {
     version: 1, implementation: 'supplied', productionReady: false, finalApp: stack.finalApp,
     brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
+    ...(stack.cloudPolicy ? { cloudPolicy: stack.cloudPolicy } : {}),
     excludedProducts: ['vault', 'password-importer'], excludedFiles: [], passwordManager: 'external-extensions',
     localDevelopmentOnly: true, daemonRuntime: apps.components.daemon.nodeDevelopment ? 'provided-node-development' : 'provided-sea',
     blockers: [...new Set([...stack.blockers, 'Compiled native guard/carrier and reviewed Chromium integration', 'Disposable packaged UI/runtime acceptance'])],

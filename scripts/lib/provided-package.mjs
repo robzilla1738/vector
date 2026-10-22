@@ -201,6 +201,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const report = {
       version: 1, implementation: 'supplied', productionReady: false, signed: false,
       app: 'Aux.app', finalApp: assembled.finalApp,
+      ...(assembled.cloudPolicy ? { cloudPolicy: assembled.cloudPolicy } : {}),
       nativeReceiptSha256: hash(nativeRaw), compositionSha256: hash(compositionRaw), boundaryReceiptSha256: hash(boundaryRaw),
       preservationAudit: audit.stdout.trim(),
       nativeFiles: retainedNativeFiles.length, nativeInputFiles: native.appFiles.length,
