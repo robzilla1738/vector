@@ -1,0 +1,277 @@
+{
+  "sourceBinarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "method": "Apple llvm-objdump per-symbol static disassembly; no target execution",
+  "entries": [
+    {
+      "path": "evidence/wrap-context.asm",
+      "symbol": "_$s16AsideNativeSwift11wrapContext_WZ",
+      "sha256": "47578e4a47d38186d4fb014be6104cec127215eb17bd2199a70a044f05bcd50e",
+      "bytes": 2379,
+      "range": {
+        "unslidVirtualStart": 199264,
+        "unslidVirtualEndExclusive": 199460,
+        "fileOffset": 199264,
+        "bytes": 196,
+        "sha256": "8753d7c81b91f8f5a25edd61c7e9d506c8a9f78a8e7ffef425b0606cffed1e0e"
+      }
+    },
+    {
+      "path": "evidence/install-query.asm",
+      "symbol": "_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF",
+      "sha256": "84bdb421d05a5c205dcebc46ddab44509692d9f11f24ef77dfe07db43f3a7cb6",
+      "bytes": 6230,
+      "range": {
+        "unslidVirtualStart": 207768,
+        "unslidVirtualEndExclusive": 208224,
+        "fileOffset": 207768,
+        "bytes": 456,
+        "sha256": "86722ea4c1aea17fcc32b9a5a7af14aefd1e0318c4721b683fce3f98273f5f59"
+      }
+    },
+    {
+      "path": "evidence/require-meta.asm",
+      "symbol": "_$s16AsideNativeSwift18requireInstallMetaAA0eF0VyKF",
+      "sha256": "51f48905377d481c5d0943a4ccf40693c0d05a1644dfb37aff74861b587ccbc6",
+      "bytes": 6850,
+      "range": {
+        "unslidVirtualStart": 211480,
+        "unslidVirtualEndExclusive": 212028,
+        "fileOffset": 211480,
+        "bytes": 548,
+        "sha256": "6451e1074252e1c2af3d72d297488d012369647f4590a4804450c619be38c946"
+      }
+    },
+    {
+      "path": "evidence/dk-unwrap.asm",
+      "symbol": "_$s16AsideNativeSwift11cmdDkUnwrapSSyF",
+      "sha256": "5618d4a705b17fb89ff49efc216642aaf0c40676689d4aeeff8a9fd0c9ceac09",
+      "bytes": 198852,
+      "range": {
+        "unslidVirtualStart": 244884,
+        "unslidVirtualEndExclusive": 261844,
+        "fileOffset": 244884,
+        "bytes": 16960,
+        "sha256": "01f0135edb6cc6497ee81f6fa53ada8104985832bcca0556f195fce51d33ee7e"
+      }
+    },
+    {
+      "path": "evidence/command-dispatch.asm",
+      "symbol": "_$s16AsideNativeSwift10runCommand7command5inputS2S_SStF",
+      "sha256": "d4670379b2a7aab7fa23d251fefe98fc55bfcdb6d527a9d3180adcb04b9a233a",
+      "bytes": 38224,
+      "range": {
+        "unslidVirtualStart": 298676,
+        "unslidVirtualEndExclusive": 301816,
+        "fileOffset": 298676,
+        "bytes": 3140,
+        "sha256": "ec642b4b1e9a352db37d92dfa32c394d7b05390625d683a0df1f0ed9f6800fc2"
+      }
+    },
+    {
+      "path": "evidence/resolved-key-storage.asm",
+      "symbol": "_$s16AsideNativeSwift11InstallMetaV18resolvedKeyStorageAA012InstallationgH0OyF",
+      "sha256": "362ed6de6bde2558d7e28e6c3e7f85b6730fb7eac490cc58161eed86fd3cf538",
+      "bytes": 381,
+      "range": {
+        "unslidVirtualStart": 203344,
+        "unslidVirtualEndExclusive": 203360,
+        "fileOffset": 203344,
+        "bytes": 16,
+        "sha256": "d96ad2ff531d1bbb74126d4f4f4aec0b35acfaaac64eae56faea9432aa4bc958"
+      }
+    },
+    {
+      "path": "evidence/parse-meta.asm",
+      "symbol": "_$s16AsideNativeSwift16parseInstallMetayAA0eF0V10Foundation4DataVKF",
+      "sha256": "ace127e859d526df17a2697af626a8008c12d2a6749b506c4a44e601e812ad25",
+      "bytes": 1893,
+      "range": {
+        "unslidVirtualStart": 210992,
+        "unslidVirtualEndExclusive": 211136,
+        "fileOffset": 210992,
+        "bytes": 144,
+        "sha256": "4967b3d523da906bacecc00e6c767e4b94d3ebb4cbd7795bedd65bb1cf51b5f6"
+      }
+    },
+    {
+      "path": "evidence/meta-read.asm",
+      "symbol": "_$s16AsideNativeSwift18cmdInstallMetaReadSSyF",
+      "sha256": "7557f5ba95e85d2239e0505e9461e1f30af4bab6a3135ebc2743aeb016db9805",
+      "bytes": 19906,
+      "range": {
+        "unslidVirtualStart": 243296,
+        "unslidVirtualEndExclusive": 244884,
+        "fileOffset": 243296,
+        "bytes": 1588,
+        "sha256": "be738d07685fb9ed8399c930dfcba501f2f42e460a41a5b6950a13d6d2d095d3"
+      }
+    },
+    {
+      "path": "evidence/storage-raw-value.asm",
+      "symbol": "_$s16AsideNativeSwift22InstallationKeyStorageO8rawValueSSvg",
+      "sha256": "51eaf5e8bce1e9639b93ba30990637d82e1c03b81ad296b348eee1163395bb0e",
+      "bytes": 998,
+      "range": {
+        "unslidVirtualStart": 201436,
+        "unslidVirtualEndExclusive": 201508,
+        "fileOffset": 201436,
+        "bytes": 72,
+        "sha256": "e01b4a7421fe3c5200e315fa8a57b19ebcfc24ea5a6c94472b0dfc98491e3625"
+      }
+    },
+    {
+      "path": "evidence/scheme-raw-value.asm",
+      "symbol": "_$s16AsideNativeSwift18InstallationSchemeO8rawValueSSvg",
+      "sha256": "daceec08e9876ad2971ee1093686b39d2b4b9a5d58860999b0967a3a84b777d3",
+      "bytes": 811,
+      "range": {
+        "unslidVirtualStart": 200796,
+        "unslidVirtualEndExclusive": 200852,
+        "fileOffset": 200796,
+        "bytes": 56,
+        "sha256": "d783b2ff7191fc27418c6c4df522a9cb4016ada01fc8e40b21d4d0d9a28d7b8f"
+      }
+    },
+    {
+      "path": "evidence/meta-coding-keys.asm",
+      "symbol": "_$s16AsideNativeSwift11InstallMetaV10CodingKeysO11stringValueSSvg",
+      "sha256": "3dbc478f9a8c64eb364ba5a8984d7e84612ffb74ae5670e44c155aaa4516315a",
+      "bytes": 906,
+      "range": {
+        "unslidVirtualStart": 202412,
+        "unslidVirtualEndExclusive": 202476,
+        "fileOffset": 202412,
+        "bytes": 64,
+        "sha256": "4b42417c43feab38bfe2537f4a30ed6e2280dcc8ba8c4048a62978139b34cbf8"
+      }
+    },
+    {
+      "path": "evidence/p256-coding-keys.asm",
+      "symbol": "_$s16AsideNativeSwift13WrappedDkP256V10CodingKeysO11stringValueSSvg",
+      "sha256": "7f94cc2f4d4d59af34053077cd60e71898b0cfcd045a4612a63db50731819946",
+      "bytes": 1988,
+      "range": {
+        "unslidVirtualStart": 203836,
+        "unslidVirtualEndExclusive": 203992,
+        "fileOffset": 203836,
+        "bytes": 156,
+        "sha256": "a147c6e34d419b7e47648ab2c23ba91f205f8a571b081f1a0ba618989ca71f16"
+      }
+    }
+  ],
+  "daemonSourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "sourceAnchors": [
+    {
+      "name": "native-json-napi-call",
+      "find": "function runNativeHelperCommand(Cn,ei=``){let ti=loadBinding();if(!ti)return{error:bindingLoadError??`Native helper binding is not available`};try{return JSON.parse(ti.run(Cn,ei))}catch(Cn){return{error:Cn instanceof Error?Cn.message:String(Cn)}}}",
+      "count": 1
+    },
+    {
+      "name": "mac-root-route",
+      "find": "process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`dk-unwrap`).dk):unwrapNativeDk()",
+      "count": 1
+    },
+    {
+      "name": "generic-root-ecdh",
+      "find": "runNativeKeyCommand(`ecdh-secret`,{peerPublicKey:Cn.ephemeral_public_key})",
+      "count": 1
+    },
+    {
+      "name": "generic-keys-status-shape",
+      "find": "function getNativeKeysInstalled(){return!!runNativeKeyCommand(`keys-status`).keysInstalled}",
+      "count": 1
+    },
+    {
+      "name": "mac-init-shape",
+      "find": "let Cn=runMacInstallHelper(`install-init`);return{scheme:Cn.scheme,sig:Cn.sig_pub,kem:Cn.kem_pub}",
+      "count": 1
+    },
+    {
+      "name": "generic-init-shape",
+      "find": "let Cn=runNativeKeyCommand(`init-keys`);if(typeof Cn.sig!=`string`||typeof Cn.kem!=`string`)throw Error(`Native helper binding failed to create public keys`)",
+      "count": 1
+    },
+    {
+      "name": "js-wrap-labels",
+      "find": "DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`",
+      "count": 1
+    },
+    {
+      "name": "blob-format",
+      "find": "encryptedBlobSchema=object({purpose:string$3(),nonce:string$3(),ciphertext:string$3()})",
+      "count": 1
+    },
+    {
+      "name": "p256-js-format",
+      "find": "wrappedDkP256Schema=object({scheme:literal(`p256_v1`),purpose:literal(`dk`),ephemeral_public_key:string$3(),nonce:string$3(),ciphertext:string$3()})",
+      "count": 1
+    }
+  ],
+  "calls": [
+    {
+      "name": "dispatch-old-root",
+      "at": 300668,
+      "target": 244884
+    },
+    {
+      "name": "dispatch-init-aliases",
+      "at": 300396,
+      "target": 216564
+    },
+    {
+      "name": "dispatch-status-aliases",
+      "at": 300528,
+      "target": 240016
+    },
+    {
+      "name": "dispatch-meta",
+      "at": 300604,
+      "target": 243296
+    },
+    {
+      "name": "dispatch-public-key-aliases",
+      "at": 300868,
+      "target": 268476
+    },
+    {
+      "name": "software-p256",
+      "at": 251220,
+      "target": 5325792
+    },
+    {
+      "name": "enclave-p256",
+      "at": 251412,
+      "target": 5325408
+    },
+    {
+      "name": "enclave-mlkem-decap",
+      "at": 249856,
+      "target": 5325636
+    },
+    {
+      "name": "p256-hkdf-a",
+      "at": 251968,
+      "target": 5325336
+    },
+    {
+      "name": "p256-hkdf-b",
+      "at": 252660,
+      "target": 5325336
+    },
+    {
+      "name": "open-a",
+      "at": 258860,
+      "target": 5325228
+    },
+    {
+      "name": "open-b",
+      "at": 259740,
+      "target": 5325228
+    },
+    {
+      "name": "open-c",
+      "at": 260864,
+      "target": 5325228
+    }
+  ]
+}
