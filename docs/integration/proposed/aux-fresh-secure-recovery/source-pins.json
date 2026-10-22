@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "sourceOnly": true,
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
+      "sha256": "36b26260d28eed14b5b4ae2ecfa4bf8864032de307e1d9565533e4380ac4dbd3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+      "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    }
+  ],
+  "newSelectorAuthorized": false,
+  "securityOperationsExecuted": false,
+  "secretFilesystemWrites": false,
+  "runtimeIntegrationPerformed": false
+}
