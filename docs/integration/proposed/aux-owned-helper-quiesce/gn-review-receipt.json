@@ -1,0 +1,16 @@
+{
+  "format": "aux.owned-helper.gn-review.v1",
+  "parentSha256": "c3b9a90bd381fe36469289739df5083f1cc814a973c612e3aabc107e42923147",
+  "successorSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "gnBeforeSha256": "4bc653b8d4927e84b94c59206dec45592b3b682eebe20a116535c2e573101bb1",
+  "gnAfterSha256": "26bb7d57234b2865da5ca52c7d890958fe20a8138b300b56f8f4b50a3ebdf928",
+  "exactOneAnchor": true,
+  "registeredHeaders": [
+    "direct_daemon_quiesce_result.h",
+    "owned_direct_helper_quiesce.h"
+  ],
+  "sources": 774,
+  "unchangedArt": 23,
+  "applied": false,
+  "compiled": false
+}
