@@ -1,0 +1,9 @@
+--- docs/integration/proposed/aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift
++++ docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift
+@@ -182,3 +182,6 @@
+         try checked(journal,checkpoint);var next=journal;next.revision += 1;next.phase = .abandoned;next.failure=nil;return next
+     }
+ }
++
++// Reviewed continuation: expose the existing digest, without a second algorithm.
++func migrationCandidateDigest(_ candidate:PreparedInstallationCandidate)throws->String { try candidateHash(candidate) }

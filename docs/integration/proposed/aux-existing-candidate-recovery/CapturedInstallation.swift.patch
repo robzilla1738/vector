@@ -1,0 +1,31 @@
+--- docs/integration/proposed/aux-native-four-row-preparation/source/CapturedInstallation.swift
++++ docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift
+@@ -121,3 +121,28 @@
+     guard prepared.rootVerified else { throw EnvelopePortError.rootMismatch }
+     return PreparedInstallationCandidate(snapshot:snapshot,channel:channel,signingPublic:signing.publicKey,kemPublic:kem.publicKey,wrapped:try prepared.envelope.auxJson())
+ }
++
++// Reviewed same-file continuation: only this source can invoke the fileprivate
++// verified candidate constructor. No random wrapping occurs during recovery.
++func recoverSoftwareP256Installation(_ rows:CapturedInstallationRows,archive:InstallationCandidateArchive,expectedCandidateSha256:String,verificationChallenge:Data)throws->PreparedInstallationCandidate {
++    guard archive.candidateSha256==expectedCandidateSha256,
++          case .complete(let snapshot)=inspectCapturedInstallation(rows),snapshot.authorityMetadata.scheme == .p256,snapshot.authorityMetadata.storage == .software,
++          !verificationChallenge.isEmpty,verificationChallenge.count<=65_536 else{throw InstallationCandidateRecoveryError.wrongBinding}
++    func digest(_ bytes:Data)->String{SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined()}
++    let originals=["metadata":snapshot.metadataBytes,"signing":snapshot.signingBytes,"kem":snapshot.kemBytes,"wrappedRoot":snapshot.wrappedBytes]
++    guard originals.mapValues(digest)==archive.originalRowHashes else{throw InstallationCandidateRecoveryError.originalChanged}
++    let signing=try ExistingP256SigningAuthority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.signingBytes,expectedPublicKey:archive.signingPublicKey)
++    let kem=try ExistingP256Authority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.kemBytes,expectedPublicKey:archive.kemPublicKey)
++    guard try signing.verifies(signature:signing.signature(for:verificationChallenge),challenge:verificationChallenge)else{throw EnvelopePortError.authorityMismatch}
++    let channel:LegacyInstallationChannel=archive.sourceChannel == "normal" ? .normal:.canary
++    let legacy=try P256DkEnvelope(json:snapshot.wrappedBytes),replacement=try P256DkEnvelope(json:archive.wrappedRootV2)
++    guard replacement.version == .auxV2 else{throw EnvelopePortError.unsupportedFormat}
++    var old=try openP256Envelope(legacy,authority:kem,context:channel.context)
++    defer{old.resetBytes(in:0..<old.count)}
++    var new=try AuxNativeEnvelopeV2.open(replacement,authority:kem)
++    defer{new.resetBytes(in:0..<new.count)}
++    guard old.count==32,new.count==32,zip(old,new).reduce(UInt8(0),{$0 | ($1.0 ^ $1.1)})==0 else{throw EnvelopePortError.rootMismatch}
++    let candidate=PreparedInstallationCandidate(snapshot:snapshot,channel:channel,signingPublic:signing.publicKey,kemPublic:kem.publicKey,wrapped:archive.wrappedRootV2)
++    guard try migrationCandidateDigest(candidate)==expectedCandidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}
++    return candidate
++}

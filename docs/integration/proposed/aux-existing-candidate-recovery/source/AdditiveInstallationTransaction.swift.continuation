@@ -1,0 +1,3 @@
+
+// Reviewed continuation: expose the existing digest, without a second algorithm.
+func migrationCandidateDigest(_ candidate:PreparedInstallationCandidate)throws->String { try candidateHash(candidate) }

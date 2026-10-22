@@ -1,0 +1,28 @@
+--- docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift
++++ docs/integration/proposed/aux-existing-candidate-recovery/source/PrivateInstallationJournalStore.swift
+@@ -179,3 +179,25 @@
+     }
+     func commit(_ journal:AdditiveInstallationJournal,expectedHead:String?)throws->StoredInstallationCheckpoint { try publish(stage(journal,expectedHead:expectedHead),expectedHead:expectedHead) }
+ }
++
++// Reviewed same-file continuation using the exact private FD/durability boundary.
++// Fixed archive only, create-only; no generic arbitrary secret-byte write API.
++extension PrivateInstallationJournalStore {
++    func archiveCandidate(_ archive:InstallationCandidateArchive)throws {
++        try locked {
++            let bytes=try archive.encoded()
++            if let current=try loadUnlocked(){guard current.journal.candidateSha256==archive.candidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}}
++            if let existing=try readFile("candidate-archive.json") {guard existing==bytes else{throw InstallationCandidateRecoveryError.wrongBinding}}
++            else{try exclusiveWrite("candidate-archive.json",bytes:bytes)}
++            try syncFile("candidate-archive.json")
++        }
++    }
++    func loadCandidateArchive()throws->InstallationCandidateArchive {
++        try locked {
++            guard let bytes=try readFile("candidate-archive.json"),let current=try loadUnlocked()else{throw InstallationCandidateRecoveryError.wrongBinding}
++            let archive=try InstallationCandidateArchive.decode(bytes)
++            guard archive.candidateSha256==current.journal.candidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}
++            return archive
++        }
++    }
++}
