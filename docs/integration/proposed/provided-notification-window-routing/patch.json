@@ -1,0 +1,14 @@
+{
+  "component": "agent",
+  "path": "background.js",
+  "baselineSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+  "outputSha256": "4a038ab4f435c06d8593de6def24910a7ac202396d53ad44d4d09cba893232b5",
+  "edits": [
+    {
+      "find": "async function ic(e, t) {\n  if (!chrome.tabs?.create || !chrome.tabs.update || !chrome.tabs.query) throw new Error(\"Chrome tabs API is unavailable\");\n  const r = ry(e), n = chrome.runtime.getURL(\"main.html\"), o = (await chrome.tabs.query(t === void 0 ? {} : { windowId: t })).find((s) => {\n    const a = s.url ?? s.pendingUrl;\n    return typeof s.id == \"number\" && a?.startsWith(n);\n  });\n  if (typeof o?.id == \"number\") {\n    const s = await chrome.tabs.update(o.id, {\n      active: !0,\n      url: r\n    });\n    chrome.windows?.update && typeof s?.windowId == \"number\" && await chrome.windows.update(s.windowId, { focused: !0 });\n    return;\n  }\n  const i = await chrome.tabs.create({\n    active: !0,\n    url: r,\n    ...t !== void 0 ? { windowId: t } : {}\n  });\n  chrome.windows?.update && typeof i.windowId == \"number\" && await chrome.windows.update(i.windowId, { focused: !0 });\n}\n",
+      "replace": "async function ic(e, t) {\n  if (!chrome.tabs?.create || !chrome.tabs.update || !chrome.tabs.query) throw new Error(\"Chrome tabs API is unavailable\");\n  // A concrete target may have closed or changed native profile. Do not\n  // select a substitute hidden workspace; create in this caller's profile.\n  if (Number.isInteger(t) && t >= 0 &&\n      !(await chrome.windows.getAll()).some((window) => window.id === t)) {\n    await chrome.windows.create({ url: ry(e), type: \"normal\", focused: !0, incognito: !1 });\n    return;\n  }\n  const r = ry(e), n = chrome.runtime.getURL(\"main.html\"), o = (await chrome.tabs.query(t === void 0 ? {} : { windowId: t })).find((s) => {\n    const a = s.url ?? s.pendingUrl;\n    return typeof s.id == \"number\" && a?.startsWith(n);\n  });\n  if (typeof o?.id == \"number\") {\n    const s = await chrome.tabs.update(o.id, {\n      active: !0,\n      url: r\n    });\n    chrome.windows?.update && typeof s?.windowId == \"number\" && await chrome.windows.update(s.windowId, { focused: !0 });\n    return;\n  }\n  const i = await chrome.tabs.create({\n    active: !0,\n    url: r,\n    ...t !== void 0 ? { windowId: t } : {}\n  });\n  chrome.windows?.update && typeof i.windowId == \"number\" && await chrome.windows.update(i.windowId, { focused: !0 });\n}\n",
+      "count": 1,
+      "kind": "integration"
+    }
+  ]
+}
