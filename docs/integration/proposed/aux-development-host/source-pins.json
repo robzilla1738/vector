@@ -35,11 +35,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/README.md",
-      "sha256": "832d59111b3b39878d85959fa38ecbd322bf6a4618078804f050c22b3587b6c5"
+      "sha256": "3d04010919b335079688f0e6aa7e9e54dd8ef0faa56da9f31e10a5659d43b38a"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
-      "sha256": "543012ef79d269920565f4002a1027791be1d3e41288c620564065ee2d0e67d0"
+      "sha256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/check.mjs",
@@ -59,7 +59,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
-      "sha256": "d1d9373a54e5fcc8a7114a5f388d752aa6c932d19ce963755942ac844ad83478"
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
@@ -164,6 +164,34 @@
     {
       "path": "docs/integration/proposed/aux-development-host/evidence/pdf-image-policy.json",
       "sha256": "b4d577041670261a3c0cc41e9c720fabf6501c35a05d31f543ccfc39e3be89c1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/evidence/owned-os-producer.json",
+      "sha256": "53b5867f1759a919159c32ee516d62c2c610ad1d3e24e10660cbd48013a86235"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/verify-os-owner.mjs",
+      "sha256": "ff9547659e87fea7a7a2ddb83db329db7134fc7912112be62f24d7b77cd28890"
     }
   ],
   "optionalOSProjectionReview": {
@@ -175,7 +203,8 @@
     ],
     "optionalOSCapabilityEnabled": false,
     "proof": "docs/integration/proposed/aux-owned-macos-utility-dispatch/verify-composition.py",
-    "review": "Exact whitespace-normalized active dispatcher source unchanged with OS declarations absent. Original compile/public fixture receipt remains historical; no signing or protected calls executed."
+    "review": "Exact whitespace-normalized active dispatcher source unchanged with OS declarations absent. Original compile/public fixture receipt remains historical; no signing or protected calls executed.",
+    "historical": true
   },
   "pdfImagePolicySuccessor": {
     "format": "aux.development.host.policy.v2",
@@ -193,5 +222,12 @@
         "currentSha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
       }
     ]
+  },
+  "ownedOSProducerSuccessor": {
+    "optionalOSCapabilityEnabled": true,
+    "newExecutionPermissionGranted": false,
+    "combinedCompilationPending": true,
+    "sameScopedOwner": true,
+    "sourceOnlyCheck": "verify-os-owner.mjs"
   }
 }

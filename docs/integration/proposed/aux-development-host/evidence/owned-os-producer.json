@@ -1,0 +1,52 @@
+{
+  "format": "aux.development.owned-os-producer.v1",
+  "currentSources": [
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/build.sh",
+      "sha256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    }
+  ],
+  "fiveOSRoutesSourceAttached": true,
+  "sameScopedOwnerAndImmutableCustody": true,
+  "productionGraphCompilation": "pending single combined integrator compile",
+  "public51PolicyAnd43LifecycleFixturesRerun": false,
+  "factoryExecuted": false,
+  "OSMethodsExecuted": false,
+  "protectedSecurityCallsExecuted": false,
+  "signingPerformed": false,
+  "UIChanged": false,
+  "appActivated": false,
+  "remaining": [
+    "combined production graph compilation with worker host and initializer",
+    "trusted writer admission and authentic signed host/factory execution remain unapproved/unverified",
+    "actual allowed AppKit execution context and bounded OS effect acceptance remain distinct"
+  ]
+}

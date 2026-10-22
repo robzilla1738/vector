@@ -1,7 +1,7 @@
 // Trusted native producer SOURCE. No JS argument, module initializer or bypass.
 import Foundation
-#if !AUX_MINIMAL_RUNTIME_DISPATCH || !AUX_SCOPED_SECURE_STORE_DISPATCH
-#error("Development owner requires the reviewed minimal scoped runtime graph")
+#if !AUX_MINIMAL_RUNTIME_DISPATCH || !AUX_SCOPED_SECURE_STORE_DISPATCH || !AUX_MACOS_UTILITY_DISPATCH
+#error("Development owner requires the reviewed minimal scoped runtime graph with owned OS utilities")
 #endif
 
 private func sameDevelopmentHost(_ before:AuxAuthenticatedDevelopmentPolicy,_ after:AuxAuthenticatedDevelopmentPolicy)throws {
@@ -19,7 +19,13 @@ func AuxCreateSignedDevelopmentOwner(_ handle:UnsafeMutablePointer<UInt64>?,_ re
         let terminal=try AuxRuntimeCapturedCommandContext.validate(selection:before.contents.selection,rows:rows)
         let scoped=try ScopedAuxCommandContext.runtime(terminal:terminal,policy:before.contents.logicalKeys,boundary:ActualAuxSecureStoreBoundary())
         let afterImport=try AuxSignedDevelopmentPolicyLoader.load();try sameDevelopmentHost(before,afterImport)
-        let owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped)
+        // Constructing this boundary performs no OS operation. The exact same
+        // scoped owner retains its immutable utility core/custody, so registry
+        // retirement and typed drain close these jobs rather than another owner.
+        let osCustody=AuxOSJobCustody()
+        let osBoundary=AuxAppKitUtilityBoundary(custody:osCustody)
+        let osUtilities=AuxMacOSUtilityCommandCore(boundary:osBoundary)
+        let owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped,macOSUtilities:osUtilities)
         handle.pointee=owner.handle;retained.pointee=Unmanaged.passRetained(owner).toOpaque();return 0
     }catch{return -1} // Fixed status only; never log native keys/policy/private data.
 }
