@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-22T06:52:30.511Z",
+  "checks": [
+    "real sandbox checkout completion delivered signed webhook and granted exactly $10 in purchased credits",
+    "real sandbox refund delivered signed webhook and reversed purchased credits"
+  ],
+  "fixtureRemoved": true,
+  "livemode": false,
+  "realMoney": false,
+  "publicTestCardOnly": true
+}

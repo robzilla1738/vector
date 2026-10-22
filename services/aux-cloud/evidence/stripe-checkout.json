@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-22T06:36:59.740Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "checks": [
+    "actual deployed embedded subscription checkout, intended Aux price/return URL, owner mapping and idempotent retry",
+    "cross-account cancellation cannot expire another customer checkout",
+    "new plan selection expires the abandoned owned checkout without a one-hour lock",
+    "explicit close expires checkout and permits immediate reselection",
+    "actual deployed portal uses the prepared Aux configuration and return URL",
+    "actual hosted $10 sandbox credit checkout contract, expired without payment",
+    "no payment method or charge used"
+  ],
+  "fixtureRemoved": true,
+  "livemode": false,
+  "paymentCompleted": false,
+  "embeddedRendered": false
+}
