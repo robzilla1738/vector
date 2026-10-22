@@ -1,0 +1,45 @@
+{
+  "format": "aux.live-dk-purpose-evidence.v1",
+  "baseCommit": "5472a64af",
+  "exitCode": 0,
+  "originalAddonExecuted": false,
+  "securityExecuted": false,
+  "activePipelineChanged": false,
+  "standaloneRuntimeOriginalBrandCount": 0,
+  "checks": [
+    "cache authenticated plaintext preservation and exact source writer/reader",
+    "evidence raw container preservation and exact source encrypt/decrypt",
+    "daemon token actual shared producer/session/browser verifier call structure via real HS256 adapter",
+    "legacy domain/auth token rejection",
+    "wrong cache purpose/evidence account refusal",
+    "base plus paired CSK source composition"
+  ],
+  "notExecuted": [
+    "bundled JOSE library",
+    "original runtime/addon",
+    "actual authority capture",
+    "owner or provider IO"
+  ],
+  "files": [
+    {
+      "path": "source/runtime.mjs",
+      "sha256": "943abad254ede97946df9d3aae9d016d0f9372a75561a115dc2c0999155e016c"
+    },
+    {
+      "path": "source/prepare.mjs",
+      "sha256": "1785b7aa37097d2be1858b622880da08f33ec4fd79c3d89139849bc0377ee414"
+    },
+    {
+      "path": "source/adapt.mjs",
+      "sha256": "b93367c5a2748bc97b64b07ac6aa4af296548109a7fbf40ecb8f2864ba8a53ec"
+    },
+    {
+      "path": "tests/check.mjs",
+      "sha256": "51108be0b0aec10a01550ec17be31eeb2d5b544dfab02df553b038a8ffa1eab1"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "0679b19878759aec047de3036d30f33936b7c0f32dbc69deedf1260c8de5a9c4"
+    }
+  ]
+}
