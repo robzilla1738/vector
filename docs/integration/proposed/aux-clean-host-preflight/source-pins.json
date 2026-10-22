@@ -19,7 +19,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/README.md",
-      "sha256": "3b01e7c49912353dc508eeffe3274bf0eaac391e60fd6c970710a08c93414244"
+      "sha256": "15622747a2a4773f35d283130a23211b4a1203df03b9391e189afc211ff3f462"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/check.mjs",
@@ -27,7 +27,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/loader-contract.json",
-      "sha256": "a01999d969e8075416a3cd4d89222197d016ecee75c6aa093c5ddd06aba75b43"
+      "sha256": "9834eacf3df524a4da07504994bd19767d2832c51d13a1236a70d837ff9c93e7"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostImports.cc",
@@ -119,7 +119,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "2a7a4c94ab162ea0f1c3a2356052d671785ce76a188067f29f1a696ac2e8f426"
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
     },
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",

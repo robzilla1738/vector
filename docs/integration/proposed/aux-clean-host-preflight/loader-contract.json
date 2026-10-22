@@ -127,7 +127,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "2a7a4c94ab162ea0f1c3a2356052d671785ce76a188067f29f1a696ac2e8f426",
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e",
       "anchors": [
         {
           "anchor": "struct ActualAuxSecureStoreBoundary",

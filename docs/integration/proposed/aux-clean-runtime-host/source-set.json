@@ -1,0 +1,59 @@
+{
+  "format": "aux.clean.runtime.host.source-set.v1",
+  "swift": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
+      "sha256": "8e19daa7066e69d6cf80df0b64cb1e74829e6c4b70128259b91f0db0e687ce39"
+    },
+    {
+      "path": "docs/integration/proposed/aux-clean-runtime-host/source/AuxCleanRuntimeHost.swift",
+      "sha256": "77ac86e4c06772b89179c0f4a5594840164d162e815d33ee1f2cff20cb52c0c0"
+    }
+  ],
+  "bridge": {
+    "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostImports.cc",
+    "sha256": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1"
+  },
+  "separateGuardTypecheck": {
+    "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+    "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+  },
+  "protectedExecutionPerformed": false,
+  "state2LaunchAuthorized": false
+}
