@@ -1,0 +1,26 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import {transformProvidedPendingFiles as transform} from '../../../../scripts/lib/provided-pending-files.mjs';
+const path='assets/permission-approval-D-GTf91U.js';
+const original=fs.readFileSync(`${process.argv[2]}/permission-approval-D-GTf91U.js`,'utf8');
+const result=transform({component:'agent',path,text:original});
+const anchor=result.anchors.find(a=>a.find.startsWith('St=async'));
+assert.equal(anchor.count,1);
+const callbacks=[],reads=[];
+const context=vm.createContext({Array,ge:files=>{reads.push(files);return new Promise(resolve=>callbacks.push(resolve))}});
+vm.runInContext(`var ${anchor.replace}`,context);
+const file={name:'aux-retry.txt'},input={files:[file],value:'fixture'};
+const first=context.St({target:input});
+assert.equal(input.value,'');assert.equal(reads[0][0],file);
+// FileList is snapshotted before reset; replacing it cannot change the read.
+input.files=[];assert.equal(reads[0].length,1);
+callbacks.shift()();await first;
+input.files=[file];input.value='fixture';
+const retry=context.St({target:input});
+assert.equal(input.value,'');assert.equal(reads[1][0],file);
+callbacks.shift()();await retry;
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+fs.writeFileSync(new URL('./source-pins.json',import.meta.url),JSON.stringify({path,sourceSha256:hash(original),outputSha256:hash(result.text),anchors:result.anchors.map(a=>({count:a.count,findSha256:hash(a.find)}))},null,2)+'\n');
+console.log('PASS: actual transformed input handler snapshots files, resets selection before pending read, and accepts the same file on retry.');

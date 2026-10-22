@@ -1,0 +1,31 @@
+{
+  "path": "assets/permission-approval-D-GTf91U.js",
+  "sourceSha256": "4bd21aeaf261c71712b6fdb3d9fc52fcb347977f73332e0e4719ab990cbac4f9",
+  "outputSha256": "3d040353e28f66cc8051fe4ceae1ef69fc03eb00dec03f78bf368f3c8c6b801e",
+  "anchors": [
+    {
+      "count": 1,
+      "findSha256": "2b721118ba61bfded4f3db14717e5e37a315ffac1fd5b6a9a1c6484a8b20d7f2"
+    },
+    {
+      "count": 1,
+      "findSha256": "9142c8f939fe416f3ca4a89d62a7c92c46f7b8a27011de3a5f71d2e31596c9fb"
+    },
+    {
+      "count": 1,
+      "findSha256": "c681bf8fcfa2fc90f5ad72ee423ce242faa02b75db1d7946b83e740588830fb9"
+    },
+    {
+      "count": 1,
+      "findSha256": "d7934ca3eb88076e11a3313132bf360a3aa3199c5cbf16d69dbd3da194c260d3"
+    },
+    {
+      "count": 1,
+      "findSha256": "ee0eb8823aaa26b54d5dac08c689c85df70f0687283ba8999c20fda954714627"
+    },
+    {
+      "count": 1,
+      "findSha256": "dd3e49fd6f1f7ca4e2e9d47a249ffb553fe84125531bc3e3660b5dd83e2bf921"
+    }
+  ]
+}

@@ -1,6 +1,11 @@
 /** Preserve original file reads until attachment draft handoff completes. */
 const edits = [
   {
+    find: 'St=async c=>{const d=Array.from(c.target.files||[]);await ge(d)}',
+    replace: 'St=async c=>{const d=Array.from(c.target.files||[]);c.target.value="";await ge(d)}',
+    count: 1
+  },
+  {
     find: 'X.current=E,je?.(E,x)',
     replace: 'X.current=E;const auxSaved=je?.(E,x);if(auxSaved===!1){auxDraftSaveFailed.current||se.error("Could not save this draft. Keep this window open and remove a large attachment, then try again."),auxDraftSaveFailed.current=!0}else auxDraftSaveFailed.current=!1;return auxSaved',
     count: 1
