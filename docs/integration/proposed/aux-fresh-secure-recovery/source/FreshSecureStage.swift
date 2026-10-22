@@ -24,6 +24,9 @@ struct FreshSecureStageBinding:Codable {
     }
     func assertedCheckpoint()throws->AssertedDurableFreshStageBinding { .init(bindingSha256:freshJournalHash(try encoded())) }
     func validate(journal:FreshInstallationJournal,selector:ReviewedFreshSecureStageSelector,checkpoint:AssertedDurableFreshStageBinding)throws {
+        // Bind ALL immutable journal fields, not merely candidate/transaction IDs.
+        var initial=journal;initial.revision=0;initial.phase = .draft;initial.intended=[];initial.verified=[];initial.failure=nil
+        guard try freshJournalHash(initial.encoded())==initialDraftSha256 else{throw FreshSecureStageError.binding}
         guard format=="aux.install.fresh.secure-stage.binding.v1",transactionId==journal.transactionId,scope==journal.scope,candidateSha256==journal.candidateSha256,
               service==selector.service,account==selector.account,accessGroup==selector.accessGroup,
               [initialDraftSha256,secretPayloadSha256].allSatisfy({$0.utf8.count==64 && $0.utf8.allSatisfy{(48...57).contains($0)||(97...102).contains($0)}}),
@@ -67,6 +70,7 @@ struct RestoredFreshSecureStage {
         return RestoredFreshIntent(journal:intended,payload:payloads[row]!,selector:selector)
     }
     func observeInterruptedIntent(journal:FreshInstallationJournal,checkpoint:AssertedFreshDurableCheckpoint,captured:CallerCapturedFreshTargets)throws->FreshIntentObservation {
+        try stageBinding.validate(journal:journal,selector:.init(service:stageBinding.service,account:stageBinding.account,accessGroup:stageBinding.accessGroup),checkpoint:stageBinding.assertedCheckpoint())
         guard journal.transactionId==transactionId,journal.candidateSha256==candidateSha256 else{throw FreshSecureStageError.binding}
         return try FreshInstallationTransaction.reconcileIntent(journal,checkpoint:checkpoint,captured:captured)
     }
