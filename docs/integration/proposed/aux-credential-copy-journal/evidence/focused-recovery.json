@@ -1,0 +1,54 @@
+{
+  "format": "aux.credential-copy-journal.focused-evidence.v1",
+  "session": 80688,
+  "exitCode": 0,
+  "productionSourcesSeparate": true,
+  "capturedBoundaryOnly": true,
+  "securityExecuted": false,
+  "checks": [
+    "normal opaque copy",
+    "durable verified readback",
+    "stale HEAD CAS refusal",
+    "uncertain successful Add restart without replay",
+    "restored draft observation-only",
+    "seven original/partial revisions retained",
+    "no raw payload persisted",
+    "unsafe mode refusal retaining evidence"
+  ],
+  "limits": [
+    "no actual Security executor",
+    "no owner state",
+    "no power-loss injection",
+    "no custody or activation authority"
+  ],
+  "files": [
+    {
+      "path": "generate.mjs",
+      "sha256": "bc4ec688bcd648328a51aa3f18ed4d02c4cf3699f438f15b70862efe36025818"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "211220062e605fc540141db26c20590f6d7730bca3dbeadf0b93c00d2b9e061b"
+    },
+    {
+      "path": "source/CredentialCopyStoreRecords.swift",
+      "sha256": "2a55b2dd7990dd4089325353f2b7a5ffc7973c374c314b708f4f41483bc326c3"
+    },
+    {
+      "path": "source/PrivateAuxCredentialCopyJournalStore.tail.swift",
+      "sha256": "9ebb08af10a10687aed068b1ba3a056906894b2825f429a7b4d9cef079c4461a"
+    },
+    {
+      "path": "source/DurableCapturedAuxCredentialCopy.swift",
+      "sha256": "acc419a43b2aa359d36bc0f987f8464310900c5bac4974d17c2952c6b28a40a1"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "b538a40380f6f7e89fa4e501235c09170c2da1be404f0e14ad46cf2e3dffb209"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "ee2e61a44e3d445e3509adb6f96b0e169f69e1c46e8ebe104f03a8a5f416f851"
+    }
+  ]
+}

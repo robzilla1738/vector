@@ -1,0 +1,45 @@
+{
+  "format": "aux.credential-copy-journal.source-pins.v1",
+  "fdBaseline": {
+    "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+    "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+  },
+  "fdAdaptations": [
+    {
+      "find": "PrivateFreshInstallationJournalStore",
+      "replace": "PrivateAuxCredentialCopyJournalStore",
+      "count": 1
+    },
+    {
+      "find": "FreshInstallationJournalStoreError",
+      "replace": "AuxCredentialCopyStoreError",
+      "count": 28
+    },
+    {
+      "find": "\".aux-fresh-installation-journal-\"",
+      "replace": "\".aux-credential-copy-journal-\"",
+      "count": 1
+    },
+    {
+      "find": "uuid.uuidString==transactionId",
+      "replace": "uuid.uuidString.lowercased()==transactionId",
+      "count": 1
+    }
+  ],
+  "storeTailSha256": "9ebb08af10a10687aed068b1ba3a056906894b2825f429a7b4d9cef079c4461a",
+  "storeRecordsSha256": "2a55b2dd7990dd4089325353f2b7a5ffc7973c374c314b708f4f41483bc326c3",
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift",
+      "sha256": "7d4d765391fdbb2f687c50aab3e6ba9776c9048fe6ae7cc48feb66ec446432d6"
+    }
+  ]
+}
