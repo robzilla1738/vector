@@ -100,28 +100,32 @@ async function auxCloudDiscoverSessions(accountId){
 function auxCloudStartSessionDiscovery(accountId){if(!auxCloudSessionIdentity(accountId))return;auxCloudSessionDiscovery??=new Map;const identity=auxCloudSessionIdentity(accountId),previous=auxCloudSessionDiscovery.get(identity);if(previous&&(previous.running||Date.now()-previous.at<30000))return;const state={at:Date.now(),running:true};auxCloudSessionDiscovery.set(identity,state);auxCloudSessionState(accountId).then(index=>{index.queue=index.queue.catch(()=>{}).then(()=>auxCloudDiscoverSessions(accountId));return index.queue;}).catch(()=>logger.warn('[Aux cloud] Session discovery deferred; local history preserved',{accountId})).finally(()=>{state.running=false;});}
 `;
 
-export function applyCloudSessionAdapter(source) {
+export function applyCloudSessionAdapter(source, { version = 'archival', branding = 'aside' } = {}) {
+  if (!['archival','1852'].includes(version)||!['aside','aux'].includes(branding)) throw Error('Unknown session adapter source variant');
+  const helpers=branding==='aux'?cloudSessionHelpers.replaceAll('fetchAsideAPIAuthenticatedRequest','fetchAuxAPIAuthenticatedRequest').replaceAll('AsideApiError','AuxApiError').replaceAll('normalizeAsideApiError','normalizeAuxApiError').replaceAll('ASIDE_API_BASE_URL','AUX_API_BASE_URL'):cloudSessionHelpers;
   let text = source;
   const anchors = [];
   function edit(find, replace) {
     if (text.split(find).length - 1 !== 1) throw new Error(`Cloud session adapter anchor changed: ${find.slice(0, 100)}`);
     text = text.replace(find, replace); anchors.push({ kind: 'integration', find, replace, count: 1 });
   }
-  edit('async function createSession$1(Cn,ei){', `${cloudSessionHelpers}\nasync function createSession$1(Cn,ei){`);
+  edit('async function createSession$1(Cn,ei){', `${helpers}\nasync function createSession$1(Cn,ei){`);
   const start = text.indexOf('SessionStore,init_store$1='), end = text.indexOf('})(SessionStore||={})', start) + '})(SessionStore||={})'.length;
   if (start < 0 || end < start) throw new Error('Pinned SessionStore namespace is missing');
   const original = text.slice(start, end);
   let store = original;
-  for (const [method, fn, asynchronous] of [['insert','ti',false],['update','bi',false],['appendMessage','Hi',false],['archive','ki',false],['unarchive','Ai',false],['clearMessages','ii',true],['editUserMessage','ri',true]]) {
+  for (const [method, fn, asynchronous] of [['insert','ti',false],['update',version==='1852'?'xi':'bi',false],['appendMessage',version==='1852'?'Ui':'Hi',false],['archive',version==='1852'?'Ai':'ki',false],['unarchive',version==='1852'?'ji':'Ai',false],['clearMessages','ii',true],['editUserMessage','ri',true]]) {
     const find = `Cn.${method}=${fn}`;
     if (store.split(find).length - 1 !== 1) throw new Error(`Pinned SessionStore export changed: ${method}`);
     const id = ['insert'].includes(method) ? 'result.id' : method === 'editUserMessage' ? 'args[1].sessionId' : 'args[1]';
     store = store.replace(find, `Cn.${method}=${asynchronous?'async ':''}function(...args){const result=${asynchronous?'await ':''}${fn}(...args);auxCloudQueueSessionBackup(args[0],${id});return result}`);
   }
-  if (store.split('Cn.remove=Di;').length - 1 !== 1) throw new Error('Pinned SessionStore remove export changed');
-  store = store.replace('Cn.remove=Di;', 'Cn.remove=function(accountId,id){auxCloudQueueSessionDelete(accountId,id);return Di(accountId,id)};');
+  const remove=version==='1852'?'Oi':'Di',removeExport=`Cn.remove=${remove};`;
+  if (store.split(removeExport).length - 1 !== 1) throw new Error('Pinned SessionStore remove export changed');
+  store = store.replace(removeExport, `Cn.remove=function(accountId,id){auxCloudQueueSessionDelete(accountId,id);return ${remove}(accountId,id)};`);
   edit(original, store);
   edit('list:accountProcedure.input(sessionListOptionsSchema).query(({ctx:Cn,input:ei})=>SessionStore.list(Cn.accountId,ei))', 'list:accountProcedure.input(sessionListOptionsSchema).query(({ctx:Cn,input:ei})=>{auxCloudStartSessionDiscovery(Cn.accountId);return SessionStore.list(Cn.accountId,ei)})');
-  edit('listPreviewItems:accountProcedure.input(sessionPreviewItemsOptionsSchema).query(({ctx:Cn,input:ei})=>SessionStore.listPreviewItems(Cn.accountId,ei))', 'listPreviewItems:accountProcedure.input(sessionPreviewItemsOptionsSchema).query(({ctx:Cn,input:ei})=>{auxCloudStartSessionDiscovery(Cn.accountId);return SessionStore.listPreviewItems(Cn.accountId,ei)})');
+  const previewProjection=version==='1852'?'.map(ei=>{let ti=ei.trigger?.type===`agent`&&ei.status===`idle`?SessionStore.get(Cn.accountId,ei.id)?.toolState:void 0;return{...ei,waiting:!!(ti&&hasPendingCoderWork(Cn.accountId,ei.id,ti))}})':'';
+  edit('listPreviewItems:accountProcedure.input(sessionPreviewItemsOptionsSchema).query(({ctx:Cn,input:ei})=>SessionStore.listPreviewItems(Cn.accountId,ei)'+previewProjection+')', 'listPreviewItems:accountProcedure.input(sessionPreviewItemsOptionsSchema).query(({ctx:Cn,input:ei})=>{auxCloudStartSessionDiscovery(Cn.accountId);return SessionStore.listPreviewItems(Cn.accountId,ei)'+previewProjection+'})');
   return { text, anchors };
 }
