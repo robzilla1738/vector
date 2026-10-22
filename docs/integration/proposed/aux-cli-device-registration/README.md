@@ -1,6 +1,6 @@
 # Mac CLI installation registration pairing
 
-This inactive adapter fixes the actual original `getCliDeviceRegistration()` caller against the recovered Mac native dispatcher and current Aux cloud device schema. It changes no UI, startup, sign-in request fields or native code. No runtime addon, owner authority/state, cloud service, credential, Keychain or signing operation was used.
+This source-pinned adapter fixes the actual original `getCliDeviceRegistration()` caller against the recovered Mac native dispatcher and current Aux cloud device schema. It changes no UI, startup, sign-in request fields or native code. No runtime addon, owner authority/state, cloud service, credential, Keychain or signing operation was used.
 
 The pinned original CLI incorrectly requests `keys-status.keysInstalled` on macOS although that original native alias returns `{installed,scheme}`. It also labels all registrations P256. The recovered original `get-public-keys` response contains `{scheme,sig,kem}`; public signing bytes use P256 X9.63 or MLDSA65 raw representation.
 
@@ -32,3 +32,9 @@ The original full CLI source SHA, exact function input/output hashes and count1 
 ## Root pipeline integration
 
 The state2 CLI adapter now applies the reviewed function patch after provider/runtime identity transforms and before cold-entry refusal. Its helper, input pin, both exact function texts and the actual cloud auth schema are included in staging provenance. The four focused tests pass with the real integrated adapter (the repeated-generation check now expects the composed entry to reject a second application). State1 behavior is unchanged. This integration is newer than the CLI-prehome packaged candidate; a new stage/package remains required before claiming delivered device-registration behavior. No actual sign-in or authority was invoked.
+
+## Successor package evidence
+
+`out/provided-candidate-aux-cli-registration/Aux.app` now includes this exact registration replacement in its actual CLI SEA (one replacement, zero original function occurrences). Fresh staging and packaging completed with10,747 supplied resources/418 native leaves. `check-package.mjs` parsed the actual packaged code, verified cold refusal remains first and imports remain builtin-only, matched the pre-home wrapper to the preceding verified artifact, and matched the unchanged native framework to its build receipt. All135 visual assets/five stylesheets match the preceding candidate. Exact hashes/limits are in `package-evidence.json`.
+
+The candidate remains unsigned and quarantined: no app execution, native authority, real sign-in or accepted-app replacement occurred. The source correction is delivered in this candidate, but cold-entry admission intentionally prevents runtime use until the independent identity/storage integration is accepted. No claim of actual registration/login acceptance is made.
