@@ -2,11 +2,11 @@
   "version": 1,
   "activated": false,
   "actualSecurityExecuted": false,
-  "capturedChecks": 23,
+  "capturedChecks": 24,
   "files": [
     {
       "path": "docs/integration/proposed/aux-native-secure-store/README.md",
-      "sha256": "614e8e904aca66d8d69b75d6436f2541a6db0f794a27dffc125f1936669e4292"
+      "sha256": "6476a77dd21c322c2e79ab894927c105eb58ec4fb9973d51d5ab3fd8a41b9f14"
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/check.sh",
@@ -34,11 +34,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "be2d8586361566ce95d18167b66ad472bae501911c70fde114769469a55c6acf"
+      "sha256": "2a7a4c94ab162ea0f1c3a2356052d671785ce76a188067f29f1a696ac2e8f426"
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/tests/main.swift",
-      "sha256": "27a8866cc8ea518ab3e945bbb418d21d0768103c89740d302ba24289a2f0b06d"
+      "sha256": "72244e4808c695f45deb5e8d5144278052229f0bce9a37f8aff6d32f2e2f9da0"
     },
     {
       "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",

@@ -8,17 +8,17 @@ struct AuxSecureStoreSelector:Hashable { let service:String;let account:String;l
 struct ReviewedAuxSecureStoreScope {
     let scope:String
     private let group:String
-    private let allowedKeys:Set<String>
+    private let allowedKeys:Set<Data>
     init(scope:String,accessGroup:String,allowedLogicalKeys:Set<String>)throws {
         guard scope.utf8.count==64,scope.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),
               !accessGroup.isEmpty,accessGroup.utf8.count<=512,!accessGroup.utf8.contains(0),!accessGroup.lowercased().contains("aside"),
               !allowedLogicalKeys.isEmpty,allowedLogicalKeys.count<=1024,
               allowedLogicalKeys.allSatisfy({!$0.isEmpty && $0.utf8.count<=512 && !$0.utf8.contains(0)})
         else{throw AuxSecureStoreError.invalidReview}
-        self.scope=scope;group=accessGroup;allowedKeys=allowedLogicalKeys
+        self.scope=scope;group=accessGroup;allowedKeys=Set(allowedLogicalKeys.map{Data($0.utf8)})
     }
     func selector(_ key:String)throws->AuxSecureStoreSelector {
-        guard allowedKeys.contains(key) else{throw AuxSecureStoreError.deniedKey}
+        guard allowedKeys.contains(Data(key.utf8)) else{throw AuxSecureStoreError.deniedKey}
         let digest=SHA256.hash(data:Data(key.utf8)).map{String(format:"%02x",$0)}.joined()
         let name="aux."+scope+".secure.v2."+digest
         return .init(service:name,account:name,accessGroup:group)

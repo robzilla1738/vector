@@ -22,7 +22,8 @@ var checks=0
 func check(_ b:Bool){precondition(b);checks += 1}
 func encode(_ o:[String:Any])->String {String(data:try! JSONSerialization.data(withJSONObject:o),encoding:.utf8)!}
 let scope=String(repeating:"a",count:64),key="mcp:fixture:aside-in-user-content",other="aux.csk_fixture"
-let review=try ReviewedAuxSecureStoreScope(scope:scope,accessGroup:"TEST.aux.synthetic",allowedLogicalKeys:[key,other])
+let review=try ReviewedAuxSecureStoreScope(scope:scope,accessGroup:"TEST.aux.synthetic",allowedLogicalKeys:[key,other,"aux.caf\u{e9}"])
+do {_ = try review.selector("aux.cafe\u{301}");preconditionFailure()}catch{checks += 1}
 let first=try review.selector(key),second=try review.selector(other)
 check(first != second && first.service==first.account && first.service.hasPrefix("aux."+scope+".secure.v2.") && !first.service.contains("mcp") && !first.service.contains("aside"))
 let query=AuxSecureStoreQueries.read(first)
