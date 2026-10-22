@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "component": "agent",
+  "homeOrigin": "https://getaux.co",
+  "files": [
+    {
+      "path": "manifest.json",
+      "sourceSha256": "afa06a5fc5b0ca836413f8b7b8eae20d440dff502b1871b0cdb489a04d244570"
+    },
+    {
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7"
+    },
+    {
+      "path": "assets/strip-markdown-DRcmtuJc.js",
+      "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb"
+    },
+    {
+      "path": "assets/chat-wBzshK0k.js",
+      "sourceSha256": "4747cb41cb38e8db6da226b4043959a83c4d19c029cafc21a6e6446ab6581642"
+    },
+    {
+      "path": "assets/artifact-test-CdjpLuI1.js",
+      "sourceSha256": "a8ae44f0cf25f06d16aba21ccb9ae9d4ec11c6228e3d9a027f6b7bd0a0da9f14"
+    }
+  ],
+  "mainExposureBlock": ",\n    {\n      \"resources\": [\n        \"main.html\"\n      ],\n      \"matches\": [\n        \"https://api.aside.com/*\",\n        \"https://api.asidehq.com/*\"\n      ]\n    }",
+  "cloudOriginFind": "\"https://api.aside.com/*\",\n        \"https://api.asidehq.com/*\"",
+  "demoFiles": [
+    "assets/chat-wBzshK0k.js",
+    "assets/artifact-test-CdjpLuI1.js"
+  ]
+}
