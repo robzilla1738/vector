@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Inactive source-level Aux-v2 installation command core; no context registration or runtime activation",
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    }
+  ],
+  "excluded": [
+    "LegacyNativeEnvelopeReader.swift",
+    "LegacyNativePqEnvelopeReader.swift"
+  ],
+  "sourceAbiEvidence": "docs/integration/proposed/aux-native-dispatch-abi/source-pins.json"
+}
