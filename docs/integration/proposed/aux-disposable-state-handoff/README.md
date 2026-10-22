@@ -106,3 +106,8 @@ Provider cohorts now require the pinned `session_turns` cache schema and apply `
 ## Unsigned typed spawn stage
 
 After direct assistant metadata, each explicit transcript now passes the [unsigned-only subagent override preparer](../aux-unsigned-subagent-identity/README.md). Only a validated subagent/spawn/model provider selector changes. Signed, ambiguous or unknown matching candidates refuse the entire cohort before journal creation. Receipt lineage chains the two prepared hashes while original transcript bytes remain journal CAS/backup authority. Other tools and opaque results/prompts remain unchanged. This does not resolve signed historical arguments or runtime startup fencing.
+
+
+## Exact tracking-cache stage
+
+Provider cohorts now additionally prepare the source-defined sessions.tool_state.subagent.subagents[].model.provider cache after cached-assistant metadata. [The tracking review/helper](../aux-subagent-tracking-identity/README.md) validates exact records/selections, updates only this typed provider token, and verifies all other table/column values. Cache-output/tracking-input/final-output lineage is explicit while original SQLite snapshot hashes remain CAS authority. The same real WAL crash fixture verifies status/model settings and unrelated tool state remain unchanged. Signed historical arguments and actual startup acceptance remain unresolved.

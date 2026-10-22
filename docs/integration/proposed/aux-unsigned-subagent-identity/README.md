@@ -24,4 +24,4 @@ The new tests cover escaped and trimmed identifiers, exact offsets, unrelated by
 
 The handoff's real temporary SQLite/WAL crash fixture now also contains a valid unsigned spawn and a separate opaque tool payload. After explicit recovery and verified terminal receipt, only the typed spawn selector and direct assistant metadata change; model IDs, prompt and opaque tool arguments remain. A separate signed matching fixture proves whole-handoff refusal with no durable journal created. Rollback retains exact original transcripts and SQLite sidecars. The accepted real app remains unchanged.
 
-Signed historical arguments, unreviewed shapes, tracking caches and actual startup acceptance are separate boundaries; a preparation receipt does not claim full migration or readiness.
+The exact tracking cache now has its [separate reviewed preparer](../aux-subagent-tracking-identity/README.md), paired into the provider main cohort. Signed historical arguments, unreviewed shapes and actual startup acceptance remain separate boundaries; a preparation receipt does not claim full migration or readiness.

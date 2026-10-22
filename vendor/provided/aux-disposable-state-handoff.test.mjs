@@ -25,6 +25,7 @@ async function fixture(t) {
     db.exec('CREATE TABLE projects(id TEXT PRIMARY KEY NOT NULL);'); db.exec(PINNED_PROVIDER_STATE_TARGET_DDL); db.exec(PINNED_SESSION_TURN_CACHE_DDL); db.close(); db = new DatabaseSync(producer);
     db.exec('PRAGMA user_version=20; PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA wal_checkpoint(TRUNCATE);');
     db.prepare('INSERT INTO sessions(id,cwd,model,queued_messages) VALUES(?,?,?,?)').run('wal-only-handoff-session','/synthetic',JSON.stringify(model),'[{"provider":"aside","scope":"unaudited"}]');
+    db.prepare('UPDATE sessions SET tool_state=?').run(JSON.stringify({subagent:{subagents:[{sessionId:'fixture-tracked-child',description:'fixture tracking',model,isRunning:true,isBackground:false,unawaited:true}]},opaque:{provider:'aside'}}));
     const cacheAssistant = JSON.parse(transcript.toString().split('\n')[1]); cacheAssistant.content = cacheAssistant.content.filter(block=>block.type==='text');
     db.prepare('INSERT INTO session_turns(session_id,turn_id,user_message,final_assistant_message,token_usage,started_at,last_message_timestamp,jsonl_read_offset,jsonl_read_size) VALUES(?,?,?,?,?,?,?,?,?)').run('wal-only-handoff-session','fixture-turn','[]',JSON.stringify([cacheAssistant]),'{}',1,2,0,transcript.length);
     dbBytes = await fs.readFile(producer); walBytes = await fs.readFile(`${producer}-wal`); shmBytes = await fs.readFile(`${producer}-shm`);
@@ -90,7 +91,7 @@ test('WAL-only row + JSON/prefs migrate through crash recovery before any fixtur
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.root, 'home/u/1/credentials.json'), 'utf8')), { aux: { type: 'api_key', key: 'synthetic-private-fixture' } });
   const db = new DatabaseSync(path.join(f.root, 'home/u/1/state.db'));
   try {
-    const row = db.prepare('SELECT model,queued_messages FROM sessions WHERE id=?').get('wal-only-handoff-session');
+    const row = db.prepare('SELECT model,queued_messages,tool_state FROM sessions WHERE id=?').get('wal-only-handoff-session');
     assert.deepEqual(JSON.parse(row.model), { ...model, provider: 'aux' });
     const cachedRow = db.prepare('SELECT * FROM session_turns').get();
     const cached = JSON.parse(cachedRow.final_assistant_message);
@@ -99,7 +100,9 @@ test('WAL-only row + JSON/prefs migrate through crash recovery before any fixtur
     const mainReceipt = prepared.receipt.transformations.find(entry=>entry.databaseKind==='provider');
     assert.equal(mainReceipt.cacheMigration.changedRows,1);
     assert.equal(mainReceipt.lineage.cacheIdentitySourceSha256, mainReceipt.providerMigration.outputSha256);
-    assert.equal(mainReceipt.lineage.preparedMainSha256, mainReceipt.cacheMigration.outputSha256);
+    assert.equal(mainReceipt.lineage.cacheIdentityOutputSha256, mainReceipt.subagentTrackingMigration.sourceSha256);
+    assert.equal(mainReceipt.lineage.preparedMainSha256, mainReceipt.subagentTrackingMigration.outputSha256);
+    const tracked=JSON.parse(row.tool_state); assert.equal(tracked.subagent.subagents[0].model.provider,'aux'); assert.equal(tracked.subagent.subagents[0].model.modelId,model.modelId); assert.equal(tracked.subagent.subagents[0].unawaited,true); assert.equal(tracked.opaque.provider,'aside');
     assert.equal(JSON.parse(row.queued_messages)[0].provider, 'aside'); // Explicit remaining audit gap.
     assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok');
     assert.equal(db.prepare('PRAGMA journal_mode=WAL').get().journal_mode, 'wal');

@@ -1,0 +1,66 @@
+{
+  "daemonSourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "executedDaemon": false,
+  "anchors": [
+    {
+      "name": "sql-column",
+      "find": "toolState:text$9(`tool_state`,{mode:`json`}).notNull().$type()",
+      "count": 1,
+      "characterOffset": 2502044
+    },
+    {
+      "name": "default-cache",
+      "find": "subagent:{subagents:[]}",
+      "count": 1,
+      "characterOffset": 2498344
+    },
+    {
+      "name": "producer",
+      "find": "ei.subagent={subagents:[...ei.subagent?.subagents??[],{sessionId:mi.id,description:ni,model:mi.model,isRunning:!0,isBackground:ui.isBackground}]}",
+      "count": 1,
+      "characterOffset": 6700009
+    },
+    {
+      "name": "persist-updater",
+      "find": "let ai=ti(ii);ai!==ii&&(ni?ni.setToolState(ai):SessionStore.update(Cn,ei,{toolState:ai}))",
+      "count": 1,
+      "characterOffset": 6696933
+    },
+    {
+      "name": "tracked-patch",
+      "find": "return Object.assign(ri.subagent.subagents[ei],ni),ri",
+      "count": 1,
+      "characterOffset": 6697203
+    },
+    {
+      "name": "done-patch",
+      "find": "return Object.assign(ii.subagent.subagents[ei],{isRunning:!1,unawaited:void 0})",
+      "count": 1,
+      "characterOffset": 6697495
+    },
+    {
+      "name": "unawaited-patch",
+      "find": "setTrackedSubagent(Cn,ei,ti,{unawaited:!0})",
+      "count": 1,
+      "characterOffset": 6701412
+    },
+    {
+      "name": "selection-schema",
+      "find": "modelSelectionSchema=object({provider:custom(Cn=>typeof Cn==`string`),modelId:string$3().min(1),thinkingLevel:modelThinkingLevelSchema,fastMode:boolean$1().prefault(!1)})",
+      "count": 1,
+      "characterOffset": 1701597
+    },
+    {
+      "name": "thinking-levels",
+      "find": "MODEL_THINKING_LEVEL_ORDER={off:0,minimal:1,low:2,medium:3,high:4,xhigh:5,max:6}",
+      "count": 1,
+      "characterOffset": 1692664
+    },
+    {
+      "name": "pending-consumer",
+      "find": "!!ti.subagent?.subagents.some(Cn=>Cn.isRunning)",
+      "count": 1,
+      "characterOffset": 11628867
+    }
+  ]
+}
