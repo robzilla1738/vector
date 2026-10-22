@@ -1,0 +1,43 @@
+{
+  "format": "aux.install.journal.store.source.v1",
+  "files": [
+    {
+      "path": "source/PrivateInstallationJournalStore.swift",
+      "sha256": "88ce68ba951d49965a0c25e3b68a54a10bb3dc9ddce071c699781e460c9ecab4"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "fb5c1326fab628a0166fdbadb0872b5cbbb85e1b6b927f34848199ccc4da693c"
+    },
+    {
+      "path": "check.mjs",
+      "sha256": "52d21a4737ceb1af9524c3ae4b894958d4059fe77e477b98bb6177ca225b30e0"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source-pins.json",
+      "sha256": "85f3fbda3dbf993cf0442246a10a9d0cfc425a0679457e36ebaf320eaf478f6f"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/preparation-evidence.json",
+      "sha256": "d650c15be218c14fca80831e8a433c41536c829a974f3d48d879621206ab34ef"
+    },
+    {
+      "path": "../../../../vendor/provided/aux-state-migration-transaction.mjs",
+      "sha256": "96ef4a34f91522102272308ccda5cd10fe86c2572691a3926fa412ac40a8205c"
+    }
+  ],
+  "coverage": {
+    "disposableFilesystemAssertions": 20,
+    "fileAndDirectoryFsyncExecuted": true,
+    "deterministicInterruptedPublicationChecked": true,
+    "processKillTested": false,
+    "powerFailureTested": false,
+    "securityExecuted": false,
+    "authorityExclusiveProof": false,
+    "activated": false
+  }
+}
