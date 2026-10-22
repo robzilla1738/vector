@@ -1,0 +1,8 @@
+{
+  "development": {
+    "appOrigin": "https://dev-cloud.getaux.co",
+    "apiOrigin": "https://dev-cloud.getaux.co",
+    "databaseHost": "ep-spring-darkness-b824br4r-pooler.c-14.us-east-1.aws.neon.tech"
+  },
+  "production": null
+}

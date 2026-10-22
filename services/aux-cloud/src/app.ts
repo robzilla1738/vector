@@ -11,6 +11,7 @@ import { attachmentRoutes, blobCallbackRoutes } from './attachments';
 import { maintenanceRoutes } from './maintenance';
 import { sessionSyncRoutes } from './session-sync';
 import { drive1852Routes } from './drive-1852';
+import { readinessRoutes } from './readiness';
 
 export const app=new Hono<{Variables:AuthVariables}>().basePath('/api/v1');
 app.use('*',bodyLimit({maxSize:4*1024*1024,onError:c=>c.json({error:'Use a private upload for payloads larger than 4 MiB.'},413)}));
@@ -26,6 +27,7 @@ app.route('/webhooks',billingWebhooks);
 app.route('/webhooks/clerk',authWebhooks);
 app.route('/',blobCallbackRoutes);
 app.route('/internal',maintenanceRoutes);
+app.route('/internal',readinessRoutes);
 app.get('/billing/plans',c=>billingRoutes.fetch(new Request(new URL('/plans',c.req.url))));
 app.get('/ai/catalog/v1',c=>inferenceRoutes.fetch(new Request(new URL('/ai/catalog/v1',c.req.url))));
 app.get('/ai/models/v2',c=>inferenceRoutes.fetch(new Request(new URL('/ai/models/v2',c.req.url))));
