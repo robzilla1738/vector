@@ -1,0 +1,103 @@
+{
+  "daemonSourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "executedDaemon": false,
+  "payloadMigrationPrepared": false,
+  "anchors": [
+    {
+      "name": "exact-model-schema",
+      "find": "subagentModelOverrideSchema=_Object_({provider:String$1(),modelId:String$1()},{additionalProperties:!1,description:`Exact model for this subagent as returned by list_models. Cannot be combined with model_category. (spawn only)`})",
+      "count": 1,
+      "characterOffset": 6696225
+    },
+    {
+      "name": "action-discriminator",
+      "find": "action:Union([Literal(`spawn`),Literal(`resume`),Literal(`list_models`),Literal(`request_approval`)]",
+      "count": 1,
+      "characterOffset": 6811730
+    },
+    {
+      "name": "optional-model-schema",
+      "find": "model:Optional(subagentModelOverrideSchema)",
+      "count": 1,
+      "characterOffset": 6812507
+    },
+    {
+      "name": "tool-discriminator",
+      "find": "createSubagentTool=(Cn,ei=[])=>({name:`subagent`,label:`Subagent`,description:subagentToolDescription(ei),parameters:parameters$11",
+      "count": 1,
+      "characterOffset": 6813337
+    },
+    {
+      "name": "spawn-validation",
+      "find": "if(!ri.description?.trim()||!ri.prompt?.trim())throw Error(`spawn requires description and prompt`);if(ri.model&&!ri.model.provider.trim()&&!ri.model.modelId.trim()&&(ri.model=void 0),ri.model&&ri.model_category!==void 0)throw Error(`spawn cannot combine model with model_category`);if(ri.model&&(!ri.model.provider.trim()||!ri.model.modelId.trim()))throw Error(`model requires provider and modelId`)",
+      "count": 1,
+      "characterOffset": 6814416
+    },
+    {
+      "name": "spawn-explicit-copy",
+      "find": "model:ri.model?{provider:ri.model.provider.trim(),modelId:ri.model.modelId.trim()}:void 0,modelCategory:ri.model_category,parentModel:Cn.getModelSelection()",
+      "count": 1,
+      "characterOffset": 6815105
+    },
+    {
+      "name": "model-exact-resolution",
+      "find": "async function resolveExplicitSubagentModel(Cn,ei,ti){let ni=await models(Cn).resolve(ei.modelId,ei.provider);if(!ni)throw Error(`Requested subagent model is unavailable: ${ei.provider}/${ei.modelId}`);let ri=toModelInfo(ni.model),ii={provider:ei.provider,modelId:ei.modelId,thinkingLevel:clampThinkingLevel(`medium`,ri.availableThinkingLevels),fastMode:ti&&ri.supportsFastMode};return assertExactModelResolution(ii,ni),ii}",
+      "count": 1,
+      "characterOffset": 6702791
+    },
+    {
+      "name": "tracking-model-cache",
+      "find": "ei.subagent={subagents:[...ei.subagent?.subagents??[],{sessionId:mi.id,description:ni,model:mi.model,isRunning:!0,isBackground:ui.isBackground}]}",
+      "count": 1,
+      "characterOffset": 6700009
+    },
+    {
+      "name": "reentry-finds-original",
+      "find": "let ri=await SessionStore.listAllMessageRows(Cn,ei),ii=ri.findLast(Cn=>Cn.msg.role===`assistant`&&Cn.msg.content.some(Cn=>Cn.type===`toolCall`&&Cn.id===ti))",
+      "count": 1,
+      "characterOffset": 6710778
+    },
+    {
+      "name": "reentry-prefers-existing-result",
+      "find": "let ci=si.get(ti)??await ni.rerunSuspendedToolCall(ai,ti)",
+      "count": 1,
+      "characterOffset": 6711280
+    },
+    {
+      "name": "rerun-original-arguments",
+      "find": "let ri=ni.prepareArguments?ni.prepareArguments(ti.arguments):ti.arguments,ii={assistantMessage:Cn,toolCall:ti,args:ri,context:{systemPrompt:this.session.systemPrompt,messages:this.agent.state.messages,tools:this.agent.state.tools}}",
+      "count": 1,
+      "characterOffset": 11529128
+    },
+    {
+      "name": "rerun-approval-effects-guard",
+      "find": "if(this.session.suspension?.kind===`approval`&&this.session.suspension.toolCallId===ei&&!this.session.suspension.beforeExecution&&!(this.session.suspension.request.source&&ti.name===`subagent`&&ti.arguments.action===`request_approval`))throw Error(`The tool was interrupted during execution while waiting for permission. It was not replayed because earlier effects may already have occurred. Inspect the current state before planning another action.`)",
+      "count": 1,
+      "characterOffset": 11529373
+    },
+    {
+      "name": "crash-safe-tool-list",
+      "find": "CRASH_RERUN_SAFE_TOOLS=/* @__PURE__ */ new Set([`read_file`,`get_time`,`websearch`,`webfetch`,`memory_read`,`history_search`,`history_read`,`subagent_wait`,`start_coder`,`todos`,`ask_user_question`,`action_confirmation`])",
+      "count": 1,
+      "characterOffset": 11523446
+    },
+    {
+      "name": "crash-rerun-gate",
+      "find": "#se(Cn){if(CRASH_RERUN_SAFE_TOOLS.has(Cn.name))return!0;let ei=this.session.suspension;return!!ei&&ei.toolCallId===Cn.id&&!!(ei.response||ei.error)}",
+      "count": 1,
+      "characterOffset": 11549413
+    },
+    {
+      "name": "opaque-signature-validation",
+      "find": "function isValidThoughtSignature(Cn){return!Cn||Cn.length%4!=0?!1:base64SignaturePattern.test(Cn)}",
+      "count": 1,
+      "characterOffset": 4428146
+    },
+    {
+      "name": "signature-plus-original-arguments",
+      "find": "let ei=resolveThoughtSignature(ri,ni.thoughtSignature),ii={functionCall:{name:ni.name,args:ni.arguments??{},...requiresToolCallId(Cn.id)?{id:ni.id}:{}},...ei&&{thoughtSignature:ei}}",
+      "count": 1,
+      "characterOffset": 4429944
+    }
+  ]
+}
