@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "component": "daemon",
+  "path": "entry.mjs",
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "rules": [
+    {
+      "find": "Cn.agents.includes(`aside-code`)",
+      "replace": "Cn.agents.includes(`aux-code`)",
+      "count": 1
+    },
+    {
+      "find": "aside-code skill or CLI",
+      "replace": "aux-code skill or CLI",
+      "count": 1
+    },
+    {
+      "find": "/aside[- ]?daemon/i.test(Cn)",
+      "replace": "/aux[- ]?daemon/i.test(Cn)",
+      "count": 1
+    },
+    {
+      "find": "/\\b(aside|chrome|safari|firefox|arc|edge|brave|vivaldi|opera|browser)\\b/i.test(Cn)",
+      "replace": "/\\b(aux|chrome|safari|firefox|arc|edge|brave|vivaldi|opera|browser)\\b/i.test(Cn)",
+      "count": 1
+    }
+  ]
+}
