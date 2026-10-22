@@ -24,6 +24,9 @@ class AuxDevelopmentWorkerHost final {
   // In-flight factory/attachment also yields pending; a late owner is retired
   // rather than published as a live command capability. No mutex crosses a
   // producer or NAPI publication callback (which may reenter native close).
+  // Explicit close also closes the captured current PDF image process-wide.
+  // Ordinary per-environment cleanup never initiates PDF closure. Legacy PDF
+  // images without lifetime exports, refused/late images stay untracked.
   // Native embedding must retain this object until drained before teardown.
   AuxDevelopmentWorkerDrain CloseAndDrain();
  private:

@@ -25,13 +25,14 @@ def with_drain_type(s):
 # TEST symbols, substitute new native callback seam for old direct attach.
 s=with_drain_type((p/'aux-development-host/build.sh').read_text())
 s=s[:s.index('xcrun swiftc -target',s.index('xcrun swiftc -target')+1)]
-s=s.replace('"$output/attach.o" -Xlinker','"$proposal/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift" "$output/attach.o" "$output/worker.o" -Xlinker')
+s=s.replace('"$output/attach.o" -Xlinker','"$proposal/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift" "$output/attach.o" "$output/worker.o" "$output/pdf-lifetime.o" -Xlinker')
 assert s.count('"$proposal/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift"')==1
 (o/'source-build.sh').write_text(s)
 # Inventory the actual production translation units passed to these compiler
 # commands; worker.o is compiled below, outside the generated source recipe.
 units=set(re.findall(r'"\$proposal/([^"\s]+\.(?:swift|cc))"',s))
 units.add('aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc')
+units.add('aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc')
 assert units and not any('/tests/' in unit for unit in units)
 inputs=[{'path':unit,'sha256':hashlib.sha256((p/unit).read_bytes()).hexdigest()} for unit in sorted(units)]
 (o/'production-source-inputs.json').write_text(json.dumps({'format':'aux.worker.production.compile.inputs.v1','inputs':inputs},indent=2)+'\n')
@@ -42,7 +43,7 @@ if not compile_only:
     assert s.count(a)==1
     s=s.replace(a,b).replace('-I "$headers" -c "$proposal/aux-development-worker-host/tests/fixture-module.cc"','-I "$headers" -I "$proposal/aux-development-worker-host/source" -c "$proposal/aux-development-worker-host/tests/fixture-module.cc"')
     assert s.count('"$output/adapter.o" "$output/module.o"')==1
-    s=s.replace('"$output/adapter.o" "$output/module.o"','"$output/FixtureOwnerDrain.swift" "$proposal/aux-development-worker-host/tests/BlockingLease.swift" "$output/adapter.o" "$output/module.o" "$output/worker.o"')
+    s=s.replace('"$output/adapter.o" "$output/module.o"','"$output/FixtureOwnerDrain.swift" "$proposal/aux-development-worker-host/tests/BlockingLease.swift" "$output/adapter.o" "$output/module.o" "$output/worker.o" "$output/pdf-lifetime.o"')
     (o/'fixture-build.sh').write_text(s)
     drain=(p/'aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift').read_text()
     a='@_cdecl("AuxCloseDevelopmentOwnerOSAdmission")'
@@ -51,6 +52,7 @@ if not compile_only:
 
 PY
 xcrun clang++ -std=c++20 -arch arm64 -mmacosx-version-min=13.0 -DNAPI_VERSION=8 -fPIC -I "$headers" -I "$proposal/aux-owned-napi-adapter/source" -c "$here/source/AuxDevelopmentWorkerHost.cc" -o "$output/worker.o"
+xcrun clang++ -std=c++20 -arch arm64 -mmacosx-version-min=13.0 -fPIC -c "$proposal/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc" -o "$output/pdf-lifetime.o"
 sh "$output/source-build.sh" "$proposal" "$headers" "$output"
 if [ "$mode" != --compile-only ]; then
   sh "$output/fixture-build.sh" "$proposal" "$headers" "$output"

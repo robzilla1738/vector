@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "baseCommit": "5424a5de2",
+  "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+  "moduleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+  "sources": {
+    "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc": "d123f524e1a9447f72c54ec95987e52c398cdfcf21f0ba1893271acfd27c1260",
+    "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h": "2dd1ea6bc440dfe15874716cddf9cb462fe8f3f0e257273c23f4ae023cf952b4",
+    "docs/integration/proposed/aux-development-worker-host/build.sh": "6f4f0df8a6602592f9f6f0e87f8cd08ba91b0d7dbd94798527c2267546403c0a",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/check.sh": "35b664cff0d92658da1f4788708d8369f32819e18fe56303f7f9bf7c387b0976",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/compile.sh": "d1179a6c42127d50e96ee8ea8bae02381c45e1e32a1d417068aac7a6d94e1296",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/tests/check.cjs": "cdaf425e525f12a226ea7591a64f88324ec1b4e457d2146cef962e2c497ef9ac",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/tests/fixture.cc": "9280868a654392914cc3adcbdf2edcc347f5faec390f2c82c722a59dccec8f7e",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/verify-inputs.py": "511a4947b66003630771f717a70df7b236f6f9b55411eeae5329a30e7a7caf67",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/README.md": "fc287b80cd656cda3b293cfe9ab6264e9adf005fc134690763abea22407b8ccd",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/runtime-evidence.json": "2ed6379517286e5e76ae6943d8425d274719c0a69f1c8f6612575c5c65f2fae0"
+  }
+}
