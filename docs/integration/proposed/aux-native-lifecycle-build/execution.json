@@ -16,5 +16,20 @@
   "appLaunched": false,
   "signed": false,
   "released": false,
-  "browserBuildPending": true
+  "browserBuildPending": false,
+  "browserBuildPassed": true,
+  "generatedKeyProbePassed": true,
+  "browserBuildReceipt": "out/aux-lifecycle-native-build.json",
+  "browserBuildReceiptSha256": "de41b4b9630e214b0368cc094917be7fc0321ecfbf57f977f02d59db733aef16",
+  "packagingPending": false,
+  "packagedCandidate": "out/provided-candidate-aux-runtime-envelope/Aux.app",
+  "packagedEvidence": "out/aux-runtime-envelope-packaged-evidence.json",
+  "packagedEvidenceSha256": "b335f2be5e15c831d452e0afccf4b90214d28abd904214aa2ff63cadd73aba3a",
+  "packagedVisualAssets": 135,
+  "packagedStylesheets": 5,
+  "packagedModulesParsed": 6,
+  "daemonEntryPointsPaired": true,
+  "packagedFrameworkSha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a",
+  "runtimeAcceptance": false,
+  "startupRefused": true
 }
