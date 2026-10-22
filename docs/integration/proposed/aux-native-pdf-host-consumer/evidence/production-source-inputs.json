@@ -1,0 +1,109 @@
+{
+  "format": "aux.worker.production.compile.inputs.v1",
+  "inputs": [
+    {
+      "path": "aux-clean-host-preflight/source/AuxCleanHostImports.cc",
+      "sha256": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1"
+    },
+    {
+      "path": "aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa"
+    },
+    {
+      "path": "aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
+    },
+    {
+      "path": "aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd"
+    },
+    {
+      "path": "aux-development-host/source/aux-development-host-attach.cc",
+      "sha256": "9ebd16d6f2d05ea2cf800d83063ef6a4858dbaa9ee5be3c25b1280156767af10"
+    },
+    {
+      "path": "aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+    },
+    {
+      "path": "aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "d123f524e1a9447f72c54ec95987e52c398cdfcf21f0ba1893271acfd27c1260"
+    },
+    {
+      "path": "aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+      "sha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28"
+    },
+    {
+      "path": "aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+    },
+    {
+      "path": "aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    },
+    {
+      "path": "aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
+    },
+    {
+      "path": "aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
+    }
+  ]
+}

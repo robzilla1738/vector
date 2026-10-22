@@ -11,7 +11,11 @@ assert(cc.indexOf('napi_add_env_cleanup_hook(env, Cleanup')<cc.indexOf('int32_t 
 assert(cc.includes('else if (os != 0) result = AuxDevelopmentWorkerDrain::pending'));
 assert(cc.includes('if (initializing) result = AuxDevelopmentWorkerDrain::pending'));
 assert(cc.includes('if (retiring) return AuxDevelopmentWorkerDrain::pending'));
-assert(cc.includes('if (!owner) return initializing ? AuxDevelopmentWorkerDrain::pending'));
+assert(cc.includes('if (!owner && initializing) return AuxDevelopmentWorkerDrain::pending'));
+for(const required of ['captured_pdf = pdf','worker->pdf = captured_pdf','pdf_close_requested','pdf_close_unresolved','worker->Close(true)','CaptureAfterAuthenticatedOwner','InspectIfClosureStarted'])assert(cc.includes(required),required);
+assert(cc.indexOf('AuxLoadedPdfLifetime::CaptureAfterAuthenticatedOwner()')>cc.indexOf('int32_t prepared = AuxCreateSignedDevelopmentOwner'));
+assert(cc.includes('!worker->pdf_close_unresolved) Registry().retained.erase'));
+assert(cc.includes('if (!close_pdf && pdf_close_requested && result == AuxDevelopmentWorkerDrain::drained)'));
 const unlock=cc.indexOf('host_lock.unlock();');
 for(const operation of ['napi_add_env_cleanup_hook(env, Cleanup','int32_t prepared = AuxCreateSignedDevelopmentOwner','status = AuxAttachOwnedDispatcher'])assert(cc.indexOf(operation)>unlock,operation);
 assert(cc.includes('Initialization initialization(worker)'));

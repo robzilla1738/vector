@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "previousManifestSha256": "b21a4fe1fdf5b2c9f2a38742520e8dab0eb7871d3bd433d77754b5f368930563",
+  "currentManifestSha256": "80fad7091c5184de0357bce1b58479612dc900661ec17616b498bb2fbd99e8a8",
+  "reviewedCommit": "1a09c51b0",
+  "changedInputs": [
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/build.sh",
+      "previousSha256": "2d69829c63dab07d752ff5d704343025a22746536e332e37c590cc280826812c",
+      "sha256": "6f4f0df8a6602592f9f6f0e87f8cd08ba91b0d7dbd94798527c2267546403c0a",
+      "reviewedCommit": "1a09c51b0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "previousSha256": "5d0cc7c74106cd2116aa6bb9b872f22d2c4cd8d4ccfc30709cbb9930d653e16c",
+      "sha256": "d123f524e1a9447f72c54ec95987e52c398cdfcf21f0ba1893271acfd27c1260",
+      "reviewedCommit": "1a09c51b0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "previousSha256": "a78268bd9d0f9b2d3c78c258a9612d1591a938527dc05bb3bfe3e5742493c6e2",
+      "sha256": "2dd1ea6bc440dfe15874716cddf9cb462fe8f3f0e257273c23f4ae023cf952b4",
+      "reviewedCommit": "1a09c51b0"
+    }
+  ],
+  "additionalDependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+      "sha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+      "sha256": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2"
+    }
+  ],
+  "reason": "Actual post-authenticated-owner exact loaded image capture and explicit native host PDF close/pending consumption; previous runtime receipts remain historical.",
+  "staticVerifierPinsPassed": 48,
+  "historicalReceiptsRewritten": false
+}

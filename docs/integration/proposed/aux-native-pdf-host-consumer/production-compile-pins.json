@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": {
+    "docs/integration/proposed/aux-native-pdf-host-consumer/compile-production.mjs": "23d75d179cdfe1b87e396961587c8ff781d94e58017dd28af6b2ec47d1d78494",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/evidence/compile-only.json": "151b49290ce80b28092c6b37296bb0faa2e27ce0bf21146ad565f003e6b533a0",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/evidence/compile.log": "d5ea7ebe71d0eee5451a42ac8f2129f4dd1ed464a39ab4d51015042e4554e389",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/evidence/production-source-inputs.json": "cee060dc608101ef0f26fef5c667ae2427f0374b56ff23325a464925d749dff6",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/evidence/active-pin-refresh.json": "db797e464d2517390c6a7e0b9f103c759dfe7ceab45a0da4562ee5e4f5b0b6c1",
+    "docs/integration/proposed/aux-development-worker-host/source-pins.json": "80fad7091c5184de0357bce1b58479612dc900661ec17616b498bb2fbd99e8a8",
+    "docs/integration/proposed/aux-development-worker-host/verify.mjs": "c09c94df97cdae73dca5b4baaca030140b5be0027c3686708d80c1b823ed52d7"
+  }
+}

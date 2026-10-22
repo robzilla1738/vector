@@ -1,0 +1,18 @@
+/private/tmp/aux-pdf-native-consumer-wt/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift:80:87: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 78 |          kSecAttrAccount as String:selected.account,kSecAttrAccessGroup as String:selected.accessGroup,
+ 79 |          kSecUseDataProtectionKeychain as String:true,kSecReturnData as String:true,
+ 80 |          kSecMatchLimit as String:kSecMatchLimitOne,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                                                                       `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 81 |     }
+ 82 |     static func result(status:OSStatus,value:CFTypeRef?)->AuxRuntimeTargetRead {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/private/tmp/aux-pdf-native-consumer-wt/docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift:71:44: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 69 |          kSecAttrAccount as String:s.account,kSecAttrAccessGroup as String:s.accessGroup,
+ 70 |          kSecUseDataProtectionKeychain as String:true,
+ 71 |          kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                            `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 72 |     }
+ 73 |     static func read(_ s:AuxSecureStoreSelector)->[String:Any] {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
