@@ -1,0 +1,63 @@
+{
+  "format": "aux.macos.utility-node.inputs.v1",
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4"
+    }
+  ],
+  "daemons": {
+    "node": {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b"
+    },
+    "sea": {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "binarySha256": "960818f96c0925c2afe9bdbb8bf4dd4206137e0c5df90b0fb69e839e263658bb",
+      "sha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
+      "flags": 25,
+      "assetCount": 2
+    }
+  },
+  "sources": {
+    "source/AuxMacUtilityEnvironmentHost.cc": "d489ee3197e52a56c6fbdcb58b9168991dc6cbb4df054498ddef6f253262ce47",
+    "source/AuxMacUtilityEnvironmentHost.h": "3a9aabb0c98463bf2aafc12c9fc081e9fd456b9590980d933f903367b1806061",
+    "source/AuxMacUtilityOwner.swift": "659b23a811b9b25e58b64dc031de57f82491733c529fa0a1dd6304f98b7dde67",
+    "source/adapt.mjs": "8b9aae155b3396ca7ba4dd3aa4a88d3f752be348417bc2a0d318bf87fad7d324",
+    "source/utility-module.cc": "19d99471c09588840e11cd569c2422a760ad0ff6c69139147bc4a762b604543a",
+    "build.sh": "463811b43e675ad2a0a3928e5dc97ab123570030056b39435886cc348a2daf62",
+    "check.sh": "2048e617c8abbb296c24f965204a18c37712a7994fc981f8bf617f9ed30167bc",
+    "tests/CapturedUtilityOwner.swift": "94fb78f2a1d7ac35e76d50afd4b819523a2a66fc1ecd2fdef36495a457415c53",
+    "tests/module.cc": "c88baa6e7b1b4fbb21e39a16cee8f6ae993b69a080be7bcb7f37b2c33a5e5f20",
+    "tests/check.cjs": "2b0fd994a1a5a2634d4094e7d2ca58e4c9c7ac1782032c75f9a06ea664a5c6e6",
+    "tests/routing.mjs": "03b4ccf5aa17800bf0aad03edc81356a044fabf4a7f42972c710878e9da9a3c0"
+  }
+}

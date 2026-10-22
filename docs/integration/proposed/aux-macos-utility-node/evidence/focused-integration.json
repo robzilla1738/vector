@@ -1,0 +1,58 @@
+{
+  "format": "aux.macos.utility-node.focused-integration.v1",
+  "sourcePinsSha256": "c8bc551e4da5313cffa3a1de7c8a53a77541af87701ad1677f5d7b7f848e73b5",
+  "productionCompiled": true,
+  "productionSwiftUnits": 6,
+  "productionCppUnits": 2,
+  "architecture": "arm64",
+  "minimumMacOS": "13.0",
+  "productionArtifactLoaded": false,
+  "productionInitializerExercisedWithCapturedProducer": true,
+  "actualEnvironmentChecks": 18,
+  "actualPairedWrapperChecks": 14,
+  "layouts": [
+    "SEA",
+    "Node development"
+  ],
+  "countOneEditsPerLayout": 8,
+  "protectedCommonLoadsForMacUtilities": 0,
+  "actualAsyncWorkers": true,
+  "pendingAfterWorkerTeardownRetained": true,
+  "lateCompletionActuallyObserved": true,
+  "codeImageRetainedNatively": true,
+  "importsSha256": "d1061a7f353142f6a0b594d08e0569f3ae43f3fb9769261d53230776957efdbd",
+  "undefinedImports": 337,
+  "forbiddenProtectedImports": 0,
+  "napi8InitializerSymbolsPresent": true,
+  "artifacts": {
+    "aux-macos-utilities.node": {
+      "sha256": "f663dea66a005488e1df7e4c45034a0e18cce6866f2c3caa8a288d80932513b3",
+      "bytes": 391992,
+      "oldBrandLiteralCount": 0
+    },
+    "fixture.node": {
+      "sha256": "a0b41df8c35d9a8bb32db7e042a6297f4154cfed5dea88337a60670a3b109d51",
+      "bytes": 337376,
+      "oldBrandLiteralCount": 0
+    },
+    "route.node": {
+      "sha256": "3765bb3101129855c2c0d6eca53716b3bf9c797c352f78a6c0f63c0bab160dc5",
+      "bytes": 336264,
+      "oldBrandLiteralCount": 0
+    }
+  },
+  "artifactsRetained": false,
+  "sanitizedDisposableHomeTmp": true,
+  "actualOSBoundaryExecuted": false,
+  "actualSecurityCalls": 0,
+  "originalAddonLoaded": false,
+  "ownerStateRead": false,
+  "UIChanged": false,
+  "rootPipelineIntegrated": false,
+  "sealedV3ImagePolicyCompatible": false,
+  "wholeAppReadinessClaimed": false,
+  "historicalFixturesRepeated": false,
+  "finalNativeBuildSession": "64948",
+  "finalNativeBuildExitCode": 0,
+  "verification": "Exact source verifier passed; actual captured producer host fixture and both extracted staged wrapper layouts passed. Real AppKit and protected bootstrap not executed."
+}
