@@ -3,7 +3,7 @@
  * Credentials are supplied by the root-owned .env.local invocation, never copied.
  */
 import assert from 'node:assert/strict';
-import {createHash,generateKeyPairSync,randomBytes,randomUUID,sign,timingSafeEqual} from 'node:crypto';
+import {createHash,createHmac,generateKeyPairSync,randomBytes,randomUUID,sign,timingSafeEqual} from 'node:crypto';
 import {writeFile} from 'node:fs/promises';
 import {SignJWT} from 'jose';
 import {checkEnvironment} from './check-environment.mjs';
@@ -27,6 +27,7 @@ async function call(path:string,expected:number,options:RequestInit={},privateHe
  const response=await fetch(origin+path,{...options,headers:{'Cache-Control':'no-store',...privateHeaders,...options.headers},redirect:'error',signal:AbortSignal.timeout(25_000)});
  assert.equal(response.status,expected,'Unexpected recovery fixture HTTP status');return response;
 }
+const rateKey=createHmac('sha256',process.env.AUX_AUTH_SECRET!).update(`rate\\0sync-recovery:${user}`).digest('hex');
 const authHeaders=()=>({Authorization:'Bearer '+token});
 async function post(path:string,body:unknown,expected=200){return call('/api/v1'+path,expected,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},authHeaders());}
 async function signed(action:RecoveryAction){
@@ -76,8 +77,9 @@ try{
    await sql`DELETE FROM sync_keys WHERE user_id=${user} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
    await sql`DELETE FROM aux_sync_recovery_challenges_v2 WHERE user_id=${user} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
    await sql`DELETE FROM aux_sync_recovery_v2 WHERE user_id=${user} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
-   await sql`DELETE FROM aux_rate_limits WHERE key=${'sync-recovery:'+user} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
+   await sql`DELETE FROM aux_rate_limits WHERE key=${rateKey} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
    await sql`DELETE FROM aux_sessions WHERE id=${session} AND user_id=${user} AND EXISTS(SELECT 1 FROM aux_users WHERE id=${user} AND clerk_id=${marker})`;
+   const rates=await sql`SELECT count(*)::integer AS n FROM aux_rate_limits WHERE key=${rateKey}`;assert.equal(rates[0].n,0);
    const removed=await sql`DELETE FROM aux_users WHERE id=${user} AND clerk_id=${marker} RETURNING id`;assert.equal(removed.length,1);
    const remaining=await sql`SELECT count(*)::integer AS n FROM aux_users WHERE id=${user}`;assert.equal(remaining[0].n,0);
   }
