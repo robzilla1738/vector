@@ -1,0 +1,3 @@
+{"passed":true,"checks":["checkbox-export-toggle-saved-readback","choice-options-navigation-saved-readback","radio-sibling-export-selection-saved-readback","invalid-control-value-contracts","widget-appearance-before-after-RGBA","clockwise-rotation-dimensions-and-red-marker-position"],"moduleSha256":"6febb242a074317dba3edc1848fdfb77da468e32bb87acffdaa7f6143afece8e"}
+
+EXIT 0

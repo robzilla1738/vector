@@ -1,0 +1,9 @@
+# Specialized PDF form and rotation acceptance
+
+The existing Aux-built PDF7 module passed one focused synthetic fixture covering the previously unverified checkbox, choice and radio update paths, exact invalid-value error contracts, actual widget appearance changes and clockwise rotation geometry. The module was hash-checked before loading; only the reviewed Aux module was executed. No native rebuild or source fix was needed.
+
+The fixture creates one 400x300 PDF with a checkbox, list choice and two radio sibling widgets plus an off-center red page rectangle. It fills all three controls, saves/reopens and checks exported values. It decompresses the generated RGBA PNGs and checks white-to-black selected widget centers while the unselected radio stays white. It rotates the rectangular page clockwise90 and checks new300x400 output dimensions and the transformed red rectangle position. A separate fill output verifies exact invalid-control error records. Every file, HOME and TMPDIR is disposable; cleanup runs after failure as well as success.
+
+Two initial fixture assumptions were corrected without engine changes: recovered field ordering uses each rectangle's bottom coordinate; PDFium regenerates selected checkbox/radio appearances as black check/dot marks rather than preserving the synthetic red custom appearance. The final fixture passes with those explicit behavior assertions. This is actual source/module execution acceptance, not original-addon parity: the original addon was never loaded, and representative font/pixel identity is still not established.
+
+`runtime-evidence.json` pins module, fixture and final log. This finite check does not broaden to owner documents, OS grants, protected Security calls, UI changes or app activation. Production packaging/loader acceptance remains separate.

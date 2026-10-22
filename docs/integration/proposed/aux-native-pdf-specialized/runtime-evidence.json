@@ -1,0 +1,44 @@
+{
+  "format": "aux.pdf.specialized.runtime.evidence.v1",
+  "module": {
+    "path": "out/aux-native-pdf-link/aux-pdf.node",
+    "sha256": "6febb242a074317dba3edc1848fdfb77da468e32bb87acffdaa7f6143afece8e",
+    "bytes": 9457632,
+    "unchanged": true
+  },
+  "fixture": {
+    "path": "docs/integration/proposed/aux-native-pdf-specialized/tests/specialized.mjs",
+    "sha256": "2e33b09efecc9096a11a5e20b7499e84a6727d02c699aca7f27e0e6fa85fcb6f",
+    "actualFrozenNodeExecuted": true,
+    "exitCode": 0
+  },
+  "logSha256": "87195de8c010e83a2db63787e48c4c7a5812dd15f01eb96e53dbc0add25cea36",
+  "cases": [
+    "checkbox boolean true exports Yes and saved readback",
+    "choice list Red->Green keyboard navigation and saved readback",
+    "radio group Off->B across two widget siblings and saved readback",
+    "invalid checkbox/choice/radio values return exact error records in map order",
+    "opaque PNG RGBA before/after widget centers white->black; unselected sibling remains white",
+    "clockwise90 rectangular page dimensions400x300->300x400 and red rectangle coordinate transforms"
+  ],
+  "scope": {
+    "oneSyntheticPdf": true,
+    "homeAndTmp": "disposable",
+    "originalAddonExecuted": false,
+    "ownerDocumentsAccessed": false,
+    "sourceOrModuleChanged": false,
+    "buildPerformed": false,
+    "SecurityOrOSActions": false,
+    "UIChanged": false
+  },
+  "fixturePreparationCorrections": [
+    "Initial expected field ordering incorrectly used top instead of actual recovered bottom coordinate; corrected expectation only.",
+    "Initial expected supplied red check/radio AP overlooked PDFium regeneration to black checkbox/radio appearances; corrected actual appearance expectation only."
+  ],
+  "remaining": [
+    "No byte/pixel comparison with original addon: original addon execution remains forbidden.",
+    "Representative font substitutions and PDF edge formats unverified.",
+    "Additional unusual field variants not comprehensively tested; no broad suite claimed.",
+    "Production loader/packaging and real app integration remain separate."
+  ]
+}
