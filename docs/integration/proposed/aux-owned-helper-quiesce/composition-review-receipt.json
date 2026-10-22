@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.owned-helper-composition-review.v1",
+  "parentCompositionSha256": "2b2affe740d6da1b13176bc05200bbac6de820a2e72ba70e5ea14d463338ad11",
+  "successorCompositionSha256": "3be30b4e98a56d20ebff15af6d7e6b0d6ea08ecf70ab377030913c2576f42195",
+  "verifiedParentSources": 772,
+  "successorSources": 774,
+  "binaryAssetsUnchanged": 23,
+  "modifiedExistingSources": 3,
+  "addedHeaders": 2,
+  "appliedToNative": false,
+  "BrowserPlatformTUCompiled": false,
+  "uiChanges": false,
+  "allWriterCustodyClaimed": false
+}

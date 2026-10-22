@@ -1,0 +1,10 @@
+{
+  "format": "aux.native.owned-helper-composition-inputs.v1",
+  "parentSourceCount": 772,
+  "parentBinaryAssetCount": 23,
+  "inputs": {
+    "out/native-reuse-composition-aux-carrier-wait-traits/manifest.json": "2b2affe740d6da1b13176bc05200bbac6de820a2e72ba70e5ea14d463338ad11",
+    "out/native-reuse-composition-aux-carrier-wait-traits/combined.patch": "b27c1fb46767339610e138c7a846aff902132c5be83741e11e049f950aa03753",
+    "scripts/extend-provided-native.py": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba"
+  }
+}
