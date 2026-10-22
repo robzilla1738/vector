@@ -1,0 +1,171 @@
+{
+  "format": "aux.development.worker.host.source.v1",
+  "baseCommit": "52b783f1b",
+  "requiredOSCustodyCommit": "b0062957d",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/js_native_api.h",
+      "sha256": "8808ef8899a1691411928ef5dd7dae0537aedc93d3a34e223b2d89692e79c788"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_version.h",
+      "sha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/v8.h",
+      "sha256": "e27a005daa45f342845ffb9b33409686c380b1d5a97f46f3ab4749517a213d25"
+    },
+    {
+      "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostImports.cc",
+      "sha256": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/build.sh",
+      "sha256": "df6b9637777576e710606472291453bb80be13ce04a9f2712bc6d2ab45800ac3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "93f586278d25325221f562089a08ba8db12f8b97af63b531abbf6f4f9a3c50df"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "d1d9373a54e5fcc8a7114a5f388d752aa6c932d19ce963755942ac844ad83478"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "8482d39f0c0a641fe72b97feb25e08e1267a815f62dde503023b4110472e7cdf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
+      "sha256": "9ebd16d6f2d05ea2cf800d83063ef6a4858dbaa9ee5be3c25b1280156767af10"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.h",
+      "sha256": "c3a88b6b6a8b4492e0853f1e0d074fd805c19dd4fd720a489bf347b55af17c47"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/tests/main.swift",
+      "sha256": "33b0901ab2ce132b5b5ec1109b2b0f312de97460c4abf8fa7f3001faa2192f96"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/build.sh",
+      "sha256": "7369ffedb559a68078e893bffa8cdeb61a62c49939eaca38d6aef087a33da267"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/check.mjs",
+      "sha256": "3b3525370f94a73e1a3672918ec5d67769224ce89cf08a6a7069cecf3491b721"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "22bdc3dadc1be8b053b759df0727fe68842303aff18f2584aeb033a1e92222bc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "sha256": "501bb42c9c1899f88b3b0978b439f85fe95c3981cb98e61d58e8a60cc4b28036"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/tests/BlockingLease.swift",
+      "sha256": "29ae62687db4a0baf89bd996bb9d92e4c40d6fdbe4fe008f600009c0d6f1820a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/tests/check.cjs",
+      "sha256": "16faefd21dda09ccc6d837cbde8e02c823c36265306e0292c3f9dcd9c7203718"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/tests/fixture-module.cc",
+      "sha256": "0419b628c1ce483c46510eeb4ed36ffb780f5a3eaff4112a0dcd0d63984ccc21"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-minimal-owned-node/build-fixture.sh",
+      "sha256": "e21056d574216730681362d3159d429455ad81a6293f4d6d35dc2ef784165d12"
+    },
+    {
+      "path": "docs/integration/proposed/aux-minimal-owned-node/tests/RuntimeSyntheticOwner.swift",
+      "sha256": "35f47ef15ee9fc307c623fce5339700f84c110ede1748951fb514c7338f188f8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h",
+      "sha256": "0b29119faab1cc987c70643fad924a87b1cb80ab554020e983de7af4bf01422e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
+      "sha256": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/tests/fixture-module.cc",
+      "sha256": "d7c7b5337e211178fab938df9509f71a4b8a7f50bba783277f8e410e5b53600d"
+    }
+  ]
+}

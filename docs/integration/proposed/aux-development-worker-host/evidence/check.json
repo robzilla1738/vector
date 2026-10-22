@@ -1,0 +1,22 @@
+{
+  "format": "aux.development.worker.host.check.v1",
+  "productionSourceCompiled": true,
+  "actualNodeLifecycleChecks": 31,
+  "actualSwiftRegistryAndNapiAdapter": true,
+  "syntheticSoftwareAuthorityOnly": true,
+  "capturedPendingUntrackedStatuses": true,
+  "actualNodeWorkerTermination": true,
+  "actualLeaseDrain": true,
+  "deadEnvironmentDetachedBeforeGenerationQuarantineRetry": true,
+  "productionOldProductLiteralCount": 0,
+  "signedLoaderExecuted": false,
+  "actualSecurityCalls": 0,
+  "hardwareAuthorityExecuted": false,
+  "signingPerformed": false,
+  "state2Authorized": false,
+  "nativeBootstrapActivated": false,
+  "buildSession": "32761",
+  "terminalExitCode": 0,
+  "artifactRetained": false,
+  "dependency": "b0062957d"
+}
