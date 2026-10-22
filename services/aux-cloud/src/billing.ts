@@ -128,14 +128,48 @@ async function snapshot(userId: string) {
     invoices: remoteInvoices.map(invoice => ({ amountPaid: invoice.amount_paid, createdAt: new Date(invoice.created * 1000).toISOString(), currency: invoice.currency, hostedInvoiceUrl: invoice.hosted_invoice_url, id: invoice.id, invoicePdf: invoice.invoice_pdf, number: invoice.number, status: invoice.status, total: invoice.total })) };
 }
 
-async function checkoutRequest(userId: string, mode: 'subscription' | 'payment', key: string) {
-  const id = randomUUID();
-  await sql`INSERT INTO aux_checkout_requests(user_id,mode,request_id,request_key,expires_at) VALUES(${userId},${mode},${id},${key},now()+interval '1 hour')
-    ON CONFLICT(user_id,mode) DO UPDATE SET request_id=excluded.request_id,request_key=excluded.request_key,expires_at=excluded.expires_at,session_id=NULL
-    WHERE aux_checkout_requests.expires_at<now()`;
-  const rows = await sql`SELECT * FROM aux_checkout_requests WHERE user_id=${userId} AND mode=${mode}`;
-  if (rows[0].request_key !== key) throw new HTTPException(409, { message: 'Another checkout is open. Complete or close it before starting a different purchase.' });
-  return rows[0];
+type CheckoutRequest = { request_id: string; session_id: string | null; mode: 'subscription' | 'payment'; request_key: string; expires_at: string };
+async function closeOwnedCheckout(client: Stripe, userId: string, request: CheckoutRequest, allowCompleted: boolean) {
+  if (!request.session_id) throw new HTTPException(409, { message: 'Checkout is still opening. Please try again shortly.' });
+  const customers = await sql`SELECT stripe_customer_id FROM aux_subscriptions WHERE user_id=${userId}`;
+  const customerId = customers[0]?.stripe_customer_id;
+  if (!customerId) throw new HTTPException(409, { message: 'Checkout ownership could not be verified.' });
+  await ownedCustomer(client, customerId, userId);
+  let session = await client.checkout.sessions.retrieve(request.session_id);
+  const checkOwner = () => {
+    if (idOf(session.customer) !== customerId || session.metadata?.aux_user_id !== userId || session.mode !== request.mode)
+      throw new HTTPException(409, { message: 'Checkout ownership could not be verified.' });
+  };
+  checkOwner();
+  if (session.status === 'open') {
+    try { session = await client.checkout.sessions.expire(session.id); }
+    catch (error) {
+      if (!(error instanceof Stripe.errors.StripeInvalidRequestError)) throw error;
+      session = await client.checkout.sessions.retrieve(session.id);
+      if (session.status === 'open') throw error;
+    }
+    checkOwner();
+  }
+  if (session.status === 'complete' && !allowCompleted) throw new HTTPException(409, { message: 'Checkout completed. Refresh Billing before starting another purchase.' });
+  if (!['expired', 'complete'].includes(session.status ?? '')) throw new HTTPException(409, { message: 'Checkout could not be closed. Please try again.' });
+  await sql`UPDATE aux_checkout_requests SET expires_at=now()-interval '1 second' WHERE user_id=${userId} AND mode=${request.mode} AND request_id=${request.request_id} AND session_id=${request.session_id}`;
+  return session.status;
+}
+async function checkoutRequest(client: Stripe, userId: string, mode: 'subscription' | 'payment', key: string): Promise<CheckoutRequest> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const id = randomUUID();
+    await sql`INSERT INTO aux_checkout_requests(user_id,mode,request_id,request_key,expires_at) VALUES(${userId},${mode},${id},${key},now()+interval '1 hour')
+      ON CONFLICT(user_id,mode) DO UPDATE SET request_id=excluded.request_id,request_key=excluded.request_key,expires_at=excluded.expires_at,session_id=NULL
+      WHERE aux_checkout_requests.expires_at<now()`;
+    const rows = await sql`SELECT * FROM aux_checkout_requests WHERE user_id=${userId} AND mode=${mode}`;
+    const request = rows[0] as CheckoutRequest;
+    if (request.request_key === key) return request;
+    if (attempt) break;
+    // A new plan/amount explicitly replaces the user's abandoned checkout,
+    // including supplied desktop dialogs which have no cancellation callback.
+    await closeOwnedCheckout(client, userId, request, false);
+  }
+  throw new HTTPException(409, { message: 'Another checkout is opening. Please try again shortly.' });
 }
 
 export const billingRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -166,22 +200,33 @@ billingRoutes.post('/checkout', async c => {
   const price = await client.prices.retrieve(priceId), selected = plans.find(plan => data.lookupKey.includes(`_${plan.slug}_`))!;
   const annual = data.lookupKey.endsWith('_year');
   if (!price.active || price.currency !== 'usd' || price.unit_amount !== (annual ? selected.yearlyPriceCents : selected.monthlyPriceCents) || price.recurring?.interval !== (annual ? 'year' : 'month') || price.recurring.interval_count !== 1) throw new HTTPException(503, { message: 'The configured Aux price does not match this plan.' });
-  const request = await checkoutRequest(user.id, 'subscription', JSON.stringify({ lookup: data.lookupKey, target }));
+  const request = await checkoutRequest(client, user.id, 'subscription', JSON.stringify({ lookup: data.lookupKey, target }));
   const session = request.session_id ? await client.checkout.sessions.retrieve(request.session_id) : await client.checkout.sessions.create({ mode: 'subscription', ui_mode: 'embedded', customer: customerId, line_items: [{ price: priceId, quantity: 1 }], return_url: target, client_reference_id: user.id, subscription_data: { metadata: { aux_user_id: user.id } }, metadata: { aux_user_id: user.id }, expires_at: Math.floor(new Date(request.expires_at).getTime() / 1000) }, { idempotencyKey: `aux-checkout-${request.request_id}` });
   await sql`UPDATE aux_checkout_requests SET session_id=${session.id} WHERE user_id=${user.id} AND mode='subscription' AND request_id=${request.request_id}`;
   if (idOf(session.customer) !== customerId || session.metadata?.aux_user_id !== user.id) throw new HTTPException(409, { message: 'Checkout ownership could not be verified.' });
   if (!session.client_secret || session.status !== 'open') { await sql`UPDATE aux_checkout_requests SET expires_at=now()-interval '1 second' WHERE user_id=${user.id} AND mode='subscription' AND request_id=${request.request_id}`; throw new HTTPException(409, { message: 'This checkout has completed or expired. Refresh Billing before trying again.' }); }
-  return c.json({ clientSecret: session.client_secret, publishableKey });
+  return c.json({ clientSecret: session.client_secret, publishableKey, checkoutId: session.id });
+});
+billingRoutes.post('/checkout/cancel', async c => {
+  const { checkoutId } = z.object({ checkoutId: z.string().regex(/^cs_[A-Za-z0-9_]{1,240}$/) }).parse(await c.req.json());
+  const rows = await sql`SELECT * FROM aux_checkout_requests WHERE user_id=${c.get('user').id} AND session_id=${checkoutId}`;
+  if (!rows[0]) return c.json({ closed: true });
+  const status = await closeOwnedCheckout(stripe(), c.get('user').id, rows[0] as CheckoutRequest, true);
+  return c.json({ closed: true, status });
 });
 billingRoutes.post('/portal', async c => {
   const data = z.object({ returnUrl: z.url() }).parse(await c.req.json()), client = stripe();
-  const session = await client.billingPortal.sessions.create({ customer: await customer(client, c.get('user')), return_url: returnUrl(data.returnUrl) });
+  const configuration = process.env.STRIPE_PORTAL_CONFIGURATION_ID;
+  if (!configuration) throw new HTTPException(503, { message: 'The Aux billing portal is not configured yet.' });
+  const customerId = await customer(client, c.get('user')), target = returnUrl(data.returnUrl);
+  const session = await client.billingPortal.sessions.create({ customer: customerId, configuration, return_url: target });
+  if (session.customer !== customerId || idOf(session.configuration) !== configuration || session.return_url !== target) throw new HTTPException(502, { message: 'The billing service returned an unexpected portal session.' });
   return c.json({ url: session.url });
 });
 billingRoutes.post('/add-on-checkout', async c => {
   const data = z.object({ creditCents: z.number().int().min(1000).max(10000).refine(value => value % 100 === 0), successUrl: z.url(), cancelUrl: z.url() }).parse(await c.req.json());
   const client = stripe(), user = c.get('user'), success = returnUrl(data.successUrl), cancel = returnUrl(data.cancelUrl), customerId = await customer(client, user);
-  const request = await checkoutRequest(user.id, 'payment', JSON.stringify({ cents: data.creditCents, success, cancel }));
+  const request = await checkoutRequest(client, user.id, 'payment', JSON.stringify({ cents: data.creditCents, success, cancel }));
   const metadata = { aux_user_id: user.id, aux_credit_micros: String(data.creditCents * 10000) };
   const session = request.session_id ? await client.checkout.sessions.retrieve(request.session_id) : await client.checkout.sessions.create({ mode: 'payment', customer: customerId, line_items: [{ price_data: { currency: 'usd', unit_amount: data.creditCents, product_data: { name: 'Aux service credits' } }, quantity: 1 }], success_url: success, cancel_url: cancel, metadata, payment_intent_data: { metadata }, expires_at: Math.floor(new Date(request.expires_at).getTime() / 1000) }, { idempotencyKey: `aux-checkout-${request.request_id}` });
   await sql`UPDATE aux_checkout_requests SET session_id=${session.id} WHERE user_id=${user.id} AND mode='payment' AND request_id=${request.request_id}`;
