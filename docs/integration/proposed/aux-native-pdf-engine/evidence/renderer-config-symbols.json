@@ -1,0 +1,112 @@
+{
+  "source": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+  "sourceSha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "method": "xcrun nm -j static symbols; absence counts alone are not complete proof",
+  "groups": {
+    "v8": {
+      "pattern": "(_ZN2v8|_ZNK2v8|_ZN[0-9]+v8)",
+      "count": 0,
+      "symbols": []
+    },
+    "xfa_engine": {
+      "pattern": "(CXFA|CJA_)",
+      "count": 0,
+      "symbols": []
+    },
+    "skia": {
+      "pattern": "(SkCanvas|Skia|SkSurface|SkBitmap)",
+      "count": 0,
+      "symbols": []
+    },
+    "agg": {
+      "pattern": "CFX_AggDeviceDriver",
+      "count": 38,
+      "symbols": [
+        "__ZN6pdfium19CFX_AggDeviceDriver11SetClipMaskERNS_3agg22rasterizer_scanline_aaE",
+        "__ZN6pdfium19CFX_AggDeviceDriver11StartDIBitsEN5fxcrt9RetainPtrIK11CFX_DIBBaseEEfjRK10CFX_MatrixRKN4fxge21FXDIB_ResampleOptionsENS9_9BlendModeE",
+        "__ZN6pdfium19CFX_AggDeviceDriver12InitPlatformEv",
+        "__ZN6pdfium19CFX_AggDeviceDriver12RestoreStateEb",
+        "__ZN6pdfium19CFX_AggDeviceDriver13MultiplyAlphaEf",
+        "__ZN6pdfium19CFX_AggDeviceDriver13StretchDIBitsEN5fxcrt9RetainPtrIK11CFX_DIBBaseEEjiiiiPK7FX_RECTRKN4fxge21FXDIB_ResampleOptionsENS9_9BlendModeE",
+        "__ZN6pdfium19CFX_AggDeviceDriver14ContinueDIBitsEPN23RenderDeviceDriverIface12ContinuationEP19PauseIndicatorIface",
+        "__ZN6pdfium19CFX_AggDeviceDriver14DrawDeviceTextENS_4spanIK11TextCharPosLm18446744073709551615EPS3_EEP8CFX_FontRK10CFX_MatrixfjRK21CFX_TextRenderOptions",
+        "__ZN6pdfium19CFX_AggDeviceDriver15DestroyPlatformEv",
+        "__ZN6pdfium19CFX_AggDeviceDriver16RenderRasterizerERNS_3agg22rasterizer_scanline_aaEjbb",
+        "__ZN6pdfium19CFX_AggDeviceDriver16SetClip_PathFillERK8CFX_PathPK10CFX_MatrixRK21CFX_FillRenderOptions",
+        "__ZN6pdfium19CFX_AggDeviceDriver17MultiplyAlphaMaskEN5fxcrt9RetainPtrIK12CFX_DIBitmapEE",
+        "__ZN6pdfium19CFX_AggDeviceDriver18SetClip_PathStrokeERK8CFX_PathPK10CFX_MatrixPK18CFX_GraphStateData",
+        "__ZN6pdfium19CFX_AggDeviceDriver5ClearEj",
+        "__ZN6pdfium19CFX_AggDeviceDriver8DrawPathERK8CFX_PathPK10CFX_MatrixPK18CFX_GraphStateDatajjRK21CFX_FillRenderOptions",
+        "__ZN6pdfium19CFX_AggDeviceDriver8FillRectERK7FX_RECTj",
+        "__ZN6pdfium19CFX_AggDeviceDriver9SaveStateEv",
+        "__ZN6pdfium19CFX_AggDeviceDriver9SetDIBitsEN5fxcrt9RetainPtrIK11CFX_DIBBaseEEjRK7FX_RECTiiN4fxge9BlendModeE",
+        "__ZN6pdfium19CFX_AggDeviceDriverC1EN5fxcrt9RetainPtrI12CFX_DIBitmapEEbS4_b",
+        "__ZN6pdfium19CFX_AggDeviceDriverC2EN5fxcrt9RetainPtrI12CFX_DIBitmapEEbS4_b",
+        "__ZN6pdfium19CFX_AggDeviceDriverD0Ev",
+        "__ZN6pdfium19CFX_AggDeviceDriverD1Ev",
+        "__ZN6pdfium19CFX_AggDeviceDriverD2Ev",
+        "__ZNK6pdfium19CFX_AggDeviceDriver10GetClipBoxEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver11GetBackDropEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver13GetDeviceTypeEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver13GetDriverTypeEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver13GetPixelWidthEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver14GetPixelHeightEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver15GetBitsPerPixelEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver16RenderCapGetBitsEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver17RenderCapSoftClipEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver18RenderCapBlendModeEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver19RenderCapAlphaImageEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver20RenderCapAlphaOutputEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver23RenderCapByteMaskOutputEv",
+        "__ZNK6pdfium19CFX_AggDeviceDriver9GetDIBitsEN5fxcrt9RetainPtrI12CFX_DIBitmapEEii",
+        "__ZTVN6pdfium19CFX_AggDeviceDriverE"
+      ]
+    },
+    "mac_font_freetype": {
+      "pattern": "(CFX_MacFontInfo|FT_Init_FreeType)",
+      "count": 5,
+      "symbols": [
+        "_FT_Init_FreeType",
+        "__ZN12_GLOBAL__N_115CFX_MacFontInfo7MapFontEP14CFX_FontMapperib10FX_CharsetiRKN5fxcrt10ByteStringE",
+        "__ZN12_GLOBAL__N_115CFX_MacFontInfoD0Ev",
+        "__ZN12_GLOBAL__N_115CFX_MacFontInfoD1Ev",
+        "__ZTVN12_GLOBAL__N_115CFX_MacFontInfoE"
+      ]
+    },
+    "js_stub": {
+      "pattern": "(CJS_RuntimeStub|IJS_Runtime)",
+      "count": 24,
+      "symbols": [
+        "__ZN11IJS_Runtime10InitializeEjPvS0_",
+        "__ZN11IJS_Runtime18ScopedEventContextC1EPS_",
+        "__ZN11IJS_Runtime18ScopedEventContextC2EPS_",
+        "__ZN11IJS_Runtime18ScopedEventContextD1Ev",
+        "__ZN11IJS_Runtime18ScopedEventContextD2Ev",
+        "__ZN11IJS_Runtime6CreateEP27CPDFSDK_FormFillEnvironment",
+        "__ZN11IJS_Runtime7DestroyEv",
+        "__ZN11IJS_Runtime8JS_ErrorC1EiiRKN5fxcrt10WideStringE",
+        "__ZN11IJS_Runtime8JS_ErrorC2EiiRKN5fxcrt10WideStringE",
+        "__ZN11IJS_RuntimeD0Ev",
+        "__ZN11IJS_RuntimeD1Ev",
+        "__ZN11IJS_RuntimeD2Ev",
+        "__ZN15CJS_RuntimeStub12AsCJSRuntimeEv",
+        "__ZN15CJS_RuntimeStub13ExecuteScriptERKN5fxcrt10WideStringE",
+        "__ZN15CJS_RuntimeStub15NewEventContextEv",
+        "__ZN15CJS_RuntimeStub19ReleaseEventContextEP16IJS_EventContext",
+        "__ZN15CJS_RuntimeStubC1EP27CPDFSDK_FormFillEnvironment",
+        "__ZN15CJS_RuntimeStubC2EP27CPDFSDK_FormFillEnvironment",
+        "__ZN15CJS_RuntimeStubD0Ev",
+        "__ZN15CJS_RuntimeStubD1Ev",
+        "__ZN15CJS_RuntimeStubD2Ev",
+        "__ZNK15CJS_RuntimeStub14GetFormFillEnvEv",
+        "__ZTV11IJS_Runtime",
+        "__ZTV15CJS_RuntimeStub"
+      ]
+    }
+  },
+  "exactBranches": {
+    "_FPDF_LoadXFA": "0x186974: mov w0,#0; ret",
+    "IJS_Runtime::Initialize": "0x191b44: ret"
+  },
+  "originalAddonExecuted": false
+}

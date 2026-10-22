@@ -72,10 +72,13 @@
     "evidence/inspect-fields.asm": "1f73d0bac909401d3c68910cfa9c8a63a95f903f14397dc6c6ab9b68f97d3c6b",
     "evidence/library.asm": "e966d7ddbb46977024743a89691ff3648f8661ea5c16dbccfa041f1fabbc3ed8",
     "evidence/new-document.asm": "9c73533903cb21975d56a89386367757eee622311f80d0c32f0ac07c44e6564e",
+    "evidence/no-v8-init.asm": "bd4c13baf0dc3bad7b5b9ffd7c23ba1ad485938991715f2b0015a6cccf7dfe13",
+    "evidence/no-xfa.asm": "2e32739e8c2d9e14a8cc57eebf3887f396796502e7571128a840088578dc6e05",
     "evidence/page-close.asm": "8cedd28a93dcd9f3382efd5464e4acbd89a6b98c3666337c409c503cc6b0558d",
     "evidence/page.asm": "978d7a25699488b6d530b0f55d38c9f61e9d35560cb6b360f52d722b12ac289d",
     "evidence/raw-type.asm": "c4f8aec9416c2b57b1db52542fa669a91e0732c885c755ec9babb747b5a40a17",
     "evidence/read-fill.asm": "e152beb9d6f23ee5108a6f1156fb5f5c670d9713562df35567d6bac05ca7c46f",
+    "evidence/renderer-config-symbols.json": "a685f4ba3641dc3097bd0328a920dc4ea2e3906a504af518b862aec54ac0eca7",
     "evidence/required-string.asm": "91a7ab917c6308ae8fb34b0c12aeac57c623b95dc2778f52d512dc4ed4eb93ef",
     "evidence/save.asm": "fe7ad3a694cbbc467f3b21e04c398a06bf38d4996655a809dfee0bdcf945ccd2",
     "evidence/set-choice.asm": "7cf82b003f73a1b270228344e98ccfba3f318dd78e879cd1c6d688f597913027",
@@ -105,5 +108,15 @@
     "renderPages"
   ],
   "compileLanguage": "c++17",
-  "preparedRuntimeFixtureSyntaxChecked": true
+  "preparedRuntimeFixtureSyntaxChecked": true,
+  "originalConfigStaticEvidence": {
+    "pdf_enable_v8": false,
+    "pdf_enable_xfa": false,
+    "pdf_use_skia": false,
+    "renderer": "AGG",
+    "fontBackend": "FreeType; native Mac font mapper present",
+    "externalFontPaths": null,
+    "wrapperConfigVersion": 2,
+    "originalEngineRevisionKnown": false
+  }
 }
