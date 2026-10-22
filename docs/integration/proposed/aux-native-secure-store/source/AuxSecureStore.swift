@@ -11,7 +11,7 @@ struct ReviewedAuxSecureStoreScope {
     private let allowedKeys:Set<Data>
     init(scope:String,accessGroup:String,allowedLogicalKeys:Set<String>)throws {
         guard scope.utf8.count==64,scope.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),
-              !accessGroup.isEmpty,accessGroup.utf8.count<=512,!accessGroup.utf8.contains(0),!accessGroup.lowercased().contains("aside"),
+              !accessGroup.isEmpty,accessGroup.utf8.count<=512,!accessGroup.utf8.contains(0),accessGroup.contains(".aux.") && accessGroup.utf8.allSatisfy({(48...57).contains($0)||(65...90).contains($0)||(97...122).contains($0)||$0==45||$0==46}),
               !allowedLogicalKeys.isEmpty,allowedLogicalKeys.count<=1024,
               allowedLogicalKeys.allSatisfy({!$0.isEmpty && $0.utf8.count<=512 && !$0.utf8.contains(0)})
         else{throw AuxSecureStoreError.invalidReview}
