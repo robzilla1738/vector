@@ -17,6 +17,7 @@ do { _ = try intent.addRequest(checkpoint:.init(bindingSha256:String(repeating:"
 // Pure asserted durable binding; fixture does not claim fsync or store custody.
 let bindingCheckpoint=try intent.binding.assertedCheckpoint()
 let add=try intent.addRequest(checkpoint:bindingCheckpoint)
+do { _ = try intent.addRequest(checkpoint:bindingCheckpoint);fatalError("secure-stage Add replay permitted") } catch FreshSecureStageError.binding {}
 precondition(!String(decoding:add.secretPayload,as:UTF8.self).contains(fresh.root.base64EncodedString()))
 let secret=try strictEnvelopeObject(add.secretPayload)
 let payloads=secret["payloads"] as! [String:String]

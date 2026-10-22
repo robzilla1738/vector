@@ -34,12 +34,19 @@ struct FreshSecureStageBinding:Codable {
     }
 }
 struct AssertedDurableFreshStageBinding { let bindingSha256:String } // External durable-store assertion only.
-struct PreparedSensitiveFreshStageIntent {
+final class PreparedSensitiveFreshStageIntent {
     let binding:FreshSecureStageBinding // Nonsecret record that must be durable BEFORE stage Add.
     fileprivate let secretPayload:Data
     fileprivate let selector:ReviewedFreshSecureStageSelector
+    private var consumed=false
+    private let lock=NSLock()
+    fileprivate init(binding:FreshSecureStageBinding,secretPayload:Data,selector:ReviewedFreshSecureStageSelector) {
+        self.binding=binding;self.secretPayload=secretPayload;self.selector=selector
+    }
     func addRequest(checkpoint:AssertedDurableFreshStageBinding)throws->SensitiveFreshSecureStageAdd {
-        guard try binding.assertedCheckpoint().bindingSha256==checkpoint.bindingSha256 else{throw FreshSecureStageError.binding}
+        lock.lock();defer{lock.unlock()}
+        guard !consumed,try binding.assertedCheckpoint().bindingSha256==checkpoint.bindingSha256 else{throw FreshSecureStageError.binding}
+        consumed=true
         return .init(selector:selector,secretPayload:secretPayload,intentJournalSha256:binding.initialDraftSha256)
     }
 }
