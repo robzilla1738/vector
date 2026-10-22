@@ -1,0 +1,65 @@
+{
+  "format": "aux.csk.prepared-handoff.source-pins.v1",
+  "fdBaseline": {
+    "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+    "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+  },
+  "fdAdaptations": [
+    {
+      "find": "PrivateFreshInstallationJournalStore",
+      "replace": "PrivateCskHandoffJournalStore",
+      "count": 1
+    },
+    {
+      "find": "FreshInstallationJournalStoreError",
+      "replace": "CskHandoffStoreError",
+      "count": 28
+    },
+    {
+      "find": "\".aux-fresh-installation-journal-\"",
+      "replace": "\".aux-csk-prepared-handoff-\"",
+      "count": 1
+    },
+    {
+      "find": "uuid.uuidString==transactionId",
+      "replace": "uuid.uuidString.lowercased()==transactionId",
+      "count": 1
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift",
+      "sha256": "7d4d765391fdbb2f687c50aab3e6ba9776c9048fe6ae7cc48feb66ec446432d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/prepare-legacy-csk.mjs",
+      "sha256": "d9646a1c64271ce6c019beb6316c3bebaf1646ffbf0666d25c271ce5287fe26d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity-legacy.mjs",
+      "sha256": "3a73270403c1cd0a2402cb530e59fb47c4e852fee3da99ab8407a2533ea7a506"
+    }
+  ],
+  "sources": {
+    "source/DurableCapturedCskHandoff.swift": "42efe4a43125dfd8039088912c9dbba2970a10b004137c3d4e5266441eda830d",
+    "source/PrivateCskHandoffJournalStore.tail.swift": "bcd4d78580475c811d182f1be2fd1e84310d5d63cd45be1ee1abfbe9325d7353",
+    "source/CskHandoffRecords.swift": "7f682442ef830274925ef7c4924013557f4ac86ad022dead030fcdc741e8e3ac",
+    "source/CapturedCskPreparation.swift": "7b01bef618e6ffdc1ff41e4327c62f4a743db2e930f1338926ee5b469cc165f2"
+  }
+}

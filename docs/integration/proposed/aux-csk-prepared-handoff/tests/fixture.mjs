@@ -1,0 +1,13 @@
+import {createCipheriv,hkdfSync} from 'node:crypto';
+import {prepareLegacyCskV2} from '../../aux-csk-v2-consumer/source/prepare-legacy-csk.mjs';
+import {createHash} from 'node:crypto';
+import {encryptAuxCskV2} from '../../aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs';
+const root=Buffer.alloc(32,7),csk=Buffer.alloc(32,29),nonce=Buffer.alloc(12,13),label='aside.dk.csk.v1';
+const key=Buffer.from(hkdfSync('sha256',root,Buffer.alloc(0),label,32));
+const cipher=createCipheriv('chacha20-poly1305',key,nonce,{authTagLength:16});cipher.setAAD(Buffer.from(label));
+const envelope={purpose:'csk',nonce:nonce.toString('base64'),ciphertext:Buffer.concat([cipher.update(csk),cipher.final(),cipher.getAuthTag()]).toString('base64')};
+const original=Buffer.from(JSON.stringify({schemaVersion:1,accountId:7,boundUserId:'synthetic-user',syncGeneration:11,encryptedBlob:envelope}));
+const prepared=prepareLegacyCskV2({bytes:original,expectedSha256:createHash('sha256').update(original).digest('hex'),rootKey:root,expectedOwner:{accountId:7,boundUserId:'synthetic-user'}}).bytes;
+const wrong=JSON.parse(prepared);wrong.encryptedBlob=encryptAuxCskV2(root,'csk',Buffer.alloc(32,30));
+process.stdout.write(JSON.stringify({differentCsk:Buffer.from(JSON.stringify(wrong)).toString('base64'),root:root.toString('base64'),csk:csk.toString('base64'),original:original.toString('base64'),prepared:prepared.toString('base64')}));
+root.fill(0);csk.fill(0);key.fill(0);

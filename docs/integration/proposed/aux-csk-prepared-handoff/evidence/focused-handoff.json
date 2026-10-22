@@ -1,0 +1,29 @@
+{
+  "format": "aux.csk.prepared-handoff.focused-check.v1",
+  "result": "passed",
+  "assertions": 54,
+  "command": "python3 scripts/native-build.py sh docs/integration/proposed/aux-csk-prepared-handoff/check.sh",
+  "actualCryptoKitAuthentication": true,
+  "actualJavaScriptPreparer": true,
+  "actualPrivateDisposableFilesystem": true,
+  "fixtureInputTransport": "pipe stdin; no material fixture file",
+  "throwAfterAddRecreatedCoordinatorVerified": true,
+  "targetAddReplayCount": 0,
+  "restoredDraftAddCount": 0,
+  "unknownAbsentAddReplayCount": 0,
+  "newPreparedObjectOldIntentRefused": true,
+  "nonsecretJournalOnly": true,
+  "realSecurityCalls": false,
+  "originalAddonExecuted": false,
+  "protectedAuthorityOrCustodyClaimed": false,
+  "UIChanged": false,
+  "nativeCheckoutModified": false,
+  "compilerWarning": "Existing unchanged AuxSecureStore kSecUseAuthenticationUIFail deprecation; no Security method invoked",
+  "sourcePinsSha256": "4eb3ccdc2341c7383ced25303ab2bfd62352bf7bd70330d8b49e3638d614e362",
+  "focusedFiles": {
+    "tests/fixture.mjs": "70a8b0cddb77e3d2f0288aacf54d3af1a2f8ba39541f263063887b9dcce2b881",
+    "tests/main.swift": "5c334c2289d511c5c405f577c7ef751b83e50b6eba678bf535aef4ea5188943c",
+    "generate.mjs": "348772015599a26c9cc00a966f4c39cb577650f1b7dc8a6dacb6290d1fa4b8b2",
+    "check.sh": "5061b9ed679b2573d801a5756eff1a36123d585743ed5f8771e978d653bd2a0d"
+  }
+}
