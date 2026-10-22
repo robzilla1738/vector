@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "aux-canonical-browser-icon",
+  "target": "assets/aux-CeBDTZrg.webp",
+  "dimensions": [
+    512,
+    512
+  ],
+  "derivation": "Lossless WebP encoding of existing canonical two-path Aux SVG-derived icon, no redraw or source illustration editing.",
+  "files": {
+    "canonicalSvg": {
+      "path": "assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    "derivedPng": {
+      "path": "assets/brand/Aux.iconset/icon_512x512.png",
+      "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b"
+    },
+    "originalRaster": {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/agent/assets/aside-CeBDTZrg.webp",
+      "sha256": "d0d55a418b2a03bffc682d95f11a2f79579fd46ca053a9b893a974f3a3e4c66d"
+    },
+    "replacement": {
+      "path": "vendor/provided-ui/branding/aux-browser-icon.webp",
+      "sha256": "3b396f2bcd779c7406023cce0d5e6917c404c19985504d0e45317426cce839ca"
+    }
+  },
+  "acceptedUiChanged": false,
+  "integrated": false
+}

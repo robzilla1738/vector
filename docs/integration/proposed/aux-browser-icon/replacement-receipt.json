@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "kind": "aux-reviewed-asset-replacement",
+  "path": "assets/aside-CeBDTZrg.webp",
+  "originalSha256": "d0d55a418b2a03bffc682d95f11a2f79579fd46ca053a9b893a974f3a3e4c66d",
+  "output": {
+    "sha256": "3b396f2bcd779c7406023cce0d5e6917c404c19985504d0e45317426cce839ca",
+    "bytes": 6212
+  },
+  "source": {
+    "kind": "canonical-aux-svg",
+    "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+  },
+  "derivation": {
+    "sourcePng": "assets/brand/Aux.iconset/icon_512x512.png",
+    "sourcePngSha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b",
+    "decodedRgbaSha256": "9f2fd61c1c52f41eba81c9b1478b24dafb9f379ba78cfe0a1cd478dbe407e43a",
+    "dimensions": [
+      512,
+      512
+    ],
+    "decodedPixelsEqual": true,
+    "encoder": "cwebp -quiet -lossless"
+  }
+}
