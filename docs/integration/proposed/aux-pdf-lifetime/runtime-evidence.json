@@ -1,0 +1,125 @@
+{
+  "format": "aux.pdf.lifetime.runtime.evidence.v2",
+  "module": {
+    "path": "out/aux-pdf-lifetime/aux-pdf.node",
+    "sha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+    "bytes": 9474752,
+    "retained": true
+  },
+  "actualPdfiumLinked": true,
+  "actualFrozenNodeFixturePassed": true,
+  "pdfNativeAdmissionClosure": true,
+  "actualFixtureScope": [
+    "synchronous-extraction",
+    "reentrant-getter-close-pending",
+    "recursive-call-refusal-without-engine-deadlock",
+    "actual-worker-admitted-before-close",
+    "already-admitted-operation-completes-before-zero-count",
+    "all-seven-post-close-methods-refused",
+    "terminal-idle-close"
+  ],
+  "actualBuildSession": "50200",
+  "actualBuildExitCode": 0,
+  "actualRuntimeSession": "48237",
+  "actualRuntimeExitCode": 0,
+  "priorBuildSession": "5145",
+  "priorBuildExitCode": 1,
+  "priorBuildFailure": "selected uninitialized in-tree Python shim; no bootstrap/repair run; corrected to existing pinned parent hermetic interpreter",
+  "baselineEngine": {
+    "evidence": "docs/integration/proposed/aux-native-pdf-link/runtime-evidence.json",
+    "evidenceSha256": "762585bc954f9e3d2ce5e073ff0865a2d3b8c42e6a7add906f13770a528c2826",
+    "moduleSha256": "6febb242a074317dba3edc1848fdfb77da468e32bb87acffdaa7f6143afece8e",
+    "methodAndHelperBodySha256": "5ed84ec1327e9ad8be1e19abd774197708f5cbee3a093e7d744326a6decec553",
+    "bodyByteIdenticalToSourceAt": "f902d52ec",
+    "historicalSevenMethodAndSpecializedChecksNotRepeated": true
+  },
+  "scope": {
+    "home": "disposable",
+    "documents": "synthetic-only",
+    "originalAddonExecuted": false,
+    "ownerDocumentsAccessed": false,
+    "protectedSecurityOperations": false,
+    "signingWorkflow": false,
+    "appReplaced": false,
+    "cloudOperations": false
+  },
+  "currentSources": [
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-link/BUILD.gn",
+      "sha256": "e73b06bf90f3657615018242b3975eab7f4e9be3267a8fe787ea9cc27aa16764"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-link/args.gn",
+      "sha256": "0bb89c471ef291d151868fce83aaf767e11dcff88df916f7b7505e943378d11e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/tests/pdf-four.mjs",
+      "sha256": "07c5b46175099bde14054d0884f544021533a6302fe4c52ef6c8ec3816fb8bfc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/RecoveredPngCodec.h",
+      "sha256": "a8fffba76d00b653782d2f1d7727f1a9c3b8f58ef1e58e83286448244a73b276"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/AuxPdfFour.cc",
+      "sha256": "1169c0cabe2a912e28e2da7e338685ee74eb84c1241103928073f18afdcaed93"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/RecoveredPngCodec.cc",
+      "sha256": "a28db13406987a3ba3563240f27a2a0d90d03b4fd02fc7ab1f7cc4d6c08c2daa"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelection.h",
+      "sha256": "ee80a69e97a2033ae92629d514e79f66dbcf62e22939e188b5194b782c219d31"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelection.cc",
+      "sha256": "2b2e87e6d7770f060124114fa110dc7073762caaa1fd3cae8295f625c3136401"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/source/RecoveredPdfPageSelectionNapi.cc",
+      "sha256": "42d52d38f84f56695d6916b676f7c131ab08b6578e96d508a28d7014046e9c12"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-engine/source/AuxPdfLifetime.h",
+      "sha256": "6deffdcb8ed83a7c546f783c177ca9c2395d669c17cbf7c6530887c07520e19b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-pdf-lifetime/tests/control.cc",
+      "sha256": "82a7c713e7badcd9b31d56756605a98df3e7634002de492be20dd093ed671f7d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-pdf-lifetime/tests/check.mjs",
+      "sha256": "949cf2f4a6b2f68946884863a5638cdcf9eea08cceb9335093b0d08c4726ecde"
+    }
+  ],
+  "nativeApi": {
+    "close": "AuxPdfCloseAdmissionAndDrain",
+    "pending": "AuxPdfPendingOperations",
+    "javascriptExportsAdded": false,
+    "productionNativeConsumerWired": false,
+    "wholeProfileAdmissionProven": false,
+    "state2Authorized": false
+  },
+  "artifactReferenceProductSubstringCount": 0,
+  "frozenRuntime": {
+    "nodePath": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+    "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+    "nodeApiHeaderSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+  },
+  "remaining": [
+    "trusted-native-consumer-must-close-this-exact-loaded-image-before-migration",
+    "independent-processes-and-renderers-not-covered",
+    "representative-original-font-pixel-identity",
+    "actual-app-startup-and-cohort-acceptance"
+  ],
+  "loaderIntegration": {
+    "actualSourceLoaderFixturePassed": true,
+    "session": "54071",
+    "exitCode": 0,
+    "packagedAppExecuted": false,
+    "test": "vendor/provided/aux-pdf-integration.test.mjs",
+    "testSha256": "1c70ab6381d0931387a59adcf1f6c5b6f085459565903587621706079cafcc5d",
+    "logSha256": "285c8e385ea67507c6964a938d516c1d71b8db7b2120a0e4e3244002e21de7c8"
+  }
+}

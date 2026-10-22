@@ -1,0 +1,3 @@
+PASS actual PDF native custody reentrant; synchronous native operations, own synthetic document only
+PASS actual PDF native custody worker; synchronous native operations, own synthetic document only
+PASS actual PDF native custody idle; synchronous native operations, own synthetic document only

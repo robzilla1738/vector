@@ -43,6 +43,7 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-pdf-pins.cjs',
   'vendor/provided/aux-pdf-artifact.mjs',
   'docs/integration/proposed/aux-native-pdf-link/runtime-evidence.json',
+  'docs/integration/proposed/aux-pdf-lifetime/runtime-evidence.json',
   'vendor/provided/cli-adapter.mjs',
   'vendor/provided/aux-cli-device-registration.mjs',
   'docs/integration/proposed/aux-cli-device-registration/inputs.json',

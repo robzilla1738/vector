@@ -7,6 +7,7 @@
 #include "fpdf_edit.h"
 #include "fpdf_annot.h"
 #include "RecoveredPngCodec.h"
+#include "AuxPdfLifetime.h"
 #include <algorithm>
 #include <map>
 #include <variant>
@@ -22,9 +23,33 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <unistd.h>
+#include <limits>
 namespace aux::pdf { std::vector<int> ReadPageNumbers(napi_env,napi_value,int); }
 namespace {
-std::mutex pdf_mutex;
+std::mutex& PdfMutex(){static auto* value=new std::mutex;return *value;}
+struct PdfAdmission {
+  const pid_t process=getpid();
+  std::mutex mutex;
+  bool accepting=true;
+  uint64_t active=0;
+};
+PdfAdmission& Admission(){
+  // Native shutdown may outlive module static destructors. No destructor may
+  // manufacture drain or destroy a mutex while a retained call still uses it.
+  static auto* value=new PdfAdmission;
+  return *value;
+}
+thread_local bool pdf_on_this_thread=false;
+struct PdfLease {
+  bool admitted=false;
+  PdfLease(){auto& state=Admission();if(getpid()!=state.process)return;
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if(state.accepting && state.active<std::numeric_limits<uint64_t>::max()){++state.active;admitted=true;}}
+  ~PdfLease(){if(!admitted)return;auto& state=Admission();if(getpid()!=state.process)return;
+    std::lock_guard<std::mutex> lock(state.mutex);--state.active;}
+};
+struct PdfThreadScope {PdfThreadScope(){pdf_on_this_thread=true;}~PdfThreadScope(){pdf_on_this_thread=false;}};
 std::string PathUtf8(const std::filesystem::path&path){auto bytes=path.u8string();return {reinterpret_cast<const char*>(bytes.data()),bytes.size()};}
 napi_value Object(napi_env env){napi_value v{};napi_create_object(env,&v);return v;}
 napi_value Array(napi_env env,size_t size){napi_value v{};napi_create_array_with_length(env,size,&v);return v;}
@@ -260,9 +285,23 @@ napi_value FillFormFields(napi_env env,napi_value input){
 template<napi_value(*Operation)(napi_env,napi_value)>napi_value Run(napi_env env,napi_callback_info info){
   size_t argc=1;napi_value input{};napi_get_cb_info(env,info,&argc,&input,nullptr,nullptr);
   if(argc<1){napi_throw_type_error(env,nullptr,"PDF operation requires an input object");return nullptr;}
-  std::lock_guard<std::mutex> guard(pdf_mutex);
+  // Property getters can reenter JS while an operation holds the PDFium lock.
+  // Refuse recursive use before that lock, rather than deadlocking its thread.
+  if(pdf_on_this_thread){napi_throw_error(env,nullptr,"PDF operation is already active on this thread");return nullptr;}
+  PdfLease lease;
+  if(!lease.admitted){napi_throw_error(env,nullptr,"Native PDF admission is closed");return nullptr;}
+  PdfThreadScope thread_scope;
+  std::lock_guard<std::mutex> guard(PdfMutex());
   try{Library library;return Operation(env,input);}catch(const std::exception&error){napi_throw_error(env,nullptr,error.what());return nullptr;}
 }
+}
+extern "C" int32_t AuxPdfCloseAdmissionAndDrain(){
+  auto& state=Admission();if(getpid()!=state.process)return -1;
+  std::lock_guard<std::mutex> lock(state.mutex);state.accepting=false;return state.active ? 1:0;
+}
+extern "C" uint64_t AuxPdfPendingOperations(){
+  auto& state=Admission();if(getpid()!=state.process)return std::numeric_limits<uint64_t>::max();
+  std::lock_guard<std::mutex> lock(state.mutex);return state.active;
 }
 NAPI_MODULE_INIT(){
   auto pdf=Object(env);
