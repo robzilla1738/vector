@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/AdditiveInstallationTransaction.swift.patch",
-      "sha256": "2e2e6a01fd18f9aab9f0897976500ba9b8d675a3a3acece3c7d9499d085b46da"
+      "sha256": "76e43c0c85ee3c97122a87aa3b1894035c584a75763883aac5fafff6b4544fd9"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/CapturedInstallation.swift.patch",
@@ -15,7 +15,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/README.md",
-      "sha256": "cc6a2ddb99c2efc1278a3a31b447c489a3333bc25c6262435963bf24f3ae73ba"
+      "sha256": "0f5e7bfcc59ea3152eec421593266f1909714421eeeb9671da5e449300708686"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/check.mjs",
@@ -23,11 +23,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source-continuations.json",
-      "sha256": "570ae6893ffdc50d76bafe0edebd234be3905f9493d5e0bf3d62b0322ffc21ca"
+      "sha256": "9f793a1215ffc3b1b2adc2b28ff9e661da7113ed24173c34cd50f6393f9b2277"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift",
-      "sha256": "98e8129f1895c5dc624adbcf7629a8492e705433e270828d59a78b5f1e27ed47"
+      "sha256": "7adbd3fefec37c46faebf7be4a39018c5e37d34a04c31067a2909064c72b5f99"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift.continuation",
@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/tests/main.swift",
-      "sha256": "efc660790cda8e0d9e4ff44a688a0ef37286e99910d5020a717d2911b4f4224d"
+      "sha256": "a113ebc01744170c901e553656869929909f47b3468954174fffbd6fe451ec11"
     },
     {
       "path": "docs/integration/proposed/aux-existing-installation-step-caller/source/ExistingInstallationMigrationStepCaller.swift",
@@ -104,6 +104,10 @@
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
       "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-existing-installation-step-caller/source-pins.json",
+      "sha256": "61874bcbd41e780ee54f0e7100e1749309334baaec17046dcf3cfe4cdb9d16ef"
     }
   ]
 }

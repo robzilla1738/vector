@@ -12,9 +12,9 @@
     },
     {
       "baseline": "docs/integration/proposed/aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
-      "baselineSha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c",
+      "baselineSha256": "3b19168564bad03e277efaab1e4c22e43897eb7bab516e426756144d338d7011",
       "successor": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift",
-      "successorSha256": "98e8129f1895c5dc624adbcf7629a8492e705433e270828d59a78b5f1e27ed47",
+      "successorSha256": "7adbd3fefec37c46faebf7be4a39018c5e37d34a04c31067a2909064c72b5f99",
       "continuation": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift.continuation",
       "appendedBytes": 203,
       "patch": "docs/integration/proposed/aux-existing-candidate-recovery/AdditiveInstallationTransaction.swift.patch"

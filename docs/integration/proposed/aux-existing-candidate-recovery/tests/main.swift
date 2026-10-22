@@ -77,6 +77,7 @@ let reopenedStore=try PrivateInstallationJournalStore(canonicalDisposableRoot:ro
 let reloadedArchive=try reopenedStore.loadCandidateArchive()
 let recovered=try recoverSoftwareP256Installation(originals,archive:reloadedArchive,expectedCandidateSha256:reopenedStore.loadCurrent()!.journal.candidateSha256,verificationChallenge:bytes("syntheticChallenge"))
 check(recovered.wrappedRootV2==candidate.wrappedRootV2 && recovered.originalRowHashes==candidate.originalRowHashes)
+try AdditiveInstallationTransaction.validateCandidateBinding(reopenedStore.loadCurrent()!.journal,candidate:recovered)
 check(try migrationCandidateDigest(recovered)==crashStore.loadCurrent()!.journal.candidateSha256)
 func refuse(_ action:()throws->Void){do{try action();preconditionFailure("expected refusal")}catch{checks += 1}}
 refuse{_ = try recoverSoftwareP256Installation(originals,archive:reloadedArchive,expectedCandidateSha256:String(repeating:"0",count:64),verificationChallenge:bytes("syntheticChallenge"))}
