@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { del, get, issueSignedToken, presignUrl } from '@vercel/blob';
+import { del, get, head, issueSignedToken, presignUrl } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { sql } from './db';
 import type { AuthVariables } from './auth';
 import { publishShareForUser } from './sync';
+import { advertisedBlobLength } from './blob-length';
 
 export const attachmentRoutes = new Hono<{ Variables: AuthVariables }>();
 /** Mount outside session auth: the SDK validates Vercel's signed callback before running our handler. */
@@ -47,7 +48,8 @@ async function verifiedBytes(row: Attachment) {
   const blob = await get(row.pathname, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(120_000) });
   if (!blob || blob.statusCode !== 200) reject(409, 'UPLOAD_INCOMPLETE', 'The private upload is not available yet.');
   const maximum = Number(row.expected_size);
-  if (blob.blob.size !== maximum || blob.blob.contentType.split(';')[0] !== row.content_type) { await blob.stream.cancel(); reject(409, 'UPLOAD_MISMATCH', 'Upload size or MIME type does not match its reservation.'); }
+  const advertised = advertisedBlobLength(blob);
+  if ((advertised !== null && advertised !== maximum) || blob.blob.contentType.split(';')[0] !== row.content_type) { await blob.stream.cancel(); reject(409, 'UPLOAD_MISMATCH', 'Upload size or MIME type does not match its reservation.'); }
   const reader = blob.stream.getReader(), hash = createHash('sha256'), chunks: Buffer[] = [];
   let size = 0;
   try {
@@ -220,7 +222,14 @@ attachmentRoutes.get('/attachments/:id/content', async c => {
   blobReady();
   const blob = await get(row.pathname, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(120_000) });
   if (!blob || blob.statusCode !== 200) reject(404, 'NOT_FOUND', 'Attachment content not found.');
-  if (blob.blob.size !== size) { await blob.stream.cancel(); reject(409, 'UPLOAD_MISMATCH', 'Stored attachment changed.'); }
+  // Ranged responses intentionally stop before the full stream can be counted.
+  // When GET has no advertised length, verify authoritative object metadata first.
+  let storedSize = advertisedBlobLength(blob);
+  if (storedSize === null) {
+    try { storedSize = (await head(row.pathname)).size; }
+    catch { await blob.stream.cancel(); reject(503, 'STORAGE_UNAVAILABLE', 'Private attachment metadata is unavailable.'); }
+  }
+  if (storedSize !== size) { await blob.stream.cancel(); reject(409, 'UPLOAD_MISMATCH', 'Stored attachment changed.'); }
   c.header('Content-Type', row.content_type);
   c.header('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(row.name)}`);
   c.header('X-Content-Type-Options', 'nosniff');

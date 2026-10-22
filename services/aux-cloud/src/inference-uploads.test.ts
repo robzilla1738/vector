@@ -9,9 +9,12 @@ import { oggOpusSeconds, webmOpusSeconds, audioReservationSeconds } from './audi
 const owner='00000000-0000-4000-8000-000000000001', other='00000000-0000-4000-8000-000000000002', id='00000000-0000-4000-8000-000000000003';
 const png=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),Buffer.alloc(4*1024*1024)]);
 const row={id,user_id:owner,pathname:`aux/${owner}/${id}/content`,content_type:'image/png',expected_size:png.length,expected_sha256:createHash('sha256').update(png).digest('hex')};
-function loader(bytes=png): typeof import('@vercel/blob').get { return (async()=>({statusCode:200,blob:{size:bytes.length,contentType:'image/png'},stream:new ReadableStream({start(c){c.enqueue(bytes);c.close();}})})) as unknown as typeof import('@vercel/blob').get; }
+function loader(bytes=png,chunked=false): typeof import('@vercel/blob').get { return (async()=>({statusCode:200,headers:new Headers(chunked?{}:{'content-length':String(bytes.length)}),blob:{size:chunked?0:bytes.length,contentType:'image/png'},stream:new ReadableStream({start(c){c.enqueue(bytes);c.close();}})})) as unknown as typeof import('@vercel/blob').get; }
 test('private large input integrity bounds reads and verifies MIME/hash before model dispatch',async()=>{
  assert.equal((await readVerifiedInferenceInput(row,loader())).bytes.length,png.length);
+ assert.equal((await readVerifiedInferenceInput(row,loader(png,true))).bytes.length,png.length);
+ await assert.rejects(readVerifiedInferenceInput({...row,expected_sha256:'a'.repeat(64)},loader(png,true)),/integrity/);
+ await assert.rejects(readVerifiedInferenceInput({...row,expected_size:png.length-1},loader(png,true)),/reservation/);
  await assert.rejects(readVerifiedInferenceInput({...row,expected_sha256:'a'.repeat(64)},loader()),/integrity/);
  await assert.rejects(readVerifiedInferenceInput({...row,expected_size:MAX_INFERENCE_BYTES+1},loader()),/20 MiB/);
  assert.throws(()=>assertInputSignature(Buffer.from('not a png'),'image/png'),/MIME/);

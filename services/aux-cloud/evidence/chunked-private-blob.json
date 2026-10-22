@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-22T16:09:21.618Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "bytes": 1048576,
+  "sourceChunked": true,
+  "apiAdvertisedLength": null,
+  "sdkReportedZeroWhenLengthAbsent": true,
+  "commitVerifiedBytesAndHash": true,
+  "fullReadHashMatches": true,
+  "rangedReadMatches": true,
+  "crossOwnerDenied": true,
+  "deletedContentUnavailable": true,
+  "fixtureRemoved": true,
+  "paidInference": false,
+  "productionActivated": false
+}

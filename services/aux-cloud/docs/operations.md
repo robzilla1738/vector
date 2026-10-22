@@ -1,6 +1,6 @@
 # Cloud operations
 
-The active service is Development/Preview at `https://dev-cloud.getaux.co`. Production resources are not configured. The accepted local desktop is unchanged; an unsigned cloud package is a separate candidate.
+The active service is Development/Preview at `https://dev-cloud.getaux.co`. Separate production database/private Blob resources are provisioned and verified in `docs/cloud/production-resource-review/execution.json`; the production build profile remains null and production is not activated. The accepted local desktop is unchanged; an unsigned cloud package is a separate candidate.
 
 ## Deployment checks
 
@@ -18,8 +18,10 @@ Readiness does not prove Clerk/email delivery, Stripe reconciliation, Blob avail
 
 ## Recovery before real users
 
-Configure and verify the separate production Neon's restore window and resource budget, then perform a restore into a new isolated branch with synthetic data. Never overwrite the live branch to test recovery. Check the restored schema hashes and ownership boundaries before a cutover. Keep `AUX_DATA_ENCRYPTION_KEY` and signing/session secrets in controlled provider secret storage: a database restore alone cannot recover wrapped data after its wrapping key is lost. Key retention/rotation must be part of the recovery procedure.
+The new production Neon has seven-day restore history, fixed0.25 CU and a usage-based budget target. Its synthetic earlier-marker branch restore and migration hashes passed; both test branches were removed (see the production resource receipt). Never overwrite the live branch to test recovery. Check schema hashes and ownership boundaries again for a real cutover. Keep `AUX_DATA_ENCRYPTION_KEY` and signing/session secrets in controlled provider secret storage: a database restore alone cannot recover wrapped data after its wrapping key is lost. Key retention/rotation must be part of the recovery procedure.
 
 Database recovery does not restore deleted private Blob objects. Configure a separately reviewed object-retention/backup strategy and exercise a synthetic encrypted snapshot/attachment recovery spanning both stores before claiming disaster recovery. Existing cleanup and account-deletion semantics must remain explicit; do not silently retain deleted user content in an unbounded backup.
 
-For an application rollback, choose a previously verified deployment with compatible additive schema, then repeat protected readiness and a disposable auth/sync check. Do not use a rollback to undo account revocations, refunds or schema migrations. No production recovery drill, external alert delivery or production promotion is claimed by these source changes.
+Local encrypted capture/unpack tooling is documented in [recovery.md](recovery.md). It exports one database snapshot plus verified referenced private files and seals the wrapping key with an independent recovery key. It does not configure durable storage, independent key custody, scheduling, retention deletion or a live restore/cutover. See its recorded evidence before treating even local recovery as accepted.
+
+For an application rollback, choose a previously verified deployment with compatible additive schema, then repeat protected readiness and a disposable auth/sync check. Do not use a rollback to undo account revocations, refunds or schema migrations. No full cross-store production recovery drill, external alert delivery or production promotion is claimed by these source changes.

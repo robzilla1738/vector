@@ -12,6 +12,14 @@ Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speec
 - AI Gateway with server-held OIDC credentials and mandatory per-request ZDR. Owner selected GPT-6 Luna for bounded checks, at most $5 total. Default model is configurable `openai/gpt-6-luna`. A project-scoped $5, non-refreshing Gateway budget is set; provider budgets allow the final crossing request, so request/output limits also bound checks.
 - Local-only adapters remain the default. Cloud origin/encryption/attachment adapters are count-checked opt-ins; releases/installers remain disabled.
 
+## Latest storage/recovery acceptance — later 2026-10-22
+
+Separate production resources are provisioned with Production-only connections; their complete receipt is `production-resource-review/execution.json`. The build's Production profile stays null. No activation, production alias or desktop change occurred.
+
+Actual chunked private-file reads uncovered an SDK zero-size fallback when `Content-Length` is absent. Backend commit/input verification now uses bounded streamed counts/hashes for unknown length; normal/ranged downloads use authoritative HEAD metadata when necessary. The updated development Preview `dpl_9Bsm6J11Y5AKQ3ms9L4NStSBMNhB` passed remote build/typecheck and actual1MiB commit/full/range/cross-owner/deletion checks, with fixture cleanup. Evidence: `services/aux-cloud/evidence/chunked-private-blob.json`.
+
+Local encrypted recovery tooling exports a consistent PostgreSQL snapshot plus verified referenced private files and seals the wrapping key. Actual custom archive/local file/key recovery passed after source-file deletion; source fixtures and local sensitive test artifacts were removed. Evidence: `services/aux-cloud/evidence/recovery-capture.json`. This is not a separate-database restore or durable backup service; independent custody, scheduling/retention and a complete cross-store drill remain. Pending legal-terms/signing decisions, funded ZDR/speech, native cloud behavior/cookie restoration, real email delivery and live Aux billing still prevent full completion.
+
 ## Actual completed configuration
 
 - New Aux-only Clerk and Resend keys are stored in matching Vercel environments; old keys/projects unchanged.

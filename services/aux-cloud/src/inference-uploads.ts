@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { get, del } from '@vercel/blob';
 import { HTTPException } from 'hono/http-exception';
 import { sql } from './db';
+import { advertisedBlobLength } from './blob-length';
 
 export const MAX_INFERENCE_BYTES = 20 * 1024 * 1024;
 type InputRow = { id: string; user_id: string; pathname: string; content_type: string; expected_size: number | string; expected_sha256: string };
@@ -30,7 +31,8 @@ export async function readVerifiedInferenceInput(row: InputRow, load: typeof get
   if (!Number.isSafeInteger(size) || size < 1 || size > MAX_INFERENCE_BYTES) invalid(413, 'Model input exceeds 20 MiB.');
   const blob = await load(row.pathname, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(120_000) });
   if (!blob || blob.statusCode !== 200) invalid(409, 'Private model input is unavailable.');
-  if (blob.blob.size !== size || blob.blob.contentType.split(';')[0] !== row.content_type) {
+  const advertised = advertisedBlobLength(blob);
+  if ((advertised !== null && advertised !== size) || blob.blob.contentType.split(';')[0] !== row.content_type) {
     await blob.stream.cancel(); invalid(409, 'Private model input metadata changed.');
   }
   const reader = blob.stream.getReader(), chunks: Buffer[] = [], hash = createHash('sha256');
