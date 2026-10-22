@@ -1,0 +1,23 @@
+{
+  "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+  "outputSha256": "5bd3eb0af6157d3002c28699176c24d26df09172fa0fa9de0053286388cd13c0",
+  "debounceSha256": "1560c3a326e9fa1b0e495186d450a69d540ff5e5987c96526098b223113af330",
+  "anchors": [
+    {
+      "count": 1,
+      "findSha256": "38435d7830d677dda7ad315e8b53c1885d212563ac45b895620ac4e0c03adeed"
+    },
+    {
+      "count": 1,
+      "findSha256": "61bbc207b1fdbe8596b8e1f48b602acd215363b88e41423cac118f29b897c5b9"
+    },
+    {
+      "count": 1,
+      "findSha256": "bf8ea63c8028436a98a4cbf49932a694401ca06cee23081c02f79dbe553dfbf3"
+    },
+    {
+      "count": 1,
+      "findSha256": "052eb015fb6394a97ada35a5a40e8fad816c562a444402f733b0935667cef9fa"
+    }
+  ]
+}

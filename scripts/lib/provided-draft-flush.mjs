@@ -135,14 +135,17 @@ export function transformProvidedDraftFlush({ component, path, text }) {
   if (path !== 'assets/draft-storage-ixLojjZ5.js')
     return { text, anchors: [] };
   const find = 'write:(o,s=!1)=>{t=o,r(t),(s||!t)&&r.flush()}';
-  const replacement = 'write:(o,s=!1)=>{t=o,r(t);return r.flush()}';
+  const replacement = 'write:(o,s=!1)=>{t=o,r(t);r.flush();return auxWriteResult}';
   if (text.split(find).length - 1 !== 1)
     throw new Error('Supplied draft persistence anchor changed');
   const durableFind = 'function J(e,n,t){const r=f(),o=N();if(!(!r&&!o))try{const s=c(e,l,t),i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i);return}r?.setItem(s,JSON.stringify(n)),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}catch{}}';
   const durableReplacement = 'var auxUnsavedDrafts=new Map,auxDraftUnload=e=>{e.preventDefault(),e.returnValue=""};function J(e,n,t){const s=c(e,l,t);try{const r=f(),o=N(),auxDurable=(typeof e==="string"&&e.length>0||typeof t==="string"&&/^mini-popup-account:(?:0|[1-9][0-9]{0,15}):new$/.test(t)||typeof t==="string"&&/^(?:sidepanel-page|newtab-page):(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(t));if(auxDurable?!o:!r)throw new Error("Draft storage unavailable");const i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}else{const a=JSON.stringify(n);r?.setItem(s,a),r?.removeItem(i),auxDurable?o.setItem(s,a):o?.removeItem(s),o?.removeItem(i)}auxUnsavedDrafts.delete(s);if(auxUnsavedDrafts.size===0&&typeof window!=="undefined")window.removeEventListener("beforeunload",auxDraftUnload);return true}catch{auxUnsavedDrafts.set(s,n);if(typeof window!=="undefined")window.addEventListener("beforeunload",auxDraftUnload);return false}}';
   const readFind = 'function F(e,n){const t=f(),r=N();';
   const readReplacement = 'function F(e,n){const auxKey=c(e,l,n);if(auxUnsavedDrafts.has(auxKey))return auxUnsavedDrafts.get(auxKey);const t=f(),r=N();';
-  const edits = [[find,replacement],[durableFind,durableReplacement],[readFind,readReplacement]];
+  const edits = [[find,replacement],
+    ['function b(e,n){let t=e;const r=p(n,250);',
+     'function b(e,n){let t=e,auxWriteResult;const r=p(o=>{auxWriteResult=n(o)},250);'],
+    [durableFind,durableReplacement],[readFind,readReplacement]];
   const anchors = [];
   for (const [find, replacement] of edits) {
     if (text.split(find).length - 1 !== 1) throw new Error('Supplied draft recovery anchor changed');
