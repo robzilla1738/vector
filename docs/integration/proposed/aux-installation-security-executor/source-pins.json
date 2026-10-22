@@ -1,0 +1,38 @@
+{
+  "format": "aux.install.security.executor.source.v1",
+  "files": [
+    {
+      "path": "source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "../aux-native-install-storage-port/source/RecoveredInstallStorageQueries.swift",
+      "sha256": "8ba312eca2c4aaf83342ba3149d83f34fd0d09947985d8362767df7d1856aad2"
+    },
+    {
+      "path": "../aux-native-install-storage-port/storage-evidence.json",
+      "sha256": "f45c94197ad79f8ebb86d07c914264a119b45167d57bfd44226fa31fa4241ef3"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source-pins.json",
+      "sha256": "85f3fbda3dbf993cf0442246a10a9d0cfc425a0679457e36ebaf320eaf478f6f"
+    }
+  ],
+  "coverage": {
+    "sdkTypechecked": true,
+    "securityExecuted": false,
+    "entitlementVerified": false,
+    "captureProvenanceVerified": false,
+    "runtimeApproved": false,
+    "activated": false,
+    "historicalRemovedGroupBindingSupported": false
+  }
+}
