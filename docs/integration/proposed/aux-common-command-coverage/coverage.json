@@ -1,0 +1,387 @@
+{
+  "format": "aux.common.command.coverage.v1",
+  "sourceCommit": "d3b72ce4b",
+  "method": "Static frozen source and current count-pinned caller transformations; no module/authority/OS execution and no new runtime tests. Offsets are UTF-8 byte offsets in the named exact input.",
+  "sources": [
+    {
+      "path": "out/provided-source-audit/daemon-original.mjs",
+      "bytes": 12135744,
+      "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+    },
+    {
+      "path": "provided CLI1852 SEA JavaScript",
+      "bytes": 2597893,
+      "sha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+      "materializedEvidencePath": "/tmp/aux-provider-cli1852.js"
+    },
+    {
+      "path": "vendor/provided/cli-adapter.mjs",
+      "bytes": 6374,
+      "sha256": "123766eacf87f43bafeceb38d0ce063e00c03e250b1f97fa0373db576cbcfae3"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "bytes": 14064,
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "bytes": 2771,
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d"
+    },
+    {
+      "path": "vendor/provided/aux-cli-device-registration.mjs",
+      "bytes": 1420,
+      "sha256": "35df9fb4427cdd3839de43025d54ce8c9a74c4622b6c1cdc1eac1ccd5080c3a7"
+    },
+    {
+      "path": "vendor/provided/vault-product-exclusion.mjs",
+      "bytes": 2559,
+      "sha256": "eef6069753eb9e3ae8044076bbeb7016cadf14cd6e7f0e0db840048e39d6361f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cli-device-registration/replacement-function.js.txt",
+      "bytes": 1926,
+      "sha256": "06d12923237f8aabcbd3103fc7129480452f8a86f93abcbbe14a1dc06391107d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-dispatch-abi/README.md",
+      "bytes": 12112,
+      "sha256": "09ce4ff88823dd54ed383a88cb47d698386e327efa8b833954353d4b0cc876f5"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-crypto-boundary/README.md",
+      "bytes": 10444,
+      "sha256": "4b81ffcbf598b3688e981627b136d0380068c9058bd5e46a3cedfcbb32ce011d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "bytes": 8767,
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "bytes": 9186,
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "bytes": 6998,
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "bytes": 7051,
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "bytes": 14037,
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "bytes": 2700,
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
+    }
+  ],
+  "runForwardingSeams": [
+    {
+      "component": "daemon",
+      "find": "ti.run(Cn,ei)",
+      "count": 1,
+      "utf8ByteOffset": 2893711
+    },
+    {
+      "component": "daemon",
+      "find": "binding.run(workerData.command, workerData.input)",
+      "count": 1,
+      "utf8ByteOffset": 2894161
+    },
+    {
+      "component": "cli",
+      "find": "nativeBinding.run(command, input)",
+      "count": 1,
+      "utf8ByteOffset": 2380921
+    },
+    {
+      "component": "cli",
+      "find": "binding.run(workerData.command, workerData.input)",
+      "count": 1,
+      "utf8ByteOffset": 2381526
+    }
+  ],
+  "literalNamedCalls": [
+    {
+      "component": "daemon",
+      "helper": "runSecureStorageCommand",
+      "literal": "save",
+      "utf8ByteOffset": 2896765
+    },
+    {
+      "component": "daemon",
+      "helper": "runSecureStorageCommand",
+      "literal": "read",
+      "utf8ByteOffset": 2896868
+    },
+    {
+      "component": "daemon",
+      "helper": "runSecureStorageCommand",
+      "literal": "clear",
+      "utf8ByteOffset": 2897002
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "keys-status",
+      "utf8ByteOffset": 2899170
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "public-keys",
+      "utf8ByteOffset": 2899257
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "ecdh-secret",
+      "utf8ByteOffset": 2900025
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "init-keys",
+      "utf8ByteOffset": 2901116
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "cdp-sign",
+      "utf8ByteOffset": 2901762
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeKeyCommand",
+      "literal": "destroy-keys",
+      "utf8ByteOffset": 2902102
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "install-init",
+      "utf8ByteOffset": 2903041
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "install-status",
+      "utf8ByteOffset": 2903260
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "dk-unwrap",
+      "utf8ByteOffset": 2903475
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "cdp-sign",
+      "utf8ByteOffset": 2903631
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "get-public-keys",
+      "utf8ByteOffset": 2903814
+    },
+    {
+      "component": "daemon",
+      "helper": "runMacInstallHelper",
+      "literal": "install-destroy",
+      "utf8ByteOffset": 2904028
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommandAsync",
+      "literal": "pick-directory",
+      "utf8ByteOffset": 2945695
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommandAsync",
+      "literal": "generate-thumbnail",
+      "utf8ByteOffset": 10962717
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommand",
+      "literal": "app-icons",
+      "utf8ByteOffset": 11774401
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommand",
+      "literal": "list-open-apps",
+      "utf8ByteOffset": 11826339
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommand",
+      "literal": "copy-file",
+      "utf8ByteOffset": 11827087
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommand",
+      "literal": "open-with",
+      "utf8ByteOffset": 11827446
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommandAsync",
+      "literal": "focus-explorer-path",
+      "utf8ByteOffset": 11828090
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommandAsync",
+      "literal": "generate-thumbnail",
+      "utf8ByteOffset": 12112872
+    },
+    {
+      "component": "daemon",
+      "helper": "runNativeHelperCommand",
+      "literal": "install-crash-handler",
+      "utf8ByteOffset": 12133454
+    },
+    {
+      "component": "cli",
+      "helper": "runNativeHelperCommand",
+      "literal": "cdp-sign",
+      "utf8ByteOffset": 2539006
+    },
+    {
+      "component": "cli",
+      "helper": "runNativeHelperCommand",
+      "literal": "keys-status",
+      "utf8ByteOffset": 2560790
+    },
+    {
+      "component": "cli",
+      "helper": "runNativeHelperCommand",
+      "literal": "public-keys",
+      "utf8ByteOffset": 2560907
+    }
+  ],
+  "reviewedDynamicDispatch": [
+    {
+      "component": "daemon",
+      "find": "Cn===`save`?`secure-save`:Cn===`read`?`secure-read`:`secure-clear`",
+      "commands": [
+        "secure-save",
+        "secure-read",
+        "secure-clear"
+      ],
+      "scope": "retained protected-app credentials plus removed Vault callers",
+      "utf8ByteOffset": 2896549,
+      "count": 1
+    },
+    {
+      "component": "daemon",
+      "find": "ei.mode===`reveal`&&ei.targetType===`file`?`reveal-path`:`open-path`",
+      "commands": [
+        "reveal-path",
+        "open-path"
+      ],
+      "scope": "win32 only",
+      "utf8ByteOffset": 11827781,
+      "count": 1
+    },
+    {
+      "component": "cli-composed-state2",
+      "find": "nativeMac ? \"install-status\" : \"keys-status\"",
+      "commands": [
+        "install-status",
+        "keys-status"
+      ],
+      "scope": "Mac chooses install-status; Windows chooses keys-status",
+      "utf8ByteOffset": 369,
+      "count": 1
+    },
+    {
+      "component": "cli-composed-state2",
+      "find": "nativeMac ? \"get-public-keys\" : \"public-keys\"",
+      "commands": [
+        "get-public-keys",
+        "public-keys"
+      ],
+      "scope": "Mac chooses get-public-keys; Windows chooses public-keys",
+      "utf8ByteOffset": 559,
+      "count": 1
+    }
+  ],
+  "macReachableDistinctCommands": 14,
+  "macInstallationCommands": [
+    "install-init",
+    "install-status",
+    "dk-unwrap",
+    "cdp-sign",
+    "get-public-keys",
+    "install-destroy"
+  ],
+  "macProtectedCredentialCommands": [
+    "secure-save",
+    "secure-read",
+    "secure-clear"
+  ],
+  "macOSUtilityCommands": [
+    "generate-thumbnail",
+    "list-open-apps",
+    "app-icons",
+    "copy-file",
+    "open-with"
+  ],
+  "preservedMacAliases": {
+    "keys-status": "install-status => installed,scheme (NOT keysInstalled)",
+    "public-keys": "get-public-keys => scheme,sig,kem",
+    "init-keys": "install-init => scheme,sig_pub,kem_pub (NOT sig/kem)",
+    "destroy-keys": "install-destroy => explicit coordinator-unavailable refusal"
+  },
+  "excludedVaultCommands": [
+    "status",
+    "enroll",
+    "unlock",
+    "unlock-batch",
+    "verify",
+    "remove"
+  ],
+  "windowsOnlyUnimplementedCommands": [
+    "ecdh-secret",
+    "pick-directory",
+    "open-path",
+    "reveal-path",
+    "focus-explorer-path",
+    "install-crash-handler"
+  ],
+  "separatePdfMembers": [
+    "extractText",
+    "fillFormFields",
+    "getFormFields",
+    "merge",
+    "renderPages",
+    "rotate",
+    "split"
+  ],
+  "conclusions": {
+    "missingOrdinaryMacCommandName": false,
+    "freshAbsentInitializationAvailable": false,
+    "destructionCoordinatorAvailable": false,
+    "originalCommonAddonRetired": false,
+    "activeHostAdmissionVerified": false,
+    "sameProfileCohortExclusionVerified": false,
+    "uiChanged": false
+  },
+  "importantCorrection": "Frozen CLI keys-status.keysInstalled mismatch is ALREADY corrected by composed state2 Mac caller: install-status.installed/get-public-keys with scheme equality. Preserve actual recovered Mac aliases; do not change core to Windows response shapes."
+}
