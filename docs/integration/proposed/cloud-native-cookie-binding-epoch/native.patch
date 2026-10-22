@@ -1,0 +1,109 @@
+--- a/chrome/browser/aux/profile_identity.h
++++ b/chrome/browser/aux/profile_identity.h
+@@ -11,6 +11,9 @@
+ std::string GetProfileId(Profile* profile);
+ // UI sequence, never loads a profile or reads its Preferences from disk.
+ std::string GetLoadedProfileIdForPath(const base::FilePath& path);
++// Opaque in-memory epoch; changes on native account/session binding changes.
++// Regular profiles only; never reads another profile or grants cookie access.
++std::string GetProfileCookieBindingEpoch(Profile* profile);
+ std::optional<int> GetProfileIndex(Profile* profile);
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -1,6 +1,11 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "base/uuid.h"
++#include "base/functional/bind.h"
++#include "base/scoped_observation.h"
++#include "base/supports_user_data.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "components/prefs/pref_change_registrar.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_attributes_entry.h"
+@@ -9,6 +14,52 @@
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
+ namespace aux {
++namespace {
++const char kCookieBindingEpochKey[] = "aux.cookie-binding-epoch";
++class CookieBindingEpoch final : public base::SupportsUserData::Data,
++                                 public ProfileObserver {
++ public:
++  explicit CookieBindingEpoch(Profile* profile)
++      : value_(base::Uuid::GenerateRandomV4().AsLowercaseString()) {
++    observation_.Observe(profile);
++    auto* prefs = profile->GetPrefs();
++    registrar_.Init(prefs);
++    for (const char* name : {"aside.profile_id", "aside.account_id",
++                            "aside.account_user_id",
++                            "aside.account_has_persisted_session",
++                            "aside.account_auth_paused"}) {
++      if (prefs->FindPreference(name))
++        registrar_.Add(name, base::BindRepeating(&CookieBindingEpoch::Rotate,
++                                                base::Unretained(this)));
++    }
++  }
++  ~CookieBindingEpoch() override = default;
++  const std::string& value() const { return value_; }
++  void OnProfileWillBeDestroyed(Profile* profile) override {
++    registrar_.RemoveAll();
++    observation_.Reset();
++    value_.clear();
++  }
++ private:
++  void Rotate() { value_ = base::Uuid::GenerateRandomV4().AsLowercaseString(); }
++  std::string value_;
++  PrefChangeRegistrar registrar_;
++  base::ScopedObservation<Profile, ProfileObserver> observation_{this};
++};
++}  // namespace
++std::string GetProfileCookieBindingEpoch(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord())
++    return {};
++  auto* epoch = static_cast<CookieBindingEpoch*>(
++      profile->GetUserData(&kCookieBindingEpochKey));
++  if (!epoch) {
++    auto owned = std::make_unique<CookieBindingEpoch>(profile);
++    epoch = owned.get();
++    profile->SetUserData(&kCookieBindingEpochKey, std::move(owned));
++  }
++  return epoch->value();
++}
+ std::string GetProfileId(Profile* profile) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (!profile) return {};
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -199,6 +199,13 @@
+     base::DictValue context;
+     context.Set("profileId", id);
+     context.Set("profilePath", current->GetPath().value());
++    const bool regular = profile()->IsRegularProfile() &&
++                         !profile()->IsOffTheRecord();
++    context.Set("isRegularProfile", regular);
++    context.Set("isOffTheRecord", profile()->IsOffTheRecord());
++    if (regular)
++      context.Set("cookieBindingEpoch",
++                  aux::GetProfileCookieBindingEpoch(profile()));
+     // Additive private draft identity; never replace the live DevTools target.
+     // OTR documents retain only their original session-scoped draft storage.
+     if (has_draft_tab_id && profile()->IsRegularProfile() &&
+@@ -213,6 +220,13 @@
+     if (const auto index = aux::GetProfileIndex(current))
+       context.Set("profileIndex", *index);
+     auto* prefs = current->GetPrefs();
++    const bool persisted =
++        prefs->FindPreference("aside.account_has_persisted_session") &&
++        prefs->GetBoolean("aside.account_has_persisted_session");
++    const bool paused = prefs->FindPreference("aside.account_auth_paused") &&
++                        prefs->GetBoolean("aside.account_auth_paused");
++    context.Set("hasAccountSession", persisted);
++    context.Set("accountAuthPaused", paused);
+     if (prefs->FindPreference("aside.account_user_id")) {
+       const auto& user = prefs->GetString("aside.account_user_id");
+       if (!user.empty()) context.Set("boundUserId", user);

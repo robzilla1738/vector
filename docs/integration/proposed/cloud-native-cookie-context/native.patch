@@ -1,0 +1,51 @@
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -203,9 +203,11 @@
+                          !profile()->IsOffTheRecord();
+     context.Set("isRegularProfile", regular);
+     context.Set("isOffTheRecord", profile()->IsOffTheRecord());
+-    if (regular)
++    if (regular) {
+       context.Set("cookieBindingEpoch",
+                   aux::GetProfileCookieBindingEpoch(profile()));
++      context.Set("browserContextId", current->UniqueId());
++    }
+     // Additive private draft identity; never replace the live DevTools target.
+     // OTR documents retain only their original session-scoped draft storage.
+     if (has_draft_tab_id && profile()->IsRegularProfile() &&
+--- a/chrome/browser/devtools/devtools_browser_context_manager.cc
++++ b/chrome/browser/devtools/devtools_browser_context_manager.cc
+@@ -11,6 +11,8 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/profiles/profile_destroyer.h"
+ #include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(IS_ANDROID)
+ #include "chrome/browser/android/tab_android.h"
+ #include "chrome/browser/ui/android/tab_model/tab_model.h"
+@@ -65,11 +67,24 @@
+ 
+ Profile* DevToolsBrowserContextManager::GetProfileById(
+     const std::string& context_id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Explicit, unguessable native IDs may resolve only already-loaded regular
++  // Aux profiles. Never substitute the last-used profile or load a disk path.
++  auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++  if (manager) {
++    for (auto* candidate : manager->GetLoadedProfiles()) {
++      if (candidate->IsRegularProfile() && !candidate->IsOffTheRecord() &&
++          candidate->UniqueId() == context_id)
++        return candidate;
++    }
++  }
++#else
+   Profile* default_profile =
+       ProfileManager::GetLastUsedProfile()->GetOriginalProfile();
+   if (context_id == default_profile->UniqueId()) {
+     return default_profile;
+   }
++#endif
+   auto it = otr_profiles_.find(context_id);
+   if (it == otr_profiles_.end())
+     return nullptr;

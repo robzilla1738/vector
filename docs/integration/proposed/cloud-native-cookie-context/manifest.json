@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "explicit-regular-aux-cookie-context",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "787376f788923a7e7034267700dfc30db6c111e50b8890dc1f8a782b5c4b8635",
+      "outputSha256": "27b0a6cc94fe347c2965638ee24f602d417d7575ea7e417c63101aea1aa1602a"
+    },
+    {
+      "path": "chrome/browser/devtools/devtools_browser_context_manager.cc",
+      "baselineSha256": "8c291eacfaddac309b38a1e797b62eaec6f422b846423b41af82301d7efcede5",
+      "outputSha256": "0460aec3e6ab1b35383dfe0795d15aebbadf75aebb075e9f274ad49b8284717f"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "cookieReadsOrWrites": false,
+  "uiChanges": false
+}

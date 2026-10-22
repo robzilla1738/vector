@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "native-cookie-profile-binding-epoch",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "baselineSha256": "0e843424b83a9320ece6da1c0102a8a880f9704479e06315eea52be4cf742872",
+      "outputSha256": "ed5e2d7911dbe980d4cc61b3aaa250a3fb809a7052050f82ed765e6d1163fa45"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "baselineSha256": "0c07e1ff9669aeb6dfb65662890e343237dbdf1c4c109347ffe364093f58f81e",
+      "outputSha256": "eb5bd6312fcad2b72f100c457f7a363328450ee9e6f888d3eb7800e575fa6686"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "67ba08e52316b17596287a9d0d594873000c7f769a4751918c106ea38529344a",
+      "outputSha256": "787376f788923a7e7034267700dfc30db6c111e50b8890dc1f8a782b5c4b8635"
+    }
+  ],
+  "sharedSourceModified": false,
+  "compiled": false,
+  "runtimeAcceptance": false,
+  "cookieReadsOrWrites": false,
+  "uiChanges": false
+}

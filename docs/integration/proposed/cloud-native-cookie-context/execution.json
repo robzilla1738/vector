@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-22T16:49:33.620376+00:00",
+  "builds": [
+    {
+      "receipt": "out/cloud-cookie-epoch-native-build.json",
+      "receiptSha256": "9da4e0db994731a87c27e5b50dd31b2ea30890b9409850938726e5193967ffdf",
+      "compositionSha256": "b825aed3890056fc88ce5a7248d05c436c1d33fa96d8046bd1d7ff988551f3e5",
+      "buildExitCode": 0,
+      "generatedKeyProbePassed": true,
+      "artifacts": [
+        {
+          "path": "Aux.app/Contents/MacOS/Aux",
+          "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+        },
+        {
+          "path": "auth_scheme_probe",
+          "sha256": "c6137bcce3e159e7893c4f0f3b196772bdda04b1ad21c40ab6ed757188067d84"
+        },
+        {
+          "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+          "sha256": "5d1f2631a0cc7f6b61bbc078a5e385ab99e7f7baf837bb401d4a0764eec47b7d"
+        }
+      ],
+      "recordedAt": "2026-10-22T16:43:51.555457+00:00"
+    },
+    {
+      "receipt": "out/cloud-cookie-context-native-build.json",
+      "receiptSha256": "4072c0d3701bf09d32a98c44b1023ef09e8965452d3ab993545208ab37f41473",
+      "compositionSha256": "eee31d8ec42fe297d66ba6efbbd8bd20cf69debe9653cc7f15019a8c258560a6",
+      "buildExitCode": 0,
+      "generatedKeyProbePassed": true,
+      "artifacts": [
+        {
+          "path": "Aux.app/Contents/MacOS/Aux",
+          "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+        },
+        {
+          "path": "auth_scheme_probe",
+          "sha256": "c6137bcce3e159e7893c4f0f3b196772bdda04b1ad21c40ab6ed757188067d84"
+        },
+        {
+          "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+          "sha256": "4c779249bfcfab07845b79a7468224d4a45ff6549872953976b18f64e3de07bc"
+        }
+      ],
+      "recordedAt": "2026-10-22T16:49:31.123285+00:00"
+    }
+  ],
+  "focusedChecks": {
+    "command": "node --test vendor/provided/cloud-cookie-profile.test.mjs vendor/provided/cloud-desktop-composition.test.mjs vendor/provided/cloud-drive-1852-adapter.test.mjs",
+    "passed": 11,
+    "failed": 0,
+    "cloudDaemonAnchors": 28,
+    "agentProfileAnchors": 3
+  },
+  "acceptedDesktopChanged": false,
+  "preparedSigningCandidateChanged": false,
+  "uiChanged": false,
+  "nativeRuntimeAcceptance": false,
+  "nativeCookieImportImplemented": false,
+  "browserCookiesAccessed": false,
+  "signingPerformed": false,
+  "productionActivated": false
+}

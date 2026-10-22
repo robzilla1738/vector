@@ -2,6 +2,7 @@
  * No filesystem writes, environment reads, launch, credentials or signing. */
 import { transformReviewedCloudServicePolicy } from './cloud-service-policy.mjs';
 import { applyCloudDrive1852Adapter } from './cloud-drive-1852-adapter.mjs';
+import { applyCloudCookieProfileAdapter } from './cloud-cookie-profile.mjs';
 import { applyCloudAttachmentAdapter } from './cloud-attachment-adapter.mjs';
 import { applyCloudSessionAdapter } from './cloud-session-adapter.mjs';
 import { applyCloudInferenceUploadAdapter } from './cloud-inference-upload-adapter.mjs';
@@ -18,10 +19,12 @@ export function composeCloudDesktop(input, options = {}) {
   };
   if (input.component === 'daemon') {
     apply(text => applyCloudDrive1852Adapter(text, { branding: 'aux' }));
+    apply(text => applyCloudCookieProfileAdapter({ ...input, text }));
     apply(text => applyCloudAttachmentAdapter(text, { branding: 'aux' }));
     apply(text => applyCloudInferenceUploadAdapter(text));
     apply(text => applyCloudSessionAdapter(text, { version: '1852', branding: 'aux' }));
   } else if (input.component === 'agent') {
+    apply(text => applyCloudCookieProfileAdapter({ ...input, text }));
     apply(text => transformCloudBillingCopy({ ...input, text }));
   }
   return { ...result, anchors };
