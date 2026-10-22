@@ -1,0 +1,120 @@
+{
+  "daemon-js": {
+    "path": "/tmp/aux-provider-daemon1852.js",
+    "bytes": 12135744,
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+  },
+  "cli-js": {
+    "path": "/tmp/aux-provider-cli1852.js",
+    "bytes": 2597893,
+    "sha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62"
+  },
+  "addon": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+    "bytes": 9255280,
+    "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+  },
+  "pdfium-build": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/BUILD.gn",
+    "bytes": 10326,
+    "sha256": "12115525dfcd49686970cbb0d2c92abbf8b32f9bdc22a864f8a48dc59806f4f5"
+  },
+  "pdfium-config": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/pdfium.gni",
+    "bytes": 4535,
+    "sha256": "1a6480c12f020cb911e20617465fa40c7d1c1c38b05709776ce19df8250eb717"
+  },
+  "chromium-deps": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/DEPS",
+    "bytes": 198290,
+    "sha256": "23ef1ed90785da130901961e4f4179b4fc10adac957eee5622d7e67fe4b82ec5"
+  },
+  "actual-build-args": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/args.gn",
+    "bytes": 326,
+    "sha256": "0f484d6155c81fb28108deaf7c13d2999eb8b7c0077b62b171b69d710f714407"
+  },
+  "pdfium-public-view": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdfview.h",
+    "bytes": 66192,
+    "sha256": "c001b029e3b026e1704a30bca8335211b3bad374676c9946113696dc6dcbc305"
+  },
+  "pdfium-public-text": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_text.h",
+    "bytes": 31639,
+    "sha256": "4682f8553dc1d29bbee95cdcddefebbd96522c5be654807906240f8571593726"
+  },
+  "pdfium-public-forms": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/pdfium/public/fpdf_formfill.h",
+    "bytes": 84079,
+    "sha256": "8792ed53df3f5852f1a8b98d2b6e140898ab595888df8a2f70bc8c165d188c12"
+  },
+  "evidence": {
+    "evidence/wrapper-literals.asm": {
+      "bytes": 5938,
+      "sha256": "fa3c11836a57f73efe66437a8675df2e24df8edb775d60555286786e727a255e"
+    },
+    "evidence/selection-literals.asm": {
+      "bytes": 10731,
+      "sha256": "084591adf9cd570e074c8352341ff27f21221faf6ac3f70ffe2a38c4f014b522"
+    },
+    "evidence/extract-literals.asm": {
+      "bytes": 20976,
+      "sha256": "9cd313bd1c27f8bca21caff6a2c318f97101aedbb04d4adbc105c1a696be9a63"
+    },
+    "evidence/bounded-symbols.txt": {
+      "bytes": 55480,
+      "sha256": "3870887a6ee0367b806d1818c3a8befa18ca3ec7e32653afa476564783e0b27f"
+    },
+    "evidence/fill-literals.asm": {
+      "bytes": 27044,
+      "sha256": "6ba6d6f360c0d65f98b357b11288912799c5276be54ec24a59efda0e909eeb8c"
+    },
+    "evidence/merge-literals.asm": {
+      "bytes": 18399,
+      "sha256": "f6e1d405ea84c01a2437898e091bc7d11fa18a48f5875058fbad474623ec851c"
+    },
+    "evidence/rotate-literals.asm": {
+      "bytes": 18396,
+      "sha256": "b9c4abae4e393b80416dcccdf11ff1a40cf548d85dcb66b70ea314ba095add49"
+    },
+    "evidence/split-literals.asm": {
+      "bytes": 17536,
+      "sha256": "dab3021a178ec6a8ac277a99a51e390f20b9b784a80bbf8c0ea742f6a1b568a0"
+    },
+    "evidence/open-with-literals.asm": {
+      "bytes": 47970,
+      "sha256": "9c9b0a417f0e6d91a6e8e7c68178c3f424ea2d7f581a2ae62335cef815cfdabf"
+    },
+    "evidence/copy-literals.asm": {
+      "bytes": 28736,
+      "sha256": "0d2a7ef11b9cd10c28a0835aeae3445205810bd06083bb72639b3e9a39456743"
+    },
+    "evidence/render-literals.asm": {
+      "bytes": 27514,
+      "sha256": "2f54496eecdf4b0dfb349b31b3c0bc5bf064b7cf30909df6c8d5807c44136d01"
+    },
+    "evidence/field-object.asm": {
+      "bytes": 10918,
+      "sha256": "fa5600daff40935a2eecef3b13ea59d1ae2df642da907ccbca269cd98aaaebad"
+    },
+    "evidence/optional-number.asm": {
+      "bytes": 5399,
+      "sha256": "e2ce24b62ba2c49d9f176366b5498b8ecbcc5d61abb3ecbf4afd54fd847e8751"
+    },
+    "evidence/fields-literals.asm": {
+      "bytes": 10155,
+      "sha256": "ea3365e9584a329b55a8ee557bdb204ade0d4cc6cb33f9b838daf66549df7a9e"
+    },
+    "evidence/consumer-callsite-inventory.json": {
+      "bytes": 11524,
+      "sha256": "3a676d046c0bd909ee4eb90a72bc93f0a8e07bfafcf16b0cb342813c8555f6a9"
+    },
+    "evidence/has-property.asm": {
+      "bytes": 949,
+      "sha256": "fc8b3e49805de7c789ca60339c5a27d9b37ae51a332fdedcebc878e8fe562be7"
+    }
+  },
+  "tool": "Xcode llvm-objdump/nm bounded static extraction; not REA decompilation; no target execution",
+  "providerLimit": "Parent observed unavailable Ghidra/Java mismatch and missing Hopper; no repair or heavy jobs attempted."
+}

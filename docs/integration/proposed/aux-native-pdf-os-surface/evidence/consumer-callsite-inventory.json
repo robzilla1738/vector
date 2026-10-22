@@ -1,0 +1,102 @@
+{
+  "daemon-js": {
+    "pdfRefs": [
+      {
+        "member": "renderPages",
+        "offset": 10062070,
+        "context": "ilter(Cn=>!Cn.archivedAt)}},AsidePDFRepl=class{#e;constructor(Cn){this.#e=Cn}renderPages(Cn){return nativePdf.renderPages({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}extractText(Cn){return nativePdf.extractText({...Cn,filePath:this.#e(Cn.filePath)})}getFormFields(Cn){return nativePdf.getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return nativePdf.fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn"
+      },
+      {
+        "member": "extractText",
+        "offset": 10062194,
+        "context": "..Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}extractText(Cn){return nativePdf.extractText({...Cn,filePath:this.#e(Cn.filePath)})}getFormFields(Cn){return nativePdf.getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return nativePdf.fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return nativePdf.merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this."
+      },
+      {
+        "member": "getFormFields",
+        "offset": 10062280,
+        "context": "xt(Cn){return nativePdf.extractText({...Cn,filePath:this.#e(Cn.filePath)})}getFormFields(Cn){return nativePdf.getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return nativePdf.fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return nativePdf.merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return nativePdf.split({...Cn,filePath:this.#e(C"
+      },
+      {
+        "member": "fillFormFields",
+        "offset": 10062363,
+        "context": "ields(Cn){return nativePdf.getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return nativePdf.fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return nativePdf.merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return nativePdf.split({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return nativePdf.r"
+      },
+      {
+        "member": "merge",
+        "offset": 10062497,
+        "context": ":this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return nativePdf.merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return nativePdf.split({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return nativePdf.rotate({...Cn,filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`)})}},AsideSettingsRepl=class{#e;constructor(Cn){th"
+      },
+      {
+        "member": "split",
+        "offset": 10062639,
+        "context": "...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return nativePdf.split({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return nativePdf.rotate({...Cn,filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`)})}},AsideSettingsRepl=class{#e;constructor(Cn){this.#e=Cn}getAll(){return settings(this.#e).getAll()}get(Cn){return settings(this.#e).get(Cn)}set(Cn,ei){if(Cn===`externalPasswordManagers`)thr"
+      },
+      {
+        "member": "rotate",
+        "offset": 10062752,
+        "context": "it({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return nativePdf.rotate({...Cn,filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`)})}},AsideSettingsRepl=class{#e;constructor(Cn){this.#e=Cn}getAll(){return settings(this.#e).getAll()}get(Cn){return settings(this.#e).get(Cn)}set(Cn,ei){if(Cn===`externalPasswordManagers`)throw Error(`Manage password manager connections in Settings.`);if(Cn===`experimental`)throw Error(`experimental set"
+      },
+      {
+        "member": "extractText",
+        "offset": 10953923,
+        "context": "type:`text`,text:`Read the ${ci} skill before handling this file.`}],details:{}};let li=si===`.pdf`?nativePdf.extractText({filePath:ai}).pages.map(({page:Cn,text:ei})=>`--- Page ${Cn} ---\\n${ei.replace(/\\r\\n?/g,`\n`)}`).join(`\n\n`):void 0,ui;if(HEIC_EXTENSIONS.has(path.extname(ai).toLowerCase())){let ei=ensureSessionTmpDir(Cn.sessionDir??Cn.session.cwd);ui=path.join(ei,`read-file-${nanoid()}.png`);let ti=`${ui}.icon.png`,ni=await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({fil"
+      },
+      {
+        "member": "renderPages",
+        "offset": 12103901,
+        "context": "pdf`){let Cn=ti===`thumbnail`?ri:ni,ii=await mkdtemp(path.join(path.dirname(Cn),`pdf-`));try{let ni=nativePdf.renderPages({filePath:ei,maxDimension:ti===`thumbnail`?1024:256,outputDir:ii,pages:[1]});if(ni.pages[0])return await rename(ni.pages[0].path,Cn),!0}catch{}finally{await rm(ii,{force:!0,recursive:!0}).catch(()=>void 0)}}return process.platform!==`darwin`||(await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ei,iconOutputPath:ni,thumbnailOutputPath:ri}))).error?"
+      }
+    ],
+    "literalRunCallsites": [
+      {
+        "command": "pick-directory",
+        "offset": 2940738,
+        "context": "m()||DEFAULT_PROMPT;if(process.platform===`win32`){if(!isNativeHelperBindingAvailable())return{status:`unavailable`};let Cn=await runNativeHelperCommandAsync(`pick-directory`,ei);if(Cn.error)throw Error(Cn.error);if(Cn.status===`cancelled`)return{status:`cancelled`};if(Cn.status===`selected`&&Cn.path&&path.win32.isAbsolute(Cn.path))return{status:`selected`,path:Cn.path};throw Error(`Windows folder picker returned an invalid response`)}if(process.platform!==`darwin`)return{status:`unavailable`};let ti=spawnCommand([`osascript`,`-e`,`set pickedFolder to ch"
+      },
+      {
+        "command": "generate-thumbnail",
+        "offset": 10954255,
+        "context": "=ensureSessionTmpDir(Cn.sessionDir??Cn.session.cwd);ui=path.join(ei,`read-file-${nanoid()}.png`);let ti=`${ui}.icon.png`,ni=await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ai,iconOutputPath:ti,thumbnailOutputPath:ui}));if(await fs$1.rm(ti,{force:!0}),ni.thumbnailGenerated!==!0)return await fs$1.rm(ui,{force:!0}),{content:[{type:`text`,text:`Error: HEIC conversion failed: ${ni.error??`no image generated`}`}],details:{}}}let di=ui??ai,fi=await detectSupportedImageMimeTypeFromFile(di);if(fi){let Cn=await fs$1.readFile(di);ui&"
+      },
+      {
+        "command": "app-icons",
+        "offset": 11765818,
+        "context": "null)}if(ni.length>0&&process.platform===`darwin`&&isNativeHelperBindingAvailable()){let Cn=await ensurePreviewImageCacheDir(),ei=runNativeHelperCommand(`app-icons`,JSON.stringify({bundleIds:ni,iconDirectory:Cn}));if(!ei.error){let Cn=ei.icons??{},ti=!1;for(let ei of ni){let ni=Cn[ei],ri=ni?await readFile(ni).catch(()=>void 0):void 0;iconCache.set(ei,ri?`data:image/png;base64,${ri.toString(`base64`)}`:null),ti||=!!ri}ti&&await evictPreviewImageCache()}}return Object.fromEntries(ti.map(Cn=>[Cn,iconCache.get(Cn)??null]))}var iconCache,init_resolve_app_icon"
+      },
+      {
+        "command": "list-open-apps",
+        "offset": 11817756,
+        "context": "nApps(Cn){if(process.platform!==`darwin`||!isNativeHelperBindingAvailable())return[];let ei=await ensurePreviewImageCacheDir(),ti=runNativeHelperCommand(`list-open-apps`,JSON.stringify({filePath:Cn,iconDirectory:ei}));if(ti.error)throw Error(ti.error);let ni=Array.isArray(ti.apps)?ti.apps:[],ri=!1,ii=[];for(let Cn of ni){if(typeof Cn.appName!=`string`||typeof Cn.appPath!=`string`)continue;let ei={appName:Cn.appName,appPath:Cn.appPath,...Cn.default===!0?{default:!0}:{}};if(typeof Cn.iconPath==`string`){let ti=await readFile(Cn.iconPath).catch(()=>void 0);"
+      },
+      {
+        "command": "copy-file",
+        "offset": 11818504,
+        "context": "orm!==`darwin`||!isNativeHelperBindingAvailable())throw Error(`Copying files to the clipboard is only supported on macOS`);let ei=runNativeHelperCommand(`copy-file`,JSON.stringify({filePath:Cn}));if(ei.error)throw Error(ei.error);if(ei.success!==!0)throw Error(`Native helper failed to copy the file`)}async function openFileWithApp(Cn,ei){if(process.platform!==`darwin`||!isNativeHelperBindingAvailable())throw Error(`Opening files with a specific app is only supported on macOS`);let ti=runNativeHelperCommand(`open-with`,JSON.stringify({filePath:Cn,appPath:"
+      },
+      {
+        "command": "open-with",
+        "offset": 11818863,
+        "context": "!==`darwin`||!isNativeHelperBindingAvailable())throw Error(`Opening files with a specific app is only supported on macOS`);let ti=runNativeHelperCommand(`open-with`,JSON.stringify({filePath:Cn,appPath:ei}));if(ti.error)throw Error(ti.error);if(ti.success!==!0)throw Error(`Native helper failed to open the file`)}var init_open_apps=__esmMin((()=>{init_preview_image_cache(),init_src$6()}));async function openSystemPath(Cn,ei){if(process.platform===`win32`){let ti=ei.mode===`reveal`&&ei.targetType===`file`?`reveal-path`:`open-path`,ni=await runNativeHelperCo"
+      },
+      {
+        "command": "focus-explorer-path",
+        "offset": 11819507,
+        "context": "Windows native helper returned an invalid response for ${ti}`);(ei.mode===`reveal`||ei.targetType===`directory`)&&setTimeout(()=>{runNativeHelperCommandAsync(`focus-explorer-path`,Cn)},WINDOWS_EXPLORER_FOCUS_RETRY_DELAY_MS).unref();return}if(process.platform===`darwin`){let ti=ei.mode===`reveal`&&ei.targetType===`file`?[`open`,`-R`,Cn]:[`open`,Cn];if(await waitForExitCode(spawnCommand(ti,{stdio:`ignore`}))!==0)throw Error(`Failed to ${ei.mode} path: ${Cn}`);return}throw Error(`Opening system paths is not supported on ${process.platform}`)}var WINDOWS_EXP"
+      },
+      {
+        "command": "generate-thumbnail",
+        "offset": 12104173,
+        "context": "[0].path,Cn),!0}catch{}finally{await rm(ii,{force:!0,recursive:!0}).catch(()=>void 0)}}return process.platform!==`darwin`||(await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ei,iconOutputPath:ni,thumbnailOutputPath:ri}))).error?!1:!!(await stat$1(ti===`thumbnail`?ri:ni).catch(()=>void 0))?.isFile()}var init_file_preview=__esmMin((()=>{init_preview_image_cache(),init_src$6()}));function createProjectHttpRouter(){let Cn=new Hono;return Cn.use(`/project/*`,requestAccountMiddleware),Cn.get(`/project/:projectId/file-preview`,asyn"
+      },
+      {
+        "command": "install-crash-handler",
+        "offset": 12124755,
+        "context": "})}function installNativeCrashHandler(){if(process.platform===`win32`)try{mkdirSync(DAEMON_CRASH_DUMPS_DIR,{recursive:!0});let Cn=runNativeHelperCommand(`install-crash-handler`,JSON.stringify({directory:DAEMON_CRASH_DUMPS_DIR}));if(Cn.error){logger.warn(`[Main] Native crash handler was not installed`,{error:Cn.error});return}logger.info(`[Main] Native crash handler installed`,{directory:DAEMON_CRASH_DUMPS_DIR})}catch(Cn){logger.warn(`[Main] Native crash handler installation failed`,{error:Cn})}}function startDaemon(){installNativeCrashHandler(),process.o"
+      }
+    ]
+  },
+  "cli-js": {
+    "pdfRefs": [],
+    "literalRunCallsites": []
+  }
+}
