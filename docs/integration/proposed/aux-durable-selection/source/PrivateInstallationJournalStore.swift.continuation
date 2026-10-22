@@ -1,0 +1,110 @@
+
+// Reviewed same-file continuation, reusing the audited private FD boundary.
+private struct InstallationSelectionHead:Codable {let format:String;let transactionId:String;let revision:Int;let file:String;let sha256:String}
+extension PrivateInstallationJournalStore {
+    private func selectionPointer(_ generation:InstallationSelectionGeneration)throws->Data{try selectionEncode(generation)}
+    private func selectionName(_ revision:Int,_ hash:String)->String{String(format:"selection-revision-%07d-",revision)+hash+".json"}
+    private func selectionLoad()throws->StoredInstallationSelection? {
+        guard let bytes=try readFile("SELECTION-HEAD.json")else{return nil}
+        guard Set(try strictEnvelopeObject(bytes).keys)==["format","transactionId","revision","file","sha256"]else{throw InstallationSelectionError.malformed}
+        let head=try JSONDecoder().decode(InstallationSelectionHead.self,from:bytes)
+        guard head.format=="aux.install.selection.head.v1",head.transactionId==transactionId,head.revision>=0,head.revision<=1_000_000,selectionValidHash(head.sha256),head.file==selectionName(head.revision,head.sha256),let payload=try readFile(head.file),selectionHash(payload)==head.sha256 else{throw InstallationSelectionError.malformed}
+        let record=try InstallationSelectionRecord.decode(payload)
+        guard record.transactionId==transactionId,record.revision==head.revision else{throw InstallationSelectionError.malformed}
+        return .init(record:record,sha256:head.sha256)
+    }
+    private func selectionWrite(_ next:InstallationSelectionRecord,expected:String?)throws->StoredInstallationSelection {
+        guard try selectionLoad()?.sha256==expected,next.transactionId==transactionId else{throw InstallationSelectionError.stale}
+        let bytes=try next.encoded(),hash=selectionHash(bytes),name=selectionName(next.revision,hash)
+        if let existing=try readFile(name){guard existing==bytes else{throw InstallationSelectionError.malformed}}
+        else{try exclusiveWrite(name,bytes:bytes)}
+        try syncFile(name)
+        let head=InstallationSelectionHead(format:"aux.install.selection.head.v1",transactionId:transactionId,revision:next.revision,file:name,sha256:hash)
+        let temporary="SELECTION-HEAD-"+UUID().uuidString+".next"
+        try exclusiveWrite(temporary,bytes:selectionEncode(head))
+        guard renameat(directoryFD,temporary,directoryFD,"SELECTION-HEAD.json")==0 else{throw InstallationJournalStoreError.io(errno)}
+        try Self.sync(directoryFD)
+        guard let loaded=try selectionLoad(),loaded.sha256==hash else{throw InstallationSelectionError.malformed};return loaded
+    }
+    private func selectionTerminal(_ record:InstallationSelectionRecord,_ terminal:CapturedTerminalCommandContext)throws {
+        try record.authenticate(terminal)
+        guard let migration=try loadUnlocked(),migration.sha256==record.terminalJournalSha256,migration.journal.phase == .ready,migration.journal.candidateSha256==record.candidate.installationCandidateSha256 else{throw InstallationSelectionError.wrongTerminal}
+    }
+    // Unknown pointer bytes are never adopted or overwritten. Preserve a blocked
+    // immutable checkpoint when the otherwise valid selection record permits it.
+    private func selectionKnownPointer(_ state:StoredInstallationSelection)throws->Data {
+        guard let bytes=try readFile("SELECTION.json")else{throw InstallationSelectionError.unknownPointer}
+        let old=try selectionPointer(state.record.previous),new=try selectionPointer(state.record.candidate)
+        let expected:Bool
+        switch state.record.phase {
+        case .prepared,.rolledBack:expected=bytes==old
+        case .selected:expected=bytes==new
+        case .selectIntent,.rollbackIntent,.blocked:expected=bytes==old || bytes==new
+        }
+        guard expected else {
+            if state.record.phase != .blocked {var blocked=state.record;blocked.revision += 1;blocked.phase = .blocked;_ = try selectionWrite(blocked,expected:state.sha256)}
+            throw InstallationSelectionError.unknownPointer
+        };return bytes
+    }
+    func prepareSelection(_ preparation:InstallationSelectionPreparation)throws->StoredInstallationSelection {
+        try locked {
+            guard try selectionLoad()==nil,try readFile("SELECTION.json")==nil else{throw InstallationSelectionError.stale}
+            let record=InstallationSelectionRecord(format:"aux.install.selection.transaction.v1",transactionId:preparation.transactionId,previous:preparation.previous,candidate:preparation.candidate,terminalJournalSha256:preparation.terminalJournalSha256,selectorBindingsSha256:preparation.selectorBindingsSha256,revision:0,phase:.prepared)
+            guard transactionId==record.transactionId,let migration=try loadUnlocked(),migration.sha256==record.terminalJournalSha256,migration.journal.phase == .ready,migration.journal.candidateSha256==record.candidate.installationCandidateSha256 else{throw InstallationSelectionError.wrongTerminal}
+            // No adoption on a crash between this create and HEAD publication.
+            try exclusiveWrite("SELECTION.json",bytes:selectionPointer(record.previous))
+            return try selectionWrite(record,expected:nil)
+        }
+    }
+    func loadSelection()throws->StoredInstallationSelection {try locked{guard let state=try selectionLoad()else{throw InstallationSelectionError.uninitialized};_ = try selectionKnownPointer(state);return state}}
+    func beginSelection(expectedHead:String,terminal:CapturedTerminalCommandContext)throws->StoredInstallationSelection {
+        try locked {
+            guard let old=try selectionLoad(),old.sha256==expectedHead else{throw InstallationSelectionError.stale}
+            guard old.record.phase == .prepared else{throw InstallationSelectionError.wrongPhase}
+            try selectionTerminal(old.record,terminal)
+            guard try selectionKnownPointer(old)==selectionPointer(old.record.previous)else{throw InstallationSelectionError.unknownPointer}
+            var next=old.record;next.revision += 1;next.phase = .selectIntent;return try selectionWrite(next,expected:expectedHead)
+        }
+    }
+    func beginSelectionRollback(expectedHead:String)throws->StoredInstallationSelection {
+        try locked {
+            guard let old=try selectionLoad(),old.sha256==expectedHead else{throw InstallationSelectionError.stale}
+            guard [.prepared,.selectIntent,.selected].contains(old.record.phase)else{throw InstallationSelectionError.wrongPhase}
+            _ = try selectionKnownPointer(old)
+            var next=old.record;next.revision += 1;next.phase = .rollbackIntent;return try selectionWrite(next,expected:expectedHead)
+        }
+    }
+    // Separate pointer publication models the crash after rename but before the
+    // terminal checkpoint. Consumers must refuse BOTH intent phases on restart.
+    // Actual target storage and old-writer custody are not supplied by this API.
+    func publishSelectionIntent(expectedHead:String,terminal:CapturedTerminalCommandContext?)throws {
+        try locked {
+            guard let state=try selectionLoad(),state.sha256==expectedHead else{throw InstallationSelectionError.stale}
+            guard [.selectIntent,.rollbackIntent].contains(state.record.phase)else{throw InstallationSelectionError.wrongPhase}
+            if state.record.phase == .selectIntent {guard let terminal=terminal else{throw InstallationSelectionError.wrongTerminal};try selectionTerminal(state.record,terminal)}
+            let before=try selectionKnownPointer(state)
+            let desired=try selectionPointer(state.record.phase == .selectIntent ? state.record.candidate:state.record.previous)
+            if before==desired {try syncFile("SELECTION.json");return}
+            let temporary="SELECTION-"+UUID().uuidString+".next";try exclusiveWrite(temporary,bytes:desired)
+            // Cooperating lock is not an external writer fence. Recheck captured
+            // pointer bytes immediately; no claim of atomic CAS across processes.
+            guard try readFile("SELECTION.json")==before else{throw InstallationSelectionError.stale}
+            guard renameat(directoryFD,temporary,directoryFD,"SELECTION.json")==0 else{throw InstallationJournalStoreError.io(errno)}
+            try Self.sync(directoryFD)
+        }
+    }
+    // Explicit completion after fresh terminal-capture construction. A persisted
+    // checksum alone cannot provide or reconstruct that authenticated context.
+    func finishSelectionIntent(expectedHead:String,terminal:CapturedTerminalCommandContext?)throws->StoredInstallationSelection {
+        try locked {
+            guard let state=try selectionLoad(),state.sha256==expectedHead else{throw InstallationSelectionError.stale}
+            guard [.selectIntent,.rollbackIntent].contains(state.record.phase)else{throw InstallationSelectionError.wrongPhase}
+            if state.record.phase == .selectIntent {guard let terminal=terminal else{throw InstallationSelectionError.wrongTerminal};try selectionTerminal(state.record,terminal)}
+            let desired=try selectionPointer(state.record.phase == .selectIntent ? state.record.candidate:state.record.previous)
+            guard try selectionKnownPointer(state)==desired else{throw InstallationSelectionError.unknownPointer}
+            try syncFile("SELECTION.json")
+            var next=state.record;next.revision += 1;next.phase=state.record.phase == .selectIntent ? .selected:.rolledBack
+            return try selectionWrite(next,expected:expectedHead)
+        }
+    }
+}

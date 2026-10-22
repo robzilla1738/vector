@@ -1,0 +1,10 @@
+{
+  "format": "aux.durable.selection.source.v1",
+  "baseline": "docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+  "baselineSha256": "936772ca173e49092a2d5e1a2f700de2af0a7bbe8afb556513f40f989bd9ed2b",
+  "successor": "docs/integration/proposed/aux-durable-selection/source/PrivateInstallationJournalStore.swift",
+  "successorSha256": "bcd8dbf099ba236399ecd52af2c6a12c0a1ca371274bb6c004e5713da34f75ac",
+  "continuation": "docs/integration/proposed/aux-durable-selection/source/PrivateInstallationJournalStore.swift.continuation",
+  "appendedBytes": 9565,
+  "patch": "docs/integration/proposed/aux-durable-selection/PrivateInstallationJournalStore.swift.patch"
+}
