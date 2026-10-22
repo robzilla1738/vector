@@ -29,7 +29,7 @@ try{
  const body=payload(Date.now());stage='upload';
  assert.equal((await request('',0,{method:'PUT',headers:{'Content-Type':'application/json','X-Aux-If-None-Match':'*'},body:JSON.stringify(body)})).status,200);
  const metadata=await request('');assert.equal(metadata.status,200);const current=await metadata.json(),tag='"'+current.revision+'"';
- stage='download';const downloaded=await request('/object?generation=0',0,{headers:{'If-Match':tag}});assert.equal(downloaded.status,200);assert.equal(downloaded.headers.get('ETag'),tag);assert.equal(downloaded.headers.get('Content-Type'),'application/octet-stream');
+ stage='download';const downloaded=await request('/object?generation=0',0,{headers:{'If-Match':tag}});assert.equal(downloaded.status,200);assert.equal(downloaded.headers.get('X-Aux-Cookie-Revision'),String(current.revision));assert.equal(downloaded.headers.get('Content-Type'),'application/octet-stream');
  const bytes=Buffer.from(await downloaded.arrayBuffer());assert.equal(hash(bytes),body.objectSha256);assert.equal(bytes.length,body.objectSize);
  const envelope=JSON.parse(bytes.toString()),decipher=createDecipheriv('aes-256-gcm',key,Buffer.from(envelope.nonce,'base64'));decipher.setAAD(Buffer.from(JSON.stringify(['aux.cookie-snapshot.v1',users[0],0])));decipher.setAuthTag(Buffer.from(envelope.tag,'base64'));
  const plain=Buffer.concat([decipher.update(Buffer.from(envelope.ciphertext,'base64')),decipher.final()]);assert.equal(hash(plain),body.sha256);plain.fill(0);

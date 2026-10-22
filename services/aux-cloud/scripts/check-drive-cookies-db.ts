@@ -23,7 +23,7 @@ try{
  for(const user of users)await sql`INSERT INTO aux_users(id,clerk_id,email,name) VALUES(${user},${`fixture_${user}`},${`${user}@example.invalid`},'Disposable encrypted cookie fixture')`;
  const put=(body:ReturnType<typeof payload>,match?:string)=>apps[0].request('/drive/cookies',{method:'PUT',headers:match?{'If-Match':match}:{'If-None-Match':'*'},body:JSON.stringify(body)});
  const initial=payload(1);assert.equal((await put(initial)).status,200,'cookie creation');assert.equal((await apps[1].request('/drive/cookies')).status,404,'cross-user cookie metadata');checks.push('opaque cookie creation and owner metadata isolation');
- const exported=await apps[0].request('/drive/cookies/object?generation=0',{headers:{'If-Match':'"1"'}});assert.equal(exported.status,200);assert.equal(exported.headers.get('ETag'),'"1"');assert.ok(Buffer.from(await exported.arrayBuffer()).equals(Buffer.from(initial.object,'base64')));
+ const exported=await apps[0].request('/drive/cookies/object?generation=0',{headers:{'If-Match':'"1"'}});assert.equal(exported.status,200);assert.equal(exported.headers.get('ETag'),'"1"');assert.equal(exported.headers.get('X-Aux-Cookie-Revision'),'1');assert.ok(Buffer.from(await exported.arrayBuffer()).equals(Buffer.from(initial.object,'base64')));
  assert.equal((await apps[1].request('/drive/cookies/object?generation=0',{headers:{'If-Match':'"1"'}})).status,404,'cross-user ciphertext denial');
  assert.equal((await apps[0].request('/drive/cookies/object?generation=0')).status,428,'revision required');
  assert.equal((await apps[0].request('/drive/cookies/object?generation=1',{headers:{'If-Match':'"1"'}})).status,412,'generation mismatch');
