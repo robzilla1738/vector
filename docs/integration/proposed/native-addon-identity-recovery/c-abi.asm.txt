@@ -1,0 +1,69 @@
+
+/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000000049af8 <_AsideNativeRun>:
+   49af8: 14000001     	b	0x49afc <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF>
+
+0000000000049afc <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF>:
+   49afc: a9bc5ff8     	stp	x24, x23, [sp, #-0x40]!
+   49b00: a90157f6     	stp	x22, x21, [sp, #0x10]
+   49b04: a9024ff4     	stp	x20, x19, [sp, #0x20]
+   49b08: a9037bfd     	stp	x29, x30, [sp, #0x30]
+   49b0c: 9100c3fd     	add	x29, sp, #0x30
+   49b10: aa0103f6     	mov	x22, x1
+   49b14: aa0003f4     	mov	x20, x0
+   49b18: 94132e0a     	bl	0x515340 <dyld_stub_binder+0x515340>
+   49b1c: aa0003f3     	mov	x19, x0
+   49b20: b4000174     	cbz	x20, 0x49b4c <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF+0x50>
+   49b24: aa1403e0     	mov	x0, x20
+   49b28: 94132a94     	bl	0x514578 <dyld_stub_binder+0x514578>
+   49b2c: aa0003f5     	mov	x21, x0
+   49b30: aa0103f4     	mov	x20, x1
+   49b34: b4000136     	cbz	x22, 0x49b58 <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF+0x5c>
+   49b38: aa1603e0     	mov	x0, x22
+   49b3c: 94132a8f     	bl	0x514578 <dyld_stub_binder+0x514578>
+   49b40: aa0003e2     	mov	x2, x0
+   49b44: aa0103f6     	mov	x22, x1
+   49b48: 14000006     	b	0x49b60 <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF+0x64>
+   49b4c: d2800015     	mov	x21, #0x0               ; =0
+   49b50: d2fc0014     	mov	x20, #-0x2000000000000000 ; =-2305843009213693952
+   49b54: b5ffff36     	cbnz	x22, 0x49b38 <_$s16AsideNativeSwift0aB3RunySpys4Int8VGSgSPyADGSg_AHtF+0x3c>
+   49b58: d2800002     	mov	x2, #0x0                ; =0
+   49b5c: d2fc0016     	mov	x22, #-0x2000000000000000 ; =-2305843009213693952
+   49b60: aa1503e0     	mov	x0, x21
+   49b64: aa1403e1     	mov	x1, x20
+   49b68: aa1603e3     	mov	x3, x22
+   49b6c: 97fffcd2     	bl	0x48eb4 <_$s16AsideNativeSwift10runCommand7command5inputS2S_SStF>
+   49b70: aa0003f5     	mov	x21, x0
+   49b74: aa0103f7     	mov	x23, x1
+   49b78: aa1403e0     	mov	x0, x20
+   49b7c: 94132f98     	bl	0x5159dc <dyld_stub_binder+0x5159dc>
+   49b80: aa1603e0     	mov	x0, x22
+   49b84: 94132f96     	bl	0x5159dc <dyld_stub_binder+0x5159dc>
+   49b88: aa1503e0     	mov	x0, x21
+   49b8c: aa1703e1     	mov	x1, x23
+   49b90: 94132a71     	bl	0x514554 <dyld_stub_binder+0x514554>
+   49b94: aa0003f4     	mov	x20, x0
+   49b98: aa1703e0     	mov	x0, x23
+   49b9c: 94132f90     	bl	0x5159dc <dyld_stub_binder+0x5159dc>
+   49ba0: 91008280     	add	x0, x20, #0x20
+   49ba4: 94132f67     	bl	0x515940 <dyld_stub_binder+0x515940>
+   49ba8: aa0003f5     	mov	x21, x0
+   49bac: aa1403e0     	mov	x0, x20
+   49bb0: 94132fc1     	bl	0x515ab4 <dyld_stub_binder+0x515ab4>
+   49bb4: aa1303e0     	mov	x0, x19
+   49bb8: 94132ddf     	bl	0x515334 <dyld_stub_binder+0x515334>
+   49bbc: aa1503e0     	mov	x0, x21
+   49bc0: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+   49bc4: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+   49bc8: a94157f6     	ldp	x22, x21, [sp, #0x10]
+   49bcc: a8c45ff8     	ldp	x24, x23, [sp], #0x40
+   49bd0: d65f03c0     	ret
+
+0000000000049bd4 <_AsideNativeFree>:
+   49bd4: 14132e26     	b	0x51546c <dyld_stub_binder+0x51546c>
+
+0000000000049bd8 <_$s16AsideNativeSwift0aB4FreeyySpys4Int8VGSgF>:
+   49bd8: 14132e25     	b	0x51546c <dyld_stub_binder+0x51546c>

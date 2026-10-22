@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 7717,
+      "sha256": "4694fe7f56b09eb5a3e734542624f225fa32699ec814cdfc075358aee7212096"
+    },
+    {
+      "path": "c-abi.asm.txt",
+      "bytes": 3425,
+      "sha256": "38e6543a6b45d1f20b56bfd839132b4413cbc8eeb98dab03b3a15790acd44777"
+    },
+    {
+      "path": "dk-unwrap.asm.txt",
+      "bytes": 233395,
+      "sha256": "0c1db6c8863878ada18686cb5760b6c7a5e6fd9060cbf0882525229cc6c1215e"
+    },
+    {
+      "path": "install-init.asm.txt",
+      "bytes": 287541,
+      "sha256": "2b99704fa36e0c98c4463f2f4b708e2766048f3aa6ace0913fdb42f0eae01e00"
+    },
+    {
+      "path": "installation-labels.asm.txt",
+      "bytes": 13517,
+      "sha256": "36e74a7b605d3d6bc505670d6bf1f23985b4d1e66785872ef592f0277017053d"
+    },
+    {
+      "path": "installation-query.asm.txt",
+      "bytes": 6351,
+      "sha256": "af7228f878a270d00ac7ce93cb0201e7fd46201fda09bad271ec127971c99dc7"
+    },
+    {
+      "path": "selected-indirect-symbols.txt",
+      "bytes": 2851,
+      "sha256": "da09477c585eb06dc58ebc0d38b10098fb873ae0ea71cd6760e4efc762eb8d0d"
+    },
+    {
+      "path": "static-map.json",
+      "bytes": 246083,
+      "sha256": "e693b3678b02fa33d30c969618919490b48c5db6d2467579c30804d29984dd5e"
+    }
+  ],
+  "targetExecution": false,
+  "binaryMutation": false,
+  "runtimeAcceptance": false
+}

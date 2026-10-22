@@ -1,0 +1,120 @@
+
+/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000000032b98 <_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF>:
+   32b98: d10583ff     	sub	sp, sp, #0x160
+   32b9c: a9116ffc     	stp	x28, x27, [sp, #0x110]
+   32ba0: a9125ff8     	stp	x24, x23, [sp, #0x120]
+   32ba4: a91357f6     	stp	x22, x21, [sp, #0x130]
+   32ba8: a9144ff4     	stp	x20, x19, [sp, #0x140]
+   32bac: a9157bfd     	stp	x29, x30, [sp, #0x150]
+   32bb0: 910543fd     	add	x29, sp, #0x150
+   32bb4: aa0103f3     	mov	x19, x1
+   32bb8: aa0003f6     	mov	x22, x0
+   32bbc: f0003860     	adrp	x0, 0x741000 <__PROTOCOL_NSObject+0x48>
+   32bc0: 9112c000     	add	x0, x0, #0x4b0
+   32bc4: 900027c1     	adrp	x1, 0x52a000 <__ZL34_indic_syllable_machine_trans_keys+0x162>
+   32bc8: 911ca021     	add	x1, x1, #0x728
+   32bcc: 97ffc638     	bl	0x244ac <___swift_instantiateConcreteTypeFromMangledNameV2>
+   32bd0: 910003e1     	mov	x1, sp
+   32bd4: 94138bac     	bl	0x515a84 <dyld_stub_binder+0x515a84>
+   32bd8: aa0003f5     	mov	x21, x0
+   32bdc: 900027c8     	adrp	x8, 0x52a000 <__ZL34_indic_syllable_machine_trans_keys+0x162>
+   32be0: 3dc1a900     	ldr	q0, [x8, #0x6a0]
+   32be4: 3d800400     	str	q0, [x0, #0x10]
+   32be8: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32bec: f9405108     	ldr	x8, [x8, #0xa0]
+   32bf0: f9400100     	ldr	x0, [x8]
+   32bf4: 9413864c     	bl	0x514524 <dyld_stub_binder+0x514524>
+   32bf8: aa1503f4     	mov	x20, x21
+   32bfc: f8020e80     	str	x0, [x20, #0x20]!
+   32c00: f90016a1     	str	x1, [x21, #0x28]
+   32c04: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32c08: f9405508     	ldr	x8, [x8, #0xa8]
+   32c0c: f9400117     	ldr	x23, [x8]
+   32c10: d2800000     	mov	x0, #0x0                ; =0
+   32c14: 94006b0b     	bl	0x4d840 <_$sSo11CFStringRefaMa>
+   32c18: f90026a0     	str	x0, [x21, #0x48]
+   32c1c: f9001ab7     	str	x23, [x21, #0x30]
+   32c20: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32c24: f9404d08     	ldr	x8, [x8, #0x98]
+   32c28: f9400100     	ldr	x0, [x8]
+   32c2c: 9413863e     	bl	0x514524 <dyld_stub_binder+0x514524>
+   32c30: a90506a0     	stp	x0, x1, [x21, #0x50]
+   32c34: f0003888     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   32c38: f940f118     	ldr	x24, [x8, #0x1e0]
+   32c3c: aa1703e0     	mov	x0, x23
+   32c40: 94138acb     	bl	0x51576c <dyld_stub_binder+0x51576c>
+   32c44: b100071f     	cmn	x24, #0x1
+   32c48: 54000801     	b.ne	0x32d48 <_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF+0x1b0>
+   32c4c: d0003888     	adrp	x8, 0x744000 <_SupportedTags+0x1770>
+   32c50: 9138e108     	add	x8, x8, #0xe38
+   32c54: a9405d09     	ldp	x9, x23, [x8]
+   32c58: d0003798     	adrp	x24, 0x724000 <dyld_stub_binder+0x724000>
+   32c5c: f9412718     	ldr	x24, [x24, #0x248]
+   32c60: f9003eb8     	str	x24, [x21, #0x78]
+   32c64: a9065ea9     	stp	x9, x23, [x21, #0x60]
+   32c68: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32c6c: f9404908     	ldr	x8, [x8, #0x90]
+   32c70: f9400100     	ldr	x0, [x8]
+   32c74: 9413862c     	bl	0x514524 <dyld_stub_binder+0x514524>
+   32c78: a90806a0     	stp	x0, x1, [x21, #0x80]
+   32c7c: f90056b8     	str	x24, [x21, #0xa8]
+   32c80: a9094eb6     	stp	x22, x19, [x21, #0x90]
+   32c84: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32c88: f9403908     	ldr	x8, [x8, #0x70]
+   32c8c: f9400100     	ldr	x0, [x8]
+   32c90: 94138625     	bl	0x514524 <dyld_stub_binder+0x514524>
+   32c94: a90b06a0     	stp	x0, x1, [x21, #0xb0]
+   32c98: f0002728     	adrp	x8, 0x519000 <dyld_stub_binder+0x519000>
+   32c9c: 9118c108     	add	x8, x8, #0x630
+   32ca0: d1008108     	sub	x8, x8, #0x20
+   32ca4: b2410108     	orr	x8, x8, #0x8000000000000000
+   32ca8: f9006eb8     	str	x24, [x21, #0xd8]
+   32cac: d28005c9     	mov	x9, #0x2e               ; =46
+   32cb0: f2fa0009     	movk	x9, #0xd000, lsl #48
+   32cb4: a90c22a9     	stp	x9, x8, [x21, #0xc0]
+   32cb8: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32cbc: f9407108     	ldr	x8, [x8, #0xe0]
+   32cc0: f9400100     	ldr	x0, [x8]
+   32cc4: 94138618     	bl	0x514524 <dyld_stub_binder+0x514524>
+   32cc8: a90e06a0     	stp	x0, x1, [x21, #0xe0]
+   32ccc: d0003788     	adrp	x8, 0x724000 <dyld_stub_binder+0x724000>
+   32cd0: f9413508     	ldr	x8, [x8, #0x268]
+   32cd4: f90086a8     	str	x8, [x21, #0x108]
+   32cd8: 52800028     	mov	w8, #0x1                ; =1
+   32cdc: 3903c2a8     	strb	w8, [x21, #0xf0]
+   32ce0: aa1703e0     	mov	x0, x23
+   32ce4: 94138b44     	bl	0x5159f4 <dyld_stub_binder+0x5159f4>
+   32ce8: aa1303e0     	mov	x0, x19
+   32cec: 94138b42     	bl	0x5159f4 <dyld_stub_binder+0x5159f4>
+   32cf0: aa1503e0     	mov	x0, x21
+   32cf4: 94006a88     	bl	0x4d714 <_$sSD17dictionaryLiteralSDyxq_Gx_q_td_tcfCSS_ypTt0g5Tf4g_n>
+   32cf8: aa0003f3     	mov	x19, x0
+   32cfc: aa1503e0     	mov	x0, x21
+   32d00: 94138b76     	bl	0x515ad8 <dyld_stub_binder+0x515ad8>
+   32d04: f0003860     	adrp	x0, 0x741000 <__PROTOCOL_NSObject+0x48>
+   32d08: 9112e000     	add	x0, x0, #0x4b8
+   32d0c: 900027c1     	adrp	x1, 0x52a000 <__ZL34_indic_syllable_machine_trans_keys+0x162>
+   32d10: 911cc021     	add	x1, x1, #0x730
+   32d14: 97ffc5e6     	bl	0x244ac <___swift_instantiateConcreteTypeFromMangledNameV2>
+   32d18: aa0003e2     	mov	x2, x0
+   32d1c: aa1403e0     	mov	x0, x20
+   32d20: 528000a1     	mov	w1, #0x5                ; =5
+   32d24: 94138b25     	bl	0x5159b8 <dyld_stub_binder+0x5159b8>
+   32d28: aa1303e0     	mov	x0, x19
+   32d2c: a9557bfd     	ldp	x29, x30, [sp, #0x150]
+   32d30: a9544ff4     	ldp	x20, x19, [sp, #0x140]
+   32d34: a95357f6     	ldp	x22, x21, [sp, #0x130]
+   32d38: a9525ff8     	ldp	x24, x23, [sp, #0x120]
+   32d3c: a9516ffc     	ldp	x28, x27, [sp, #0x110]
+   32d40: 910583ff     	add	sp, sp, #0x160
+   32d44: d65f03c0     	ret
+   32d48: f0003880     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   32d4c: 91078000     	add	x0, x0, #0x1e0
+   32d50: d0ffffe1     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   32d54: 911e5021     	add	x1, x1, #0x794
+   32d58: 94138b54     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   32d5c: 17ffffbc     	b	0x32c4c <_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF+0xb4>

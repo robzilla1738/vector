@@ -1,0 +1,256 @@
+
+/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000000030794 <_$s16AsideNativeSwift14installService_WZ>:
+   30794: 900038a3     	adrp	x3, 0x744000 <_SupportedTags+0x1770>
+   30798: 9138e063     	add	x3, x3, #0xe38
+   3079c: d28dcd21     	mov	x1, #0x6e69             ; =28265
+   307a0: f2ae8e61     	movk	x1, #0x7473, lsl #16
+   307a4: f2cd8c21     	movk	x1, #0x6c61, lsl #32
+   307a8: f2e00d81     	movk	x1, #0x6c, lsl #48
+   307ac: 91002064     	add	x4, x3, #0x8
+   307b0: d2fce002     	mov	x2, #-0x1900000000000000 ; =-1801439850948198400
+   307b4: 14000068     	b	0x30954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>
+
+00000000000307b8 <_$s16AsideNativeSwift14installServiceSSvau>:
+   307b8: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   307bc: f940f108     	ldr	x8, [x8, #0x1e0]
+   307c0: b100051f     	cmn	x8, #0x1
+   307c4: 54000081     	b.ne	0x307d4 <_$s16AsideNativeSwift14installServiceSSvau+0x1c>
+   307c8: 900038a0     	adrp	x0, 0x744000 <_SupportedTags+0x1770>
+   307cc: 9138e000     	add	x0, x0, #0xe38
+   307d0: d65f03c0     	ret
+   307d4: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+   307d8: 910003fd     	mov	x29, sp
+   307dc: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   307e0: 91078000     	add	x0, x0, #0x1e0
+   307e4: 90000001     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   307e8: 911e5021     	add	x1, x1, #0x794
+   307ec: 941394af     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   307f0: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+   307f4: 17fffff5     	b	0x307c8 <_$s16AsideNativeSwift14installServiceSSvau+0x10>
+
+00000000000307f8 <_$s16AsideNativeSwift11metaAccount_WZ>:
+   307f8: 900038a3     	adrp	x3, 0x744000 <_SupportedTags+0x1770>
+   307fc: 91392063     	add	x3, x3, #0xe48
+   30800: d28dcd21     	mov	x1, #0x6e69             ; =28265
+   30804: f2ae8e61     	movk	x1, #0x7473, lsl #16
+   30808: f2cd8c21     	movk	x1, #0x6c61, lsl #32
+   3080c: f2e5cd81     	movk	x1, #0x2e6c, lsl #48
+   30810: d28cada2     	mov	x2, #0x656d             ; =25965
+   30814: f2ac2e82     	movk	x2, #0x6174, lsl #16
+   30818: f2fd8002     	movk	x2, #0xec00, lsl #48
+   3081c: 91002064     	add	x4, x3, #0x8
+   30820: 1400004d     	b	0x30954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>
+
+0000000000030824 <_$s16AsideNativeSwift11metaAccountSSvau>:
+   30824: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30828: f940f508     	ldr	x8, [x8, #0x1e8]
+   3082c: b100051f     	cmn	x8, #0x1
+   30830: 54000081     	b.ne	0x30840 <_$s16AsideNativeSwift11metaAccountSSvau+0x1c>
+   30834: 900038a0     	adrp	x0, 0x744000 <_SupportedTags+0x1770>
+   30838: 91392000     	add	x0, x0, #0xe48
+   3083c: d65f03c0     	ret
+   30840: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+   30844: 910003fd     	mov	x29, sp
+   30848: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   3084c: 9107a000     	add	x0, x0, #0x1e8
+   30850: 90000001     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   30854: 911fe021     	add	x1, x1, #0x7f8
+   30858: 94139494     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   3085c: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+   30860: 17fffff5     	b	0x30834 <_$s16AsideNativeSwift11metaAccountSSvau+0x10>
+
+0000000000030864 <_$s16AsideNativeSwift10sigAccount_WZ>:
+   30864: 900038a3     	adrp	x3, 0x744000 <_SupportedTags+0x1770>
+   30868: 91396063     	add	x3, x3, #0xe58
+   3086c: d28dcd21     	mov	x1, #0x6e69             ; =28265
+   30870: f2ae8e61     	movk	x1, #0x7473, lsl #16
+   30874: f2cd8c21     	movk	x1, #0x6c61, lsl #32
+   30878: f2e5cd81     	movk	x1, #0x2e6c, lsl #48
+   3087c: d28d2e62     	mov	x2, #0x6973             ; =26995
+   30880: f2a00ce2     	movk	x2, #0x67, lsl #16
+   30884: f2fd6002     	movk	x2, #0xeb00, lsl #48
+   30888: 91002064     	add	x4, x3, #0x8
+   3088c: 14000032     	b	0x30954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>
+
+0000000000030890 <_$s16AsideNativeSwift10sigAccountSSvau>:
+   30890: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30894: f940f908     	ldr	x8, [x8, #0x1f0]
+   30898: b100051f     	cmn	x8, #0x1
+   3089c: 54000081     	b.ne	0x308ac <_$s16AsideNativeSwift10sigAccountSSvau+0x1c>
+   308a0: 900038a0     	adrp	x0, 0x744000 <_SupportedTags+0x1770>
+   308a4: 91396000     	add	x0, x0, #0xe58
+   308a8: d65f03c0     	ret
+   308ac: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+   308b0: 910003fd     	mov	x29, sp
+   308b4: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   308b8: 9107c000     	add	x0, x0, #0x1f0
+   308bc: 90000001     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   308c0: 91219021     	add	x1, x1, #0x864
+   308c4: 94139479     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   308c8: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+   308cc: 17fffff5     	b	0x308a0 <_$s16AsideNativeSwift10sigAccountSSvau+0x10>
+
+00000000000308d0 <_$s16AsideNativeSwift10kemAccount_WZ>:
+   308d0: 900038a3     	adrp	x3, 0x744000 <_SupportedTags+0x1770>
+   308d4: 9139a063     	add	x3, x3, #0xe68
+   308d8: d28dcd21     	mov	x1, #0x6e69             ; =28265
+   308dc: f2ae8e61     	movk	x1, #0x7473, lsl #16
+   308e0: f2cd8c21     	movk	x1, #0x6c61, lsl #32
+   308e4: f2e5cd81     	movk	x1, #0x2e6c, lsl #48
+   308e8: d28cad62     	mov	x2, #0x656b             ; =25963
+   308ec: f2a00da2     	movk	x2, #0x6d, lsl #16
+   308f0: f2fd6002     	movk	x2, #0xeb00, lsl #48
+   308f4: 91002064     	add	x4, x3, #0x8
+   308f8: 14000017     	b	0x30954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>
+
+00000000000308fc <_$s16AsideNativeSwift10kemAccountSSvau>:
+   308fc: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30900: f940fd08     	ldr	x8, [x8, #0x1f8]
+   30904: b100051f     	cmn	x8, #0x1
+   30908: 54000081     	b.ne	0x30918 <_$s16AsideNativeSwift10kemAccountSSvau+0x1c>
+   3090c: 900038a0     	adrp	x0, 0x744000 <_SupportedTags+0x1770>
+   30910: 9139a000     	add	x0, x0, #0xe68
+   30914: d65f03c0     	ret
+   30918: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+   3091c: 910003fd     	mov	x29, sp
+   30920: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   30924: 9107e000     	add	x0, x0, #0x1f8
+   30928: 90000001     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   3092c: 91234021     	add	x1, x1, #0x8d0
+   30930: 9413945e     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   30934: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+   30938: 17fffff5     	b	0x3090c <_$s16AsideNativeSwift10kemAccountSSvau+0x10>
+
+000000000003093c <_$s16AsideNativeSwift9dkAccount_WZ>:
+   3093c: 900038a3     	adrp	x3, 0x744000 <_SupportedTags+0x1770>
+   30940: 9139e063     	add	x3, x3, #0xe78
+   30944: 91002064     	add	x4, x3, #0x8
+   30948: 528d6c81     	mov	w1, #0x6b64             ; =27492
+   3094c: d2fc4002     	mov	x2, #-0x1e00000000000000 ; =-2161727821137838080
+   30950: 14000001     	b	0x30954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>
+
+0000000000030954 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm>:
+   30954: d10103ff     	sub	sp, sp, #0x40
+   30958: a90157f6     	stp	x22, x21, [sp, #0x10]
+   3095c: a9024ff4     	stp	x20, x19, [sp, #0x20]
+   30960: a9037bfd     	stp	x29, x30, [sp, #0x30]
+   30964: 9100c3fd     	add	x29, sp, #0x30
+   30968: aa0403f3     	mov	x19, x4
+   3096c: aa0303f5     	mov	x21, x3
+   30970: aa0203f6     	mov	x22, x2
+   30974: aa0103e0     	mov	x0, x1
+   30978: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   3097c: f940e108     	ldr	x8, [x8, #0x1c0]
+   30980: b100051f     	cmn	x8, #0x1
+   30984: 540003c1     	b.ne	0x309fc <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm+0xa8>
+   30988: 900038a8     	adrp	x8, 0x744000 <_SupportedTags+0x1770>
+   3098c: 39780108     	ldrb	w8, [x8, #0xe00]
+   30990: 7100051f     	cmp	w8, #0x1
+   30994: 54000141     	b.ne	0x309bc <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm+0x68>
+   30998: d28e6c28     	mov	x8, #0x7361             ; =29537
+   3099c: f2ac8d28     	movk	x8, #0x6469, lsl #16
+   309a0: f2c5aca8     	movk	x8, #0x2d65, lsl #32
+   309a4: f2ec2c68     	movk	x8, #0x6163, lsl #48
+   309a8: d28c2dc9     	mov	x9, #0x616e             ; =24942
+   309ac: f2af2e49     	movk	x9, #0x7972, lsl #16
+   309b0: f2c005c9     	movk	x9, #0x2e, lsl #32
+   309b4: f2fda009     	movk	x9, #0xed00, lsl #48
+   309b8: 14000005     	b	0x309cc <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm+0x78>
+   309bc: d28e6c28     	mov	x8, #0x7361             ; =29537
+   309c0: f2ac8d28     	movk	x8, #0x6469, lsl #16
+   309c4: f2c5cca8     	movk	x8, #0x2e65, lsl #32
+   309c8: d2fcc009     	mov	x9, #-0x1a00000000000000 ; =-1873497444986126336
+   309cc: a90027e8     	stp	x8, x9, [sp]
+   309d0: 910003f4     	mov	x20, sp
+   309d4: aa1603e1     	mov	x1, x22
+   309d8: 94138ee5     	bl	0x51456c <dyld_stub_binder+0x51456c>
+   309dc: a94027e8     	ldp	x8, x9, [sp]
+   309e0: f90002a8     	str	x8, [x21]
+   309e4: f9000269     	str	x9, [x19]
+   309e8: a9437bfd     	ldp	x29, x30, [sp, #0x30]
+   309ec: a9424ff4     	ldp	x20, x19, [sp, #0x20]
+   309f0: a94157f6     	ldp	x22, x21, [sp, #0x10]
+   309f4: 910103ff     	add	sp, sp, #0x40
+   309f8: d65f03c0     	ret
+   309fc: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30a00: 91070108     	add	x8, x8, #0x1c0
+   30a04: f0ffff81     	adrp	x1, 0x23000 <__ZNKSt3__112basic_stringIDuNS_11char_traitsIDuEENS_9allocatorIDuEEE16__get_short_sizeB9nqe210106Ev+0x8>
+   30a08: 913a2021     	add	x1, x1, #0xe88
+   30a0c: aa0003f4     	mov	x20, x0
+   30a10: aa0803e0     	mov	x0, x8
+   30a14: 94139425     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   30a18: aa1403e0     	mov	x0, x20
+   30a1c: 17ffffdb     	b	0x30988 <_$s16AsideNativeSwift22biometricAccountPrefix_WZTm+0x34>
+
+0000000000030a20 <_$s16AsideNativeSwift9dkAccountSSvau>:
+   30a20: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30a24: f9410108     	ldr	x8, [x8, #0x200]
+   30a28: b100051f     	cmn	x8, #0x1
+   30a2c: 54000081     	b.ne	0x30a3c <_$s16AsideNativeSwift9dkAccountSSvau+0x1c>
+   30a30: 900038a0     	adrp	x0, 0x744000 <_SupportedTags+0x1770>
+   30a34: 9139e000     	add	x0, x0, #0xe78
+   30a38: d65f03c0     	ret
+   30a3c: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+   30a40: 910003fd     	mov	x29, sp
+   30a44: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   30a48: 91080000     	add	x0, x0, #0x200
+   30a4c: 90000001     	adrp	x1, 0x30000 <_$s16AsideNativeSwift13cmdSecureReadSSyF+0x2f8>
+   30a50: 9124f021     	add	x1, x1, #0x93c
+   30a54: 94139415     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   30a58: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+   30a5c: 17fffff5     	b	0x30a30 <_$s16AsideNativeSwift9dkAccountSSvau+0x10>
+
+0000000000030a60 <_$s16AsideNativeSwift11wrapContext_WZ>:
+   30a60: d100c3ff     	sub	sp, sp, #0x30
+   30a64: a9014ff4     	stp	x20, x19, [sp, #0x10]
+   30a68: a9027bfd     	stp	x29, x30, [sp, #0x20]
+   30a6c: 910083fd     	add	x29, sp, #0x20
+   30a70: b00038a8     	adrp	x8, 0x745000 <__hb_CrapPool+0xd8>
+   30a74: f940e108     	ldr	x8, [x8, #0x1c0]
+   30a78: b100051f     	cmn	x8, #0x1
+   30a7c: 54000481     	b.ne	0x30b0c <_$s16AsideNativeSwift11wrapContext_WZ+0xac>
+   30a80: d28e4ee0     	mov	x0, #0x7277             ; =29303
+   30a84: f2ae0c20     	movk	x0, #0x7061, lsl #16
+   30a88: f2cc85c0     	movk	x0, #0x642e, lsl #32
+   30a8c: f2e5cd60     	movk	x0, #0x2e6b, lsl #48
+   30a90: 900038a8     	adrp	x8, 0x744000 <_SupportedTags+0x1770>
+   30a94: 39780108     	ldrb	w8, [x8, #0xe00]
+   30a98: 7100051f     	cmp	w8, #0x1
+   30a9c: 54000141     	b.ne	0x30ac4 <_$s16AsideNativeSwift11wrapContext_WZ+0x64>
+   30aa0: d28e6c28     	mov	x8, #0x7361             ; =29537
+   30aa4: f2ac8d28     	movk	x8, #0x6469, lsl #16
+   30aa8: f2c5aca8     	movk	x8, #0x2d65, lsl #32
+   30aac: f2ec2c68     	movk	x8, #0x6163, lsl #48
+   30ab0: d28c2dc9     	mov	x9, #0x616e             ; =24942
+   30ab4: f2af2e49     	movk	x9, #0x7972, lsl #16
+   30ab8: f2c005c9     	movk	x9, #0x2e, lsl #32
+   30abc: f2fda009     	movk	x9, #0xed00, lsl #48
+   30ac0: 14000005     	b	0x30ad4 <_$s16AsideNativeSwift11wrapContext_WZ+0x74>
+   30ac4: d28e6c28     	mov	x8, #0x7361             ; =29537
+   30ac8: f2ac8d28     	movk	x8, #0x6469, lsl #16
+   30acc: f2c5cca8     	movk	x8, #0x2e65, lsl #32
+   30ad0: d2fcc009     	mov	x9, #-0x1a00000000000000 ; =-1873497444986126336
+   30ad4: a90027e8     	stp	x8, x9, [sp]
+   30ad8: 910003f4     	mov	x20, sp
+   30adc: d2862ec1     	mov	x1, #0x3176             ; =12662
+   30ae0: f2fd4001     	movk	x1, #0xea00, lsl #48
+   30ae4: 94138ea2     	bl	0x51456c <dyld_stub_binder+0x51456c>
+   30ae8: a94007e0     	ldp	x0, x1, [sp]
+   30aec: 9400000e     	bl	0x30b24 <_$s10Foundation4DataVyACxcSTRzs5UInt8V7ElementRtzlufCSS8UTF8ViewV_Tt0g5>
+   30af0: 900038a8     	adrp	x8, 0x744000 <_SupportedTags+0x1770>
+   30af4: 913a2108     	add	x8, x8, #0xe88
+   30af8: a9000500     	stp	x0, x1, [x8]
+   30afc: a9427bfd     	ldp	x29, x30, [sp, #0x20]
+   30b00: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+   30b04: 9100c3ff     	add	sp, sp, #0x30
+   30b08: d65f03c0     	ret
+   30b0c: b00038a0     	adrp	x0, 0x745000 <__hb_CrapPool+0xd8>
+   30b10: 91070000     	add	x0, x0, #0x1c0
+   30b14: f0ffff81     	adrp	x1, 0x23000 <__ZNKSt3__112basic_stringIDuNS_11char_traitsIDuEENS_9allocatorIDuEEE16__get_short_sizeB9nqe210106Ev+0x8>
+   30b18: 913a2021     	add	x1, x1, #0xe88
+   30b1c: 941393e3     	bl	0x515aa8 <dyld_stub_binder+0x515aa8>
+   30b20: 17ffffd8     	b	0x30a80 <_$s16AsideNativeSwift11wrapContext_WZ+0x20>
