@@ -256,8 +256,8 @@ async function grantPurchasedCredits(client: Stripe, session: Stripe.Checkout.Se
   if (!mapped[0]) return;
   await ownedCustomer(client, customerId, userId!);
   await ensureWallet(userId!);
-  await sql`WITH grant AS (INSERT INTO aux_credit_grants(source_id,user_id,amount_micros,kind) VALUES(${paymentIntent},${userId!},${amount},'add_on') ON CONFLICT DO NOTHING RETURNING user_id)
-    UPDATE aux_wallets SET balance_micros=balance_micros+greatest(0,${amount}-debt_micros),add_on_balance_micros=add_on_balance_micros+greatest(0,${amount}-debt_micros),debt_micros=greatest(0,debt_micros-${amount}) WHERE user_id IN(SELECT user_id FROM grant)`;
+  await sql`WITH credited_grant AS (INSERT INTO aux_credit_grants(source_id,user_id,amount_micros,kind) VALUES(${paymentIntent},${userId!},${amount},'add_on') ON CONFLICT DO NOTHING RETURNING user_id)
+    UPDATE aux_wallets SET balance_micros=balance_micros+greatest(0,${amount}-debt_micros),add_on_balance_micros=add_on_balance_micros+greatest(0,${amount}-debt_micros),debt_micros=greatest(0,debt_micros-${amount}) WHERE user_id IN(SELECT user_id FROM credited_grant)`;
   const charges = await client.charges.list({ payment_intent: paymentIntent, limit: 100 });
   for (const charge of charges.data) if (charge.amount_refunded > 0) await reconcileCreditRefund(charge);
 }

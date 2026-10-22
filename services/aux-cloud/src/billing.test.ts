@@ -129,3 +129,26 @@ test('sandbox billing refuses both unrestricted and restricted live keys before 
     }
   }
 });
+
+
+test('the production purchased-credit SQL grants once, pays debt and isolates other wallets', async () => {
+  const pg=new PGlite();
+  try {
+    await pg.exec('CREATE TABLE aux_users(id uuid PRIMARY KEY);');
+    await pg.exec(await readFile(new URL('../migrations/003-billing.sql',import.meta.url),'utf8'));
+    const source=await readFile(new URL('./billing.ts',import.meta.url),'utf8');
+    const query=/sql`(WITH credited_grant AS[\s\S]*?)`/.exec(source)?.[1];assert.ok(query);
+    const first='00000000-0000-4000-8000-000000000011',second='00000000-0000-4000-8000-000000000012';
+    for(const id of [first,second]){await pg.query('INSERT INTO aux_users VALUES($1)',[id]);await pg.query('INSERT INTO aux_wallets(user_id,balance_micros,add_on_balance_micros,debt_micros) VALUES($1,0,0,300)',[id]);}
+    async function grant(userId:string,paymentIntent:string,amount:number){
+      const context:Record<string,unknown>={userId,paymentIntent,amount},params:unknown[]=[];
+      const text=query!.replace(/\$\{([^}]+)\}/g,(_,expression:string)=>{const key=expression.replace(/!$/,'');assert.ok(Object.hasOwn(context,key));params.push(context[key]);return '$'+params.length;});
+      await pg.query(text,params);
+    }
+    const wallet=async(id:string)=>(await pg.query('SELECT balance_micros,add_on_balance_micros,debt_micros FROM aux_wallets WHERE user_id=$1',[id])).rows[0];
+    await grant(first,'pi_disposable_fixture',10000000);
+    assert.deepEqual(await wallet(first),{balance_micros:9999700,add_on_balance_micros:9999700,debt_micros:0});
+    await grant(first,'pi_disposable_fixture',10000000);assert.deepEqual(await wallet(first),{balance_micros:9999700,add_on_balance_micros:9999700,debt_micros:0});
+    await grant(second,'pi_disposable_fixture',10000000);assert.deepEqual(await wallet(second),{balance_micros:0,add_on_balance_micros:0,debt_micros:300});
+  } finally {await pg.close();}
+});
