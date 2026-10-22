@@ -56,6 +56,7 @@ export function reviewedUiResourceInventory(inventory, review = []) {
     'apps/extension/dist/assets/Matches-B99cyGDb.js',
     'apps/extension/dist/assets/use-tab-context-Bi3TKsrh.js',
     'apps/extension/dist/background.js',
+    'apps/extension/dist/assets/minipopup-LkDLFvnq.js',
     'bundle.json', 'provenance/manifest.json', 'provenance/ui-manifest.json',
     'provenance/apps-manifest.json', 'provenance/distribution-manifest.json',
     'provenance/computer-use-manifest.json',
