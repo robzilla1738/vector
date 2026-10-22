@@ -1,0 +1,29 @@
+{
+  "format": "aux.sync-recovery.local-evidence.v2",
+  "activation": false,
+  "fixture": "tests/check.ts",
+  "sessionId": 18598,
+  "exitCode": 0,
+  "database": "PGlite in-memory only; synthetic relevant owner/session/key schema plus actual proposed SQL function",
+  "checks": [
+    "P256 native SHA256/DER proof and exact fingerprint",
+    "same-CSK envelope/authenticated recovery; wrong secret/owner/generation/key/signature refusal",
+    "lost enrollment reply exact retry; old replay refuses after revision rotation",
+    "concurrent recovery revision append CAS; all previous records preserved",
+    "paired client12-word entropy; borrowed key buffers preserved",
+    "different local key arrives during server await; actual synchronous synthetic atomic publisher refuses overwrite"
+  ],
+  "typecheck": {
+    "sessionId": null,
+    "exitCode": 0,
+    "scope": "four new backend files and desktop.ts only"
+  },
+  "notExecuted": [
+    "real PostgreSQL/Neon",
+    "HTTP auth/Clerk",
+    "PQ signature verification",
+    "native key publication",
+    "desktop UI",
+    "deployment"
+  ]
+}

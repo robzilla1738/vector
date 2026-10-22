@@ -1,0 +1,29 @@
+{
+  "format": "aux.sync-recovery.shared-guards.v2",
+  "activation": false,
+  "path": "services/aux-cloud/src/sync.ts",
+  "inputSha256": "4f46801640a9ef71ef2e130c44963d055a6bc6a96f995b30dbe6496e0173bd9f",
+  "outputSha256": "8dede5a294bedba125e15d2ad308aac6ede3c6d77110251e0b7761394a40a9da",
+  "edits": [
+    {
+      "find": "SELECT u.sync_generation, k.generation, k.revision FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}",
+      "replace": "SELECT u.sync_generation, k.generation, k.revision, EXISTS (SELECT 1 FROM aux_sync_recovery_v2 r WHERE r.user_id=u.id AND r.generation=u.sync_generation) AS recovery_configured FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}",
+      "count": 1
+    },
+    {
+      "find": "row.generation == null ? 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required'",
+      "replace": "row.generation == null ? row.recovery_configured ? 'device_required' : 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required'",
+      "count": 1
+    },
+    {
+      "find": "INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(envelope)}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id RETURNING wrapped_key, generation, revision",
+      "replace": "WITH existing AS (SELECT wrapped_key,generation,revision FROM sync_keys WHERE user_id=${user}), created AS (INSERT INTO sync_keys (user_id,generation,wrapped_key) SELECT ${user},${account.sync_generation},${JSON.stringify(envelope)}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id=${user} AND sync_generation=${account.sync_generation}) AND NOT EXISTS (SELECT 1 FROM existing) AND NOT EXISTS (SELECT 1 FROM aux_sync_recovery_v2 WHERE user_id=${user} AND generation=${account.sync_generation}) ON CONFLICT(user_id) DO NOTHING RETURNING wrapped_key,generation,revision) SELECT * FROM existing UNION ALL SELECT * FROM created LIMIT 1",
+      "count": 1
+    },
+    {
+      "find": "INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(wrap(value, user, account.sync_generation))}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) ON CONFLICT (user_id) DO NOTHING RETURNING generation, revision",
+      "replace": "INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(wrap(value, user, account.sync_generation))}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) AND NOT EXISTS (SELECT 1 FROM aux_sync_recovery_v2 WHERE user_id=${user} AND generation=${account.sync_generation}) ON CONFLICT (user_id) DO NOTHING RETURNING generation, revision",
+      "count": 1
+    }
+  ]
+}
