@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { prepareAuxDisposableStateHandoff } from './aux-disposable-state-handoff.mjs';
 import { createStateMigrationId, commitStateMigration, recoverStateMigration, verifyStateMigration } from './aux-state-migration-transaction.mjs';
 import { PINNED_PROVIDER_STATE_TARGET_DDL } from './aux-sqlite-provider-identity-schema.mjs';
+import { PINNED_CONTEXT_LEDGER_DDL } from './aux-context-ledger-schema.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const model = { provider: 'aside', modelId: 'fixture-only-model', thinkingLevel: 'medium', fastMode: true };
 async function fixture(t) {
@@ -101,4 +102,56 @@ test('unknown sidecar disposition, unreviewed reset and lost writer scope refuse
   await assert.rejects(prepareAuxDisposableStateHandoff({ ...f, sqliteSnapshots: unreviewed }), /disposition/);
   await assert.rejects(prepareAuxDisposableStateHandoff({ ...f, capability: { ...f.capability, assertStopped: async () => false } }), /scope/);
   for (const [relative, bytes] of f.files) assert.deepEqual(await fs.readFile(path.join(f.root, relative)), bytes);
+});
+test('context-ledger WAL-only historical events pair with the same crash journal and Aux DOM filter', async t => {
+  const f = await fixture(t), producer = path.join(path.dirname(f.root), 'ledger-producer.db');
+  const db = new DatabaseSync(producer);
+  const target = ' {"targetId":"fixture-target","opaque":"aside_dom"} ', payload = ' {"kind":"content.snapshot","extra":[1,2,3]} ';
+  let main, wal, shm;
+  try {
+    db.exec(PINNED_CONTEXT_LEDGER_DDL); db.exec('PRAGMA user_version=1; PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA wal_checkpoint(TRUNCATE); BEGIN IMMEDIATE;');
+    db.prepare('INSERT INTO context_awareness_blobs(id,content_hash,content,redacted_bytes,created_at,last_seen_at) VALUES(?,?,?,?,?,?)').run('fixture-blob','fixture-hash',Buffer.from([0,255,7]),3,10,11);
+    db.prepare('INSERT INTO context_awareness_frames(id,content,member_count,stored_bytes,created_at) VALUES(?,?,?,?,?)').run('fixture-frame',Buffer.from([9,8]),1,2,10);
+    db.prepare('INSERT INTO context_awareness_events(id,occurred_at,source,kind,target,payload,blob_id,session_id) VALUES(?,?,?,?,?,?,?,?)').run('wal-only-ledger-event',12,'aside_dom','content.snapshot',target,payload,'fixture-blob','fixture-session');
+    db.prepare('INSERT INTO context_awareness_events(id,occurred_at,source,kind,payload) VALUES(?,?,?,?,?)').run('native-ledger-event',13,'mac_ax','session.started','{}');
+    db.prepare('INSERT INTO context_awareness_summaries(id,kind,window_from,window_to,created_at,updated_at,body) VALUES(?,?,?,?,?,?,?)').run('fixture-summary','glance',0,1,10,11,'opaque summary content');
+    db.exec('COMMIT');
+    main = await fs.readFile(producer); wal = await fs.readFile(`${producer}-wal`); shm = await fs.readFile(`${producer}-shm`);
+  } finally { db.close(); }
+  // Prove the historical event needs committed WAL, not a base-only fallback.
+  const base = Buffer.from(main); base[18] = base[19] = 1;
+  const baseReader = new DatabaseSync(':memory:');
+  try { baseReader.deserialize(base); assert.equal(baseReader.prepare('SELECT count(*) n FROM context_awareness_events').get().n, 0); }
+  finally { baseReader.close(); }
+  const location = 'home/u/1/context-awareness/ledger.db';
+  for (const [suffix, bytes] of [['', main], ['-wal', wal], ['-shm', shm]]) {
+    const relative = location + suffix; await fs.mkdir(path.dirname(path.join(f.root, relative)), { recursive: true, mode: 0o700 });
+    await fs.writeFile(path.join(f.root, relative), bytes, { mode: 0o600 }); f.files.push([relative, bytes]);
+  }
+  f.sqliteSnapshots.push({ accountId: 1, databaseKind: 'context-ledger', database: { bytes: main, expectedSha256: sha(main) }, wal: { bytes: wal, expectedSha256: sha(wal), disposition: 'present', replacement: 'empty-reviewed' }, shm: { bytes: shm, expectedSha256: sha(shm), disposition: 'present', replacement: 'empty-reviewed' }, rollbackJournal: 'absent' });
+  const prepared = await prepareAuxDisposableStateHandoff(f);
+  const ledger = prepared.receipt.transformations.find(item => item.databaseKind === 'context-ledger');
+  assert.equal(ledger.checkpoint.databaseKind, 'context-ledger'); assert.equal(ledger.checkpoint.identityMigrationApplied, false);
+  assert.equal(ledger.contextLedgerMigration.changedRows, 1);
+  assert.equal(ledger.lineage.originalMainSha256, sha(main)); assert.equal(ledger.lineage.originalWalSha256, sha(wal));
+  assert.equal(ledger.lineage.checkpointedMainSha256, ledger.lineage.identitySourceSha256); assert.equal(ledger.lineage.walCheckpointLineageVerified, true);
+  await assert.rejects(commitStateMigration({ ...f, onCheckpoint: ({ stage, index }) => { if (stage === 'renamed-new-file' && index === 7) throw Error('ledger mixed-state crash'); } }), /mixed-state crash/);
+  const committed = await recoverStateMigration({ ...f, action: 'complete' });
+  assert.equal((await verifyStateMigration({ ...f, expectedReceiptSha256: committed.receiptSha256 })).verified, true);
+  await verifyBackups(f, prepared);
+  for (const suffix of ['-wal', '-shm']) assert.equal((await fs.readFile(path.join(f.root, location + suffix))).length, 0);
+  const reader = new DatabaseSync(path.join(f.root, location));
+  try {
+    const event = reader.prepare('SELECT * FROM context_awareness_events WHERE source=?').all('aux_dom');
+    assert.equal(event.length, 1); assert.equal(event[0].id, 'wal-only-ledger-event');
+    assert.equal(event[0].target, target); assert.equal(event[0].payload, payload); assert.equal(event[0].occurred_at, 12);
+    assert.equal(event[0].blob_id, 'fixture-blob'); assert.equal(event[0].session_id, 'fixture-session');
+    assert.equal(reader.prepare('SELECT source FROM context_awareness_events WHERE id=?').get('native-ledger-event').source, 'mac_ax');
+    assert.deepEqual(Buffer.from(reader.prepare('SELECT content FROM context_awareness_blobs').get().content), Buffer.from([0,255,7]));
+    assert.deepEqual(Buffer.from(reader.prepare('SELECT content FROM context_awareness_frames').get().content), Buffer.from([9,8]));
+    assert.equal(reader.prepare('SELECT body FROM context_awareness_summaries').get().body, 'opaque summary content');
+    assert.equal(reader.prepare('PRAGMA quick_check').get().quick_check, 'ok');
+    assert.equal(reader.prepare('PRAGMA foreign_key_check').all().length, 0);
+  } finally { reader.close(); }
+  assert.equal(prepared.receipt.startupVerified, false);
 });

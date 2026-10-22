@@ -9,6 +9,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { prepareSqliteProviderIdentity } from './aux-sqlite-provider-identity.mjs';
+import { prepareContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
 
 const MAX = 64 * 1024 * 1024;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -63,7 +64,8 @@ async function syncPath(filename) {
   try { await handle.sync(); } finally { await handle.close(); }
 }
 
-export async function checkpointPrivateSqliteSnapshot({ databaseBytes, expectedSha256, walBytes, expectedWalSha256, rollbackJournalBytes, capability }) {
+export async function checkpointPrivateSqliteSnapshot({ databaseBytes, expectedSha256, walBytes, expectedWalSha256, rollbackJournalBytes, capability, databaseKind = 'provider' }) {
+  if (!['provider', 'context-ledger'].includes(databaseKind)) throw Error('Unsupported reviewed SQLite database kind');
   if (!(databaseBytes instanceof Uint8Array) || databaseBytes.length > MAX || !hashPattern.test(expectedSha256) || sha(databaseBytes) !== expectedSha256 || (walBytes !== null && !(walBytes instanceof Uint8Array)) || walBytes?.length > MAX || expectedWalSha256 !== (walBytes === null ? null : sha(walBytes))) throw Error('Invalid bounded database/WAL snapshot or expected hashes');
   if (rollbackJournalBytes !== null) throw Error('Rollback-journal snapshot unsupported; explicit verified absence required');
   const hashes = { databaseSha256: expectedSha256, walSha256: expectedWalSha256 };
@@ -94,18 +96,19 @@ export async function checkpointPrivateSqliteSnapshot({ databaseBytes, expectedS
     await syncPath(filename); await syncPath(directory);
     const output = await fs.readFile(filename);
     if (output.length !== checkpointed.length || output[18] !== 1 || output[19] !== 1 || !output.subarray(100).equals(checkpointed.subarray(100))) throw Error('Leaving WAL mode changed private clone data pages');
-    // Reuse the separately pinned schema/selection validator on another memory
-    // clone. Its provider-migrated bytes are deliberately discarded: this helper
-    // only checkpoints, and returns the original logical provider values.
-    const validation = await prepareSqliteProviderIdentity({
-      databaseBytes: output, expectedSha256: sha(output), walBytes: null,
+    // Select only a reviewed pinned validator, never a caller callback. Its
+    // identity-migrated bytes are discarded: checkpointing preserves original
+    // logical values and identity migration remains the explicit next step.
+    const validate = databaseKind === 'provider' ? prepareSqliteProviderIdentity : prepareContextLedgerIdentity;
+    const validation = await validate({
+      databaseBytes: output, expectedSha256: sha(output), walBytes: null, rollbackJournalBytes: null,
       capability: { ...capability, assertStopped: async () => { await assertScope(capability, hashes, 'validate-checkpointed-schema'); return true; } },
     });
     validation.bytes.fill(0);
     await assertScope(capability, hashes, 'wal-copy-prepared');
     return {
       bytes: output,
-      receipt: { format: 'aux.sqlite-wal-copy.v1', sourceSha256: expectedSha256, sourceWalSha256: expectedWalSha256, outputSha256: sha(output), frames: validated.frames, committedTransactions: validated.commits, finalPages: validated.finalPages, pageSize: validated.pageSize, independentlyProjectedCheckpoint: true, outputJournalMode: 'delete', targetSchemaSha256: validation.receipt.targetSchemaSha256, providerMigrationApplied: false, sourceUnchanged: true },
+      receipt: { format: 'aux.sqlite-wal-copy.v1', databaseKind, sourceSha256: expectedSha256, sourceWalSha256: expectedWalSha256, outputSha256: sha(output), frames: validated.frames, committedTransactions: validated.commits, finalPages: validated.finalPages, pageSize: validated.pageSize, independentlyProjectedCheckpoint: true, outputJournalMode: 'delete', targetSchemaSha256: validation.receipt.targetSchemaSha256 ?? validation.receipt.sourceSchemaSha256, providerMigrationApplied: false, identityMigrationApplied: false, sourceUnchanged: true },
     };
   } finally {
     db?.close(); database.fill(0); wal?.fill(0); projection?.fill(0);

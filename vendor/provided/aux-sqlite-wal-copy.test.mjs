@@ -62,6 +62,7 @@ test('malformed WAL header, page-size/salt/checksum damage and torn tails are re
 });
 test('missing snapshot hashes, lost capability and rollback journal are explicitly refused', async t => {
   const f = await fixture(t);
+  await assert.rejects(checkpointPrivateSqliteSnapshot({ ...f, databaseKind: 'arbitrary-callback' }), /reviewed SQLite database kind/);
   await assert.rejects(checkpointPrivateSqliteSnapshot({ ...f, expectedWalSha256: '0'.repeat(64) }), /expected hashes/);
   await assert.rejects(checkpointPrivateSqliteSnapshot({ ...f, rollbackJournalBytes: Buffer.alloc(0) }), /Rollback-journal/);
   await assert.rejects(checkpointPrivateSqliteSnapshot({ ...f, capability: { ...f.capability, assertStopped: async () => false } }), /capability/);

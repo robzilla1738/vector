@@ -6,6 +6,7 @@ import { prepareAuxProviderJsonFile, classifyAuxProviderJsonPath } from './aux-p
 import { migrateAuxPreferenceDocument } from './aux-preference-identity.mjs';
 import { checkpointPrivateSqliteSnapshot } from './aux-sqlite-wal-copy.mjs';
 import { prepareSqliteProviderIdentity } from './aux-sqlite-provider-identity.mjs';
+import { prepareContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
 import { prepareStateMigration } from './aux-state-migration-transaction.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function prefix(value) {
@@ -77,11 +78,13 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
       if (!Number.isSafeInteger(input.accountId) || input.accountId < 0 || input.rollbackJournal !== 'absent' || [input.wal, input.shm].some(sidecar => sidecar?.disposition !== 'present' || sidecar.replacement !== 'empty-reviewed')) throw Error('Existing reviewed WAL/SHM and absent rollback-journal disposition required');
       const database = snapshot(input.database, 'database', 64 * 1024 * 1024), wal = snapshot(input.wal, 'WAL', 64 * 1024 * 1024), shm = snapshot(input.shm, 'SHM', 4 * 1024 * 1024);
       if (shm.length && shm.length % 32768) throw Error('Unsupported SQLite SHM snapshot length');
-      const target = `${home}/u/${input.accountId}/state.db`;
+      const databaseKind = input.databaseKind === undefined ? 'provider' : input.databaseKind;
+      if (!['provider', 'context-ledger'].includes(databaseKind)) throw Error('Unsupported reviewed SQLite database kind');
+      const target = `${home}/u/${input.accountId}/${databaseKind === 'provider' ? 'state.db' : 'context-awareness/ledger.db'}`;
       add(target, database, input.database.expectedSha256, 'sqlite-main');
       add(`${target}-wal`, wal, input.wal.expectedSha256, 'sqlite-wal-reviewed-empty');
       add(`${target}-shm`, shm, input.shm.expectedSha256, 'sqlite-shm-reviewed-empty');
-      databasePlans.push({ input, target, database, wal, shm });
+      databasePlans.push({ input, databaseKind, target, database, wal, shm });
     }
     await scope(capability, root, transactionId, sources, 'handoff-snapshots-validated');
     const files = [], transformations = [];
@@ -102,14 +105,16 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
     }
     for (const plan of databasePlans) {
       const derivedCapability = { ...capability, assertStopped: async ({ phase }) => { await scope(capability, root, transactionId, sources, `handoff-${phase}`); return true; } };
-      const checkpointed = await checkpointPrivateSqliteSnapshot({ databaseBytes: plan.database, expectedSha256: sha(plan.database), walBytes: plan.wal, expectedWalSha256: sha(plan.wal), rollbackJournalBytes: null, capability: derivedCapability });
+      const checkpointed = await checkpointPrivateSqliteSnapshot({ databaseKind: plan.databaseKind, databaseBytes: plan.database, expectedSha256: sha(plan.database), walBytes: plan.wal, expectedWalSha256: sha(plan.wal), rollbackJournalBytes: null, capability: derivedCapability });
       buffers.push(checkpointed.bytes);
-      const migrated = await prepareSqliteProviderIdentity({ databaseBytes: checkpointed.bytes, expectedSha256: checkpointed.receipt.outputSha256, walBytes: null, capability: derivedCapability });
+      const migrate = plan.databaseKind === 'provider' ? prepareSqliteProviderIdentity : prepareContextLedgerIdentity;
+      const migrated = await migrate({ databaseBytes: checkpointed.bytes, expectedSha256: checkpointed.receipt.outputSha256, walBytes: null, rollbackJournalBytes: null, capability: derivedCapability });
       buffers.push(migrated.bytes);
+      if (migrated.receipt.sourceSha256 !== checkpointed.receipt.outputSha256) throw Error('Identity migration checkpoint lineage mismatch');
       files.push({ path: plan.target, expectedSha256: sha(plan.database), bytes: migrated.bytes });
       files.push({ path: `${plan.target}-wal`, expectedSha256: sha(plan.wal), bytes: Buffer.alloc(0) });
       files.push({ path: `${plan.target}-shm`, expectedSha256: sha(plan.shm), bytes: Buffer.alloc(0) });
-      transformations.push({ path: plan.target, checkpoint: checkpointed.receipt, providerMigration: migrated.receipt, sidecars: { wal: 'reviewed-empty-replacement', shm: 'reviewed-empty-replacement', originalBackupsRequired: true } });
+      transformations.push({ path: plan.target, databaseKind: plan.databaseKind, checkpoint: checkpointed.receipt, ...(plan.databaseKind === 'provider' ? { providerMigration: migrated.receipt } : { contextLedgerMigration: migrated.receipt }), lineage: { originalMainSha256: sha(plan.database), originalWalSha256: sha(plan.wal), checkpointedMainSha256: checkpointed.receipt.outputSha256, identitySourceSha256: migrated.receipt.sourceSha256, preparedMainSha256: migrated.receipt.outputSha256, walCheckpointLineageVerified: true }, sidecars: { wal: 'reviewed-empty-replacement', shm: 'reviewed-empty-replacement', originalBackupsRequired: true } });
     }
     await scope(capability, root, transactionId, sources, 'handoff-before-journal');
     const forwarded = { ...capability, assertStopped: context => capability.assertStopped({ ...context, snapshotHashes: sources }) };

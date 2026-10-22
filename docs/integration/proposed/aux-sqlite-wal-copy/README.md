@@ -74,3 +74,9 @@ This module returns only the prepared checkpointed main bytes and lineage receip
 - A valid WAL carrying an unknown committed target trigger still fails the strict schema gate after private checkpointing.
 
 The tests use new synthetic temporary files and fixed fixture IDs, not an actual application profile. Power-loss behavior, real stopped-writer ownership, original sidecar transaction/restart behavior and complete provider reference coverage remain separate acceptance gaps. Queued/steering/transcript and other nested provider references remain explicitly unaudited by this lane.
+
+## Paired context-ledger path
+
+`checkpointPrivateSqliteSnapshot` now takes explicit `databaseKind:"provider"` (the unchanged default) or `databaseKind:"context-ledger"`. Unknown kinds refuse; there is no arbitrary validator callback. The context branch selects only `prepareContextLedgerIdentity` and its exact pinned full ledger schema/version1. Whole-WAL checksum/commit validation, independent page projection, private-clone isolation, DELETE-mode verification and capability checks are shared without weakening. The checkpoint receipt names the database kind and corresponding schema hash; `identityMigrationApplied:false` states that the validator's migrated bytes were discarded.
+
+The standalone ledger migration still requires a verified checkpointed snapshot and does not itself claim WAL support. The paired handoff explicitly supplies this verified checkpoint output to the ledger identity migration, checks output/source hash equality and records original main/WAL, checkpoint and final hashes in one lineage record. See the handoff proposal's context-ledger section. No generic valid-open fallback was introduced.
