@@ -20,6 +20,7 @@ xcrun swiftc -target arm64-apple-macos13.0 \
  "$proposal/aux-fresh-secure-recovery/source/FreshSecureStage.swift" \
  "$proposal/aux-secure-stage-binding-store/source/PrivateFreshSecureStageBindingStore.swift" \
  "$proposal/aux-fresh-security-coordinator/source/FreshDataProtectionBoundary.swift" \
+ "$proposal/aux-fresh-security-coordinator/source/RecoveredFreshTerminalCommandContext.swift" \
  "$proposal/aux-fresh-security-coordinator/source/FreshSecurityStepCoordinator.swift" \
  "$proposal/aux-fresh-security-coordinator/tests/main.swift" -o "$output/check"
 "$output/check"

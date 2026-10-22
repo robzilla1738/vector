@@ -7,7 +7,7 @@ enum FreshCoordinatorOutcome {
     case progressed(StoredFreshInstallationCheckpoint)
     case unresolved(String)
     case blocked(StoredFreshInstallationCheckpoint)
-    case ready(AuxInstallationCommandCore)
+    case ready(RecoveredFreshTerminalCommandContext)
 }
 final class FreshSecurityStepCoordinator {
     private let root:String
@@ -67,10 +67,13 @@ final class FreshSecurityStepCoordinator {
         guard let binding=try bindingStore.load() else{return .unresolved("stage-binding-missing")}
         let stageCapture=boundary.captureStage()
         if case .absent=stageCapture{return .unresolved("stage-absent-no-replay")}
+        let targets=boundary.captureTargets()
+        if j.phase == .ready {
+            return .ready(try RecoveredFreshTerminalCommandContext.validate(checkpoint:stored,review:boundary.review,stageBinding:binding,stageCapture:stageCapture,targets:targets))
+        }
         let restored:RestoredFreshSecureStage
         do {restored=try FreshSecureStage.restore(journal:j,checkpoint:stored.acknowledgement,selector:boundary.review.stage,binding:binding.binding,stageCheckpoint:binding.acknowledgement,captured:stageCapture)}
         catch {return try blocked(stored,"stage-invalid-or-unavailable")}
-        let targets=boundary.captureTargets()
         switch j.phase {
         case .intent:
             switch try restored.observeInterruptedIntent(journal:j,checkpoint:stored.acknowledgement,captured:targets) {
@@ -89,36 +92,15 @@ final class FreshSecurityStepCoordinator {
             let intended=try journalStore.commit(ticket.journal,expectedHead:stored.sha256)
             let request=try ticket.takeRequest(checkpoint:intended.acknowledgement)
             let status:CapturedFreshAddStatus
-            do {status=try boundary.addTarget(request)} catch {return try blocked(intended,"target-add-outcome-unknown")}
+            do {status=try boundary.addTarget(request)} catch {return .unresolved("target-add-outcome-unknown-no-replay")}
             let next=try FreshInstallationTransaction.recordAdd(intended.journal,checkpoint:intended.acknowledgement,status:status)
             let recorded=try journalStore.commit(next,expectedHead:intended.sha256)
             if next.phase == .blocked{return .blocked(recorded)}
             let readback=try FreshInstallationTransaction.readback(next,checkpoint:recorded.acknowledgement,captured:boundary.captureTargets())
             let checked=try journalStore.commit(readback,expectedHead:recorded.sha256)
             return readback.phase == .blocked ? .blocked(checked):.progressed(checked)
-        case .ready:return .ready(try Self.terminalCore(stored:stored,targets:targets))
+        case .ready:throw FreshCoordinatorError.binding // Handled by typed terminal validation above.
         case .blocked:return .blocked(stored)
         }
-    }
-    // Secure stage has already authenticated the exact candidate digest/authority.
-    // Fresh candidate regeneration is unnecessary; captured ready targets suffice.
-    private static func terminalCore(stored:StoredFreshInstallationCheckpoint,targets:CallerCapturedFreshTargets)throws->AuxInstallationCommandCore {
-        let j=stored.journal
-        guard j.phase == .ready,try j.checkpoint().journalSha256==stored.sha256 else{throw FreshCoordinatorError.binding}
-        var rows=[String:Data]()
-        for role in freshRoles {
-            guard case .bytes(let data)=targets.value(role),freshJournalHash(data)==j.targetHashes[role] else{throw FreshCoordinatorError.binding}
-            rows[role]=data
-        }
-        let metadata=try InstallationAuthorityMetadata(json:rows["metadata"]!)
-        guard metadata.scheme.rawValue==j.publicDescriptor["scheme"],let sig=Data(base64Encoded:j.publicDescriptor["sig_pub"]!),let kem=Data(base64Encoded:j.publicDescriptor["kem_pub"]!) else{throw FreshCoordinatorError.binding}
-        let authority:AuxCapturedCommandAuthority
-        switch metadata.scheme {
-        case .p256:authority=try .p256(metadata:metadata,signingPrivate:rows["signing"]!,signingPublic:sig,kemPrivate:rows["kem"]!,kemPublic:kem,wrappedRoot:rows["wrappedRoot"]!)
-        case .pq:
-            guard #available(macOS 26.0, *) else{throw FreshCoordinatorError.binding}
-            authority=try .pq(metadata:metadata,signingPrivate:rows["signing"]!,signingPublic:sig,kemPrivate:rows["kem"]!,kemPublic:kem,wrappedRoot:rows["wrappedRoot"]!)
-        }
-        return .init(context:.installed(authority))
     }
 }

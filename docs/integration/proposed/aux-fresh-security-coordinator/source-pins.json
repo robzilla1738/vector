@@ -31,5 +31,11 @@
   "fifthSelectorAuthorized": false,
   "newScopeCustodyProven": false,
   "secretFilesystemWrites": false,
-  "activationPerformed": false
+  "activationPerformed": false,
+  "typedTerminalSuccessor": {
+    "baselineCommit": "1402b8576",
+    "type": "RecoveredFreshTerminalCommandContext",
+    "readyOutput": "typed validated recovered terminal; no bare-core wrapper",
+    "pairedOwnerIntegration": "separate aux-owned-dispatch-lifetime successor; pending own fixture"
+  }
 }

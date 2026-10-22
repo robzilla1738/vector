@@ -7,6 +7,7 @@ final class CapturedBoundary:FreshInstallationSecurityBoundary {
     var targets=[String:Data]();var stage:Data?;var stageAdds=0;var targetAdds=0
     var duplicateStage=false
     var throwAfterSuccessfulStageAdd=false
+    var throwAfterSuccessfulTargetAdd=false
     init(review:ReviewedFreshSecurityBoundary,root:String){self.review=review;self.root=root}
     func captures()->CallerCapturedFreshTargets {
         func r(_ role:String)->CallerCapturedFreshRead {targets[role].map{.bytes($0)} ?? .absent}
@@ -30,7 +31,9 @@ final class CapturedBoundary:FreshInstallationSecurityBoundary {
         targetAdds += 1
         let stored=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:review.transactionId).loadCurrent()!
         precondition(stored.journal.phase == .intent && stored.sha256==request.durableIntentSha256 && stage != nil)
-        guard targets[request.row]==nil else{return .duplicate};targets[request.row]=request.payload;return .added
+        guard targets[request.row]==nil else{return .duplicate};targets[request.row]=request.payload
+        if throwAfterSuccessfulTargetAdd{throw SyntheticFailure()}
+        return .added
     }
 }
 let raw=FileManager.default.temporaryDirectory.appendingPathComponent("aux-fresh-executor-"+UUID().uuidString).path
@@ -54,8 +57,9 @@ let (_,review,boundary)=try setup()
 let coordinator=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:boundary)
 guard case .progressed=try coordinator.begin(cohort:cohort,review:scopeReview) else{fatalError("begin failed")}
 for _ in 0..<4 {guard case .progressed=try coordinator.advanceOne() else{fatalError("target progress failed")}}
-guard case .ready(let core)=try FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:boundary).advanceOne() else{fatalError("terminal failed")}
-let rootReply=try strictEnvelopeObject(Data(core.run(command:"dk-unwrap").utf8))
+guard case .ready(let terminal)=try FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:boundary).advanceOne() else{fatalError("terminal failed")}
+precondition(terminal.evidence.mode=="recovered-fresh" && terminal.evidence.transactionId==review.transactionId && terminal.evidence.securityReviewSha256==review.reviewSha256)
+let rootReply=try strictEnvelopeObject(Data(terminal.core.run(command:"dk-unwrap").utf8))
 precondition(rootReply["dk"] as? String==fresh.root.base64EncodedString() && boundary.stageAdds==1 && boundary.targetAdds==4 && boundary.stage != nil)
 let query=ExactFreshDataProtectionBoundary.readQuery(review.targetBindings[0].target)
 precondition(query[kSecUseDataProtectionKeychain as String] as? Bool==true && query[kSecAttrAccessGroup as String] as? String=="TEST.aux.synthetic")
@@ -93,6 +97,16 @@ precondition(unknownStored.journal.phase == .draft && unknownStored.journal.revi
 let recreated=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:throwingBoundary)
 guard case .progressed=try recreated.advanceOne() else{fatalError("matching stage outcome could not resume")}
 precondition(throwingBoundary.stageAdds==1 && throwingBoundary.targetAdds==1)
+// Target exception after success retains its durable intent for observation.
+let (_,_,targetThrowingBoundary)=try setup()
+let targetThrowing=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:targetThrowingBoundary)
+_ = try targetThrowing.begin(cohort:cohort,review:scopeReview)
+targetThrowingBoundary.throwAfterSuccessfulTargetAdd=true
+guard case .unresolved=try targetThrowing.advanceOne() else{fatalError("unknown target outcome blocked")}
+let intendedStored=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:targetThrowingBoundary.review.transactionId).loadCurrent()!
+precondition(intendedStored.journal.phase == .intent && targetThrowingBoundary.targetAdds==1)
+guard case .progressed=try FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:targetThrowingBoundary).advanceOne() else{fatalError("matching target outcome could not resume")}
+precondition(targetThrowingBoundary.targetAdds==1 && targetThrowingBoundary.stageAdds==1)
 // On-disk files contain only nonsecret journals/binding/locks, no stage payload.
 for url in FileManager.default.enumerator(at:URL(fileURLWithPath:root),includingPropertiesForKeys:nil)!.allObjects as! [URL] {
     var directory:ObjCBool=false
