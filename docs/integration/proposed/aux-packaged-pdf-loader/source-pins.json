@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "baseCommit": "b8c579a65",
+  "sourceAndEvidence": [
+    {
+      "path": "docs/integration/proposed/aux-packaged-pdf-loader/probe.mjs",
+      "sha256": "da72a8b49e6ccc0ec1a8f2264faa47c73b9b80d1d71347e0b543581ae49a95bd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-packaged-pdf-loader/check.sh",
+      "sha256": "935076ddcbd4d068abff8fe5f2288466f3ed72c82a7aa3d7a99e2b3472f4399f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-packaged-pdf-loader/evidence/packaged-loader.json",
+      "sha256": "a8fd6a396cf5f96e7f0ed4ca107df8ef21f81d8a2c3a40caddbb4768ff3065be"
+    },
+    {
+      "path": "vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    }
+  ]
+}

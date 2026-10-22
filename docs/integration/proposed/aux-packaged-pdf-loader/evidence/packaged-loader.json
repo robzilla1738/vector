@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-pdf-native/Aux.app",
+  "scope": "isolated actual packaged PDF loader functions, not full daemon/app startup",
+  "package": {
+    "signed": false,
+    "productionReady": false,
+    "stateIdentityVersion": 2,
+    "firstColdRefusalVerified": true,
+    "appLaunched": false
+  },
+  "inputs": {
+    "framework": {
+      "sha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a",
+      "bytes": 452700736
+    },
+    "packagedNode": {
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4"
+    },
+    "loader": {
+      "sha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3"
+    },
+    "pins": {
+      "sha256": "ee0ef4ce17c20794543ae3ea494bb160a6f76bd0032c0715e2e542629d5e4c2a"
+    },
+    "module": {
+      "sha256": "6febb242a074317dba3edc1848fdfb77da468e32bb87acffdaa7f6143afece8e",
+      "bytes": 9457632
+    },
+    "sea": {
+      "binarySHA256": "26c29952f33a8f1e9c4b0488dfc5d3910288182aa18d98fa337de054a31d531b",
+      "codeSHA256": "dc1b3ac054c280bc63481a365601bc2a24f074160a48206d56a399df89a47c3b",
+      "section": {
+        "offset": 101908480,
+        "size": 14590602
+      },
+      "route": "function loadPdfBinding(){return require$2(path.resolve(path.dirname(process.execPath),`../Resources/native/aux-pdf.cjs`))}"
+    },
+    "nodeDevelopment": {
+      "sha256": "655ff1d4c6d19cea6bf710f9c8c36ab7650f9cc1c4d0f02f0e88f9b01f087b0b",
+      "route": "function loadPdfBinding(){return require$2(path.join(__auxDaemonResources,`native/aux-pdf.cjs`))}"
+    },
+    "uiReport": {
+      "sha256": "82424caf6ad8c0504253fcce6347c75271a084ed9d652af44ffdbb60caafedc3"
+    }
+  },
+  "ui": {
+    "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-cli-registration/ui/agent",
+    "stage": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-pdf-native/ui/agent",
+    "packaged": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-pdf-native/Aux.app/Contents/Resources/aux/apps/extension/dist",
+    "comparedFiles": 1215,
+    "stylesheets": 5,
+    "allBytesEqual": true,
+    "inventorySHA256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005"
+  },
+  "runtime": {
+    "actualPackagedNode": true,
+    "actualPackagedLoader": true,
+    "actualOwnModuleLoaded": true,
+    "nativeModulesLoaded": [
+      "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node"
+    ],
+    "loaderRoutesReturnSameObject": true,
+    "syntheticTextExtracted": "Aux Packaged PDF",
+    "originalOrCredentialBindingLoaded": false,
+    "ownerDocumentsAccessed": false,
+    "OSOrCloudOrSigningOperations": false
+  },
+  "remaining": {
+    "unsigned": true,
+    "unlaunched": true,
+    "state2StartupRefused": true,
+    "originalCommonRunAddonRetired": false,
+    "wholeAppIntegrationAccepted": false
+  }
+}
