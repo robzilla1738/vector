@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "requires": "applyAuxCaptureContractIdentity first; normal native UI identity transform first",
+  "inputs": [
+    {
+      "component": "agent",
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "rules": [
+        {
+          "find": "document.createElement(`${e.startsWith(\"capture-\")?\"aux\":\"aside\"}-${e}`)",
+          "replace": "document.createElement(`aux-${e}`)",
+          "count": 1
+        },
+        {
+          "find": "aside-selection-",
+          "replace": "aux-selection-",
+          "count": 10
+        },
+        {
+          "find": "startsWith(\"aside-capture-\")",
+          "replace": "startsWith(\"aux-capture-\")",
+          "count": 2
+        },
+        {
+          "find": "aside:react-grab:complete:",
+          "replace": "aux:react-grab:complete:",
+          "count": 1
+        },
+        {
+          "find": "aside-translate-order",
+          "replace": "aux-translate-order",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "rules": [
+        {
+          "find": "aside-translate-selection",
+          "replace": "aux-translate-selection",
+          "count": 2
+        },
+        {
+          "find": "aside-translate-page",
+          "replace": "aux-translate-page",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "dynamicConstructorSuffixes": [
+    "capture-backdrop",
+    "capture-shrink",
+    "capture-toolbar",
+    "capture-result",
+    "capture-anchor",
+    "selection-handle",
+    "selection-popup",
+    "translate-status"
+  ],
+  "existingPairedNativeUiIdentity": [
+    "data-aside-react-grab-target -> data-aux-react-grab-target in content and react-grab-bridge",
+    "asideSelectionPrevUserSelect and WebkitUserSelect/WebkitUserDrag -> aux equivalents in paired setter/restorer",
+    "Google Docs selection bridge event names and dataset keys already mapped by existing source-pinned/native UI transforms"
+  ]
+}
