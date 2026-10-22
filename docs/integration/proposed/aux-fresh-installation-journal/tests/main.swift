@@ -70,6 +70,26 @@ partial=try FreshInstallationTransaction.readback(partial,checkpoint:partial.che
 partial=try FreshInstallationTransaction.intendNext(partial,checkpoint:partial.checkpoint(),captured:captures(["metadata":first.payload]))
 partial=try FreshInstallationTransaction.recordAdd(partial,checkpoint:partial.checkpoint(),status:.failed(-1))
 precondition(partial.phase == .blocked && partial.verified==["metadata"] && partial.intended==["metadata","signing"])
+// Real journal reload of crash after synthetic Add but before captured status.
+let crashId=UUID().uuidString
+let crashStore=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:crashId)
+let crashDraft=try FreshInstallationTransaction.prepare(candidate:c,transactionId:crashId,review:review,bindings:bindings,captured:absent)
+let crashDraftStored=try crashStore.commit(crashDraft,expectedHead:nil)
+let crashIntent=try FreshInstallationTransaction.intendNext(crashDraft,checkpoint:crashDraftStored.acknowledgement,captured:absent)
+let crashIntentStored=try crashStore.commit(crashIntent,expectedHead:crashDraftStored.sha256)
+let crashAdd=try FreshInstallationTransaction.addRequest(crashIntent,checkpoint:crashIntentStored.acknowledgement,candidate:c,captured:absent)
+let reopened=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:crashId).loadCurrent()!
+let unresolved=try FreshInstallationTransaction.reconcileIntent(reopened.journal,checkpoint:reopened.acknowledgement,captured:absent)
+guard case .unresolved(let stillIntent)=unresolved else{fatalError("absent pending was resolved")}
+precondition(stillIntent.revision==crashIntent.revision && stillIntent.phase == .intent)
+let recovered=try FreshInstallationTransaction.reconcileIntent(reopened.journal,checkpoint:reopened.acknowledgement,captured:captures(["metadata":crashAdd.payload]))
+guard case .advanced(let recoveredJournal)=recovered else{fatalError("matching pending target not observed")}
+precondition(recoveredJournal.verified==["metadata"] && recoveredJournal.intended==["metadata"] && recoveredJournal.phase == .draft)
+let recoveredStored=try crashStore.commit(recoveredJournal,expectedHead:reopened.sha256)
+precondition(recoveredStored.journal.revision==reopened.journal.revision+1)
+let corrupted=try FreshInstallationTransaction.reconcileIntent(reopened.journal,checkpoint:reopened.acknowledgement,captured:captures(["metadata":Data([1])]))
+guard case .blocked(let corruptBlocked)=corrupted else{fatalError("changed pending target accepted")}
+do { _ = try FreshInstallationTransaction.reconcileIntent(corruptBlocked,checkpoint:corruptBlocked.checkpoint(),captured:captures(["metadata":crashAdd.payload]));fatalError("blocked resumed") } catch FreshJournalError.phase {}
 // FIFO head/LOCK refuse promptly rather than block on another process.
 let fifoId=UUID().uuidString
 let fifoStore=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:fifoId)

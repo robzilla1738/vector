@@ -91,6 +91,11 @@ struct FreshCreateOnlyRequest {
     let transactionId:String;let row:String;let selector:FreshTargetSelector;let payload:Data;let durableIntentSha256:String
     let operation="add-only-if-absent";let overwritePermitted=false;let deletePermitted=false
 }
+enum FreshIntentObservation {
+    case advanced(FreshInstallationJournal) // Exact target observed; writer identity is unknown.
+    case unresolved(FreshInstallationJournal) // Pending absent; no retry or revision advance.
+    case blocked(FreshInstallationJournal)
+}
 enum CapturedFreshAddStatus { case added, duplicate, failed(Int32) }
 enum FreshInstallationTransaction {
     static func prepare(candidate:PreparedFreshAuxCohort,transactionId:String,review:CallerAssertedNeverUsedScopeReview,bindings:[FreshTargetBinding],captured:CallerCapturedFreshTargets)throws->FreshInstallationJournal {
@@ -137,7 +142,29 @@ enum FreshInstallationTransaction {
         if let reason=captureFailure(j,captured,includingPending:true){return fail(j,reason)}
         var n=j;n.revision += 1;n.verified.append(n.intended.last!);n.phase=n.verified.count==4 ? .ready:.draft;return n
     }
-    // Crash while intent is durable leaves add outcome unknown. Never replay Add.
+    // Observation-only recovery after crash between Add and status checkpoint.
+    // Does not emit Add, infer writer identity or restore private candidate bytes.
+    static func reconcileIntent(_ j:FreshInstallationJournal,checkpoint:AssertedFreshDurableCheckpoint,captured:CallerCapturedFreshTargets)throws->FreshIntentObservation {
+        try checked(j,checkpoint);guard j.phase == .intent else{throw FreshJournalError.phase}
+        let pending=j.intended.last!
+        for role in freshRoles {
+            let shouldExist=j.verified.contains(role)||role==pending
+            switch captured.value(role) {
+            case .absent:
+                if j.verified.contains(role){return .blocked(fail(j,"missing:"+role))}
+            case .bytes(let bytes):
+                if !shouldExist || bytes.count>16_384 || freshJournalHash(bytes) != j.targetHashes[role] {
+                    return .blocked(fail(j,"collision-or-change:"+role))
+                }
+            case .unavailable:return .blocked(fail(j,"unavailable:"+role))
+            case .invalid:return .blocked(fail(j,"invalid:"+role))
+            }
+        }
+        if case .absent=captured.value(pending){return .unresolved(j)}
+        var n=j;n.revision += 1;n.verified.append(pending);n.phase=n.verified.count==4 ? .ready:.draft
+        return .advanced(n)
+    }
+    // Explicit abandonment policy when no later reconciliation is desired. Never replay Add.
     static func interruptIntent(_ j:FreshInstallationJournal,checkpoint:AssertedFreshDurableCheckpoint)throws->FreshInstallationJournal {
         try checked(j,checkpoint);guard j.phase == .intent else{throw FreshJournalError.phase};return fail(j,"interrupted-add-outcome-unknown")
     }

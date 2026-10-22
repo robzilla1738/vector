@@ -150,7 +150,7 @@ final class PrivateFreshInstallationJournalStore {
             switch (old.phase,next.phase) {
             case (.draft,.intent): valid = next.intended==old.intended+[freshRoles[old.verified.count]] && next.verified==old.verified
             case (.intent,.awaitingReadback): valid = next.intended==old.intended && next.verified==old.verified
-            case (.awaitingReadback,.draft),(.awaitingReadback,.ready): valid = next.intended==old.intended && next.verified==old.verified+[old.intended.last!]
+            case (.awaitingReadback,.draft),(.awaitingReadback,.ready),(.intent,.draft),(.intent,.ready): valid = next.intended==old.intended && next.verified==old.verified+[old.intended.last!]
             default: valid = false
             }
         }
