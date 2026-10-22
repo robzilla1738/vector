@@ -1,0 +1,186 @@
+--- a/chrome/browser/aux/browser_platform.h
++++ b/chrome/browser/aux/browser_platform.h
+@@ -10,6 +10,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/owned_direct_helper_quiesce.h"
+ #include "chrome/browser/devtools/aux_cdp_authority.h"
+ namespace aux {
+ // Browser UI-sequence singleton. Components initialize before profiles; supplied
+@@ -24,6 +25,14 @@
+       DaemonSupervisor::DirectDaemonQuiesceCallback;
+   // Closes native direct-daemon Start/retry only; not an all-writers barrier.
+   void QuiesceDirectDaemonForMigration(DirectDaemonQuiesceCallback done);
++  using OwnedDirectHelperQuiesceCallback =
++      base::OnceCallback<void(OwnedDirectHelperQuiesceObservation)>;
++  // Synchronously closes these owned helpers, then returns direct-daemon result
++  // with a carrier snapshot. A pending carrier snapshot is NOT successful drain.
++  void QuiesceOwnedDirectHelpersForMigration(
++      OwnedDirectHelperQuiesceCallback done);
++  // UI sequence; fresh carrier snapshot, no polling timeout or inferred exit.
++  OwnedDirectHelperQuiesceObservation InspectOwnedDirectHelperQuiesce() const;
+   void Shutdown();
+   bool RegisterProfileComponents(
+       base::RepeatingCallback<std::string(base::DictValue,
+@@ -57,6 +66,7 @@
+   base::TimeTicks startup_deadline_;
+   base::RepeatingTimer startup_timer_;
+   bool direct_daemon_admission_closed_ = false;
++  OwnedDirectHelperQuiesceState owned_helper_quiesce_;
+   bool loading_key_ = false;
+   bool authorization_was_available_ = false;
+   base::RepeatingClosureList authorization_observers_;
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -182,6 +182,32 @@
+   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+       FROM_HERE, base::BindOnce(std::move(done), result));
+ }
++void BrowserPlatform::QuiesceOwnedDirectHelpersForMigration(
++    OwnedDirectHelperQuiesceCallback done) {
++  // This call closes carrier admission before starting asynchronous daemon
++  // drain through the existing scoped API. It does not wait for unrelated work.
++  owned_helper_quiesce_.CloseRequested();
++  CloseInstallationCarrierAdmission();
++  direct_daemon_admission_closed_ = true;
++  if (InspectOwnedDirectHelperQuiesce().direct_daemon) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(done),
++                                InspectOwnedDirectHelperQuiesce()));
++    return;
++  }
++  QuiesceDirectDaemonForMigration(base::BindOnce(
++      [](base::WeakPtr<BrowserPlatform> self,
++         OwnedDirectHelperQuiesceCallback done,
++         DirectDaemonQuiesceResult direct) {
++        if (!self) return;  // Lost completion remains pending; never success.
++        self->owned_helper_quiesce_.ObserveDirectResult(direct);
++        std::move(done).Run(self->InspectOwnedDirectHelperQuiesce());
++      }, weak_.GetWeakPtr(), std::move(done)));
++}
++OwnedDirectHelperQuiesceObservation
++BrowserPlatform::InspectOwnedDirectHelperQuiesce() const {
++  return owned_helper_quiesce_.Inspect(InspectInstallationCarrierCustody());
++}
+ void BrowserPlatform::Shutdown() {
+   CloseInstallationCarrierAdmission();
+   direct_daemon_admission_closed_ = true;
+--- a/chrome/browser/aux/daemon_supervisor.h
++++ b/chrome/browser/aux/daemon_supervisor.h
+@@ -8,6 +8,7 @@
+ #include <vector>
+ 
+ #include "base/files/file_path.h"
++#include "chrome/browser/aux/direct_daemon_quiesce_result.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+@@ -20,14 +21,6 @@
+ struct DaemonLaunchAdmission;
+ struct DirectDaemonDrainResult;
+ 
+-// This result never attests to extension, descendant, CLI or database writers.
+-struct DirectDaemonQuiesceResult {
+-  enum class Scope { kOwnedDirectDaemonOnly };
+-  enum class Outcome { kNoOwnedProcess, kExited, kDrainFailed };
+-  Scope scope = Scope::kOwnedDirectDaemonOnly;
+-  Outcome outcome = Outcome::kDrainFailed;
+-  std::optional<int> exit_code;
+-};
+ 
+ struct BundlePaths {
+   base::FilePath root, daemon_executable, node, daemon_script, agent_extension,
+--- /dev/null
++++ b/chrome/browser/aux/direct_daemon_quiesce_result.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_DIRECT_DAEMON_QUIESCE_RESULT_H_
++#define CHROME_BROWSER_AUX_DIRECT_DAEMON_QUIESCE_RESULT_H_
++#include <optional>
++namespace aux {
++// This result never attests to extension, descendant, CLI or database writers.
++struct DirectDaemonQuiesceResult {
++  enum class Scope { kOwnedDirectDaemonOnly };
++  enum class Outcome { kNoOwnedProcess, kExited, kDrainFailed };
++  Scope scope = Scope::kOwnedDirectDaemonOnly;
++  Outcome outcome = Outcome::kDrainFailed;
++  std::optional<int> exit_code;
++};
++
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/owned_direct_helper_quiesce.h
+@@ -0,0 +1,71 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_OWNED_DIRECT_HELPER_QUIESCE_H_
++#define CHROME_BROWSER_AUX_OWNED_DIRECT_HELPER_QUIESCE_H_
++#include <optional>
++#include "chrome/browser/aux/direct_daemon_quiesce_result.h"
++#include "chrome/browser/aux/installation_carrier_custody.h"
++namespace aux {
++// UI-sequence snapshot, not a global/cross-process writer barrier or grant.
++struct OwnedDirectHelperQuiesceObservation {
++  enum class Scope { kThisBrowserDirectDaemonAndInstallationCarrierOnly };
++  enum class Readiness {
++    kCloseNotRequested, kDirectDaemonPending, kDirectDaemonFailed,
++    kCarrierAdmissionOpen, kCarrierCallsPending, kCarrierChildrenUnresolved,
++    kConflictingDirectObservation, kUnexpectedDirectObservation, kDrained
++  };
++  Scope scope = Scope::kThisBrowserDirectDaemonAndInstallationCarrierOnly;
++  bool close_requested;
++  std::optional<DirectDaemonQuiesceResult> direct_daemon;
++  InstallationCarrierCustody::Snapshot installation_carriers;
++  bool conflicting_direct_observation;
++  Readiness readiness() const {
++    if (!close_requested) return Readiness::kCloseNotRequested;
++    if (conflicting_direct_observation)
++      return Readiness::kConflictingDirectObservation;
++    if (!direct_daemon) return Readiness::kDirectDaemonPending;
++    if (direct_daemon->scope !=
++        DirectDaemonQuiesceResult::Scope::kOwnedDirectDaemonOnly)
++      return Readiness::kUnexpectedDirectObservation;
++    switch (direct_daemon->outcome) {
++      case DirectDaemonQuiesceResult::Outcome::kDrainFailed:
++        return Readiness::kDirectDaemonFailed;
++      case DirectDaemonQuiesceResult::Outcome::kNoOwnedProcess:
++      case DirectDaemonQuiesceResult::Outcome::kExited:
++        break;
++      default:return Readiness::kUnexpectedDirectObservation;
++    }
++    if (!installation_carriers.admission_closed)
++      return Readiness::kCarrierAdmissionOpen;
++    if (installation_carriers.unresolved_children)
++      return Readiness::kCarrierChildrenUnresolved;
++    if (installation_carriers.active_calls)
++      return Readiness::kCarrierCallsPending;
++    return Readiness::kDrained;
++  }
++  bool owned_helpers_drained() const {return readiness()==Readiness::kDrained;}
++};
++// No reopen/reset/timeout rule. Missing callbacks and child exits stay pending.
++class OwnedDirectHelperQuiesceState {
++ public:
++  void CloseRequested() {close_requested_=true;}
++  void ObserveDirectResult(const DirectDaemonQuiesceResult& result) {
++    if (direct_) {
++      if (direct_->scope!=result.scope || direct_->outcome!=result.outcome ||
++          direct_->exit_code!=result.exit_code) conflict_=true;
++      return;  // Never overwrite an earlier failure/unknown observation.
++    }
++    direct_=result;
++  }
++  OwnedDirectHelperQuiesceObservation Inspect(
++      InstallationCarrierCustody::Snapshot carriers) const {
++    return {OwnedDirectHelperQuiesceObservation::Scope::
++                kThisBrowserDirectDaemonAndInstallationCarrierOnly,
++            close_requested_,direct_,carriers,conflict_};
++  }
++ private:
++  bool close_requested_=false;
++  bool conflict_=false;
++  std::optional<DirectDaemonQuiesceResult> direct_;
++};
++}  // namespace aux
++#endif

@@ -1,0 +1,104 @@
+{
+  "format": "aux.native.owned-direct-helper-quiesce.proposal.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "baselineSha256": "8f527443d48c2b7ad9f3ee4a6aec3828de845e28645740a51b6b6c00dea6abc7",
+      "sourceSha256": "90d1655f6121b69e3d9843bacbea96022595edec7915073017a7da2ceeb7615d",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "ed9cdedb091d76e7c40f4d270fdfe40db3e178014374e7929128e0bbe0572736",
+      "sourceSha256": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "baselineSha256": "5840ab57d6f8e3a3868db31c0024b513c8b2b3162e9814754ee1eb3325770a26",
+      "sourceSha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/aux/direct_daemon_quiesce_result.h",
+      "baselineSha256": null,
+      "sourceSha256": "613a143f77fe7d9e5335c07d3672e30b515da162789a639b3ab6a4c7f774925f",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/aux/owned_direct_helper_quiesce.h",
+      "baselineSha256": null,
+      "sourceSha256": "f6ddb043ef84b700136e5dfa76e8d1ef58d6adcb6676e70c3693ca7a4f0f33ab",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.h",
+      "baselineSha256": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+      "sourceSha256": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.cc",
+      "baselineSha256": "4a14085dacd761ec17f3a14e44440d24502da2cbd42eea31846fdb0dcf369622",
+      "sourceSha256": "4a14085dacd761ec17f3a14e44440d24502da2cbd42eea31846fdb0dcf369622",
+      "changed": false
+    }
+  ],
+  "anchors": [
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "anchor": "void BrowserPlatform::Shutdown() {",
+      "baselineCount": 1,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "anchor": "void BrowserPlatform::QuiesceDirectDaemonForMigration(",
+      "baselineCount": 1,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "anchor": "void BrowserPlatform::QuiesceOwnedDirectHelpersForMigration(",
+      "baselineCount": 0,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "anchor": "BrowserPlatform::InspectOwnedDirectHelperQuiesce() const",
+      "baselineCount": 0,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "anchor": "void QuiesceDirectDaemonForMigration(DirectDaemonQuiesceCallback done);",
+      "baselineCount": 1,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "anchor": "OwnedDirectHelperQuiesceState owned_helper_quiesce_;",
+      "baselineCount": 0,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "anchor": "struct DirectDaemonQuiesceResult {",
+      "baselineCount": 1,
+      "sourceCount": 0
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "anchor": "#include \"chrome/browser/aux/direct_daemon_quiesce_result.h\"",
+      "baselineCount": 0,
+      "sourceCount": 1
+    }
+  ],
+  "patchSha256": "3b5bcaf05f416414a05a1f39101e748f0aaa47467c158f3c901c912ef3095e81",
+  "sharedCheckoutChanged": false,
+  "chromiumBuildPerformed": false,
+  "pureProductionFixtureAssertions": 27,
+  "BrowserPlatformTUCompiled": false,
+  "allWriterCustodyClaimed": false
+}
