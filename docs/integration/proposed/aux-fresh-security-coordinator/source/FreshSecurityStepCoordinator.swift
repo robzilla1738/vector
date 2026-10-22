@@ -48,7 +48,7 @@ final class FreshSecurityStepCoordinator {
         let binding=try bindingStore.publish(intent.binding)
         let request=try intent.addRequest(checkpoint:binding.acknowledgement)
         let status:CapturedFreshAddStatus
-        do {status=try boundary.addStage(request)} catch {return try blocked(stored,"stage-add-outcome-unknown")}
+        do {status=try boundary.addStage(request)} catch {return .unresolved("stage-add-outcome-unknown-no-replay")}
         guard case .added=status else{return try blocked(stored,"stage-add-failed-or-duplicate")}
         do {
             _ = try FreshSecureStage.restore(journal:journal,checkpoint:stored.acknowledgement,selector:boundary.review.stage,binding:binding.binding,stageCheckpoint:binding.acknowledgement,captured:boundary.captureStage())

@@ -6,6 +6,7 @@ final class CapturedBoundary:FreshInstallationSecurityBoundary {
     let review:ReviewedFreshSecurityBoundary;let root:String
     var targets=[String:Data]();var stage:Data?;var stageAdds=0;var targetAdds=0
     var duplicateStage=false
+    var throwAfterSuccessfulStageAdd=false
     init(review:ReviewedFreshSecurityBoundary,root:String){self.review=review;self.root=root}
     func captures()->CallerCapturedFreshTargets {
         func r(_ role:String)->CallerCapturedFreshRead {targets[role].map{.bytes($0)} ?? .absent}
@@ -21,7 +22,9 @@ final class CapturedBoundary:FreshInstallationSecurityBoundary {
         let binding=try PrivateFreshSecureStageBindingStore(canonicalDisposableRoot:root,journal:draft.journal,selector:review.stage).load()!
         precondition(binding.binding.secretPayloadSha256==freshJournalHash(request.secretPayload))
         if duplicateStage{return .duplicate}
-        guard stage==nil else{return .duplicate};stage=request.secretPayload;return .added
+        guard stage==nil else{return .duplicate};stage=request.secretPayload
+        if throwAfterSuccessfulStageAdd{throw SyntheticFailure()}
+        return .added
     }
     func addTarget(_ request:FreshCreateOnlyRequest)throws->CapturedFreshAddStatus {
         targetAdds += 1
@@ -81,6 +84,15 @@ let duplicate=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary
 guard case .blocked=try duplicate.begin(cohort:cohort,review:scopeReview) else{fatalError("duplicate stage accepted")}
 guard case .blocked=try duplicate.advanceOne() else{fatalError("blocked stage resumed")}
 precondition(duplicateBoundary.stageAdds==1 && duplicateBoundary.targetAdds==0)
+// A transport exception after successful fifth Add retains draft/binding.
+let (_,_,throwingBoundary)=try setup();throwingBoundary.throwAfterSuccessfulStageAdd=true
+let throwing=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:throwingBoundary)
+guard case .unresolved=try throwing.begin(cohort:cohort,review:scopeReview) else{fatalError("unknown stage outcome terminally blocked")}
+let unknownStored=try PrivateFreshInstallationJournalStore(canonicalDisposableRoot:root,transactionId:throwingBoundary.review.transactionId).loadCurrent()!
+precondition(unknownStored.journal.phase == .draft && unknownStored.journal.revision==0 && throwingBoundary.stageAdds==1 && throwingBoundary.targetAdds==0)
+let recreated=FreshSecurityStepCoordinator(canonicalDisposableRoot:root,boundary:throwingBoundary)
+guard case .progressed=try recreated.advanceOne() else{fatalError("matching stage outcome could not resume")}
+precondition(throwingBoundary.stageAdds==1 && throwingBoundary.targetAdds==1)
 // On-disk files contain only nonsecret journals/binding/locks, no stage payload.
 for url in FileManager.default.enumerator(at:URL(fileURLWithPath:root),includingPropertiesForKeys:nil)!.allObjects as! [URL] {
     var directory:ObjCBool=false
