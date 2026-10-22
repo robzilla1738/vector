@@ -28,13 +28,13 @@ async function auxCloudBackupAttachment(accountId,session,attachment){
   const mime=supported.has(attachment.mimeType)?attachment.mimeType:'application/octet-stream';
   const uploaded=await auxCloudUploadBytes(accountId,bytes,attachment.name,mime,'attachment');
   auxCloudCheckAttachmentIdentity(accountId,session,identity);
-  await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(session.id)+'/files','PUT',{localPath,attachmentId:attachment.id,blobId:uploaded.id});
+  await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(typeof auxCloudSessionBindingId==='function'?auxCloudSessionBindingId(accountId,session.id):session.id)+'/files','PUT',{localPath,attachmentId:attachment.id,blobId:uploaded.id});
 }
 async function auxCloudRestoreAttachment(accountId,session,requestedPath){
   const identity=auxCloudAttachmentIdentity(accountId,session),localPath=auxCloudStoredAttachmentPath(requestedPath);if(!identity||!localPath)return null;
   auxCloudAttachmentRestores??=new Map;const stamp=JSON.stringify([identity,localPath]);if(auxCloudAttachmentRestores.has(stamp))return auxCloudAttachmentRestores.get(stamp);
   const operation=(async()=>{
-    let record;try{record=await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(session.id)+'/files?path='+encodeURIComponent(localPath),'GET');}catch(error){if(error instanceof AsideApiError&&error.status===404)return null;throw error;}
+    let record;try{record=await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(typeof auxCloudSessionBindingId==='function'?auxCloudSessionBindingId(accountId,session.id):session.id)+'/files?path='+encodeURIComponent(localPath),'GET');}catch(error){if(error instanceof AsideApiError&&error.status===404)return null;throw error;}
     if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');
     const response=await fetchAsideAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');
     try{for(;;){const next=await reader.read();if(next.done)break;size+=next.value.byteLength;if(size>record.size){await reader.cancel();throw Error('Private attachment exceeds declared size.');}chunks.push(Buffer.from(next.value));}}finally{reader.releaseLock();}
@@ -53,7 +53,7 @@ async function auxCloudRestoreAttachment(accountId,session,requestedPath){
   })();auxCloudAttachmentRestores.set(stamp,operation);
   try{return await operation;}finally{auxCloudAttachmentRestores.delete(stamp);}
 }
-async function auxCloudForgetAttachment(accountId,session,requestedPath){const identity=auxCloudAttachmentIdentity(accountId,session),localPath=auxCloudStoredAttachmentPath(requestedPath);if(!identity||!localPath)return;await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(session.id)+'/files?path='+encodeURIComponent(localPath),'DELETE');auxCloudCheckAttachmentIdentity(accountId,session,identity);}
+async function auxCloudForgetAttachment(accountId,session,requestedPath){const identity=auxCloudAttachmentIdentity(accountId,session),localPath=auxCloudStoredAttachmentPath(requestedPath);if(!identity||!localPath)return;await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(typeof auxCloudSessionBindingId==='function'?auxCloudSessionBindingId(accountId,session.id):session.id)+'/files?path='+encodeURIComponent(localPath),'DELETE');auxCloudCheckAttachmentIdentity(accountId,session,identity);}
 async function auxCloudPublishLargeSession(accountId,session,messages){
   const body={sourceSessionId:session.id,title:session.title?.trim()||'Untitled session',messages:toSharedSessionMessages(messages)},bytes=Buffer.from(JSON.stringify(body));
   if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');
@@ -62,10 +62,13 @@ async function auxCloudPublishLargeSession(accountId,session,messages){
 }
 `;
 
-export function applyCloudAttachmentAdapter(source) {
+export function applyCloudAttachmentAdapter(source, { branding = 'aside' } = {}) {
+  if (!['aside','aux'].includes(branding)) throw new Error('Unknown attachment adapter branding');
+  const symbols = text => branding === 'aux' ? text.replaceAll('fetchAsideAPIAuthenticatedRequest','fetchAuxAPIAuthenticatedRequest').replaceAll('AsideApiError','AuxApiError') : text;
   let text = source;
   const anchors = [];
   const edit = (find, replace, count = 1) => {
+    find = symbols(find); replace = symbols(replace);
     if (text.split(find).length - 1 !== count) throw new Error(`Cloud attachment adapter anchor changed: ${find.slice(0, 100)}`);
     text = text.split(find).join(replace);
     anchors.push({ find, replace, count, kind: 'integration' });

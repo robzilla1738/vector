@@ -1,11 +1,10 @@
-import { handle } from 'hono/vercel';
-import { app } from '../../../../src/app';
+import { serveApi } from '../../../../src/http';
 export const runtime='nodejs';
 export const maxDuration=150;
 export const dynamic='force-dynamic';
-export const GET=handle(app);
-export const POST=handle(app);
-export const PUT=handle(app);
-export const PATCH=handle(app);
-export const DELETE=handle(app);
-export const OPTIONS=handle(app);
+export const GET=serveApi;
+export const POST=serveApi;
+export const PUT=serveApi;
+export const PATCH=serveApi;
+export const DELETE=serveApi;
+export const OPTIONS=serveApi;

@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-10-22",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "developmentHostname": "dev-cloud.getaux.co",
+  "stripe": {
+    "sandboxAccount": "acct_1UTDA5GzjaZQfViz",
+    "webhook": "we_1UTEQcGzjaZQfVizSYHz3z5H",
+    "url": "https://dev-cloud.getaux.co/api/v1/webhooks/stripe",
+    "livemode": false,
+    "signedCreationAndCancellationVerified": true,
+    "checkoutPaymentVerified": false
+  },
+  "clerk": {
+    "instance": "ins_3L28GxZikfIuuEfnf1FoIkNoQpk",
+    "webhook": "ep_3L2KCYLl1PLTSMfzCmiqsTnzHxI",
+    "url": "https://dev-cloud.getaux.co/api/v1/webhooks/clerk",
+    "events": [
+      "session.ended",
+      "session.removed",
+      "session.revoked",
+      "user.deleted",
+      "user.updated"
+    ],
+    "signedExampleMessage": "msg_3L2KrsnB6dcSf4gakefSIy2kOzf",
+    "signedExamplePersisted": true,
+    "providerSucceededFilterConfirmed": true
+  },
+  "secrets": {
+    "storedPrivately": true,
+    "environments": [
+      "development",
+      "preview"
+    ]
+  },
+  "providerDeliveryVerified": true,
+  "productionDomainsUnassignedAfterAutomaticFirstDeploy": true
+}

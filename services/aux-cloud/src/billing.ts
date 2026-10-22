@@ -18,7 +18,7 @@ const idOf = (object: string | { id: string } | null | undefined): string | null
 const terminal = new Set(['canceled', 'incomplete_expired']);
 function stripe() {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || (key.startsWith('sk_live_') && process.env.AUX_LIVE_BILLING !== 'true')) throw new HTTPException(503, { message: 'Aux billing is not enabled in this environment.' });
+  if (!key || (!/^(?:sk|rk)_test_/.test(key) && process.env.AUX_LIVE_BILLING !== 'true')) throw new HTTPException(503, { message: 'Aux billing is not enabled in this environment.' });
   return new Stripe(key, { maxNetworkRetries: 2, timeout: 20000 });
 }
 function priceEnv(key: string) { return `STRIPE_PRICE_${key.replace('aside_', '').toUpperCase()}`; }
@@ -213,8 +213,8 @@ async function grantPurchasedCredits(client: Stripe, session: Stripe.Checkout.Se
   await ensureWallet(userId!);
   await sql`WITH grant AS (INSERT INTO aux_credit_grants(source_id,user_id,amount_micros,kind) VALUES(${paymentIntent},${userId!},${amount},'add_on') ON CONFLICT DO NOTHING RETURNING user_id)
     UPDATE aux_wallets SET balance_micros=balance_micros+greatest(0,${amount}-debt_micros),add_on_balance_micros=add_on_balance_micros+greatest(0,${amount}-debt_micros),debt_micros=greatest(0,debt_micros-${amount}) WHERE user_id IN(SELECT user_id FROM grant)`;
-  const payment = await client.paymentIntents.retrieve(paymentIntent, { expand: ['latest_charge'] });
-  if (payment.latest_charge && typeof payment.latest_charge !== 'string' && payment.latest_charge.amount_refunded > 0) await reconcileCreditRefund(payment.latest_charge);
+  const charges = await client.charges.list({ payment_intent: paymentIntent, limit: 100 });
+  for (const charge of charges.data) if (charge.amount_refunded > 0) await reconcileCreditRefund(charge);
 }
 
 async function reconcileCreditRefund(charge: Stripe.Charge) {

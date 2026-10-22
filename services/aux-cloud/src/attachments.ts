@@ -156,7 +156,17 @@ attachmentRoutes.put('/attachment-sessions/:sessionId/files', async c => {
   if (!session.success || !body.success) reject(400, 'INVALID_ATTACHMENT_BINDING', 'A session, stored attachment path and verified blob are required.');
   const row = await owned(c.get('user').id, body.data.blobId);
   if (row.state !== 'ready' || row.purpose !== 'attachment') reject(409, 'UPLOAD_INCOMPLETE', 'Only verified private attachments may be bound to a session.');
-  await sql`INSERT INTO aux_attachment_bindings(user_id,session_id,local_path,attachment_id,blob_id) VALUES (${row.user_id},${session.data},${body.data.localPath},${body.data.attachmentId},${row.id}) ON CONFLICT(user_id,session_id,local_path) DO UPDATE SET attachment_id=excluded.attachment_id,blob_id=excluded.blob_id,updated_at=now()`;
+  const results = await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${row.user_id},0))`,
+    sql`INSERT INTO aux_attachment_bindings(user_id,session_id,local_path,attachment_id,blob_id)
+    SELECT a.user_id,${session.data},${body.data.localPath},${body.data.attachmentId},a.id FROM aux_attachments a
+    WHERE a.id=${row.id} AND a.user_id=${row.user_id} AND a.state='ready' AND a.purpose='attachment'
+      AND NOT EXISTS(SELECT 1 FROM aux_session_snapshots s WHERE s.user_id=a.user_id AND s.blob_id=a.id)
+      AND NOT EXISTS(SELECT 1 FROM aux_retired_session_blobs r WHERE r.user_id=a.user_id AND r.blob_id=a.id)
+    ON CONFLICT(user_id,session_id,local_path) DO UPDATE SET attachment_id=excluded.attachment_id,blob_id=excluded.blob_id,updated_at=now()
+    RETURNING blob_id`,
+  ]);
+  if (!results[1]?.length) reject(409, 'UPLOAD_INCOMPLETE', 'This private upload is no longer available as an attachment.');
   return c.json({ ...metadata(row), localPath: body.data.localPath, attachmentId: body.data.attachmentId });
 });
 attachmentRoutes.get('/attachment-sessions/:sessionId/files', async c => {

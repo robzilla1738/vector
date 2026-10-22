@@ -4,7 +4,7 @@ const config: NextConfig = {
   turbopack: { root: import.meta.dirname },
   poweredByHeader: false,
   async rewrites() {
-    return ['auth', 'billing', 'sync', 'shared-sessions', 'projects', 'routines', 'users', 'ai', 'stt', 'tts', 'speech', 'attachments'].map(prefix => ({
+    return ['auth', 'profile', 'billing', 'sync', 'drive', 'shared-sessions', 'projects', 'routines', 'users', 'ai', 'stt', 'tts', 'speech', 'attachments', 'attachment-sessions'].map(prefix => ({
       source: `/${prefix}/:path*`, destination: `/api/v1/${prefix}/:path*`,
     }));
   },

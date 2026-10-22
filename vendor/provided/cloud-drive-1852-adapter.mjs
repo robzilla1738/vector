@@ -20,7 +20,7 @@ async function auxCloudDriveDownload(accountId,path){const context=await auxClou
   return helpers;
 }
 export function applyCloudDrive1852Adapter(source,{branding='aside'}={}) {
-  let text=source;const anchors=[];const edit=(find,replace)=>{if(text.split(find).length-1!==1)throw Error('1852 Drive anchor changed: '+find.slice(0,100));text=text.replace(find,replace);anchors.push({find,replace,count:1,kind:'integration'});};
+  let text=source;const anchors=[];const edit=(find,replace)=>{if(text.split(find).length-1!==1)throw Error('1852 Drive anchor changed: '+find.slice(0,100));text=text.replace(find,()=>replace);anchors.push({find,replace,count:1,kind:'integration'});};
   const api=branding==='aux'?'fetchAuxAPIAuthenticatedRequest':'fetchAsideAPIAuthenticatedRequest';
   edit('function requireEtag(Cn){', cloudDrive1852Helpers(branding)+'\nfunction requireEtag(Cn){');
   edit('async function getRemoteHead(Cn,ei){try{let ti={};','async function getRemoteHead(Cn,ei){if(!await auxCloudDriveHasCache(Cn))ei=void 0;try{let ti={};');

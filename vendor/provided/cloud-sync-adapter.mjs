@@ -83,6 +83,7 @@ export function applyCloudSyncAdapter(source) {
   edit('head:agentFileHeadSchema.parse(await ni.json())', 'head:await auxCloudReadHead(Cn,await ni.json())');
   edit('async function putRemoteHead(Cn,ei,ti){let ni=', 'async function putRemoteHead(Cn,ei,ti){ei=await auxCloudWriteHead(Cn,ei);let ni=');
   edit('head:agentFileHeadSchema.parse(await ri.json())', 'head:await auxCloudReadHead(Cn,await ri.json())');
+  edit('`ifMatch`in ti?ni[`If-Match`]=ti.ifMatch:ni[`If-None-Match`]=`*`', '`ifMatch`in ti?ni[`X-Aux-If-Match`]=ti.ifMatch:ni[`X-Aux-If-None-Match`]=`*`');
   edit('async function putRemoteObject(Cn,ei,ti){let ni;', 'async function putRemoteObject(Cn,ei,ti,auxPath){const auxEncrypted=await auxCloudEncryptFile(Cn,ei,ti,auxPath);ei=auxEncrypted.entry.objectSha256;ti=auxEncrypted.bytes;let ni;');
   edit('async function getRemoteObject(Cn,ei){let ti=await fetchAsideAPIAuthenticatedRequest(Cn,`/sync/agent-files/objects/${ei}`,{method:`GET`,fallbackErrorMessage:`Failed to download agent file object`});return new Uint8Array(await ti.arrayBuffer())}', 'async function getRemoteObject(Cn,ei,auxPath){return auxCloudDecryptFile(Cn,ei,auxPath)}');
   edit('await putRemoteObject(Cn,ni.sha256,ni.bytes)', 'await putRemoteObject(Cn,ni.sha256,ni.bytes,ni.path)');

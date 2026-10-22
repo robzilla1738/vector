@@ -9,7 +9,7 @@ const originalPath = '/Users/rcourson/Downloads/aside-rea 2/extracted/daemon-app
 test('cloud sync patch count-checks every supplied source anchor and refuses reapplication', async () => {
   const source = await readFile(originalPath, 'utf8');
   const result = applyCloudSyncAdapter(source);
-  assert.equal(result.anchors.length, 10);
+  assert.equal(result.anchors.length, 11);
   assert.ok(result.text.includes('ni.bytes,ni.path'));
   assert.throws(() => applyCloudSyncAdapter(result.text), /anchor changed/);
   assert.throws(() => applyCloudSyncAdapter(source.replace('function requireEtag(Cn){', 'function changedRequireEtag(Cn){')), /anchor changed/);

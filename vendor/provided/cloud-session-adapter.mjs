@@ -107,7 +107,7 @@ export function applyCloudSessionAdapter(source, { version = 'archival', brandin
   const anchors = [];
   function edit(find, replace) {
     if (text.split(find).length - 1 !== 1) throw new Error(`Cloud session adapter anchor changed: ${find.slice(0, 100)}`);
-    text = text.replace(find, replace); anchors.push({ kind: 'integration', find, replace, count: 1 });
+    text = text.replace(find, () => replace); anchors.push({ kind: 'integration', find, replace, count: 1 });
   }
   edit('async function createSession$1(Cn,ei){', `${helpers}\nasync function createSession$1(Cn,ei){`);
   const start = text.indexOf('SessionStore,init_store$1='), end = text.indexOf('})(SessionStore||={})', start) + '})(SessionStore||={})'.length;

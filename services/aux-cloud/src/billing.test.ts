@@ -111,3 +111,21 @@ test('the actual pinned Agent pricing consumer renders the hosted plans and chec
     for (const key of keys) { if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key]; }
   }
 });
+
+test('sandbox billing refuses both unrestricted and restricted live keys before provider access', async () => {
+  const {billingWebhooks}=await import('./billing');
+  const previous={key:process.env.STRIPE_SECRET_KEY,secret:process.env.STRIPE_WEBHOOK_SECRET,live:process.env.AUX_LIVE_BILLING};
+  try {
+    process.env.STRIPE_WEBHOOK_SECRET='synthetic-webhook-fixture-only';
+    delete process.env.AUX_LIVE_BILLING;
+    for(const prefix of ['sk','rk']) {
+      process.env.STRIPE_SECRET_KEY=prefix+'_live_'+'synthetic-fixture';
+      const response=await billingWebhooks.request('/stripe',{method:'POST',headers:{'stripe-signature':'synthetic','Content-Type':'application/json'},body:'{}'});
+      assert.equal(response.status,503);
+    }
+  } finally {
+    for(const [name,value] of Object.entries({STRIPE_SECRET_KEY:previous.key,STRIPE_WEBHOOK_SECRET:previous.secret,AUX_LIVE_BILLING:previous.live})) {
+      if(value===undefined)delete process.env[name];else process.env[name]=value;
+    }
+  }
+});

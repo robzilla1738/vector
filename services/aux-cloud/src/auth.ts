@@ -418,6 +418,11 @@ authWebhooks.post('/',async c=>{
       await sql`WITH removed AS (UPDATE aux_users SET deleted_at=COALESCE(deleted_at,now()),updated_at=now() WHERE clerk_id=${event.data.id} RETURNING id),
         revoked AS (UPDATE aux_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed))
         UPDATE shared_sessions SET revoked_at=now() WHERE user_id IN (SELECT id FROM removed)`;
+      const users=await sql`SELECT id FROM aux_users WHERE clerk_id=${event.data.id}`;
+      const {cancelUserSubscription}=await import('./billing');
+      for(const user of users)await cancelUserSubscription(user.id);
+      // A billing outage leaves access revoked and this delivery unacknowledged,
+      // so Clerk retries instead of leaving a deleted identity renewing forever.
     }
   }else if(event.type==='user.updated'){
     // Fetch current state instead of applying potentially reordered profile payloads.
@@ -440,10 +445,31 @@ authWebhooks.post('/',async c=>{
 
 /** Bounded, retryable deletion of only this soft-deleted Aux user's product data.
  * Never hard-delete owner/intent metadata while a signed upload can arrive. */
+export const profileRoutes = new Hono<AuthEnv>();
+profileRoutes.post('/metadata', async c => {
+  const user=c.get('user');
+  if(!user)return error(c,'Sign in to continue.','ACCESS_TOKEN_INVALID');
+  if(!await rateLimit(`profile-metadata:${user.id}`,20,60))return error(c,'Please wait before refreshing profile metadata.','RATE_LIMITED',429);
+  const account=await clerk().users.getUser(user.clerkId);
+  if(account.banned||account.locked){
+    await sql`UPDATE aux_sessions SET revoked_at=now() WHERE user_id=${user.id}`;
+    return error(c,'Account is not available.','ACCESS_TOKEN_INVALID');
+  }
+  await mapUser(account);
+  return c.json(await currentUser(user.id));
+});
+
 export async function purgeDeletedUserData(userId:string) {
   z.string().uuid().parse(userId);
   const rows=await sql`SELECT id,avatar_path FROM aux_users WHERE id=${userId} AND deleted_at IS NOT NULL`;
   if(!rows[0])throw new Error('Account must be soft-deleted before purging data');
+  const {cancelUserSubscription}=await import('./billing');
+  await cancelUserSubscription(userId);
+  await sql`DELETE FROM aux_session_snapshots WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_retired_session_blobs WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_drive_cookies WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_drive_files WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_drive_heads WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_heads WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_objects WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_entities WHERE user_id=${userId}`;

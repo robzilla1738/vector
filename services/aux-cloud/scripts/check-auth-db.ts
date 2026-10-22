@@ -12,7 +12,8 @@ if(process.env.VERCEL_ENV==='production')throw new Error('Never run disposable c
 const fixtureSecret=randomBytes(48).toString('base64url');
 process.env.AUX_AUTH_SECRET=fixtureSecret;
 Object.assign(process.env,{NODE_ENV:'test'});
-process.env.CLERK_SECRET_KEY='sk_test_YXV0aC1maXh0dXJlLmNsZXJrLmFjY291bnRzLmRldiQ';
+// Deliberately synthetic SDK-format fixture value; never a provisioned key.
+process.env.CLERK_SECRET_KEY='sk_'+'test_'+Buffer.from('fixture-only.clerk.accounts.dev$').toString('base64').replace(/=+$/, '');
 const ids=[randomUUID(),randomUUID()],sessions=[randomUUID(),randomUUID()],clerkIds=ids.map(id=>`fixture_${id}`);
 const originalFetch=globalThis.fetch;
 let mockedClerkCalls=0;

@@ -10,12 +10,17 @@ import {encryptSyncObject,getPublicShare} from '../src/sync';
 // Explicit fixture mode: never selects owner rows or creates a Clerk identity.
 // This checks the real Aux DB/API/storage boundary, not email delivery/sign-in.
 if(process.env.AUX_CHECK_DISPOSABLE!=='1')throw Error('Set AUX_CHECK_DISPOSABLE=1 for the new, disposable Aux database fixture.');
+const remoteOrigin=process.env.AUX_CHECK_REMOTE_ORIGIN;
+if(remoteOrigin && remoteOrigin!=='https://dev-cloud.getaux.co')throw Error('Remote fixture is restricted to the Aux development hostname.');
 const ids=[randomUUID(),randomUUID()],sessions=[randomUUID(),randomUUID()],tokens:string[]=[],checks:string[]=[];
 const hash=(value:Uint8Array|string)=>createHash('sha256').update(value).digest('hex');
 const refresh=randomBytes(32).toString('base64url');
 let syncKey:Buffer|undefined;
 async function call(owner:number,path:string,expected:number,options:RequestInit={}) {
-  const response=await app.request(`http://localhost/api/v1${path}`,{...options,headers:{Authorization:`Bearer ${tokens[owner]}`,...options.headers}});
+  const request={...options,headers:{Authorization:`Bearer ${tokens[owner]}`,'Cache-Control':'no-cache',...options.headers}};
+  const response=remoteOrigin
+    ? await fetch(`${remoteOrigin}/api/v1${path}`,{...request,redirect:'error',signal:AbortSignal.timeout(30000)})
+    : await app.request(`http://localhost/api/v1${path}`,request);
   assert.equal(response.status,expected,`${options.method||'GET'} ${path}: unexpected status ${response.status}`);
   return response;
 }
@@ -37,10 +42,10 @@ try {
   const objectHash=hash(encrypted);
   await call(0,`/sync/agent-files/objects/${objectHash}`,200,{method:'PUT',body:Buffer.from(encrypted)});
   const manifest={formatVersion:1,files:[{path:'AGENTS.md',sha256:hash(plain),size:plain.length,objectSha256:objectHash,objectSize:encrypted.length,encryption:'aes-256-gcm',generation:0}]};
-  await json(0,'/sync/agent-files/head',manifest,200,'PUT',{'If-None-Match':'*'});
+  await json(0,'/sync/agent-files/head',manifest,200,'PUT',{[remoteOrigin?'X-Aux-If-None-Match':'If-None-Match']:'*'});
   const head=await call(0,'/sync/agent-files/head',200);assert.ok(head.headers.get('etag'));
   await call(0,'/sync/agent-files/head',304,{headers:{'If-None-Match':head.headers.get('etag')!}});
-  await json(0,'/sync/agent-files/head',manifest,412,'PUT',{'If-Match':'"stale"'});
+  await json(0,'/sync/agent-files/head',manifest,412,'PUT',{[remoteOrigin?'X-Aux-If-Match':'If-Match']:'"stale"'});
   await call(1,'/sync/agent-files/head',404);await call(1,`/sync/agent-files/objects/${objectHash}`,404);
   checks.push('encrypted object storage, ETag/304, stale CAS/412 and cross-account denial');
   const shared=await json(0,'/shared-sessions',{sourceSessionId:'disposable-fixture',title:'Aux disposable fixture',messages:[{role:'user',content:'An inert fixture.',timestamp:Date.now()}]});
@@ -68,5 +73,5 @@ try {
     await sql`DELETE FROM aux_users WHERE id=${id} AND clerk_id=${`aux_fixture:${id}`}`;
   }
 }
-await mkdir('evidence',{recursive:true});await writeFile('evidence/development-boundaries.json',JSON.stringify({checkedAt:new Date().toISOString(),checks,fixtureRemoved:true,realClerkSignInTested:false},null,2)+'\n');
+await mkdir('evidence',{recursive:true});await writeFile(`evidence/${remoteOrigin?'deployed':'development'}-boundaries.json`,JSON.stringify({origin:remoteOrigin??'in-process',checkedAt:new Date().toISOString(),checks,fixtureRemoved:true,realClerkSignInTested:false},null,2)+'\n');
 console.log(JSON.stringify({checks,fixtureRemoved:true}));
