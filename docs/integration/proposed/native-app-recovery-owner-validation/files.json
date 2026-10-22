@@ -1,0 +1,10 @@
+{
+  "baseComposition": "v611 + native-app-profile-recovery",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "baselineSha256": "9bf7eb1a69c1affb4befb41189b987f62ad0b4e04fa688fbba5c6566eaf04113",
+      "outputSha256": "43152b53efb85677e057ffa413572c49f671b78897310088a9493dab242e6b14"
+    }
+  ]
+}

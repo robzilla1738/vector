@@ -1,0 +1,56 @@
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -60,6 +60,11 @@
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+ #include "chrome/browser/sessions/session_service_log.h"
++#include "chrome/browser/web_applications/web_app_filter.h"
++#include "chrome/browser/web_applications/web_app_helpers.h"
++#include "chrome/browser/web_applications/web_app_registrar.h"
++#include "extensions/common/extension.h"
++#include "extensions/buildflags/buildflags.h"
+ #include "chrome/browser/sessions/session_service_lookup.h"
+ #include "chrome/browser/sessions/session_service_utils.h"
+ #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
+@@ -757,6 +762,28 @@
+             web_app_registry_ready_);
+   }
+ 
++  bool HasAuxRestorableAppOwner(const sessions::SessionWindow& window) const {
++    const auto app_id = web_app::GetAppIdFromApplicationName(window.app_name);
++    if (app_id.empty()) {
++      return false;
++    }
++    // Match MaybeCreateAppBrowserController after its real registry barrier.
++    // A stale serialized app name alone must not become an ownerless app window.
++    auto* provider = web_app::WebAppProvider::GetForLocalAppsUnchecked(profile_);
++    if (provider && provider->registrar_unsafe().AppMatches(
++                        app_id, web_app::WebAppFilter::IsAppSurfaceableToUser())) {
++      return true;
++    }
++#if BUILDFLAG(ENABLE_HOSTED_APPS)
++    auto* registry = extensions::ExtensionRegistry::Get(profile_);
++    const auto* extension = registry ? registry->GetExtensionById(
++        app_id, extensions::ExtensionRegistry::EVERYTHING) : nullptr;
++    return extension && extension->is_hosted_app();
++#else
++    return false;
++#endif
++  }
++
+   BrowserWindowInterface* ProcessSessionWindowsAndNotify(
+       std::vector<std::unique_ptr<sessions::SessionWindow>>* windows,
+       SessionID active_window_id) {
+@@ -783,9 +810,10 @@
+                    const bool browser_window =
+                        SessionService::IsRelevantWindowType(window->type);
+                    const bool app_window = restore_apps_ &&
+-                       web_app_registry_ready_ && !window->app_name.empty() &&
++                       web_app_registry_ready_ &&
+                        (window->type == sessions::SessionWindow::TYPE_APP ||
+-                        window->type == sessions::SessionWindow::TYPE_APP_POPUP);
++                        window->type == sessions::SessionWindow::TYPE_APP_POPUP) &&
++                       HasAuxRestorableAppOwner(*window);
+                    return (browser_window || app_window) && !window->tabs.empty();
+                  })) {
+         result = SessionRestore::AuxWorkspaceResult::kAmbiguous;
