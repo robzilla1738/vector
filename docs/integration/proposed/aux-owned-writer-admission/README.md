@@ -58,11 +58,13 @@ retains the synthetic root/journals rather than deleting possibly live state.
   participant generation after verified terminal state. It cannot recover a
   prior process's root or accept a persisted lock as proof of supervision.
 
-`node --test scripts/lib/aux-disposable-writer-coordinator.test.mjs` passes four
+`node --test scripts/lib/aux-disposable-writer-coordinator.test.mjs` passes five
 focused synthetic tests: synchronous close/drain and stable writer output;
 relaunch rejection at real journal checkpoints; interrupted commit/rollback;
 wrong receipt and changed terminal target rejection; source drift/adoption
-rejection; unclean writer exit leaves the gate blocked. The test exercises real
+rejection; unclean writer exit leaves the gate blocked, including an abnormal
+exit before freeze starts and after the active child set becomes empty. Child
+errors immediately close admission. The test exercises real
 child exits and actual offline journal receipts, not fake stopped acknowledgments.
 
 ## Exact missing native and renderer integration

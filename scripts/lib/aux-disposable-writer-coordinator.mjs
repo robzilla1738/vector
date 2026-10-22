@@ -61,9 +61,14 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
     const current={child,epoch,ready:false};children.set(id,current);
     let settled=false;
     const done=new Promise(resolve=>{
-      child.once('error',error=>{current.error=error.message;});
+      child.once('error',error=>{current.error=error.message;if(!disposed)phase='blocked';});
       child.once('close',(code,signal)=>{
-        settled=true;children.delete(id);const result={id,pid:child.pid,epoch:current.epoch,code,signal,error:current.error};history.push(result);resolve(result);
+        settled=true;children.delete(id);const result={id,pid:child.pid,epoch:current.epoch,code,signal,error:current.error};history.push(result);
+        // A failed writer can leave incomplete state even if it exits before
+        // drain starts. Remember that failure at the admission boundary itself;
+        // an empty current child set must never erase the failed generation.
+        if(!disposed&&(code!==0||signal||current.error))phase='blocked';
+        resolve(result);
       });
     });
     current.done=done;
@@ -85,7 +90,7 @@ export async function createAuxDisposableWriterCoordinator({participantSources,i
       let timer;
       try {
         const outcomes=await Promise.race([Promise.all(owned.map(item=>item.done)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Direct participant drain deadline exceeded')),2000);})]);
-        if(outcomes.some(result=>result.code!==0||result.signal||result.error)||children.size)throw Error('Direct participant did not stop cleanly');
+        if(phase==='blocked'||outcomes.some(result=>result.code!==0||result.signal||result.error)||children.size)throw Error('Direct participant did not stop cleanly');
         await ownRoot();phase='frozen';
         return {format:'aux.owned-direct-writers.v1',epoch,stopped:outcomes,authorityScope:'owned-direct-participants-only',nativeWritersVerified:false,descendantsVerified:false};
       } catch(error){phase='blocked';throw error;}
