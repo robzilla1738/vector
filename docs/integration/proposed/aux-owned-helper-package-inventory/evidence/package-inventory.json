@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-owned-helper-drain/Aux.app",
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "packageReceiptSha256": "736c25b45d22a87d4809a63fb07184dc2b87add655bbd290dbc40f70000d8cfb",
+  "frameworkSha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
+  "nativeInputFiles": 563,
+  "nativeLeafFilesCompared": 418,
+  "retiredIndependentRuntime": {
+    "root": "Contents/Resources/aux-runtime",
+    "exactReceiptFiles": 145,
+    "absent": true
+  },
+  "pdf": {
+    "moduleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+    "moduleBytes": 9474752,
+    "loaderSha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+    "pinFileSha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f",
+    "loaded": false,
+    "extractionRepeated": false
+  },
+  "ui": {
+    "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-carrier-pdf-lifetime/Aux.app",
+    "comparedFiles": 1215,
+    "stylesheets": 5,
+    "allBytesEqual": true,
+    "inventorySha256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005",
+    "renderedComparison": false
+  },
+  "coldRefusals": [
+    {
+      "label": "daemon-sea",
+      "codeSha256": "dc1b3ac054c280bc63481a365601bc2a24f074160a48206d56a399df89a47c3b",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    },
+    {
+      "label": "cli-sea",
+      "codeSha256": "3e17ca461994700242d4bdf4e6f4b5c547fc2de7c3bbdd12ac75b41fbee17835",
+      "firstRefusal": true,
+      "preservedCliShebang": true,
+      "evaluated": false
+    },
+    {
+      "label": "node-development",
+      "codeSha256": "655ff1d4c6d19cea6bf710f9c8c36ab7650f9cc1c4d0f02f0e88f9b01f087b0b",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    }
+  ],
+  "nativeOrPdfFixturesRepeated": false,
+  "appLaunched": false,
+  "entrypointsEvaluated": false,
+  "protectedOrOSOrCloudOperations": false,
+  "productionReady": false,
+  "signed": false,
+  "state2Authorized": false
+}

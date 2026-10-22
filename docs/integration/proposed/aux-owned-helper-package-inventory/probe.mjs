@@ -29,9 +29,21 @@ assert.equal(packaged.signed,false);assert.equal(packaged.productionReady,false)
 assert.equal(packaged.identityEvidence?.coldEntryQuarantineChecked,true);assert.equal(packaged.nativeReceiptSha256,pins.nativeReceiptSha256);assert.equal(packaged.compositionSha256,pins.compositionSha256);
 assert.equal(await hash(process.execPath),pins.nodeSha256);
 // Exact native build receipt leaf comparison includes the new helper aggregate.
-assert(Array.isArray(receipt.appFiles)&&receipt.appFiles.length>0);assert.equal(packaged.nativeFiles,receipt.appFiles.length);
+assert(Array.isArray(receipt.appFiles)&&receipt.appFiles.length>0);
+assert.equal(packaged.nativeInputFiles,receipt.appFiles.length);
+// The established assembler intentionally retires ONLY the independent runtime.
+// Authenticate the exact excluded receipt rows and require that root absent.
+const retiredRoot='Contents/Resources/aux-runtime';
+const retired=receipt.appFiles.filter(item=>item.path.startsWith(retiredRoot+'/'));
+assert.equal(packaged.retiredIndependentRuntime?.root,retiredRoot);
+assert.equal(packaged.retiredIndependentRuntime?.packageName,'@aux/runtime');
+assert.equal(packaged.retiredIndependentRuntime?.packageVersion,'0.1.0');
+assert.deepEqual(packaged.retiredIndependentRuntime?.files,retired);
+await assert.rejects(lstat(path.join(app,retiredRoot)),error=>error.code==='ENOENT');
+const retained=receipt.appFiles.filter(item=>!item.path.startsWith(retiredRoot+'/'));
+assert.equal(packaged.nativeFiles,retained.length);
 const observedNative=new Map();
-for(const item of receipt.appFiles){assert(!path.isAbsolute(item.path)&&!item.path.split('/').includes('..'));const file=path.join(app,item.path),stat=await lstat(file);assert.equal(stat.mode&0o777,item.mode,item.path);if(item.type==='symlink'){assert(stat.isSymbolicLink());assert.equal(await readlink(file),item.linkTarget,item.path);}else{assert.equal(item.type,'file');assert(stat.isFile()&&!stat.isSymbolicLink());const digest=await hash(file);assert.equal(digest,item.sha256,item.path);observedNative.set(item.path,digest);}}
+for(const item of retained){assert(!path.isAbsolute(item.path)&&!item.path.split('/').includes('..'));const file=path.join(app,item.path),stat=await lstat(file);assert.equal(stat.mode&0o777,item.mode,item.path);if(item.type==='symlink'){assert(stat.isSymbolicLink());assert.equal(await readlink(file),item.linkTarget,item.path);}else{assert.equal(item.type,'file');assert(stat.isFile()&&!stat.isSymbolicLink());const digest=await hash(file);assert.equal(digest,item.sha256,item.path);observedNative.set(item.path,digest);}}
 const framework='Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework';
 assert.equal(observedNative.get(framework),pins.frameworkSha256);
 const native=path.join(app,'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native');
@@ -39,6 +51,6 @@ for(const [name,digest]of[['aux-pdf.node',pins.pdfModuleSha256],['aux-pdf.cjs',p
 assert.equal((await lstat(path.join(native,'aux-pdf.node'))).size,pins.pdfModuleBytes);
 const aux=path.join(app,'Contents/Resources/aux');
 const sources=[['daemon-sea',await sea(path.join(aux,'apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon'))],['cli-sea',await sea(path.join(aux,'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea'))],['node-development',await readFile(path.join(aux,'apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs'),'utf8')]];
-for(const [label,source]of sources)assert(source.startsWith('/* aux-cold-entry-admission-v1 */\nthrow Object.assign(new Error("Aux state identity generation 2 is quarantined; migration admission is not implemented.")'),label);
+for(const [label,source]of sources){let executable=source;if(label==='cli-sea'){assert(source.startsWith('#!/usr/bin/env node\n'));executable=source.slice('#!/usr/bin/env node\n'.length);}assert(executable.startsWith('/* aux-cold-entry-admission-v1 */\nthrow Object.assign(new Error("Aux state identity generation 2 is quarantined; migration admission is not implemented.")'),label);}
 const ui='Contents/Resources/aux/apps/extension/dist';const previous=await tree(path.join(prior,ui)),current=await tree(path.join(app,ui));assert.equal(current.length,pins.uiFiles);assert.deepEqual(current,previous);assert.equal(current.filter(row=>row.path.endsWith('.css')).length,pins.stylesheets);assert.equal(sha(JSON.stringify(current)),pins.uiInventorySha256);
-console.log(JSON.stringify({version:1,app,nativeReceiptSha256:sha(receiptBytes),compositionSha256:pins.compositionSha256,packageReceiptSha256:sha(packageBytes),frameworkSha256:pins.frameworkSha256,nativeLeafFilesCompared:receipt.appFiles.length,pdf:{moduleSha256:pins.pdfModuleSha256,moduleBytes:pins.pdfModuleBytes,loaderSha256:pins.pdfLoaderSha256,pinFileSha256:pins.pdfPinsSha256,loaded:false,extractionRepeated:false},ui:{baseline:prior,comparedFiles:current.length,stylesheets:pins.stylesheets,allBytesEqual:true,inventorySha256:sha(JSON.stringify(current)),renderedComparison:false},coldRefusals:sources.map(([label,source])=>({label,codeSha256:sha(source),firstRefusal:true,evaluated:false})),nativeOrPdfFixturesRepeated:false,appLaunched:false,entrypointsEvaluated:false,protectedOrOSOrCloudOperations:false,productionReady:false,signed:false,state2Authorized:false},null,2));
+console.log(JSON.stringify({version:1,app,nativeReceiptSha256:sha(receiptBytes),compositionSha256:pins.compositionSha256,packageReceiptSha256:sha(packageBytes),frameworkSha256:pins.frameworkSha256,nativeInputFiles:receipt.appFiles.length,nativeLeafFilesCompared:retained.length,retiredIndependentRuntime:{root:retiredRoot,exactReceiptFiles:retired.length,absent:true},pdf:{moduleSha256:pins.pdfModuleSha256,moduleBytes:pins.pdfModuleBytes,loaderSha256:pins.pdfLoaderSha256,pinFileSha256:pins.pdfPinsSha256,loaded:false,extractionRepeated:false},ui:{baseline:prior,comparedFiles:current.length,stylesheets:pins.stylesheets,allBytesEqual:true,inventorySha256:sha(JSON.stringify(current)),renderedComparison:false},coldRefusals:sources.map(([label,source])=>({label,codeSha256:sha(source),firstRefusal:true,preservedCliShebang:label==='cli-sea',evaluated:false})),nativeOrPdfFixturesRepeated:false,appLaunched:false,entrypointsEvaluated:false,protectedOrOSOrCloudOperations:false,productionReady:false,signed:false,state2Authorized:false},null,2));

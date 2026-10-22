@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "compositionSha256": null,
-  "nativeReceiptPath": null,
-  "nativeReceiptSha256": null,
-  "frameworkSha256": null,
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "nativeReceiptPath": "out/aux-owned-helper-native-build.json",
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "frameworkSha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
   "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
   "pdfModuleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
   "pdfModuleBytes": 9474752,
