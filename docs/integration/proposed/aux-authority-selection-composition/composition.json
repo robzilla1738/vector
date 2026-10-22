@@ -1,0 +1,30 @@
+{
+  "format": "aux.authority.selection.store.composition.v1",
+  "inputs": [
+    {
+      "role": "baseline",
+      "path": "docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+      "sha256": "936772ca173e49092a2d5e1a2f700de2af0a7bbe8afb556513f40f989bd9ed2b",
+      "bytes": 14174
+    },
+    {
+      "role": "candidate-recovery",
+      "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/PrivateInstallationJournalStore.swift.continuation",
+      "sha256": "94b8271061f48a10a5d88b80a6501c4060b2376a3d9aad5bf1d980eb0569383c",
+      "bytes": 1309
+    },
+    {
+      "role": "durable-selection",
+      "path": "docs/integration/proposed/aux-durable-selection/source/PrivateInstallationJournalStore.swift.continuation",
+      "sha256": "281ce1b82afc978da69c9862188629f559086455aa1525f85ddfcf0202caa5bf",
+      "bytes": 9565
+    }
+  ],
+  "output": {
+    "path": "docs/integration/proposed/aux-authority-selection-composition/source/PrivateInstallationJournalStore.swift",
+    "sha256": "2fcd2078c79f662a3da439b375cefccf4d3c0a761f682d316a5169a208a06542",
+    "bytes": 25048
+  },
+  "logicalSource": "PrivateInstallationJournalStore.swift",
+  "definitionCount": 1
+}
