@@ -115,7 +115,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569"
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
     },
     {
       "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
@@ -161,5 +161,16 @@
       "path": "docs/integration/proposed/aux-development-host/evidence/check.json",
       "sha256": "c06125cc3a00d0d37052a68aa2bde1d789beb8ef0a55393e8c3d1e55472b59f9"
     }
-  ]
+  ],
+  "optionalOSProjectionReview": {
+    "priorDispatcherSha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+    "currentDispatcherSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "flags": [
+      "AUX_MINIMAL_RUNTIME_DISPATCH",
+      "AUX_SCOPED_SECURE_STORE_DISPATCH"
+    ],
+    "optionalOSCapabilityEnabled": false,
+    "proof": "docs/integration/proposed/aux-owned-macos-utility-dispatch/verify-composition.py",
+    "review": "Exact whitespace-normalized active dispatcher source unchanged with OS declarations absent. Original compile/public fixture receipt remains historical; no signing or protected calls executed."
+  }
 }
