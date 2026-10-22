@@ -39,11 +39,11 @@
     },
     {
       "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
-      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+      "sha256": "3b19168564bad03e277efaab1e4c22e43897eb7bab516e426756144d338d7011"
     },
     {
       "path": "../aux-installation-additive-transaction/source-pins.json",
-      "sha256": "85f3fbda3dbf993cf0442246a10a9d0cfc425a0679457e36ebaf320eaf478f6f"
+      "sha256": "5114bea8c485bf8f340a3c3d3a83e21b10dd57400642b4e24655a4c679b6bbc2"
     }
   ],
   "coverage": {
