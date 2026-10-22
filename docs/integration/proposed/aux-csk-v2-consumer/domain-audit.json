@@ -1,0 +1,85 @@
+{
+  "format": "aux.dk-purpose-consumer-audit.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "symbols": {
+    "DK_SUBKEY_INFO_PREFIX": [
+      {
+        "utf8Offset": 2897422,
+        "context": "Schema,wrappedDkSchema,installationPublicKeysSchema,KEYCHAIN_IDS,DK_SUBKEY_INFO_PREFIX,DK_WRAP_INFO,init_types$15=__esmMin((()=>{init_zod(),init_config(),installationSchemeSchema$1=_enum([`p256_v1"
+      },
+      {
+        "utf8Offset": 2898348,
+        "context": "AIN_ID_PREFIX}.install.kem`,DK:`${ASIDE_KEYCHAIN_ID_PREFIX}.dk`},DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`}));function assertSupported(){if(process.platform!==`darwin`&&pro"
+      },
+      {
+        "utf8Offset": 2904546,
+        "context": "ction getPurposeInfoBytes(Cn){return new TextEncoder().encode(`${DK_SUBKEY_INFO_PREFIX}${Cn}.v1`)}function toArrayBufferBackedBytes(Cn){let ei=new Uint8Array(Cn.byteLength);return ei.set(Cn),ei}as"
+      }
+    ],
+    "DK_WRAP_INFO": [
+      {
+        "utf8Offset": 2897444,
+        "context": ",installationPublicKeysSchema,KEYCHAIN_IDS,DK_SUBKEY_INFO_PREFIX,DK_WRAP_INFO,init_types$15=__esmMin((()=>{init_zod(),init_config(),installationSchemeSchema$1=_enum([`p256_v1`,`pq_v1`]),i"
+      },
+      {
+        "utf8Offset": 2898382,
+        "context": "ASIDE_KEYCHAIN_ID_PREFIX}.dk`},DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`}));function assertSupported(){if(process.platform!==`darwin`&&process.platform!==`win32`)t"
+      },
+      {
+        "utf8Offset": 2899654,
+        "context": "ffer$1.from(ei,`base64`)),ai=await hkdfSha256(new Uint8Array(ii),DK_WRAP_INFO),oi=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12));try{let ei=ti.crypto_aead_chacha20poly1305_iet"
+      },
+      {
+        "utf8Offset": 2899814,
+        "context": "o_aead_chacha20poly1305_ietf_encrypt(Cn,new TextEncoder().encode(DK_WRAP_INFO),null,oi,ai);return{scheme:`p256_v1`,purpose:`dk`,ephemeral_public_key:toBase64(ri),nonce:toBase64(oi),cipher"
+      },
+      {
+        "utf8Offset": 2900278,
+        "context": "Sodium(),ni=fromBase64$1(ei.sharedSecret),ri=await hkdfSha256(ni,DK_WRAP_INFO),ii=fromBase64$1(Cn.nonce),ai=fromBase64$1(Cn.ciphertext);try{return ti.crypto_aead_chacha20poly1305_ietf_dec"
+      },
+      {
+        "utf8Offset": 2900438,
+        "context": "d_chacha20poly1305_ietf_decrypt(null,ai,new TextEncoder().encode(DK_WRAP_INFO),ii,ri)}finally{ni.fill(0),ri.fill(0),ii.fill(0),ai.fill(0)}}async function getNativeInstallationStatus(){ass"
+      }
+    ]
+  },
+  "purposes": [
+    {
+      "purpose": "csk",
+      "consumer": "storeLocalChromeSyncKey/saveInstallationDerivedKeyBlob/readLocalChromeSyncKey",
+      "result": "paired inactive v2 adaptation and authenticated external importer prepared"
+    },
+    {
+      "purpose": "skill-cache.<skillName>",
+      "consumer": "getOrRefreshSkillCache/readCacheEntry/writeCacheEntry",
+      "persisted": "account cache *.json.enc encryptedBlob",
+      "result": "unmigrated; do not globally switch domain"
+    },
+    {
+      "purpose": "daemon.auth.token.v2",
+      "consumer": "getTokenSigningKey/deriveSubkey",
+      "persisted": "derived key used to authenticate daemon tokens",
+      "result": "needs coordinated token auth rollover; not covered by CSK"
+    },
+    {
+      "purpose": "context-awareness.evidence.<account>",
+      "consumer": "resolveEvidenceKey/encryptEvidenceBytes/decryptEvidenceBytes",
+      "persisted": "AES-256-GCM evidence nonce(12)||tag(16)||ciphertext",
+      "result": "needs separate authenticated evidence migration and matching consumer"
+    },
+    {
+      "purpose": "pwm.auth.<account>.<incarnation>; pwm.session.<account>.<incarnation>; pmk.biometric",
+      "consumer": "excluded Vault consumers",
+      "result": "excluded product; never re-enable as part of CSK migration"
+    }
+  ],
+  "wrapping": {
+    "symbol": "DK_WRAP_INFO",
+    "consumers": [
+      "wrapDkP256 HKDF+ChaCha AAD",
+      "unwrapDkP256 HKDF+ChaCha AAD"
+    ],
+    "platform": "supplied non-macOS JS fallback; macOS uses dk-unwrap native command",
+    "result": "native installation migration separate; CSK preparation does not change wrapper or root"
+  }
+}

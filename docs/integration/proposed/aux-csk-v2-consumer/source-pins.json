@@ -1,0 +1,49 @@
+{
+  "format": "aux.csk-v2-source-adaptation.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "composedSha256": "d69b87e91e30edadaef456b63d7f4751a09ce4c997f31b6129d01b5801a3e6d4",
+  "edits": [
+    {
+      "find": "async function saveInstallationDerivedKeyBlob(Cn,ei,ti,ni,ri={}){let ii=getExpectedLocalBootstrapKeyOwner(Cn)??null,ai=readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken),oi=()=>{if((getExpectedLocalBootstrapKeyOwner(Cn)??null)!==ii)throw Error(`Account changed while storing its Sync key`);if(readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)!==ai)throw Error(`Sync generation changed while storing its Sync key`)},si=(localKeyWrites.get(ei)??Promise.resolve()).then(async()=>{oi(),await initInstallation(),await unlock();let ai=await readSecureStorageItem(ei);for(let si=0;si<2;si+=1){let ci=await encrypt(ti,ni),li={schemaVersion:1,accountId:Cn,boundUserId:ii,encryptedBlob:ci,...ri.syncGeneration!==void 0&&{syncGeneration:ri.syncGeneration}};oi(),await saveSecureStorageItem(ei,JSON.stringify(li));let ui=await readSecureStorageItem(ei);if(oi(),ui&&(!ai||ui!==ai)){si>0&&logger.warn(`[Auth] Secure storage rewrite required a retry`,{key:ei,purpose:ti});return}}throw Error(`Failed to refresh secure storage item for ${ei}.`)}),ci=si.then(()=>{},()=>{});localKeyWrites.set(ei,ci);try{await si}finally{localKeyWrites.get(ei)===ci&&localKeyWrites.delete(ei)}}",
+      "replace": "async function saveInstallationDerivedKeyBlob(Cn,ei,ti,ni,ri={}){let ii=getExpectedLocalBootstrapKeyOwner(Cn)??null,ai=readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken),oi=()=>{if((getExpectedLocalBootstrapKeyOwner(Cn)??null)!==ii)throw Error(`Account changed while storing its Sync key`);if(readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)!==ai)throw Error(`Sync generation changed while storing its Sync key`)},si=(localKeyWrites.get(ei)??Promise.resolve()).then(async()=>{oi(),await initInstallation(),await unlock();let ai=await readSecureStorageItem(ei);for(let si=0;si<2;si+=1){if(ti!==`csk`)throw Error(`Unsupported local key purpose`);let ci=encryptAuxCskV2(getDk(),ti,ni),li={schemaVersion:1,accountId:Cn,boundUserId:ii,encryptedBlob:ci,...ri.syncGeneration!==void 0&&{syncGeneration:ri.syncGeneration}};oi(),await saveSecureStorageItem(ei,JSON.stringify(li));let ui=await readSecureStorageItem(ei);if(oi(),ui&&(!ai||ui!==ai)){si>0&&logger.warn(`[Auth] Secure storage rewrite required a retry`,{key:ei,purpose:ti});return}}throw Error(`Failed to refresh secure storage item for ${ei}.`)}),ci=si.then(()=>{},()=>{});localKeyWrites.set(ei,ci);try{await si}finally{localKeyWrites.get(ei)===ci&&localKeyWrites.delete(ei)}}",
+      "count": 1
+    },
+    {
+      "find": "async function readLocalChromeSyncKey(Cn){let ei=await readSecureStorageItem(getChromeSyncKeyStorageKey(Cn));if(!ei)return null;if(supportsInstallationBackedLocalKeys()){await initInstallation(),await unlock();let{encryptedBlob:ti,owner:ni}=parseLocalBootstrapSecureStorageBlob(ei);return hasValidLocalBootstrapKeyOwner(Cn,`csk`,ni)?decrypt(`csk`,ti):null}throw Error(`Unsupported platform for Chrome Sync Key storage: ${process.platform}`)}",
+      "replace": "async function readLocalChromeSyncKey(Cn){let ei=await readSecureStorageItem(getChromeSyncKeyStorageKey(Cn));if(!ei)return null;if(supportsInstallationBackedLocalKeys()){await initInstallation(),await unlock();let{encryptedBlob:ti,owner:ni}=parseLocalBootstrapSecureStorageBlob(ei);return hasValidLocalBootstrapKeyOwner(Cn,`csk`,ni)?decryptAuxCskV2(getDk(),`csk`,ti):null}throw Error(`Unsupported platform for Chrome Sync Key storage: ${process.platform}`)}",
+      "count": 1
+    },
+    {
+      "find": "function parseLocalBootstrapSecureStorageBlob(Cn){let ei=JSON.parse(Cn),ti=localBootstrapSecureStorageBlobSchema.safeParse(ei);return ti.success?{encryptedBlob:ti.data.encryptedBlob,owner:{accountId:ti.data.accountId,boundUserId:ti.data.boundUserId},syncGeneration:ti.data.syncGeneration??null}:{encryptedBlob:encryptedBlobSchema.parse(ei)}}",
+      "replace": "function parseLocalBootstrapSecureStorageBlob(Cn){return parseAuxCskV2Record(Cn)}",
+      "count": 1
+    }
+  ],
+  "extracted": {
+    "getExpectedLocalBootstrapKeyOwner": "function getExpectedLocalBootstrapKeyOwner(Cn){return getAuthenticatedUserId(Cn)??AccountRegistry.getAccount(Cn)?.userId}",
+    "hasValidLocalBootstrapKeyOwner": "function hasValidLocalBootstrapKeyOwner(Cn,ei,ti){if(!ti)return!0;let ni=getExpectedLocalBootstrapKeyOwner(Cn);return ti.accountId!==Cn||ni&&ti.boundUserId&&ti.boundUserId!==ni?(logger.warn(`[Auth] Ignoring local bootstrap key with mismatched owner`,{accountId:Cn,authIssue:`pwm_bootstrap_owner_mismatch`,expectedUserId:ni,keyAccountId:ti.accountId,keyUserId:ti.boundUserId,purpose:ei}),!1):!0}",
+    "getPurposeInfoBytes": "function getPurposeInfoBytes(Cn){return new TextEncoder().encode(`${DK_SUBKEY_INFO_PREFIX}${Cn}.v1`)}",
+    "toArrayBufferBackedBytes": "function toArrayBufferBackedBytes(Cn){let ei=new Uint8Array(Cn.byteLength);return ei.set(Cn),ei}",
+    "deriveDkSubkey": "async function deriveDkSubkey(Cn,ei){let ti=await crypto.subtle.importKey(`raw`,toArrayBufferBackedBytes(Cn),`HKDF`,!1,[`deriveBits`]),ni=toArrayBufferBackedBytes(getPurposeInfoBytes(ei)),ri=await crypto.subtle.deriveBits({name:`HKDF`,hash:`SHA-256`,salt:/* @__PURE__ */ new Uint8Array,info:ni},ti,256);return new Uint8Array(ri)}",
+    "encryptWithDk": "async function encryptWithDk(Cn,ei,ti){let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12)),ai=getPurposeInfoBytes(ei),oi=ni.crypto_aead_chacha20poly1305_ietf_encrypt(ti,ai,null,ii,ri);return{purpose:ei,nonce:toBase64(ii),ciphertext:toBase64(oi)}}",
+    "decryptWithDk": "async function decryptWithDk(Cn,ei,ti){if(ti.purpose!==ei)throw Error(`EncryptedBlob purpose mismatch: expected \"${ei}\", got \"${ti.purpose}\"`);let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=fromBase64$1(ti.nonce),ai=fromBase64$1(ti.ciphertext),oi=getPurposeInfoBytes(ei);return ni.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}"
+  },
+  "dependencies": [
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity-legacy.mjs",
+      "sha256": "3a73270403c1cd0a2402cb530e59fb47c4e852fee3da99ab8407a2533ea7a506"
+    },
+    {
+      "path": "vendor/provided/aux-identity-json-tokens.mjs",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b"
+    }
+  ]
+}

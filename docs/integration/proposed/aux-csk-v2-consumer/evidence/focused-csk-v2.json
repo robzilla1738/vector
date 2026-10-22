@@ -1,0 +1,46 @@
+{
+  "format": "aux.csk-v2-focused-evidence.v1",
+  "baseCommit": "0d9f3cda5",
+  "exitCode": 0,
+  "scope": "inactive source adaptation and fixed synthetic DK/CSK only",
+  "runtimeGraphOriginalBrandCount": 0,
+  "originalAddonExecuted": false,
+  "securityExecuted": false,
+  "pipelineActivated": false,
+  "checks": [
+    "old payload authenticated before reseal",
+    "new envelope same CSK verified",
+    "owner/schema/generation surrounding bytes unchanged",
+    "bare ownerless v2 paired reader",
+    "wrong DK/owner/version refused",
+    "actual adapted CSK write/read roundtrip",
+    "runtime original ciphertext rejection",
+    "exact original/current composed source drift refusal"
+  ],
+  "files": [
+    {
+      "path": "source/adapt.mjs",
+      "sha256": "c3ce5b13405a363451416b8ffc7365ffdecf7980d9cf222dad64c02998186486"
+    },
+    {
+      "path": "source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "source/prepare-legacy-csk.mjs",
+      "sha256": "d9646a1c64271ce6c019beb6316c3bebaf1646ffbf0666d25c271ce5287fe26d"
+    },
+    {
+      "path": "tests/check.mjs",
+      "sha256": "1c948edbc7d1ec3ac55cb9124edf4c4343dd45dab5feb014b7e288f9379c8c7a"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba"
+    },
+    {
+      "path": "domain-audit.json",
+      "sha256": "4b0a878b695aae4b7c5ae407e899742ef2be328f34a60a706d2a6f1de08cd07c"
+    }
+  ]
+}
