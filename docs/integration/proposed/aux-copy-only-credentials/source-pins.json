@@ -1,0 +1,48 @@
+{
+  "format": "aux.captured.credential-copy.source-pins.v1",
+  "records": [
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab"
+    },
+    {
+      "path": "vendor/provided/native/dp-scope-policy.h",
+      "sha256": "639b6723b8c18cb9dd4e82ed62e5b10ca2af3c1626389661a5e8b4c8f7354699"
+    },
+    {
+      "path": "docs/integration/proposed/aux-disposable-selector-bindings-v2/review.json",
+      "sha256": "50285c5b186ee778148821a5ee133548e0cc3ef492e32fd09f5975e15e3afe46"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/evidence/secure-storage-helpers.asm",
+      "sha256": "ddffd98a2a2a9fa5c61228f657a821d7ce0cd22b887b82a8ec53872b8a526280"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift",
+      "sha256": "5a71bef07645ad034dbc9fef43705df7fe17dbf6f735133071a5768ef616d065"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/tests/main.swift",
+      "sha256": "094c25a2a38adf938ef33fff2971f4d7d7f2204345bc61effb3c6f3bf607cec4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/check.sh",
+      "sha256": "c53645449b0fdc7b92c0fb5eba26968eefee8f839e03de1a85c80d032f4fe602"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/README.md",
+      "sha256": "a5dfa2f089b96890b1cb4f9b612890796c8cb060abfd3f993f84075b8bbe426d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/evidence.json",
+      "sha256": "2cdd33e4722b11ea0f22e09d2fb3193df7c3f0d78d9753330a59c59cf16583e8"
+    }
+  ],
+  "oldSelectorsAreCandidatesNotObservedRows": true,
+  "exactOriginalOwnerGroupNeverQueried": true,
+  "effectiveHistoricalGroupOwnershipNotProven": true
+}

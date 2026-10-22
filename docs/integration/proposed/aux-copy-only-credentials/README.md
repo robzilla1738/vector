@@ -1,0 +1,29 @@
+# Captured copy-only historical Aux credential transfer
+
+This is new external native migration-tool source, not a registered runtime API or permission to access any record. It prepares exact selector candidates and transfers only explicitly captured opaque credential bytes into the new hash namespace. It never updates/deletes the source, never overwrites a target and has no original-owner/default/login-group fallback. Current browser/UI, host policy, pipeline, native checkout and packages are untouched.
+
+## What is recovered and what remains unproven
+
+The pinned original secureStorageBaseQuery uses the logical key as both service/account with an explicit supplied access group and Data Protection. The actual historical `keychain-query-map.mm` removes that original group and prefixes the **complete** service/account with `aux.<scope>.`; it does not strip the old logical suffix. Public historical disposable evidence identifies the fixed Aux-only group candidate `9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476`. Mapper group omission and public entitlements do not prove which rows currently exist, who owns them, whether the current host can access them or that writers are stopped.
+
+The binding factory therefore names this limitation: `CapturedHistoricalAuxCredentialBinding.reviewedDisposable`. Its private initializer prevents an arbitrary service/account/group selector injection. It uses only that fixed historical disposable scope/group and source-known v2 logical key grammar. A required explicit source-suffix version selects either original logical labels mapped **inside Aux scope** or Aux logical labels mapped inside that same scope. For example target logical `aux.csk_7` has candidate source `aux.<scope>.aside.csk_7` in the first version and `aux.<scope>.aux.csk_7` in the second. MCP labels retain their exact source spelling. There is no probing both versions, no source-group guessing and no unprefixed owner lookup. A future exact-scope/custody review must select and authenticate one candidate before any real capture. No actual read adapter is supplied here.
+
+Targets use the existing reviewed `aux.<scope>.secure.v2.<SHA256(logical UTF8)>` for both service/account, with the exact same explicit Aux group. The original label suffix appears only where necessary to identify historical isolated Aux source candidates; this component must not be added to the clean runtime source graph as generic compatibility access.
+
+## Actual implemented transfer
+
+`PreparedCapturedAuxCredentialCopy` privately holds at most16KiB of opaque captured payload bytes in memory. It does not parse credentials, decrypt ciphertext, regenerate keys, write secrets to disk or return them in receipts. Its versioned journal contains transaction/binding/payload hashes, byte count, phase/revision and fixed status reasons only. Hashes bind consistency, not authenticated provenance.
+
+A host must persist/read back the nonsecret draft and then intent before calling `attemptAdd`. The typed `CapturedCredentialCopyCheckpoint` checks exact canonical journal bytes; its name and API expressly do not certify fsync, file custody or user approval. This proposal deliberately provides no pretend durable store or caller-supplied all-writers Boolean. An actual reviewed coordinator must supply genuine storage/custody before activation.
+
+The boundary exposes source/target reads and **target Add only**, with no Update/Delete method. Add requires still-matching source and still-absent target. A process-local one-shot is consumed before the executor, including reentrant calls. Explicit duplicate/failure statuses block terminally. Matching actual readback verifies the copy; target/source changes or access failures block while retaining all rows. A thrown Add preserves the durable intended journal as unresolved, because it may have succeeded before returning/throwing.
+
+Restart requires the exact journal plus a new explicit source capture with the same payload hash. It cannot recover a lost secret from a hash-only journal, and it never rereads a source automatically. **Every restored instance is observation-only**, including a restored draft: a matching target can become verified without another Add or claim of who wrote it; absent target remains unresolved, never implicit retry. A previously verified target disappearing/altering blocks. Blocked instances cannot resume. There is no deletion, reset, target replacement or rollback-by-overwrite.
+
+Opaque byte equality does not establish semantic usability under a newer encrypted-payload/derivation version. Actual consumer format/crypto compatibility remains a separate gate; this component never silently reinterprets old ciphertext.
+
+## Focused verification
+
+The captured fixture compiles real separate Swift sources and uses only synthetic non-UTF8 credential bytes in a memory dictionary boundary. It covers exact source-version candidates, hashed target isolation, source preservation, one Add, reentrant refusal, matching readback, idempotent verification, failed/inaccessible/conflicting states and thrown-after-success reconstruction with zero Add replay. No original addon, Security API, owner credential/profile, OS, hardware, cloud, signing or app startup is executed. The check runs through `scripts/native-build.py` and the shared lock; compile/result status is recorded separately and must not be inferred from this source description.
+
+The final current source compiled and passed51 focused captured assertions under the shared native lock. A first46-case run passed; the only follow-up added fixed-reason journal validation plus explicit failed-Add coverage, then reran this finite fixture. No unchanged policy/family/lifecycle suites were repeated. This is captured transfer behavior, not real credential migration or authenticated row/custody proof.

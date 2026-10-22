@@ -1,0 +1,33 @@
+{
+  "format": "aux.captured.credential-copy.check.v1",
+  "actualSeparateSwiftSourcesCompiled": true,
+  "capturedAssertionsPassed": 51,
+  "serializedBy": "scripts/native-build.py and /tmp/aux-build.lock",
+  "initial46CasesPassed": true,
+  "focusedFollowup": "Fixed status-reason whitelist and explicit failed-Add capture coverage; final51 pass.",
+  "scope": "fixed historical disposable Aux only; static selector candidates, not actual rows",
+  "addOnlyTargetBoundary": true,
+  "sourceUpdateDeleteAPI": false,
+  "plainPayloadFilesystemAPI": false,
+  "uncertainAddRestart": "observation-only; exact matching target verifies, absent unresolved, never Add replay",
+  "realCredentialMigrationPerformed": false,
+  "actualSecurityCalls": false,
+  "ownerCredentialOrProfileReads": false,
+  "originalOwnerGroupLookup": false,
+  "omittedOrDefaultGroupFallback": false,
+  "originalAddonExecuted": false,
+  "signing": false,
+  "UIChanged": false,
+  "pipelineOrNativeCheckoutChanged": false,
+  "actualDurableJournalStoreImplemented": false,
+  "wholeWriterCustodyProven": false,
+  "actualEffectiveLegacyRowOwnershipProven": false,
+  "encryptedPayloadSemanticCompatibilityProven": false,
+  "remaining": [
+    "genuine exact-scope capture approval and custody",
+    "actual explicit source/target Data Protection capture/executor review",
+    "nonsecret durable checkpoint store and coordinator integration",
+    "consumer opaque-payload/crypto version compatibility",
+    "no runtime registration/activation in this slice"
+  ]
+}
