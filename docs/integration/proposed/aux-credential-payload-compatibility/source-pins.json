@@ -1,0 +1,129 @@
+{
+  "format": "aux.credential-payload-compatibility.pins.v1",
+  "daemon": {
+    "path": "out/provided-source-audit/daemon-original.mjs",
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5"
+  },
+  "functions": [
+    {
+      "name": "getPurposeInfoBytes",
+      "start": 2904478,
+      "end": 2904579,
+      "sha256": "3bb762f1a3e8ddabca10f476c81bb93c9b5457941fa70aa89080127048f2003c",
+      "source": "function getPurposeInfoBytes(Cn){return new TextEncoder().encode(`${DK_SUBKEY_INFO_PREFIX}${Cn}.v1`)}"
+    },
+    {
+      "name": "toArrayBufferBackedBytes",
+      "start": 2904579,
+      "end": 2904675,
+      "sha256": "4f99f70ccf4df938bbe64e7a748c38325448bf7a3564c3587877390eed279381",
+      "source": "function toArrayBufferBackedBytes(Cn){let ei=new Uint8Array(Cn.byteLength);return ei.set(Cn),ei}"
+    },
+    {
+      "name": "deriveDkSubkey",
+      "start": 2904675,
+      "end": 2905004,
+      "sha256": "af7a3a31ae4f342b2a0498ab215a421b745e20b729bd73fb8cdefe41892d9979",
+      "source": "async function deriveDkSubkey(Cn,ei){let ti=await crypto.subtle.importKey(`raw`,toArrayBufferBackedBytes(Cn),`HKDF`,!1,[`deriveBits`]),ni=toArrayBufferBackedBytes(getPurposeInfoBytes(ei)),ri=await crypto.subtle.deriveBits({name:`HKDF`,hash:`SHA-256`,salt:/* @__PURE__ */ new Uint8Array,info:ni},ti,256);return new Uint8Array(ri)}"
+    },
+    {
+      "name": "encryptWithDk",
+      "start": 2905004,
+      "end": 2905316,
+      "sha256": "dffc04585fff3105fba9ecd36247cd27f5e2781c3735ab0003708d5029047607",
+      "source": "async function encryptWithDk(Cn,ei,ti){let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12)),ai=getPurposeInfoBytes(ei),oi=ni.crypto_aead_chacha20poly1305_ietf_encrypt(ti,ai,null,ii,ri);return{purpose:ei,nonce:toBase64(ii),ciphertext:toBase64(oi)}}"
+    },
+    {
+      "name": "decryptWithDk",
+      "start": 2905316,
+      "end": 2905669,
+      "sha256": "d16f72c640f6e6043c4a3a476deec8bd924efc0c46f5246d79a688583310fab1",
+      "source": "async function decryptWithDk(Cn,ei,ti){if(ti.purpose!==ei)throw Error(`EncryptedBlob purpose mismatch: expected \"${ei}\", got \"${ti.purpose}\"`);let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=fromBase64$1(ti.nonce),ai=fromBase64$1(ti.ciphertext),oi=getPurposeInfoBytes(ei);return ni.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}"
+    },
+    {
+      "name": "secretKey",
+      "start": 9517423,
+      "end": 9517527,
+      "sha256": "a24101adbac7939f72cf9cd25c08c91404de8b4d9a4efe4bc0902724bbdbd7f7",
+      "source": "function secretKey(Cn,ei,ti,ni){return`${ASIDE_KEYCHAIN_ID_PREFIX}.channel.v1.u${Cn}.${ei}.${ti}.${ni}`}"
+    },
+    {
+      "name": "saveChannelSecret",
+      "start": 9517527,
+      "end": 9517631,
+      "sha256": "de6f38041dd04be998b134f8a5e30ec60e77c20e333a81912936fecac118ce9c",
+      "source": "async function saveChannelSecret(Cn,ei,ti,ni,ri){await saveSecureStorageItem(secretKey(Cn,ei,ti,ni),ri)}"
+    },
+    {
+      "name": "readChannelSecret",
+      "start": 9517631,
+      "end": 9517736,
+      "sha256": "ec1be77897c8cc9f03677256c9f91c679dd473aa9560a39cfb03ae114ae8d711",
+      "source": "async function readChannelSecret(Cn,ei,ti,ni=`bot`){return readSecureStorageItem(secretKey(Cn,ei,ti,ni))}"
+    },
+    {
+      "name": "credentialKey",
+      "start": 6011849,
+      "end": 6011903,
+      "sha256": "be44836ccd5f81ba93ff978e5cfe3f0ce50c91bc73c77a96e11e43c4b5fe9ec8",
+      "source": "function credentialKey(Cn,ei){return`mcp:${Cn}:${ei}`}"
+    },
+    {
+      "name": "credentialIndexKey",
+      "start": 6011903,
+      "end": 6011959,
+      "sha256": "36fd41da166eb6849ff77eb027afabf59a1aa1b32f102f679d3e4ad868362fe2",
+      "source": "function credentialIndexKey(Cn){return`mcp:index:${Cn}`}"
+    },
+    {
+      "name": "readCredentialIndex",
+      "start": 6012198,
+      "end": 6012460,
+      "sha256": "69c3c79f638a213c8143396d3c83ce979796517632df7bc4964cdd34d8f2a5df",
+      "source": "async function readCredentialIndex(Cn){let ei=await readSecureStorageItem(credentialIndexKey(Cn));if(!ei)return[];let ti=array(string$3().min(1).max(32)).safeParse(JSON.parse(ei));if(!ti.success)throw Error(`The MCP credential index is invalid.`);return ti.data}"
+    },
+    {
+      "name": "readCredential",
+      "start": 6012737,
+      "end": 6012996,
+      "sha256": "772bc0bbf00ad06d4618fcaceea91dfc4611bf03512d4a901d11ccdeaa887033",
+      "source": "async function readCredential(Cn,ei){let ti=await readSecureStorageItem(credentialKey(Cn,ei));if(!ti)return;let ni=mcpOAuthCredentialSchema.safeParse(JSON.parse(ti));if(!ni.success)throw Error(`Stored OAuth credential for '${ei}' is invalid.`);return ni.data}"
+    },
+    {
+      "name": "readLocalChromeSyncKey",
+      "start": 11680137,
+      "end": 11680578,
+      "sha256": "caa2e1d29ef0d6130801dfef16489b5bea9fd3bf641b78c083715ef4b1452c99",
+      "source": "async function readLocalChromeSyncKey(Cn){let ei=await readSecureStorageItem(getChromeSyncKeyStorageKey(Cn));if(!ei)return null;if(supportsInstallationBackedLocalKeys()){await initInstallation(),await unlock();let{encryptedBlob:ti,owner:ni}=parseLocalBootstrapSecureStorageBlob(ei);return hasValidLocalBootstrapKeyOwner(Cn,`csk`,ni)?decrypt(`csk`,ti):null}throw Error(`Unsupported platform for Chrome Sync Key storage: ${process.platform}`)}"
+    },
+    {
+      "name": "parseLocalBootstrapSecureStorageBlob",
+      "start": 11678701,
+      "end": 11679042,
+      "sha256": "1f367ff12430462a88fc6f0fafd23c7751dc7bb6eb492de4c51e07f533d4e988",
+      "source": "function parseLocalBootstrapSecureStorageBlob(Cn){let ei=JSON.parse(Cn),ti=localBootstrapSecureStorageBlobSchema.safeParse(ei);return ti.success?{encryptedBlob:ti.data.encryptedBlob,owner:{accountId:ti.data.accountId,boundUserId:ti.data.boundUserId},syncGeneration:ti.data.syncGeneration??null}:{encryptedBlob:encryptedBlobSchema.parse(ei)}}"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "vendor/provided/aux-identity-json-tokens.mjs",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity-legacy.mjs",
+      "sha256": "3a73270403c1cd0a2402cb530e59fb47c4e852fee3da99ab8407a2533ea7a506"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "format": "aux.credential-payload.compatibility-evidence.v1",
+  "baseCommit": "29704df5f",
+  "exitCode": 0,
+  "scope": "static composition and extracted pure consumers with fixed synthetic payloads",
+  "composedDaemonSha256": "d69b87e91e30edadaef456b63d7f4751a09ce4c997f31b6129d01b5801a3e6d4",
+  "checks": [
+    "actual composed domain gap pinned",
+    "extracted channel save/read exact roundtrip",
+    "MCP byte-copy supported subset",
+    "duplicate/unknown OAuth schema refused",
+    "CSK semantic copy refused",
+    "extracted original CSK pure JS authenticated roundtrip",
+    "changed HKDF/AAD prefix fails authentication",
+    "superficial v2 format relabel fails authentication"
+  ],
+  "originalAddonExecuted": false,
+  "securityExecuted": false,
+  "runtimeIntegrated": false,
+  "files": [
+    {
+      "path": "source/prepare.mjs",
+      "sha256": "5bc0cd904ff8ae0ad8b6a73a84c2a7903e4c76ba19f2b7125033044b68c4cc1c"
+    },
+    {
+      "path": "source/extract.mjs",
+      "sha256": "30c012d329fbea1cb368f09b88bb928e0f7262082971653a27721b5f40391e25"
+    },
+    {
+      "path": "tests/check.mjs",
+      "sha256": "da96567d02fcca1febf9d80eb30576ac5f6ce007545b75c7e4c13de978321038"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "0715d832668e62002f9acdfbb92713e2e2f57b251c66ae219dc40d5bac8b29b2"
+    }
+  ]
+}
