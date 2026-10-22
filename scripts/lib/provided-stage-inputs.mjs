@@ -4,6 +4,7 @@ export const providedStageInputs = Object.freeze([
   'scripts/stage-provided.mjs',
   'docs/integration/proposed/provided-agent-worker-revision/revision.mjs',
   'vendor/provided/agent-revisions.json',
+  'vendor/provided/aux-protocol-identity.mjs',
   'scripts/lib/provided-ui.mjs',
   'scripts/lib/provided-apps.mjs',
   'vendor/provided/daemon-adapter.mjs',

@@ -1,3 +1,4 @@
+import { createAuxDeliveryProvenance } from './aux-delivery-provenance.mjs';
 /** Assemble verified staged components into Chromium's Resources/aux layout. */
 import { constants, createReadStream } from 'node:fs';
 import { chmod, copyFile, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises';
@@ -72,7 +73,7 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
   ];
   const temporary = await mkdtemp(join(dirname(outputRoot), '.provided-resources-'));
   const report = {
-    version: 1, implementation: 'supplied', productionReady: false, finalApp: stack.finalApp,
+    version: 1, implementation: 'supplied', identityProfile: stack.identityProfile ?? 'compatibility', productionReady: false, finalApp: stack.finalApp,
     brandInputs: stack.brandInputs, adaptationInputs: stack.adaptationInputs, files: [], components: [],
     ...(stack.cloudPolicy ? { cloudPolicy: stack.cloudPolicy } : {}),
     excludedProducts: ['vault', 'password-importer'], excludedFiles: [], passwordManager: 'external-extensions',
@@ -132,12 +133,25 @@ export async function assembleProvidedResources({ stageRoot, outputRoot }) {
     }
     const provenance = join(temporary, 'provenance');
     await mkdir(provenance);
-    for (const path of ['manifest.json', 'ui/manifest.json', 'apps/manifest.json', 'distribution/manifest.json', 'computer-use/manifest.json']) {
-      const bytes = await readFile(join(stageRoot, path));
-      const target = path.replaceAll('/', '-');
-      await writeFile(join(provenance, target), bytes, { flag: 'wx' });
-      await chmod(join(provenance, target), 0o644);
-      report.files.push({ path: `provenance/${target}`, type: 'file', sha256: createHash('sha256').update(bytes).digest('hex'), mode: 0o644 });
+    const manifestPaths = { stage: 'manifest.json', ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', 'computer-use': 'computer-use/manifest.json' };
+    if (stack.identityProfile === 'aux-v1') {
+      const manifests = [];
+      for (const [role, path] of Object.entries(manifestPaths)) {
+        const bytes = await readFile(join(stageRoot, path));
+        manifests.push({ role, bytes, sha256: createHash('sha256').update(bytes).digest('hex') });
+      }
+      const delivered = createAuxDeliveryProvenance({ identityProfile: stack.identityProfile, manifests });
+      await writeFile(join(provenance, 'aux-inputs.json'), delivered.text, { flag: 'wx', mode: 0o644 });
+      report.deliveryProvenance = { sha256: delivered.sha256, manifestReferences: delivered.manifest.manifestReferences, fullAudits: 'external-source-audit' };
+      report.files.push({ path: 'provenance/aux-inputs.json', type: 'file', sha256: delivered.sha256, mode: 0o644 });
+    } else {
+      for (const path of Object.values(manifestPaths)) {
+        const bytes = await readFile(join(stageRoot, path));
+        const target = path.replaceAll('/', '-');
+        await writeFile(join(provenance, target), bytes, { flag: 'wx' });
+        await chmod(join(provenance, target), 0o644);
+        report.files.push({ path: `provenance/${target}`, type: 'file', sha256: createHash('sha256').update(bytes).digest('hex'), mode: 0o644 });
+      }
     }
     await writeFile(join(temporary, 'bundle.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
     await absent(outputRoot);

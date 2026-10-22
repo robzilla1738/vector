@@ -1,3 +1,4 @@
+import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
 /** Assemble a copied native app and the supplied resources. Never install or launch. */
 import { createHash } from 'node:crypto';
 import { createReadStream, constants } from 'node:fs';
@@ -98,6 +99,15 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   const nativeRaw = await readFile(nativeReceiptPath), native = JSON.parse(nativeRaw);
   const compositionRaw = await readFile(join(compositionRoot, 'manifest.json')), composition = JSON.parse(compositionRaw);
   const boundaryRaw = await readFile(boundaryReceiptPath), boundary = JSON.parse(boundaryRaw);
+  const stageIdentity = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8')).identityProfile ?? 'compatibility';
+  // Match actual source/SEA/Agent protocol bytes before any package copy.
+  // Historical compatibility stages lack profile declarations; only the new
+  // coordinated successor opts into this strict independent gate.
+  const identityEvidence = stageIdentity === 'aux-v1'
+    ? await verifyAuxIdentityContract({ stageRoot, composition, identityProfile: stageIdentity }) : null;
+  const visualEvidence = stageIdentity === 'aux-v1'
+    ? await assertAuxVisualAssets({ agentRoot: join(stageRoot, 'ui/agent') }) : null;
+
   if (native.version !== 1 || native.implementation !== 'supplied' || native.buildExitCode !== 0 || native.generatedKeyProbePassed !== true || native.compositionSha256 !== hash(compositionRaw) || native.app !== 'Aux.app') throw new Error('An actual matching supplied native build receipt is required');
   if (boundary.version !== 1 || boundary.implementation !== 'supplied-boundary' || boundary.buildExitCode !== 0 || boundary.mapFixturePassed !== true) throw new Error('An actual native boundary build and pure-map fixture receipt is required');
   const buildRoot = await root(native.buildRoot), nativeRoot = await root(native.nativeRoot), seed = await root(join(buildRoot, 'Aux.app'));
@@ -159,6 +169,17 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
+    if (assembled.deliveryProvenance) {
+      const paths = { stage: 'manifest.json', ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', 'computer-use': 'computer-use/manifest.json' };
+      const external = join(temporary, 'source-audit');
+      await mkdir(external);
+      for (const reference of assembled.deliveryProvenance.manifestReferences) {
+        const bytes = await readFile(join(stageRoot, paths[reference.role]));
+        if (hash(bytes) !== reference.manifestSha256 || bytes.length !== reference.bytes) throw Error('Source audit changed during assembly');
+        await writeFile(join(external, `${reference.role}.json`), bytes, { flag: 'wx', mode: 0o644 });
+      }
+    }
+
     const additions = [];
     async function add(name, destination) {
       const artifact = artifacts.get(name), target = join(resources, destination);
@@ -201,9 +222,11 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const report = {
       version: 1, implementation: 'supplied', productionReady: false, signed: false,
       app: 'Aux.app', finalApp: assembled.finalApp,
+      identityProfile: stageIdentity, ...(identityEvidence ? { identityEvidence, visualEvidence } : {}),
       ...(assembled.cloudPolicy ? { cloudPolicy: assembled.cloudPolicy } : {}),
       nativeReceiptSha256: hash(nativeRaw), compositionSha256: hash(compositionRaw), boundaryReceiptSha256: hash(boundaryRaw),
       preservationAudit: audit.stdout.trim(),
+      ...(assembled.deliveryProvenance ? { externalSourceAudit: assembled.deliveryProvenance } : {}),
       nativeFiles: retainedNativeFiles.length, nativeInputFiles: native.appFiles.length,
       retiredIndependentRuntime, suppliedResources: assembled.files.length, additions,
       sourceRoots: sources,

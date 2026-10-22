@@ -102,3 +102,14 @@
    if (!base::StartsWith(authorization, prefix) ||
        !sessions_.contains(authorization.substr(prefix.size()))) {
      return Error(401, "UNAUTHORIZED", "Browser authorization required");
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -105,7 +105,7 @@
+         authorization_(BrowserPlatform::Get().authorization()) {}
+   void Start() {
+     if (!profile_ || profile_->IsOffTheRecord() || profile_id_.empty() ||
+-        !authorization_.starts_with("AsideDaemonSessionToken ")) {
++        !authorization_.starts_with("AuxDaemonSessionToken ")) {
+       Fail();
+       return;
+     }

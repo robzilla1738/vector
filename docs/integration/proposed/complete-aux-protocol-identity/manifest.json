@@ -90,6 +90,18 @@
           "count": 2
         }
       ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "baselineSha256": "2ed50b6c244ab8fc86f6777902e90e9f6b53b0c143d4c203444625b81193808b",
+      "outputSha256": "6a6b3b05959052bd1c2a2ea6072cc29d21057820b98d1a685e766b6c941e2314",
+      "edits": [
+        {
+          "find": "AsideDaemonSessionToken",
+          "replace": "AuxDaemonSessionToken",
+          "count": 1
+        }
+      ]
     }
   ],
   "compiled": false,

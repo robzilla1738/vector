@@ -1,3 +1,4 @@
+import { applyAuxProtocolIdentity, resolveProtocolIdentity } from '../../vendor/provided/aux-protocol-identity.mjs';
 import { reviseAgentManifest } from '../../docs/integration/proposed/provided-agent-worker-revision/revision.mjs';
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { restoreProvidedWireNames } from './provided-wire.mjs';
@@ -110,7 +111,9 @@ export async function stageProvidedUi({
   identities,
   transformText,
   cloudProfile,
+  identityProfile = 'compatibility',
 }) {
+  resolveProtocolIdentity(identityProfile);
   const pinned = JSON.parse(
     await readFile(
       join(repository, 'docs/source/provided-ui-inputs.json'),
@@ -166,7 +169,7 @@ export async function stageProvidedUi({
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  const report = { version: 1, components: {} };
+  const report = { version: 1, identityProfile, components: {} };
   const mark = await readAuxMark();
   const temporary = await mkdtemp(join(dirname(destination), '.provided-ui-'));
   try {
@@ -234,6 +237,9 @@ export async function stageProvidedUi({
           const wire = restoreProvidedWireNames(wireSource, text);
           text = wire.text;
           anchors.push(...wire.anchors);
+          const protocol = applyAuxProtocolIdentity({ component, text }, identityProfile, cloudProfile);
+          text = protocol.text;
+          anchors.push(...protocol.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];
@@ -363,7 +369,7 @@ export async function stageProvidedUi({
         const manifestPath = join(temporary, component, 'manifest.json');
         const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
         if (!revisions.length || revisions.some((r, i) => r.revision !== i + 1)) throw new Error('Agent revision ledger must be consecutive');
-        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile).at(-1)});
+        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile && (review.identityProfile ?? 'compatibility') === identityProfile).at(-1)});
         const entry = files.find(f => f.path === 'manifest.json');
         entry.anchors = [...(entry.anchors ?? []), revised.anchor];
         entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];

@@ -374,6 +374,11 @@
       "bytes": 35200
     },
     {
+      "path": "assets/background-DmA5he4Z.avif",
+      "sha256": "b71efeff93942d90a7d99c6693c2c18274d804859a44becffc922b30d5ceb303",
+      "bytes": 336340
+    },
+    {
       "path": "assets/biometric-BTwCCh-C.webp",
       "sha256": "1753b4b0d95790b85040e00e3a7b77a900e269ffe3ea1789bbb2dc886f3254a2",
       "bytes": 9854
@@ -674,5 +679,5 @@
       "bytes": 1988
     }
   ],
-  "scope": "Agent visual payload only. Native geometry, rendered component behavior and final actual-app comparison remain separate checks. No owner state or credentials read."
+  "scope": "Agent visual payload only. Native geometry, rendered component behavior and final actual-app comparison remain separate checks. No owner state or credentials read. AVIF originally omitted from extension filter; added after confirming accepted app already contains identical asset."
 }

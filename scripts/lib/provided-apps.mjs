@@ -75,7 +75,7 @@ function brandPlist(bytes, path, target) {
   return Buffer.from(JSON.stringify(data));
 }
 
-export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot, cloudOptions = {} }) {
+export async function stageProvidedApps({ sourceRoots = providedAppRoots, outputRoot, cloudOptions = {}, identityProfile = 'compatibility' }) {
   const pinned = JSON.parse(await readFile(join(repository, 'docs/source/provided-app-inputs.json'), 'utf8'));
   const actual = await inventoryProvidedApps(sourceRoots);
   if (JSON.stringify(actual) !== JSON.stringify(pinned)) throw new Error('Supplied app resources differ from pinned inputs');
@@ -88,7 +88,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   await mkdir(dirname(destination), { recursive: true });
   const temporary = await mkdtemp(join(dirname(destination), '.provided-apps-'));
-  const report = { version: 1, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Guarded native/runtime and packaged acceptance required'], components: {} };
+  const report = { version: 1, identityProfile, productionReady: false, blockers: ['Faithful isolated native binding/carrier not yet installed', 'Guarded native/runtime and packaged acceptance required'], components: {} };
   try {
     for (const [component, target] of Object.entries(targets)) {
       const app = join(temporary, component, target.app), files = [], removed = [];
@@ -104,8 +104,8 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         const path = outputPath(file.path, target), kinds = [];
         let output = source;
         if (file.path === `Contents/MacOS/${target.sourceExecutable}`) {
-          executable = target.adapt(source, cloudOptions);
-          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source, cloudOptions);
+          executable = target.adapt(source, cloudOptions, identityProfile);
+          if (component === 'daemon') nodeDevelopment = buildDaemonNodeDevelopment(source, cloudOptions, identityProfile);
           output = executable.binary;
           kinds.push('identity', 'integration');
         } else if (file.path.endsWith('/Info.plist')) {
