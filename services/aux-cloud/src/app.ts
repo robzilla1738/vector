@@ -7,6 +7,7 @@ import { authRoutes, authWebhooks, profileRoutes, requireUser, type AuthVariable
 import { billingRoutes, billingWebhooks } from './billing';
 import { inferenceRoutes } from './inference';
 import { syncRoutes } from './sync';
+import { syncRecoveryRoutes } from './sync-recovery';
 import { attachmentRoutes, blobCallbackRoutes } from './attachments';
 import { maintenanceRoutes } from './maintenance';
 import { sessionSyncRoutes } from './session-sync';
@@ -36,6 +37,7 @@ app.use('*',requireUser);
 app.route('/profile',profileRoutes);
 app.route('/billing',billingRoutes);
 app.route('/',syncRoutes);
+app.route('/',syncRecoveryRoutes);
 app.route('/',sessionSyncRoutes);
 app.route('/',drive1852Routes);
 app.route('/',attachmentRoutes);

@@ -16,3 +16,11 @@ export class SyncRecoveryStore {
  const rows=await this.query('SELECT aux_apply_sync_recovery_v2($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9::jsonb,$10::jsonb) AS response',[actor.id,actor.sessionId,challenge,requestHash,options.expectedRevision??0,options.envelope?JSON.stringify(options.envelope):null,options.commitment??null,options.keyRevision??null,options.capturedKey?JSON.stringify(options.capturedKey):null,options.newWrappedKey?JSON.stringify(options.newWrappedKey):null]);if(!rows[0]?.response)throw Error('RECOVERY_STATE_CHANGED');return rows[0].response;
  }
 }
+
+/** Bounded maintenance only; encrypted recovery revisions are never expired here. */
+export async function cleanExpiredSyncRecoveryChallenges(limit=200,query:RecoveryQuery=(text,values)=>sql.query(text,values) as Promise<any[]>){
+ if(!Number.isInteger(limit)||limit<1||limit>1000)throw Error('Invalid recovery cleanup limit');
+ const rows=await query(`WITH expired AS (SELECT id FROM aux_sync_recovery_challenges_v2 WHERE expires_at<now()-interval '1 day' ORDER BY expires_at,id LIMIT $1 FOR UPDATE SKIP LOCKED)
+ DELETE FROM aux_sync_recovery_challenges_v2 c USING expired e WHERE c.id=e.id RETURNING c.id`,[limit]);
+ return {cleaned:rows.length};
+}

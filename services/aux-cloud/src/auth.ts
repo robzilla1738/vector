@@ -473,6 +473,8 @@ export async function purgeDeletedUserData(userId:string) {
   await sql`DELETE FROM sync_heads WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_objects WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_entities WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_sync_recovery_challenges_v2 WHERE user_id=${userId}`;
+  await sql`DELETE FROM aux_sync_recovery_v2 WHERE user_id=${userId}`;
   await sql`DELETE FROM sync_keys WHERE user_id=${userId}`;
   await sql`UPDATE shared_sessions SET revoked_at=COALESCE(revoked_at,now()),messages='[]'::jsonb,title='' WHERE user_id=${userId}`;
   const count=await sql`SELECT count(*) FILTER (WHERE state<>'deleted') AS remaining,max(expires_at) FILTER (WHERE expires_at>now()) AS safe_after FROM aux_attachments WHERE user_id=${userId}`;

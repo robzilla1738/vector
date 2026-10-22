@@ -195,9 +195,9 @@ function unwrap(envelope: { iv: string; ct: string; tag: string }, user: string,
 }
 syncRoutes.get('/sync/key/status', async c => {
   wrappingKey().fill(0);
-  const [row] = await sql`SELECT u.sync_generation, k.generation, k.revision FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}`;
+  const [row] = await sql`SELECT u.sync_generation, k.generation, k.revision, EXISTS (SELECT 1 FROM aux_sync_recovery_v2 r WHERE r.user_id=u.id AND r.generation=u.sync_generation) AS recovery_configured FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}`;
   if (!row) fail(404, 'NOT_FOUND', 'Account not found.');
-  return c.json({ state: row.generation == null ? 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required', syncGeneration: row.sync_generation, revision: row.revision ?? 0, custody: null, custodyMode: 'server_wrapped' });
+  return c.json({ state: row.generation == null ? row.recovery_configured ? 'device_required' : 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required', syncGeneration: row.sync_generation, revision: row.revision ?? 0, custody: null, custodyMode: 'server_wrapped' });
 });
 syncRoutes.post('/sync/key/resolve', async c => {
   const user = c.get('user').id;
@@ -206,7 +206,7 @@ syncRoutes.post('/sync/key/resolve', async c => {
   const value = randomBytes(32);
   try {
     const envelope = wrap(value, user, account.sync_generation);
-    const [row] = await sql`INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(envelope)}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id RETURNING wrapped_key, generation, revision`;
+    const [row] = await sql`WITH existing AS (SELECT wrapped_key,generation,revision FROM sync_keys WHERE user_id=${user}), created AS (INSERT INTO sync_keys (user_id,generation,wrapped_key) SELECT ${user},${account.sync_generation},${JSON.stringify(envelope)}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id=${user} AND sync_generation=${account.sync_generation}) AND NOT EXISTS (SELECT 1 FROM existing) AND NOT EXISTS (SELECT 1 FROM aux_sync_recovery_v2 WHERE user_id=${user} AND generation=${account.sync_generation}) ON CONFLICT(user_id) DO NOTHING RETURNING wrapped_key,generation,revision) SELECT * FROM existing UNION ALL SELECT * FROM created LIMIT 1`;
     if (!row || row.generation !== account.sync_generation) fail(409, 'SYNC_KEY_DEVICE_REQUIRED', 'Sync generation changed; recover encrypted browser data before enrolling a new key.');
     const resolved = unwrap(row.wrapped_key, user, row.generation);
     try { return c.json({ cskB64: resolved.toString('base64'), syncGeneration: row.generation, revision: row.revision }); }
@@ -220,7 +220,7 @@ syncRoutes.post('/sync/key/enroll', async c => {
   if (!account) fail(404, 'NOT_FOUND', 'Account not found.');
   const value = Buffer.from(payload.cskB64, 'base64');
   try {
-    const [row] = await sql`INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(wrap(value, user, account.sync_generation))}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) ON CONFLICT (user_id) DO NOTHING RETURNING generation, revision`;
+    const [row] = await sql`INSERT INTO sync_keys (user_id, generation, wrapped_key) SELECT ${user}, ${account.sync_generation}, ${JSON.stringify(wrap(value, user, account.sync_generation))}::jsonb WHERE EXISTS (SELECT 1 FROM aux_users WHERE id = ${user} AND sync_generation = ${account.sync_generation}) AND NOT EXISTS (SELECT 1 FROM aux_sync_recovery_v2 WHERE user_id=${user} AND generation=${account.sync_generation}) ON CONFLICT (user_id) DO NOTHING RETURNING generation, revision`;
     if (!row) fail(409, 'KEY_ALREADY_ENROLLED', 'A sync key already exists; resolve it instead of replacing existing encrypted data authority.');
     return c.json({ state: 'ready', syncGeneration: row.generation, revision: row.revision });
   } finally { value.fill(0); }

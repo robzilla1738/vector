@@ -12,11 +12,11 @@
     },
     {
       "path": "services/aux-cloud/src/sync-recovery-store.ts",
-      "sha256": "12838aeae1822985c66d3e8c891d4be80ac1bdadaa46b6e1a4bb5e69f0c15168"
+      "sha256": "4a89f357c1b60b51590891b78425e74545c855c83199239fc25cf47877d81c51"
     },
     {
       "path": "services/aux-cloud/src/sync-recovery.ts",
-      "sha256": "f03dccdc4ba0e4b1208a8327ea6d8c199abcf2cbe40a3fb2add5f71b94cfe432"
+      "sha256": "837e423290214632eb76fb13ee9aa15b390d74386b60710174fa92a20fbe64d8"
     },
     {
       "path": "docs/integration/proposed/aux-sync-recovery-v2/source/desktop.ts",
@@ -40,17 +40,17 @@
     },
     {
       "path": "docs/integration/proposed/aux-sync-recovery-v2/verify.mjs",
-      "sha256": "80212f9d2b0c152b79ee30130236ee9ef43aa6984dd8e1feba45905de66c1620"
+      "sha256": "8cfb30a0802cb056c609d6692aa9e4fe29cdca3fecb5df5ccda07e7f932cad21"
     }
   ],
   "contracts": [
     {
       "path": "services/aux-cloud/src/auth.ts",
-      "sha256": "79f2c9c77ac0ab885f3d945429b3618ca153ec84689c5f05b893ab1ca9bf9b12"
+      "sha256": "25ed16cfe8b825420909ec8b403ece69d3738274d48a5d1f2c868c9972230bf2"
     },
     {
       "path": "services/aux-cloud/src/sync.ts",
-      "sha256": "4f46801640a9ef71ef2e130c44963d055a6bc6a96f995b30dbe6496e0173bd9f"
+      "sha256": "8dede5a294bedba125e15d2ad308aac6ede3c6d77110251e0b7761394a40a9da"
     },
     {
       "path": "services/aux-cloud/src/db.ts",
@@ -58,7 +58,7 @@
     },
     {
       "path": "services/aux-cloud/src/app.ts",
-      "sha256": "bb792ef3fe46c78315aa6f36ff96f274b443241ce0bf4b79429dfc2d8ec75b52"
+      "sha256": "918b51af98cc40934e7622700cad1f505e72a0242ee84140dfe3fe99e2521f7d"
     },
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
@@ -482,6 +482,32 @@
       {
         "id": "zod/v4/locales/zh-TW.js",
         "sha256": "01d9b119e318d8b9f1a8fa720d06424457429425a61d0730984b750e6a5edf7d"
+      }
+    ]
+  },
+  "localBackendIntegration": {
+    "format": "aux.sync-recovery.local-backend-integration.v2",
+    "priorPreparationCommit": "666f86efc",
+    "deployed": false,
+    "realDatabaseMigrated": false,
+    "clientActivated": false,
+    "sharedGuardsApplied": true,
+    "files": [
+      {
+        "path": "services/aux-cloud/src/maintenance.ts",
+        "sha256": "013c5d438f1077b6d099af63a3bdf3d6c28df47e6fb49117b474cb15bde611ca"
+      },
+      {
+        "path": "services/aux-cloud/src/schema-manifest.json",
+        "sha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10"
+      },
+      {
+        "path": "services/aux-cloud/migrations/012-sync-recovery-v2.sql",
+        "sha256": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
+      },
+      {
+        "path": "services/aux-cloud/src/sync-recovery-integration.test.ts",
+        "sha256": "1a456b7fff528a90afc279c817ad0247f445cf679ac6db96294d2e732df77cd4"
       }
     ]
   }

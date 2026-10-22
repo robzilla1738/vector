@@ -1,0 +1,20 @@
+{
+  "format": "aux.sync-recovery.backend-integration.evidence.v2",
+  "fixture": "services/aux-cloud/src/sync-recovery-integration.test.ts",
+  "sessionId": 95698,
+  "exitCode": 0,
+  "fixtureSha256": "1a456b7fff528a90afc279c817ad0247f445cf679ac6db96294d2e732df77cd4",
+  "scope": "Actual mounted app and12 actual migration files, memory-only Neon custom transport, genuine synthetic HS256 JWT/live session/P256 proof; no auth bypass",
+  "migrationInstallerException": "Only pgcrypto CREATE EXTENSION directive omitted; built-in gen_random_uuid retained",
+  "externalNetwork": "global fetch unconditional denial; Neon custom transport onlymemory PG",
+  "notExecuted": [
+    "real DB migration",
+    "deployment",
+    "Clerk networking",
+    "native key publisher",
+    "desktop UI",
+    "PQ provider"
+  ],
+  "currentBackendSourcesIntegrated": true,
+  "clientActivated": false
+}

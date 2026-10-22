@@ -1,4 +1,4 @@
-/** Unmounted Aux-v2 browser-data recovery. Auth and installation proof are separate. */
+/** Aux-v2 browser-data recovery. Auth and installation proof are separate. */
 import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import {Hono} from 'hono';import {bodyLimit} from 'hono/body-limit';import {HTTPException} from 'hono/http-exception';import {z} from 'zod';
 import {requireUser,rateLimit,type AuthVariables} from './auth';
