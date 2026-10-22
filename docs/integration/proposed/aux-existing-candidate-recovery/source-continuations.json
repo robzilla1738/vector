@@ -5,9 +5,9 @@
       "baseline": "docs/integration/proposed/aux-native-four-row-preparation/source/CapturedInstallation.swift",
       "baselineSha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694",
       "successor": "docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift",
-      "successorSha256": "185d2ec497dbdcad54d71e26e6402f97bfc22306fcef9c0874606dad6b1ff6ae",
+      "successorSha256": "d97d273440bd5c4573e7a41da5f9cc769fde66f87fae48d6ebfb84d722126ca5",
       "continuation": "docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift.continuation",
-      "appendedBytes": 2594,
+      "appendedBytes": 7690,
       "patch": "docs/integration/proposed/aux-existing-candidate-recovery/CapturedInstallation.swift.patch"
     },
     {

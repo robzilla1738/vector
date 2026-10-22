@@ -146,3 +146,53 @@ func recoverSoftwareP256Installation(_ rows:CapturedInstallationRows,archive:Ins
     guard try migrationCandidateDigest(candidate)==expectedCandidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}
     return candidate
 }
+
+// COMPILE-ONLY explicit hardware lane; never selected by a software fallback.
+func recoverEnclaveP256Installation(_ rows:CapturedInstallationRows,archive:InstallationCandidateArchive,expectedCandidateSha256:String,verificationChallenge:Data)throws->PreparedInstallationCandidate {
+    guard archive.candidateSha256==expectedCandidateSha256,
+          case .complete(let snapshot)=inspectCapturedInstallation(rows),snapshot.authorityMetadata.scheme == .p256,snapshot.authorityMetadata.storage == .secureEnclave,
+          !verificationChallenge.isEmpty,verificationChallenge.count<=65_536 else{throw InstallationCandidateRecoveryError.wrongBinding}
+    func digest(_ bytes:Data)->String{SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined()}
+    let originals=["metadata":snapshot.metadataBytes,"signing":snapshot.signingBytes,"kem":snapshot.kemBytes,"wrappedRoot":snapshot.wrappedBytes]
+    guard originals.mapValues(digest)==archive.originalRowHashes else{throw InstallationCandidateRecoveryError.originalChanged}
+    let signing=try ExistingP256SigningAuthority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.signingBytes,expectedPublicKey:archive.signingPublicKey)
+    let kem=try ExistingP256Authority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.kemBytes,expectedPublicKey:archive.kemPublicKey)
+    guard try signing.verifies(signature:signing.signature(for:verificationChallenge),challenge:verificationChallenge)else{throw EnvelopePortError.authorityMismatch}
+    let channel:LegacyInstallationChannel=archive.sourceChannel == "normal" ? .normal:.canary
+    let legacy=try P256DkEnvelope(json:snapshot.wrappedBytes),replacement=try P256DkEnvelope(json:archive.wrappedRootV2)
+    guard replacement.version == .auxV2 else{throw EnvelopePortError.unsupportedFormat}
+    var old=try openP256Envelope(legacy,authority:kem,context:channel.context)
+    defer{old.resetBytes(in:0..<old.count)}
+    var new=try AuxNativeEnvelopeV2.open(replacement,authority:kem)
+    defer{new.resetBytes(in:0..<new.count)}
+    guard old.count==32,new.count==32,zip(old,new).reduce(UInt8(0),{$0 | ($1.0 ^ $1.1)})==0 else{throw EnvelopePortError.rootMismatch}
+    let candidate=PreparedInstallationCandidate(snapshot:snapshot,channel:channel,signingPublic:signing.publicKey,kemPublic:kem.publicKey,wrapped:archive.wrappedRootV2)
+    guard try migrationCandidateDigest(candidate)==expectedCandidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}
+    return candidate
+}
+
+// COMPILE-ONLY macOS26 MLDSA65 + MLKEM768 existing-authority recovery.
+// Uses original direct KEM output for ChaChaPoly; no P256 HKDF substitution.
+@available(macOS 26.0, *)
+func recoverPqInstallation(_ rows:CapturedInstallationRows,archive:InstallationCandidateArchive,expectedCandidateSha256:String,verificationChallenge:Data)throws->PreparedInstallationCandidate {
+    guard archive.candidateSha256==expectedCandidateSha256,
+          case .complete(let snapshot)=inspectCapturedInstallation(rows),snapshot.authorityMetadata.scheme == .pq,snapshot.authorityMetadata.storage == .secureEnclave,
+          !verificationChallenge.isEmpty,verificationChallenge.count<=65_536 else{throw InstallationCandidateRecoveryError.wrongBinding}
+    func digest(_ bytes:Data)->String{SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined()}
+    let originals=["metadata":snapshot.metadataBytes,"signing":snapshot.signingBytes,"kem":snapshot.kemBytes,"wrappedRoot":snapshot.wrappedBytes]
+    guard originals.mapValues(digest)==archive.originalRowHashes else{throw InstallationCandidateRecoveryError.originalChanged}
+    let signing=try ExistingPqSigningAuthority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.signingBytes,expectedPublicKey:archive.signingPublicKey)
+    let kem=try ExistingPqAuthority(metadata:snapshot.authorityMetadata,privateRepresentation:snapshot.kemBytes,expectedPublicKey:archive.kemPublicKey)
+    guard try signing.verifies(signature:signing.signature(for:verificationChallenge),challenge:verificationChallenge)else{throw EnvelopePortError.authorityMismatch}
+    let channel:LegacyInstallationChannel=archive.sourceChannel == "normal" ? .normal:.canary
+    let legacy=try PqDkEnvelope(json:snapshot.wrappedBytes),replacement=try PqDkEnvelope(json:archive.wrappedRootV2)
+    guard replacement.version == .auxV2 else{throw EnvelopePortError.unsupportedFormat}
+    var old=try kem.open(legacy,context:channel.context)
+    defer{old.resetBytes(in:0..<old.count)}
+    var new=try AuxNativePqEnvelopeV2.open(replacement,authority:kem)
+    defer{new.resetBytes(in:0..<new.count)}
+    guard old.count==32,new.count==32,zip(old,new).reduce(UInt8(0),{$0 | ($1.0 ^ $1.1)})==0 else{throw EnvelopePortError.rootMismatch}
+    let candidate=PreparedInstallationCandidate(snapshot:snapshot,channel:channel,signingPublic:signing.publicKey,kemPublic:kem.publicKey,wrapped:archive.wrappedRootV2)
+    guard try migrationCandidateDigest(candidate)==expectedCandidateSha256 else{throw InstallationCandidateRecoveryError.wrongBinding}
+    return candidate
+}

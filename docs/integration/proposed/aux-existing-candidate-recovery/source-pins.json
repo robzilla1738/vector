@@ -7,7 +7,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/CapturedInstallation.swift.patch",
-      "sha256": "b928c08e09bfd268b24970c5b7ed4d036d40e8d217aaf5c1548456e971555a2b"
+      "sha256": "f59ec9b1291b973516958300fcd9aaa884244025606f7ca928777f8c52783ae5"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/PrivateInstallationJournalStore.swift.patch",
@@ -15,7 +15,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/README.md",
-      "sha256": "0f5e7bfcc59ea3152eec421593266f1909714421eeeb9671da5e449300708686"
+      "sha256": "dc3c30a3120c6067e97d4448a094dea226223afa1dade91097da1fffc9d54f02"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/check.mjs",
@@ -23,7 +23,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source-continuations.json",
-      "sha256": "9f793a1215ffc3b1b2adc2b28ff9e661da7113ed24173c34cd50f6393f9b2277"
+      "sha256": "042696eb78c83efa05a08b6c2169dc5aa4f62f7372298f12e8e0ec5c4a6ebe94"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift",
@@ -35,11 +35,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift",
-      "sha256": "185d2ec497dbdcad54d71e26e6402f97bfc22306fcef9c0874606dad6b1ff6ae"
+      "sha256": "d97d273440bd5c4573e7a41da5f9cc769fde66f87fae48d6ebfb84d722126ca5"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift.continuation",
-      "sha256": "4af997b729d0e07c82bd7b2c91ae70da3876c0d14131e11ccfdd807fd0c30e61"
+      "sha256": "2281ca911b560332fc25822f954905028ab8278690485f347315a62cf7477825"
     },
     {
       "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/InstallationCandidateArchive.swift",
@@ -108,6 +108,10 @@
     {
       "path": "docs/integration/proposed/aux-existing-installation-step-caller/source-pins.json",
       "sha256": "29b2d77dacb837e777b1157bda22adfa057fe6b9ec0032191b3fc19f5b308de8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-existing-candidate-recovery/typecheck-hardware.mjs",
+      "sha256": "f597c97c89d5b4a6dfc2ae4b95ee67933ceebab33d9490fefd133f09565a32e4"
     }
   ]
 }
