@@ -1,0 +1,16 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -2010,8 +2010,12 @@
+     // buttons, inside the continuous window header. A window-radius cutout at
+     // that interior edge leaves a material wedge above the sidebar toggle.
+     // Floating hover panels reserve no width and round their own surface.
++    // During collapse the sidebar moves below this row before its reserved
++    // width reaches zero. Do not retain a corner for a surface no longer beside
++    // the toolbar; use the same frame's recovered top-offset geometry.
+     toolbar_corners[CornerOrientation::kTopLeading] =
+-        layout_data_->horizontal_layout.vertical_tab_strip_width > 0
++        layout_data_->horizontal_layout.vertical_tab_strip_width > 0 &&
++                layout_data_->vertical_tab_strip_animation.top_offset == 0
+             ? toolbar_background->GetWindowCorner(true)
+             : CustomCornersBackground::Corner{};
+     toolbar_corners[CornerOrientation::kTopTrailing] =
