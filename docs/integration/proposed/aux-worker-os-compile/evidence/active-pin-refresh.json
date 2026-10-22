@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "baseCommit": "d3b72ce4b",
+  "priorActiveWorkerPinsSHA256": "003656c478db4123f00cb5f598bc9ed093a0dc5a589aa7d3553a0f7800f54b7c",
+  "currentActiveWorkerPinsSHA256": "0e6ae48ac8e15f22c85ee6276d0e3d692a584790180a6816073a034b6cfaffdd",
+  "reviewedSourceChanges": [
+    {
+      "path": "docs/integration/proposed/aux-development-host/build.sh",
+      "beforeSHA256": "543012ef79d269920565f4002a1027791be1d3e41288c620564065ee2d0e67d0",
+      "afterSHA256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "beforeSHA256": "d1d9373a54e5fcc8a7114a5f388d752aa6c932d19ce963755942ac844ad83478",
+      "afterSHA256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
+    }
+  ],
+  "newActualCompilerUnitsPinned": [
+    "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+    "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+    "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+    "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift"
+  ],
+  "historicalLifecycleAndCompileReceiptsChanged": false
+}

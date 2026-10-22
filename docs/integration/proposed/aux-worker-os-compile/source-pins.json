@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "baseCommit": "d3b72ce4b",
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/check.mjs",
+      "sha256": "078217f4f80246100e5222c37cd34312cdf41670a7499ceb4a2e81fe640c1705"
+    },
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/README.md",
+      "sha256": "d44a496ce10f786ace0f203f192f5561e84df8f995082b7c496b43aaaa3daada"
+    },
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/evidence/active-pin-refresh.json",
+      "sha256": "dbf89c57418480c76e67a754ca87e73968500a0bdbb7a69f899d327a5be75ee9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/evidence/compile-only.json",
+      "sha256": "5df40b857ce38b023e53d2023ae0fb95509a9b12000ff9676fa062ba7437aa3d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/evidence/compile.log",
+      "sha256": "f2833139d9b31ad51bdcc7f2e92d062247af6d091882f9a836d455578d12f3b4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-worker-os-compile/evidence/production-source-inputs.json",
+      "sha256": "227af28d5e9a1417e44c4a894aaa9812db4230a0aad5b341213621a6b9f6f6f3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source-pins.json",
+      "sha256": "0e6ae48ac8e15f22c85ee6276d0e3d692a584790180a6816073a034b6cfaffdd"
+    }
+  ]
+}

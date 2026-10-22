@@ -1,6 +1,6 @@
 {
   "format": "aux.development.worker.host.source.v1",
-  "baseCommit": "b74056977",
+  "baseCommit": "d3b72ce4b",
   "requiredOSCustodyCommit": "b8c579a65",
   "files": [
     {
@@ -33,7 +33,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
-      "sha256": "543012ef79d269920565f4002a1027791be1d3e41288c620564065ee2d0e67d0"
+      "sha256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
@@ -41,7 +41,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
-      "sha256": "d1d9373a54e5fcc8a7114a5f388d752aa6c932d19ce963755942ac844ad83478"
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
@@ -170,6 +170,22 @@
     {
       "path": "docs/integration/proposed/aux-development-worker-host/tests/check-build-modes.mjs",
       "sha256": "e5cd1cb730ccbfb787b7293313495857d91f6141f0c3dbbf59dfee652df7fba9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
     }
   ],
   "reviewedDependencyUpdate": {
@@ -182,5 +198,11 @@
     ],
     "reason": "Explicit signed optional-PDF image policy successor plus unconditional pure OS result compiler dependency; actual composed production-only compile, no lifecycle rerun.",
     "historicalUnexecutedPublicFixtureNote": "Parent policy proposal added captured PDF-policy cases in b74056977; this dependency is pinned for source-list consistency but not compiled/executed by the composed production-only mode."
+  },
+  "requiredOSProducerCommit": "d3b72ce4b",
+  "composedProductionEvidence": {
+    "path": "docs/integration/proposed/aux-worker-os-compile/evidence/compile-only.json",
+    "sha256": "5df40b857ce38b023e53d2023ae0fb95509a9b12000ff9676fa062ba7437aa3d",
+    "historicalLifecycleEvidenceUpdated": false
   }
 }
