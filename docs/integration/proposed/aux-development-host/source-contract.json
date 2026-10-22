@@ -1,0 +1,135 @@
+{
+  "format": "aux.development.host.source-contract.v1",
+  "records": [
+    {
+      "path": "vendor/provided/native/dp-scope-policy.h",
+      "sha256": "639b6723b8c18cb9dd4e82ed62e5b10ca2af3c1626389661a5e8b4c8f7354699",
+      "anchors": [
+        {
+          "anchor": "kDpProbeHome",
+          "count": 1
+        },
+        {
+          "anchor": "kDpProbeScope",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a",
+      "anchors": [
+        {
+          "anchor": "AuxNativeBoundaryValidate",
+          "count": 1
+        },
+        {
+          "anchor": "Aux native query boundary is not active",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "a7f5e0c0c58c144bc5901f15a8786c034ffb55873408d7a8a7f8129479b95f35",
+      "anchors": [
+        {
+          "anchor": "setenv(\"DYLD_INSERT_LIBRARIES\", boundary.c_str(), 1)",
+          "count": 1
+        },
+        {
+          "anchor": "execv(sea.c_str(), arguments.data())",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1",
+      "anchors": [
+        {
+          "anchor": "AuxAttachOwnedDispatcher",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
+      "anchors": [
+        {
+          "anchor": "static func runtime(terminal:AuxRuntimeCapturedCommandContext",
+          "count": 1
+        },
+        {
+          "anchor": "runtimeAdmissionVerified=false",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+      "anchors": [
+        {
+          "anchor": "init(scopedTerminal:ScopedAuxCommandContext)",
+          "count": 1
+        },
+        {
+          "anchor": "deinit{AuxCommandDispatcherRegistry.shared.closeOwner(handle)}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecCode.h",
+      "sha256": "293ccef2de6c872a4f5a4862a74bf96a9ade0f897f898813cd33e8e1d00459c4",
+      "anchors": [
+        {
+          "anchor": "SecCodeValidateFileResource",
+          "count": 2
+        },
+        {
+          "anchor": "This path is relative to the resource base",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCodeInfoPList",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecStaticCode.h",
+      "sha256": "4647531b672952064d7d014057c5147722babb29aa0ab6d11b8fbd45b3fde532",
+      "anchors": [
+        {
+          "anchor": "kSecCSStrictValidate = 1 << 4",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCSCheckNestedCode = 1 << 3",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCSRestrictSymlinks = 1 << 7",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CSCommon.h",
+      "sha256": "342063183c1091d94a174b5c8e9fe9623e7bd423ed74d02dbf508dc5ec12b56a",
+      "anchors": [
+        {
+          "anchor": "kSecCSNoNetworkAccess = 1 << 29",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCodeSignatureRuntime = 0x10000",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

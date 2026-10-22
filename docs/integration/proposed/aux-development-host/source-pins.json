@@ -1,0 +1,165 @@
+{
+  "format": "aux.development.host.pins.v1",
+  "files": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CSCommon.h",
+      "sha256": "342063183c1091d94a174b5c8e9fe9623e7bd423ed74d02dbf508dc5ec12b56a"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecCode.h",
+      "sha256": "293ccef2de6c872a4f5a4862a74bf96a9ade0f897f898813cd33e8e1d00459c4"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecStaticCode.h",
+      "sha256": "4647531b672952064d7d014057c5147722babb29aa0ab6d11b8fbd45b3fde532"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/js_native_api.h",
+      "sha256": "8808ef8899a1691411928ef5dd7dae0537aedc93d3a34e223b2d89692e79c788"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/js_native_api_types.h",
+      "sha256": "c12406a8c0036aefdb66b98065fc88e2e7a053c1f274deef33af6c26c099b933"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api_types.h",
+      "sha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00"
+    },
+    {
+      "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostImports.cc",
+      "sha256": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/README.md",
+      "sha256": "7250e12077725f2b72b0d767f5c8cb17a2127d73e849cf951d14968626fee555"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/build.sh",
+      "sha256": "df6b9637777576e710606472291453bb80be13ce04a9f2712bc6d2ab45800ac3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/check.mjs",
+      "sha256": "6280c9908559e58a1c267c2cdaa291ac3a1a062c818a6eca3a0eadfee7554eeb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/public-code-review.json",
+      "sha256": "0318bc51e878ad5607a69ad26438656095129586f08c0b3f78cd3b59aabd81cc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source-contract.json",
+      "sha256": "b8a4296ce9bd7e0633f3f8e1f7d578ce85e69d0f22f43fc9237c46d32ad18cbf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "93f586278d25325221f562089a08ba8db12f8b97af63b531abbf6f4f9a3c50df"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "d1d9373a54e5fcc8a7114a5f388d752aa6c932d19ce963755942ac844ad83478"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "8482d39f0c0a641fe72b97feb25e08e1267a815f62dde503023b4110472e7cdf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
+      "sha256": "9ebd16d6f2d05ea2cf800d83063ef6a4858dbaa9ee5be3c25b1280156767af10"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.h",
+      "sha256": "c3a88b6b6a8b4492e0853f1e0d074fd805c19dd4fd720a489bf347b55af17c47"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/tests/main.swift",
+      "sha256": "33b0901ab2ce132b5b5ec1109b2b0f312de97460c4abf8fa7f3001faa2192f96"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "92cb838bb8c99dcc8501906cec93ecbef6e2a3ed38ea52e0f99f909cbf8d171e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
+      "sha256": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce"
+    },
+    {
+      "path": "scripts/native-build.py",
+      "sha256": "8d42831527cd7418638139245bec654daab90b5e277f726fe522ad7dead993cb"
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "a7f5e0c0c58c144bc5901f15a8786c034ffb55873408d7a8a7f8129479b95f35"
+    },
+    {
+      "path": "vendor/provided/native/dp-scope-policy.h",
+      "sha256": "639b6723b8c18cb9dd4e82ed62e5b10ca2af3c1626389661a5e8b4c8f7354699"
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/verify.mjs",
+      "sha256": "3843191078ef7b05d9463550f1fed1905478d1eab73db17e39a6f260a6333ccf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
+      "sha256": "8e19daa7066e69d6cf80df0b64cb1e74829e6c4b70128259b91f0db0e687ce39"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/evidence/check.json",
+      "sha256": "c06125cc3a00d0d37052a68aa2bde1d789beb8ef0a55393e8c3d1e55472b59f9"
+    }
+  ]
+}

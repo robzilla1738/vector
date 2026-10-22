@@ -1,0 +1,49 @@
+{
+  "format": "aux.development.public-code-review.v1",
+  "readOnlyCodeSignatureDisplay": true,
+  "privateKeysRead": false,
+  "keychainCallsPerformed": false,
+  "signingPerformed": false,
+  "provisioningPerformed": false,
+  "artifactRecords": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-runtime-envelope/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier",
+      "sha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1",
+      "displayOnly": "Executable=/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-runtime-envelope/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier\nIdentifier=aux-native-carrier\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20400 size=747 flags=0x20002(adhoc,linker-signed) hashes=20+0 location=embedded\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nSealed Resources=none\nInternal requirements=none\n",
+      "entitlements": {},
+      "displayStatus": 0,
+      "entitlementDisplayStatus": 0,
+      "executed": false
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-runtime-envelope/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "4fe2e05ec0cbd55f7b10f606158d93f70bec73b45bc6cce954ddf8b807a82d58",
+      "displayOnly": "Executable=/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-runtime-envelope/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli\nIdentifier=aux-cli-launcher\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20400 size=809 flags=0x20002(adhoc,linker-signed) hashes=22+0 location=embedded\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nSealed Resources=none\nInternal requirements=none\n",
+      "entitlements": {},
+      "displayStatus": 0,
+      "entitlementDisplayStatus": 0,
+      "executed": false
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-consistent-signed-v589/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "b127f7ff42a84af3163cc9bde180663a50310ff3e2ccea642f97a68e49fd9b45",
+      "displayOnly": "Executable=/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-consistent-signed-v589/Aux Daemon.app/Contents/MacOS/aux-daemon\nIdentifier=dev.aux.browser.daemon\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=308770 flags=0x10000(runtime) hashes=9638+7 location=embedded\nSignature size=4785\nAuthority=Apple Development: Robert Courson (68DV3N28DS)\nAuthority=Apple Worldwide Developer Relations Certification Authority\nAuthority=Apple Root CA\nSigned Time=Oct 21, 2026 at 12:00:51\u202fPM\nInfo.plist entries=12\nTeamIdentifier=9F2JXY8TCK\nRuntime Version=15.5.0\nSealed Resources version=2 rules=13 files=140\nInternal requirements count=1 size=188\nTotal signatures=1\nChosen signature=1\n",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "com.apple.security.cs.allow-dyld-environment-variables": true,
+        "com.apple.security.cs.allow-jit": true,
+        "com.apple.security.cs.allow-unsigned-executable-memory": true,
+        "com.apple.security.cs.disable-library-validation": true,
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "displayStatus": 0,
+      "entitlementDisplayStatus": 0,
+      "executed": false,
+      "leafCertificateSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+      "leafCertificateSha1": "47aca5d1cfadd21cfedc589b4deed6e2b7a96d90"
+    }
+  ]
+}
