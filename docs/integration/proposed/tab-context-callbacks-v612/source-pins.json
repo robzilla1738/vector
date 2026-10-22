@@ -1,0 +1,56 @@
+[
+  {
+    "path": "assets/browser-binding-CzDmxQNA.js",
+    "sourceSha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b",
+    "outputSha256": "04993ed2c4d50c2810d19f4d4f28562e2a8f3b981423e9c199c66808ce7412bf",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "4fb7d71a0b8016d80e7c3b00ff38e41d188b0abc05af3db924cab7e98eec5a24"
+      },
+      {
+        "count": 2,
+        "findSha256": "e2da0ff3e321e8b621af285ba86f96279efe55b0abed545c72410fd35d88eb95"
+      },
+      {
+        "count": 1,
+        "findSha256": "24f7a0f93002fcda77fcd29b0b4b7133b955171bc09081eefe48dd5ef830e368"
+      },
+      {
+        "count": 1,
+        "findSha256": "bae21bc75f6feac60feea9e4044d3dcb163c035ca0f833e38b814386ae4dd808"
+      },
+      {
+        "count": 1,
+        "findSha256": "4fb7d71a0b8016d80e7c3b00ff38e41d188b0abc05af3db924cab7e98eec5a24"
+      },
+      {
+        "count": 1,
+        "findSha256": "73bbae9cab6389cc5705bbb8f82c4763769addb36fb572bae3c9e4c448f80ad7"
+      },
+      {
+        "count": 1,
+        "findSha256": "3f48c83d44ec9ac893dba26f12bb597e22bf6c6301013972a7a31d87c814c55f"
+      },
+      {
+        "count": 1,
+        "findSha256": "efe77de28bbf7faf83a9639cdb2abe3e858b9e6e0f89e71477f13587f2e782b3"
+      }
+    ]
+  },
+  {
+    "path": "assets/use-tab-context-Bi3TKsrh.js",
+    "sourceSha256": "28ee730bae99806ad944aa002072acf9149c6fc93bdb10874e4d7fed4e301ab6",
+    "outputSha256": "f2b81c75e76ed171b1c4eb14ca3a05fb59f1151e3228dbf2a7ab25dd9c4f5700",
+    "anchors": [
+      {
+        "count": 1,
+        "findSha256": "4b94d83ed758e23d2de0d1f4d74416b8c96a9e745a04d0f9ab9a13afab87e044"
+      },
+      {
+        "count": 1,
+        "findSha256": "4ed09465ad62b20ccba354556d28185522d486df443266a168722d0d1f752126"
+      }
+    ]
+  }
+]

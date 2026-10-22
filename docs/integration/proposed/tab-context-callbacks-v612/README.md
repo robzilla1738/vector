@@ -1,0 +1,15 @@
+# Late tab-context callbacks and draft ownership
+
+Bounded source review found a concrete asynchronous ownership bug: supplied browser-binding P starts m() for every tab activation/update/removal, then publishes every result even when a newer request completed or the subscription was removed. The initial hook read can also overwrite a newer event result. With stable per-tab draft keys, a stale context can select an old tab's draft after a newer tab is already active. The shared cached attachment l can independently be overwritten by an older m() completion.
+
+The existing provided-draft-flush transform now applies exact anchors to those original functions: monotonically numbered requests, unsubscribe lifetime flag, latest-only shared snapshot cache, initial-load suppression once an observed update arrives, and effect cleanup guards. The selected context shape, target IDs, native APIs, file serialization, UI and original profile partitions are unchanged. No profile or account is migrated by this change.
+
+Root integration: cherry-pick production transform plus evidence; existing stage imports/provenance suffice. Allow the additional exact leaf `agent/assets/use-tab-context-Bi3TKsrh.js`; browser-binding is already allowed. No native rebuild is needed for these JS changes, only the combined restage/package. This lane changed no shared native checkout or manifests.
+
+One focused source check executes the transformed supplied subscription, snapshot function and full-context hook with deferred promises. It completes old and new reads out of order, unsubscribes before completion, returns an initial load after a newer event, and completes after unmount. Only the live newest context is published; the cached attachment remains newest. Complete adapted modules parse. Source/output hashes and anchor counts are recorded in source-pins.json. No synthetic UI component or replacement backend is used.
+
+## Remaining active work verification
+
+No additional concrete account-substitution bug was found in approval handling. Supplied confirmation and permission mutations capture original accountId/sessionId/toolCallId/suspensionId; query cache updates use those original IDs. Streaming-client dispose closes its view socket, while interrupt remains a separate explicit command. Native transaction admission continues to own active Actor/contextual task safety and may refuse a profile transfer. We do not weaken those guards or treat draft persistence as task migration proof.
+
+Actual checks still requiring an owner-configured working provider (the previous key was revoked): switch away/back during a harmless running response and observe allowed transfer or clear safe refusal; reopen the same response and verify server progress resumes under the original account; return to a genuine approval/question and confirm it remains tied to its original session/tool call; interrupt or answer only an intentionally created disposable task. Pending-file, quota recovery, no-argument native profile resolution and the asynchronous context checks themselves require no paid provider. None of the live inference/approval operations were executed by this lane.

@@ -23,6 +23,21 @@ export function transformProvidedDraftFlush({ component, path, text }) {
     }
     return first;
   }
+  if (path === 'assets/use-tab-context-Bi3TKsrh.js') {
+    const edits = [
+      ['(0,e.useEffect)(()=>(m().then(n=>{u(n)}),b(n=>{u(n)})),[])',
+       '(0,e.useEffect)(()=>{let auxLive=!0,auxObserved=!1;const auxOff=b(n=>{auxObserved=!0,auxLive&&u(n)});m().then(n=>{auxLive&&!auxObserved&&u(n)});return()=>{auxLive=!1,auxOff()}},[])'],
+      ['m().then(T);const S=b(T);',
+       'let auxObserved=!1;const S=b(r=>{auxObserved=!0,T(r)});m().then(r=>{auxObserved||T(r)});'],
+    ];
+    const anchors = [];
+    for (const [find,replacement] of edits) {
+      if (text.split(find).length - 1 !== 1) throw new Error('Supplied tab context lifecycle changed');
+      text = text.replace(find,replacement);
+      anchors.push({kind:'integration',find,replace:replacement,count:1});
+    }
+    return {text,anchors};
+  }
   if (path === 'assets/browser-binding-CzDmxQNA.js') {
     const first = replaceOne('if(!I(r))return l=null,',
       'const auxDraftContext=await chrome.auxAccount?.getProfileContext?.(e.id).catch(()=>null),auxDraftPageId=auxDraftContext?.draftPageId;if(!I(r))return l=null,');
@@ -30,8 +45,24 @@ export function transformProvidedDraftFlush({ component, path, text }) {
     const replacement = 'targetId:o?.id,draftPageId:auxDraftPageId,isPageSelectionSupported:';
     if (first.text.split(find).length - 1 !== 2)
       throw new Error('Supplied tab context return anchors changed');
-    return {text:first.text.split(find).join(replacement), anchors:[...first.anchors,
-      {kind:'integration',find,replace:replacement,count:2}]};
+    first.text = first.text.split(find).join(replacement);
+    first.anchors.push({kind:'integration',find,replace:replacement,count:2});
+    const lifecycleEdits = [
+      ['l=null;function B()', 'l=null,auxSnapshotGeneration=0;function B()'],
+      ['async function m(){const t=', 'async function m(){const auxSnapshot=++auxSnapshotGeneration;const t='],
+      ['if(!I(r))return l=null,', 'if(!I(r))return auxSnapshot===auxSnapshotGeneration&&(l=null),'],
+      ['return n&&(l=n),{tabId:e.id,', 'return auxSnapshot===auxSnapshotGeneration&&n&&(l=n),{tabId:e.id,'],
+      ['const r=async()=>{t(await m())},i=(o,n,a)=>',
+       'let auxGeneration=0,auxLive=!0;const r=async()=>{const auxRequest=++auxGeneration,auxContext=await m();auxLive&&auxRequest===auxGeneration&&t(auxContext)},i=(o,n,a)=>'],
+      ['return e.onActivated.addListener(r),e.onUpdated.addListener(i),e.onRemoved.addListener(r),()=>{e.onActivated.removeListener(r)',
+       'return e.onActivated.addListener(r),e.onUpdated.addListener(i),e.onRemoved.addListener(r),()=>{auxLive=!1,auxGeneration++,e.onActivated.removeListener(r)'],
+    ];
+    for (const [find,replacement] of lifecycleEdits) {
+      if (first.text.split(find).length - 1 !== 1) throw new Error('Supplied tab subscription lifecycle changed');
+      first.text = first.text.replace(find,replacement);
+      first.anchors.push({kind:'integration',find,replace:replacement,count:1});
+    }
+    return first;
   }
   if (path === 'assets/-components-4o0FSqQ9.js') {
     return replaceOne('function Ve(e){const n=e?.targetId;return n?`${P}:${n}`:`${P}:unknown`}',
