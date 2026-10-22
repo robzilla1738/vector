@@ -1,0 +1,19 @@
+{
+  "format": "aux.recovery.development.deployment.v1",
+  "deploymentId": "dpl_D9jPRFDv9msez8mAQAsy2jEpvixE",
+  "deploymentUrl": "https://aux-cloud-7srkdptm2-robzilla1738s-projects.vercel.app",
+  "developmentOrigin": "https://dev-cloud.getaux.co",
+  "target": "preview",
+  "state": "READY",
+  "team": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "project": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "sourceCommit": "6344ec464",
+  "buildEnvironment": "development",
+  "buildAndTypeScriptPassed": true,
+  "buildLogSha256": "5a0c309013ad0e6fe1e62103bc22ef928af7cac52104c86f44eaec18853a74ca",
+  "aliasCommandExitCode": 0,
+  "productionActivated": false,
+  "marketingChanged": false,
+  "desktopChanged": false,
+  "recoveryDesktopUsable": false
+}
