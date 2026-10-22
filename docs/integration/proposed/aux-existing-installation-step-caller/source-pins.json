@@ -1,0 +1,60 @@
+{
+  "format": "aux.existing.installation.step.caller.source.v1",
+  "files": [
+    {
+      "path": "source/ExistingInstallationMigrationStepCaller.swift",
+      "sha256": "ac3cc8e5540f793ebe236bddb787271f2692325b072ea861840345b047902126"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "da57acc77b2ba6be03a3643546755bfc819c237cd9d956fa3782dad57fdbe55d"
+    },
+    {
+      "path": "check.mjs",
+      "sha256": "99a2b5391d9d0a8d0840020cf95153ff086aae0422946267f25f8c378d6ad45c"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    },
+    {
+      "path": "../aux-native-four-row-preparation/preparation-evidence.json",
+      "sha256": "d650c15be218c14fca80831e8a433c41536c829a974f3d48d879621206ab34ef"
+    },
+    {
+      "path": "../aux-installation-security-executor/source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "../aux-installation-security-executor/source-pins.json",
+      "sha256": "c70fcd2d06601d100dbcfd01c8d008d7e93d76856d4e36222ab9a94cc2f1e22a"
+    },
+    {
+      "path": "../aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+      "sha256": "1aede47a990c622149ad863c53407b8f7999b63ae531c000861ea4cb00baf1ae"
+    },
+    {
+      "path": "../aux-installation-journal-store/source-pins.json",
+      "sha256": "13920ab1bccc414bc198f2c5fcf5d57dbc28cc6cf35c9ab435ebcb8715ba9e39"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+    },
+    {
+      "path": "../aux-installation-additive-transaction/source-pins.json",
+      "sha256": "85f3fbda3dbf993cf0442246a10a9d0cfc425a0679457e36ebaf320eaf478f6f"
+    }
+  ],
+  "coverage": {
+    "syntheticSequencingAssertions": 18,
+    "realDisposableJournalIO": true,
+    "actualSecurityExecuted": false,
+    "enclaveExecuted": false,
+    "pqExecuted": false,
+    "candidateProcessRestoreImplemented": false,
+    "allWriterCustodyImplemented": false,
+    "activeSelectionPerformed": false,
+    "activated": false
+  }
+}
