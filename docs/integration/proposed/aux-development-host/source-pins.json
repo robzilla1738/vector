@@ -35,11 +35,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/README.md",
-      "sha256": "7250e12077725f2b72b0d767f5c8cb17a2127d73e849cf951d14968626fee555"
+      "sha256": "832d59111b3b39878d85959fa38ecbd322bf6a4618078804f050c22b3587b6c5"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
-      "sha256": "df6b9637777576e710606472291453bb80be13ce04a9f2712bc6d2ab45800ac3"
+      "sha256": "543012ef79d269920565f4002a1027791be1d3e41288c620564065ee2d0e67d0"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/check.mjs",
@@ -51,11 +51,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source-contract.json",
-      "sha256": "0595f98703abae757dc00bab0d360612b91db4da0808ff0011a04abaccff78d5"
+      "sha256": "16be00c9780d623e0c46e324d7805b27f80d127d6cbeae99301d6b254fc2c050"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
-      "sha256": "93f586278d25325221f562089a08ba8db12f8b97af63b531abbf6f4f9a3c50df"
+      "sha256": "287b5667f40d45d4f905f71ddf6ba37ca136ad72f41cefaa7abb05ee47b37956"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
@@ -63,7 +63,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
-      "sha256": "8482d39f0c0a641fe72b97feb25e08e1267a815f62dde503023b4110472e7cdf"
+      "sha256": "750de61feb31600dd1d89821105d71d86571394cbfb9717045278ffa2d254d51"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
@@ -75,7 +75,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/tests/main.swift",
-      "sha256": "33b0901ab2ce132b5b5ec1109b2b0f312de97460c4abf8fa7f3001faa2192f96"
+      "sha256": "c77601451c06ea2b4120851a1a7e8f162fd98236fcddfae22a8e0063b3ddcb1d"
     },
     {
       "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
@@ -115,7 +115,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
     },
     {
       "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
@@ -151,7 +151,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/verify.mjs",
-      "sha256": "3843191078ef7b05d9463550f1fed1905478d1eab73db17e39a6f260a6333ccf"
+      "sha256": "d9e897597df8e70ce1aa49bf21d1a0646b91897134157b6f235b16657eb1f53c"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
@@ -160,6 +160,10 @@
     {
       "path": "docs/integration/proposed/aux-development-host/evidence/check.json",
       "sha256": "c06125cc3a00d0d37052a68aa2bde1d789beb8ef0a55393e8c3d1e55472b59f9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/evidence/pdf-image-policy.json",
+      "sha256": "b4d577041670261a3c0cc41e9c720fabf6501c35a05d31f543ccfc39e3be89c1"
     }
   ],
   "optionalOSProjectionReview": {
@@ -172,5 +176,22 @@
     "optionalOSCapabilityEnabled": false,
     "proof": "docs/integration/proposed/aux-owned-macos-utility-dispatch/verify-composition.py",
     "review": "Exact whitespace-normalized active dispatcher source unchanged with OS declarations absent. Original compile/public fixture receipt remains historical; no signing or protected calls executed."
+  },
+  "pdfImagePolicySuccessor": {
+    "format": "aux.development.host.policy.v2",
+    "currentCapturedChecks": 51,
+    "prior29ReceiptHistorical": true,
+    "productionBootstrapImplemented": false,
+    "productionSourceChanged": [
+      "source/AuxDevelopmentPolicy.swift",
+      "source/AuxSignedDevelopmentPolicyLoader.swift"
+    ],
+    "priorCurrentSourceContractChanges": [
+      {
+        "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+        "priorSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+        "currentSha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+      }
+    ]
   }
 }

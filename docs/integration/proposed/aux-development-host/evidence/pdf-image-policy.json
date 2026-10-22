@@ -1,0 +1,28 @@
+{
+  "format": "aux.development.pdf-image-policy.source-check.v1",
+  "sourceCompilation": "passed",
+  "currentComposedRuntimeAndPublicFixtureCompiled": true,
+  "publicCapturedAssertions": 51,
+  "serializedBy": "scripts/native-build.py and /tmp/aux-build.lock",
+  "productionSourceChanged": [
+    "source/AuxDevelopmentPolicy.swift",
+    "source/AuxSignedDevelopmentPolicyLoader.swift"
+  ],
+  "existingV1ExactTwoImagesPreserved": true,
+  "v2ExactThreeAlreadyLoadedDaemonImagesOnly": true,
+  "arbitraryAllowlist": false,
+  "pdfModuleLoaded": false,
+  "signedPolicyLoaderExecuted": false,
+  "protectedSecurityCallsExecuted": false,
+  "signingPerformed": false,
+  "ownerStateAccessed": false,
+  "bootstrapProducerImplemented": false,
+  "signedPdfArtifactAvailable": false,
+  "futureImageCustodyClaimed": false,
+  "historicalReceipt": "evidence/check.json (29 prior captured checks)",
+  "remaining": [
+    "native reviewed eager PDF bootstrap before image capture",
+    "separate signed-artifact byte pin/signature review",
+    "actual signed-host execution and continuous image custody outside snapshot scope"
+  ]
+}

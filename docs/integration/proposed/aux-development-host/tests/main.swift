@@ -22,4 +22,18 @@ var wrongType=entitlements;wrongType["com.apple.security.cs.allow-jit"]="true";r
 var extraGrant=entitlements;extraGrant["com.apple.security.personal-information.contacts"]=true;refuse{try validateCapturedDevelopmentSignature(signature(entitlements:extraGrant),role:.daemon,host:true)}
 try validateCapturedDevelopmentSignature(signature(identifier:"dev.aux.browser.runtime",application:"",groups:[],flags:0,entitlements:[:]),role:.daemon,host:false);checks += 1
 refuse{try validateCapturedDevelopmentSignature(signature(identifier:"dev.aux.browser.runtime",application:"",groups:[],flags:0,entitlements:["get-task-allow":false]),role:.daemon,host:false)}
+let bundle="/private/tmp/AuxSynthetic.app",host=bundle+"/Contents/MacOS/aux-daemon",runtime=bundle+"/Contents/Resources/native/aux-runtime-owned.node",pdf=bundle+"/"+AuxReviewedDevelopmentPdfIdentity.relativePath
+try validateCapturedDevelopmentImagePaths([host,runtime,"/usr/lib/libSystem.B.dylib"],bundle:bundle,policy:contents);checks += 1
+refuse{try validateCapturedDevelopmentImagePaths([host,runtime,pdf],bundle:bundle,policy:contents)}
+var v2=json;v2["format"]="aux.development.host.policy.v2";v2["pdfModule"]=["path":AuxReviewedDevelopmentPdfIdentity.relativePath,"identifier":AuxReviewedDevelopmentPdfIdentity.identifier,"sha256":AuxReviewedDevelopmentPdfIdentity.sha256,"bytes":AuxReviewedDevelopmentPdfIdentity.bytes]
+let pdfPolicy=try AuxDevelopmentPolicyContents.decode(encoded(v2));check(pdfPolicy.includesPdf)
+try validateCapturedDevelopmentImagePaths([host,runtime,pdf],bundle:bundle,policy:pdfPolicy);checks += 1
+for paths in [[host,runtime],[host,runtime,pdf,pdf],[host,runtime,pdf,"/private/tmp/foreign.node"],[host,runtime,bundle+"/Contents/Resources/native/../native/aux-pdf.node"]] {refuse{try validateCapturedDevelopmentImagePaths(paths,bundle:bundle,policy:pdfPolicy)}}
+for (key,value) in [("path","Contents/Resources/native/other.node"),("identifier","other"),("sha256",String(repeating:"0",count:64)),("bytes",true)] as [(String,Any)] {var bad=v2;var image=bad["pdfModule"] as! [String:Any];image[key]=value;bad["pdfModule"]=image;refuse{_ = try AuxDevelopmentPolicyContents.decode(encoded(bad))}}
+var cli=v2;cli["role"]="cli";refuse{_ = try AuxDevelopmentPolicyContents.decode(encoded(cli))}
+try validateCapturedDevelopmentPdfSignature(signature(identifier:AuxReviewedDevelopmentPdfIdentity.identifier,application:"",groups:[],flags:0,entitlements:[:]));checks += 1
+for invalid in [signature(identifier:"dev.aux.browser.runtime",application:"",groups:[],flags:0,entitlements:[:]),signature(identifier:AuxReviewedDevelopmentPdfIdentity.identifier,team:"OTHERTEAM0",application:"",groups:[],flags:0,entitlements:[:]),signature(identifier:AuxReviewedDevelopmentPdfIdentity.identifier,certificate:String(repeating:"0",count:64),application:"",groups:[],flags:0,entitlements:[:]),signature(identifier:AuxReviewedDevelopmentPdfIdentity.identifier,application:"",groups:[],flags:2,entitlements:[:]),signature(identifier:AuxReviewedDevelopmentPdfIdentity.identifier,application:"",groups:[],flags:0,entitlements:["get-task-allow":false])] {refuse{try validateCapturedDevelopmentPdfSignature(invalid)}}
+try validateCapturedDevelopmentPdfBytes(sha256:AuxReviewedDevelopmentPdfIdentity.sha256,bytes:AuxReviewedDevelopmentPdfIdentity.bytes);checks += 1
+refuse{try validateCapturedDevelopmentPdfBytes(sha256:String(repeating:"0",count:64),bytes:AuxReviewedDevelopmentPdfIdentity.bytes)}
+refuse{try validateCapturedDevelopmentPdfBytes(sha256:AuxReviewedDevelopmentPdfIdentity.sha256,bytes:AuxReviewedDevelopmentPdfIdentity.bytes-1)}
 print("\(checks) public development-policy/signature checks; signed loader, attachment, key imports and Security never executed")
