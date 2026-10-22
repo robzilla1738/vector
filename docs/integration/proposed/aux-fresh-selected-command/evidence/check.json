@@ -1,0 +1,19 @@
+{
+  "format": "aux.fresh.selected.command.check.v1",
+  "baseCommit": "f902d52ec",
+  "productionTypecheckedWithoutFixtureFlag": true,
+  "separateLogicalStoreSourceCompiled": true,
+  "assertions": 26,
+  "fixedSyntheticSoftwareP256": true,
+  "actualDisposableFilesystem": true,
+  "actualSecurityCalls": 0,
+  "hardwareAuthorityExecuted": false,
+  "publicInstallInitRegistered": false,
+  "genuineAdmissionProducerImplemented": false,
+  "state2Authorized": false,
+  "originalSourcesModified": false,
+  "uiChanged": false,
+  "buildSession": "99233",
+  "terminalExitCode": 0,
+  "artifactsRetained": false
+}

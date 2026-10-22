@@ -1,0 +1,14 @@
+import {readFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import {fileURLToPath} from 'node:url';import path from 'node:path';import assert from 'node:assert/strict';
+const here=fileURLToPath(new URL('.',import.meta.url)),root=fileURLToPath(new URL('../../../../',import.meta.url));
+const p=JSON.parse(await readFile(path.join(here,'source-pins.json'))),hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+for(const file of p.files)assert.equal(hash(await readFile(path.join(root,file.path))),file.sha256,file.path);
+const original=await readFile(path.join(root,'docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift'));
+const tail=await readFile(path.join(here,'source/PrivateFreshInstallationJournalStore.swift.continuation'));
+assert.equal(hash(original),p.storeBaselineSha256);assert.equal(hash(tail),p.storeContinuationSha256);assert.equal(hash(Buffer.concat([original,tail])),p.composedStoreSha256);
+const provider=await readFile(path.join(here,'source/PreparedFreshNativeCommandProvider.swift'),'utf8');
+assert(provider.includes('#if AUX_FRESH_COMMAND_FIXTURE'));assert(provider.includes('ExactFreshDataProtectionBoundary(review:review)'));
+assert(provider.includes('FreshAuthoritySelection.prepare'));assert(provider.includes('publishFreshSelection'));assert(provider.includes('recoverSelectedCommandContext'));
+assert(!provider.includes('AuxFreshInstallationFactory.prepare('));assert(!provider.includes('@_cdecl'));assert(!provider.includes('state2LaunchAuthorized=true'));
+const e=JSON.parse(await readFile(path.join(here,'evidence/check.json')));
+assert.equal(e.assertions,26);assert.equal(e.productionTypecheckedWithoutFixtureFlag,true);assert.equal(e.actualSecurityCalls,0);assert.equal(e.publicInstallInitRegistered,false);assert.equal(e.genuineAdmissionProducerImplemented,false);
+console.log(`PASS ${p.files.length} pinned inputs, exact private-store continuation, captured fresh selection evidence; no activation`);

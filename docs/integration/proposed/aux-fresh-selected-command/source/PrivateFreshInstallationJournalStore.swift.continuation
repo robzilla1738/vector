@@ -1,0 +1,54 @@
+
+// Fresh-only immutable descriptor publication. This continuation MUST be part
+// of the same logical store source file, preserving the original private FD API.
+extension PrivateFreshInstallationJournalStore {
+    private func freshSelectionUnlocked()throws->StoredFreshAuthoritySelection? {
+        guard let head=try readFile("FRESH-SELECTION-HEAD.json")else{return nil}
+        let object=try strictEnvelopeObject(head)
+        guard Set(object.keys)==["format","sha256","file"],object["format"] as? String=="aux.install.fresh.selection-head.v1",
+              let hash=object["sha256"] as? String,hash.utf8.count==64,
+              hash.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),
+              let file=object["file"] as? String,file=="fresh-selection-"+hash+".json",
+              let bytes=try readFile(file),freshStoreHash(bytes)==hash else{throw FreshSelectionError.conflict}
+        let record=try FreshAuthoritySelection.decode(bytes)
+        guard record.transactionId==transactionId,let current=try loadUnlocked(),current.journal.phase == .ready,
+              current.sha256==record.journalSha256,current.journal.candidateSha256==record.candidateSha256,
+              current.journal.scope==record.scope,current.journal.targetHashes==record.targetHashes,
+              current.journal.publicDescriptor==record.publicDescriptor else{throw FreshSelectionError.conflict}
+        return .init(record:record,sha256:hash)
+    }
+    // No authority/context is constructed by loading JSON. Cryptographic
+    // terminal recapture and actual target import remain mandatory in provider.
+    func loadFreshSelection()throws->StoredFreshAuthoritySelection? {
+        try locked{try freshSelectionUnlocked()}
+    }
+    func publishFreshSelection(_ record:FreshAuthoritySelection,
+                               terminal:RecoveredFreshTerminalCommandContext)throws->StoredFreshAuthoritySelection {
+        try locked {
+            try record.authenticate(terminal)
+            guard record.transactionId==transactionId,let current=try loadUnlocked(),current.journal.phase == .ready,
+                  current.sha256==record.journalSha256,current.journal.candidateSha256==record.candidateSha256,
+                  current.journal.scope==record.scope,current.journal.targetHashes==record.targetHashes,
+                  current.journal.publicDescriptor==record.publicDescriptor else{throw FreshSelectionError.binding}
+            let bytes=try record.encoded(),hash=freshStoreHash(bytes),file="fresh-selection-"+hash+".json"
+            if let existing=try freshSelectionUnlocked() {
+                guard existing.record==record,existing.sha256==hash else{throw FreshSelectionError.conflict}
+                try syncFile(file);try syncFile("FRESH-SELECTION-HEAD.json")
+                return existing
+            }
+            // An immutable orphan may be resumed only with this exact current
+            // crypto terminal; no filename/hash-only candidate adoption.
+            if let existing=try readFile(file) {guard existing==bytes else{throw FreshSelectionError.conflict};try syncFile(file)}
+            else{try exclusiveWrite(file,bytes:bytes)}
+            let head=try JSONSerialization.data(withJSONObject:["format":"aux.install.fresh.selection-head.v1","sha256":hash,"file":file],options:[.sortedKeys,.withoutEscapingSlashes])
+            let temporary=".fresh-selection-head-"+UUID().uuidString.lowercased()+".json"
+            try exclusiveWrite(temporary,bytes:head)
+            guard try readFile("FRESH-SELECTION-HEAD.json")==nil else{throw FreshSelectionError.conflict}
+            guard renameat(directoryFD,temporary,directoryFD,"FRESH-SELECTION-HEAD.json")==0 else{throw FreshInstallationJournalStoreError.io(errno)}
+            try Self.sync(directoryFD)
+            guard let stored=try freshSelectionUnlocked(),stored.record==record,stored.sha256==hash else{throw FreshSelectionError.conflict}
+            try syncFile(file);try syncFile("FRESH-SELECTION-HEAD.json")
+            return stored
+        }
+    }
+}

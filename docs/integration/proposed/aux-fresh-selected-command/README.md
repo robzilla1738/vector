@@ -1,0 +1,34 @@
+# Prepared fresh initialization → durable selection → command context
+
+This closes the concrete missing fresh-terminal publication/handoff component. It is **native-only preparation**, not an authenticated fresh-scope producer or an active public `install-init` handler. The actual core's absent/init refusal, current runtime loader, app, startup gate and UI remain unchanged. No signing, native registration, actual Security/Keychain/SE/PQ operation or owner state access occurred.
+
+`PreparedFreshNativeCommandProvider` composes the actual `FreshSecurityStepCoordinator`, exact Data Protection adapter, existing private fresh journal, recovered terminal and runtime authority importer. Its production constructor takes the explicit reviewed boundary; only a compile-time fixture constructor accepts a captured backend. Construction performs no protected operation; invoking production methods would and remains unauthorized/unregistered.
+
+The native caller explicitly supplies an **already generated** `PreparedFreshAuxCohort` and the existing honestly named `CallerAssertedNeverUsedScopeReview` to `beginCallerReviewedInitialization`. This neither generates keys nor upgrades caller assertions into genuine history/custody. Fixed runtime service/account/group layout and public encodings are checked before any stage/target dispatch. `advancePreparedInitialization` performs one actual durable coordinator step. Existing uncertain/duplicate/blocked behavior is retained: missing or inaccessible material never initializes, resets, deletes or retries unknown Adds.
+
+When the coordinator returns its privately constructed recovered-fresh terminal, the provider validates the ready journal and exact review/terminal lineage. The public descriptor must identify the real runtime's `aux.<scope>.installation.v2` service and `.meta/.sig/.kem/.dk` accounts. Generation ID is the immutable transaction UUID. It then durably publishes the fresh selection, reopens it, independently recaptures the stage/ready terminal and four rows, and uses actual `AuxRuntimeCapturedCommandContext.validate` to import/verify the selected authority before returning any context or reply.
+
+`SelectedFreshCommandContext.initializationReply` comes from the actual installed command core's `install-init`, then is checked for the exact recovered Mac shape `{scheme,sig_pub,kem_pub}` and equality with the selected public descriptor. Its typed `.runtime` can feed the existing native scoped/owned dispatcher **after** the missing genuine admission producer establishes authority. No arbitrary core, JSON receipt or serialized hash can construct this selected context directly.
+
+## Durable fresh selection
+
+Existing-migration selection requires a real previous descriptor and an existing-migration terminal; neither may be invented for a fresh scope. This fresh-specific immutable variant reuses the actual fresh store's FD ownership, permissions, ACL/type/symlink checks, cooperating lock, bounded reads, fsync and private constructors. A hash-pinned generator appends one reviewed continuation into that **same logical store file**. The generated store and all other Swift components compile as real separate files; no test-only concatenation circumvents access control. Historical sources remain byte-identical.
+
+The fixed files reside inside the existing private **per-transaction preparation directory**, not an active global/product selection:
+
+- `fresh-selection-<sha256>.json`: immutable nonsecret descriptor: public keys, target hashes and exact journal/stage/review lineage. No private key, wrapped-root payload or plaintext root.
+- `FRESH-SELECTION-HEAD.json`: points to that exact descriptor, published via a unique fsynced temporary and directory-synced rename.
+
+Publication requires a current typed crypto terminal and ready journal. Existing selection must match exactly; conflicts/unknown content refuse without overwrite. An exact orphan descriptor can be resumed only with the current typed terminal. A crash after head rename is recovered by reopening, authenticating terminal/targets and re-fsyncing the same record before context handoff. Partial/corrupt/unsafe/inaccessible state refuses and is retained. All stage items, target rows, journal revisions and source records remain; no cleanup/delete/rollback of authority is implemented. A fresh scope has no fabricated previous authority to roll back to.
+
+`recoverSelectedCommandContext` requires an already published selection and ready journal **before** asking the coordinator to observe terminal state. It never calls begin, a factory or an Add. Missing stage, inaccessible legacy captures, missing/changed target, stale/wrong terminal and corrupt descriptor/head fail closed. There is no selection-loss → new-authority fallback.
+
+## Focused evidence
+
+`node docs/integration/proposed/aux-fresh-selected-command/check.mjs` serialized the build through `scripts/native-build.py`. Production files typechecked without the fixture flag. The actual separate-file fixture passed **26 assertions** using fixed software P256 material, captured Security statuses and real new private temporary filesystem stores. It proved public reply, same-root unwrap and signature continuity; selector rejection before any Add; durable selected restart with unchanged one-stage/four-target Add counts; simulated crash after pointer publication before context return; wrong terminal/missing/blocked/corrupt refusal; retained files and no private representations/root/stage payload on disk. Temporary artifacts were removed. Security calls: zero; hardware branches compiled only. Earlier coordinator cases were not broadly rerun.
+
+## Actual remaining native integration
+
+There is still **no genuine native never-used scope/history/cohort admission producer**. Empty captures, this existing review type, private file modes, hashes, locks or this selection do not supply one. The real startup/host must establish new-scope provenance, exclude every existing writer/descendant and authenticate the complete state cohort before generation, protected dispatch or public registration. This provider is deliberately not called by public `AuxInstallationCommandCore.run`; doing so now would silently authorize caller assertions. Current readmission refusal stays intact.
+
+The selected descriptor is an external preparation result, not independently authenticated policy for the signed runtime loader. Its actual native selection consumer/trust route, fifth-item permission and eventual retained-stage cleanup require separate integration/review. Hardware runtime coverage and real entitlement acceptance remain absent. `state2LaunchAuthorized`, `writerAdmissionVerified` and `authorityProvenanceVerified` remain false. This slice does not claim the app can initialize a real installation yet.
