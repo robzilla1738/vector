@@ -1,0 +1,136 @@
+{
+  "format": "aux.profile-creation.participant.feasibility.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "records": [
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "sha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb",
+      "anchors": [
+        {
+          "anchor": "std::unique_ptr<Profile> Profile::CreateProfile(",
+          "count": 1,
+          "firstLine": 362
+        },
+        {
+          "anchor": "base::BindOnce(&CreateProfileReadme, path)",
+          "count": 1,
+          "firstLine": 333
+        },
+        {
+          "anchor": "ProfileImpl::GetOffTheRecordProfile(",
+          "count": 1,
+          "firstLine": 1063
+        },
+        {
+          "anchor": "NotifyOffTheRecordProfileCreated(raw_otr_profile);",
+          "count": 1,
+          "firstLine": 1082
+        },
+        {
+          "anchor": "delegate_->OnProfileCreationFinished(this, create_mode, !shutting_down,",
+          "count": 1,
+          "firstLine": 897
+        },
+        {
+          "anchor": "RecordPrefValuesAfterProfileInitialization();",
+          "count": 1,
+          "firstLine": 909
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.h",
+      "sha256": "e0919613cf2a3f0020b69551d2e1a94d7661462e1396d5b62cef8c276c44df69",
+      "anchors": [
+        {
+          "anchor": "raw_ptr<Profile::Delegate> delegate_;",
+          "count": 1,
+          "firstLine": 328
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "sha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52",
+      "anchors": [
+        {
+          "anchor": "deferred_asynchronous_loads_.push_back",
+          "count": 1,
+          "firstLine": 854
+        },
+        {
+          "anchor": "pending_it->second.push_back",
+          "count": 1,
+          "firstLine": 865
+        },
+        {
+          "anchor": "void ProfileManager::OnProfileCreationFinished(",
+          "count": 1,
+          "firstLine": 1879
+        },
+        {
+          "anchor": "return CreateAndInitializeProfile(",
+          "count": 1,
+          "firstLine": 808
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba",
+      "anchors": [
+        {
+          "anchor": "std::vector<base::OnceClosure> deferred_asynchronous_loads_;",
+          "count": 1,
+          "firstLine": 699
+        },
+        {
+          "anchor": "std::vector<ProfileLoadedCallback> init_callbacks;",
+          "count": 1,
+          "firstLine": 483
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "sha256": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a",
+      "anchors": [
+        {
+          "anchor": "std::unique_ptr<Profile> Profile::CreateOffTheRecordProfile(",
+          "count": 1,
+          "firstLine": 628
+        },
+        {
+          "anchor": "profile->Init();",
+          "count": 1,
+          "firstLine": 638
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_commands.cc",
+      "sha256": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be",
+      "anchors": [
+        {
+          "anchor": "otr_profile->IsEnterpriseIsolatedModeProfile()",
+          "count": 1,
+          "firstLine": 942
+        },
+        {
+          "anchor": "void OpenURLOffTheRecord(",
+          "count": 1,
+          "firstLine": 1013
+        },
+        {
+          "anchor": "void NewIncognitoWindow(Profile* profile)",
+          "count": 1,
+          "firstLine": 1347
+        }
+      ]
+    }
+  ],
+  "nativePatchImplemented": false,
+  "compileOrRuntimeTestPerformed": false,
+  "blocker": "OTR refusal contracts and callback-tail/queued task lifetime ownership must be paired before safe gate",
+  "allWriterCustodyClaimed": false
+}
