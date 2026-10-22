@@ -2,6 +2,7 @@ import { applyAuxContextLedgerIdentity } from './aux-context-ledger-identity.mjs
 import { applyAuxPrivateDaemonIdentity } from './aux-private-daemon-identity.mjs';
 import { applyAuxRuntimeCorrectnessIdentity } from './aux-runtime-correctness-identity.mjs';
 import { applyAuxCaptureContractIdentity } from './aux-capture-contract-identity.mjs';
+import { applyAuxProfileContextIdentity } from './aux-profile-context-identity.mjs';
 import { applyAuxAutomationIdentity } from './aux-automation-identity.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
 import { applyAuxProviderIdentity } from './aux-provider-identity.mjs';
@@ -101,7 +102,8 @@ export function adaptDaemonCode(original, cloudOptions = {}, identityProfile = '
     const privateIdentity = applyAuxPrivateDaemonIdentity({component: 'daemon', path: 'entry.mjs', text: ledger.text, original});
     const behavior = applyAuxRuntimeCorrectnessIdentity({text: privateIdentity.text, original});
     const capture = applyAuxCaptureContractIdentity({component: 'daemon', path: 'entry.mjs', text: behavior.text, original});
-    code = capture.text; applied.push(...provider.anchors, ...runtime.anchors, ...automation.anchors, ...ledger.anchors, ...privateIdentity.anchors, ...behavior.anchors, ...capture.anchors);
+    const profileContext = applyAuxProfileContextIdentity({component: 'daemon', path: 'entry.mjs', text: capture.text, original});
+    code = profileContext.text; applied.push(...provider.anchors, ...runtime.anchors, ...automation.anchors, ...ledger.anchors, ...privateIdentity.anchors, ...behavior.anchors, ...capture.anchors, ...profileContext.anchors);
     const find = 'if(Cn===`aside`&&ei===`builtin/aside`)return`Aux`';
     const replace = 'if(Cn===`aux`&&ei===`builtin/aux`)return`Aux`';
     if (code.split(find).length - 1 !== 1) throw Error('Aux builtin skill display integration drift');

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "inputs": [
+    {
+      "component": "daemon",
+      "path": "entry.mjs",
+      "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "find": "asideUserId",
+      "replace": "auxUserId",
+      "count": 14
+    },
+    {
+      "component": "agent",
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "find": "asideUserId",
+      "replace": "auxUserId",
+      "count": 3
+    },
+    {
+      "component": "agent",
+      "path": "assets/queries-ldd77hNk.js",
+      "sourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "find": "asideUserId",
+      "replace": "auxUserId",
+      "count": 5
+    },
+    {
+      "component": "agent",
+      "path": "assets/-types-Wy38XkNB.js",
+      "sourceSha256": "22df7f0ce3efd4eacb8df317b81c139c8b86c52aab1563e9dc335205f39d8e32",
+      "find": "asideUserId",
+      "replace": "auxUserId",
+      "count": 2
+    }
+  ]
+}
