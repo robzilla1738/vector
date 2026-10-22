@@ -1,0 +1,189 @@
+{
+  "sourceBinarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "method": "Conservative direct instruction CFG; both conditional successors, call fallthrough, ret/brk/tail exit. Not runtime/semantic feasibility proof; opaque/indirect callees not analyzed.",
+  "functions": [
+    {
+      "id": "unwrap",
+      "artifact": "../aux-native-crypto-boundary/evidence/dk-unwrap.asm",
+      "artifactSha256": "5618d4a705b17fb89ff49efc216642aaf0c40676689d4aeeff8a9fd0c9ceac09",
+      "entry": 250648,
+      "reachableInstructionCount": 1398,
+      "reachableAddressSetSha256": "e0c6addedb860ea5a33b28eefd413ed830a76d7576ae0c0cdac8c24a4bb7d5e4",
+      "excludedP256HkdfCalls": [
+        251968,
+        252660
+      ],
+      "requiredReachableCalls": [
+        250668,
+        251640,
+        253340,
+        255236,
+        255272,
+        259536,
+        259740
+      ],
+      "indirectCallsAssumedReturning": 38
+    },
+    {
+      "id": "init",
+      "artifact": "evidence/install-init.asm",
+      "artifactSha256": "feeeaada0aff3e7d695c5a7f37afccfd0fb441456f58140c412289016e6a58cb",
+      "entry": 229916,
+      "reachableInstructionCount": 1161,
+      "reachableAddressSetSha256": "a3e5fa45330aef2fac0c95b11e12c1cec15f874f6d8c5076c99ce04011c908a4",
+      "excludedP256HkdfCalls": [
+        221264,
+        227720
+      ],
+      "requiredReachableCalls": [
+        230052,
+        230236,
+        232600
+      ],
+      "indirectCallsAssumedReturning": 31
+    }
+  ],
+  "registerAnchors": [
+    {
+      "function": "unwrap",
+      "address": 249836,
+      "instruction": "mov x8, x27"
+    },
+    {
+      "function": "unwrap",
+      "address": 250656,
+      "instruction": "str x27, [x19, #0xc8]"
+    },
+    {
+      "function": "unwrap",
+      "address": 259728,
+      "instruction": "ldr x2, [x19, #0xc8]"
+    },
+    {
+      "function": "unwrap",
+      "address": 259704,
+      "instruction": "adrp x3, 1797"
+    },
+    {
+      "function": "unwrap",
+      "address": 259708,
+      "instruction": "add x3, x3, #0xe88"
+    },
+    {
+      "function": "unwrap",
+      "address": 255200,
+      "instruction": "subs x21, x8, #0x10"
+    },
+    {
+      "function": "unwrap",
+      "address": 255260,
+      "instruction": "mov w0, #0x10"
+    },
+    {
+      "function": "init",
+      "address": 224380,
+      "instruction": "mov x8, x21"
+    },
+    {
+      "function": "init",
+      "address": 230036,
+      "instruction": "mov x8, x25"
+    },
+    {
+      "function": "init",
+      "address": 230044,
+      "instruction": "stur x27, [x9, #-0x100]"
+    },
+    {
+      "function": "init",
+      "address": 230048,
+      "instruction": "mov x20, x27"
+    },
+    {
+      "function": "init",
+      "address": 230212,
+      "instruction": "mov x1, x25"
+    },
+    {
+      "function": "init",
+      "address": 230192,
+      "instruction": "adrp x3, 1804"
+    },
+    {
+      "function": "init",
+      "address": 230196,
+      "instruction": "add x3, x3, #0xe88"
+    },
+    {
+      "function": "init",
+      "address": 232592,
+      "instruction": "sub x8, x29, #0xd0"
+    },
+    {
+      "function": "init",
+      "address": 232596,
+      "instruction": "ldur x20, [x8, #-0x100]"
+    }
+  ],
+  "calls": [
+    {
+      "at": 249856,
+      "target": 5325636
+    },
+    {
+      "at": 259740,
+      "target": 5325228
+    },
+    {
+      "at": 224372,
+      "target": 5325624
+    },
+    {
+      "at": 224392,
+      "target": 5326020
+    },
+    {
+      "at": 230052,
+      "target": 5325732
+    },
+    {
+      "at": 230236,
+      "target": 5325240
+    },
+    {
+      "at": 232600,
+      "target": 5325720
+    },
+    {
+      "at": 232420,
+      "target": 5325288
+    },
+    {
+      "at": 232440,
+      "target": 5325300
+    }
+  ],
+  "portSourceHashes": [
+    {
+      "path": "source/LegacyNativePqEnvelopeReader.swift",
+      "sha256": "92ce422fb7ebfb094a9397f54f8e30790004434d5933daec57654a2a2894c61f"
+    },
+    {
+      "path": "source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    }
+  ],
+  "runtimeCoverage": {
+    "typechecked": true,
+    "pqExecuted": false,
+    "secureEnclaveExecuted": false,
+    "originalAddonExecuted": false,
+    "keychainAccessed": false,
+    "defaultDispatcherActivated": false,
+    "sameDkRuntimeVerified": false
+  }
+}

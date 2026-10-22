@@ -38,6 +38,6 @@ struct ExistingP256Authority {
 func openP256Envelope(_ envelope: P256DkEnvelope, authority: ExistingP256Authority, context: Data) throws -> Data {
     let key = try authority.wrappingKey(peer: envelope.ephemeralPublicKey, context: context)
     let box = try ChaChaPoly.SealedBox(nonce: ChaChaPoly.Nonce(data: envelope.nonce), ciphertext: envelope.ciphertextAndTag.dropLast(16), tag: envelope.ciphertextAndTag.suffix(16))
-    let root = try ChaChaPoly.open(box, using: key, authenticating: context) //0x3f69c/0x3fb00
+    let root = try ChaChaPoly.open(box, using: key, authenticating: context) // Original CryptoKit container API; per-scheme call routing is audited separately.
     guard root.count == 32 else { throw EnvelopePortError.rootMismatch }; return root
 }
