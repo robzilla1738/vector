@@ -8,7 +8,7 @@
   "files": [
     {
       "path": "source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569"
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
     },
     {
       "path": "source/aux-owned-command-dispatcher.h",
@@ -124,5 +124,13 @@
     "review": "docs/integration/proposed/aux-minimal-owned-node",
     "externalCapturedConstructorsExcluded": true,
     "runtimeAdmissionGranted": false
+  },
+  "optionalOSCompositionReview": {
+    "priorDispatcherSha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+    "currentDispatcherSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "flags": [],
+    "optionalOSCapabilityEnabled": false,
+    "disabledDeclarationProjectionSha256": "acc973318babd6e80cb6889b77a7094d563b49d073270f14f3ec55c1ca74609d",
+    "review": "Whitespace-normalized active source equals pinned prior source; optional OS route absent. Original runtime receipts remain historical; no broad suite repeated."
   }
 }
