@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "reviewOnly": true,
+  "activated": false,
+  "securityExecuted": false,
+  "writerAdmissionVerified": false,
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-security-executor/source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "3b19168564bad03e277efaab1e4c22e43897eb7bab516e426756144d338d7011"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+      "sha256": "936772ca173e49092a2d5e1a2f700de2af0a7bbe8afb556513f40f989bd9ed2b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/FreshInstallationJournal.swift",
+      "sha256": "f114495d85c93b9d83abcf9d4e9e4d72570aeaef4144094fc58a59055c19a291"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+      "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    }
+  ],
+  "reviewedCaller": {
+    "path": "docs/integration/proposed/aux-existing-installation-step-caller/source/ExistingInstallationMigrationStepCaller.swift",
+    "reviewAtCommit": "ad6db39f3",
+    "updatedCallerFixByIntegrator": "66ebda25f",
+    "compiledOrConsumedByBinder": false
+  },
+  "coverage": {
+    "capturedTerminalChecks": 15,
+    "hardwareOrKeychainExecuted": false,
+    "realSyntheticSoftwareSignatureVerified": true,
+    "exactRootVerified": true,
+    "legacyReadersProductionDependencies": false
+  },
+  "files": [
+    {
+      "path": "source/CapturedTerminalCommandContext.swift",
+      "sha256": "e8f91eaeb0f56134f1d0e3a8303b6097f74f4af598a587f14748de0b7bacaa23"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "b6512be3275811cab006510c86677ba192fb29d2649ca0535420458887ab1315"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "8132e142644c9aeac71791f7da70449f1d6eb04fee68a6a6c359d58bff11303b"
+    }
+  ]
+}

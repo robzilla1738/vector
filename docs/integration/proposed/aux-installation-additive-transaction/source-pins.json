@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "source/AdditiveInstallationTransaction.swift",
-      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+      "sha256": "3b19168564bad03e277efaab1e4c22e43897eb7bab516e426756144d338d7011"
     },
     {
       "path": "tests/main.swift",

@@ -98,6 +98,13 @@ enum FreshIntentObservation {
 }
 enum CapturedFreshAddStatus { case added, duplicate, failed(Int32) }
 enum FreshInstallationTransaction {
+    // Pure cross-component binding check; no storage observation or active selection.
+    static func validateCandidateBinding(_ journal:FreshInstallationJournal,candidate:PreparedFreshAuxCohort)throws {
+        try journal.validate()
+        guard try freshCandidateHash(candidate)==journal.candidateSha256,
+              candidate.publicDescriptor==journal.publicDescriptor,
+              candidate.targetPayloadHashes==journal.targetHashes else{throw FreshJournalError.candidate}
+    }
     static func prepare(candidate:PreparedFreshAuxCohort,transactionId:String,review:CallerAssertedNeverUsedScopeReview,bindings:[FreshTargetBinding],captured:CallerCapturedFreshTargets)throws->FreshInstallationJournal {
         try review.validate()
         // A blocked/unavailable read is not absence, and produces no fresh journal.

@@ -115,6 +115,14 @@ private func originalFailure(_ journal:AdditiveInstallationJournal,_ rows:Captur
 }
 
 enum AdditiveInstallationTransaction {
+    // Pure cross-component binding check; does not authorize persistence/admission.
+    static func validateCandidateBinding(_ journal:AdditiveInstallationJournal,candidate:PreparedInstallationCandidate)throws {
+        try journal.validate()
+        guard candidate.sameRootVerified,candidate.signingContinuityVerified,!candidate.persistencePerformed,!candidate.commitAuthorized,
+              try candidateHash(candidate)==journal.candidateSha256,
+              candidate.originalRowHashes==journal.originalHashes,
+              payloads(candidate).mapValues(transactionHash)==journal.targetHashes else{throw AdditiveTransactionError.wrongCandidate}
+    }
     static func prepare(candidate:PreparedInstallationCandidate,transactionId:String,bindings:[InstallationRowBinding],originals:CapturedInstallationRows,targets:CapturedInstallationRows)throws->AdditiveInstallationJournal {
         guard candidate.sameRootVerified,candidate.signingContinuityVerified,!candidate.persistencePerformed,!candidate.commitAuthorized else{throw AdditiveTransactionError.wrongCandidate}
         let journal=AdditiveInstallationJournal(format:"aux.install.additive.journal.v1",transactionId:transactionId,candidateSha256:try candidateHash(candidate),bindings:bindings,originalHashes:candidate.originalRowHashes,targetHashes:payloads(candidate).mapValues(transactionHash),revision:0,phase:.draft,intended:[],verified:[],failure:nil)
