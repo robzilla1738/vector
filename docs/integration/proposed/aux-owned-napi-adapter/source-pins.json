@@ -143,12 +143,20 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "232bfce8dc6d200a18770d190a517d3f204594d5ef9a2d2b5568166dcbe41ddf"
+      "sha256": "e4c00045cc5f4283218ded2319e0f5d43c0e906bd6ec747976b2c4b3a368fdcc"
     },
     {
       "path": "scripts/native-build.py",
       "sha256": "8d42831527cd7418638139245bec654daab90b5e277f726fe522ad7dead993cb"
     }
   ],
-  "nullCResultContract": "empty JS string, matching original NAPI MakeString; actual conversion branch checked statically; no OOM injection"
+  "nullCResultContract": "empty JS string, matching original NAPI MakeString; actual conversion branch checked statically; no OOM injection",
+  "pairedRecoveredFreshOwnerReview": {
+    "commit": "eb86feb7e",
+    "previousDependencySha256": "232bfce8dc6d200a18770d190a517d3f204594d5ef9a2d2b5568166dcbe41ddf",
+    "change": "typed conditional constructor only; same existing owner/lifetime and C ABI",
+    "actualPairedNodeChecks": 18,
+    "fixture": "docs/integration/proposed/aux-recovered-fresh-owned-handoff/check.sh",
+    "hostAdmissionVerified": false
+  }
 }
