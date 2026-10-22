@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/evidence/install-init.asm",
+      "sha256": "feeeaada0aff3e7d695c5a7f37afccfd0fb441456f58140c412289016e6a58cb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-install-storage-port/evidence/install-access-control.asm",
+      "sha256": "07cdf2de5101e4efece413b46dd6e782f1dbbad2541ed298b391d91259ab5adc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-dispatch-abi/README.md",
+      "sha256": "09ce4ff88823dd54ed383a88cb47d698386e327efa8b833954353d4b0cc876f5"
+    }
+  ],
+  "anchors": {
+    "selection": "0x35498 SecureEnclave.isAvailable; 0x354a0 OS26; 0x354b0 older branch0x358e4",
+    "root": "0x3545c/0x35468/0x35490",
+    "software": "0x35610/14 and0x3566c/70 compactRepresentable true",
+    "enclaveP256": "0x35ee8..0x35ef8 and0x362c0..0x362d0 compact true/context nil",
+    "enclavePq": "0x35544/4c and0x363a4 context nil",
+    "representations": "0x35694/0x356e8 raw;0x36870/0x368d8 and0x36b34/0x36b98 opaque data;0x39d9c/0x39e4c PQ raw public"
+  },
+  "hardwareExecuted": false,
+  "securityApiExecuted": false,
+  "persistencePerformed": false
+}
