@@ -7,6 +7,34 @@ const repository = fileURLToPath(new URL('../../', import.meta.url));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const safe = path => typeof path === 'string' && path.length && !isAbsolute(path) && !path.split('/').some(part => ['', '.', '..'].includes(part));
 const count = (text, needle) => text.split(needle).length - 1;
+export const auxNativeEventContracts = Object.freeze([
+  Object.freeze({path:'chrome/browser/ui/views/frame/aux_tabs_actions.cc',name:'verticalTabsTidy',constant:'kTidyMessage'}),
+  Object.freeze({path:'chrome/browser/notifications/aux_notification_inbox.cc',name:'inboxNotification',constant:'kInboxMessage'}),
+  Object.freeze({path:'chrome/browser/notifications/aux_notification_inbox.cc',name:'notificationPermissionChanged',constant:null}),
+]);
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function assertRuntimeEvents({stateIdentityVersion,nativeSources,agentBackground}) {
+  if(typeof agentBackground!=='string'||!agentBackground.length)throw Error('Actual pinned Agent background required for runtime event pairing');
+  const namespace=stateIdentityVersion===2?'aux':'aside',other=stateIdentityVersion===2?'aside':'aux';
+  const paths=new Set();
+  for(const event of auxNativeEventContracts){
+    const text=nativeSources?.[event.path],expected=namespace+'.'+event.name,forbidden=other+'.'+event.name;
+    if(typeof text!=='string'||!text.length)throw Error('Missing native runtime-event source: '+event.path);
+    for(const[label,source]of [['native',text],['Agent',agentBackground]]){
+      // Prefix count also rejects compounds such as aux.inboxNotification.extra.
+      // Counting only the quoted exact token would miss that mixed routing path.
+      if(source.includes(forbidden)||count(source,expected)!==1||count(source,JSON.stringify(expected))!==1)throw Error('Runtime event generation mismatch: '+label+': '+expected);
+    }
+    const token=escapeRegex(JSON.stringify(expected));
+    const producer=event.constant?new RegExp('constexpr\\s+char\\s+'+event.constant+'\\[\\]\\s*=\\s*'+token+'\\s*;'):new RegExp('Dispatch\\(\\*profile_,\\s*'+token+',');
+    if(!producer.test(text))throw Error('Missing actual native event producer: '+expected);
+    const receiver=new RegExp('if\\s*\\(\\s*[A-Za-z_$][\\w$]*\\?\\.type\\s*===\\s*'+token+'\\s*\\)');
+    if(!receiver.test(agentBackground))throw Error('Missing actual Agent event receiver: '+expected);
+    paths.add(event.path);
+  }
+  return {nativeRuntimeEvents:auxNativeEventContracts.length,nativeEventFiles:[...paths].map(path=>({path,sha256:digest(nativeSources[path])})),agentRuntimeEvents:{path:'background.js',sha256:digest(agentBackground)},staticRuntimeEventPairing:true};
+}
+
 
 /** Pass complete explicit declarations from each source manifest. Never infer v2. */
 export function assertAuxStateIdentityDeclarations({ identityProfile, stateIdentityVersion, declarations }) {
@@ -40,7 +68,7 @@ function validateReview(review) {
   if (found.size !== keys.size) throw Error('Incomplete native preference key coverage');
 }
 /** Pure checks over complete actual native source texts, after caller hash verification. */
-export function assertAuxStateIdentityPairing({ identityProfile, stateIdentityVersion, declarations, nativeSources, preferenceReview }) {
+export function assertAuxStateIdentityPairing({ identityProfile, stateIdentityVersion, declarations, nativeSources, preferenceReview, agentBackground }) {
   const declarationReport = assertAuxStateIdentityDeclarations({ identityProfile, stateIdentityVersion, declarations });
   validateReview(preferenceReview);
   const nativeFiles = [];
@@ -56,7 +84,8 @@ export function assertAuxStateIdentityPairing({ identityProfile, stateIdentityVe
     }
     nativeFiles.push({ path: file.path, sha256: digest(text) });
   }
-  return { ...declarationReport, nativePreferenceKeys: preferenceReview.keys.length, nativePreferenceFiles: nativeFiles, checkedOccurrences, staticNativePairing: true, runtimeAcceptance: false };
+  const eventEvidence=assertRuntimeEvents({stateIdentityVersion,nativeSources,agentBackground});
+  return { ...declarationReport, ...eventEvidence, nativePreferenceKeys: preferenceReview.keys.length, nativePreferenceFiles: nativeFiles, checkedOccurrences, staticNativePairing: true, runtimeAcceptance: false };
 }
 async function regular(path) {
   if (await realpath(path) !== resolve(path) || !(await lstat(path)).isFile()) throw Error(`Canonical regular state-identity input required: ${path}`);
@@ -73,12 +102,18 @@ export async function verifyAuxStateIdentityContract({ stageRoot, composition, n
   const preferenceReview = JSON.parse(reviewBytes);
   validateReview(preferenceReview);
   const nativeSources = {};
-  for (const file of preferenceReview.files) {
+  const nativePaths=new Set([...preferenceReview.files.map(file=>file.path),...auxNativeEventContracts.map(event=>event.path)]);
+  for (const path of nativePaths) {
+    const file={path};
     const entries = composition.files?.filter(entry => entry.path === file.path);
-    if (entries?.length !== 1 || !/^[a-f0-9]{64}$/.test(entries[0].outputSha256)) throw Error(`Missing unique final composition preference pin: ${file.path}`);
+    if (entries?.length !== 1 || !/^[a-f0-9]{64}$/.test(entries[0].outputSha256)) throw Error(`Missing unique final composition state-identity pin: ${file.path}`);
     const bytes = await regular(join(nativeRoot, file.path));
-    if (digest(bytes) !== entries[0].outputSha256) throw Error(`Final composition native preference hash mismatch: ${file.path}`);
+    if (digest(bytes) !== entries[0].outputSha256) throw Error(`Final composition native state-identity hash mismatch: ${file.path}`);
     nativeSources[file.path] = bytes.toString('utf8');
   }
-  return { ...assertAuxStateIdentityPairing({ identityProfile, stateIdentityVersion, declarations, nativeSources, preferenceReview }), preferenceReviewSha256: digest(reviewBytes) };
+  const agentEntries=declarations.ui.components?.agent?.files?.filter(file=>file.path==='background.js');
+  if(agentEntries?.length!==1||!/^[a-f0-9]{64}$/.test(agentEntries[0].outputSha256))throw Error('Missing unique staged Agent background pin');
+  const agentBytes=await regular(join(stageRoot,'ui/agent/background.js'));
+  if(digest(agentBytes)!==agentEntries[0].outputSha256)throw Error('Staged Agent background hash mismatch');
+  return { ...assertAuxStateIdentityPairing({ identityProfile, stateIdentityVersion, declarations, nativeSources, preferenceReview, agentBackground:agentBytes.toString('utf8') }), preferenceReviewSha256: digest(reviewBytes) };
 }
