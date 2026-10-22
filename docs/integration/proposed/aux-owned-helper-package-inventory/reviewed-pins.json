@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "compositionSha256": null,
+  "nativeReceiptPath": null,
+  "nativeReceiptSha256": null,
+  "frameworkSha256": null,
+  "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+  "pdfModuleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+  "pdfModuleBytes": 9474752,
+  "pdfLoaderSha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+  "pdfPinsSha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f",
+  "uiFiles": 1215,
+  "stylesheets": 5,
+  "uiInventorySha256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005"
+}
