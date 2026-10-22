@@ -2,12 +2,12 @@
 
 This is the current implementation checklist, replacing the stale open-item summaries in older build records. Preserve the supplied UI and existing Aux glass, corners, spacing and interactions. Aux excludes the built-in Vault/password manager. A successful local browser build is not hosted-service or release readiness.
 
-## Parallel implementation batch
+## Completed batch613 and remaining acceptance
 
 | Area | Current evidence | This batch / remaining acceptance |
 | --- | --- | --- |
-| Profile-specific new-tab content |611 native sidebar selects the right profile, but every no-argument profile-context query rejects normalized null and the supplied UI falls back to account0. | Fix native optional-argument handling, rebuild, verify native context and visible cards in two profiles and back. No replacement account resolver. |
-| Saved normal/popup windows |611 normal Quit/restart restores a mixed normal+popup set separately and preserves source tabs. | Extend through the actual AppSessionService and WebAppProvider readiness for installed app windows; preserve original app identities and refuse unavailable owners. The disposable fixture installs but its authenticated app shim disconnects before opening; diagnose that launch boundary before claiming restored app windows. |
+| Profile-specific new-tab content |613 native context and actual Person2/Your Aux new-tab cards now match their profiles. | Completed and observed in613; original supplied account resolver retained. |
+| Saved normal/popup windows |611 normal Quit/restart restores a mixed normal+popup set separately and preserves source tabs. | Extend through the actual AppSessionService and WebAppProvider readiness for installed app windows; preserve original app identities and refuse unavailable owners. Completed in613: actual normal quit/restart restores normal plus installed-app windows separately with page marker retained; fixture cleaned up. |
 | Active work and attachments |611 oversized attachment stays visible, switching is guarded, removal clears the guard. Small attachment/draft restart evidence is recorded for609. | Preserve account/session/tool-call ownership and guard unresolved local work. Repair concrete lifecycle defects only. A live paid task/approval roundtrip still needs a configured provider. |
 | Mini Popup and shortcuts | Native registration/dispatch exists; CUA global key delivery has not proven physical system activation.611 generation guards reject stale focus callbacks. | Protect old-profile picker/unsaved work before profile replacement or disabling; distinguish registration from dispatch in diagnostics. Check loaded supplied popup using its actual route, then record physical-hotkey observation separately. |
 | Sidebar, toolbar, chat and settings |611 actual comparison preserves curves/glass; Cmd+S collapse/expand and Cmd+E panel work. Earlier actual settings/shortcut/split/bookmark checks remain historical. | No redesign. Check changed states on the new app once; only fix observed regressions. Genuine hover was owner-observed earlier, not re-proven by click automation. |
