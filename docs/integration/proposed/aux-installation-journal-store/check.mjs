@@ -19,6 +19,6 @@ try {
  const storageRoot=path.join(await realpath(temporary),'journal-fixtures');await mkdir(storageRoot,{mode:0o700});
  const result=spawnSync('/usr/bin/xcrun',['swift','-module-cache-path',path.join(temporary,'module-cache'),script,fixturePath,storageRoot],{encoding:'utf8',timeout:90000,maxBuffer:1024*1024});
  if(result.error||result.status!==0)throw Error(`Synthetic software fixture failed: ${result.error?.message??result.stderr}`);
- const output=JSON.parse(result.stdout);assert.equal(output.checks,22);assert.equal(output.filesystemOnly,true);assert.equal(output.securityExecuted,false);assert.equal(output.interruptedEvidenceRetained,true);assert.equal(output.authorityExclusiveProof,false);
- console.log('PASS: 22 disposable-filesystem assertions including nonblocking FIFO refusal with FIFO retained, intent reload, stale/concurrent CAS, interrupted publication and terminal blocked persistence. No Security execution.');
+ const output=JSON.parse(result.stdout);assert.equal(output.checks,24);assert.equal(output.filesystemOnly,true);assert.equal(output.securityExecuted,false);assert.equal(output.interruptedEvidenceRetained,true);assert.equal(output.authorityExclusiveProof,false);
+ console.log('PASS: 24 disposable-filesystem assertions including nonblocking HEAD and LOCK FIFO refusal with FIFOs retained, intent reload, stale/concurrent CAS, interrupted publication and terminal blocked persistence. No Security execution.');
 } finally { await rm(temporary,{recursive:true,force:true}); }

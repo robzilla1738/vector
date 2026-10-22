@@ -13,4 +13,5 @@ assert not re.search(r'\bSecItem\w*\s*\(|\bunlink(?:at)?\s*\(|\brmdir\s*\(|Priva
 assert 'try Self.sync(directoryFD)' in source
 assert 'try journal.encoded()==bytes' in source
 assert source.count('openat(directoryFD,name,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)')==2
+assert 'openat(directoryFD,"LOCK",O_RDWR|O_CREAT|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC,0o600)' in source
 print('PASS: pinned typed journal storage, no-follow/private/CAS/fsync/retention boundaries and no Security or deletion executor.')

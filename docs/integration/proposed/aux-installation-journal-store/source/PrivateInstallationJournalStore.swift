@@ -78,7 +78,7 @@ final class PrivateInstallationJournalStore {
     }
     private func locked<T>(_ action:()throws->T)throws->T {
         try validateDirectories()
-        let fd=openat(directoryFD,"LOCK",O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC,0o600)
+        let fd=openat(directoryFD,"LOCK",O_RDWR|O_CREAT|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC,0o600)
         guard fd>=0 else{throw InstallationJournalStoreError.io(errno)};defer{close(fd)}
         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
         guard try Self.statFD(fd).st_size==0 else{throw InstallationJournalStoreError.unsafeMetadata}

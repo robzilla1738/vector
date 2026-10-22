@@ -61,4 +61,8 @@ let fifoRoot=try privateRoot("fifo-head"),fifoStore=try PrivateInstallationJourn
 let fifoPath=fifoRoot+"/"+directory+"/HEAD.json";precondition(mkfifo(fifoPath,0o600)==0)
 fails{_ = try fifoStore.loadCurrent()}
 var fifoStat=stat();check(lstat(fifoPath,&fifoStat)==0 && fifoStat.st_mode & mode_t(S_IFMT)==mode_t(S_IFIFO))
+let fifoLockRoot=try privateRoot("fifo-lock"),fifoLockStore=try PrivateInstallationJournalStore(canonicalDisposableRoot:fifoLockRoot,transactionId:id)
+let fifoLockPath=fifoLockRoot+"/"+directory+"/LOCK";precondition(mkfifo(fifoLockPath,0o600)==0)
+fails{_ = try fifoLockStore.loadCurrent()}
+var fifoLockStat=stat();check(lstat(fifoLockPath,&fifoLockStat)==0 && fifoLockStat.st_mode & mode_t(S_IFMT)==mode_t(S_IFIFO))
 print(String(data:try JSONSerialization.data(withJSONObject:["checks":checks,"filesystemOnly":true,"securityExecuted":false,"interruptedEvidenceRetained":true,"authorityExclusiveProof":false]),encoding:.utf8)!)
