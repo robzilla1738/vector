@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": "Chromium supported stateless callbacks with explicit argument ownership",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "7884c6db95ef8720aa0d2c7c89fd05e72c36862e28de8c41ee184884fd78d2ee",
+      "outputSha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc",
+      "baselineSha256": "d15b19d2132d81eec58e6f3a92273cb8661862ff9917de51512f1c9da2147a8e",
+      "outputSha256": "afa3825e9c9324e4e4867c2b863c6764035948da1788f134061ed854ee4fc02f"
+    }
+  ],
+  "patchSha256": "18a34f549eb32feaf193ab4351460168f6f22637bcae1353956a42f6a6e645c3"
+}

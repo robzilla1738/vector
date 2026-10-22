@@ -1,0 +1,56 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -125,12 +125,13 @@
+   options.environment["PATH"] = path;
+   options.current_directory = paths.root;
+   // Execute the actual spawn under the same generation lock as quiesce.
+-  // The closure runs synchronously; command/options references cannot escape.
++  // The closure owns its bound arguments and runs synchronously under the gate.
+   return RunAdmittedLaunch(
+       std::move(admission), generation,
+-      base::BindOnce([&command, &options]() {
++      base::BindOnce([](const base::CommandLine& command,
++                        const base::LaunchOptions& options) {
+         return base::LaunchProcess(command, options);
+-      }));
++      }, command, options));
+ }
+ namespace {
+ DirectDaemonDrainResult StopVerified(base::Process process,
+--- a/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
++++ b/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
+@@ -67,6 +67,11 @@
+     return process;
+   }
+ 
++  base::OnceCallback<base::Process()> ChildLaunch() {
++    return base::BindOnce(&DaemonSupervisorLifecycleTest::SyntheticChild,
++                          base::Unretained(this), false);
++  }
++
+   void Quiesce(base::test::TestFuture<Result>& future) {
+     supervisor_->QuiesceDirectDaemonForMigration(future.GetCallback());
+   }
+@@ -119,10 +124,10 @@
+   Quiesce(done);
+   EXPECT_FALSE(done.IsReady());
+   bool entered = false;
+-  auto child = Admit(generation, base::BindOnce([&entered]() {
+-    entered = true;
++  auto child = Admit(generation, base::BindOnce([](bool* entered) {
++    *entered = true;
+     return base::Process();
+-  }));
++  }, base::Unretained(&entered)));
+   EXPECT_FALSE(entered);
+   EXPECT_FALSE(child.IsValid());
+   // Actual production reply, including pending-launch drain completion.
+@@ -134,7 +139,7 @@
+ 
+ TEST_F(DaemonSupervisorLifecycleTest, AdmittedChildReplyDrainsBeforeAcknowledgement) {
+   const auto generation = MarkLaunchPending();
+-  auto child = Admit(generation, base::BindOnce([this]() { return SyntheticChild(false); }));
++  auto child = Admit(generation, ChildLaunch());
+   ASSERT_TRUE(child.IsValid());
+   base::test::TestFuture<Result> done;
+   Quiesce(done);
