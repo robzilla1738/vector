@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "reviewOnly": true,
+  "runtimeAuthorization": false,
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-dp-access-group-review/README.md",
+      "sha256": "2090f996569289a682a55fe4c5214e1e50d8390e3c711a4e75d0373df4c48046"
+    },
+    {
+      "path": "docs/integration/proposed/aux-dp-access-group-review/public-artifacts.json",
+      "sha256": "d55104800d6277c48f99986498fe00740db213c801a8fce670ca38b679ed274d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-dp-access-group-review/source-pins.json",
+      "sha256": "13ce8e4a75a5273b555d5e5f5c786231df5c14c3bed0a355cd935c5a091089e4"
+    },
+    {
+      "path": "vendor/provided/native/dp-scope-policy.h",
+      "sha256": "639b6723b8c18cb9dd4e82ed62e5b10ca2af3c1626389661a5e8b4c8f7354699"
+    },
+    {
+      "path": "vendor/provided/native/development-dp-scope-helper.mm",
+      "sha256": "21fcf19fc86f522ebeadfda99b58e76a8144d39e5d2ea42f1116eb7ce3f04570"
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-security-executor/source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
+      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-four-row-preparation/source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    }
+  ],
+  "reviewFileSha256": "50285c5b186ee778148821a5ee133548e0cc3ef492e32fd09f5975e15e3afe46",
+  "canonicalBindingsSha256": "0683ad79bf18599c9f723ec58e37dbfb9cea55b0911811ae014d39d8958a7db1"
+}

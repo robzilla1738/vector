@@ -1,0 +1,70 @@
+{
+  "format": "aux.disposable.installation.selector-review.v2",
+  "reviewId": "3f3618fe-fae2-4772-a83f-f81bf3b30b9c",
+  "scope": "dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476",
+  "stateIdentityVersion": 2,
+  "selectorVersion": 2,
+  "reviewOnly": true,
+  "runtimeAuthorization": false,
+  "ownershipProved": false,
+  "custodyProved": false,
+  "currentSignerGroupValidityProved": false,
+  "storageClass": "generic-password",
+  "dataProtectionKeychain": true,
+  "explicitAccessGroupRequired": true,
+  "bindingsSha256": "0683ad79bf18599c9f723ec58e37dbfb9cea55b0911811ae014d39d8958a7db1",
+  "bindings": [
+    {
+      "row": "metadata",
+      "original": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.meta",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      },
+      "target": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2.meta",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      }
+    },
+    {
+      "row": "signing",
+      "original": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.sig",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      },
+      "target": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2.sig",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      }
+    },
+    {
+      "row": "kem",
+      "original": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install.kem",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      },
+      "target": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2.kem",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      }
+    },
+    {
+      "row": "wrappedRoot",
+      "original": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.install",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.aside.dk",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      },
+      "target": {
+        "service": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2",
+        "account": "aux.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476.installation.v2.dk",
+        "accessGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+      }
+    }
+  ]
+}
