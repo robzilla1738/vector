@@ -1,5 +1,13 @@
 # Aux implementation status
 
+## Production configuration inventory and origin allowlists — 2026-10-22
+
+Verified personal Vercel username/team and pinned Aux project through the CLI. Production public app/API/share URLs, `clerk.getaux.co` publishable-key hostname and `Aux <hello@notify.getaux.co>` sender match the intended resources. The public Clerk signing endpoint returned200 with its RS256 key. Existing scoped auth/encryption/cron, Clerk and Resend Secrets are Production-only; DB/Blob metadata also has Production-only scope. This checks metadata/public configuration, not the actual recipient of hidden Clerk/Resend keys or email delivery.
+
+Added only the two missing nonsecret Production Configs `AUX_ALLOWED_ORIGINS` and `CLERK_AUTHORIZED_PARTIES`, both supplied as `https://app.getaux.co`, after checking personal identity and the local project's exact IDs. Add commands succeeded without overwriting existing values. Vercel exposes them as encrypted Config metadata; decrypted readback was not performed and their values remain explicitly unverified by the metadata audit. Production remains inactive with the resource profile null. No webhook, live Stripe account, deployment, alias, existing credential or owner data changed.
+
+New read-only `services/aux-cloud/scripts/check-production-configuration.mjs --record` shares the build guard's required-variable list, refuses the wrong personal account/project, redacts private values and reports incomplete/unverified settings with exit2. Actual recorded check has no scope/type/readable-value mismatch; it identifies9 missing webhook/live-billing settings,2 encrypted public values requiring later runtime verification, and the intentionally absent production build profile. Two focused audit checks and four existing operational checks passed. Evidence: `services/aux-cloud/evidence/production-configuration.json` and `production-public-origins.json`. Secret recipient pairing, actual email, funded ZDR/speech, native cloud/restore acceptance, live Aux business setup and durable independent operations still prevent full readiness.
+
 ## Cookie restore preparation and authentication exclusions — 2026-10-22
 
 Added source-only restore preparation around the actual encrypted reader: it requires the original account/profile binding and owning sync lifetime, verifies native epoch/context before and after recovery, checks owner/key generation, and reuses the supplied cookie expiry/exclusion/conversion functions. Concrete domains, source ports and nonopaque partition metadata are checked before returning native-write preconditions. This helper is not an importer, native write capability or automatic lifecycle consumer.

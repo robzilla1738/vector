@@ -3,13 +3,13 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 // Errors name configuration fields only; never include their values.
+export const requiredEnvironmentKeys=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','STRIPE_PORTAL_CONFIGURATION_ID','NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY','STRIPE_PRICE_PRO_MONTH','STRIPE_PRICE_PRO_YEAR','STRIPE_PRICE_MAX_MONTH','STRIPE_PRICE_MAX_YEAR','CRON_SECRET'];
 export function checkEnvironment(env, resources) {
   const target=env.VERCEL_TARGET_ENV||env.VERCEL_ENV||'development';
   const production=target==='production'||env.VERCEL_ENV==='production';
   const profile=resources[production?'production':'development'];
   if(!profile) throw Error('Production resources have not been configured; use the development Preview target.');
-  const required=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','STRIPE_PORTAL_CONFIGURATION_ID','NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY','STRIPE_PRICE_PRO_MONTH','STRIPE_PRICE_PRO_YEAR','STRIPE_PRICE_MAX_MONTH','STRIPE_PRICE_MAX_YEAR','CRON_SECRET'];
-  for(const name of required) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
+  for(const name of requiredEnvironmentKeys) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
   for(const name of ['AUX_AUTH_SECRET','CRON_SECRET'])if(env[name].length<32)throw Error('Invalid configuration: '+name);
   if(!/^[A-Za-z0-9+/]{43}=$/.test(env.AUX_DATA_ENCRYPTION_KEY)||Buffer.from(env.AUX_DATA_ENCRYPTION_KEY,'base64').length!==32)throw Error('Invalid configuration: AUX_DATA_ENCRYPTION_KEY');
   const origin=(name,expected)=>{try{const u=new URL(env[name]);if(u.origin!==expected||u.href!==expected+'/')throw Error();}catch{throw Error('Invalid configuration: '+name);}};

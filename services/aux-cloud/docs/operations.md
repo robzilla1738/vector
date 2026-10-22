@@ -8,6 +8,12 @@ The active service is Development/Preview at `https://dev-cloud.getaux.co`. Sepa
 
 Applied migrations are immutable. The checked-in `src/schema-manifest.json` pins every current SQL migration. After adding and reviewing a new migration, regenerate the manifest from `migrationInventory()` in `scripts/check-environment.mjs`, apply the migration in the intended environment, and deploy. The build refuses a stale manifest; never edit an applied SQL file to repair a deployed migration.
 
+## Pre-activation configuration inventory
+
+Run `node scripts/check-production-configuration.mjs --record` from this service. It verifies the personal Vercel identity, reads only the pinned Aux project's Production metadata, validates readable public Aux settings, and checks the public `clerk.getaux.co` signing endpoint. Its required-variable list is shared with the build guard. It prints/records sanitized field names and public status only, never provider secret/encrypted values. It does not retrieve Production Secrets, send email, charge payments, create deployments or activate domains. Exit0 means that metadata/public checks passed, exit2 means known incomplete/unverified configuration, and exit1 means inspection failed. Even exit0 would not prove secret pairing or production readiness.
+
+Latest evidence: `../evidence/production-configuration.json`. Production webhook configuration and live Stripe credentials/prices/portal are absent. The production resource profile remains null. `AUX_ALLOWED_ORIGINS` and `CLERK_AUTHORIZED_PARTIES` were newly added as Production Configs with `https://app.getaux.co`; no existing values were overwritten. Vercel returns these new Configs as encrypted metadata, so the audit records their values as unverified rather than misreporting a mismatch or pulling private production configuration. Add receipt: `../evidence/production-public-origins.json`. Verify their actual runtime values during the reviewed production build/activation procedure. Actual Clerk/Resend backend-secret recipient pairing and real email delivery still require separate acceptance; named Secret presence and public JWKS availability do not establish either.
+
 ## Monitoring
 
 - `GET /api/v1/health` is public liveness only; it does not test any dependency.

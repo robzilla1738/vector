@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-22T17:02:01.376603+00:00",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "operation": "add-new-public-config",
+  "environment": "production",
+  "settings": {
+    "AUX_ALLOWED_ORIGINS": "https://app.getaux.co",
+    "CLERK_AUTHORIZED_PARTIES": "https://app.getaux.co"
+  },
+  "cliAddSucceeded": true,
+  "metadataPresenceVerified": true,
+  "metadataType": "encrypted",
+  "decryptedReadbackPerformed": false,
+  "existingValuesOverwritten": false,
+  "productionActivation": false
+}
