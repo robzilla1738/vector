@@ -1,0 +1,25 @@
+{
+  "baseComposition": "v611",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "baselineSha256": "3ca6d75b2d97b16f233ae0497f211937a5bd84b9a5a51572f411e48398e8f1c4",
+      "outputSha256": "9bf7eb1a69c1affb4befb41189b987f62ad0b4e04fa688fbba5c6566eaf04113"
+    },
+    {
+      "path": "chrome/browser/sessions/session_restore.h",
+      "baselineSha256": "5dbf0b2c13f8cee3688cabd1d32b63281b6975e999f1bb09c10fc2973323fdbc",
+      "outputSha256": "80bf20ea06c9d698e369c96a02fea6b2fd88e47a0ade15dbb7038eb2ebbe5682"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "baselineSha256": "cd8cf8fc8fc7d9912d6cd205e6072cdba5b169b2612ec2bd34dd561ac81263b0",
+      "outputSha256": "d84eef6fe1df107b681e67bdc10be181938824e9947804fc51031b4b5e0c3d17"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "baselineSha256": "87699ec4424be71209eda7d84b0fbf400f9f15e6a40ea8d90cb8415e06f11756",
+      "outputSha256": "a801af8c2acc83ed32843eb289cf7989f9bd2aec5a8af2fe0e09759015fd82a3"
+    }
+  ]
+}

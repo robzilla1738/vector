@@ -1,0 +1,177 @@
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -24,6 +24,7 @@
+ #include "base/functional/callback.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/location.h"
++#include "base/logging.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/metrics/field_trial.h"
+@@ -45,6 +46,7 @@
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #endif
+ #include "chrome/browser/prefs/session_startup_pref.h"
++#include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -394,9 +396,16 @@
+       SessionServiceBase* app_service =
+           AppSessionServiceFactory::GetForProfileForSessionRestore(profile_);
+       CHECK(app_service);
+-      app_service->GetLastSession(base::BindOnce(
++      auto app_callback = base::BindOnce(
+           &SessionRestoreImpl::OnGotSession, weak_factory_.GetWeakPtr(),
+-          /* for_apps */ true));
++          /* for_apps */ true);
++      if (aux_workspace_restore_) {
++        // Admission must not prune app-session candidates while the browser
++        // read or registry readiness is still unresolved.
++        app_service->GetLastSessionPreservingFiles(std::move(app_callback));
++      } else {
++        app_service->GetLastSession(std::move(app_callback));
++      }
+ 
+       // Ensure the registry is ready so that when we reopen apps they work
+       // properly. If we don't wait, it's possible that apps are restored in
+@@ -651,6 +660,21 @@
+       read_error_ = read_error;
+     }
+ 
++    if (aux_workspace_restore_) {
++      // Preserve the original service provenance before merging vectors. App
++      // creation is trusted only for actual AppSessionService records, never
++      // an app enum appearing in the browser-session stream.
++      aux_workspace_session_types_valid_ &= std::ranges::all_of(
++          windows, [for_apps](const auto& window) {
++            if (for_apps) {
++              return (window->type == sessions::SessionWindow::TYPE_APP ||
++                      window->type == sessions::SessionWindow::TYPE_APP_POPUP) &&
++                     !window->app_name.empty();
++            }
++            return SessionService::IsRelevantWindowType(window->type);
++          });
++    }
++
+     // Copy windows into windows_ so that we can combine both app and browser
+     // windows together before doing a one-pass restore.
+     std::ranges::move(windows, std::back_inserter(windows_));
+@@ -747,24 +771,28 @@
+         result = SessionRestore::AuxWorkspaceResult::kCancelled;
+       } else if (!valid || read_error_) {
+         result = SessionRestore::AuxWorkspaceResult::kFailed;
++      } else if (!aux_workspace_session_types_valid_) {
++        result = SessionRestore::AuxWorkspaceResult::kAmbiguous;
+       } else if (windows->empty()) {
+         result = SessionRestore::AuxWorkspaceResult::kEmpty;
+       } else if (windows->size() == 1 &&
+                  windows->front()->type == sessions::SessionWindow::TYPE_NORMAL &&
+                  windows->front()->tabs.empty()) {
+         result = SessionRestore::AuxWorkspaceResult::kEmpty;
+-      } else if (!std::ranges::all_of(*windows, [](const auto& window) {
+-                   // Match the browser SessionService's persisted types.
+-                   // App and app-popup sessions require the separate app
+-                   // service/registry readiness path and are not admitted here.
+-                   return SessionService::IsRelevantWindowType(window->type) &&
+-                          !window->tabs.empty();
++      } else if (!std::ranges::all_of(*windows, [this](const auto& window) {
++                   const bool browser_window =
++                       SessionService::IsRelevantWindowType(window->type);
++                   const bool app_window = restore_apps_ &&
++                       web_app_registry_ready_ && !window->app_name.empty() &&
++                       (window->type == sessions::SessionWindow::TYPE_APP ||
++                        window->type == sessions::SessionWindow::TYPE_APP_POPUP);
++                   return (browser_window || app_window) && !window->tabs.empty();
+                  })) {
+         result = SessionRestore::AuxWorkspaceResult::kAmbiguous;
+       } else {
+         // Only a single normal browser may adopt the normal hidden cache.
+-        // Popups and mixed sessions retain their actual window types through
+-        // the native restorer; never turn a popup into a tabbed source window.
++        // Popups, apps and mixed sessions retain their actual window types
++        // through the native restorer, never becoming a tabbed source window.
+         aux_restore_separate_windows_ = windows->size() > 1 ||
+             windows->front()->type != sessions::SessionWindow::TYPE_NORMAL;
+       }
+@@ -1561,6 +1589,7 @@
+ 
+   bool aux_workspace_restore_ = false;
+   bool aux_restore_separate_windows_ = false;
++  bool aux_workspace_session_types_valid_ = true;
+   base::OnceCallback<bool()> aux_workspace_admission_;
+   base::OnceCallback<void(SessionRestore::AuxWorkspaceResult)>
+       aux_workspace_completion_;
+@@ -1651,9 +1680,20 @@
+       cache->GetProfile()->IsRegularProfile() &&
+       !profiles::IsProfileLocked(cache->GetProfile()->GetPath()) &&
+       cache->GetTabStripModel()->empty() &&
++      !browser_shutdown::HasShutdownStarted() && !browser_shutdown::IsTryingToQuit() &&
+       !IsRestoring(cache->GetProfile())) {
++    // Use the same app-session owner and registry barrier as ordinary desktop
++    // recovery. Do not silently ignore saved apps or fabricate an app host.
++    if (!web_app::WebAppProvider::GetForLocalAppsUnchecked(cache->GetProfile()) ||
++        !AppSessionServiceFactory::GetForProfileForSessionRestore(cache->GetProfile())) {
++      LOG(ERROR) << "Aux profile workspace rejected: app-restore-owner-unavailable";
++      std::move(completion).Run(AuxWorkspaceResult::kFailed);
++      return;
++    }
+     auto* restorer = new SessionRestoreImpl(
+-        cache->GetProfile(), cache, false, false, false, false, true, true,
++        cache->GetProfile(), cache, /*synchronous=*/false,
++        /*clobber_existing_tab=*/false, /*always_create_tabbed_browser=*/false,
++        /*restore_apps=*/true, /*restore_browser=*/true, /*log_event=*/true,
+         StartupTabs());
+     restorer->SetAuxWorkspaceCompletion(std::move(admission),
+                                         std::move(completion));
+--- a/chrome/browser/sessions/session_restore.h
++++ b/chrome/browser/sessions/session_restore.h
+@@ -94,8 +94,9 @@
+   enum class AuxWorkspaceResult { kRestored, kEmpty, kAmbiguous, kFailed,
+                                   kRestoredSeparately, kCancelled };
+   // Internal Aux restore: one normal window adopts the hidden cache; multiple
+-  // browser windows or popups reopen separately with their original types,
+-  // without reassigning the source window. App-session restore is separate.
++  // browser, popup or app windows reopen separately with their original types,
++  // without reassigning the source window. App records come from the separate
++  // AppSessionService and await WebAppProvider registry readiness.
+   // Recheck request admission after the async read and before creating tabs.
+   static void RestoreAuxProfileWorkspace(
+       BrowserWindowInterface* cache,
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc
+@@ -162,7 +162,9 @@
+           !candidate->GetTabStripModel()->empty()) {
+         has_live_workspace = true;
+         if ((candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL ||
+-             candidate->GetType() == BrowserWindowInterface::TYPE_POPUP) &&
++             candidate->GetType() == BrowserWindowInterface::TYPE_POPUP ||
++             candidate->GetType() == BrowserWindowInterface::TYPE_APP ||
++             candidate->GetType() == BrowserWindowInterface::TYPE_APP_POPUP) &&
+             !BrowserInitState::From(candidate)->is_aux_profile_switch_cache()) {
+           has_live_user_workspace = true;
+         }
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -171,7 +171,9 @@
+                 !candidate_state->is_aux_profile_switch_cache() && unload &&
+                 !unload->is_attempting_to_close_browser() && !unload->is_delete_scheduled() &&
+                 (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL ||
+-                 candidate->GetType() == BrowserWindowInterface::TYPE_POPUP) &&
++                 candidate->GetType() == BrowserWindowInterface::TYPE_POPUP ||
++                 candidate->GetType() == BrowserWindowInterface::TYPE_APP ||
++                 candidate->GetType() == BrowserWindowInterface::TYPE_APP_POPUP) &&
+                 !candidate->GetTabStripModel()->empty()) {
+               recovered = candidate;
+               return false;
+@@ -207,8 +209,8 @@
+       const bool ambiguous = cache_state && cache_state->aux_workspace_restore_state() ==
+           BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous;
+       ReportCurrentSwitchFailure(sender_weak, source, generation, ambiguous
+-          ? u"This profile has a saved app, developer-tools, or incomplete "
+-            u"window outside browser-session recovery. Aux has preserved "
++          ? u"This profile has an incomplete or unsupported saved window, "
++            u"or an app record without its required identity. Aux has preserved "
+             u"that session. Open the profile separately to recover it."
+           : u"The profile's saved workspace could not be prepared. Finish any "
+             u"pending profile activity, then try again or reopen Aux.");
