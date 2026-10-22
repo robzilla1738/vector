@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "parentCompositionSha256": "341606005a0254d80f21d2c986bc0dfdb30a9bfe9fb4f1098527c4a31daea429",
+  "parentBuildReceiptSha256": "de41b4b9630e214b0368cc094917be7fc0321ecfbf57f977f02d59db733aef16",
+  "currentFrameworkSha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a",
+  "successorCompositionSha256": "9dfa2bbafb42ec82044af7ece1a97d7121e5dbe5ede2ee811de2fa6a2c22552c",
+  "changedSources": 6,
+  "verifiedParentSources": 769,
+  "binaryAssetsUnchanged": 23,
+  "appliedToNative": false,
+  "compiled": false,
+  "fixtureExecuted": false,
+  "uiAssetModification": false,
+  "backupMapping": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "beforeSha256": "a1ba0ddd8f2b080a616695f77a6fdcd60462ad129c53c9f28d8c52952b6ed813",
+      "afterSha256": "fe3d7b45967707e3187712d33e704f6e5632ffe829c687c37add0f9ce4e5cdd4",
+      "backup": "review-before/chrome/browser/aux/BUILD.gn"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "beforeSha256": "2d5867212a162c82d0a5b7f50dd27bb2c77a370f5f1a8e46846da76a00e8c667",
+      "afterSha256": "ed9cdedb091d76e7c40f4d270fdfe40db3e178014374e7929128e0bbe0572736",
+      "backup": "review-before/chrome/browser/aux/browser_platform.cc"
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "beforeSha256": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2",
+      "afterSha256": "388157cc7e5e4373f3c1b1fcd4b1c9100c1a2ebe82d5ba946f9a2bfd1069ac32",
+      "backup": "review-before/chrome/browser/aux/installation_auth.cc"
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.h",
+      "beforeSha256": "840c2b392e7311fa3550f42effa3355c47d7c92fac5ac1c2ab8f3d6946821269",
+      "afterSha256": "d89c83637f0711c2a52a405f0426e65ca803e969f71715477f49025f6c6d81a6",
+      "backup": "review-before/chrome/browser/aux/installation_auth.h"
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.h",
+      "beforeSha256": null,
+      "afterSha256": "53db925f86120de15bbdc09b27b7e70c901bb6582738c6debaab02d3fd336f4d",
+      "backup": null
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_lifecycle_unittest.cc",
+      "beforeSha256": null,
+      "afterSha256": "043c3ae99848d8ce0d14f396d8d696c860dc1ce6421d85b901c5b1100874c454",
+      "backup": null
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "inputs": {
+    "out/native-reuse-composition-aux-lifecycle-callbacks/manifest.json": "341606005a0254d80f21d2c986bc0dfdb30a9bfe9fb4f1098527c4a31daea429",
+    "out/aux-lifecycle-native-build.json": "de41b4b9630e214b0368cc094917be7fc0321ecfbf57f977f02d59db733aef16",
+    "scripts/extend-provided-native.py": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba"
+  },
+  "gnPath": "chrome/browser/aux/BUILD.gn",
+  "gnSha256": "a1ba0ddd8f2b080a616695f77a6fdcd60462ad129c53c9f28d8c52952b6ed813",
+  "frameworkSha256": "89c128b3d4bb4c4b22bc32a5b084930721f09966e2752677932449005e027f8a"
+}

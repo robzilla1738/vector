@@ -45,13 +45,16 @@ constexpr size_t kMaxCarrierOutput = 32768;''')
         FROM_HERE,
         {base::MayBlock(), base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
         base::BindOnce(
-            [](base::Process child,
-               std::shared_ptr<InstallationCarrierCustody::Call> retained) {
-              int code = 0;
-              if (child.WaitForExit(&code)) retained->ObservedChildExit();
-            }, std::move(process), custody));''')
+            &internal::WaitForInstallationCarrierExit,
+            std::move(process), custody));''')
     text = once(text, '  if (exit_code != 0)\n    return std::nullopt;', '  custody->ObservedChildExit();\n  if (exit_code != 0)\n    return std::nullopt;')
     text = once(text, '} // namespace\nbase::FilePath StateHome()', '''} // namespace
+void internal::WaitForInstallationCarrierExit(
+    base::Process child,
+    std::shared_ptr<InstallationCarrierCustody::Call> retained) {
+  int code = 0;
+  if (child.WaitForExit(&code)) retained->ObservedChildExit();
+}
 InstallationCarrierCustody::Snapshot CloseInstallationCarrierAdmission() {
   return CarrierCustody().CloseAdmission();
 }
@@ -61,8 +64,15 @@ InstallationCarrierCustody::Snapshot InspectInstallationCarrierCustody() {
 base::FilePath StateHome()''')
     texts[name] = text
     name = p + 'installation_auth.h'
-    text = once(texts[name], '#include "base/files/file_path.h"', '#include "base/files/file_path.h"\n#include "chrome/browser/aux/installation_carrier_custody.h"')
-    text = once(text, '// Blocking functions:', '''// Direct carrier scope only; callable while worker cleanup remains active.
+    text = once(texts[name], '#include "base/files/file_path.h"', '#include "base/files/file_path.h"\n#include "chrome/browser/aux/installation_carrier_custody.h"\n#include "base/process/process.h"')
+    text = once(text, '// Blocking functions:', '''namespace internal {
+// Blocking production timeout reaper, shared with the synthetic-child fixture.
+// The caller transfers its owned unreaped child and retained call; never a PID.
+void WaitForInstallationCarrierExit(
+    base::Process child,
+    std::shared_ptr<InstallationCarrierCustody::Call> retained);
+}
+// Direct carrier scope only; callable while worker cleanup remains active.
 // Admission is terminal for this browser process. Never authorizes migration.
 InstallationCarrierCustody::Snapshot CloseInstallationCarrierAdmission();
 InstallationCarrierCustody::Snapshot InspectInstallationCarrierCustody();
