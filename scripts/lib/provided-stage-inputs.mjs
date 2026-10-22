@@ -11,6 +11,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-private-daemon-identity.mjs',
   'vendor/provided/aux-capture-contract-identity.mjs',
   'vendor/provided/aux-profile-context-identity.mjs',
+  'vendor/provided/aux-selection-contract-identity.mjs',
+  'docs/integration/proposed/aux-selection-contract-identity/inputs.json',
   'docs/integration/proposed/aux-profile-context-identity/inputs.json',
   'docs/integration/proposed/aux-capture-contract-identity/inputs.json',
   'vendor/provided/aux-runtime-correctness-identity.mjs',
