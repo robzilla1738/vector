@@ -18,9 +18,9 @@ WindowsCreateFunction derives its calling/window profile from browser_context();
 no account, profile path, active window or foreign profile is substituted.
 
 Valid hints, no hint, route construction, original tab reuse, tab creation and
-focus behavior are unchanged. No blanket exception catch/retry was added: if a
-window closes during the later asynchronous operation, the original error still
-surfaces. This fixes the already-stale hint, not every destruction race.
+focus behavior are unchanged. The successor in ../provided-notification-close-race/ adds one bounded recovery
+when a later operation fails and fresh caller-profile enumeration proves the
+exact target disappeared. Surviving-target errors remain errors.
 
 ## Why a saved real-window ID cannot become a cache ID
 
