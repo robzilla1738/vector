@@ -1,0 +1,53 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -139,7 +139,9 @@
+   int exit_code = -1;
+   if (!process.IsValid()) return {};
+   if (process.WaitForExitWithTimeout(base::Seconds(3), &exit_code)) {
+-    return {true, exit_code};
++    // POSIX Process may synthesize zero when a child was already reaped or a
++    // non-child disappears. Its API cannot distinguish that from observed zero.
++    return {true, exit_code == 0 ? std::nullopt : std::optional<int>(exit_code)};
+   }
+   const auto executable = base::GetProcessExecutablePath(process.Handle());
+   const auto canonical_root = base::MakeAbsoluteFilePath(root);
+@@ -149,7 +151,9 @@
+       !created.is_null() && process.CreationTime() == created &&
+       process.Terminate(0, false) &&
+       process.WaitForExitWithTimeout(base::Seconds(2), &exit_code)) {
+-    return {true, exit_code};
++    // POSIX Process may synthesize zero when a child was already reaped or a
++    // non-child disappears. Its API cannot distinguish that from observed zero.
++    return {true, exit_code == 0 ? std::nullopt : std::optional<int>(exit_code)};
+   }
+   // Failure retains the original process handle in the UI-sequence owner.
+   return {};
+--- a/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
++++ b/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
+@@ -150,6 +150,26 @@
+   EXPECT_EQ(State(), DaemonSupervisor::State::kStopped);
+ }
+ 
++TEST_F(DaemonSupervisorLifecycleTest, ReapedChildDoesNotInventExitZero) {
++  auto child = SyntheticChild(false);
++  ASSERT_TRUE(child.IsValid());
++  {
++    base::ScopedAllowBlockingForTesting allow_blocking;
++    base::ScopedAllowBaseSyncPrimitivesForTesting allow_sync;
++    int observed = 0;
++    ASSERT_TRUE(child.WaitForExitWithTimeout(base::Seconds(5), &observed));
++    ASSERT_EQ(observed, 23);
++  }
++  // The process API subsequently reports absence without an observed status.
++  Own(std::move(child));
++  base::test::TestFuture<Result> done;
++  Quiesce(done);
++  const auto result = done.Take();
++  EXPECT_EQ(result.outcome, Outcome::kExited);
++  EXPECT_FALSE(result.exit_code.has_value());
++  EXPECT_FALSE(HasOwnedHandle());
++}
++
+ TEST_F(DaemonSupervisorLifecycleTest, FailedOwnershipDrainRetainsHandleAndFailure) {
+   auto child = SyntheticChild(true);
+   ASSERT_TRUE(child.IsValid());

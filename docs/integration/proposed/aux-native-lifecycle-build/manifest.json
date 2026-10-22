@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "scope": "production direct-daemon lifecycle fixture GN integration",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "f606870916722929692083b9af7d67178e97307aae6df8efc532e4f4349acba0",
+      "outputSha256": "e5849d56ff36c66e2924d88d17d89d4fadc7d138a758859f279c0f2cf5db7f4f"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "baselineSha256": "21b0562c4f849c427dfa1ce400e8d95750211c32c9eeff12e793fa95b5c13a3f",
+      "outputSha256": "5840ab57d6f8e3a3868db31c0024b513c8b2b3162e9814754ee1eb3325770a26"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc",
+      "baselineSha256": null,
+      "outputSha256": "4c35f79fcf25a878523eb5964dee7552ca185bcd43e04e6f7803ff9261c00229"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "4b2a3cc2c1ba807fcc076c757ef9f21d4ae1326aca8e33f8c505ad9d8e96edea",
+      "outputSha256": "d918ed0a2c6cbe4abd1edf6f374128bb9d897b2e20d430de2b87112984ba28c8"
+    }
+  ],
+  "patchSha256": "c518afe1323adebde5a9f953ec72782d5194d7ace6c7fc8b6dd3ad4ca3921175"
+}

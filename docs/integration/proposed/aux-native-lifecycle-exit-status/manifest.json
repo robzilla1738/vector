@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": "conservative POSIX absent-child exit status and actual lifecycle fixture",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "11a13b30905388154e8c83d7a80fbd6e3dcaff96e3063ea30d253592ac9a285b",
+      "outputSha256": "7884c6db95ef8720aa0d2c7c89fd05e72c36862e28de8c41ee184884fd78d2ee"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc",
+      "baselineSha256": "a9d99608404397be80d297f74130e726cddc7da7b69176edba85e8e0b0bb4c26",
+      "outputSha256": "d15b19d2132d81eec58e6f3a92273cb8661862ff9917de51512f1c9da2147a8e"
+    }
+  ],
+  "patchSha256": "6c5d7ff92b9934dd5ffabd0d085f8b315cab7f3797ac7cf5539c1909c815a80d"
+}

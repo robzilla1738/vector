@@ -1,0 +1,49 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -418,7 +418,7 @@
+     return;
+   }
+   base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock()},
++      FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
+       base::BindOnce(&SignDaemonChallenge, home_, *challenge),
+       base::BindOnce(&DaemonSupervisor::DidSignChallenge, weak_.GetWeakPtr(),
+                      *id));
+@@ -509,7 +509,7 @@
+   drain_pending_ = true;
+   // Keep the original owned handle even if waiting or ownership validation fails.
+   base::ThreadPool::PostTaskAndReplyWithResult(
+-      FROM_HERE, {base::MayBlock()},
++      FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
+       base::BindOnce(&StopVerified, process_.Duplicate(), process_created_,
+                      paths_.root),
+       base::BindOnce(&DaemonSupervisor::DidFinishShutdown, weak_.GetWeakPtr()));
+--- a/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
++++ b/chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc
+@@ -9,6 +9,7 @@
+ #include "base/test/test_future.h"
+ #include "base/threading/thread_restrictions.h"
+ #include "build/build_config.h"
++#include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
+ #include "services/network/test/test_url_loader_factory.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+@@ -36,6 +37,7 @@
+     // Only this test's retained directly launched child can be cleaned up.
+     // Never enumerate processes, inspect a port owner or signal an adopted PID.
+     base::ScopedAllowBlockingForTesting allow_blocking;
++    base::ScopedAllowBaseSyncPrimitivesForTesting allow_sync;
+     if (cleanup_.IsValid() &&
+         !cleanup_.WaitForExitWithTimeout(base::TimeDelta(), nullptr)) {
+       ASSERT_FALSE(cleanup_created_.is_null());
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -189,7 +189,7 @@
+   deps = [
+     ":platform",
+     "//base",
+-    "//base/test:run_all_unittests",
++    "//mojo/core/test:run_all_unittests",
+     "//base/test:test_support",
+     "//services/network:test_support",
+     "//testing/gtest",

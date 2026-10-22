@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "scope": "required sync-wait task traits and native lifecycle test harness setup",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "e5849d56ff36c66e2924d88d17d89d4fadc7d138a758859f279c0f2cf5db7f4f",
+      "outputSha256": "11a13b30905388154e8c83d7a80fbd6e3dcaff96e3063ea30d253592ac9a285b"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor_lifecycle_unittest.cc",
+      "baselineSha256": "4c35f79fcf25a878523eb5964dee7552ca185bcd43e04e6f7803ff9261c00229",
+      "outputSha256": "a9d99608404397be80d297f74130e726cddc7da7b69176edba85e8e0b0bb4c26"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baselineSha256": "d918ed0a2c6cbe4abd1edf6f374128bb9d897b2e20d430de2b87112984ba28c8",
+      "outputSha256": "a1ba0ddd8f2b080a616695f77a6fdcd60462ad129c53c9f28d8c52952b6ed813"
+    }
+  ],
+  "patchSha256": "158bf9248e7cb117361a35ef1df7ce18b001ef618e62c30ce05c9e471fbf5235"
+}
