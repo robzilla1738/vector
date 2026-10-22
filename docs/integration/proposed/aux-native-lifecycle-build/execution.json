@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "composition": "out/native-reuse-composition-aux-lifecycle-callbacks",
+  "compositionSha256": "341606005a0254d80f21d2c986bc0dfdb30a9bfe9fb4f1098527c4a31daea429",
+  "fixtureReceipt": "out/aux-daemon-lifecycle-probe.json",
+  "fixtureReceiptSha256": "18e90f3ff2756d7cc4dc09e51974daf6f416363bdd06368faa67bf821c659f4e",
+  "fixtureBinarySha256": "fe24791545e381615488cb7bb097e65cab4c86064a91d7ee9646a8bed37b6294",
+  "passedCases": 5,
+  "scope": "owned-direct-daemon-only",
+  "firstTargetCompilePassed": false,
+  "compileCorrection": "stateless callbacks with explicit bound arguments; no compiler warning/assert suppression",
+  "correctedTargetCompilePassed": true,
+  "testExitCode": 0,
+  "allWritersVerified": false,
+  "authorityMigrationAccepted": false,
+  "appLaunched": false,
+  "signed": false,
+  "released": false,
+  "browserBuildPending": true
+}
