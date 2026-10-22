@@ -6,6 +6,7 @@ import { prepareAuxProviderJsonFile, classifyAuxProviderJsonPath } from './aux-p
 import { migrateAuxPreferenceDocument } from './aux-preference-identity.mjs';
 import { checkpointPrivateSqliteSnapshot } from './aux-sqlite-wal-copy.mjs';
 import { prepareSqliteProviderIdentity } from './aux-sqlite-provider-identity.mjs';
+import { prepareSessionTurnCacheIdentity } from './aux-session-turn-cache-identity.mjs';
 import { prepareContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
 import { prepareAuxTranscriptProviderIdentity } from './aux-transcript-provider-identity.mjs';
 import { prepareStateMigration } from './aux-state-migration-transaction.mjs';
@@ -120,10 +121,13 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
       const migrated = await migrate({ databaseBytes: checkpointed.bytes, expectedSha256: checkpointed.receipt.outputSha256, walBytes: null, rollbackJournalBytes: null, capability: derivedCapability });
       buffers.push(migrated.bytes);
       if (migrated.receipt.sourceSha256 !== checkpointed.receipt.outputSha256) throw Error('Identity migration checkpoint lineage mismatch');
-      files.push({ path: plan.target, expectedSha256: sha(plan.database), bytes: migrated.bytes });
+      const cached = plan.databaseKind === 'provider' ? await prepareSessionTurnCacheIdentity({ databaseBytes: migrated.bytes, expectedSha256: migrated.receipt.outputSha256, walBytes: null, capability: derivedCapability }) : null;
+      if (cached) { buffers.push(cached.bytes); if (cached.receipt.sourceSha256 !== migrated.receipt.outputSha256) throw Error('Cache identity provider lineage mismatch'); }
+      const finalBytes = cached?.bytes ?? migrated.bytes;
+      files.push({ path: plan.target, expectedSha256: sha(plan.database), bytes: finalBytes });
       files.push({ path: `${plan.target}-wal`, expectedSha256: sha(plan.wal), bytes: Buffer.alloc(0) });
       files.push({ path: `${plan.target}-shm`, expectedSha256: sha(plan.shm), bytes: Buffer.alloc(0) });
-      transformations.push({ path: plan.target, databaseKind: plan.databaseKind, checkpoint: checkpointed.receipt, ...(plan.databaseKind === 'provider' ? { providerMigration: migrated.receipt } : { contextLedgerMigration: migrated.receipt }), lineage: { originalMainSha256: sha(plan.database), originalWalSha256: sha(plan.wal), checkpointedMainSha256: checkpointed.receipt.outputSha256, identitySourceSha256: migrated.receipt.sourceSha256, preparedMainSha256: migrated.receipt.outputSha256, walCheckpointLineageVerified: true }, sidecars: { wal: 'reviewed-empty-replacement', shm: 'reviewed-empty-replacement', originalBackupsRequired: true } });
+      transformations.push({ path: plan.target, databaseKind: plan.databaseKind, checkpoint: checkpointed.receipt, ...(plan.databaseKind === 'provider' ? { providerMigration: migrated.receipt, cacheMigration: cached.receipt } : { contextLedgerMigration: migrated.receipt }), lineage: { originalMainSha256: sha(plan.database), originalWalSha256: sha(plan.wal), checkpointedMainSha256: checkpointed.receipt.outputSha256, identitySourceSha256: migrated.receipt.sourceSha256, providerIdentityOutputSha256: plan.databaseKind === 'provider' ? migrated.receipt.outputSha256 : undefined, cacheIdentitySourceSha256: cached?.receipt.sourceSha256, preparedMainSha256: sha(finalBytes), walCheckpointLineageVerified: true }, sidecars: { wal: 'reviewed-empty-replacement', shm: 'reviewed-empty-replacement', originalBackupsRequired: true } });
     }
     for (const plan of transcriptPlans) {
       const derivedCapability = { ...capability, assertStopped: async ({ phase }) => { await scope(capability, root, transactionId, sources, `handoff-${phase}`); return true; } };
@@ -137,7 +141,7 @@ export async function prepareAuxDisposableStateHandoff({ root, capability, trans
     const preparedFiles = files.map(file => ({ path: file.path, beforeSha256: file.expectedSha256, afterSha256: sha(file.bytes) }));
     return {
       ...handle,
-      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'typed historical tool arguments and cached assistant projections', 'actual app restart acceptance'] },
+      receipt: { format: 'aux.disposable-state-handoff.v1', status: 'prepared-not-committed', transactionId, sourceSnapshots: sources, preparedFiles, preparedSetSha256: sha(JSON.stringify(preparedFiles)), transformations, startupVerified: false, remaining: ['real stopped-writer/startup fence integration', 'renderer storage acknowledgement', 'typed historical tool arguments and other cached projection columns', 'actual app restart acceptance'] },
     };
   } finally { for (const bytes of buffers) bytes.fill(0); }
 }

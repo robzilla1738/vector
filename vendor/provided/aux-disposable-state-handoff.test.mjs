@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { prepareAuxDisposableStateHandoff } from './aux-disposable-state-handoff.mjs';
 import { createStateMigrationId, commitStateMigration, recoverStateMigration, verifyStateMigration } from './aux-state-migration-transaction.mjs';
 import { PINNED_PROVIDER_STATE_TARGET_DDL } from './aux-sqlite-provider-identity-schema.mjs';
+import { PINNED_SESSION_TURN_CACHE_DDL } from './aux-session-turn-cache-schema.mjs';
 import { PINNED_CONTEXT_LEDGER_DDL } from './aux-context-ledger-schema.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const transcriptPath = 'home/u/1/sessions/2026-10-22_fixture-session/messages.jsonl';
@@ -18,12 +19,14 @@ async function fixture(t) {
   t.after(() => fs.rm(temporary, { recursive: true, force: true }));
   const parent = await fs.realpath(temporary), root = path.join(parent, 'stopped-copy');
   await fs.mkdir(root, { mode: 0o700 });
-  const producer = path.join(parent, 'producer.db'), db = new DatabaseSync(producer);
+  const producer = path.join(parent, 'producer.db'); let db = new DatabaseSync(producer);
   let dbBytes, walBytes, shmBytes;
   try {
-    db.exec('CREATE TABLE projects(id TEXT PRIMARY KEY NOT NULL);'); db.exec(PINNED_PROVIDER_STATE_TARGET_DDL);
+    db.exec('CREATE TABLE projects(id TEXT PRIMARY KEY NOT NULL);'); db.exec(PINNED_PROVIDER_STATE_TARGET_DDL); db.exec(PINNED_SESSION_TURN_CACHE_DDL); db.close(); db = new DatabaseSync(producer);
     db.exec('PRAGMA user_version=20; PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA wal_checkpoint(TRUNCATE);');
     db.prepare('INSERT INTO sessions(id,cwd,model,queued_messages) VALUES(?,?,?,?)').run('wal-only-handoff-session','/synthetic',JSON.stringify(model),'[{"provider":"aside","scope":"unaudited"}]');
+    const cacheAssistant = JSON.parse(transcript.toString().split('\n')[1]); cacheAssistant.content = cacheAssistant.content.filter(block=>block.type==='text');
+    db.prepare('INSERT INTO session_turns(session_id,turn_id,user_message,final_assistant_message,token_usage,started_at,last_message_timestamp,jsonl_read_offset,jsonl_read_size) VALUES(?,?,?,?,?,?,?,?,?)').run('wal-only-handoff-session','fixture-turn','[]',JSON.stringify([cacheAssistant]),'{}',1,2,0,transcript.length);
     dbBytes = await fs.readFile(producer); walBytes = await fs.readFile(`${producer}-wal`); shmBytes = await fs.readFile(`${producer}-shm`);
   } finally { db.close(); }
   const files = [
@@ -87,6 +90,14 @@ test('WAL-only row + JSON/prefs migrate through crash recovery before any fixtur
   try {
     const row = db.prepare('SELECT model,queued_messages FROM sessions WHERE id=?').get('wal-only-handoff-session');
     assert.deepEqual(JSON.parse(row.model), { ...model, provider: 'aux' });
+    const cachedRow = db.prepare('SELECT * FROM session_turns').get();
+    const cached = JSON.parse(cachedRow.final_assistant_message);
+    assert.deepEqual(cached[0], {...afterRows[1].msg, content:afterRows[1].msg.content.filter(block=>block.type==='text')});
+    assert.equal(cachedRow.jsonl_read_offset, 0); assert.equal(cachedRow.jsonl_read_size, transcript.length);
+    const mainReceipt = prepared.receipt.transformations.find(entry=>entry.databaseKind==='provider');
+    assert.equal(mainReceipt.cacheMigration.changedRows,1);
+    assert.equal(mainReceipt.lineage.cacheIdentitySourceSha256, mainReceipt.providerMigration.outputSha256);
+    assert.equal(mainReceipt.lineage.preparedMainSha256, mainReceipt.cacheMigration.outputSha256);
     assert.equal(JSON.parse(row.queued_messages)[0].provider, 'aside'); // Explicit remaining audit gap.
     assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok');
     assert.equal(db.prepare('PRAGMA journal_mode=WAL').get().journal_mode, 'wal');
