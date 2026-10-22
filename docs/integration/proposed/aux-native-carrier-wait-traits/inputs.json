@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "parentSha256": "be9f5836946dd28d2264701f9c6c7ff0a3ce4e2c6cebefe6e2f820f08d2d4a6a",
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "edits": [
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "sourceSha256": "388157cc7e5e4373f3c1b1fcd4b1c9100c1a2ebe82d5ba946f9a2bfd1069ac32",
+      "find": "{base::MayBlock(), base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN}",
+      "replace": "{base::MayBlock(), base::WithBaseSyncPrimitives(),\n         base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN}",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_lifecycle_unittest.cc",
+      "sourceSha256": "043c3ae99848d8ce0d14f396d8d696c860dc1ce6421d85b901c5b1100874c454",
+      "find": "FROM_HERE, {base::MayBlock()},",
+      "replace": "FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},",
+      "count": 1
+    }
+  ]
+}
