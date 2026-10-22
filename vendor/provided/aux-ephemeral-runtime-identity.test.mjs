@@ -15,6 +15,16 @@ const section=findMachOSeaSection(binary),original=readSeaBlob(binary.subarray(s
 const run=text=>applyAuxEphemeralRuntimeIdentity({component:'daemon',path:'entry.mjs',text,original});
 const between=(text,start,end)=>{const offset=text.indexOf(start);assert.ok(offset>=0,start);const stop=text.indexOf(end,offset+start.length);assert.ok(stop>offset,end);return text.slice(offset,stop);};
 const count=(text,token)=>text.split(token).length-1;
+test('actual state2 staging composes paired runtime changes in local and development cloud output',()=>{
+ for(const options of [{},{enableCloud:true,profile:'development'}]) {
+  const result=adaptDaemonCode(original,options,'aux-v1',2);
+  new SourceTextModule(result.code);
+  assert.equal(count(result.code,'`aside-runtime`'),0);
+  assert.equal(count(result.code,'aside_agent_message'),0);
+  assert.equal(result.applied.filter(anchor=>anchor.name?.startsWith('Aux ')&&anchor.scope).length,4);
+ }
+ assert.ok(adaptDaemonCode(original,{},'compatibility',1).code.includes('aside_agent_message'));
+});
 test('exact rule replay preserves every other byte in original and real composed modules',()=>{
  for(const text of [original,...[{}, {enableCloud:true,profile:'development'}].map(cloud=>{
   let text=adaptDaemonCode(original,cloud,'aux-v1').code;

@@ -7,6 +7,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-protocol-identity.mjs',
   'vendor/provided/aux-provider-identity.mjs',
   'vendor/provided/aux-runtime-contract-identity.mjs',
+  'vendor/provided/aux-ephemeral-runtime-identity.mjs',
+  'docs/integration/proposed/aux-ephemeral-runtime-identity/inputs.json',
   'vendor/provided/aux-automation-identity.mjs',
   'vendor/provided/aux-private-daemon-identity.mjs',
   'vendor/provided/aux-capture-contract-identity.mjs',
