@@ -1,0 +1,415 @@
+{
+  "format": "aux.native.applied.writer-boundary-map.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "sourceFiles": [
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "sha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+      "bytes": 79514,
+      "anchors": [
+        {
+          "anchor": "PackagedIdentityAllowsStartup()",
+          "count": 1,
+          "firstLine": 1132
+        },
+        {
+          "anchor": "AcquireProcessSingleton(",
+          "count": 2,
+          "firstLine": 532
+        },
+        {
+          "anchor": "NotifyOtherProcessOrCreate()",
+          "count": 1,
+          "firstLine": 552
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "sha256": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7",
+      "bytes": 5286,
+      "anchors": [
+        {
+          "anchor": "PackagedIdentityAllowsStartup",
+          "count": 1,
+          "firstLine": 100
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+      "bytes": 96449,
+      "anchors": [
+        {
+          "anchor": "PreMainMessageLoopRunImpl()",
+          "count": 3,
+          "firstLine": 1521
+        },
+        {
+          "anchor": "CreateInitialProfile(",
+          "count": 3,
+          "firstLine": 449
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "sha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52",
+      "bytes": 93865,
+      "anchors": [
+        {
+          "anchor": "void ProfileManager::CreateProfileAsync(",
+          "count": 1,
+          "firstLine": 843
+        },
+        {
+          "anchor": "ProfileManager::CreateProfileHelper(",
+          "count": 1,
+          "firstLine": 1323
+        },
+        {
+          "anchor": "ProfileManager::CreateProfileAsyncHelper(",
+          "count": 1,
+          "firstLine": 1330
+        },
+        {
+          "anchor": "void ProfileManager::UnloadProfile(",
+          "count": 1,
+          "firstLine": 1785
+        },
+        {
+          "anchor": "There could still be pending tasks that write to",
+          "count": 1,
+          "firstLine": 1804
+        },
+        {
+          "anchor": "void ProfileManager::ShutdownSessionServices()",
+          "count": 1,
+          "firstLine": 513
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "sha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb",
+      "bytes": 72870,
+      "anchors": [
+        {
+          "anchor": "ProfileImpl::~ProfileImpl()",
+          "count": 1,
+          "firstLine": 960
+        },
+        {
+          "anchor": "PerformInterlockedTwoPhaseShutdown(",
+          "count": 1,
+          "firstLine": 1009
+        },
+        {
+          "anchor": "ShutdownStoragePartitions();",
+          "count": 1,
+          "firstLine": 1021
+        },
+        {
+          "anchor": "ProfileImpl::GetOffTheRecordProfile(",
+          "count": 1,
+          "firstLine": 1063
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_destroyer.cc",
+      "sha256": "76dbca3e9a8cdc3989108a0c6743e66178cc86ff8c9399bdfc8b42e73ba747a4",
+      "bytes": 17227,
+      "anchors": [
+        {
+          "anchor": "void ProfileDestroyer::Start(",
+          "count": 1,
+          "firstLine": 327
+        },
+        {
+          "anchor": "void ProfileDestroyer::RenderProcessHostDestroyed(",
+          "count": 1,
+          "firstLine": 385
+        },
+        {
+          "anchor": "void ProfileDestroyer::Timeout()",
+          "count": 1,
+          "firstLine": 445
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "a606f3fb6364bccd799327251a411bda8dcd4faa5d10c16fe6344c41fa630b39",
+      "bytes": 4797,
+      "anchors": [
+        {
+          "anchor": "void ProfileSwitchSessionRebuild::Schedule(",
+          "count": 1,
+          "firstLine": 58
+        },
+        {
+          "anchor": "void ProfileSwitchSessionRebuild::FlushPendingBeforeClose()",
+          "count": 1,
+          "firstLine": 43
+        },
+        {
+          "anchor": "PostDelayedTask(",
+          "count": 1,
+          "firstLine": 66
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "sha256": "ed9cdedb091d76e7c40f4d270fdfe40db3e178014374e7929128e0bbe0572736",
+      "bytes": 8997,
+      "anchors": [
+        {
+          "anchor": "void BrowserPlatform::QuiesceDirectDaemonForMigration(",
+          "count": 1,
+          "firstLine": 170
+        },
+        {
+          "anchor": "CloseInstallationCarrierAdmission();",
+          "count": 2,
+          "firstLine": 174
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed",
+      "bytes": 22799,
+      "anchors": [
+        {
+          "anchor": "void DaemonSupervisor::QuiesceDirectDaemonForMigration(",
+          "count": 1,
+          "firstLine": 466
+        },
+        {
+          "anchor": "launch_admission_->open = false;",
+          "count": 1,
+          "firstLine": 472
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/installation_carrier_custody.h",
+      "sha256": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+      "bytes": 1453,
+      "anchors": [
+        {
+          "anchor": "struct Snapshot {",
+          "count": 1,
+          "firstLine": 18
+        },
+        {
+          "anchor": "size_t active_calls;",
+          "count": 1,
+          "firstLine": 20
+        },
+        {
+          "anchor": "size_t unresolved_children;",
+          "count": 1,
+          "firstLine": 21
+        },
+        {
+          "anchor": "void ObservedChildExit();",
+          "count": 1,
+          "firstLine": 33
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "sha256": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb",
+      "bytes": 13856,
+      "anchors": [
+        {
+          "anchor": "void internal::WaitForInstallationCarrierExit(",
+          "count": 1,
+          "firstLine": 256
+        },
+        {
+          "anchor": "InspectInstallationCarrierCustody()",
+          "count": 1,
+          "firstLine": 265
+        }
+      ]
+    },
+    {
+      "path": "content/browser/renderer_host/render_process_host_impl.cc",
+      "sha256": "6d9b90abeb902d47259d5baa78c87672be140729fc86e53481b33de6221f4725",
+      "bytes": 257832,
+      "anchors": [
+        {
+          "anchor": "bool RenderProcessHostImpl::Init()",
+          "count": 1,
+          "firstLine": 1879
+        },
+        {
+          "anchor": "if (IsInitializedAndNotDead())",
+          "count": 2,
+          "firstLine": 1882
+        },
+        {
+          "anchor": "std::make_unique<ChildProcessLauncher>",
+          "count": 1,
+          "firstLine": 2127
+        },
+        {
+          "anchor": "void RenderProcessHostImpl::ProcessDied(",
+          "count": 1,
+          "firstLine": 5692
+        }
+      ]
+    },
+    {
+      "path": "content/browser/site_instance_impl.cc",
+      "sha256": "0e9042da2b094497350416622dcd9a62cdc67cb715212c455360b2730714b0e5",
+      "bytes": 76872,
+      "anchors": [
+        {
+          "anchor": "RenderProcessHost* SiteInstanceImpl::GetOrCreateProcess(",
+          "count": 2,
+          "firstLine": 455
+        },
+        {
+          "anchor": "return site_instance_group_->process();",
+          "count": 1,
+          "firstLine": 493
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_task_queue.cc",
+      "sha256": "b92d2a0bda24adcf4848a1849ea93218c9a099bd8a158bf7f51c419751ba7666",
+      "bytes": 56196,
+      "anchors": [
+        {
+          "anchor": "void ServiceWorkerTaskQueue::MaybeStartWorker(",
+          "count": 1,
+          "firstLine": 722
+        },
+        {
+          "anchor": "void ServiceWorkerTaskQueue::RetryStartWorker(",
+          "count": 1,
+          "firstLine": 763
+        }
+      ]
+    },
+    {
+      "path": "content/browser/browser_context_impl.cc",
+      "sha256": "d43111c9198961a9ac9942740a3cfea43587cffd1ca5e14afd7730ef52f2740f",
+      "bytes": 17293,
+      "anchors": [
+        {
+          "anchor": "void BrowserContextImpl::NotifyWillBeDestroyed()",
+          "count": 1,
+          "firstLine": 164
+        },
+        {
+          "anchor": "void BrowserContextImpl::ShutdownStoragePartitions()",
+          "count": 1,
+          "firstLine": 265
+        }
+      ]
+    },
+    {
+      "path": "content/browser/storage_partition_impl.cc",
+      "sha256": "1da4737624ab997ebcd8a1095375a2fa7d95a98b4cd11582b831d3803d1faadf",
+      "bytes": 164086,
+      "anchors": [
+        {
+          "anchor": "void StoragePartitionImpl::OnBrowserContextWillBeDestroyed()",
+          "count": 1,
+          "firstLine": 1292
+        },
+        {
+          "anchor": "StoragePartitionImpl::~StoragePartitionImpl()",
+          "count": 1,
+          "firstLine": 1260
+        },
+        {
+          "anchor": "void StoragePartitionImpl::Flush()",
+          "count": 1,
+          "firstLine": 3279
+        }
+      ]
+    },
+    {
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "sha256": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055",
+      "bytes": 16085,
+      "anchors": [
+        {
+          "anchor": "void DOMStorageContextWrapper::Shutdown()",
+          "count": 1,
+          "firstLine": 228
+        },
+        {
+          "anchor": "void DOMStorageContextWrapper::Flush()",
+          "count": 1,
+          "firstLine": 241
+        }
+      ]
+    },
+    {
+      "path": "content/browser/indexed_db/indexed_db_context_impl.cc",
+      "sha256": "69a786a3dedd8aeb5dcedaba02f7e00794c57d2c907947ed0037b8301ca86b9c",
+      "bytes": 50935,
+      "anchors": [
+        {
+          "anchor": "void IndexedDBContextImpl::Shutdown(",
+          "count": 1,
+          "firstLine": 962
+        },
+        {
+          "anchor": "void IndexedDBContextImpl::ShutdownOnIDBSequence(",
+          "count": 1,
+          "firstLine": 916
+        },
+        {
+          "anchor": "ForceClose(bucket_locator, /*delete_bucket_data=*/true",
+          "count": 1,
+          "firstLine": 956
+        }
+      ]
+    },
+    {
+      "path": "content/browser/indexed_db/indexed_db_context_impl.h",
+      "sha256": "409294d52cfa537ef4eb22d6c83c55595691b5f6414799c7a4b96c59d3d7c332",
+      "bytes": 16294,
+      "anchors": [
+        {
+          "anchor": "bool delete_bucket_data,",
+          "count": 1,
+          "firstLine": 181
+        },
+        {
+          "anchor": "base::OnceClosure callback);",
+          "count": 2,
+          "firstLine": 182
+        }
+      ]
+    },
+    {
+      "path": "components/prefs/persistent_pref_store.h",
+      "sha256": "bd28a00c4b935a00a5ef81965c05b2a5eba6d131e1895efa08c6e08d5c9b8f09",
+      "bytes": 4533,
+      "anchors": [
+        {
+          "anchor": "virtual void CommitPendingWrite(",
+          "count": 1,
+          "firstLine": 71
+        }
+      ]
+    }
+  ],
+  "actualCheckoutReadOnly": true,
+  "nativeBuildRun": false,
+  "allWriterCustodyClaimed": false,
+  "ownerDataOrProcessesInspected": false
+}
