@@ -1,0 +1,25 @@
+{
+  "format": "aux.live-dk.runtime-compatibility-correction.v1",
+  "exitCode": 0,
+  "checks": [
+    "actual adapted cache source accepts slash/dot/Unicode purpose",
+    "additional cache JSON field preserved",
+    "value larger than2MiB roundtrips"
+  ],
+  "migrationBudgetsRetained": true,
+  "unchangedCasesRepeated": false,
+  "files": [
+    {
+      "path": "source/runtime.mjs",
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c"
+    },
+    {
+      "path": "source/prepare.mjs",
+      "sha256": "2c4de0a8d2eee2513b6db554a6cf34b0b8b817b700fd4a2602e05876bb782892"
+    },
+    {
+      "path": "tests/runtime-source-compatibility.mjs",
+      "sha256": "07dd568829543b55ebd14559bb8253bb1a1c07901d5af3779b1b40ca5c095de8"
+    }
+  ]
+}
