@@ -1,6 +1,19 @@
 // Transform provenance prevents an older, internally consistent UI stage from
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
+  'vendor/provided/aux-crypto-stage.mjs',
+  'docs/integration/proposed/aux-crypto-stage-integration/inputs.json',
+  'docs/integration/proposed/aux-csk-v2-consumer/source-pins.json',
+  'docs/integration/proposed/aux-live-dk-purposes/source-pins.json',
+  'docs/integration/proposed/aux-macos-crypto-exclusion/source-pins.json',
+  'docs/integration/proposed/aux-crypto-runtime-assets/source-pins.json',
+  'docs/integration/proposed/aux-crypto-runtime-assets/source/materialize.mjs',
+  'docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs',
+  'docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs',
+  'vendor/aside/lib/sea.mjs',
+  'vendor/provided/aux-crypto-identity.mjs',
+  'vendor/provided/aux-identity-json-tokens.mjs',
+
   'scripts/stage-provided.mjs',
   'docs/integration/proposed/provided-agent-worker-revision/revision.mjs',
   'vendor/provided/agent-revisions.json',

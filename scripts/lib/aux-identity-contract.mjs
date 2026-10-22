@@ -141,7 +141,16 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
       if (!texts[label].startsWith(prefix) || texts[label].split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
         throw Error(`Missing exact state2 cold-entry quarantine: ${label}`);
     }
-    const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
+    let cryptoPreload = '';
+    if (apps.components.daemon.cryptoRuntime) {
+      const crypto = JSON.parse(await regular(join(repository, 'docs/integration/proposed/aux-crypto-stage-integration/inputs.json')));
+      const variants = crypto.variants[stage.cloudPolicy?.mode ?? 'local'];
+      if (!variants || sha(texts.daemon) !== variants.sea.outputSha256 || sha(developmentText) !== variants['node-development'].outputSha256 ||
+          !texts.daemon.startsWith(AUX_COLD_ENTRY_REFUSAL + crypto.preloads.sea))
+        throw Error('Unreviewed state2 crypto entry projection');
+      cryptoPreload = crypto.preloads['node-development'];
+    }
+    const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + cryptoPreload + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
     if (typeof developmentText !== 'string' || !developmentText.startsWith(generatedPrefix) || developmentText.split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
       throw Error('Missing state2 generated-entry quarantine before asset initialization');
     coldEntryQuarantineChecked = true;

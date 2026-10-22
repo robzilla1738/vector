@@ -11,8 +11,7 @@ import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-poli
 import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
-import { adaptDaemonCode } from '../vendor/provided/daemon-adapter.mjs';
-import { buildDaemonNodeDevelopment } from '../vendor/provided/daemon-node-development.mjs';
+import { adaptDaemonCodeWithAuxCrypto as adaptDaemonCode, buildDaemonNodeDevelopmentWithAuxCrypto as buildDaemonNodeDevelopment, auxCryptoSeaResources } from '../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -116,11 +115,13 @@ for (const component of ['daemon', 'cli']) {
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
   const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary, cloudOptions, identityProfile, stateIdentityVersion) : null;
-  const developmentFiles = new Map((development?.files ?? []).map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
+  const cryptoRuntime = component === 'daemon' ? auxCryptoSeaResources(stateIdentityVersion) : null;
+  if (JSON.stringify(report.cryptoRuntime) !== JSON.stringify(cryptoRuntime?.manifest)) throw new Error('Restage current Aux crypto assets');
+  const developmentFiles = new Map([...(cryptoRuntime?.files ?? []), ...(development?.files ?? [])].map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
   if (development && JSON.stringify(report.nodeDevelopment) !== JSON.stringify(development.manifest)) throw new Error('Restage current supplied daemon development code/assets');
   if (report.files.filter(file => file.generatedBy).length !== developmentFiles.size) throw new Error('Missing or unexpected generated daemon development resources');
   for (const [path, expected] of developmentFiles) {
-    if (!report.files.some(file => file.path === path && file.added === true && file.generatedBy === 'vendor/provided/daemon-node-development.mjs' && file.outputSha256 === hash(expected.bytes) && file.outputMode === expected.mode)) throw new Error('Missing source-pinned daemon development resource');
+    if (!report.files.some(file => file.path === path && file.added === true && file.generatedBy === expected.generatedBy && file.outputSha256 === hash(expected.bytes) && file.outputMode === expected.mode)) throw new Error('Missing source-pinned daemon development resource');
   }
   for (const file of [...report.files, ...report.removed]) {
     if (!safe(file.path)) throw new Error('Unsafe app resource path');
@@ -132,7 +133,8 @@ for (const component of ['daemon', 'cli']) {
     if (file.outputSha256 && hash(await readFile(join(root, file.path))) !== file.outputSha256) throw new Error('App resource output hash mismatch');
     if (file.generatedBy) {
       const expected = developmentFiles.get(file.path);
-      if (!expected || file.generatedBy !== 'vendor/provided/daemon-node-development.mjs' || !file.added || hash(expected.bytes) !== file.outputSha256 || file.outputMode !== expected.mode) throw new Error('Unexpected generated daemon development resource');
+      if (!expected || file.generatedBy !== expected.generatedBy || !file.added || hash(expected.bytes) !== file.outputSha256 || file.outputMode !== expected.mode) throw new Error('Unexpected generated daemon development resource');
+      if (((await lstat(join(root, file.path))).mode & 0o777) !== expected.mode) throw new Error('Generated daemon resource mode mismatch');
     }
     if (file.repositorySource) {
       const name = file.path.split('/').at(-1);

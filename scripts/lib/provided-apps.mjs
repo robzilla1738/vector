@@ -6,8 +6,7 @@ import { lstat, readdir, readFile, mkdir, mkdtemp, writeFile, rename, rm } from 
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adaptDaemonBinary } from '../../vendor/provided/daemon-adapter.mjs';
-import { buildDaemonNodeDevelopment } from '../../vendor/provided/daemon-node-development.mjs';
+import { adaptDaemonBinaryWithAuxCrypto as adaptDaemonBinary, buildDaemonNodeDevelopmentWithAuxCrypto as buildDaemonNodeDevelopment, auxCryptoSeaResources } from '../../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
 import { disabledSeed } from '../../vendor/provided/vault-product-exclusion.mjs';
@@ -96,6 +95,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
     for (const [component, target] of Object.entries(targets)) {
       const app = join(temporary, component, target.app), files = [], removed = [];
       let executable, nodeDevelopment;
+      const cryptoRuntime = component === 'daemon' ? auxCryptoSeaResources(stateIdentityVersion) : null;
       for (const file of actual.components[component].files) {
         const source = await readFile(join(sourceRoots[component], file.path));
         if (hash(source) !== file.sha256) throw new Error('Static app input changed during staging');
@@ -158,14 +158,14 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       }
       if (nodeDevelopment) {
         const prefix = `apps/${component}/${target.app}/`;
-        for (const generated of nodeDevelopment.files) {
-          if (!generated.path.startsWith(prefix)) throw new Error('Unexpected daemon development resource');
+        for (const generated of [...(cryptoRuntime?.files ?? []), ...nodeDevelopment.files]) {
+          if (!generated.path.startsWith(prefix) || generated.path.slice(prefix.length).split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('Unexpected daemon development resource');
           const path = generated.path.slice(prefix.length);
           const destination = join(app, path);
           await mkdir(dirname(destination), { recursive: true });
           await writeFile(destination, generated.bytes, { mode: generated.mode, flag: 'wx' });
           files.push({ path, outputSha256: hash(generated.bytes), outputMode: generated.mode,
-            generatedBy: 'vendor/provided/daemon-node-development.mjs', changeKinds: ['integration'], added: true });
+            generatedBy: generated.generatedBy, changeKinds: ['integration'], added: true });
         }
       }
       for (const file of files.filter((entry) => entry.path.endsWith('/Info.plist'))) {
@@ -176,6 +176,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       }
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
         ...(nodeDevelopment ? { nodeDevelopment: nodeDevelopment.manifest } : {}),
+        ...(cryptoRuntime?.manifest ? { cryptoRuntime: cryptoRuntime.manifest } : {}),
         executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets,
           ...(executable.cloudPolicy ? { cloudPolicy: executable.cloudPolicy, cloudAnchors: executable.cloudAnchors } : {}) } };
     }

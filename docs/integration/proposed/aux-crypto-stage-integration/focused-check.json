@@ -1,0 +1,30 @@
+{
+  "format": "aux.crypto.stage.check.v1",
+  "activation": false,
+  "originalBinarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "variants": [
+    {
+      "policy": "local",
+      "embeddedCodeSha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa",
+      "nodeEntrySha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835",
+      "seaFlags": 25,
+      "unchangedOriginalSeaAssets": 2,
+      "cryptoAssets": 4,
+      "nodeResources": 8,
+      "dynamicLoadsBeforeRefusal": 0
+    },
+    {
+      "policy": "development",
+      "embeddedCodeSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
+      "nodeEntrySha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
+      "seaFlags": 25,
+      "unchangedOriginalSeaAssets": 2,
+      "cryptoAssets": 4,
+      "nodeResources": 8,
+      "dynamicLoadsBeforeRefusal": 0
+    }
+  ],
+  "compatibilityByteAndManifestEquality": true,
+  "nativeModulesLoaded": false,
+  "protectedOperations": false
+}

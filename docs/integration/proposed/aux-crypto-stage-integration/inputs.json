@@ -1,0 +1,95 @@
+{
+  "format": "aux.crypto.stage.inputs.v1",
+  "binarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "editTables": [
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source-pins.json",
+      "sha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source-pins.json",
+      "sha256": "0679b19878759aec047de3036d30f33936b7c0f32dbc69deedf1260c8de5a9c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-crypto-exclusion/source-pins.json",
+      "sha256": "9e923414094990e6b3a774e66901c922a4dc9d2b53f8cc2f28e80b2537d90025"
+    }
+  ],
+  "preloads": {
+    "sea": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst {pathToFileURL:__auxCryptoPathToFileURL}=await import(\"node:url\");\nconst __auxCryptoBaseURL=new URL(\"../Resources/aux-crypto/\",__auxCryptoPathToFileURL(process.execPath));\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
+    "node-development": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst __auxCryptoBaseURL=new URL(\"./aux-crypto/\",import.meta.url);\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n"
+  },
+  "variants": {
+    "local": {
+      "sea": {
+        "inputSha256": "d69b87e91e30edadaef456b63d7f4751a09ce4c997f31b6129d01b5801a3e6d4",
+        "outputSha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa"
+      },
+      "node-development": {
+        "inputSha256": "9ac746f4dd4a8c8848b5ee5cd229dad65d0df1e0d97f5a73d945ed9fb347ab99",
+        "outputSha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835"
+      }
+    },
+    "development": {
+      "sea": {
+        "inputSha256": "dc1b3ac054c280bc63481a365601bc2a24f074160a48206d56a399df89a47c3b",
+        "outputSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb"
+      },
+      "node-development": {
+        "inputSha256": "655ff1d4c6d19cea6bf710f9c8c36ab7650f9cc1c4d0f02f0e88f9b01f087b0b",
+        "outputSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b"
+      }
+    }
+  },
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-crypto-runtime-assets/source-pins.json",
+      "sha256": "d76aec791ba845885c6f2ec7d2923946e2808784ff4f2be15291daed3ec3fa6f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-crypto-runtime-assets/source/materialize.mjs",
+      "sha256": "0415c7c21ed5bc9faf054d8e539c321b121f642013f7858aeb4fd66e289438f3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs",
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c"
+    },
+    {
+      "path": "vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "path": "vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "vendor/provided/aux-identity-json-tokens.mjs",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b"
+    },
+    {
+      "path": "vendor/provided/cloud-sea-embedding.mjs",
+      "sha256": "393b84b262066d5b155a7e233d1a6df2663e85d7d384ae956ef0b38de7fc5054"
+    },
+    {
+      "path": "vendor/provided/cloud-service-policy.mjs",
+      "sha256": "a4136a61445ec94953beaf0d24fdb1ccbe2d5e72a9d0a97cc65421490c635fe9"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/daemon-node-development.mjs",
+      "sha256": "c7b0dc7404c1e9b9527d95af6c05710cf92cc29552815ffc508a60ef2c88552f"
+    }
+  ]
+}

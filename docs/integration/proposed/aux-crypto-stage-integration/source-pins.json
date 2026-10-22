@@ -1,0 +1,14 @@
+{
+  "format": "aux.crypto.stage.integration.source-pins.v1",
+  "files": {
+    "vendor/provided/aux-crypto-stage.mjs": "dcec4c8d034e36bc5866d53d2484a599f80e498e1dd29028b8d54de5680df47e",
+    "scripts/lib/provided-apps.mjs": "c99652e8b3b2411fab2ab559567ef5424865cf23c6b24d39eeff22cae7fc4051",
+    "scripts/check-provided.mjs": "7a8bcfc21a71ee432da040cb3d867aeccc6ddeeb01f4f6ac01b20d7a6768d5e4",
+    "scripts/lib/provided-stage-inputs.mjs": "9c27f076da50fbe070f83e2015b7da11478d4fd43d428f5c332fd456bed21851",
+    "scripts/lib/aux-identity-contract.mjs": "2634bf6090bbc8b9445df3f783b7f77c0c2759ef8e8f74dbc19ba6d1c951134d",
+    "docs/integration/proposed/aux-crypto-stage-integration/inputs.json": "04ba60db4d0bff27682ea882ac4bad7eda148504e8165765b9fa0702b4d95f59",
+    "docs/integration/proposed/aux-crypto-stage-integration/check.mjs": "4847d6d2859da5328e39f5b55dec4950cec30e4bbc1d27904e9a5f5145317955",
+    "docs/integration/proposed/aux-crypto-stage-integration/focused-check.json": "794a4a2c762e80141fe00373edb692c2eddaecef96da9d8d739d49546bbd2e12",
+    "docs/integration/proposed/aux-crypto-stage-integration/README.md": "3fac2c4fe5d1e409acc393f1ce71851a6030699ddc729a3be2b889cea7646504"
+  }
+}
