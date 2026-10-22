@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "scope": "owned-direct-daemon-only",
+  "status": "proposal-not-applied-or-compiled",
+  "files": [
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "47cd095d36a83c76658e5b22ff52735da4046c6f10628f7d9267d03d79e1efda",
+      "outputSha256": "2d5867212a162c82d0a5b7f50dd27bb2c77a370f5f1a8e46846da76a00e8c667"
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.h",
+      "baselineSha256": "48794afe67a53c7cd60a5b317cf03e2a3d2730db8f2d2f925f1709f72f1cae40",
+      "outputSha256": "8f527443d48c2b7ad9f3ee4a6aec3828de845e28645740a51b6b6c00dea6abc7"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "693a76b3958f95acfd4b7c138230c2f8fdd35f42703bb7a2ccf399094f79eb19",
+      "outputSha256": "f606870916722929692083b9af7d67178e97307aae6df8efc532e4f4349acba0"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "baselineSha256": "db0bf4f7bdf3ac8c2810e4b6e0aec3f39ab054a60bc755a4296c391e0351ae57",
+      "outputSha256": "21b0562c4f849c427dfa1ce400e8d95750211c32c9eeff12e793fa95b5c13a3f"
+    }
+  ],
+  "patchSha256": "9dd2272b79ac37d45b7498cee4b49b106fc9f011666f10db8b8cd8a5c50e4adc"
+}
