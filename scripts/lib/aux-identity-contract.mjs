@@ -31,7 +31,14 @@ function requireIncludes(text, token, label) {
 }
 function rejectMixed(text, profile, label) {
   const other = names(profile === 'aux-v1' ? 'compatibility' : 'aux-v1');
-  for (const token of Object.values(other)) if (text.includes(token)) throw Error(`Mixed identity profile in ${label}: ${token}`);
+  for (const token of Object.values(other)) {
+    // Visible Aux prose is valid even in a compatibility source. Only a method-shaped
+    // reference or dispatch prefix is a protocol generation marker.
+    const mixed = token === other.prefix
+      ? new RegExp(escaped(token) + '[A-Za-z_$]').test(text) || ['"', "'", '`'].some(quote => text.includes('startsWith(' + quote + token + quote))
+      : text.includes(token);
+    if (mixed) throw Error(`Mixed identity profile in ${label}: ${token}`);
+  }
 }
 function challengeSource(text, token, label) {
   const literal = `"${token}\\0"`;

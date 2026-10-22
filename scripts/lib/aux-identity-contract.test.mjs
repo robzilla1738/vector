@@ -21,6 +21,8 @@ test('paired real-entrypoint contract accepts both explicit generations with com
   assert.equal(assertAuxIdentityPairing(cli).staticPairing, true);
 });
 test('reject mismatched declared profile before packaging; declarations alone cannot prove pairing', () => {
+  const visible = fixture('compatibility'); visible.texts.daemon += ' Welcome to Aux. ';
+  assert.equal(assertAuxIdentityPairing(visible).staticPairing, true);
   const f = fixture(); f.declaredProfiles.ui = 'compatibility';
   assert.throws(() => assertAuxIdentityPairing(f), /profile mismatch/);
   const mixed = fixture(); mixed.texts.daemon += ' Aside.listTabs';

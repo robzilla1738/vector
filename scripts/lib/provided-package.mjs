@@ -100,11 +100,9 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   const compositionRaw = await readFile(join(compositionRoot, 'manifest.json')), composition = JSON.parse(compositionRaw);
   const boundaryRaw = await readFile(boundaryReceiptPath), boundary = JSON.parse(boundaryRaw);
   const stageIdentity = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8')).identityProfile ?? 'compatibility';
-  // Match actual source/SEA/Agent protocol bytes before any package copy.
-  // Historical compatibility stages lack profile declarations; only the new
-  // coordinated successor opts into this strict independent gate.
-  const identityEvidence = stageIdentity === 'aux-v1'
-    ? await verifyAuxIdentityContract({ stageRoot, composition, identityProfile: stageIdentity }) : null;
+  // Match actual source/SEA/Agent protocol bytes in both directions before
+  // copying. Old stages without explicit declarations must be restaged.
+  const identityEvidence = await verifyAuxIdentityContract({ stageRoot, composition, identityProfile: stageIdentity });
   const visualEvidence = stageIdentity === 'aux-v1'
     ? await assertAuxVisualAssets({ agentRoot: join(stageRoot, 'ui/agent') }) : null;
 

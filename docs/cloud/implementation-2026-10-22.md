@@ -2,6 +2,10 @@
 
 Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speech and production preparation; preserve the existing desktop UI and existing provider data. No final desktop release, notarization or distribution. Work remains active until actual service and desktop behavior is verified.
 
+## Identity migration integration — 2026-10-22
+
+Owner requires all delivered product identities to use Aux, including internal protocols, while preserving current UI. The new protocol-only unsigned desktop candidate builds and passes actual packaged static pairing/visual preservation; it is not launched or runtime-accepted. Separate local cloud changes emit Aux provider/header/plan identities and retain explicit pending-checkout continuity without changing Stripe objects. They are not deployed and must roll out with the source/count-pinned desktop provider migration after its durable state transaction is integrated. Native preferences and crypto migration hooks are prepared but not activated. Complete identity and native-addon recovery remain work; see `../plans/2026-10-22-complete-aux-identity.md` and STATUS. Earlier service acceptance remains historical for its exact deployment, not proof of the new desktop/provider stack.
+
 ## Product decisions
 
 - Separate `services/aux-cloud` Next.js/Hono service; existing marketing site and desktop implementation remain intact.
