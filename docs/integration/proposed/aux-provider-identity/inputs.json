@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "component": "agent",
+      "path": "assets/error-test-BKjD4Ku7.js",
+      "sourceSha256": "46029db45e412e2c2ddbae88452fcec3107ffe99ecc58083a0bae70743b12838",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/mcps-DmPp5oo9.js",
+      "sourceSha256": "e081e3d15242ef69bc043ec4685b07bc9fba247d20a68dc7df34e936d94862b1",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 2
+        },
+        {
+          "find": "asideModelCatalog:",
+          "replace": "auxModelCatalog:",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/model-select-BvZsM1Kl.js",
+      "sourceSha256": "b62a239e65e525c354997c7b45be4105147d610b5ab3de5a87d0dd0f1c541505",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/ai-CzEX5E7S.js",
+      "sourceSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 11
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/coding-agent-nudge-Cy9BtLdb.js",
+      "sourceSha256": "bb5e3ba18736cb97870e7ef4317fc0b4791025cc4c0a6d901089fa2c9652a9f5",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/model-BrFuJM2w.js",
+      "sourceSha256": "28a35f040a415439e44540e81660ee9b738b92843e3ce2f9eeaf1d9808eba9dd",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/strip-markdown-DRcmtuJc.js",
+      "sourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 4
+        },
+        {
+          "find": "ia={aside:",
+          "replace": "ia={aux:",
+          "count": 1
+        },
+        {
+          "find": "aa={aside:",
+          "replace": "aa={aux:",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/experimental-Xq3YsEPK.js",
+      "sourceSha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/types-BEI3ap6-.js",
+      "sourceSha256": "93edac81bb5c7d5ad512f254d607f330447d16a84e7b7a1a9ac657ac3ff29f6a",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 12
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/connect-dialog-CacgpFap.js",
+      "sourceSha256": "276c770d80c67db2d1af08fac1ba44c9fb9c76e5595b63e098ebe0010ad739c2",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "sourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/subscription-usage-BB4arJ0Z.js",
+      "sourceSha256": "8530f29cb868d8a2442dcf7ee88d16489559620413609ecbb6242c8005bad37d",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/provider-context-A_wu0fRN.js",
+      "sourceSha256": "5f30575d1aeadf13f12758b84c780e4a282a1349df0eb1879747c22f21e6809d",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/icons-C7UupG-g.js",
+      "sourceSha256": "31e51b68cf5f60d44936714763ab43f93c8ad6d7615f642c82a4b7daa7abf2f4",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/model-categories-BLKcCTS7.js",
+      "sourceSha256": "2fd5e0a890a06bb01e2809c30f920ad0396b52dd9ba3d6b7f5ef11764d563df9",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/use-agent-settings-DiedG0R1.js",
+      "sourceSha256": "4acd8450d7c7c4d5ddbf6104192d2fd2d1a6eaf90564e12be3c0550e7bb83897",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        },
+        {
+          "find": "aside.agent-settings.v2",
+          "replace": "aux.agent-settings.v3",
+          "count": 1
+        },
+        {
+          "find": "aside.settings-inventory.v1",
+          "replace": "aux.settings-inventory.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "assets/progress-CS-jrVXz.js",
+      "sourceSha256": "81193d2c8a1cbb56935e5a415d9863569660870ae3fc4ee852b48490f71e65e9",
+      "rules": [
+        {
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "daemon",
+      "path": "entry.mjs",
+      "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "rules": [
+        {
+          "find": "provider:`aside`",
+          "replace": "provider:`aux`",
+          "count": 15
+        },
+        {
+          "find": "provider===`aside`",
+          "replace": "provider===`aux`",
+          "count": 9
+        },
+        {
+          "find": "provider!==`aside`",
+          "replace": "provider!==`aux`",
+          "count": 1
+        },
+        {
+          "find": "ASIDE_PROVIDER_ID=`aside`",
+          "replace": "ASIDE_PROVIDER_ID=`aux`",
+          "count": 1
+        },
+        {
+          "find": "sortModelsForProvider(`aside`,Cn)",
+          "replace": "sortModelsForProvider(`aux`,Cn)",
+          "count": 1
+        },
+        {
+          "find": "if(Cn===`aside`)return[]",
+          "replace": "if(Cn===`aux`)return[]",
+          "count": 1
+        },
+        {
+          "find": "source:`aside`",
+          "replace": "source:`aux`",
+          "count": 1
+        },
+        {
+          "find": "if(ri.source===`aside`)",
+          "replace": "if(ri.source===`aux`)",
+          "count": 1
+        },
+        {
+          "find": "if(Cn===`aside`){let Cn=await this.getAsideProvider()",
+          "replace": "if(Cn===`aux`){let Cn=await this.getAsideProvider()",
+          "count": 1
+        },
+        {
+          "find": "return Cn===`aside`||this.credentials",
+          "replace": "return Cn===`aux`||this.credentials",
+          "count": 1
+        },
+        {
+          "find": "if(oi===`aside`){let ei=await this.getAsideProvider()",
+          "replace": "if(oi===`aux`){let ei=await this.getAsideProvider()",
+          "count": 1
+        },
+        {
+          "find": "Cn===ri?0:Cn===`aside`?2:1",
+          "replace": "Cn===ri?0:Cn===`aux`?2:1",
+          "count": 1
+        },
+        {
+          "find": "ii=ri===`aside`||ri===`claude-code`",
+          "replace": "ii=ri===`aux`||ri===`claude-code`",
+          "count": 1
+        },
+        {
+          "find": "return Cn===`aside`&&!!ei&&AMBIGUOUS_NO_BODY_STATUS_RE",
+          "replace": "return Cn===`aux`&&!!ei&&AMBIGUOUS_NO_BODY_STATUS_RE",
+          "count": 1
+        },
+        {
+          "find": "vi.apiKey!==void 0&&Cn!==`aside`",
+          "replace": "vi.apiKey!==void 0&&Cn!==`aux`",
+          "count": 1
+        },
+        {
+          "find": "`xiaomi-token-plan-sgp`,`aside`]",
+          "replace": "`xiaomi-token-plan-sgp`,`aux`]",
+          "count": 1
+        },
+        {
+          "find": "new Set([`aside`,`chatgpt`,`claude-code`",
+          "replace": "new Set([`aux`,`chatgpt`,`claude-code`",
+          "count": 1
+        },
+        {
+          "find": "providerId:_enum([`aside`,`claude-code`",
+          "replace": "providerId:_enum([`aux`,`claude-code`",
+          "count": 1
+        },
+        {
+          "find": "MODEL_CATALOG_POLICIES={aside:",
+          "replace": "MODEL_CATALOG_POLICIES={aux:",
+          "count": 1
+        },
+        {
+          "find": "PROVIDER_NAMES={aside:",
+          "replace": "PROVIDER_NAMES={aux:",
+          "count": 1
+        },
+        {
+          "find": "`aside-provider`",
+          "replace": "`aux-provider`",
+          "count": 2
+        },
+        {
+          "find": "`aside-images`",
+          "replace": "`aux-images`",
+          "count": 1
+        },
+        {
+          "find": "`aside-catalog`",
+          "replace": "`aux-catalog`",
+          "count": 1
+        },
+        {
+          "find": "`asideSource`",
+          "replace": "`auxSource`",
+          "count": 1
+        },
+        {
+          "find": "`asideDisconnected`",
+          "replace": "`auxDisconnected`",
+          "count": 1
+        },
+        {
+          "find": "asideModelCatalog:",
+          "replace": "auxModelCatalog:",
+          "count": 1
+        },
+        {
+          "find": "`asideModelCatalog`",
+          "replace": "`auxModelCatalog`",
+          "count": 4
+        },
+        {
+          "find": "\"x-aside-provider\"",
+          "replace": "\"x-aux-provider\"",
+          "count": 1
+        },
+        {
+          "find": "`x-aside-fresh`",
+          "replace": "`x-aux-fresh`",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-usage-kind\"",
+          "replace": "\"x-aux-usage-kind\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-fast-mode\"",
+          "replace": "\"x-aux-fast-mode\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-model-id\"",
+          "replace": "\"x-aux-model-id\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-model-provider\"",
+          "replace": "\"x-aux-model-provider\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-session-id\"",
+          "replace": "\"x-aux-session-id\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-session-title\"",
+          "replace": "\"x-aux-session-title\"",
+          "count": 2
+        },
+        {
+          "find": "\"x-aside-provider-session-id\"",
+          "replace": "\"x-aux-provider-session-id\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-account-id\"",
+          "replace": "\"x-aux-account-id\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-project-id\"",
+          "replace": "\"x-aux-project-id\"",
+          "count": 1
+        },
+        {
+          "find": "\"x-aside-auth-protocol\"",
+          "replace": "\"x-aux-auth-protocol\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
