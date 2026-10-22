@@ -1,0 +1,83 @@
+{
+  "format": "aux.install.preparation.source-evidence.v1",
+  "files": [
+    {
+      "path": "source/CapturedInstallation.swift",
+      "sha256": "9a42a163df195fedabad6f716e63b2c4a6940ce035282f9be27ebbcad80ff694"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "c8e87dd8dbbbe01e88de093b55b17e2604107a556bcb389c76b54b122f8e9f4d"
+    },
+    {
+      "path": "check.mjs",
+      "sha256": "fbf903ae05a92992b46169c4bc8cd66ecfca96e38c8f4d98679c1a532cd6589a"
+    },
+    {
+      "path": "../aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "../aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "../aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "../aux-native-p256-envelope-port/source/LegacyNativeEnvelopeReader.swift",
+      "sha256": "dc42bfb7be9bb16f06ef0abcf76ae1c6ef8332af8b57a45bc7427106be4e7988"
+    },
+    {
+      "path": "../aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "../aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "../aux-native-pq-continuation/source/LegacyNativePqEnvelopeReader.swift",
+      "sha256": "92ce422fb7ebfb094a9397f54f8e30790004434d5933daec57654a2a2894c61f"
+    },
+    {
+      "path": "../aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "../aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "../aux-native-install-storage-port/source/RecoveredInstallStorageQueries.swift",
+      "sha256": "8ba312eca2c4aaf83342ba3149d83f34fd0d09947985d8362767df7d1856aad2"
+    },
+    {
+      "path": "../aux-native-p256-envelope-port/source-evidence.json",
+      "sha256": "01b6a108939aa5eb32ff26af49005bbe2a7dcc598abecd13914d1a0567a34360"
+    },
+    {
+      "path": "../aux-native-pq-continuation/flow-evidence.json",
+      "sha256": "00fc6cb6ac875bb373d55ad22363aa4eeda4cbefe0f96d639c70e991cb0f919c"
+    },
+    {
+      "path": "../aux-native-signing-port/signing-evidence.json",
+      "sha256": "a2606e7d4bcf437ffa1c6c8fd0370b4f2574da529451a6ae706cb6351511498f"
+    },
+    {
+      "path": "../aux-native-install-storage-port/storage-evidence.json",
+      "sha256": "f45c94197ad79f8ebb86d07c914264a119b45167d57bfd44226fa31fa4241ef3"
+    }
+  ],
+  "runtimeCoverage": {
+    "syntheticSoftwareAssertions": 17,
+    "independentNodeSameRootChecks": 2,
+    "enclaveExecuted": false,
+    "pqExecuted": false,
+    "keychainExecuted": false,
+    "addonExecuted": false,
+    "persistencePerformed": false,
+    "commitAuthorized": false
+  }
+}
