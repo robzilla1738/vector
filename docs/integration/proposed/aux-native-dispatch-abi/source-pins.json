@@ -1,0 +1,145 @@
+{
+  "daemon-js": {
+    "path": "/tmp/aux-provider-daemon1852.js",
+    "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "bytes": 12135744
+  },
+  "cli-js": {
+    "path": "/tmp/aux-provider-cli1852.js",
+    "sha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+    "bytes": 2597893
+  },
+  "daemon-addon": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+    "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+    "bytes": 9255280
+  },
+  "carrier": {
+    "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/native-carrier.mm",
+    "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a",
+    "bytes": 8421
+  },
+  "dispatcher-evidence": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-crypto-boundary/evidence/command-dispatch.asm",
+    "sha256": "d4670379b2a7aab7fa23d251fefe98fc55bfcdb6d527a9d3180adcb04b9a233a",
+    "bytes": 38224
+  },
+  "fresh-init-evidence": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/evidence/install-init.asm",
+    "sha256": "feeeaada0aff3e7d695c5a7f37afccfd0fb441456f58140c412289016e6a58cb",
+    "bytes": 274025
+  },
+  "native-consumer": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc",
+    "sha256": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2",
+    "bytes": 12647
+  },
+  "extractedEvidence": {
+    "evidence/c-free.asm": {
+      "sha256": "e1213d57af32a564b5c1828a27d89126cd9ea36a6ce83c3a7b96044c9dc49704",
+      "bytes": 196
+    },
+    "evidence/c-run.asm": {
+      "sha256": "8d5d38f5ee46de9ada29d391930c7c9efed137bf2cca873bab51aaf1ab5c062a",
+      "bytes": 217
+    },
+    "evidence/cli-consumer-snippets.txt": {
+      "sha256": "e104659f4bf9dca871cb2d86f29003af466063b8b8aea9ff39b6b2f2cd478d5a",
+      "bytes": 7084
+    },
+    "evidence/daemon-consumer-snippets.txt": {
+      "sha256": "f48a7e4d29ae737faaa8f0ed9851b4dca1c99a802ea21593a4b705759b4d6fcd",
+      "bytes": 10636
+    },
+    "evidence/napi-api-version.asm": {
+      "sha256": "4385da87a603ba8ccc9b050b3bf860708fbd0c7a4ff63091d3f3d96620da3b38",
+      "bytes": 218
+    },
+    "evidence/napi-init.asm": {
+      "sha256": "a519a384c5f9b467f0ab1df76c17a2b2565cfe199369963d4bda736d90c0343d",
+      "bytes": 1405
+    },
+    "evidence/napi-make-string.asm": {
+      "sha256": "7a9864658215d9cadbae694abb73e800bd71f54a5bb6f443b4cf678a9966d8d2",
+      "bytes": 1279
+    },
+    "evidence/napi-read-string.asm": {
+      "sha256": "e90f0486e2327aed385bb1cbc9d69eb664599c2a3a8500277f6ecae843f51eb5",
+      "bytes": 6544
+    },
+    "evidence/napi-run.asm": {
+      "sha256": "0a985295a01c840b093fa632ae6489bf4543b132324943d5dd1c9f20bbb7eb7f",
+      "bytes": 5659
+    },
+    "evidence/pdf-export-registration.asm": {
+      "sha256": "4183d97c77d07f1a5e547827c7330006969e89d1e9cf208129bc52b2a39c6aa5",
+      "bytes": 3874
+    },
+    "evidence/swift-c-free.asm": {
+      "sha256": "f51cf25754f43fba6f7a73f0fca074930f8b83a40593c62e55906990a465a72c",
+      "bytes": 225
+    },
+    "evidence/swift-c-run.asm": {
+      "sha256": "d89679ca683ff963d2cb37c8f37017f960cefdc2f23a226edfcaf46c3ef1d8cb",
+      "bytes": 2692
+    }
+  },
+  "javascriptAnchors": [
+    {
+      "role": "daemon",
+      "needle": "function runNativeHelperCommand(",
+      "characterOffsets": [
+        2888709
+      ],
+      "count": 1
+    },
+    {
+      "role": "daemon",
+      "needle": "async function runNativeSecureStorageCommand",
+      "characterOffsets": [
+        2891002
+      ],
+      "count": 1
+    },
+    {
+      "role": "daemon",
+      "needle": "function runMacInstallHelper(",
+      "characterOffsets": [
+        2897730
+      ],
+      "count": 1
+    },
+    {
+      "role": "daemon",
+      "needle": "nativePdf.",
+      "characterOffsets": [
+        10062070,
+        10062194,
+        10062280,
+        10062363,
+        10062497,
+        10062639,
+        10062752,
+        10953923,
+        12103901
+      ],
+      "count": 9
+    },
+    {
+      "role": "cli",
+      "needle": "function runNativeHelperCommand(",
+      "characterOffsets": [
+        2339570
+      ],
+      "count": 1
+    },
+    {
+      "role": "cli",
+      "needle": "function getCliDeviceRegistration()",
+      "characterOffsets": [
+        2519357
+      ],
+      "count": 1
+    }
+  ]
+}

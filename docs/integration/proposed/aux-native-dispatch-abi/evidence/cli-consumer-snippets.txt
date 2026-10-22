@@ -1,0 +1,190 @@
+// cli original character offset 2339570
+function runNativeHelperCommand(command, input = "") {
+	const nativeBinding = loadBinding();
+	if (!nativeBinding) {
+		return { error: bindingLoadError ?? "Native helper binding is not available" };
+	}
+	try {
+		return JSON.parse(nativeBinding.run(command, input));
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : String(error) };
+	}
+}
+function runNativeHelperCommandAsync(command, input = "") {
+	const nativeBinding = loadBinding();
+	if (!nativeBinding || !loadedBindingPath) {
+		return Promise.resolve({ error: bindingLoadError ?? "Native helper binding is not available" });
+	}
+	return new Promise((resolve) => {
+		const worker = new Worker(`
+const { parentPort, workerData } = require('node:worker_threads');
+try {
+  const binding = require(workerData.bindingPath);
+  parentPort.postMessage({ output: binding.run(workerData.command, workerData.input) });
+} catch (error) {
+  parentPort.postMessage({ error: error instanceof Error ? error.message : String(error) });
+}
+`, {
+			eval: true,
+			execArgv: [],
+			workerData: {
+				bindingPath: loadedBindingPath,
+				command,
+				input
+			}
+		});
+		let settled = false;
+		const finish = (result) => {
+			if (settled) return;
+			settled = true;
+			resolve(result);
+			void worker.terminate();
+		};
+		worker.once("message", (message) => {
+			if (message.error) {
+				finish({ error: message.error });
+				return;
+			}
+			try {
+				finish(JSON.parse(message.output ?? "{}"));
+			} catch (error) {
+				finish({ error: error instanceof Error ? error.message : String(error) });
+			}
+		});
+		worker.once("error", (error) => finish({ error: error.message }));
+		worker.once("exit", (code) => {
+			if (code !== 0) {
+				finish({ error: `Native helper worker exited with code ${code}` });
+				return;
+			}
+			finish({ error: "Native helper worker exited without output" });
+		});
+	});
+}
+/** Typed access to the shared native PDFium implementation. */
+const nativePdf = {
+	extractText: (input) => loadPdfBinding().extractText(input),
+	fillFormFields: (input) => loadPdfBinding().fillFormFields(input),
+	getFormFields: (input) => loadPdfBinding().getFormFields(input),
+	merge: (input) => loadPdfBinding().merge(input),
+	renderPages: (input) => loadPdfBinding().renderPages(input),
+	rotate: (input) => loadPdfBinding().rotate(input),
+	split: (input) => loadPdfBinding().split(input)
+};
+
+//#endregion
+//#region src/lib/paths.ts
+const CLI_DATA_DIR = process.env.ASIDE_CLI_INSTALL_DIR || path.join(os.homedir(), ".aside", "cli");
+
+//#endregion
+//#region src/session-host.ts
+const ASIDE_API_BASE_URL = process.env.ASIDE_API_URL ?? "https://api.aside.com";
+const CLI_CONFIG_PATH = path.join(CLI_DATA_DIR, "config.json");
+const cliConfigSchema = object({ defaultHost: string$1().optional() });
+async function readCliConfig() {
+	try {
+		const parsed = cliConfigSchema.safeParse(JSON.parse(await fsp.readFile(CLI_CONFIG_PATH, "utf8")));
+		return parsed.success ? parsed.data : {};
+	} catch {
+		return {};
+	}
+}
+async function writeCliConfig(update) {
+	const next = {
+		...await readCliConfig(),
+		...update
+	};
+	await fsp.mkdir(path.dirname(CLI_CONFIG_PATH), { recursive: true });
+	await fsp.writeFile(CLI_CONFIG_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+}
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** True when the spec needs the enrolled-hosts list (device-name matching) to resolve. */
+function needsHostLookup(spec) {
+	return spec !== "local" && spec !== "cloud" && !spec.startsWith
+
+// cli original character offset 2519357
+function getCliDeviceRegistration() {
+	if (cachedCliDevice !== null) return cachedCliDevice;
+	cachedCliDevice = undefined;
+	const platform = process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : undefined;
+	if (!platform) return undefined;
+	try {
+		const status = runNativeHelperCommand("keys-status");
+		if (status.error || !status.keysInstalled) return undefined;
+		const keys = runNativeHelperCommand("public-keys");
+		if (keys.error || typeof keys.sig !== "string") return undefined;
+		const publicKey = Buffer.from(keys.sig, "base64");
+		const toBase64Url = (bytes) => Buffer.from(bytes).toString("base64url");
+		const jwk = publicKey.length === 65 && publicKey[0] === 4 ? {
+			kty: "EC",
+			crv: "P-256",
+			x: toBase64Url(publicKey.subarray(1, 33)),
+			y: toBase64Url(publicKey.subarray(33, 65)),
+			ext: true,
+			key_ops: ["verify"]
+		} : {
+			kty: "RAW",
+			alg: "UNKNOWN",
+			public_key_b64: keys.sig
+		};
+		cachedCliDevice = {
+			appVersion: CLI_VERSION,
+			deviceName: os.hostname() || undefined,
+			platform,
+			installationScheme: "p256_v1",
+			ikSigPublicKeyJwk: jwk,
+			ikSigKeyFingerprint: `sha256:${createHash("sha256").update(publicKey).digest("hex")}`
+		};
+	} catch {}
+	return cachedCliDevice;
+}
+async function runLogin(options) {
+	const email = (options.email ?? await promptLine("Email: ")).trim().toLowerCase();
+	if (!email) throw new Error("Email is required.");
+	if (!options.password) {
+		const auth = await loginWithDeviceCode(email, os.hostname() || "Aside CLI", getCliDeviceRegistration());
+		console.log(`Signed in as ${auth.email}.`);
+		return;
+	}
+	const password = await promptHidden("Password: ");
+	if (!password) throw new Error("Password is required.");
+	const auth = await loginWithPassword(email, password, getCliDeviceRegistration());
+	console.log(`Signed in as ${auth.email ?? email}.`);
+}
+async function runLogout() {
+	const result = await logoutCli();
+	console.log(result === "signed-out" ? "Signed out. CLI credentials removed." : "CLI is not signed in.");
+}
+function createApiTokenSource(daemon) {
+	let cached;
+	return async (forceRefresh = false) => {
+		const cliToken = await getCliAuthAccessToken(forceRefresh);
+		if (cliToken) return cliToken;
+		if (!daemon) throw new Error("Sign in first: run 'aside login' (or start Aside Browser).");
+		if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.token;
+		const { token } = await daemon.trpcClient.accounts.apiAccessToken.query({ accountId: daemon.accountId });
+		if (!token) throw new Error("Sign in to Aside to use remote hosts (or run 'aside login').");
+		cached = {
+			token,
+			expiresAt: Date.now() + 5 * 6e4
+		};
+		return token;
+	};
+}
+async function fetchRemoteHosts(getToken) {
+	const fetchApi = createApiFetch(getToken);
+	const response = await fetchApi(`${ASIDE_API_BASE_URL}/remote/hosts`, undefined);
+	if (!response.ok) throw new Error(`Remote hosts lookup failed: ${response.status}`);
+	return (await response.json()).hosts;
+}
+/** Flag > CLI config defaultHost > local. */
+async function resolveHostForRun(getToken, spec) {
+	const value = spec ?? (await readCliConfig()).defaultHost;
+	if (!value) return { kind: "local" };
+	return matchSessionHost(value, needsHostLookup(value) ? await fetchRemoteHosts(getToken) : []);
+}
+/** Token source for host-list style commands: daemon-backed when reachable, CLI-auth-only otherwise. */
+async function createTokenSourceForOptions(options) {
+	const daemon = createDaemonClient();
+	try {
+		const { acco
