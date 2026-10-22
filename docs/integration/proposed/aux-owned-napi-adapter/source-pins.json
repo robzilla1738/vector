@@ -15,7 +15,7 @@
     },
     {
       "path": "source/aux-owned-napi-adapter.cc",
-      "sha256": "5411d50fe8d4d45325c7bcdbecc886d0285abe153dcc6bad358ab848785914d1"
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
     },
     {
       "path": "tests/SyntheticOwner.swift",
@@ -149,5 +149,6 @@
       "path": "scripts/native-build.py",
       "sha256": "8d42831527cd7418638139245bec654daab90b5e277f726fe522ad7dead993cb"
     }
-  ]
+  ],
+  "nullCResultContract": "empty JS string, matching original NAPI MakeString; actual conversion branch checked statically; no OOM injection"
 }

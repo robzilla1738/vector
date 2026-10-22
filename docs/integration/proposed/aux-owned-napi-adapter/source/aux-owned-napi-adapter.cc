@@ -76,10 +76,11 @@ napi_value Run(napi_env env, napi_callback_info info) {
   Result result(AuxNativeContextRun(state->handle, command.bytes.get(),
       static_cast<intptr_t>(command.length), input.bytes.get(),
       static_cast<intptr_t>(input.length)), &AuxNativeResultFree);
-  if (!result) return Fail(env, "Native dispatcher returned no result");
   napi_value output;
   // The result stays a JSON STRING, preserving the actual JS JSON.parse caller.
-  if (napi_create_string_utf8(env, result.get(), NAPI_AUTO_LENGTH, &output) != napi_ok)
+  // Original NAPI MakeString maps a null C result to an empty JS string.
+  // The carrier's separate null-result error contract is not used here.
+  if (napi_create_string_utf8(env, result ? result.get() : "", NAPI_AUTO_LENGTH, &output) != napi_ok)
     return nullptr; // RAII still frees the native owned result exactly once.
   return output;
 }
