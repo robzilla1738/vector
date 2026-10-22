@@ -1,0 +1,189 @@
+{
+  "format": "aux.clean.host.loader.evidence.v1",
+  "records": [
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "anchors": [
+        {
+          "anchor": "const guard = require(owned('aux-native-guard.node'));",
+          "count": 1
+        },
+        {
+          "anchor": "const status = guard.prepare(home, loadOnly);",
+          "count": 1
+        },
+        {
+          "anchor": "const original = require(bindingPath);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native-role-pins.cjs",
+      "sha256": "1185df7f7949884e5e989935a8242ff0a503cb7444495668d05469d7c605375c",
+      "anchors": [
+        {
+          "anchor": "daemon: Object.freeze",
+          "count": 1
+        },
+        {
+          "anchor": "cli: Object.freeze",
+          "count": 1
+        },
+        {
+          "anchor": "verifyNativeRole",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/node-boundary-guard.mm",
+      "sha256": "33316274fc8e7071f5d3f4daa0de8cb12367ca865a2beafee54a7ce1b7f439d1",
+      "anchors": [
+        {
+          "anchor": "Actual native query interposition is required",
+          "count": 1
+        },
+        {
+          "anchor": "AuxNativeBoundaryValidate",
+          "count": 1
+        },
+        {
+          "anchor": "Native scope cannot change in a process",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/native-carrier.mm",
+      "sha256": "2f6748d3dc6995afbc6c91cacdd07d9f93afe9948846080c3ca1a3d18cd90d0a",
+      "anchors": [
+        {
+          "anchor": "Aux native query boundary is not active",
+          "count": 1
+        },
+        {
+          "anchor": "AUX_ENABLE_PROVIDED_NATIVE_CARRIER",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab",
+      "anchors": [
+        {
+          "anchor": "if (group && ![group isEqual:kOriginalGroup])",
+          "count": 1
+        },
+        {
+          "anchor": "[result removeObjectForKey:(__bridge id)kSecAttrAccessGroup];",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/keychain-interpose.mm",
+      "sha256": "83c12c894127fe04ef69780011d07553d288e3d0b14ff406949ebe96a40a7168",
+      "anchors": [
+        {
+          "anchor": "AUX_INTERPOSE(Add, SecItemAdd);",
+          "count": 1
+        },
+        {
+          "anchor": "AUX_INTERPOSE(Copy, SecItemCopyMatching);",
+          "count": 1
+        },
+        {
+          "anchor": "AUX_INTERPOSE(Create, SecKeyCreateRandomKey);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "a7f5e0c0c58c144bc5901f15a8786c034ffb55873408d7a8a7f8129479b95f35",
+      "anchors": [
+        {
+          "anchor": "value.rfind(\"DYLD_\", 0)",
+          "count": 1
+        },
+        {
+          "anchor": "setenv(\"DYLD_INSERT_LIBRARIES\", boundary.c_str(), 1)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1",
+      "anchors": [
+        {
+          "anchor": "AuxAttachOwnedDispatcher",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "2a7a4c94ab162ea0f1c3a2356052d671785ce76a188067f29f1a696ac2e8f426",
+      "anchors": [
+        {
+          "anchor": "struct ActualAuxSecureStoreBoundary",
+          "count": 1
+        },
+        {
+          "anchor": "kSecUseDataProtectionKeychain",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CSCommon.h",
+      "sha256": "342063183c1091d94a174b5c8e9fe9623e7bd423ed74d02dbf508dc5ec12b56a",
+      "anchors": [
+        {
+          "anchor": "kSecCSNoNetworkAccess = 1 << 29",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCodeSignatureAdhoc = 0x0002",
+          "count": 1
+        },
+        {
+          "anchor": "kSecCodeSignatureRuntime = 0x10000",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecCode.h",
+      "sha256": "293ccef2de6c872a4f5a4862a74bf96a9ade0f897f898813cd33e8e1d00459c4",
+      "anchors": [
+        {
+          "anchor": "SecCodeCopySelf",
+          "count": 2
+        },
+        {
+          "anchor": "SecCodeCheckValidity",
+          "count": 4
+        },
+        {
+          "anchor": "SecCodeCopySigningInformation",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecStaticCode.h",
+      "sha256": "4647531b672952064d7d014057c5147722babb29aa0ab6d11b8fbd45b3fde532",
+      "anchors": [
+        {
+          "anchor": "kSecCSStrictValidate = 1 << 4",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
