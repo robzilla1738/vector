@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "stage": "out/provided-reuse-aux-identity-continuation",
+  "daemon": {
+    "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon (SEA code)",
+    "sha256": "5e3c37a99cf9558d38b5869f13b2ea67fce2cabdd2a71d0d4a50f1083403f668",
+    "contexts": {
+      "STITCH_FIXED_ATTR": [
+        {
+          "offset": 11806189,
+          "context": "ontinue;\n            const pos = getComputedStyle(el).position;\n            if (pos === 'fixed' || pos === 'sticky') el.setAttribute(${JSON.stringify(STITCH_FIXED_ATTR)}, '');\n          }\n        })()`)}let ti=ei[0];if(!ti)throw new TRPCError({code:`INTERNAL_SERVER_ERROR`,message:`Full-page capture returned no image data.`});let ni=ti.length>=24?ti.readUInt32BE(16):0;return{dataUrl:`d"
+        },
+        {
+          "offset": 11806779,
+          "context": "       document.getElementById(${JSON.stringify(STITCH_STYLE_ID)})?.remove();\n        for (const el of document.querySelectorAll(${JSON.stringify(`[${STITCH_FIXED_ATTR}]`)})) {\n          el.removeAttribute(${JSON.stringify(STITCH_FIXED_ATTR)});\n        }\n        window.scrollTo(${JSON.stringify(oi)}, ${JSON.stringify(si)});\n      })()`).catch(()=>{})}})}async function evaluate$1(Cn,ei"
+        },
+        {
+          "offset": 11806852,
+          "context": "e();\n        for (const el of document.querySelectorAll(${JSON.stringify(`[${STITCH_FIXED_ATTR}]`)})) {\n          el.removeAttribute(${JSON.stringify(STITCH_FIXED_ATTR)});\n        }\n        window.scrollTo(${JSON.stringify(oi)}, ${JSON.stringify(si)});\n      })()`).catch(()=>{})}})}async function evaluate$1(Cn,ei,ti){let{result:ni}=await globalCdpClient.send(`Runtime.evaluate`,{expres"
+        },
+        {
+          "offset": 11807420,
+          "context": "ve(Cn,ei){return typeof Cn==`number`&&Number.isFinite(Cn)&&Cn>0?Cn:ei}var MAX_SCREENSHOT_TEXTURE_SIZE,CAPTURE_SCREENSHOT_TIMEOUT_MS$1,STITCH_STYLE_ID,STITCH_FIXED_ATTR,STITCH_BASE_CSS,STITCH_FIXED_CSS,init_full_page=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_stitch(),init_cdp_session(),MAX_SCREENSHOT_TEXTURE_SIZE=16384,CAPTURE_SCREENSHOT_TIMEOUT_MS$1=15e3,STITCH_STYLE_ID=`as"
+        },
+        {
+          "offset": 11807678,
+          "context": "_v3(),init_stitch(),init_cdp_session(),MAX_SCREENSHOT_TEXTURE_SIZE=16384,CAPTURE_SCREENSHOT_TIMEOUT_MS$1=15e3,STITCH_STYLE_ID=`aside-fullpage-stitch`,STITCH_FIXED_ATTR=`data-aside-stitch-fixed`,STITCH_BASE_CSS=`html { scroll-behavior: auto !important; }\naside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor { visibility: hidden !important; }`,STITCH_FIXED_CSS=`[${STITCH_F"
+        },
+        {
+          "offset": 11807907,
+          "context": "vior: auto !important; }\naside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor { visibility: hidden !important; }`,STITCH_FIXED_CSS=`[${STITCH_FIXED_ATTR}] { visibility: hidden !important; }`}));async function captureViewport({targetId:Cn}){return withCaptureCdpSession(Cn,async Cn=>{try{await evaluate(Cn,`(function() {\n      for (const el of document.querySelectorAll(${J"
+        }
+      ],
+      "POPOVER_OPEN_ATTR": [
+        {
+          "offset": 11808258,
+          "context": " el of document.querySelectorAll(${JSON.stringify(CAPTURE_UI_SELECTOR)})) {\n        if (el.matches(':popover-open')) el.setAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)}, '1');\n        try { el.hidePopover(); } catch {}\n        el.style.setProperty('display', 'none', 'important');\n      }\n    })()`),await evaluate(Cn,`(async () => {\n        await new Promise((r) => setTimeout(r, 150))"
+        },
+        {
+          "offset": 11809152,
+          "context": "rySelectorAll(${JSON.stringify(CAPTURE_UI_SELECTOR)})) {\n          el.style.removeProperty('display');\n          if (el.getAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)}) !== '1') continue;\n          el.removeAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)});\n          try { el.showPopover(); } catch {}\n        }\n      })()`).catch(()=>{})}})}async function evaluate(Cn,ei,ti){let{result"
+        },
+        {
+          "offset": 11809238,
+          "context": "erty('display');\n          if (el.getAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)}) !== '1') continue;\n          el.removeAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)});\n          try { el.showPopover(); } catch {}\n        }\n      })()`).catch(()=>{})}})}async function evaluate(Cn,ei,ti){let{result:ni}=await globalCdpClient.send(`Runtime.evaluate`,{expression:ei,returnByValue:!0,awa"
+        },
+        {
+          "offset": 11809578,
+          "context": "e.evaluate`,{expression:ei,returnByValue:!0,awaitPromise:ti?.awaitPromise},Cn);return ni?.value}var CAPTURE_SCREENSHOT_TIMEOUT_MS,CAPTURE_UI_SELECTOR,POPOVER_OPEN_ATTR,init_viewport=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_cdp_session(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor`,POPOVER_OPEN_"
+        },
+        {
+          "offset": 11809802,
+          "context": "_v3(),init_cdp_session(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor`,POPOVER_OPEN_ATTR=`data-aside-viewport-popover-open`})),captureRouter,init_routes$21=__esmMin((()=>{init_zod(),init_trpc$1(),init_full_page(),init_viewport(),captureRouter=router({fullPage:publicProcedure.input(object({targetId:string$3("
+        }
+      ],
+      "CAPTURE_UI_SELECTOR": [
+        {
+          "offset": 11808158,
+          "context": "n}){return withCaptureCdpSession(Cn,async Cn=>{try{await evaluate(Cn,`(function() {\n      for (const el of document.querySelectorAll(${JSON.stringify(CAPTURE_UI_SELECTOR)})) {\n        if (el.matches(':popover-open')) el.setAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)}, '1');\n        try { el.hidePopover(); } catch {}\n        el.style.setProperty('display', 'none', 'important');\n      }"
+        },
+        {
+          "offset": 11809033,
+          "context": "n{dataUrl:`data:image/png;base64,${ei}`}}finally{await evaluate(Cn,`(function() {\n        for (const el of document.querySelectorAll(${JSON.stringify(CAPTURE_UI_SELECTOR)})) {\n          el.style.removeProperty('display');\n          if (el.getAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)}) !== '1') continue;\n          el.removeAttribute(${JSON.stringify(POPOVER_OPEN_ATTR)});\n          tr"
+        },
+        {
+          "offset": 11809558,
+          "context": "pClient.send(`Runtime.evaluate`,{expression:ei,returnByValue:!0,awaitPromise:ti?.awaitPromise},Cn);return ni?.value}var CAPTURE_SCREENSHOT_TIMEOUT_MS,CAPTURE_UI_SELECTOR,POPOVER_OPEN_ATTR,init_viewport=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_cdp_session(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anc"
+        },
+        {
+          "offset": 11809712,
+          "context": "URE_UI_SELECTOR,POPOVER_OPEN_ATTR,init_viewport=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_cdp_session(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor`,POPOVER_OPEN_ATTR=`data-aside-viewport-popover-open`})),captureRouter,init_routes$21=__esmMin((()=>{init_zod(),init_trpc$1(),init_full_page(),init_vi"
+        }
+      ],
+      "STITCH_BASE_CSS": [
+        {
+          "offset": 11804944,
+          "context": "tyle.id = ${JSON.stringify(STITCH_STYLE_ID)};\n        document.documentElement.appendChild(style);\n      }\n      style.textContent = ${JSON.stringify(STITCH_BASE_CSS)};\n    })()`);let ei=[];for(let[ti,ni]of fi.entries()){await evaluate$1(Cn,`window.scrollTo(0, ${JSON.stringify(ni.scrollY)})`),await evaluate$1(Cn,`(async () => {\n          await new Promise((r) => setTimeout(r, 150));"
+        },
+        {
+          "offset": 11805804,
+          "context": ") {\n          const style = document.getElementById(${JSON.stringify(STITCH_STYLE_ID)});\n          if (style) style.textContent = ${JSON.stringify(`${STITCH_BASE_CSS}\\n${STITCH_FIXED_CSS}`)};\n          const root = document.documentElement;\n          const body = document.body;\n          for (const el of document.querySelectorAll('*')) {\n            if (el === root || el === body) c"
+        },
+        {
+          "offset": 11807438,
+          "context": "ypeof Cn==`number`&&Number.isFinite(Cn)&&Cn>0?Cn:ei}var MAX_SCREENSHOT_TEXTURE_SIZE,CAPTURE_SCREENSHOT_TIMEOUT_MS$1,STITCH_STYLE_ID,STITCH_FIXED_ATTR,STITCH_BASE_CSS,STITCH_FIXED_CSS,init_full_page=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_stitch(),init_cdp_session(),MAX_SCREENSHOT_TEXTURE_SIZE=16384,CAPTURE_SCREENSHOT_TIMEOUT_MS$1=15e3,STITCH_STYLE_ID=`aside-fullpage-sti"
+        },
+        {
+          "offset": 11807722,
+          "context": "CREENSHOT_TEXTURE_SIZE=16384,CAPTURE_SCREENSHOT_TIMEOUT_MS$1=15e3,STITCH_STYLE_ID=`aside-fullpage-stitch`,STITCH_FIXED_ATTR=`data-aside-stitch-fixed`,STITCH_BASE_CSS=`html { scroll-behavior: auto !important; }\naside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor { visibility: hidden !important; }`,STITCH_FIXED_CSS=`[${STITCH_FIXED_ATTR}] { visibility: hidden !importan"
+        }
+      ],
+      "data-aside-stitch-fixed": [
+        {
+          "offset": 11807697,
+          "context": ",init_cdp_session(),MAX_SCREENSHOT_TEXTURE_SIZE=16384,CAPTURE_SCREENSHOT_TIMEOUT_MS$1=15e3,STITCH_STYLE_ID=`aside-fullpage-stitch`,STITCH_FIXED_ATTR=`data-aside-stitch-fixed`,STITCH_BASE_CSS=`html { scroll-behavior: auto !important; }\naside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor { visibility: hidden !important; }`,STITCH_FIXED_CSS=`[${STITCH_FIXED_ATTR}] { visibility:"
+        }
+      ],
+      "data-aside-viewport-popover-open": [
+        {
+          "offset": 11809821,
+          "context": "ion(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor`,POPOVER_OPEN_ATTR=`data-aside-viewport-popover-open`})),captureRouter,init_routes$21=__esmMin((()=>{init_zod(),init_trpc$1(),init_full_page(),init_viewport(),captureRouter=router({fullPage:publicProcedure.input(object({targetId:string$3().min(1)})).mutation(async({input:"
+        }
+      ],
+      "data-aux-react-grab-target": [],
+      "aside-capture-toolbar": [
+        {
+          "offset": 11807782,
+          "context": "=15e3,STITCH_STYLE_ID=`aside-fullpage-stitch`,STITCH_FIXED_ATTR=`data-aside-stitch-fixed`,STITCH_BASE_CSS=`html { scroll-behavior: auto !important; }\naside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor { visibility: hidden !important; }`,STITCH_FIXED_CSS=`[${STITCH_FIXED_ATTR}] { visibility: hidden !important; }`}));async function captureViewport({targetId:Cn}){return with"
+        },
+        {
+          "offset": 11809733,
+          "context": "ER_OPEN_ATTR,init_viewport=__esmMin((()=>{init_dist$25(),init_browser_v3(),init_cdp_session(),CAPTURE_SCREENSHOT_TIMEOUT_MS=15e3,CAPTURE_UI_SELECTOR=`aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor`,POPOVER_OPEN_ATTR=`data-aside-viewport-popover-open`})),captureRouter,init_routes$21=__esmMin((()=>{init_zod(),init_trpc$1(),init_full_page(),init_viewport(),captureRouter="
+        }
+      ],
+      "createElement(`aside-": []
+    }
+  },
+  "agent": [
+    {
+      "path": "ui/agent/content/content.js",
+      "sha256": "bcdba1577409c8acd67f4c235e840885c9abfe276482d0cc3ee185d0c70c6f8d",
+      "contexts": {
+        "STITCH_FIXED_ATTR": [],
+        "POPOVER_OPEN_ATTR": [],
+        "CAPTURE_UI_SELECTOR": [],
+        "STITCH_BASE_CSS": [],
+        "data-aside-stitch-fixed": [],
+        "data-aside-viewport-popover-open": [],
+        "data-aux-react-grab-target": [
+          {
+            "offset": 158279,
+            "context": "|!Number.isFinite(e.height)||e.width<=0&&e.height<=0?null:{top:e.top,right:e.right,bottom:e.bottom,left:e.left,width:e.width,height:e.height}}var Wo=\"data-aux-react-grab-target\",Mp=2e3,Np=\"aside-selection-react-grab-bootstrap\",Dp=\"aside-selection-react-grab-response\",Lp=\"react-grab-bridge.js\";async function $p(e){const t=await Yo(\"copy\",e);if(!t.success||!t.codeKind)throw new Error(t.error||\"F"
+          }
+        ],
+        "aside-capture-toolbar": [
+          {
+            "offset": 96459,
+            "context": "n(e.style,{visibility:b?\"visible\":\"hidden\",opacity:b?\"1\":\"0\"})},destroy:()=>{p(!1);try{e.hidePopover?.()}catch{}e.remove()}}}var Zb=8,Kb=.9,qb=20,Pf=\"aside-capture-toolbar, aside-capture-backdrop, aside-capture-anchor, aside-capture-result, aside-capture-shrink\";function Tf(e,t){const n=e.getBoundingClientRect(),r=getComputedStyle(e);if(r.visibility===\"hidden\"||r.display===\"none\"||n.width"
+          }
+        ],
+        "createElement(`aside-": [
+          {
+            "offset": 91394,
+            "context": "{name:e,className:t,mountTo:n=document.body,placement:r=\"manual\",interactive:i=!0,initialVisibility:o=\"visible\",useTopLayer:s=!1})=>{const a=document.createElement(`aside-${e}`);t&&(a.className=t),s&&a.setAttribute(\"popover\",\"manual\");const c=a.attachShadow({mode:\"open\"}),u=document.createElement(\"style\");return u.textContent=wf({placement:r,interactive:i,initialVisibility:o}),c.appendChi"
+          }
+        ]
+      }
+    },
+    {
+      "path": "ui/agent/react-grab-bridge.js",
+      "sha256": "2b43e73751bf279a439da43af29388497e07339b5937a1a90bd207f3c00ae317",
+      "contexts": {
+        "STITCH_FIXED_ATTR": [],
+        "POPOVER_OPEN_ATTR": [],
+        "CAPTURE_UI_SELECTOR": [],
+        "STITCH_BASE_CSS": [],
+        "data-aside-stitch-fixed": [],
+        "data-aside-viewport-popover-open": [],
+        "data-aux-react-grab-target": [
+          {
+            "offset": 436459,
+            "context": "ateSnippet: () => Av,\n  getStack: () => Vd,\n  init: () => Mv,\n  isInstrumentationActive: () => Er\n}), L$ = ei((() => {\n  N$(), yo(), xv();\n})), T$ = \"data-aux-react-grab-target\", D$ = \"application/x-react-grab\", Nv = \"0.1.29\", R$ = \"Failed to copy code.\", I$ = \"/api/version\", O$ = /* @__PURE__ */ new Set([\"https://react-grab.com\", \"https://www.react-grab.com\"]), z$ = 12e4, Pv = 24e3, _$ = 4e4,"
+          }
+        ],
+        "aside-capture-toolbar": [],
+        "createElement(`aside-": []
+      }
+    }
+  ],
+  "standaloneCss": [
+    {
+      "path": "ui/agent/assets/globals-B-8L9em-.css",
+      "sha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d"
+    },
+    {
+      "path": "ui/agent/assets/liquid-glass-BmSyeXQT.css",
+      "sha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7"
+    },
+    {
+      "path": "ui/agent/assets/minipopup-options-CxOtM5A8.css",
+      "sha256": "09f02ad43bd0d784f80d047fcdfcb0ca526c9df926d0e4018f02f9f404b3134c"
+    },
+    {
+      "path": "ui/agent/assets/session-composer-BoATOu3F.css",
+      "sha256": "17d617a57cb9ede5721f536bb8546527250a2a05648bb2a4b00748ebc611c8d0"
+    },
+    {
+      "path": "ui/agent/assets/styles-CEC_MU8r.css",
+      "sha256": "28827594ce0d06f78970aa129b1e366f781f2450e5c2eb88f753d5e01098c2f5"
+    }
+  ]
+}

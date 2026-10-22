@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "inputs": [
+    {
+      "component": "daemon",
+      "path": "entry.mjs",
+      "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+      "rules": [
+        {
+          "find": "aside-capture-toolbar",
+          "replace": "aux-capture-toolbar",
+          "count": 2
+        },
+        {
+          "find": "aside-capture-backdrop",
+          "replace": "aux-capture-backdrop",
+          "count": 2
+        },
+        {
+          "find": "aside-capture-anchor",
+          "replace": "aux-capture-anchor",
+          "count": 2
+        },
+        {
+          "find": "aside-fullpage-stitch",
+          "replace": "aux-fullpage-stitch",
+          "count": 1
+        },
+        {
+          "find": "data-aside-stitch-fixed",
+          "replace": "data-aux-stitch-fixed",
+          "count": 1
+        },
+        {
+          "find": "data-aside-viewport-popover-open",
+          "replace": "data-aux-viewport-popover-open",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "component": "agent",
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "rules": [
+        {
+          "find": "document.createElement(`aside-${e}`)",
+          "replace": "document.createElement(`${e.startsWith(\"capture-\")?\"aux\":\"aside\"}-${e}`)",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-hole",
+          "replace": "aux-capture-hole",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-toolbar",
+          "replace": "aux-capture-toolbar",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-backdrop",
+          "replace": "aux-capture-backdrop",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-anchor",
+          "replace": "aux-capture-anchor",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-result",
+          "replace": "aux-capture-result",
+          "count": 1
+        },
+        {
+          "find": "aside-capture-shrink",
+          "replace": "aux-capture-shrink",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "constructorSuffixes": [
+    "capture-backdrop",
+    "capture-shrink",
+    "capture-toolbar",
+    "capture-result",
+    "capture-anchor",
+    "selection-handle",
+    "selection-popup",
+    "translate-status"
+  ]
+}
