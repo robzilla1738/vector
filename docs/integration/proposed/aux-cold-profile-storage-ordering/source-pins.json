@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/",
+  "repositoryRoot": "/Users/rcourson/Documents/Vibe/web/",
+  "scope": "Static APIs and call sites only; no original state or process inspection",
+  "files": [
+    {
+      "kind": "native",
+      "path": "chrome/browser/browser_process_impl.cc",
+      "sha256": "a9f393fe5ea6984b6d6fc48f1250e37d6a0e42f369143f161f1f64a4112f3c66",
+      "anchors": [
+        {
+          "anchor": "ProfileManager* BrowserProcessImpl::profile_manager()",
+          "offset": 40804,
+          "context": "dRepeating(&content::GetNetworkService));\n  }\n  return network_quality_tracker_.get();\n}\n\nProfileManager* BrowserProcessImpl::profile_manager() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  if (!created_profile_manager_) {\n    CreateProfileManager();\n  }\n  return profile_manager_.get();\n}\n\nPrefService* BrowserProcessImpl::local_state() {\n  DCHECK_CA"
+        },
+        {
+          "anchor": "void BrowserProcessImpl::CreateProfileManager()",
+          "offset": 57538,
+          "context": "erver_);\n}\n\nvoid BrowserProcessImpl::OnKeepAliveRestartStateChanged(bool can_restart) {}\n\nvoid BrowserProcessImpl::CreateProfileManager() {\n  DCHECK(!created_profile_manager_ && !profile_manager_);\n  created_profile_manager_ = true;\n\n  base::FilePath user_data_dir;\n  base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);\n  profile_manager_ = std::"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba",
+      "anchors": [
+        {
+          "anchor": "void CreateProfileAsync(",
+          "offset": 10803,
+          "context": "eateStatus` for the definition of CREATED and\n  // INITIALIZED profile creation status.\n  void CreateProfileAsync(\n      const base::FilePath& profile_path,\n      base::OnceCallback<void(Profile*)> initialized_callback,\n      base::OnceCallback<void(Profile*)> created_callback = {});\n\n  // Returns true if the profile pointer is know"
+        },
+        {
+          "anchor": "bool LoadProfileByPath(",
+          "offset": 9910,
+          "context": "\n                   bool incognito,\n                   ProfileLoadedCallback callback);\n  bool LoadProfileByPath(const base::FilePath& profile_path,\n                         bool incognito,\n                         ProfileLoadedCallback callback);\n  // Supplied profile-preview preload captures the actual manager WeakPtr.\n  base::We"
+        },
+        {
+          "anchor": "GetLoadedProfiles() const",
+          "offset": 12105,
+          "context": "ular profiles like on-the-record System or Guest\n  //   profiles.\n  std::vector<Profile*> GetLoadedProfiles() const;\n\n  // If a profile with the given path is currently managed by this object and\n  // fully initialized, return a pointer to the corresponding Profile object;\n  // otherwise return null.\n  Profile* GetProfileByPath(const"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "sha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52",
+      "anchors": [
+        {
+          "anchor": "bool ProfileManager::LoadProfileByPath(",
+          "offset": 32725,
+          "context": "_base_name);\n  return LoadProfileByPath(profile_path, incognito, std::move(callback));\n}\n\nbool ProfileManager::LoadProfileByPath(const base::FilePath& profile_path,\n                                       bool incognito,\n                                       ProfileLoadedCallback callback) {\n  ProfileAttributesEntry* entry =\n      GetProfileAttrib"
+        },
+        {
+          "anchor": "void ProfileManager::CreateProfileAsync(",
+          "offset": 33320,
+          "context": "base::BindOnce(&OnProfileInitialized, std::move(callback), incognito));\n  return true;\n}\n\nvoid ProfileManager::CreateProfileAsync(\n    const base::FilePath& profile_path,\n    base::OnceCallback<void(Profile*)> initialized_callback,\n    base::OnceCallback<void(Profile*)> created_callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  TRACE_EVENT1(\"b"
+        },
+        {
+          "anchor": "deferred_asynchronous_loads_.push_back",
+          "offset": 33832,
+          "context": "tup, to avoid colliding with\n  // synchronous creation.\n  if (defer_async_loading_) {\n    deferred_asynchronous_loads_.push_back(base::BindOnce(\n        &ProfileManager::CreateProfileAsync, base::Unretained(this),\n        profile_path, std::move(initialized_callback),\n        std::move(created_callback)));\n    return;\n  }\n\n  // If a profile with "
+        },
+        {
+          "anchor": "profiles_pending_destruction_.find(profile_path)",
+          "offset": 34236,
+          "context": "/ for later, to avoid issues such as database files being locked.\n  if (auto pending_it = profiles_pending_destruction_.find(profile_path);\n      pending_it != profiles_pending_destruction_.end()) {\n    pending_it->second.push_back(base::BindOnce(\n        &ProfileManager::CreateProfileAsync, weak_factory_.GetWeakPtr(),\n        profile_path, std::move(initi"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "sha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb",
+      "anchors": [
+        {
+          "anchor": "ProfileImpl::~ProfileImpl()",
+          "offset": 42742,
+          "context": "e::FilePath& path) {\n  GetPrefs()->SetFilePath(prefs::kSelectFileLastDirectory, path);\n}\n\nProfileImpl::~ProfileImpl() {\n  MaybeSendDestroyedNotification();\n\n#if BUILDFLAG(ENABLE_SESSION_SERVICE)\n  StopCreateSessionServiceTimer();\n#endif\n\n  // Remove pref observers\n  pref_change_registrar_.RemoveAll();\n\n#if BUILDFLAG(ENABLE_PLUGINS)\n  C"
+        },
+        {
+          "anchor": "DependencyManager::PerformInterlockedTwoPhaseShutdown(",
+          "offset": 44476,
+          "context": "'s dependency graph can depend on the\n  // ones in the SimpleDependencyManager's graph.\n  DependencyManager::PerformInterlockedTwoPhaseShutdown(\n      BrowserContextDependencyManager::GetInstance(), this,\n      SimpleDependencyManager::GetInstance(), key_.get());\n\n  SimpleKeyMap::GetInstance()->Dissociate(this);\n\n  profile_policy_connector_->Shutdown();\n  if (co"
+        },
+        {
+          "anchor": "ShutdownStoragePartitions();",
+          "offset": 44974,
+          "context": "wnOnUIThread but after\n  // other profile-related destroy notifications are dispatched.\n  ShutdownStoragePartitions();\n\n  // Explicitly clear all user data here, so that the other fields of\n  // `ProfileImpl` are still valid while user data is being destroyed.\n  // See crbug.com/402028628 for a motivating example.\n  if (base::FeatureLis"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/profiles/profile_destroyer.h",
+      "sha256": "c4ee66f428da4e68d1a526c69998fa8f16eaddc7829a4bf6245a47c8538186e6",
+      "anchors": [
+        {
+          "anchor": "DestroyOriginalProfileWhenAppropriate(",
+          "offset": 950,
+          "context": "a short\n  // delay waiting for dependent renderer process hosts to destroy.\n  static void DestroyOriginalProfileWhenAppropriate(\n      std::unique_ptr<Profile> profile);\n\n  // Overrides the timeout for destroying a profile. This is used in tests to\n  // prevent the timeout from firing prematurely.\n  static void SetDestroyProfileTimeoutForTesting("
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "chrome/browser/profiles/profile_destroyer.cc",
+      "sha256": "76dbca3e9a8cdc3989108a0c6743e66178cc86ff8c9399bdfc8b42e73ba747a4",
+      "anchors": [
+        {
+          "anchor": "void ProfileDestroyer::RenderProcessHostDestroyed(",
+          "offset": 13865,
+          "context": "(this);\n  CHECK(iter != PendingDestroyers().end());\n  PendingDestroyers().erase(iter);\n}\n\nvoid ProfileDestroyer::RenderProcessHostDestroyed(\n    content::RenderProcessHost* host) {\n  TRACE_EVENT(\n      \"shutdown\", \"ProfileDestroyer::RenderProcessHostDestroyed\",\n      [&](perfetto::EventContext ctx) {\n        auto* proto = ctx.event<perfetto::protos::pbzero::"
+        },
+        {
+          "anchor": "some new RenderProcessHost",
+          "offset": 14635,
+          "context": "me to retry deleting the profile.\n  //\n  // Note that this can loop several time, because some new RenderProcessHost\n  // might have been added in the meantime.\n  // TODO(arthursonzogni): Consider adding some TTL logic, because this might\n  // (unlikely) retry for a long time.\n  //\n  // Delay the retry one step further in case other o"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/public/browser/browser_context.h",
+      "sha256": "2807b02466ccdd6bc17806aed146b78b7dc85042a72c2553d9c947a072079556",
+      "anchors": [
+        {
+          "anchor": "StoragePartitions will not be unloaded",
+          "offset": 6011,
+          "context": "oint a StoragePartition object will be created that's\n  // backed by the on-disk storage. StoragePartitions will not be unloaded for\n  // the remainder of the BrowserContext's lifetime.\n  void ForEachLoadedStoragePartition(\n      base::FunctionRef<void(StoragePartition*)> fn);\n\n  // Returns the number of loaded StoragePartitions that exist for `t"
+        },
+        {
+          "anchor": "void ShutdownStoragePartitions();",
+          "offset": 13738,
+          "context": "that hung on\n  // StoragePartition can have time to do necessary cleanups on IO thread.\n  void ShutdownStoragePartitions();\n\n  // Returns true if shutdown has been initiated via a\n  // NotifyWillBeDestroyed() call. This is a signal that the object will be\n  // destroyed soon and no new references to this object should be created.\n  bool Shut"
+        },
+        {
+          "anchor": "bool ShutdownStarted();",
+          "offset": 13982,
+          "context": "ect will be\n  // destroyed soon and no new references to this object should be created.\n  bool ShutdownStarted();\n\n  // Returns a unique string associated with this browser context.\n  // DEPRECATED: Use UniqueToken() instead. See crbug.com/466132514.\n  virtual const std::string& UniqueId() const;\n\n  // Returns a unique unguessable "
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/browser/browser_context_impl.cc",
+      "sha256": "d43111c9198961a9ac9942740a3cfea43587cffd1ca5e14afd7730ef52f2740f",
+      "anchors": [
+        {
+          "anchor": "void BrowserContextImpl::NotifyWillBeDestroyed()",
+          "offset": 6411,
+          "context": "s));\n}\n\nbool BrowserContextImpl::ShutdownStarted() {\n  return will_be_destroyed_soon_;\n}\n\nvoid BrowserContextImpl::NotifyWillBeDestroyed() {\n  TRACE_EVENT1(\"shutdown\", \"BrowserContextImpl::NotifyWillBeDestroyed\",\n               \"browser_context_impl\", static_cast<void*>(this));\n  TRACE_EVENT_BEGIN(\"shutdown\",\n                    \"BrowserContextImpl::Notify"
+        },
+        {
+          "anchor": "will_be_destroyed_soon_ = true;",
+          "offset": 7106,
+          "context": " classes (e.g. WebTestBrowserContext).\n  if (will_be_destroyed_soon_) {\n    return;\n  }\n  will_be_destroyed_soon_ = true;\n\n  self_->ForEachLoadedStoragePartition(&NotifyContextWillBeDestroyed);\n\n  // Cancel navigations that are happening in the BrowserContext that's going\n  // away.\n  if (base::FeatureList::IsEnabled(\n          kCancelNavi"
+        },
+        {
+          "anchor": "void BrowserContextImpl::ShutdownStoragePartitions()",
+          "offset": 10174,
+          "context": "ory_ = CreateWebrtcVideoPerfHistory();\n  }\n\n  return webrtc_video_perf_history_.get();\n}\n\nvoid BrowserContextImpl::ShutdownStoragePartitions() {\n  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);\n\n  // The BackgroundSyncScheduler keeps raw pointers to partitions; clear it\n  // first.\n  CHECK(background_sync_scheduler_->HasOneRef(), base::NotFa"
+        },
+        {
+          "anchor": "storage_partition_map_.reset();",
+          "offset": 10504,
+          "context": "duler_->HasOneRef(), base::NotFatalUntil::M159);\n  background_sync_scheduler_.reset();\n\n  storage_partition_map_.reset();\n\n  // Delete the BtmService, causing its SQLite database file to be closed. This\n  // is necessary for TestBrowserContext to be able to delete its temporary\n  // directory.\n  btm_service_.reset();\n}\n\nDownloadManager* Br"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/public/browser/storage_partition.h",
+      "sha256": "5bf636613ec28382e393b812216afd199ff7024d0a3b780887261ad11abdffa7",
+      "anchors": [
+        {
+          "anchor": "virtual void Flush() = 0;",
+          "offset": 14801,
+          "context": " - it only ensures that any\n  // unwritten data has been written out to the filesystem.\n  virtual void Flush() = 0;\n\n  // Resets all URLLoaderFactories bound to this partition's network context.\n  virtual void ResetURLLoaderFactories() = 0;\n\n  // Clears the bluetooth allowed devices map.\n  virtual void ClearBluetoothAllowedDevicesMap"
+        },
+        {
+          "anchor": "WaitForDeletionTasksForTesting()",
+          "offset": 15577,
+          "context": "= 0;\n\n  // Wait until all deletions tasks are finished. For test use only.\n  virtual void WaitForDeletionTasksForTesting() = 0;\n\n  virtual void SetNetworkContextForTesting(\n      mojo::PendingRemote<network::mojom::NetworkContext>\n          network_context_remote) = 0;\n\n  // Returns the same provider as GetProtoDatabaseProvider() but doesn'"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/browser/storage_partition_impl.cc",
+      "sha256": "1da4737624ab997ebcd8a1095375a2fa7d95a98b4cd11582b831d3803d1faadf",
+      "anchors": [
+        {
+          "anchor": "StoragePartitionImpl::~StoragePartitionImpl()",
+          "offset": 53563,
+          "context": "geOnStartup() const {\n  return browser_context_->ShouldClearSessionStorageOnStartup();\n}\n\nStoragePartitionImpl::~StoragePartitionImpl() {\n#if DCHECK_IS_ON()\n  CHECK(on_browser_context_will_be_destroyed_called_,\n        base::NotFatalUntil::M159);\n#endif\n  browser_context_ = nullptr;\n\n  if (GetFileSystemContext()) {\n    GetFileSystemContext()->Shutdown()"
+        },
+        {
+          "anchor": "GetDOMStorageContext()->Shutdown();",
+          "offset": 53871,
+          "context": "ext()) {\n    GetFileSystemContext()->Shutdown();\n  }\n\n  if (GetDOMStorageContext()) {\n    GetDOMStorageContext()->Shutdown();\n  }\n\n  if (GetServiceWorkerContext()) {\n    GetServiceWorkerContext()->Shutdown();\n  }\n\n  if (GetBackgroundSyncContext()) {\n    GetBackgroundSyncContext()->Shutdown();\n  }\n\n  if (GetBackgroundFetchContext()) {\n    GetBa"
+        },
+        {
+          "anchor": "GetServiceWorkerContext()->Shutdown();",
+          "offset": 53951,
+          "context": "()) {\n    GetDOMStorageContext()->Shutdown();\n  }\n\n  if (GetServiceWorkerContext()) {\n    GetServiceWorkerContext()->Shutdown();\n  }\n\n  if (GetBackgroundSyncContext()) {\n    GetBackgroundSyncContext()->Shutdown();\n  }\n\n  if (GetBackgroundFetchContext()) {\n    GetBackgroundFetchContext()->Shutdown();\n  }\n\n  if (GetGeneratedCodeCacheContext()) {\n  "
+        },
+        {
+          "anchor": "void StoragePartitionImpl::Flush()",
+          "offset": 138276,
+          "context": "ataRemover::Create(this, url_matcher, begin, end)\n      ->Remove(std::move(callback));\n}\n\nvoid StoragePartitionImpl::Flush() {\n  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);\n  CHECK(initialized_, base::NotFatalUntil::M159);\n  if (GetDOMStorageContext()) {\n    GetDOMStorageContext()->Flush();\n  }\n}\n\nvoid StoragePartitionIm"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "sha256": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055",
+      "anchors": [
+        {
+          "anchor": "void DOMStorageContextWrapper::Shutdown()",
+          "offset": 7725,
+          "context": ") has been called.\n    return;\n  }\n\n  local_storage_control_->ForceKeepSessionState();\n}\n\nvoid DOMStorageContextWrapper::Shutdown() {\n  // |partition_| is about to be destroyed, so we must not dereference it after\n  // this call.\n  partition_ = nullptr;\n\n  // Signals the implementation to perform shutdown operations.\n  session_storage_control_.reset"
+        },
+        {
+          "anchor": "session_storage_control_.reset();",
+          "offset": 7956,
+          "context": " partition_ = nullptr;\n\n  // Signals the implementation to perform shutdown operations.\n  session_storage_control_.reset();\n  local_storage_control_.reset();\n\n  // Make sure the observer drops its reference to |this|.\n  storage_policy_observer_.reset();\n}\n\nvoid DOMStorageContextWrapper::Flush() {\n  if (session_storage_control_)\n    session_s"
+        },
+        {
+          "anchor": "local_storage_control_.reset();",
+          "offset": 7992,
+          "context": " the implementation to perform shutdown operations.\n  session_storage_control_.reset();\n  local_storage_control_.reset();\n\n  // Make sure the observer drops its reference to |this|.\n  storage_policy_observer_.reset();\n}\n\nvoid DOMStorageContextWrapper::Flush() {\n  if (session_storage_control_)\n    session_storage_control_->Flush();\n  if (lo"
+        },
+        {
+          "anchor": "void DOMStorageContextWrapper::Flush()",
+          "offset": 8123,
+          "context": "e sure the observer drops its reference to |this|.\n  storage_policy_observer_.reset();\n}\n\nvoid DOMStorageContextWrapper::Flush() {\n  if (session_storage_control_)\n    session_storage_control_->Flush();\n  if (local_storage_control_)\n    local_storage_control_->Flush();\n}\n\nvoid DOMStorageContextWrapper::OpenLocalStorage(\n    const blink::StorageKey"
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "path": "content/browser/service_worker/service_worker_context_wrapper.cc",
+      "sha256": "64fe54718ac5b32d34028b33a2a02af323a414f23db2ee067d7a6c2e0514072c",
+      "anchors": [
+        {
+          "anchor": "void ServiceWorkerContextWrapper::Shutdown()",
+          "offset": 15111,
+          "context": "t()->browser()->PrewarmServiceWorkerRegistrationForDSE(\n      browser_context, *this);\n}\n\nvoid ServiceWorkerContextWrapper::Shutdown() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n\n  ClearRunningServiceWorkers();\n  NotifyRunningServiceWorkerStoppedToSynchronousObserver();\n  storage_partition_ = nullptr;\n  context_core_.reset();\n  // Shutdown the `proces"
+        },
+        {
+          "anchor": "context_core_.reset();",
+          "offset": 15327,
+          "context": "tifyRunningServiceWorkerStoppedToSynchronousObserver();\n  storage_partition_ = nullptr;\n  context_core_.reset();\n  // Shutdown the `process_manager_` at the end so that the steps above can have\n  // a valid browser context pointer through `process_manager_`.\n  process_manager_->Shutdown();\n  browser_context_ = nullptr;\n}\n\nvoid Ser"
+        },
+        {
+          "anchor": "process_manager_->Shutdown();",
+          "offset": 15498,
+          "context": "e steps above can have\n  // a valid browser context pointer through `process_manager_`.\n  process_manager_->Shutdown();\n  browser_context_ = nullptr;\n}\n\nvoid ServiceWorkerContextWrapper::DeleteAndStartOver() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (!context_core_) {\n    // The context could be null due to system shutdown or rest"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "vendor/provided/native/cli-launcher.mm",
+      "sha256": "efcf3feff62575db879be9c913f91aa0c5d26c9309b553c6970497e87da8d436",
+      "anchors": [
+        {
+          "anchor": "int main(int argc, char *argv[])",
+          "offset": 695,
+          "context": "{\n  char result[PATH_MAX];\n  return realpath(path.c_str(), result) && path == result;\n}\n}\nint main(int argc, char *argv[]) {\n  char executable[PATH_MAX]; uint32_t length = sizeof(executable);\n  if (_NSGetExecutablePath(executable, &length)) return Fail(\"Cannot locate Aux CLI launcher\");\n  char resolved[PATH_MAX];\n  if (!realpath(executable,"
+        },
+        {
+          "anchor": "std::getenv(\"AUX_HOME\")",
+          "offset": 1720,
+          "context": " return Fail(\"Fixed Aux CLI runtime boundary is unavailable\");\n  const char *configured = std::getenv(\"AUX_HOME\");\n  const char *userHome = std::getenv(\"HOME\");\n  std::string home;\n  if (configured && configured[0]) home = configured;\n  else if (userHome && userHome[0] == '/') home = std::string(userHome) + \"/.aux\";\n  else return F"
+        },
+        {
+          "anchor": "mkdir(home.c_str(), 0700)",
+          "offset": 2213,
+          "context": "!= std::string::npos) return Fail(\"Original product home is not an Aux CLI scope\");\n  if (mkdir(home.c_str(), 0700) && errno != EEXIST) return Fail(\"Cannot create private Aux CLI home\");\n  struct stat metadata;\n  if (lstat(home.c_str(), &metadata) || !S_ISDIR(metadata.st_mode) || metadata.st_uid != geteuid() ||\n      (metadata.st_mod"
+        },
+        {
+          "anchor": "execv(sea.c_str(), arguments.data())",
+          "offset": 3875,
+          "context": "int i = 0; i < argc; ++i) arguments.push_back(argv[i]);\n  arguments.push_back(nullptr);\n  execv(sea.c_str(), arguments.data());\n  return Fail(\"Cannot execute supplied Aux CLI\");\n}\n"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "scripts/lib/provided-package.mjs",
+      "sha256": "2f6ba0c5d16706059b0f44731df7a31e53d97d3996927454e66281e313c31b1c",
+      "anchors": [
+        {
+          "anchor": "await rename(join(resources, cliExecutable), join(resources, `${cliExecutable}-sea`));",
+          "offset": 14094,
+          "context": "p/Contents/MacOS/aux-cli';\n    await absent(join(resources, `${cliExecutable}-sea`));\n    await rename(join(resources, cliExecutable), join(resources, `${cliExecutable}-sea`));\n    await add('aux-cli-launcher', cliExecutable);\n    const layoutChanges = [];\n    if (developmentDpLayout) {\n      const cliInfo = join(resources, 'apps/cli/Aux CLI.app/Contents/Info.plist');\n      const inspected = a"
+        },
+        {
+          "anchor": "await add('aux-cli-launcher', cliExecutable);",
+          "offset": 14185,
+          "context": "wait rename(join(resources, cliExecutable), join(resources, `${cliExecutable}-sea`));\n    await add('aux-cli-launcher', cliExecutable);\n    const layoutChanges = [];\n    if (developmentDpLayout) {\n      const cliInfo = join(resources, 'apps/cli/Aux CLI.app/Contents/Info.plist');\n      const inspected = await execute('/usr/bin/plutil', ['-convert', 'json"
+        }
+      ]
+    },
+    {
+      "kind": "repo",
+      "path": "scripts/lib/owned-process-guardian.mjs",
+      "sha256": "d32ebcba0ec7f37936fd6a4c7f263aa5c90a48f0548b2b6df6c327bf6cec0f23",
+      "anchors": [
+        {
+          "anchor": "async function cleanup()",
+          "offset": 694,
+          "context": "  if (!process.connected) return resolve();\n  process.send(message, () => resolve());\n});\nasync function cleanup() {\n  if (cleaning) return cleaning;\n  cleaning = (async () => {\n    clearTimeout(childDeadline);\n    // The caller of kill is the still-live group leader itself: this group ID\n    // cannot have been recycled to an unrel"
+        },
+        {
+          "anchor": "process.kill(-process.pid, 'SIGTERM')",
+          "offset": 986,
+          "context": "  // cannot have been recycled to an unrelated owner process.\n    groupSignal = true;\n    process.kill(-process.pid, 'SIGTERM');\n    const deadline = Date.now() + 2500;\n    while (Date.now() < deadline) {\n      try {\n        if ((await ownGroupMembers(process.pid)).length === 0) {\n          outcome.groupStopped = true;\n          await send({ eve"
+        }
+      ]
+    }
+  ]
+}
