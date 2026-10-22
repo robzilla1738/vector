@@ -47,7 +47,7 @@
     }
   ],
   "coverage": {
-    "syntheticSequencingAssertions": 18,
+    "syntheticSequencingAssertions": 22,
     "realDisposableJournalIO": true,
     "actualSecurityExecuted": false,
     "enclaveExecuted": false,
