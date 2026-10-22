@@ -12,6 +12,7 @@ import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
 import { disabledSeed } from '../../vendor/provided/vault-product-exclusion.mjs';
 import { runtimeSourcePinsBytes } from '../../vendor/provided/runtime-pins.mjs';
+import { auxPdfIntegrationArtifact } from '../../vendor/provided/aux-pdf-artifact.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -20,10 +21,11 @@ export const providedAppRoots = {
   cli: join(homedir(), '.aside/cli/Aside CLI.app'),
 };
 export const providedIntegrationFiles = Object.freeze({
-  daemon: ['aux-native.cjs', 'native-role-pins.cjs', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
+  daemon: ['aux-native.cjs', 'native-role-pins.cjs', 'aux-pdf.cjs', 'aux-pdf-pins.cjs', 'aux-pdf.node', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
   cli: ['aux-native.cjs', 'native-role-pins.cjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
 });
 export async function providedIntegrationInput(name) {
+  if (name === 'aux-pdf.node') return auxPdfIntegrationArtifact();
   if (name === 'runtime-source-pins.json') {
     const generatedFrom = 'docs/source/provided-runtime-inputs.json';
     const inventory = JSON.parse(await readFile(join(repository, generatedFrom), 'utf8'));

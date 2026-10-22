@@ -63,6 +63,10 @@ export const platformEdits = [
   edit('hosted sharing unavailable locally', 'https://share.aside.com', 'http://127.0.0.1:9/aux-unavailable/share', 1),
 ];
 
+// Apply after the exact Vault exclusion checkpoint; do not change that review's input hash.
+export const pdfEdits = [
+  edit('Aux-only synchronous PDF module', 'function loadPdfBinding(){let Cn=loadBinding();if(!Cn?.pdf)throw Error(bindingLoadError??`Native PDF binding is not available; rebuild the native helper`);return Cn.pdf}', 'function loadPdfBinding(){return require$2(path.resolve(path.dirname(process.execPath),`../Resources/native/aux-pdf.cjs`))}', 1),
+];
 
 // Owner-directed product exception: no built-in Vault. Keep installation and
 // provider authentication intact, and retain external-manager integration.
@@ -92,6 +96,12 @@ export function adaptDaemonCode(original, cloudOptions = {}, identityProfile = '
   } });
   code = excludeVaultProduct(branded.code).code;
   applied.push(...branded.edits, ...vaultProductEdits.map(({ name, count }) => ({ name, count })));
+  for (const e of pdfEdits) {
+    const count = code.split(e.from).length - 1;
+    if (count !== e.count) throw new Error(`${e.name}: expected ${e.count}, got ${count}`);
+    code = code.replace(e.from, e.to);
+    applied.push({ name: e.name, count });
+  }
   const cloud = composeCloudDesktop({ component: 'daemon', path: 'entry.mjs', text: code }, cloudOptions);
   const identity = applyAuxProtocolIdentity({ component: 'daemon', text: cloud.text }, identityProfile, cloud.policy.mode);
   code = identity.text;
