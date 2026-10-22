@@ -1,0 +1,12 @@
+{
+  "format": "aux.sync-recovery.deployed-fixture-preparation.v2",
+  "script": "services/aux-cloud/scripts/check-sync-recovery-deployed.mts",
+  "scriptSha256": "453384d1a95e9191aa18dcf9298e43c729f72c091654f40b88ea3a79531bbf1b",
+  "executed": false,
+  "credentialRead": false,
+  "realDatabaseAccessed": false,
+  "deployedHostContacted": false,
+  "typecheck": "targeted tsc with node types/allowJs, exit0",
+  "requiredNext": "Root reviews commit and executes once only after actual reviewed Preview READY and development alias confirmation",
+  "fixedOrigin": "https://dev-cloud.getaux.co"
+}
