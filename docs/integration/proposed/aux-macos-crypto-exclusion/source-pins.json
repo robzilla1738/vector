@@ -1,0 +1,191 @@
+{
+  "format": "aux.macos.crypto-exclusion.source-pins.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "preparedInputSha256": "8e99fa53bdfbae01caaf285f9235eb122373139f80e74a7408188ad2727c765a",
+  "edits": [
+    {
+      "name": "Fail closed getPurposeInfoBytes",
+      "find": "function getPurposeInfoBytes(Cn){return new TextEncoder().encode(`${DK_SUBKEY_INFO_PREFIX}${Cn}.v1`)}",
+      "replace": "function getPurposeInfoBytes(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed deriveDkSubkey",
+      "find": "async function deriveDkSubkey(Cn,ei){let ti=await crypto.subtle.importKey(`raw`,toArrayBufferBackedBytes(Cn),`HKDF`,!1,[`deriveBits`]),ni=toArrayBufferBackedBytes(getPurposeInfoBytes(ei)),ri=await crypto.subtle.deriveBits({name:`HKDF`,hash:`SHA-256`,salt:/* @__PURE__ */ new Uint8Array,info:ni},ti,256);return new Uint8Array(ri)}",
+      "replace": "async function deriveDkSubkey(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed encryptWithDk",
+      "find": "async function encryptWithDk(Cn,ei,ti){let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12)),ai=getPurposeInfoBytes(ei),oi=ni.crypto_aead_chacha20poly1305_ietf_encrypt(ti,ai,null,ii,ri);return{purpose:ei,nonce:toBase64(ii),ciphertext:toBase64(oi)}}",
+      "replace": "async function encryptWithDk(Cn,ei,ti){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed decryptWithDk",
+      "find": "async function decryptWithDk(Cn,ei,ti){if(ti.purpose!==ei)throw Error(`EncryptedBlob purpose mismatch: expected \"${ei}\", got \"${ti.purpose}\"`);let ni=await getSodium(),ri=await deriveDkSubkey(Cn,ei),ii=fromBase64$1(ti.nonce),ai=fromBase64$1(ti.ciphertext),oi=getPurposeInfoBytes(ei);return ni.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}",
+      "replace": "async function decryptWithDk(Cn,ei,ti){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed encrypt",
+      "find": "async function encrypt(Cn,ei){if(PLAINTEXT_DK)return{purpose:Cn,nonce:``,ciphertext:toBase64(ei)};let{encryptWithDk:ti}=await Promise.resolve().then(()=>(init_crypto(),crypto_exports));return ti(getDk(),Cn,ei)}",
+      "replace": "async function encrypt(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed decrypt",
+      "find": "async function decrypt(Cn,ei){if(PLAINTEXT_DK)return fromBase64$1(ei.ciphertext);let{decryptWithDk:ti}=await Promise.resolve().then(()=>(init_crypto(),crypto_exports));return ti(getDk(),Cn,ei)}",
+      "replace": "async function decrypt(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed deriveSubkey",
+      "find": "async function deriveSubkey(Cn){if(PLAINTEXT_DK)return/* @__PURE__ */ new Uint8Array(32);let{deriveDkSubkey:ei}=await Promise.resolve().then(()=>(init_crypto(),crypto_exports));return ei(getDk(),Cn)}",
+      "replace": "async function deriveSubkey(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed wrapDkP256",
+      "find": "async function wrapDkP256(Cn,ei){let ti=await getSodium(),ni=createECDH(`prime256v1`),ri=ni.generateKeys(),ii=ni.computeSecret(Buffer$1.from(ei,`base64`)),ai=await hkdfSha256(new Uint8Array(ii),DK_WRAP_INFO),oi=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12));try{let ei=ti.crypto_aead_chacha20poly1305_ietf_encrypt(Cn,new TextEncoder().encode(DK_WRAP_INFO),null,oi,ai);return{scheme:`p256_v1`,purpose:`dk`,ephemeral_public_key:toBase64(ri),nonce:toBase64(oi),ciphertext:toBase64(ei)}}finally{ii.fill(0),ai.fill(0)}}",
+      "replace": "async function wrapDkP256(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed unwrapDkP256",
+      "find": "async function unwrapDkP256(Cn){let ei=runNativeKeyCommand(`ecdh-secret`,{peerPublicKey:Cn.ephemeral_public_key});if(typeof ei.sharedSecret!=`string`)throw Error(`Native helper binding returned no ECDH secret`);let ti=await getSodium(),ni=fromBase64$1(ei.sharedSecret),ri=await hkdfSha256(ni,DK_WRAP_INFO),ii=fromBase64$1(Cn.nonce),ai=fromBase64$1(Cn.ciphertext);try{return ti.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,new TextEncoder().encode(DK_WRAP_INFO),ii,ri)}finally{ni.fill(0),ri.fill(0),ii.fill(0),ai.fill(0)}}",
+      "replace": "async function unwrapDkP256(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed decryptRecoveryBackup",
+      "find": "async function decryptRecoveryBackup(Cn,ei){let ti=await getSodium(),ni=fromBase64$1(ei),ri=await hkdfSha256(ni,`aside.recovery.v1`),ii=fromBase64$1(Cn.nonceB64),ai=fromBase64$1(Cn.ciphertextB64),oi=new TextEncoder().encode(`aside.recovery.auk.v1`);try{return ti.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}catch{throw Error(`Recovery key is invalid.`)}finally{ni.fill(0),ri.fill(0),ii.fill(0),ai.fill(0)}}",
+      "replace": "async function decryptRecoveryBackup(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed derivePmkAndCskFromAuk",
+      "find": "async function derivePmkAndCskFromAuk(Cn){let ei=new Uint8Array(Cn.byteLength);ei.set(Cn);let ti=await hkdfSha256(ei,`aside.dk.pwm.v1`),ni=await hkdfSha256(ei,`aside.dk.sync.v1`);return ei.fill(0),{pmk:ti,csk:ni}}",
+      "replace": "async function derivePmkAndCskFromAuk(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed protectPwmRecovery",
+      "find": "async function protectPwmRecovery(Cn,ei){let ti=fromBase64$1(ei);if(![16,20,24,28,32].includes(ti.length))throw ti.fill(0),Error(`Invalid recovery key length.`);let ni=await hkdfSha256(ti,`aside.pwm.keyset.recovery.v1`);try{return{format:`keyset.v1`,envelope:await encryptData(Cn,ni)}}finally{ti.fill(0),ni.fill(0)}}",
+      "replace": "async function protectPwmRecovery(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed recoverPwmRoot",
+      "find": "async function recoverPwmRoot(Cn,ei){if(Cn.recovery.format===`auk.v1`){let ti=await recoverLegacyPwmKey(Cn.recovery.backup,ei);try{return await decryptData(Cn.recovery.rootEnvelope,ti)}finally{ti.fill(0)}}let ti=fromBase64$1(ei);if(![16,20,24,28,32].includes(ti.length))throw ti.fill(0),Error(`Invalid recovery key length.`);let ni=await hkdfSha256(ti,`aside.pwm.keyset.recovery.v1`);try{return await decryptData(Cn.recovery.envelope,ni)}finally{ti.fill(0),ni.fill(0)}}",
+      "replace": "async function recoverPwmRoot(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed derivePwmSettingsKey",
+      "find": "function derivePwmSettingsKey(Cn){return hkdfSha256(Cn,`aside.pwm.settings.v1`)}",
+      "replace": "function derivePwmSettingsKey(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed deriveAccountPasswordVerifier",
+      "find": "async function deriveAccountPasswordVerifier(Cn){let ei=await hkdfSha256(Cn,`aside.account-password.verifier.v1`);try{return toBase64(ei)}finally{ei.fill(0)}}",
+      "replace": "async function deriveAccountPasswordVerifier(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed recoverAccountSyncKey",
+      "find": "async function recoverAccountSyncKey(Cn,ei){let ti=getAuthenticatedUserId(Cn);if(!ti)throw Error(`Sign in before recovering browser data.`);let ni=await fetchAccountSyncKeyStatus(Cn);if(ni.state===`ready`)return ni;if(ni.syncGeneration!==0||ni.state!==`device_required`)throw Error(`This recovery key does not belong to the current browser data generation.`);let ri=await decryptRecoveryBackup((await fetchAuxAPIAuthenticated(Cn,`/auth/onboarding/recovery-material`,{output:object({recoveryBackup:accountRecoveryBackupSchema})})).recoveryBackup,ei),ii;try{ii=await hkdfSha256(ri,`aside.dk.sync.v1`);let ei=await fetchAccountSyncKeyStatus(Cn);if(getAuthenticatedUserId(Cn)!==ti||ei.syncGeneration!==ni.syncGeneration)throw Error(`The account changed during recovery.`);return await storeLocalChromeSyncKey(Cn,ii,{syncGeneration:ni.syncGeneration}),await fetchAccountSyncKeyStatus(Cn)}finally{ri.fill(0),ii?.fill(0)}}",
+      "replace": "async function recoverAccountSyncKey(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Fail closed sessionAccount",
+      "find": "function sessionAccount(Cn){return`${SESSION_ACCOUNT_PREFIX}_${Cn}`}",
+      "replace": "function sessionAccount(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}",
+      "count": 1
+    },
+    {
+      "name": "Remove generic domain declarations",
+      "find": "KEYCHAIN_IDS,DK_SUBKEY_INFO_PREFIX,DK_WRAP_INFO,init_types$15",
+      "replace": "KEYCHAIN_IDS,init_types$15",
+      "count": 1
+    },
+    {
+      "name": "Remove generic domain assignment",
+      "find": ",DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "name": "Refuse original account recovery schema",
+      "find": "accountRecoveryBackupSchema=object({purpose:literal(`recovery.auk`),envelopeVersion:literal(`aside.recovery.auk.v1`),nonceB64:string$3().min(1),ciphertextB64:string$3().min(1)})",
+      "replace": "accountRecoveryBackupSchema=object({}).refine(()=>!1,{message:`Legacy account recovery is unavailable in this Aux build`})",
+      "count": 1
+    },
+    {
+      "name": "Remove excluded session selector declaration",
+      "find": "var SESSION_ACCOUNT_PREFIX,nativeAccount,",
+      "replace": "var nativeAccount,",
+      "count": 1
+    },
+    {
+      "name": "Remove excluded session selector assignment",
+      "find": "SESSION_ACCOUNT_PREFIX=`aside.pwm.session`,",
+      "replace": "",
+      "count": 1
+    }
+  ],
+  "forbiddenDomains": [
+    "aside.dk.",
+    "aside.wrap.",
+    "aside.recovery.",
+    "aside.pwm.",
+    "aside.account-password."
+  ],
+  "preservedFunctions": {
+    "unwrapDk": "async function unwrapDk(){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`dk-unwrap`).dk):unwrapNativeDk()}",
+    "signCdpChallenge": "async function signCdpChallenge(Cn){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`cdp-sign`,{challenge:toBase64(Cn)}).signature):signNativeCdpChallenge(Cn)}",
+    "getPublicKeys": "async function getPublicKeys(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`get-public-keys`);return{scheme:Cn.scheme,sig:Cn.sig,kem:Cn.kem}}return getNativeInstallationPublicKeys()}",
+    "runNativeKeyCommand": "function runNativeKeyCommand(Cn,ei={}){if(assertSupported(),!isNativeHelperBindingAvailable())throw Error(`Native helper binding is not available`);let ti=runNativeHelperCommand(Cn,JSON.stringify(ei));if(ti.error)throw Error(ti.error);return ti}",
+    "saveSecureStorageItem": "async function saveSecureStorageItem(Cn,ei){await runSecureStorageCommand(`save`,{key:Cn,data:ei})}",
+    "readSecureStorageItem": "async function readSecureStorageItem(Cn){let ei=await runSecureStorageCommand(`read`,{key:Cn});return typeof ei.data==`string`?ei.data:null}",
+    "clearSecureStorageItem": "async function clearSecureStorageItem(Cn){await runSecureStorageCommand(`clear`,{key:Cn})}",
+    "fetchAccountSyncPassphrase": "async function fetchAccountSyncPassphrase(Cn){let ei=getAuthenticatedUserId(Cn),ti=AccountRegistry.getSession(Cn);if(!ti||!ei)return null;let ni=await evaluateLocalChromeSyncKey(Cn),ri=ni.syncGeneration??0,ii=readAccessTokenSyncGeneration(ti.accessToken);if(ii===null)return null;let ai=()=>getAuthenticatedUserId(Cn)===ei&&readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)===ii;if(!ai())return null;let oi=null;try{if((ni.status===`usable_owned`||ni.status===`usable_ownerless`)&&ri===ii){if(oi=await readLocalChromeSyncKey(Cn),!ai())return null;oi&&ni.status===`usable_ownerless`&&await stampLegacySyncKey(Cn,oi,ii)}if(!oi&&syncKeyDeviceRequiredToken.get(Cn)===ti.accessToken)return null;if(!oi){let ei=syncKeyResolveFailures.get(Cn);if(ei?.accessToken===ti.accessToken&&ei.expiresAt>Date.now())throw ei.error;let ni=await fetchAuxAPIAuthenticated(Cn,`/sync/key/resolve`,{method:`POST`,output:object({cskB64:string$3().min(1),syncGeneration:number$2().int().nonnegative(),revision:number$2().int().nonnegative()})}).catch(ei=>{let ti=AccountRegistry.getSession(Cn)?.accessToken;throw ti&&isTransientAuxApiError(ei)&&syncKeyResolveFailures.set(Cn,{accessToken:ti,error:ei,expiresAt:Date.now()+SYNC_KEY_RESOLVE_FAILURE_TTL_MS}),ei});if(!ai())return null;if(ni.syncGeneration!==ii)return logger.warn(`[Auth] Withholding Sync key resolved for a stale generation`,{accountId:Cn,resolvedGeneration:ni.syncGeneration,tokenGeneration:ii}),null;if(oi=fromBase64$1(ni.cskB64),oi.byteLength!==32)throw Error(`Sync key service returned an invalid key`);await storeLocalChromeSyncKey(Cn,oi,{syncGeneration:ni.syncGeneration})}return ai()?toBase64(oi):null}catch(ei){if(ei instanceof AuxApiError&&ei.code===`SYNC_KEY_DEVICE_REQUIRED`){let ei=AccountRegistry.getSession(Cn)?.accessToken;return ei&&syncKeyDeviceRequiredToken.set(Cn,ei),null}throw ei}finally{oi?.fill(0)}}",
+    "fetchAccountSyncKeyStatus": "async function fetchAccountSyncKeyStatus(Cn){let ei=await fetchAuxAPIAuthenticated(Cn,`/sync/key/status`,{output:accountSyncKeyStatusSchema}),ti=await evaluateLocalChromeSyncKey(Cn);if(ei.state===`device_required`&&ti.status===`usable_ownerless`&&(ti.syncGeneration??0)===ei.syncGeneration){let ni=await readLocalChromeSyncKey(Cn).catch(ei=>(logger.warn(`[Auth] Legacy Sync key blob is unreadable`,{accountId:Cn,error:ei}),null));ni&&(await stampLegacySyncKey(Cn,ni,ei.syncGeneration),ni.fill(0),ti=await evaluateLocalChromeSyncKey(Cn))}let ni=ei.state===`device_required`&&ti.status===`usable_owned`&&ti.syncGeneration===ei.syncGeneration;return ei.state===`device_required`&&!ni&&logger.info(`[Auth] Sync key recovery cannot be enabled on this device`,{accountId:Cn,localKeyStatus:ti.status,localKeyGeneration:ti.syncGeneration,syncGeneration:ei.syncGeneration}),{...ei,canEnroll:ni,localKeyStatus:ti.status,localKeyGeneration:ti.syncGeneration}}",
+    "storeLocalChromeSyncKey": "async function storeLocalChromeSyncKey(Cn,ei,ti={}){let ni=getChromeSyncKeyStorageKey(Cn);if(supportsInstallationBackedLocalKeys()){await saveInstallationDerivedKeyBlob(Cn,ni,`csk`,ei,{syncGeneration:ti.syncGeneration===void 0?readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken):ti.syncGeneration});return}throw Error(`Unsupported platform for Chrome Sync Key storage: ${process.platform}`)}",
+    "saveInstallationDerivedKeyBlob": "async function saveInstallationDerivedKeyBlob(Cn,ei,ti,ni,ri={}){let ii=getExpectedLocalBootstrapKeyOwner(Cn)??null,ai=readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken),oi=()=>{if((getExpectedLocalBootstrapKeyOwner(Cn)??null)!==ii)throw Error(`Account changed while storing its Sync key`);if(readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)!==ai)throw Error(`Sync generation changed while storing its Sync key`)},si=(localKeyWrites.get(ei)??Promise.resolve()).then(async()=>{oi(),await initInstallation(),await unlock();let ai=await readSecureStorageItem(ei);for(let si=0;si<2;si+=1){if(ti!==`csk`)throw Error(`Unsupported local key purpose`);let ci=encryptAuxCskV2(getDk(),ti,ni),li={schemaVersion:1,accountId:Cn,boundUserId:ii,encryptedBlob:ci,...ri.syncGeneration!==void 0&&{syncGeneration:ri.syncGeneration}};oi(),await saveSecureStorageItem(ei,JSON.stringify(li));let ui=await readSecureStorageItem(ei);if(oi(),ui&&(!ai||ui!==ai)){si>0&&logger.warn(`[Auth] Secure storage rewrite required a retry`,{key:ei,purpose:ti});return}}throw Error(`Failed to refresh secure storage item for ${ei}.`)}),ci=si.then(()=>{},()=>{});localKeyWrites.set(ei,ci);try{await si}finally{localKeyWrites.get(ei)===ci&&localKeyWrites.delete(ei)}}",
+    "issueDaemonToken": "async function issueDaemonToken(Cn){let ei=Math.floor(Date.now()/1e3);return new SignJWT({aud:`aux-daemon-localhost`,exp:ei+TOKEN_TTL_SECONDS,iss:`aux-daemon`,sub:Cn}).setProtectedHeader({alg:`HS256`,typ:`JWT`}).sign(await getTokenSigningKey())}",
+    "isBrowserUiDaemonRequest": "async function isBrowserUiDaemonRequest(Cn){let ei=Cn.headers.get(`authorization`);if(!ei?.startsWith(`AuxDaemonSessionToken `))return!1;try{let{payload:Cn}=await jwtVerify(ei.slice(`AuxDaemonSessionToken `.length).trim(),await getTokenSigningKey(),{algorithms:[`HS256`],audience:`aux-daemon-localhost`,issuer:`aux-daemon`});return Cn.sub===`agent-manager-extension`||Cn.sub===`password-manager-extension`}catch{return!1}}",
+    "initInstallation": "async function initInstallation(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`install-init`);return{scheme:Cn.scheme,sig:Cn.sig_pub,kem:Cn.kem_pub}}return initNativeInstallation()}",
+    "getInstallationStatus": "async function getInstallationStatus(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`install-status`);return{installed:Cn.installed,scheme:Cn.scheme}}return getNativeInstallationStatus()}",
+    "getDk": "function getDk(){if(!dk)throw new InstallationLockedError;return dk}",
+    "unlock": "async function unlock(){if(!dk){if(process.platform!==`darwin`&&process.platform!==`win32`){dk=crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(32));return}dk=await unwrapDk()}}"
+  },
+  "dependencies": [
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/adapt.mjs",
+      "sha256": "c3ce5b13405a363451416b8ffc7365ffdecf7980d9cf222dad64c02998186486"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source/adapt.mjs",
+      "sha256": "b93367c5a2748bc97b64b07ac6aa4af296548109a7fbf40ecb8f2864ba8a53ec"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs",
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    }
+  ]
+}

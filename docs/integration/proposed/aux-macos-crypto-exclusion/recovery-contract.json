@@ -1,0 +1,34 @@
+{
+  "format": "aux.legacy-account-sync-recovery-gap.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "preparedInputSha256": "8e99fa53bdfbae01caaf285f9235eb122373139f80e74a7408188ad2727c765a",
+  "unfinishedFeature": true,
+  "scope": "Account browser-data Sync recovery; distinct from excluded Vault",
+  "legacyBackupSchema": "accountRecoveryBackupSchema=object({purpose:literal(`recovery.auk`),envelopeVersion:literal(`aside.recovery.auk.v1`),nonceB64:string$3().min(1),ciphertextB64:string$3().min(1)})",
+  "legacyDecrypt": "async function decryptRecoveryBackup(Cn,ei){let ti=await getSodium(),ni=fromBase64$1(ei),ri=await hkdfSha256(ni,`aside.recovery.v1`),ii=fromBase64$1(Cn.nonceB64),ai=fromBase64$1(Cn.ciphertextB64),oi=new TextEncoder().encode(`aside.recovery.auk.v1`);try{return ti.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}catch{throw Error(`Recovery key is invalid.`)}finally{ni.fill(0),ri.fill(0),ii.fill(0),ai.fill(0)}}",
+  "legacySyncRecovery": "async function recoverAccountSyncKey(Cn,ei){let ti=getAuthenticatedUserId(Cn);if(!ti)throw Error(`Sign in before recovering browser data.`);let ni=await fetchAccountSyncKeyStatus(Cn);if(ni.state===`ready`)return ni;if(ni.syncGeneration!==0||ni.state!==`device_required`)throw Error(`This recovery key does not belong to the current browser data generation.`);let ri=await decryptRecoveryBackup((await fetchAuxAPIAuthenticated(Cn,`/auth/onboarding/recovery-material`,{output:object({recoveryBackup:accountRecoveryBackupSchema})})).recoveryBackup,ei),ii;try{ii=await hkdfSha256(ri,`aside.dk.sync.v1`);let ei=await fetchAccountSyncKeyStatus(Cn);if(getAuthenticatedUserId(Cn)!==ti||ei.syncGeneration!==ni.syncGeneration)throw Error(`The account changed during recovery.`);return await storeLocalChromeSyncKey(Cn,ii,{syncGeneration:ni.syncGeneration}),await fetchAccountSyncKeyStatus(Cn)}finally{ri.fill(0),ii?.fill(0)}}",
+  "protocol": {
+    "endpoint": "/auth/onboarding/recovery-material",
+    "response": "{recoveryBackup:accountRecoveryBackupSchema}",
+    "preconditions": [
+      "authenticated user",
+      "state=device_required",
+      "syncGeneration=0"
+    ],
+    "postconditions": [
+      "same authenticated user",
+      "same syncGeneration",
+      "store recovered CSK via storeLocalChromeSyncKey"
+    ],
+    "backupKdf": "HKDF-SHA256 recovery-key bytes, empty salt, aside.recovery.v1,32bytes",
+    "backupCipher": "ChaCha20-Poly1305 IETF; supplied nonceB64/ciphertextB64; AAD aside.recovery.auk.v1",
+    "syncKeyKdf": "HKDF-SHA256 recovered AUK, empty salt, aside.dk.sync.v1,32bytes"
+  },
+  "preservedOrdinarySyncFunctions": [
+    "fetchAccountSyncPassphrase",
+    "fetchAccountSyncKeyStatus",
+    "storeLocalChromeSyncKey",
+    "saveInstallationDerivedKeyBlob"
+  ],
+  "nextRequired": "Explicit versioned Aux recovery server writer plus client reader, or authenticated external legacy backup importer preserving original same Sync key/generation; no direct relabeling"
+}

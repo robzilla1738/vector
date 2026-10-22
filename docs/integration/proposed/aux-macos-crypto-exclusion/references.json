@@ -1,0 +1,327 @@
+{
+  "format": "aux.macos.crypto-exclusion.reference-map.v1",
+  "preparedInputSha256": "8e99fa53bdfbae01caaf285f9235eb122373139f80e74a7408188ad2727c765a",
+  "outputSha256": "3a513938badb2d5e559deb5da43566d70f5c30940de30be29871ee206c9314bf",
+  "domainReferences": [
+    {
+      "domain": "aside.dk.",
+      "before": [
+        {
+          "utf8Offset": 2898495,
+          "context": "M:`${AUX_KEYCHAIN_ID_PREFIX}.install.kem`,DK:`${AUX_KEYCHAIN_ID_PREFIX}.dk`},DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`}));function assertSupported(){if(process.platform!==`darwin`&&process.platform!==`win32`)throw Error(`Installation se"
+        },
+        {
+          "utf8Offset": 10565396,
+          "context": "ivePmkAndCskFromAuk(Cn){let ei=new Uint8Array(Cn.byteLength);ei.set(Cn);let ti=await hkdfSha256(ei,`aside.dk.pwm.v1`),ni=await hkdfSha256(ei,`aside.dk.sync.v1`);return ei.fill(0),{pmk:ti,csk:ni}}async function derivePmkAndCsk(Cn,ei,ti=DEFAULT_KDF_CONFIG){let n"
+        },
+        {
+          "utf8Offset": 10565438,
+          "context": "ray(Cn.byteLength);ei.set(Cn);let ti=await hkdfSha256(ei,`aside.dk.pwm.v1`),ni=await hkdfSha256(ei,`aside.dk.sync.v1`);return ei.fill(0),{pmk:ti,csk:ni}}async function derivePmkAndCsk(Cn,ei,ti=DEFAULT_KDF_CONFIG){let ni=await deriveKeyFromPassword(Cn,ei,ti);tr"
+        },
+        {
+          "utf8Offset": 11692363,
+          "context": "({recoveryBackup:accountRecoveryBackupSchema})})).recoveryBackup,ei),ii;try{ii=await hkdfSha256(ri,`aside.dk.sync.v1`);let ei=await fetchAccountSyncKeyStatus(Cn);if(getAuthenticatedUserId(Cn)!==ti||ei.syncGeneration!==ni.syncGeneration)throw Error(`The account"
+        }
+      ],
+      "afterCount": 0
+    },
+    {
+      "domain": "aside.wrap.",
+      "before": [
+        {
+          "utf8Offset": 2898520,
+          "context": "IX}.install.kem`,DK:`${AUX_KEYCHAIN_ID_PREFIX}.dk`},DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`}));function assertSupported(){if(process.platform!==`darwin`&&process.platform!==`win32`)throw Error(`Installation security is not supported o"
+        }
+      ],
+      "afterCount": 0
+    },
+    {
+      "domain": "aside.recovery.",
+      "before": [
+        {
+          "utf8Offset": 2288403,
+          "context": "n decryptRecoveryBackup(Cn,ei){let ti=await getSodium(),ni=fromBase64$1(ei),ri=await hkdfSha256(ni,`aside.recovery.v1`),ii=fromBase64$1(Cn.nonceB64),ai=fromBase64$1(Cn.ciphertextB64),oi=new TextEncoder().encode(`aside.recovery.auk.v1`);try{return ti.crypto_aea"
+        },
+        {
+          "utf8Offset": 2288515,
+          "context": "ry.v1`),ii=fromBase64$1(Cn.nonceB64),ai=fromBase64$1(Cn.ciphertextB64),oi=new TextEncoder().encode(`aside.recovery.auk.v1`);try{return ti.crypto_aead_chacha20poly1305_ietf_decrypt(null,ai,oi,ii,ri)}catch{throw Error(`Recovery key is invalid.`)}finally{ni.fill("
+        },
+        {
+          "utf8Offset": 2288890,
+          "context": "_kdf(),accountRecoveryBackupSchema=object({purpose:literal(`recovery.auk`),envelopeVersion:literal(`aside.recovery.auk.v1`),nonceB64:string$3().min(1),ciphertextB64:string$3().min(1)})}));function isDuplicateProfilePausedAccount(Cn){return Cn.mode===`cloud`&&C"
+        }
+      ],
+      "afterCount": 0
+    },
+    {
+      "domain": "aside.pwm.",
+      "before": [
+        {
+          "utf8Offset": 10542194,
+          "context": "age(),init_logger$2(),init_analytics(),init_src$6(),init_account_registry(),SESSION_ACCOUNT_PREFIX=`aside.pwm.session`,nativeAccount=Cn=>PwmAccountRegistry.get(Cn).storage.nativeSlot,pendingUnlocks=/* @__PURE__ */ new Map,unlockCooldownUntilByAccount=/* @__PUR"
+        },
+        {
+          "utf8Offset": 10567248,
+          "context": "ludes(ti.length))throw ti.fill(0),Error(`Invalid recovery key length.`);let ni=await hkdfSha256(ti,`aside.pwm.keyset.recovery.v1`);try{return{format:`keyset.v1`,envelope:await encryptData(Cn,ni)}}finally{ti.fill(0),ni.fill(0)}}async function recoverPwmRoot(Cn,"
+        },
+        {
+          "utf8Offset": 10567728,
+          "context": "ludes(ti.length))throw ti.fill(0),Error(`Invalid recovery key length.`);let ni=await hkdfSha256(ti,`aside.pwm.keyset.recovery.v1`);try{return await decryptData(Cn.recovery.envelope,ni)}finally{ti.fill(0),ni.fill(0)}}async function recoverLegacyPwmKey(Cn,ei){le"
+        },
+        {
+          "utf8Offset": 10568081,
+          "context": "i);return ei.fill(0),Cn}finally{ti.fill(0)}}function derivePwmSettingsKey(Cn){return hkdfSha256(Cn,`aside.pwm.settings.v1`)}var passwordProtectionSchema,rootRecoverySchema,pwmSecurityProfileSchema,pwmSecurityBundleSchema,init_security_profile=__esmMin((()=>{in"
+        }
+      ],
+      "afterCount": 0
+    },
+    {
+      "domain": "aside.account-password.",
+      "before": [
+        {
+          "utf8Offset": 10582154,
+          "context": "__PURE__ */ new Map}));async function deriveAccountPasswordVerifier(Cn){let ei=await hkdfSha256(Cn,`aside.account-password.verifier.v1`);try{return toBase64(ei)}finally{ei.fill(0)}}var aukKdfParamsSchema,init_verifier=__esmMin((()=>{init_zod(),init_kdf(),objec"
+        }
+      ],
+      "afterCount": 0
+    }
+  ],
+  "genericCallBoundaries": [
+    {
+      "symbol": "await encrypt(",
+      "afterPairedConsumers": [
+        {
+          "utf8Offset": 10517235,
+          "context": "ti=encoder.encode(JSON.stringify(ei));try{await saveSecureStorageItem(storageKey(Cn),JSON.stringify(await encrypt(purpose(Cn),ti)))}finally{ti.fill(0)}}async function derivePwmCredentialsFromBrowser(Cn,ei){let ti=await fetchAuxAPIAuthenticated(Cn,`/auth/token/"
+        },
+        {
+          "utf8Offset": 10538193,
+          "context": "hrow Error(`Biometric helper is not available on this platform`);let ti=isUnlocked()?JSON.stringify(await encrypt(`pmk.biometric`,ei)):toBase64(ei),ni=await runHelper(`enroll`,`${JSON.stringify({accountId:nativeAccount(Cn)})}\\n${ti}`);if(ni.error)throw capture"
+        },
+        {
+          "utf8Offset": 10645072,
+          "context": "yload(Cn,ei){await unlock();let ti=textEncoder.encode(JSON.stringify(ei));try{return JSON.stringify(await encrypt(sessionPurpose(Cn),ti))}finally{ti.fill(0)}}async function parsePersistedSessionPayload(Cn,ei){try{await unlock();let ti=await decrypt(sessionPurp"
+        }
+      ],
+      "afterExclusion": [
+        {
+          "utf8Offset": 10515255,
+          "context": "ti=encoder.encode(JSON.stringify(ei));try{await saveSecureStorageItem(storageKey(Cn),JSON.stringify(await encrypt(purpose(Cn),ti)))}finally{ti.fill(0)}}async function derivePwmCredentialsFromBrowser(Cn,ei){let ti=await fetchAuxAPIAuthenticated(Cn,`/auth/token/"
+        },
+        {
+          "utf8Offset": 10536263,
+          "context": "hrow Error(`Biometric helper is not available on this platform`);let ti=isUnlocked()?JSON.stringify(await encrypt(`pmk.biometric`,ei)):toBase64(ei),ni=await runHelper(`enroll`,`${JSON.stringify({accountId:nativeAccount(Cn)})}\\n${ti}`);if(ni.error)throw capture"
+        },
+        {
+          "utf8Offset": 10642493,
+          "context": "yload(Cn,ei){await unlock();let ti=textEncoder.encode(JSON.stringify(ei));try{return JSON.stringify(await encrypt(sessionPurpose(Cn),ti))}finally{ti.fill(0)}}async function parsePersistedSessionPayload(Cn,ei){try{await unlock();let ti=await decrypt(sessionPurp"
+        }
+      ]
+    },
+    {
+      "symbol": "await decrypt(",
+      "afterPairedConsumers": [
+        {
+          "utf8Offset": 10516489,
+          "context": "BlobSchema.parse(JSON.parse(ei));if(ti.purpose===`pwm.auth.${Cn}`)return null;await unlock();let ni=await decrypt(purpose(Cn),ti).catch(ei=>(logger.warn(`[PWM] Stored credential cannot be decrypted; re-deriving`,{id:Cn,error:errorMessage(ei)}),null));if(!ni)re"
+        },
+        {
+          "utf8Offset": 10539310,
+          "context": " function decodeBiometricKey(Cn){if(Cn.startsWith(`{`)){let ei=JSON.parse(Cn);return new Uint8Array(await decrypt(`pmk.biometric`,ei))}return fromBase64$1(Cn)}async function unlockWithBiometricBatch(Cn){if(Date.now()<batchCooldownUntil)throw Error(`Biometric u"
+        },
+        {
+          "utf8Offset": 10645207,
+          "context": "))}finally{ti.fill(0)}}async function parsePersistedSessionPayload(Cn,ei){try{await unlock();let ti=await decrypt(sessionPurpose(Cn),JSON.parse(ei));try{return persistedSessionSchema.parse(JSON.parse(textDecoder.decode(ti)))}finally{ti.fill(0)}}catch{return nu"
+        }
+      ],
+      "afterExclusion": [
+        {
+          "utf8Offset": 10514509,
+          "context": "BlobSchema.parse(JSON.parse(ei));if(ti.purpose===`pwm.auth.${Cn}`)return null;await unlock();let ni=await decrypt(purpose(Cn),ti).catch(ei=>(logger.warn(`[PWM] Stored credential cannot be decrypted; re-deriving`,{id:Cn,error:errorMessage(ei)}),null));if(!ni)re"
+        },
+        {
+          "utf8Offset": 10537380,
+          "context": " function decodeBiometricKey(Cn){if(Cn.startsWith(`{`)){let ei=JSON.parse(Cn);return new Uint8Array(await decrypt(`pmk.biometric`,ei))}return fromBase64$1(Cn)}async function unlockWithBiometricBatch(Cn){if(Date.now()<batchCooldownUntil)throw Error(`Biometric u"
+        },
+        {
+          "utf8Offset": 10642628,
+          "context": "))}finally{ti.fill(0)}}async function parsePersistedSessionPayload(Cn,ei){try{await unlock();let ti=await decrypt(sessionPurpose(Cn),JSON.parse(ei));try{return persistedSessionSchema.parse(JSON.parse(textDecoder.decode(ti)))}finally{ti.fill(0)}}catch{return nu"
+        }
+      ]
+    },
+    {
+      "symbol": "deriveSubkey(",
+      "afterPairedConsumers": [
+        {
+          "utf8Offset": 2906573,
+          "context": " Promise.resolve().then(()=>(init_crypto(),crypto_exports));return ti(getDk(),Cn,ei)}async function deriveSubkey(Cn){if(PLAINTEXT_DK)return/* @__PURE__ */ new Uint8Array(32);let{deriveDkSubkey:ei}=await Promise.resolve().then(()=>(init_crypto(),crypto_exports)"
+        }
+      ],
+      "afterExclusion": [
+        {
+          "utf8Offset": 2904670,
+          "context": " Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function deriveSubkey(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}var dk,PLAINTEXT_DK,InstallationLockedError,init_dk_m"
+        }
+      ]
+    },
+    {
+      "symbol": "wrapDkP256(",
+      "afterPairedConsumers": [
+        {
+          "utf8Offset": 2899599,
+          "context": "ing returned incomplete public keys`);return{scheme:`p256_v1`,sig:Cn.sig,kem:Cn.kem}}async function wrapDkP256(Cn,ei){let ti=await getSodium(),ni=createECDH(`prime256v1`),ri=ni.generateKeys(),ii=ni.computeSecret(Buffer$1.from(ei,`base64`)),ai=await hkdfSha256("
+        },
+        {
+          "utf8Offset": 2900127,
+          "context": "e64(ri),nonce:toBase64(oi),ciphertext:toBase64(ei)}}finally{ii.fill(0),ai.fill(0)}}async function unwrapDkP256(Cn){let ei=runNativeKeyCommand(`ecdh-secret`,{peerPublicKey:Cn.ephemeral_public_key});if(typeof ei.sharedSecret!=`string`)throw Error(`Native helper "
+        },
+        {
+          "utf8Offset": 2901489,
+          "context": "let ei=generateRandomBytes(32);try{await saveSecureStorageItem(KEYCHAIN_IDS.DK,JSON.stringify(await wrapDkP256(ei,Cn.kem))),await saveSecureStorageItem(KEYCHAIN_IDS.META,JSON.stringify(NATIVE_INSTALL_METADATA))}finally{ei.fill(0)}return{scheme:`p256_v1`,sig:Cn"
+        },
+        {
+          "utf8Offset": 2901802,
+          "context": "rtSupported();let Cn=await getStoredWrappedDk();if(!Cn)throw Error(`Wrapped DK not found`);return unwrapDkP256(Cn)}async function signNativeCdpChallenge(Cn){assertSupported();let ei=runNativeKeyCommand(`cdp-sign`,{challenge:toBase64(Cn)});if(typeof ei.signatur"
+        }
+      ],
+      "afterExclusion": [
+        {
+          "utf8Offset": 2899253,
+          "context": "ing returned incomplete public keys`);return{scheme:`p256_v1`,sig:Cn.sig,kem:Cn.kem}}async function wrapDkP256(Cn,ei){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function unwrapDkP256(Cn){throw Error(`This le"
+        },
+        {
+          "utf8Offset": 2899378,
+          "context": "rror(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function unwrapDkP256(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function getNativeInstallationStatus(){assertSupp"
+        },
+        {
+          "utf8Offset": 2900336,
+          "context": "let ei=generateRandomBytes(32);try{await saveSecureStorageItem(KEYCHAIN_IDS.DK,JSON.stringify(await wrapDkP256(ei,Cn.kem))),await saveSecureStorageItem(KEYCHAIN_IDS.META,JSON.stringify(NATIVE_INSTALL_METADATA))}finally{ei.fill(0)}return{scheme:`p256_v1`,sig:Cn"
+        },
+        {
+          "utf8Offset": 2900649,
+          "context": "rtSupported();let Cn=await getStoredWrappedDk();if(!Cn)throw Error(`Wrapped DK not found`);return unwrapDkP256(Cn)}async function signNativeCdpChallenge(Cn){assertSupported();let ei=runNativeKeyCommand(`cdp-sign`,{challenge:toBase64(Cn)});if(typeof ei.signatur"
+        }
+      ]
+    },
+    {
+      "symbol": "unwrapDkP256(",
+      "afterPairedConsumers": [
+        {
+          "utf8Offset": 2900125,
+          "context": "ase64(ri),nonce:toBase64(oi),ciphertext:toBase64(ei)}}finally{ii.fill(0),ai.fill(0)}}async function unwrapDkP256(Cn){let ei=runNativeKeyCommand(`ecdh-secret`,{peerPublicKey:Cn.ephemeral_public_key});if(typeof ei.sharedSecret!=`string`)throw Error(`Native helpe"
+        },
+        {
+          "utf8Offset": 2901800,
+          "context": "sertSupported();let Cn=await getStoredWrappedDk();if(!Cn)throw Error(`Wrapped DK not found`);return unwrapDkP256(Cn)}async function signNativeCdpChallenge(Cn){assertSupported();let ei=runNativeKeyCommand(`cdp-sign`,{challenge:toBase64(Cn)});if(typeof ei.signat"
+        }
+      ],
+      "afterExclusion": [
+        {
+          "utf8Offset": 2899376,
+          "context": " Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function unwrapDkP256(Cn){throw Error(`This legacy cryptographic operation is unavailable in this macOS Aux build`)}async function getNativeInstallationStatus(){assertSu"
+        },
+        {
+          "utf8Offset": 2900647,
+          "context": "sertSupported();let Cn=await getStoredWrappedDk();if(!Cn)throw Error(`Wrapped DK not found`);return unwrapDkP256(Cn)}async function signNativeCdpChallenge(Cn){assertSupported();let ei=runNativeKeyCommand(`cdp-sign`,{challenge:toBase64(Cn)});if(typeof ei.signat"
+        }
+      ]
+    }
+  ],
+  "unsupportedLiveProtocol": {
+    "function": "recoverAccountSyncKey",
+    "reason": "old account recovery backup format/AAD and old AUK-to-CSK derivation require coordinated cloud recovery or external importer; now explicit fail-closed, not reinterpreted"
+  },
+  "unchangedFunctions": [
+    {
+      "name": "unwrapDk",
+      "sha256": "587c82c139397d73554a4cac42030f488559585b7688cdca2335e885afed4424",
+      "countAfter": 1
+    },
+    {
+      "name": "signCdpChallenge",
+      "sha256": "817fb248c373ed02c25fa3a7fb406ad9cdfd77d2c25d8f5192dc6641cc110e9a",
+      "countAfter": 1
+    },
+    {
+      "name": "getPublicKeys",
+      "sha256": "890b828ce4bd57182c126a6657565300e9c60ad9f90ac012c6d74172b7ea6fef",
+      "countAfter": 1
+    },
+    {
+      "name": "runNativeKeyCommand",
+      "sha256": "a56e3e8b06fc4ccca24e24359a3a57a0d567ebe7119581e239494b128134af74",
+      "countAfter": 1
+    },
+    {
+      "name": "saveSecureStorageItem",
+      "sha256": "a9b468777c0af9eb0454d01aaaa62821cf308e9d0f34622f065b4f46af0f4f56",
+      "countAfter": 1
+    },
+    {
+      "name": "readSecureStorageItem",
+      "sha256": "5088a84238613453b2e5b24d3e77f35a7ee29d6e03a97584b6c5a8007101555e",
+      "countAfter": 1
+    },
+    {
+      "name": "clearSecureStorageItem",
+      "sha256": "8023f808ff9ba2e4918ccb4d271ff93b835ef7cf20ec5a6e2b349e6a2b200439",
+      "countAfter": 1
+    },
+    {
+      "name": "fetchAccountSyncPassphrase",
+      "sha256": "10049b001849b99352608547131ca7a4e7ddbb5b0f91105faf6652dc2329bdfd",
+      "countAfter": 1
+    },
+    {
+      "name": "fetchAccountSyncKeyStatus",
+      "sha256": "ccc4734f0efefcc607a8d23c3d894d605799a65a80d8d6ff9b1836bf65f42959",
+      "countAfter": 1
+    },
+    {
+      "name": "storeLocalChromeSyncKey",
+      "sha256": "4a87245854aa9a7fe6732833ee5556fe552c30e85713bc1404b39a560f5259dd",
+      "countAfter": 1
+    },
+    {
+      "name": "saveInstallationDerivedKeyBlob",
+      "sha256": "4fd7b4d9ae8fa2168d01985c95e76aaf9da6f7df3635644d524b3ae181d6a42e",
+      "countAfter": 1
+    },
+    {
+      "name": "issueDaemonToken",
+      "sha256": "4f82c2029bdde4d09ce3c5549d999ab098eb17709f1eec9dac4b7c93d65d4da7",
+      "countAfter": 1
+    },
+    {
+      "name": "isBrowserUiDaemonRequest",
+      "sha256": "fb641ce10daaf9763b724f2ca048c7b854b3be5378b886f7f122fe8d8f840e4a",
+      "countAfter": 1
+    },
+    {
+      "name": "initInstallation",
+      "sha256": "7c7630dc697faea1d8a4b272141f883e61f754ac947ab58d60b4c968045bc3f0",
+      "countAfter": 1
+    },
+    {
+      "name": "getInstallationStatus",
+      "sha256": "969bcf3c0f01c20e4f229f624ecdd967dad591533e860cf3836acbeadecaec6f",
+      "countAfter": 1
+    },
+    {
+      "name": "getDk",
+      "sha256": "10694e4f680ba19aa66e1f2b3b56a265366cb99864704141bc8dbb2f1363d0e3",
+      "countAfter": 1
+    },
+    {
+      "name": "unlock",
+      "sha256": "ff9dc094eb3e7b02b08042d4fabb95b8c69b306422ccc9367119ca18b5ea441c",
+      "countAfter": 1
+    }
+  ],
+  "limits": [
+    "reference map is direct-source evidence, not complete dynamic reachability proof",
+    "remaining Vault biometric helpers outside cryptographic domain removal not activated or asserted removed",
+    "Windows explicitly refused",
+    "no original ciphertext relabel or automatic migration"
+  ]
+}

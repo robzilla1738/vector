@@ -1,0 +1,38 @@
+{
+  "format": "aux.macos.crypto-exclusion.evidence.v1",
+  "exitCode": 0,
+  "applicationCodeExecuted": false,
+  "securityExecuted": false,
+  "changedNativeOrPipeline": false,
+  "checks": [
+    "whole coordinated app source parsed only",
+    "17 legacy boundaries immediately reject",
+    "17 native/storage/auth/normal Sync function bodies unchanged",
+    "5 original crypto domain families absent",
+    "non-macOS guard rejects",
+    "exact coordinated input required"
+  ],
+  "featureGap": "legacy account Sync recovery explicitly unavailable pending Aux-versioned server/client or authenticated importer",
+  "files": [
+    {
+      "path": "source/adapt.mjs",
+      "sha256": "08cad722b52828bad254544903e7a70f6cdfc76c2cf38e4363cf81dffe8d694d"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "9e923414094990e6b3a774e66901c922a4dc9d2b53f8cc2f28e80b2537d90025"
+    },
+    {
+      "path": "references.json",
+      "sha256": "7263cfe26df4d4c2d437360f78ee076477e563472e1bd9eec3bbea81a2d11cb4"
+    },
+    {
+      "path": "recovery-contract.json",
+      "sha256": "77637c289b2753926d7b5a82a671c838ddcc7952695b3bf3f009dcedf1d4bef2"
+    },
+    {
+      "path": "tests/check.mjs",
+      "sha256": "d25cfb54151d081c203ea72834fcf7db3466f6c01004b8c617a740e5eac3c3a4"
+    }
+  ]
+}
