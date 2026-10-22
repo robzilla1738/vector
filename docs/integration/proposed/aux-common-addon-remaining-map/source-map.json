@@ -1,0 +1,349 @@
+{
+  "format": "aux.common-addon.remaining-stage-map.v1",
+  "files": [
+    {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
+      "bytes": 12201951
+    },
+    {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "bytes": 2771
+    },
+    {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "bytes": 2771
+    },
+    {
+      "path": "out/provided-reuse-aux-crypto-stage/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.cjs",
+      "sha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+      "bytes": 1541
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+      "bytes": 7051
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+      "bytes": 8061
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+      "bytes": 4842
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f",
+      "bytes": 14037
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413",
+      "bytes": 2700
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "d123f524e1a9447f72c54ec95987e52c398cdfcf21f0ba1893271acfd27c1260",
+      "bytes": 15671
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/evidence/current-direct-attach-refusal-compile-only.json",
+      "sha256": "fa37f90cbc21b2363e9a6fc1b71ad21505221b10460da9e9ca5b717cc7cec367",
+      "bytes": 10260
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/evidence/check.json",
+      "sha256": "b02bcbcff2614de7df29c0c344f16b378c38da246bbc93c153070e9246652632",
+      "bytes": 479
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-os-surface/evidence/consumer-callsite-inventory.json",
+      "sha256": "3a676d046c0bd909ee4eb90a72bc93f0a8e07bfafcf16b0cb342813c8555f6a9",
+      "bytes": 11524
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-dispatch-abi/README.md",
+      "sha256": "09ce4ff88823dd54ed383a88cb47d698386e327efa8b833954353d4b0cc876f5",
+      "bytes": 12112
+    }
+  ],
+  "stage": "out/provided-reuse-aux-crypto-stage",
+  "commonLoaderLeaves": 2,
+  "nativeMjsStandaloneLeaf": false,
+  "commonWrapperBundledFunction": "init_src$6",
+  "anchors": [
+    {
+      "anchor": "return[path.join(__auxDaemonResources,`native/aux-native.cjs`)]",
+      "count": 1
+    },
+    {
+      "anchor": "function loadPdfBinding(){return require$2(path.join(__auxDaemonResources,`native/aux-pdf.cjs`))}",
+      "count": 1
+    },
+    {
+      "anchor": "const binding = require(workerData.bindingPath);",
+      "count": 1
+    },
+    {
+      "anchor": "parentPort.postMessage({ output: binding.run(workerData.command, workerData.input) });",
+      "count": 1
+    },
+    {
+      "anchor": "workerData:{bindingPath:loadedBindingPath,command:Cn,input:ei}",
+      "count": 1
+    },
+    {
+      "anchor": "Cn===`save`?`secure-save`:Cn===`read`?`secure-read`:`secure-clear`",
+      "count": 1
+    },
+    {
+      "anchor": "ei.mode===`reveal`&&ei.targetType===`file`?`reveal-path`:`open-path`",
+      "count": 1
+    },
+    {
+      "anchor": "if(process.platform===`win32`){if(!isNativeHelperBindingAvailable())",
+      "count": 1
+    },
+    {
+      "anchor": "function installNativeCrashHandler(){if(process.platform===`win32`)",
+      "count": 1
+    }
+  ],
+  "literalCallsites": [
+    {
+      "function": "runNativeHelperCommand",
+      "command": "app-icons",
+      "characterOffset": 11822708,
+      "utf8ByteOffset": 11831291,
+      "context": "+80))iconCache.set(ei,ti[ei]??null)}if(ni.length>0&&process.platform===`darwin`&&isNativeHelperBindingAvailable()){let Cn=await ensurePreviewImageCacheDir(),ei=runNativeHelperCommand(`app-icons`,JSON.stringify({bundleIds:ni,iconDirectory:Cn}));if(!ei.error){let Cn=ei.icons??{},ti=!1;for(let ei of ni){let ni=Cn[ei],ri=ni?await readFile(ni).catch(()=>void 0):void 0;iconCache.set(ei,ri?`data:image/png;ba"
+    },
+    {
+      "function": "runNativeHelperCommand",
+      "command": "list-open-apps",
+      "characterOffset": 11874568,
+      "utf8ByteOffset": 11883151,
+      "context": "})})}));async function listOpenApps(Cn){if(process.platform!==`darwin`||!isNativeHelperBindingAvailable())return[];let ei=await ensurePreviewImageCacheDir(),ti=runNativeHelperCommand(`list-open-apps`,JSON.stringify({filePath:Cn,iconDirectory:ei}));if(ti.error)throw Error(ti.error);let ni=Array.isArray(ti.apps)?ti.apps:[],ri=!1,ii=[];for(let Cn of ni){if(typeof Cn.appName!=`string`||typeof Cn.appPath!=`stri"
+    },
+    {
+      "function": "runNativeHelperCommand",
+      "command": "copy-file",
+      "characterOffset": 11875316,
+      "utf8ByteOffset": 11883899,
+      "context": "Clipboard(Cn){if(process.platform!==`darwin`||!isNativeHelperBindingAvailable())throw Error(`Copying files to the clipboard is only supported on macOS`);let ei=runNativeHelperCommand(`copy-file`,JSON.stringify({filePath:Cn}));if(ei.error)throw Error(ei.error);if(ei.success!==!0)throw Error(`Native helper failed to copy the file`)}async function openFileWithApp(Cn,ei){if(process.platform!==`darwin`||!i"
+    },
+    {
+      "function": "runNativeHelperCommand",
+      "command": "open-with",
+      "characterOffset": 11875675,
+      "utf8ByteOffset": 11884258,
+      "context": "App(Cn,ei){if(process.platform!==`darwin`||!isNativeHelperBindingAvailable())throw Error(`Opening files with a specific app is only supported on macOS`);let ti=runNativeHelperCommand(`open-with`,JSON.stringify({filePath:Cn,appPath:ei}));if(ti.error)throw Error(ti.error);if(ti.success!==!0)throw Error(`Native helper failed to open the file`)}var init_open_apps=__esmMin((()=>{init_preview_image_cache(),"
+    },
+    {
+      "function": "runNativeHelperCommand",
+      "command": "install-crash-handler",
+      "characterOffset": 12190697,
+      "utf8ByteOffset": 12199396,
+      "context": "error(`[Main] ${Cn}`,{error:ei})}function installNativeCrashHandler(){if(process.platform===`win32`)try{mkdirSync(DAEMON_CRASH_DUMPS_DIR,{recursive:!0});let Cn=runNativeHelperCommand(`install-crash-handler`,JSON.stringify({directory:DAEMON_CRASH_DUMPS_DIR}));if(Cn.error){logger.warn(`[Main] Native crash handler was not installed`,{error:Cn.error});return}logger.info(`[Main] Native crash handler installed`,{direct"
+    },
+    {
+      "function": "runNativeHelperCommandAsync",
+      "command": "generate-thumbnail",
+      "characterOffset": 11013192,
+      "utf8ByteOffset": 11021654,
+      "context": "ame(ai).toLowerCase())){let ei=ensureSessionTmpDir(Cn.sessionDir??Cn.session.cwd);ui=path.join(ei,`read-file-${nanoid()}.png`);let ti=`${ui}.icon.png`,ni=await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ai,iconOutputPath:ti,thumbnailOutputPath:ui}));if(await fs$1.rm(ti,{force:!0}),ni.thumbnailGenerated!==!0)return await fs$1.rm(ui,{force:!0}),{content:[{type:`text`,text:`Error: HEIC c"
+    },
+    {
+      "function": "runNativeHelperCommandAsync",
+      "command": "generate-thumbnail",
+      "characterOffset": 12169998,
+      "utf8ByteOffset": 12178697,
+      "context": "])return await rename(ni.pages[0].path,Cn),!0}catch{}finally{await rm(ii,{force:!0,recursive:!0}).catch(()=>void 0)}}return process.platform!==`darwin`||(await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ei,iconOutputPath:ni,thumbnailOutputPath:ri}))).error?!1:!!(await stat$1(ti===`thumbnail`?ri:ni).catch(()=>void 0))?.isFile()}var init_file_preview=__esmMin((()=>{init_preview_image_ca"
+    },
+    {
+      "function": "runNativeHelperCommandAsync",
+      "command": "pick-directory",
+      "characterOffset": 2940623,
+      "utf8ByteOffset": 2945580,
+      "context": "tory(Cn){let ei=Cn.prompt?.trim()||DEFAULT_PROMPT;if(process.platform===`win32`){if(!isNativeHelperBindingAvailable())return{status:`unavailable`};let Cn=await runNativeHelperCommandAsync(`pick-directory`,ei);if(Cn.error)throw Error(Cn.error);if(Cn.status===`cancelled`)return{status:`cancelled`};if(Cn.status===`selected`&&Cn.path&&path.win32.isAbsolute(Cn.path))return{status:`selected`,path:Cn.path};throw Error"
+    },
+    {
+      "function": "runNativeHelperCommandAsync",
+      "command": "focus-explorer-path",
+      "characterOffset": 11876319,
+      "utf8ByteOffset": 11884902,
+      "context": "(ni.success!==!0)throw Error(`Windows native helper returned an invalid response for ${ti}`);(ei.mode===`reveal`||ei.targetType===`directory`)&&setTimeout(()=>{runNativeHelperCommandAsync(`focus-explorer-path`,Cn)},WINDOWS_EXPLORER_FOCUS_RETRY_DELAY_MS).unref();return}if(process.platform===`darwin`){let ti=ei.mode===`reveal`&&ei.targetType===`file`?[`open`,`-R`,Cn]:[`open`,Cn];if(await waitForExitCode(spawnCommand(t"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "install-init",
+      "characterOffset": 2898137,
+      "utf8ByteOffset": 2902974,
+      "context": "`)throw Error(`Installation security requires macOS or Windows CNG`)}async function initInstallation(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`install-init`);return{scheme:Cn.scheme,sig:Cn.sig_pub,kem:Cn.kem_pub}}return initNativeInstallation()}async function getInstallationStatus(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`inst"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "install-status",
+      "characterOffset": 2898356,
+      "utf8ByteOffset": 2903193,
+      "context": ",sig:Cn.sig_pub,kem:Cn.kem_pub}}return initNativeInstallation()}async function getInstallationStatus(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`install-status`);return{installed:Cn.installed,scheme:Cn.scheme}}return getNativeInstallationStatus()}async function unwrapDk(){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`dk-unwrap`"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "dk-unwrap",
+      "characterOffset": 2898571,
+      "utf8ByteOffset": 2903408,
+      "context": "Cn.installed,scheme:Cn.scheme}}return getNativeInstallationStatus()}async function unwrapDk(){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`dk-unwrap`).dk):unwrapNativeDk()}async function signCdpChallenge(Cn){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`cdp-sign`,{challenge:toBase64(Cn)}).signature):signNativeCdpChal"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "cdp-sign",
+      "characterOffset": 2898727,
+      "utf8ByteOffset": 2903564,
+      "context": "4$1(runMacInstallHelper(`dk-unwrap`).dk):unwrapNativeDk()}async function signCdpChallenge(Cn){return assertAvailable(),process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`cdp-sign`,{challenge:toBase64(Cn)}).signature):signNativeCdpChallenge(Cn)}async function getPublicKeys(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`get-public-keys`);return{scheme:Cn.s"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "get-public-keys",
+      "characterOffset": 2898910,
+      "utf8ByteOffset": 2903747,
+      "context": "p-sign`,{challenge:toBase64(Cn)}).signature):signNativeCdpChallenge(Cn)}async function getPublicKeys(){if(assertAvailable(),process.platform===`darwin`){let Cn=runMacInstallHelper(`get-public-keys`);return{scheme:Cn.scheme,sig:Cn.sig,kem:Cn.kem}}return getNativeInstallationPublicKeys()}async function destroyInstallation(){if(assertAvailable(),process.platform===`darwin`){runMacInstallHelper(`install-dest"
+    },
+    {
+      "function": "runMacInstallHelper",
+      "command": "install-destroy",
+      "characterOffset": 2899124,
+      "utf8ByteOffset": 2903961,
+      "context": "n.scheme,sig:Cn.sig,kem:Cn.kem}}return getNativeInstallationPublicKeys()}async function destroyInstallation(){if(assertAvailable(),process.platform===`darwin`){runMacInstallHelper(`install-destroy`);return}await destroyNativeInstallation()}async function isHelperAvailable$1(){return process.platform===`darwin`?isNativeHelperBindingAvailable():isNativeInstallationHelperAvailable()}var init_helper=__esmMin"
+    },
+    {
+      "function": "runNativeKeyCommand",
+      "command": "keys-status",
+      "characterOffset": 2895075,
+      "utf8ByteOffset": 2899912,
+      "context": "ppedDk(){let Cn=await readSecureStorageItem(KEYCHAIN_IDS.DK);return Cn?wrappedDkP256Schema.parse(JSON.parse(Cn)):null}function getNativeKeysInstalled(){return!!runNativeKeyCommand(`keys-status`).keysInstalled}function getNativePublicKeys(){let Cn=runNativeKeyCommand(`public-keys`);if(typeof Cn.sig!=`string`||typeof Cn.kem!=`string`)throw Error(`Native helper binding returned incomplete public keys`);"
+    },
+    {
+      "function": "runNativeKeyCommand",
+      "command": "public-keys",
+      "characterOffset": 2895162,
+      "utf8ByteOffset": 2899999,
+      "context": "ema.parse(JSON.parse(Cn)):null}function getNativeKeysInstalled(){return!!runNativeKeyCommand(`keys-status`).keysInstalled}function getNativePublicKeys(){let Cn=runNativeKeyCommand(`public-keys`);if(typeof Cn.sig!=`string`||typeof Cn.kem!=`string`)throw Error(`Native helper binding returned incomplete public keys`);return{scheme:`p256_v1`,sig:Cn.sig,kem:Cn.kem}}async function wrapDkP256(Cn,ei){throw E"
+    },
+    {
+      "function": "runNativeKeyCommand",
+      "command": "init-keys",
+      "characterOffset": 2896212,
+      "utf8ByteOffset": 2901049,
+      "context": "eme:ei.scheme}}async function initNativeInstallation(){if(assertSupported(),(await getNativeInstallationStatus()).installed)return getNativePublicKeys();let Cn=runNativeKeyCommand(`init-keys`);if(typeof Cn.sig!=`string`||typeof Cn.kem!=`string`)throw Error(`Native helper binding failed to create public keys`);let ei=generateRandomBytes(32);try{await saveSecureStorageItem(KEYCHAIN_IDS.DK,JSON.string"
+    },
+    {
+      "function": "runNativeKeyCommand",
+      "command": "cdp-sign",
+      "characterOffset": 2896858,
+      "utf8ByteOffset": 2901695,
+      "context": "wait getStoredWrappedDk();if(!Cn)throw Error(`Wrapped DK not found`);return unwrapDkP256(Cn)}async function signNativeCdpChallenge(Cn){assertSupported();let ei=runNativeKeyCommand(`cdp-sign`,{challenge:toBase64(Cn)});if(typeof ei.signature!=`string`)throw Error(`Native helper binding returned no signature`);return fromBase64$1(ei.signature)}async function getNativeInstallationPublicKeys(){return a"
+    },
+    {
+      "function": "runNativeKeyCommand",
+      "command": "destroy-keys",
+      "characterOffset": 2897198,
+      "utf8ByteOffset": 2902035,
+      "context": "e)}async function getNativeInstallationPublicKeys(){return assertSupported(),getNativePublicKeys()}async function destroyNativeInstallation(){assertSupported(),runNativeKeyCommand(`destroy-keys`),await Promise.all([clearSecureStorageItem(KEYCHAIN_IDS.META),clearSecureStorageItem(KEYCHAIN_IDS.DK)])}async function isNativeInstallationHelperAvailable(){return process.platform!==`darwin`&&process.platform"
+    },
+    {
+      "function": "runHelper",
+      "command": "status",
+      "characterOffset": 10590311,
+      "utf8ByteOffset": 10598326,
+      "context": "le:ti.deviceOwnerAvailable??!1,enrolled:ti.enrolled??!1,biometryType:resolveBiometryType(ti.biometryType)};if(!await isHelperAvailable())return ei;let ni=await runHelper(`status`,JSON.stringify({accountId:nativeAccount(Cn)}));return ni.error?ei:{available:ni.available??!1,biometricAvailable:ni.biometricAvailable??!1,deviceOwnerAvailable:ni.deviceOwnerAvailable??!1,enrolled:ni.enrolled?"
+    },
+    {
+      "function": "runHelper",
+      "command": "enroll",
+      "characterOffset": 10590820,
+      "utf8ByteOffset": 10598835,
+      "context": "))throw Error(`Biometric helper is not available on this platform`);let ti=isUnlocked()?JSON.stringify(await encrypt(`pmk.biometric`,ei)):toBase64(ei),ni=await runHelper(`enroll`,`${JSON.stringify({accountId:nativeAccount(Cn)})}\\n${ti}`);if(ni.error)throw captureBiometricHelperFailed(Cn,`enroll`),Error(ni.error)}async function unlockWithBiometric(Cn){if(Date.now()<(unlockCooldownUntilB"
+    },
+    {
+      "function": "runHelper",
+      "command": "unlock",
+      "characterOffset": 10591535,
+      "utf8ByteOffset": 10599550,
+      "context": "e(Cn)}}async function _unlockWithBiometricImpl(Cn){if(!await isHelperAvailable())throw Error(`Biometric helper is not available on this platform`);let ei=await runHelper(`unlock`,JSON.stringify({accountId:nativeAccount(Cn)}));if(ei.error)throw captureBiometricHelperFailed(Cn,`unlock`),Error(ei.error);if(!ei.key)throw Error(`No key returned from biometric unlock`);return decodeBiometric"
+    },
+    {
+      "function": "runHelper",
+      "command": "verify",
+      "characterOffset": 10593642,
+      "utf8ByteOffset": 10601657,
+      "context": "0)},0),()=>{})}}async function verifyBiometric(Cn){if(!await isHelperAvailable())throw Error(`Biometric helper is not available on this platform`);let ei=await runHelper(`verify`,JSON.stringify({accountId:nativeAccount(Cn)}));if(ei.error)throw captureBiometricHelperFailed(Cn,`verify`),Error(ei.error)}async function removeBiometric(Cn){await isHelperAvailable()&&await runHelper(`remove`"
+    },
+    {
+      "function": "runHelper",
+      "command": "remove",
+      "characterOffset": 10593852,
+      "utf8ByteOffset": 10601867,
+      "context": "eAccount(Cn)}));if(ei.error)throw captureBiometricHelperFailed(Cn,`verify`),Error(ei.error)}async function removeBiometric(Cn){await isHelperAvailable()&&await runHelper(`remove`,JSON.stringify({accountId:nativeAccount(Cn)}))}function writeSession(Cn,ei){let ti=(sessionWrites.get(Cn)??Promise.resolve()).catch(()=>{}).then(ei);return sessionWrites.set(Cn,ti),ti.finally(()=>{sessionWrite"
+    },
+    {
+      "function": "runNativeHelper",
+      "command": "status",
+      "characterOffset": 10589965,
+      "utf8ByteOffset": 10597980,
+      "context": "ync function getBiometricStatus(Cn){let ei={available:!1,biometricAvailable:!1,deviceOwnerAvailable:!1,enrolled:!1,biometryType:resolveBiometryType()},ti=await runNativeHelper(`status`,JSON.stringify({accountId:nativeAccount(Cn)}));if(ti&&!ti.error)return{available:ti.available??!1,biometricAvailable:ti.biometricAvailable??!1,deviceOwnerAvailable:ti.deviceOwnerAvailable??!1,enrolled:ti.enrol"
+    },
+    {
+      "function": "runNativeHelper",
+      "command": "unlock-batch",
+      "characterOffset": 10592409,
+      "utf8ByteOffset": 10600424,
+      "context": "tive authentication`)]}))}let ei=(async()=>{let ei=/* @__PURE__ */ new Map,ti=Cn.map(Cn=>({id:Cn,slot:nativeAccount(Cn)})),ni=process.platform===`darwin`?await runNativeHelper(`unlock-batch`,JSON.stringify({accountIds:ti.map(({slot:Cn})=>Cn)})):null;if(ni){if(ni.error||!ni.results)throw Error(ni.error??`Native batch unlock is unavailable`);for(let{id:Cn,slot:ri}of ti){let ti=ni.results.find(Cn=>Cn"
+    }
+  ],
+  "literalCallsiteCounts": {
+    "runNativeHelperCommand:app-icons": 1,
+    "runNativeHelperCommand:list-open-apps": 1,
+    "runNativeHelperCommand:copy-file": 1,
+    "runNativeHelperCommand:open-with": 1,
+    "runNativeHelperCommand:install-crash-handler": 1,
+    "runNativeHelperCommandAsync:generate-thumbnail": 2,
+    "runNativeHelperCommandAsync:pick-directory": 1,
+    "runNativeHelperCommandAsync:focus-explorer-path": 1,
+    "runMacInstallHelper:install-init": 1,
+    "runMacInstallHelper:install-status": 1,
+    "runMacInstallHelper:dk-unwrap": 1,
+    "runMacInstallHelper:cdp-sign": 1,
+    "runMacInstallHelper:get-public-keys": 1,
+    "runMacInstallHelper:install-destroy": 1,
+    "runNativeKeyCommand:keys-status": 1,
+    "runNativeKeyCommand:public-keys": 1,
+    "runNativeKeyCommand:init-keys": 1,
+    "runNativeKeyCommand:cdp-sign": 1,
+    "runNativeKeyCommand:destroy-keys": 1,
+    "runHelper:status": 1,
+    "runHelper:enroll": 1,
+    "runHelper:unlock": 1,
+    "runHelper:verify": 1,
+    "runHelper:remove": 1,
+    "runNativeHelper:status": 1,
+    "runNativeHelper:unlock-batch": 1
+  },
+  "nativePdfCalls": {
+    "extractText": 2,
+    "fillFormFields": 1,
+    "getFormFields": 1,
+    "merge": 1,
+    "renderPages": 2,
+    "rotate": 1,
+    "split": 1
+  },
+  "evaluatedCode": false,
+  "originalAddonLoaded": false,
+  "OSOrSecurityExecuted": false,
+  "UIChanged": false
+}
