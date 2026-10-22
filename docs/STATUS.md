@@ -1,5 +1,13 @@
 # Aux implementation status
 
+## Local stabilization616 in progress — 2026-10-21
+
+615 native/package/full retained-helper checks passed; receipt `ee8491e30ff6f7b71227a2d27152eea01793967d6022cb9888783c940b961659`. Actual615 loaded the current notification worker (SHA a148a4ed44854d842ab5c915d78eded100726d3d9bf0d203b1bccfdb8a45f071); valid-window routing and closed-target recovery both passed through the real public handler, with the resulting settings page observed in the correct Your Aux window. Known fixture windows were closed. OS notification delivery remains separate. Version1853 corrected Chromium's stale registered worker without clearing profile data or changing identity/permissions.
+
+Actual615 attachment restart recovered its chip once the panel initialized. A remaining Search-startup first-Ask path overwrote saved text; the corrected source restores the untouched saved snapshot before notifying the first Ask subscriber. Actual quota fixture failed storage while retaining its in-memory chip, but no toast appeared: the original debounce.flush discarded the callback result. The writer now captures its own persistence result through that unchanged debounce. Focused tests exercise the actual supplied debounce through the existing composer toast, plus first-Ask hydration; both passed. Source frozen for616 at revision1854. A genuine typed18-character draft plus one tiny attachment was confirmed in the existing native-page persistent record before normal Quit; final restart acceptance is pending.
+
+615 clips pinned tile layers during non-retained transitions but an immediate capture still showed a toolbar corner wedge; settled collapse was clean.616 synchronizes that corner admission with the same frame's sidebar top offset. Radius, timing, geometry, glass and CSS remain unchanged. Native616 is linking; final package and actual corner/draft acceptance are pending. No fresh Apple signing, credentials, OS grants or owner profile operations.
+
 ## Actual614 local completion batch built and open — 2026-10-21
 
 Parallel fixes are integrated on local main: same-file attachment retry; notification target disappearance after initial admission; Mini Popup normal new-chat draft recovery with actual UI-account and Chromium-profile isolation. Private drafts stay in memory, failed removal refuses entering incognito, and failed saves retain the existing protection. Seven counted Mini Popup anchors reuse the supplied version2 draft store. Captured owners prevent late callbacks from writing another account's draft. No CSS or native changes; verified native613 reused.
