@@ -1,0 +1,11 @@
+# Carrier/PDF candidate verification successor
+
+Prepared narrow successor of the pinned `aux-packaged-pdf-loader/probe.mjs`; its exact source hash is retained in `reviewed-pins.json`. The own PDF module now pins SHA256 ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0 /9,474,752bytes, with exact current loader/pin-file hashes independently derived from completed stage. No native module executes during preparation.
+
+Stage preservation passed: baseline `provided-reuse-aux-cli-registration/ui/agent` and completed `provided-reuse-aux-carrier-pdf-lifetime/ui/agent` have1215 equal path/size/SHA256 records, including5CSS. Inventory digest remains ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005. Evidence is `evidence/stage-ui.json` and `out/aux-carrier-pdf-ui-preservation.json`. This proves byte preservation, not rendered actual-app comparison.
+
+Do not run package probe until root confirms native build/package terminal success. `finalize-pins.py` then authenticates root's successful `out/aux-carrier-native-build.json` against exact trait-successor composition2b2affe..., hashes the actual built framework and records that receipt/framework. Null pins intentionally refuse execution before finalization.
+
+`check.sh` will use actual frozen packaged Node from `out/provided-candidate-aux-carrier-pdf-lifetime/Aux.app`, isolated empty environment/disposable home, and execute only extracted actual SEA/node-development loadPdfBinding functions. The first quarantine refusal is checked statically, never evaluated/bypassed. Exactly one reviewed own PDF module is allowlisted for dlopen; one synthetic PDF is synchronously extracted. Both routes must return the same seven methods. It compares actual package Agent bytes to baseline+stage and requires the native framework to equal the exact new successful build receipt. Original run/credential addons cannot load. Common old addon presence remains an explicit gap.
+
+At preparation: packaged probe unexecuted, framework/receipt finalization pending, new native fixture/build pending. No full app/daemon launch, original addon execution, owner file/credential/OS/cloud/signing operation occurs. UI geometry/style/assets stay unchanged.

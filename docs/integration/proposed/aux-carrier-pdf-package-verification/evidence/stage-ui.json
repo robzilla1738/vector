@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-cli-registration/ui/agent",
+  "stage": "/Users/rcourson/Documents/Vibe/web/out/provided-reuse-aux-carrier-pdf-lifetime/ui/agent",
+  "comparedFiles": 1215,
+  "stylesheets": 5,
+  "allBytesEqual": true,
+  "inventorySHA256": "ee3d20b6c2c9a92c53b53210d045706788821be47afc1c3a967639aad972d005",
+  "actualRenderedComparison": false
+}
