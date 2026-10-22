@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-22T06:59:20.075Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "checks": [
+    "public liveness returns200",
+    "protected readiness denies unauthenticated access401",
+    "authenticated readiness reaches actual database and verifies every required migration hash"
+  ],
+  "requiredMigrations": 11,
+  "schemaManifestSha256": "91dcd410d044456db5fb04522998c5c3b609802d2200d526fcd238a9be1c5a51",
+  "writesPerformed": false,
+  "paidProviderCalls": 0
+}
