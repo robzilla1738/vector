@@ -1,0 +1,37 @@
+{
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "anchors": [
+    {
+      "name": "installation subkey and wrapping domains",
+      "find": "DK_SUBKEY_INFO_PREFIX=`aside.dk.`,DK_WRAP_INFO=`aside.wrap.dk.v1`",
+      "count": 1
+    },
+    {
+      "name": "unversioned encrypted blob schema",
+      "find": "encryptedBlobSchema=object({purpose:string$3(),nonce:string$3(),ciphertext:string$3()})",
+      "count": 1
+    },
+    {
+      "name": "legacy p256 wrapper schema",
+      "find": "wrappedDkP256Schema=object({scheme:literal(`p256_v1`),purpose:literal(`dk`),ephemeral_public_key:string$3(),nonce:string$3(),ciphertext:string$3()})",
+      "count": 1
+    },
+    {
+      "name": "account sync derivation and recovery",
+      "find": "`aside.dk.sync.v1`",
+      "count": 2
+    },
+    {
+      "name": "macOS installation unwrap native delegation",
+      "find": "process.platform===`darwin`?fromBase64$1(runMacInstallHelper(`dk-unwrap`).dk):unwrapNativeDk()",
+      "count": 1
+    },
+    {
+      "name": "HKDF has empty salt",
+      "find": "salt:/* @__PURE__ */ new Uint8Array,info:",
+      "count": 2
+    }
+  ],
+  "execution": false,
+  "activated": false
+}
