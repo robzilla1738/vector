@@ -2,6 +2,8 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'scripts/stage-provided.mjs',
+  'docs/integration/proposed/provided-agent-worker-revision/revision.mjs',
+  'vendor/provided/agent-revisions.json',
   'scripts/lib/provided-ui.mjs',
   'scripts/lib/provided-apps.mjs',
   'vendor/provided/daemon-adapter.mjs',

@@ -56,6 +56,9 @@ export function reviewedUiResourceInventory(inventory, review = []) {
     'apps/extension/dist/assets/Matches-B99cyGDb.js',
     'apps/extension/dist/assets/use-tab-context-Bi3TKsrh.js',
     'apps/extension/dist/background.js',
+    'apps/extension/dist/manifest.json', // Reviewed version/version_name only; no grants or identity changes.
+    'apps/extension/dist/assets/newtab-editor-u_GbForB.js',
+    'apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js',
     'apps/extension/dist/assets/minipopup-LkDLFvnq.js',
     'bundle.json', 'provenance/manifest.json', 'provenance/ui-manifest.json',
     'provenance/apps-manifest.json', 'provenance/distribution-manifest.json',

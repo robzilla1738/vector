@@ -1,3 +1,4 @@
+import { reviseAgentManifest } from '../../docs/integration/proposed/provided-agent-worker-revision/revision.mjs';
 import { readAuxMark, auxMarkReactChildren, auxMarkSvg } from './aux-mark.mjs';
 import { restoreProvidedWireNames } from './provided-wire.mjs';
 import { createHash } from 'node:crypto';
@@ -353,6 +354,17 @@ export async function stageProvidedUi({
           changeKinds: [...new Set(changeKinds)],
           ...(anchors.length ? { anchors } : {}),
         });
+      }
+      if (component === 'agent') {
+        const manifestPath = join(temporary, component, 'manifest.json');
+        const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
+        if (!revisions.length || revisions.some((r, i) => r.revision !== i + 1)) throw new Error('Agent revision ledger must be consecutive');
+        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.at(-1)});
+        const entry = files.find(f => f.path === 'manifest.json');
+        entry.anchors = [...(entry.anchors ?? []), revised.anchor];
+        entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];
+        entry.outputSha256 = revised.outputSha256;
+        await writeFile(manifestPath, revised.text);
       }
       report.components[component] = {
         sourceVersion: input.sourceVersion,
