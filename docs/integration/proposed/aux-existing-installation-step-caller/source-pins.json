@@ -31,11 +31,11 @@
     },
     {
       "path": "../aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
-      "sha256": "1aede47a990c622149ad863c53407b8f7999b63ae531c000861ea4cb00baf1ae"
+      "sha256": "936772ca173e49092a2d5e1a2f700de2af0a7bbe8afb556513f40f989bd9ed2b"
     },
     {
       "path": "../aux-installation-journal-store/source-pins.json",
-      "sha256": "13920ab1bccc414bc198f2c5fcf5d57dbc28cc6cf35c9ab435ebcb8715ba9e39"
+      "sha256": "76aff9edffcf8f43bc96dbc01a0d17623b952d0bff8e99f0e78cd4b1cdec04f1"
     },
     {
       "path": "../aux-installation-additive-transaction/source/AdditiveInstallationTransaction.swift",
