@@ -22,6 +22,10 @@ Implementation follow-up:
 
 The local-browser pass implements Vault product removal, startup decoupling, supplied local Chat/Settings routes and native frame repairs. Runtime verification and third-party password-manager compatibility remain separate acceptance gates; see `docs/acceptance/local-browser-pass.json`. Browser UI and agent parity remain the priority.
 
+## Complete Aux identity — owner override 2026-10-22
+
+The owner requires all delivered product references and internal protocols to use Aux, preserving the current UI exactly. The earlier wire/crypto preservation bullets below are historical baseline constraints superseded by this direction. Migrate compatible endpoints together and version stored cryptographic formats without resetting or reading owner state. See [the active identity migration](2026-10-22-complete-aux-identity.md). Existing app acceptance does not transfer to renamed protocols.
+
 ## Goal
 
 Reuse the implementation supplied by the owner, preserve its UI and behavior, and change its branding, assets and identifiers to Aux. Deliver the faithful local Aux browser, including the supplied daemon, Agent UI, CLI, helpers and runtimes as needed, excluding the built-in Vault/password manager. Adapt that implementation to Aux Chromium instead of replacing it with approximate screens or behavior.

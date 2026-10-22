@@ -4,6 +4,12 @@ Aux reuses the implementation supplied by the owner, preserving its UI and behav
 
 Read `README.md`, `docs/design/aside-contract.md`, `docs/plans/2026-10-19-supplied-implementation-reuse.md` and `docs/STATUS.md` first. Earlier independent components remain recoverable in Git; they are not the default product implementation merely because they already exist.
 
+## Owner branding override — 2026-10-22
+
+The owner explicitly requires every product reference, endpoint, identifier and internal protocol name in the delivered Aux product to use Aux, while preserving the current UI exactly. This supersedes the earlier wire-name and cryptographic-label preservation requirements below. Those requirements describe the existing compatibility baseline, not the desired final identity.
+
+Migrate all callers/receivers together. Changing cryptographic derivation labels or persisted installation records requires an explicit versioned migration; never silently reinterpret existing ciphertext, reset keys, delete credentials or read owner state. Keep the current accepted app intact until a complete successor is verified. This direction grants no new signing, Keychain or owner-profile access. HTML's standard `aside` element and required third-party legal notices are not product branding; retain valid language semantics and required attribution. Original authorized source inventories and historical evidence remain truthful.
+
 ## Owner scope exception — 2026-10-20
 
 Do not ship a built-in Aux password manager or the supplied Vault product. Users integrate their existing password managers, such as 1Password, through browser extensions. This overrides Vault preservation/parity requirements below. Remove Vault product surfaces and decouple browser/agent startup from Vault setup; retain required installation authentication and secure AI-provider credential handling. Third-party extension/autofill/native-messaging compatibility must be verified, not assumed. See `docs/design/aside-contract.md`. Do not delete owner credentials or profiles.

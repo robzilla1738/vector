@@ -1,0 +1,104 @@
+--- a/chrome/browser/aux/account_profile_updater.cc
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -61,8 +61,8 @@
+  public:
+   static void Start(const char* path, base::DictValue input) {
+     const std::string authorization = BrowserPlatform::Get().authorization();
+-    if ((!authorization.starts_with("AsideDaemonSessionToken ") ||
+-         authorization.size() <= sizeof("AsideDaemonSessionToken ") - 1) ||
++    if ((!authorization.starts_with("AuxDaemonSessionToken ") ||
++         authorization.size() <= sizeof("AuxDaemonSessionToken ") - 1) ||
+         !g_browser_process->system_network_context_manager()) return;
+     unsigned port = 21520;
+     if (auto text = base::Environment::Create()->GetVar("AUX_PORT"); text) {
+--- a/chrome/browser/aux/auth_scheme_probe.cc
++++ b/chrome/browser/aux/auth_scheme_probe.cc
+@@ -33,7 +33,7 @@
+   };
+   const auto raw_signature = sign(bytes);
+   const auto http_signature =
+-      sign(std::string("Aside Daemon Auth v1\0", 21) + bytes);
++      sign(std::string("Aux Daemon Auth v1\0", sizeof("Aux Daemon Auth v1\0") - 1) + bytes);
+   if (!aux::VerifyCdpChallenge(*imported, challenge, raw_signature) ||
+       aux::VerifyInstallationChallenge(*imported, challenge, raw_signature) ||
+       !aux::VerifyInstallationChallenge(*imported, challenge, http_signature) ||
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -86,8 +86,8 @@
+     LOG(ERROR) << error;
+   }
+   const bool authorized = state == DaemonSupervisor::State::kReady &&
+-      authorization().starts_with("AsideDaemonSessionToken ") &&
+-      authorization().size() > sizeof("AsideDaemonSessionToken ") - 1;
++      authorization().starts_with("AuxDaemonSessionToken ") &&
++      authorization().size() > sizeof("AuxDaemonSessionToken ") - 1;
+   const bool became_authorized = authorized && !authorization_was_available_;
+   authorization_was_available_ = authorized;
+   if (became_authorized) authorization_observers_.Notify();
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -263,7 +263,7 @@
+   auto health = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                      : std::nullopt;
+   const bool healthy = health && health->FindString("service") &&
+-                       *health->FindString("service") == "aside-daemon" &&
++                       *health->FindString("service") == "aux-daemon" &&
+                        health->FindString("version") &&
+                        *health->FindString("version") == "1.26.1016.1852" &&
+                        health->FindBool("ready").value_or(false) &&
+@@ -397,13 +397,13 @@
+   const auto* token = value ? value->FindString("access_token") : nullptr;
+   const auto seconds =
+       value ? value->FindInt("expiresInSeconds") : std::nullopt;
+-  if (!type || *type != "AsideDaemonSessionToken" || !token || token->empty() ||
++  if (!type || *type != "AuxDaemonSessionToken" || !token || token->empty() ||
+       !seconds || *seconds <= 0) {
+     authorization_.clear();
+     SetState(State::kFailed, "Daemon installation authorization failed");
+     return;
+   }
+-  authorization_ = "AsideDaemonSessionToken " + *token;
++  authorization_ = "AuxDaemonSessionToken " + *token;
+   token_expires_ = base::TimeTicks::Now() + base::Seconds(*seconds);
+   SetState(State::kReady);
+   timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -41,7 +41,7 @@
+   auto bytes = DecodeChallenge(challenge);
+   if (!bytes)
+     return std::nullopt;
+-  return std::string("Aside Daemon Auth v1\0", 21) + *bytes;
++  return std::string("Aux Daemon Auth v1\0", sizeof("Aux Daemon Auth v1\0") - 1) + *bytes;
+ }
+ bool VerifyMessage(const crypto::keypair::PublicKey &key,
+                    std::string_view message, std::string_view signature) {
+--- a/chrome/browser/aux/profile_security_client.cc
++++ b/chrome/browser/aux/profile_security_client.cc
+@@ -47,7 +47,7 @@
+     state_ = std::move(state);
+     if (!state_.bound || !state_.local_only.has_value() ||
+         !state_.binding_error.empty() || !state_.account_id || !factory_ || !port_ ||
+-        !authorization_.starts_with("AsideDaemonSessionToken ")) {
++        !authorization_.starts_with("AuxDaemonSessionToken ")) {
+       Finish(std::move(state_));
+       return;
+     }
+--- a/chrome/browser/devtools/aux_cdp_authority.cc
++++ b/chrome/browser/devtools/aux_cdp_authority.cc
+@@ -102,13 +102,13 @@
+     const std::string token = base::Base64Encode(crypto::RandBytesAsVector(32));
+     sessions_[token] = now + base::Hours(24);
+     base::DictValue body;
+-    body.Set("token_type", "AsideSessionToken");
++    body.Set("token_type", "AuxSessionToken");
+     body.Set("access_token", token);
+     body.Set("expiresInSeconds", 86400);
+     return CdpResponse{200, base::WriteJson(body).value_or("{}")};
+   }
+   const std::string authorization = request.GetHeaderValue("authorization");
+-  constexpr std::string_view prefix = "AsideSessionToken ";
++  constexpr std::string_view prefix = "AuxSessionToken ";
+   if (!base::StartsWith(authorization, prefix) ||
+       !sessions_.contains(authorization.substr(prefix.size()))) {
+     return Error(401, "UNAUTHORIZED", "Browser authorization required");

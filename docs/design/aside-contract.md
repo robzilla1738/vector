@@ -17,21 +17,24 @@ This exception supersedes Vault preservation and acceptance requirements elsewhe
 - Canonical artwork is the exact owner-supplied `assets/brand/arch-mark.svg`: both paths, complete geometry and1024 viewBox. Derived UI/app/menu assets retain that shape.
 - Static implementation packages are authorized inputs. Owner profiles, accounts, credentials, Keychain items and OS grants are not source material.
 
-## Original wire and cryptographic bytes
+## Complete Aux identity — owner override 2026-10-22
 
-Preserve these supplied contracts even though the visible product is Aux:
+The owner now requires all delivered product names, identifiers, endpoints and internal protocol names to use Aux, with the current UI preserved exactly. This supersedes the prior instruction to retain supplied wire spellings. The accepted app still uses the compatibility baseline; the migration is not yet integrated or accepted.
 
-| Contract | Required value |
+| Existing compatibility contract | Target Aux contract |
 | --- | --- |
-| HTTP native-session scheme | `AsideDaemonSessionToken` |
-| Browser CDP native-session scheme | `AsideSessionToken` |
-| WS auth prefix | `aside.daemon.auth.` |
-| HTTP signed challenge domain | `Aside Daemon Auth v1\0` —21 bytes including NUL |
-| Health service | `aside-daemon` |
-| Extension/browser bridge commands | `Aside.*` |
-| Key derivation domains | Original `aside.dk.*` labels and wrapped-key formats |
+| `AsideDaemonSessionToken` | `AuxDaemonSessionToken` |
+| `AsideSessionToken` | `AuxSessionToken` |
+| `aside.daemon.auth.` | `aux.daemon.auth.` |
+| `Aside Daemon Auth v1\0` | `Aux Daemon Auth v1\0` (19 bytes including NUL) |
+| `Aside Daemon Dev Auth v1\0` | `Aux Daemon Dev Auth v1\0` (23 bytes including NUL) |
+| `aside-daemon` | `aux-daemon` |
+| `Aside.*` | `Aux.*` |
+| `aside.dk.*` / persisted installation records | Versioned Aux formats; migration design and fixture verification required before activation |
 
-CDP verifies its original raw32-byte challenge, without the HTTP domain prefix. Product prose is Aux; HTML's `aside` element and licensed upstream language tokens remain valid. Do not rename protocol bytes or cryptographic labels as a branding operation.
+Update both sides, schemas, dispatch, health checks and byte-length calculations together. Never brand a challenge without changing its verifier. Never rename an HKDF domain and attempt to decrypt old ciphertext under the new domain. Existing Aux state needs an explicit migration or supported legacy-reader transition; neither owner-state access nor destructive resets are authorized. Original static inputs and historical evidence stay unchanged and accurately attributed. HTML's standard `aside` element and required upstream legal notices remain valid and must not be broken or erased.
+
+See [complete identity migration](../plans/2026-10-22-complete-aux-identity.md). No UI redesign, geometry, CSS, glass, typography, icon or interaction changes are part of this migration.
 
 ## Local behavior and isolation
 

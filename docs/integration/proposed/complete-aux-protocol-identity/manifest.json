@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "complete-aux-native-protocol-identity",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "baselineSha256": "896f0b52419990a7bef2ae9ab1e10cb55ed3e9a54beb56d726ddf3da7932b360",
+      "outputSha256": "95164d9f21b9b090193a2f2a3b04abee1ba7bcf24f354da0f125154fddbb70b7",
+      "edits": [
+        {
+          "find": "AsideDaemonSessionToken",
+          "replace": "AuxDaemonSessionToken",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/auth_scheme_probe.cc",
+      "baselineSha256": "073a058a8c1723c3ad8f48be4e5e8b4ad9f02c8b5a17d573fec1d50b0bd6f53c",
+      "outputSha256": "72873c8390e23f2c2609ac14869170bdcff89c4b81e4fc453fe0b6613d1b4723",
+      "edits": [
+        {
+          "find": "std::string(\"Aside Daemon Auth v1\\0\", 21)",
+          "replace": "std::string(\"Aux Daemon Auth v1\\0\", sizeof(\"Aux Daemon Auth v1\\0\") - 1)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "baselineSha256": "cdde8579e7a32edf4e5ae3ceaa741df60f1feabca9e297b5d74a49f586fe47cc",
+      "outputSha256": "47cd095d36a83c76658e5b22ff52735da4046c6f10628f7d9267d03d79e1efda",
+      "edits": [
+        {
+          "find": "AsideDaemonSessionToken",
+          "replace": "AuxDaemonSessionToken",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "0e40f3f530e249681b85611a4c8d38957a7d4559c339648b6572e96a657b8c7a",
+      "outputSha256": "693a76b3958f95acfd4b7c138230c2f8fdd35f42703bb7a2ccf399094f79eb19",
+      "edits": [
+        {
+          "find": "AsideDaemonSessionToken",
+          "replace": "AuxDaemonSessionToken",
+          "count": 2
+        },
+        {
+          "find": "aside-daemon",
+          "replace": "aux-daemon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "baselineSha256": "2801bc2549dc464975c4ff7094dee1c18d55ccdc080ca1aeca2a7242b05ef9f8",
+      "outputSha256": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2",
+      "edits": [
+        {
+          "find": "std::string(\"Aside Daemon Auth v1\\0\", 21)",
+          "replace": "std::string(\"Aux Daemon Auth v1\\0\", sizeof(\"Aux Daemon Auth v1\\0\") - 1)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_security_client.cc",
+      "baselineSha256": "38ed1c7da8fcaa518d4940d7722c473659dedc3383af03f30a151d2dabf2effc",
+      "outputSha256": "fd1731cfc95b236831e8557ab1411c25cedc7f463fce71cf0f9f7adbd49d68b0",
+      "edits": [
+        {
+          "find": "AsideDaemonSessionToken",
+          "replace": "AuxDaemonSessionToken",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/devtools/aux_cdp_authority.cc",
+      "baselineSha256": "8cfa9795e2d65038b6a7c95b15cc54485336024890e88f1aa973f63d1931f92e",
+      "outputSha256": "8729b1ba222b198f5a1a277c421e19c447769f0313bd1aa87e5ed50922969ec5",
+      "edits": [
+        {
+          "find": "AsideSessionToken",
+          "replace": "AuxSessionToken",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "applied": false,
+  "runtimeAcceptance": false,
+  "uiChanges": false
+}
