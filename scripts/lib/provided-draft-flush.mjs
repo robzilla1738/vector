@@ -8,14 +8,19 @@ export function transformProvidedDraftFlush({ component, path, text }) {
       anchors: [{ kind: 'integration', find, replace: replacement, count: 1 }] };
   };
   if (path === 'assets/minipopup-LkDLFvnq.js') {
-    // The supplied singleton keeps its new-chat draft only in module memory.
-    // Hide/reopen retains that owner; disable/profile replacement destroys it.
-    // Advertise unsaved work through the native admission's existing signal.
+    // A real singleton scope, isolated by the extension's actual Profile store.
+    // Private mode never writes its draft; enter it only after removing copies.
     const edits = [
+      ['import{u as f}from"./browser-binding-CzDmxQNA.js";',
+       'import{u as f}from"./browser-binding-CzDmxQNA.js";import{i as auxReadMiniDraft,l as auxWriteMiniDraft}from"./draft-storage-ixLojjZ5.js";'],
       ['k=null,is=({onHeightChange:s,onSessionChange:n})=>',
-       'k=null,auxMiniPopupDraftUnload=e=>{e.preventDefault(),e.returnValue=""},auxSetMiniPopupDraft=a=>{k=a;if(a?.plainText?.length||a?.attachments?.length)window.addEventListener("beforeunload",auxMiniPopupDraftUnload);else window.removeEventListener("beforeunload",auxMiniPopupDraftUnload)},is=({onHeightChange:s,onSessionChange:n})=>'],
-      ['a=>{k=null,n(a)}', 'a=>{auxSetMiniPopupDraft(null),n(a)}'],
+       'k=auxReadMiniDraft(void 0,"mini-popup:new"),auxMiniPopupDraftMode="default",auxMiniPopupDraftUnload=e=>{e.preventDefault(),e.returnValue=""},auxSetMiniPopupDraft=a=>{k=a;const saved=auxMiniPopupDraftMode==="incognito"||auxWriteMiniDraft(void 0,a,"mini-popup:new")===!0;if(!saved||auxMiniPopupDraftMode==="incognito"&&(a?.plainText?.length||a?.attachments?.length))window.addEventListener("beforeunload",auxMiniPopupDraftUnload);else window.removeEventListener("beforeunload",auxMiniPopupDraftUnload);return saved},auxSetMiniPopupMode=a=>{if(a!=="default"&&a!=="incognito")return!1;if(a==="incognito"&&auxWriteMiniDraft(void 0,null,"mini-popup:new")!==!0){Z.error("Could not remove the saved draft. Keep this window open and try again before entering incognito.");return!1}auxMiniPopupDraftMode=a;auxSetMiniPopupDraft(k)||Z.error("Could not save this draft. Keep this window open and try again.");return!0},is=({onHeightChange:s,onSessionChange:n})=>'],
+      ['a=>{k=null,n(a)}', 'a=>{auxSetMiniPopupDraft(null)||Z.error("Could not clear the saved draft. Keep this window open and try again."),n(a)}'],
+      ['Pe({onSessionChange:o,source:"mini-popup"})',
+       'Pe({onSessionChange:o,source:"mini-popup",defaultDraftState:{draftMode:auxMiniPopupDraftMode}})'],
       ['a=>{k=a}', 'a=>auxSetMiniPopupDraft(a)'],
+      ['Y,{draft:t,fill:!0,',
+       'Y,{draft:{...t,handleDraftModeChange:a=>{auxSetMiniPopupMode(a)&&t.handleDraftModeChange(a)}},fill:!0,'],
     ];
     const anchors = [];
     for (const [find, replacement] of edits) {
@@ -94,7 +99,7 @@ export function transformProvidedDraftFlush({ component, path, text }) {
   if (text.split(find).length - 1 !== 1)
     throw new Error('Supplied draft persistence anchor changed');
   const durableFind = 'function J(e,n,t){const r=f(),o=N();if(!(!r&&!o))try{const s=c(e,l,t),i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i);return}r?.setItem(s,JSON.stringify(n)),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}catch{}}';
-  const durableReplacement = 'var auxUnsavedDrafts=new Map,auxDraftUnload=e=>{e.preventDefault(),e.returnValue=""};function J(e,n,t){const s=c(e,l,t);try{const r=f(),o=N(),auxDurable=(typeof e==="string"&&e.length>0||typeof t==="string"&&/^sidepanel-page:(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(t));if(auxDurable?!o:!r)throw new Error("Draft storage unavailable");const i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}else{const a=JSON.stringify(n);r?.setItem(s,a),r?.removeItem(i),auxDurable?o.setItem(s,a):o?.removeItem(s),o?.removeItem(i)}auxUnsavedDrafts.delete(s);if(auxUnsavedDrafts.size===0&&typeof window!=="undefined")window.removeEventListener("beforeunload",auxDraftUnload);return true}catch{auxUnsavedDrafts.set(s,n);if(typeof window!=="undefined")window.addEventListener("beforeunload",auxDraftUnload);return false}}';
+  const durableReplacement = 'var auxUnsavedDrafts=new Map,auxDraftUnload=e=>{e.preventDefault(),e.returnValue=""};function J(e,n,t){const s=c(e,l,t);try{const r=f(),o=N(),auxDurable=(typeof e==="string"&&e.length>0||t==="mini-popup:new"||typeof t==="string"&&/^sidepanel-page:(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|p_[a-z0-9_]{6,126})$/.test(t));if(auxDurable?!o:!r)throw new Error("Draft storage unavailable");const i=c(e,I,t);if(!n||n.plainText.length===0&&!n.attachments?.length){r?.removeItem(s),r?.removeItem(i),o?.removeItem(s),o?.removeItem(i)}else{const a=JSON.stringify(n);r?.setItem(s,a),r?.removeItem(i),auxDurable?o.setItem(s,a):o?.removeItem(s),o?.removeItem(i)}auxUnsavedDrafts.delete(s);if(auxUnsavedDrafts.size===0&&typeof window!=="undefined")window.removeEventListener("beforeunload",auxDraftUnload);return true}catch{auxUnsavedDrafts.set(s,n);if(typeof window!=="undefined")window.addEventListener("beforeunload",auxDraftUnload);return false}}';
   const readFind = 'function F(e,n){const t=f(),r=N();';
   const readReplacement = 'function F(e,n){const auxKey=c(e,l,n);if(auxUnsavedDrafts.has(auxKey))return auxUnsavedDrafts.get(auxKey);const t=f(),r=N();';
   const edits = [[find,replacement],[durableFind,durableReplacement],[readFind,readReplacement]];
