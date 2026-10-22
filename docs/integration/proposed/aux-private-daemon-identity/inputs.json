@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "component": "daemon",
+  "path": "entry.mjs",
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "rules": [
+    {
+      "find": "asideProvider",
+      "replace": "auxProvider",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideModelIdsSave",
+      "replace": "auxModelIdsSave",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideRouter",
+      "replace": "auxRouter",
+      "count": 7,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideImageContentSchema",
+      "replace": "auxImageContentSchema",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideImageGenerationRequestSchema",
+      "replace": "auxImageGenerationRequestSchema",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideImageGenerationResponseSchema",
+      "replace": "auxImageGenerationResponseSchema",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideImageModelCatalogItemSchema",
+      "replace": "auxImageModelCatalogItemSchema",
+      "count": 4,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideModelCatalogCacheSchema",
+      "replace": "auxModelCatalogCacheSchema",
+      "count": 4,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideModelCatalogItemSchema",
+      "replace": "auxModelCatalogItemSchema",
+      "count": 4,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideModelCatalogPolicy",
+      "replace": "auxModelCatalogPolicy",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideModelCatalogResponseSchema",
+      "replace": "auxModelCatalogResponseSchema",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideNotificationPermissionValues",
+      "replace": "auxNotificationPermissionValues",
+      "count": 3,
+      "kind": "private-binding"
+    },
+    {
+      "find": "asideResolveModel",
+      "replace": "auxResolveModel",
+      "count": 1,
+      "kind": "private-binding"
+    },
+    {
+      "find": "\"HTTP-Referer\":`https://aside.com`",
+      "replace": "\"HTTP-Referer\":`https://getaux.co`",
+      "count": 1,
+      "kind": "cosmetic-metadata"
+    },
+    {
+      "find": "\"User-Agent\":`aside`",
+      "replace": "\"User-Agent\":`aux`",
+      "count": 2,
+      "kind": "cosmetic-metadata"
+    },
+    {
+      "find": "\"x-opencode-client\":`aside`",
+      "replace": "\"x-opencode-client\":`aux`",
+      "count": 1,
+      "kind": "cosmetic-metadata"
+    },
+    {
+      "find": "userName:ti.botName??`aside`",
+      "replace": "userName:ti.botName??`aux`",
+      "count": 1,
+      "kind": "cosmetic-metadata"
+    }
+  ]
+}
