@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { neon } from '@neondatabase/serverless';
 import { put, del, head, get, BlobNotFoundError } from '@vercel/blob';
-import { randomUUID, randomBytes, createHash } from 'node:crypto';
+import { randomUUID, randomBytes, createHash, createCipheriv } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -24,6 +24,15 @@ async function run(args) {
 }
 try {
   await sql`INSERT INTO aux_users(id,clerk_id,email,name) VALUES(${user},${'recovery_fixture_' + user},${user + '@example.invalid'},'Disposable recovery fixture')`;
+  // Use the actual server_wrapped CSK format/AAD so the later restore must recover
+  // usable wrapping material, not merely compare the copied secret's text.
+  const csk = randomBytes(32), iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', Buffer.from(process.env.AUX_DATA_ENCRYPTION_KEY, 'base64'), iv);
+  cipher.setAAD(Buffer.from(`aux.sync-key.v1:${user}:0`));
+  const wrapped = { v: 1, mode: 'server_wrapped', iv: iv.toString('base64'), ct: Buffer.concat([cipher.update(csk), cipher.final()]).toString('base64'), tag: cipher.getAuthTag().toString('base64') };
+  await sql`INSERT INTO sync_keys(user_id,generation,wrapped_key) VALUES(${user},0,${JSON.stringify(wrapped)}::jsonb)`;
+  await writeFile(join(root, 'fixture.local.json'), JSON.stringify({ user, id, pathname, sha256: digest(bytes), cskSha256: digest(csk) }), { mode: 0o600 });
+  csk.fill(0);
   blob = await put(pathname, bytes, { access: 'private', addRandomSuffix: false, contentType: 'application/octet-stream' });
   assert.equal(new URL(blob.url).hostname, 'uur9brkrqm4lu0z2.private.blob.vercel-storage.com');
   const observed = await get(blob.url, { access: 'private', useCache: false });

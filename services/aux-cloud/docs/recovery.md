@@ -2,7 +2,7 @@
 
 The local operator tooling is separate from the desktop and deployed API. It does not enable production, import a database, upload recovered files, send email or revive sessions. It is not an automatic backup service.
 
-Actual local acceptance: an exported production PostgreSQL custom archive, a 1 MiB synthetic private file and the wrapping key recovered together after source-file deletion; the archive index and recovered file hash passed. Source fixture data and local sensitive bundles/key/plaintext were removed. Three focused integrity/failure tests passed. See `../evidence/recovery-capture.json`. Separate-database import, independent storage/key custody, scheduling and durable cross-store recovery remain unverified/unconfigured.
+Actual acceptance: an exported production PostgreSQL custom archive, a 1 MiB synthetic private file and the wrapping key recovered together after source-file deletion. The archive was then imported into a new empty database on a separate 0.25 CU, one-hour Neon branch. All 11 migration hashes, the original synthetic owner and attachment metadata matched. The recovered wrapping key decrypted the original fixture CSK, and the restored private file matched its hash through a fresh provider read. The restored database, file, branch, source fixture records and local sensitive bundles/key/plaintext were removed. Evidence: `../evidence/recovery-capture.json` and `../evidence/isolated-recovery-restore.json`. Independent storage/key custody, scheduling, retention deletion and operational cutover remain unconfigured; this disposable drill does not prove recovery at real-user scale or a production RPO/RTO.
 
 ## Capture boundary
 
@@ -40,5 +40,11 @@ Unpack authenticates all entries and hashes before returning a usable staging di
 3. Restore a bundle into a new isolated empty database and a reviewed private object destination. Check schema, ownership, actual record and content hashes and decryption with the recovered wrapping key. Do not reset the live primary as a drill.
 4. Reconcile post-snapshot account deletions, identity revocations, public share revocations and billing events with authoritative providers/current state. Revoke restored sessions/device approvals and discard email challenges, ephemeral inference inputs and incomplete uploads before any activation. Never use an old archive to undo a refund, re-enable a deleted account or revive an agent's execution authority.
 5. Review a concrete cutover/rollback and run protected readiness, actual sign-in and private-content checks. Local unpack performs none of these live writes. Choose RPO/RTO only after a timed full drill; no RPO/RTO or production recovery claim exists yet.
+
+## Isolated drill
+
+`scripts/check-recovery-capture.mjs` requires an explicitly authorized bootstrap check and an empty, inactive production source. It generates only its own synthetic owner, file and server-wrapped CSK, then removes those source records after capture. The associated fixture metadata and recovered manifest are private local files, not configuration for normal operation.
+
+`scripts/check-recovery-restore.mjs` is pinned to the completed temporary branch `br-dawn-pond-b8ycf4rt`, its exact compute and a new test database. It refuses an existing database, verifies the synthetic source is gone, imports the authenticated PostgreSQL archive and checks the schema/owner/file and recovered-key decryption. It refuses overwriting an existing Blob object, restores only the fixture's exact path, and removes the restored database/file. The branch itself was deleted through the provider UI. Its ID cannot be reused for a future drill: prepare and review that new target explicitly. This runner is not a general production restore command and performs no application cutover.
 
 Sources: [PostgreSQL 18 pg_dump](https://www.postgresql.org/docs/18/app-pgdump.html), [Vercel Blob SDK](https://vercel.com/docs/vercel-blob/using-blob-sdk), [private consistent reads](https://vercel.com/changelog/vercel-blob-now-supports-consistent-reads-on-private-storage).

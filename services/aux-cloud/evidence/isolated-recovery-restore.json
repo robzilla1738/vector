@@ -1,0 +1,29 @@
+{
+  "kind": "isolated-postgres-private-file-wrapping-key-restore",
+  "checkedAt": "2026-10-22T16:15:51.100Z",
+  "success": true,
+  "project": "ancient-river-76453764",
+  "branch": "br-dawn-pond-b8ycf4rt",
+  "computeCu": 0.25,
+  "branchExpiryHours": 1,
+  "migrationsVerified": 11,
+  "restoredOwnerAndAttachmentMatch": true,
+  "recoveredWrappingKeyDecryptsOriginalCSK": true,
+  "restoredPrivateFileHashMatches": true,
+  "restoredSyntheticBlobRemoved": true,
+  "restoredDatabaseRemoved": true,
+  "branchDeleted": true,
+  "primaryReset": false,
+  "productionActivated": false,
+  "durableBackupConfigured": false,
+  "independentKeyCustody": false,
+  "sourceFixtureUserRemoved": true,
+  "sourceFixtureBlobRemoved": true,
+  "localSensitiveArtifactsRemoved": true,
+  "sourceHashes": {
+    "services/aux-cloud/scripts/check-recovery-capture.mjs": "99a00e99a2516d3703956f76c8a1a57ddebbfc40ceff7ae7a11248a80e769015",
+    "services/aux-cloud/scripts/check-recovery-restore.mjs": "b32b35c1e948dd57c98ddcc06c16e75dcb9d908fe9174dd840b9bdd1ea5d4411",
+    "services/aux-cloud/scripts/cloud-recovery.mjs": "75f92db7d672486253df939f3a0339a9fe2b229566d9db18437143048c35ae6d",
+    "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b"
+  }
+}

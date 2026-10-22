@@ -20,6 +20,8 @@ Actual chunked private-file reads uncovered an SDK zero-size fallback when `Cont
 
 Local encrypted recovery tooling exports a consistent PostgreSQL snapshot plus verified referenced private files and seals the wrapping key. Actual custom archive/local file/key recovery passed after source-file deletion; source fixtures and local sensitive test artifacts were removed. Evidence: `services/aux-cloud/evidence/recovery-capture.json`. This is not a separate-database restore or durable backup service; independent custody, scheduling/retention and a complete cross-store drill remain. Pending legal-terms/signing decisions, funded ZDR/speech, native cloud behavior/cookie restoration, real email delivery and live Aux billing still prevent full completion.
 
+Subsequent isolated restore closed the narrow database-import gap: a new empty test database on a separate one-hour, 0.25 CU branch accepted the authenticated archive. All 11 migration hashes, synthetic owner/file records, recovered wrapping-key decryption of the original CSK and restored private-file hash passed. The source fixture, restored DB/Blob, branch and local sensitive artifacts were removed; no primary reset or cutover occurred. Evidence: `services/aux-cloud/evidence/isolated-recovery-restore.json`. Durable independent backup/key custody, scheduling, retention deletion and operational recovery still need setup; the drill is not a production scale/RPO/RTO claim.
+
 ## Actual completed configuration
 
 - New Aux-only Clerk and Resend keys are stored in matching Vercel environments; old keys/projects unchanged.
