@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "daemonSourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "ledgerDdlSha256": "73eb5be6a07f5df35aecce957491a9e416e2e5ea25100ad5914c1a558fb77d11",
+  "ledgerSchemaVersion": 1,
+  "sourceToken": "aside_dom",
+  "targetToken": "aux_dom",
+  "count": 15,
+  "anchors": [
+    {
+      "offset": 10160093,
+      "find": "Table).where(and(eq(ContextAwarenessEventTable.source,`aside_dom`),gte$1(ContextAwarenessEventTable.occurredAt,ei),sql`json_extract(${ContextAwar"
+    },
+    {
+      "offset": 10200797,
+      "find": "teraction`]),contextAwarenessEventSourceSchema=_enum([`aside_dom`,`mac_ax`,`win_uia`]),contextAwarenessEventKindSchema=_enum([`content.snapshot`,"
+    },
+    {
+      "offset": 10204032,
+      "find": "ontextAwarenessEventBaseSchema.extend({source:literal(`aside_dom`),kind:literal(`content.snapshot`),trigger:captureTriggerSchema,shape:_enum([`ar"
+    },
+    {
+      "offset": 10204393,
+      "find": "ontextAwarenessEventBaseSchema.extend({source:literal(`aside_dom`),kind:contextAwarenessEventKindSchema.extract([`mouse.click`,`mouse.context_men"
+    },
+    {
+      "offset": 10218192,
+      "find": "oi=Cn.stats.text,ci=[],li=[];if(Cn.events[0].source===`aside_dom`){let ei=/* @__PURE__ */ new Map;for(let ti of Cn.events)ti.url&&!ei.has(ti.url)"
+    },
+    {
+      "offset": 10391716,
+      "find": "-ni)}function nearDupKey(Cn,ei,ti){return Cn.source===`aside_dom`?Cn.kind===`content.snapshot`?`dom:${Cn.target.targetId??``}`:null:ei===`fullTre"
+    },
+    {
+      "offset": 10393399,
+      "find": "!(`content`in ii&&ii.content))return ri();ii.source!==`aside_dom`&&ii.url&&!resolveCredentialDomain(ii.url)?.preferredDomain&&(ii.url=void 0);let"
+    },
+    {
+      "offset": 10394538,
+      "find": "get(yi);if(yi!==null&&pi!==void 0){let ei=ii.source===`aside_dom`&&bi?.url!==ui?void 0:bi,ti=ei&&ii.occurredAt-ei.storedAt<=NEAR_DUP_MAX_AGE_MS?d"
+    },
+    {
+      "offset": 10395458,
+      "find": "id 0:nearDupBaselines.get(Cn)?.get(ei),oi=ii.source===`aside_dom`&&ai?.url!==ui?void 0:ai,si=ti=>ei!==null&&ni!==null&&remember(nearDupBaselines,"
+    },
+    {
+      "offset": 10399409,
+      "find": "wait recordContextAwarenessEvent(Cn.accountId,{source:`aside_dom`,kind:`content.snapshot`,trigger:Cn.trigger??`navigation`,shape:Cn.shape??`aria`"
+    },
+    {
+      "offset": 10415274,
+      "find": "Field+=1}await recordContextAwarenessEvent(Cn,{source:`aside_dom`,kind:ei.kind,occurredAt:ei.occurredAt,appName:ASIDE_BROWSER_APP_NAME,bundleId:A"
+    },
+    {
+      "offset": 10922292,
+      "find": "l(),li=ci.filter(Cn=>stayKey(Cn)===oi);if(ei.source!==`aside_dom`&&new Set(li.flatMap(Cn=>Cn.url?[Cn.url]:[])).size>1)return{rows:[ei],partial:!0"
+    },
+    {
+      "offset": 10942096,
+      "find": "warenessBlobTable.id)),windowIdentity=Cn=>Cn.source===`aside_dom`?Cn.targetId??Cn.url??Cn.windowTitle:Cn.windowTitle,BROWSER_BUNDLE_IDS=[`com.app"
+    },
+    {
+      "offset": 10942386,
+      "find": "i`,`com.operasoftware.Opera`],stayKey=Cn=>Cn.source===`aside_dom`?`${Cn.appName}\\n${windowIdentity(Cn)}\\n${Cn.url??Cn.windowTitle}`:`${Cn.appName"
+    },
+    {
+      "offset": 11763897,
+      "find": "win32`?`win_uia`:`mac_ax`]??null,lastBrowserEventAt:oi.aside_dom??null,backlog:ii.pending+ii.running,storageBytes:ri.footprint.retainedDbBytes,su"
+    }
+  ]
+}
