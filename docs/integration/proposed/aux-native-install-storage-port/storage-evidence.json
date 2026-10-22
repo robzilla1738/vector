@@ -1,0 +1,325 @@
+{
+  "binarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "artifacts": [
+    {
+      "path": "evidence/dk-account.asm",
+      "sha256": "8a0b82a6c745fe3fe5720868d50186136f517a94bc64541cdecce1196efbc2dc",
+      "start": 198972,
+      "end": 198996,
+      "instructionCount": 6
+    },
+    {
+      "path": "evidence/existing-installation.asm",
+      "sha256": "d49c203c152dc63f075cc8ac510f461f08240c243296996f2b06291dea378136",
+      "start": 215104,
+      "end": 216564,
+      "instructionCount": 365
+    },
+    {
+      "path": "evidence/has-any-artifacts.asm",
+      "sha256": "4a3527e65964374fd2f13e9602cc7efd73926c51ba9b49ba412aed3eb2229e90",
+      "start": 211204,
+      "end": 211480,
+      "instructionCount": 69
+    },
+    {
+      "path": "evidence/install-access-control.asm",
+      "sha256": "07cdf2de5101e4efece413b46dd6e782f1dbbad2541ed298b391d91259ab5adc",
+      "start": 210452,
+      "end": 210992,
+      "instructionCount": 135
+    },
+    {
+      "path": "evidence/install-read.asm",
+      "sha256": "0eee45449d59a913331dd3af96d1d011f8f8cc10413b5e652591b35907ca0e5a",
+      "start": 209356,
+      "end": 210452,
+      "instructionCount": 274
+    },
+    {
+      "path": "evidence/install-save.asm",
+      "sha256": "fd901497fa33ad43170906d7fc933ac9d8be9489cf57e37643db612ed08889b5",
+      "start": 208324,
+      "end": 209356,
+      "instructionCount": 258
+    },
+    {
+      "path": "evidence/kem-account.asm",
+      "sha256": "2d988640d4edc83fabbb4f4a08f2306e2169ec29da4e8f89db97600f57c16e1e",
+      "start": 198864,
+      "end": 198908,
+      "instructionCount": 11
+    },
+    {
+      "path": "evidence/meta-account.asm",
+      "sha256": "bd522abbbc6c5c56fcb3adbbd3d6f4fffd6073a7629d96b48b56f839ff3ef367",
+      "start": 198648,
+      "end": 198692,
+      "instructionCount": 11
+    },
+    {
+      "path": "evidence/selector-prefix.asm",
+      "sha256": "ba6c289ad1d93eafd98e2a146206e782a732e74619bbef93979bd57557e746ea",
+      "start": 198996,
+      "end": 199200,
+      "instructionCount": 51
+    },
+    {
+      "path": "evidence/service.asm",
+      "sha256": "c3eb102977dbbf6f94e0681c76936bcf4fdbef0239f0130797676b9e07d44644",
+      "start": 198548,
+      "end": 198584,
+      "instructionCount": 9
+    },
+    {
+      "path": "evidence/sig-account.asm",
+      "sha256": "ebb520c64f1edd1ddd441250effb62ea1ac526b7c7ac923238a7b651e59f7624",
+      "start": 198756,
+      "end": 198800,
+      "instructionCount": 11
+    },
+    {
+      "path": "evidence/status.asm",
+      "sha256": "e25b66728a13a89150371f7c5bdf4682dd81170440c5bbf7390ec3a76a6dddda",
+      "start": 240016,
+      "end": 243296,
+      "instructionCount": 820
+    },
+    {
+      "path": "../aux-native-crypto-boundary/evidence/install-query.asm",
+      "sha256": "84bdb421d05a5c205dcebc46ddab44509692d9f11f24ef77dfe07db43f3a7cb6",
+      "start": 207768,
+      "end": 208224,
+      "instructionCount": 114
+    },
+    {
+      "path": "../aux-native-crypto-boundary/evidence/require-meta.asm",
+      "sha256": "51f48905377d481c5d0943a4ccf40693c0d05a1644dfb37aff74861b587ccbc6",
+      "start": 211480,
+      "end": 212028,
+      "instructionCount": 137
+    },
+    {
+      "path": "../aux-native-pq-continuation/evidence/install-init.asm",
+      "sha256": "feeeaada0aff3e7d695c5a7f37afccfd0fb441456f58140c412289016e6a58cb",
+      "start": 216564,
+      "end": 239796,
+      "instructionCount": 5808
+    }
+  ],
+  "anchors": [
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208492,
+      "instruction": "bl\t0x514998 ; symbol stub for: _SecItemDelete",
+      "blTarget": 5327256
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208496,
+      "instruction": "mov\tx0, x26"
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208512,
+      "instruction": "bl\t_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF",
+      "blTarget": 207768
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208664,
+      "instruction": "ldr\tx8, [x8, #0x80] ; literal pool symbol address: _kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly"
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208888,
+      "instruction": "bl\t0x514980 ; symbol stub for: _SecItemAdd",
+      "blTarget": 5327232
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 208904,
+      "instruction": "cbz\tw23, 0x33038"
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 209312,
+      "instruction": "cmp\tw23, #0x0"
+    },
+    {
+      "artifact": "evidence/install-save.asm",
+      "address": 209316,
+      "instruction": "cset\tw0, eq"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209476,
+      "instruction": "bl\t_$s16AsideNativeSwift16installBaseQuery7accountSDySSypGSS_tF",
+      "blTarget": 207768
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209856,
+      "instruction": "bl\t0x51498c ; symbol stub for: _SecItemCopyMatching",
+      "blTarget": 5327244
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209872,
+      "instruction": "cbz\tw24, 0x333ec"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209876,
+      "instruction": "mov\tw8, #-0x62d4"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209884,
+      "instruction": "b.ne\t0x33434"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209948,
+      "instruction": "bl\t0x515a24 ; symbol stub for: _swift_dynamicCast",
+      "blTarget": 5331492
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 209952,
+      "instruction": "tbz\tw0, #0x0, 0x33434"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 210364,
+      "instruction": "mov\tx19, #0x0"
+    },
+    {
+      "artifact": "evidence/install-read.asm",
+      "address": 210368,
+      "instruction": "mov\tx20, #-0x1000000000000000"
+    },
+    {
+      "artifact": "evidence/install-access-control.asm",
+      "address": 210508,
+      "instruction": "ldr\tx8, [x8, #0x80] ; literal pool symbol address: _kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly"
+    },
+    {
+      "artifact": "evidence/install-access-control.asm",
+      "address": 210520,
+      "instruction": "mov\tx0, #0x0"
+    },
+    {
+      "artifact": "evidence/install-access-control.asm",
+      "address": 210524,
+      "instruction": "mov\tw2, #0x40000000"
+    },
+    {
+      "artifact": "evidence/install-access-control.asm",
+      "address": 210528,
+      "instruction": "bl\t0x514968 ; symbol stub for: _SecAccessControlCreateWithFlags",
+      "blTarget": 5327208
+    },
+    {
+      "artifact": "evidence/install-access-control.asm",
+      "address": 210532,
+      "instruction": "cbnz\tx0, 0x337f4"
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215168,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215180,
+      "instruction": "b.ls\t0x34898"
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215184,
+      "instruction": "mov\tx0, #0x0"
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215268,
+      "instruction": "bl\t0x513fcc ; symbol stub for: _$s10Foundation11JSONDecoderC6decode_4fromxxm_AA4DataVtKSeRzlFTj",
+      "blTarget": 5324748
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215348,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215532,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/existing-installation.asm",
+      "address": 215892,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/has-any-artifacts.asm",
+      "address": 211244,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/has-any-artifacts.asm",
+      "address": 211296,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/has-any-artifacts.asm",
+      "address": 211348,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/status.asm",
+      "address": 240148,
+      "instruction": "bl\t_$s16AsideNativeSwift11installRead7account10Foundation4DataVSgSS_tF",
+      "blTarget": 209356
+    },
+    {
+      "artifact": "evidence/status.asm",
+      "address": 240164,
+      "instruction": "bl\t_$s16AsideNativeSwift22hasAnyInstallArtifactsSbyF",
+      "blTarget": 211204
+    },
+    {
+      "artifact": "evidence/status.asm",
+      "address": 240168,
+      "instruction": "tbz\tw0, #0x0, 0x3ad54"
+    }
+  ],
+  "sourceSha256": "8ba312eca2c4aaf83342ba3149d83f34fd0d09947985d8362767df7d1856aad2",
+  "inspectedMapper": {
+    "path": "vendor/provided/native/keychain-query-map.mm",
+    "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab",
+    "role": "Worktree baseline only; no assertion this is the root integrator current runtime mapper."
+  },
+  "sdkHeaderSha256": "a3c5c75c87992d21a7bb1ce3e4638440a2fd0246936d8bb3a102b08fc3dc21ed",
+  "observations": {
+    "originalBaseAttributeCount": 5,
+    "readExtraAttributes": [
+      "kSecReturnData=true",
+      "kSecMatchLimit=kSecMatchLimitOne"
+    ],
+    "saveDeletesBeforeAdd": true,
+    "saveChecksDeleteStatus": false,
+    "saveUsesItemAccessControl": false,
+    "authorityAccessControlFlags": 1073741824,
+    "readNonNotFoundFailuresCollapseToNil": true,
+    "sameAuthoritySelectionVerified": false,
+    "securityRuntimeExecuted": false
+  }
+}
