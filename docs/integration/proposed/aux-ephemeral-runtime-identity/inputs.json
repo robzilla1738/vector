@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "component": "daemon",
+  "path": "entry.mjs",
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "rules": [
+    {
+      "find": "PROMPT_INJECTION_TAG_PREFIX_PATTERN=[",
+      "replace": "PROMPT_INJECTION_TAG_PREFIX_PATTERN=[String.raw`a\\s*u\\s*x`,",
+      "count": 1,
+      "scope": "aux-control-tag-defense"
+    },
+    {
+      "find": "`aside-runtime`",
+      "replace": "`aux-runtime`",
+      "count": 7,
+      "scope": "ephemeral-windows-runtime-source"
+    },
+    {
+      "find": "aside_agent_message",
+      "replace": "aux_agent_message",
+      "count": 3,
+      "scope": "agent-message-envelope"
+    },
+    {
+      "find": "aside-probe.test",
+      "replace": "aux-probe.test",
+      "count": 1,
+      "scope": "synthetic-callback-broker-state"
+    }
+  ]
+}
