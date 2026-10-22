@@ -20,7 +20,7 @@ export function transformProvidedDraftFlush({ component, path, text }) {
       ['setMode:e=>{i.flush(),l(!1),a=e,',
        'setMode:e=>{if(auxRestorePending&&e==="ask"){auxRestorePending=!1;r.isEmpty&&m.setSnapshot(M(i.getDraft()),{emitUpdate:!1})}i.flush(),l(!1),a=e,'],
       ['s.callbacks.onChange=e=>{a==="ask"',
-       's.callbacks.onChange=e=>{auxRestorePending=!1;a==="ask"'],
+       's.callbacks.onChange=e=>{(e.plainText.length>0||e.attachments.length>0)&&(auxRestorePending=!1);a==="ask"'],
     ];
     for (const [find,replacement] of edits) {
       if (first.text.split(find).length - 1 !== 1) throw new Error('Supplied New Tab hydration anchor changed');
