@@ -1,0 +1,14 @@
+{
+  "component": "agent",
+  "path": "background.js",
+  "baselineSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+  "outputSha256": "6836b88ebab5420885a9b4aa2234938d98d5ffbac605a8f275376916ca583fe7",
+  "edits": [
+    {
+      "find": "async function rw(e) {\n  if (e.name !== tw) return;\n  let t = null;\n  const r = () => {\n    t?.abort(), t = null;\n  };\n  e.onDisconnect.addListener(r), e.onMessage.addListener((n) => {\n    if (n.type === \"lasso:transform:abort\") {\n      r();\n      return;\n    }\n    n.type === \"lasso:transform:start\" && (r(), t = new AbortController(), nw(n.request, {\n      signal: t.signal,\n      onChunk: (o) => e.postMessage({\n        type: \"lasso:transform:chunk\",\n        chunk: o\n      })\n    }).then(() => {\n      t = null, e.postMessage({ type: \"lasso:transform:complete\" });\n    }).catch((o) => {\n      t = null, o.name !== \"AbortError\" && e.postMessage({\n        type: \"lasso:transform:error\",\n        error: o instanceof Error ? o.message : \"Failed to generate a response.\"\n      });\n    }));\n  });\n}\n",
+      "replace": "async function rw(e) {\n  if (e.name !== tw) return;\n  let t = null;\n  const r = () => {\n    const active = t;\n    t = null;\n    active?.abort();\n  };\n  e.onDisconnect.addListener(r), e.onMessage.addListener((n) => {\n    if (n.type === \"lasso:transform:abort\") {\n      r();\n      return;\n    }\n    if (n.type !== \"lasso:transform:start\") return;\n    r();\n    const owner = new AbortController();\n    t = owner;\n    nw(n.request, {\n      signal: owner.signal,\n      onChunk: (o) => {\n        if (t === owner) e.postMessage({\n          type: \"lasso:transform:chunk\",\n          chunk: o\n        });\n      }\n    }).then(() => {\n      if (t !== owner) return;\n      t = null;\n      e.postMessage({ type: \"lasso:transform:complete\" });\n    }).catch((o) => {\n      if (t !== owner) return;\n      t = null;\n      o.name !== \"AbortError\" && e.postMessage({\n        type: \"lasso:transform:error\",\n        error: o instanceof Error ? o.message : \"Failed to generate a response.\"\n      });\n    });\n  });\n}\n",
+      "count": 1,
+      "kind": "integration"
+    }
+  ]
+}
