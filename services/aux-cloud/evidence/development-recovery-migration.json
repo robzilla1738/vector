@@ -1,0 +1,17 @@
+{
+  "format": "aux.development.recovery.migration.v1",
+  "profile": "development",
+  "databaseHost": "ep-spring-darkness-b824br4r-pooler.c-14.us-east-1.aws.neon.tech",
+  "beforeMigrations": 11,
+  "afterMigrations": 12,
+  "manifestSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
+  "migrationSha256": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e",
+  "tables": [
+    "aux_sync_recovery_challenges_v2",
+    "aux_sync_recovery_v2"
+  ],
+  "allMigrationHashesMatch": true,
+  "productionTouched": false,
+  "existingKeyOrAccountUpdate": false,
+  "desktopActivated": false
+}
