@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "component": "daemon",
+  "path": "entry.mjs",
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "sourceCodeBytes": 12135744,
+  "rules": [
+    {
+      "find": "__asideAuthPendingGoogleOAuthAttempts",
+      "replace": "__auxAuthPendingGoogleOAuthAttempts",
+      "count": 1
+    },
+    {
+      "find": "__asideAuthInflightRefreshes",
+      "replace": "__auxAuthInflightRefreshes",
+      "count": 1
+    },
+    {
+      "find": "_aside_image_worker_default",
+      "replace": "_aux_image_worker_default",
+      "count": 3
+    },
+    {
+      "find": "__asideAuthRecentRefreshes",
+      "replace": "__auxAuthRecentRefreshes",
+      "count": 1
+    },
+    {
+      "find": "__asideAuthRefreshBackoffs",
+      "replace": "__auxAuthRefreshBackoffs",
+      "count": 1
+    },
+    {
+      "find": "__asideDragDataTransfer",
+      "replace": "__auxDragDataTransfer",
+      "count": 4
+    },
+    {
+      "find": "__asideAccountRegistry",
+      "replace": "__auxAccountRegistry",
+      "count": 1
+    },
+    {
+      "find": "__asideWaitDomMonitor",
+      "replace": "__auxWaitDomMonitor",
+      "count": 1
+    },
+    {
+      "find": "__aside_annotations__",
+      "replace": "__aux_annotations__",
+      "count": 1
+    },
+    {
+      "find": "__aside_image_worker",
+      "replace": "__aux_image_worker",
+      "count": 2
+    },
+    {
+      "find": "__asideBufferModule",
+      "replace": "__auxBufferModule",
+      "count": 3
+    },
+    {
+      "find": "__asidePwmEventSync",
+      "replace": "__auxPwmEventSync",
+      "count": 1
+    },
+    {
+      "find": "__aside_native_ec",
+      "replace": "__aux_native_ec",
+      "count": 5
+    },
+    {
+      "find": "__aside_success",
+      "replace": "__aux_success",
+      "count": 3
+    },
+    {
+      "find": "__aside_utility",
+      "replace": "__aux_utility",
+      "count": 1
+    },
+    {
+      "find": "__asideConsole",
+      "replace": "__auxConsole",
+      "count": 4
+    },
+    {
+      "find": "__aside_cwd",
+      "replace": "__aux_cwd",
+      "count": 2
+    },
+    {
+      "find": "__aside_ec",
+      "replace": "__aux_ec",
+      "count": 4
+    },
+    {
+      "find": "__aside",
+      "replace": "__aux",
+      "count": 32
+    },
+    {
+      "find": "aside:aux:context-awareness-summary",
+      "replace": "aux:aux:context-awareness-summary",
+      "count": 1
+    },
+    {
+      "find": "aside:aux:memory-dream",
+      "replace": "aux:aux:memory-dream",
+      "count": 1
+    },
+    {
+      "find": "aside:aux:taxonomy_migrate",
+      "replace": "aux:aux:taxonomy_migrate",
+      "count": 1
+    },
+    {
+      "find": "aside:aux:lasso",
+      "replace": "aux:aux:lasso",
+      "count": 1
+    }
+  ],
+  "scope": "Exact in-memory automation/private singleton/temporary shell/worker identifiers and two background task identities only; no DOM event source, runtime catalog, cryptographic domain or native ABI migration."
+}
