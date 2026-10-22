@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "scope": "fixed reviewed copied artifacts only; no identity/Keychain access; display is not signature/entitlement runtime validation",
+  "artifacts": [
+    {
+      "role": "historical-v498-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "operation": "codesign-display-public-entitlements-only",
+      "exists": true,
+      "signatureVerified": false,
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "displayExitCode": 0,
+      "embeddedEntitlementsSha256": "2bf8aed85ce1db15cc0ab5d7ff991059afdbb5dee5f66f10801d207a13cdd3a8",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "executableSha256": "7b90186469ffcda287cdd3a31f7c6ab9f8f9ea55ee75332471f657f12e210da6",
+      "firstDeclaredKeychainGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+    },
+    {
+      "role": "historical-v498-cli",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "operation": "codesign-display-public-entitlements-only",
+      "exists": true,
+      "signatureVerified": false,
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "displayExitCode": 0,
+      "embeddedEntitlementsSha256": "51b3a66fee0d4e0d4440730208bf4a640a2b47ff640e36549d37ab9da1a0ae4a",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.cli",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "executableSha256": "ffbb3f07483fc81c17e40cad6228292bd081cd0838c569711a3d4fb8aca706a6",
+      "firstDeclaredKeychainGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+    },
+    {
+      "role": "historical-v498-carrier",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app",
+      "operation": "codesign-display-public-entitlements-only",
+      "exists": true,
+      "signatureVerified": false,
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-v498-development-local/Aux.app/Contents/Resources/aux/native/Aux Native Carrier.app/Contents/MacOS/aux-native-carrier",
+      "displayExitCode": 0,
+      "embeddedEntitlementsSha256": "69057ccc9d506ebd12b1b8d5b4b2a484e39a6e767f355e78c90c47d4f349f652",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.native-carrier",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "executableSha256": "3b10b30bd42801ebae961e7c9006f2626af158b45438bde165fb48665e196fd3",
+      "firstDeclaredKeychainGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+    },
+    {
+      "role": "historical-v589-daemon",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-consistent-signed-v589/Aux Daemon.app",
+      "operation": "codesign-display-public-entitlements-only",
+      "exists": true,
+      "signatureVerified": false,
+      "executable": "/Users/rcourson/Documents/Vibe/web/out/vault-exclusion-consistent-signed-v589/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "displayExitCode": 0,
+      "embeddedEntitlementsSha256": "2bf8aed85ce1db15cc0ab5d7ff991059afdbb5dee5f66f10801d207a13cdd3a8",
+      "entitlements": {
+        "com.apple.application-identifier": "9F2JXY8TCK.dev.aux.browser.daemon",
+        "com.apple.developer.team-identifier": "9F2JXY8TCK",
+        "keychain-access-groups": [
+          "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+        ]
+      },
+      "executableSha256": "b127f7ff42a84af3163cc9bde180663a50310ff3e2ccea642f97a68e49fd9b45",
+      "firstDeclaredKeychainGroup": "9F2JXY8TCK.dev.aux.dp.dbca8cbbce80cb5eb3f2f89043330556fdbf2350f3c057a69d6e10e6b3d11476"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "reviewOnly": true,
+  "runtimeAuthorization": false,
+  "sources": [
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab"
+    },
+    {
+      "path": "vendor/provided/native/keychain-interpose.mm",
+      "sha256": "83c12c894127fe04ef69780011d07553d288e3d0b14ff406949ebe96a40a7168"
+    },
+    {
+      "path": "vendor/provided/native/development-dp-scope-helper.mm",
+      "sha256": "21fcf19fc86f522ebeadfda99b58e76a8144d39e5d2ea42f1116eb7ce3f04570"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-install-storage-port/source/RecoveredInstallStorageQueries.swift",
+      "sha256": "8ba312eca2c4aaf83342ba3149d83f34fd0d09947985d8362767df7d1856aad2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-security-executor/source/InstallationSecurityExecutor.swift",
+      "sha256": "ffbb2f6cf70fe544bab7847efc16b4ab25669c7acea83d577dcbd23c5b46a18b"
+    },
+    {
+      "path": "docs/integration/proposed/development-dp-signing/proposal.json",
+      "sha256": "4b18b25aab5b39e4cac7feb17692f7a601e847084ed2b71231061df3c25b7768"
+    },
+    {
+      "path": "docs/integration/proposed/local-development-auth-v498/signing-plan-summary.json",
+      "sha256": "1562d59f06e952da32ce58f56cb8fb07e291473c534c79ff14120567c76823f7"
+    },
+    {
+      "path": "docs/acceptance/provided-v498-local-auth-repair.json",
+      "sha256": "5345feac1b43e0b57e4b3bbe75b3840e4808244dde489a814cbdf74d539e20fb"
+    },
+    {
+      "path": "out/native-integration/v498-development-signing-receipt.json",
+      "sha256": "b6c0499f58b7c5fa489608d3eed3b4c82ee648b6568874f4d9bfc34b336f5ef4"
+    },
+    {
+      "path": "out/vault-exclusion-consistent-signed-v589/signing-receipt.json",
+      "sha256": "1d9fc0b247088edd63838efd28df6107408421f933f43f8a2eedf9668503cfe3"
+    }
+  ]
+}
