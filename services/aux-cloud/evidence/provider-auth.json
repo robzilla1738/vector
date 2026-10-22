@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-22T07:24:31.925Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "checks": [
+    "real provider-signed Clerk development session exchanged for installation-bound Aux tokens on deployed backend",
+    "actual Clerk-backed refresh rotates once, recovers lost response and rejects another installation",
+    "actual signed Clerk revocation invalidates Aux access, refresh and replayed provider exchange"
+  ],
+  "fixtureRemoved": true,
+  "clerkFrontendReservedCodeSignIn": true,
+  "originClaimVerified": true,
+  "realEmailDelivery": false,
+  "nativeProductRun": false,
+  "paidProviderCalls": 0
+}

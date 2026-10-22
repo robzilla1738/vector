@@ -31,7 +31,10 @@
     "backendKeyInstanceVerified": true,
     "reservedDevelopmentEmailSignInVerified": true,
     "websiteSignOutVerified": true,
-    "realEmailDeliveryVerified": false
+    "realEmailDeliveryVerified": false,
+    "deployedTokenExchangeVerified": true,
+    "providerBackedRefreshVerified": true,
+    "signedRevocationInvalidatesAuxSession": true
   },
   "secrets": {
     "storedPrivately": true,
