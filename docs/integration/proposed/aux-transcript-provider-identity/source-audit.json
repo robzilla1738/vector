@@ -1,0 +1,122 @@
+{
+  "sourceSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "executedSource": false,
+  "anchors": [
+    {
+      "name": "queued-sqlite-column",
+      "find": "queuedMessages:text$9(`queued_messages`,{mode:`json`}).notNull().default(sql`'[]'`).$type()",
+      "count": 1,
+      "characterOffset": 2501766
+    },
+    {
+      "name": "queue-rehydrate-and-persist",
+      "find": "#ze(){if(this.#d=this.#ge(this.session.queuedMessages),this.#f=[...this.session.steeringMessages],this.#Re(),this.session.status!==`running`&&this.session.status!==`suspended`){this.#E=!1;return}for(let Cn of this.#d)this.agent.followUp(Cn);for(let Cn of this.#f)this.agent.steer(Cn);this.#E=!0}#Be(){this.session.queuedMessages=this.#d,this.session.steeringMessages=this.#f,SessionStore.update(this.accountId,this.session.id,{queuedMessages:this.#d,steeringMessages:this.#f})}",
+      "count": 1,
+      "characterOffset": 11567179
+    },
+    {
+      "name": "queue-message-only-preparation",
+      "find": "async#_e(Cn){let ei=ensureMessageArray(Cn);ei=this.harness.prepareMessages?.(this.ctx,ei)??ei;let ti=await prepareAttachments(getSessionStorageDir(this.session,this.accountId),ei);return this.#Te(ti),await this.hooks.trigger(`chat.message`,ti,ti)}",
+      "count": 1,
+      "characterOffset": 11558817
+    },
+    {
+      "name": "queued-user-rpc-schema",
+      "find": "queuedUserMessageSchema=object({role:literal(`user`),content:any(),timestamp:number$2()})",
+      "count": 1,
+      "characterOffset": 12014049
+    },
+    {
+      "name": "transcript-reader-offsets",
+      "find": "let ii=parseJsonlLine(ei.toString(`utf8`,ni,ri),Cn,ni);ii&&ti.push({id:String(ni),jsonlReadSize:ri-ni+1,msg:ii})",
+      "count": 1,
+      "characterOffset": 2576232
+    },
+    {
+      "name": "transcript-line-parser",
+      "find": "function parseJsonlLine(Cn,ei,ti){try{return JSON.parse(Cn)}",
+      "count": 1,
+      "characterOffset": 2576363
+    },
+    {
+      "name": "transcript-append-offset",
+      "find": "return appendFileSync(ri,`${JSON.stringify(ti)}\\n`,`utf8`),String(ii)",
+      "count": 1,
+      "characterOffset": 2577142
+    },
+    {
+      "name": "resume-selection-resolver",
+      "find": "let ti=models(Cn),ni=getSubagentSelectionSource(ei)===`explicit`,ri=`Explicit model ${ei.model.provider}/${ei.model.modelId} is unavailable for this account.`",
+      "count": 1,
+      "characterOffset": 11520785
+    },
+    {
+      "name": "resume-context-filter",
+      "find": "let ni=Cn.slice(ti).filter(Cn=>Cn.msg.role!==`compaction`&&Cn.msg.role!==`steering`&&Cn.msg.role!==`turn-lifecycle`).map(Cn=>Cn.msg)",
+      "count": 1,
+      "characterOffset": 2695485
+    },
+    {
+      "name": "resume-model-separate-from-transcript",
+      "find": "initialState:{systemPrompt:bi,messages:fi,model:vi.model,thinkingLevel:vi.selection.thinkingLevel}",
+      "count": 1,
+      "characterOffset": 11533125
+    },
+    {
+      "name": "historical-provider-compatibility",
+      "find": "ii=ri.provider===ei.provider&&ri.api===ei.api&&ri.model===ei.id",
+      "count": 1,
+      "characterOffset": 3630893
+    },
+    {
+      "name": "historical-signature-sanitization",
+      "find": "if(!ii&&ai.thoughtSignature&&(oi={...ai},delete oi.thoughtSignature),!ii&&ti)",
+      "count": 1,
+      "characterOffset": 3631243
+    },
+    {
+      "name": "assistant-message-builder",
+      "find": "function createSetupErrorMessage(Cn,ei){return{role:`assistant`,content:[],api:Cn.api,provider:Cn.provider,model:Cn.id,",
+      "count": 1,
+      "characterOffset": 1512048
+    },
+    {
+      "name": "runtime-overflow-same-model-check",
+      "find": "#Ee(Cn){if(Cn.provider!==this.agent.state.model.provider||Cn.model!==this.agent.state.model.id)return!1;",
+      "count": 1,
+      "characterOffset": 11563430
+    },
+    {
+      "name": "subagent-explicit-model-schema",
+      "find": "subagentModelOverrideSchema=_Object_({provider:String$1(),modelId:String$1()},{additionalProperties:!1,",
+      "count": 1,
+      "characterOffset": 6696225
+    },
+    {
+      "name": "subagent-model-argument",
+      "find": "model:Optional(subagentModelOverrideSchema)",
+      "count": 1,
+      "characterOffset": 6812507
+    },
+    {
+      "name": "suspended-original-arguments",
+      "find": "let ri=ni.prepareArguments?ni.prepareArguments(ti.arguments):ti.arguments,",
+      "count": 1,
+      "characterOffset": 11529128
+    },
+    {
+      "name": "turn-byte-range",
+      "find": "jsonlReadOffset:integer(`jsonl_read_offset`).notNull(),jsonlReadSize:integer(`jsonl_read_size`).notNull()",
+      "count": 1,
+      "characterOffset": 2505509
+    },
+    {
+      "name": "rewrite-routine-message-origin",
+      "find": "let ii=ti.get(ri.messageId);ii&&ni.update(RoutineTable).set({metadata:{...ei.metadata,origin:{...ri,messageId:ii}}})",
+      "count": 1,
+      "characterOffset": 2657818
+    }
+  ],
+  "offsetUnit": "UTF-16 code units",
+  "syntheticExecutedSubset": "Only pure transformMessages function, with identity image downgrader, in isolated VM test; complete daemon never executed."
+}
