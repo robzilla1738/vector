@@ -16,7 +16,7 @@
     },
     {
       "find": "/aside[- ]?daemon/i.test(Cn)",
-      "replace": "/aux[- ]?daemon/i.test(Cn)",
+      "replace": "/^(?:\\/[^\\s\\0]+)*\\/aux-daemon$|^aux-daemon$/i.test(Cn.replaceAll(`/Aux Daemon.app/`,`/AuxDaemon.app/`))",
       "count": 1
     },
     {

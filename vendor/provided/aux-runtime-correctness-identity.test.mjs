@@ -18,9 +18,9 @@ test('actual pinned daemon edits pair coding skill selector and preserve every o
  assert.ok(result.text.includes('aux-code skill or CLI'));assert.ok(!result.text.includes('aside-code skill or CLI'));
 });
 test('actual process matcher accepts Aux and rejects original or unrelated daemons without executing recovery',()=>{
- const matcher=extract(result.text,/(function isAsideDaemonCommand\(Cn\)\{return\/aux\[- \]\?daemon\/i\.test\(Cn\)\})/);
- for(const name of ['/disposable/Aux Daemon.app/Contents/MacOS/aux-daemon','Aux Daemon'])assert.equal(matcher(name),true);
- for(const name of ['/Applications/Aside Daemon.app/Contents/MacOS/aside-daemon','neon-daemon','node','python'])assert.equal(matcher(name),false);
+ const name='function isAsideDaemonCommand(Cn){',start=result.text.indexOf(name),end=result.text.indexOf('}async function reclaimPortFromWedgedAsideDaemon()',start);assert.ok(start>0&&end>start);const matcher=runInNewContext(`(${result.text.slice(start,end+1)})`);
+ for(const name of ['/disposable/Aux Daemon.app/Contents/MacOS/aux-daemon','aux-daemon'])assert.equal(matcher(name),true);
+ for(const name of ['/Applications/Aside Daemon.app/Contents/MacOS/aside-daemon','neon-daemon','faux-daemon','node','python','aux-daemon --home /tmp/disposable','/bin/node --name=aux-daemon','/bin/node /tmp/aux-daemon'])assert.equal(matcher(name),false);
  // The complete recovery function, including port/PID/signal checks, stays unchanged.
  const recovery=source=>source.slice(source.indexOf('async function reclaimPortFromWedgedAsideDaemon()'),source.indexOf('async function resolveUnresponsivePortOwner('));assert.ok(recovery(original).length>200);assert.equal(recovery(result.text),recovery(original));
 });
