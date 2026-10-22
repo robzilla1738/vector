@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-22T07:16:11.712Z",
+  "checks": [
+    "reserved Clerk development-code website sign-in mapped to actual Aux user",
+    "actual paid sandbox subscription invoice granted exactly $5 monthly allowance",
+    "customer portal cancellation reconciled via signed subscription webhook",
+    "actual account page rendered embedded checkout, closed and reselected it, and opened Aux billing portal"
+  ],
+  "realEmailDelivery": false,
+  "clerkReservedTestEmail": true,
+  "realMoney": false,
+  "livemode": false,
+  "fixtureRemoved": true,
+  "websiteSignOutVerified": true,
+  "activeFixtureSessionsAfterSignOut": 0,
+  "cancellationDateRendered": true,
+  "fixtureScriptSha256": "be601326a3493e9350ebf6d51c63365d3ef453fdf74b412fd1d175ad9a63f969",
+  "developmentDeployment": "dpl_9qinXYe8RqN1zzJV3Tig6Nt785CU",
+  "invoiceEventReplayedAfterAdapterFix": true,
+  "cancellationReconciledAfterFixtureMetadataUpdate": true
+}

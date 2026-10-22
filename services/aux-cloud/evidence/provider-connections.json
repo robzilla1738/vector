@@ -8,7 +8,11 @@
     "url": "https://dev-cloud.getaux.co/api/v1/webhooks/stripe",
     "livemode": false,
     "signedCreationAndCancellationVerified": true,
-    "checkoutPaymentVerified": false
+    "checkoutPaymentVerified": true,
+    "hostedCreditRefundVerified": true,
+    "embeddedCheckoutRendered": true,
+    "paidSubscriptionAllowanceVerified": true,
+    "portalCancellationVerified": true
   },
   "clerk": {
     "instance": "ins_3L28GxZikfIuuEfnf1FoIkNoQpk",
@@ -24,7 +28,10 @@
     "signedExampleMessage": "msg_3L2KrsnB6dcSf4gakefSIy2kOzf",
     "signedExamplePersisted": true,
     "providerSucceededFilterConfirmed": true,
-    "backendKeyInstanceVerified": true
+    "backendKeyInstanceVerified": true,
+    "reservedDevelopmentEmailSignInVerified": true,
+    "websiteSignOutVerified": true,
+    "realEmailDeliveryVerified": false
   },
   "secrets": {
     "storedPrivately": true,
@@ -35,7 +42,7 @@
   },
   "providerDeliveryVerified": true,
   "productionDomainsUnassignedAfterAutomaticFirstDeploy": true,
-  "developmentDeployment": "dpl_4zMADkDCB1YEqx5YzJFNX42qpXXq",
+  "developmentDeployment": "dpl_9qinXYe8RqN1zzJV3Tig6Nt785CU",
   "developmentPreviewVerifiedReady": true,
   "maintenanceEndpointVerified": true,
   "cron": {
