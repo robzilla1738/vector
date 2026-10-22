@@ -31,6 +31,11 @@ for role in roles {
         crashedIntent=journal
         let failed=try AdditiveInstallationTransaction.capturedAddStatus(journal,checkpoint:journal.checkpoint(),status:-25299)
         check(failed.phase == .blocked && failed.failure=="add-status:metadata:-25299")
+        fails{_ = try AdditiveInstallationTransaction.reconcile(failed,checkpoint:failed.checkpoint(),originals:originals,targets:captures(targets))}
+        var favorable=targets;favorable[role]=request.payload
+        fails{_ = try AdditiveInstallationTransaction.reconcile(failed,checkpoint:failed.checkpoint(),originals:originals,targets:captures(favorable))}
+        let abandonedFailure=try AdditiveInstallationTransaction.abandon(failed,checkpoint:failed.checkpoint())
+        check(abandonedFailure.phase == .abandoned && abandonedFailure.originalHashes==failed.originalHashes)
         var changed=targets;changed[role]=Data("unknown concurrent bytes".utf8)
         let refused=try AdditiveInstallationTransaction.reconcile(journal,checkpoint:journal.checkpoint(),originals:originals,targets:captures(changed))
         check(refused.phase == .blocked && refused.failure=="target-unknown:metadata")
@@ -45,6 +50,11 @@ for role in roles {
         journal=try AdditiveInstallationTransaction.capturedAddStatus(journal,checkpoint:journal.checkpoint(),status:0)
         let missingReadback=try AdditiveInstallationTransaction.reconcile(journal,checkpoint:journal.checkpoint(),originals:originals,targets:captures(targets))
         check(missingReadback.phase == .blocked && missingReadback.failure=="target-missing-after-success:"+role)
+        if role=="signing" {
+            fails{_ = try AdditiveInstallationTransaction.reconcile(missingReadback,checkpoint:missingReadback.checkpoint(),originals:originals,targets:captures(targets))}
+            var favorable=targets;favorable[role]=request.payload
+            fails{_ = try AdditiveInstallationTransaction.reconcile(missingReadback,checkpoint:missingReadback.checkpoint(),originals:originals,targets:captures(favorable))}
+        }
         targets[role]=request.payload
         journal=try AdditiveInstallationTransaction.reconcile(journal,checkpoint:journal.checkpoint(),originals:originals,targets:captures(targets))
     }

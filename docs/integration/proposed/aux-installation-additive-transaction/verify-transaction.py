@@ -11,4 +11,5 @@ assert not re.search(r'\bSecItem\w*\s*\(|FileHandle|FileManager|Data\(contentsOf
 assert 'let overwritePermitted=false' in source and 'let deletePermitted=false' in source
 assert 'let authorityProvenanceVerified=false' in source and 'let activeSelectionPerformed=false' in source
 assert 'target-missing-after-success:' in source and 'target-unknown:' in source
+assert 'journal.phase != .abandoned,journal.phase != .blocked' in source
 print('PASS: candidate-bound transaction source/fixture/dependency pins; no Security, state or authority executor.')

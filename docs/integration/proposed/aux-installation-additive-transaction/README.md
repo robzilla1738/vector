@@ -20,6 +20,8 @@ The hash-only journal includes selectors, original/prepared payload hashes, cand
 
 After a crash with a durable intent and no recorded result, reload its journal and explicitly reconcile fresh captures. An absent intended target may yield a new intent for create-only retry. A matching intended target is observed as matching; no claim is made that this transaction created or owns it. Unknown data or an unjournaled target blocks. Earlier verified targets may not disappear. Exact bytes are checked again before any further request.
 
+**Blocked is terminal for resume/reconciliation.** A captured nonzero/duplicate add status, missing readback after success, or any other blocked failure cannot reopen when later captures are missing or favorable. Reconciliation throws before inspecting those captures and preserves the failed journal unchanged. Only explicit abandonment remains available; a blocked journal is never an automatic retry/adoption path.
+
 `abandon` preserves the original hashes, target hashes and observed partial cohort, and permanently refuses resume from that abandoned journal. It emits no delete. Here rollback means **continue using untouched originals and quarantine the partial additive target**, not reverse OS operations. There is no active-selection transition to undo. Cleanup of abandoned target items would require a separate reviewed operation and is not provided.
 
 ## Required durable/native integration boundary
@@ -28,6 +30,6 @@ The missing caller must hold a real stopped/exclusive disposable authority bound
 
 ## Focused checks
 
-`node docs/integration/proposed/aux-installation-additive-transaction/check.mjs` passed 23 synthetic software assertions: initial absence/access/collision checks, exact checkpoint/refusal, serialized intent restart, crash after simulated add before status, unknown target/changed original, duplicate status, missing readback after success, all-four final receipt and non-destructive abandonment. Targets are only in-memory dictionaries. Journal byte roundtrip is a parser/restart simulation, **not** a disk durability test. The fixture prepares its candidate from fixed synthetic software keys; no enclave/PQ/addon/Keychain or persistence executor runs.
+`node docs/integration/proposed/aux-installation-additive-transaction/check.mjs` passed 28 synthetic software assertions: initial absence/access/collision checks, exact checkpoint/refusal, serialized intent restart, crash after simulated add before status, unknown target/changed original, duplicate status, missing readback after success, all-four final receipt and non-destructive abandonment. Both duplicate-status and missing-after-success failures refuse reopening with later absent or exact-matching targets; explicit abandonment of a blocked journal remains possible. Targets are only in-memory dictionaries. Journal byte roundtrip is a parser/restart simulation, **not** a disk durability test. The fixture prepares its candidate from fixed synthetic software keys; no enclave/PQ/addon/Keychain or persistence executor runs.
 
 `verify-transaction.py` checks new source/fixture/dependency pins and absence of Security/filesystem/reset executors. SDK typecheck covers the composed source, including unexecuted hardware branches. Existing recovery/source pins remain unchanged.

@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "source/AdditiveInstallationTransaction.swift",
-      "sha256": "22d793f1f0400557d48f2299d9c201e70f02734d71cf4535e71f5a0968101e55"
+      "sha256": "9837637a3e74258f7363e45a9c6e60ee6dee8b7f55d4ae2cf52cabe27d12d10c"
     },
     {
       "path": "tests/main.swift",
-      "sha256": "71fa7584fec7aef4b1983ebaf8bcc2936840a4fd54c16a86f5a104349fa63769"
+      "sha256": "3d9a564d06781b26f11d8c85f2c10fc976c781085f5b722c0d0366aee0dee0bd"
     },
     {
       "path": "check.mjs",
-      "sha256": "5e3d106f8fc5db2d96898e838e0eef3a0c70e51ab16198a557bf842f0db21b31"
+      "sha256": "1585da9562649322ac9340c8ea8644488c692d74001a7c11259b6211f3bed90c"
     },
     {
       "path": "../aux-native-four-row-preparation/preparation-evidence.json",
@@ -23,10 +23,11 @@
     }
   ],
   "coverage": {
-    "syntheticAssertions": 23,
+    "syntheticAssertions": 28,
     "filesystemDurabilityTested": false,
     "securityExecutorImplemented": false,
     "activeSelectionImplemented": false,
-    "originalsModified": false
+    "originalsModified": false,
+    "blockedTerminalRecoveryChecked": true
   }
 }

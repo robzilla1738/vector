@@ -152,10 +152,11 @@ enum AdditiveInstallationTransaction {
         guard status==0 else{return blocked(journal,"add-status:"+journal.intended.last!+":"+String(status))}
         var next=journal;next.revision += 1;next.phase = .awaitingReadback;return next
     }
-    // Explicit restart/readback reconciliation. Only an already journaled intent
-    // can explain a new matching target. No unjournaled row is adopted as ours.
+    // Explicit restart/readback reconciliation of an unblocked journal only.
+    // A blocked failure is terminal except for abandon, even if later captures
+    // look favorable. Only a journaled intent can explain a matching new target.
     static func reconcile(_ journal:AdditiveInstallationJournal,checkpoint:AssertedDurableCheckpoint,originals:CapturedInstallationRows,targets:CapturedInstallationRows)throws->AdditiveInstallationJournal {
-        try checked(journal,checkpoint);guard journal.phase != .abandoned else{throw AdditiveTransactionError.wrongPhase}
+        try checked(journal,checkpoint);guard journal.phase != .abandoned,journal.phase != .blocked else{throw AdditiveTransactionError.wrongPhase}
         if let failure=originalFailure(journal,originals){return blocked(journal,failure)}
         var observed=journal.verified
         for role in transactionRoles { switch captured(targets,role) {

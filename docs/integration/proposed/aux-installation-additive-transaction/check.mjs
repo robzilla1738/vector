@@ -18,6 +18,6 @@ try {
  const script=path.join(temporary,'software-only.swift');await writeFile(script,(await Promise.all(files.map(file=>readFile(path.join(root,file),'utf8')))).join('\n'),{mode:0o600});
  const result=spawnSync('/usr/bin/xcrun',['swift','-module-cache-path',path.join(temporary,'module-cache'),script,fixturePath],{encoding:'utf8',timeout:90000,maxBuffer:1024*1024});
  if(result.error||result.status!==0)throw Error(`Synthetic software fixture failed: ${result.error?.message??result.stderr}`);
- const output=JSON.parse(result.stdout);assert.equal(output.checks,23);assert.equal(output.journalHashesOnly,true);assert.equal(output.originalsPreserved,true);assert.equal(output.executorRan,false);assert.equal(output.selectionSwitched,false);
- console.log('PASS: 23 synthetic checks including intent byte roundtrip, unknown-state/concurrency refusal, captured status/readback, restart reconciliation and non-destructive abandonment. No Security or persistence executor.');
+ const output=JSON.parse(result.stdout);assert.equal(output.checks,28);assert.equal(output.journalHashesOnly,true);assert.equal(output.originalsPreserved,true);assert.equal(output.executorRan,false);assert.equal(output.selectionSwitched,false);
+ console.log('PASS: 28 synthetic checks including terminal blocked recovery, intent byte roundtrip, captured status/readback, restart reconciliation and non-destructive abandonment. No Security or persistence executor.');
 } finally { await rm(temporary,{recursive:true,force:true}); }
