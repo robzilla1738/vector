@@ -1,0 +1,1 @@
+async resolveByCategory(Cn,ei){let ti=await this.listAvailable(),ni=this.settings.get(`defaultModel`),ri=this.settings.get(`modelCategories`)[Cn];return pickAvailableModelByCategory(Cn,ri,ni,ti,ei)??void 0}

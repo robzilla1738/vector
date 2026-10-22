@@ -1,0 +1,24 @@
+{
+  "source": "/Users/rcourson/Documents/Vibe/web/out/provided-source-audit/daemon-original.mjs",
+  "sha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "excerpts": [
+    {
+      "path": "evidence/extension-account.js.txt",
+      "byteOffset": 11803961,
+      "size": 1116,
+      "sha256": "850c4e93e8829649c0fc8d2bce63637bb1afc2d9243354fff9cdd82a2ffb86e3"
+    },
+    {
+      "path": "evidence/model-category.js.txt",
+      "byteOffset": 6437201,
+      "size": 206,
+      "sha256": "21eb9e4def2a166b609dae8f4406244ecfa2610d634511cc675ba4f938d3a0da"
+    },
+    {
+      "path": "evidence/transform.js.txt",
+      "byteOffset": 11811366,
+      "size": 1884,
+      "sha256": "a59429a2c0260b83c131b3fd722cd066ca60f81308fc9b502a491ee25155786c"
+    }
+  ]
+}
