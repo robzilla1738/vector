@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "baseCommit": "f902d52ec",
+  "productionComponentCompiled": true,
+  "focusedFixturesPassed": 5,
+  "syntheticOwnedChildWaitObserved": true,
+  "chromiumTranslationUnitsCompiled": false,
+  "nativeCheckoutModified": false,
+  "actualCarrierExecuted": false,
+  "wholeProfileAdmission": false,
+  "protectedOperationsExecuted": false,
+  "files": {
+    "README.md": "d56aa4f4f057d82b8199e2afb4be74c244e4f4a07b75d19602d25121c5446ed7",
+    "prepare.py": "cd8641c9119375f4e919888ae92f267a93fc2a642900021eda0114b431994a05",
+    "source/installation_carrier_custody.h": "53db925f86120de15bbdc09b27b7e70c901bb6582738c6debaab02d3fd336f4d",
+    "source-pins.json": "f74abcc04176bc40bd30156245acf54e394c7fe1fc03685e752f3893321005b4",
+    "test/custody_test.cc": "9ecdce157fd7dc4328b9e27807f356b8aa819cb5d7b1f540641387fcd58c1ff2"
+  },
+  "preparedNativeSources": {
+    "chrome/browser/aux/browser_platform.cc": "ed9cdedb091d76e7c40f4d270fdfe40db3e178014374e7929128e0bbe0572736",
+    "chrome/browser/aux/installation_auth.cc": "88d291d4c33098503e80054bf6a85c107ec7237ea93aa92575125bce8e58daad",
+    "chrome/browser/aux/installation_auth.h": "331acaefc8aeca28a4712e80e81c5ce2d4cc5dcd94818b0bf0d1b5edaa741e56",
+    "chrome/browser/aux/installation_carrier_custody.h": "53db925f86120de15bbdc09b27b7e70c901bb6582738c6debaab02d3fd336f4d"
+  }
+}

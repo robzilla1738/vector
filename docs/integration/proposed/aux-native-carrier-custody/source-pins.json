@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "inputs": {
+    "chrome/browser/aux/installation_auth.cc": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2",
+    "chrome/browser/aux/installation_auth.h": "840c2b392e7311fa3550f42effa3355c47d7c92fac5ac1c2ab8f3d6946821269",
+    "chrome/browser/aux/browser_platform.cc": "2d5867212a162c82d0a5b7f50dd27bb2c77a370f5f1a8e46846da76a00e8c667"
+  }
+}
