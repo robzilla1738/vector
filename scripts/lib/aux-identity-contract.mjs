@@ -64,7 +64,7 @@ export function assertAuxIdentityPairing({ identityProfile, declaredProfiles, te
   for (const label of ['daemon', 'cli']) {
     for (const domain of label === 'daemon' ? [n.challenge, n.devChallenge] : [n.challenge]) {
       const literal = escaped(domain + '\\0');
-      if (!new RegExp('Buffer[\\w$]*\\.from\\([\"\'`]' + literal + '[\"\'`]').test(texts[label])) throw Error(`Missing complete NUL challenge literal in ${label}: ${domain}`);
+      if (!new RegExp('(?:Buffer[\\w$]*\\.from|new\\s+TextEncoder\\(\\)\\.encode)\\([\"\'`]' + literal + '[\"\'`]').test(texts[label])) throw Error(`Missing complete NUL challenge literal in ${label}: ${domain}`);
     }
   }
   for (const token of [n.daemonToken, n.sessionToken, n.challenge, n.devChallenge, n.service]) requireIncludes(texts.daemon, token, 'daemon authentication');

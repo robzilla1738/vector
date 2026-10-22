@@ -17,6 +17,8 @@ test('paired real-entrypoint contract accepts both explicit generations with com
   assert.equal(assertAuxIdentityPairing(fixture()).challengeBytes, 19);
   assert.equal(assertAuxIdentityPairing(fixture()).developmentChallengeBytes, 23);
   assert.equal(assertAuxIdentityPairing(fixture('compatibility')).challengeBytes, 21);
+  const cli = fixture(); cli.texts.cli = cli.texts.cli.replaceAll('Buffer.from', 'new TextEncoder().encode');
+  assert.equal(assertAuxIdentityPairing(cli).staticPairing, true);
 });
 test('reject mismatched declared profile before packaging; declarations alone cannot prove pairing', () => {
   const f = fixture(); f.declaredProfiles.ui = 'compatibility';
