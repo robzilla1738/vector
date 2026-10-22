@@ -1,0 +1,75 @@
+{
+  "binarySha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+  "priorBoundaryManifestSha256": "4e01bb63cc003693334e8aba42760df8b9845b3c35a2e638e95671ab1fc7fb4b",
+  "sourcePortIsOriginalSource": false,
+  "ranges": [
+    {
+      "name": "software-private-import",
+      "start": 246992,
+      "endExclusive": 247100,
+      "sha256": "d77327b58ed755eb205a338db67e3fbf6174d8d88bc8c29a5bc4feecf13d7669",
+      "observation": "P256.PrivateKey(rawRepresentation:) native import"
+    },
+    {
+      "name": "enclave-private-import",
+      "start": 247680,
+      "endExclusive": 247780,
+      "sha256": "6e64604046614c4f4e63f6bfe12534b160c686fc2c8b0f0e2efc41671cc9ed24",
+      "observation": "SecureEnclave.P256.PrivateKey(dataRepresentation:authenticationContext:nil)"
+    },
+    {
+      "name": "pq-os-availability",
+      "start": 246616,
+      "endExclusive": 246652,
+      "sha256": "54fc13d08fe5f47448559345619757a19075ede824654a7b412e4472fe7c14fe",
+      "observation": "Scheme tag1 checks OS26.0 before PQ import"
+    },
+    {
+      "name": "pq-private-import",
+      "start": 246748,
+      "endExclusive": 246772,
+      "sha256": "f6d96b4ea037bea5a67ec5aa66ed31b488d340cb84ef9c5aa31e7441c625c12b",
+      "observation": "SecureEnclave.MLKEM768.PrivateKey(dataRepresentation:authenticationContext:nil)"
+    },
+    {
+      "name": "pq-decap-success-branch",
+      "start": 249840,
+      "endExclusive": 249868,
+      "sha256": "e545ad98f92a01fdbdf6fda382f74d61a35f5e5483ced04e271ec76a6b821fe9",
+      "observation": "decapsulate returns SymmetricKey; successful branch goes to0x3d318; complete container/key flow remains unported"
+    }
+  ],
+  "pqCodingKeysArtifactSha256": "a566cffb8b8028d27bb8c17cf91139d4228b44522a4ea40b5e9761747839598d",
+  "sdkCryptoKitInterfaceSha256": "2b5d254bc78c88c602e3d3753c12a8614b05b8a103e83580f0706e45ea460ee1",
+  "sdkEvidence": "Current local Apple SDK declaration corroboration only, not proof original runtime branches executed.",
+  "compiler": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0",
+  "coverage": {
+    "softwareP256": "source port plus synthetic cross-language checks",
+    "secureEnclaveP256": "source port typechecked only; no enclave execution",
+    "pq": "explicitly refused before any key import; exact coding/availability/import/decap evidence retained",
+    "keychainQueries": "not implemented or executed",
+    "installationSigningAuthority": "not read or changed",
+    "persistenceTransaction": "not implemented"
+  },
+  "verification": {
+    "swiftTypecheck": {
+      "passed": true,
+      "target": "arm64-apple-macos13.0",
+      "installationOrEnclaveExecution": false
+    },
+    "softwareOnlyInterpreter": {
+      "passed": true,
+      "checks": 12,
+      "nodeToSwiftAuxV2": true,
+      "swiftToNodeAuxV2": true,
+      "enclaveExecuted": false,
+      "pqExecuted": false,
+      "originalAddonExecuted": false,
+      "keychainExecuted": false
+    },
+    "staticEvidenceCheck": {
+      "passed": true,
+      "ranges": 5
+    }
+  }
+}
