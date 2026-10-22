@@ -125,7 +125,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "dda41a2feb44fd50fdcc0c9855fe5887d22f1703f93b31eb8c11694a687f3f79"
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
     },
     {
       "path": "docs/integration/proposed/aux-fresh-secure-recovery/source/FreshSecureStage.swift",
@@ -156,5 +156,16 @@
     "swiftFlag": "AUX_MINIMAL_RUNTIME_DISPATCH",
     "review": "docs/integration/proposed/aux-minimal-owned-node",
     "journalEvidenceForRuntimeMode": null
+  },
+  "optionalOSCompositionReview": {
+    "priorDispatcherSha256": "dda41a2feb44fd50fdcc0c9855fe5887d22f1703f93b31eb8c11694a687f3f79",
+    "currentDispatcherSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "flags": [
+      "AUX_RECOVERED_FRESH_DISPATCH",
+      "AUX_SCOPED_SECURE_STORE_DISPATCH"
+    ],
+    "optionalOSCapabilityEnabled": false,
+    "disabledDeclarationProjectionSha256": "3c2844c63fb16b71e161a8bda6b3ae444293dc08577744be13fbedc36fbaea5e",
+    "review": "Active source projection unchanged with OS capability absent; historical runtime receipts preserved."
   }
 }

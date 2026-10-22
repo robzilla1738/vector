@@ -83,7 +83,18 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569"
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239"
     }
-  ]
+  ],
+  "optionalOSCompositionReview": {
+    "priorDispatcherSha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+    "currentDispatcherSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "flags": [
+      "AUX_MINIMAL_RUNTIME_DISPATCH",
+      "AUX_SCOPED_SECURE_STORE_DISPATCH"
+    ],
+    "optionalOSCapabilityEnabled": false,
+    "disabledDeclarationProjectionSha256": "42c9c7afc098ec085a028e7f195f027e36d2b6258bf94a87f54fa5a4c711597c",
+    "review": "Active source projection unchanged with OS capability absent; historical runtime receipts preserved."
+  }
 }

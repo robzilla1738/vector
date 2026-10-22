@@ -139,5 +139,11 @@
   "reusedNapiCheck": {
     "path": "docs/integration/proposed/aux-owned-napi-adapter/tests/check.cjs",
     "sha256": "da8880dba0597f3db6f3edd10114e8137e5f424c0f974e8a45a111d4ca2f5633"
+  },
+  "historicalDispatcherEvidence": {
+    "currentDispatcherSourceSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "preserveOriginalPinnedSnapshot": true,
+    "currentIntegratedComposition": "docs/integration/proposed/aux-owned-macos-utility-dispatch/source-pins.json",
+    "note": "Original pinned dispatcher predates the scoped secure-command handler refactor. Its original fixture receipt is historical; it is not an exact current-source manifest. The current combined runtime graph was separately compiled and checked; no byte-equivalence claim is made for this older snapshot."
   }
 }

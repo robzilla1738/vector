@@ -158,5 +158,11 @@
     "actualPairedNodeChecks": 18,
     "fixture": "docs/integration/proposed/aux-recovered-fresh-owned-handoff/check.sh",
     "hostAdmissionVerified": false
+  },
+  "historicalDispatcherEvidence": {
+    "currentDispatcherSourceSha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
+    "preserveOriginalPinnedSnapshot": true,
+    "currentIntegratedComposition": "docs/integration/proposed/aux-owned-macos-utility-dispatch/source-pins.json",
+    "note": "Original pinned dispatcher predates the scoped secure-command handler refactor. Its original fixture receipt is historical; it is not an exact current-source manifest. The current combined runtime graph was separately compiled and checked; no byte-equivalence claim is made for this older snapshot."
   }
 }
