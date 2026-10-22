@@ -1,0 +1,35 @@
+function getCliDeviceRegistration() {
+	if (cachedCliDevice !== null) return cachedCliDevice;
+	cachedCliDevice = undefined;
+	const platform = process.platform === "darwin" ? "macos" : process.platform === "win32" ? "windows" : undefined;
+	if (!platform) return undefined;
+	try {
+		const status = runNativeHelperCommand("keys-status");
+		if (status.error || !status.keysInstalled) return undefined;
+		const keys = runNativeHelperCommand("public-keys");
+		if (keys.error || typeof keys.sig !== "string") return undefined;
+		const publicKey = Buffer.from(keys.sig, "base64");
+		const toBase64Url = (bytes) => Buffer.from(bytes).toString("base64url");
+		const jwk = publicKey.length === 65 && publicKey[0] === 4 ? {
+			kty: "EC",
+			crv: "P-256",
+			x: toBase64Url(publicKey.subarray(1, 33)),
+			y: toBase64Url(publicKey.subarray(33, 65)),
+			ext: true,
+			key_ops: ["verify"]
+		} : {
+			kty: "RAW",
+			alg: "UNKNOWN",
+			public_key_b64: keys.sig
+		};
+		cachedCliDevice = {
+			appVersion: CLI_VERSION,
+			deviceName: os.hostname() || undefined,
+			platform,
+			installationScheme: "p256_v1",
+			ikSigPublicKeyJwk: jwk,
+			ikSigKeyFingerprint: `sha256:${createHash("sha256").update(publicKey).digest("hex")}`
+		};
+	} catch {}
+	return cachedCliDevice;
+}

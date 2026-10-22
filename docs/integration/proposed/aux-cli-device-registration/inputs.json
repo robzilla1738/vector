@@ -1,0 +1,14 @@
+{
+  "component": "cli",
+  "path": "entry.mjs",
+  "sourceSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+  "originalCharacterOffset": 2519357,
+  "count": 1,
+  "findSha256": "c0761f018fae35fe832aff281adf7f274fa180505312edab0a645b2939406cd2",
+  "replaceSha256": "06d12923237f8aabcbd3103fc7129480452f8a86f93abcbbe14a1dc06391107d",
+  "cloudSchema": {
+    "path": "services/aux-cloud/src/auth.ts",
+    "sha256": "79f2c9c77ac0ab885f3d945429b3618ca153ec84689c5f05b893ab1ca9bf9b12"
+  },
+  "nativeContract": "docs/integration/proposed/aux-native-dispatch-abi/source-pins.json"
+}
