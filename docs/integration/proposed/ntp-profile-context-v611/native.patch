@@ -1,0 +1,22 @@
+--- a/chrome/browser/extensions/api/aux_account/aux_account_api.cc
++++ b/chrome/browser/extensions/api/aux_account/aux_account_api.cc
+@@ -189,7 +189,9 @@
+     return RespondNow(WithArguments(std::move(profiles)));
+   }
+   if (method == "auxAccount.getProfileContext") {
+-    if (args().size() > 1 || (!args().empty() && !args()[0].is_int()))
++    // Extension bindings may normalize an omitted optional argument to null.
++    const bool has_draft_tab_id = !args().empty() && !args()[0].is_none();
++    if (args().size() > 1 || (has_draft_tab_id && !args()[0].is_int()))
+       return RespondNow(Error("Optional draft tab ID must be an integer"));
+     auto* current = profile()->GetOriginalProfile();
+     const auto id = aux::GetProfileId(current);
+@@ -199,7 +201,7 @@
+     context.Set("profilePath", current->GetPath().value());
+     // Additive private draft identity; never replace the live DevTools target.
+     // OTR documents retain only their original session-scoped draft storage.
+-    if (!args().empty() && profile()->IsRegularProfile() &&
++    if (has_draft_tab_id && profile()->IsRegularProfile() &&
+         !profile()->IsOffTheRecord() && args()[0].GetInt() > 0) {
+       content::WebContents* tab = nullptr;
+       if (ExtensionTabUtil::GetTabById(args()[0].GetInt(), profile(),

@@ -1,0 +1,11 @@
+# NTP account mismatch: omitted optional argument (actual611)
+
+Root's bounded actual611 probe found all five NTP documents had native API available, cached accountId0/browserProfile null, and native getProfileContext() rejected with exactly `Optional draft tab ID must be an integer`. This establishes a native argument-validation defect rather than a stale-cache-only diagnosis.
+
+The v608 draft identity integration added an optional integer parameter. Extension bindings normalize the omitted optional slot to null; native validation rejected that slot, so normal no-argument profile lookup failed. Explicit draft-tab-ID lookups were unaffected. Supplied1852 `queries` tolerates native lookup failure when the newer optional setter is absent and falls back to daemon accounts.current. Thus the rejected profile lookup appeared as real account0 cards while the native sidebar used the correctly resolved Person2 account.
+
+Correction: treat missing/null as an omitted draftTabId. Non-null values still must be integers; extra arguments remain rejected. Only a present integer enters the optional tab lookup, retaining exact regular-profile ownership checks. Existing no-argument profile semantics, namespace, wire, state, and UI are unchanged. No synthetic bindingVersion or account ID is introduced.
+
+One native file/two count-checked anchors, pinned against applied611. Generator reproduces sources/files.json/native.patch and verifies exact occurrence counts. Patch applies cleanly; no shared mutation or build by this lane. Root actual error evidence is `out/native-integration/v611-profile-probe.json` plus its subsequent exact-error probe; source-only checking cannot replace the next app observation.
+
+No JS cache/fallback adaptation is included because the native cause is demonstrated. The supplied compatibility fallback remains; this preserves source behavior but means a future unavailable native context can again resolve daemon-current state. Existing affected documents cached account0, so acceptance must use the rebuilt app with fresh documents or original profile-query invalidation. Verify Person2 getProfileContext() now succeeds without arguments and NTP cards use account2; explicit integer draft lookup must continue to work, and malformed/extra arguments must remain errors. No paid AI or credential operation is required.

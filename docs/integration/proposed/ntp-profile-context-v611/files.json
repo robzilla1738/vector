@@ -1,0 +1,20 @@
+{
+  "baseComposition": "v611",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "baselineSha256": "538700bb135e25b84a9b547f08427063c6a24646bb326d5b794eae7f7b17d3b4",
+      "outputSha256": "67ba08e52316b17596287a9d0d594873000c7f769a4751918c106ea38529344a"
+    }
+  ],
+  "edits": [
+    {
+      "count": 1,
+      "anchorSha256": "e7a007961edfd1eb9ab2a4de40cf934beda209e97474f0720b520bb0e4f967dc"
+    },
+    {
+      "count": 1,
+      "anchorSha256": "2b558b74ea7f9212c4056d7eb7a43f6bfe550238a8fcd56ded703c221cb5e2dc"
+    }
+  ]
+}
