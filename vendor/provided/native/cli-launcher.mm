@@ -1,5 +1,6 @@
 // Native exec boundary only. The sibling SEA remains the supplied CLI.
 #include <CommonCrypto/CommonDigest.h>
+#include "packaged-identity-admission.h"
 #include <mach-o/dyld.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -32,6 +33,9 @@ int main(int argc, char *argv[]) {
   if (self.size() <= suffix.size() || self.compare(self.size() - suffix.size(), suffix.size(), suffix))
     return Fail("Unexpected Aux CLI bundle layout");
   const std::string root = self.substr(0, self.size() - suffix.size());
+  // Match browser admission before reading or creating any mutable home.
+  if (!aux::packaged_identity::MarkerAllowedAt(root + "/bundle.json"))
+    return Fail("Aux packaged state identity is unsupported or unaccepted");
   const std::string sea = root + "/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea";
   const std::string boundary = root + "/native/libaux-native-boundary.dylib";
   if (!Regular(sea) || !Canonical(sea) || access(sea.c_str(), X_OK) || !Regular(boundary) || !Canonical(boundary))

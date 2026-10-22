@@ -11,7 +11,8 @@ export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run')
     'native/agent-inbox-keychain-map.h', 'native/agent-inbox-keychain-map.mm',
     'native/agent-inbox-keychain-map-test.mm', 'native/agent-inbox-master-key.h', 'native/agent-inbox-master-key.mm',
     'native/keychain-query-map.mm', 'native/keychain-interpose.mm', 'native/sea-resource-pointer.mm', 'native/native-carrier.mm',
-    'native/node-boundary-guard.mm', 'native/cli-launcher.mm', 'native/keychain-query-map-test.mm'].map((name) => {
+    'native/node-boundary-guard.mm', 'native/cli-launcher.mm', 'native/packaged-identity-admission.h',
+    'native/packaged-identity-admission-test.mm', 'native/keychain-query-map-test.mm'].map((name) => {
     const path = resolve(repository, 'vendor/provided', name);
     return { path: relative(repository, path), sha256: digest(path) };
   });
@@ -22,6 +23,7 @@ export function nativePackagingManifest(output = 'out/reuse-inspection/dry-run')
     ['keychain-query-map-test', null],
     ['agent-inbox-keychain-map-test', null],
     ['aux-cli-launcher', 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli'],
+    ['packaged-identity-admission-test', null],
   ].map(([name, destination]) => {
     const path = resolve(repository, output, name);
     let stat;

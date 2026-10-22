@@ -112,6 +112,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
 
   if (native.version !== 1 || native.implementation !== 'supplied' || native.buildExitCode !== 0 || native.generatedKeyProbePassed !== true || native.compositionSha256 !== hash(compositionRaw) || native.app !== 'Aux.app') throw new Error('An actual matching supplied native build receipt is required');
   if (boundary.version !== 1 || boundary.implementation !== 'supplied-boundary' || boundary.buildExitCode !== 0 || boundary.mapFixturePassed !== true) throw new Error('An actual native boundary build and pure-map fixture receipt is required');
+  if (stateIdentityVersion === 2 && boundary.cliAdmissionFixturePassed !== true) throw Error('Actual rebuilt CLI pre-home admission fixture is required for state2');
   const buildRoot = await root(native.buildRoot), nativeRoot = await root(native.nativeRoot), seed = await root(join(buildRoot, 'Aux.app'));
   if (nativeRoot !== composition.sourceRoot || !inside(nativeRoot, buildRoot)) throw new Error('Native build and composition roots disagree');
   await pinnedFile(join(buildRoot, 'args.gn'), native.argsSha256);
