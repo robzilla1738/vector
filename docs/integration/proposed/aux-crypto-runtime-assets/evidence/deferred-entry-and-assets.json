@@ -1,0 +1,82 @@
+{
+  "format": "aux.crypto-runtime-assets.focused-evidence.v1",
+  "baseCommit": "b93544e20",
+  "exitCode": 0,
+  "entries": {
+    "sea": {
+      "sha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa",
+      "coldRefusalCode": "AUX_STATE_IDENTITY_QUARANTINED",
+      "dynamicLoaderCalls": 0,
+      "originalInitializerReached": false
+    },
+    "node-development": {
+      "sha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835",
+      "coldRefusalCode": "AUX_STATE_IDENTITY_QUARANTINED",
+      "dynamicLoaderCalls": 0,
+      "originalInitializerReached": false
+    }
+  },
+  "assetInventory": [
+    {
+      "name": "aux-csk-v2-runtime.mjs",
+      "bytes": 2067,
+      "sha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26",
+      "staticDependencies": [
+        "./aux-dk-crypto.mjs",
+        "./aux-json-tokens.mjs"
+      ],
+      "bodyEvaluated": false
+    },
+    {
+      "name": "aux-live-dk-runtime.mjs",
+      "bytes": 3696,
+      "sha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e",
+      "staticDependencies": [
+        "node:crypto",
+        "./aux-dk-crypto.mjs"
+      ],
+      "bodyEvaluated": false
+    },
+    {
+      "name": "aux-dk-crypto.mjs",
+      "bytes": 3251,
+      "sha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680",
+      "staticDependencies": [
+        "node:crypto"
+      ],
+      "bodyEvaluated": false
+    },
+    {
+      "name": "aux-json-tokens.mjs",
+      "bytes": 1538,
+      "sha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8",
+      "staticDependencies": [],
+      "bodyEvaluated": false
+    }
+  ],
+  "seaBinaryInjected": false,
+  "actualDaemonLaunched": false,
+  "unchangedCryptoFixturesRepeated": false,
+  "files": [
+    {
+      "path": "source/build.mjs",
+      "sha256": "0879c7c895b35b56b1cf4c626ff3659f1c4bd4fbdccc8e598e4f8afec3a456ec"
+    },
+    {
+      "path": "source/compose.mjs",
+      "sha256": "958d03a5b285c5bb6e48578a7898ef2bbf180fedd0c0e7135a41148f6e18ef78"
+    },
+    {
+      "path": "source/materialize.mjs",
+      "sha256": "0415c7c21ed5bc9faf054d8e539c321b121f642013f7858aeb4fd66e289438f3"
+    },
+    {
+      "path": "tests/check.mjs",
+      "sha256": "fea2eb3cb5cb2036e5bc8c0bb6a1afdad0812c76924f2c0274fd45cbdde89eaa"
+    },
+    {
+      "path": "source-pins.json",
+      "sha256": "d76aec791ba845885c6f2ec7d2923946e2808784ff4f2be15291daed3ec3fa6f"
+    }
+  ]
+}

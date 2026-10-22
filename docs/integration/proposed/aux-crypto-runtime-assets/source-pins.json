@@ -1,0 +1,134 @@
+{
+  "format": "aux.crypto-runtime-assets.source-pins.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "binarySha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "entries": {
+    "sea": {
+      "baselineSha256": "d69b87e91e30edadaef456b63d7f4751a09ce4c997f31b6129d01b5801a3e6d4",
+      "preload": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst {pathToFileURL:__auxCryptoPathToFileURL}=await import(\"node:url\");\nconst __auxCryptoBaseURL=new URL(\"../Resources/aux-crypto/\",__auxCryptoPathToFileURL(process.execPath));\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
+      "outputSha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa"
+    },
+    "node-development": {
+      "baselineSha256": "9ac746f4dd4a8c8848b5ee5cd229dad65d0df1e0d97f5a73d945ed9fb347ab99",
+      "preload": "if(process.platform!==`darwin`)throw Error(`This Aux cryptographic runtime supports macOS only`);\nconst __auxCryptoBaseURL=new URL(\"./aux-crypto/\",import.meta.url);\nconst {encryptAuxCskV2,decryptAuxCskV2,parseAuxCskV2Record}=await import(new URL(\"aux-csk-v2-runtime.mjs\",__auxCryptoBaseURL));\nconst {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
+      "outputSha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835"
+    }
+  },
+  "editTables": [
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source-pins.json",
+      "sha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source-pins.json",
+      "sha256": "0679b19878759aec047de3036d30f33936b7c0f32dbc69deedf1260c8de5a9c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-crypto-exclusion/source-pins.json",
+      "sha256": "9e923414094990e6b3a774e66901c922a4dc9d2b53f8cc2f28e80b2537d90025"
+    }
+  ],
+  "assets": [
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "name": "aux-csk-v2-runtime.mjs",
+      "edits": [
+        {
+          "find": "'../../../../../vendor/provided/aux-crypto-identity.mjs'",
+          "replace": "'./aux-dk-crypto.mjs'",
+          "count": 1
+        },
+        {
+          "find": "'../../../../../vendor/provided/aux-identity-json-tokens.mjs'",
+          "replace": "'./aux-json-tokens.mjs'",
+          "count": 1
+        }
+      ],
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af",
+      "outputSha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs",
+      "name": "aux-live-dk-runtime.mjs",
+      "edits": [
+        {
+          "find": "'../../../../../vendor/provided/aux-crypto-identity.mjs'",
+          "replace": "'./aux-dk-crypto.mjs'",
+          "count": 1
+        }
+      ],
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c",
+      "outputSha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "name": "aux-dk-crypto.mjs",
+      "prefixBefore": "export function wrapAuxDk(",
+      "edits": [
+        {
+          "find": "import { createCipheriv, createDecipheriv, createECDH, createHash, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';",
+          "replace": "import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';",
+          "count": 1
+        },
+        {
+          "find": "export const AUX_WRAP_FORMAT = 'aux.wrap.dk.v2';\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f",
+      "outputSha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680"
+    },
+    {
+      "path": "vendor/provided/aux-identity-json-tokens.mjs",
+      "name": "aux-json-tokens.mjs",
+      "prefixBefore": "export function replaceAuxIdentityJsonStringToken",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b",
+      "outputSha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "vendor/provided/daemon-node-development.mjs",
+      "sha256": "c7b0dc7404c1e9b9527d95af6c05710cf92cc29552815ffc508a60ef2c88552f"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    }
+  ],
+  "originalDevelopmentInventory": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "bytes": 12133396,
+      "mode": 420,
+      "sha256": "9ac746f4dd4a8c8848b5ee5cd229dad65d0df1e0d97f5a73d945ed9fb347ab99"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets.mjs",
+      "bytes": 2177,
+      "mode": 420,
+      "sha256": "cb292b3e549e2b90495d12fe0e55e3be66de1a6fef8d686cc2266bc11403615d"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/quickjs-emscripten-module.wasm",
+      "bytes": 503134,
+      "mode": 420,
+      "sha256": "105c3bed22d457e43e3d1c3c1c6959fda62a8fe06f0fc8a985303c3a2be72232"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/assets/photon_rs_bg.wasm",
+      "bytes": 1881634,
+      "mode": 420,
+      "sha256": "10468181565c56004c867f3a4af96f89a0ef5a63a72f2b5fb12c1f1992a3615c"
+    }
+  ]
+}
