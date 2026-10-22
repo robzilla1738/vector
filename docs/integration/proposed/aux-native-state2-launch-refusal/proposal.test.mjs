@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import test from 'node:test';
+const here=new URL('.',import.meta.url);
+const pins=JSON.parse(readFileSync(new URL('source-pins.json',here),'utf8'));
+const original=path=>readFileSync(pins.sourceRoot+'/'+path,'utf8');
+const proposal=readFileSync(new URL('source/chrome/app/aux_packaged_state_identity.h',here),'utf8');
+test('proposal source pins are current and existing accepted startup code remains unchanged',()=>{
+ for(const pin of pins.files)assert.equal(createHash('sha256').update(original(pin.path)).digest('hex'),pin.sourceSha256,pin.path);
+ assert.equal(createHash('sha256').update(proposal).digest('hex'),pins.newFiles[0].outputSha256);
+ const delegated=readFileSync(new URL('source/chrome/app/chrome_main_delegate.cc',here),'utf8');
+ const pin=pins.files.find(item=>item.path==='chrome/app/chrome_main_delegate.cc');
+ assert.equal(createHash('sha256').update(delegated).digest('hex'),pin.outputSha256);
+ const start=delegated.indexOf('std::optional<int> ChromeMainDelegate::BasicStartupComplete() {');
+ const body=delegated.slice(start,delegated.indexOf('#if BUILDFLAG(IS_CHROMEOS)',start));
+ assert.ok(body.indexOf('PackagedIdentityAllowsStartup()')<body.indexOf('development_startup::Apply()'));
+ assert.ok(body.indexOf('PackagedIdentityAllowsStartup()')<body.indexOf('!defined(OFFICIAL_BUILD)'));
+ assert.ok(body.indexOf('PackagedIdentityAllowsStartup()')<body.indexOf('!defined(BUILDING_CHROME_RENDERER)'));
+ assert.equal(proposal.includes('development_startup::Apply'),false);
+});
+test('current native call precedes user-dir/singleton and marker policy has no approval or missing-file fallback',()=>{
+ const delegate=original('chrome/app/chrome_main_delegate.cc');
+ assert.ok(delegate.includes('if (!aux::development_startup::Apply())'));
+ const runner=original('content/app/content_main_runner_impl.cc');
+ assert.ok(runner.indexOf('delegate_->BasicStartupComplete()')<runner.indexOf('delegate_->PreSandboxStartup()'));
+ const helper=proposal.slice(proposal.indexOf('inline bool PackagedIdentityMarkerAllowed('),proposal.indexOf('}  // namespace aux::state_identity'));
+ for(const token of ['O_NOFOLLOW','O_CLOEXEC','S_ISREG','16 * 1024 * 1024','keys.insert(key->GetString()).second','state_value->is_int()','GetAppBundlePath(executable)','Contents/Resources/aux/bundle.json','return state == 1'])assert.ok(helper.includes(token),token);
+ for(const token of ['accepted.json','Environment::','CommandLine::','getpwuid','RunCarrier','ENOENT','SetVar'])assert.equal(helper.includes(token),false,token);
+ assert.ok(original('base/apple/foundation_util.mm').includes('It takes the outermost bundle'));
+});

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "sourceSha256": "71eeda00a10220c8eea89b152ebbced38a14014a9d53e9c60e90c4d90a1487cf"
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "sourceSha256": "6bf7e17f89cbd242d621260c0d540c0937c2521ea5ceb7c76b569234b67684b2",
+      "outputSha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708"
+    },
+    {
+      "path": "chrome/BUILD.gn",
+      "sourceSha256": "97b47b4b66c2b1e84360d339d10ba57e0a74aa08ac9f9a2a2848b21689faf246"
+    },
+    {
+      "path": "chrome/app/BUILD.gn",
+      "sourceSha256": "8b950842faab69e162ab2dc7ec7354ceb341d57254377c353d1881cffca893e3"
+    },
+    {
+      "path": "content/app/content_main_runner_impl.cc",
+      "sourceSha256": "742c7e6d80584e4aa172771615a5602063aab66fed8254d11375f55db5fb49d0"
+    },
+    {
+      "path": "base/apple/foundation_util.mm",
+      "sourceSha256": "d6dec7b278cc46a0538415d8ab2e5e13e7ef5ab4ac695242d17e284c0449e0a6"
+    },
+    {
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "sourceSha256": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sourceSha256": "693a76b3958f95acfd4b7c138230c2f8fdd35f42703bb7a2ccf399094f79eb19"
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "sourceSha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b"
+    }
+  ],
+  "newFiles": [
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "outputSha256": "ea76fef132ba1df271fcfaedfa4b4f02d90e186b0c359a18b4f91c8a03a857d3"
+    }
+  ]
+}
