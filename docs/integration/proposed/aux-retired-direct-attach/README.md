@@ -1,0 +1,28 @@
+# Retire obsolete direct native attachment bypass
+
+This two-source proposal retains the `AuxAttachSignedDevelopmentDispatcher(napi_env,napi_value)` C ABI symbol but changes it to unconditional refusal for non-null arguments (`napi_generic_failure`; null arguments retain `napi_invalid_arg`). It neither dereferences inputs nor calls the protected factory, Node, adapter publication or cleanup. There is no enable flag, JS export, environment variable, loader or alternate admission argument.
+
+The current development-host production recipe still compiles this direct attachment source. Its old body immediately calls `AuxCreateSignedDevelopmentOwner` and attaches the resulting owner. That body does not perform the actual Worker's environment-generation reservation, cleanup registration, in-flight initialization retirement or PDF-image capture. Its header's requirement that callers already own admission cannot substitute for those concrete ownership steps. No actual application call site or module initializer is currently wired to this route; retirement is a source integration correction, not evidence of an observed protected runtime exploit.
+
+The real `AuxDevelopmentWorkerHost::RegisterCurrentWorker` path is unchanged. It reserves the actual Node Environment generation, installs cleanup before factory invocation, retains initializing/closed owners, captures the authenticated loaded PDF image and refuses late publication after closure. It remains native-only and requires genuine external whole-cohort admission. The exported Swift factory itself also remains available to trusted native code; this tombstone does not claim to seal arbitrary in-process native callers or authenticate custody.
+
+## Exact remaining bootstrap dependency order
+
+1. **Cold admission remains refusal.** `vendor/provided/aux-cold-entry-admission.mjs` makes state2 daemon/CLI refuse before implementation initialization. Native CLI/browser marker boundaries remain separate. No proposed change here removes a refusal or starts an app.
+2. **No authenticated whole-profile coordinator exists.** The compiled BrowserPlatform aggregation is scoped to its owned direct daemon/carriers. It does not exclude existing renderer reuse, extension worker restarts, asynchronous storage shutdown or independently invoked CLI/runtime writers. The pinned `aux-native-writer-custody-map` and `aux-profile-creation-fence-feasibility` describe concrete lifecycle blockers. Neither a flush, advisory lock, ProcessSingleton nor PID census is enough.
+3. **Native policy verifies content/host, not selected-cohort custody.** `AuxSignedDevelopmentOwner` loads the sealed policy, calls the actual Data Protection capture for four selected rows, cryptographically validates them and builds the scoped command owner. Actual Security capture must not execute until an approved exact selector scope and real admission owner are supplied. `AuxRuntimeSelection` validates schema/public hashes; its public constructor is not proof of active selection or same-home exclusion.
+4. **Real Node bootstrap must own WorkerHost.** An embedding callback must provide the real `napi_env`/exports in the current Environment on its own thread, retain the process-native host, and consume explicit CloseAndDrain outcomes through teardown. No runtime JS loader currently does this; adding a bare NAPI module initializer would trigger protected factory capture before step2. This proposal therefore does not create one. The obsolete direct attachment must not be reused as a shortcut.
+5. **PDF loading order must satisfy signed image policy.** The daemon's actual PDF implementation remains lazy. Daemon sealed policy v3 requires its exact reviewed image and WorkerHost captures only already-loaded images. A reviewed native bootstrap/preload must establish that image before factory image validation/capture. Accepting an unobserved future load or merely seeing a pathname would weaken existing restrictions. This proposal does neither.
+6. **Activation/retirement are still external work.** Authenticated fresh/migrated selection, durable active-generation choice, prepared-byte migration integration, exact own runtime artifacts, original common-addon retirement and disposable startup/restart/visual acceptance follow those prerequisites. A source compile or retained ABI refusal is not a signed/working replacement.
+
+## Focused verification and integration
+
+`source-pins.json` binds both current baseline files, their proposed outputs, exact patch, unchanged actual WorkerHost/factory/cold-refusal/build anchors. `verify.py` fails on drift. `native.patch` applies only to the two development-host attach source/header files; root owns source/graph pin refresh and any build integration. No shared graph, artifact or prior receipt has changed.
+
+The focused check compiled the actual proposed source with frozen supplied Node headers, linked a tiny executable and called the real exported tombstone five times. Invalid opaque placeholders are only rejection inputs, never a simulated valid runtime or admission grant. `nm` confirms the one ABI symbol remains and **zero undefined imports**: the object cannot call any protected factory, NAPI method or owner release. No original addon, protected factory, Security/Keychain, OS utility, browser, owner profile/data or signing was executed. Existing CSK54, worker lifecycle, policy and full production graph fixtures were not repeated. UI is untouched.
+
+Run under the shared compiler lock:
+
+```
+python3 scripts/native-build.py sh docs/integration/proposed/aux-retired-direct-attach/check.sh /Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node
+```

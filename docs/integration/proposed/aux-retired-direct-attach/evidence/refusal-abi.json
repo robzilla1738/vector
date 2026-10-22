@@ -1,0 +1,19 @@
+{
+  "format": "aux.retired-direct-attach.focused-check.v1",
+  "result": "passed",
+  "actualProposedSourceCompiledAndLinked": true,
+  "actualABIRefusalCalls": 5,
+  "exportedAuxAttachSymbolCount": 1,
+  "undefinedImportCount": 0,
+  "protectedFactoryInvoked": false,
+  "SecurityInvoked": false,
+  "productionGraphOrPinsChanged": false,
+  "UIChanged": false,
+  "wholeProfileCustodyClaimed": false,
+  "sourcePinsSha256": "4835b758d82fa95f990c64cff5fa7561c1255d9041ccdfcd435f89b8d152ebfb",
+  "focusedFiles": {
+    "verify.py": "12894cafcc3db5a24389be0f4ae81a1ab3a64546fd80941ef0fe396b6ab558c3",
+    "check.sh": "f5d4c9d52454e785adb3ecaada1118fe65584799a76b2b5193d9718bf33082a2",
+    "tests/main.cc": "e2a34d21f21daf01a934d1a2205f0fdd8a365a83c74575ec7c1958569f8d4ad3"
+  }
+}
