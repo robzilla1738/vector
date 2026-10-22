@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "reviewOnly": true,
+  "sources": [
+    {
+      "path": "docs/integration/proposed/aux-installation-journal-store/source/PrivateInstallationJournalStore.swift",
+      "sha256": "1aede47a990c622149ad863c53407b8f7999b63ae531c000861ea4cb00baf1ae"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086"
+    }
+  ],
+  "format": "aux.install.fresh.journal.v1",
+  "headFormat": "aux.install.fresh.journal.head.v1",
+  "securityOperationsExecuted": false,
+  "activationPerformed": false
+}
