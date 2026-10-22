@@ -69,7 +69,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "900c90fe7841c0feb906eb382dd49bb5e8fee3967abd9d8a21985c5e5741e569",
+      "sha256": "5083ae26fae8cf12ae931cf681b618c18d27ccf830288dd9b5ce12f9654fc239",
       "anchors": [
         {
           "anchor": "init(scopedTerminal:ScopedAuxCommandContext)",

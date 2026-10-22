@@ -51,7 +51,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source-contract.json",
-      "sha256": "b8a4296ce9bd7e0633f3f8e1f7d578ce85e69d0f22f43fc9237c46d32ad18cbf"
+      "sha256": "0595f98703abae757dc00bab0d360612b91db4da0808ff0011a04abaccff78d5"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
