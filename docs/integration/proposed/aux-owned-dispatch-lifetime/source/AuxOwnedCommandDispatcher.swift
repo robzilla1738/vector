@@ -15,6 +15,9 @@ final class AuxCommandDispatcherRegistry {
         var phase=Phase.open
         var active=0
         init(_ context:CapturedTerminalCommandContext){core=context.core}
+#if AUX_RECOVERED_FRESH_DISPATCH
+        init(_ context:RecoveredFreshTerminalCommandContext){core=context.core}
+#endif
     }
     private let condition=NSCondition()
     private var entries=[UInt64:Entry]()
@@ -22,9 +25,17 @@ final class AuxCommandDispatcherRegistry {
     private let threadKey="aux.native.dispatcher.active-handles.v1"
     private init(){}
     fileprivate func install(_ context:CapturedTerminalCommandContext)throws->UInt64 {
+        try insert(Entry(context))
+    }
+#if AUX_RECOVERED_FRESH_DISPATCH
+    fileprivate func install(_ context:RecoveredFreshTerminalCommandContext)throws->UInt64 {
+        try insert(Entry(context))
+    }
+#endif
+    private func insert(_ entry:Entry)throws->UInt64 {
         condition.lock();defer{condition.unlock()}
         guard next<UInt64.max else{throw AuxDispatcherLifetimeError.exhaustedHandles}
-        let handle=next;next += 1;entries[handle]=Entry(context);return handle
+        let handle=next;next += 1;entries[handle]=entry;return handle
     }
     // Trusted in-process operation seam. Scope is not an action argument.
     func withContext<T>(_ handle:UInt64,_ action:(AuxInstallationCommandCore)throws->T)throws->T {
@@ -86,6 +97,13 @@ final class AuxOwnedCommandDispatcher {
     init(capturedTerminal:CapturedTerminalCommandContext)throws {
         handle=try AuxCommandDispatcherRegistry.shared.install(capturedTerminal)
     }
+#if AUX_RECOVERED_FRESH_DISPATCH
+    // Declaration composition only: the sealed type validates actual recovered
+    // terminal evidence. This flag supplies no runtime admission or bypass.
+    init(recoveredFreshTerminal:RecoveredFreshTerminalCommandContext)throws {
+        handle=try AuxCommandDispatcherRegistry.shared.install(recoveredFreshTerminal)
+    }
+#endif
     func retire()throws{try AuxCommandDispatcherRegistry.shared.retire(handle)}
     deinit{AuxCommandDispatcherRegistry.shared.closeOwner(handle)}
 }
