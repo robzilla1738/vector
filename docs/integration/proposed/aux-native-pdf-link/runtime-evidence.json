@@ -94,5 +94,10 @@
     "exact-original-engine-revision-and-representative-font-pixel-fidelity",
     "choice-radio-checkbox-specialized-runtime-cases",
     "trusted-production-loader-packaging-and-real-app-acceptance"
-  ]
+  ],
+  "frozenRuntime": {
+    "nodePath": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+    "nodeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+    "nodeApiHeaderSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a"
+  }
 }
