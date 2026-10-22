@@ -54,6 +54,9 @@ export function invoiceLineSubscription(line: Stripe.InvoiceLineItem): string | 
   if(line.parent)return line.parent.type==='subscription_item_details'?idOf(line.parent.subscription_item_details?.subscription):null;
   return idOf(line.subscription);
 }
+export function subscriptionCancelsAtPeriodEnd(subscription: Stripe.Subscription): boolean {
+  return subscription.cancel_at_period_end||!!subscription.cancel_at&&subscription.cancel_at===subscription.items.data[0]?.current_period_end;
+}
 async function reconcileSubscription(client: Stripe, subscription: Stripe.Subscription, eventCreated = 0) {
   const customerId = idOf(subscription.customer);
   if (!customerId) return null;
@@ -66,7 +69,7 @@ async function reconcileSubscription(client: Stripe, subscription: Stripe.Subscr
   if (owner[0].stripe_subscription_id && owner[0].stripe_subscription_id !== subscription.id && terminal.has(owner[0].status)) await ensureWallet(owner[0].user_id);
   const rows = await sql`UPDATE aux_subscriptions SET stripe_subscription_id=${subscription.id},plan=${plan.slug},status=${subscription.status},
       interval=${item.price.recurring?.interval === 'year' ? 'year' : 'month'},period_start=${new Date(item.current_period_start * 1000).toISOString()},
-      period_end=${new Date(item.current_period_end * 1000).toISOString()},cancel_at_period_end=${subscription.cancel_at_period_end},
+      period_end=${new Date(item.current_period_end * 1000).toISOString()},cancel_at_period_end=${subscriptionCancelsAtPeriodEnd(subscription)},
       credit_anchor=CASE WHEN stripe_subscription_id IS DISTINCT FROM ${subscription.id} THEN NULL ELSE credit_anchor END,
       paid_through=CASE WHEN stripe_subscription_id IS DISTINCT FROM ${subscription.id} THEN NULL WHEN ${subscription.status}='canceled' AND ${subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : null}::timestamptz IS NOT NULL THEN least(paid_through,${subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : null}::timestamptz) ELSE paid_through END,
       paid_monthly_grant_micros=CASE WHEN stripe_subscription_id IS DISTINCT FROM ${subscription.id} THEN 0 ELSE paid_monthly_grant_micros END,
