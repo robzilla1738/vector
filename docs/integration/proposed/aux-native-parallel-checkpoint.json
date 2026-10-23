@@ -1,14 +1,14 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T03:29:42.271779+00:00",
+  "recordedAt": "2026-10-23T03:40:16.796966+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
   "liveHandlesVerifiedThisCheckpoint": [
     {
       "session": 1414,
-      "role": "first official Node26.5.0 static library build; actual ICU compilation observed",
-      "state": "live; no embedding link or runtime acceptance"
+      "role": "first actual Node26.5.0 static library build",
+      "state": "same handle confirmed live; actual build log advanced to LIEF"
     }
   ],
   "agentReportedPendingChecks": [
@@ -23,14 +23,30 @@
     {
       "session": 22764,
       "role": "actual provider registry lifecycle fixture with fake identity/crypto/OS effects only"
+    },
+    {
+      "session": 33884,
+      "role": "one focused current read-result lifetime fixture",
+      "state": "agent reports same wrapper queued; prior recipe preserved before final source selection"
+    },
+    {
+      "session": 59690,
+      "role": "one coherent42 Swift graph: current dispatcher, embedded v2 policy/root-custody loader",
+      "state": "agent verified stopped94200/nochild, pinned rootc4e then resumed same wrapper; no duplicate graph"
+    },
+    {
+      "session": 39083,
+      "role": "paired changed WorkerHost TU retirement mapping",
+      "state": "agent reports same wrapper queued; exact6project inputs pinned"
     }
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "actual before-Node executable entry/lifetime and native parent-start pairing",
-    "new fileport2000ms timeout and lost-ACK successor: compile and focused pure wire fixture",
-    "read-only RAM result reconciliation successor: focused fixture and actual changed graph",
-    "explicit legacy custody/CSK migration and original common-addon retirement"
+    "actual executable main and finite system-ABI rendezvous receiver/link recipe",
+    "real BrowserPlatform/Supervisor adoption and auth without second daemon",
+    "same final42 graph and changed focused checks after Node library terminal",
+    "coherent final native selected-home/adoption source compile; no obsolete graph reruns",
+    "explicit legacy authority/CSK migration and final qualified entry packaging"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -58,7 +74,10 @@
     "readinessSuccessor": "caa53ca88",
     "readResultReconciliation": "5f572bca1",
     "selectedHomeRetry": "2a3474cd2",
-    "newSuccessorsStaticOnly": true
+    "newSuccessorsStaticOnly": true,
+    "embeddedImagePreparation": "c4e954511",
+    "qualifiedOwnedEntryRouting": "5bbfdb522",
+    "selectedStateHomeHolder": "4db4db25f"
   },
   "terminalRootChecks": [
     {
