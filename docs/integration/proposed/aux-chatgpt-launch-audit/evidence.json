@@ -1,0 +1,40 @@
+{
+  "schema": "aux.chatgpt.launch.static-audit.v1",
+  "date": "2026-10-23",
+  "scope": "Static authorized source inspection only; no credentials, owner state, auth flow, network request, runtime test or app mutation.",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
+  "files": [
+    {
+      "path": "out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "bytes": 12133884,
+      "sha256": "420e50d0ec08411b738eb7f74e34e56ca0719c152431f1f5abffde5cdb219306"
+    },
+    {
+      "path": "out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "bytes": 40216,
+      "sha256": "7e527d833a733dfbb7a1cdbbfb7b70ed0f62080397ee22b08b55611591ad78f0"
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/agent/assets/openai-codex-oauth-DBNnab2L.js",
+      "bytes": 582,
+      "sha256": "60461fded424f53ca949539dfe3fa99f4d43becd0583abb06ebe8783f8adae05"
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/agent/assets/openai-codex-Dt_zB27s.js",
+      "bytes": 973,
+      "sha256": "084e795b3ad0791606aaf561268d1caea1549c2a7f509ec3159ff48e6c14ef4e"
+    }
+  ],
+  "absentTermsInDaemonIndex": {
+    "dynamic_agent_client": 0,
+    "ext_agent_host_id": 0,
+    "chatgpt.tokens.use.direct": 0,
+    "resource.invoke": 0
+  },
+  "officialReferenceUrls": [
+    "https://developers.openai.com/siwc/token-sharing-open-source/sign-in",
+    "https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt"
+  ],
+  "runtimeAcceptance": false,
+  "acceptedUiChanged": false
+}
