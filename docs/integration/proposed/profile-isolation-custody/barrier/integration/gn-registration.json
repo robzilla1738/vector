@@ -1,0 +1,10 @@
+{
+  "format": "aux.native-host.path-defense.gn.v1",
+  "path": "chrome/browser/extensions/api/messaging/BUILD.gn",
+  "beforeSha256": "6cdc3a7d78d4b64827e68a374a29235d6267836c1a33c217ff268adc88631968",
+  "afterSha256": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+  "source": "messaging.BUILD.gn",
+  "activeSnapshotModified": false,
+  "gnChecked": false,
+  "notes": "Mac messaging links the existing aux:platform owner registry; platform depends on base/crypto/net/network-public/crx, not browser messaging. Actual GN graph validation remains required at natural build boundary."
+}
