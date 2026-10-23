@@ -70,8 +70,9 @@ async function removeSourceFixtures(sourceToken, sourceHostname) {
 }
 try {
   assert(privateDirectory && reviewPath);
-  root = resolve(privateDirectory);
-  await mkdir(root, { mode: 0o700 });
+  const candidate = resolve(privateDirectory);
+  await mkdir(candidate, { mode: 0o700 });
+  root = candidate;
   assert.equal(await realpath(root), root);
   const review = JSON.parse(await readFile(reviewPath));
   assert.equal(review.format, 'aux.hosted-restore-12.review.v1');
