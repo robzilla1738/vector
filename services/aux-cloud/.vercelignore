@@ -4,3 +4,6 @@ evidence/
 node_modules/
 .next/
 *.tsbuildinfo
+
+*.local.*
+**/*.local.*

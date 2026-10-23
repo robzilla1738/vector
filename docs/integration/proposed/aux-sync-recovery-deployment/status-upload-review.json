@@ -1,0 +1,18 @@
+{
+  "format": "aux.recovery-status.preview.upload-review.v1",
+  "runtimeCommit": "af240ac81",
+  "target": "preview",
+  "project": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "team": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "files": 113,
+  "totalBytes": 628705,
+  "credentialsAndAllLocalProofFilesExcluded": true,
+  "inventorySha256": "7d9d4562c3e1e6557dffb6eaaa6e2c64b1fbbae0f055f98676dcf72acba315d8",
+  "excludedLocalProofFieldsReviewed": "Only store IDs, sizes, hashes, timestamps and synthetic restore markers; no credentials.",
+  "correction": {
+    "unintendedUnusedPreview": "dpl_AZsRcwmesUsAviUJiDVfS3Bs6cCS",
+    "removed": true,
+    "devAliasChanged": false,
+    "productionTouched": false
+  }
+}
