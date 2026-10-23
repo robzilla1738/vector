@@ -1,0 +1,23 @@
+{
+  "format": "aux.recovery-status.development.deployment.v1",
+  "deploymentId": "dpl_A5688gw74rBAKPU39GJjQpC4P2CJ",
+  "deploymentUrl": "https://aux-cloud-1cc8qpa6y-robzilla1738s-projects.vercel.app",
+  "origin": "https://dev-cloud.getaux.co",
+  "target": "preview",
+  "state": "READY",
+  "runtimeChangeCommit": "af240ac81",
+  "uploadReviewCommit": "08c2bc329",
+  "project": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "team": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "buildEnvironment": "development",
+  "profileGuardAndTypeScriptObserved": true,
+  "buildLogTerminal": 20411,
+  "aliasExitCode": 0,
+  "productionActivated": false,
+  "marketingChanged": false,
+  "desktopActivated": false,
+  "unusedFailedReviewPreviewRemoved": true,
+  "changedApiAssertions": 4,
+  "initialFixtureCleanupFailed": true,
+  "persistedScopeCleanupAfterwardsVerified": true
+}

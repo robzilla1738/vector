@@ -1,0 +1,24 @@
+{
+  "format": "aux.sync-recovery.status-deployed.v1",
+  "deploymentId": "dpl_A5688gw74rBAKPU39GJjQpC4P2CJ",
+  "origin": "https://dev-cloud.getaux.co",
+  "apiAssertionsPassedBeforeCleanupFailure": 4,
+  "states": [
+    "provisioning:false:0",
+    "ready:false:0",
+    "ready:true:1",
+    "device_required:true:1"
+  ],
+  "initialTerminalSession": 38112,
+  "initialExitCode": 1,
+  "initialFailure": "Fixture cleanup attempted user removal before the session FK was removed.",
+  "cleanupOnlyExitCode": 0,
+  "fixtureRemoved": true,
+  "cleanupUsesPersistedOwnedScope": true,
+  "newScriptEntireFlowRetested": false,
+  "syntheticAuxJwt": true,
+  "existingUserDataAccessed": false,
+  "nativeOrDesktopExecuted": false,
+  "providerSignInOrCryptoSuiteRepeated": false,
+  "paidProviderCalls": 0
+}
