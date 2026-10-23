@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T04:54:10.271125+00:00",
+  "recordedAt": "2026-10-23T05:30:00.254805+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -97,7 +97,8 @@
       "oneOfflineFixturePassed": true,
       "providerRestoreRun": false,
       "cutoverAuthorized": false,
-      "wrappingKeyPreservedSeparatelyFromAuthSecret": true
+      "wrappingKeyPreservedSeparatelyFromAuthSecret": true,
+      "operatorInstructions": "services/aux-cloud/docs/recovery.md"
     }
   },
   "runtimeAcceptance": false,
@@ -345,11 +346,18 @@
   "rootQueuedChecks": [
     {
       "session": 91150,
-      "role": "actual combined831source browserbuild incrementalresume",
+      "role": "actualcombined831source browserbuild incrementalresume",
       "receiptOnSuccess": "out/aux-native-safe-containers-browser-build.json",
       "jobs": 2,
       "nativeSourceFrozen": true,
-      "state": "samehandleverifiedlive; actual core/native/notification/UI objects advancing"
+      "state": "samehandleconfirmedlive; latestactual36/557 finished at2m10s (adaptivecount, notoverallpercentage)"
+    },
+    {
+      "session": 68715,
+      "role": "sharedsafecontainers transport-onlydaemonrecompile/link",
+      "output": "/tmp/aux-native-main-safe-transport-20261023",
+      "state": "samehandleconfirmedlive, queuedbehind91150; tenunchangedobjectsretained",
+      "sourceCommit": "61f1a4bac"
     }
   ],
   "lastBuildObservation": {

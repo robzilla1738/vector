@@ -1,3 +1,9 @@
+# Consistent native source build continues; operator recovery code complete locally — 2026-10-23
+
+The same actual browser build91150 remains live, advancing through platform/native, notification and preserved UI objects (last observed36 finished with adaptive557 scheduled). It has not linked or replaced the app. The paired one-object daemon relink68715 is queued behind it, retaining ten unchanged successful objects and using the exact same safe-container transport source; no duplicate Node build or provider graph runs.
+
+Local cloud restore implementation and its operator instructions are committed, with22 exact source/schema pins independently verified. Its one current12-schema offline fixture passes; no real pg_restore, Neon/Blob restoration or cutover occurred. Independent backup storage/key custody, scheduling/retention/alerts, external-state reconciliation and a real restore drill remain operational work. Paid AI/Gateway terms, current exact-byte native activation/signing and production/account configuration remain separate unresolved boundaries. The goal is not complete. Current accepted UI/app, owner data and existing provider projects remain unchanged.
+
 # Native-path buffer fixes compile; combined browser resume advances — 2026-10-23
 
 Actual in-tree object87362 passed the selected-home buffer fixes. Targeted check2233 then passed all three remaining peer/owned-child/cold-launch objects with source-path-sensitive Chromium checks enabled. These fixes use bounded containers/CFData copying and volatile element writes; authentication, exact NUL-inclusive wire domain, ABI layout, ownership and size checks remain unchanged. No warning suppressions or unsafe TODO exemptions were added.
