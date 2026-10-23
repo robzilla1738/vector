@@ -1,6 +1,6 @@
 {
   "format": "aux.stripe.onboarding-progress.v1",
-  "recordedAt": "2026-10-23T11:43:48.833627+00:00",
+  "recordedAt": "2026-10-23T11:53:07.003190+00:00",
   "accountId": "acct_1UTgXFGl2zPejOSb",
   "accountName": "Aux",
   "observedInitialMode": "test",
@@ -14,11 +14,11 @@
     "managedPaymentsUpgradeAccepted": false
   },
   "existingAccountInformationCopied": false,
-  "currentStep": "review-and-submit-owner-action-required",
+  "currentStep": "payments-deferred-by-owner",
   "legalEntityConfirmationPending": false,
-  "finalVerificationSubmitted": false,
-  "liveAccountActivated": false,
-  "liveProductsCreated": false,
+  "finalVerificationSubmitted": true,
+  "liveAccountActivated": true,
+  "liveProductsCreated": true,
   "newCredentialsCreated": false,
   "acceptedUiChanged": false,
   "legalEntity": "Courson Digital LLC",
@@ -44,5 +44,24 @@
   "taxProductEnrollmentSkipped": true,
   "climateContributionEnrollmentSkipped": true,
   "representativeContactUsesOwnerProvidedStripePhone": true,
-  "finalAgreeAndSubmitEnabled": true
+  "finalAgreeAndSubmitEnabled": true,
+  "ownerSubmittedFinalVerification": true,
+  "observedLiveDashboard": true,
+  "liveAccountProviderCapabilitiesVerified": false,
+  "paidLaunchDeferred": true,
+  "createdBeforePivot": [
+    {
+      "productId": "prod_VUgIfM4F7pO2jp",
+      "name": "Aux Pro",
+      "monthlyUsd": 20,
+      "archived": true,
+      "archiveVerifiedInActualDashboard": true
+    }
+  ],
+  "furtherStripeSetupStopped": true,
+  "livePaymentCredentialsCreated": false,
+  "liveWebhookCreated": false,
+  "livePortalCreated": false,
+  "customersCreated": 0,
+  "chargesCreated": 0
 }

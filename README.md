@@ -2,6 +2,8 @@
 
 Aux reuses the implementation supplied by the owner, preserving its UI and behavior while changing branding, assets and identifiers to Aux. The clean-room reconstruction approach was superseded by the owner's direction on 2026-10-19.
 
+Launch scope (2026-10-23): no Aux payments. Users bring provider API keys or connect eligible ChatGPT/Codex plan access; Aux subscriptions and Aux-funded inference are deferred. Preserve the current UI. The [provider-funded launch plan](docs/plans/2026-10-23-provider-funded-launch.md) records exact implementation and remaining ChatGPT integration/runtime acceptance boundaries. Source defaults and future Vercel configurations now disable payments and hosted inference; this does not replace an existing deployed Preview or the accepted desktop app.
+
 Owner-directed exception (2026-10-20): Aux will not ship its own password manager or the supplied Vault product. Users bring their existing password manager, such as 1Password, through its browser extension. The local-browser pass removes Vault surfaces/bundles and decouples browser/agent startup from Vault setup. Third-party extension and desktop-app integration are not yet verified. See `docs/acceptance/local-browser-pass.json` for build and runtime evidence.
 
 Read the [supplied contract](docs/design/aside-contract.md), [active reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), [workspace rules](AGENTS.md) and [current progress](docs/STATUS.md). Preserve the supplied components and matching runtime contracts. Independent replacements remain recoverable in Git and must not displace the supplied UI.
