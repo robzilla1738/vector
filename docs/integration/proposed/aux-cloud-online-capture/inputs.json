@@ -6,7 +6,8 @@
     "docs/integration/proposed/aux-cloud-online-capture/baseline/cloud-recovery.mjs": "75f92db7d672486253df939f3a0339a9fe2b229566d9db18437143048c35ae6d",
     "docs/integration/proposed/aux-cloud-online-capture/tests/online-objects.test.mjs": "f7a808d0045c41928c332b3b3f414ea5847993291c5a10b105aa401c9d0ca994",
     "docs/integration/proposed/aux-cloud-online-capture/capture.patch": "63f9f6a71a3e0abc7d0d715d5a6806d8b09e4342d332824b94cbb4ffe4fcb037",
-    "docs/integration/proposed/aux-cloud-online-capture/avatar-immutability.patch": "a2f5a071ead5a452cbd49ed90aba86c3739501f3c310792c8548022683ab2592"
+    "docs/integration/proposed/aux-cloud-online-capture/avatar-immutability.patch": "a2f5a071ead5a452cbd49ed90aba86c3739501f3c310792c8548022683ab2592",
+    "docs/integration/proposed/aux-cloud-online-capture/baseline/package-before-online-promotion.json": "712889e384381b0f7c8ef4711d077d916284d228fc2865ffa33c906d3c35d75b"
   },
   "sourceDependencies": {
     "services/aux-cloud/scripts/cloud-recovery.mjs": "75f92db7d672486253df939f3a0339a9fe2b229566d9db18437143048c35ae6d",
@@ -15,7 +16,7 @@
     "services/aux-cloud/src/attachments.ts": "0bddb61f3dcc3c44118b41ee944a079fbe1adf3fdb1fbba860d12bf9335aa0a8",
     "services/aux-cloud/src/session-sync.ts": "d99a079fe8ab73e095aa13d15521575ff3de0602371f1904f5fc368d477c7dde",
     "services/aux-cloud/src/schema-manifest.json": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
-    "services/aux-cloud/package.json": "712889e384381b0f7c8ef4711d077d916284d228fc2865ffa33c906d3c35d75b",
+    "services/aux-cloud/package.json": "d147f64a50e4c67091d5d9cdf2ade4704a0ebc8fc96bc0713655a645a800f41a",
     "services/aux-cloud/migrations/001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
     "services/aux-cloud/migrations/002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
     "services/aux-cloud/migrations/003-billing.sql": "599685cfbf7f8d3b5c7718e9a929b8c9ddd31538b00356d77a17fc267fcb9c6f",
@@ -37,5 +38,15 @@
   "serviceMutated": false,
   "deployed": false,
   "credentialsRead": false,
-  "providerOrProductionExecuted": false
+  "providerOrProductionExecuted": false,
+  "packageScriptPromotion": {
+    "baseline": "docs/integration/proposed/aux-cloud-online-capture/baseline/package-before-online-promotion.json",
+    "baselineSha256": "712889e384381b0f7c8ef4711d077d916284d228fc2865ffa33c906d3c35d75b",
+    "target": "services/aux-cloud/package.json",
+    "before": "    \"migrate\": \"node --env-file=.env.local scripts/migrate.mjs\"\n",
+    "after": "    \"migrate\": \"node --env-file=.env.local scripts/migrate.mjs\",\n    \"backup:capture:online\": \"node scripts/cloud-recovery-online.mjs capture\"\n",
+    "onlyChange": "one backup:capture:online script addition; no dependency/version changes",
+    "historicalInputs": "docs/integration/proposed/aux-cloud-online-capture/inputs-before-service-promotion.json",
+    "historicalInputsSha256": "f40689232e3dafdcc599e7f4bc74b1364efdcdf56882ac102c8a2a3136f82c32"
+  }
 }

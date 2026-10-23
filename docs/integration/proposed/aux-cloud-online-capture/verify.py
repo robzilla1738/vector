@@ -25,6 +25,16 @@ def main():
     for relative, expected in inputs['sourceDependencies'].items():
         if digest(source_root / relative) != expected:
             raise SystemExit('Changed application contract: ' + relative)
+    promotion = inputs.get('packageScriptPromotion')
+    if promotion:
+        baseline = (ROOT / promotion['baseline']).read_bytes()
+        assert hashlib.sha256(baseline).hexdigest() == promotion['baselineSha256']
+        before, after = promotion['before'].encode(), promotion['after'].encode()
+        assert baseline.count(before) == 1
+        assert (source_root / promotion['target']).read_bytes() == baseline.replace(before, after)
+        assert digest(ROOT / promotion['historicalInputs']) == promotion['historicalInputsSha256']
+        historical = json.loads((HERE / 'evidence.json').read_text())
+        assert historical['attempts'][-1]['inputsSha256'] == promotion['historicalInputsSha256']
     sdk = inputs['installedPublicSdkDeclaration']
     sdk_path = source_root / sdk['path']
     assert digest(sdk_path) == sdk['sha256']

@@ -1,6 +1,6 @@
 # Online consistent recovery capture (inactive operator successor)
 
-This extends the actual local `cloud-recovery.mjs` tool. It does not mount an API, change deployment/DB schema, pause traffic, schedule a job, upload a backup, delete provider data or activate production. No credentials or provider resources were read during preparation.
+This extends the actual local `cloud-recovery.mjs` tool. It does not mount an API, change deployment/DB schema, pause traffic, schedule a job, upload a backup, delete provider data or activate production. No credentials or provider resources were read during preparation. The two scripts are now promoted byte-identically into the local service scripts directory; `integration.json` records that local promotion, without running a backup or changing a provider deployment.
 
 ## Consistency model
 
@@ -29,3 +29,7 @@ The first fixture run exposed an eager composed-stream error before the bundle p
 - Agreed RPO/retention and real retention deletion. The existing 7-day manifest deadline refuses old unpacking; it does not erase files, remote copies or keys.
 - Scheduler, bounded retry/backoff on concurrent deletion, and alerts for missing/stale completed backups or failed independent uploads. No scheduler or success Boolean was fabricated.
 - A reviewed isolated real restore using the current complete schema, both object families, transient-row cleanup and session revocation, with observed RTO and deletion/privacy handling. No automatic cutover exists here.
+
+## Package promotion provenance
+
+`baseline/package-before-online-promotion.json` is the exact prior HEAD package file, and `inputs-before-service-promotion.json` preserves the original source manifest used by the historical final fixture. The current verifier proves the package differs only by the exact `backup:capture:online` script addition. Dependency versions remain byte-identical. Current source pins cover that reviewed packaging change; the original fixture evidence and its input hashes remain unchanged. Only the previously failing static check was rerun for this promotion.

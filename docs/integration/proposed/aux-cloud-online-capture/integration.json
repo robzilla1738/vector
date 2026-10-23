@@ -1,0 +1,37 @@
+{
+  "format": "aux.online-capture.integration.v1",
+  "files": [
+    {
+      "source": "docs/integration/proposed/aux-cloud-online-capture/source/cloud-recovery-online.mjs",
+      "target": "services/aux-cloud/scripts/cloud-recovery-online.mjs",
+      "sha256": "fb35b82925c87d27857173330547055152045c8f21a0631aa8a884516852f1fa",
+      "byteIdentical": true
+    },
+    {
+      "source": "docs/integration/proposed/aux-cloud-online-capture/source/online-recovery-objects.mjs",
+      "target": "services/aux-cloud/scripts/online-recovery-objects.mjs",
+      "sha256": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f",
+      "byteIdentical": true
+    }
+  ],
+  "avatarExplicitDefaultPatchApplied": false,
+  "backupExecuted": false,
+  "productionDataRead": false,
+  "providerDeploymentChanged": false,
+  "schedulerConfigured": false,
+  "packagePromotion": {
+    "target": "services/aux-cloud/package.json",
+    "baseline": "docs/integration/proposed/aux-cloud-online-capture/baseline/package-before-online-promotion.json",
+    "baselineSha256": "712889e384381b0f7c8ef4711d077d916284d228fc2865ffa33c906d3c35d75b",
+    "currentSha256": "d147f64a50e4c67091d5d9cdf2ade4704a0ebc8fc96bc0713655a645a800f41a",
+    "exactScriptOnlyAdditionVerified": true,
+    "historicalInputs": "docs/integration/proposed/aux-cloud-online-capture/inputs-before-service-promotion.json",
+    "historicalInputsSha256": "f40689232e3dafdcc599e7f4bc74b1364efdcdf56882ac102c8a2a3136f82c32"
+  },
+  "currentStaticInputsSha256": "14639756328dceabd458b75ce02f60c41c13830097c4ef4a7dd164fd88a1f97a",
+  "currentStaticVerifierSha256": "e540227f962b6600f347ffaf713af82e8808fde7e3b22a308af266e22680a986",
+  "fixtureRerun": false,
+  "historicalFixtureInputsRetained": true,
+  "staticVerificationPassed": true,
+  "historicalFixtureEvidenceChanged": false
+}

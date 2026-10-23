@@ -13,7 +13,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/*.test.ts",
-    "migrate": "node --env-file=.env.local scripts/migrate.mjs"
+    "migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "backup:capture:online": "node scripts/cloud-recovery-online.mjs capture"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.121",
