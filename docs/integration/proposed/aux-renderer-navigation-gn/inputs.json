@@ -1,0 +1,73 @@
+{
+  "format": "aux.renderer-navigation.gn-owner.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "parentManifest": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-noncreating-profile-manager-style/manifest.json",
+  "parentManifestSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43",
+  "laneInputs": "docs/integration/proposed/aux-renderer-navigation-admission/inputs.json",
+  "laneInputsSha256": "92c434321e4af27c13a706c34a1e4d23875f44f12f1674d0f54eadc467685e54",
+  "patchSha256": "385055935b675ee219f70049fae6cbb01b31a9b93e940bb8e248f4e552db4bd5",
+  "files": [
+    {
+      "path": "content/browser/BUILD.gn",
+      "inputSha256": "a29f7df3185c09d8c4186110a081e664304ccfd62db1cb6a3477220c92c683ef",
+      "outputSha256": "d909e5330be826974016bf35b63c5b42f7f09471ccbdb61b14b45094d8c66736",
+      "edits": [
+        {
+          "find": "    \"renderer_host/async_before_unload_commit_deferring_condition.h\",\n",
+          "replace": "    \"renderer_host/async_before_unload_commit_deferring_condition.h\",\n    \"renderer_host/aux_renderer_navigation_admission.cc\",\n    \"renderer_host/aux_renderer_navigation_admission.h\",\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "inputSha256": "2d8eb4997114604e8212a92ab397b132cb6bf19501ffc59ac355a15591eea3dd",
+      "outputSha256": "3bae61738d23816df7e3afc48a2b778606dfecc983f0550bebb3335d3856c2be",
+      "edits": [
+        {
+          "find": "    \"authenticator_common.h\",\n",
+          "replace": "    \"authenticator_common.h\",\n    \"aux_renderer_navigation_admission.h\",\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "inputSha256": "781612e1f5ef684195b48325f327031d2d2a7de46b37abbe48320bac70ede5e3",
+      "outputSha256": "50e33255b13eeb262f750077090fed6cc8dcbe6aed4b62184ca118f6fdc45749",
+      "edits": [
+        {
+          "find": "#include \"extensions/browser/service_worker/service_worker_task_queue.h\"",
+          "replace": "#include \"content/public/browser/aux_renderer_navigation_admission.h\"\n#include \"extensions/browser/service_worker/service_worker_task_queue.h\"",
+          "count": 1
+        },
+        {
+          "find": "      extension_worker_starts;\n",
+          "replace": "      extension_worker_starts;\n  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "inputSha256": "36e9e9f8ff7b829b6ecb0d3519007cb239559171ff988151b0c2497893f8da8a",
+      "outputSha256": "fff924e29cab3c34269088ba1b3a49c622fb2d8debc878daf111e81992be84d2",
+      "edits": [
+        {
+          "find": "      InspectStartAdmissionForMigration();\n",
+          "replace": "      InspectStartAdmissionForMigration();\n  result.renderer_navigation = content::aux_migration::\n      InspectRendererNavigationAdmissionForMigration();\n",
+          "count": 1
+        },
+        {
+          "find": "  CloseAsyncProfileCreationAdmission();\n",
+          "replace": "  content::aux_migration::CloseRendererNavigationAdmissionForMigration();\n  CloseAsyncProfileCreationAdmission();\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "applied": false,
+  "compiled": false,
+  "uiViewsChanged": false,
+  "state2Authorized": false
+}

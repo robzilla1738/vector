@@ -1,0 +1,58 @@
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -1623,6 +1623,8 @@
+     "renderer_host/ancestor_throttle.h",
+     "renderer_host/async_before_unload_commit_deferring_condition.cc",
+     "renderer_host/async_before_unload_commit_deferring_condition.h",
++    "renderer_host/aux_renderer_navigation_admission.cc",
++    "renderer_host/aux_renderer_navigation_admission.h",
+     "renderer_host/back_forward_cache_disabling_feature_handle.cc",
+     "renderer_host/back_forward_cache_disabling_feature_handle.h",
+     "renderer_host/batched_proxy_ipc_sender.cc",
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -40,6 +40,7 @@
+     "audio_stream_broker.cc",
+     "audio_stream_broker.h",
+     "authenticator_common.h",
++    "aux_renderer_navigation_admission.h",
+     "ax_inspect_factory.cc",
+     "ax_inspect_factory.h",
+     "back_forward_cache.h",
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.h
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.h
+@@ -8,6 +8,7 @@
+ #include "chrome/browser/aux/owned_direct_helper_quiesce.h"
+ #include "chrome/browser/profiles/aux_async_profile_creation_admission.h"
+ #include "chrome/browser/ui/aux_session_writer_participant.h"
++#include "content/public/browser/aux_renderer_navigation_admission.h"
+ #include "extensions/browser/service_worker/service_worker_task_queue.h"
+ 
+ namespace aux {
+@@ -21,6 +22,7 @@
+   AsyncProfileCreationAdmissionSnapshot async_profile_creation;
+   extensions::ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
+       extension_worker_starts;
++  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};
+   std::optional<OwnedDirectHelperQuiesceObservation> helpers;
+   std::optional<SessionWriterParticipantObservation> sessions;
+ };
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.cc
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.cc
+@@ -60,6 +60,8 @@
+   result.async_profile_creation = InspectAsyncProfileCreationAdmission();
+   result.extension_worker_starts = extensions::ServiceWorkerTaskQueue::
+       InspectStartAdmissionForMigration();
++  result.renderer_navigation = content::aux_migration::
++      InspectRendererNavigationAdmissionForMigration();
+   if (state.helper_observed) {
+     // Carrier operations may outlive the daemon callback. Keep their actual
+     // current custody snapshot rather than treating that callback as a drain.
+@@ -82,6 +84,7 @@
+   state.close_requested = true;
+   state.helper_pending = true;
+   state.session_pending = true;
++  content::aux_migration::CloseRendererNavigationAdmissionForMigration();
+   CloseAsyncProfileCreationAdmission();
+   extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();
+ 

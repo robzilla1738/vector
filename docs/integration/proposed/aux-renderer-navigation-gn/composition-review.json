@@ -1,0 +1,25 @@
+{
+  "format": "aux.renderer-navigation.gn-owner.review.v1",
+  "parentManifestSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43",
+  "laneInputsSha256": "92c434321e4af27c13a706c34a1e4d23875f44f12f1674d0f54eadc467685e54",
+  "composition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-renderer-navigation/owner",
+  "compositionSha256": "65cd78c54b77ffa18eee83ea18746bcdba814c45b4fea89bb723ffc70d07da4c",
+  "sourceRecords": 798,
+  "assets": 23,
+  "changedSources": [
+    "content/browser/renderer_host/render_process_host_impl.cc",
+    "content/browser/renderer_host/navigation_request.cc",
+    "content/public/browser/aux_renderer_navigation_admission.h",
+    "content/browser/renderer_host/aux_renderer_navigation_admission.h",
+    "content/browser/renderer_host/aux_renderer_navigation_admission.cc",
+    "content/browser/BUILD.gn",
+    "content/public/browser/BUILD.gn",
+    "chrome/browser/ui/aux_owned_browser_quiesce.h",
+    "chrome/browser/ui/aux_owned_browser_quiesce.cc"
+  ],
+  "applied": false,
+  "compiled": false,
+  "viewsOrArtworkChanged": false,
+  "state2Authorized": false,
+  "wholeProfileCustodyClaimed": false
+}
