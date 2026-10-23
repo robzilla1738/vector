@@ -1,0 +1,15 @@
+# Optional fixture only. No browser/startup dependency; root owns registration.
+executable("aux_legacy_inbox_codec_fixture") {
+  testonly = true
+  sources = [
+    "main.cc",
+    "//chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+    "//chrome/browser/notifications/aux_legacy_inbox_codec.h",
+    "//chrome/browser/notifications/aux_inbox_codec.cc",
+    "//chrome/browser/notifications/aux_inbox_codec.h",
+  ]
+  deps = [
+    "//base",
+    "//crypto",
+  ]
+}

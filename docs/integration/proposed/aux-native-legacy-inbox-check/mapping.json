@@ -1,0 +1,44 @@
+{
+  "format": "aux.legacy-inbox.optional-gn-fixture.v1",
+  "target": "//chrome/browser/aux/legacy_inbox_fixture:aux_legacy_inbox_codec_fixture",
+  "buildDirectory": "out/AuxFast",
+  "shippingDependency": false,
+  "files": [
+    {
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.h",
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.h",
+      "nativeDestination": "chrome/browser/notifications/aux_legacy_inbox_codec.h",
+      "sha256": "e2a5bcec03489bb69b5854d32ceaa55a73786fce32228f69d9d6ec1e56ec0d5a"
+    },
+    {
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+      "nativeDestination": "chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+      "sha256": "5f11bac3d2b7a686a9c3ba865036fb2a7e2f5463a66a8611e6c2b76f5446acf7"
+    },
+    {
+      "origin": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h",
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_inbox_codec.h",
+      "nativeDestination": "chrome/browser/notifications/aux_inbox_codec.h",
+      "sha256": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c"
+    },
+    {
+      "origin": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc",
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_inbox_codec.cc",
+      "nativeDestination": "chrome/browser/notifications/aux_inbox_codec.cc",
+      "sha256": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9"
+    },
+    {
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-decoder/tests/legacy-inbox-test.cc",
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/main.cc",
+      "nativeDestination": "chrome/browser/aux/legacy_inbox_fixture/main.cc",
+      "sha256": "a69ba69cd7f381924fb2aafbc45aee334dc514fcfe7aa9cb3c04085686a4ce48"
+    },
+    {
+      "origin": null,
+      "preparedSource": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/BUILD.gn",
+      "nativeDestination": "chrome/browser/aux/legacy_inbox_fixture/BUILD.gn",
+      "sha256": "54a924b736fb4ff4e6afd5af96c1b67e33b65070713c8338947a8847d9a188cf"
+    }
+  ]
+}
