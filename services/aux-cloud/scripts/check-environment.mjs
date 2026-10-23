@@ -3,13 +3,15 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 // Errors name configuration fields only; never include their values.
-export const requiredEnvironmentKeys=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','STRIPE_PORTAL_CONFIGURATION_ID','NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY','STRIPE_PRICE_PRO_MONTH','STRIPE_PRICE_PRO_YEAR','STRIPE_PRICE_MAX_MONTH','STRIPE_PRICE_MAX_YEAR','CRON_SECRET'];
+export const requiredEnvironmentKeys=['DATABASE_URL','CLERK_SECRET_KEY','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','NEXT_PUBLIC_APP_URL','AUX_API_ORIGIN','AUX_ALLOWED_ORIGINS','CLERK_AUTHORIZED_PARTIES','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','CRON_SECRET'];
+export const billingEnvironmentKeys=['STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','STRIPE_PORTAL_CONFIGURATION_ID','NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY','STRIPE_PRICE_PRO_MONTH','STRIPE_PRICE_PRO_YEAR','STRIPE_PRICE_MAX_MONTH','STRIPE_PRICE_MAX_YEAR'];
+export const environmentKeys = env => env.AUX_PAYMENTS_ENABLED === 'true' ? [...requiredEnvironmentKeys, ...billingEnvironmentKeys] : requiredEnvironmentKeys;
 export function checkEnvironment(env, resources) {
   const target=env.VERCEL_TARGET_ENV||env.VERCEL_ENV||'development';
   const production=target==='production'||env.VERCEL_ENV==='production';
   const profile=resources[production?'production':'development'];
   if(!profile) throw Error('Production resources have not been configured; use the development Preview target.');
-  for(const name of requiredEnvironmentKeys) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
+  for(const name of environmentKeys(env)) if(!env[name]?.trim()) throw Error('Missing configuration: '+name);
   for(const name of ['AUX_AUTH_SECRET','CRON_SECRET'])if(env[name].length<32)throw Error('Invalid configuration: '+name);
   if(!/^[A-Za-z0-9+/]{43}=$/.test(env.AUX_DATA_ENCRYPTION_KEY)||Buffer.from(env.AUX_DATA_ENCRYPTION_KEY,'base64').length!==32)throw Error('Invalid configuration: AUX_DATA_ENCRYPTION_KEY');
   const origin=(name,expected)=>{try{const u=new URL(env[name]);if(u.origin!==expected||u.href!==expected+'/')throw Error();}catch{throw Error('Invalid configuration: '+name);}};
@@ -20,8 +22,9 @@ export function checkEnvironment(env, resources) {
     const values=env[name].split(',').map(v=>v.trim());
     if(!values.includes(profile.appOrigin)||values.some(value=>{try{const u=new URL(value);return u.origin!==value||!(value===profile.appOrigin||(!production&&u.hostname==='localhost'&&u.protocol==='http:'));}catch{return true;}}))throw Error('Invalid configuration: '+name);
   }
-  for(const [name,prefix] of [['CLERK_SECRET_KEY',production?'sk_live_':'sk_test_'],['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',production?'pk_live_':'pk_test_'],['STRIPE_SECRET_KEY',production?'rk_live_':'rk_test_'],['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',production?'pk_live_':'pk_test_']])if(!env[name].startsWith(prefix))throw Error('Wrong provider mode: '+name);
-  return {profile:production?'production':'development',target};
+  const providerModes=[['CLERK_SECRET_KEY',production?'sk_live_':'sk_test_'],['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',production?'pk_live_':'pk_test_'],['STRIPE_SECRET_KEY',production?'rk_live_':'rk_test_'],['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',production?'pk_live_':'pk_test_']];
+  for(const [name,prefix] of providerModes)if((!name.includes('STRIPE')||env.AUX_PAYMENTS_ENABLED==='true')&&!env[name]?.startsWith(prefix))throw Error('Wrong provider mode: '+name);
+  return {profile:production?'production':'development',target,paymentsEnabled:env.AUX_PAYMENTS_ENABLED==='true',hostedAiEnabled:env.AUX_HOSTED_AI_ENABLED==='true'};
 }
 
 export async function migrationInventory() {

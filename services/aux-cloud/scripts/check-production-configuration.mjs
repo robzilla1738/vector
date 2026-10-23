@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { requiredEnvironmentKeys } from './check-environment.mjs';
+import { environmentKeys } from './check-environment.mjs';
 
 const project='prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB',team='team_aFPyA9tVAkB2WegquB3aADsL';
 const expectedPublic={NEXT_PUBLIC_APP_URL:'https://app.getaux.co',AUX_API_ORIGIN:'https://api.getaux.co',AUX_SHARE_ORIGIN:'https://share.getaux.co',RESEND_FROM:'Aux <hello@notify.getaux.co>',AUX_ALLOWED_ORIGINS:'https://app.getaux.co',CLERK_AUTHORIZED_PARTIES:'https://app.getaux.co'};
@@ -14,9 +14,14 @@ export function inspectProductionConfiguration(rows,resourceProfileConfigured) {
   const production=rows.filter(row=>row.target.includes('production'));
   if(new Set(production.map(row=>row.key)).size!==production.length)throw Error('Ambiguous production environment metadata.');
   const byKey=new Map(production.map(row=>[row.key,row]));
-  const missing=requiredEnvironmentKeys.filter(key=>!byKey.has(key));
-  const scopeMismatches=[...secrets,'DATABASE_URL','BLOB_READ_WRITE_TOKEN'].filter(key=>byKey.has(key)&&(byKey.get(key).target.length!==1||byKey.get(key).target[0]!=='production'));
-  const typeMismatches=secrets.filter(key=>byKey.has(key)&&byKey.get(key).type!=='sensitive');
+  const modeNames=['AUX_PAYMENTS_ENABLED','AUX_HOSTED_AI_ENABLED'];
+  const launchFlags=Object.fromEntries(modeNames.map(key=>[key,byKey.get(key)?.type==='plain'?byKey.get(key).value:undefined]));
+  const launchModeUnverified=modeNames.filter(key=>byKey.has(key)&&byKey.get(key).type!=='plain');
+  const requiredKeys=environmentKeys(launchFlags);
+  const missing=requiredKeys.filter(key=>!byKey.has(key));
+  const activeSecrets=secrets.filter(key=>!key.startsWith('STRIPE_')||launchFlags.AUX_PAYMENTS_ENABLED==='true');
+  const scopeMismatches=[...activeSecrets,'DATABASE_URL','BLOB_READ_WRITE_TOKEN'].filter(key=>byKey.has(key)&&(byKey.get(key).target.length!==1||byKey.get(key).target[0]!=='production'));
+  const typeMismatches=activeSecrets.filter(key=>byKey.has(key)&&byKey.get(key).type!=='sensitive');
   for(const key of ['DATABASE_URL','BLOB_READ_WRITE_TOKEN'])if(byKey.has(key)&&!['sensitive','encrypted'].includes(byKey.get(key).type))typeMismatches.push(key);
   const publicValuesUnverified=Object.keys(expectedPublic).filter(key=>byKey.get(key)?.type==='encrypted');
   const publicValueMismatches=Object.entries(expectedPublic).filter(([key,value])=>byKey.has(key)&&byKey.get(key).type!=='encrypted'&&(byKey.get(key).type!=='plain'||byKey.get(key).value!==value)).map(([key])=>key);
@@ -30,7 +35,7 @@ export function inspectProductionConfiguration(rows,resourceProfileConfigured) {
     if(publishable.type==='encrypted')publicValuesUnverified.push('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
     else if(!clerkHost)publicValueMismatches.push('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
   }
-  return {projectId:project,teamId:team,environment:'production',requiredVariables:requiredEnvironmentKeys.length,missing,scopeMismatches,typeMismatches,publicValueMismatches,publicValuesUnverified,clerkHost,resourceProfileConfigured,configurationComplete:!!resourceProfileConfigured&&![missing,scopeMismatches,typeMismatches,publicValueMismatches,publicValuesUnverified].some(list=>list.length),secretValuesInspected:false,providerSecretPairingVerified:false,productionReadinessVerified:false,activationPerformed:false};
+  return {projectId:project,teamId:team,environment:'production',paymentsEnabled:launchFlags.AUX_PAYMENTS_ENABLED==='true',hostedAiEnabled:launchFlags.AUX_HOSTED_AI_ENABLED==='true',launchModeUnverified,requiredVariables:requiredKeys.length,missing,scopeMismatches,typeMismatches,publicValueMismatches,publicValuesUnverified,clerkHost,resourceProfileConfigured,configurationComplete:!!resourceProfileConfigured&&![launchModeUnverified,missing,scopeMismatches,typeMismatches,publicValueMismatches,publicValuesUnverified].some(list=>list.length),secretValuesInspected:false,providerSecretPairingVerified:false,productionReadinessVerified:false,activationPerformed:false};
 }
 
 function vercel(args) {

@@ -9,12 +9,12 @@ import {app} from './app';
 function fixture() {
   const env:Record<string,string>={};
   for(const name of ['CLERK_WEBHOOK_SIGNING_SECRET','AUX_AUTH_SECRET','AUX_DATA_ENCRYPTION_KEY','RESEND_API_KEY','RESEND_FROM','BLOB_READ_WRITE_TOKEN','STRIPE_WEBHOOK_SECRET','STRIPE_PORTAL_CONFIGURATION_ID','STRIPE_PRICE_PRO_MONTH','STRIPE_PRICE_PRO_YEAR','STRIPE_PRICE_MAX_MONTH','STRIPE_PRICE_MAX_YEAR','CRON_SECRET'])env[name]='fixture';
-  return {...env,AUX_AUTH_SECRET:'disposable-fixture-secret-at-least-32',CRON_SECRET:'disposable-internal-secret-at-least-32',AUX_DATA_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64'),VERCEL_ENV:'preview',DATABASE_URL:'postgresql://fixture:fixture@'+resources.development.databaseHost+'/fixture',NEXT_PUBLIC_APP_URL:resources.development.appOrigin,AUX_API_ORIGIN:resources.development.apiOrigin,AUX_ALLOWED_ORIGINS:resources.development.appOrigin,CLERK_AUTHORIZED_PARTIES:resources.development.appOrigin,CLERK_SECRET_KEY:'sk_test_fixture',NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:'pk_test_fixture',STRIPE_SECRET_KEY:'rk_test_fixture',NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:'pk_test_fixture'};
+  return {...env,AUX_PAYMENTS_ENABLED:'true',AUX_AUTH_SECRET:'disposable-fixture-secret-at-least-32',CRON_SECRET:'disposable-internal-secret-at-least-32',AUX_DATA_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64'),VERCEL_ENV:'preview',DATABASE_URL:'postgresql://fixture:fixture@'+resources.development.databaseHost+'/fixture',NEXT_PUBLIC_APP_URL:resources.development.appOrigin,AUX_API_ORIGIN:resources.development.apiOrigin,AUX_ALLOWED_ORIGINS:resources.development.appOrigin,CLERK_AUTHORIZED_PARTIES:resources.development.appOrigin,CLERK_SECRET_KEY:'sk_test_fixture',NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:'pk_test_fixture',STRIPE_SECRET_KEY:'rk_test_fixture',NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:'pk_test_fixture'};
 }
 test('production deployment cannot accidentally reuse development resources or provider mode',()=>{
   const env=fixture();assert.equal(checkEnvironment(env,resources).profile,'development');
-  assert.throws(()=>checkEnvironment({...env,VERCEL_ENV:'production'},resources),/Production resources/);
-  assert.throws(()=>checkEnvironment({...env,VERCEL_TARGET_ENV:'production'},resources),/Production resources/);
+  assert.throws(()=>checkEnvironment({...env,VERCEL_ENV:'production'}, {...resources,production:null}),/Production resources/);
+  assert.throws(()=>checkEnvironment({...env,VERCEL_TARGET_ENV:'production'},{...resources,production:null}),/Production resources/);
   const production={...resources,production:{...resources.development,appOrigin:'https://app.getaux.co',apiOrigin:'https://api.getaux.co'}};
   const configured={...env,VERCEL_ENV:'production',NEXT_PUBLIC_APP_URL:production.production.appOrigin,AUX_API_ORIGIN:production.production.apiOrigin};
   assert.throws(()=>checkEnvironment(configured,production),/separate database/);
@@ -43,4 +43,13 @@ test('readiness distinguishes current, stale and unavailable databases without l
     const failed=await createReadinessRoutes(async()=>{throw Error('postgres://secret-connection');}).request('/readiness',{headers});
     assert.equal(failed.status,503);assert.ok(!(await failed.text()).includes('secret'));
   }finally{if(previous===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=previous;}
+});
+
+test('provider-only launch builds without Stripe; billing opt-in restores all payment requirements',()=>{
+  const env:Record<string,string>=fixture();
+  delete env.AUX_PAYMENTS_ENABLED;
+  for(const key of Object.keys(env))if(key.includes('STRIPE'))delete env[key];
+  assert.equal(checkEnvironment(env,resources).paymentsEnabled,false);
+  assert.throws(()=>checkEnvironment({...env,AUX_PAYMENTS_ENABLED:'true'},resources),/Missing configuration: STRIPE_SECRET_KEY/);
+  assert.equal(checkEnvironment({...env,AUX_PAYMENTS_ENABLED:'TRUE'},resources).paymentsEnabled,false);
 });

@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { reserveUsage, settleUsage } from './usage';
+import { hostedAiEnabled } from './launch-mode';
 import { audioReservationSeconds } from './audio-duration';
 import { generateGatewayImages } from './image-generation';
 import { withInferenceUploads, MAX_INFERENCE_BYTES, assertInputSignature } from './inference-uploads';
@@ -18,7 +19,11 @@ function fail(status: 400 | 413 | 415 | 422 | 502 | 503, message: string): never
 let catalogCache: { until: number; models: Model[] } | undefined;
 
 export const inferenceRoutes = new Hono<Env>();
-inferenceRoutes.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
+inferenceRoutes.use('*', async (c, next) => {
+  c.header('Cache-Control', 'no-store');
+  if (c.req.method !== 'GET' && !hostedAiEnabled()) return c.json({ error: 'Aux-hosted AI is disabled. Connect your own provider in Aux.' }, 503);
+  await next();
+});
 
 /** Read bounded bytes rather than trusting Content-Length or buffering an unbounded body. */
 export async function boundedBody(request: Request, limit = maxBody): Promise<Uint8Array<ArrayBuffer>> {
@@ -87,6 +92,7 @@ async function selectedTextModel(alias: unknown): Promise<{ alias: string; model
 }
 
 async function hostedCatalog() {
+  if (!hostedAiEnabled()) return { provider: 'aux', models: [], visibleModelIds: [], imageModels: [] };
   const models = await Promise.all(Object.entries(modelAliases()).map(async ([id, target]) => {
     const model = await verifiedModel(target, 'language');
     const reasoning = model.tags?.includes('reasoning') ?? false;
@@ -272,7 +278,7 @@ async function transcribeFile(c: Context<Env>, file: File, language: unknown) {
   } catch (error) { await settleUsage(reservation, { succeeded: dispatched }); throw error; }
 }
 
-inferenceRoutes.get('/speech/config', async c => c.json({ transcription: { enabled: true, maxUploadBytes: MAX_INFERENCE_BYTES, inlineUploadBytes: maxAudio, privateUploadPurpose: 'inference' }, speech: { enabled: true }, realtime: { enabled: false, reason: 'No desktop consumer; ZDR-locked delegated sessions are not enabled.' } }));
+inferenceRoutes.get('/speech/config', async c => c.json({ transcription: { enabled: hostedAiEnabled(), maxUploadBytes: MAX_INFERENCE_BYTES, inlineUploadBytes: maxAudio, privateUploadPurpose: 'inference' }, speech: { enabled: hostedAiEnabled() }, realtime: { enabled: false, reason: 'No desktop consumer; ZDR-locked delegated sessions are not enabled.' } }));
 inferenceRoutes.post('/tts/synthesize', async c => {
   const body = await jsonBody(c);
   if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 10_000) fail(400, 'Speech text must contain 1 to 10000 characters.');

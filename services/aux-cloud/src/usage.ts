@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { HTTPException } from 'hono/http-exception';
 import { sql } from './db';
+import { hostedAiEnabled } from './launch-mode';
 
 const rates: Record<string, number> = { inference_micros: 1, tokens: 1, transcription: 28, speech: 15, images: 100000 };
 export async function ensureWallet(userId: string) {
+  if (!hostedAiEnabled()) return;
   await sql`SELECT aux_refresh_wallet(${userId}::uuid)`;
 }
 export function usageCost(kind: string, units: number) {
@@ -14,6 +16,7 @@ export function usageCost(kind: string, units: number) {
 }
 
 export async function reserveUsage(userId: string, kind: string, units: number): Promise<string> {
+  if (!hostedAiEnabled()) throw new HTTPException(503, { message: 'Aux-hosted AI is disabled. Connect your own provider in Aux.' });
   await ensureWallet(userId);
   const id = randomUUID(), amount = usageCost(kind, units);
   // Lock the selected wallet before allocating the debit. Included credits are

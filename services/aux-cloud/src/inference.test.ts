@@ -47,6 +47,8 @@ test('usage preserves Anthropic input and output phases and uses actual model pr
 });
 
 test('actual route rejects unsupported aliases and invalid audio before any provider or wallet call', async () => {
+  const previous=process.env.AUX_HOSTED_AI_ENABLED;process.env.AUX_HOSTED_AI_ENABLED='true';
+  try {
   const wrongModel = await inferenceRoutes.request('/ai/v1/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'external/model', input: 'fixture' }) });
   assert.equal(wrongModel.status, 400);
   const form = new FormData();
@@ -56,6 +58,7 @@ test('actual route rejects unsupported aliases and invalid audio before any prov
   const missing = new FormData();
   missing.set('language', 'en-US');
   assert.equal((await inferenceRoutes.request('/stt/transcribe', { method: 'POST', body: missing })).status, 400);
+  } finally { if(previous===undefined)delete process.env.AUX_HOSTED_AI_ENABLED;else process.env.AUX_HOSTED_AI_ENABLED=previous; }
 });
 
 test('long-context model prices use the input context tier for input and output', () => {

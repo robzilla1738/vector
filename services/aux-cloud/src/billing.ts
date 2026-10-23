@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { sql } from './db';
 import { ensureWallet } from './usage';
+import { paymentsEnabled, hostedAiEnabled, launchCapabilities } from './launch-mode';
 import type { AuthVariables, AuthUser } from './auth';
 import { canonicalBillingLookup, canonicalBillingRequestKey } from './billing-identity-transition';
 
@@ -18,6 +19,7 @@ const lookup = z.preprocess(canonicalBillingLookup, z.enum(['aux_pro_month', 'au
 const idOf = (object: string | { id: string } | null | undefined): string | null => typeof object === 'string' ? object : object?.id ?? null;
 const terminal = new Set(['canceled', 'incomplete_expired']);
 function stripe() {
+  if (!paymentsEnabled()) throw new HTTPException(503, { message: 'Aux payments are disabled. Use your own AI provider.' });
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key || (!/^(?:sk|rk)_test_/.test(key) && process.env.AUX_LIVE_BILLING !== 'true')) throw new HTTPException(503, { message: 'Aux billing is not enabled in this environment.' });
   return new Stripe(key, { maxNetworkRetries: 2, timeout: 20000 });
@@ -112,6 +114,13 @@ export function paymentMethodSnapshot(method: Stripe.PaymentMethod | null) {
   return method?.type === 'link' ? { type: 'link' as const } : null;
 }
 async function snapshot(userId: string) {
+  if (!paymentsEnabled()) {
+    const users = await sql`SELECT created_at FROM aux_users WHERE id=${userId}`;
+    // Existing financial records remain intact; this mode never refreshes grants or contacts Stripe.
+    return { ...launchCapabilities(), joined_at: new Date(users[0].created_at).toISOString(), subscription: null,
+      credit: { add_on_balance_micros: '0', balance_micros: '0', credit_micros_per_usd: 1000000, monthly_grant_micros: '0', remaining_percent: 0, used_percent: 0, refresh_at: null },
+      addOn: null, autoReload: disabledAutoReload(), paymentMethod: null, invoices: [] };
+  }
   let remoteInvoices: Stripe.Invoice[] = [], paymentMethod: ReturnType<typeof paymentMethodSnapshot> = null;
   const mapped = await sql`SELECT stripe_customer_id,stripe_subscription_id FROM aux_subscriptions WHERE user_id=${userId}`;
   if (mapped[0]?.stripe_customer_id) {
@@ -129,10 +138,10 @@ async function snapshot(userId: string) {
   }
   await ensureWallet(userId);
   const [users, subscriptions, wallets] = await Promise.all([sql`SELECT created_at FROM aux_users WHERE id=${userId}`, sql`SELECT * FROM aux_subscriptions WHERE user_id=${userId}`, sql`SELECT * FROM aux_wallets WHERE user_id=${userId}`]);
-  const sub = subscriptions[0], wallet = wallets[0], plan = plans.find(plan => plan.slug === sub?.plan) || plans[0];
+  const sub = subscriptions[0], wallet = hostedAiEnabled() && wallets[0] ? wallets[0] : { balance_micros: 0, add_on_balance_micros: 0, grant_micros: 0, refresh_at: null }, plan = plans.find(plan => plan.slug === sub?.plan) || plans[0];
   const remaining = Math.max(0, Math.min(100, Math.round(Number(wallet.balance_micros) / Math.max(1, Number(wallet.grant_micros)) * 100)));
-  return { joined_at: new Date(users[0].created_at).toISOString(), subscription: sub?.stripe_subscription_id ? { plan: { slug: plan.slug, name: plan.name, tier: plan.tier }, status: sub.status, interval: sub.interval, currentPeriodStart: sub.period_start ? new Date(sub.period_start).toISOString() : null, currentPeriodEnd: sub.period_end ? new Date(sub.period_end).toISOString() : null, cancelAtPeriodEnd: sub.cancel_at_period_end, features: plan.features } : null,
-    credit: { add_on_balance_micros: String(wallet.add_on_balance_micros), balance_micros: String(wallet.balance_micros), credit_micros_per_usd: 1000000, monthly_grant_micros: String(wallet.grant_micros), remaining_percent: remaining, used_percent: 100 - remaining, refresh_at: new Date(wallet.refresh_at).toISOString() }, addOn, autoReload: disabledAutoReload(), paymentMethod,
+  return { ...launchCapabilities(), joined_at: new Date(users[0].created_at).toISOString(), subscription: sub?.stripe_subscription_id ? { plan: { slug: plan.slug, name: plan.name, tier: plan.tier }, status: sub.status, interval: sub.interval, currentPeriodStart: sub.period_start ? new Date(sub.period_start).toISOString() : null, currentPeriodEnd: sub.period_end ? new Date(sub.period_end).toISOString() : null, cancelAtPeriodEnd: sub.cancel_at_period_end, features: plan.features } : null,
+    credit: { add_on_balance_micros: String(wallet.add_on_balance_micros), balance_micros: String(wallet.balance_micros), credit_micros_per_usd: 1000000, monthly_grant_micros: String(wallet.grant_micros), remaining_percent: remaining, used_percent: 100 - remaining, refresh_at: wallet.refresh_at ? new Date(wallet.refresh_at).toISOString() : null }, addOn, autoReload: disabledAutoReload(), paymentMethod,
     invoices: remoteInvoices.map(invoice => ({ amountPaid: invoice.amount_paid, createdAt: new Date(invoice.created * 1000).toISOString(), currency: invoice.currency, hostedInvoiceUrl: invoice.hosted_invoice_url, id: invoice.id, invoicePdf: invoice.invoice_pdf, number: invoice.number, status: invoice.status, total: invoice.total })) };
 }
 
@@ -181,9 +190,14 @@ async function checkoutRequest(client: Stripe, userId: string, mode: 'subscripti
 }
 
 export const billingRoutes = new Hono<{ Variables: AuthVariables }>();
+billingRoutes.use('*', async (c, next) => {
+  if (c.req.method !== 'GET' && !paymentsEnabled()) return c.json({ error: 'Aux payments are disabled. Use your own AI provider.' }, 503);
+  await next();
+});
 export function billingPlansSnapshot() {
-  return { plans: plans.map(plan => ({
-    slug: plan.slug, name: plan.name, tier: plan.tier, active: true, features: plan.features,
+  const available = paymentsEnabled() ? plans : [{ ...plans[0], monthlyCreditMicros: 0, features: ['Bring your own AI provider', 'Local browser and chat', 'Encrypted sync', 'Private attachments', 'Public sharing'] }];
+  return { ...launchCapabilities(), plans: available.map(plan => ({
+    slug: plan.slug, name: plan.name, tier: plan.tier, active: true, features: plan.slug === 'free' && !hostedAiEnabled() ? plan.features.filter(feature => !feature.includes('hosted allowance')) : plan.features,
     prices: {
       month: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.monthlyPriceCents, interval: 'month', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_MONTH`] ? `aux_${plan.slug}_month` : null },
       year: plan.slug === 'free' ? null : { currency: 'usd', unitAmount: plan.yearlyPriceCents, interval: 'year', lookupKey: process.env[`STRIPE_PRICE_${plan.slug.toUpperCase()}_YEAR`] ? `aux_${plan.slug}_year` : null },
@@ -192,7 +206,7 @@ export function billingPlansSnapshot() {
 }
 billingRoutes.get('/plans', c => c.json(billingPlansSnapshot()));
 billingRoutes.get('/subscription', async c => c.json(await snapshot(c.get('user').id)));
-billingRoutes.get('/v2/subscription', async c => { const { joined_at, subscription, credit, addOn: pricing } = await snapshot(c.get('user').id); return c.json({ joined_at, subscription, credit, addOn: pricing }); });
+billingRoutes.get('/v2/subscription', async c => { const { joined_at, subscription, credit, addOn: pricing } = await snapshot(c.get('user').id); return c.json({ ...launchCapabilities(), joined_at, subscription, credit, addOn: pricing }); });
 billingRoutes.get('/v2/usage', async c => {
   const params = z.object({ start: z.iso.datetime(), end: z.iso.datetime(), limit: z.coerce.number().int().min(1).max(100).default(100), offset: z.coerce.number().int().min(0).max(100000).default(0) }).refine(p => p.start <= p.end, 'Usage range is reversed.').parse(c.req.query());
   const rows = await sql`SELECT * FROM aux_usage WHERE user_id=${c.get('user').id} AND created_at>=${params.start} AND created_at<=${params.end} AND state='charged' ORDER BY created_at DESC,id LIMIT ${params.limit + 1} OFFSET ${params.offset}`;
@@ -279,6 +293,7 @@ async function reconcileCreditRefund(charge: Stripe.Charge) {
 
 export const billingWebhooks = new Hono();
 billingWebhooks.post('/stripe', async c => {
+  if (!paymentsEnabled()) return c.json({ error: 'Aux payments are disabled.' }, 503);
   const signature = c.req.header('stripe-signature'), secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !secret) return c.json({ error: 'Webhook signature required.' }, 400);
   const client = stripe();

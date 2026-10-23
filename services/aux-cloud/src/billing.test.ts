@@ -99,10 +99,10 @@ test('the actual pinned Agent pricing consumer renders the hosted plans and chec
   assert.equal(fixture.split(exportStatement).length - 1, 1);
   const context: { Intl: typeof Intl; parsePlans?: (plans: unknown[]) => unknown[] } = { Intl };
   runInNewContext(fixture.replace(exportStatement, 'globalThis.parsePlans = a;'), context, { timeout: 1000 });
-  const keys = ['STRIPE_PRICE_PRO_MONTH', 'STRIPE_PRICE_PRO_YEAR', 'STRIPE_PRICE_MAX_MONTH', 'STRIPE_PRICE_MAX_YEAR'];
+  const keys = ['AUX_PAYMENTS_ENABLED', 'STRIPE_PRICE_PRO_MONTH', 'STRIPE_PRICE_PRO_YEAR', 'STRIPE_PRICE_MAX_MONTH', 'STRIPE_PRICE_MAX_YEAR'];
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   try {
-    for (const key of keys) process.env[key] = `price_fixture_${key.toLowerCase()}`;
+    for (const key of keys) process.env[key] = key === 'AUX_PAYMENTS_ENABLED' ? 'true' : `price_fixture_${key.toLowerCase()}`;
     const response = await billingRoutes.request('/plans');
     assert.equal(response.status, 200);
     const body = await response.json() as ReturnType<typeof billingPlansSnapshot>;
@@ -123,8 +123,9 @@ test('the actual pinned Agent pricing consumer renders the hosted plans and chec
 
 test('sandbox billing refuses both unrestricted and restricted live keys before provider access', async () => {
   const {billingWebhooks}=await import('./billing');
-  const previous={key:process.env.STRIPE_SECRET_KEY,secret:process.env.STRIPE_WEBHOOK_SECRET,live:process.env.AUX_LIVE_BILLING};
+  const previous={key:process.env.STRIPE_SECRET_KEY,secret:process.env.STRIPE_WEBHOOK_SECRET,payments:process.env.AUX_PAYMENTS_ENABLED,live:process.env.AUX_LIVE_BILLING};
   try {
+    process.env.AUX_PAYMENTS_ENABLED='true';
     process.env.STRIPE_WEBHOOK_SECRET='synthetic-webhook-fixture-only';
     delete process.env.AUX_LIVE_BILLING;
     for(const prefix of ['sk','rk']) {
@@ -133,7 +134,7 @@ test('sandbox billing refuses both unrestricted and restricted live keys before 
       assert.equal(response.status,503);
     }
   } finally {
-    for(const [name,value] of Object.entries({STRIPE_SECRET_KEY:previous.key,STRIPE_WEBHOOK_SECRET:previous.secret,AUX_LIVE_BILLING:previous.live})) {
+    for(const [name,value] of Object.entries({STRIPE_SECRET_KEY:previous.key,STRIPE_WEBHOOK_SECRET:previous.secret,AUX_PAYMENTS_ENABLED:previous.payments,AUX_LIVE_BILLING:previous.live})) {
       if(value===undefined)delete process.env[name];else process.env[name]=value;
     }
   }
