@@ -1,0 +1,13 @@
+{
+  "format": "aux.recovery-tool-process.check.v1",
+  "files": {
+    "services/aux-cloud/scripts/cloud-recovery.mjs": "7a34014ecddb27f7539a1ab8a27c6af432724feeb1cefc3ac7654d4ceb54928f",
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720",
+    "services/aux-cloud/scripts/recovery-tool-process.mjs": "c7a65ad72805a03180de813005a5301e62a4e2beeb3f4d7d8d20db2b139354b4",
+    "docs/integration/proposed/aux-recovery-tool-process/check.mjs": "20bc09e8f5a6d84c66fcb15a32e573073723ef7fc4efeb22340c56314bfea2e1"
+  },
+  "actualChildBudgetFailureChecked": true,
+  "actualChildIgnoredSigtermAndExitedZero": true,
+  "providerOperations": 0,
+  "productionCaptureRepeated": false
+}

@@ -1,45 +1,19 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Transform } from 'node:stream';
-import { createWriteStream } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { get } from '@vercel/blob';
 import { readRecoveryKey, writeBundle, unpackBundle, recoveryFileSource } from './recovery-bundle.mjs';
 import { readOnlineSnapshotObjects, onlineBlobEntries } from './online-recovery-objects.mjs';
+import { runPostgresTool as run } from './recovery-tool-process.mjs';
 
 const [command, directory, keyFile, ...flags] = process.argv.slice(2);
 const budget = Number(flags.find(v => v.startsWith('--max-bytes='))?.split('=')[1]);
 const pgDump = process.env.AUX_PG_DUMP || '/opt/homebrew/opt/libpq/bin/pg_dump';
 const pgRestore = process.env.AUX_PG_RESTORE || '/opt/homebrew/opt/libpq/bin/pg_restore';
 let phase = 'arguments';
-async function run(binary, args, env = {}, output) {
-  await new Promise((accept, reject) => {
-    // Provider credentials are supplied only in environment, never argv/log output.
-    const child = spawn(binary, args, { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C', ...env }, stdio: ['ignore', output ? 'pipe' : 'ignore', 'pipe'] });
-    const timer = setTimeout(() => child.kill('SIGTERM'), 300000);
-    let diagnostic = '';
-    child.stderr.on('data', chunk => { if (diagnostic.length < 8192) diagnostic += chunk.toString(); });
-    const completed = new Promise((done, failed) => {
-      child.once('error', () => failed(Error('PostgreSQL recovery tool could not start')));
-      child.once('exit', code => {
-        if (code === 0) return done();
-        const category = /certificate|SSL error|root certificate/i.test(diagnostic) ? 'TLS validation' : /snapshot/i.test(diagnostic) ? 'snapshot' : /permission denied/i.test(diagnostic) ? 'database permission' : /version mismatch|unsupported version/i.test(diagnostic) ? 'tool version' : 'archive command';
-        failed(Error(`PostgreSQL recovery tool failed: ${category}`));
-      });
-    });
-    let bytes = 0;
-    const streamed = output ? pipeline(child.stdout, new Transform({ transform(chunk, _encoding, done) {
-      bytes += chunk.length;
-      done(bytes > output.limit ? Error('Database archive exceeds byte budget') : null, chunk);
-    } }), createWriteStream(output.path, { flags: 'wx', mode: 0o600 })) : Promise.resolve();
-    Promise.all([completed, streamed]).then(accept, error => { child.kill('SIGTERM'); reject(error); }).finally(() => clearTimeout(timer));
-  });
-}
 function separateKey(bundle, key) {
   assert(!resolve(key).startsWith(resolve(bundle) + sep), 'Keep the recovery key outside the bundle');
 }

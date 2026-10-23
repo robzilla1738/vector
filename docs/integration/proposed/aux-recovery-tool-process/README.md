@@ -1,0 +1,9 @@
+# PostgreSQL capture process lifetime correction
+
+The online and historical recovery commands used identical process runners. A stream failure or post-spawn ChildProcess error rejected immediately after requesting SIGTERM, allowing snapshot rollback and archive-directory removal while pg_dump could still be running. Their five-minute timer requested SIGTERM without recording failure, so an eventual zero exit could also pass after a timeout.
+
+Both actual commands now call the same small PostgreSQL tool boundary. Spawn failure can complete without an exit event. Once spawned, an error, archive-pipeline failure or timeout records a permanent failure and requests SIGTERM once, then waits for actual exit and stream settlement. A failed/ignored stop request leaves the operation pending; no bounded exit or descendant custody is claimed. The encrypted capture format, output byte limit, exclusive private archive creation, environment-only credential transport and sanitized diagnostic categories remain unchanged.
+
+One focused offline check runs a real temporary Node child through the production runner. It exceeds the actual archive byte budget, ignores SIGTERM, writes a later liveness marker, and finally exits zero. The operation stays pending until that actual exit and rejects despite zero status. The temporary child, archive and marker are removed afterward. No database/provider call, credential, signing, UI, capture bundle or restore operation is involved. Post-spawn error and timeout handling are source-reviewed paths, not independently injected test cases.
+
+Run `node docs/integration/proposed/aux-recovery-tool-process/check.mjs`. Both actual command files and the shared boundary pass `node --check`. Current real production capture evidence predates this runner change; it must not be presented as a provider execution of these new bytes.
