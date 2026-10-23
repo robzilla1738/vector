@@ -1,0 +1,9 @@
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.cc:3:
+In file included from /private/tmp/aux-native-adopted-wipe-successor-20261023/include/chrome/browser/aux/daemon_supervisor.h:19:
+In file included from ../../services/network/public/cpp/shared_url_loader_factory.h:13:
+In file included from gen/services/network/public/mojom/url_loader_factory.mojom.h:27:
+In file included from gen/services/network/public/mojom/mutable_network_traffic_annotation_tag.mojom.h:34:
+[1m../../services/network/public/cpp/mutable_network_traffic_annotation_tag_mojom_traits.h:24:37: [0m[0;1;31merror: [0m[1mimplicit conversion changes signedness: 'uint32_t' (aka 'unsigned int') to 'int32_t' (aka 'int') [-Werror,-Wsign-conversion][0m
+   24 |     out->unique_id_hash_code = data.unique_id_hash_code();[0m
+      | [0;1;32m                             ~ ~~~~~^~~~~~~~~~~~~~~~~~~~~
+[0m1 error generated.

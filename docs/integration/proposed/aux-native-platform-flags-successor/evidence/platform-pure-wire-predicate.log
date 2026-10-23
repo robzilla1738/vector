@@ -1,0 +1,5 @@
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-selected-home-fileport-retry/tests/wire-contract.cc:1:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h:2:10: fatal error: 'mach/mach.h' file not found
+    2 | #include <mach/mach.h>
+      |          ^~~~~~~~~~~~~
+1 error generated.

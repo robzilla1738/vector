@@ -250,6 +250,12 @@
       "role": "ownedchild and selectedhome ChromiumTUs passed, then supervisor blocked by upstream signedness warning under sampled flags",
       "receipt": "/tmp/aux-native-adopted-wipe-successor-20261023/results.json",
       "flagsCorrectionReviewPending": true
+    },
+    {
+      "session": 64606,
+      "exitCode": 1,
+      "role": "all3 platformTUs pass; purewire failed omitted SDK root",
+      "receipt": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/platform-results.json"
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -352,5 +358,12 @@
   "nativeCheckEvidenceCommits": [
     "fbdf9af09",
     "5bcd54b64"
-  ]
+  ],
+  "finalParentCompileEvidence": {
+    "sixTranslationUnitsPassed": true,
+    "wireSyntaxPassedWithActualSdk": true,
+    "review": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/actual-parent-summary.json",
+    "browserLinked": false,
+    "runtimeExecuted": false
+  }
 }

@@ -1,3 +1,11 @@
+# Six browser-side integration files compile; standalone wire check passes — 2026-10-23
+
+The corrected transport, owned child and selected-home translation units compile across89233/41279 without repeating the successful objects. Check64606 compiled daemon supervisor, installation authentication and browser platform using their genuine `obj/chrome/browser/aux/platform.ninja` flags. The prior BASE-derived flags had incorrectly enabled conversion warnings for these three files; no upstream source or manual warning suppression changed.
+
+The standalone wire predicate initially lacked an SDK root, then passed with only the actual `xcrun --sdk macosx --show-sdk-path` isysroot added. That final syntax-only check ran after every other native check was terminal, but outside the serializer; this scheduling exception is recorded rather than presented as serialized evidence. Exact receipts/logs and SDK pin are under `aux-native-platform-flags-successor/evidence/`. No native application code executed.
+
+Together these are six successful browser C++ compile boundaries plus one successful pure-wire syntax check, alongside the actual separately linked daemon. They do not establish final browser linking, active startup, whole-profile/descendant custody, legacy migration or same-candidate app/UI acceptance. The root combined source manifest still needs the reviewed compiler successors before application/build. Accepted Aux UI/app and production remain unchanged.
+
 # Actual native daemon compiled and linked — 2026-10-22
 
 The exact corrected build31927 finished with exit0. It reused the nine pinned successful objects from53432, compiled the corrected transport and remaining C++ object, then compiled/linked all46 Swift sources with the actual Node static archives. The executable SHA256 is `3e753f2e6a8b6eb14257be9b216be122cfd860cf1348a76453c0b650647f0020`. Read-only dyld inspection of this actual executable found all38 original PTY flat Node-API imports among145 exported Node-API symbols. Receipts/logs are retained under `aux-native-peer-compiler-compatibility/evidence/`; this supersedes the earlier link-pending statements only for this exact graph.

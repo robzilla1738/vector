@@ -1,0 +1,30 @@
+{
+  "format": "aux.actual-parent-compile-checkpoint.v1",
+  "sixCppTranslationUnitsCompiled": true,
+  "pureWireSyntaxCheckPassed": true,
+  "passedTransportSession": 89233,
+  "passedOwnedChildAndSelectedHomeSession": 41279,
+  "passedThreePlatformTUsSession": 64606,
+  "wireSdkCorrection": "actual xcrun SDK isysroot only",
+  "wireCheckSerialized": false,
+  "wireCheckConcurrency": "all prior root and agent native checks terminal before this standalone syntax check",
+  "browserLinked": false,
+  "nativeCodeExecuted": false,
+  "productSourceOrUiChangedByChecks": false,
+  "files": {
+    "platform-chromium-browser_platform.cc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "platform-results.json": "af836fbdfbe85979eac3d588c29adfad5897a425a5e2b389fe0e82cb24cf2b46",
+    "owned-chromium-AuxSelectedStateHome.cc.log": "5268a826c0431f31d133ae904e63b373ed8fbd905cac4606ed1fcbbd25b32183",
+    "transport-chromium-AuxOwnedNativePeerChild.cc.log": "0b7d77a0cd7da06199b2789b604ae9c8a29f098de3bfe01e9f8006160832f58c",
+    "platform-pure-wire-predicate.log": "919cb84c8036d70beae7e66bbbc2cc3e34f34698fa26d5b627be49fb1a4b5bdd",
+    "transport-chromium-AuxNativePeerTransport.cc.log": "26447a9371816469c07a39145c10f03d86bdc9df181458a9a1601723ef592588",
+    "owned-chromium-AuxOwnedNativePeerChild.cc.log": "581ec682e105bade7bba03cbc1202a9068abb45a6a7947c6a826e2bdc5c56a54",
+    "transport-results.json": "11f28c4920abac5c91b1d33bd3da50c5bfb798c392c48706d7c10a5fc8a384cf",
+    "wire-results.json": "313ac839cbcfb492e761c4fc4b49fbdf9cab19bbcc6368d50cf795b98a49e511",
+    "owned-results.json": "5277208ed8a00ff0393562a5e59e8b6a7ba8759ad6610eda3d1a5632f6dfbb9a",
+    "owned-chromium-daemon_supervisor.cc.log": "5806866ac24fb24be9e46b897d458cccec666df74d08e99100a91f9754bbbde0",
+    "platform-chromium-daemon_supervisor.cc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "platform-chromium-installation_auth.cc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wire-compiler.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
