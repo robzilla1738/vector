@@ -1,0 +1,68 @@
+--- a/PrivateNativeFreshBootstrapJournalStore.swift
++++ b/PrivateNativeFreshBootstrapJournalStore.swift
+@@ -15,17 +15,24 @@
+     private let directoryName:String
+     private let rootFD:Int32
+     private let directoryFD:Int32
+-    init(canonicalDisposableRoot:String,journal:NativeFreshBootstrapJournal)throws {
++    init(canonicalDisposableRoot:String,journal:NativeFreshBootstrapJournal,
++         retainedRootDescriptor:Int32? = nil)throws {
+         try journal.validate()
+         let transactionId=journal.transactionId
+         guard canonicalDisposableRoot.hasPrefix("/"),let uuid=UUID(uuidString:transactionId),uuid.uuidString==transactionId,
+               let resolved=realpath(canonicalDisposableRoot,nil)else{throw NativeFreshBootstrapStoreError.unsafePath}
+         defer{free(resolved)}
+         guard String(cString:resolved)==canonicalDisposableRoot else{throw NativeFreshBootstrapStoreError.unsafePath}
+-        let rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        let rootFD:Int32
++        if let retainedRootDescriptor {
++            rootFD=fcntl(retainedRootDescriptor,F_DUPFD_CLOEXEC,0)
++        } else {
++            rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        }
+         guard rootFD>=0 else{throw NativeFreshBootstrapStoreError.io(errno)}
+         do {
+             try Self.metadata(rootFD,directory:true)
++            try Self.requireRootIdentity(canonicalDisposableRoot,fd:rootFD)
+             let name=".aux-native-fresh-initial-journal-v2-"+transactionId.lowercased()
+             if mkdirat(rootFD,name,0o700) != 0 && errno != EEXIST{throw NativeFreshBootstrapStoreError.io(errno)}
+             try Self.sync(rootFD)
+@@ -61,6 +68,15 @@
+         guard entry.st_dev==current.st_dev,entry.st_ino==current.st_ino,entry.st_mode==current.st_mode,entry.st_uid==current.st_uid else{throw NativeFreshBootstrapStoreError.unsafePath}
+     }
+     private static func sync(_ fd:Int32)throws { guard fsync(fd)==0 else{throw NativeFreshBootstrapStoreError.io(errno)} }
++    private static func requireRootIdentity(_ path:String,fd:Int32)throws {
++        let current=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard current>=0 else{throw NativeFreshBootstrapStoreError.io(errno)}
++        defer{close(current)}
++        let retained=try statFD(fd),observed=try statFD(current)
++        guard retained.st_dev==observed.st_dev,retained.st_ino==observed.st_ino else{
++            throw NativeFreshBootstrapStoreError.unsafePath
++        }
++    }
+     private func validateDirectories()throws {
+         try Self.metadata(rootFD,directory:true);try Self.metadata(directoryFD,directory:true)
+         guard let resolved=realpath(root,nil)else{throw NativeFreshBootstrapStoreError.unsafePath};defer{free(resolved)}
+--- a/AuxNativeFreshStageCoordinator.swift
++++ b/AuxNativeFreshStageCoordinator.swift
+@@ -1,6 +1,7 @@
+ // Inactive concrete fresh-only native producer. No caller review/capability flags.
+ import Foundation
+ import Security
++import Darwin
+ 
+ struct NativeFreshStagedContext {
+     let journal:NativeFreshBootstrapJournal
+@@ -69,7 +70,11 @@
+         try journal.validate()
+         // This immutable v2 record combines initial draft + exact stage binding
+         // in one durable nonsecret value, before the first stage Add is possible.
+-        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal)
++        let retainedRoot=try capture.home.duplicateDirectoryForNativeBootstrap()
++        defer{Darwin.close(retainedRoot)}
++        let store=try PrivateNativeFreshBootstrapJournalStore(
++            canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,
++            retainedRootDescriptor:retainedRoot)
+         guard try store.load()==nil else{throw NativeFreshBootstrapError.existing}
+         let checkpoint=try store.publish()
+         return .init(capture:capture,record:journal,payload:secret,checkpoint:checkpoint,store:store)

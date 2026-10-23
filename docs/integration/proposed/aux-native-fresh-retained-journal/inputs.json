@@ -1,0 +1,86 @@
+{
+  "format": "aux.native.fresh.retained-journal.v1",
+  "predecessor": "docs/integration/proposed/aux-native-fresh-stage-reconciliation",
+  "files": [
+    {
+      "name": "PrivateNativeFreshBootstrapJournalStore.swift",
+      "inputSha256": "b39b81d94018328feea9c2013ff1d623b2bae0489f8e9eacb6b8dcca68282386",
+      "outputSha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "edits": [
+        {
+          "find": "    init(canonicalDisposableRoot:String,journal:NativeFreshBootstrapJournal)throws {",
+          "replace": "    init(canonicalDisposableRoot:String,journal:NativeFreshBootstrapJournal,\n         retainedRootDescriptor:Int32? = nil)throws {",
+          "count": 1
+        },
+        {
+          "find": "        let rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)",
+          "replace": "        let rootFD:Int32\n        if let retainedRootDescriptor {\n            rootFD=fcntl(retainedRootDescriptor,F_DUPFD_CLOEXEC,0)\n        } else {\n            rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)\n        }",
+          "count": 1
+        },
+        {
+          "find": "            try Self.metadata(rootFD,directory:true)\n",
+          "replace": "            try Self.metadata(rootFD,directory:true)\n            try Self.requireRootIdentity(canonicalDisposableRoot,fd:rootFD)\n",
+          "count": 1
+        },
+        {
+          "find": "    private func validateDirectories()throws {",
+          "replace": "    private static func requireRootIdentity(_ path:String,fd:Int32)throws {\n        let current=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)\n        guard current>=0 else{throw NativeFreshBootstrapStoreError.io(errno)}\n        defer{close(current)}\n        let retained=try statFD(fd),observed=try statFD(current)\n        guard retained.st_dev==observed.st_dev,retained.st_ino==observed.st_ino else{\n            throw NativeFreshBootstrapStoreError.unsafePath\n        }\n    }\n    private func validateDirectories()throws {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxNativeFreshStageCoordinator.swift",
+      "inputSha256": "d420e239dc6c291f14cbb597017e0680a61313b0b5169d226ec3cb7278b9d8a3",
+      "outputSha256": "0c4b3a438552610762a26b6d4cf9562a0d3f010ab9055de35c6237854ba860eb",
+      "edits": [
+        {
+          "find": "import Security\n",
+          "replace": "import Security\nimport Darwin\n",
+          "count": 1
+        },
+        {
+          "find": "        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal)",
+          "replace": "        let retainedRoot=try capture.home.duplicateDirectoryForNativeBootstrap()\n        defer{Darwin.close(retainedRoot)}\n        let store=try PrivateNativeFreshBootstrapJournalStore(\n            canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,\n            retainedRootDescriptor:retainedRoot)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "ca98ee956500579dc6d4b8a7d1649a2013c900218ff34f94d06ccaae803c5d66",
+  "protectedCallsExecuted": false,
+  "active": false,
+  "compiled": false,
+  "checks": [
+    {
+      "path": "verify.py",
+      "sha256": "bed5157d58d4e01e38fa4feb492f7ef5b2a56417ac1884d7d1b9c5272d8674d7"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "765fbab09678e887421eb2d8df77df05723f7975bf27fa30c439f8c8c5dcd1db"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "387afbe2c8018f5da800f04ef01a927d096d71e44cd19a4b9ba32462c6b4d1b2"
+    },
+    {
+      "path": "README.md",
+      "sha256": "35936afcb88ae857c445ebfa28c54d7bbefd27dd9150d3a975e5165122ac5132"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "sha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0"
+    }
+  ]
+}
