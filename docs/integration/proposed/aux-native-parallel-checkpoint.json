@@ -372,15 +372,7 @@
     "compiled": true,
     "applyReceipt": "out/native-reuse-composition-aux-parent-swift-runtime/native-before-apply-19ru6kjl/apply-receipt.json"
   },
-  "rootQueuedChecks": [
-    {
-      "session": 27703,
-      "role": "new separate unsigned paired native-entry candidate package",
-      "stage": "out/provided-reuse-aux-native-entry-paired",
-      "output": "out/provided-candidate-aux-native-entry-paired",
-      "state": "live; existing55417candidate preserved; native checkout unchanged"
-    }
-  ],
+  "rootQueuedChecks": [],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -506,13 +498,15 @@
     "runtimeExecuted": false
   },
   "currentUnsignedCandidate": {
-    "path": "out/provided-candidate-aux-current-native/Aux.app",
-    "packageSession": 55417,
+    "path": "out/provided-candidate-aux-native-entry-paired/Aux.app",
+    "packageSession": 27703,
     "packageExitCode": 0,
-    "evidence": "docs/integration/proposed/aux-native-main-package-integration/actual-package.json",
+    "evidence": "docs/integration/proposed/aux-native-current-entry-reader-build/evidence/actual-paired-package.json",
     "agentFilesUnchanged": 1217,
     "cssFilesUnchanged": 5,
     "nativeMainIncluded": true,
+    "fixedReaderResourcePairMatches": true,
+    "defaultEntryPreserved": true,
     "coldEntryEnabled": false,
     "appLaunched": false,
     "signed": false,

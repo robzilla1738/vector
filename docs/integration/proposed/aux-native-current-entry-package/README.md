@@ -34,3 +34,7 @@ The parent cold hook remains default-off; outer state2 refusal and fallback sour
 ## Focused checks
 
 `node docs/integration/proposed/aux-native-current-entry-package/check.mjs` reconstructs the exact current projection, rejects changed input, parses the generated module without evaluating it, checks exact four-literal reader replay and package patch replay, and exercises the actual resource copier once in a disposable synthetic directory. It verifies unchanged index bytes, exact inventory additions and repeated-inclusion rejection, then removes only its fixture. `evidence.json` records the two concrete outputs and successful checks. No daemon/module, native protected call, actual package, provider request, signing or owner state was executed or modified.
+
+## Root applied integration and actual package
+
+Root applied the paired resource/reader package successors and actual new package27703 passed in a fresh directory. The fixed reader compiled/linked in95354 and the actual copied binary/resource hashes match. Ordinary index remains unchanged/refused; all1217 Agent/five CSS files match the preceding accepted UI resource generation. `aux-native-current-entry-reader-build/evidence/actual-paired-package.json` records exact observed package/bundle hashes. No app/module was run, signed or activated; current native cold hook remains off. Previous unapplied/uncompiled descriptions above are historical for their source-only lane, not current package status.

@@ -30,3 +30,7 @@ For the next **new** unsigned candidate, use the successful full-browser receipt
 `check-successor.mjs` verifies this actual receipt/executable plus80 pinned source/lineage files, fixed-reader association, changed-receipt rejection, four exact patch successor hashes and their preconditions. Its retained result is `check-successor.json`; both proposed module files parse. No actual package or native execution is performed by this check.
 
 This is a linked source/resource association, not permission or proof for startup. Signature/hook/authority fields remain false; added resources are dormant behind current native state2 refusal and default-off cold hook. Future exact signed PTY/helper bytes, sealed policy, immutable root-owned installation and protected/native whole-cohort acceptance remain missing. No current source-only receipt substitutes for them.
+
+## Root applied integration and actual package
+
+Root applied the paired resource/reader package successors and actual new package27703 passed in a fresh directory. The fixed reader compiled/linked in95354 and the actual copied binary/resource hashes match. Ordinary index remains unchanged/refused; all1217 Agent/five CSS files match the preceding accepted UI resource generation. `aux-native-current-entry-reader-build/evidence/actual-paired-package.json` records exact observed package/bundle hashes. No app/module was run, signed or activated; current native cold hook remains off. Previous unapplied/uncompiled descriptions above are historical for their source-only lane, not current package status.
