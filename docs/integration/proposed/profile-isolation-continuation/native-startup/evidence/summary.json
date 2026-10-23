@@ -1,0 +1,30 @@
+{
+  "format": "aux.native-startup.network-gate.evidence.v1",
+  "nativeCompilePassed": true,
+  "compiledActualTUs": 4,
+  "coldBranchEnabledInIsolatedObjects": true,
+  "pureFixturePassed": true,
+  "patchApplicationPassed": true,
+  "initialAttemptInterrupted": true,
+  "secondAttemptFailedIncludeOrder": true,
+  "sourceCorrection": "Moved new cold header inside existing ENABLE_AUX_BROWSER include block; final compile all four TUs0",
+  "nativeOwnerAdmissionImplemented": false,
+  "runtimeBrowserAcceptance": false,
+  "linked": false,
+  "signed": false,
+  "acceptedAppChanged": false,
+  "artifacts": {
+    "compile/chrome-client.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compile/content-client.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compile/receipt.json": "0540374501273136c096e17780419d8fae25ede9fb03205b9b8f13a08c378edd",
+    "compile/storage-partition.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compile/validator.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "failed-include-order/chrome-client.log": "91a71e93fb06c61641c50ac4669f8e4bba20c06439c5de541b6953992761f52e",
+    "failed-include-order/receipt.json": "2c8ce4ef52cd33befa0a31966becf4e03e3841b3475faacdbdfb759a0e35ba62",
+    "interrupted-include-review/chrome-client.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interrupted-include-review/receipt.json": "925e731abb696e3419e449ab45ebe39f6b8a3035a3c3565c22aaec25259603ea",
+    "pure-fixture/build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pure-fixture/receipt.json": "da0d30c246cc8faa7e4e2a01cfbd4066ae5efb65487f0e1f360c6d77698a1075",
+    "pure-fixture/test.log": "6382a350945efd161862a701c6d9957cfba1b29edb3cfda7554274da6c670fd2"
+  }
+}

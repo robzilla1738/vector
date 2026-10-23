@@ -1,0 +1,37 @@
+{
+  "format": "aux.browser-network-paths.pure-fixture.v1",
+  "passed": true,
+  "command": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+    "-std=c++20",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-isysroot",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+    "-I",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/source",
+    "-I",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-next/browser-roots/source",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/tests/path-policy.cc",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserPrivateRoots.cc",
+    "-o",
+    "/private/tmp/aux-native-startup-network-path-fixture-20261023/path-policy"
+  ],
+  "compileExit": 0,
+  "testExit": 0,
+  "sourceHashes": {
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/test.py": "341dc46556d3f9250bd78588f849db9c32713141eb73cb0b15862e5e0aee30ca",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/tests/path-policy.cc": "78102af2f78c05ac487fd3071188d5f3bb30194b56355e6b9286294f5281afbf",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/source/chrome/browser/aux/AuxBrowserNetworkPaths.cc": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/source/chrome/browser/aux/AuxBrowserNetworkPaths.h": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserPrivateRoots.h": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+    "/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserPrivateRoots.cc": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998"
+  },
+  "inputsUnchanged": true,
+  "syntheticFilesystemOnly": true,
+  "nativeCaptureStubAlwaysRefuses": true,
+  "browserOrDaemonExecuted": false,
+  "nativeOwnerAdmissionProven": false,
+  "policySymlinkRaceClosureProven": false
+}

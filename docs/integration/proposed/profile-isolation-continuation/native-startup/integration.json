@@ -1,0 +1,40 @@
+{
+  "format": "aux.native-startup.network-context-admission.integration.v1",
+  "sourceBaseline": "a14acfc91",
+  "predecessor": "docs/integration/proposed/profile-isolation-next/browser-roots/",
+  "applyOrder": [
+    "predecessor native.patch + source",
+    "predecessor early-local-state.patch",
+    "this native.patch + two AuxBrowserNetworkPaths files"
+  ],
+  "sourceHashes": {
+    "source/chrome/browser/aux/AuxBrowserNetworkPaths.cc": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+    "source/chrome/browser/aux/AuxBrowserNetworkPaths.h": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc",
+    "source/chrome/browser/aux/BUILD.gn": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb",
+    "source/chrome/browser/chrome_content_browser_client.cc": "1c276b6eb3218ab0f4c1aeb556d717aff7c0a43edc8190ec30dfb3e7ccd649c0",
+    "source/chrome/browser/chrome_content_browser_client.h": "63760dfa35a98dd907fae3adb6072f5d85bcc1a2715a96afcd48de60ba66f82a",
+    "source/content/browser/storage_partition_impl.cc": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6",
+    "source/content/public/browser/content_browser_client.cc": "73de0cadfbb1fb37d41e129ddcc5edc836b5035f7151f5d8b684eb079eb57974",
+    "source/content/public/browser/content_browser_client.h": "256c923c9ab8cd072ac2409b2a6914d02ae3d6ec2e24bac46820fa40b92a43df"
+  },
+  "coldEntryDefaultOff": true,
+  "ordinaryPathAdmissionDefault": true,
+  "checksFinalNativeParams": true,
+  "coveredDirectorySlots": [
+    "shared_dictionary_directory",
+    "http_cache_directory",
+    "no_vary_search_directory",
+    "logical_invalidation_directory",
+    "data_directory",
+    "unsandboxed_data_path"
+  ],
+  "doesNotMutatePreferences": true,
+  "doesNotExpandExistingChildDeniedRoots": true,
+  "nativeOwnerAdmissionImplemented": false,
+  "descendantPathRaceClosed": false,
+  "alreadyExistingExternalContextsContained": false,
+  "sharedTreeApplied": false,
+  "linked": false,
+  "executed": false,
+  "signed": false
+}

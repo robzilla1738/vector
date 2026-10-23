@@ -1,0 +1,125 @@
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -2220,6 +2220,14 @@
+       cert_verifier::mojom::CertVerifierCreationParams*
+           cert_verifier_creation_params);
+ 
++  // Final synchronous admission before the NetworkService receives persistent
++  // paths, after embedder and DevTools configuration. False creates no network
++  // context; callers receive disconnected endpoints without automatic retry.
++  // This callback must not mutate preferences or substitute fallback paths.
++  virtual bool CanCreateNetworkContext(
++      BrowserContext* context,
++      const network::mojom::NetworkContextParams& network_context_params);
++
+   // Returns the parent paths that contain all the network service's
+   // BrowserContexts' storage. Multiple paths can be returned, e.g. in case the
+   // persistent storage location differs from the cache storage location.
+--- a/content/public/browser/content_browser_client.cc
++++ b/content/public/browser/content_browser_client.cc
+@@ -1223,6 +1223,12 @@
+   network_context_params->accept_language = "en-us,en";
+ }
+ 
++bool ContentBrowserClient::CanCreateNetworkContext(
++    BrowserContext* context,
++    const network::mojom::NetworkContextParams& network_context_params) {
++  return true;
++}
++
+ std::vector<base::FilePath>
+ ContentBrowserClient::GetNetworkContextsParentDirectory() {
+   return {};
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -776,6 +776,9 @@
+       network::mojom::NetworkContextParams* network_context_params,
+       cert_verifier::mojom::CertVerifierCreationParams*
+           cert_verifier_creation_params) override;
++  bool CanCreateNetworkContext(
++      content::BrowserContext* context,
++      const network::mojom::NetworkContextParams& network_context_params) override;
+   std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
+   base::DictValue GetNetLogConstants() override;
+   bool AllowRenderingMhtmlOverHttp(
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -221,6 +221,9 @@
+ #include "chrome/common/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ #include "chrome/browser/aux/ntp_prerender_service.h"
++#if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++#include "chrome/browser/aux/AuxBrowserNetworkPaths.h"
++#endif
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+@@ -7421,6 +7424,33 @@
+   }
+ }
+ 
++bool ChromeContentBrowserClient::CanCreateNetworkContext(
++    content::BrowserContext* context,
++    const network::mojom::NetworkContextParams& params) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  // Inspect the actual final paths, including Local State kDiskCacheDir and
++  // DevTools overrides. Never widen roots held by already-running children.
++  std::vector<std::string> paths;
++  if (params.file_paths) {
++    const auto& files = *params.file_paths;
++    const auto append = [&paths](const auto& directory) {
++      if (directory) paths.push_back(directory->path().value());
++    };
++    append(files.shared_dictionary_directory);
++    append(files.http_cache_directory);
++    append(files.no_vary_search_directory);
++    append(files.logical_invalidation_directory);
++    if (!files.data_directory.path().empty())
++      paths.push_back(files.data_directory.path().value());
++    if (files.unsandboxed_data_path)
++      paths.push_back(files.unsandboxed_data_path->value());
++  }
++  return aux::peer::CanCreateContainedBrowserNetworkContext(paths);
++#else
++  return true;
++#endif
++}
++
+ std::vector<base::FilePath>
+ ChromeContentBrowserClient::GetNetworkContextsParentDirectory() {
+   DCHECK(!network_contexts_parent_directory_.empty());
+--- a/content/browser/storage_partition_impl.cc
++++ b/content/browser/storage_partition_impl.cc
+@@ -3569,6 +3569,22 @@
+   }
+ #endif
+ 
++  if (!GetContentClient()->browser()->CanCreateNetworkContext(
++          browser_context_, *context_params)) {
++    // Keep endpoints bound, but disconnected. Consumers get transport failure
++    // rather than a null endpoint, fallback context or automatic reconnect loop.
++    // This also closes the already-created verifier's client endpoint when
++    // context_params is destroyed; no denied NetworkContext receives its paths.
++    network_context_owner_->network_context.reset();
++    auto rejected_context =
++        network_context_owner_->network_context.BindNewPipeAndPassReceiver();
++    cert_verifier_service_updater_.reset();
++    auto rejected_updater =
++        cert_verifier_service_updater_.BindNewPipeAndPassReceiver();
++    network_context_client_receiver_.reset();
++    return;
++  }
++
+   network_context_owner_->network_context.reset();
+   CreateNetworkContextInNetworkService(
+       network_context_owner_->network_context.BindNewPipeAndPassReceiver(),
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -21,6 +21,7 @@
+   if (is_mac) {
+     sources += [
+       "AuxNativeParentColdLaunch.cc",
++    "AuxBrowserNetworkPaths.cc",
+       "AuxNativeParentColdLaunch.h",
+       "AuxBrowserPrivateRoots.cc",
+       "AuxBrowserPrivateRoots.h",

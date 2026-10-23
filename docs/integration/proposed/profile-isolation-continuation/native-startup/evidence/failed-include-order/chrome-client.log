@@ -1,0 +1,19 @@
+[1m/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/source/chrome/browser/chrome_content_browser_client.cc:8:5: [0m[0;1;31merror: [0m[1mfunction-like macro 'BUILDFLAG_INTERNAL_ENABLE_AUX_BROWSER' is not defined[0m
+    8 | #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)[0m
+      | [0;1;32m    ^
+[0m[1m../../build/buildflag.h:45:26: [0m[0;1;36mnote: [0mexpanded from macro 'BUILDFLAG'[0m
+   45 | #define BUILDFLAG(flag) (BUILDFLAG_CAT(BUILDFLAG_INTERNAL_, flag)())[0m
+      | [0;1;32m                         ^
+[0m[1m../../build/buildflag.h:20:29: [0m[0;1;36mnote: [0mexpanded from macro 'BUILDFLAG_CAT'[0m
+   20 | #define BUILDFLAG_CAT(a, b) BUILDFLAG_CAT_INDIRECT(a, b)[0m
+      | [0;1;32m                            ^
+[0m[1m../../build/buildflag.h:19:38: [0m[0;1;36mnote: [0mexpanded from macro 'BUILDFLAG_CAT_INDIRECT'[0m
+   19 | #define BUILDFLAG_CAT_INDIRECT(a, b) a ## b[0m
+      | [0;1;32m                                     ^
+[0m[1m<scratch space>:25:1: [0m[0;1;36mnote: [0mexpanded from here[0m
+   25 | BUILDFLAG_INTERNAL_ENABLE_AUX_BROWSER[0m
+      | [0;1;32m^
+[0m[1m/private/tmp/aux-native-startup-continuation/docs/integration/proposed/profile-isolation-continuation/native-startup/source/chrome/browser/chrome_content_browser_client.cc:7450:15: [0m[0;1;31merror: [0m[1mno member named 'peer' in namespace 'aux'[0m
+ 7450 |   return aux::peer::CanCreateContainedBrowserNetworkContext(paths);[0m
+      | [0;1;32m         ~~~~~^
+[0m2 errors generated.

@@ -1,0 +1,9 @@
+{
+  "format": "aux.network-path-gate.patch-application.v1",
+  "passed": true,
+  "files": 6,
+  "beforeHashesMatched": true,
+  "afterHashesMatched": true,
+  "scratchOnly": true,
+  "sharedTreeChanged": false
+}

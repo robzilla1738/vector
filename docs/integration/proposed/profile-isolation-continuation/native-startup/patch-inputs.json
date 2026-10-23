@@ -1,0 +1,26 @@
+{
+  "content/public/browser/content_browser_client.h": {
+    "before": "bee67407b3b927dbabee784c2b66d9104062924b9782beb154ab9b098346090c",
+    "after": "256c923c9ab8cd072ac2409b2a6914d02ae3d6ec2e24bac46820fa40b92a43df"
+  },
+  "content/public/browser/content_browser_client.cc": {
+    "before": "925e729492d456a6ab01ada683ebf76a207ca1092f127afda646e95a84af29ef",
+    "after": "73de0cadfbb1fb37d41e129ddcc5edc836b5035f7151f5d8b684eb079eb57974"
+  },
+  "chrome/browser/chrome_content_browser_client.h": {
+    "before": "67e92e79e30a2e1a2ab5410e97b5a538810702713b81fb07ffc787dd153b799a",
+    "after": "63760dfa35a98dd907fae3adb6072f5d85bcc1a2715a96afcd48de60ba66f82a"
+  },
+  "chrome/browser/chrome_content_browser_client.cc": {
+    "before": "74c5fe253dc279db8b4808476cd6c28ef0f726adfaff8e3276ca0bddd4d62523",
+    "after": "1c276b6eb3218ab0f4c1aeb556d717aff7c0a43edc8190ec30dfb3e7ccd649c0"
+  },
+  "content/browser/storage_partition_impl.cc": {
+    "before": "1da4737624ab997ebcd8a1095375a2fa7d95a98b4cd11582b831d3803d1faadf",
+    "after": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6"
+  },
+  "chrome/browser/aux/BUILD.gn": {
+    "before": "5e3db8fd5df26f6ca3ec6f7f0b16439c569ad115cf03c7f8a08d354a7dc166da",
+    "after": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb"
+  }
+}
