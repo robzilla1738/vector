@@ -1,0 +1,22 @@
+{
+  "baseHost": {
+    "path": "docs/integration/proposed/aux-native-pty-environment-bridge/source/AuxDevelopmentWorkerHost.cc",
+    "sha256": "e9ee07985d835e1b61f20f3d5ad1dcfbc25e3b24ba5335cb45964f6f20c55073"
+  },
+  "successor": {
+    "docs/integration/proposed/aux-native-pty-helper-host/source/AuxDevelopmentWorkerHost.cc": "9a26d7134bd5b9ab1229e6da5dbfb04be87c308cad26b6553f1c07eb3a546f86",
+    "docs/integration/proposed/aux-native-pty-helper-host/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982"
+  },
+  "canonicalSwiftHeader": {
+    "path": "docs/integration/proposed/aux-native-authenticated-pty-helper/source/AuxAuthenticatedPtyHelper.h",
+    "sha256": "0b1810de91c6c2d29b536a3ff405b56cea62748f783e8e21907b1722012ec944",
+    "sourceCommits": [
+      "03528ee40",
+      "f5da1cccc"
+    ]
+  },
+  "priorHostEvidenceUnchanged": true,
+  "historicalMainInputsChanged": false,
+  "productActive": false,
+  "runtimeAccepted": false
+}
