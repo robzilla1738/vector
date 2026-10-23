@@ -1,0 +1,25 @@
+{
+  "format": "aux.fixed-reader.package-successor.v1",
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-native-main-package-integration/inputs.json",
+      "sourceSha256": "341b77925a322312da21ebb984577c49592bfd6a78d7c506259a5629f79def23",
+      "outputSha256": "dbd2037f9b1d858fde07fa9592c4b51316cfed0b1258ed49cf2a3cb565bb5f4e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs",
+      "sourceSha256": "a242c49db333cbd2b8a79d78477a17d1a6c3379bf2814cab15a319d79bd51e7e",
+      "outputSha256": "36522a07db8b675275f385f7c4589ae2feaec19a1738d6503ece144b3defac47"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs",
+      "sourceSha256": "8226f2e1caf230df81eb765daa4d96e2fa5af7b8785d4fbe3e8acff3b44b5b75",
+      "outputSha256": "8006596a796628b2417a114e4e632087b7998cd53ae903f4068e2bf8d633a93a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-current-entry-package/inputs.json",
+      "sourceSha256": "09bcadc9d177274021cc5de559124a72e09902844ceeb8477eddeefb16af519c",
+      "outputSha256": "f85946bcce4dc2cdba95ba5e375646f09eafeaebe4c7687a29badd510f32dc74"
+    }
+  ]
+}

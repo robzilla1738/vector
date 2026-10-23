@@ -1,0 +1,39 @@
+{
+  "format": "aux.current-native-entry.package-source.v1",
+  "inputIndexSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+  "inputIndexBytes": 12208963,
+  "originalDaemon": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+  "originalDaemonSha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+  "entrySha256": "d6288135e178d25540ab139e637bd44ed101274532769ed005054ae32f826541",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "dependencies": {
+    "docs/integration/proposed/aux-native-owned-entry-routing/source/project.mjs": "0b80e6a1c4263199bb4e32d1669ea76a4bed26cda1e2126dc9a7aa3eabe6b69f",
+    "docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+    "docs/integration/proposed/aux-native-owned-entry-routing/edits.json": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac",
+    "docs/integration/proposed/aux-native-owned-entry-pty/source/project.mjs": "a85cf50e65a3a92fc22e75080b315b88e3bae0fb6bea877788f8d286a7998663",
+    "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f",
+    "docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb",
+    "docs/integration/proposed/aux-native-exec-lifetime/source/project.mjs": "3b092b0e2ada7065a0dcb0afa0b9b5e776fc6f9c254e9f4e74caa0bfb0422c74",
+    "docs/integration/proposed/aux-native-exec-lifetime/edits.json": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736",
+    "vendor/provided/aux-cold-entry-admission.mjs": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161",
+    "docs/integration/proposed/aux-cold-entry-admission/inputs.json": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2",
+    "vendor/aside/lib/sea.mjs": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+  },
+  "reader": {
+    "sourcePath": "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedNativeDaemonEntry.swift",
+    "sourceSha256": "ad32b442322ad196e605526962f2aff280107e8016bfc7edfe685dafda8b925a",
+    "proposedSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+    "literalFind": "index.mjs",
+    "literalReplace": "aux-native-entry.mjs",
+    "count": 4
+  },
+  "nativeMainBuild68715HasReaderSuccessor": false,
+  "runtimeAuthorityGranted": false,
+  "pairedNativeMain": {
+    "buildReceiptSha256": "4c4dd1ade382867ddd7138f8c1390ddaa0cfacb1e95b44897189c2be0e5897e8",
+    "executableSha256": "0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e",
+    "readerSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+    "compiledAndLinked": true,
+    "executed": false
+  }
+}

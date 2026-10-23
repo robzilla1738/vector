@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "actualNewBuildReceiptAndExecutableVerified": true,
+  "sourcePins": 80,
+  "fixedReaderSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+  "wrongReceiptRejected": true,
+  "exactReplacementFiles": 4,
+  "sourceOnlyReaderAssociationChecked": true,
+  "executableRun": false,
+  "moduleLoaded": false,
+  "actualPackageProduced": false
+}

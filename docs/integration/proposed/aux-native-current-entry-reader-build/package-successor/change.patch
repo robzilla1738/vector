@@ -1,0 +1,146 @@
+--- a/docs/integration/proposed/aux-native-main-package-integration/inputs.json
++++ b/docs/integration/proposed/aux-native-main-package-integration/inputs.json
+@@ -1,14 +1,14 @@
+ {
+   "format": "aux.inactive-native-main.package-inputs.v1",
+-  "buildReceiptSha256": "009f8f740357a28f0f7b528b7f23ccadc1e55d0d1f4d5e8c600aa13bf83f272c",
+-  "buildReceipt": "evidence/build68715.json",
+-  "executable": "/private/tmp/aux-native-main-safe-transport-20261023/Aux Daemon",
+-  "executableSha256": "972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435",
++  "buildReceiptSha256": "4c4dd1ade382867ddd7138f8c1390ddaa0cfacb1e95b44897189c2be0e5897e8",
++  "buildReceipt": "../aux-native-current-entry-reader-build/evidence/results.json",
++  "executable": "/private/tmp/aux-native-current-entry-reader-20261023/Aux Daemon",
++  "executableSha256": "0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e",
+   "executableBytes": 144878856,
+   "nodeReceipt": "out/aux-node-static-26.5.0/static-build-receipt.json",
+   "nodeReceiptSha256": "c547f4f2a2b28998cb889a444e6a640ecca3d464294fdcaac2ac3023c5bcf622",
+-  "exportMetadata": "/private/tmp/aux-native-main-safe-transport-20261023/pty-main-exports.json",
+-  "exportMetadataSha256": "86fddd9d5834610c1198572cd37052ece5fce029bd9f58f4881eae11b13ce97c",
++  "exportMetadata": "/private/tmp/aux-native-current-entry-reader-20261023/pty-main-exports.json",
++  "exportMetadataSha256": "1f59942eac27901cf53aa52d8b2e0d0e9d6fca420e90e0268c61891bccd8be84",
+   "compositionSha256": "f6f225cbfac320f4b07beed4252533e1485cae8734e7ddf822f8b05c63c233dc",
+   "sourceFiles": {
+     "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostImports.cc": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1",
+@@ -89,7 +89,8 @@
+     "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f",
+     "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+-    "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a"
++    "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
++    "docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8"
+   },
+   "externalReferences": {
+     "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.cc": "ea2852469c36dc1eb81280f6d6ad30f3487691fa6980c6c7877927878be56db6",
+@@ -102,10 +103,25 @@
+     "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/src/node.h": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+     "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/test/embedding/embedtest.cc": "7c1251f0a073cd5443c6385186e6ad742d038fdbad15b0ecd1c4c4127be5c0e8",
+     "/private/tmp/aux-native-daemon-main-v3-resume-20261023/resume-build.json": "02ccef3ddb78b1d70df341f11b817f12e2666978e0e24e281478549993d36cb9",
+-    "/private/tmp/aux-native-daemon-main-v3-resume-20261023/original-verified-plan.json": "19ad5d8c5c355adf9f9c6b1d210156468851c8d1d2eacaededb0f0866bd5e047"
++    "/private/tmp/aux-native-daemon-main-v3-resume-20261023/original-verified-plan.json": "19ad5d8c5c355adf9f9c6b1d210156468851c8d1d2eacaededb0f0866bd5e047",
++    "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-reader-build/build.py": "1be4bf9fadb289a7663d85382714b2f2d48edbddf0d6a945416d39db76d23ce3",
++    "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-reader-build/inputs.json": "e97befa3ad88b4582f68c9d2eaf68958fc50c7af4d643b62ff7de6db2547d83b",
++    "/private/tmp/aux-native-main-safe-transport-20261023/results.json": "009f8f740357a28f0f7b528b7f23ccadc1e55d0d1f4d5e8c600aa13bf83f272c",
++    "/private/tmp/aux-native-current-entry-reader-20261023/0.o": "cb2e9969a809bbc1964fcb8450a53617bc3f67560833a83e997e289b6bacb984",
++    "/private/tmp/aux-native-current-entry-reader-20261023/1.o": "a1d40ad89db6fe26bb7bf1a3d221985f1a8f7abd0893d23a1f08afd1c6621856",
++    "/private/tmp/aux-native-current-entry-reader-20261023/2.o": "506fb1d94ba875505d161fc116ace2d89985cbd3e156c979969625bf9b8f6db4",
++    "/private/tmp/aux-native-current-entry-reader-20261023/3.o": "e889fd741939a9a26d8d0580ccfff1d4b8921669f506f755af0a3d1a275ba87a",
++    "/private/tmp/aux-native-current-entry-reader-20261023/4.o": "84d8073bbaee69adeac22677f64f0ed80c114dca7258b6d910d1bad265914c19",
++    "/private/tmp/aux-native-current-entry-reader-20261023/5.o": "73da7f6e5476951b2bc60cc5cbce8d8b8921ee0e0def2614799b1d26cb2e9491",
++    "/private/tmp/aux-native-current-entry-reader-20261023/6.o": "881ac50c4f483e56941be6d1cca96296440c71d5cb25c479573f1d6f4f513c89",
++    "/private/tmp/aux-native-current-entry-reader-20261023/7.o": "29025583e537b385e7aed613c9fc97a263a177cacab6ea29d7b29cf2a6a8ab4b",
++    "/private/tmp/aux-native-current-entry-reader-20261023/8.o": "65add741603c0d6a539dc60699661fb40fc119172651db5b8c0dead388d11b4f",
++    "/private/tmp/aux-native-current-entry-reader-20261023/9.o": "1f6a93d5962024f77ea76a235eecb2a87729111501f7b0db257c6c9c2ba67608",
++    "/private/tmp/aux-native-current-entry-reader-20261023/10.o": "3b804a98753fd0d7b8e920e6d09f2550807bfa0ed77214c89be181db544f216a"
+   },
+   "replacementPath": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+   "mode": 448,
+   "authorityGranted": false,
+-  "coldHookEnabled": false
++  "coldHookEnabled": false,
++  "fixedNativeEntryReaderSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8"
+ }
+--- a/docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs
++++ b/docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs
+@@ -14,14 +14,15 @@
+   return bytes;
+ }
+ export function verifyBuildReceipt(bytes) {
+-  if (sha(bytes) !== pins.buildReceiptSha256) throw Error('Exact build68715 receipt required');
++  if (sha(bytes) !== pins.buildReceiptSha256) throw Error('Exact fixed-reader build receipt required');
+   const receipt = JSON.parse(bytes);
+-  if (receipt.format !== 'aux.native-main.safe-transport-resume.v1' || receipt.executed !== true ||
++  if (receipt.format !== 'aux.current-native-reader.build.v1' || receipt.cppRecompiled !== false ||
++      receipt.readerSha256 !== pins.fixedNativeEntryReaderSha256 || receipt.nodeArchivesChecked !== 42 ||
+       receipt.passed !== true || receipt.inputsUnchanged !== true || receipt.executableRun !== false ||
+       receipt.moduleLoaded !== false || receipt.signed !== false || receipt.nodeRebuilt !== false ||
+       receipt.executableSha256 !== pins.executableSha256 || receipt.ptyExportMetadataExitCode !== 0 ||
+       receipt.ptyExportMetadataSha256 !== pins.exportMetadataSha256 ||
+-      JSON.stringify(receipt.results) !== JSON.stringify([{command: 9, exitCode: 0}, {command: 11, exitCode: 0}]))
++      JSON.stringify(receipt.results) !== JSON.stringify([{command: 11, exitCode: 0}]))
+     throw Error('Successful unexecuted native-main boundary required');
+   return receipt;
+ }
+@@ -43,12 +44,13 @@
+     throw Error('Exact executable bytes/mode required');
+   return Object.freeze({ receiptSha256: pins.buildReceiptSha256, outputSha256: pins.executableSha256,
+     outputBytes: bytes.length, compositionSha256: pins.compositionSha256,
+-    sourceFiles: Object.keys(pins.sourceFiles).length, authorityGranted: false, coldHookEnabled: false });
++    sourceFiles: Object.keys(pins.sourceFiles).length, fixedNativeEntryReaderSha256: pins.fixedNativeEntryReaderSha256, authorityGranted: false, coldHookEnabled: false });
+ }
+ /** Only called on private assembled resources after the existing full supplied checker. */
+ export async function replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence }) {
+   if (!evidence || evidence.receiptSha256 !== pins.buildReceiptSha256 || evidence.outputSha256 !== pins.executableSha256 ||
+       evidence.authorityGranted !== false || evidence.coldHookEnabled !== false ||
++      evidence.fixedNativeEntryReaderSha256 !== pins.fixedNativeEntryReaderSha256 ||
+       assembled.identityProfile !== 'aux-v1' || assembled.stateIdentityVersion !== 2 ||
+       assembled.daemonRuntime !== 'provided-node-development' || assembled.nativeMainReplacement)
+     throw Error('Inactive native-main preflight required');
+@@ -69,7 +71,7 @@
+     changeKinds: ['integration'] });
+   const replacement = { mode: 'inactive-embedded-native-main', path: pins.replacementPath, replacedSha256,
+     outputSha256: pins.executableSha256, outputBytes: pins.executableBytes, buildReceiptSha256: pins.buildReceiptSha256,
+-    sourceGraphFiles: evidence.sourceFiles, authorityGranted: false, coldHookEnabled: false,
++    sourceGraphFiles: evidence.sourceFiles, fixedNativeEntryReaderSha256: pins.fixedNativeEntryReaderSha256, authorityGranted: false, coldHookEnabled: false,
+     fallbackRuntime: 'provided-node-development', defaultEntryRefusalPreserved: true };
+   assembled.nativeMainReplacement = replacement;
+   await writeFile(join(resources, 'bundle.json'), JSON.stringify(assembled, null, 2) + '\n');
+--- a/docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs
++++ b/docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs
+@@ -34,7 +34,10 @@
+ /** Package-private transaction caller only. Inclusion is deliberately not activation. */
+ export async function addDormantCurrentNativeEntry({resources,assembled,repositoryRoot}){
+  if(assembled.identityProfile!=='aux-v1'||assembled.stateIdentityVersion!==2||assembled.daemonRuntime!=='provided-node-development'||
+-    assembled.nativeMainReplacement?.mode!=='inactive-embedded-native-main'||assembled.nativeEntryProjection)throw Error('Inactive state2 native-main package required');
++    assembled.nativeMainReplacement?.mode!=='inactive-embedded-native-main'||
++    assembled.nativeMainReplacement.buildReceiptSha256!==pins.pairedNativeMain.buildReceiptSha256||
++    assembled.nativeMainReplacement.outputSha256!==pins.pairedNativeMain.executableSha256||
++    assembled.nativeMainReplacement.fixedNativeEntryReaderSha256!==pins.reader.proposedSha256||assembled.nativeEntryProjection)throw Error('Inactive state2 native-main package required');
+  const entries=assembled.files.filter(f=>f.path===defaultIndexPath);
+  if(entries.length!==1||entries[0].type!=='file'||entries[0].sha256!==pins.inputIndexSha256)throw Error('Exact current default-entry inventory required');
+  const index=await pinned(join(resources,defaultIndexPath),pins.inputIndexSha256);
+@@ -53,7 +56,8 @@
+  await pinned(join(resources,defaultIndexPath),pins.inputIndexSha256);
+  const report={format:'aux.dormant-native-entry.package.v1',dormant:true,sourceSha256:pins.inputIndexSha256,
+   files:generated.map(({path,sha256,mode,bytes})=>({path,sha256,mode,bytes:bytes.length})),
+-  requiredReaderSha256:pins.reader.proposedSha256,readerPresentInBuild68715:false,
++  requiredReaderSha256:pins.reader.proposedSha256,readerSourceLinked:true,
++  pairedBuildReceiptSha256:pins.pairedNativeMain.buildReceiptSha256,pairedExecutableSha256:pins.pairedNativeMain.executableSha256,
+   defaultEntryUnchanged:true,coldHookEnabled:false,runtimeAuthorityGranted:false};
+  assembled.nativeEntryProjection=report;
+  await writeFile(join(resources,'bundle.json'),JSON.stringify(assembled,null,2)+'\n');
+--- a/docs/integration/proposed/aux-native-current-entry-package/inputs.json
++++ b/docs/integration/proposed/aux-native-current-entry-package/inputs.json
+@@ -28,5 +28,12 @@
+     "count": 4
+   },
+   "nativeMainBuild68715HasReaderSuccessor": false,
+-  "runtimeAuthorityGranted": false
++  "runtimeAuthorityGranted": false,
++  "pairedNativeMain": {
++    "buildReceiptSha256": "4c4dd1ade382867ddd7138f8c1390ddaa0cfacb1e95b44897189c2be0e5897e8",
++    "executableSha256": "0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e",
++    "readerSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
++    "compiledAndLinked": true,
++    "executed": false
++  }
+ }
