@@ -50,7 +50,15 @@
       "state": "root queued behind same native serializer; not compiled"
     }
   ],
-  "unappliedNativeSuccessor": null,
+  "unappliedNativeSuccessor": {
+    "composition": "out/native-reuse-composition-aux-browser-authority",
+    "review": "docs/integration/proposed/aux-native-browser-authority-integration/composition-review.json",
+    "sourceRecords": 824,
+    "artworkAssets": 23,
+    "applied": false,
+    "compiled": false,
+    "startupHookIncluded": false
+  },
   "nextSourceReview": [
     "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
     "actual main/link graph after Node static library reaches terminal result",
@@ -102,7 +110,9 @@
     "replyBoundPublicationTicket": "897c17435",
     "actualBrowserAdoption": "09fc9cc15",
     "fixedPtyLoadingProposal": "621e0005d",
-    "inboxV2DeferredFixture": "4694d8d66"
+    "inboxV2DeferredFixture": "4694d8d66",
+    "parentLinkBoundary": "01edda022",
+    "browserAuthorityComposition": "a476a0289"
   },
   "terminalRootChecks": [
     {

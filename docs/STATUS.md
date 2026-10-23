@@ -1,3 +1,9 @@
+# Unapplied combined native authority composition verified — 2026-10-22
+
+`out/native-reuse-composition-aux-browser-authority` independently replays24 new/changed source and GN records over the previously built native baseline:824 source records and23 existing artwork assets verified. It pairs actual browser adoption, the parent-only finite transport, a two-file read-only sealed policy bridge, notification-v2 codec/writer and an optional test-only codec executable. The parent policy C symbol is required by real selected-home validation; excluding only the child cold-home export fixes the ABI boundary without removing authentication. The source composition preserves all current UI/artwork. Review and reproduction: `aux-native-browser-authority-integration/`.
+
+This composition is not applied, generated, compiled, linked or runtime accepted. The actual startup hook remains a separate source successor under preparation. Native graph mutation waits for the same Node library build and queued focused checks; no duplicate full browser build was launched. The currently queued six-TU check covers its exact previous transport source and cannot prove the newer Swift parent bridge links. Final actual browser/daemon link and same-candidate runtime/UI observation remain required.
+
 # Actual browser adoption and publication pairing integrated — 2026-10-22
 
 Source commits `897c17435` and `09fc9cc15` now pair private response-bound ACK with the actual selected child, browser supervisor and installation-auth callers. A completed response stays pending across transient readiness loss; a different operation cannot retire it before the real selected-home fence accepts it. The supervisor retains the actual signature across its later token-publication fence. Static source/patch/hash checks pass for transport, adoption and executable main. The selected route uses fixed port21520 and cannot fall back to environment-selected home/port or the legacy carrier.
