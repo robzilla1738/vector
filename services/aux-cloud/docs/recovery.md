@@ -2,7 +2,7 @@
 
 The local operator tooling is separate from the desktop and deployed API. It does not enable production, import a database, upload recovered files, send email or revive sessions. It is not an automatic backup service.
 
-Actual acceptance: an exported production PostgreSQL custom archive, a 1 MiB synthetic private file and the wrapping key recovered together after source-file deletion. The archive was then imported into a new empty database on a separate 0.25 CU, one-hour Neon branch. All 11 migration hashes, the original synthetic owner and attachment metadata matched. The recovered wrapping key decrypted the original fixture CSK, and the restored private file matched its hash through a fresh provider read. The restored database, file, branch, source fixture records and local sensitive bundles/key/plaintext were removed. Evidence: `../evidence/recovery-capture.json` and `../evidence/isolated-recovery-restore.json`. Independent storage/key custody, scheduling, retention deletion and operational cutover remain unconfigured; this disposable drill does not prove recovery at real-user scale or a production RPO/RTO.
+Historical11-schema acceptance: an exported production PostgreSQL custom archive, a 1 MiB synthetic private file and the wrapping key recovered together after source-file deletion. The archive was then imported into a new empty database on a separate 0.25 CU, one-hour Neon branch. All 11 migration hashes, the original synthetic owner and attachment metadata matched. The recovered wrapping key decrypted the original fixture CSK, and the restored private file matched its hash through a fresh provider read. The restored database, file, branch, source fixture records and local sensitive bundles/key/plaintext were removed. Evidence: `../evidence/recovery-capture.json` and `../evidence/isolated-recovery-restore.json`. Independent storage/key custody, scheduling, retention deletion and operational cutover remain unconfigured; this disposable drill does not prove recovery at real-user scale or a production RPO/RTO.
 
 ## Capture boundary
 
@@ -55,7 +55,7 @@ Sources: [PostgreSQL 18 pg_dump](https://www.postgresql.org/docs/18/app-pgdump.h
 
 The actual source/SDK object-immutability contract and focused offline encrypted-bundle fixture using all 12 migrations are recorded under `docs/integration/proposed/aux-cloud-online-capture/`. Both operator scripts are byte-identical to those reviewed sources. The old offline/quiesced command and historical drill using 11 migrations remain available as historical tools; neither proves a current production capture. No new capture, production read, upload, deployment or scheduler was executed when this command was integrated.
 
-Independent remote storage, recovery-key custody, retention deletion, scheduler/retry/alerts and a current-schema real cross-store restore remain required before disaster-recovery acceptance. The 7-day archive deadline refuses old unpacking; it does not delete copies or keys. Keep recovery keys separate from encrypted bundles. Production use must follow an explicitly reviewed target/environment and byte budget; never pass secrets in command arguments.
+Independent remote storage/key custody, scheduled retention deletion and alerts remain required before disaster-recovery acceptance. The later current12-schema hosted drill passed actual full capture/restore CLI execution against Neon and a separate private Blob store; see `docs/integration/proposed/aux-cloud-hosted-restore-12/`. The 7-day archive deadline refuses old unpacking; it does not delete copies or keys. Keep recovery keys separate from encrypted bundles. Production use must follow an explicitly reviewed target/environment and byte budget; never pass secrets in command arguments.
 
 ## Isolated restore of the current online format
 
@@ -74,4 +74,19 @@ The original offline check used the actual twelve migration DDL files and encryp
 
 The runner preserves uncertain captures, retains its lock until the actual child exits, verifies every existing destination entry before mutation, verifies copied ciphertext before publishing completion, and records authenticated status. Local delivery retries and explicit expiry are implemented; remote transport, independent storage/key custody, scheduling and alerts remain unconfigured. See [operator review](../../../docs/integration/proposed/aux-local-backup-job/README.md) for exact boundaries and refusal behavior.
 
-The [actual empty-production check](../evidence/backup-job-empty-production.json) passed read-only capture and local delivery against all12 migration hashes and29 empty application tables. The delivered three-file encrypted bundle authenticated, its71532-byte PostgreSQL archive passed index validation, the wrapping key recovered correctly, and all four status MACs verified. Temporary bundles, key and plaintext were removed. There were no attachment/avatar objects, source writes, provider object uploads/deletes, database import, scheduler or production activation. This verifies the real capture/delivery/unpack path, while a current12-schema cross-store restore remains pending.
+The [actual empty-production check](../evidence/backup-job-empty-production.json) passed read-only capture and local delivery against all12 migration hashes and29 empty application tables. The delivered three-file encrypted bundle authenticated, its71532-byte PostgreSQL archive passed index validation, the wrapping key recovered correctly, and all four status MACs verified. Temporary bundles, key and plaintext were removed. There were no attachment/avatar objects, source writes, provider object uploads/deletes, database import, scheduler or production activation. This verifies the real capture/delivery/unpack path, and predates the later successful current12-schema hosted cross-store/full-CLI drill.
+
+## Remote transport implemented, provider not connected
+
+The explicit operator commands are:
+
+```sh
+node scripts/cloud-backup-remote.mjs deliver JOB_ROOT JOB_ID KEY_FILE REVIEW_JSON
+node scripts/cloud-backup-remote.mjs verify JOB_ROOT JOB_ID KEY_FILE REVIEW_JSON
+node scripts/cloud-backup-remote.mjs expire JOB_ROOT JOB_ID KEY_FILE REVIEW_JSON
+node scripts/cloud-backup-fetch.mjs FETCH_REVIEW_JSON NEW_DESTINATION NEW_SCRATCH KEY_FILE
+```
+
+Delivery uses the authenticated local inventory and an exact R2 account/bucket/prefix/job review, conditional create-only writes, full bounded readback and completion-last publication. Expiry first checks the authenticated deadline and complete existing remote set; unknown or changed objects refuse deletion. It removes the completion marker first, then the exact owned ciphertext. Fetch can recover after losing local job state; it downloads only the reviewed finite prefix into a fresh private directory, authenticates all encryption/manifest membership and retention, removes plaintext scratch and publishes only authenticated ciphertext. It performs no provider writes.
+
+R2 access must come only from private `AUX_BACKUP_R2_ACCESS_KEY_ID` and `AUX_BACKUP_R2_SECRET_ACCESS_KEY` variables. No ambient AWS credential chain or endpoint override is accepted. Never include credentials or the recovery key in argv/review JSON. A transfer timeout remains an unknown remote outcome; retain the job and retry only its exact ciphertext. No command creates resources, installs a schedule, sends alerts, activates production or establishes independent custody. See [local evidence](../../../docs/integration/proposed/aux-backup-r2-transport/evidence.json) and [unexecuted setup review](../../../docs/cloud/backup-operations-review/README.md).

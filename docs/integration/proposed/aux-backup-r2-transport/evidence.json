@@ -1,0 +1,40 @@
+{
+  "format": "aux.backup.r2.local-protocol-check.v1",
+  "checkedAt": "2026-10-23T07:40:00.752715+00:00",
+  "testsPassed": 3,
+  "testsFailed": 0,
+  "testCommand": [
+    "node",
+    "--test",
+    "services/aux-cloud/scripts/backup-remote-core.test.mjs"
+  ],
+  "coverage": [
+    "conditional-delivery/unknown-reply exact-job retry and completion-last",
+    "whole-set mismatch/unknown-object refusal and marker-first expiry",
+    "deadline abort with unknown outcome",
+    "actual authenticated local job capture inventory/local delivery inputs",
+    "real AES-GCM bundle fetch after original job state deletion",
+    "tamper/extra-object refusal and fresh private-directory cleanup"
+  ],
+  "transport": "in-memory injected adapter; no provider requests",
+  "sdkVersion": "3.1154.0",
+  "officialPackageEntryImported": true,
+  "initialSmokeCheckWronglySelectedDistEsEntry": true,
+  "initialSmokeFailureCorrectedByUsingActualPackageEntry": true,
+  "providerAcceptance": false,
+  "credentialsRead": false,
+  "schedulerConfigured": false,
+  "independentCustodyEstablished": false,
+  "desktopUiChanged": false,
+  "sourcePins": {
+    "services/aux-cloud/scripts/backup-remote-core.mjs": "0edffb2858247280fb6764c7e7b3a4759ac76990c90c08b388c291b5f7f7b362",
+    "services/aux-cloud/scripts/backup-remote-core.test.mjs": "7f365781ab5d49ba800067940243026b6238e65c4bcd0b17233358f8a3947547",
+    "services/aux-cloud/scripts/backup-r2-storage.mjs": "c280fafadaeeaded5d60f826ab5e28933a4061d41e13accc622b1cb02d9289fc",
+    "services/aux-cloud/scripts/cloud-backup-remote.mjs": "76ebc2769ef02b6f45c7f83328730c7b92a9ba28b692a61d7564ab0beb591224",
+    "services/aux-cloud/scripts/cloud-backup-fetch.mjs": "fdf23c2d39b635e377eca6e3620c0624e20215eee591c6afc38e46702b505d39",
+    "services/aux-cloud/scripts/backup-job-core.mjs": "01767f032f046a6718ccf6a44bdb1da48a9f71133b5762f6c4dd3f2e0195e5fc",
+    "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
+    "services/aux-cloud/package.json": "e6a2a7563fe7b6eaae72b6994cb9aa5c5f68aa9cbd376d8c684582d7ef85ec7f",
+    "services/aux-cloud/pnpm-lock.yaml": "9a5a0da373f488e3374fbb2936c718366e69f50afe52af30dfdb049ed314cc81"
+  }
+}

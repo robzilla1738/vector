@@ -1,0 +1,9 @@
+# Inactive encrypted R2 backup transport
+
+The maintained operator scripts now implement explicit remote delivery, verification, deadline-based expiry and read-only authenticated fetch. No account, bucket, key, schedule or alert is configured. Provider acceptance and independent recovery-key custody remain unproven. See the concrete [setup review](../../../cloud/backup-operations-review/README.md).
+
+`evidence.json` binds the actual exercised files and three focused no-network checks. These use injected storage, real filesystem job inventory authentication, actual encrypted bundles and actual unpacking after the original job files are removed. They prove local protocol/refusal behavior, not Cloudflare response semantics, credentials, private-access settings or an operating backup service. The official SDK package entry imports successfully; an initial diagnostic incorrectly imported its raw dist-es file and was corrected without changing product code.
+
+The SDK is an exact development/operator dependency. It is imported only by explicit operator commands; no deployed API or accepted desktop UI imports it. Lifecycle scripts were disabled during installation and the existing package release-age policy remains unchanged. Historical capture/restore receipts remain historical for their pinned inputs.
+
+Remote expiry can load the retained authenticated inventory after local ciphertext expiry. It still needs persistent job binding/inventory and a single authorized writer. Read-only disaster fetch instead needs the separately held recovery key and exact remote prefix; it authenticates the complete bundle and its retention before publication, without surviving local job state. An approved persistent runner, real provider readback, retention observation and alert/missed-heartbeat acceptance remain required.

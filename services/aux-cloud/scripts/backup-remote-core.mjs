@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, open, realpath, rename, rm, lstat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { unpackBundle } from './recovery-bundle.mjs';
 
@@ -181,13 +181,13 @@ export async function fetchRemoteBackup({ review, remote, directory, scratch, ke
   let ownedDirectory, ownedScratch;
   async function own(path) {
     await mkdir(path, { mode: 0o700 });
-    const value = await stat(path);
+    const value = await lstat(path);
     assert(value.isDirectory() && value.uid === process.getuid() && (value.mode & 0o7777) === 0o700);
     return { dev: value.dev, ino: value.ino };
   }
   async function removeOwned(path, identity) {
     if (!identity) return;
-    const value = await stat(path);
+    const value = await lstat(path);
     assert(value.isDirectory() && value.dev === identity.dev && value.ino === identity.ino, 'Fresh destination identity changed; retained for review');
     await rm(path, { recursive: true });
   }
@@ -235,7 +235,7 @@ export async function fetchRemoteBackup({ review, remote, directory, scratch, ke
     await removeOwned(scratch, ownedScratch); ownedScratch = undefined;
     const published = join(directory, 'bundle');
     await rename(pending, published); // Fresh private parent; no existing consumer/destination.
-    return { directory: published, bundleId: manifest.id, jobId: review.jobId, files: expected.length, bytes: total, authenticated: true };
+    return { directory: published, bundleId: manifest.id, jobId: review.jobId, files: expected.length, bytes: total, capturedAt: manifest.createdAt, expiresAt: manifest.metadata.retentionDeadline, authenticated: true };
   } catch (error) {
     await removeOwned(scratch, ownedScratch);
     await removeOwned(directory, ownedDirectory);

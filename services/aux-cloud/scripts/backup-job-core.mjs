@@ -151,6 +151,14 @@ async function loadInventory(job, key) {
   assert(inventory.files.every(file => sealedName.test(file.name)) && inventory.files.some(file => file.name === 'bundle.json'));
   return inventory;
 }
+export async function loadAuthenticatedBackupInventory(job, key) {
+  return await loadInventory(job, key);
+}
+export async function loadVerifiedBackupDelivery(job, key) {
+  const inventory = await loadInventory(job, key);
+  await checkFiles(job.target, job.targetIdentity, inventory.files, false);
+  return { inventory, directory: job.target };
+}
 async function checkFiles(path, identity, files, allowMissing) {
   await directory(path, identity);
   const names = await readdir(path), expected = new Map(files.map(file => [file.name, file]));

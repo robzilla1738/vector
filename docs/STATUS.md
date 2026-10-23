@@ -1,3 +1,11 @@
+# Encrypted remote backup transport implemented; provider setup pending — 2026-10-23
+
+The actual operator path now supports exact reviewed R2 delivery/verification/expiry and read-only recovery without surviving local job state. It uses authenticated local inventories, conditional create-only writes, full bounded ciphertext readback, completion-last publication, whole-set refusal before expiry and marker-first deletion. Fetch authenticates real encrypted bundles/manifest membership and retention before publishing a local copy and removes plaintext scratch. No cloud account, resource, credential, schedule, alert or request was created/sent.
+
+Three focused no-network checks passed, including the real filesystem job/inventory/local delivery producer, lost-response retries, expiry refusal/order, and real AES-GCM recovery after original job state removal with tamper/extra-object rejection. The official SDK3.1154.0 package entry imports; an initial diagnostic selected its raw dist-es file incorrectly and was corrected. Existing package release-age controls remain unchanged. Evidence/source pins: `docs/integration/proposed/aux-backup-r2-transport/`. This is local protocol/SDK availability evidence, not actual R2 acceptance.
+
+The concrete private-bucket/key-custody/persistent-runner/alert review is `docs/cloud/backup-operations-review/README.md`; owner was asked to identify the intended Cloudflare account. Independent backup operations remain unfinished. Production Clerk/live Stripe, Gateway terms/funded checks and protected same-candidate native acceptance remain pending. Existing provider data, production traffic and the accepted desktop/UI stay unchanged.
+
 # Actual current12 hosted restore passed and fixtures removed — 2026-10-23
 
 Actual session61967 passed through the real online capture and full isolated restore CLIs: all12 migration hashes, exported PostgreSQL snapshot/custom archive, actual temporary Neon database import/quarantine, separate private Blob attachment/avatar readback, original synthetic CSK decryption, recovery/generation/deleted-owner/snapshot preservation and session/challenge/share/transient refusal. Source29 application tables were empty before generated fixtures and empty again after exact-owned cleanup. The target reused the existing Aux development private store; no new Blob store or credential was created.

@@ -70,18 +70,25 @@ test('remote operation deadline aborts with explicitly unknown outcome', async (
 
 test('read-only fetch recovers real encrypted bundle without local job and rejects tampering', async () => {
   const { randomBytes } = await import('node:crypto');
-  const { readFile, readdir, access, realpath } = await import('node:fs/promises');
+  const { readFile, readdir, access, realpath, mkdir } = await import('node:fs/promises');
   const { writeBundle } = await import('./recovery-bundle.mjs');
   const { fetchRemoteBackup } = await import('./backup-remote-core.mjs');
+  const { createBackupJob, authenticateCapturedJob, deliverBackupJob, loadVerifiedBackupDelivery, loadAuthenticatedBackupInventory } = await import('./backup-job-core.mjs');
   const root = await realpath(await mkdtemp(join(tmpdir(), 'aux-fetch-fixture-'))), key = randomBytes(32);
   try {
-    const source = join(root, 'original');
+    const jobs = join(root, 'jobs'), delivered = join(root, 'delivered');
+    await mkdir(jobs, { mode: 0o700 }); await mkdir(delivered, { mode: 0o700 });
+    const job = await createBackupJob(jobs, delivered, key);
+    const source = join(job.path, 'bundle');
     await writeBundle({ directory: source, key, metadata: { retentionDeadline: new Date(Date.now() + 60_000).toISOString() },
       entries: [{ name: 'database.dump', source: Readable.from([Buffer.from('synthetic database archive')]) },
         { name: 'blob-0.bin', source: Readable.from([Buffer.from('synthetic private blob')]) }], maxBytes: 1024 });
-    const jobId = randomUUID(), prefix = 'aux/dev/' + jobId + '/', storage = new Map();
-    for (const name of await readdir(source)) storage.set(prefix + name, await readFile(join(source, name)));
-    await rm(source, { recursive: true }); // No job binding, inventory or original local bundle survives.
+    await authenticateCapturedJob(job, key, 1024); await deliverBackupJob(job, key);
+    const delivery = await loadVerifiedBackupDelivery(job, key);
+    assert.deepEqual(await loadAuthenticatedBackupInventory(job, key), delivery.inventory);
+    const jobId = job.id, prefix = 'aux/dev/' + jobId + '/', storage = new Map();
+    for (const name of await readdir(delivery.directory)) storage.set(prefix + name, await readFile(join(delivery.directory, name)));
+    await rm(jobs, { recursive: true }); await rm(delivered, { recursive: true }); // Only the separately held key survives.
     const review = { format: 'aux.backup.r2.fetch-review.v1', accountId: 'a'.repeat(32), bucket: 'aux-backup-fixture',
       prefix: 'aux/dev/', jobId, maxBytes: 16_384, maxFiles: 4 };
     const operations = [];
