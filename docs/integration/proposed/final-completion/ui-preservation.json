@@ -1,0 +1,39 @@
+{
+  "format": "aux.final-local-ui-preservation.v1",
+  "agentFiles": 1217,
+  "changedPaths": [
+    "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+    "assets/ai-CzEX5E7S.js",
+    "assets/channels-CJn5l9_T.js",
+    "assets/newtab-editor-u_GbForB.js",
+    "assets/route-TQyeTEXE.js",
+    "assets/search-navigation-TWhZq3-H.js",
+    "assets/subscription-C_XzJh5Z.js",
+    "manifest.json"
+  ],
+  "css": [
+    {
+      "path": "assets/globals-B-8L9em-.css",
+      "sha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d"
+    },
+    {
+      "path": "assets/liquid-glass-BmSyeXQT.css",
+      "sha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7"
+    },
+    {
+      "path": "assets/minipopup-options-CxOtM5A8.css",
+      "sha256": "09f02ad43bd0d784f80d047fcdfcb0ca526c9df926d0e4018f02f9f404b3134c"
+    },
+    {
+      "path": "assets/session-composer-BoATOu3F.css",
+      "sha256": "17d617a57cb9ede5721f536bb8546527250a2a05648bb2a4b00748ebc611c8d0"
+    },
+    {
+      "path": "assets/styles-CEC_MU8r.css",
+      "sha256": "28827594ce0d06f78970aa129b1e366f781f2450e5c2eb88f753d5e01098c2f5"
+    }
+  ],
+  "actualAppCompared": false,
+  "baseline": "out/provided-candidate-provider-funded-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist",
+  "stage": "out/provided-final-local-completion-20261023/ui/agent"
+}

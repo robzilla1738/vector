@@ -1,0 +1,45 @@
+{
+  "revision": 13,
+  "priorFingerprint": "b9418eea1c44403617389d3bb8c7c6b30aab8bb9e8564f80991736b3563fc3ef",
+  "fingerprint": "99adcd0f17848b0ce02e9ccf2d16ca2fae5cfd9ff3d97f80a22549f503fb0dee",
+  "changes": [
+    {
+      "path": "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "previousSha256": "7f8aa8cccc5749b2f148a465fee9bc7fd5e289329a3b4c6b634bd29a19282c61",
+      "outputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46"
+    },
+    {
+      "path": "assets/ai-CzEX5E7S.js",
+      "previousSha256": "adfc9ec1c23303bb07652a694cf440571285892cd2332f63c9455af721c2decc",
+      "outputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633"
+    },
+    {
+      "path": "assets/channels-CJn5l9_T.js",
+      "previousSha256": "a439b9a5e2e4072fc8bd309d5e8c721cbb91a66665e15c741e0f2f4b9be8a204",
+      "outputSha256": "e22926be4dadc67a0f9491b07ec439b55d5bba8dfa6ea6b146434db9b73c8a3d"
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "previousSha256": "fe7cf6730fa336cdd25e8b8f59fbc1d7d2eaaf8ec82379ff38e2735e8122770b",
+      "outputSha256": "9cbae591022e3650500183e8ba3809135394f10d2dc1c3425f06a1be48374638"
+    },
+    {
+      "path": "assets/route-TQyeTEXE.js",
+      "previousSha256": "dcdc30ffc5e24807db5a01be3a7f3a01c27f84377c867571a0d7554b69c7bfc1",
+      "outputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4"
+    },
+    {
+      "path": "assets/search-navigation-TWhZq3-H.js",
+      "previousSha256": "fa69ae067efe32fc9d9002ac14ae3da3b1bb17d857c169e681be4d62d942b677",
+      "outputSha256": "21ecceeb07d21f3e170814a253318f810c60077cfe5f2c8487e919dc5a43a09f"
+    },
+    {
+      "path": "assets/subscription-C_XzJh5Z.js",
+      "previousSha256": "5311e743853d6d0807639a5d10e0a5e151888b154b9d6a50b11ed29482c6a4a4",
+      "outputSha256": "5f579e650aa5491f5568d53e1461c925c9dedecedd85cd2d5eb6478ae392c71f"
+    }
+  ],
+  "actualStageVerified": true,
+  "stage": "out/provided-final-local-completion-20261023",
+  "preservationCheckExitCode": 0
+}

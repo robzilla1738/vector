@@ -1,17 +1,42 @@
 --- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
 +++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
-@@ -1,0 +2,2 @@
+@@ -1,4 +1,6 @@
+ #include "AuxOwnedNativePeerChild.h"
 +#include "AuxOwnedChildWait.h"
 +#include <cerrno>
-@@ -15,0 +18 @@
+ #include "base/apple/mach_port_rendezvous.h"
+ #include "base/apple/scoped_mach_port.h"
+ #include "base/process/process.h"
+@@ -13,6 +15,7 @@
+ #include <vector>
+ 
+ namespace aux::peer {
 +namespace { const pid_t kPeerOwnerProcess = getpid(); }
-@@ -23,0 +27,2 @@
+ struct OwnedNativePeerChild::State {
+   State(base::CommandLine command_value, base::LaunchOptions options_value,
+         std::unique_ptr<PreparedParentEndpoint> prepared_value, NativeSendRight handoff_value);
+@@ -21,6 +24,8 @@
+   static std::mutex& RetainedMutex();
+   static std::vector<std::shared_ptr<State>>& Retained();
+   static void CloseAndRetain(std::shared_ptr<State> state);
 +  static void RetainBeforeLaunch(const std::shared_ptr<State>& state);
 +  static void ReleaseKnownTerminal(const std::shared_ptr<State>& state);
-@@ -44 +49 @@
+   NativeChildObservation ObserveLocked();
+   NativeChildObservation ReapLocked();
+   const pid_t process = getpid();
+@@ -41,7 +46,7 @@
+     : command(std::move(command_value)), options(std::move(options_value)),
+       prepared(std::move(prepared_value)), handoff(std::move(handoff_value)) {}
+ OwnedNativePeerChild::State::~State() = default;
 -pid_t OwnedNativePeerChild::State::RegistryProcess() { static const pid_t owner = getpid(); return owner; }
 +pid_t OwnedNativePeerChild::State::RegistryProcess() { return kPeerOwnerProcess; }
-@@ -78,0 +84,18 @@
+ std::mutex& OwnedNativePeerChild::State::RetainedMutex() {
+   static auto* mutex = new std::mutex;
+   return *mutex;
+@@ -76,23 +81,32 @@
+   return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
+       std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
+ }
 +void OwnedNativePeerChild::State::RetainBeforeLaunch(const std::shared_ptr<State>& state) {
 +  // Caller holds the actual State admission mutex. Complete all registry
 +  // allocation before the first syscall can create a child. No late teardown
@@ -30,7 +55,8 @@
 +  std::erase(Retained(), state);
 +  state->retained_for_exit = false;
 +}
-@@ -81,15 +104,6 @@
+ void OwnedNativePeerChild::State::CloseAndRetain(std::shared_ptr<State> state) {
+   if (getpid() != state->process || getpid() != RegistryProcess()) return;
 -  bool retain = false;
 -  {
 -    std::lock_guard<std::mutex> lock(state->mutex);
@@ -52,27 +78,47 @@
 +  if (state->peer) state->peer->CloseAndInspect();
 +  state->ReapLocked();
 +  ReleaseKnownTerminal(state);
-@@ -111,0 +126 @@
+ }
+ OwnedNativePeerChild::~OwnedNativePeerChild() {
+   if (getpid() != state_->process) return;
+@@ -109,6 +123,7 @@
+   if (getpid() != state->process) return false;
+   std::lock_guard<std::mutex> lock(state->mutex);
+   if (state->observation.closed || state->observation.launch_attempted) return false;
 +  State::RetainBeforeLaunch(state);
-@@ -120,0 +136 @@
+   state->observation.launch_attempted = true;
+   // Actual spawn is serialized with this owner's terminal close, matching the
+   // supplied supervisor's RunAdmittedLaunch generation-lock boundary.
+@@ -118,6 +133,7 @@
+   if (!state->child.IsValid()) {
+     state->observation.launch_failed = true;
+     state->prepared->CloseAndInspect();
 +    State::ReleaseKnownTerminal(state);
-@@ -162,2 +178 @@
+     return false;
+   }
+   state->observation.child_pid = state->child.Pid();
+@@ -159,15 +175,27 @@
+     return ObserveLocked();
+   siginfo_t exit{};
+   const pid_t pid = child.Pid();
 -  if (child_created.is_null() || child.CreationTime() != child_created ||
 -      waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
 +  if (child_created.is_null() || child.CreationTime() != child_created) {
-@@ -166,0 +182,6 @@
+     observation.exit_ownership_unknown = true;
+     return ObserveLocked();
+   }
 +  if (waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
 +    // WNOWAIT has not consumed the child. EINTR retains pending ownership and
 +    // can be retried by the next poll; other errors stay sticky unknown.
 +    if (errno != EINTR) observation.exit_ownership_unknown = true;
 +    return ObserveLocked();
 +  }
-@@ -167,0 +189,4 @@
+   if (!exit.si_pid) return ObserveLocked();
 +  if (exit.si_pid != pid) {
 +    observation.exit_ownership_unknown = true;
 +    return ObserveLocked();
 +  }
-@@ -169,2 +194,5 @@
+   int status = 0;
 -  if (exit.si_pid != pid || waitpid(pid, &status, WNOHANG) != pid) {
 -    observation.exit_ownership_unknown = true;
 +  const pid_t waited = waitpid(pid, &status, WNOHANG);
@@ -80,7 +126,13 @@
 +  const auto result = ClassifyOwnedChildReap(pid, waited, status, error);
 +  if (result != OwnedChildReap::terminal) {
 +    if (result == OwnedChildReap::unknown) observation.exit_ownership_unknown = true;
-@@ -188,7 +216,5 @@
+     return ObserveLocked();
+   }
+   observation.wait_status = status;
+@@ -185,20 +213,24 @@
+ }
+ size_t OwnedNativePeerChild::PollRetainedOwnedChildren() {
+   if (getpid() != State::RegistryProcess()) return std::numeric_limits<size_t>::max();
 -  std::vector<std::shared_ptr<State>> retained;
 -  {
 -    std::lock_guard<std::mutex> lock(State::RetainedMutex());
@@ -93,23 +145,26 @@
 +  size_t cursor = 0;
 +  for (size_t visited = 0; visited < budget; ++visited) {
 +    std::shared_ptr<State> state;
-@@ -196,2 +222,3 @@
+     {
 -      std::lock_guard<std::mutex> lock(state->mutex);
 -      terminal = state->ReapLocked().exit_observed_and_reaped;
 +      std::lock_guard<std::mutex> lock(State::RetainedMutex());
 +      if (cursor >= State::Retained().size()) break;
 +      state = State::Retained()[cursor];
-@@ -199 +226,4 @@
+     }
 -    if (terminal) {
 +    // No registry lock crosses State, transport, or actual OS wait operations.
 +    { std::lock_guard<std::mutex> lock(state->mutex);
 +      state->ReapLocked(); State::ReleaseKnownTerminal(state); }
 +    {
-@@ -201 +231,3 @@
+       std::lock_guard<std::mutex> lock(State::RetainedMutex());
 -      std::erase(State::Retained(), state);
 +      const auto position = std::find(State::Retained().begin(), State::Retained().end(), state);
 +      if (position != State::Retained().end())
 +        cursor = static_cast<size_t>(position - State::Retained().begin()) + 1;
+     }
+   }
+   return RetainedUnresolvedChildren();
 --- /dev/null
 +++ b/chrome/browser/aux/AuxOwnedChildWait.h
 @@ -0,0 +1,17 @@

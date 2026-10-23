@@ -1,0 +1,22 @@
+{
+  "format": "aux.final-local-stage-evidence.v1",
+  "stage": "out/provided-final-local-completion-20261023",
+  "passed": true,
+  "preservationCheckExitCode": 0,
+  "unchangedUiFiles": 1113,
+  "explicitUiChanges": 148,
+  "preservedStylesheets": 7,
+  "appResourceRecords": 176,
+  "runtimeFiles": 9346,
+  "memoryFiles": 19,
+  "helperFiles": 11,
+  "binaryPatchRanges": 44,
+  "nativeIntegrationAccepted": false,
+  "runtimeAccepted": false,
+  "signed": false,
+  "manifests": {
+    "manifest.json": "3b8a9fad9d0fdfd3a459cee3a69b5007f9782d206db9bcd6bac56b9d5645e64b",
+    "ui/manifest.json": "d782e73dc2c21dde78af2906af8315e00fe553372ab894ef0da7901ae6c7f75c",
+    "apps/manifest.json": "94917753bf1d6ee8c3aa0660156f08b0864b967db6b8b8b31d94d45f5a2120b6"
+  }
+}
