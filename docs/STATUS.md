@@ -1,3 +1,11 @@
+# Sync/history producer shutdown and package handoff integrated — 2026-10-23
+
+Parallel source work now stops actual sync/history timers and triggers, invalidates queued generations, aborts history and awaits queue/history/watcher close before write-admission shutdown. OAuth refresh cancellation retains native pending/unknown custody through actual settlement. Retained authority reply bytes are wiped on cancel and late callback results suppressed. Focused fixture checks and exact final source/dormant-entry syntax passed.
+
+The combined48-Swift/12-object unsigned daemon link passed with unchanged pins and paired module imports. Executable SHA256 `22d6a634a413b97aa4df6ca70d9650a3c9dd6b626ce625169021f94be34a8626`. Exact inactive packaging assembler is implemented and syntax checked, but actual assembly is pending successful browser output. It requires complete native inventories and receipt association, checks signatures and preserves every unrelated supplied/UI resource. Evidence: `docs/integration/proposed/profile-isolation-delivery/`.
+
+Snapshot/build pipeline remains active at `/private/tmp/aux-chromium-recovery-snapshot-20261023`; last observation is dependency cloning, not compilation success. The build watcher requires GN preparation then no-signing action/link checks before full Ninja-j4; success will pin actual app files and unsigned Mach-O evidence. No testable full app or UI runtime comparison yet. Genuine all-browser/service/descendant drain and admitted-root recovery remain unimplemented; additional producer classes remain listed in writes/README.md. Current UI/app and shared Chromium preserved. No signing or release occurred.
+
 # Further writer coverage and cancellation closure linked; full browser job queued — 2026-10-23
 
 Parallel local work added25 count-checked supplied-source seams for downloads, sync metadata SQLite, migration mutations, runtime directory copying, queued sync admission and watcher/dream producer uncertainty. Exact composed-source/dormant-entry syntax and focused disposable checks passed. Detached producer completion still does not certify drain.
