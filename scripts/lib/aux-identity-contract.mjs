@@ -141,19 +141,33 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
       if (!texts[label].startsWith(prefix) || texts[label].split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
         throw Error(`Missing exact state2 cold-entry quarantine: ${label}`);
     }
-    let cryptoPreload = '';
+    let cryptoPreload = '', providerNodePreload = '';
     if (apps.components.daemon.cryptoRuntime) {
       const crypto = JSON.parse(await regular(join(repository, 'docs/integration/proposed/aux-crypto-stage-integration/inputs.json')));
       const policy = stage.cloudPolicy?.mode ?? 'local';
       const utilityPins = apps.components.daemon.macOSUtilities
         ? JSON.parse(await regular(join(repository, 'docs/integration/proposed/aux-macos-utility-integration/inputs.json'))) : null;
       const variants = (utilityPins ?? crypto).variants[policy];
-      if (!variants || sha(texts.daemon) !== variants.sea.outputSha256 || sha(developmentText) !== variants['node-development'].outputSha256 ||
-          !texts.daemon.startsWith(AUX_COLD_ENTRY_REFUSAL + crypto.preloads.sea))
+      const provider = apps.components.daemon.nodeDevelopment?.providerFundedEntry;
+      let providerSeaPreload = '', expectedSea = variants?.sea.outputSha256, expectedNode = variants?.['node-development'].outputSha256;
+      if (provider) {
+        // A separately reviewed successor; never replace the frozen predecessor
+        // hashes with a stage-declared arbitrary digest or accept a prefix alone.
+        const pins = JSON.parse(await regular(join(repository, 'docs/integration/proposed/provider-funded-integration/entry-projections.json')));
+        if (!variants || pins.format !== 'aux.provider-funded.entry-projections.v1' || pins.policy !== policy ||
+            provider.format !== 'aux.provider-funded.entry.v1' || provider.sourceSha256 !== expectedNode ||
+            provider.outputSha256 !== pins['node-development'].sha256 || provider.runtimeAccepted !== false ||
+            provider.startupRefusalPreserved !== true || provider.policy?.paymentsEnabled !== false || provider.policy?.hostedAiEnabled !== false)
+          throw Error('Unreviewed provider-funded entry successor');
+        expectedSea = pins.sea.sha256; expectedNode = pins['node-development'].sha256;
+        providerSeaPreload = pins.sea.prelude; providerNodePreload = pins['node-development'].prelude;
+      }
+      if (!variants || sha(texts.daemon) !== expectedSea || sha(developmentText) !== expectedNode ||
+          !texts.daemon.startsWith(AUX_COLD_ENTRY_REFUSAL + providerSeaPreload + crypto.preloads.sea))
         throw Error('Unreviewed state2 crypto entry projection');
       cryptoPreload = utilityPins ? utilityPins.preloads['node-development'] : crypto.preloads['node-development'];
     }
-    const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + cryptoPreload + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
+    const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + providerNodePreload + cryptoPreload + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
     if (typeof developmentText !== 'string' || !developmentText.startsWith(generatedPrefix) || developmentText.split(AUX_COLD_ENTRY_REFUSAL).length !== 2)
       throw Error('Missing state2 generated-entry quarantine before asset initialization');
     coldEntryQuarantineChecked = true;
