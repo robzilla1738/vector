@@ -1,0 +1,18 @@
+{
+  "format": "aux.profile-isolation.dormant-entry.v1",
+  "passed": true,
+  "sourceSha256": "3a29d60f367cb450c948778e5157bafa37e0c5b8b36acee662aaf5de072a53a8",
+  "sourceReceiptSha256": "1285541491c54c382324650fec0a059577a1b5741b6cb414c552a71564c8e84d",
+  "entrySha256": "4e605e0671498472814402673194635d9c95263f3b5d17b77d316e3d666b2ae7",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "entryBytes": 12239004,
+  "historicalProjectionPinsSha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7",
+  "syntaxExitCode": 0,
+  "ordinarySourceUnchanged": true,
+  "defaultEntryRefusalPreserved": true,
+  "dormant": true,
+  "executed": false,
+  "appChanged": false,
+  "runtimeAuthorityGranted": false,
+  "packaged": false
+}

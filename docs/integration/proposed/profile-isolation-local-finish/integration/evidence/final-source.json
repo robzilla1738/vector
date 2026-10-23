@@ -1,0 +1,37 @@
+{
+  "inputSha256": "5f99818131f693c82d572a8316755d79f7185c9929a362a8ede9bb58783fe4ce",
+  "outputSha256": "3a29d60f367cb450c948778e5157bafa37e0c5b8b36acee662aaf5de072a53a8",
+  "changes": [
+    {
+      "name": "finite helpers",
+      "count": 1
+    },
+    {
+      "name": "routine update unsubscribe",
+      "count": 1
+    },
+    {
+      "name": "routine delete unsubscribe",
+      "count": 1
+    },
+    {
+      "name": "model chain custody",
+      "count": 1
+    },
+    {
+      "name": "model chain cleanup boundary",
+      "count": 1
+    },
+    {
+      "name": "startup orphan retry tracked",
+      "count": 1
+    },
+    {
+      "name": "routine migration lifetime",
+      "count": 1
+    }
+  ],
+  "passed": true,
+  "coldRefusalPreserved": true,
+  "composedSha256": "3a29d60f367cb450c948778e5157bafa37e0c5b8b36acee662aaf5de072a53a8"
+}
