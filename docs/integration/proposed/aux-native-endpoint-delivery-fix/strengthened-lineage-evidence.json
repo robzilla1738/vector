@@ -1,0 +1,20 @@
+{
+  "format": "aux.endpoint-delivery.strengthened-static-lineage.v1",
+  "actualSession": 74818,
+  "actualOriginalReceiptSha256": "1bd95e17ef06e4e53b9eeaa1701f15cb4e3965b6e455d6daed541d1e660d78fb",
+  "actualReceiptInputsSha256": "d6bbcded042cf6af6f1805426e5a2abf46ffb2c5167a29ceee9bbe9dc4572178",
+  "currentStrengthenedInputsSha256": "5982c02cc91cae8e3071cd33eb6d539b87c82c2ce544654c526c099c2ff29a6a",
+  "currentStrengthenedRecipeSha256": "0b16955dbf29b6d4397f6367493f150be7633204ff1265a964b7aab41542f6b0",
+  "failed85029InputsSha256": "4ccb75f8176d99511530830255203a6d0485a54da6d7d97c5007c68121ce439d",
+  "failed85029ResultSha256": "3f3c1743a87ba146a61d5ca87aaf516c176c94aa2a4de551679984409d3470da",
+  "checks": [
+    "Actual3newcommands exit0 and pre/postpins verified",
+    "Prior2passed source hashes unchanged",
+    "All headers/unmodified sources unchanged fromfailed85029 manifest",
+    "Exact compiler/PCM/modulemap/base.ninja/GN/reference identity unchanged",
+    "Actual3compiledsource hashes equal current corrected source"
+  ],
+  "recompiled": false,
+  "nativeOrSecurityExecuted": false,
+  "scope": "Original handoff graph only; not newfileport sources."
+}
