@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly authenticated Aux backup expiry
+[Timer]
+OnCalendar=*-*-* *:15:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+Unit=aux-backup@expiry.service
+[Install]
+WantedBy=timers.target

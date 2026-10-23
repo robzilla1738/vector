@@ -96,6 +96,20 @@ export async function recordBackupStatus(job, phase, key, details = {}) {
     { format: 'aux.backup.status.v1', jobId: job.id, phase, at: new Date().toISOString(), ...details }, key);
   await syncDirectory(job.path);
 }
+/** Authenticated status inspection for the persistent operator scheduler. */
+export async function loadBackupJobStatuses(job, key) {
+  await directory(job.path, job.identity);
+  const names = (await readdir(job.path)).filter(name => /^[0-9]{6}\.status$/.test(name)).sort();
+  assert(names.length <= 10000, 'Operator status inspection limit reached');
+  const records = [];
+  for (const [index, name] of names.entries()) {
+    assert.equal(name, String(index).padStart(6, '0') + '.status', 'Missing authenticated status record');
+    const value = await signedRead(join(job.path, name), key);
+    assert(value.format === 'aux.backup.status.v1' && value.jobId === job.id && typeof value.phase === 'string' && Number.isFinite(Date.parse(value.at)), 'Invalid authenticated job status');
+    records.push(value);
+  }
+  return records;
+}
 export async function createBackupJob(root, targetRoot, key) {
   const rootIdentity = await directory(root), targetIdentity = await directory(targetRoot);
   assert(root !== targetRoot && !root.startsWith(targetRoot + '/') && !targetRoot.startsWith(root + '/'), 'Separate delivery root required');

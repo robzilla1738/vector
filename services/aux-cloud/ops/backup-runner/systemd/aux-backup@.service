@@ -1,0 +1,41 @@
+[Unit]
+Description=Aux encrypted backup operation (%i)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=aux-backup
+Group=aux-backup
+UMask=0077
+WorkingDirectory=/opt/aux-backup/current/services/aux-cloud
+EnvironmentFile=/etc/aux-backup/production.env
+ExecStart=/usr/bin/node /opt/aux-backup/current/services/aux-cloud/scripts/cloud-backup-runner.mjs %i /etc/aux-backup/runner-review.json
+StateDirectory=aux-backup
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/aux-backup
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=1536M
+TasksMax=64
+TimeoutStartSec=2h
+OOMPolicy=kill
+LimitCORE=0
+LimitNOFILE=4096
+TimeoutStopSec=30s
+KillMode=control-group
+# No automatic restart: unknown outcomes must retain exact-job/operator custody.
+Restart=no
+StandardOutput=journal
+StandardError=journal

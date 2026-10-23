@@ -1,0 +1,14 @@
+{
+  "format": "aux.backup.runner.review.v1",
+  "enabled": false,
+  "jobsRoot": "/var/lib/aux-backup/jobs",
+  "deliveryRoot": "/var/lib/aux-backup/delivery",
+  "controlRoot": "/var/lib/aux-backup/control",
+  "keyFile": "/etc/aux-backup/recovery.key",
+  "accountId": "REPLACE_WITH_REVIEWED_AUX_CLOUDFLARE_ACCOUNT",
+  "bucket": "aux-recovery-prod",
+  "prefix": "daily/",
+  "maxBytes": 1073741824,
+  "maximumJobs": 366,
+  "credentialExpiresAt": "2026-11-22T00:00:00.000Z"
+}
