@@ -1,3 +1,4 @@
+import { paymentsEnabled } from './launch-mode';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { del, get, head, issueSignedToken, presignUrl } from '@vercel/blob';
@@ -90,7 +91,7 @@ attachmentRoutes.post('/attachments/intents', async c => {
     sql`INSERT INTO aux_attachments (id, user_id, pathname, name, content_type, expected_size, expected_sha256, purpose, expires_at) SELECT ${attachmentId}, ${user}, ${pathname}, ${value.name}, ${value.contentType}, ${value.size}, ${value.sha256}, ${value.purpose}, now() + interval '15 minutes' WHERE (SELECT coalesce(sum(expected_size), 0) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) + ${value.size} <= (SELECT CASE WHEN plan = 'max' AND status IN ('active','trialing') THEN 21474836480::bigint WHEN plan = 'pro' AND status IN ('active','trialing') THEN 5368709120::bigint ELSE 104857600::bigint END FROM (SELECT (SELECT plan FROM aux_subscriptions WHERE user_id = ${user}) AS plan, (SELECT status FROM aux_subscriptions WHERE user_id = ${user}) AS status) subscription) AND (SELECT count(*) FROM aux_attachments WHERE user_id = ${user} AND (state = 'ready' OR ((state IN ('pending','issued') OR (purpose = 'inference' AND state = 'failed')) AND expires_at > now()))) < 10000 RETURNING *`,
   ]);
   const row = results[1]?.[0] as Attachment | undefined;
-  if (!row) reject(413, 'STORAGE_QUOTA', 'Attachment quota reached. Delete files or choose a larger plan.');
+  if (!row) reject(413, 'STORAGE_QUOTA', paymentsEnabled() ? 'Attachment quota reached. Delete files or choose a larger plan.' : 'Attachment storage limit reached. Delete files and retry.');
   return c.json({ ...metadata(row), pathname, access: 'private', uploadUrl: '/attachments/upload', expiresAt: row.expires_at, clientPayload: JSON.stringify({ intentId: row.id }) }, 201);
 });
 attachmentRoutes.post('/attachments/upload', async c => {

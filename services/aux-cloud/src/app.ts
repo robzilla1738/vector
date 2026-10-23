@@ -17,7 +17,7 @@ import { readinessRoutes } from './readiness';
 export const app=new Hono<{Variables:AuthVariables}>().basePath('/api/v1');
 app.use('*',bodyLimit({maxSize:4*1024*1024,onError:c=>c.json({error:'Use a private upload for payloads larger than 4 MiB.'},413)}));
 app.use('*',cors({origin:origin=>{
-  const allowed=(process.env.AUX_ALLOWED_ORIGINS||process.env.NEXT_PUBLIC_APP_URL||'https://app.getaux.co').split(',');
+  const allowed=(process.env.AUX_ALLOWED_ORIGINS||process.env.NEXT_PUBLIC_APP_URL||'https://app.getaux.co').split(',').map(value=>value.trim()).filter(Boolean);
   allowed.push('chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm');
   return allowed.includes(origin)?origin:undefined;
 },allowHeaders:['Authorization','Content-Type','If-Match','If-None-Match','X-Aux-Auth-Protocol','X-Aux-Sync-Encryption','X-Aux-If-Match','X-Aux-If-None-Match'],exposeHeaders:['ETag','Content-Range','Accept-Ranges','X-Aux-Cookie-Revision'],maxAge:600}));

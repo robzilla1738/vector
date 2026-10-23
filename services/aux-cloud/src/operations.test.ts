@@ -53,3 +53,17 @@ test('provider-only launch builds without Stripe; billing opt-in restores all pa
   assert.throws(()=>checkEnvironment({...env,AUX_PAYMENTS_ENABLED:'true'},resources),/Missing configuration: STRIPE_SECRET_KEY/);
   assert.equal(checkEnvironment({...env,AUX_PAYMENTS_ENABLED:'TRUE'},resources).paymentsEnabled,false);
 });
+
+// Build validation accepts whitespace-separated origins; the actual preflight must too.
+test('configured CORS origins are trimmed, with unrelated origins still denied',async()=>{
+  const previous=process.env.AUX_ALLOWED_ORIGINS;
+  process.env.AUX_ALLOWED_ORIGINS=' https://app.getaux.co , https://dev-cloud.getaux.co ';
+  try {
+    for(const origin of ['https://app.getaux.co','https://dev-cloud.getaux.co']) {
+      const response=await app.request('/api/v1/health',{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'GET'}});
+      assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);
+    }
+    const response=await app.request('/api/v1/health',{method:'OPTIONS',headers:{Origin:'https://unrelated.example','Access-Control-Request-Method':'GET'}});
+    assert.equal(response.headers.get('Access-Control-Allow-Origin'),null);
+  }finally{if(previous===undefined)delete process.env.AUX_ALLOWED_ORIGINS;else process.env.AUX_ALLOWED_ORIGINS=previous;}
+});
