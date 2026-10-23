@@ -1,0 +1,18 @@
+{
+  "format": "aux.legacy-inbox.actual-synthetic-fixture.v1",
+  "gnBuildSession": 59751,
+  "gnBuildExitCode": 0,
+  "fixtureSha256": "978df3af52bad25bd7de363e0714c2e631fbb58792bbbf790057313ab553ed63",
+  "exitCode": 0,
+  "stdout": "legacy explicit-key codec fixture passed\n",
+  "stderr": "",
+  "syntheticIndependentKeysOnly": true,
+  "legacyKeyLookup": false,
+  "databaseWritten": false,
+  "ownerStateAccessed": false,
+  "sourceBinaryUnchanged": true,
+  "disposableHomeAndBinaryCopy": true,
+  "appReplaced": false,
+  "fixtureSourceSHA256": "a69ba69cd7f381924fb2aafbc45aee334dc514fcfe7aa9cb3c04085686a4ce48",
+  "scope": "actual original-format synthetic writer, explicit independent key legacy decode and authenticated v2 preparation; no real legacy key retrieval or durable migration"
+}

@@ -295,16 +295,34 @@
       "role": "actualcombinedbrowser GNregenpass, firstparentSwiftmodule missingstrictEnvelopeObject; finalbrowserlinkunrun",
       "composition": "out/native-reuse-composition-aux-browser-cold-api-ready",
       "nativeCheckoutRemainsApplied": true
+    },
+    {
+      "session": 98397,
+      "exitCode": 0,
+      "role": "actualthree-source Swiftparentmodule/generatedheader",
+      "evidence": "docs/integration/proposed/aux-native-parent-json-fixture-integration/evidence/actual-parent-module.json"
+    },
+    {
+      "session": 59751,
+      "exitCode": 0,
+      "role": "actualGNlegacycodecfixture3objects+productionlink4steps",
+      "fixtureActuallyRun": true,
+      "evidence": "docs/integration/proposed/aux-native-legacy-inbox-check/evidence/actual-run.json"
+    },
+    {
+      "session": 57795,
+      "exitCode": 1,
+      "role": "actualparentSwiftmodulepasses, selectedhome nativepathunsafe warnings",
+      "evidence": "docs/integration/proposed/aux-native-parent-json-fixture-integration/evidence/actual-browser-unsafe-failure.txt"
     }
   ],
   "appliedCurrentNativeComposition": {
-    "composition": "out/native-reuse-composition-aux-browser-cold-api-ready",
-    "sha256": "1421718da01ab018070ce60e0068a7f262f74d82d043b68e35c09300ed1d18d2",
-    "sources": 826,
+    "composition": "out/native-reuse-composition-aux-parent-json-fixture",
+    "sources": 831,
     "assets": 23,
     "applied": true,
     "compiled": false,
-    "applyReceipt": "out/native-reuse-composition-aux-browser-cold-api-ready/native-before-apply-v9tx8kcl/apply-receipt.json"
+    "applyReceipt": "out/native-reuse-composition-aux-parent-json-fixture/native-before-apply-ybxh2a6c/apply-receipt.json"
   },
   "rootQueuedChecks": [],
   "lastBuildObservation": {
