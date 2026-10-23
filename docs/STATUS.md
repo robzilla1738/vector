@@ -1,3 +1,9 @@
+# Aux account access and recovery-key custody prepared — 2026-10-23
+
+Owner-approved 1Password desktop access succeeded. Aux Development, Production and Recovery Developer Environments were created through MCP; public variable names were read back. No provider secrets have yet been copied to these Environments, and no local mounts were created. A new Aux-only recovery key was stored in the same owner account's Agents vault and verified by private readback; only its reference is in Aux Recovery. Independent owner/emergency-copy retrieval and actual scheduled backup operations remain unverified.
+
+Aside's actual logged-in Cloudflare account was identified and the private Standard `aux-recovery-prod` form prepared, without submission. Gateway checkout remains $11.58 with auto-reload off; terms/purchase is unsubmitted. The reviewed production Clerk webhook form is still unsubmitted. Concrete action-time confirmations are pending. Stripe still presents Aux Development under Joyflow; no separate Aux live business was identified, and owner legal/identity/payout setup was requested. Existing provider data, accepted app/UI and production traffic are unchanged. Full sanitized receipt and exact remaining boundaries: `docs/cloud/account-setup-2026-10-23.md`.
+
 # Encrypted remote backup transport implemented; provider setup pending — 2026-10-23
 
 The actual operator path now supports exact reviewed R2 delivery/verification/expiry and read-only recovery without surviving local job state. It uses authenticated local inventories, conditional create-only writes, full bounded ciphertext readback, completion-last publication, whole-set refusal before expiry and marker-first deletion. Fetch authenticates real encrypted bundles/manifest membership and retention before publishing a local copy and removes plaintext scratch. No cloud account, resource, credential, schedule, alert or request was created/sent.
