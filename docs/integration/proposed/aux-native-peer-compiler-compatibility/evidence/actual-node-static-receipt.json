@@ -1,0 +1,185 @@
+{
+  "format": "aux.node-static.build.v1",
+  "sourceArchiveSha256": "0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4",
+  "configure": [
+    "--enable-static",
+    "--dest-cpu=arm64"
+  ],
+  "jobs": 2,
+  "archives": [
+    {
+      "path": "out/Release/libabseil.a",
+      "sha256": "825b3178a6035e55873b72f56c0af7cfd4a25a190ff3f8e72dd7572835b66477"
+    },
+    {
+      "path": "out/Release/libada.a",
+      "sha256": "2974bf6d8f2b3f386a38752617f497327c101e0d3f46262756f150a658de80b7"
+    },
+    {
+      "path": "out/Release/libbrotli.a",
+      "sha256": "1a6c7fe1d223ade5117340b410af232188cda61ed9b56c27910a9641dcd8d661"
+    },
+    {
+      "path": "out/Release/libcares.a",
+      "sha256": "707419a539c0f29f868e228beea1adb137581ff69d41322541004538314b9c1a"
+    },
+    {
+      "path": "out/Release/libcrdtp.a",
+      "sha256": "9f0e4d3a4dc1df50266a472e2000b69d604b829470b0d68a1afaeb2c404d0538"
+    },
+    {
+      "path": "out/Release/libffi.a",
+      "sha256": "00416597fa71b1966243aa1ad764f973a286663bf8eb53448216d5cf7f1233ff"
+    },
+    {
+      "path": "out/Release/libgtest.a",
+      "sha256": "1f4fb7b0d6deccce87260de171523761f772df3ff6dc78bcf08e6cfc0eabc4dd"
+    },
+    {
+      "path": "out/Release/libgtest_main.a",
+      "sha256": "6d1a7a33bc43ffc1115f83d18f070fe7f94b72bd5e2fa9a5b1ce085a44425112"
+    },
+    {
+      "path": "out/Release/libhighway.a",
+      "sha256": "deab6d9137a92390862224b74e5b8f559d92754d26ad3552e100adb1ad0702d2"
+    },
+    {
+      "path": "out/Release/libhistogram.a",
+      "sha256": "36b7cb1b93a21391bebeab6ecfac847ccdccbacb67b49624fba12b020236a104"
+    },
+    {
+      "path": "out/Release/libicudata.a",
+      "sha256": "51f8552e6f0c2c1ca8d546c10ec15ccfd5bd3f1923fb19fb57477546d985d774"
+    },
+    {
+      "path": "out/Release/libicui18n.a",
+      "sha256": "cff4b1d68d4b6ed9ddd9f2ab1ca8f40bb95e457f680bd1551bd04627fd918eda"
+    },
+    {
+      "path": "out/Release/libicutools.a",
+      "sha256": "624804dc35cf148eee2a16af94cbd454b4c94fcab6294920db5dc30678bb8803"
+    },
+    {
+      "path": "out/Release/libicuucx.a",
+      "sha256": "d8eac961580afd724a11ccc0469a1c4c5c571f1e730e253b0285174c82ffa69e"
+    },
+    {
+      "path": "out/Release/liblief.a",
+      "sha256": "d5d0a882b5ed2b01aa06672622e65f371478166b86fbad68e5a81cea36423cfc"
+    },
+    {
+      "path": "out/Release/libllhttp.a",
+      "sha256": "c056185f14a5a83c4e6a3a000e2d853d7535a9dd5fa78105639be8d63c9db983"
+    },
+    {
+      "path": "out/Release/libmerve.a",
+      "sha256": "34c7cf066a084675ce3ffb2478175ea2004c3bf7a0f08fca324c592c1008afc4"
+    },
+    {
+      "path": "out/Release/libnbytes.a",
+      "sha256": "bf0b469f1aacebd6a5029f1290497f87dbdbd58ae32963c90ab6bf41d9138ec5"
+    },
+    {
+      "path": "out/Release/libncrypto.a",
+      "sha256": "0a64573586bc9f63465309910ec1cd044cf6bdf3792f2a5f24e90fd152eee122"
+    },
+    {
+      "path": "out/Release/libnghttp2.a",
+      "sha256": "79c3cc52bb13f2078557c1f86683330a098ed79fc226c73e0bc2759b5444687c"
+    },
+    {
+      "path": "out/Release/libnode.a",
+      "sha256": "c9f95b35695ccc923085e659f03aaf2b65490d7ed9253187b3f28443569c6e90"
+    },
+    {
+      "path": "out/Release/libnode_base.a",
+      "sha256": "2a8da51031b5d40d375846904ca380f8fd744a7a07dddacc1674d4692c4edb14"
+    },
+    {
+      "path": "out/Release/libopenssl.a",
+      "sha256": "a8777c83a2a2d812dc7d5bbff68e160ae450c91c558556d31daa0e77262f72cf"
+    },
+    {
+      "path": "out/Release/libsimdjson.a",
+      "sha256": "73c130f9f656b0efa5e3e23bb1f15a87f752ecea7cf8f6bbcb64d10806e18b29"
+    },
+    {
+      "path": "out/Release/libsimdutf.a",
+      "sha256": "6440db863c168eb3624abd1573c7e997ac79034f92efd1157d354c28724f8ea6"
+    },
+    {
+      "path": "out/Release/libsqlite.a",
+      "sha256": "a9429f4a2ea3801ff391681cf4068bb54f3b5440aaa3e6a4c80ebb4c299df17f"
+    },
+    {
+      "path": "out/Release/libtorque_base.a",
+      "sha256": "f1308c83840f3972b7a6de393dd49c8a5bb4b0b410a2e93713595ce0a3c26553"
+    },
+    {
+      "path": "out/Release/libuv.a",
+      "sha256": "cffff28ef5080327fb1133bfe81ac6b4f96579a3cff6378bb9b12e5c09f23c7d"
+    },
+    {
+      "path": "out/Release/libuvwasi.a",
+      "sha256": "407b9c5a0d35ebebd387c0d4acf6232c8fa9376df97b95a6aa0f1885884cdcca"
+    },
+    {
+      "path": "out/Release/libv8_base_without_compiler.a",
+      "sha256": "02f67100e3cb97b747ee89fb325defc916f7c7a32a618ded550e35964e1fa3a3"
+    },
+    {
+      "path": "out/Release/libv8_compiler.a",
+      "sha256": "9282311b71f4717c10ec996c206ffdcb18d57b6c325a2b5df1d2c0e7883e9c2f"
+    },
+    {
+      "path": "out/Release/libv8_init.a",
+      "sha256": "c89139e3a64ee6e60430a022e71baf3a0a68ec76350bcc74546e5a44a8d84859"
+    },
+    {
+      "path": "out/Release/libv8_initializers.a",
+      "sha256": "d87a0a81a6c69498235fcf749454d5afd8b0eca3ae4eb602d892963513fc5559"
+    },
+    {
+      "path": "out/Release/libv8_libbase.a",
+      "sha256": "fe8cc1f5c13fc089c9e3806d730298ec901dafdbcaeb1b39c74d896a7305fff8"
+    },
+    {
+      "path": "out/Release/libv8_libplatform.a",
+      "sha256": "7fda850165b7d947960af6deaceaf5877b58f37654a098b3af3ba88d0dae34db"
+    },
+    {
+      "path": "out/Release/libv8_snapshot.a",
+      "sha256": "f85e6bee6d53510961bf16eecda347714ae4a8f7c3b0153707337817863888f7"
+    },
+    {
+      "path": "out/Release/libv8_zlib.a",
+      "sha256": "e7768ed215313684380ab4ca9a80999283b33d5254dda211a059608c02a99122"
+    },
+    {
+      "path": "out/Release/libzlib.a",
+      "sha256": "befa6273533cf8ff37a3cfc2ae7788f296864e4600b95342b9ad3da1fd6d5b3f"
+    },
+    {
+      "path": "out/Release/libzlib_adler32_simd.a",
+      "sha256": "951464be6f429168a9b90e5b32ff6034b594e8f181b2b523053f848023f8b310"
+    },
+    {
+      "path": "out/Release/libzlib_arm_crc32.a",
+      "sha256": "76c96b0eca2ad90f07d5e9dc46e7c041bcead6e25944b06f7217b42502297810"
+    },
+    {
+      "path": "out/Release/libzlib_data_chunk_simd.a",
+      "sha256": "f6af4f1ef508085fc36f8cbd9425edb89e140774d26bac5787fe4099df44ad9d"
+    },
+    {
+      "path": "out/Release/libzstd.a",
+      "sha256": "66c2aea4791921078b3f3ea23787a31a450dca1b84c78ebfa98b7862dcbe1e0e"
+    }
+  ],
+  "configSha256": "04a8181006431104bf4724ec783055a8b17f30a3c38d255ab57db9d2f5b13a83",
+  "suppliedRuntimeReplaced": false,
+  "preloadSourceSha256": "4864d389114736b0c3ac8d5439e5715f67af0b1a227deb7de46a5e9fe0580f2c",
+  "preloadObjectSha256": "c6025de994ff312cfca7bf6803de2268aedc0e0223a51a15b470638a1078aed1",
+  "embeddingLinked": false,
+  "protectedExecution": false
+}

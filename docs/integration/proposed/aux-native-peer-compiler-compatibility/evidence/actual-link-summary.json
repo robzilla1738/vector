@@ -1,0 +1,26 @@
+{
+  "format": "aux.actual-native-main.link-checkpoint.v1",
+  "session": 31927,
+  "exitCode": 0,
+  "executableSha256": "3e753f2e6a8b6eb14257be9b216be122cfd860cf1348a76453c0b650647f0020",
+  "sourceCommit": "06e07b860",
+  "reusedActualSuccessfulCppObjects": 9,
+  "additionalCppObjectsCompiled": 2,
+  "swiftInputsCompiledAndLinked": 46,
+  "originalPtyImportsSatisfied": 38,
+  "actualNapiExports": 145,
+  "executed": false,
+  "moduleLoaded": false,
+  "signed": false,
+  "appReplaced": false,
+  "uiChanged": false,
+  "files": {
+    "actual-pty-main-exports.json": "d9e11e4f2ffca96383650243d1d7a51126d9d8dd33bc6dd2cc9d0d3792c90ba4",
+    "actual-node-static-receipt.json": "c547f4f2a2b28998cb889a444e6a640ecca3d464294fdcaac2ac3023c5bcf622",
+    "actual-10.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "actual-11.log": "8279e555f980bdd7d8f98970416f90303170f88a828693873ad09de0a6d79a81",
+    "actual-9.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "actual-pty-main-exports.log": "aec915aa642c86ff4588a30590d97ec87ffca74fca6559882959a3288b4eddbd",
+    "actual-resume-build.json": "02ccef3ddb78b1d70df341f11b817f12e2666978e0e24e281478549993d36cb9"
+  }
+}

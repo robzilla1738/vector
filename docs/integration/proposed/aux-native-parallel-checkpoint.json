@@ -21,27 +21,27 @@
     {
       "session": 33884,
       "role": "one focused current read-result lifetime fixture",
-      "state": "agent reports same wrapper queued; prior recipe preserved before final source selection"
+      "state": "terminal exit0; 42 real C read/reconciliation/retirement cases with fake effects"
     },
     {
       "session": 59690,
       "role": "one coherent42 Swift graph: current dispatcher, embedded v2 policy/root-custody loader",
-      "state": "agent verified stopped94200/nochild, pinned rootc4e then resumed same wrapper; no duplicate graph"
+      "state": "terminal exit0; 42 actual Swift provider inputs typechecked"
     },
     {
       "session": 39083,
       "role": "paired changed WorkerHost TU retirement mapping",
-      "state": "agent reports same wrapper queued; exact6project inputs pinned"
+      "state": "terminal exit0; actual changed provider-backed WorkerHost TU compiled"
     },
     {
       "session": 44910,
       "role": "bounded real prepared authority lifecycle fixture",
-      "state": "agent polled same wrapper; still queued, no new compiler/result evidence"
+      "state": "terminal exit0; 303 finite backend/dispatcher lifecycle assertions with fake authority/provider"
     },
     {
       "session": 79061,
       "role": "6 actual changed Chromium adoption TUs plus pure-wire predicate; final main covers child TUs",
-      "state": "root queued behind same native serializer; not compiled"
+      "state": "terminal exit1 at firstTU; laterTUs unrun, see terminalRootChecks"
     }
   ],
   "unappliedNativeSuccessor": {
@@ -226,6 +226,16 @@
       "role": "actual main build first9 C++ objects passed, command9 missing bridge header; command10/Swift/link unrun",
       "receipt": "/tmp/aux-native-daemon-main-v3-20261023/plan-or-build.json",
       "preservePassedObjects": true
+    },
+    {
+      "session": 31927,
+      "exitCode": 0,
+      "role": "actual daemon46Swift11Cpp final link and metadata exports",
+      "receipt": "docs/integration/proposed/aux-native-peer-compiler-compatibility/evidence/actual-resume-build.json",
+      "executableSha256": "3e753f2e6a8b6eb14257be9b216be122cfd860cf1348a76453c0b650647f0020",
+      "reusedObjects": 9,
+      "ptyImportsSatisfied": 38,
+      "nativeExecutableRun": false
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -279,6 +289,34 @@
       "exitCode": 0,
       "role": "6 captured stage deferral cases",
       "evidence": "docs/integration/proposed/aux-native-fresh-runtime-readiness/evidence/actual-captured-checks.json"
+    },
+    {
+      "session": 33884,
+      "exitCode": 0,
+      "role": "42 real C read/reconciliation/retirement cases with fake effects",
+      "reportedBy": "aux_identity_native_audit",
+      "runtimeAcceptance": false
+    },
+    {
+      "session": 59690,
+      "exitCode": 0,
+      "role": "42 actual Swift provider inputs typechecked",
+      "reportedBy": "aux_identity_native_audit",
+      "runtimeAcceptance": false
+    },
+    {
+      "session": 39083,
+      "exitCode": 0,
+      "role": "actual changed provider-backed WorkerHost TU compiled",
+      "reportedBy": "aux_identity_native_audit",
+      "runtimeAcceptance": false
+    },
+    {
+      "session": 44910,
+      "exitCode": 0,
+      "role": "303 finite backend/dispatcher lifecycle assertions with fake authority/provider",
+      "reportedBy": "aux_identity_native_audit",
+      "runtimeAcceptance": false
     }
   ],
   "currentCompatibility": {
@@ -293,6 +331,12 @@
     "newMacOS27DescendantsApiRequiresEntitlement": true,
     "descendantClosureProven": false,
     "actualExecLeaseSuccessor": "37525c0df",
-    "review": "docs/integration/proposed/aux-native-pty-custody-feasibility/"
-  }
+    "review": "docs/integration/proposed/aux-native-pty-custody-feasibility/",
+    "inactiveEsObserverSourceCommit": "77b70da8b",
+    "observerCompiledOrInvoked": false
+  },
+  "nativeCheckEvidenceCommits": [
+    "fbdf9af09",
+    "5bcd54b64"
+  ]
 }
