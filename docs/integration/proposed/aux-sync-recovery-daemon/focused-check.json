@@ -1,0 +1,46 @@
+{
+  "format": "aux.sync-recovery.daemon-source-evidence.v2",
+  "sessionId": 14978,
+  "exitCode": 0,
+  "activation": false,
+  "entryEvaluated": false,
+  "nativeModuleLoaded": false,
+  "networkCalls": 0,
+  "databaseCalls": 0,
+  "variants": {
+    "sea": {
+      "inputSha256": "1c388767d30a37ce2759ef6750636526cd9a5c504704bdfd673c6b191ba3e396",
+      "outputSha256": "5403b671bc41c270a03f44b5ae5b0d5ca9a5a8e3b9102b0aef1a8ce607da1525"
+    },
+    "node": {
+      "inputSha256": "40259e646d95cc81f14ecf419ce1226b009bec0aaa07a206a4d8fddb45b60101",
+      "outputSha256": "3d6da4ef95992fe3def65a13a49a260f596d9471c65b49080670f0b02a2024a9"
+    }
+  },
+  "asset": {
+    "sha256": "1030eaaa7526f0eede41d98f662392449bb29c6f06a285eaca11d23e975e0ede",
+    "bytes": 612687,
+    "inputCount": 98
+  },
+  "checks": [
+    "actual signCdpChallenge/cdp-sign base64 ABI",
+    "actual JSON authenticated transport/refresh error shapes",
+    "known nested not-configured409 only",
+    "noentropy setup error before IO",
+    "lost enrollment reply retries exact prepared request",
+    "later local key conflict preserved by captured native publisher",
+    "account change during material await refuses",
+    "unknown material error cannot imply missing recovery state",
+    "CAS5-only exact SEA/Node projections and full-source parse",
+    "first cold refusal and postguard dynamic preload preserved",
+    "asset builtin-only imports and original-product-token absence",
+    "targeted strict TypeScript"
+  ],
+  "notProven": [
+    "real daemon entry execution",
+    "native publication/authority admission",
+    "actual desktop HTTP or protected execution",
+    "saved/verified12word UI hookup",
+    "real UI acceptance"
+  ]
+}

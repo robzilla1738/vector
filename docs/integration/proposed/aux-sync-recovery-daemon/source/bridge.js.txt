@@ -1,0 +1,45 @@
+var auxSyncRecoveryPendingEnrollments=new Map;
+function getAuxSyncRecoveryContext(accountId){
+ if(process.platform!==`darwin`||!Number.isSafeInteger(accountId)||accountId<0)throw Error(`Aux browser recovery requires macOS`);
+ let userId=getAuthenticatedUserId(accountId),generation=readAccessTokenSyncGeneration(AccountRegistry.getSession(accountId)?.accessToken);
+ if(typeof userId!==`string`||!userId||!Number.isSafeInteger(generation)||generation<0)throw Error(`Sign in before recovering browser data.`);
+ return{userId,generation};
+}
+function auxSyncRecoveryApiCode(error,code){
+ return error instanceof AuxApiError&&error.status===409&&(error.code===code||error.details?.response?.status===409&&error.details?.error?.error?.code===code);
+}
+function makeAuxSyncRecoveryClient(accountId){
+ return new AuxSyncRecoveryClient({
+  context:getAuxSyncRecoveryContext,
+  request:(id,path,body)=>{if(id!==accountId||!path.startsWith(`/sync/recovery/v2/`))throw Error(`Invalid account recovery request`);return fetchAuxAPIAuthenticatedJson(id,path,{method:`POST`,body,timeoutMs:2e4,output:{parse(value){if(!value||typeof value!==`object`||Array.isArray(value))throw Error(`Invalid Aux recovery response`);return value}}})},
+  sign:bytes=>signCdpChallenge(bytes),
+  readCsk:async id=>{let before=getAuxSyncRecoveryContext(id),state=await evaluateLocalChromeSyncKey(id),after=getAuxSyncRecoveryContext(id);if(before.userId!==after.userId||before.generation!==after.generation)throw Error(`Account changed during recovery.`);if(state.status===`missing`)return null;if(state.status!==`usable_owned`||state.syncGeneration!==before.generation)throw Error(`Existing Sync key requires explicit ownership or generation migration`);return readLocalChromeSyncKey(id)},
+  publishRecoveredCsk:(id,key,expected)=>publishAuxRecoveredCsk(id,key,expected),
+  status:id=>fetchAccountSyncKeyStatus(id),
+  isRecoveryNotConfigured:error=>auxSyncRecoveryApiCode(error,`RECOVERY_NOT_CONFIGURED`)
+ });
+}
+async function enrollAccountSyncKeyRecovery(accountId,recoveryEntropyB64){
+ // Existing UI sends only accountId: do not generate an unseen recovery key.
+ if(typeof recoveryEntropyB64!==`string`||!recoveryEntropyB64)throw new AuxApiError(409,`Save and verify your 12-word Aux browser recovery key before enabling recovery.`,`SYNC_RECOVERY_CONFIRMATION_REQUIRED`);
+ let entropy=Buffer.from(recoveryEntropyB64,`base64`),digest;
+ try{if(entropy.length!==16||entropy.toString(`base64`)!==recoveryEntropyB64)throw Error(`Use the 12-word Aux browser recovery key.`);digest=createHash(`sha256`).update(entropy).digest(`hex`)}finally{entropy.fill(0)}
+ let context=getAuxSyncRecoveryContext(accountId),pending=auxSyncRecoveryPendingEnrollments.get(accountId);
+ if(pending&&(pending.context.userId!==context.userId||pending.context.generation!==context.generation||pending.digest!==digest)){
+  if(pending.inFlight)throw Error(`An account recovery enrollment is already in progress`);
+  auxSyncRecoveryPendingEnrollments.delete(accountId);pending=void 0;
+ }
+ if(!pending){pending={context,digest,prepared:void 0,inFlight:void 0};auxSyncRecoveryPendingEnrollments.set(accountId,pending)}
+ if(pending.inFlight)return pending.inFlight;
+ let record=pending,client=makeAuxSyncRecoveryClient(accountId);
+ let operation=(async()=>{try{
+  record.prepared??=await client.prepareConfirmedEnrollment(accountId,recoveryEntropyB64);
+  let response=await client.publishEnrollment(record.prepared);
+  if(auxSyncRecoveryPendingEnrollments.get(accountId)===record)auxSyncRecoveryPendingEnrollments.delete(accountId);
+  return{state:response.state,syncGeneration:response.syncGeneration,revision:response.revision};
+ }catch(error){
+  if(auxSyncRecoveryApiCode(error,`RECOVERY_CHALLENGE_INVALID`)||auxSyncRecoveryApiCode(error,`RECOVERY_STATE_CHANGED`))if(auxSyncRecoveryPendingEnrollments.get(accountId)===record)auxSyncRecoveryPendingEnrollments.delete(accountId);
+  throw error;
+ }finally{record.inFlight=void 0}})();record.inFlight=operation;return operation;
+}
+async function recoverAccountSyncKey(accountId,recoveryEntropyB64){getAuxSyncRecoveryContext(accountId);return makeAuxSyncRecoveryClient(accountId).recover(accountId,recoveryEntropyB64)}
