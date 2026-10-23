@@ -4,6 +4,7 @@ import argparse,hashlib,json,os,pathlib,shutil,subprocess
 P=pathlib.Path
 DAEMON='apps/daemon/Aux Daemon.app/Contents/'
 REPLACEMENTS={DAEMON+'MacOS/aux-daemon':0o755,DAEMON+'Resources/node-development/index.mjs':0o644,DAEMON+'Resources/node-development/aux-native-entry.mjs':0o644,DAEMON+'Resources/native/aux-owned-native.cjs':0o644,DAEMON+'Resources/native/node-pty/prebuilds/darwin-arm64/pty.node':0o755}
+PAIR_KEYS=dict(zip(REPLACEMENTS,['daemon','source','entry','loader','pty']))
 sha=lambda p:hashlib.sha256(P(p).read_bytes()).hexdigest()
 def inventory(root):
  result=[]
@@ -36,9 +37,23 @@ def verify_native_inventory(root,leaves):
  actual=inventory(root)
  if actual!=expected:raise ValueError('native inventory content/mode/coverage mismatch')
  return actual
+def verify_pair(r):
+ pin(r['sourcePair'],r['sourcePairSha256']);pair=json.loads(P(r['sourcePair']).read_text())
+ if pair['passed'] is not True or pair['coldFeatureEnabled'] or pair['runtimeAuthorityGranted']:raise ValueError('inactive exact source pair required')
+ items={x['path']:x for x in r['replacements']}
+ if len(items)!=len(r['replacements']) or set(items)!=set(PAIR_KEYS):raise ValueError('exact unique paired leaves required')
+ for rel,key in PAIR_KEYS.items():
+  item=items[rel]
+  if item['sha256']!=pair[key+'Sha256'] or P(item['input']).resolve()!=P(pair[key]).resolve():raise ValueError('source pair mismatch '+key)
+ if r['daemonReceiptSha256']!=pair['daemonReceiptSha256']:raise ValueError('paired daemon receipt mismatch')
+ pin(r['sourceReceipt'],r['sourceReceiptSha256']);pin(r['entryReceipt'],r['entryReceiptSha256'])
+ source=json.loads(P(r['sourceReceipt']).read_text());entry=json.loads(P(r['entryReceipt']).read_text())
+ if source['passed'] is not True or entry['passed'] is not True or not source['coldRefusalPreserved'] or not entry['defaultEntryRefusalPreserved']:raise ValueError('checked refused projections required')
+ if source['composedSha256']!=pair['sourceSha256'] or entry['sourceSha256']!=pair['sourceSha256'] or entry['entrySha256']!=pair['entrySha256'] or entry['loaderSha256']!=pair['loaderSha256'] or entry['sourceReceiptSha256']!=r['sourceReceiptSha256']:raise ValueError('projection receipt pairing mismatch')
 def main():
  a=argparse.ArgumentParser();a.add_argument('recipe');v=a.parse_args();recipe=P(v.recipe).resolve();r=json.loads(recipe.read_text());out=P(r['output']);baseline=P(r['baselineApp']);native=P(r['nativeApp']);receipt=P(r['nativeReceipt']);pin(receipt,r['nativeReceiptSha256']);build=json.loads(receipt.read_text())
  if not build['passed'] or build['signed'] or not build['sharedLinkConfigUnchanged'] or not build['appStableDuringInventory'] or not build['allInspectedMachoUnsigned']:raise ValueError('successful unsigned full build required')
+ verify_pair(r)
  if out.exists() or not out.is_absolute() or any(out.resolve().is_relative_to(p.resolve()) for p in [baseline,native]):raise ValueError('fresh separate output required')
  link=P(r['daemonReceipt']);pin(link,r['daemonReceiptSha256']);linked=json.loads(link.read_text())
  if not linked['passed'] or not linked['inputsUnchanged'] or linked['signed']:raise ValueError('successful unsigned daemon link required')

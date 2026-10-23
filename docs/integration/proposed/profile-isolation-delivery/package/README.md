@@ -9,3 +9,5 @@ Recipe fields: `output` (new absolute directory), `baselineApp`, `baselineInvent
 The assembler is source/syntax checked only. Actual assembly, post-package runtime acceptance and UI comparison remain pending successful browser build and final lane integration. It intentionally records `testable:false` and no runtime authority: packaging cannot supply missing browser drain or startup authorization. No signing, release or accepted-app replacement is performed.
 
 A focused inert temporary-files check passed for receipt normalization, mode-change refusal and extra-leaf refusal. Its first run used an incorrect assumed macOS symlink mode; the corrected check reads the actual link mode. No executable was built or run. Actual final assembly is still pending.
+
+The recipe now requires `--source-pair` and binds all five inputs to that exact frozen tuple. Both preparation and assembly verify source/entry receipt paths and hashes, including the entry projection’s source-receipt hash, and the paired daemon-link receipt hash. A focused check accepted the current final tuple and refused a mixed daemon and changed source receipt; this does not execute any product.

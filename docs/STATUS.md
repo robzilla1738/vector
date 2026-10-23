@@ -1,3 +1,7 @@
+# Exact generation pairing enforced for package handoff — 2026-10-23
+
+A narrow independent source review found the package workflow could combine individually valid artifacts from different generations. Preparation and assembly now require the exact frozen source-pair tuple for all five replacement leaves, the paired daemon receipt and the entry projection’s exact source receipt. Current final inputs pass; mismatched daemon/source-receipt checks refuse. These are metadata/projection checks, not app execution. UI resources remain unchanged. The full native graph continues; assembly and runtime acceptance are still pending.
+
 # Queued background delivery closure integrated — 2026-10-23
 
 The actual supplied deliverToSelf callback now revalidates ownership at queue entry, after steerable waits and before deferred live-session lookup. The focused extracted-function fixture reproduces old post-close consume/save in two cases; corrected callbacks refuse before consuming the payload. Full successor source and dormant-entry projection/syntax passed. Final source SHA256 `156c9361fc37848175c920d2fab53b89526870a2358803ef01f147af5ecb1ed6`; source-pair.json now pins the exact successor entry. Native ABI/policy/daemon pairing and UI are unchanged; ordinary cold refusal remains. A never-settling wait remains pending/unknown rather than clean drain.
