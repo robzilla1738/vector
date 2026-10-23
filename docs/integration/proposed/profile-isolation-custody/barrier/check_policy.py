@@ -17,6 +17,14 @@ results=[]
 for name,cmd,allowed in cases:
  r=subprocess.run(args+['/bin/sh','-c',cmd,'sh',str(data),str(cache),str(outside),str(p)],input='native-message-fixture\n',capture_output=True,text=True)
  results.append({'name':name,'exitCode':r.returncode,'expectedAllowed':allowed,'matched':(r.returncode==0)==allowed,'stdioPreserved':r.stdout=='native-message-fixture' if name=='stdio' else None})
+# Exercise the same wrapper argv layout with an executable whose switches matter.
+assert 'const auto& original_argv = host.argv();' in s
+assert 'wrapped.AppendArg(original_argv[i]);' in s
+assert 'host.GetArgs()' not in s
+original_argv=['/bin/sh','-c','printf "%s\\n" "$@"','host','--connect-id=synthetic','--','a b','']
+argv_run=subprocess.run(args+original_argv,capture_output=True,text=True)
+argv_preserved=argv_run.returncode==0 and argv_run.stdout=='--connect-id=synthetic\n--\na b\n\n'
+results.append({'name':'host-switches-separator-spaces-empty-argv','exitCode':argv_run.returncode,'matched':argv_preserved})
 r={'passed':all(x['matched'] for x in results) and next(x for x in results if x['name']=='stdio')['stdioPreserved'],'results':results,'fixture':str(p),'existingHardlinkBypassConfirmed':(data/'file').read_text()=='changed\n','allExternalWritersConfined':False,'newNativeExecutableBuilt':False,'signingWorkflowInvoked':False,'ownerDataAccessed':False}
 Path(a.output).write_text(json.dumps(r,indent=2)+'\n');print(json.dumps(r))
 if not r['passed']:raise SystemExit(1)

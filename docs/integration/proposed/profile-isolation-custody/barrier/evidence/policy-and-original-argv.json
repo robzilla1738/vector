@@ -1,0 +1,86 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "name": "data-write",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "cache-write",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "symlink-write",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "create-hardlink",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "root-rename",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "ancestor-rename",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "child-write",
+      "exitCode": 1,
+      "expectedAllowed": false,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "outside-write",
+      "exitCode": 0,
+      "expectedAllowed": true,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "stdio",
+      "exitCode": 0,
+      "expectedAllowed": true,
+      "matched": true,
+      "stdioPreserved": true
+    },
+    {
+      "name": "existing-hardlink-write",
+      "exitCode": 0,
+      "expectedAllowed": true,
+      "matched": true,
+      "stdioPreserved": null
+    },
+    {
+      "name": "host-switches-separator-spaces-empty-argv",
+      "exitCode": 0,
+      "matched": true
+    }
+  ],
+  "fixture": "/private/tmp/aux-native-path-policy-zv7l8gn4",
+  "existingHardlinkBypassConfirmed": true,
+  "allExternalWritersConfined": false,
+  "newNativeExecutableBuilt": false,
+  "signingWorkflowInvoked": false,
+  "ownerDataAccessed": false
+}

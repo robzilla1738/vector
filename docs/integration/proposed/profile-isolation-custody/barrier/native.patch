@@ -8,7 +8,7 @@
  
  namespace aux::peer {
  namespace {
-@@ -311,6 +312,74 @@
+@@ -311,6 +312,78 @@
    state.browser_generation = admitted_generation;
    return true;
  }
@@ -68,7 +68,11 @@
 +  wrapped.AppendArg(policy);
 +  wrapped.AppendArg("--");
 +  wrapped.AppendArgPath(host.GetProgram());
-+  for (const auto& argument : host.GetArgs()) wrapped.AppendArg(argument);
++  // GetArgs() excludes switches. Keep every original argv entry after the
++  // program, including switches and the literal -- separator, in exact order.
++  const auto& original_argv = host.argv();
++  for (size_t i = 1; i < original_argv.size(); ++i)
++    wrapped.AppendArg(original_argv[i]);
 +  auto pulse = owner->InspectReadyPulse();
 +  auto child = owner->InspectOwnedChild();
 +  if (!pulse || !Fresh(*pulse) || pulse->generation != generation || child.closed ||
