@@ -1,0 +1,10 @@
+00000001000533d4 (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperCopyPath
+00000001000539bc (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperRelease
+00000001000532f8 (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperRevalidate
+0000000100052ebc (__TEXT,__text) non-external (was a private external) _AuxCaptureAuthenticatedPtyHelper
+0000000100133d64 (__TEXT,__text) external _AuxNativePtyBeginCurrent
+0000000100134f84 (__TEXT,__text) external _AuxNativePtyCanSpawn
+000000010013659c (__TEXT,__text) external _AuxNativePtyChildCreated
+00000001001354c4 (__TEXT,__text) external _AuxNativePtyCopyHelperPath
+0000000100136820 (__TEXT,__text) external _AuxNativePtyDirectWaitResult
+0000000100134c94 (__TEXT,__text) external _AuxNativePtySpawnFailed
