@@ -19,9 +19,14 @@ struct AuxAuthenticatedFreshBootstrapPolicy {
     // Native-only fresh-home creation; no key generation/storage/activation.
     // Re-authenticate current image/resource before any new filesystem entry.
     func createFreshHome()throws->AuxFreshNativeHome {
+        try revalidateCurrentIdentity()
+        return try AuxFreshNativeHome.create(inCanonicalPrivateParent:contents.canonicalPrivateParent)
+    }
+    // Native consumer revalidation; no captured bytes/Boolean substitute can
+    // authorize a policy, and this method grants no writer/provenance custody.
+    func revalidateCurrentIdentity()throws {
         let current=try AuxSignedFreshBootstrapPolicyLoader.load()
         guard current.policySha256==policySha256,current.bundlePath==bundlePath,current.hostCdHash==hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
-        return try AuxFreshNativeHome.create(inCanonicalPrivateParent:contents.canonicalPrivateParent)
     }
 }
 enum AuxSignedFreshBootstrapPolicyLoader {

@@ -19,7 +19,9 @@ for token in ['SecCodeCheckValidity(dynamic,dynamicFlags,requirement)','SecStati
     assert token in loader,token
 body=loader.split('static func load()throws->AuxAuthenticatedFreshBootstrapPolicy {')[1]
 assert body.index('SecCodeCheckValidity')<body.index('SecStaticCodeCheckValidity')<body.index('SecCodeValidateFileResource')<body.index('AuxFreshBootstrapPolicyContents.decode')<body.index('try images(')<body.index('return .init(')
-assert loader.index('let current=try AuxSignedFreshBootstrapPolicyLoader.load()')<loader.index('return try AuxFreshNativeHome.create(')
+assert loader.index('try revalidateCurrentIdentity()')<loader.index('return try AuxFreshNativeHome.create(')
+assert loader.count('func revalidateCurrentIdentity()throws')==1
+assert sha(HERE/'source-pins-initial.json')==pins['historicalInitialPinsSha256']
 assert loader.count('AuxFreshNativeHome.create(')==1
 assert 'generationId' not in policy and 'targetHashes' not in policy and 'AuxRuntimeSelection' not in policy
 assert 'canonicalPrivateParent' in policy and 'authoritySelection="aux.fresh.authority.host-availability.v1"' in policy

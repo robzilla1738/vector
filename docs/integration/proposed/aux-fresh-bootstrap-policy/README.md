@@ -28,3 +28,7 @@ Remaining production seams are explicit:
 ## Subsequent focused evidence
 
 After the browser build released `/tmp/aux-build.lock`, both queued commands completed successfully without source corrections: 30 captured pre-generation policy/signature/image checks passed, and the actual signed reader plus retained-home producer typechecked as four separate Swift files for arm64/macOS 13 with the installed Swift 6.4 SDK. `evidence.json` pins source and check inputs. The live signed reader was never called, so no authenticated policy/home was created and no signature/Keychain/authority/runtime-admission result is claimed. No broad suite or full host/browser build was repeated.
+
+## Native probe consumer successor
+
+The authenticated type now exposes `revalidateCurrentIdentity()` for the paired exact-selector native capture producer. It runs the same actual signed reader and compares exact sealed-policy/bundle/CDHash identity; no caller bytes/Boolean or resource constructor is added. `createFreshHome()` uses that same method. `source-pins-initial.json` preserves original inputs authenticated by the historical `evidence.json`; that earlier typecheck does not prove this successor until a separate changed-graph check is recorded.

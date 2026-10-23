@@ -7,7 +7,7 @@
     },
     {
       "path": "source/AuxSignedFreshBootstrapPolicyLoader.swift",
-      "sha256": "6ed2e2e50be4119825cc8a6b461599db0306289a62acd5071de439d958cf5898"
+      "sha256": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d"
     }
   ],
   "baselineSourcePins": [
@@ -36,11 +36,12 @@
       "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
     }
   ],
-  "sourceReviewPatchSha256": "ee00a28df8fc5427b451ecf8592b82c058b555c4a16fde48f0d50e9f712592fb",
+  "sourceReviewPatchSha256": "e7418f14e5a9f93d8902288680ef96e0a09d660ac561e478725e5beaed9f0e4b",
   "upstreamHomeCommit": "0b1bb5fbe",
   "signedPolicyExecuted": false,
   "secureRowsReadWritten": false,
   "authorityCreated": false,
   "wholeProfileCustodyClaimed": false,
-  "uiChanged": false
+  "uiChanged": false,
+  "historicalInitialPinsSha256": "0e4fece692334a432e9e6bbdc17d7401c03cbcbd2eb0d6273b0b78eed8d08d6a"
 }
