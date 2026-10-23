@@ -1,0 +1,12 @@
+{
+  "format": "aux.swift-link.preserved-ui.v1",
+  "baselineManifestSha256": "861843673b5fa7d1b490e0b8bafddac16e087b9a5c2294a77cfa735525350c85",
+  "currentManifestSha256": "f6f225cbfac320f4b07beed4252533e1485cae8734e7ddf822f8b05c63c233dc",
+  "sourceRecords": 831,
+  "changedSources": [
+    "chrome/browser/aux/native_peer_policy/BUILD.gn"
+  ],
+  "unchangedArtwork": 23,
+  "uiSourceUnchanged": true,
+  "appVisuallyObserved": false
+}

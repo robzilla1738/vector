@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-main.package-root-progress.v1",
+  "patchApplied": true,
+  "sourcePreflightPassed": true,
+  "packageBoundaryTestsPassed": 5,
+  "stageSession": 20748,
+  "stageSucceeded": true,
+  "agentFilesCompared": 1217,
+  "cssFilesCompared": 5,
+  "agentChangedFiles": [],
+  "packageSession": 90879,
+  "packageExitCode": 1,
+  "failure": "check-provided builtinIconIdentity comparison",
+  "candidatePublished": false,
+  "nativeExecutableRun": false,
+  "signed": false
+}

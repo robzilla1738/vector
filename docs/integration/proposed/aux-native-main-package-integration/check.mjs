@@ -13,10 +13,13 @@ assert.throws(() => verifyBuildReceipt(Buffer.from(receipt.toString().replace('"
 const metadata = JSON.parse(await readFile(join(here, 'metadata.json')));
 for (const file of metadata.files) {
   let source = await readFile(join(root, file.path), 'utf8');
-  assert.equal(sha(source), file.sourceSha256);
-  for (const edit of file.edits) {
-    assert.equal(source.split(edit.find).length - 1, edit.count);
-    source = source.replace(edit.find, edit.replace);
+  const observed = sha(source);
+  assert.ok([file.sourceSha256, file.outputSha256].includes(observed));
+  if (observed === file.sourceSha256) {
+    for (const edit of file.edits) {
+      assert.equal(source.split(edit.find).length - 1, edit.count);
+      source = source.replace(edit.find, edit.replace);
+    }
   }
   assert.equal(sha(source), file.outputSha256);
   assert.equal(source, await readFile(join(here, 'source', file.path), 'utf8'));

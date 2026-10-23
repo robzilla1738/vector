@@ -1,3 +1,4 @@
+import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';
 import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
 import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
 /** Assemble a copied native app and the supplied resources. Never install or launch. */
@@ -89,7 +90,7 @@ export async function retireCopiedIndependentRuntime(app, entries) {
   return { root: relative, packageName: identity.name, packageVersion: identity.version, files };
 }
 
-export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false, sourceSnapshotRoot }) {
+export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false, sourceSnapshotRoot, nativeMainReceiptPath }) {
   if (typeof developmentDpLayout !== 'boolean') throw new Error('Explicit boolean development layout required');
   stageRoot = await root(resolve(stageRoot));
   compositionRoot = await root(resolve(compositionRoot));
@@ -103,6 +104,8 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   const stageDeclaration = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8'));
   const stageIdentity = stageDeclaration.identityProfile;
   const stateIdentityVersion = stageDeclaration.stateIdentityVersion;
+  if (nativeMainReceiptPath && developmentDpLayout) throw Error('Inactive native main cannot use development signing layout');
+  const nativeMainEvidence = nativeMainReceiptPath ? await verifyNativeMainPackageInput({ repositoryRoot: repository, receiptPath: nativeMainReceiptPath, compositionBytes: compositionRaw, stage: stageDeclaration }) : null;
   const stateIdentityEvidence = await verifyAuxStateIdentityContract({stageRoot, composition, identityProfile: stageIdentity, stateIdentityVersion});
   // Match actual source/SEA/Agent protocol bytes in both directions before
   // copying. Old stages without explicit declarations must be restaged.
@@ -172,6 +175,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
+    const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;
     if (assembled.deliveryProvenance) {
       const paths = { stage: 'manifest.json', ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', 'computer-use': 'computer-use/manifest.json' };
       const external = join(temporary, 'source-audit');
@@ -236,6 +240,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       ...(sourceSnapshot ? { sourceSnapshot: { root: sourceSnapshot.root, manifestSha256: sourceSnapshot.manifestSha256, roots: sourceSnapshot.roots } } : {}),
       cliSea: `${cliExecutable}-sea`,
       developmentDpLayout, layoutChanges, outerPackageBoundary,
+      ...(nativeMainReplacement ? { nativeMainReplacement } : {}),
       localDevelopmentOnly: true,
       remaining: ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
     };

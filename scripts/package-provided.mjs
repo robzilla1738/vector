@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { packageProvidedApp } from './lib/provided-package.mjs';
-const names = { '--stage': 'stageRoot', '--native-receipt': 'nativeReceiptPath', '--composition': 'compositionRoot', '--boundary-receipt': 'boundaryReceiptPath', '--output': 'outputRoot', '--source-snapshot': 'sourceSnapshotRoot' };
+const names = { '--stage': 'stageRoot', '--native-receipt': 'nativeReceiptPath', '--composition': 'compositionRoot', '--boundary-receipt': 'boundaryReceiptPath', '--output': 'outputRoot', '--source-snapshot': 'sourceSnapshotRoot', '--native-main-receipt': 'nativeMainReceiptPath' };
 const options = {};
 for (let index = 2; index < process.argv.length; index++) {
   if (process.argv[index] === '--development-dp-layout') {

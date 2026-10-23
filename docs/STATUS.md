@@ -1,3 +1,9 @@
+# UI bytes preserved; package checker mismatch under correction — 2026-10-23
+
+The explicit optional native-main package receipt integration is applied. Exact successful68715 source/output preflight and all five existing package boundary checks pass. Fresh stage20748 finished; independent full hashes confirm all1217 Agent files, including all five CSS files, are identical to the preceding recovery-enrollment stage. The accepted app remains untouched.
+
+Actual package90879 stopped before assembly in `check-provided.mjs` builtinIconIdentity comparison. No candidate was published and no executable replaced. The mismatch is being diagnosed at the real producer/checker boundary; no validation bypass or generated-manifest edit is used. Whole browser18769 and coherent daemon68715 remain successful build evidence, not app acceptance.
+
 # Current complete browser and daemon builds pass — 2026-10-23
 
 Actual full browser18769 passed32 incremental steps in4m24.74s, including auth_scheme_probe, framework/app/helper links, library verification and all three inventoried artifacts. The generated synthetic-key probe passed. Exact successful receipt: `docs/integration/proposed/aux-native-parent-swift-link/evidence/actual-browser-build.json`. This is the applied831-source/23-artwork runtime-link composition; source/artwork hashes were verified by the builder. No second successful compile graph was repeated.

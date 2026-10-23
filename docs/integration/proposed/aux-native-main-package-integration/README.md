@@ -32,3 +32,9 @@ Use the new successful browser receipt `out/aux-parent-swift-runtime-browser-bui
 `node docs/integration/proposed/aux-native-main-package-integration/check.mjs` verifies exact patch replay, actual compiled receipt/output/source/Node/export pins read-only, rejects altered receipts, wrong state versions and wrong compositions. It does not produce a package or copy the executable. The retained check result is `check-result.json`. Source/module syntax checks are separate static parsing only.
 
 Future exact signed Aux PTY/helper outputs, authenticated sealed v3 policy, root-owned immutable bundle namespace, genuine whole-cohort/legacy migration and disposable runtime/UI acceptance remain gaps. No proposed package can be called ready from an inclusion receipt. All first-refusal and ownership boundaries remain in force. No signing, policy generation, installation, runtime launch, provider activity or owner-state access occurred.
+
+## Root integration and first actual package attempt
+
+Root applied the exact two-file producer patch after a successful read-only preflight. The checker now accepts either the exact original or exact applied successor modules; arbitrary drift still fails. Both modules parse and all five existing package boundary tests pass. Fresh stage20748 completed. Its1217 Agent files, including all five CSS files, are byte-identical to `out/provided-reuse-aux-recovery-enrollment/ui/agent`.
+
+Actual package90879 stopped in the pre-existing `check-provided.mjs` builtin icon identity comparison before assembly. No candidate was published or executable replaced. The icon bytes and validation mismatch require a source correction; bypassing the checker or editing the generated report is not used.
