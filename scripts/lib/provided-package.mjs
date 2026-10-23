@@ -1,4 +1,5 @@
 import { verifyRebuiltPtyPackageInput, replaceCopiedDaemonAndPty } from '../../docs/integration/proposed/aux-native-rebuilt-pty-package/source/package.mjs';
+import { verifyProviderNativePackageInput, replaceCopiedProviderDaemonAndPty } from '../../docs/integration/proposed/aux-native-provider-entry-package/source/package.mjs';
 import { addDormantCurrentNativeEntry } from '../../docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs';
 import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';
 import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
@@ -92,7 +93,7 @@ export async function retireCopiedIndependentRuntime(app, entries) {
   return { root: relative, packageName: identity.name, packageVersion: identity.version, files };
 }
 
-export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false, sourceSnapshotRoot, nativeMainReceiptPath, nativePtyReceiptPath }) {
+export async function packageProvidedApp({ stageRoot, nativeReceiptPath, compositionRoot, boundaryReceiptPath, outputRoot, developmentDpLayout = false, sourceSnapshotRoot, nativeMainReceiptPath, nativePtyReceiptPath, providerNativeReceiptPath }) {
   if (typeof developmentDpLayout !== 'boolean') throw new Error('Explicit boolean development layout required');
   stageRoot = await root(resolve(stageRoot));
   compositionRoot = await root(resolve(compositionRoot));
@@ -106,6 +107,8 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
   const stageDeclaration = JSON.parse(await readFile(join(stageRoot, 'manifest.json'), 'utf8'));
   const stageIdentity = stageDeclaration.identityProfile;
   const stateIdentityVersion = stageDeclaration.stateIdentityVersion;
+  if (providerNativeReceiptPath && (nativeMainReceiptPath || nativePtyReceiptPath || developmentDpLayout)) throw Error('Provider-native package requires its separate inactive native path');
+  const providerNativeEvidence = providerNativeReceiptPath ? await verifyProviderNativePackageInput({repositoryRoot: repository, receiptPath: providerNativeReceiptPath, compositionBytes: compositionRaw, stage: stageDeclaration}) : null;
   if (nativePtyReceiptPath && (nativeMainReceiptPath || developmentDpLayout)) throw Error('Rebuilt PTY package requires its separate inactive native path');
   const nativePtyEvidence = nativePtyReceiptPath ? await verifyRebuiltPtyPackageInput({ repositoryRoot: repository, receiptPath: nativePtyReceiptPath, compositionBytes: compositionRaw, stage: stageDeclaration }) : null;
   if (nativeMainReceiptPath && developmentDpLayout) throw Error('Inactive native main cannot use development signing layout');
@@ -179,9 +182,10 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     const resources = join(app, 'Contents/Resources/aux');
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
+    const providerNativeReplacement = providerNativeEvidence ? await replaceCopiedProviderDaemonAndPty({resources, assembled, evidence: providerNativeEvidence, repositoryRoot: repository}) : null;
     const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;
     const nativePtyReplacement = nativePtyEvidence ? await replaceCopiedDaemonAndPty({ resources, assembled, evidence: nativePtyEvidence, repositoryRoot: repository }) : null;
-    const nativeEntryProjection = nativePtyReplacement?.nativeEntryProjection ?? (nativeMainReplacement ? await addDormantCurrentNativeEntry({ resources, assembled, repositoryRoot: repository }) : null);
+    const nativeEntryProjection = providerNativeReplacement?.nativeEntryProjection ?? nativePtyReplacement?.nativeEntryProjection ?? (nativeMainReplacement ? await addDormantCurrentNativeEntry({ resources, assembled, repositoryRoot: repository }) : null);
     if (assembled.deliveryProvenance) {
       const paths = { stage: 'manifest.json', ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', 'computer-use': 'computer-use/manifest.json' };
       const external = join(temporary, 'source-audit');
@@ -248,6 +252,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       developmentDpLayout, layoutChanges, outerPackageBoundary,
       ...(nativeMainReplacement ? { nativeMainReplacement } : {}),
       ...(nativePtyReplacement ? { nativePtyReplacement } : {}),
+      ...(providerNativeReplacement ? { providerNativeReplacement } : {}),
       ...(nativeEntryProjection ? { nativeEntryProjection } : {}),
       localDevelopmentOnly: true,
       remaining: ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
