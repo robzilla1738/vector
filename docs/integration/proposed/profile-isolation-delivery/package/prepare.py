@@ -9,6 +9,7 @@ for name in ['baseline-app','native-receipt','daemon-receipt','source-pair','sou
 a=p.parse_args();baseline=P(a.baseline_app).resolve();nr=P(a.native_receipt).resolve();dr=P(a.daemon_receipt).resolve();sr=P(a.source_receipt).resolve();er=P(a.entry_receipt).resolve()
 build=json.loads(nr.read_text());link=json.loads(dr.read_text());source=json.loads(sr.read_text());entry=json.loads(er.read_text())
 if not build['passed'] or not link['passed'] or not link['inputsUnchanged'] or not source['passed'] or not entry['passed']:raise ValueError('all exact builds/projections must pass')
+m.verify_frozen_native(build)
 m.pin(a.source,source['composedSha256']);m.pin(a.entry,entry['entrySha256']);m.pin(a.loader,entry['loaderSha256'])
 if source['composedSha256']!=entry['sourceSha256'] or not source['coldRefusalPreserved'] or not entry['defaultEntryRefusalPreserved']:raise ValueError('source/entry mismatch')
 # The final command pins the actual executable output directory and paired PTY module.

@@ -64,9 +64,19 @@ def runtime_changes(r):
   key='metadataSha256' if item['mustBeAbsent'] else 'bootstrapSha256'
   if item['sha256']!=evidence[key]:raise ValueError('runtime check pairing mismatch')
  return items
+def verify_frozen_native(build):
+ pins=P(build['source']).parent/'final-native-input-pins.json'
+ pin(pins,build['nativeInputPinsSha256'])
+ inputs=json.loads(pins.read_text())
+ if inputs!=build['nativeInputPins']:raise ValueError('native input receipt mismatch')
+ barrier=P(__file__).resolve().parents[2]/'profile-isolation-custody/barrier'
+ expected={name:item['after'] for name,item in json.loads((barrier/'sources.json').read_text()).items()}
+ gn=json.loads((barrier/'integration/gn-registration.json').read_text());expected[gn['path']]=gn['afterSha256']
+ if any(inputs['files'].get(name)!=digest for name,digest in expected.items()):raise ValueError('final native defense/GN successor missing')
 def main():
  a=argparse.ArgumentParser();a.add_argument('recipe');v=a.parse_args();recipe=P(v.recipe).resolve();r=json.loads(recipe.read_text());out=P(r['output']);baseline=P(r['baselineApp']);native=P(r['nativeApp']);receipt=P(r['nativeReceipt']);pin(receipt,r['nativeReceiptSha256']);build=json.loads(receipt.read_text())
  if not build['passed'] or build['signed'] or not build['sharedLinkConfigUnchanged'] or not build['appStableDuringInventory'] or not build['allInspectedMachoUnsigned']:raise ValueError('successful unsigned full build required')
+ verify_frozen_native(build)
  pair=verify_pair(r)
  runtime=runtime_changes(r)
  if out.exists() or not out.is_absolute() or any(out.resolve().is_relative_to(p.resolve()) for p in [baseline,native]):raise ValueError('fresh separate output required')
