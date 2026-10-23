@@ -1,0 +1,13 @@
+# Inactive optional fixture target. No startup or browser target dependency.
+executable("aux_inbox_v2_codec_fixture") {
+  testonly = true
+  sources = [
+    "main.cc",
+    "//chrome/browser/notifications/aux_inbox_codec.cc",
+    "//chrome/browser/notifications/aux_inbox_codec.h",
+  ]
+  deps = [
+    "//base",
+    "//crypto",
+  ]
+}

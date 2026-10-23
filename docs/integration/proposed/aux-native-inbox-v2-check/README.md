@@ -1,0 +1,15 @@
+# Deferred actual inbox-v2 codec fixture
+
+The reviewed codec uses actual current Chromium APIs: `crypto::Aead(algorithm, base::span<const uint8_t>)`, string-view Seal/Open, NonceLength, `crypto::RandBytes(base::span<uint8_t>)` and the string-compatible span helpers. The writer's moved encrypted std::string is accepted by the actual `sql::Statement::BindBlob(int, std::string)` overload. Its genuine selected-key caller remains a separate paired dependency; no backup key fallback is added. Source API inspection found no immediate compile signature defect. Header/API hashes and root proposal files are pinned.
+
+One optional `testonly` executable compiles the actual root `aux_inbox_codec.cc`, not a reimplementation, and one synthetic fixture. Dependencies are the existing Chromium `//base` and `//crypto`, so cached BoringSSL, libc++ modules, allocator and component settings stay in the same GN graph. No ad-hoc system-libc++ link or crypto substitute is used. It checks actual HKDF-SHA256 against the root's independent RFC5869 vector, then empty/binary roundtrip, exact framing length, wrong key, every byte alteration, every truncation, extra suffix, and explicit legacy/unknown version refusal. The native HKDF check is an independent primitive cross-check of the exact Swift purpose bytes, not a claim the Swift producer ran or current installation data was read.
+
+Root integration only: add the two unchanged codec source files plus the new `chrome/browser/aux/inbox_v2_fixture/{BUILD.gn,main.cc}` to a composition. Register an optional root test-only group with dependency `//chrome/browser/aux/inbox_v2_fixture:aux_inbox_v2_codec_fixture`; do not add a browser/startup dependency. Regenerate the existing out/AuxFast graph normally after root review so this isolated target can reuse existing objects. The recipe requires exact applied source hashes and the generated target Ninja file; it neither applies sources nor edits/generates GN. No native checkout files have been changed here.
+
+After the serializer drains and root explicitly selects this focused check, run once from the worktree containing these proposal files:
+
+    python3 scripts/native-build.py python3 docs/integration/proposed/aux-native-inbox-v2-check/check.py --output /tmp/aux-inbox-v2-codec-check-UNIQUE
+
+The recipe builds only `aux_inbox_v2_codec_fixture` at -j2, records the command/logs/binary hash and synthetic fixture result in fresh output outside the checkout, and checks sources remain unchanged. It does not build/run Chrome, execute an original addon or any signed producer, touch profiles/SQLite/Keychain, invoke the actual authority caller, or queue itself. Synthetic randomness is actual crypto::RandBytes for GCM nonces. There is no signing or new trust grant.
+
+Status: recipe/source/API pins inspected and Python syntax checked only. No C++ compile, link, native codec execution or queue has occurred for this proposal. Notification delivery and legacy backup recovery still need their actual paired caller and acceptance; this fixture alone does not establish them.

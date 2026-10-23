@@ -1,0 +1,29 @@
+{
+  "format": "aux.inbox.v2.focused-check.v1",
+  "nativeRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "buildDirectory": "out/AuxFast",
+  "repositoryFiles": {
+    "docs/integration/proposed/aux-native-inbox-v2-check/check.py": "c0568fa80ffc3b7eae2a6302ca82868306a083758ef1758b0ab4426d8c7a9319",
+    "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/main.cc": "203288404e21dc0dc58f741048b9a09a12f0d991206b9742a3bc74bba127d487",
+    "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/BUILD.gn": "29e08dcffcc67a1427a4c3bde6c8e8099edcbd00670dcc289df220f901207e30",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_notification_inbox.cc": "7ba04067c8235cb310eb2ab741cf0628ea535256f2274cae32ec1d2ee347c486",
+    "docs/integration/proposed/aux-native-inbox-v2-check/README.md": "3d82bf986c8d4ac9a26c2536147f582d205a3d4cd3957197cf2913bb6e9073d6"
+  },
+  "nativeAPIs": {
+    "crypto/aead.h": "4c2dc03029b9cc1c06e373da6ff352392f6d9190717b5360caa8af49ab34101e",
+    "crypto/random.h": "448d3275d6089e423d588c309638a50d8188eb29d60aba11062ebdfcd6e82c6e",
+    "crypto/kdf.h": "8b3f34af3f7272497fae29319b2f776133abd64f8f4a228f0eed4a8900c32656",
+    "crypto/hash.h": "aaba81705b17299f9018c7d51dbe37c36a78965c34e94959d4d28d5fff3c27b8",
+    "base/containers/span.h": "307329af0e9fb55fe05527668a8c679e5c32c17233808e403541313fe89ed63c"
+  },
+  "appliedFiles": {
+    "chrome/browser/notifications/aux_inbox_codec.cc": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9",
+    "chrome/browser/notifications/aux_inbox_codec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "chrome/browser/aux/inbox_v2_fixture/main.cc": "203288404e21dc0dc58f741048b9a09a12f0d991206b9742a3bc74bba127d487",
+    "chrome/browser/aux/inbox_v2_fixture/BUILD.gn": "29e08dcffcc67a1427a4c3bde6c8e8099edcbd00670dcc289df220f901207e30"
+  }
+}
