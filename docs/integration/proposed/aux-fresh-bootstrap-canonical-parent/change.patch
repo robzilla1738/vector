@@ -1,0 +1,23 @@
+--- baseline/AuxFreshBootstrapPolicy.swift
++++ source/AuxFreshBootstrapPolicy.swift
+@@ -56,13 +56,19 @@
+         let suffix=group.dropFirst(prefix.count)
+         return !suffix.isEmpty && suffix.utf8.allSatisfy{($0>=97 && $0<=122) || ($0>=48 && $0<=57) || $0==46 || $0==45}
+     }
++    // Lexical validation only. Foundation standardization resolves existing /private
++    // aliases on macOS; realpath/retained-FD validation belongs to the signed reader.
++    static func validCanonicalParentSyntax(_ parent:String)->Bool {
++        guard parent.hasPrefix("/"),parent != "/",parent.utf8.count<=4096,!parent.utf8.contains(0) else{return false}
++        return parent.dropFirst().split(separator:"/",omittingEmptySubsequences:false).allSatisfy{!$0.isEmpty && $0 != "." && $0 != ".."}
++    }
+     static func decode(_ bytes:Data)throws->Self {
+         let object=try strictEnvelopeObject(bytes)
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+         if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
+         guard Set(object.keys)==keys,object["format"] as? String==format,object["authoritySelection"] as? String==authoritySelection,
+-              let parent=object["canonicalPrivateParent"] as? String,parent.hasPrefix("/"),parent != "/",parent.utf8.count<=4096,!parent.utf8.contains(0),URL(fileURLWithPath:parent).standardizedFileURL.path==parent,
++              let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
+               parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
+               let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
+         return .init(role:role,canonicalPrivateParent:parent,accessGroup:group)

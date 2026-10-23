@@ -1,0 +1,20 @@
+{
+  "format": "aux.fresh.bootstrap.canonical-parent.check.v1",
+  "session": 76042,
+  "exitCode": 0,
+  "checks": 14,
+  "actualDiagnostic": {
+    "canonicalPrefix": "/private/var/folders/",
+    "foundationStandardizedPrefix": "/var/folders/",
+    "historicalPredicateAccepts": false
+  },
+  "productionLinked": false,
+  "signedLoaderExecuted": false,
+  "SecurityExecuted": false,
+  "authorityGeneration": false,
+  "files": {
+    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/check.sh": "0d21610268a4be02ff821505d76d1a1dbecebbdcf7245ce7d72ad3d654e2ad67",
+    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/tests/main.swift": "b06d42156f476ff3a784b884d9fd3f43dbf3bdd157f60f3507a483800268f92f",
+    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "format": "aux.fresh.bootstrap.canonical-parent.v1",
+  "files": {
+    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/baseline/AuxFreshBootstrapPolicy.swift": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a",
+    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
+    "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
+    "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+  }
+}
