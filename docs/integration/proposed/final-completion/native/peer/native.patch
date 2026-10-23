@@ -1,0 +1,132 @@
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -1,0 +2,2 @@
++#include "AuxOwnedChildWait.h"
++#include <cerrno>
+@@ -15,0 +18 @@
++namespace { const pid_t kPeerOwnerProcess = getpid(); }
+@@ -23,0 +27,2 @@
++  static void RetainBeforeLaunch(const std::shared_ptr<State>& state);
++  static void ReleaseKnownTerminal(const std::shared_ptr<State>& state);
+@@ -44 +49 @@
+-pid_t OwnedNativePeerChild::State::RegistryProcess() { static const pid_t owner = getpid(); return owner; }
++pid_t OwnedNativePeerChild::State::RegistryProcess() { return kPeerOwnerProcess; }
+@@ -78,0 +84,18 @@
++void OwnedNativePeerChild::State::RetainBeforeLaunch(const std::shared_ptr<State>& state) {
++  // Caller holds the actual State admission mutex. Complete all registry
++  // allocation before the first syscall can create a child. No late teardown
++  // allocation is needed to retain a real child or failed peer binding.
++  if (state->retained_for_exit) return;
++  std::lock_guard<std::mutex> lock(RetainedMutex());
++  Retained().push_back(state);
++  state->retained_for_exit = true;
++}
++void OwnedNativePeerChild::State::ReleaseKnownTerminal(const std::shared_ptr<State>& state) {
++  // Caller retains State and its mutex. Actual terminal/no-child evidence is
++  // necessary; a later benign reap must never erase earlier ownership loss.
++  if (!state->retained_for_exit || state->observation.exit_ownership_unknown ||
++      (!state->observation.launch_failed && !state->observation.exit_observed_and_reaped)) return;
++  std::lock_guard<std::mutex> lock(RetainedMutex());
++  std::erase(Retained(), state);
++  state->retained_for_exit = false;
++}
+@@ -81,15 +104,6 @@
+-  bool retain = false;
+-  {
+-    std::lock_guard<std::mutex> lock(state->mutex);
+-    state->observation.closed = true;
+-    state->prepared->CloseAndInspect();
+-    if (state->peer) state->peer->CloseAndInspect();
+-    auto observed = state->ReapLocked();
+-    retain = observed.launch_attempted && !observed.launch_failed &&
+-        !observed.exit_observed_and_reaped && !state->retained_for_exit;
+-    if (retain) state->retained_for_exit = true;
+-  }
+-  if (retain) {
+-    std::lock_guard<std::mutex> lock(RetainedMutex());
+-    Retained().push_back(std::move(state));
+-  }
++  std::lock_guard<std::mutex> lock(state->mutex);
++  state->observation.closed = true;
++  state->prepared->CloseAndInspect();
++  if (state->peer) state->peer->CloseAndInspect();
++  state->ReapLocked();
++  ReleaseKnownTerminal(state);
+@@ -111,0 +126 @@
++  State::RetainBeforeLaunch(state);
+@@ -120,0 +136 @@
++    State::ReleaseKnownTerminal(state);
+@@ -162,2 +178 @@
+-  if (child_created.is_null() || child.CreationTime() != child_created ||
+-      waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
++  if (child_created.is_null() || child.CreationTime() != child_created) {
+@@ -166,0 +182,6 @@
++  if (waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
++    // WNOWAIT has not consumed the child. EINTR retains pending ownership and
++    // can be retried by the next poll; other errors stay sticky unknown.
++    if (errno != EINTR) observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
+@@ -167,0 +189,4 @@
++  if (exit.si_pid != pid) {
++    observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
+@@ -169,2 +194,5 @@
+-  if (exit.si_pid != pid || waitpid(pid, &status, WNOHANG) != pid) {
+-    observation.exit_ownership_unknown = true;
++  const pid_t waited = waitpid(pid, &status, WNOHANG);
++  const int error = waited == -1 ? errno : 0;
++  const auto result = ClassifyOwnedChildReap(pid, waited, status, error);
++  if (result != OwnedChildReap::terminal) {
++    if (result == OwnedChildReap::unknown) observation.exit_ownership_unknown = true;
+@@ -188,7 +216,5 @@
+-  std::vector<std::shared_ptr<State>> retained;
+-  {
+-    std::lock_guard<std::mutex> lock(State::RetainedMutex());
+-    retained = State::Retained();
+-  }
+-  for (auto& state : retained) {
+-    bool terminal = false;
++  size_t budget;
++  { std::lock_guard<std::mutex> lock(State::RetainedMutex()); budget = State::Retained().size(); }
++  size_t cursor = 0;
++  for (size_t visited = 0; visited < budget; ++visited) {
++    std::shared_ptr<State> state;
+@@ -196,2 +222,3 @@
+-      std::lock_guard<std::mutex> lock(state->mutex);
+-      terminal = state->ReapLocked().exit_observed_and_reaped;
++      std::lock_guard<std::mutex> lock(State::RetainedMutex());
++      if (cursor >= State::Retained().size()) break;
++      state = State::Retained()[cursor];
+@@ -199 +226,4 @@
+-    if (terminal) {
++    // No registry lock crosses State, transport, or actual OS wait operations.
++    { std::lock_guard<std::mutex> lock(state->mutex);
++      state->ReapLocked(); State::ReleaseKnownTerminal(state); }
++    {
+@@ -201 +231,3 @@
+-      std::erase(State::Retained(), state);
++      const auto position = std::find(State::Retained().begin(), State::Retained().end(), state);
++      if (position != State::Retained().end())
++        cursor = static_cast<size_t>(position - State::Retained().begin()) + 1;
+--- /dev/null
++++ b/chrome/browser/aux/AuxOwnedChildWait.h
+@@ -0,0 +1,17 @@
++#pragma once
++#include <cerrno>
++#include <sys/types.h>
++#include <sys/wait.h>
++namespace aux::peer {
++enum class OwnedChildReap { pending, terminal, unknown };
++// Called only after real waitid(WEXITED|WNOWAIT) observed this exact child's exit.
++// EINTR consumes no result. Every terminal claim needs the real waited child
++// and a terminal status, never a plausible zero-initialized status on failure.
++constexpr OwnedChildReap ClassifyOwnedChildReap(pid_t expected, pid_t waited,
++                                               int status, int error) {
++  if (waited == -1 && error == EINTR) return OwnedChildReap::pending;
++  if (expected > 0 && waited == expected && (WIFEXITED(status) || WIFSIGNALED(status)))
++    return OwnedChildReap::terminal;
++  return OwnedChildReap::unknown;
++}
++}  // namespace aux::peer

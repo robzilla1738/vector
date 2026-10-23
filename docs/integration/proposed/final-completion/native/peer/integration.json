@@ -1,0 +1,19 @@
+{
+  "baseline": "a6b54763f5203f9741f66ca787b4f79740492c93",
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "sourceSha256": "e6793f89c00cd0d9a309e43bd01dca074f195eca5f6003c9270cbcb0e344da67",
+      "outputSha256": "d19283716fb4e5137016f090153effcd6ce672492cb3d356a3f7c96a6333b4a9"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedChildWait.h",
+      "sourceSha256": null,
+      "outputSha256": "b5bc81eb518ecd1f5158eb2f65cf5e78db89eced0266257beb33fc11f1434582"
+    }
+  ],
+  "publicHeaderUnchanged": true,
+  "sharedNativeTreeChanged": false,
+  "coldHookEnabled": false,
+  "nativeCustodyProven": false
+}
