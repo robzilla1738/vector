@@ -31,7 +31,15 @@
  #include "extensions/browser/service_worker/service_worker_task_queue.h"
  
  namespace aux {
-@@ -23,6 +24,7 @@
+@@ -16,6 +17,7 @@
+ // Raw observations of these native participants, never whole-profile custody.
+ struct OwnedBrowserQuiesceObservation {
+   bool close_requested = false;
++  bool participant_submission_pending = false;
+   bool profile_manager_unavailable = false;
+   bool helper_observation_pending = false;
+   bool session_observation_pending = false;
+@@ -23,6 +25,7 @@
    extensions::ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
        extension_worker_starts;
    content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};
@@ -41,7 +49,49 @@
  };
 --- a/chrome/browser/ui/aux_owned_browser_quiesce.cc
 +++ b/chrome/browser/ui/aux_owned_browser_quiesce.cc
-@@ -62,6 +62,8 @@
+@@ -20,6 +20,7 @@
+ 
+ struct ParticipantState {
+   bool close_requested = false;
++  bool participant_submission_pending = false;
+   bool profile_manager_unavailable = false;
+   bool helper_pending = false;
+   bool session_pending = false;
+@@ -35,7 +36,8 @@
+ 
+ void ReportAvailableObservations() {
+   auto& state = State();
+-  if (state.helper_pending || state.session_pending) {
++  if (state.participant_submission_pending || state.helper_pending ||
++      state.session_pending) {
+     return;
+   }
+   auto waiters = std::exchange(state.waiters, {});
+@@ -47,6 +49,15 @@
+   }
+ }
+ 
++// Submission remains pending across reentrant helper/session/worker callbacks.
++// Workers stop only after the other participant close requests are submitted;
++// their raw pending/unknown observations still do not establish storage custody.
++void FinishParticipantSubmission() {
++  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();
++  State().participant_submission_pending = false;
++  ReportAvailableObservations();
++}
++
+ }  // namespace
+ 
+ OwnedBrowserQuiesceObservation InspectOwnedBrowserParticipantQuiesce() {
+@@ -54,6 +65,7 @@
+   const auto& state = State();
+   OwnedBrowserQuiesceObservation result;
+   result.close_requested = state.close_requested;
++  result.participant_submission_pending = state.participant_submission_pending;
+   result.profile_manager_unavailable = state.profile_manager_unavailable;
+   result.helper_observation_pending = state.helper_pending;
+   result.session_observation_pending = state.session_pending;
+@@ -62,6 +74,8 @@
        InspectStartAdmissionForMigration();
    result.renderer_navigation = content::aux_migration::
        InspectRendererNavigationAdmissionForMigration();
@@ -50,18 +100,32 @@
    if (state.helper_observed) {
      // Carrier operations may outlive the daemon callback. Keep their actual
      // current custody snapshot rather than treating that callback as a drain.
-@@ -85,8 +87,14 @@
+@@ -82,9 +96,11 @@
+ 
+   // Set both pending observations before any native callback can reenter.
+   state.close_requested = true;
++  state.participant_submission_pending = true;
    state.helper_pending = true;
    state.session_pending = true;
    content::aux_migration::CloseRendererNavigationAdmissionForMigration();
 +  content::aux_migration::CloseServiceWorkerStartAdmissionForMigration();
    CloseAsyncProfileCreationAdmission();
    extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();
-+
-+  // All admission gates are closed before StopWorker can reenter. Its callback
-+  // is an observation, never proof of worker exit or storage custody. Pending,
-+  // detached and unresolved work remain explicit in each returned snapshot.
-+  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();
  
-   BrowserPlatform::Get().QuiesceOwnedDirectHelpersForMigration(base::BindOnce(
-       [](OwnedDirectHelperQuiesceObservation) {
+@@ -102,7 +118,7 @@
+   if (!manager) {
+     state.profile_manager_unavailable = true;
+     state.session_pending = false;
+-    ReportAvailableObservations();
++    FinishParticipantSubmission();
+     return;
+   }
+   CloseLoadedSessionWritersForMigration(
+@@ -112,6 +128,7 @@
+         state.session_pending = false;
+         ReportAvailableObservations();
+       }));
++  FinishParticipantSubmission();
+ }
+ 
+ }  // namespace aux

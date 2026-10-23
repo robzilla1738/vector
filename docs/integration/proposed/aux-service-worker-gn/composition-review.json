@@ -1,7 +1,7 @@
 {
   "format": "aux.worker-app.gn-owner.review.v1",
-  "composition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-worker-app-verified/owner",
-  "compositionSha256": "7882b94e00678a518e6fe3f8c6e3e3ef67e6b90c910db387fcca7808b2e49f81",
+  "composition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-worker-app-submission/owner",
+  "compositionSha256": "2bab7214042dbf2fead85cd9e1925cbbeaf3f56c0ce4ccbbd3b1d935f073bc76",
   "sourceRecords": 808,
   "assets": 23,
   "changedSources": [

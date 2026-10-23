@@ -1,3 +1,9 @@
+# Worker submission reentrancy correction — 2026-10-22
+
+Independent source review caught stop callbacks being invoked before the direct-helper and loaded-session close requests. The corrected native owner now submits those requests first, keeps aggregate reporting blocked across reentrant submission, exposes `participant_submission_pending` in raw Inspect, and requests worker stops on both normal and missing-manager paths. It does not claim session storage admission already closed: that occurs after final writes. The missing manager remains explicitly unavailable.
+
+Exact corrected dry composition `out/native-reuse-composition-aux-worker-app-submission/owner`, SHA256 `2bab7214042dbf2fead85cd9e1925cbbeaf3f56c0ce4ccbbd3b1d935f073bc76`, verified808 source records/23 unchanged assets. It supersedes only the unapplied owner source in the earlier worker/app composition; no native checkout, compiler, accepted app or UI changed. Full build51532 still runs on its preceding792-source composition, and the focused queued checks remain pending. No protected operations or runtime acceptance are claimed.
+
 # Worker and installed-app integration checkpoint — 2026-10-22
 
 The actual content service-worker and existing installed-app session proposals now dry-compose with renderer admission and their native owner as `out/native-reuse-composition-aux-worker-app-verified/owner`, SHA256 `7882b94e00678a518e6fe3f8c6e3e3ef67e6b90c910db387fcca7808b2e49f81`:808 source records and23 unchanged assets. Root replayed exact anchors/pins; all gates close before callback-capable worker stops. Raw worker counts retain pending/lost callbacks, unavailable cores and detach observations; a callback is not storage/thread exit or whole-profile custody. Installed-app sessions have independent per-profile write/close outcomes using existing-only lookups and the common submission guards. No view/CSS/artwork or accepted-preview changes.

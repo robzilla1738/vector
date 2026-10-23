@@ -20,6 +20,7 @@ using QuiesceCallback = base::OnceCallback<void(OwnedBrowserQuiesceObservation)>
 
 struct ParticipantState {
   bool close_requested = false;
+  bool participant_submission_pending = false;
   bool profile_manager_unavailable = false;
   bool helper_pending = false;
   bool session_pending = false;
@@ -35,7 +36,8 @@ ParticipantState& State() {
 
 void ReportAvailableObservations() {
   auto& state = State();
-  if (state.helper_pending || state.session_pending) {
+  if (state.participant_submission_pending || state.helper_pending ||
+      state.session_pending) {
     return;
   }
   auto waiters = std::exchange(state.waiters, {});
@@ -47,6 +49,15 @@ void ReportAvailableObservations() {
   }
 }
 
+// Submission remains pending across reentrant helper/session/worker callbacks.
+// Workers stop only after the other participant close requests are submitted;
+// their raw pending/unknown observations still do not establish storage custody.
+void FinishParticipantSubmission() {
+  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();
+  State().participant_submission_pending = false;
+  ReportAvailableObservations();
+}
+
 }  // namespace
 
 OwnedBrowserQuiesceObservation InspectOwnedBrowserParticipantQuiesce() {
@@ -54,6 +65,7 @@ OwnedBrowserQuiesceObservation InspectOwnedBrowserParticipantQuiesce() {
   const auto& state = State();
   OwnedBrowserQuiesceObservation result;
   result.close_requested = state.close_requested;
+  result.participant_submission_pending = state.participant_submission_pending;
   result.profile_manager_unavailable = state.profile_manager_unavailable;
   result.helper_observation_pending = state.helper_pending;
   result.session_observation_pending = state.session_pending;
@@ -84,17 +96,13 @@ void CloseOwnedBrowserParticipantsForMigration(QuiesceCallback done) {
 
   // Set both pending observations before any native callback can reenter.
   state.close_requested = true;
+  state.participant_submission_pending = true;
   state.helper_pending = true;
   state.session_pending = true;
   content::aux_migration::CloseRendererNavigationAdmissionForMigration();
   content::aux_migration::CloseServiceWorkerStartAdmissionForMigration();
   CloseAsyncProfileCreationAdmission();
   extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();
-
-  // All admission gates are closed before StopWorker can reenter. Its callback
-  // is an observation, never proof of worker exit or storage custody. Pending,
-  // detached and unresolved work remain explicit in each returned snapshot.
-  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();
 
   BrowserPlatform::Get().QuiesceOwnedDirectHelpersForMigration(base::BindOnce(
       [](OwnedDirectHelperQuiesceObservation) {
@@ -110,7 +118,7 @@ void CloseOwnedBrowserParticipantsForMigration(QuiesceCallback done) {
   if (!manager) {
     state.profile_manager_unavailable = true;
     state.session_pending = false;
-    ReportAvailableObservations();
+    FinishParticipantSubmission();
     return;
   }
   CloseLoadedSessionWritersForMigration(
@@ -120,6 +128,7 @@ void CloseOwnedBrowserParticipantsForMigration(QuiesceCallback done) {
         state.session_pending = false;
         ReportAvailableObservations();
       }));
+  FinishParticipantSubmission();
 }
 
 }  // namespace aux

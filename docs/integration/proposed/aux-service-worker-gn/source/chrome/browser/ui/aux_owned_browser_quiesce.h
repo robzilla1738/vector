@@ -17,6 +17,7 @@ namespace aux {
 // Raw observations of these native participants, never whole-profile custody.
 struct OwnedBrowserQuiesceObservation {
   bool close_requested = false;
+  bool participant_submission_pending = false;
   bool profile_manager_unavailable = false;
   bool helper_observation_pending = false;
   bool session_observation_pending = false;

@@ -34,7 +34,7 @@
     {
       "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
       "inputSha256": "50e33255b13eeb262f750077090fed6cc8dcbe6aed4b62184ca118f6fdc45749",
-      "outputSha256": "2fbccfdb15fe32c35a75886207695cf5b3e1fb7e57a3b1ffd847318a49a0dcd0",
+      "outputSha256": "0a23d1509d22d39b0c41081d44e937911b04a6c7b8ad8cfdf2ea42d5b6193df3",
       "edits": [
         {
           "find": "#include \"content/public/browser/aux_renderer_navigation_admission.h\"\n",
@@ -45,13 +45,18 @@
           "find": "  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};\n",
           "replace": "  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};\n  content::aux_migration::ServiceWorkerMigrationSnapshot service_workers{};\n",
           "count": 1
+        },
+        {
+          "find": "  bool close_requested = false;\n",
+          "replace": "  bool close_requested = false;\n  bool participant_submission_pending = false;\n",
+          "count": 1
         }
       ]
     },
     {
       "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
       "inputSha256": "fff924e29cab3c34269088ba1b3a49c622fb2d8debc878daf111e81992be84d2",
-      "outputSha256": "01e543c80124e9254b8b2caeb518f57e19cd586e2b705be28e452d386a52dadc",
+      "outputSha256": "f58124990bb3b83220af36ebac00ad535ef4c3176b6b66d9274ccb754aa74724",
       "edits": [
         {
           "find": "      InspectRendererNavigationAdmissionForMigration();\n",
@@ -64,12 +69,42 @@
           "count": 1
         },
         {
-          "find": "  extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();\n",
-          "replace": "  extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();\n\n  // All admission gates are closed before StopWorker can reenter. Its callback\n  // is an observation, never proof of worker exit or storage custody. Pending,\n  // detached and unresolved work remain explicit in each returned snapshot.\n  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();\n",
+          "find": "  bool close_requested = false;\n",
+          "replace": "  bool close_requested = false;\n  bool participant_submission_pending = false;\n",
+          "count": 1
+        },
+        {
+          "find": "  if (state.helper_pending || state.session_pending) {\n",
+          "replace": "  if (state.participant_submission_pending || state.helper_pending ||\n      state.session_pending) {\n",
+          "count": 1
+        },
+        {
+          "find": "}  // namespace\n",
+          "replace": "// Submission remains pending across reentrant helper/session/worker callbacks.\n// Workers stop only after the other participant close requests are submitted;\n// their raw pending/unknown observations still do not establish storage custody.\nvoid FinishParticipantSubmission() {\n  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();\n  State().participant_submission_pending = false;\n  ReportAvailableObservations();\n}\n\n}  // namespace\n",
+          "count": 1
+        },
+        {
+          "find": "  state.close_requested = true;\n",
+          "replace": "  state.close_requested = true;\n  state.participant_submission_pending = true;\n",
+          "count": 1
+        },
+        {
+          "find": "    state.session_pending = false;\n    ReportAvailableObservations();\n    return;\n",
+          "replace": "    state.session_pending = false;\n    FinishParticipantSubmission();\n    return;\n",
+          "count": 1
+        },
+        {
+          "find": "      }));\n}\n",
+          "replace": "      }));\n  FinishParticipantSubmission();\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  result.close_requested = state.close_requested;\n",
+          "replace": "  result.close_requested = state.close_requested;\n  result.participant_submission_pending = state.participant_submission_pending;\n",
           "count": 1
         }
       ]
     }
   ],
-  "patchSha256": "afed8d6331b0ea0af1440fa0cb6eae4233b24de80c95fb76030760dbce56e46f"
+  "patchSha256": "975eac2ec8dc26bea267051e17b20bba857bd3a713e9c7d31f12049125b98c89"
 }
