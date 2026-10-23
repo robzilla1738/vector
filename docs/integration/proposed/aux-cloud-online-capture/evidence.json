@@ -1,0 +1,49 @@
+{
+  "format": "aux.cloud-online-capture.offline-evidence.v1",
+  "attempts": [
+    {
+      "session": 17268,
+      "exitCode": 1,
+      "reason": "Eager composed stream could throw before bundle pipeline installed handlers; prototype source not retained as a passed input."
+    },
+    {
+      "session": 57859,
+      "exitCode": 0,
+      "tests": 1,
+      "checks": [
+        "all12actualDDL",
+        "actualSnapshotInventorySqlIncludesAvatarsExcludesInference",
+        "actualEncryptedBundleFilesystemRoundtrip",
+        "laterReferenceMutationAndPostCopyDeletionPreserved",
+        "concurrentMissingObjectAbortsAndRemovesOutput",
+        "truncatedAttachmentAbortsAndRemovesOutput"
+      ],
+      "inputsSha256": "d1b43b39f3e7d1515832aa4367d9bcb2a4480440d8beafbeb93039651eea774e",
+      "historicalInputsFile": "inputs-before-avatar-length.json"
+    },
+    {
+      "session": 8143,
+      "exitCode": 0,
+      "tests": 1,
+      "checks": [
+        "all12actualDDL",
+        "actualSnapshotInventorySqlIncludesAvatarsExcludesInference",
+        "actualEncryptedBundleFilesystemRoundtrip",
+        "laterReferenceMutationAndPostCopyDeletionPreserved",
+        "concurrentMissingObjectAbortsAndRemovesOutput",
+        "truncatedAttachmentAbortsAndRemovesOutput",
+        "avatarAdvertisedLengthMismatchAbortsAndRemovesOutput"
+      ],
+      "inputsSha256": "f40689232e3dafdcc599e7f4bc74b1364efdcdf56882ac102c8a2a3136f82c32"
+    }
+  ],
+  "synthetic": [
+    "Blob transport",
+    "pg_dump archive bytes"
+  ],
+  "providerCalls": false,
+  "credentialReads": false,
+  "actualPgDumpExecuted": false,
+  "productionBackupOrRestore": false,
+  "verifierSha256": "8e16d5f96f8e1e4d448a438f8ab0d6c36a4c07e1aa9f8d0a50887ba5dac055d7"
+}

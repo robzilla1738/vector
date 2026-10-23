@@ -1,0 +1,11 @@
+--- a/services/aux-cloud/src/auth.ts
++++ b/services/aux-cloud/src/auth.ts
+@@ -375,7 +375,7 @@
+   const type=png?'image/png':jpeg?'image/jpeg':webp?'image/webp':null;
+   if(!type)return error(c,'Choose a PNG, JPEG or WebP image.','INVALID_IMAGE',400);
+   const {put}=await import('@vercel/blob');
+-  const result=await put(`avatars/${user.id}/${randomUUID()}`,bytes,{access:'private',contentType:type,addRandomSuffix:false});
++  const result=await put(`avatars/${user.id}/${randomUUID()}`,bytes,{access:'private',contentType:type,addRandomSuffix:false,allowOverwrite:false});
+   await sql`UPDATE aux_users SET avatar_path=${result.pathname},avatar_mime=${type},updated_at=now() WHERE id=${user.id} AND deleted_at IS NULL`;
+   return c.json(await currentUser(user.id));
+ });

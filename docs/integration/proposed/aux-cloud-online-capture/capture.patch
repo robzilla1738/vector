@@ -1,0 +1,119 @@
+--- baseline/cloud-recovery.mjs
++++ source/cloud-recovery-online.mjs
+@@ -1,15 +1,16 @@
+ import assert from 'node:assert/strict';
+ import { spawn } from 'node:child_process';
+-import { randomBytes, createHash } from 'node:crypto';
++import { randomBytes } from 'node:crypto';
+ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+ import { join, resolve, sep } from 'node:path';
+ import { tmpdir } from 'node:os';
+-import { Readable, Transform } from 'node:stream';
++import { Transform } from 'node:stream';
+ import { createWriteStream } from 'node:fs';
+ import { pipeline } from 'node:stream/promises';
+ import { Pool, neonConfig } from '@neondatabase/serverless';
+ import { get } from '@vercel/blob';
+ import { readRecoveryKey, writeBundle, unpackBundle, recoveryFileSource } from './recovery-bundle.mjs';
++import { readOnlineSnapshotObjects, onlineBlobEntries } from './online-recovery-objects.mjs';
+ 
+ const [command, directory, keyFile, ...flags] = process.argv.slice(2);
+ const budget = Number(flags.find(v => v.startsWith('--max-bytes='))?.split('=')[1]);
+@@ -43,7 +44,7 @@
+   assert(!resolve(key).startsWith(resolve(bundle) + sep), 'Keep the recovery key outside the bundle');
+ }
+ async function capture() {
+-  assert(flags.includes('--quiesced'), 'Stop cloud writes/maintenance before capture and pass --quiesced; the tool does not stop them');
++  assert(!flags.includes('--quiesced'), 'Online capture makes no operator quiescence assertion');
+   assert(Number.isSafeInteger(budget) && budget > 0, 'Set an explicit --max-bytes budget');
+   separateKey(directory, keyFile);
+   phase = 'resource binding';
+@@ -63,9 +64,10 @@
+     const manifest = JSON.parse(await readFile(new URL('../src/schema-manifest.json', import.meta.url)));
+     const migrationRows = (await db.query('SELECT name,sha256 FROM aux_migrations ORDER BY name')).rows;
+     assert.deepEqual(Object.fromEntries(migrationRows.map(r => [r.name, r.sha256])), manifest);
+-    const objects = (await db.query("SELECT pathname,expected_size,expected_sha256,content_type FROM aux_attachments WHERE state='ready' AND purpose<>'inference' ORDER BY pathname")).rows;
+-    assert(objects.length <= 100_000, 'Review recovery capacity before exporting more than 100000 objects');
+-    const total = objects.reduce((n, o) => n + Number(o.expected_size), 0);
++    const objects = await readOnlineSnapshotObjects(db);
++    // Known attachment sizes plus conservative 2 MiB per avatar reserve room
++    // before pg_dump. Every streamed byte remains independently budgeted.
++    const total = objects.reduce((n, object) => n + object.maximum_size, 0);
+     assert(Number.isSafeInteger(total) && total < budget, 'Private objects exceed export budget');
+     const [{ snapshot }] = (await db.query('SELECT pg_export_snapshot() AS snapshot')).rows;
+     const archive = join(temp, 'database.dump');
+@@ -80,45 +82,24 @@
+     await run(pgRestore, ['--list', archive]);
+     async function* entries() {
+       yield { name: 'database.dump', source: recoveryFileSource(archive) };
+-      for (let i = 0; i < objects.length; i++) {
+-        phase = 'private object path';
+-        const object = objects[i];
+-        assert(/^aux\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/content$/.test(object.pathname), 'Unexpected private object path');
+-        phase = 'private object download';
+-        const response = await get(object.pathname, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(120000) });
+-        assert(response && response.statusCode === 200, 'Referenced private object is missing; snapshot is incomplete');
+-        phase = 'private object store binding';
+-        assert.equal(new URL(response.blob.url).hostname, 'uur9brkrqm4lu0z2.private.blob.vercel-storage.com');
+-        phase = 'private object size';
+-        // SDK2.8 reports size0 when a chunked origin omits Content-Length.
+-        // An advertised length must match; the streamed count/hash remain mandatory.
+-        if (response.headers.has('content-length')) assert.equal(response.blob.size, Number(object.expected_size));
+-        phase = 'private object content type';
+-        assert.equal(response.blob.contentType.split(';')[0], object.content_type);
+-        let size = 0;
+-        const hash = createHash('sha256');
+-        const checked = new Transform({ transform(chunk, _encoding, done) {
+-          size += chunk.length;
+-          if (size > Number(object.expected_size)) return done(Error('Private object grew during export'));
+-          hash.update(chunk); done(null, chunk);
+-        }, flush(done) {
+-          done(size === Number(object.expected_size) && hash.digest('hex') === object.expected_sha256 ? null : Error('Private object hash mismatch'));
+-        } });
+-        // Readable.compose propagates input errors and backpressure to the encrypted writer.
+-        phase = 'private object stream';
+-        const source = Readable.fromWeb(response.stream).compose(checked);
+-        yield { name: `blob-${i}.bin`, source, object };
+-      }
++      phase = 'online snapshot object verification';
++      yield* onlineBlobEntries(objects, get, 'uur9brkrqm4lu0z2.private.blob.vercel-storage.com');
++      // A failed/lost DB close must abort before writeBundle publishes its
++      // encrypted manifest and completion record, not after that publication.
++      phase = 'snapshot close';
++      await db.query('COMMIT');
+     }
+     phase = 'sealed bundle';
+     const result = await writeBundle({ directory, key, maxBytes: budget, entries: entries(), metadata: {
+       resource: { project: 'ancient-river-76453764', branch: 'br-red-hall-b857cl2i', blob: 'store_UUr9bRkRQm4lu0Z2' },
+       migrations: manifest, wrappingKey, retentionDeadline: new Date(Date.now() + 7 * 86400000).toISOString(),
+-      quiescedByOperator: true, readyObjects: objects.length,
++      consistency: 'exported-postgres-snapshot-with-complete-immutable-object-copies.v1',
++      concurrentDeletion: 'abort-on-unavailable-or-mismatch; no write pause is claimed',
++      objectFamilies: ['ready non-inference attachments', 'referenced private avatars'],
++      readyObjects: objects.length,
+       excludes: ['provider API credentials', 'all ephemeral inference files and uploads not ready at snapshot', 'provider webhook history outside Aux'],
+     } });
+-    await db.query('COMMIT');
+-    console.log(JSON.stringify({ kind: 'sealed-local-recovery-bundle', ...result, readyObjects: objects.length, productionActivated: false }));
++    console.log(JSON.stringify({ kind: 'sealed-local-online-recovery-bundle', ...result, readyObjects: objects.length, productionActivated: false }));
+   } finally {
+     if (db) { await db.query('ROLLBACK').catch(() => {}); db.release(); }
+     await pool.end(); await rm(temp, { recursive: true, force: true });
+@@ -131,7 +112,7 @@
+     await writeFile(directory, randomBytes(32).toString('hex') + '\n', { mode: 0o600, flag: 'wx' });
+     console.log('Private recovery key created; store separately from encrypted bundles');
+   } else if (command === 'capture') {
+-    assert(directory && keyFile, 'Usage: capture bundle-directory key-file --quiesced --max-bytes=N');
++    assert(directory && keyFile, 'Usage: capture bundle-directory key-file --max-bytes=N');
+     await capture();
+   } else if (command === 'unpack') {
+     const destination = flags.find(v => v.startsWith('--destination='))?.slice('--destination='.length);
+@@ -147,7 +128,7 @@
+   } else throw Error('Choose init-key, capture, or unpack');
+ } catch (error) {
+   // Never print database, provider or cryptographic exceptions containing private material.
+-  const category = /^PostgreSQL recovery tool failed: (TLS validation|snapshot|database permission|tool version|archive command)$/.test(error?.message || '') ? error.message : 'Check private key, integrity, byte budget and quiescence';
++  const category = /^PostgreSQL recovery tool failed: (TLS validation|snapshot|database permission|tool version|archive command)$/.test(error?.message || '') ? error.message : 'Check private key, integrity, byte budget and complete snapshot object availability';
+   const code = /^[A-Z_0-9]{1,64}$/.test(error?.code || '') ? error.code : 'UNCLASSIFIED';
+   console.error(`Recovery operation failed at ${phase} (${code}). ${category}. No cutover performed.`);
+   process.exitCode = 1;
