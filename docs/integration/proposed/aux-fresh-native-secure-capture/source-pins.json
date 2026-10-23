@@ -31,7 +31,7 @@
     },
     {
       "path": "tests/main.swift",
-      "sha256": "3c6ddd96e626547257f2bd713d30a8ff80eb709a4b0ee8e456b47d0267d8e730"
+      "sha256": "94da9716cdb6aa57d9711050cf82bfaa99095889121835ca83e8e6dc46a3a627"
     },
     {
       "path": "verify.py",
@@ -75,5 +75,12 @@
   "targetSelectorContract": "AuxRuntimeSelection.selector",
   "stageSelectorContract": "ReviewedFreshSecureStageSelector",
   "nativePolicyRevalidationCommit": "0b25472ad",
-  "nativeWholeCohortCustodyClaimed": false
+  "nativeWholeCohortCustodyClaimed": false,
+  "failedFixtureExecution": {
+    "session": 42337,
+    "exitCode": 133,
+    "productionTypecheckPassed": true,
+    "failure": "captured fixture unexpectedly used strict policy parser; pure decode refused before effects",
+    "successor": "Captured fixture now builds memberwise actual contents under explicitly fake authenticated reader, no policy acceptance claim."
+  }
 }

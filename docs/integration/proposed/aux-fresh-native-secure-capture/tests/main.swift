@@ -19,12 +19,12 @@ let group = "9F2JXY8TCK.dev.aux.synthetic-fresh"
 func fixture(_ name: String) throws -> (AuxAuthenticatedFreshBootstrapPolicy, AuxFreshNativeHome) {
     let parent = root + "/" + name
     guard mkdir(parent, 0o700) == 0 else { throw AuxFreshHomeError.io(errno) }
-    let bytes = try JSONSerialization.data(withJSONObject: [
-        "format": AuxFreshBootstrapPolicyContents.format, "role": "cli",
-        "canonicalPrivateParent": parent, "accessGroup": group,
-        "authoritySelection": AuxFreshBootstrapPolicyContents.authoritySelection,
-    ])
-    let policy = AuxAuthenticatedFreshBootstrapPolicy(contents: try .decode(bytes))
+    // Captured reader fixture only; actual signature/policy decoding is NOT
+    // exercised here. The real authenticated reader was separately typechecked.
+    let contents = AuxFreshBootstrapPolicyContents(
+        role: .cli, canonicalPrivateParent: parent, accessGroup: group
+    )
+    let policy = AuxAuthenticatedFreshBootstrapPolicy(contents: contents)
     return (policy, try .create(inCanonicalPrivateParent: parent))
 }
 func reset() {
