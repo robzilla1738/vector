@@ -1,0 +1,26 @@
+{
+  "format": "aux.recovery-enrollment.package-probe-preparation.v1",
+  "sourceBaseCommit": "4b6700c28",
+  "baselineProbe": {
+    "path": "docs/integration/proposed/aux-macos-utility-integration/probe-package.mjs",
+    "sha256": "2f1414d73d3d3ba0572255ae47fae486508cc4b4ae1aa98f0cbf998be1fdecad"
+  },
+  "probeSha256": "c1eadc10f8189cc03d189d1bc6fd6bdf158d4b726f192e5d633171ca1b02e872",
+  "executed": false,
+  "expectedCandidate": "out/provided-candidate-aux-recovery-enrollment/Aux.app",
+  "expectedStage": "out/provided-reuse-aux-recovery-enrollment",
+  "uiBaseline": "out/provided-candidate-aux-recovery-utilities/Aux.app",
+  "expectedAgentFiles": 1217,
+  "expectedExistingUnchanged": 1213,
+  "expectedChangedOriginalPaths": [
+    "assets/account-Dr_CA8LL.js",
+    "manifest.json"
+  ],
+  "expectedAddedPaths": [
+    "assets/aux-sync-recovery-enrollment-controller.js",
+    "assets/aux-sync-recovery-enrollment.js"
+  ],
+  "expectedStylesheetsUnchanged": 5,
+  "expectedRevision": 11,
+  "expectedFingerprint": "ade97244902afdc5dd345af447090b2c79a715a0500ccc4aed6eeb82ca75eb1d"
+}
