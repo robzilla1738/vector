@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.session-write-gn.v1",
+  "parentSha256": "b5f03a24aeeb931f9cf248334dbcd24e1e15e0316cb86cc76b0b42b6e6235298",
+  "parentSources": 776,
+  "successorSources": 777,
+  "gnFilesChanged": 2,
+  "headersRegistered": 2,
+  "binaryAssetsUnchanged": 23,
+  "successorSha256": "eac2e5cba8b41fe82611378892a55cd424ffe4a7b19c1031beea30a3ce59c806",
+  "appliedToNative": false,
+  "gnGenerated": false,
+  "browserLinked": false,
+  "appActivated": false
+}
