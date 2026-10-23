@@ -1,0 +1,66 @@
+{
+  "format": "aux.native.loaded-session-participant.focused-check.v1",
+  "currentProductionTUsCompiled": 2,
+  "compileResults": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "exitCode": 0,
+      "seconds": 4.936704834
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "exitCode": 0,
+      "seconds": 2.697993334
+    }
+  ],
+  "compileCommandsSha256": "628948d06760ba887f72449c86bceea9e878406dfcd19c4f3caa43d2f255ce72",
+  "compileInputsSha256": "69cc2ad1409e49625d668b0a47dfd39f81b07ba16b13c8ef8d9a67a0645eee35",
+  "sourceManifestSha256": "7a2e3ddc5ecddd3f177d5dcdbd6de7c7ca6d50d9e79eb85a4a3cc304631fc28d",
+  "productionDispatchSealTypedChecksPassed": 22,
+  "callbackOwnerRuntimeExecuted": false,
+  "loadedProfileInventoryExecuted": false,
+  "realBackendIOExecuted": false,
+  "nativeApplied": false,
+  "wholeBrowserBuilt": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "ownerStateRead": false,
+  "originalAddonExecuted": false,
+  "signed": false,
+  "uiChanged": false,
+  "wholeProfileCustodyClaimed": false,
+  "compiledObjects": [
+    {
+      "path": "aux_profile_switch_session_rebuild.o",
+      "sha256": "7c90c829be205336fca1d06c5c675d358c1353774e231fab68821769b9155367",
+      "bytes": 56200
+    },
+    {
+      "path": "session_service_base.o",
+      "sha256": "2486e210147620775ec30c8f4992355480df604f3a7db6f52353daed57187b6a",
+      "bytes": 75376
+    }
+  ],
+  "checkSourcePins": [
+    {
+      "path": "verify.py",
+      "sha256": "a78f03d8a10edb98f99c01eb65b6832bf457f698c4f6191e5dd7d0c6b239c644"
+    },
+    {
+      "path": "tests/main.cc",
+      "sha256": "d6d1985b3300222ced202abfed710ae8a68b25d66a12d6e89daa78d52e82781b"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "1b04e634806ebd4bd35d22039596b20afe565a735426e582247b9474e596e775"
+    },
+    {
+      "path": "compile-check.py",
+      "sha256": "9738314fdff836fa1ea49c410d72ce2482d31596c3a9b85b3cebcc36ff78b67f"
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "881fc6365c9438feabad055c440dc49380a0d1ffad1cc01158f0320521d2f3f0"
+    }
+  ]
+}

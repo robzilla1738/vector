@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.loaded-session-participant-composition.v1",
+  "parentSourcesPreserved": 778,
+  "successorSources": 779,
+  "unchangedBinaryAssets": 23,
+  "modifiedSources": 4,
+  "newHeaders": 1,
+  "parentSha256": "2f2d89447a39710b711db114c5578b745e8b5a71a930ca0ffd9f0e7a614fd1a9",
+  "successorSha256": "13bca83d21fab73967bc30b0c09732213eb2a068fc6626f56e51f69e983a3e52",
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false,
+  "allWriterCustodyClaimed": false,
+  "fsyncClaimed": false
+}

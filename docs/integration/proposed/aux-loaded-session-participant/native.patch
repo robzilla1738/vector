@@ -1,0 +1,402 @@
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -258,6 +258,11 @@
+   command_storage_manager_->SaveWithCompletion(std::move(report));
+ }
+ 
++base::WeakPtr<SessionServiceBase>
++SessionServiceBase::GetWeakPtrForNativeSessionWriterParticipant() {
++  return weak_factory_.GetWeakPtr();
++}
++
+ void SessionServiceBase::CloseCommandWriterAdmissionAndObserve(
+     base::OnceCallback<void(sessions::SessionManagerCloseObservation)> done) {
+   if (!command_storage_manager_) {
+--- a/chrome/browser/sessions/session_service_base.h
++++ b/chrome/browser/sessions/session_service_base.h
+@@ -88,6 +88,10 @@
+   void ResetFromCurrentBrowsersWithWriteCompletion(
+       base::OnceCallback<void(sessions::SessionWriteCompletion)> done);
+ 
++  // Native lifetime observation only; grants no profile/storage authority.
++  base::WeakPtr<SessionServiceBase>
++  GetWeakPtrForNativeSessionWriterParticipant();
++
+   // Native owning-service entry; permanent closure of this command writer,
+   // not profile/renderer shutdown or authorization to migrate its files.
+   void CloseCommandWriterAdmissionAndObserve(
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -2,11 +2,15 @@
+ // Local platform adaptation of the supplied profile-switch lifecycle.
+ 
+ #include "chrome/browser/ui/aux_profile_switch_session_rebuild.h"
++#include "chrome/browser/ui/aux_session_writer_participant.h"
+ 
+ #include <utility>
+ #include <vector>
+ 
+ #include "base/no_destructor.h"
++#include "base/callback_list.h"
++#include "base/memory/ref_counted.h"
++#include "base/task/bind_post_task.h"
+ 
+ #include "base/functional/bind.h"
+ #include "base/location.h"
+@@ -34,6 +38,15 @@
+   return state;
+ }
+ 
++base::RepeatingClosureList& SnapshotDispatchObservers() {
++  static base::NoDestructor<base::RepeatingClosureList> observers;
++  return *observers;
++}
++
++void NotifySnapshotDispatchChanged() {
++  SnapshotDispatchObservers().Notify();
++}
++
+ auto& LiveRebuildOwners() {
+   static base::NoDestructor<std::set<ProfileSwitchSessionRebuild*>> owners;
+   return *owners;
+@@ -47,6 +60,7 @@
+   // Destruction cancels weak tasks; it does not observe their intended write.
+   SnapshotDispatchState().AbandonPending(pending_paths_.size());
+   LiveRebuildOwners().erase(this);
++  NotifySnapshotDispatchChanged();
+ }
+ 
+ void ProfileSwitchSessionRebuild::FlushPendingBeforeClose() {
+@@ -115,13 +129,18 @@
+ 
+ void ProfileSwitchSessionRebuild::Rebuild(uint64_t generation) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  if (generation != generation_ || !g_browser_process ||
++  if (SnapshotDispatchState().Inspect().dispatch_admission_closed ||
++      generation != generation_ || !g_browser_process ||
+       !g_browser_process->profile_manager()) {
+     return;
+   }
+   auto paths = std::exchange(pending_paths_, {});
+   auto& dispatch = SnapshotDispatchState();
+-  dispatch.BeginDispatch(paths.size());
++  if (!dispatch.BeginDispatch(paths.size())) {
++    pending_paths_ = std::move(paths);
++    NotifySnapshotDispatchChanged();
++    return;
++  }
+   // Everything below uses only local state. A reset callback can destroy this
+   // owner; process accounting survives and no member is touched after it.
+   ProfileManager* manager = g_browser_process->profile_manager();
+@@ -132,6 +151,7 @@
+     if (!profile) {
+       LOG(WARNING) << "Aux workspace persistence: loaded=0";
+       dispatch.DidNotDispatchPath();
++      NotifySnapshotDispatchChanged();
+       continue;
+     }
+     SessionService* service = SessionServiceFactory::GetForProfileIfExisting(
+@@ -166,6 +186,7 @@
+         service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(
+             [](sessions::SessionWriteCompletion result) {
+               SnapshotDispatchState().DidObserveWrite(result);
++              NotifySnapshotDispatchChanged();
+             }));
+       } else {
+         service->ResetFromCurrentBrowsers();
+@@ -174,7 +195,194 @@
+     } else {
+       dispatch.DidNotDispatchPath();
+     }
+-  }
++    NotifySnapshotDispatchChanged();
++  }
++}
++
++namespace {
++
++// Real callback owner for one captured inventory. It never retains a manager
++// reference or converts an absent/dropped callback into an observation.
++class LoadedSessionWriterParticipant
++    : public base::RefCounted<LoadedSessionWriterParticipant> {
++ public:
++  LoadedSessionWriterParticipant(
++      std::vector<base::WeakPtr<Profile>> profiles,
++      base::OnceCallback<void(SessionWriterParticipantObservation)> done);
++  void Start();
++
++ private:
++  friend class base::RefCounted<LoadedSessionWriterParticipant>;
++  ~LoadedSessionWriterParticipant();
++  enum class Phase { kWaitingSnapshotCallbacks, kWriting, kClosing, kFinished };
++  void ScheduleAdvance();
++  void Advance();
++  void BeginFinalWrites();
++  void DidWrite(size_t index, sessions::SessionWriteCompletion result);
++  void BeginManagerCloses();
++  void DidClose(size_t index, sessions::SessionManagerCloseObservation result);
++  void Finish();
++
++  std::vector<base::WeakPtr<Profile>> profiles_;
++  std::vector<base::WeakPtr<SessionServiceBase>> services_;
++  base::OnceCallback<void(SessionWriterParticipantObservation)> done_;
++  SessionWriterParticipantObservation result_;
++  base::CallbackListSubscription snapshot_subscription_;
++  scoped_refptr<base::SequencedTaskRunner> runner_;
++  // Keep actual pending accounting even if a queued result callback is dropped.
++  scoped_refptr<LoadedSessionWriterParticipant> retained_until_observed_;
++  Phase phase_ = Phase::kWaitingSnapshotCallbacks;
++  size_t pending_writes_ = 0;
++  size_t pending_closes_ = 0;
++  bool advance_posted_ = false;
++};
++
++LoadedSessionWriterParticipant::LoadedSessionWriterParticipant(
++    std::vector<base::WeakPtr<Profile>> profiles,
++    base::OnceCallback<void(SessionWriterParticipantObservation)> done)
++    : profiles_(std::move(profiles)),
++      services_(profiles_.size()),
++      done_(base::BindPostTaskToCurrentDefault(std::move(done))),
++      runner_(base::SequencedTaskRunner::GetCurrentDefault()) {
++  result_.loaded_profile_count = profiles_.size();
++  result_.profiles.resize(profiles_.size());
++  for (size_t i = 0; i < profiles_.size(); ++i)
++    result_.profiles[i].inventory_index = i;
++}
++
++LoadedSessionWriterParticipant::~LoadedSessionWriterParticipant() = default;
++
++void LoadedSessionWriterParticipant::Start() {
++  retained_until_observed_ = base::WrapRefCounted(this);
++  snapshot_subscription_ = SnapshotDispatchObservers().Add(base::BindRepeating(
++      &LoadedSessionWriterParticipant::ScheduleAdvance,
++      base::WrapRefCounted(this)));
++  result_.initial_snapshot_dispatch =
++      ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots();
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::ScheduleAdvance() {
++  if (phase_ == Phase::kFinished || advance_posted_) return;
++  advance_posted_ = true;
++  // A rejected/dropped task leaves the owner retained and unresolved. Never
++  // run a fallback success callback during sequence shutdown.
++  runner_->PostTask(FROM_HERE,
++                    base::BindOnce(&LoadedSessionWriterParticipant::Advance,
++                                   base::WrapRefCounted(this)));
++}
++
++void LoadedSessionWriterParticipant::Advance() {
++  advance_posted_ = false;
++  if (phase_ == Phase::kWaitingSnapshotCallbacks) {
++    const auto snapshot = SnapshotDispatchState().Inspect();
++    if (snapshot.in_flight_paths || snapshot.pending_write_observations) return;
++    if (!SnapshotDispatchState().SealDispatchAfterObservedCallbacks()) {
++      result_.outcome = SessionWriterParticipantOutcome::kSnapshotAccountingUnknown;
++      Finish();
++      return;
++    }
++    // Actual old callbacks are settled and future Flush/Rebuild is now sealed.
++    // Pending unavailable paths remain in the observation, not discarded.
++    snapshot_subscription_ = {};
++    BeginFinalWrites();
++    return;
++  }
++  if (phase_ == Phase::kWriting) {
++    if (!pending_writes_) BeginManagerCloses();
++    return;
++  }
++  if (phase_ == Phase::kClosing && !pending_closes_) Finish();
++}
++
++void LoadedSessionWriterParticipant::BeginFinalWrites() {
++  phase_ = Phase::kWriting;
++  for (size_t i = 0; i < profiles_.size(); ++i) {
++    auto& observation = result_.profiles[i];
++    if (!profiles_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++      continue;
++    }
++    SessionService* service =
++        SessionServiceFactory::GetForProfileIfExisting(profiles_[i].get());
++    if (!service) {
++      observation.outcome = ProfileSessionWriterOutcome::kNoExistingService;
++      continue;
++    }
++    services_[i] = service->GetWeakPtrForNativeSessionWriterParticipant();
++    observation.outcome = ProfileSessionWriterOutcome::kServiceObserved;
++    ++pending_writes_;
++    service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(
++        &LoadedSessionWriterParticipant::DidWrite, base::WrapRefCounted(this), i));
++    // No raw profile/service access after the reset can reenter destruction.
++  }
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::DidWrite(
++    size_t index, sessions::SessionWriteCompletion result) {
++  CHECK(phase_ == Phase::kWriting);
++  CHECK(pending_writes_ && !result_.profiles[index].write.has_value());
++  result_.profiles[index].write = std::move(result);
++  --pending_writes_;
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::BeginManagerCloses() {
++  phase_ = Phase::kClosing;
++  for (size_t i = 0; i < services_.size(); ++i) {
++    auto& observation = result_.profiles[i];
++    if (!observation.write.has_value()) continue;
++    if (!profiles_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++      continue;
++    }
++    if (!services_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;
++      continue;
++    }
++    ++pending_closes_;
++    services_[i]->CloseCommandWriterAdmissionAndObserve(base::BindOnce(
++        &LoadedSessionWriterParticipant::DidClose, base::WrapRefCounted(this), i));
++  }
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::DidClose(
++    size_t index, sessions::SessionManagerCloseObservation result) {
++  CHECK(phase_ == Phase::kClosing);
++  CHECK(pending_closes_ && !result_.profiles[index].close.has_value());
++  auto& observation = result_.profiles[index];
++  observation.close = std::move(result);
++  if (!profiles_[index])
++    observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++  else if (!services_[index])
++    observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;
++  --pending_closes_;
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::Finish() {
++  auto keep_alive = base::WrapRefCounted(this);
++  phase_ = Phase::kFinished;
++  snapshot_subscription_ = {};
++  result_.final_snapshot_dispatch = SnapshotDispatchState().Inspect();
++  retained_until_observed_.reset();
++  std::move(done_).Run(std::move(result_));
++}
++
++}  // namespace
++
++void CloseLoadedSessionWritersForMigration(
++    ProfileManager& manager,
++    base::OnceCallback<void(SessionWriterParticipantObservation)> done) {
++  CHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));
++  std::vector<base::WeakPtr<Profile>> profiles;
++  for (Profile* profile : manager.GetLoadedProfiles())
++    profiles.push_back(profile->GetWeakPtr());
++  // Do not retain or access manager after Start can invoke real reset callbacks.
++  base::MakeRefCounted<LoadedSessionWriterParticipant>(std::move(profiles),
++                                                     std::move(done))->Start();
+ }
+ 
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux_session_writer_participant.h b/chrome/browser/ui/aux_session_writer_participant.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux_session_writer_participant.h
+@@ -0,0 +1,57 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_SESSION_WRITER_PARTICIPANT_H_
++#define CHROME_BROWSER_UI_AUX_SESSION_WRITER_PARTICIPANT_H_
++
++#include <cstddef>
++#include <optional>
++#include <vector>
++
++#include "base/functional/callback_forward.h"
++#include "chrome/browser/ui/aux_workspace_snapshot_dispatch.h"
++#include "components/sessions/core/session_write_completion.h"
++#include "components/sessions/core/session_writer_admission.h"
++
++class ProfileManager;
++
++namespace aux {
++
++enum class ProfileSessionWriterOutcome {
++  kNotAttempted,
++  kServiceObserved,
++  kProfileOwnerLost,
++  kServiceOwnerLost,
++  kNoExistingService,
++};
++
++struct ProfileSessionWriterObservation {
++  size_t inventory_index = 0;
++  ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;
++  std::optional<sessions::SessionWriteCompletion> write;
++  std::optional<sessions::SessionManagerCloseObservation> close;
++};
++
++enum class SessionWriterParticipantOutcome {
++  kObserved,
++  kSnapshotAccountingUnknown,
++};
++
++// Observations of this captured loaded-profile inventory and actual callbacks.
++// No aggregate success, profile-creation closure, provenance or custody grant.
++struct SessionWriterParticipantObservation {
++  SessionWriterParticipantOutcome outcome = SessionWriterParticipantOutcome::kObserved;
++  size_t loaded_profile_count = 0;
++  WorkspaceSnapshotDispatchObservation initial_snapshot_dispatch;
++  WorkspaceSnapshotDispatchObservation final_snapshot_dispatch;
++  std::vector<ProfileSessionWriterObservation> profiles;
++};
++
++// Native UI-sequence migration participant, NOT ordinary browser Shutdown.
++// Uses only an already-owned manager; captures weak profile lifetimes before
++// callbacks and never retains this reference across an await. No service is
++// created. Dropped asynchronous callbacks remain pending; no timeout success.
++void CloseLoadedSessionWritersForMigration(
++    ProfileManager& manager,
++    base::OnceCallback<void(SessionWriterParticipantObservation)> done);
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_SESSION_WRITER_PARTICIPANT_H_
+--- a/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
++++ b/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
+@@ -13,6 +13,7 @@
+ // A returned ResetFromCurrentBrowsers is dispatch, NOT durable storage closure.
+ struct WorkspaceSnapshotDispatchObservation {
+   bool admission_closed = false;
++  bool dispatch_admission_closed = false;
+   uint64_t pending_paths = 0;
+   uint64_t in_flight_paths = 0;
+   uint64_t unresolved_paths = 0;
+@@ -44,11 +45,23 @@
+ 
+   void CloseAdmission() { state_.admission_closed = true; }
+ 
+-  void BeginDispatch(uint64_t paths) {
+-    if (!Take(state_.pending_paths, paths)) {
+-      return;
++  bool BeginDispatch(uint64_t paths) {
++    if (state_.dispatch_admission_closed ||
++        !Take(state_.pending_paths, paths)) {
++      return false;
+     }
+-    Add(state_.in_flight_paths, paths);
++    return Add(state_.in_flight_paths, paths);
++  }
++
++  // Seal only after actual callbacks/in-flight reset calls have returned.
++  // Unavailable pending paths remain counted, not reinterpreted as complete.
++  bool SealDispatchAfterObservedCallbacks() {
++    if (!state_.admission_closed || state_.accounting_unknown ||
++        state_.in_flight_paths || state_.pending_write_observations) {
++      return false;
++    }
++    state_.dispatch_admission_closed = true;
++    return true;
+   }
+ 
+   // Only called after the actual SessionService reset invocation returns.

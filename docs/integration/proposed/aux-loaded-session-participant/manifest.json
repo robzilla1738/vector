@@ -1,0 +1,91 @@
+{
+  "format": "aux.native.loaded-session-participant.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "parentComposition": "out/native-reuse-composition-aux-session-writer-close-gn",
+  "parentCompositionSha256": "2f2d89447a39710b711db114c5578b745e8b5a71a930ca0ffd9f0e7a614fd1a9",
+  "parentSourceCount": 778,
+  "parentBinaryAssetCount": 23,
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": "1fa0e93a98ea90c6059f77e1d836db126c5c0a1d552ccc713a4e59ef74520db6",
+      "sourceSha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "baselineSha256": "e75e6ce91faf0fbfb72c70ca8903beba02b942ad8609eab0bef98444aeedba6d",
+      "sourceSha256": "5a3c95999730dc1323a0aa9ec58e1b90fd2e95d37fe143c2cfb0038109eb25df",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": "a1c3121376256350e55526e56d8695ec291dd466d0ca9afda618e5016af626f7",
+      "sourceSha256": "6edd8c80043acc8715c6242e93dcf9fb557c17863fcd68bbc3d505cfd7a062e5",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "baselineSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "sourceSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/ui/aux_session_writer_participant.h",
+      "baselineSha256": null,
+      "sourceSha256": "0d8010d4c6bdfa3c94e6d6cfe714e173be4dba372ab45e9e3b731cfbaa9241fd",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_workspace_snapshot_dispatch.h",
+      "baselineSha256": "4df4783b850296b8339cc18af21659a02909d6e58079d5456abf8639276599ca",
+      "sourceSha256": "47a1c9f0d295828f7807163e55c467d24ef8ba8542423e82f98e1d9c25f175ab",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.h",
+      "baselineSha256": "5e7f5a8b2f1bf7ab4dde3d4b0bee7d770088e7c51f62cf23d0a61562c0253325",
+      "sourceSha256": "5e7f5a8b2f1bf7ab4dde3d4b0bee7d770088e7c51f62cf23d0a61562c0253325",
+      "changed": false
+    },
+    {
+      "path": "components/sessions/core/session_write_completion.h",
+      "baselineSha256": "f4789f676b87284d28b24e3c32ee2e32ef3d2dc247dc145040d9fcfa59de7637",
+      "sourceSha256": "f4789f676b87284d28b24e3c32ee2e32ef3d2dc247dc145040d9fcfa59de7637",
+      "changed": false
+    },
+    {
+      "path": "components/sessions/core/session_writer_admission.h",
+      "baselineSha256": "46b59f90b4e48ceed1f9ad7db28626e5c9192fb0cf9c9813260258a3a46f45be",
+      "sourceSha256": "46b59f90b4e48ceed1f9ad7db28626e5c9192fb0cf9c9813260258a3a46f45be",
+      "changed": false
+    }
+  ],
+  "patchSha256": "46f7d73d20bad398ebd6f4bbcb3a15bf24432e4a5124ee4c494c269c978ac5ea",
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "sourceDependencies": [
+    {
+      "path": "chrome/browser/profiles/profile.h",
+      "sha256": "dc1ff74874ce73db6eeb579ed9b5a85a3226387ce3a4172eb814336562634485"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.h",
+      "sha256": "3c9ed6447d02a7daeda7e13a1b5203b1476d05d26c2d84850e99e304390dabba"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "sha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_factory.h",
+      "sha256": "1c9eb82e373ac79d42f3d9add8432e832de161f2bb09a82ca470594de100b004"
+    },
+    {
+      "path": "base/functional/callback_forward.h",
+      "sha256": "6ffbed9bc5ead1b97b58a340d3f8584aa3fe878742044b5711db6b876eefbd67"
+    }
+  ],
+  "nativeApplied": false,
+  "profileRuntimeExecuted": false,
+  "wholeProfileCustodyClaimed": false
+}
