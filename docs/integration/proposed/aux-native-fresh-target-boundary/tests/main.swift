@@ -1,6 +1,10 @@
 import Foundation
 import CryptoKit
 import Security
+import Darwin
+
+setbuf(stdout, nil)
+setbuf(stderr, nil)
 
 var checks = 0
 func check(_ value: @autoclosure () -> Bool) { precondition(value()); checks += 1 }
@@ -9,6 +13,7 @@ func refuses(_ action: () throws -> Void) {
     catch { checks += 1 }
 }
 // Fixed synthetic imports, no installation factory/key generation/hardware.
+print("PHASE: fixed software imports")
 let signingBytes = Data(repeating: 1, count: 32)
 let agreementBytes = Data(repeating: 2, count: 32)
 let signing = try P256.Signing.PrivateKey(rawRepresentation: signingBytes)
@@ -95,10 +100,12 @@ func configure(_ context: NativeFreshStagedContext, _ captured: Data) {
         return errSecSuccess
     }
 }
+print("PHASE: initial decoder")
 let (context, bytes) = try fixture()
 configure(context, bytes)
 let boundary = try AuxNativeFreshTargetBoundary(context: context)
 refuses { _ = try boundary.validateStageAndMakeCommandCore() }
+print("PHASE: four targets")
 for row in nativeFreshBootstrapRoles {
     let ticket = AuxNativeFreshTargetWriteIntent(row: row, context: context)
     if case .added = try boundary.addTarget(ticket) { checks += 1 } else { preconditionFailure() }
@@ -106,6 +113,7 @@ for row in nativeFreshBootstrapRoles {
     refuses { _ = try boundary.addTarget(ticket) }
     check(adds == before)
 }
+print("PHASE: terminal core")
 let core = try boundary.validateStageAndMakeCommandCore()
 let reply = try strictEnvelopeObject(Data(core.run(command: "dk-unwrap").utf8))
 check(reply["dk"] as? String == root.base64EncodedString())
@@ -119,6 +127,7 @@ refuses { _ = try boundary.validateStageAndMakeCommandCore() }
 stage = nil
 refuses { _ = try boundary.captureTargets() }
 
+print("PHASE: malformed fixtures")
 let invalidEdits: [(inout [String: Any]) -> Void] = [
     { $0["format"] = "aux.install.fresh.secure-stage.v1" },
     { $0["unexpected"] = true },
@@ -150,6 +159,7 @@ let (cipherContext, cipherStage) = try fixture(payloads: wrongCipher)
 configure(cipherContext, cipherStage)
 refuses { _ = try AuxNativeFreshTargetBoundary(context: cipherContext) }
 
+print("PHASE: uncertain add")
 configure(context, bytes)
 let uncertain = try AuxNativeFreshTargetBoundary(context: context)
 AuxNativeFreshTargetFixture.add = { selector, payload in
@@ -164,6 +174,7 @@ CapturedNativeContext.revalidate = {}
 let beforeRetry = adds
 refuses { _ = try uncertain.addTarget(unknown) }
 check(adds == beforeRetry && targets["metadata"] == fixedPayloads["metadata"])
+print("PHASE: stale intent")
 configure(context, bytes)
 let stale = try AuxNativeFreshTargetBoundary(context: context)
 let staleIntent = AuxNativeFreshTargetWriteIntent(row: "metadata", context: context)
@@ -173,6 +184,7 @@ refuses { _ = try stale.addTarget(staleIntent) }
 check(adds == beforeStale)
 // A target-absence callback may invalidate the retained context. It must not
 // dispatch Add even though the captured return value itself says absent.
+print("PHASE: changed absence")
 configure(context, bytes)
 let changedAfterAbsence = try AuxNativeFreshTargetBoundary(context: context)
 AuxNativeFreshTargetFixture.read = { selector in

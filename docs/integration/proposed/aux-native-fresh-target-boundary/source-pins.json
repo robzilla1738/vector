@@ -27,7 +27,7 @@
     },
     {
       "path": "tests/main.swift",
-      "sha256": "bdf1c903c879038a47b527a2b17f6e01f6c5176d2c9f12d299b6537bb02964b5"
+      "sha256": "6ae0dabfb0238cfbbac9fe03e1aa56c2eabdebdabde06fc3197110f06a37953e"
     },
     {
       "path": "verify.py",
@@ -106,5 +106,12 @@
     "previousSha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435",
     "currentSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
     "reason": "Revalidate genuine stage/context after target-absence callback immediately before create-only Add; no replay permission. Existing captured fixture96148 still queued and reads this successor."
+  },
+  "failedCapturedFixture": {
+    "session": 96148,
+    "exitCode": 133,
+    "compileSucceeded": true,
+    "sourceSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+    "runtime": "fixed-software/captured fixture trap without location; successor adds nonsecret phase diagnostics only"
   }
 }
