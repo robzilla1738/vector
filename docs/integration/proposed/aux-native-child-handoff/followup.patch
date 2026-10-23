@@ -1,3 +1,36 @@
+diff --git a/AuxNativeEndpointDelivery.cc b/AuxNativeEndpointDelivery.cc
+new file mode 100644
+--- /dev/null
++++ b/AuxNativeEndpointDelivery.cc
+@@ -0,0 +1,11 @@
++#include "AuxNativeEndpointDelivery.h"
++#include "base/apple/mach_port_rendezvous.h"
++namespace {
++constexpr uint32_t kNativeParentPeerPort = 0x41555850;
++}
++extern "C" mach_port_t AuxTakeNativeParentEndpointForBootstrap(void) {
++  auto* actual = base::MachPortRendezvousClient::GetInstance();
++  if (!actual) return MACH_PORT_NULL;
++  auto right = actual->TakeSendRight(kNativeParentPeerPort);
++  return right ? right.release() : MACH_PORT_NULL;
++}
+diff --git a/AuxNativeEndpointDelivery.h b/AuxNativeEndpointDelivery.h
+new file mode 100644
+--- /dev/null
++++ b/AuxNativeEndpointDelivery.h
+@@ -0,0 +1,12 @@
++#pragma once
++#include <mach/mach.h>
++#ifdef __cplusplus
++extern "C" {
++#endif
++// Native bootstrap only, called before Node initialization. Returns one owned
++// send-right reference, or MACH_PORT_NULL. Delivery is not peer authentication.
++// This header is the ONLY ABI between Chromium's C++ graph and Node's graph.
++mach_port_t AuxTakeNativeParentEndpointForBootstrap(void);
++#ifdef __cplusplus
++}
++#endif
 diff --git a/AuxNativeParentConnectionBridge.cc b/AuxNativeParentConnectionBridge.cc
 new file mode 100644
 --- /dev/null
@@ -475,7 +508,7 @@ new file mode 100644
 +  if (!prepared) return {};
 +  auto right = prepared->CopySendRightForNativeHandoff();
 +  options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
-+      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_MOVE_SEND));
++      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND));
 +  return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
 +      std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
 +}
@@ -498,8 +531,8 @@ new file mode 100644
 +  state->observation.launch_attempted = true;
 +  // Actual spawn is serialized with this owner's terminal close, matching the
 +  // supplied supervisor's RunAdmittedLaunch generation-lock boundary.
-+  state->handoff.ReleaseForNativeHandoff();
-+  // LaunchOptions MOVE rights are consumed by LaunchProcess even on failure.
++  // COPY_SEND borrows the original ref, retained in state->handoff throughout
++  // launch, early returns, rendezvous delivery and actual child exit.
 +  state->child = base::LaunchProcess(state->command, state->options);
 +  if (!state->child.IsValid()) {
 +    state->observation.launch_failed = true;

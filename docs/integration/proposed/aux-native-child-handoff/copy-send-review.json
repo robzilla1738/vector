@@ -1,0 +1,30 @@
+{
+  "format": "aux.native-child.copy-send-successor.v1",
+  "parentCommit": "34802d011",
+  "path": "source/AuxOwnedNativePeerChild.cc",
+  "inputSha256": "4a95e7dc04e2673e575f1a11ccef16e1c0f7c7202f3fd8d0a322d3869175366e",
+  "outputSha256": "430c21adec70776c7b2844c80dd7455cbc2a42bf95358f5a07ea36018a095d4b",
+  "edits": [
+    {
+      "find": "base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_MOVE_SEND)",
+      "replace": "base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND)",
+      "count": 1
+    },
+    {
+      "find": "  state->handoff.ReleaseForNativeHandoff();\n  // LaunchOptions MOVE rights are consumed by LaunchProcess even on failure.",
+      "replace": "  // COPY_SEND borrows the original ref, retained in state->handoff throughout\n  // launch, early returns, rendezvous delivery and actual child exit.",
+      "count": 1
+    }
+  ],
+  "reviewedSources": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/launch_mac.cc",
+      "sha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.cc",
+      "sha256": "ea2852469c36dc1eb81280f6d6ad30f3487691fa6980c6c7877927878be56db6"
+    }
+  ],
+  "compiled": false
+}

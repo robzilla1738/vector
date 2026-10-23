@@ -70,7 +70,7 @@ std::unique_ptr<OwnedNativePeerChild> OwnedNativePeerChild::PrepareBeforeSpawn(
   if (!prepared) return {};
   auto right = prepared->CopySendRightForNativeHandoff();
   options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
-      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_MOVE_SEND));
+      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND));
   return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
       std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
 }
@@ -93,8 +93,8 @@ bool OwnedNativePeerChild::LaunchOnce() {
   state->observation.launch_attempted = true;
   // Actual spawn is serialized with this owner's terminal close, matching the
   // supplied supervisor's RunAdmittedLaunch generation-lock boundary.
-  state->handoff.ReleaseForNativeHandoff();
-  // LaunchOptions MOVE rights are consumed by LaunchProcess even on failure.
+  // COPY_SEND borrows the original ref, retained in state->handoff throughout
+  // launch, early returns, rendezvous delivery and actual child exit.
   state->child = base::LaunchProcess(state->command, state->options);
   if (!state->child.IsValid()) {
     state->observation.launch_failed = true;

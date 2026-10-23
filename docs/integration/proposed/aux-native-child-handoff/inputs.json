@@ -3,6 +3,18 @@
   "parentTransportCommit": "d578595e0",
   "files": [
     {
+      "path": "source/AuxNativeEndpointDelivery.cc",
+      "inputSha256": null,
+      "outputSha256": "9fd57330f5c4d588d1009ae696c83d17bd28c90841f5cc1b931726a73f7ae565",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativeEndpointDelivery.h",
+      "inputSha256": null,
+      "outputSha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "new": true
+    },
+    {
       "path": "source/AuxNativeParentConnectionBridge.cc",
       "inputSha256": null,
       "outputSha256": "9b99ac60a747c82d021b01c60563a26673509b0640d07c835e3feeefcd0ea175",
@@ -35,7 +47,7 @@
     {
       "path": "source/AuxOwnedNativePeerChild.cc",
       "inputSha256": null,
-      "outputSha256": "4a95e7dc04e2673e575f1a11ccef16e1c0f7c7202f3fd8d0a322d3869175366e",
+      "outputSha256": "430c21adec70776c7b2844c80dd7455cbc2a42bf95358f5a07ea36018a095d4b",
       "new": true
     },
     {
@@ -45,7 +57,7 @@
       "new": true
     }
   ],
-  "patchSha256": "6757bb6587ae89dfc68e80bef73d2fa2a4612b4a418a2c31e3cec69de3bd8f00",
+  "patchSha256": "038ab5c0807c3ea4366a63ff1d455c2ab9ab61c1676eca76dd406acea5b018d4",
   "referenceInputs": [
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
@@ -81,5 +93,7 @@
   "defaultSupervisorModified": false,
   "activeColdCallerIntegrated": false,
   "firstRefusalChanged": false,
-  "wholeCohortCustodyClaimed": false
+  "wholeCohortCustodyClaimed": false,
+  "compileRecipeSha256": "df0830c26eeab1b5d36065c062e1ab1284fe3408471293a6a3030fcf62fe5b66",
+  "copySendReviewSha256": "57384f415506f31974221e4bd9402c18626e60fc9ea48b3e709d9495aad13748"
 }
