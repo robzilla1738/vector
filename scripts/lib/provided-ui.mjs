@@ -1,3 +1,4 @@
+import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
 import { applyAuxCaptureContractIdentity } from '../../vendor/provided/aux-capture-contract-identity.mjs';
@@ -45,6 +46,24 @@ const extensionId = (key) =>
     .replace(/[0-9a-f]/g, (digit) =>
       String.fromCharCode(97 + Number.parseInt(digit, 16)),
     );
+
+const enrollmentGenerator = 'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
+const enrollmentPaths = ['assets/aux-sync-recovery-enrollment-controller.js', 'assets/aux-sync-recovery-enrollment.js'];
+/** Two fixed source-pinned assets only; never alters original UI bytes. */
+export async function providedRecoveryEnrollmentUiResources(stateIdentityVersion = 1) {
+  if (stateIdentityVersion !== 2) return { files: [], manifest: undefined };
+  const pins = JSON.parse(await readFile(join(repository, 'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json'), 'utf8'));
+  const materialized = materializeAuxRecoveryEnrollmentUI();
+  if (pins.format !== 'aux.sync-recovery.enrollment-ui.v2' || materialized.activation !== false ||
+      JSON.stringify(pins.assets?.map(file => file.path)) !== JSON.stringify(enrollmentPaths) ||
+      JSON.stringify(materialized.files.map(file => file.path)) !== JSON.stringify(enrollmentPaths)) throw Error('Unreviewed fixed enrollment UI assets');
+  const files = materialized.files.map((file, index) => {
+    const record = pins.assets[index], repositorySource = 'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/' + file.path.slice('assets/'.length);
+    if (record.source !== repositorySource || record.bytes !== file.bytes.length || record.sha256 !== sha256(file.bytes) || file.mode !== 0o644) throw Error('Enrollment UI asset source pin/mode differs');
+    return {...file, repositorySource, sourceSha256: record.sha256, generatedBy: enrollmentGenerator};
+  });
+  return {files, manifest: {format: 'aux.sync-recovery.enrollment-ui.resources.v1', activation: false, files: files.map(({path,bytes,mode,repositorySource,sourceSha256,generatedBy}) => ({path,bytes: bytes.length,mode,repositorySource,sourceSha256,outputSha256: sha256(bytes),generatedBy}))}};
+}
 
 async function paths(root, directory = '') {
   const files = [];
@@ -415,6 +434,21 @@ export async function stageProvidedUi({
           ...(brandingReplacement ? {brandingReplacement} : {}),
         });
       }
+      let recoveryEnrollment;
+      if (component === 'agent' && stateIdentityVersion === 2) {
+        const generated = await providedRecoveryEnrollmentUiResources(stateIdentityVersion);
+        for (const file of generated.files) {
+          if (outputPaths.has(file.path)) throw Error('Generated enrollment UI asset collides with original input');
+          outputPaths.add(file.path);
+          const target = join(temporary, component, file.path);
+          await mkdir(dirname(target), {recursive: true});
+          await writeFile(target, file.bytes, {mode: file.mode});
+          files.push({path: file.path, sourceSha256: file.sourceSha256, repositorySource: file.repositorySource,
+            outputSha256: sha256(file.bytes), outputMode: file.mode, bytes: file.bytes.length,
+            generatedBy: file.generatedBy, added: true, changeKinds: ['integration']});
+        }
+        recoveryEnrollment = generated.manifest;
+      }
       if (component === 'agent') {
         const manifestPath = join(temporary, component, 'manifest.json');
         const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
@@ -439,6 +473,7 @@ export async function stageProvidedUi({
         outputRoot: join(destination, component),
         files,
         ...(originPairing ? {originPairing} : {}),
+        ...(recoveryEnrollment ? {recoveryEnrollment} : {}),
       };
     }
     await writeFile(

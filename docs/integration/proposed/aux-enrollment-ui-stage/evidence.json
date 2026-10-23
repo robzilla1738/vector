@@ -1,0 +1,97 @@
+{
+  "format": "aux.enrollment-ui.stage-check.v1",
+  "outputRoot": "/Users/rcourson/Documents/Vibe/web/out/aux-enrollment-ui-review-20261022",
+  "originalAgentFiles": 1215,
+  "agentFiles": 1217,
+  "changedOriginalAgentPaths": [
+    "assets/account-Dr_CA8LL.js",
+    "manifest.json"
+  ],
+  "newAssets": [
+    {
+      "path": "assets/aux-sync-recovery-enrollment-controller.js",
+      "bytes": 4175,
+      "mode": 420,
+      "repositorySource": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js",
+      "sourceSha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3",
+      "outputSha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3",
+      "generatedBy": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs"
+    },
+    {
+      "path": "assets/aux-sync-recovery-enrollment.js",
+      "bytes": 4170,
+      "mode": 420,
+      "repositorySource": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js",
+      "sourceSha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45",
+      "outputSha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45",
+      "generatedBy": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs"
+    }
+  ],
+  "originalAccountAnchorsReplayed": 3,
+  "accountSha256": "3d3119ea8f2bd1afd7c203efecd07c1f2d2d6d4425a1c94f36b9a9bbb7c65f47",
+  "cssChanged": 0,
+  "iconsChanged": 0,
+  "originalFilesByteIdentical": 1213,
+  "sharedCheckerBoundary": {
+    "unchanged": 1116,
+    "changed": 145,
+    "css": 7
+  },
+  "manifestVersion": "1.26.1016.1863",
+  "state1NewResources": 0,
+  "actualStagingCallbackSha256": "af035d490e68ad2259c42cf4fda7891603416bbce5144ee5c434249172d046d0",
+  "stageHookSha256": "e76f60770edadd2341002531d61cd731c30b8a8f63721314f9bc7f5aa1c9b0dc",
+  "uiCheckerSha256": "d6d4cca2915535a75529c6c2693b23bf4b7cbb95aa1b82137cdacb808f8d93b4",
+  "uiEvaluated": false,
+  "fullStageRun": false,
+  "nativeExecuted": false,
+  "appLaunched": false,
+  "generatedBoundaryRejected": [
+    "missing-fixed-asset",
+    "extra-generated-asset",
+    "forged-source-pin"
+  ],
+  "agentStylesheets": 5,
+  "sourceInputs": [
+    {
+      "path": "scripts/stage-provided.mjs",
+      "sha256": "e76f60770edadd2341002531d61cd731c30b8a8f63721314f9bc7f5aa1c9b0dc"
+    },
+    {
+      "path": "scripts/lib/provided-ui.mjs",
+      "sha256": "bbfebd9d6d3af54c66f196dc633a3277e628e1de943ae90ae5b251ebf41ad7bc"
+    },
+    {
+      "path": "scripts/check-provided.mjs",
+      "sha256": "d6d4cca2915535a75529c6c2693b23bf4b7cbb95aa1b82137cdacb808f8d93b4"
+    },
+    {
+      "path": "vendor/provided/agent-revisions.json",
+      "sha256": "f48eaa1ed30f83f36ba60e54974bd53f94c501800466490274e5f68af01746d2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs",
+      "sha256": "974d493b9fdde739a73e37a7df4c7678e7e26c0612621841f89a15516e897987"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json",
+      "sha256": "8f6e4e89a358d68f6602fbd6e126de0558b8fd8e9c02cbb355e5ebf4c2c86e23"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js",
+      "sha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js",
+      "sha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3"
+    }
+  ],
+  "revisionLedgerPrior10Preserved": true,
+  "revision": {
+    "revision": 11,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "ade97244902afdc5dd345af447090b2c79a715a0500ccc4aed6eeb82ca75eb1d"
+  }
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {relocateAuxAssetPath} from '../vendor/provided/aux-asset-path-identity.mjs';
 import {loadAuxBrowserIconReplacement} from './lib/aux-browser-icon.mjs';
+import {providedRecoveryEnrollmentUiResources} from './lib/provided-ui.mjs';
 // Preservation audit: unchanged source equality is expected, never a clean-room failure.
 import { resolveProtocolIdentity, resolveStateIdentityVersion } from '../vendor/provided/aux-protocol-identity.mjs';
 import { createHash } from 'node:crypto';
@@ -58,7 +59,23 @@ let unchanged = 0, changed = 0, css = 0;
 for (const component of ['agent', 'vault']) {
   const pinned = pins.components[component], report = ui.components[component], root = join(output, 'ui', component);
   const bySource = new Map();
-  for (const file of report.files) {
+  const enrollment = component === 'agent' ? await providedRecoveryEnrollmentUiResources(stateIdentityVersion) : {files: [], manifest: undefined};
+  if (JSON.stringify(report.recoveryEnrollment) !== JSON.stringify(enrollment.manifest)) throw Error('Unreviewed enrollment UI manifest');
+  const generated = report.files.filter(file => file.generatedBy);
+  if (generated.length !== enrollment.files.length) throw Error('Missing or additional generated UI files');
+  for (const expected of enrollment.files) {
+    const matches = generated.filter(file => file.path === expected.path);
+    if (matches.length !== 1) throw Error('Missing or duplicate fixed enrollment UI asset');
+    const file = matches[0], target = join(root, file.path), stat = await lstat(target), bytes = await readFile(target);
+    if (!safe(file.path) || file.sourcePath !== undefined || file.anchors !== undefined || file.added !== true ||
+        file.generatedBy !== expected.generatedBy || file.repositorySource !== expected.repositorySource ||
+        file.sourceSha256 !== expected.sourceSha256 || file.outputSha256 !== hash(expected.bytes) ||
+        file.bytes !== expected.bytes.length || file.outputMode !== expected.mode ||
+        JSON.stringify(file.changeKinds) !== JSON.stringify(['integration']) ||
+        !stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o777) !== expected.mode || !bytes.equals(expected.bytes)) throw Error('Generated enrollment UI source/hash/mode mismatch');
+  }
+  for (const file of report.files.filter(file => !file.generatedBy)) {
+    if (file.added !== undefined || file.repositorySource !== undefined || file.outputMode !== undefined) throw Error('Unclassified additional UI asset');
     const sourcePath = file.sourcePath ?? file.path;
     if (!safe(file.path) || !safe(sourcePath) || bySource.has(sourcePath)) throw new Error('Duplicate or unsafe preservation record');
     bySource.set(sourcePath, file);

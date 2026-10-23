@@ -1,0 +1,23 @@
+{
+  "format": "aux.enrollment-ui.revision-derivation.v1",
+  "sourceCommit": "cce7afcb5",
+  "priorReview": {
+    "revision": 10,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "ea3bd2d5ba0f592015c673c9c74db3c52f3374614a6caf2edc703b8bf2a2c78e"
+  },
+  "review": {
+    "revision": 11,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "ade97244902afdc5dd345af447090b2c79a715a0500ccc4aed6eeb82ca75eb1d"
+  },
+  "source": "actual full UI-only staging reached fail-closed reviseAgentManifest after1217files",
+  "unreviewedOutputRetained": false,
+  "actualCallbackSha256": "af035d490e68ad2259c42cf4fda7891603416bbce5144ee5c434249172d046d0",
+  "fullStageRun": false,
+  "rootPipelineEdited": false
+}

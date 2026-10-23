@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { composeCloudDesktop } from '../vendor/provided/cloud-desktop-composition.mjs';
 import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-policy.mjs';
 import { stageProvidedUi } from './lib/provided-ui.mjs';
+import { adaptAuxRecoveryEnrollmentUI } from '../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { stageProvidedApps } from './lib/provided-apps.mjs';
 import { stageProvidedRuntime } from './lib/provided-runtime.mjs';
 import { stageProvidedComputerUse } from './lib/provided-computer-use.mjs';
@@ -72,7 +73,8 @@ try {
     const lasso = transformProvidedLassoOwnership({ ...input, text: pendingFiles.text });
     const notifications = transformProvidedNotificationRouting({ ...input, text: lasso.text });
     const cloud = input.component === 'agent' ? composeCloudDesktop({ ...input, text: notifications.text }, cloudOptions) : { text: notifications.text, anchors: [] };
-    return { text: cloud.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors, ...pendingFiles.anchors, ...lasso.anchors, ...notifications.anchors, ...cloud.anchors] };
+    const recovery = stateIdentityVersion === 2 ? adaptAuxRecoveryEnrollmentUI({ ...input, text: cloud.text, mode: 'stage-prebranding' }) : { text: cloud.text, anchors: [] };
+    return { text: recovery.text, anchors: [...scope.anchors, ...native.anchors, ...boundary.anchors, ...controls.anchors, ...settings.anchors, ...drafts.anchors, ...pendingFiles.anchors, ...lasso.anchors, ...notifications.anchors, ...cloud.anchors, ...recovery.anchors] };
   } });
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
