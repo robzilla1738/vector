@@ -1,0 +1,37 @@
+{
+  "format": "aux.sync-recovery.enrollment-ui.checks.v1",
+  "activation": false,
+  "checks": [
+    {
+      "boundary": "reused BIP39/file + saved/ack/words/controller + actual account callbacks and daemon metadata/expected owner",
+      "command": "node tests/check.mjs",
+      "result": "passed; session46406 printed both passed boundaries"
+    },
+    {
+      "boundary": "actual successor client with extracted signing/transport/native/CAS captured boundaries",
+      "command": "tsx tests/server-preflight.mts",
+      "result": "passed; session46406; no local republish/ordinary enroll/network/native/DB"
+    },
+    {
+      "boundary": "strict targeted TypeScript",
+      "command": "tsc --ignoreConfig --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --skipLibCheck --allowImportingTsExtensions --types node --typeRoots <existing service node_modules/@types> source/desktop.ts tests/server-preflight.mts",
+      "result": "passed; exit0"
+    },
+    {
+      "boundary": "exact input/output/hash/source parser and materializer",
+      "command": "node --experimental-vm-modules verify.mjs <accepted-ui-root> <recovery-sea> <recovery-node> <exact-prebranding-account>",
+      "result": "passed; exit0; 3 UI edits/5 daemon edits/10 exact existing classes/2 new UI assets/98 runtime inputs"
+    }
+  ],
+  "notRun": [
+    "real React/modal rendering",
+    "app/daemon launch",
+    "native/Security/Keychain/OS calls",
+    "cloud/DB/provider calls",
+    "signing"
+  ],
+  "notes": [
+    "Initial targeted tsc invocations failed due CLI config/type-root resolution, corrected explicit existing service type root passed; no source change needed.",
+    "Historical crypto/backend/native suites were not repeated."
+  ]
+}
