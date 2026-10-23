@@ -1,0 +1,12 @@
+{
+  "format": "aux.selected-home-fileport.static-review.v1",
+  "executed": [
+    "python3 docs/integration/proposed/aux-selected-home-fileport/verify.py"
+  ],
+  "result": "static source inventory/hash/shape verification only",
+  "compiled": false,
+  "ipcExecuted": false,
+  "securityExecuted": false,
+  "toolSha256": "15fc4286064a871d60d27ceaa93128fff111276876c209ee5a308fc2bac8b9c0",
+  "manifestSha256": "49b4612f4dac06c0ef4694719158683d2fe8b82b0396256e1cbdd26d9c38754c"
+}

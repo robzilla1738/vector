@@ -1,0 +1,862 @@
+--- baseline/AuxNativeParentConnectionBridge.cc
++++ source/AuxNativeParentConnectionBridge.cc
+@@ -90,3 +90,27 @@
+   } catch (...) { return -1; }
+   return -1;
+ }
++
++extern "C" int32_t AuxSendAuthenticatedFreshColdHome(uint64_t handle, uint64_t ready_service, uint32_t timeout_ms) {
++  try {
++    auto& registry = Connections();
++    if (getpid() != registry.process) return -3;
++    std::shared_ptr<AuthenticatedNativeParentConnection> actual;
++    {
++      std::lock_guard<std::mutex> lock(registry.mutex);
++      auto found = registry.records.find(handle);
++      if (found == registry.records.end()) return -1;
++      actual = found->second.connection;
++    }
++    const auto observed = actual->SendSelectedHome(ready_service, timeout_ms);
++    if (observed.right_cleanup_unresolved) return -4;
++    switch (observed.status) {
++      case aux::peer::ExchangeStatus::authenticated: return 0;
++      case aux::peer::ExchangeStatus::timedOut: return 1;
++      case aux::peer::ExchangeStatus::closed: return -2;
++      case aux::peer::ExchangeStatus::wrongProcess: return -3;
++      case aux::peer::ExchangeStatus::refused: return -1;
++    }
++  } catch (...) { return -1; }
++  return -1;
++}
+--- baseline/AuxNativeParentConnectionBridge.h
++++ source/AuxNativeParentConnectionBridge.h
+@@ -15,6 +15,10 @@
+ void AuxReleaseNativeParentConnection(uint64_t native_handle);
+ // 0 authenticated,1 timeout,-1 refused,-2 closed,-3 wrong process.
+ int32_t AuxRevalidateNativeParentConnection(uint64_t native_handle, uint32_t timeout_ms);
++// Sends only the actual provider-ready C service's retained home duplication.
++// 0 authenticated transfer;1 timeout;-1 refused;-2 closed;-3 wrong process.
++// -4 unresolved Mach right cleanup; connection is closed, never retried blindly.
++int32_t AuxSendAuthenticatedFreshColdHome(uint64_t native_parent, uint64_t ready_service, uint32_t timeout_ms);
+ #ifdef __cplusplus
+ }
+ #endif
+--- baseline/AuxNativePeerTransport.cc
++++ source/AuxNativePeerTransport.cc
+@@ -1,5 +1,14 @@
+ #include "AuxNativePeerTransport.h"
+ #include "AuxNativePeerWire.h"
++#include "AuxSelectedHomePolicyBridge.h"
++#include "AuxFreshColdBootstrapNativeBridge.h"
++#include <sys/fileport.h>
++#include <sys/acl.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <cstdlib>
++#include <string>
+ #include <bsm/libbsm.h>
+ #include <libproc.h>
+ #include <sys/proc_info.h>
+@@ -74,6 +83,55 @@
+     mach_port_mod_refs(mach_task_self(), port_, MACH_PORT_RIGHT_RECEIVE, -1);
+ }
+ mach_port_t ReceiveRight::get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }
++bool PrivateDirectory(int descriptor) {
++  struct stat value{};
++  if (descriptor < 0 || fstat(descriptor, &value) != 0 || value.st_uid != geteuid() ||
++      !S_ISDIR(value.st_mode) || (value.st_mode & 07777) != 0700) return false;
++  errno = 0;
++  acl_t acl = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED);
++  if (!acl && errno == ENOENT) return true;
++  if (!acl) return false;
++  acl_entry_t entry = nullptr;
++  errno = 0;
++  const bool valid = acl_valid(acl) == 0 && acl_get_entry(acl, ACL_FIRST_ENTRY, &entry) == -1 &&
++      errno == EINVAL && entry == nullptr;
++  acl_free(acl);
++  return valid;
++}
++std::optional<std::string> PhysicalPath(int descriptor) {
++  char reported[PATH_MAX]{};
++  if (fcntl(descriptor, F_GETPATH, reported) != 0) return std::nullopt;
++  char resolved[PATH_MAX]{};
++  if (!realpath(reported, resolved)) return std::nullopt;
++  return std::string(resolved);
++}
++bool FreshChildLeaf(const std::string& leaf) {
++  if (!leaf.starts_with("aux-home-") || leaf.size() != 45) return false;
++  for (size_t i = 9; i < leaf.size(); ++i) {
++    const size_t index = i - 9;
++    if (index == 8 || index == 13 || index == 18 || index == 23) {
++      if (leaf[i] != '-') return false;
++    } else if (!((leaf[i] >= '0' && leaf[i] <= '9') || (leaf[i] >= 'a' && leaf[i] <= 'f'))) return false;
++  }
++  return true;
++}
++bool SameDirectory(int left, int right) {
++  struct stat a{}, b{};
++  return fstat(left, &a) == 0 && fstat(right, &b) == 0 && a.st_dev == b.st_dev && a.st_ino == b.st_ino;
++}
++bool HomeMatchesParent(int home, int parent) {
++  if (!PrivateDirectory(home) || !PrivateDirectory(parent) ||
++      (fcntl(home, F_GETFL) & O_ACCMODE) != O_RDONLY) return false;
++  auto home_path = PhysicalPath(home), parent_path = PhysicalPath(parent);
++  if (!home_path || !parent_path || !home_path->starts_with(*parent_path + "/")) return false;
++  auto leaf = home_path->substr(parent_path->size() + 1);
++  if (!FreshChildLeaf(leaf)) return false;
++  int opened = openat(parent, leaf.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
++  if (opened < 0) return false;
++  const bool same = PrivateDirectory(opened) && SameDirectory(home, opened);
++  close(opened);
++  return same;
++}
+ constexpr mach_msg_option_t kReceiveOptions =
+     MACH_RCV_MSG | MACH_RCV_TIMEOUT |
+     MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) |
+@@ -149,6 +207,32 @@
+     if (information) CFRelease(information);
+     return valid;
+   }
++  static int AuthenticatedGuestParent(audit_token_t token, const ExactCodePolicy& policy) {
++    if (getpid() != policy.data_->process) return -1;
++    CFDataRef audit = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(&token), sizeof(token));
++    if (!audit) return -1;
++    const void* key = kSecGuestAttributeAudit; const void* value = audit;
++    CFDictionaryRef attrs = CFDictionaryCreate(kCFAllocatorDefault, &key, &value, 1,
++        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFRelease(audit);
++    if (!attrs) return -1;
++    SecCodeRef guest = nullptr;
++    OSStatus result = SecCodeCopyGuestWithAttributes(nullptr, attrs, kSecCSDefaultFlags, &guest);
++    CFRelease(attrs);
++    if (result != errSecSuccess || !guest) return -1;
++    SecStaticCodeRef code = nullptr;
++    result = SecCodeCopyStaticCode(guest, kSecCSDefaultFlags, &code);
++    CFRelease(guest);
++    if (result != errSecSuccess || !code) return -1;
++    int32_t descriptor = -1;
++    const int32_t status = AuxCopyAuthenticatedFreshChildParentDescriptor(
++        code, policy.data_->requirement, policy.data_->cd_hash.data(),
++        static_cast<uint32_t>(policy.data_->cd_hash.size()), &descriptor);
++    CFRelease(code);
++    if (status != 0) { if (descriptor >= 0) close(descriptor); return -1; }
++    return descriptor;
++  }
++
+ };
+ NativeSendRight::NativeSendRight(mach_port_t value) : right_(value), process_(getpid()) {}
+ NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
+@@ -197,10 +281,70 @@
+   std::mutex mutex;
+   TransportSnapshot snapshot;
+   std::optional<int> child_pid_version;
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> pending_home;
++  bool selected_home_taken = false;
+ };
+ ParentTransport::State::State(std::shared_ptr<const ExactCodePolicy> value)
+     : policy(std::move(value)) {}
+ ParentTransport::State::~State() = default;
++struct AuthenticatedSelectedHomeTransfer::State {
++  State(std::shared_ptr<ParentTransport::State> owner_value, int home_value, int parent_value,
++        audit_token_t token_value, int version_value, uint64_t generation_value)
++      : owner(std::move(owner_value)), home(home_value), parent(parent_value),
++        token(token_value), version(version_value), generation(generation_value) {}
++  ~State() { if (getpid() == process) { close(home); close(parent); } }
++  const pid_t process = getpid();
++  const std::weak_ptr<ParentTransport::State> owner;
++  const int home;
++  const int parent;
++  const audit_token_t token;
++  const int version;
++  const uint64_t generation;
++};
++AuthenticatedSelectedHomeTransfer::AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> value) : state_(std::move(value)) {}
++AuthenticatedSelectedHomeTransfer::~AuthenticatedSelectedHomeTransfer() = default;
++int AuthenticatedSelectedHomeTransfer::DuplicateRevalidatedDirectory() {
++  auto value = state_;
++  auto owner = value->owner.lock();
++  if (!owner) return -1;
++  if (getpid() != value->process) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
++        !owner->child_pid_version || *owner->child_pid_version != value->version) return -1;
++    ++owner->snapshot.active_selected_home_validations;
++  }
++  auto finish = +[](ParentTransport::State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_selected_home_validations;
++  };
++  std::unique_ptr<ParentTransport::State, decltype(finish)> active(owner.get(), finish);
++  if (!owner->child || !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
++      !NativeOperations::Validate(value->token, *owner->policy)) return -1;
++  int checked_parent = NativeOperations::AuthenticatedGuestParent(value->token, *owner->policy);
++  if (checked_parent < 0) return -1;
++  const bool valid = SameDirectory(checked_parent, value->parent) && HomeMatchesParent(value->home, checked_parent);
++  close(checked_parent);
++  if (!valid || !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid)) return -1;
++  int duplicate = fcntl(value->home, F_DUPFD_CLOEXEC, 0);
++  if (duplicate < 0) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) { close(duplicate); return -1; }
++  }
++  return duplicate;
++}
++std::shared_ptr<AuthenticatedSelectedHomeTransfer> ParentTransport::TakeSelectedHomeTransfer() {
++  auto state = state_;
++  if (getpid() != state->process) return {};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed || state->selected_home_taken) return {};
++  auto selected = std::move(state->pending_home);
++  if (selected) state->selected_home_taken = true;
++  state->snapshot.selected_home_pending = false;
++  return selected;
++}
+ ParentTransport::ParentTransport(std::shared_ptr<State> state) : state_(std::move(state)) {}
+ ParentTransport::~ParentTransport() { CloseAndInspect(); }
+ std::unique_ptr<ParentTransport> ParentTransport::BindActualDirectChild(
+@@ -245,6 +389,8 @@
+     state_->snapshot.closed = true;
+     ++state_->snapshot.generation;
+   }
++  state_->pending_home.reset();
++  state_->snapshot.selected_home_pending = false;
+   return state_->snapshot;
+ }
+ TransportSnapshot PreparedParentEndpoint::Inspect() const {
+@@ -270,6 +416,8 @@
+     state->snapshot.closed = true;
+     ++state->snapshot.generation;
+   }
++  state->pending_home.reset();
++  state->snapshot.selected_home_pending = false;
+   // Receive right remains retained by every live call; close is not a claim
+   // that its Security validation/IPC thread has returned.
+   return state->snapshot;
+@@ -290,34 +438,48 @@
+     if (state->snapshot.closed) return ExchangeStatus::closed;
+     if (!state->child) return ExchangeStatus::refused;
+     generation = state->snapshot.generation;
+-    ++state->snapshot.active_exchanges;
+-    ++state->snapshot.active_receives;
++    ++state->snapshot.active_exchanges; ++state->snapshot.active_receives;
+   }
+   auto finish_exchange = +[](State* retained) {
+     if (getpid() != retained->process) return;
+     std::lock_guard<std::mutex> lock(retained->mutex);
+     --retained->snapshot.active_exchanges;
+   };
+-  // Non-deleting scope guard; the actual shared state above owns its lifetime.
+   std::unique_ptr<State, decltype(finish_exchange)> active(state.get(), finish_exchange);
+-  Received request{};
+-  auto result = mach_msg(&request.wire.header, kReceiveOptions, 0, sizeof(request),
++  // Mach writes the actual received wire and trailer at that wire's size;
++  // never read the large-frame trailer offset for a normal v1 heartbeat.
++  union Incoming {
++    Received ordinary;
++    SelectedHomeReceived selected;
++    Incoming() : ordinary{} {}
++  } incoming;
++  auto* header = &incoming.ordinary.wire.header;
++  auto result = mach_msg(header, kReceiveOptions, 0, sizeof(incoming),
+       state->receiver.get(), timeout_ms, MACH_PORT_NULL);
+   {
+     std::lock_guard<std::mutex> lock(state->mutex);
+     --state->snapshot.active_receives;
+     if (state->snapshot.closed) {
+-      if (result == KERN_SUCCESS) mach_msg_destroy(&request.wire.header);
++      if (result == KERN_SUCCESS) mach_msg_destroy(header);
+       return ExchangeStatus::closed;
+     }
+   }
+   if (result == MACH_RCV_TIMED_OUT) return ExchangeStatus::timedOut;
+   if (result != KERN_SUCCESS) return ExchangeStatus::refused;
+-  DestroyMessage destroy(&request.wire.header);
+-  if (!ValidWire(request, kRequest) || request.wire.generation != 0 ||
+-      MACH_MSGH_BITS_REMOTE(request.wire.header.msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
++  DestroyMessage destroy(header);
++  const bool selected_request = header->msgh_id == kSelectedHomeRequest;
++  if (MACH_MSGH_BITS_REMOTE(header->msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
+     return ExchangeStatus::refused;
+-  const audit_token_t audit = request.trailer.msgh_audit;
++  audit_token_t audit{};
++  std::array<uint8_t, 32> nonce{};
++  if (selected_request) {
++    if (!ValidSelectedHomeWire(incoming.selected)) return ExchangeStatus::refused;
++    audit = incoming.selected.trailer.msgh_audit; nonce = incoming.selected.wire.nonce;
++  } else {
++    if (!ValidWire(incoming.ordinary, kRequest) || incoming.ordinary.wire.generation != 0)
++      return ExchangeStatus::refused;
++    audit = incoming.ordinary.trailer.msgh_audit; nonce = incoming.ordinary.wire.nonce;
++  }
+   const int version = audit_token_to_pidversion(audit);
+   bool valid = audit_token_to_pid(audit) == state->child->pid && version >= 0 &&
+       SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
+@@ -327,43 +489,56 @@
+     valid = valid && (!state->child_pid_version || *state->child_pid_version == version);
+   }
+   if (valid) valid = NativeOperations::Validate(audit, *state->policy);
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> selected;
++  if (valid && selected_request) {
++    // Only a kernel-delivered fileport from this exact owned live/code peer.
++    int home = fileport_makefd(incoming.selected.wire.fileport.name);
++    int parent = home >= 0 ? NativeOperations::AuthenticatedGuestParent(audit, *state->policy) : -1;
++    valid = home >= 0 && parent >= 0 && HomeMatchesParent(home, parent) &&
++        fcntl(home, F_SETFD, FD_CLOEXEC) == 0;
++    if (valid) {
++      selected = std::shared_ptr<AuthenticatedSelectedHomeTransfer>(new AuthenticatedSelectedHomeTransfer(
++          std::make_shared<AuthenticatedSelectedHomeTransfer::State>(state, home, parent, audit, version, generation)));
++    } else {
++      if (home >= 0) close(home);
++      if (parent >= 0) close(parent);
++    }
++  }
+   valid = valid && SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
+   std::lock_guard<std::mutex> lock(state->mutex);
+   --state->snapshot.active_code_validations;
+-  if (state->snapshot.closed || state->snapshot.generation != generation)
+-    return ExchangeStatus::closed;
+-  if (!valid || (state->child_pid_version && *state->child_pid_version != version)) {
++  if (state->snapshot.closed || state->snapshot.generation != generation) return ExchangeStatus::closed;
++  if (!valid || (state->child_pid_version && *state->child_pid_version != version) ||
++      (selected_request && (state->pending_home || state->selected_home_taken))) {
+     ++state->snapshot.rejected_peer_identities;
+     return ExchangeStatus::refused;
+   }
+   Wire reply{};
+   reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
+   reply.header.msgh_size = sizeof(reply);
+-  reply.header.msgh_remote_port = request.wire.header.msgh_remote_port;
+-  reply.header.msgh_id = kReply;
+-  reply.generation = generation;
+-  reply.nonce = request.wire.nonce;
+-  // Transfer the received send-once right to the actual sent buffer. Kernel
+-  // pseudo-receive may rewrite that buffer on failure; never clean a stale copy.
+-  request.wire.header.msgh_remote_port = MACH_PORT_NULL;
++  reply.header.msgh_remote_port = header->msgh_remote_port;
++  reply.header.msgh_id = selected_request ? kSelectedHomeReply : kReply;
++  reply.version = selected_request ? kSelectedHomeVersion : kVersion;
++  reply.generation = generation; reply.nonce = nonce;
++  header->msgh_remote_port = MACH_PORT_NULL;
+   DestroyMessage reply_cleanup(&reply.header);
+   result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
+       sizeof(reply), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
+   if (result != KERN_SUCCESS) {
+     if (!RecoverableSendError(result)) {
+-      // Kernel may have partially consumed rights. Do not guess or deallocate
+-      // a potentially reused name. Record unknown cleanup and close admission.
+-      reply_cleanup.Disarm();
+-      ++state->snapshot.unresolved_reply_cleanup;
+-      state->snapshot.closed = true;
+-      ++state->snapshot.generation;
++      reply_cleanup.Disarm(); ++state->snapshot.unresolved_reply_cleanup;
++      if (selected_request) ++state->snapshot.selected_home_cleanup_unresolved;
++      state->snapshot.closed = true; ++state->snapshot.generation;
+     }
+     return ExchangeStatus::refused;
+   }
+-  reply_cleanup.Disarm();  // Successful send consumed its exact send-once right.
+-  state->child_pid_version = version;
+-  state->snapshot.child_pid_version_observed = true;
++  reply_cleanup.Disarm();
++  state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
+   ++state->snapshot.authenticated_exchanges;
++  if (selected_request) {
++    state->pending_home = std::move(selected);
++    state->snapshot.selected_home_pending = true;
++  }
+   return ExchangeStatus::authenticated;
+ }
+ ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
+@@ -512,4 +687,105 @@
+   }
+   return ExchangeStatus::authenticated;
+ }
++ParentExchange AuthenticatedNativeParentConnection::SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms) {
++  ParentExchange observation;
++  auto state = state_;
++  if (getpid() != state->process) { observation.status = ExchangeStatus::wrongProcess; return observation; }
++  if (!ready_service || !timeout_ms || timeout_ms > kMaximumTimeoutMs) return observation;
++  const auto current = Revalidate(timeout_ms);
++  if (current != ExchangeStatus::authenticated) { observation.status = current; return observation; }
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if (!endpoint->is_valid()) return observation;
++    ++state->snapshot.active_checks;
++  }
++  auto finish = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<State, decltype(finish)> active(state.get(), finish);
++  int32_t directory = -1;
++  // This stronger producer refuses reserved/prepared/no-provider services and
++  // revalidates actual terminal/scoped/current state around its real FD dup.
++  if (AuxCopyAuthenticatedFreshColdHomeDescriptor(ready_service, &directory) != 0 || directory < 0) {
++    if (directory >= 0) close(directory);
++    return observation;
++  }
++  auto close_directory = +[](int32_t* owned) { if (*owned >= 0) close(*owned); };
++  std::unique_ptr<int32_t, decltype(close_directory)> retained_directory(&directory, close_directory);
++  if (!PrivateDirectory(directory)) return observation;
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return observation;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++  }
++  fileport_t port = MACH_PORT_NULL;
++  if (fileport_makeport(directory, &port) != 0 || port == MACH_PORT_NULL) return observation;
++  SelectedHomeWire request{};
++  request.header.msgh_bits = MACH_MSGH_BITS_COMPLEX |
++      MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.header.msgh_size = sizeof(request);
++  request.header.msgh_remote_port = NativeOperations::Port(*endpoint);
++  request.header.msgh_local_port = reply.get();
++  request.header.msgh_id = kSelectedHomeRequest;
++  request.body.msgh_descriptor_count = 1;
++  request.fileport.name = port;
++  request.fileport.type = MACH_MSG_PORT_DESCRIPTOR;
++  request.fileport.disposition = MACH_MSG_TYPE_MOVE_SEND;
++  arc4random_buf(request.nonce.data(), request.nonce.size());
++  const auto nonce = request.nonce;
++  auto result = mach_msg(&request.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(request), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) {
++        mach_port_deallocate(mach_task_self(), request.header.msgh_local_port);
++        request.header.msgh_local_port = MACH_PORT_NULL;
++      }
++      // Destroy only the actual kernel-rewritten buffer, including its real
++      // fileport descriptor. Never clean a stale pre-send copy of the right.
++      mach_msg_destroy(&request.header);
++    } else {
++      std::lock_guard<std::mutex> lock(state->mutex);
++      ++state->snapshot.selected_home_cleanup_unresolved;
++      state->snapshot.closed = true;
++      observation.right_cleanup_unresolved = true;
++    }
++    if (result == MACH_SEND_TIMED_OUT) observation.status = ExchangeStatus::timedOut;
++    return observation;
++  }
++  Received received{};
++  result = mach_msg(&received.wire.header, kReceiveOptions, 0, sizeof(received),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) { observation.status = ExchangeStatus::timedOut; return observation; }
++  if (result != KERN_SUCCESS) return observation;
++  DestroyMessage destroy(&received.wire.header);
++  const auto audit = received.trailer.msgh_audit;
++  const bool valid = received.wire.header.msgh_size == sizeof(Wire) &&
++      received.wire.header.msgh_id == kSelectedHomeReply &&
++      !(received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      received.wire.version == kSelectedHomeVersion && received.wire.reserved == 0 &&
++      received.wire.generation == 1 && received.wire.nonce == nonce &&
++      received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t) &&
++      audit_token_to_pid(audit) == state->birth.pid &&
++      audit_token_to_pidversion(audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0) &&
++      NativeOperations::Validate(audit, *state->policy) &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0);
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++  if (!valid) { state->snapshot.closed = true; return observation; }
++  observation.status = ExchangeStatus::authenticated;
++  observation.transport_generation = received.wire.generation;
++  observation.peer_pid = state->birth.pid;
++  observation.peer_pid_version = state->snapshot.parent_pid_version;
++  return observation;
++}
+ }  // namespace aux::peer
+--- baseline/AuxNativePeerTransport.h
++++ source/AuxNativePeerTransport.h
+@@ -48,11 +48,14 @@
+   uint64_t active_exchanges = 0;
+   uint64_t active_receives = 0;
+   uint64_t active_code_validations = 0;
++  uint64_t active_selected_home_validations = 0;
+   uint64_t authenticated_exchanges = 0;
+   uint64_t rejected_peer_identities = 0;
+   uint64_t unresolved_reply_cleanup = 0;
+   bool child_pid_version_observed = false;
+   bool child_bound = false;
++  bool selected_home_pending = false;
++  uint64_t selected_home_cleanup_unresolved = 0;
+ };
+ enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
+ struct ParentExchange {
+@@ -63,6 +66,24 @@
+   bool right_cleanup_unresolved = false;
+ };
+ class PreparedParentEndpoint;
++class OwnedNativePeerChild;
++class SelectedNativeHome;
++// Internal transport product: only actual authenticated Mach FD receipt creates
++// it; only the real owned child can promote it to a retained selected home.
++class AuthenticatedSelectedHomeTransfer final {
++ public:
++  ~AuthenticatedSelectedHomeTransfer();
++  AuthenticatedSelectedHomeTransfer(const AuthenticatedSelectedHomeTransfer&) = delete;
++  AuthenticatedSelectedHomeTransfer& operator=(const AuthenticatedSelectedHomeTransfer&) = delete;
++ private:
++  struct State;
++  explicit AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> state);
++  int DuplicateRevalidatedDirectory();
++  std::shared_ptr<State> state_;
++  friend class ParentTransport;
++  friend class SelectedNativeHome;
++  friend class OwnedNativePeerChild;
++};
+ class ParentTransport final {
+  public:
+   // Native launch owner calls only after its actual spawn. Kernel checks require
+@@ -77,6 +98,9 @@
+   TransportSnapshot Inspect() const;
+  private:
+   friend class PreparedParentEndpoint;
++  friend class OwnedNativePeerChild;
++  friend class AuthenticatedSelectedHomeTransfer;
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> TakeSelectedHomeTransfer();
+   struct State;
+   explicit ParentTransport(std::shared_ptr<State> state);
+   std::shared_ptr<State> state_;
+@@ -102,6 +126,7 @@
+   uint64_t active_checks = 0;
+   int parent_pid = -1;
+   int parent_pid_version = -1;
++  uint64_t selected_home_cleanup_unresolved = 0;
+ };
+ // Only a real live handshake can construct this retained native connection.
+ // The type authenticates a peer, NEVER profile/cohort/installer custody.
+@@ -114,6 +139,8 @@
+   AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
+   AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
+   ExchangeStatus Revalidate(uint32_t timeout_ms);
++  // Descriptor source is ONLY actual ready-service C producer, never a caller FD.
++  ParentExchange SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms);
+   NativeParentConnectionSnapshot CloseAndInspect();
+   NativeParentConnectionSnapshot Inspect() const;
+  private:
+--- baseline/AuxNativePeerWire.h
++++ source/AuxNativePeerWire.h
+@@ -28,6 +28,39 @@
+       received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
+       received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
+ }
++
++// Distinct complex protocol; v1 heartbeats remain byte-for-byte noncomplex.
++constexpr mach_msg_id_t kSelectedHomeRequest = 0x41555848;  // AUXH
++constexpr mach_msg_id_t kSelectedHomeReply = 0x41555849;    // AUXI
++constexpr uint32_t kSelectedHomeVersion = 2;
++struct SelectedHomeWire {
++  mach_msg_header_t header{};
++  mach_msg_body_t body{};
++  mach_msg_port_descriptor_t fileport{};
++  uint32_t version = kSelectedHomeVersion;
++  uint32_t reserved = 0;
++  uint64_t generation = 0;
++  std::array<uint8_t, 32> nonce{};
++};
++struct SelectedHomeReceived {
++  SelectedHomeWire wire;
++  mach_msg_audit_trailer_t trailer;
++};
++static_assert(sizeof(SelectedHomeWire) % 4 == 0);
++inline bool ValidSelectedHomeWire(const SelectedHomeReceived& received) {
++  return received.wire.header.msgh_size == sizeof(SelectedHomeWire) &&
++      received.wire.header.msgh_id == kSelectedHomeRequest &&
++      (received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      received.wire.body.msgh_descriptor_count == 1 &&
++      received.wire.fileport.type == MACH_MSG_PORT_DESCRIPTOR &&
++      received.wire.fileport.disposition == MACH_MSG_TYPE_PORT_SEND &&
++      received.wire.fileport.name != MACH_PORT_NULL &&
++      received.wire.version == kSelectedHomeVersion && received.wire.reserved == 0 &&
++      received.wire.generation == 0 &&
++      received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
++}
++
+ // Apple libsyscall only treats these send errors as recoverable for cleanup.
+ inline bool RecoverableSendError(mach_msg_return_t result) {
+   return result == MACH_SEND_INVALID_DEST || result == MACH_SEND_TIMED_OUT ||
+--- baseline/AuxOwnedNativePeerChild.cc
++++ source/AuxOwnedNativePeerChild.cc
+@@ -20,6 +20,7 @@
+   static pid_t RegistryProcess();
+   static std::mutex& RetainedMutex();
+   static std::vector<std::shared_ptr<State>>& Retained();
++  static void CloseAndRetain(std::shared_ptr<State> state);
+   NativeChildObservation ObserveLocked();
+   NativeChildObservation ReapLocked();
+   const pid_t process = getpid();
+@@ -32,6 +33,7 @@
+   base::Process child;
+   base::Time child_created;
+   NativeChildObservation observation;
++  bool retained_for_exit = false;
+ };
+ OwnedNativePeerChild::State::State(base::CommandLine command_value,
+     base::LaunchOptions options_value, std::unique_ptr<PreparedParentEndpoint> prepared_value,
+@@ -74,16 +76,33 @@
+   return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
+       std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
+ }
++void OwnedNativePeerChild::State::CloseAndRetain(std::shared_ptr<State> state) {
++  if (getpid() != state->process || getpid() != RegistryProcess()) return;
++  bool retain = false;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    state->observation.closed = true;
++    state->prepared->CloseAndInspect();
++    if (state->peer) state->peer->CloseAndInspect();
++    auto observed = state->ReapLocked();
++    retain = observed.launch_attempted && !observed.launch_failed &&
++        !observed.exit_observed_and_reaped && !state->retained_for_exit;
++    if (retain) state->retained_for_exit = true;
++  }
++  if (retain) {
++    std::lock_guard<std::mutex> lock(RetainedMutex());
++    Retained().push_back(std::move(state));
++  }
++}
+ OwnedNativePeerChild::~OwnedNativePeerChild() {
+-  auto observation = CloseAndInspect();
+-  if (observation.wrong_process || !observation.launch_attempted || observation.launch_failed ||
+-      observation.exit_observed_and_reaped) return;
+-  // No kill, implicit clean exit or discarded live child. The exact Process,
+-  // endpoint and peer survive destruction until a genuine native owner handles
+-  // unresolved custody. This registry is not a successful shutdown receipt.
+-  if (getpid() != State::RegistryProcess()) return;
+-  std::lock_guard<std::mutex> lock(State::RetainedMutex());
+-  State::Retained().push_back(state_);
++  if (getpid() != state_->process) return;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    // The private selected object now owns close/quarantine of this actual
++    // waitable child state. An observer or raw Boolean cannot set this field.
++    if (state_->observation.selected_home_owner_transferred) return;
++  }
++  State::CloseAndRetain(state_);
+ }
+ bool OwnedNativePeerChild::LaunchOnce() {
+   auto state = state_;
+@@ -185,3 +204,80 @@
+   return RetainedUnresolvedChildren();
+ }
+ }  // namespace aux::peer
++
++namespace aux::peer {
++struct SelectedNativeHome::State {
++  State(std::shared_ptr<OwnedNativePeerChild::State> child_value,
++        std::shared_ptr<AuthenticatedSelectedHomeTransfer> transfer_value)
++      : child(std::move(child_value)), transfer(std::move(transfer_value)) {}
++  const pid_t process = getpid();
++  const std::shared_ptr<OwnedNativePeerChild::State> child;
++  const std::shared_ptr<AuthenticatedSelectedHomeTransfer> transfer;
++};
++SelectedNativeHome::SelectedNativeHome(std::shared_ptr<State> state) : state_(std::move(state)) {}
++SelectedNativeHome::~SelectedNativeHome() {
++  if (getpid() == state_->process) OwnedNativePeerChild::State::CloseAndRetain(state_->child);
++}
++int SelectedNativeHome::DuplicateRevalidatedDirectory() {
++  auto selected = state_;
++  auto owner = selected->child;
++  if (getpid() != selected->process || getpid() != owner->process) return -1;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.child_binding_failed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !owner->child.IsValid()) return -1;
++    peer = owner->peer;
++  }
++  if (!peer) return -1;
++  int descriptor = selected->transfer->DuplicateRevalidatedDirectory();
++  if (descriptor < 0) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped || observation.exit_ownership_unknown ||
++        owner->peer != peer) { close(descriptor); return -1; }
++  }
++  return descriptor;
++}
++std::unique_ptr<SelectedNativeHome> OwnedNativePeerChild::TakeSelectedHome() {
++  auto state = state_;
++  if (getpid() != state->process) return {};
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    auto observation = state->ReapLocked();
++    if (observation.closed || observation.selected_home_owner_transferred || !state->observation.launch_attempted || observation.launch_failed ||
++        observation.child_binding_failed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !state->child.IsValid()) return {};
++    peer = state->peer;
++  }
++  if (!peer) return {};
++  auto transfer = peer->TakeSelectedHomeTransfer();
++  if (!transfer) return {};
++  // The FD is revalidated before constructing the private selected object; no
++  // public status/snapshot/JSON descriptor can manufacture this ownership.
++  int descriptor = transfer->DuplicateRevalidatedDirectory();
++  if (descriptor < 0) return {};
++  close(descriptor);
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    auto observation = state->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped || observation.exit_ownership_unknown ||
++        state->peer != peer) return {};
++  }
++  auto selected = std::unique_ptr<SelectedNativeHome>(new SelectedNativeHome(
++      std::make_shared<SelectedNativeHome::State>(state, std::move(transfer))));
++  bool transferred = false;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (!state->observation.closed && !state->observation.selected_home_owner_transferred) {
++      state->observation.selected_home_owner_transferred = true;
++      transferred = true;
++    }
++  }
++  if (!transferred) return {};
++  return selected;
++}
++}  // namespace aux::peer
+--- baseline/AuxOwnedNativePeerChild.h
++++ source/AuxOwnedNativePeerChild.h
+@@ -14,9 +14,23 @@
+   bool exit_observed_and_reaped = false;
+   bool exit_ownership_unknown = false;
+   bool wrong_process = false;
++  bool selected_home_owner_transferred = false;
+   int child_pid = -1;
+   int wait_status = 0;  // Meaningful only after actual observed+reaped exit.
+   TransportSnapshot peer;
++};
++// Private-constructor result retaining actual waitable child owner and directory.
++class SelectedNativeHome final {
++ public:
++  ~SelectedNativeHome();
++  SelectedNativeHome(const SelectedNativeHome&) = delete;
++  SelectedNativeHome& operator=(const SelectedNativeHome&) = delete;
++  int DuplicateRevalidatedDirectory();
++ private:
++  struct State;
++  explicit SelectedNativeHome(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++  friend class OwnedNativePeerChild;
+ };
+ // Actual cold native launch primitive. It does not authenticate its caller or
+ // own all profile writers. Unlike the compatibility supervisor, it never
+@@ -29,11 +43,13 @@
+   ~OwnedNativePeerChild();
+   bool LaunchOnce();
+   ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
++  std::unique_ptr<SelectedNativeHome> TakeSelectedHome();
+   NativeChildObservation CloseAndInspect();
+   NativeChildObservation ObserveAndReapExitedChild();
+   static size_t RetainedUnresolvedChildren();
+   static size_t PollRetainedOwnedChildren();
+  private:
++  friend class SelectedNativeHome;
+   struct State;
+   explicit OwnedNativePeerChild(std::shared_ptr<State> state);
+   std::shared_ptr<State> state_;
+--- baseline/AuxSignedFreshBootstrapPolicyLoader.swift
++++ source/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -162,3 +162,87 @@
+     }
+ }
+ private extension AuxFreshBootstrapPolicyContents.Role {static let all:[Self]=[.daemon,.cli]}
++
++// Same-logical-file continuation. Parent transport passes the actual static
++// child code obtained from its kernel-audit-validated guest, not a wire pointer.
++extension AuxSignedFreshBootstrapPolicyLoader {
++    fileprivate static func authenticatedGuestParent(
++        code: SecStaticCode, requirement: SecRequirement, expectedCdHash: Data
++    ) throws -> Int32 {
++        guard [20, 32].contains(expectedCdHash.count) else { throw AuxFreshBootstrapPolicyError.identity }
++        let validity = SecStaticCodeCheckValidity(code, flags, requirement)
++        guard validity == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(validity) }
++        let info = try signingInfo(code)
++        guard let actualHash = info[kSecCodeInfoUnique as String] as? Data, actualHash == expectedCdHash else {
++            throw AuxFreshBootstrapPolicyError.identity
++        }
++        let captured = try signature(info)
++        guard let role = [AuxFreshBootstrapPolicyContents.Role.daemon, .cli].first(where: { $0.identifier == captured.identifier }),
++              let plist = info[kSecCodeInfoPList as String] as? [String: Any],
++              plist["CFBundlePackageType"] as? String == "APPL",
++              plist["CFBundleIdentifier"] as? String == role.identifier,
++              plist["CFBundleExecutable"] as? String == role.executable else { throw AuxFreshBootstrapPolicyError.identity }
++        var path: CFURL?
++        let located = SecCodeCopyPath(code, [], &path)
++        guard located == errSecSuccess, let path else { throw AuxFreshBootstrapPolicyError.signature(located) }
++        let bundle = (path as URL).path
++        guard try canonical(bundle) == bundle, bundle.hasSuffix(".app"),
++              let main = info[kSecCodeInfoMainExecutable as String] as? URL,
++              main.path == bundle + "/Contents/MacOS/" + role.executable else { throw AuxFreshBootstrapPolicyError.path }
++        let bytes = try resource(bundle)
++        let sealed = SecCodeValidateFileResource(code, AuxFreshBootstrapIdentity.resourceRelative as CFString, bytes as CFData, [])
++        guard sealed == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(sealed) }
++        let policy = try AuxFreshBootstrapPolicyContents.decode(bytes)
++        guard policy.role == role else { throw AuxFreshBootstrapPolicyError.policy }
++        try validateCapturedFreshBootstrapSignature(captured, role: role, host: true, accessGroup: policy.accessGroup)
++        // This is a guest-resource proof, not current-process image inspection.
++        // The actual child producer separately revalidates its live image/guard
++        // and provider-ready terminal around selected-home duplication.
++        let parent = policy.canonicalPrivateParent
++        guard try canonical(parent) == parent else { throw AuxFreshBootstrapPolicyError.path }
++        let descriptor = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        guard descriptor >= 0 else { throw AuxFreshBootstrapPolicyError.path }
++        var returned = false
++        defer { if !returned { close(descriptor) } }
++        _ = try metadata(descriptor, directory: true, privateDirectory: true)
++        let repeated = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        guard repeated >= 0 else { throw AuxFreshBootstrapPolicyError.path }
++        defer { close(repeated) }
++        var before = stat(), after = stat()
++        guard fstat(descriptor, &before) == 0, fstat(repeated, &after) == 0,
++              before.st_dev == after.st_dev, before.st_ino == after.st_ino,
++              try resource(bundle) == bytes else { throw AuxFreshBootstrapPolicyError.path }
++        let final = SecStaticCodeCheckValidity(code, flags, requirement)
++        guard final == errSecSuccess,
++              (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == expectedCdHash else {
++            throw AuxFreshBootstrapPolicyError.identity
++        }
++        returned = true
++        return descriptor
++    }
++}
++
++// No C++ objects/strings cross the native module boundary. Opaque references
++// must be real retained Security objects owned by the calling native transport.
++// This API alone cannot construct a selected home or establish writer custody.
++@_cdecl("AuxCopyAuthenticatedFreshChildParentDescriptor")
++func AuxCopyAuthenticatedFreshChildParentDescriptor(
++    _ codePointer: UnsafeRawPointer?, _ requirementPointer: UnsafeRawPointer?,
++    _ expectedHash: UnsafePointer<UInt8>?, _ expectedHashBytes: UInt32,
++    _ parentDescriptor: UnsafeMutablePointer<Int32>?
++) -> Int32 {
++    guard let parentDescriptor else { return -1 }
++    parentDescriptor.pointee = -1
++    guard let codePointer, let requirementPointer, let expectedHash,
++          expectedHashBytes == 20 || expectedHashBytes == 32 else { return -1 }
++    let code = Unmanaged<SecStaticCode>.fromOpaque(codePointer).takeUnretainedValue()
++    let requirement = Unmanaged<SecRequirement>.fromOpaque(requirementPointer).takeUnretainedValue()
++    guard CFGetTypeID(code) == SecStaticCodeGetTypeID(), CFGetTypeID(requirement) == SecRequirementGetTypeID() else { return -1 }
++    do {
++        parentDescriptor.pointee = try AuxSignedFreshBootstrapPolicyLoader.authenticatedGuestParent(
++            code: code, requirement: requirement,
++            expectedCdHash: Data(bytes: expectedHash, count: Int(expectedHashBytes))
++        )
++        return 0
++    } catch { return -1 }
++}
