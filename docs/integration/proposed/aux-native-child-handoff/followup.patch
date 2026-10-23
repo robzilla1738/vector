@@ -1,0 +1,649 @@
+diff --git a/AuxNativeParentConnectionBridge.cc b/AuxNativeParentConnectionBridge.cc
+new file mode 100644
+--- /dev/null
++++ b/AuxNativeParentConnectionBridge.cc
+@@ -0,0 +1,88 @@
++#include "AuxNativeParentConnectionBridge.h"
++#include "AuxNativePeerTransport.h"
++#include <limits>
++#include <map>
++#include <memory>
++#include <mutex>
++#include <unistd.h>
++
++namespace {
++using aux::peer::AuthenticatedNativeParentConnection;
++struct Record {
++  std::shared_ptr<AuthenticatedNativeParentConnection> connection;
++  uint64_t references = 1;
++};
++struct Registry {
++  const pid_t process = getpid();
++  std::mutex mutex;
++  uint64_t last_handle = 0;
++  std::map<uint64_t, Record> records;
++};
++Registry& Connections() { static auto* registry = new Registry; return *registry; }
++}
++extern "C" uint64_t AuxConnectActualNativeParent(mach_port_t right,
++    SecRequirementRef requirement, const uint8_t* hash, size_t length, uint32_t timeout_ms) {
++  try {
++    auto& registry = Connections();
++    if (getpid() != registry.process) return 0;
++    auto endpoint = aux::peer::NativeSendRight::AdoptReceivedRight(right);
++    if (!hash || (length != 20 && length != 32)) return 0;
++    auto policy = aux::peer::ExactCodePolicy::CopyNativePolicy(requirement, {hash, length});
++    if (!policy) return 0;
++    auto actual = AuthenticatedNativeParentConnection::Connect(std::move(endpoint), policy, timeout_ms);
++    if (!actual) return 0;
++    std::shared_ptr<AuthenticatedNativeParentConnection> retained(std::move(actual));
++    std::lock_guard<std::mutex> lock(registry.mutex);
++    if (registry.last_handle == std::numeric_limits<uint64_t>::max()) return 0;
++    const auto handle = ++registry.last_handle;
++    registry.records.emplace(handle, Record{std::move(retained), 1});
++    return handle;
++  } catch (...) { return 0; }
++}
++extern "C" int32_t AuxRetainNativeParentConnection(uint64_t handle) {
++  auto& registry = Connections();
++  if (getpid() != registry.process) return -3;
++  std::lock_guard<std::mutex> lock(registry.mutex);
++  auto found = registry.records.find(handle);
++  if (found == registry.records.end() ||
++      found->second.references == std::numeric_limits<uint64_t>::max()) return -1;
++  ++found->second.references;
++  return 0;
++}
++extern "C" void AuxReleaseNativeParentConnection(uint64_t handle) {
++  auto& registry = Connections();
++  if (getpid() != registry.process) return;
++  std::shared_ptr<AuthenticatedNativeParentConnection> released;
++  {
++    std::lock_guard<std::mutex> lock(registry.mutex);
++    auto found = registry.records.find(handle);
++    if (found == registry.records.end()) return;
++    if (--found->second.references == 0) {
++      released = std::move(found->second.connection);
++      registry.records.erase(found);
++    }
++  }
++  // Last reference closes outside registry lock; in-flight real checks retain it.
++  if (released) released->CloseAndInspect();
++}
++extern "C" int32_t AuxRevalidateNativeParentConnection(uint64_t handle, uint32_t timeout_ms) {
++  try {
++    auto& registry = Connections();
++    if (getpid() != registry.process) return -3;
++    std::shared_ptr<AuthenticatedNativeParentConnection> actual;
++    {
++      std::lock_guard<std::mutex> lock(registry.mutex);
++      auto found = registry.records.find(handle);
++      if (found == registry.records.end()) return -1;
++      actual = found->second.connection;
++    }
++    switch (actual->Revalidate(timeout_ms)) {
++      case aux::peer::ExchangeStatus::authenticated: return 0;
++      case aux::peer::ExchangeStatus::timedOut: return 1;
++      case aux::peer::ExchangeStatus::closed: return -2;
++      case aux::peer::ExchangeStatus::wrongProcess: return -3;
++      case aux::peer::ExchangeStatus::refused: return -1;
++    }
++  } catch (...) { return -1; }
++  return -1;
++}
+diff --git a/AuxNativeParentConnectionBridge.h b/AuxNativeParentConnectionBridge.h
+new file mode 100644
+--- /dev/null
++++ b/AuxNativeParentConnectionBridge.h
+@@ -0,0 +1,20 @@
++#pragma once
++#include <Security/Security.h>
++#include <mach/mach.h>
++#include <stddef.h>
++#include <stdint.h>
++#ifdef __cplusplus
++extern "C" {
++#endif
++// Native bootstrap only. Consumes exactly one owned send-right reference.
++// No JS export, pointer publication or status/evidence authority constructor.
++uint64_t AuxConnectActualNativeParent(mach_port_t owned_endpoint,
++    SecRequirementRef exact_requirement, const uint8_t* cd_hash,
++    size_t cd_hash_length, uint32_t timeout_ms);
++int32_t AuxRetainNativeParentConnection(uint64_t native_handle);
++void AuxReleaseNativeParentConnection(uint64_t native_handle);
++// 0 authenticated,1 timeout,-1 refused,-2 closed,-3 wrong process.
++int32_t AuxRevalidateNativeParentConnection(uint64_t native_handle, uint32_t timeout_ms);
++#ifdef __cplusplus
++}
++#endif
+diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
+--- a/AuxNativePeerTransport.cc
++++ b/AuxNativePeerTransport.cc
+@@ -135,6 +135,19 @@
+       !(type & MACH_PORT_TYPE_SEND)) throw std::invalid_argument("Actual native send right required");
+   return NativeSendRight(value);
+ }
++NativeSendRight NativeSendRight::CopyOwnedRight() const {
++  if (getpid() != process_ || right_ == MACH_PORT_NULL ||
++      mach_port_mod_refs(mach_task_self(), right_, MACH_PORT_RIGHT_SEND, 1) != KERN_SUCCESS)
++    throw std::runtime_error("Native send right unavailable");
++  return NativeSendRight(right_);
++}
++mach_port_t NativeSendRight::BorrowNativeName() const {
++  return getpid() == process_ ? right_ : MACH_PORT_NULL;
++}
++mach_port_t NativeSendRight::ReleaseForNativeHandoff() {
++  if (getpid() != process_) throw std::runtime_error("Native process changed");
++  return std::exchange(right_, MACH_PORT_NULL);
++}
+ NativeSendRight::NativeSendRight(NativeSendRight&& other) noexcept
+     : right_(std::exchange(other.right_, MACH_PORT_NULL)),
+       process_(std::exchange(other.process_, -1)) {}
+@@ -152,10 +165,10 @@
+     mach_port_deallocate(mach_task_self(), right_);
+ }
+ struct ParentTransport::State {
+-  State(BirthIdentity child_value, std::shared_ptr<const ExactCodePolicy> value)
+-      : child(child_value), policy(std::move(value)) {}
++  explicit State(std::shared_ptr<const ExactCodePolicy> value)
++      : policy(std::move(value)) {}
+   const pid_t process = getpid();
+-  const BirthIdentity child;
++  std::optional<BirthIdentity> child;
+   const std::shared_ptr<const ExactCodePolicy> policy;
+   ReceiveRight receiver;
+   std::mutex mutex;
+@@ -166,11 +179,51 @@
+ ParentTransport::~ParentTransport() { CloseAndInspect(); }
+ std::unique_ptr<ParentTransport> ParentTransport::BindActualDirectChild(
+     pid_t child, std::shared_ptr<const ExactCodePolicy> policy) {
+-  if (!policy || !WaitableLiveChild(child)) return {};
+-  auto birth = ReadBirth(child, getpid());
++  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
++  return prepared ? prepared->BindActualDirectChild(child) : nullptr;
++}
++PreparedParentEndpoint::PreparedParentEndpoint(std::shared_ptr<ParentTransport::State> state)
++    : state_(std::move(state)) {}
++std::unique_ptr<PreparedParentEndpoint> PreparedParentEndpoint::PrepareBeforeSpawn(
++    std::shared_ptr<const ExactCodePolicy> policy) {
++  if (!policy) return {};
++  return std::unique_ptr<PreparedParentEndpoint>(new PreparedParentEndpoint(
++      std::make_shared<ParentTransport::State>(std::move(policy))));
++}
++NativeSendRight PreparedParentEndpoint::CopySendRightForNativeHandoff() {
++  if (getpid() != state_->process) throw std::runtime_error("Native process changed");
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (state_->snapshot.closed || state_->child ||
++      mach_port_insert_right(mach_task_self(), state_->receiver.get(),
++          state_->receiver.get(), MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
++    throw std::runtime_error("Native endpoint handoff closed");
++  return NativeSendRight::AdoptReceivedRight(state_->receiver.get());
++}
++std::unique_ptr<ParentTransport> PreparedParentEndpoint::BindActualDirectChild(pid_t child) {
++  if (getpid() != state_->process || !WaitableLiveChild(child)) return {};
++  auto birth = ReadBirth(child, state_->process);
+   if (!birth || !WaitableLiveChild(child)) return {};
+-  return std::unique_ptr<ParentTransport>(new ParentTransport(
+-      std::make_shared<State>(*birth, std::move(policy))));
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (state_->snapshot.closed || state_->child) return {};
++  state_->child = *birth;
++  state_->snapshot.child_bound = true;
++  return std::unique_ptr<ParentTransport>(new ParentTransport(state_));
++}
++TransportSnapshot PreparedParentEndpoint::CloseAndInspect() {
++  if (getpid() != state_->process)
++    return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (!state_->snapshot.closed) {
++    state_->snapshot.closed = true;
++    ++state_->snapshot.generation;
++  }
++  return state_->snapshot;
++}
++TransportSnapshot PreparedParentEndpoint::Inspect() const {
++  if (getpid() != state_->process)
++    return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  return state_->snapshot;
+ }
+ NativeSendRight ParentTransport::CopySendRightForNativeHandoff() {
+   auto state = state_;
+@@ -207,6 +260,7 @@
+   {
+     std::lock_guard<std::mutex> lock(state->mutex);
+     if (state->snapshot.closed) return ExchangeStatus::closed;
++    if (!state->child) return ExchangeStatus::refused;
+     generation = state->snapshot.generation;
+     ++state->snapshot.active_exchanges;
+     ++state->snapshot.active_receives;
+@@ -238,15 +292,15 @@
+     return ExchangeStatus::refused;
+   const audit_token_t audit = request.trailer.msgh_audit;
+   const int version = audit_token_to_pidversion(audit);
+-  bool valid = audit_token_to_pid(audit) == state->child.pid && version >= 0 &&
+-      SameBirth(state->child, state->process) && WaitableLiveChild(state->child.pid);
++  bool valid = audit_token_to_pid(audit) == state->child->pid && version >= 0 &&
++      SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
+   {
+     std::lock_guard<std::mutex> lock(state->mutex);
+     ++state->snapshot.active_code_validations;
+     valid = valid && (!state->child_pid_version || *state->child_pid_version == version);
+   }
+   if (valid) valid = NativeOperations::Validate(audit, *state->policy);
+-  valid = valid && SameBirth(state->child, state->process) && WaitableLiveChild(state->child.pid);
++  valid = valid && SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
+   std::lock_guard<std::mutex> lock(state->mutex);
+   --state->snapshot.active_code_validations;
+   if (state->snapshot.closed || state->snapshot.generation != generation)
+@@ -341,3 +395,82 @@
+   return observation;
+ }
+ }  // namespace aux::peer
++
++namespace aux::peer {
++struct AuthenticatedNativeParentConnection::State {
++  State(NativeSendRight right, std::shared_ptr<const ExactCodePolicy> value,
++        BirthIdentity birth_value, ParentExchange verified)
++      : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value) {
++    snapshot.parent_pid = verified.peer_pid;
++    snapshot.parent_pid_version = verified.peer_pid_version;
++  }
++  const pid_t process = getpid();
++  NativeSendRight endpoint;
++  const std::shared_ptr<const ExactCodePolicy> policy;
++  const BirthIdentity birth;
++  std::mutex mutex;
++  NativeParentConnectionSnapshot snapshot;
++};
++AuthenticatedNativeParentConnection::AuthenticatedNativeParentConnection(std::shared_ptr<State> state)
++    : state_(std::move(state)) {}
++std::unique_ptr<AuthenticatedNativeParentConnection> AuthenticatedNativeParentConnection::Connect(
++    NativeSendRight endpoint, std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
++  // No externally supplied status/evidence can reach this constructor. This
++  // observation is produced here by the actual kernel/live-code handshake.
++  auto verified = AuthenticateActualNativeParent(endpoint, policy, timeout_ms);
++  if (verified.status != ExchangeStatus::authenticated) return {};
++  auto birth = ReadBirth(verified.peer_pid, 0);
++  if (!birth || getppid() != verified.peer_pid) return {};
++  return std::unique_ptr<AuthenticatedNativeParentConnection>(new AuthenticatedNativeParentConnection(
++      std::make_shared<State>(std::move(endpoint), std::move(policy), *birth, verified)));
++}
++AuthenticatedNativeParentConnection::~AuthenticatedNativeParentConnection() { CloseAndInspect(); }
++NativeParentConnectionSnapshot AuthenticatedNativeParentConnection::CloseAndInspect() {
++  auto state = state_;
++  if (getpid() != state->process)
++    return NativeParentConnectionSnapshot{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  state->snapshot.closed = true;
++  return state->snapshot;
++}
++NativeParentConnectionSnapshot AuthenticatedNativeParentConnection::Inspect() const {
++  auto state = state_;
++  if (getpid() != state->process)
++    return NativeParentConnectionSnapshot{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  return state->snapshot;
++}
++ExchangeStatus AuthenticatedNativeParentConnection::Revalidate(uint32_t timeout_ms) {
++  auto state = state_;
++  if (getpid() != state->process) return ExchangeStatus::wrongProcess;
++  // NativeSendRight is non-default-constructible; its temporary is acquired
++  // before dropping the lock and retained through the actual exchange.
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return ExchangeStatus::closed;
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    ++state->snapshot.active_checks;
++  }
++  struct Check {
++    State* state;
++    ~Check() {
++      if (getpid() != state->process) return;
++      std::lock_guard<std::mutex> lock(state->mutex);
++      --state->snapshot.active_checks;
++    }
++  } retained{state.get()};
++  auto current = AuthenticateActualNativeParent(*endpoint, state->policy, timeout_ms);
++  const bool same = current.status == ExchangeStatus::authenticated &&
++      current.peer_pid == state->birth.pid && getppid() == state->birth.pid &&
++      SameBirth(state->birth, 0) &&
++      current.peer_pid_version == state->snapshot.parent_pid_version;
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed) return ExchangeStatus::closed;
++  if (!same) {
++    state->snapshot.closed = true;
++    return current.status == ExchangeStatus::authenticated ? ExchangeStatus::refused : current.status;
++  }
++  return ExchangeStatus::authenticated;
++}
++}  // namespace aux::peer
+diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
+--- a/AuxNativePeerTransport.h
++++ b/AuxNativePeerTransport.h
+@@ -25,6 +25,9 @@
+  public:
+   // Adopts one real received send-right ref, not a descriptor supplied by JS.
+   static NativeSendRight AdoptReceivedRight(mach_port_t right);
++  NativeSendRight CopyOwnedRight() const;
++  mach_port_t ReleaseForNativeHandoff();
++  mach_port_t BorrowNativeName() const;
+   NativeSendRight(NativeSendRight&& other) noexcept;
+   NativeSendRight& operator=(NativeSendRight&& other) noexcept;
+   ~NativeSendRight();
+@@ -48,6 +51,7 @@
+   uint64_t rejected_peer_identities = 0;
+   uint64_t unresolved_reply_cleanup = 0;
+   bool child_pid_version_observed = false;
++  bool child_bound = false;
+ };
+ enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
+ struct ParentExchange {
+@@ -57,6 +61,7 @@
+   int peer_pid_version = -1;
+   bool right_cleanup_unresolved = false;
+ };
++class PreparedParentEndpoint;
+ class ParentTransport final {
+  public:
+   // Native launch owner calls only after its actual spawn. Kernel checks require
+@@ -70,8 +75,48 @@
+   TransportSnapshot CloseAndInspect();
+   TransportSnapshot Inspect() const;
+  private:
++  friend class PreparedParentEndpoint;
+   struct State;
+   explicit ParentTransport(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++};
++// Native launch prepares its actual receive right before spawn; binding can be
++// completed only once using the actual live direct child after spawn returns.
++class PreparedParentEndpoint final {
++ public:
++  static std::unique_ptr<PreparedParentEndpoint> PrepareBeforeSpawn(
++      std::shared_ptr<const ExactCodePolicy> child_policy);
++  NativeSendRight CopySendRightForNativeHandoff();
++  std::unique_ptr<ParentTransport> BindActualDirectChild(pid_t child);
++  TransportSnapshot CloseAndInspect();
++  TransportSnapshot Inspect() const;
++ private:
++  explicit PreparedParentEndpoint(std::shared_ptr<ParentTransport::State> state);
++  std::shared_ptr<ParentTransport::State> state_;
++};
++struct NativeParentConnectionSnapshot {
++  bool closed = false;
++  bool wrong_process = false;
++  uint64_t active_checks = 0;
++  int parent_pid = -1;
++  int parent_pid_version = -1;
++};
++// Only a real live handshake can construct this retained native connection.
++// The type authenticates a peer, NEVER profile/cohort/installer custody.
++class AuthenticatedNativeParentConnection final {
++ public:
++  static std::unique_ptr<AuthenticatedNativeParentConnection> Connect(
++      NativeSendRight endpoint,
++      std::shared_ptr<const ExactCodePolicy> parent_policy, uint32_t timeout_ms);
++  ~AuthenticatedNativeParentConnection();
++  AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
++  AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
++  ExchangeStatus Revalidate(uint32_t timeout_ms);
++  NativeParentConnectionSnapshot CloseAndInspect();
++  NativeParentConnectionSnapshot Inspect() const;
++ private:
++  struct State;
++  explicit AuthenticatedNativeParentConnection(std::shared_ptr<State> state);
+   std::shared_ptr<State> state_;
+ };
+ // Child native bootstrap consumes a private endpoint transferred by actual
+diff --git a/AuxNativePeerWire.h b/AuxNativePeerWire.h
+diff --git a/AuxOwnedNativePeerChild.cc b/AuxOwnedNativePeerChild.cc
+new file mode 100644
+--- /dev/null
++++ b/AuxOwnedNativePeerChild.cc
+@@ -0,0 +1,194 @@
++#include "AuxOwnedNativePeerChild.h"
++#include "base/apple/mach_port_rendezvous.h"
++#include "base/apple/scoped_mach_port.h"
++#include "base/process/process.h"
++#include "base/time/time.h"
++#include <sys/wait.h>
++#include <unistd.h>
++#include <mutex>
++#include <optional>
++#include <limits>
++#include <algorithm>
++#include <stdexcept>
++#include <utility>
++#include <vector>
++
++namespace aux::peer {
++struct OwnedNativePeerChild::State {
++  State(base::CommandLine command_value, base::LaunchOptions options_value,
++        std::unique_ptr<PreparedParentEndpoint> prepared_value, NativeSendRight handoff_value);
++  ~State();
++  static pid_t RegistryProcess();
++  static std::mutex& RetainedMutex();
++  static std::vector<std::shared_ptr<State>>& Retained();
++  NativeChildObservation ObserveLocked();
++  NativeChildObservation ReapLocked();
++  const pid_t process = getpid();
++  std::mutex mutex;
++  base::CommandLine command;
++  base::LaunchOptions options;
++  std::unique_ptr<PreparedParentEndpoint> prepared;
++  NativeSendRight handoff;
++  std::shared_ptr<ParentTransport> peer;
++  base::Process child;
++  base::Time child_created;
++  NativeChildObservation observation;
++};
++OwnedNativePeerChild::State::State(base::CommandLine command_value,
++    base::LaunchOptions options_value, std::unique_ptr<PreparedParentEndpoint> prepared_value,
++    NativeSendRight handoff_value)
++    : command(std::move(command_value)), options(std::move(options_value)),
++      prepared(std::move(prepared_value)), handoff(std::move(handoff_value)) {}
++OwnedNativePeerChild::State::~State() = default;
++pid_t OwnedNativePeerChild::State::RegistryProcess() { static const pid_t owner = getpid(); return owner; }
++std::mutex& OwnedNativePeerChild::State::RetainedMutex() {
++  static auto* mutex = new std::mutex;
++  return *mutex;
++}
++std::vector<std::shared_ptr<OwnedNativePeerChild::State>>& OwnedNativePeerChild::State::Retained() {
++  static auto* children = new std::vector<std::shared_ptr<State>>;
++  return *children;
++}
++NativeChildObservation OwnedNativePeerChild::State::ObserveLocked() {
++  observation.peer = peer ? peer->Inspect() : prepared->Inspect();
++  return observation;
++}
++OwnedNativePeerChild::OwnedNativePeerChild(std::shared_ptr<State> state) : state_(std::move(state)) {}
++std::unique_ptr<OwnedNativePeerChild> OwnedNativePeerChild::PrepareBeforeSpawn(
++    base::CommandLine command, base::LaunchOptions options,
++    std::shared_ptr<const ExactCodePolicy> policy) {
++  // This fresh cold path cannot carry the historical Keychain interposer. Its
++  // absence is a required real launch property, never an admission grant.
++  if (!policy || !options.clear_environment ||
++      options.environment.contains("DYLD_INSERT_LIBRARIES") ||
++      options.environment.contains("NODE_OPTIONS") ||
++      options.environment.contains("NODE_PATH") ||
++      options.environment.contains("AUX_ENABLE_PROVIDED_NATIVE_CARRIER") ||
++      options.environment.contains("AUX_PROVIDED_NATIVE_LOAD_ONLY") ||
++      options.mach_ports_for_rendezvous.contains(kNativeParentPeerPort)) return {};
++  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
++  if (!prepared) return {};
++  auto right = prepared->CopySendRightForNativeHandoff();
++  options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
++      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_MOVE_SEND));
++  return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
++      std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
++}
++OwnedNativePeerChild::~OwnedNativePeerChild() {
++  auto observation = CloseAndInspect();
++  if (observation.wrong_process || !observation.launch_attempted || observation.launch_failed ||
++      observation.exit_observed_and_reaped) return;
++  // No kill, implicit clean exit or discarded live child. The exact Process,
++  // endpoint and peer survive destruction until a genuine native owner handles
++  // unresolved custody. This registry is not a successful shutdown receipt.
++  if (getpid() != State::RegistryProcess()) return;
++  std::lock_guard<std::mutex> lock(State::RetainedMutex());
++  State::Retained().push_back(state_);
++}
++bool OwnedNativePeerChild::LaunchOnce() {
++  auto state = state_;
++  if (getpid() != state->process) return false;
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->observation.closed || state->observation.launch_attempted) return false;
++  state->observation.launch_attempted = true;
++  // Actual spawn is serialized with this owner's terminal close, matching the
++  // supplied supervisor's RunAdmittedLaunch generation-lock boundary.
++  state->handoff.ReleaseForNativeHandoff();
++  // LaunchOptions MOVE rights are consumed by LaunchProcess even on failure.
++  state->child = base::LaunchProcess(state->command, state->options);
++  if (!state->child.IsValid()) {
++    state->observation.launch_failed = true;
++    state->prepared->CloseAndInspect();
++    return false;
++  }
++  state->observation.child_pid = state->child.Pid();
++  state->child_created = state->child.CreationTime();
++  state->peer = state->prepared->BindActualDirectChild(state->child.Pid());
++  state->observation.child_binding_failed = !state->peer;
++  if (!state->peer) state->prepared->CloseAndInspect();
++  // A failed binding does not discard/kill the child already spawned.
++  return static_cast<bool>(state->peer);
++}
++ExchangeStatus OwnedNativePeerChild::ServicePeerOnce(uint32_t timeout_ms) {
++  auto state = state_;
++  if (getpid() != state->process) return ExchangeStatus::wrongProcess;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->observation.closed) return ExchangeStatus::closed;
++    peer = state->peer;
++  }
++  return peer ? peer->ServiceOne(timeout_ms) : ExchangeStatus::refused;
++}
++NativeChildObservation OwnedNativePeerChild::CloseAndInspect() {
++  auto state = state_;
++  if (getpid() != state->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  state->observation.closed = true;
++  state->prepared->CloseAndInspect();
++  if (state->peer) state->peer->CloseAndInspect();
++  return state->ObserveLocked();
++}
++NativeChildObservation OwnedNativePeerChild::ObserveAndReapExitedChild() {
++  auto state = state_;
++  if (getpid() != state->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  return state->ReapLocked();
++}
++NativeChildObservation OwnedNativePeerChild::State::ReapLocked() {
++  if (!child.IsValid() || observation.exit_observed_and_reaped)
++    return ObserveLocked();
++  siginfo_t exit{};
++  const pid_t pid = child.Pid();
++  if (child_created.is_null() || child.CreationTime() != child_created ||
++      waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
++    observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
++  if (!exit.si_pid) return ObserveLocked();
++  int status = 0;
++  if (exit.si_pid != pid || waitpid(pid, &status, WNOHANG) != pid) {
++    observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
++  observation.wait_status = status;
++  observation.exit_observed_and_reaped = true;
++  observation.closed = true;
++  prepared->CloseAndInspect();
++  if (peer) peer->CloseAndInspect();
++  child.Close();
++  return ObserveLocked();
++}
++size_t OwnedNativePeerChild::RetainedUnresolvedChildren() {
++  if (getpid() != State::RegistryProcess()) return std::numeric_limits<size_t>::max();
++  std::lock_guard<std::mutex> lock(State::RetainedMutex());
++  return State::Retained().size();
++}
++size_t OwnedNativePeerChild::PollRetainedOwnedChildren() {
++  if (getpid() != State::RegistryProcess()) return std::numeric_limits<size_t>::max();
++  std::vector<std::shared_ptr<State>> retained;
++  {
++    std::lock_guard<std::mutex> lock(State::RetainedMutex());
++    retained = State::Retained();
++  }
++  for (auto& state : retained) {
++    bool terminal = false;
++    {
++      std::lock_guard<std::mutex> lock(state->mutex);
++      terminal = state->ReapLocked().exit_observed_and_reaped;
++    }
++    if (terminal) {
++      std::lock_guard<std::mutex> lock(State::RetainedMutex());
++      std::erase(State::Retained(), state);
++    }
++  }
++  return RetainedUnresolvedChildren();
++}
++NativeSendRight TakeLaunchedNativeParentEndpoint() {
++  auto* rendezvous = base::MachPortRendezvousClient::GetInstance();
++  if (!rendezvous) throw std::runtime_error("Native parent endpoint unavailable");
++  auto actual = rendezvous->TakeSendRight(kNativeParentPeerPort);
++  if (!actual) throw std::runtime_error("Native parent endpoint missing");
++  return NativeSendRight::AdoptReceivedRight(actual.release());
++}
++}  // namespace aux::peer
+diff --git a/AuxOwnedNativePeerChild.h b/AuxOwnedNativePeerChild.h
+new file mode 100644
+--- /dev/null
++++ b/AuxOwnedNativePeerChild.h
+@@ -0,0 +1,45 @@
++#pragma once
++#include "AuxNativePeerTransport.h"
++#include "base/command_line.h"
++#include "base/process/launch.h"
++#include <memory>
++
++namespace aux::peer {
++inline constexpr uint32_t kNativeParentPeerPort = 0x41555850;  // AUXP
++struct NativeChildObservation {
++  bool launch_attempted = false;
++  bool launch_failed = false;
++  bool closed = false;
++  bool child_binding_failed = false;
++  bool exit_observed_and_reaped = false;
++  bool exit_ownership_unknown = false;
++  bool wrong_process = false;
++  int child_pid = -1;
++  int wait_status = 0;  // Meaningful only after actual observed+reaped exit.
++  TransportSnapshot peer;
++};
++// Actual cold native launch primitive. It does not authenticate its caller or
++// own all profile writers. Unlike the compatibility supervisor, it never
++// publishes a mutable Process handle to a second reaper.
++class OwnedNativePeerChild final {
++ public:
++  static std::unique_ptr<OwnedNativePeerChild> PrepareBeforeSpawn(
++      base::CommandLine command, base::LaunchOptions options,
++      std::shared_ptr<const ExactCodePolicy> child_policy);
++  ~OwnedNativePeerChild();
++  bool LaunchOnce();
++  ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
++  NativeChildObservation CloseAndInspect();
++  NativeChildObservation ObserveAndReapExitedChild();
++  static size_t RetainedUnresolvedChildren();
++  static size_t PollRetainedOwnedChildren();
++ private:
++  struct State;
++  explicit OwnedNativePeerChild(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++};
++// Called from actual child native bootstrap, not a JS/env selector. Stock
++// rendezvous is only right delivery; live authentication is the separate
++// AuthenticatedNativeParentConnection::Connect producer.
++NativeSendRight TakeLaunchedNativeParentEndpoint();
++}  // namespace aux::peer

@@ -1,0 +1,85 @@
+{
+  "format": "aux.native-child-handoff.source.v1",
+  "parentTransportCommit": "d578595e0",
+  "files": [
+    {
+      "path": "source/AuxNativeParentConnectionBridge.cc",
+      "inputSha256": null,
+      "outputSha256": "9b99ac60a747c82d021b01c60563a26673509b0640d07c835e3feeefcd0ea175",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativeParentConnectionBridge.h",
+      "inputSha256": null,
+      "outputSha256": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativePeerTransport.cc",
+      "inputSha256": "4fd48df773f95be407ee013afbd478ac0e3a2c37b9d94b7f51096c7b967af4d9",
+      "outputSha256": "132a845d604012182625c934e543772ccc7a7f1e670d4ff1c1d81acd284e6f15",
+      "new": false
+    },
+    {
+      "path": "source/AuxNativePeerTransport.h",
+      "inputSha256": "bf00bc7a4215b77262934d81c22d10f1cabc5c8ffa15a00c38164ddbfbb8b45a",
+      "outputSha256": "a3894f15466748a23a958346a020a60873bbc1d4bb3e50e432a5cefd9039940c",
+      "new": false
+    },
+    {
+      "path": "source/AuxNativePeerWire.h",
+      "inputSha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb",
+      "outputSha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb",
+      "new": false
+    },
+    {
+      "path": "source/AuxOwnedNativePeerChild.cc",
+      "inputSha256": null,
+      "outputSha256": "4a95e7dc04e2673e575f1a11ccef16e1c0f7c7202f3fd8d0a322d3869175366e",
+      "new": true
+    },
+    {
+      "path": "source/AuxOwnedNativePeerChild.h",
+      "inputSha256": null,
+      "outputSha256": "0b62aa9fa67b8cb8df3bb9a6641f24931f8da9a633459175c5b0d0c05535bcdb",
+      "new": true
+    }
+  ],
+  "patchSha256": "6757bb6587ae89dfc68e80bef73d2fa2a4612b4a418a2c31e3cec69de3bd8f00",
+  "referenceInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/launch.h",
+      "sha256": "52b4dc784b0e8678697b10c847fa03f2b482578a323fcd0574d95ef68d6ed008"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+      "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.h",
+      "sha256": "c54d30debfa721763774774ad85e197b8a7b1337d3cb78a830258cd30d73f74f"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/flock.2",
+      "sha256": "54195927032ace18230a4f926d9edfbb672fc8706267be00727d203a01b6d616"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/fcntl.2",
+      "sha256": "9b16ec920ad681d1af2256b2c76d408c7b8506b7cad13aa00d035ba4385787a7"
+    }
+  ],
+  "compiled": false,
+  "ipcOrSecurityExecuted": false,
+  "defaultSupervisorModified": false,
+  "activeColdCallerIntegrated": false,
+  "firstRefusalChanged": false,
+  "wholeCohortCustodyClaimed": false
+}
