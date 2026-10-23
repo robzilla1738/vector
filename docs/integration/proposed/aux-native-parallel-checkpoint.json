@@ -488,5 +488,18 @@
     "review": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/actual-parent-summary.json",
     "browserLinked": true,
     "runtimeExecuted": false
+  },
+  "currentUnsignedCandidate": {
+    "path": "out/provided-candidate-aux-current-native/Aux.app",
+    "packageSession": 55417,
+    "packageExitCode": 0,
+    "evidence": "docs/integration/proposed/aux-native-main-package-integration/actual-package.json",
+    "agentFilesUnchanged": 1217,
+    "cssFilesUnchanged": 5,
+    "nativeMainIncluded": true,
+    "coldEntryEnabled": false,
+    "appLaunched": false,
+    "signed": false,
+    "acceptedAppReplaced": false
   }
 }

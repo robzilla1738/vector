@@ -1,0 +1,19 @@
+{
+  "format": "aux.native-main.actual-package.v1",
+  "session": 55417,
+  "exitCode": 0,
+  "candidate": "out/provided-candidate-aux-current-native/Aux.app",
+  "packageReportSha256": "15c52151d0d065eab8ad152b6da37ea3259d5b38fdc658085faaec388fb61bff",
+  "bundleSha256": "bea7f606a3fe94da560ea6c35bdc8b90c34966095ed4cafbff944e394e8ff768",
+  "nativeMainSha256": "972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435",
+  "agentFilesVerified": 1217,
+  "cssFilesVerified": 5,
+  "changedAgentFiles": [],
+  "nativeLeaves": 418,
+  "suppliedResources": 10764,
+  "signed": false,
+  "appLaunched": false,
+  "acceptedAppReplaced": false,
+  "coldHookEnabled": false,
+  "productionReady": false
+}

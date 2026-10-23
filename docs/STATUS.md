@@ -1,3 +1,9 @@
+# Separate current browser/native-main candidate assembled — 2026-10-23
+
+Actual package55417 passed after the count-preserving icon audit path correction. New unsigned output: `out/provided-candidate-aux-current-native/Aux.app`, with10764 supplied resources and418 native leaves. The package and bundle both record the exact new native main SHA256 `972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435`; independent post-copy hashing verifies that actual leaf. All1217 packaged Agent files, including five CSS files, match the unchanged stage and preceding recovery-enrollment UI. Evidence: `docs/integration/proposed/aux-native-main-package-integration/actual-package.json`.
+
+This closes current native-main inclusion and inventory work, not bootstrap activation. The ordinary supplied runtime marker remains unchanged, cold native entry remains default-off and state2 startup refusal remains in place. No new app or module was launched, signed, installed or substituted for the accepted app; actual same-candidate UI/behavior acceptance is still pending. Legacy/cohort custody, protected startup and production setup/operations remain unfinished. Current cloud setup/implementation/acceptance checklist: `docs/cloud/remaining-2026-10-23.md`. The approved single development email was already delivered, with no code read or use. No new provider action occurred in this batch.
+
 # UI bytes preserved; package checker mismatch under correction — 2026-10-23
 
 The explicit optional native-main package receipt integration is applied. Exact successful68715 source/output preflight and all five existing package boundary checks pass. Fresh stage20748 finished; independent full hashes confirm all1217 Agent files, including all five CSS files, are identical to the preceding recovery-enrollment stage. The accepted app remains untouched.
