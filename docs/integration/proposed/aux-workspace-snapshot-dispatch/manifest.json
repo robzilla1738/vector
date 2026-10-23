@@ -1,0 +1,93 @@
+{
+  "format": "aux.native.workspace-snapshot-dispatch.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": "a606f3fb6364bccd799327251a411bda8dcd4faa5d10c16fe6344c41fa630b39",
+      "sourceSha256": "51621796b2ec1df4397415b7114219f39b94de300568634145d65dd3d59970b1"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "baselineSha256": "f465023ac3cb7a179de0cde9eadfcc18b9b076be0f02d759167836a1b4005939",
+      "sourceSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1"
+    },
+    {
+      "path": "chrome/browser/ui/aux_workspace_snapshot_dispatch.h",
+      "baselineSha256": null,
+      "sourceSha256": "60452f84f5c83db2078045baa4ed4c8486570709c9eb9437b226720f3c4643b3"
+    }
+  ],
+  "anchors": [
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "base::Milliseconds(500)",
+      "baselineCount": 1,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "service->ResetFromCurrentBrowsers();",
+      "baselineCount": 1,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "SnapshotDispatchState().AdmitPending(",
+      "baselineCount": 0,
+      "sourceCount": 2
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "dispatch.DidNotDispatchPath();",
+      "baselineCount": 0,
+      "sourceCount": 2
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "dispatch.DidDispatchPath();",
+      "baselineCount": 0,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "anchor": "SnapshotDispatchState().AbandonPending(pending_paths_.size());",
+      "baselineCount": 0,
+      "sourceCount": 1
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "anchor": "CloseAdmissionAndDispatchPendingSnapshots();",
+      "baselineCount": 0,
+      "sourceCount": 1
+    }
+  ],
+  "patchSha256": "29185773cbf83bdfdb77b4aa87a09204c0a55edb833ad710d4e0b21243c52ba5",
+  "parentComposition": "out/native-reuse-composition-aux-owned-helper-drain-gn",
+  "parentCompositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "parentSourceCount": 774,
+  "parentBinaryAssetCount": 23,
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "sourceDependencies": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "sha256": "a03af39ef125345cad99adfcc21f6e383d3b8d5d0cd6b1e94307020117a05411"
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "sha256": "29916bcfac6e954dbecc0cd5d045c8dbe0abf03d4092b21fcd013a6478d4deb0"
+    },
+    {
+      "path": "chrome/browser/browser_process_impl.cc",
+      "sha256": "a9f393fe5ea6984b6d6fc48f1250e37d6a0e42f369143f161f1f64a4112f3c66"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service.cc",
+      "sha256": "8e44dca5933047832010d49024e3124cb6553dd65509ca812cdcdd617ef645a4"
+    }
+  ],
+  "allWriterCustodyClaimed": false,
+  "storageDurabilityClaimed": false,
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false
+}

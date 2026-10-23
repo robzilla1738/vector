@@ -1,0 +1,67 @@
+{
+  "format": "aux.native.workspace-snapshot-dispatch.check.v1",
+  "productionAccountingHeaderCompiled": true,
+  "productionAccountingChecksPassed": 26,
+  "actualChromiumSchedulerTUCompiled": false,
+  "actualBrowserRuntimeExecuted": false,
+  "sourceWiringChecksPassed": true,
+  "nativeCheckoutMutated": false,
+  "nativeApplied": false,
+  "allWriterCustodyClaimed": false,
+  "storageDurabilityClaimed": false,
+  "uiChanged": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "signed": false,
+  "originalAddonExecuted": false,
+  "inputs": [
+    {
+      "path": "README.md",
+      "sha256": "4a768cb8c0af06112c0b0f62e9a4f38501ff64ca331187fa7c998a2d597c7117"
+    },
+    {
+      "path": "baseline/chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "a606f3fb6364bccd799327251a411bda8dcd4faa5d10c16fe6344c41fa630b39"
+    },
+    {
+      "path": "baseline/chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "sha256": "f465023ac3cb7a179de0cde9eadfcc18b9b076be0f02d759167836a1b4005939"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "b0033303601b758c27708f95166f538dc50059c9ef7b9c89a714557c990d083d"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "8bfcd3d0bdaffc618dd26b230272a5ce96bebc5e0939d233549476ea13023ed3"
+    },
+    {
+      "path": "native.patch",
+      "sha256": "29185773cbf83bdfdb77b4aa87a09204c0a55edb833ad710d4e0b21243c52ba5"
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "23e52e8d57a6c9518ccf33e4dc560bdbc745adf60615c98e412c1f26fdfdcdb0"
+    },
+    {
+      "path": "source/chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "51621796b2ec1df4397415b7114219f39b94de300568634145d65dd3d59970b1"
+    },
+    {
+      "path": "source/chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "sha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1"
+    },
+    {
+      "path": "source/chrome/browser/ui/aux_workspace_snapshot_dispatch.h",
+      "sha256": "60452f84f5c83db2078045baa4ed4c8486570709c9eb9437b226720f3c4643b3"
+    },
+    {
+      "path": "tests/main.cc",
+      "sha256": "38666a3b687048bd0467438bc2a4e04ae0b4a32501b1e41921d142fcb37e787c"
+    },
+    {
+      "path": "verify.py",
+      "sha256": "a9ffadddab40530b6b833b7b9a086e2d25616ff60577c417bd87be0903997592"
+    }
+  ]
+}

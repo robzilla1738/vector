@@ -1,0 +1,224 @@
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -23,10 +23,17 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
++#include "content/public/browser/browser_thread.h"
+ 
+ namespace aux {
+ 
+ namespace {
++WorkspaceSnapshotDispatchState& SnapshotDispatchState() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  static base::NoDestructor<WorkspaceSnapshotDispatchState> state;
++  return *state;
++}
++
+ auto& LiveRebuildOwners() {
+   static base::NoDestructor<std::set<ProfileSwitchSessionRebuild*>> owners;
+   return *owners;
+@@ -37,6 +44,8 @@
+   LiveRebuildOwners().insert(this);
+ }
+ ProfileSwitchSessionRebuild::~ProfileSwitchSessionRebuild() {
++  // Destruction cancels weak tasks; it does not observe their intended write.
++  SnapshotDispatchState().AbandonPending(pending_paths_.size());
+   LiveRebuildOwners().erase(this);
+ }
+ 
+@@ -55,13 +64,47 @@
+   }
+ }
+ 
++WorkspaceSnapshotDispatchObservation
++ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots() {
++  auto& state = SnapshotDispatchState();
++  // Close first: ResetFromCurrentBrowsers may reenter window/profile callbacks.
++  state.CloseAdmission();
++  std::vector<base::WeakPtr<ProfileSwitchSessionRebuild>> owners;
++  for (auto* owner : LiveRebuildOwners()) {
++    DCHECK_CALLED_ON_VALID_SEQUENCE(owner->sequence_checker_);
++    // No delayed generation can later dispatch a second snapshot.
++    ++owner->generation_;
++    owners.push_back(owner->weak_ptr_factory_.GetWeakPtr());
++  }
++  for (auto& owner : owners) {
++    if (owner && !owner->pending_paths_.empty()) {
++      owner->Rebuild(owner->generation_);
++    }
++  }
++  return state.Inspect();
++}
++
++WorkspaceSnapshotDispatchObservation
++ProfileSwitchSessionRebuild::InspectSnapshotDispatch() {
++  return SnapshotDispatchState().Inspect();
++}
++
+ void ProfileSwitchSessionRebuild::Schedule(Profile& previous_profile,
+                                          Profile& target_profile) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!SnapshotDispatchState().AdmitPending(0)) {
++    return;
++  }
+   // Supplied04559f80 accumulates BOTH paths and advances its generation before
+   // the 500ms task. Do not discard paths from a rapid intervening switch.
+-  pending_paths_.insert(previous_profile.GetOriginalProfile()->GetPath());
+-  pending_paths_.insert(target_profile.GetOriginalProfile()->GetPath());
++  auto next_paths = pending_paths_;
++  next_paths.insert(previous_profile.GetOriginalProfile()->GetPath());
++  next_paths.insert(target_profile.GetOriginalProfile()->GetPath());
++  if (!SnapshotDispatchState().AdmitPending(next_paths.size() -
++                                          pending_paths_.size())) {
++    return;
++  }
++  pending_paths_ = std::move(next_paths);
+   const uint64_t generation = ++generation_;
+   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+       FROM_HERE,
+@@ -77,6 +120,10 @@
+     return;
+   }
+   auto paths = std::exchange(pending_paths_, {});
++  auto& dispatch = SnapshotDispatchState();
++  dispatch.BeginDispatch(paths.size());
++  // Everything below uses only local state. A reset callback can destroy this
++  // owner; process accounting survives and no member is touched after it.
+   ProfileManager* manager = g_browser_process->profile_manager();
+   for (const base::FilePath& path : paths) {
+     // Original027a56a4 looks up an already loaded profile. Never create/load a
+@@ -84,6 +131,7 @@
+     Profile* profile = manager->GetProfileByPath(path);
+     if (!profile) {
+       LOG(WARNING) << "Aux workspace persistence: loaded=0";
++      dispatch.DidNotDispatchPath();
+       continue;
+     }
+     SessionService* service = SessionServiceFactory::GetForProfileIfExisting(
+@@ -114,6 +162,9 @@
+                  << " tabs=" << tabs;
+     if (service && service->is_saving_enabled()) {
+       service->ResetFromCurrentBrowsers();
++      dispatch.DidDispatchPath();
++    } else {
++      dispatch.DidNotDispatchPath();
+     }
+   }
+ }
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.h
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.h
+@@ -10,6 +10,7 @@
+ #include "base/files/file_path.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/sequence_checker.h"
++#include "chrome/browser/ui/aux_workspace_snapshot_dispatch.h"
+ 
+ class Profile;
+ 
+@@ -35,6 +36,14 @@
+   // Does not create profiles/services or run a nested event loop.
+   static void FlushPendingBeforeClose();
+ 
++  // Native UI-sequence participant only. Permanently closes this process's
++  // profile-switch snapshot scheduling, invalidates delayed generations and
++  // dispatches pending snapshots while real windows still own their tabs.
++  // NOT renderer/profile/storage/independent-process custody or a write flush.
++  static WorkspaceSnapshotDispatchObservation
++  CloseAdmissionAndDispatchPendingSnapshots();
++  static WorkspaceSnapshotDispatchObservation InspectSnapshotDispatch();
++
+  private:
+   void Rebuild(uint64_t generation);
+ 
+diff --git a/chrome/browser/ui/aux_workspace_snapshot_dispatch.h b/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
+@@ -0,0 +1,86 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_WORKSPACE_SNAPSHOT_DISPATCH_H_
++#define CHROME_BROWSER_UI_AUX_WORKSPACE_SNAPSHOT_DISPATCH_H_
++
++#include <cstdint>
++#include <limits>
++
++namespace aux {
++
++// UI-sequence observation of this process's profile-switch snapshot scheduler.
++// A returned ResetFromCurrentBrowsers is dispatch, NOT durable storage closure.
++struct WorkspaceSnapshotDispatchObservation {
++  bool admission_closed = false;
++  uint64_t pending_paths = 0;
++  uint64_t in_flight_paths = 0;
++  uint64_t unresolved_paths = 0;
++  bool accounting_unknown = false;
++
++  bool dispatch_complete() const {
++    return admission_closed && !pending_paths && !in_flight_paths &&
++           !unresolved_paths && !accounting_unknown;
++  }
++};
++
++// Production accounting, independent of Profile/SessionService lifetime. There
++// is deliberately no reset/reopen, timeout-to-success or destructor completion.
++class WorkspaceSnapshotDispatchState {
++ public:
++  bool AdmitPending(uint64_t added_paths) {
++    if (state_.admission_closed || state_.accounting_unknown) {
++      return false;
++    }
++    return Add(state_.pending_paths, added_paths);
++  }
++
++  void CloseAdmission() { state_.admission_closed = true; }
++
++  void BeginDispatch(uint64_t paths) {
++    if (!Take(state_.pending_paths, paths)) {
++      return;
++    }
++    Add(state_.in_flight_paths, paths);
++  }
++
++  // Only called after the actual SessionService reset invocation returns.
++  void DidDispatchPath() { Take(state_.in_flight_paths, 1); }
++
++  // Missing profile/service, disabled saving, or other unobserved completion.
++  void DidNotDispatchPath() {
++    if (Take(state_.in_flight_paths, 1)) {
++      Add(state_.unresolved_paths, 1);
++    }
++  }
++
++  void AbandonPending(uint64_t paths) {
++    if (Take(state_.pending_paths, paths)) {
++      Add(state_.unresolved_paths, paths);
++    }
++  }
++
++  WorkspaceSnapshotDispatchObservation Inspect() const { return state_; }
++
++ private:
++  bool Add(uint64_t& destination, uint64_t count) {
++    if (count > std::numeric_limits<uint64_t>::max() - destination) {
++      state_.accounting_unknown = true;
++      return false;
++    }
++    destination += count;
++    return true;
++  }
++
++  bool Take(uint64_t& source, uint64_t count) {
++    if (count > source) {
++      state_.accounting_unknown = true;
++      return false;
++    }
++    source -= count;
++    return true;
++  }
++
++  WorkspaceSnapshotDispatchObservation state_;
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_WORKSPACE_SNAPSHOT_DISPATCH_H_

@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.workspace-snapshot-composition.v1",
+  "parentSourcesPreserved": 774,
+  "successorSources": 775,
+  "unchangedBinaryAssets": 23,
+  "modifiedSources": 2,
+  "newHeaders": 1,
+  "parentSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "successorSha256": "8b5328fab2e93d196d6e47348bd5041a5d9e6552950e771721c3d4add48f1e83",
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false,
+  "allWriterCustodyClaimed": false,
+  "storageDurabilityClaimed": false
+}
