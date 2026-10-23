@@ -1,22 +1,15 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T03:09:53.609406+00:00",
+  "recordedAt": "2026-10-23T03:18:47.324157+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
-  "liveHandlesVerifiedThisCheckpoint": [
-    {
-      "session": 93645,
-      "role": "actual full browser build of applied808-source paired participants",
-      "log": "out/aux-participant-addresses-native-build.log",
-      "state": "running",
-      "compositionSha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107"
-    }
-  ],
+  "liveHandlesVerifiedThisCheckpoint": [],
   "agentReportedPendingChecks": [
     {
       "session": 40860,
-      "role": "same deferred final36-input provider quarantine/resume/account runtime graph; before/after source hashes enforced"
+      "role": "same job actual final42 productionSwift graph",
+      "state": "agent reports terminal exit0; immutable evidence commit pending"
     },
     {
       "session": 25336,
@@ -33,6 +26,14 @@
     {
       "session": 22764,
       "role": "actual provider registry lifecycle fixture with fake identity/crypto/OS effects only"
+    },
+    {
+      "session": 82351,
+      "role": "actual changed dispatcher/captured guard fixture"
+    },
+    {
+      "session": 50721,
+      "role": "actual changed stage/captured effect fixture"
     }
   ],
   "unappliedNativeSuccessor": null,
@@ -63,7 +64,9 @@
     "retainedCopySendAndCEndpoint": "d47b26700",
     "coldGuardServiceHistorical39": "63307dbfd",
     "sealedOuterParentProducer": "8fefd8fb0",
-    "ownedRightEarlyRefusalFix": "6b73faaae"
+    "ownedRightEarlyRefusalFix": "6b73faaae",
+    "actual42GraphAgentReportedPassed": true,
+    "readinessSuccessor": "caa53ca88"
   },
   "terminalRootChecks": [
     {
@@ -112,6 +115,13 @@
       "session": 91715,
       "exitCode": 137,
       "role": "exact own obsolete waiting peer serializer cancelled after SIGSTOP+nochild; never compiled or executed; superseded by85029"
+    },
+    {
+      "session": 93645,
+      "exitCode": 0,
+      "role": "actual combined808-source/23asset browser build,433steps53m48.79s,3artifacts+generatedkeyprobe",
+      "receipt": "out/aux-participant-addresses-native-build.json",
+      "receiptSha256": "2a5054dc701bc4ac5af0ca13439fc22c23f503fdd32838358fc658974eca1102"
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -120,7 +130,7 @@
     "sources": 808,
     "assets": 23,
     "applied": true,
-    "compiled": false,
+    "compiled": true,
     "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json"
   },
   "rootQueuedChecks": [
@@ -143,11 +153,11 @@
   ],
   "lastBuildObservation": {
     "session": 93645,
-    "completedTasks": 227,
-    "scheduledTasks": 2765,
-    "elapsedLog": "25m34.39s",
-    "terminal": false,
-    "note": "actual same session returned live; no native source mutation"
+    "terminal": true,
+    "exitCode": 0,
+    "actualSteps": 433,
+    "elapsed": "53m48.79s",
+    "note": "Siso reduced original scheduled graph; actual receipt matched 3artifacts, not appacceptance"
   },
   "childLaunchCompilePendingReview": {
     "queued": true,

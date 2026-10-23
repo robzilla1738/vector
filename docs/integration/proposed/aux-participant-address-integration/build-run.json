@@ -1,6 +1,6 @@
 {
   "format": "aux.participant-addresses.native-run.v1",
-  "recordedAt": "2026-10-23T02:29:35.944085+00:00",
+  "recordedAt": "2026-10-23T03:18:47.323127+00:00",
   "composition": "out/native-reuse-composition-aux-participant-addresses",
   "compositionSha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107",
   "sourceRecords": 808,
@@ -10,11 +10,31 @@
   "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json",
   "applyReceiptSha256": "d32a480884bbf85c638740b0db713c8a7558ed007293069e07bdbf04ed3b5cac",
   "buildSession": 93645,
-  "buildState": "running",
+  "buildState": "passed",
   "buildLog": "out/aux-participant-addresses-native-build.log",
   "buildReceipt": "out/aux-participant-addresses-native-build.json",
   "jobs": 2,
   "acceptedPreviewReplaced": false,
   "appLaunched": false,
-  "state2Authorized": false
+  "state2Authorized": false,
+  "buildExitCode": 0,
+  "buildReceiptSha256": "2a5054dc701bc4ac5af0ca13439fc22c23f503fdd32838358fc658974eca1102",
+  "artifactCount": 3,
+  "artifacts": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "e0f02e34745f5dd28505d75f7b80515c0af79fe6cfa45ec0b2dc402cf1d2dc5a"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "25a43cb7748d8b013ca4a3291ac3b89bbcb9e5944a5e4c1510cdff41dd704330"
+    }
+  ],
+  "generatedKeyProbePassed": true,
+  "actualBuildSummary": "53m48.79s Build Succeeded:433 steps; Siso dynamically reduced scheduled graph",
+  "actualAppAccepted": false
 }
