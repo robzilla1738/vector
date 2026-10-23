@@ -1,0 +1,52 @@
+{
+  "format": "aux.native-cold-entry.api-successor.v1",
+  "workspaceInputs": {
+    "docs/integration/proposed/aux-native-parent-cold-launch/baseline/chrome_browser_main.cc": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+    "docs/integration/proposed/aux-native-parent-cold-launch/chrome-main-hook.patch": "21cec3ac24b3581bfed25b182af4cb8c3141120d76b2606a52001e13418c05ab",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.cc": "9a9f035305d412d53f34ceb409fb96639f5e8a5303ecc6e26227c403044e223e",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.h": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h": "0a92527b2177fb0ad4a9574c0d2d2db0d58937647f6245a700bb29c1551b222a",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+    "docs/integration/proposed/aux-native-peer-compiler-compatibility/source/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024"
+  },
+  "generatedSources": {
+    "docs/integration/proposed/aux-native-cold-entry-focused-check/source/chrome_browser_main.cc": "ad9c721123dfe37333cbca49e949679f1dcdbd1fb0dd7e3bbfbcd86ef03fa963",
+    "docs/integration/proposed/aux-native-cold-entry-api-successor/source/AuxNativeParentColdLaunch.h": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+    "docs/integration/proposed/aux-native-cold-entry-api-successor/source/AuxNativeParentColdLaunch.cc": "f293217f677fea2090a0d1ad54a0e5c869fe1bf88ecd236404a0bf5bd5e9678a"
+  },
+  "nativeInputs": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/platform.ninja": "2f3d28a889d676877200e07c28a65a32207df9c6972a00a4cfc67994732a0313",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/core.ninja": "ba1d51f1116b93b322ea4b25630226b67bfe3c610a4544572746ac866c168a51",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/toolchain.ninja": "2b9f6682bfe6716856d1d6d22875d0f9bef53c7b7a4cad61def8de9ed2fa976c",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/build/modules/system/module.pcm": "4fb27a097159c1cf84b2b58b297144934279fb1934beebdef9f858367305374e",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/BUILD.gn": "26bb7d57234b2865da5ca52c7d890958fe20a8138b300b56f8f4b50a3ebdf928",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/gen/chrome/browser/buildflags.h": "bfa8b6adbd313907b909c92c6b086a9d77a81ee4259d2b4000004041145824a4",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/environment.h": "24138d1be0637b3764d6ca36b0f5f03a1efddd55cd03fac66c90670ea8803f9d",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/strings/cstring_view.h": "69271a584978512438d393b592e521a92de38e3e09f214dffced8cbb4a10140e",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/scoped_typeref.h": "701636eebe71ead0b839e06d0d9595db8dfef5f5a3981d0c67fa5e8a41c52502"
+  },
+  "composition": {
+    "path": "out/native-reuse-composition-aux-browser-pty-policy/manifest.json",
+    "sha256": "03d42b6f3c2ddc183d41030db12b5615cb84c2d0e78bd64c2a0750ca052c5df5",
+    "files": 826,
+    "binaryAssets": 23,
+    "mainOutputSha256": "ad9c721123dfe37333cbca49e949679f1dcdbd1fb0dd7e3bbfbcd86ef03fa963"
+  },
+  "actualNativeApplied": false,
+  "compiled": false,
+  "coldEntryProductDefineEnabled": false,
+  "isolatedHookCompileDefine": "AUX_SEALED_NATIVE_COLD_ENTRY=1",
+  "recipeSha256": "cb9fbb2873e3035eadf4499b61e496e92bd68e2845c4d9f93a2e29f3ac17b927",
+  "previousRecipe": {
+    "path": "docs/integration/proposed/aux-native-cold-entry-focused-check/compile-check.py",
+    "sha256": "c7e1354118332e04c452d26bf5d322e3e759a204a401ea46172835e9ea45a83d"
+  },
+  "priorFailedReceipt": {
+    "path": "/tmp/aux-native-cold-entry-focused-check-20261023/results.json",
+    "sha256": "0ed3958a03409364c578bd185446d02d1a2789139a19947205d40992584e7de9"
+  }
+}

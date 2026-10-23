@@ -1,0 +1,30 @@
+--- frozen/AuxNativeParentColdLaunch.cc
++++ api-successor/AuxNativeParentColdLaunch.cc
+@@ -43,7 +43,7 @@
+ }
+ 
+ CFTypeRef Value(CFDictionaryRef dictionary, CFStringRef key, CFTypeID type) {
+-  const auto value = CFDictionaryGetValue(dictionary, key);
++  auto* const value = CFDictionaryGetValue(dictionary, key);
+   return value && CFGetTypeID(value) == type ? value : nullptr;
+ }
+ std::optional<std::string> Text(CFTypeRef value) {
+@@ -68,7 +68,8 @@
+       kCFAllocatorDefault, text.c_str(), kCFStringEncodingUTF8));
+   base::apple::ScopedCFTypeRef<SecRequirementRef> requirement;
+   if (!string || SecRequirementCreateWithString(string.get(), kSecCSDefaultFlags,
+-                                                requirement.InitializeInto()) != errSecSuccess) return {};
++                                                requirement.InitializeInto()) != errSecSuccess)
++    return base::apple::ScopedCFTypeRef<SecRequirementRef>();
+   return requirement;
+ }
+ struct Image {
+@@ -159,7 +160,7 @@
+   options.current_directory = resources;
+   auto environment = base::Environment::Create();
+   for (const auto* name : {"PATH", "TMPDIR", "TZ", "LANG", "LC_CTYPE", "LC_MESSAGES"}) {
+-    if (auto value = environment->GetVar(name)) options.environment[name] = *value;
++    if (auto value = environment->GetVar(std::string(name))) options.environment[name] = *value;
+   }
+   if (!options.environment.contains("PATH")) options.environment["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin";
+   return OwnedNativePeerChild::PrepareBeforeSpawn(base::CommandLine(selected->executable),
