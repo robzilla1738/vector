@@ -1,0 +1,13 @@
+{
+  "inputSha256": "3a29d60f367cb450c948778e5157bafa37e0c5b8b36acee662aaf5de072a53a8",
+  "outputSha256": "9bdcbf055fbc9e7b58023e8dbacb635bbf17020cb90ed0933d4c8f2b928ab190",
+  "changes": [
+    {
+      "name": "finalize interrupted imported turn before compaction",
+      "count": 1
+    }
+  ],
+  "passed": true,
+  "coldRefusalPreserved": true,
+  "composedSha256": "9bdcbf055fbc9e7b58023e8dbacb635bbf17020cb90ed0933d4c8f2b928ab190"
+}
