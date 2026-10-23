@@ -89,6 +89,15 @@
       "schedulerImplemented": false,
       "independentBackupDestinationConfigured": false,
       "servicePromotionCommit": "a78c3d97d"
+    },
+    "isolatedRestore": {
+      "commit": "7ae3a5018",
+      "currentSchemaMigrations": 12,
+      "privateAvatarAndAttachmentCoverage": true,
+      "oneOfflineFixturePassed": true,
+      "providerRestoreRun": false,
+      "cutoverAuthorized": false,
+      "wrappingKeyPreservedSeparatelyFromAuthSecret": true
     }
   },
   "runtimeAcceptance": false,
@@ -279,6 +288,13 @@
       "receipt": "docs/integration/proposed/aux-native-browser-cold-api-integration/evidence/results.json",
       "productHookEnabled": false,
       "nativeExecution": false
+    },
+    {
+      "session": 20899,
+      "exitCode": 1,
+      "role": "actualcombinedbrowser GNregenpass, firstparentSwiftmodule missingstrictEnvelopeObject; finalbrowserlinkunrun",
+      "composition": "out/native-reuse-composition-aux-browser-cold-api-ready",
+      "nativeCheckoutRemainsApplied": true
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -290,15 +306,7 @@
     "compiled": false,
     "applyReceipt": "out/native-reuse-composition-aux-browser-cold-api-ready/native-before-apply-v9tx8kcl/apply-receipt.json"
   },
-  "rootQueuedChecks": [
-    {
-      "session": 20899,
-      "role": "actual combined826source23asset browser build",
-      "receiptOnSuccess": "out/aux-browser-cold-api-native-build.json",
-      "jobs": 2,
-      "nativeSourceFrozen": true
-    }
-  ],
+  "rootQueuedChecks": [],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -375,6 +383,17 @@
       "role": "three actual legacy/v2codec/fixture TUs compiled; Appleld rejected thinarchives beforefixtureexecution",
       "evidence": "docs/integration/proposed/aux-native-legacy-inbox-decoder/evidence/receipt.json",
       "fixtureExecuted": false
+    },
+    {
+      "session": 42226,
+      "exitCode": 1,
+      "role": "LLVMLinkfixturepreflight only, unbuiltunittest-onlyarchives; no linkerexecuted"
+    },
+    {
+      "session": 48469,
+      "exitCode": 1,
+      "role": "actualLLVMLinkonlyacceptedthinarchives but omittedproductionPerfettosourcesetobjects; nofixtureexecution",
+      "evidence": "docs/integration/proposed/aux-native-legacy-inbox-decoder/evidence/lld-link-receipt.json"
     }
   ],
   "currentCompatibility": {

@@ -1,3 +1,11 @@
+# Combined build exposed parent parser dependency; isolated restore implemented — 2026-10-23
+
+Actual combined browser build20899 finished with exit1 after successful GN regeneration. Its first parent Swift module failed because `strictEnvelopeObject` was not included in the narrow two-file parent target. The exact pure parser/error declaration already exists in EnvelopeRecords.swift and in the compiled child graph; a count-pinned unchanged extraction is being added as a third parent-only file. No protected factory or complete child graph is needed in the browser. The current native source remains the applied826-record generation, with backups intact; final browser link and runtime acceptance remain unfinished.
+
+Service source `7ae3a5018` adds a real isolated-target restore CLI/core: authenticated encrypted bundle unpack, exact12-schema archive/inventory binding, empty separate destination, session/challenge quarantine, preserved CSK wrapping key/recovery/generation/FK state, private avatar and attachment create-only copy/readback, append-only private progress and temporary plaintext cleanup. One offline actual12-DDL/bundle/filesystem fixture passed. Actual pg_restore/provider execution, independent destination/key custody, schedules/alerts/retention and cutover are not established. A new auth secret is required for stateless capability revocation, while the original data-encryption key must be preserved separately.
+
+The legacy decoder's three TUs compile. A single LLVM linker retry accepted thin archives but exposed missing Perfetto/protozero production source-set dependencies; no synthetic fixture ran. Actual GN is being used for an optional standalone codec target rather than guessed manual dependency lists. No shipping browser dependency or legacy-key lookup is enabled. Accepted app/UI, owner data and production remain unchanged.
+
 # Complete corrected source applied; combined browser build live — 2026-10-23
 
 The826-source/23-artwork cold-API composition was applied after all prior source-dependent checks were terminal. All849 actual source/artwork targets passed preconditions; every existing target was backed up under `out/native-reuse-composition-aux-browser-cold-api-ready/native-before-apply-v9tx8kcl/`. Exact source hashes matched after application. No owner changes were reset or unrelated files removed.
