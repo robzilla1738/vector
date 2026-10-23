@@ -1,0 +1,12 @@
+{
+  "AuxOwnedNativePeerChild.cc": {
+    "beforePath": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedNativePeerChild.cc",
+    "beforeSHA256": "a9058116c84012ce1fe616b040015573b3a1bc768aaf779d918563650ea82fb8",
+    "afterSHA256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503"
+  },
+  "AuxSelectedStateHome.cc": {
+    "beforePath": "docs/integration/proposed/profile-isolation-recovery/browser/source/AuxSelectedStateHome.cc",
+    "beforeSHA256": "925d20ff60cd1e7cd8fccae71559b5785d042cb4a67f5802ab17eba9cba96915",
+    "afterSHA256": "5d00c1df70a17b774b47a5ee078ae06c1982e4f3600cd8f84e99c4f111c5b5d5"
+  }
+}
