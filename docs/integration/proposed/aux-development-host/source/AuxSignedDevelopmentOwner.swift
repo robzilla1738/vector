@@ -1,6 +1,6 @@
 // Trusted native producer SOURCE. No JS argument, module initializer or bypass.
 import Foundation
-#if !AUX_MINIMAL_RUNTIME_DISPATCH || !AUX_SCOPED_SECURE_STORE_DISPATCH || !AUX_MACOS_UTILITY_DISPATCH
+#if !AUX_MINIMAL_RUNTIME_DISPATCH || !AUX_SCOPED_SECURE_STORE_DISPATCH || !AUX_MACOS_UTILITY_DISPATCH || !AUX_ATOMIC_CSK_DISPATCH
 #error("Development owner requires the reviewed minimal scoped runtime graph with owned OS utilities")
 #endif
 
@@ -17,7 +17,7 @@ func AuxCreateSignedDevelopmentOwner(_ handle:UnsafeMutablePointer<UInt64>?,_ re
         let rows=try AuxRuntimeDataProtectionCapture.capture(before.contents.selection)
         let afterCapture=try AuxSignedDevelopmentPolicyLoader.load();try sameDevelopmentHost(before,afterCapture)
         let terminal=try AuxRuntimeCapturedCommandContext.validate(selection:before.contents.selection,rows:rows)
-        let scoped=try ScopedAuxCommandContext.runtime(terminal:terminal,policy:before.contents.logicalKeys,boundary:ActualAuxSecureStoreBoundary())
+        let scoped=try ScopedAuxCommandContext.runtime(terminal:terminal,policy:before.contents.logicalKeys,boundary:ActualAuxSecureStoreBoundary(),atomicAccountHome:AuxReviewedDevelopmentIdentity.home)
         let afterImport=try AuxSignedDevelopmentPolicyLoader.load();try sameDevelopmentHost(before,afterImport)
         // Constructing this boundary performs no OS operation. The exact same
         // scoped owner retains its immutable utility core/custody, so registry

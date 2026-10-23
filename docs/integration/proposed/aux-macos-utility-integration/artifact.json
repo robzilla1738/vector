@@ -1,0 +1,51 @@
+{
+  "format": "aux.macos.utility.production-build.v1",
+  "productionOnly": true,
+  "moduleLoaded": false,
+  "fixturesBuiltOrRun": false,
+  "signingPerformed": false,
+  "image": {
+    "path": "out/aux-macos-utility-integration/aux-macos-utilities.node",
+    "bytes": 393720,
+    "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e"
+  },
+  "recipeSha256": "3cd5f5f87c2e2070de032fbcbe468657af3fe8549ed5df2387697e54c2d38083",
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.cc",
+      "sha256": "bd87d6693dbebdae0106561bb0932573337023c6fd9df1fdc129807c854ce8a9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/utility-module.cc",
+      "sha256": "19d99471c09588840e11cd569c2422a760ad0ff6c69139147bc4a762b604543a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.h",
+      "sha256": "02aa4cf97e89fcdc902abff36c262b0c020b3e5012e770096510d2e88584608e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityOwner.swift",
+      "sha256": "659b23a811b9b25e58b64dc031de57f82491733c529fa0a1dd6304f98b7dde67"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    }
+  ]
+}

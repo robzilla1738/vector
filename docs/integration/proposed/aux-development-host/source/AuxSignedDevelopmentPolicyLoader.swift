@@ -67,9 +67,10 @@ enum AuxSignedDevelopmentPolicyLoader {
         let fd=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw AuxDevelopmentHostError.path};defer{close(fd)}
         let captured=try metadata(fd,directory:true,privateDirectory:true);var actual=stat();guard lstat(path,&actual)==0,actual.st_dev==captured.st_dev,actual.st_ino==captured.st_ino else{throw AuxDevelopmentHostError.path}
     }
-    // Fixed native PDF path only. Stream its exact reviewed byte count through
+    // Two finite native module paths only. Stream its exact reviewed byte count through
     // owned/no-link FDs, never accept arbitrary policy paths or image bytes.
-    private static func pdfDigest(bundle:String,expectedBytes:Int)throws->String {
+    private static func nativeModuleDigest(bundle:String,expectedBytes:Int,leaf:String)throws->String {
+        guard ["aux-pdf.node","aux-macos-utilities.node"].contains(leaf) else{throw AuxDevelopmentHostError.path}
         guard try canonical(bundle)==bundle else{throw AuxDevelopmentHostError.path}
         let root=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard root>=0 else{throw AuxDevelopmentHostError.path};defer{close(root)};_ = try metadata(root,directory:true)
         var held:[Int32]=[];defer{for fd in held.reversed(){close(fd)}};var parent=root
@@ -78,17 +79,20 @@ enum AuxSignedDevelopmentPolicyLoader {
             let fd=openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw AuxDevelopmentHostError.path};held.append(fd)
             _ = try metadata(fd,directory:true);try sameEntry(parent,name,fd);entries.append((parent,name,fd));parent=fd
         }
-        let fd=openat(parent,"aux-pdf.node",O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw AuxDevelopmentHostError.path};defer{close(fd)}
-        let before=try metadata(fd,directory:false,maximumSize:Int64(expectedBytes));guard before.st_size==Int64(expectedBytes) else{throw AuxDevelopmentHostError.image};try sameEntry(parent,"aux-pdf.node",fd)
+        let fd=openat(parent,leaf,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw AuxDevelopmentHostError.path};defer{close(fd)}
+        let before=try metadata(fd,directory:false,maximumSize:Int64(expectedBytes));guard before.st_size==Int64(expectedBytes) else{throw AuxDevelopmentHostError.image};try sameEntry(parent,leaf,fd)
         var hasher=SHA256(),remaining=expectedBytes,buffer=[UInt8](repeating:0,count:65_536)
         while remaining>0 {let requested=min(buffer.count,remaining);let amount=buffer.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!,requested)};if amount<0 && errno==EINTR{continue};guard amount>0 else{throw AuxDevelopmentHostError.image};hasher.update(data:Data(buffer.prefix(amount)));remaining -= amount}
         var extra:UInt8=0;var readExtra:Int;repeat{readExtra=Darwin.read(fd,&extra,1)}while readExtra<0 && errno==EINTR;guard readExtra==0 else{throw AuxDevelopmentHostError.image}
         let after=try metadata(fd,directory:false,maximumSize:Int64(expectedBytes))
         guard before.st_dev==after.st_dev,before.st_ino==after.st_ino,before.st_mode==after.st_mode,before.st_uid==after.st_uid,before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxDevelopmentHostError.image}
-        try sameEntry(parent,"aux-pdf.node",fd);for (directory,name,child) in entries.reversed(){_ = try metadata(child,directory:true);try sameEntry(directory,name,child)}
+        try sameEntry(parent,leaf,fd);for (directory,name,child) in entries.reversed(){_ = try metadata(child,directory:true);try sameEntry(directory,name,child)}
         let fresh=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard fresh>=0 else{throw AuxDevelopmentHostError.path};defer{close(fresh)}
         let a=try metadata(root,directory:true),b=try metadata(fresh,directory:true);guard a.st_dev==b.st_dev,a.st_ino==b.st_ino else{throw AuxDevelopmentHostError.path}
         return hasher.finalize().map{String(format:"%02x",$0)}.joined()
+    }
+    private static func pdfDigest(bundle:String,expectedBytes:Int)throws->String {
+        try nativeModuleDigest(bundle:bundle,expectedBytes:expectedBytes,leaf:"aux-pdf.node")
     }
     private static func images(bundle:String,policy:AuxDevelopmentPolicyContents,requirement:SecRequirement)throws {
         let role=policy.role
@@ -106,6 +110,9 @@ enum AuxSignedDevelopmentPolicyLoader {
             if identifier==AuxReviewedDevelopmentPdfIdentity.identifier {
                 try validateCapturedDevelopmentPdfSignature(captured)
                 try validateCapturedDevelopmentPdfBytes(sha256:pdfDigest(bundle:bundle,expectedBytes:policy.pdfBytes),bytes:policy.pdfBytes,policy:policy)
+            } else if identifier==AuxReviewedDevelopmentMacUtilitiesIdentity.identifier {
+                try validateCapturedDevelopmentMacUtilitySignature(captured)
+                try validateCapturedDevelopmentMacUtilityBytes(sha256:nativeModuleDigest(bundle:bundle,expectedBytes:AuxReviewedDevelopmentMacUtilitiesIdentity.bytes,leaf:"aux-macos-utilities.node"),bytes:AuxReviewedDevelopmentMacUtilitiesIdentity.bytes,policy:policy)
             } else {try validateCapturedDevelopmentSignature(captured,role:role,host:path.hasSuffix("/Contents/MacOS/"+role.executable))}
             observed.insert(path)
         }

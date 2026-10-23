@@ -36,6 +36,18 @@ enum AuxReviewedDevelopmentPdfV3Identity {
               let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxDevelopmentHostError.policy}
     }
 }
+enum AuxReviewedDevelopmentMacUtilitiesIdentity {
+    static let relativePath="Contents/Resources/native/aux-macos-utilities.node"
+    static let identifier="dev.aux.browser.macos-utilities"
+    // Actual retained unsigned production build; signing requires a new review.
+    static let sha256="7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e"
+    static let bytes=393_720
+    static func validate(_ value:Any?)throws {
+        guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
+              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,object["sha256"] as? String==sha256,
+              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxDevelopmentHostError.policy}
+    }
+}
 struct AuxDevelopmentPolicyContents {
     enum Role:String {case daemon,cli
         var identifier:String{self == .daemon ? "dev.aux.browser.daemon":"dev.aux.browser.cli"}
@@ -46,21 +58,24 @@ struct AuxDevelopmentPolicyContents {
     let logicalKeys:ImmutableAuxLogicalKeyPolicy
     let includesPdf:Bool
     let usesSourceKnownFamiliesV2:Bool
+    let includesMacUtilities:Bool
     var pdfSha256:String{usesSourceKnownFamiliesV2 ? AuxReviewedDevelopmentPdfV3Identity.sha256:AuxReviewedDevelopmentPdfIdentity.sha256}
     var pdfBytes:Int{usesSourceKnownFamiliesV2 ? AuxReviewedDevelopmentPdfV3Identity.bytes:AuxReviewedDevelopmentPdfIdentity.bytes}
     // Only content validation. Possessing this value cannot create a sealed
     // policy, observation or owner; the actual loader authenticates exact bytes.
     static func decode(_ bytes:Data)throws->Self {
         let object=try strictEnvelopeObject(bytes)
-        let format=object["format"] as? String,sourceKnown=format=="aux.development.host.policy.v3"
+        let format=object["format"] as? String,utilityFormat=format=="aux.development.host.policy.v4",sourceKnown=(format=="aux.development.host.policy.v3" || utilityFormat)
         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText)else{throw AuxDevelopmentHostError.policy}
         let includesPdf=format=="aux.development.host.policy.v2" || (sourceKnown && role == .daemon)
+        let includesMacUtilities=utilityFormat && role == .daemon
         var expectedKeys:Set<String>=["format","role","home","scope","accessGroup","generationId","scheme","signingPublicKey","kemPublicKey","targetHashes"]
         expectedKeys.insert(sourceKnown ? "sourceKnownFamiliesV2":"logicalKeys")
         if includesPdf {
             expectedKeys.insert("pdfModule")
             if sourceKnown {try AuxReviewedDevelopmentPdfV3Identity.validate(object["pdfModule"])}else{try AuxReviewedDevelopmentPdfIdentity.validate(object["pdfModule"])}
         }
+        if includesMacUtilities {expectedKeys.insert("macOSUtilitiesModule");try AuxReviewedDevelopmentMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
         guard Set(object.keys)==expectedKeys,(format=="aux.development.host.policy.v1" || format=="aux.development.host.policy.v2" || sourceKnown),(!includesPdf || role == .daemon),
               object["home"] as? String==AuxReviewedDevelopmentIdentity.home,object["scope"] as? String==AuxReviewedDevelopmentIdentity.scope,
               object["accessGroup"] as? String==AuxReviewedDevelopmentIdentity.group,
@@ -76,7 +91,7 @@ struct AuxDevelopmentPolicyContents {
         }
         func publicKey(_ name:String)throws->Data{guard let text=object[name] as? String,let value=Data(base64Encoded:text),value.base64EncodedString()==text else{throw AuxDevelopmentHostError.policy};return value}
         let selection=try AuxRuntimeSelection(scope:AuxReviewedDevelopmentIdentity.scope,generationId:generation,accessGroup:AuxReviewedDevelopmentIdentity.group,scheme:scheme,signingPublicKey:publicKey("signingPublicKey"),kemPublicKey:publicKey("kemPublicKey"),targetHashes:hashes)
-        return .init(role:role,selection:selection,logicalKeys:logicalPolicy,includesPdf:includesPdf,usesSourceKnownFamiliesV2:sourceKnown)
+        return .init(role:role,selection:selection,logicalKeys:logicalPolicy,includesPdf:includesPdf,usesSourceKnownFamiliesV2:sourceKnown,includesMacUtilities:includesMacUtilities)
     }
 }
 struct AuxCapturedDevelopmentSignature {
@@ -102,6 +117,7 @@ func validateCapturedDevelopmentSignature(_ captured:AuxCapturedDevelopmentSigna
 func developmentExpectedImageIdentifiers(bundle:String,policy:AuxDevelopmentPolicyContents)->[String:String] {
     var result=[bundle+"/Contents/MacOS/"+policy.role.executable:policy.role.identifier,bundle+"/Contents/Resources/native/aux-runtime-owned.node":"dev.aux.browser.runtime"]
     if policy.includesPdf {result[bundle+"/"+AuxReviewedDevelopmentPdfIdentity.relativePath]=AuxReviewedDevelopmentPdfIdentity.identifier}
+    if policy.includesMacUtilities {result[bundle+"/"+AuxReviewedDevelopmentMacUtilitiesIdentity.relativePath]=AuxReviewedDevelopmentMacUtilitiesIdentity.identifier}
     return result
 }
 func validateCapturedDevelopmentImagePaths(_ paths:[String],bundle:String,policy:AuxDevelopmentPolicyContents)throws {
@@ -125,4 +141,13 @@ func validateCapturedDevelopmentPdfBytes(sha256:String,bytes:Int)throws {
 
 func validateCapturedDevelopmentPdfBytes(sha256:String,bytes:Int,policy:AuxDevelopmentPolicyContents)throws {
     guard policy.includesPdf,sha256==policy.pdfSha256,bytes==policy.pdfBytes else{throw AuxDevelopmentHostError.image}
+}
+
+func validateCapturedDevelopmentMacUtilitySignature(_ captured:AuxCapturedDevelopmentSignature)throws {
+    guard captured.team==AuxReviewedDevelopmentIdentity.team,captured.certificateSha256==AuxReviewedDevelopmentIdentity.leafCertificateSha256,
+          captured.identifier==AuxReviewedDevelopmentMacUtilitiesIdentity.identifier,captured.flags & 0x2==0,captured.entitlements.isEmpty,
+          captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxDevelopmentHostError.identity}
+}
+func validateCapturedDevelopmentMacUtilityBytes(sha256:String,bytes:Int,policy:AuxDevelopmentPolicyContents)throws {
+    guard policy.includesMacUtilities,sha256==AuxReviewedDevelopmentMacUtilitiesIdentity.sha256,bytes==AuxReviewedDevelopmentMacUtilitiesIdentity.bytes else{throw AuxDevelopmentHostError.image}
 }
