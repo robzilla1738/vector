@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import vm from 'node:vm';
+import {spawnSync} from 'node:child_process';
+import {projectOwnedNativeEntryWithFixedPty} from '../source/project.mjs';
+import {fixedPtyLoader} from '../../aux-native-fixed-pty-loading/transform.mjs';
+const [originalPath,inputPath]=process.argv.slice(2);
+if(!originalPath||!inputPath)throw Error('Actual pinned original and quarantined resource required');
+const original=readFileSync(originalPath,'utf8'),input=readFileSync(inputPath,'utf8');
+const projected=projectOwnedNativeEntryWithFixedPty(original,input);
+assert(projected.startsWith("/* aux-owned-native-entry-v1 */\nprocess._linkedBinding('aux_owned_native');"));
+assert.equal(projected.split(fixedPtyLoader).length,2);
+assert.equal(input.includes(fixedPtyLoader),false);
+const syntax=spawnSync(process.execPath,['--check','--input-type=module'],{input:projected,encoding:'utf8',maxBuffer:1024*1024});assert.equal(syntax.status,0,syntax.stderr);
+assert.throws(()=>projectOwnedNativeEntryWithFixedPty(original,input+' '),/Exact quarantined/);
+const map=JSON.parse(readFileSync(new URL('../source-map.json',import.meta.url),'utf8'));
+assert.equal(createHash('sha256').update(original).digest('hex'),map.originalSha256);
+for(const item of map.anchors)assert.equal(original.split(item.source).length-1,item.count,item.name);
+// Actual provided handle code, fake child callback/effects only. Signal request
+// is not exit observation, and store cancellation does not await this callback.
+const source=map.anchors.find(x=>x.name==='createPtyHandle').source;
+let exitCallback,dataCallback,signalCount=0,settled=false;
+const fake={pid:123,onData(fn){dataCallback=fn;return{dispose(){}}},onExit(fn){exitCallback=fn},write(){},resize(){},kill(){throw Error('unexpected Windows kill')}};
+const context={process:{platform:'darwin'},Promise,Set,Symbol,killProcessTree(pid,signal){assert.equal(pid,123);assert.equal(signal,'SIGTERM');signalCount++;return Promise.resolve()}};
+vm.createContext(context);vm.runInContext(source,context);
+const handle=context.createPtyHandle(fake);handle.exited.then(()=>{settled=true});
+handle.signal('SIGTERM');await Promise.resolve();assert.equal(signalCount,1);assert.equal(settled,false);
+exitCallback({exitCode:9});assert.equal(await handle.exited,9);await Promise.resolve();assert.equal(settled,true);
+assert.equal(typeof dataCallback,'function');
+console.log(JSON.stringify({status:'passed',projectedSha256:createHash('sha256').update(projected).digest('hex'),projectedSyntaxExitCode:syntax.status,inputUnchanged:true,actualPinnedHandleCallback:true,signalIsNotDrain:true,nativeModuleLoaded:false,entryExecuted:false}));

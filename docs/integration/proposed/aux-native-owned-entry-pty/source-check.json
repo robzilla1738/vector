@@ -1,0 +1,11 @@
+{
+  "format": "aux.owned-entry.pty.source-check.v1",
+  "inputSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+  "projectedSha256": "11112c923700b672ff6cf19ac7527d9b25e9c3cf1e35258e6e2ef465dec2410c",
+  "projectedSyntaxExitCode": 0,
+  "actualPinnedHandleCallback": true,
+  "signalIsNotDrain": true,
+  "entryExecuted": false,
+  "nativeModuleLoaded": false,
+  "protectedExecution": false
+}

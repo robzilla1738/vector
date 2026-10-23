@@ -1,0 +1,71 @@
+{
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "anchors": [
+    {
+      "name": "createPtyHandle",
+      "offset": 6797395,
+      "source": "function createPtyHandle(Cn){let ei=!1,ti=()=>{if(!ei){ei=!0;try{Cn.kill()}catch{}}},ni=[],ri=/* @__PURE__ */ new Set,ii=Cn.onData(Cn=>{if(ri.size===0){ni.push(Cn);return}for(let ei of ri)ei(Cn)});return{tty:!0,exited:new Promise(ei=>Cn.onExit(({exitCode:Cn})=>{process.platform===`win32`&&ti(),ei(Cn)})),write:ei=>Cn.write(ei),resize:(ei,ti)=>Cn.resize(ei,ti),signal:ei=>{if(process.platform!==`win32`){killProcessTree(Cn.pid,ei);return}if(ei===`SIGINT`){Cn.write(`\u0003`);return}killProcessTree(Cn.pid,ei).then(ti)},onData:Cn=>{ri.add(Cn);for(let ei of ni.splice(0))Cn(ei);return{[Symbol.dispose]:()=>{ri.delete(Cn),ri.size===0&&ii.dispose()}}}}}",
+      "count": 1
+    },
+    {
+      "name": "spawnPtyProcess",
+      "offset": 6796927,
+      "source": "function spawnPtyProcess(Cn){let[ei,...ti]=Cn.command;if(!ei)throw Error(`Cannot spawn an empty PTY command.`);let ni;try{ni=loadNodePty().spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`})}catch(Cn){throw Cn instanceof Error&&Cn.message.startsWith(`PTY_UNAVAILABLE:`)?Cn:Error(`PTY_UNAVAILABLE: ${Cn instanceof Error?Cn.message:String(Cn)}`)}return createPtyHandle(ni)}",
+      "count": 1
+    },
+    {
+      "name": "spawnExecProcess",
+      "offset": 6798200,
+      "source": "async function spawnExecProcess(Cn,ei){if(ei){let ei=await wrapSandboxCommand(Cn);return Cn.signal?.throwIfAborted(),spawnPtyProcess(ei)}let{process:ti}=await spawnSandboxed({...Cn,detached:process.platform!==`win32`});return{tty:!1,exited:ti.exited,signal:Cn=>{ti.pid?killProcessTree(ti.pid,Cn):ti.kill(Cn)},onData:Cn=>{let ei=ti.stdout,ni=ti.stderr;ei?.setEncoding(`utf8`),ni?.setEncoding(`utf8`);let ri=ei=>Cn(ei),ii=ei=>Cn(`[stderr]\\n${ei}`);return ei?.on(`data`,ri),ni?.on(`data`,ii),{[Symbol.dispose]:()=>{ei?.off(`data`,ri),ni?.off(`data`,ii)}}}}}",
+      "count": 1
+    },
+    {
+      "name": "spawnSessionProcess",
+      "offset": 6803079,
+      "source": "async function spawnSessionProcess(Cn,ei,ti={}){let{spawnOptions:ni,release:ri}=await prepareSessionSpawn(Cn,ti);try{let{process:Cn}=await spawnSandboxed({...ni,command:ei});return{proc:Cn,cwd:ni.cwd,signalProcessGroup:ei=>{if(Cn.pid)try{(ti.killProcess??process.kill)(-Cn.pid,ei);return}catch(Cn){if(!(Cn instanceof Error&&`code`in Cn&&Cn.code===`ESRCH`))throw Cn}Cn.kill(ei)},release:ri}}catch(Cn){throw ri(),Cn}}",
+      "count": 1
+    },
+    {
+      "name": "prepareSessionSpawn",
+      "offset": 6803494,
+      "source": "async function prepareSessionSpawn(Cn,ei){let ti=await acquireAgentRuntimeUse(ei.signal),ni=ti.state===`ready`;if(!ni&&Cn.session.permissionMode===`full-access`)throw Error(`Aside Runtime preparation failed: ${ti.error}`);let ri=ni?ti.release:()=>void 0;try{let ti=resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),ii=ei.cwd??Cn.toolState.bash.cwd,ai=ASIDE_RUNTIME_DIR,oi=path.join(ai,`home`),si=path.join(ai,`tmp`),ci=Cn.session.permissionMode===`full-access`,li=ci?os.homedir():ni?oi:ii,ui=ni?si:ci?os.tmpdir():ii;ni&&(mkdirSync(oi,{recursive:!0}),mkdirSync(si,{recursive:!0}));let di=path.join(ai,`bin`),fi={HOME:li,PATH:(process.env.PATH??``).split(path.delimiter).filter(Cn=>Cn&&path.resolve(Cn)!==path.resolve(di)).join(path.delimiter),TMPDIR:ui};return ni&&Object.assign(fi,{ASIDE_SKILL_RUNTIME:ai,NODE_PATH:path.join(ai,`node`,`lib`,`node_modules`),NPM_CONFIG_CACHE:path.join(si,`npm-cache`),NPM_CONFIG_PREFIX:path.join(ai,`node`),NPM_CONFIG_USERCONFIG:path.join(ai,`.npmrc`),OPENSSL_CONF:path.join(ai,`openssl.cnf`),PATH:[path.join(ai,`bin`),process.env.PATH??``].filter(Boolean).join(path.delimiter),PIP_CACHE_DIR:path.join(si,`pip-cache`),PIP_REQUIRE_VIRTUALENV:`true`,PYTHONNOUSERSITE:`1`,VIRTUAL_ENV:path.join(ai,`python`,`venv`)}),{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled,readableRoots:ti.files.readableRoots.filter(Cn=>ni||path.resolve(Cn)!==path.resolve(ai)),writableRoots:ti.files.writableRoots.filter(Cn=>ni||path.resolve(Cn)!==path.resolve(ai)),deniedPaths:ti.deniedPaths,detached:!0},release:ri}}catch(Cn){throw ri(),Cn}}",
+      "count": 1
+    },
+    {
+      "name": "runtimeUse",
+      "offset": 6766028,
+      "source": "async function acquireAgentRuntimeUse(Cn,ei={}){for(;activeInstall;){if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);let ei=activeInstall;await new Promise((ti,ni)=>{let ri=()=>ni(Cn?.reason??new DOMException(`Operation aborted`,`AbortError`));Cn?.addEventListener(`abort`,ri,{once:!0});let ii=()=>{Cn?.removeEventListener(`abort`,ri),ti()};ei.then(ii,ii)})}if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);if(agentRuntimeJob.state===`failed`&&!await serializeReplacement(async()=>{let Cn=path.resolve(ei.runtimeDir??ASIDE_RUNTIME_DIR);await recoverRuntimeBackup(Cn);let ti=resolveAgentRuntimeTarget(ei.platform,ei.arch);return await getLocalAgentRuntimeVersion({...ei,runtimeDir:Cn})?ti!==`darwin-arm64`&&ti!==`darwin-x64`||!await hasMacOSRuntimeQuarantine(Cn,ei.commandRunner):!1}))return agentRuntimeJob;runtimeUseCount+=1;let ti=!1;return{state:`ready`,release:()=>{ti||(ti=!0,--runtimeUseCount,runtimeUseCount===0&&(resolveRuntimeUsesDrained?.(),resolveRuntimeUsesDrained=void 0))}}}",
+      "count": 1
+    },
+    {
+      "name": "waitRuntimeUses",
+      "offset": 6763488,
+      "source": "async function waitForRuntimeUses(){runtimeUseCount!==0&&await new Promise(Cn=>resolveRuntimeUsesDrained=Cn)}",
+      "count": 1
+    },
+    {
+      "name": "execStore",
+      "offset": 6678098,
+      "source": "ExecSessionStore=class{#e=/* @__PURE__ */ new Map;#t=/* @__PURE__ */ new Set;#n;#r=new AbortController;get signal(){return this.#r.signal}register(Cn){for(this.#i();this.#e.size>=MAX_SESSIONS;){let Cn=[...this.#e.values()],ei=Cn.filter(Cn=>Cn.status!==`running`).sort(sortByLastTouched)[0]??Cn.sort(sortByLastTouched)[0];if(!ei)break;ei.dispose(),this.#e.delete(ei.id)}this.#e.set(Cn.id,Cn),this.#a()}get(Cn){this.#i();let ei=this.#e.get(Cn);if(!ei)throw Error(`SESSION_NOT_FOUND: exec session ${Cn} does not exist or expired.`);return ei}onBackgroundRequest(Cn){return this.#t.add(Cn),()=>void this.#t.delete(Cn)}backgroundForegroundCommands(){for(let Cn of this.#t)Cn()}terminateAll(){this.#r.abort(/* @__PURE__ */ Error(`Terminal sessions were canceled. Start a new command with the current permissions.`)),this.#r=new AbortController;for(let Cn of this.#e.values())Cn.dispose();this.#e.clear(),this.#o()}dispose(){this.terminateAll()}#i(){let Cn=Date.now();for(let[ei,ti]of this.#e)ti.isExpired(Cn)&&(ti.dispose(),this.#e.delete(ei));this.#e.size===0&&this.#o()}#a(){this.#n||(this.#n=setInterval(()=>this.#i(),6e4),this.#n.unref?.())}#o(){this.#n&&=(clearInterval(this.#n),void 0)}},",
+      "count": 1
+    },
+    {
+      "name": "globalTermination",
+      "offset": 11603907,
+      "source": "terminateExecSessions(){for(let Cn of this.#e.values())Cn.agent.execSessions.terminateAll()}async disposeAll(){await Promise.all([...this.#e.values()].map(Cn=>this.disposeSession(Cn.accountId,Cn.sessionId)))}",
+      "count": 1
+    },
+    {
+      "name": "executeYieldedCommand",
+      "offset": 6798836,
+      "source": "async function executeYieldedCommand(Cn){let ei;try{ei=await spawnExecProcess({...Cn.spawnOptions,command:Cn.command,signal:Cn.signal},Cn.tty)}catch(ei){throw Cn.onExit(),ei}ei.exited.then(Cn.onExit,Cn.onExit);let ti=new ExecSession(ei);try{Cn.signal?.throwIfAborted();let ei=await ti.waitForExit(Math.min(3e4,Math.max(250,Cn.yieldMs??1e3)),Cn.signal);Cn.signal?.throwIfAborted();let ni=ti.readOutput();ei&&ti.dispose(),ei||Cn.execSessions.register(ti);let ri=ei?`[exit code ${ni.exitCode??1}]`:`[still running \u2014 exec_session_id: ${ti.id}. Continue with bash_interact.]`,ii=ei&&ni.exitCode!==0?terminalFailureHint(ni.text,Cn.tty):``;return{content:[{type:`text`,text:[ni.text,ri,ii].filter(Boolean).join(`\n`)}],details:{runtime:Cn.runtime,tty:Cn.tty,execSessionId:ei?void 0:ti.id,status:ni.status,exitCode:ni.exitCode},isError:ei&&ni.exitCode!==0}}catch(Cn){throw ti.dispose(),Cn}}",
+      "count": 1
+    },
+    {
+      "name": "backgroundLeaseRelease",
+      "offset": 6800734,
+      "source": "async function runSessionBash(Cn,ei,ti){let{signal:ni,moveToBackground:ri,timeoutMs:ii}=ti,ai=/[<>]\\(/.test(ei)?void 0:`__ASIDE_OUTPUT_END_${randomUUID()}__`,oi=ai?`trap '{ set +x; } 2>/dev/null; printf \"\\\\n${ai}\\\\n\"; printf \"\\\\n${ai}\\\\n\" >&2' EXIT\\n`:``,si=Date.now(),ci=await spawnSessionProcess(Cn,[`bash`,`-c`,oi+ei+CWD_TRAILER],ti),li=()=>{try{ci.signalProcessGroup(`SIGKILL`)}catch{}};runningCommands.add(li);let ui=new AbortController,di=()=>ui.abort(ni?.reason);ni?.addEventListener(`abort`,di,{once:!0}),ni?.aborted&&di();let fi=createTerminalOutput(),pi,mi=!1,hi=!1,gi=drainTerminalProcess({proc:ci.proc,signal:ui.signal,terminate:()=>ci.signalProcessGroup(`SIGTERM`),forceKill:()=>ci.signalProcessGroup(`SIGKILL`),gracePeriodMs:1e3,outputEndMarker:ai?`\\n${ai}\\n`:void 0,output:fi,onOutput:(Cn,ei)=>pi?.(Cn,ei)}).catch(Cn=>{if(!hi||ni?.aborted)throw Cn;return{exitCode:137,stdout:fi.stdout.getResult(),stderr:fi.stderr.getResult()}}),_i=Promise.withResolvers(),vi=Cn=>{if(mi||ui.signal.aborted)return;let ei={shell:ci,title:ti.title,startedAt:si,output:{stdout:fi.stdout.getResult(),stderr:fi.stderr.getResult()},onOutput:Cn=>pi=Cn},ai=ri?.(ei,Cn,ii);ai?(mi=!0,ni?.removeEventListener(`abort`,di),_i.resolve(ai)):Cn===`timeout`&&(hi=!0,ui.abort())},yi=setTimeout(()=>vi(`timeout`),ii),bi=ri?Cn.execSessions.onBackgroundRequest(()=>vi(`message`)):void 0,xi=`local-bash`;try{let ei=await Promise.race([gi,_i.promise]);if(mi=!0,typeof ei==`string`)return{content:[{type:`text`,text:ei}],details:{runtime:xi,backgrounded:!0},isError:!1};let{exitCode:ti,stderr:ni}=ei,{output:ri,cwd:ai}=parseCwdMarker(ei.stdout);ai&&ai!==ci.cwd&&Cn.setToolState(Cn=>({...Cn,bash:{...Cn.bash,cwd:ai}}));let oi=hi||ti!==0,si=ai&&ai!==ci.cwd?`[bash] current cwd changed to ${ai}`:``,li=oi&&!isCloudRuntime()?terminalFailureHint(`${ri}\\n${ni}`):``,ui=hi&&timedOutText(ii,isCloudRuntime()?`Split the work into shorter commands.`:`Run longer commands with yield_ms and poll them with bash_interact.`),di=truncate$2([ri,si,ni&&`[stderr]\\n${ni}`,ti&&`[exit code ${ti}]`,!ui&&li].filter(Boolean).join(`\n\n`),{length:OUTPUT_LIMIT,omission:TRUNCATE_MSG});return{content:[{type:`text`,text:ui?`${di}\\n\\n${ui}`:di}],details:{runtime:xi,exitCode:ti},isError:oi}}finally{clearTimeout(yi),bi?.(),ni?.removeEventListener(`abort`,di),runningCommands.delete(li),ci.release()}}",
+      "count": 1
+    }
+  ]
+}

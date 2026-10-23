@@ -1,0 +1,12 @@
+{
+  "docs/integration/proposed/aux-native-owned-entry-pty/README.md": "60ad5f0f04a9432aa4c192866aee53bc5bad4835197bbf3e75635012cd3dc08f",
+  "docs/integration/proposed/aux-native-owned-entry-pty/source-check.json": "46ac532f461fdbc12d6e276e585781f3cd8df49c566b6d210e73659cc3c0d2b6",
+  "docs/integration/proposed/aux-native-owned-entry-pty/source-map.json": "9ba5fa1866f3e0a5795c3922aceef0c433d6e7bb66f78e0a018033658a78aba6",
+  "docs/integration/proposed/aux-native-owned-entry-pty/source/project.mjs": "a85cf50e65a3a92fc22e75080b315b88e3bae0fb6bea877788f8d286a7998663",
+  "docs/integration/proposed/aux-native-owned-entry-pty/tests/check.mjs": "e894d7ca9064da72f3ea367e1d7f1047ce8bb740911e6e273ebc0a9308f0fd65",
+  "docs/integration/proposed/aux-native-owned-entry-routing/source/project.mjs": "0b80e6a1c4263199bb4e32d1669ea76a4bed26cda1e2126dc9a7aa3eabe6b69f",
+  "docs/integration/proposed/aux-native-owned-entry-routing/edits.json": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac",
+  "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f",
+  "docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb",
+  "docs/integration/proposed/aux-native-fixed-pty-loading/inventory.json": "d6c086806aedad5a3974f22c81cd532372776977eb5bd38675eb333e6fd7a23b"
+}
