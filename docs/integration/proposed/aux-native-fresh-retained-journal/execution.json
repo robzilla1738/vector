@@ -1,0 +1,25 @@
+{
+  "format": "aux.retained-journal.actual-filesystem-check.v1",
+  "recordedAt": "2026-10-23T02:16:45.886872+00:00",
+  "session": 89891,
+  "exitCode": 0,
+  "command": [
+    "python3",
+    "scripts/native-build.py",
+    "sh",
+    "docs/integration/proposed/aux-native-fresh-retained-journal/check.sh"
+  ],
+  "checkSha256": "765fbab09678e887421eb2d8df77df05723f7975bf27fa30c439f8c8c5dcd1db",
+  "inputPinsSha256": "0807bfd5b902cd2f0af7f3a073093c09725fc6e6126d4ee4b127e23b9b1abb94",
+  "log": "out/aux-native-fresh-retained-journal-check.log",
+  "logSha256": "9cc9a16e8ee04c8ceaa5c74f5ef63f590410055efeb9074182d774265f1a87b5",
+  "passedCases": 16,
+  "actualDisposableFilesystem": true,
+  "fixtureSwiftInputs": 5,
+  "protectedCoordinatorCompiled": false,
+  "protectedOperations": 0,
+  "authorityGeneration": false,
+  "appLaunched": false,
+  "state2Authorized": false,
+  "temporaryBinaryRetained": false
+}
