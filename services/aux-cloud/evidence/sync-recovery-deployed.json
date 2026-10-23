@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-10-22T23:59:11.406Z",
+  "origin": "https://dev-cloud.getaux.co",
+  "checks": [
+    "deployed bound-installation enrollment and exact idempotent retry",
+    "deployed authenticated encrypted material preserves original CSK",
+    "deployed missing-key resolve/enroll guards preserve recoverable generation",
+    "deployed create-only same-CSK restoration and exact idempotent retry"
+  ],
+  "requiredMigrations": 12,
+  "schemaManifestSha256": "75f926295a7e392e935b6892bda274fc74746bd4d31e6024ff6b9c6a4255c751",
+  "fixtureRemoved": false,
+  "syntheticAuxJWTAndP256Session": true,
+  "clerkSignInVerified": false,
+  "desktopOrNativeStorageVerified": false,
+  "existingUserDataAccessed": false,
+  "paidProviderCalls": 0,
+  "fixturePrincipalRecordsRemoved": true,
+  "rateLimitCleanupVerified": false,
+  "rateLimitStateMayRemainUntilNormalExpiry": true,
+  "cleanupCorrection": "The fixture used an incorrectly escaped rate-key delimiter; account/session/recovery/key records were removed, but the hashed anonymous rate row was not attributable after its ephemeral user ID was discarded. No unrelated rows were deleted. Source now uses explicit NUL bytes and retains a nonsecret cleanup scope before creation."
+}

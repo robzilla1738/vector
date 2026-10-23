@@ -27,7 +27,7 @@ async function call(path:string,expected:number,options:RequestInit={},privateHe
  const response=await fetch(origin+path,{...options,headers:{'Cache-Control':'no-store',...privateHeaders,...options.headers},redirect:'error',signal:AbortSignal.timeout(25_000)});
  assert.equal(response.status,expected,'Unexpected recovery fixture HTTP status');return response;
 }
-const rateKey=createHmac('sha256',process.env.AUX_AUTH_SECRET!).update(`rate\\0sync-recovery:${user}`).digest('hex');
+const rateKey=createHmac('sha256',process.env.AUX_AUTH_SECRET!).update(Buffer.concat([Buffer.from('rate'),Buffer.from([0]),Buffer.from('sync-recovery:'+user)])).digest('hex');
 const authHeaders=()=>({Authorization:'Bearer '+token});
 async function post(path:string,body:unknown,expected=200){return call('/api/v1'+path,expected,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},authHeaders());}
 async function signed(action:RecoveryAction){
@@ -41,6 +41,7 @@ try{
  const ready=await call('/api/v1/internal/readiness',200,{}, {Authorization:'Bearer '+process.env.CRON_SECRET});
  const readiness=await ready.json() as any;assert.ok(readiness.status==='ready'&&readiness.schema==='current'&&readiness.mismatches===0,'Development schema not ready');assert.ok(Object.hasOwn(manifest,'012-sync-recovery-v2.sql'),'Recovery migration missing locally');
  stage='create-owned-fixture';
+ await writeFile(new URL('../evidence/sync-recovery-fixture-scope.json',import.meta.url),JSON.stringify({fixtureUserId:user,fixtureSessionId:session,marker,rateKey,completed:false},null,2)+'\n',{mode:0o600});
  token=await new SignJWT({sid:session,sg:0}).setProtectedHeader({alg:'HS256'}).setSubject(user).setIssuer('https://api.getaux.co').setAudience('aux-desktop').setIssuedAt().setExpirationTime('10m').sign(new TextEncoder().encode(process.env.AUX_AUTH_SECRET));
  const inserted=await sql`INSERT INTO aux_users(id,clerk_id,email,name) VALUES(${user},${marker},${user+'@example.invalid'},'Disposable Aux-v2 recovery fixture') RETURNING id`;assert.ok(inserted.length===1,'Fixture owner not created');created=true;
  await sql`INSERT INTO aux_sessions(id,user_id,access_hash,access_expires_at,expires_at,platform,device_fingerprint,device_public_key) VALUES(${session},${user},${hash(token)},now()+interval '10 minutes',now()+interval '20 minutes','macos',${fingerprint},${JSON.stringify(jwk)}::jsonb)`;
@@ -84,6 +85,7 @@ try{
    const remaining=await sql`SELECT count(*)::integer AS n FROM aux_users WHERE id=${user}`;assert.equal(remaining[0].n,0);
   }
   cleaned=true;
+  if(created)await writeFile(new URL('../evidence/sync-recovery-fixture-scope.json',import.meta.url),JSON.stringify({fixtureUserId:user,fixtureSessionId:session,marker,rateKey,completed:true},null,2)+'\n',{mode:0o600});
  }catch(error){console.error(JSON.stringify({event:'aux_recovery_fixture_cleanup_failed',fixtureUserId:user,fixtureSessionId:session,errorType:error instanceof Error?error.name:'Unknown'}));process.exitCode=1;}
  csk.fill(0);entropy.fill(0);wrapping?.fill(0);token='';
  console.log(JSON.stringify({event:'aux_recovery_fixture_summary',checksPassed:checks.length,fixtureRemoved:cleaned&&created,existingUserDataAccessed:false,paidProviderCalls:0,clerkSignInVerified:false,nativeStorageVerified:false}));
