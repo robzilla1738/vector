@@ -1,0 +1,34 @@
+{
+  "format": "aux.fileport.receive-ownership-review.v1",
+  "pinnedAppleReferences": {
+    "format": "aux.native-peer.apple-ownership-review.v1",
+    "revision": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "references": [
+      {
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/xnu/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/ipc/mach_msg.c",
+        "sha256": "85a96ee426f6a2efb5eb12b5747e77315091d22ea330a26a88abf67883569609",
+        "localReference": "/private/tmp/aux-native-audit-transport-20261022/out/native-peer-ownership-references/kernel-mach_msg.c"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/xnu/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/libsyscall/mach/mach_msg.c",
+        "sha256": "d2b9f677f8ed2e3338c23ace865a889208a5d2a0147f05d6e0b82115703b5cfa",
+        "localReference": "/private/tmp/aux-native-audit-transport-20261022/out/native-peer-ownership-references/libsyscall-mach_msg.c"
+      }
+    ],
+    "usedOnlyForSourceReview": true,
+    "kernelExecuted": false
+  },
+  "observedKernelFlow": {
+    "mach_msg_receive_results": "On (mr & ~MACH_MSG_MASK)==MACH_RCV_BODY_ERROR, ipc_kmsg_put_to_user copies partial body; otherwise mach_msg_receive_error copies simple header after destroying other rights/memory.",
+    "anchors": [
+      "ipc_kmsg_copyout(kmsg, space, map, options)",
+      "if ((mr & ~MACH_MSG_MASK) == MACH_RCV_BODY_ERROR)",
+      "mr = ipc_kmsg_put_to_user(kmsg, &recv_bufs, &msgr,",
+      "ipc_kmsg_copyout_dest_to_user(kmsg, space)"
+    ]
+  },
+  "implementedPolicy": "Only successful receives create DestroyMessage on actual raw buffer/header. Every non-timeout failed receive is conservatively unresolved+closed with exact result preserved; no guessed partial descriptor destroy/retry. Initial connection failure retains returned uncertainty but supplies no connection handle; native entry must fail/exit rather than treating it clean or admitted.",
+  "kernelExecuted": false,
+  "ipcExecuted": false,
+  "compiled": false
+}

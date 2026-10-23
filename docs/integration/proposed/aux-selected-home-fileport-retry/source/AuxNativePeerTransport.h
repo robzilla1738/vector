@@ -56,6 +56,8 @@ struct TransportSnapshot {
   bool child_bound = false;
   bool selected_home_pending = false;
   uint64_t selected_home_cleanup_unresolved = 0;
+  uint64_t unresolved_receive_cleanup = 0;
+  int32_t last_receive_error = 0;
 };
 enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
 struct ParentExchange {
@@ -64,6 +66,7 @@ struct ParentExchange {
   int peer_pid = -1;
   int peer_pid_version = -1;
   bool right_cleanup_unresolved = false;
+  int32_t receive_error = 0;
 };
 class PreparedParentEndpoint;
 class OwnedNativePeerChild;
@@ -127,6 +130,9 @@ struct NativeParentConnectionSnapshot {
   int parent_pid = -1;
   int parent_pid_version = -1;
   uint64_t selected_home_cleanup_unresolved = 0;
+  uint64_t unresolved_receive_cleanup = 0;
+  uint64_t unresolved_send_cleanup = 0;
+  int32_t last_receive_error = 0;
 };
 // Only a real live handshake can construct this retained native connection.
 // The type authenticates a peer, NEVER profile/cohort/installer custody.

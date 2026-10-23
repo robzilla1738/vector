@@ -34,7 +34,87 @@
    uint64_t generation;
    {
      std::lock_guard<std::mutex> lock(state->mutex);
-@@ -508,8 +512,17 @@
+@@ -448,37 +452,59 @@
+   std::unique_ptr<State, decltype(finish_exchange)> active(state.get(), finish_exchange);
+   // Mach writes the actual received wire and trailer at that wire's size;
+   // never read the large-frame trailer offset for a normal v1 heartbeat.
+-  union Incoming {
+-    Received ordinary;
+-    SelectedHomeReceived selected;
+-    Incoming() : ordinary{} {}
+-  } incoming;
+-  auto* header = &incoming.ordinary.wire.header;
++  struct Incoming {
++    mach_msg_header_t header{};
++    std::array<uint8_t, sizeof(SelectedHomeReceived) - sizeof(mach_msg_header_t)> bytes{};
++  };
++  static_assert(sizeof(Incoming) == sizeof(SelectedHomeReceived));
++  static_assert(std::is_trivially_copyable_v<Received>);
++  static_assert(std::is_trivially_copyable_v<SelectedHomeReceived>);
++  alignas(SelectedHomeReceived) Incoming incoming{};
++  auto* header = &incoming.header;
+   auto result = mach_msg(header, kReceiveOptions, 0, sizeof(incoming),
+       state->receiver.get(), timeout_ms, MACH_PORT_NULL);
+   {
+     std::lock_guard<std::mutex> lock(state->mutex);
+     --state->snapshot.active_receives;
++    if (result != KERN_SUCCESS && result != MACH_RCV_TIMED_OUT) {
++      // XNU may copy out a partial body with real rights on BODY_ERROR.
++      // Ownership is not established by a failed receive: retain uncertainty,
++      // close admission, and never destroy a fabricated/copied descriptor list.
++      ++state->snapshot.unresolved_receive_cleanup;
++      state->snapshot.last_receive_error = result;
++      state->snapshot.closed = true;
++      ++state->snapshot.generation;
++      return ExchangeStatus::refused;
++    }
+     if (state->snapshot.closed) {
+       if (result == KERN_SUCCESS) mach_msg_destroy(header);
+       return ExchangeStatus::closed;
+     }
+   }
+   if (result == MACH_RCV_TIMED_OUT) return ExchangeStatus::timedOut;
+-  if (result != KERN_SUCCESS) return ExchangeStatus::refused;
+   DestroyMessage destroy(header);
+   const bool selected_request = header->msgh_id == kSelectedHomeRequest;
+   if (MACH_MSGH_BITS_REMOTE(header->msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
+     return ExchangeStatus::refused;
+   audit_token_t audit{};
+   std::array<uint8_t, 32> nonce{};
++  mach_port_t incoming_fileport = MACH_PORT_NULL;
+   if (selected_request) {
+-    if (!ValidSelectedHomeWire(incoming.selected)) return ExchangeStatus::refused;
+-    audit = incoming.selected.trailer.msgh_audit; nonce = incoming.selected.wire.nonce;
++    if (header->msgh_size != sizeof(SelectedHomeWire)) return ExchangeStatus::refused;
++    SelectedHomeReceived parsed{};
++    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    if (!ValidSelectedHomeWire(parsed)) return ExchangeStatus::refused;
++    audit = parsed.trailer.msgh_audit;
++    nonce = parsed.wire.nonce;
++    incoming_fileport = parsed.wire.fileport.name;
+   } else {
+-    if (!ValidWire(incoming.ordinary, kRequest) || incoming.ordinary.wire.generation != 0)
++    if (header->msgh_size != sizeof(Wire)) return ExchangeStatus::refused;
++    Received parsed{};
++    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    if (!ValidWire(parsed, kRequest) || parsed.wire.generation != 0)
+       return ExchangeStatus::refused;
+-    audit = incoming.ordinary.trailer.msgh_audit; nonce = incoming.ordinary.wire.nonce;
++    audit = parsed.trailer.msgh_audit;
++    nonce = parsed.wire.nonce;
+   }
+   const int version = audit_token_to_pidversion(audit);
+   bool valid = audit_token_to_pid(audit) == state->child->pid && version >= 0 &&
+@@ -492,7 +518,7 @@
+   std::shared_ptr<AuthenticatedSelectedHomeTransfer> selected;
+   if (valid && selected_request) {
+     // Only a kernel-delivered fileport from this exact owned live/code peer.
+-    int home = fileport_makefd(incoming.selected.wire.fileport.name);
++    int home = fileport_makefd(incoming_fileport);
+     int parent = home >= 0 ? NativeOperations::AuthenticatedGuestParent(audit, *state->policy) : -1;
+     valid = home >= 0 && parent >= 0 && HomeMatchesParent(home, parent) &&
+         fcntl(home, F_SETFD, FD_CLOEXEC) == 0;
+@@ -508,8 +534,17 @@
    std::lock_guard<std::mutex> lock(state->mutex);
    --state->snapshot.active_code_validations;
    if (state->snapshot.closed || state->snapshot.generation != generation) return ExchangeStatus::closed;
@@ -54,7 +134,7 @@
      ++state->snapshot.rejected_peer_identities;
      return ExchangeStatus::refused;
    }
-@@ -535,7 +548,8 @@
+@@ -535,7 +570,8 @@
    reply_cleanup.Disarm();
    state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
    ++state->snapshot.authenticated_exchanges;
@@ -64,7 +144,7 @@
      state->pending_home = std::move(selected);
      state->snapshot.selected_home_pending = true;
    }
-@@ -544,7 +558,7 @@
+@@ -544,7 +580,7 @@
  ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
      std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
    ParentExchange observation;
@@ -73,7 +153,20 @@
    const pid_t parent = getppid();
    auto birth = ReadBirth(parent, 0);
    if (!birth) return observation;
-@@ -624,6 +638,7 @@
+@@ -583,7 +619,11 @@
+     observation.status = ExchangeStatus::timedOut;
+     return observation;
+   }
+-  if (result != KERN_SUCCESS) return observation;
++  if (result != KERN_SUCCESS) {
++    observation.right_cleanup_unresolved = true;
++    observation.receive_error = result;
++    return observation;
++  }
+   DestroyMessage destroy(&exchange.wire.header);
+   const auto audit = exchange.trailer.msgh_audit;
+   if (!ValidWire(exchange, kReply) || exchange.wire.nonce != nonce ||
+@@ -624,6 +664,7 @@
      NativeSendRight endpoint, std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
    // No externally supplied status/evidence can reach this constructor. This
    // observation is produced here by the actual kernel/live-code handshake.
@@ -81,7 +174,7 @@
    auto verified = AuthenticateActualNativeParent(endpoint, policy, timeout_ms);
    if (verified.status != ExchangeStatus::authenticated) return {};
    auto birth = ReadBirth(verified.peer_pid, 0);
-@@ -648,6 +663,7 @@
+@@ -648,6 +689,7 @@
    return state->snapshot;
  }
  ExchangeStatus AuthenticatedNativeParentConnection::Revalidate(uint32_t timeout_ms) {
@@ -89,7 +182,23 @@
    auto state = state_;
    if (getpid() != state->process) return ExchangeStatus::wrongProcess;
    // NativeSendRight is non-default-constructible; its temporary is acquired
-@@ -691,7 +707,7 @@
+@@ -675,6 +717,15 @@
+       SameBirth(state->birth, 0) &&
+       current.peer_pid_version == state->snapshot.parent_pid_version;
+   std::lock_guard<std::mutex> lock(state->mutex);
++  if (current.right_cleanup_unresolved) {
++    if (current.receive_error) {
++      ++state->snapshot.unresolved_receive_cleanup;
++      state->snapshot.last_receive_error = current.receive_error;
++    } else {
++      ++state->snapshot.unresolved_send_cleanup;
++    }
++    state->snapshot.closed = true;
++  }
+   if (state->snapshot.closed) return ExchangeStatus::closed;
+   if (!same) {
+     // No reply is not evidence of peer loss. Retain the same immutable peer
+@@ -691,7 +742,7 @@
    ParentExchange observation;
    auto state = state_;
    if (getpid() != state->process) { observation.status = ExchangeStatus::wrongProcess; return observation; }
@@ -98,6 +207,52 @@
    const auto current = Revalidate(timeout_ms);
    if (current != ExchangeStatus::authenticated) { observation.status = current; return observation; }
    std::optional<NativeSendRight> endpoint;
+@@ -764,7 +815,15 @@
+   result = mach_msg(&received.wire.header, kReceiveOptions, 0, sizeof(received),
+       reply.get(), timeout_ms, MACH_PORT_NULL);
+   if (result == MACH_RCV_TIMED_OUT) { observation.status = ExchangeStatus::timedOut; return observation; }
+-  if (result != KERN_SUCCESS) return observation;
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.unresolved_receive_cleanup;
++    state->snapshot.last_receive_error = result;
++    state->snapshot.closed = true;
++    observation.right_cleanup_unresolved = true;
++    observation.receive_error = result;
++    return observation;
++  }
+   DestroyMessage destroy(&received.wire.header);
+   const auto audit = received.trailer.msgh_audit;
+   const bool valid = received.wire.header.msgh_size == sizeof(Wire) &&
+--- baseline/AuxNativePeerTransport.h
++++ source/AuxNativePeerTransport.h
+@@ -56,6 +56,8 @@
+   bool child_bound = false;
+   bool selected_home_pending = false;
+   uint64_t selected_home_cleanup_unresolved = 0;
++  uint64_t unresolved_receive_cleanup = 0;
++  int32_t last_receive_error = 0;
+ };
+ enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
+ struct ParentExchange {
+@@ -64,6 +66,7 @@
+   int peer_pid = -1;
+   int peer_pid_version = -1;
+   bool right_cleanup_unresolved = false;
++  int32_t receive_error = 0;
+ };
+ class PreparedParentEndpoint;
+ class OwnedNativePeerChild;
+@@ -127,6 +130,9 @@
+   int parent_pid = -1;
+   int parent_pid_version = -1;
+   uint64_t selected_home_cleanup_unresolved = 0;
++  uint64_t unresolved_receive_cleanup = 0;
++  uint64_t unresolved_send_cleanup = 0;
++  int32_t last_receive_error = 0;
+ };
+ // Only a real live handshake can construct this retained native connection.
+ // The type authenticates a peer, NEVER profile/cohort/installer custody.
 --- baseline/AuxNativePeerWire.h
 +++ source/AuxNativePeerWire.h
 @@ -7,7 +7,10 @@

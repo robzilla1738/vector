@@ -21,4 +21,10 @@ assert source.count('SameDirectory(state->accepted_home->state_->parent, selecte
 assert source.index('fileport_makefd(') < source.index('const bool retry =')
 assert source.index('NativeOperations::AuthenticatedGuestParent(audit,') < source.index('const bool retry =')
 assert source.count('accepted_home.reset();') == 2
+assert 'union Incoming' not in source
+assert 'auto* header = &incoming.header;' in source
+assert source.count('std::memcpy(&parsed, &incoming, sizeof(parsed));') == 2
+assert 'DestroyMessage destroy(header);' in source
+assert 'mach_msg_destroy(&parsed' not in source
+assert source.count('observation.receive_error = result;') == 2
 print('Static retry/timeout source pins and actual 2000ms caller constants verified; fixture not executed.')

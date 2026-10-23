@@ -8,8 +8,8 @@
   "files": {
     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativeParentConnectionBridge.cc": "5b6f0d9c135149a37fd6c879f624d4b2fa3428b89c858c4d177ba0bdcb87cde9",
     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativeParentConnectionBridge.h": "4257b290b661e9bc8ffa03365d94287acaf1519724f8def9f13a5f166afafa42",
-    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativePeerTransport.cc": "c38f1f9fa037998cc34e133ced0e5146fe5b279c62508645f96b2676e06fd79e",
-    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativePeerTransport.h": "1ca1e33b62ce1e0e21d1818e4f7eba776720461df960ca50a054eb519515e689",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativePeerTransport.cc": "8847bd88e1578cca903bf9bbf557c2168d3ae22e096943e15e97e604509b521e",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativePeerTransport.h": "3d1c29647629496bb79970b1d54ccaf1281b6e1ab7290156c23a38db16e7572e",
     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativePeerWire.h": "b9018b0813acea1cc54603141a23a7498ceb33c96727b07fc29ef9b67714dc64",
     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxOwnedNativePeerChild.cc": "c775bc184347afcef64d1fd5b16c4c597f47dec7ef13770f0f968c85202e3929",
     "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxOwnedNativePeerChild.h": "f0fac47546ed0bfa7035a6ca2f5612d1ef252c2431038856264de80d578213e4",
@@ -25,7 +25,7 @@
     "docs/integration/proposed/aux-selected-home-fileport-retry/baseline/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
     "docs/integration/proposed/aux-selected-home-fileport-retry/baseline/AuxSignedFreshBootstrapPolicyLoader.swift": "9b6d5879a048340a76a9ff056ab3c82bb955b0e2092e5120917df6bb1ca132e6",
     "docs/integration/proposed/aux-selected-home-fileport-retry/tests/wire-contract.cc": "52112230655ae898aa18a3cc86d66cce8818c98f221b7a915da20b22664872e0",
-    "docs/integration/proposed/aux-selected-home-fileport-retry/change.patch": "d7078a9bb29854c15d5615c285b0222b7961eda503cb75308adaf0b38181c51f"
+    "docs/integration/proposed/aux-selected-home-fileport-retry/change.patch": "4a959aa7bbd53ed3b743fa790b96bfa4195b9922d007827196ba6f443e9d43c1"
   },
   "productionDependencies": {
     "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
@@ -77,7 +77,9 @@
   },
   "changedSources": [
     "AuxNativePeerWire.h",
-    "AuxNativePeerTransport.cc"
+    "AuxNativePeerTransport.cc",
+    "AuxNativePeerTransport.h"
   ],
-  "selectInsteadOf": "aux-selected-home-fileport/source"
+  "selectInsteadOf": "aux-selected-home-fileport/source",
+  "successorReview": "Actual receive header+byte buffer; memcpy only to triviallycopyable parse values; ownership/destroy always actual receive buffer. Non-timeout failed receive closes with explicit unknown cleanup."
 }
