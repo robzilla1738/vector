@@ -6,13 +6,13 @@
     "sha256": "d9ecd74397a6388a7d195e3ed9a91b5c9496811a867edfc0c445b4b72edb7c24"
   },
   "recoveryArtifact": {
-    "path": "out/aux-sync-recovery-daemon/aux-sync-recovery.mjs",
-    "sha256": "1030eaaa7526f0eede41d98f662392449bb29c6f06a285eaca11d23e975e0ede",
-    "bytes": 612687,
+    "path": "out/aux-sync-recovery-enrollment/aux-sync-recovery.mjs",
+    "sha256": "2758fcf38fd300b44e376dacd23a8dccf21fc51d7d19ddcfe21036a681374578",
+    "bytes": 614197,
     "dependencies": [
       {
-        "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/desktop.ts",
-        "sha256": "63b763994a810f5fcc3903dc37d8ac5010fb3a033c240b4de62fe4df169003eb"
+        "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/desktop.ts",
+        "sha256": "0bcc589285a3243e92e71e9e04fefb8750be91e0405b64a6df9251731e993044"
       },
       {
         "path": "services/aux-cloud/src/sync-recovery-crypto.ts",
@@ -406,6 +406,18 @@
   },
   "dependencies": [
     {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs",
+      "sha256": "974d493b9fdde739a73e37a7df4c7678e7e26c0612621841f89a15516e897987"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/materialize-desktop.mjs",
+      "sha256": "4d3b44d6ca741b4a80b3980ab6038284eecbc5234a0af764ce7d1457c6ef2014"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json",
+      "sha256": "8f6e4e89a358d68f6602fbd6e126de0558b8fd8e9c02cbb355e5ebf4c2c86e23"
+    },
+    {
       "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/adapt.mjs",
       "sha256": "276189e76353f399211c98db290a8f584a72216dda589f0ac6dc4d4d72f4d12a"
     },
@@ -446,21 +458,21 @@
     "development": {
       "sea": {
         "inputSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
-        "outputSha256": "925132cc50789cfe1c609f3f9d7ef5632943f4ea53a5d0fdf6e6d0b0d70de4ee"
+        "outputSha256": "d7b09b670cb5b7f8db52bfea1232fa9252a48e637cb96295532bda4877609c97"
       },
       "node-development": {
         "inputSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
-        "outputSha256": "522c265e11b5d50e1ab9daacba017fc61ce8cb8870038e3e10f7836458b7a1bd"
+        "outputSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3"
       }
     },
     "local": {
       "sea": {
         "inputSha256": "aeb9cf53d564cae5f8e51a795cd17567ba1f898c4af0540a1ae068149691faaa",
-        "outputSha256": "3bb9d772d65bb7971bdeb2c30e2e2e72c3166888e421ea854f351e7576a3c0a2"
+        "outputSha256": "82fc18c35edb6740e5846a392de7f0b178c6b9dfcd69fde54510524906df1313"
       },
       "node-development": {
         "inputSha256": "a3c476a5b33f3251306fe9336961dae3b51d66a46f32cb1802b820f7a7c3c835",
-        "outputSha256": "847b77eb44f4f2fc844a25c39d6f50e3c1488e850dcf3b38766bdfd0142d0481"
+        "outputSha256": "e71689619d341ce6f4ac922d115d37bcc681e641cd890e28aad6e7af46b25851"
       }
     }
   },
@@ -522,6 +534,36 @@
         "find": "const {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
         "replace": "const {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\nconst {AuxSyncRecoveryClient}=await import(new URL(\"aux-sync-recovery.mjs\",__auxCryptoBaseURL));\n",
         "name": "Aux recovery preload after quarantine",
+        "count": 1
+      },
+      {
+        "name": "retain actual recovery metadata in existing schema",
+        "find": "accountSyncKeyStatusSchema=object({state:_enum([`provisioning`,`device_required`,`ready`]),syncGeneration:number$2().int().nonnegative(),revision:number$2().int().nonnegative(),custody:_enum([`kms`,`client_wrapped`]).nullable()})",
+        "replace": "accountSyncKeyStatusSchema=object({state:_enum([`provisioning`,`device_required`,`ready`]),syncGeneration:number$2().int().nonnegative(),revision:number$2().int().nonnegative(),custody:_enum([`kms`,`client_wrapped`]).nullable(),recoveryConfigured:boolean$1(),recoveryRevision:number$2().int().nonnegative()})",
+        "count": 1
+      },
+      {
+        "name": "owned current key eligibility separate from server readiness",
+        "find": "let ni=ei.state===`device_required`&&ti.status===`usable_owned`&&ti.syncGeneration===ei.syncGeneration;",
+        "replace": "let ni=(ei.state===`device_required`||ei.state===`ready`)&&ti.status===`usable_owned`&&ti.syncGeneration===ei.syncGeneration;",
+        "count": 1
+      },
+      {
+        "name": "confirmed enrollment accepts expected UI context",
+        "find": "async function enrollAccountSyncKeyRecovery(accountId,recoveryEntropyB64){",
+        "replace": "async function enrollAccountSyncKeyRecovery(accountId,recoveryEntropyB64,expected){",
+        "count": 1
+      },
+      {
+        "name": "compare expected UI context before recovery network",
+        "find": "let context=getAuxSyncRecoveryContext(accountId),pending=auxSyncRecoveryPendingEnrollments.get(accountId);",
+        "replace": "let context=getAuxSyncRecoveryContext(accountId);if(!expected||expected.userId!==context.userId||expected.generation!==context.generation)throw Error(`The account changed. Open browser data recovery again.`);let pending=auxSyncRecoveryPendingEnrollments.get(accountId);",
+        "count": 1
+      },
+      {
+        "name": "same enrollment mutation carries explicit expected context",
+        "find": "enrollSyncKeyRecovery:accountProcedure.input(object({recoveryEntropyB64:string$3().min(1).optional()})).mutation(({input:Cn})=>enrollAccountSyncKeyRecovery(Cn.accountId,Cn.recoveryEntropyB64))",
+        "replace": "enrollSyncKeyRecovery:accountProcedure.input(object({recoveryEntropyB64:string$3().min(1).optional(),expectedUserId:string$3().min(1).optional(),expectedSyncGeneration:number$2().int().nonnegative().optional()})).mutation(({input:Cn})=>enrollAccountSyncKeyRecovery(Cn.accountId,Cn.recoveryEntropyB64,{userId:Cn.expectedUserId,generation:Cn.expectedSyncGeneration}))",
         "count": 1
       },
       {
@@ -618,6 +660,36 @@
         "find": "const {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\n",
         "replace": "const {encryptAuxSkillCache,decryptAuxSkillCache,parseAuxSkillCacheBlob,deriveAuxDaemonTokenKey,deriveAuxEvidenceKey}=await import(new URL(\"aux-live-dk-runtime.mjs\",__auxCryptoBaseURL));\nconst {AuxSyncRecoveryClient}=await import(new URL(\"aux-sync-recovery.mjs\",__auxCryptoBaseURL));\n",
         "name": "Aux recovery preload after quarantine",
+        "count": 1
+      },
+      {
+        "name": "retain actual recovery metadata in existing schema",
+        "find": "accountSyncKeyStatusSchema=object({state:_enum([`provisioning`,`device_required`,`ready`]),syncGeneration:number$2().int().nonnegative(),revision:number$2().int().nonnegative(),custody:_enum([`kms`,`client_wrapped`]).nullable()})",
+        "replace": "accountSyncKeyStatusSchema=object({state:_enum([`provisioning`,`device_required`,`ready`]),syncGeneration:number$2().int().nonnegative(),revision:number$2().int().nonnegative(),custody:_enum([`kms`,`client_wrapped`]).nullable(),recoveryConfigured:boolean$1(),recoveryRevision:number$2().int().nonnegative()})",
+        "count": 1
+      },
+      {
+        "name": "owned current key eligibility separate from server readiness",
+        "find": "let ni=ei.state===`device_required`&&ti.status===`usable_owned`&&ti.syncGeneration===ei.syncGeneration;",
+        "replace": "let ni=(ei.state===`device_required`||ei.state===`ready`)&&ti.status===`usable_owned`&&ti.syncGeneration===ei.syncGeneration;",
+        "count": 1
+      },
+      {
+        "name": "confirmed enrollment accepts expected UI context",
+        "find": "async function enrollAccountSyncKeyRecovery(accountId,recoveryEntropyB64){",
+        "replace": "async function enrollAccountSyncKeyRecovery(accountId,recoveryEntropyB64,expected){",
+        "count": 1
+      },
+      {
+        "name": "compare expected UI context before recovery network",
+        "find": "let context=getAuxSyncRecoveryContext(accountId),pending=auxSyncRecoveryPendingEnrollments.get(accountId);",
+        "replace": "let context=getAuxSyncRecoveryContext(accountId);if(!expected||expected.userId!==context.userId||expected.generation!==context.generation)throw Error(`The account changed. Open browser data recovery again.`);let pending=auxSyncRecoveryPendingEnrollments.get(accountId);",
+        "count": 1
+      },
+      {
+        "name": "same enrollment mutation carries explicit expected context",
+        "find": "enrollSyncKeyRecovery:accountProcedure.input(object({recoveryEntropyB64:string$3().min(1).optional()})).mutation(({input:Cn})=>enrollAccountSyncKeyRecovery(Cn.accountId,Cn.recoveryEntropyB64))",
+        "replace": "enrollSyncKeyRecovery:accountProcedure.input(object({recoveryEntropyB64:string$3().min(1).optional(),expectedUserId:string$3().min(1).optional(),expectedSyncGeneration:number$2().int().nonnegative().optional()})).mutation(({input:Cn})=>enrollAccountSyncKeyRecovery(Cn.accountId,Cn.recoveryEntropyB64,{userId:Cn.expectedUserId,generation:Cn.expectedSyncGeneration}))",
         "count": 1
       },
       {

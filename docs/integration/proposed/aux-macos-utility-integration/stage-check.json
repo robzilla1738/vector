@@ -1,7 +1,7 @@
 {
   "format": "aux.macos.utility.stage.check.v1",
-  "actualEmbeddedDevelopmentSeaSha256": "925132cc50789cfe1c609f3f9d7ef5632943f4ea53a5d0fdf6e6d0b0d70de4ee",
-  "actualNodeEntrySha256": "522c265e11b5d50e1ab9daacba017fc61ce8cb8870038e3e10f7836458b7a1bd",
+  "actualEmbeddedDevelopmentSeaSha256": "d7b09b670cb5b7f8db52bfea1232fa9252a48e637cb96295532bda4877609c97",
+  "actualNodeEntrySha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
   "originalSeaAssetsPreserved": 2,
   "seaFlags": 25,
   "fixedGeneratedUtilityAndRecoveryFiles": [
@@ -18,12 +18,12 @@
     {
       "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-sync-recovery.mjs",
       "mode": 420,
-      "sha256": "1030eaaa7526f0eede41d98f662392449bb29c6f06a285eaca11d23e975e0ede"
+      "sha256": "2758fcf38fd300b44e376dacd23a8dccf21fc51d7d19ddcfe21036a681374578"
     },
     {
       "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-sync-recovery.mjs",
       "mode": 420,
-      "sha256": "1030eaaa7526f0eede41d98f662392449bb29c6f06a285eaca11d23e975e0ede"
+      "sha256": "2758fcf38fd300b44e376dacd23a8dccf21fc51d7d19ddcfe21036a681374578"
     }
   ],
   "guardedEntriesEvaluated": 2,

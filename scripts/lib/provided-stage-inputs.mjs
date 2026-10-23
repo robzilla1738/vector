@@ -2,6 +2,12 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-macos-utility-stage.mjs',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/materialize-desktop.mjs',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/desktop.ts',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js',
+  'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json',
   'docs/integration/proposed/aux-sync-recovery-daemon/source/adapt.mjs',
   'docs/integration/proposed/aux-sync-recovery-daemon/source/materialize-desktop.mjs',
   'docs/integration/proposed/aux-sync-recovery-daemon/source/desktop.ts',
