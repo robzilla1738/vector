@@ -1,0 +1,16 @@
+{
+  "format": "aux.async-profile-creation-admission.fixture.v1",
+  "executed": true,
+  "exitCode": 0,
+  "sourceSha256": "5bd672ae798274e039d72e7877cb21c133bbebc3120756e6795ccd031f97fa84",
+  "headerSha256": "376e56d40f0db066af42985ae070fffb69c73136776c23ddbceaaaa2ccc9fd44",
+  "implementationSha256": "08898183060ba086ed9fcc568b4b54a3531e84b957262bfa153dd67fc41fad60",
+  "modes": [
+    "close",
+    "observation"
+  ],
+  "usesActualProductionAdmissionSource": true,
+  "capturedCallbacksOnly": true,
+  "nativeProfileOrOSActionsExecuted": false,
+  "claimsWholeProfileQuiescence": false
+}

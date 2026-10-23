@@ -1,0 +1,46 @@
+{
+  "format": "aux.async-profile-creation-admission.compile.v1",
+  "executed": true,
+  "translationUnits": [
+    {
+      "source": "profile_manager.cc",
+      "sourceSha256": "2729632fe17dffef715bc1a95ed64437454ad2a2289d5a9662c112503a42226b",
+      "gn": "out/AuxFast/obj/chrome/browser/profiles/profile_manager_impl.ninja",
+      "gnSha256": "96354726b2ffcc4c7b90434d0ad165e310e812752505a8738b7137b3abd9ba6b",
+      "exitCode": 0,
+      "seconds": 13.635799582999999,
+      "commandSha256": "dd6d3fdb3d8ea513d84fdcc08ae60fa39d0d0efd44fc8066fcf990d76157d9ce",
+      "objectSha256": "2e6fcacb167ed2a02f5eaf331db615f14db591bd62d52e4637b9062cf76c4f1a",
+      "compilerOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "profile_impl.cc",
+      "sourceSha256": "62e02a0a01fa2366accde2b9fe260aec4e2cca0133ba511775711313ccffaee0",
+      "gn": "out/AuxFast/obj/chrome/browser/profiles/misc.ninja",
+      "gnSha256": "abec5f8ac6b9c20f30d0484969cf49e253b4ff7948a1ccca0c66c2cfe0a4952f",
+      "exitCode": 0,
+      "seconds": 28.370996041999998,
+      "commandSha256": "67d02151a9f1777057e13c0b0306b0ab8196223a1f3b9cfe4a78359aed144ba7",
+      "objectSha256": "c0a29d6e8f130a144f880dc02afc776788030ac58ec72692ac194ec95d007cda",
+      "compilerOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "aux_async_profile_creation_admission.cc",
+      "sourceSha256": "08898183060ba086ed9fcc568b4b54a3531e84b957262bfa153dd67fc41fad60",
+      "gn": "out/AuxFast/obj/chrome/browser/profiles/profile_manager_impl.ninja",
+      "gnSha256": "96354726b2ffcc4c7b90434d0ad165e310e812752505a8738b7137b3abd9ba6b",
+      "exitCode": 0,
+      "seconds": 0.11765112500000185,
+      "commandSha256": "fd65decf5567099b430160824aff66442e046a10d2b1bd834c6c2f988b79b282",
+      "objectSha256": "03829a84ff08f2d6824da22db80345a77d305af86ca89f2195e0abad8a2c489a",
+      "compilerOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "compiler": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+  "compilerSha256": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766",
+  "serializedWith": "scripts/native-build.py /tmp/aux-build.lock",
+  "nativeCheckoutMutation": false,
+  "linkedBrowser": false,
+  "browserExecuted": false,
+  "protectedOperationsExecuted": false
+}

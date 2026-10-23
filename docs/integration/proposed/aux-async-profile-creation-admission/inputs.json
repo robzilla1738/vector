@@ -1,0 +1,111 @@
+{
+  "format": "aux.async-profile-creation-admission.v1",
+  "parent": {
+    "path": "out/native-reuse-composition-aux-session-writer-close-gn",
+    "sha256": "2f2d89447a39710b711db114c5578b745e8b5a71a930ca0ffd9f0e7a614fd1a9",
+    "sourceCount": 778,
+    "assetCount": 23
+  },
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/profiles/profile_manager.cc",
+      "inputSha256": "e45d78658f9785ec4cbaf1f721df536e3f9a62ba9c9f40caccf6bcc79ab70d52",
+      "outputSha256": "2729632fe17dffef715bc1a95ed64437454ad2a2289d5a9662c112503a42226b"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "inputSha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb",
+      "outputSha256": "62e02a0a01fa2366accde2b9fe260aec4e2cca0133ba511775711313ccffaee0",
+      "additionalPinnedNativeInput": true
+    },
+    {
+      "path": "chrome/browser/profiles/aux_async_profile_creation_admission.h",
+      "inputSha256": null,
+      "outputSha256": "376e56d40f0db066af42985ae070fffb69c73136776c23ddbceaaaa2ccc9fd44"
+    },
+    {
+      "path": "chrome/browser/profiles/aux_async_profile_creation_admission.cc",
+      "inputSha256": null,
+      "outputSha256": "08898183060ba086ed9fcc568b4b54a3531e84b957262bfa153dd67fc41fad60"
+    }
+  ],
+  "profileImpl": {
+    "path": "chrome/browser/profiles/profile_impl.cc",
+    "inputSha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb",
+    "outputSha256": "62e02a0a01fa2366accde2b9fe260aec4e2cca0133ba511775711313ccffaee0",
+    "edits": [
+      {
+        "name": "ProfileImpl observation declaration include",
+        "find": "#include \"chrome/common/buildflags.h\"",
+        "replace": "#include \"chrome/common/buildflags.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/profiles/aux_async_profile_creation_admission.h\"\n#endif",
+        "count": 1
+      },
+      {
+        "name": "actual async constructor start observation",
+        "find": "  TRACE_EVENT0(\"browser,startup\", \"ProfileImpl::ctor\");",
+        "replace": "  TRACE_EVENT0(\"browser,startup\", \"ProfileImpl::ctor\");\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (create_mode == CreateMode::kAsynchronous)\n    aux::ObserveAsyncProfileInitializationStarted(this);\n#endif",
+        "count": 1
+      },
+      {
+        "name": "actual final-init tail completion observation",
+        "find": "  // third-party cookie deprecation must be created with the profile, but after\n  // the initialization of the OriginTrialsControllerDelegate, as it depends on\n  // it.\n}",
+        "replace": "  // third-party cookie deprecation must be created with the profile, but after\n  // the initialization of the OriginTrialsControllerDelegate, as it depends on\n  // it.\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (create_mode == CreateMode::kAsynchronous)\n    aux::ObserveAsyncProfileInitializationFinished(this);\n#endif\n}",
+        "count": 1
+      },
+      {
+        "name": "destruction never implies successful tail completion",
+        "find": "ProfileImpl::~ProfileImpl() {\n  MaybeSendDestroyedNotification();",
+        "replace": "ProfileImpl::~ProfileImpl() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::ObserveAsyncProfileInitializationAbandoned(this);\n#endif\n  MaybeSendDestroyedNotification();",
+        "count": 1
+      }
+    ]
+  },
+  "edits": [
+    {
+      "name": "native declaration include",
+      "find": "#include \"chrome/browser/ui/aux_profile_switch_session_rebuild.h\"",
+      "replace": "#include \"chrome/browser/ui/aux_profile_switch_session_rebuild.h\"\n#include \"chrome/browser/profiles/aux_async_profile_creation_admission.h\"",
+      "count": 1
+    },
+    {
+      "name": "async entry and captured queued completion generation",
+      "find": "  TRACE_EVENT1(\"browser,startup\", \"ProfileManager::CreateProfileAsync\",\n               \"profile_path\", profile_path.AsUTF8Unsafe());\n",
+      "replace": "  TRACE_EVENT1(\"browser,startup\", \"ProfileManager::CreateProfileAsync\",\n               \"profile_path\", profile_path.AsUTF8Unsafe());\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  const uint64_t aux_generation = aux::CaptureAsyncProfileCreationGeneration();\n  if (!aux::IsAsyncProfileCreationGenerationCurrent(aux_generation)) {\n    if (initialized_callback)\n      std::move(initialized_callback).Run(nullptr);\n    return;\n  }\n  // Queued closures retain this generation in both nullable completion and\n  // created-publication wrappers. Re-entry below also checks permanent close.\n  if (initialized_callback) {\n    initialized_callback = base::BindOnce(\n        &aux::DeliverAsyncProfileInitialization<\n            base::OnceCallback<void(Profile*)>, Profile>,\n        aux_generation, std::move(initialized_callback));\n  }\n  if (created_callback) {\n    created_callback = base::BindOnce(\n        &aux::DeliverAsyncProfileCreated<base::OnceCallback<void(Profile*)>,\n                                         Profile>,\n        aux_generation, std::move(created_callback));\n  }\n#endif\n",
+      "count": 1
+    },
+    {
+      "name": "actual async constructor/register dispatch",
+      "find": "    // Initiate asynchronous creation process.\n    info = RegisterOwnedProfile(CreateProfileAsyncHelper(profile_path));",
+      "replace": "    // Initiate asynchronous creation process.\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n    if (!aux::RunAsyncProfileCreationDispatch(aux_generation, [&] {\n          info = RegisterOwnedProfile(CreateProfileAsyncHelper(profile_path));\n        })) {\n      if (initialized_callback)\n        std::move(initialized_callback).Run(nullptr);\n      return;\n    }\n#else\n    info = RegisterOwnedProfile(CreateProfileAsyncHelper(profile_path));\n#endif",
+      "count": 1
+    },
+    {
+      "name": "already-loaded async mutation dispatch start",
+      "find": "      Profile* profile = info->GetCreatedProfile();\n      // If this was the Guest profile, apply settings and go OffTheRecord.",
+      "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n      if (!aux::RunAsyncProfileCreationDispatch(aux_generation, [&] {\n#endif\n      Profile* profile = info->GetCreatedProfile();\n      // If this was the Guest profile, apply settings and go OffTheRecord.",
+      "count": 1
+    },
+    {
+      "name": "already-loaded async mutation dispatch completion",
+      "find": "      if (!initialized_callback.is_null())\n        std::move(initialized_callback).Run(profile);\n    } else {",
+      "replace": "      if (!initialized_callback.is_null())\n        std::move(initialized_callback).Run(profile);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n      })) {\n        if (initialized_callback)\n          std::move(initialized_callback).Run(nullptr);\n      }\n#endif\n    } else {",
+      "count": 1
+    },
+    {
+      "name": "multi creation attribute/path dispatch start",
+      "find": "  DCHECK(profiles::IsDefaultAvatarIconIndex(icon_index));\n\n  ProfileManager* profile_manager = g_browser_process->profile_manager();",
+      "replace": "  DCHECK(profiles::IsDefaultAvatarIconIndex(icon_index));\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  const uint64_t aux_generation = aux::CaptureAsyncProfileCreationGeneration();\n  if (!aux::RunAsyncProfileCreationDispatch(aux_generation, [&] {\n#endif\n  ProfileManager* profile_manager = g_browser_process->profile_manager();",
+      "count": 1
+    },
+    {
+      "name": "queued multi deletion dispatch and UI completion check",
+      "find": "      base::BindOnce(&NukeProfileFromDisk, new_path,\n                     base::BindOnce(&ProfileManager::CreateProfileAsync,\n                                    profile_manager->weak_factory_.GetWeakPtr(),\n                                    new_path, std::move(initialized_callback),\n                                    std::move(created_callback))));\n}",
+      "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n      base::BindOnce(\n          [](uint64_t generation, const base::FilePath& path,\n             base::OnceClosure continuation) {\n            if (!aux::RunAsyncProfileCreationDispatch(generation, [&] {\n                  NukeProfileFromDisk(path, std::move(continuation));\n                })) {\n              // Nullable failure is delivered by the real UI entrypoint. Never\n              // invoke a profile callback on this ThreadPool thread.\n              content::GetUIThreadTaskRunner({})->PostTask(\n                  FROM_HERE, std::move(continuation));\n            }\n          },\n          aux_generation, new_path,\n          base::BindOnce(&ProfileManager::CreateProfileAsync,\n                         profile_manager->weak_factory_.GetWeakPtr(), new_path,\n                         std::move(initialized_callback),\n                         std::move(created_callback))));\n  })) {\n    if (initialized_callback)\n      std::move(initialized_callback).Run(nullptr);\n  }\n#else\n      base::BindOnce(&NukeProfileFromDisk, new_path,\n                     base::BindOnce(&ProfileManager::CreateProfileAsync,\n                                    profile_manager->weak_factory_.GetWeakPtr(),\n                                    new_path, std::move(initialized_callback),\n                                    std::move(created_callback))));\n#endif\n}",
+      "count": 1
+    }
+  ],
+  "patchSha256": "16bb3da563e3498e6ecc50ff91329910183575cf75fb140fe19d16948658fd76",
+  "appliedToCheckout": false,
+  "ordinaryShutdownHookAdded": false
+}
