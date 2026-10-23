@@ -1,3 +1,13 @@
+# Native custody and compatibility findings; backup integration — 2026-10-22
+
+The accepted app and UI remain unchanged. Actual packaged Mach-O metadata reaches macOS27.0 in five Aux boundary artifacts; document tools require26.0. The supplied Node minimum is13.5 and PTY/helper11.0. A future main's13.5 compile flag is not whole-product compatibility. No deployment-target headers or compatibility claims were altered; exact evidence is under `aux-native-compatibility-metadata/`.
+
+The actual source-level exec successor retains runtime leases through real ChildProcess close or PTY exit, including background returns and ambiguous spawn errors. This does not prove recursive native custody. Pinned official node-pty1.1.0 source shows a post-spawn failure before reaper setup; a second reaper would race the existing waitpid owner. Apple's macOS kqueue rejects recursive NOTE_TRACK tracking. The macOS27 descendants-client API exists and requires an additional entitlement; event observation alone still lacks a documented atomic subtree-closure proof. No entitlement, process observer, protected call or signing was activated. See `aux-native-exec-lifetime/` and `aux-native-pty-custody-feasibility/`.
+
+Online encrypted snapshot capture now has a focused offline fixture covering actual current schema and private-avatar/object handling. Promoted service scripts remain inactive operator tooling, not a scheduled backup. Missing or inconsistent object bytes abort completion. Independent destination/key custody, scheduling/retry/alerts, retention deletion and an actual current-schema cross-store restore remain unfinished. Source promotion provenance is being checked separately from the historical fixture; no provider backup was executed.
+
+The same Node static-library build1414 remains live, progressing through V8 snapshot objects. Existing queued native checks retain the source freeze. No duplicate library/full-browser build or accepted app replacement was started. Exactly one authorized development sign-in email was delivered; its code was not read or used. No paid inference or production activation occurred.
+
 # Actual startup caller composed without activation — 2026-10-22
 
 The startup successor now connects a real no-argument sealed browser launch to the fixed nested daemon, owned Mach peer, provider-ready selected-home transfer and existing BrowserPlatform adoption. Its actual browser/child signature, fixed certificate/team/CDHash, sealed v2 policy and retained child checks cannot be replaced by configuration. It clears inherited environment, fixes the reviewed port and leaves home/runtime selection to the genuine ready FD. The compile-time product hook is default-off and the JS state2 refusal remains unchanged.

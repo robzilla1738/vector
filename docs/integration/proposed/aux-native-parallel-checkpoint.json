@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T04:14:19.400135+00:00",
+  "recordedAt": "2026-10-23T04:52:50.265871+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -8,7 +8,7 @@
     {
       "session": 1414,
       "role": "first actual Node26.5.0 static library build",
-      "state": "same handle confirmed live; actual build advanced through LIEF into V8 objects"
+      "state": "same handle confirmed live; actual build advanced into V8 snapshot objects"
     }
   ],
   "agentReportedPendingChecks": [
@@ -76,7 +76,15 @@
     "evidence": "services/aux-cloud/evidence/production-recovery-migration.json",
     "developmentIconDeployment": "dpl_9Zqn7Mt8E7pmWXhwn6hBms3VpgXa",
     "developmentIconHttpEvidence": "docs/integration/proposed/aux-builtin-icon-hosting/http-check.json",
-    "actualPublicIconResponsesVerified": 46
+    "actualPublicIconResponsesVerified": 46,
+    "onlineSnapshotCapture": {
+      "privateAvatarsIncluded": true,
+      "focusedOfflineFixturePassed": true,
+      "servicePromotionPendingStaticProvenanceReview": true,
+      "providerCaptureExecuted": false,
+      "schedulerImplemented": false,
+      "independentBackupDestinationConfigured": false
+    }
   },
   "runtimeAcceptance": false,
   "protectedCallsExecuted": false,
@@ -248,5 +256,19 @@
       "role": "6 captured stage deferral cases",
       "evidence": "docs/integration/proposed/aux-native-fresh-runtime-readiness/evidence/actual-captured-checks.json"
     }
-  ]
+  ],
+  "currentCompatibility": {
+    "measuredPackageMinimumOS": "27.0",
+    "documentToolsMinimumOS": "26.0",
+    "newMainMinimumFlagIsNotProductProof": true,
+    "review": "docs/integration/proposed/aux-native-compatibility-metadata/"
+  },
+  "ptyCustody": {
+    "source": "official node-pty v1.1.0 commit1def5774632305246fe21f0f69e23a664d6c5910",
+    "recursiveKqueueTrackingSupported": false,
+    "newMacOS27DescendantsApiRequiresEntitlement": true,
+    "descendantClosureProven": false,
+    "actualExecLeaseSuccessor": "37525c0df",
+    "review": "docs/integration/proposed/aux-native-pty-custody-feasibility/"
+  }
 }
