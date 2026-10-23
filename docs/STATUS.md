@@ -1,3 +1,9 @@
+# Queued background delivery closure integrated — 2026-10-23
+
+The actual supplied deliverToSelf callback now revalidates ownership at queue entry, after steerable waits and before deferred live-session lookup. The focused extracted-function fixture reproduces old post-close consume/save in two cases; corrected callbacks refuse before consuming the payload. Full successor source and dormant-entry projection/syntax passed. Final source SHA256 `156c9361fc37848175c920d2fab53b89526870a2358803ef01f147af5ecb1ed6`; source-pair.json now pins the exact successor entry. Native ABI/policy/daemon pairing and UI are unchanged; ordinary cold refusal remains. A never-settling wait remains pending/unknown rather than clean drain.
+
+Native-host path restrictions are committed as an incomplete defense, not yet integrated into the frozen active graph. Object compilation waits the build lock. Existing external hardlinks remain a confirmed bypass; complete external-writer custody and admitted-root reopen are not implemented. Full browser build and actual packaging/runtime acceptance remain pending. No app replacement, product signing, owner state or cloud operation occurred.
+
 # Package handoff tightened; native full build continues — 2026-10-23
 
 The inactive assembler now checks native leaf modes and complete coverage against the successful build receipt, permits exactly the five fixed daemon/source/entry/loader/PTY replacements, and refuses output nested inside either input app. One inert temporary-file boundary check passed; no native executable ran. Actual assembly still waits the coherent build, which last passed7,580 of56,815 actions without further failure. This action count is progress, not an ETA or completion percentage.
