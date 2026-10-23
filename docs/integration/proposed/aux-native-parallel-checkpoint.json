@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:30:06.526382+00:00",
+  "recordedAt": "2026-10-23T02:49:53.406872+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -16,23 +16,31 @@
   "agentReportedPendingChecks": [
     {
       "session": 40860,
-      "role": "paired31source actualruntimeconsumer/resume graph after one correctedvariable failure"
+      "role": "same deferred final36-input provider quarantine/resume/account runtime graph; before/after source hashes enforced"
     },
     {
       "session": 25336,
-      "role": "retainedaccountFD fixture"
+      "role": "retained account FD fixture"
     },
     {
       "session": 66115,
-      "role": "afterlock pathswap fixture"
+      "role": "after-lock path-swap fixture"
+    },
+    {
+      "session": 42833,
+      "role": "actual resumed-only filesystem fixture with explicit captured identity"
+    },
+    {
+      "session": 22764,
+      "role": "actual provider registry lifecycle fixture with fake identity/crypto/OS effects only"
     }
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "resumed-only actual filesystem fixture; no new25/31 graph duplicate",
-    "actual audit-authenticated child transport source",
-    "genuine native fresh owner provider and explicit WorkerHost consumption",
-    "cold entry/bootstrap/private launch handoff and signed-image/protected execution still absent"
+    "concrete cold installer guard and paired owner/context validation at actual Add boundary",
+    "two-phase actual native child launch/private endpoint handoff and typed authenticated live peer",
+    "real Node embedding entry and final common-addon retirement",
+    "historical selector producer and genuine existing-home custody; no guessed group"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -45,7 +53,11 @@
     "resume": "42fa844d3",
     "typedRuntimeConsumer": "ae704412a",
     "afterLockAccountRevalidation": "4bbb1411c",
-    "actual31GraphPending": true
+    "actual36GraphPending": true,
+    "providerQuarantine": "98d3e1140",
+    "providerQuarantineEvidenceRecipe": "7b7f743d5",
+    "peerProcessAndSendOwnership": "2c44e578f",
+    "existingTerminalCskConsumer": "cc7799c63"
   },
   "terminalRootChecks": [
     {
@@ -99,5 +111,25 @@
     "applied": true,
     "compiled": false,
     "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json"
+  },
+  "rootQueuedChecks": [
+    {
+      "session": 51207,
+      "role": "actual provider-backed WorkerHost C++ compile only",
+      "state": "queued behind93645"
+    },
+    {
+      "session": 91715,
+      "role": "actual Mach peer object compile and pure wire predicate",
+      "state": "queued behind93645"
+    }
+  ],
+  "lastBuildObservation": {
+    "session": 93645,
+    "completedTasks": 227,
+    "scheduledTasks": 2765,
+    "elapsedLog": "25m34.39s",
+    "terminal": false,
+    "note": "actual same session returned live; no native source mutation"
   }
 }

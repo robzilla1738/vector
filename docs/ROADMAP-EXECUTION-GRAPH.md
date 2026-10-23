@@ -14,7 +14,7 @@ Updated 2026-10-22. This reconciles the owner's continuing implementation goal w
 
 The original BASE, FRAME, BROWSER, AGENT, TOOLS, PACKAGE, JOURNEY and READY identifiers remain stable. The owner’s later cloud/production objective expands READY; it does not waive the older local-browser requirements. The prior detailed dated execution record is preserved in `docs/archive/execution-graph-2026-10-21-before-cloud-integration.md`; its active-worker/build statements are historical.
 
-The next integrator actions are to finish review of provider-quarantine and peer-right ownership corrections, integrate their frozen sources, and attach the single pending final Swift graph to exact input hashes. Do not launch a duplicate full graph. Continue actual parent/child/embedding implementation while build93645 runs; do not mutate its native checkout. The live/terminal handle ledger is `docs/integration/proposed/aux-native-parallel-checkpoint.json`.
+Provider-quarantine and peer-right ownership corrections are now integrated. The same deferred40860 is pinned to the final36-input Swift graph; actual WorkerHost compile51207, peer object/wire91715, provider lifecycle22764 and resumed filesystem42833 are queued, not results. The next integrator actions are to review concrete cold guard/peer launch source and finish the real embedding entry. Do not launch a duplicate full graph. Continue actual parent/child/embedding implementation while build93645 runs; do not mutate its native checkout. The live/terminal handle ledger is `docs/integration/proposed/aux-native-parallel-checkpoint.json`.
 
 ## Dependency graph
 
