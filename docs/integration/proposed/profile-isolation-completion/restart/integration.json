@@ -1,0 +1,25 @@
+{
+  "format": "aux.browser-grant-cancellation.v1",
+  "baseline": "09473f880",
+  "replacements": [
+    {
+      "before": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedCommandDispatcher.swift",
+      "beforeSha256": "c4350a8ffdcc50d7e86d8c458be4e8fe92c677882f68273d766d817f605ab76d",
+      "after": "docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "afterSha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    },
+    {
+      "before": "docs/integration/proposed/profile-isolation-final/startup/source/AuxPreparedDaemonAuthority.swift",
+      "beforeSha256": "ce1d8e8ff48a91a97fc5c19a35d9b6c52dc7ba41771935aa512f8c97b1c4acec",
+      "after": "docs/integration/proposed/profile-isolation-completion/restart/source/AuxPreparedDaemonAuthority.swift",
+      "afterSha256": "19b2b7e5653b2e0e1f44ca2110b0830eddc6976049f2de371459aa6788e7df6b"
+    }
+  ],
+  "newSources": [],
+  "policyVersion": 8,
+  "authorityWireVersion": 5,
+  "admittedSessionRecovery": false,
+  "actualBrowserDrainProven": false,
+  "coldHookEnabled": false,
+  "protectedRuntimeExecuted": false
+}

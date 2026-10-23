@@ -1,0 +1,15 @@
+# Browser grant cancellation retains the actual Owner
+
+This batch fixes actual cancellation/lifetime behavior around admitted browser roots. It does not invent a clean-session recovery grant: browser lifecycle observations still do not prove all content/network/browser writers drained, so admitted-session restart remains refused.
+
+Previously the native prepared-authority close path returned pending when `browserGrantIssued` was true **before closing the Dispatcher admission**. That preserved the outer authority object but could leave its exact retained Dispatcher open to new operations. The flag was also set only after the durable browser receipt method returned; an uncertain failure inside the durable transition had no corresponding Dispatcher-level browser-custody retention.
+
+The new source binds unresolved browser custody to the actual native Dispatcher Entry before entering the durable receipt method. Its automatic last-operation removal, destructor close, and explicit retirement paths cannot remove that Entry while browser custody is unresolved. This lifetime predicate is separate from ordinary admission/guard checks: successful startup does not disable normal commands. Explicit cancellation moves the same Entry to retiring, closes utility admission and retains the graph; it does not wait for or invent browser-wide drain.
+
+Prepared authority now marks the attempted grant before invoking the Dispatcher. Close before the attempt refuses the call. Close racing the native transition suppresses its eventual reply and closes Dispatcher admission without dropping the Owner. Failed/unknown attempted grants remain retained too. An authority that never attempted a browser grant retains its prior ordinary close behavior. No callback, response ACK, timeout, PID disappearance or mutable caller identifier can clear the unresolved custody flag. There is no new C or JS authority endpoint and no policy/wire change.
+
+Only `AuxOwnedCommandDispatcher.swift` and `AuxPreparedDaemonAuthority.swift` replace their final-startup predecessors. Existing v8 prepared-only interruption recovery remains intact. The changes are source-only/inactive and preserve the UI/accepted app. No signing, protected runtime, owner data, credentials, OS grants, cloud operations or release occurred.
+
+`check-cancellation.py` compiles/runs the actual prepared-authority source with explicit synthetic native owner callbacks. It checks ordinary granted cancellation, cancellation inside the receipt callback, failed receipt custody and unchanged never-attempted close. This is focused state-machine evidence, not a real native browser drain claim. The integrator separately selects both source replacements in the real48-source Swift graph.
+
+Remaining: actual complete browser writer/descendant closure and an authenticated durable clean-reopen producer, admitted crash recovery, and protected real-app verification. A new disposable root may still be prepared separately under explicit authorized policy; existing admitted data is never relabeled fresh merely to start successfully.
