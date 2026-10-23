@@ -1,0 +1,145 @@
+--- a/aux-native-fresh-target-cohort-lease/source/AuxFreshNativeHome.swift
++++ b/aux-native-fresh-resume/source/AuxFreshNativeHome.swift
+@@ -48,7 +48,7 @@
+     private let homeFD: Int32
+     private let generationAttemptLock = NSLock()
+     private var generationAttempted = false
+-    let targetProgressLease=AuxNativeFreshCohortLease()
++    let targetProgressLease: AuxNativeFreshCohortLease
+ 
+     // Only the successful O_EXCL/mkdirat creator can construct this owner.
+     // Existing reservations/children are never adopted, removed or retried.
+@@ -102,7 +102,8 @@
+             return AuxFreshNativeHome(
+                 parent: parent, name: name, scope: scope,
+                 transactionId: transactionId, reservation: reservation,
+-                parentFD: parentFD, reservationFD: reservationFD, homeFD: homeFD
++                parentFD: parentFD, reservationFD: reservationFD, homeFD: homeFD,
++                targetProgressLease: try AuxNativeFreshReservationLeaseRegistry.lease(parentFD: parentFD, reservationFD: reservationFD)
+             )
+         } catch {
+             if homeFD >= 0 { close(homeFD) }
+@@ -116,8 +117,10 @@
+     private init(
+         parent: String, name: String, scope: String,
+         transactionId: String, reservation: Data,
+-        parentFD: Int32, reservationFD: Int32, homeFD: Int32
++        parentFD: Int32, reservationFD: Int32, homeFD: Int32,
++        targetProgressLease: AuxNativeFreshCohortLease
+     ) {
++        self.targetProgressLease = targetProgressLease
+         canonicalParent = parent
+         childName = name
+         canonicalHome = parent + "/" + name
+--- a/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift
++++ b/aux-native-fresh-resume/source/AuxNativeFreshStageCoordinator.swift
+@@ -3,24 +3,76 @@
+ import Security
+ 
+ struct NativeFreshStagedContext {
+-    let journal:NativeFreshBootstrapJournal
+-    let durableJournalSha256:String
+-#if AUX_NATIVE_FRESH_STAGE_FIXTURE
+-    fileprivate init(journal:NativeFreshBootstrapJournal,sha256:String){self.journal=journal;durableJournalSha256=sha256}
+-#else
+-    let capture:AuxFreshNativeSecureCapture
+-    fileprivate init(journal:NativeFreshBootstrapJournal,sha256:String,capture:AuxFreshNativeSecureCapture){self.journal=journal;durableJournalSha256=sha256;self.capture=capture}
+-    // Native decoder/target driver must consume actual retained signed/home/FD
+-    // lineage, not accept public hashes or decoded journal JSON as admission.
+-    func revalidateNativeStageBinding()throws {
+-        try capture.policy.revalidateCurrentIdentity();try capture.home.validateRetainedIdentity()
+-        guard capture.scope==journal.scope,capture.transactionId==journal.reservationTransactionId,
+-              capture.policy.policySha256==journal.policySha256,capture.policy.contents.accessGroup==journal.accessGroup,
+-              capture.policy.contents.role.rawValue==journal.role,
+-              try capture.home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}
+-        let retainedRoot=try capture.home.duplicateDirectoryForNativeBootstrap();defer{Darwin.close(retainedRoot)}
+-        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,retainedRootDescriptor:retainedRoot)
+-        guard let stored=try store.load(),stored.journal==journal,stored.sha256==durableJournalSha256 else{throw NativeFreshBootstrapError.binding}
++    let journal: NativeFreshBootstrapJournal
++    let durableJournalSha256: String
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String) {
++        self.journal = journal; durableJournalSha256 = sha256
++    }
++#else
++    private enum NativeOwner {
++        case fresh(AuxFreshNativeSecureCapture)
++        case resumed(AuxResumedFreshNativeHome)
++    }
++    private let owner: NativeOwner
++    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String, capture: AuxFreshNativeSecureCapture) {
++        self.journal = journal; durableJournalSha256 = sha256; owner = .fresh(capture)
++    }
++    private init(journal: NativeFreshBootstrapJournal, sha256: String, resumed: AuxResumedFreshNativeHome) {
++        self.journal = journal; durableJournalSha256 = sha256; owner = .resumed(resumed)
++    }
++    var canonicalHome: String {
++        switch owner { case .fresh(let capture): return capture.home.canonicalHome
++        case .resumed(let home): return home.canonicalHome }
++    }
++    var authenticatedPolicy: AuxAuthenticatedFreshBootstrapPolicy {
++        switch owner { case .fresh(let capture): return capture.policy
++        case .resumed(let home): return home.policy }
++    }
++    var targetProgressLease: AuxNativeFreshCohortLease {
++        switch owner { case .fresh(let capture): return capture.home.targetProgressLease
++        case .resumed(let home): return home.targetProgressLease }
++    }
++    func duplicateRetainedHomeDescriptor() throws -> Int32 {
++        switch owner { case .fresh(let capture): return try capture.home.duplicateDirectoryForNativeBootstrap()
++        case .resumed(let home): return try home.duplicateDirectoryForNativeBootstrap() }
++    }
++    // The disk journal is only a locator/binding. Never return the private
++    // provisional context before real protected-stage/authority authentication.
++    static func resume(policy: AuxAuthenticatedFreshBootstrapPolicy) throws -> NativeFreshStagedContext {
++        let home = try AuxResumedFreshNativeHome.reopen(policy: policy)
++        let stored = try home.readExistingInitialJournal()
++        let context = NativeFreshStagedContext(journal: stored.journal, sha256: stored.sha256, resumed: home)
++        _ = try AuxNativeFreshTargetBoundary(context: context)
++        try context.revalidateNativeStageBinding()
++        return context
++    }
++    func revalidateNativeStageBinding() throws {
++        switch owner {
++        case .fresh(let capture):
++            try capture.policy.revalidateCurrentIdentity()
++            try capture.home.validateRetainedIdentity()
++            guard capture.scope == journal.scope, capture.transactionId == journal.reservationTransactionId,
++                  capture.policy.policySha256 == journal.policySha256,
++                  capture.policy.contents.accessGroup == journal.accessGroup,
++                  capture.policy.contents.role.rawValue == journal.role,
++                  try capture.home.currentReservationSha256() == journal.reservationSha256 else {
++                throw NativeFreshBootstrapError.binding
++            }
++            let retainedRoot = try capture.home.duplicateDirectoryForNativeBootstrap()
++            defer { Darwin.close(retainedRoot) }
++            let store = try PrivateNativeFreshBootstrapJournalStore(
++                canonicalDisposableRoot: capture.home.canonicalHome, journal: journal,
++                retainedRootDescriptor: retainedRoot
++            )
++            guard let stored = try store.load(), stored.journal == journal,
++                  stored.sha256 == durableJournalSha256 else { throw NativeFreshBootstrapError.binding }
++        case .resumed(let home):
++            let stored = try home.readExistingInitialJournal()
++            guard stored.journal == journal, stored.sha256 == durableJournalSha256 else {
++                throw NativeFreshBootstrapError.binding
++            }
++        }
+     }
+ #endif
+ }
+--- a/aux-native-fresh-target-cohort-lease/source/AuxNativeFreshTargetCoordinator.swift
++++ b/aux-native-fresh-resume/source/AuxNativeFreshTargetCoordinator.swift
+@@ -71,9 +71,9 @@
+     init(context:NativeFreshStagedContext)throws {
+         try context.revalidateNativeStageBinding()
+         let boundary=try AuxNativeFreshTargetBoundary(context:context)
+-        let fd=try context.capture.home.duplicateDirectoryForNativeBootstrap();defer{Darwin.close(fd)}
+-        let store=try PrivateNativeFreshTargetJournalStore(canonicalDisposableRoot:context.capture.home.canonicalHome,transactionId:context.journal.transactionId,retainedRootDescriptor:fd)
+-        self.context=context;self.boundary=boundary;initial=context.journal;initialSha=context.durableJournalSha256;self.store=store;cohortLease=context.capture.home.targetProgressLease
++        let fd=try context.duplicateRetainedHomeDescriptor();defer{Darwin.close(fd)}
++        let store=try PrivateNativeFreshTargetJournalStore(canonicalDisposableRoot:context.canonicalHome,transactionId:context.journal.transactionId,retainedRootDescriptor:fd)
++        self.context=context;self.boundary=boundary;initial=context.journal;initialSha=context.durableJournalSha256;self.store=store;cohortLease=context.targetProgressLease
+     }
+ #endif
+     private func validateContext()throws {
