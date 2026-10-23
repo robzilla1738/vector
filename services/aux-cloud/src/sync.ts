@@ -195,9 +195,9 @@ function unwrap(envelope: { iv: string; ct: string; tag: string }, user: string,
 }
 syncRoutes.get('/sync/key/status', async c => {
   wrappingKey().fill(0);
-  const [row] = await sql`SELECT u.sync_generation, k.generation, k.revision, EXISTS (SELECT 1 FROM aux_sync_recovery_v2 r WHERE r.user_id=u.id AND r.generation=u.sync_generation) AS recovery_configured FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}`;
+  const [row] = await sql`SELECT u.sync_generation, k.generation, k.revision, EXISTS (SELECT 1 FROM aux_sync_recovery_v2 r WHERE r.user_id=u.id AND r.generation=u.sync_generation) AS recovery_configured, COALESCE((SELECT max(r.revision) FROM aux_sync_recovery_v2 r WHERE r.user_id=u.id AND r.generation=u.sync_generation),0) AS recovery_revision FROM aux_users u LEFT JOIN sync_keys k ON k.user_id = u.id WHERE u.id = ${c.get('user').id}`;
   if (!row) fail(404, 'NOT_FOUND', 'Account not found.');
-  return c.json({ state: row.generation == null ? row.recovery_configured ? 'device_required' : 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required', syncGeneration: row.sync_generation, revision: row.revision ?? 0, custody: null, custodyMode: 'server_wrapped' });
+  return c.json({ state: row.generation == null ? row.recovery_configured ? 'device_required' : 'provisioning' : row.generation === row.sync_generation ? 'ready' : 'device_required', syncGeneration: row.sync_generation, revision: row.revision ?? 0, custody: null, custodyMode: 'server_wrapped', recoveryConfigured: row.recovery_configured, recoveryRevision: row.recovery_revision });
 });
 syncRoutes.post('/sync/key/resolve', async c => {
   const user = c.get('user').id;

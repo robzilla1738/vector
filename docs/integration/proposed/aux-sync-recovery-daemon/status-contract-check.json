@@ -1,0 +1,29 @@
+{
+  "format": "aux.sync-recovery.status-contract.v1",
+  "session": 72854,
+  "exitCode": 0,
+  "cases": [
+    "no key and no backup: provisioning,false,0",
+    "server key without backup: ready,false,0",
+    "another generation recovery record ignored",
+    "current recovery with server key: ready,true,1",
+    "current recovery with missing server key: device_required,true,1"
+  ],
+  "test": "services/aux-cloud/src/sync-recovery-integration.test.ts",
+  "inputs": [
+    {
+      "path": "services/aux-cloud/src/sync.ts",
+      "sha256": "12c675075e408d036ece7731486c9b742b540a3f175b5cbc6e141a9719240ed5"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-integration.test.ts",
+      "sha256": "996c1e77b9096fc0441e8b8dfeae42064365a8d429bc2b088f51de51759e026f"
+    }
+  ],
+  "actualRouterAndSql": true,
+  "realPostgresCompatibleDDL": 12,
+  "transport": "Neon custom fetch to memory-only PGlite",
+  "networkCalls": 0,
+  "productionOperations": 0,
+  "desktopAcceptance": false
+}

@@ -43,8 +43,19 @@ test('mounted recovery uses real JWT/session/signature auth, full schema and gua
   const challengeResponse=await request('/sync/recovery/v2/challenge',{operation:'material',generation:0});assert.equal(challengeResponse.status,200,await challengeResponse.clone().text());const challenge=await challengeResponse.json() as any;assert.equal(challengeResponse.headers.get('cache-control'),'no-store');
   assert.equal((await request('/sync/recovery/v2/challenge',{padding:'x'.repeat(17000)})).status,413);
   const crossOwner=await new SignJWT({sid:session,sg:0}).setProtectedHeader({alg:'HS256'}).setSubject(other).setIssuer('https://api.getaux.co').setAudience('aux-desktop').setIssuedAt().setExpirationTime('10m').sign(new TextEncoder().encode(process.env.AUX_AUTH_SECRET));assert.equal((await request('/sync/recovery/v2/challenge',{operation:'material',generation:0},{...headers,authorization:'Bearer '+crossOwner})).status,401);
+  // Server-held key readiness is distinct from an enrolled recovery backup.
+  const keyStatus=async()=>{const response=await app.request('/api/v1/sync/key/status',{headers});assert.equal(response.status,200);return await response.json() as any;};
+  let observed=await keyStatus();assert.equal(observed.state,'provisioning');assert.equal(observed.recoveryConfigured,false);assert.equal(observed.recoveryRevision,0);
+  await query('INSERT INTO sync_keys(user_id,generation,wrapped_key) VALUES($1,0,$2::jsonb)',[owner,JSON.stringify({fixture:'status-only'})]);
+  observed=await keyStatus();assert.equal(observed.state,'ready');assert.equal(observed.recoveryConfigured,false);assert.equal(observed.recoveryRevision,0);
+  await query('INSERT INTO aux_sync_recovery_v2(user_id,generation,revision,recovery_id,envelope,csk_commitment,created_by_session) VALUES($1,1,7,$2,$3::jsonb,$4,$5)',[owner,randomUUID(),JSON.stringify({fixture:'old-generation'}),'a'.repeat(64),session]);
+  observed=await keyStatus();assert.equal(observed.recoveryConfigured,false);assert.equal(observed.recoveryRevision,0);
+  await query('DELETE FROM aux_sync_recovery_v2 WHERE user_id=$1 AND generation=1',[owner]);
   const recoveryId=randomUUID(),encrypted={format:'aux.sync-recovery.v2',opaqueFixtureCiphertext:'unchanged-encrypted-bytes'};
   await query('INSERT INTO aux_sync_recovery_v2(user_id,generation,revision,recovery_id,envelope,csk_commitment,created_by_session) VALUES($1,0,1,$2,$3::jsonb,$4,$5)',[owner,recoveryId,JSON.stringify(encrypted),'a'.repeat(64),session]);
+  observed=await keyStatus();assert.equal(observed.state,'ready');assert.equal(observed.recoveryConfigured,true);assert.equal(observed.recoveryRevision,1);
+  await query('DELETE FROM sync_keys WHERE user_id=$1',[owner]);
+  observed=await keyStatus();assert.equal(observed.state,'device_required');assert.equal(observed.recoveryConfigured,true);assert.equal(observed.recoveryRevision,1);
   const material=await request('/sync/recovery/v2/submit',{challengeId:challenge.challenge.id,signatureB64:sign('sha256',Buffer.from(challenge.messageB64,'base64'),keys.privateKey).toString('base64'),action:{operation:'material',generation:0}});assert.equal(material.status,200,await material.clone().text());assert.deepEqual((await material.json() as any).recoveryBackup,encrypted);
   // Recovery-only generation cannot create a new random CSK through ordinary APIs.
   const status=await app.request('/api/v1/sync/key/status',{headers});assert.equal((await status.json() as any).state,'device_required');
