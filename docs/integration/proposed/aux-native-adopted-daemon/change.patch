@@ -1,0 +1,849 @@
+--- baseline/AuxOwnedNativePeerChild.cc
++++ source/AuxOwnedNativePeerChild.cc
+@@ -266,6 +266,50 @@
+   }
+   return peer ? peer->ServiceOne(timeout_ms) : ExchangeStatus::refused;
+ }
++NativeChildObservation SelectedNativeHome::InspectOwnedChild() {
++  if (getpid() != state_->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->child->mutex);
++  return state_->child->ReapLocked();
++}
++DaemonAuthorityReply SelectedNativeHome::SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->SignDaemonChallenge(message, timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
++DaemonAuthorityReply SelectedNativeHome::GetInstallationPublicKeys(uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->GetInstallationPublicKeys(timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
++DaemonAuthorityReply SelectedNativeHome::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->GetAgentInboxV2MasterKey(timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid) {
++    if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++    return {DaemonAuthorityStatus::closed, {}};
++  }
++  return reply;
++}
++DaemonAuthorityStatus SelectedNativeHome::AcceptAuthorityReply(
++    const DaemonAuthorityReply& reply, uint32_t timeout_ms) {
++  auto child = InspectOwnedChild();
++  if (child.closed || child.wrong_process || child.exit_observed_and_reaped || child.exit_ownership_unknown)
++    return DaemonAuthorityStatus::closed;
++  return state_->transfer->AcceptAuthorityReply(reply, timeout_ms);
++}
+ NativeChildObservation SelectedNativeHome::CloseNativeAdmission() {
+   if (getpid() != state_->process) return NativeChildObservation{.closed = true, .wrong_process = true};
+   OwnedNativePeerChild::State::CloseAndRetain(state_->child);
+--- baseline/AuxOwnedNativePeerChild.h
++++ source/AuxOwnedNativePeerChild.h
+@@ -29,6 +29,11 @@
+   std::optional<ReadyHomePulse> InspectReadyPulse();
+   ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
+   NativeChildObservation CloseNativeAdmission();
++  NativeChildObservation InspectOwnedChild();
++  DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms);
++  DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
++  DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
++  DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply, uint32_t timeout_ms);
+  private:
+   struct State;
+   explicit SelectedNativeHome(std::shared_ptr<State> state);
+--- baseline/AuxSelectedStateHome.cc
++++ source/AuxSelectedStateHome.cc
+@@ -1,5 +1,6 @@
+ #include "AuxSelectedStateHome.h"
+ #include "base/files/scoped_file.h"
++#include "base/base64.h"
+ #include "base/functional/bind.h"
+ #include "base/threading/thread.h"
+ #include <unistd.h>
+@@ -7,6 +8,7 @@
+ #include <fcntl.h>
+ #include <limits.h>
+ #include <chrono>
++#include <algorithm>
+ #include <cstdlib>
+ #include <cstring>
+ #include <mutex>
+@@ -82,6 +84,81 @@
+   return {route, state.monitor_running, state.active_reads, state.initializing,
+           state.monitor != nullptr, state.child_close};
+ }
++enum class AuthorityOperation { daemonSignature, publicKeys, inboxKeyV2 };
++void ClearPayload(DaemonAuthorityReply& reply) {
++  if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++  reply.payload.clear();
++}
++DaemonAuthorityReply CallAuthority(AuthorityOperation operation, std::span<const uint8_t> message) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  std::shared_ptr<SelectedNativeHome> owner;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed) return {DaemonAuthorityStatus::closed, {}};
++    if (!state.selected_route || state.initializing || !state.selected)
++      return {DaemonAuthorityStatus::refused, {}};
++    owner = state.selected;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->active_reads;
++  };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto before = owner->InspectReadyPulse();
++  if (!before || !Fresh(*before)) return {DaemonAuthorityStatus::pending, {}};
++  DaemonAuthorityReply reply;
++  switch (operation) {
++    case AuthorityOperation::daemonSignature: reply = owner->SignDaemonChallenge(message, 2'000); break;
++    case AuthorityOperation::publicKeys: reply = owner->GetInstallationPublicKeys(2'000); break;
++    case AuthorityOperation::inboxKeyV2: reply = owner->GetAgentInboxV2MasterKey(2'000); break;
++  }
++  if (reply.status == DaemonAuthorityStatus::closed || reply.status == DaemonAuthorityStatus::wrongProcess ||
++      reply.status == DaemonAuthorityStatus::cleanupUnresolved) {
++    {
++      std::lock_guard<std::mutex> lock(state.mutex);
++      state.closed = true;
++    }
++    auto closed = owner->CloseNativeAdmission();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.child_close = closed;
++    ClearPayload(reply);
++    return reply;
++  }
++  if (reply.status != DaemonAuthorityStatus::ready) {
++    ClearPayload(reply);
++    return reply;
++  }
++  auto after = owner->InspectReadyPulse();
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.selected != owner) {
++      ClearPayload(reply);
++      return {DaemonAuthorityStatus::closed, {}};
++    }
++    if (!after || !Fresh(*after) || after->generation != before->generation || after->exports < before->exports) {
++      ClearPayload(reply);
++      return {DaemonAuthorityStatus::pending, {}};
++    }
++  }
++  if (reply.payload.empty() || reply.payload.size() > 8192 ||
++      (operation == AuthorityOperation::inboxKeyV2 && reply.payload.size() != 32)) {
++    ClearPayload(reply);
++    return {DaemonAuthorityStatus::refused, {}};
++  }
++  // The private response ticket remains unacknowledged until this actual
++  // publication fence. The transport revalidates owner/generation at ACK.
++  // No mutex crosses that authenticated peer callback.
++  const auto accepted = owner->AcceptAuthorityReply(reply, 2'000);
++  if (accepted != DaemonAuthorityStatus::ready) {
++    ClearPayload(reply);
++    return {accepted, {}};
++  }
++  // Do not discard an acknowledged signature in a second post-ACK fence:
++  // the supervisor retains it before its own later publication validation.
++  return reply;
++}
+ }  // namespace
+ bool InstallNativeSelectedStateHome(std::unique_ptr<SelectedNativeHome> selected) {
+   auto& state = CurrentState();
+@@ -143,11 +220,14 @@
+   auto path = directory.is_valid() ? PhysicalPath(directory.get()) : std::nullopt;
+   if (!path) return {SelectedStateHomeRoute::unavailable, {}};
+   auto current = owner->InspectReadyPulse();
++  auto child = owner->InspectOwnedChild();
++  if (child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++      child.exit_ownership_unknown || child.child_pid <= 1) return {SelectedStateHomeRoute::unavailable, {}};
+   std::lock_guard<std::mutex> lock(state.mutex);
+   if (state.closed) return {SelectedStateHomeRoute::closed, {}};
+   if (state.selected != owner || !current || current->generation != pulse->generation ||
+       current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
+-  return {SelectedStateHomeRoute::current, *path, current->exports};
++  return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
+ }
+ SelectedStateHomeObservation CloseNativeSelectedStateHome() {
+   auto& state = CurrentState();
+@@ -175,4 +255,41 @@
+   std::lock_guard<std::mutex> lock(state.mutex);
+   return ObserveLocked(state);
+ }
++NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message) {
++  auto message = base::Base64Decode(encoded_message);
++  constexpr char prefix[] = "Aux Daemon Auth v1\0";
++  constexpr size_t prefix_size = sizeof(prefix) - 1;
++  if (!message || message->size() != prefix_size + 32 ||
++      std::memcmp(message->data(), prefix, prefix_size) != 0)
++    return {DaemonAuthorityStatus::refused, std::nullopt};
++  auto reply = CallAuthority(AuthorityOperation::daemonSignature,
++      std::span(reinterpret_cast<const uint8_t*>(message->data()), message->size()));
++  if (reply.status != DaemonAuthorityStatus::ready) return {reply.status, std::nullopt};
++  auto signature = base::Base64Encode(reply.payload);
++  ClearPayload(reply);
++  if (signature.empty() || signature.size() > 8192) return {DaemonAuthorityStatus::refused, std::nullopt};
++  return {DaemonAuthorityStatus::ready, std::move(signature)};
++}
++std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message) {
++  auto reply = ObserveNativeSelectedDaemonChallenge(encoded_message);
++  return reply.status == DaemonAuthorityStatus::ready ? std::move(reply.signature) : std::nullopt;
++}
++std::optional<std::string> GetNativeSelectedInstallationPublicKeys() {
++  auto reply = CallAuthority(AuthorityOperation::publicKeys, {});
++  if (reply.status != DaemonAuthorityStatus::ready) return std::nullopt;
++  std::string json(reply.payload.begin(), reply.payload.end());
++  ClearPayload(reply);
++  return json;
++}
++std::optional<std::array<uint8_t, 32>> GetNativeSelectedAgentInboxV2MasterKey() {
++  auto reply = CallAuthority(AuthorityOperation::inboxKeyV2, {});
++  if (reply.status != DaemonAuthorityStatus::ready || reply.payload.size() != 32) {
++    ClearPayload(reply);
++    return std::nullopt;
++  }
++  std::array<uint8_t, 32> key;
++  std::copy(reply.payload.begin(), reply.payload.end(), key.begin());
++  ClearPayload(reply);
++  return key;
++}
+ }  // namespace aux::peer
+--- baseline/AuxSelectedStateHome.h
++++ source/AuxSelectedStateHome.h
+@@ -2,6 +2,9 @@
+ #include "AuxOwnedNativePeerChild.h"
+ #include "base/files/file_path.h"
+ #include <memory>
++#include <array>
++#include <string>
++#include <string_view>
+ 
+ namespace aux::peer {
+ enum class SelectedStateHomeRoute { unselected, current, unavailable, closed, wrongProcess };
+@@ -9,6 +12,7 @@
+   SelectedStateHomeRoute route;
+   base::FilePath path;
+   uint64_t ready_exports = 0;
++  int child_pid = -1;
+ };
+ struct SelectedStateHomeObservation {
+   SelectedStateHomeRoute route;
+@@ -16,8 +20,16 @@
+   uint64_t active_reads = 0;
+   bool initialization_pending = false;
+   bool monitor_join_pending = false;
+-  std::optional<NativeChildObservation> child_close;
++  std::optional<NativeChildObservation> child_close = std::nullopt;
+ };
++struct NativeDaemonSignatureReply {
++  DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
++  std::optional<std::string> signature;
++};
++NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);
++std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message);
++std::optional<std::string> GetNativeSelectedInstallationPublicKeys();
++std::optional<std::array<uint8_t, 32>> GetNativeSelectedAgentInboxV2MasterKey();
+ // Native-only, one-shot selected route. No path/env/status/JSON setter exists.
+ // It retains actual selected child ownership; it does not admit profile writers.
+ bool InstallNativeSelectedStateHome(std::unique_ptr<SelectedNativeHome> selected);
+--- baseline/browser_platform.cc
++++ source/browser_platform.cc
+@@ -11,6 +11,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "AuxSelectedStateHome.h"
+ namespace aux {
+ BrowserPlatform::BrowserPlatform() = default;
+ BrowserPlatform::~BrowserPlatform() = default;
+@@ -28,6 +29,9 @@
+   if (!paths) {
+     return false;
+   }
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::unselected &&
++      selected.route != peer::SelectedStateHomeRoute::current) return false;
+   auto home = StateHome();
+   if (home.empty()) {
+     return false;
+@@ -54,19 +58,29 @@
+   }
+   uint16_t port = 21520;
+   auto env = base::Environment::Create();
+-  if (auto text = env->GetVar("AUX_PORT"); text) {
++  if (auto text = env->GetVar("AUX_PORT");
++      selected.route == peer::SelectedStateHomeRoute::unselected && text) {
+     unsigned number = 0;
+     if (!base::StringToUint(*text, &number) || number == 0 || number > 65535) {
+       return false;
+     }
+     port = number;
+   }
+-  supervisor_ = std::make_unique<DaemonSupervisor>(
+-      *paths, home, port, std::move(factory),
+-      base::BindRepeating(&BrowserPlatform::DidChangeDaemonState,
+-                          weak_.GetWeakPtr()),
+-      base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          "aux-development-runtime"));
++  // The native route already owns the spawned daemon. Its exact selected
++  // owner supplies home/PID; Start polls it and can never issue another spawn.
++  if (selected.route == peer::SelectedStateHomeRoute::current) {
++    supervisor_ = DaemonSupervisor::AdoptInstalledNativeChild(
++        *paths, port, std::move(factory),
++        base::BindRepeating(&BrowserPlatform::DidChangeDaemonState, weak_.GetWeakPtr()));
++    if (!supervisor_) return false;
++  } else {
++    // A selected route may have installed while the component loop waited.
++    if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) return false;
++    supervisor_ = std::make_unique<DaemonSupervisor>(
++        *paths, home, port, std::move(factory),
++        base::BindRepeating(&BrowserPlatform::DidChangeDaemonState, weak_.GetWeakPtr()),
++        base::CommandLine::ForCurrentProcess()->HasSwitch("aux-development-runtime"));
++  }
+   supervisor_->Start();
+   return true;
+ }
+@@ -116,7 +130,10 @@
+ bool BrowserPlatform::WaitForStartupReadiness(
+     base::RepeatingCallback<bool()> extensions_ready) {
+   if (startup_state_ == StartupState::kReady) {
+-    return true;
++    auto selected = peer::ReadNativeSelectedStateHome();
++    return selected.route == peer::SelectedStateHomeRoute::unselected ||
++        (selected.route == peer::SelectedStateHomeRoute::current && supervisor_ &&
++         supervisor_->healthy() && !supervisor_->authorization().empty());
+   }
+   if (startup_state_ == StartupState::kFailed || !supervisor_) {
+     return false;
+@@ -145,15 +162,20 @@
+   }
+   const bool extensions_ready = startup_extensions_ready_.Run();
+   const bool healthy = supervisor_ && supervisor_->healthy();
+-  if (!(extensions_ready && healthy) &&
++  auto selected = peer::ReadNativeSelectedStateHome();
++  const bool selected_ready = selected.route == peer::SelectedStateHomeRoute::unselected ||
++      (selected.route == peer::SelectedStateHomeRoute::current && healthy &&
++       supervisor_ && !supervisor_->authorization().empty());
++  if (!(extensions_ready && healthy && selected_ready) &&
+       base::TimeTicks::Now() < startup_deadline_) {
+     return;
+   }
+-  startup_state_ = extensions_ready ? StartupState::kReady
+-                                    : StartupState::kFailed;
++  startup_state_ = extensions_ready && selected_ready ? StartupState::kReady : StartupState::kFailed;
+   if (!extensions_ready) {
+     LOG(ERROR) << "Aux startup extensions did not become ready before the "
+                   "startup readiness timeout";
++  } else if (!selected_ready) {
++    LOG(ERROR) << "Aux selected native daemon authorization/readiness is unavailable";
+   } else if (!healthy) {
+     LOG(WARNING) << "Aux daemon did not become healthy before the startup "
+                     "readiness timeout; continuing browser startup because "
+@@ -163,7 +185,7 @@
+   startup_extensions_ready_.Reset();
+   auto waiters = std::move(startup_waiters_);
+   for (auto& waiter : waiters) {
+-    std::move(waiter).Run(extensions_ready);
++    std::move(waiter).Run(startup_state_ == StartupState::kReady);
+   }
+ }
+ 
+--- baseline/daemon_supervisor.cc
++++ source/daemon_supervisor.cc
+@@ -9,6 +9,7 @@
+ #if BUILDFLAG(IS_POSIX)
+ #include <cerrno>
+ #include <signal.h>
++#include <sys/wait.h>
+ #endif
+ 
+ #include "base/command_line.h"
+@@ -47,6 +48,8 @@
+     std::shared_ptr<DaemonLaunchAdmission> admission,
+     uint64_t generation,
+     base::OnceCallback<base::Process()> launch) {
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return base::Process();
+   base::AutoLock hold(admission->lock);
+   if (!admission->open || admission->generation != generation) {
+     return base::Process();
+@@ -212,10 +215,52 @@
+       allow_node_fallback_(allow_node_fallback),
+       launch_admission_(std::make_shared<DaemonLaunchAdmission>()) {}
+ DaemonSupervisor::~DaemonSupervisor() = default;
++std::unique_ptr<DaemonSupervisor> DaemonSupervisor::AdoptInstalledNativeChild(
++    BundlePaths paths, uint16_t port,
++    scoped_refptr<network::SharedURLLoaderFactory> factory, StateCallback changed) {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.child_pid <= 1) return {};
++  auto supervisor = std::make_unique<DaemonSupervisor>(
++      std::move(paths), selected.path, port, std::move(factory), std::move(changed));
++  supervisor->adopted_native_child_ = true;
++  return supervisor;
++}
++std::optional<int> DaemonSupervisor::OwnedDaemonPid() const {
++  if (!adopted_native_child_) return process_.IsValid() ? std::make_optional(process_.Pid()) : std::nullopt;
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.path != home_ ||
++      selected.child_pid <= 1) return std::nullopt;
++  return selected.child_pid;
++}
++bool DaemonSupervisor::CheckNativeSelection() {
++  if (!adopted_native_child_ || OwnedDaemonPid()) return true;
++  healthy_ = false;
++  authorization_.clear();
++  token_expires_ = base::TimeTicks();
++  CompleteAuthorizationRequests(std::nullopt);
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route == peer::SelectedStateHomeRoute::closed ||
++      selected.route == peer::SelectedStateHomeRoute::wrongProcess) {
++    admission_closed_ = true;
++    SetState(State::kFailed, "Selected native daemon closed");
++    return false;
++  }
++  SetState(State::kStarting, "Waiting for current native provider readiness");
++  timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
++  return false;
++}
++bool DaemonSupervisor::healthy() const {
++  return healthy_ && (!adopted_native_child_ || OwnedDaemonPid().has_value());
++}
++const std::string& DaemonSupervisor::authorization() const {
++  static const auto* empty = new std::string;
++  if (adopted_native_child_ && !OwnedDaemonPid()) return *empty;
++  return authorization_;
++}
+ void DaemonSupervisor::SetState(State state, std::string error) {
+   if (state_ != state) {
+     LOG(INFO) << "Aux daemon state " << static_cast<int>(state)
+-              << " pid=" << (process_.IsValid() ? process_.Pid() : 0)
++              << " pid=" << OwnedDaemonPid().value_or(0)
+               << " " << error;
+   }
+   state_ = state;
+@@ -230,6 +275,21 @@
+   changed_.Run(state, std::move(error));
+ }
+ void DaemonSupervisor::Start() {
++  if (adopted_native_child_) {
++    if (admission_closed_ || (state_ != State::kStopped && state_ != State::kFailed)) return;
++    if (!OwnedDaemonPid()) {
++      SetState(State::kFailed, "Selected native daemon is unavailable");
++      return;
++    }
++    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
++    SetState(State::kStarting);
++    Poll();
++    return;  // Never launch/restart/reap a second Process for this native child.
++  }
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) {
++    SetState(State::kFailed, "Selected native route refuses legacy daemon launch");
++    return;
++  }
+   if (admission_closed_ || launch_pending_ || process_.IsValid() ||
+       (state_ != State::kStopped && state_ != State::kFailed)) {
+     return;
+@@ -284,6 +344,11 @@
+     std::optional<std::string> body,
+     base::OnceCallback<void(std::optional<std::string>)> done,
+     std::optional<std::string> authorization_override) {
++  if (adopted_native_child_ && !OwnedDaemonPid()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(done), std::nullopt));
++    return;
++  }
+   auto request = std::make_unique<network::ResourceRequest>();
+   request->url = GURL("http://127.0.0.1:" + base::NumberToString(port_) + path);
+   request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+@@ -304,7 +369,7 @@
+   loader_->DownloadToString(factory_.get(), std::move(done), 65536);
+ }
+ void DaemonSupervisor::Poll() {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   Request("/health", std::nullopt,
+           base::BindOnce(&DaemonSupervisor::DidReadHealth, weak_.GetWeakPtr()));
+ }
+@@ -314,12 +379,13 @@
+   }
+   auto health = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                      : std::nullopt;
+-  const bool healthy = health && health->FindString("service") &&
++  const auto owned_pid = OwnedDaemonPid();
++  const bool healthy = owned_pid && health && health->FindString("service") &&
+                        *health->FindString("service") == "aux-daemon" &&
+                        health->FindString("version") &&
+                        *health->FindString("version") == "1.26.1016.1852" &&
+                        health->FindBool("ready").value_or(false) &&
+-                       health->FindInt("pid") == process_.Pid();
++                       health->FindInt("pid") == *owned_pid;
+   healthy_ = healthy;
+   if (healthy) {
+     if (authorization_.empty() ||
+@@ -339,6 +405,10 @@
+   if (base::TimeTicks::Now() >= activation_deadline_) {
+     SetState(State::kFailed, "Bundled daemon did not become ready");
+     return;
++  }
++  if (adopted_native_child_) {
++    timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
++    return;  // Its genuine native owner alone may observe/reap this child.
+   }
+   // Only restart a child after its freshly observed exit. Never adopt a health
+   // PID.
+@@ -382,7 +452,7 @@
+     authorization_.clear();
+     token_expires_ = base::TimeTicks();
+   }
+-  if (admission_closed_ || !healthy_ || !process_.IsValid() || state_ == State::kStopping ||
++  if (admission_closed_ || !healthy() || !OwnedDaemonPid() || state_ == State::kStopping ||
+       state_ == State::kStopped) {
+     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+@@ -406,14 +476,18 @@
+   Authenticate();
+ }
+ void DaemonSupervisor::Authenticate() {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   SetState(State::kAuthenticating);
++  if (adopted_native_child_ && native_challenge_id_ && native_challenge_) {
++    ObserveNativeSignature();
++    return;
++  }
+   Request(
+       "/auth/daemon/challenge?clientKind=chromium", std::nullopt,
+       base::BindOnce(&DaemonSupervisor::DidReadChallenge, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadChallenge(std::optional<std::string> body) {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* id = value ? value->FindString("challengeId") : nullptr;
+@@ -422,15 +496,72 @@
+     SetState(State::kFailed, "Daemon authentication challenge unavailable");
+     return;
+   }
++  if (adopted_native_child_) {
++    if (native_challenge_id_ || native_challenge_) {
++      SetState(State::kFailed, "A native daemon challenge is already pending");
++      return;
++    }
++    native_challenge_id_ = *id;
++    native_challenge_ = *challenge;
++    ObserveNativeSignature();
++    return;
++  }
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
+       base::BindOnce(&SignDaemonChallenge, home_, *challenge),
+       base::BindOnce(&DaemonSupervisor::DidSignChallenge, weak_.GetWeakPtr(),
+                      *id));
+ }
++void DaemonSupervisor::ObserveNativeSignature() {
++  if (admission_closed_ || native_sign_inflight_ || !native_challenge_id_ || !native_challenge_ ||
++      !CheckNativeSelection()) return;
++  if (native_completed_signature_) {
++    DidSignChallenge(*native_challenge_id_, native_completed_signature_);
++    return;
++  }
++  native_sign_inflight_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
++      base::BindOnce(&ObserveNativeDaemonChallenge, *native_challenge_),
++      base::BindOnce(&DaemonSupervisor::DidObserveNativeSignature, weak_.GetWeakPtr(),
++                     *native_challenge_id_, *native_challenge_));
++}
++void DaemonSupervisor::DidObserveNativeSignature(
++    std::string id, std::string challenge, peer::NativeDaemonSignatureReply reply) {
++  native_sign_inflight_ = false;
++  if (admission_closed_ || !native_challenge_id_ || !native_challenge_ ||
++      *native_challenge_id_ != id || *native_challenge_ != challenge) return;
++  // Keep the genuine completed response before the UI-sequence publication
++  // fence. Another finite operation may advance its transport cache later.
++  if (reply.status == peer::DaemonAuthorityStatus::ready && reply.signature)
++    native_completed_signature_ = std::move(reply.signature);
++  if (!CheckNativeSelection()) return;
++  switch (reply.status) {
++    case peer::DaemonAuthorityStatus::ready:
++      if (!native_completed_signature_) {
++        SetState(State::kFailed, "Native daemon signature response is invalid");
++        return;
++      }
++      DidSignChallenge(std::move(id), native_completed_signature_);
++      return;
++    case peer::DaemonAuthorityStatus::pending:
++    case peer::DaemonAuthorityStatus::busy:
++    case peer::DaemonAuthorityStatus::timedOut:
++      // The native peer retains the exact nonce/body. Re-entering this finite
++      // method observes that same attempt; never fetch a new server challenge.
++      timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::ObserveNativeSignature);
++      return;
++    case peer::DaemonAuthorityStatus::refused:
++    case peer::DaemonAuthorityStatus::closed:
++    case peer::DaemonAuthorityStatus::wrongProcess:
++    case peer::DaemonAuthorityStatus::cleanupUnresolved:
++      SetState(State::kFailed, "Native daemon authority refused the pending challenge");
++      return;
++  }
++}
+ void DaemonSupervisor::DidSignChallenge(std::string id,
+                                         std::optional<std::string> signature) {
+-  if (admission_closed_ || state_ == State::kStopping) {
++  if (admission_closed_ || state_ == State::kStopping || !CheckNativeSelection()) {
+     return;
+   }
+   if (!signature) {
+@@ -445,7 +576,7 @@
+       base::BindOnce(&DaemonSupervisor::DidReadSession, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadSession(std::optional<std::string> body) {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* type = value ? value->FindString("token_type") : nullptr;
+@@ -458,6 +589,11 @@
+     SetState(State::kFailed, "Daemon installation authorization failed");
+     return;
+   }
++  if (adopted_native_child_) {
++    native_challenge_id_.reset();
++    native_challenge_.reset();
++    native_completed_signature_.reset();
++  }
+   authorization_ = "AuxDaemonSessionToken " + *token;
+   token_expires_ = base::TimeTicks::Now() + base::Seconds(*seconds);
+   SetState(State::kReady);
+@@ -487,6 +623,13 @@
+   token_expires_ = base::TimeTicks();
+   SetState(State::kStopping);
+   if (launch_pending_) return;  // DidLaunch must collect even a stale child.
++  if (adopted_native_child_) {
++    Request("/shutdown", std::string("{}"),
++            base::BindOnce([](base::WeakPtr<DaemonSupervisor> self, std::optional<std::string>) {
++              if (self) self->FinishShutdown();
++            }, weak_.GetWeakPtr()), std::move(shutdown_authorization));
++    return;
++  }
+   if (!process_.IsValid()) {
+     DidFinishShutdown({true, std::nullopt});
+     return;
+@@ -505,6 +648,10 @@
+       }, std::move(done)));
+ }
+ void DaemonSupervisor::FinishShutdown() {
++  if (adopted_native_child_) {
++    FinishNativeShutdown();
++    return;
++  }
+   if (drain_pending_) return;
+   loader_.reset();
+   if (!process_.IsValid()) {
+@@ -519,16 +666,39 @@
+                      paths_.root),
+       base::BindOnce(&DaemonSupervisor::DidFinishShutdown, weak_.GetWeakPtr()));
+ }
++void DaemonSupervisor::FinishNativeShutdown() {
++  loader_.reset();
++  if (native_shutdown_deadline_.is_null())
++    native_shutdown_deadline_ = base::TimeTicks::Now() + base::Seconds(5);
++  native_close_observation_ = peer::CloseNativeSelectedStateHome();
++  const auto& closed = *native_close_observation_;
++  const bool exited = closed.child_close && closed.child_close->exit_observed_and_reaped &&
++      !closed.child_close->exit_ownership_unknown && !closed.monitor_running &&
++      !closed.monitor_join_pending && !closed.initialization_pending && !closed.active_reads;
++  if (exited) {
++    std::optional<int> code;
++#if BUILDFLAG(IS_POSIX)
++    if (WIFEXITED(closed.child_close->wait_status)) code = WEXITSTATUS(closed.child_close->wait_status);
++#endif
++    DidFinishShutdown({true, code});
++    return;
++  }
++  if (base::TimeTicks::Now() < native_shutdown_deadline_) {
++    timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::FinishNativeShutdown);
++    return;
++  }
++  DidFinishShutdown({false, std::nullopt});  // Actual native owner/pending observations stay retained.
++}
+ void DaemonSupervisor::DidFinishShutdown(DirectDaemonDrainResult drained) {
+   drain_pending_ = false;
+-  const bool owned = process_.IsValid();
++  const bool owned = adopted_native_child_ || process_.IsValid();
+   DirectDaemonQuiesceResult result;
+   result.outcome = !drained.exited
+                        ? DirectDaemonQuiesceResult::Outcome::kDrainFailed
+                        : owned ? DirectDaemonQuiesceResult::Outcome::kExited
+                                : DirectDaemonQuiesceResult::Outcome::kNoOwnedProcess;
+   result.exit_code = drained.exit_code;
+-  if (drained.exited) process_.Close();
++  if (drained.exited && process_.IsValid()) process_.Close();
+   authorization_.clear();
+   activation_deadline_ = base::TimeTicks();
+   quiesce_result_ = result;
+--- baseline/daemon_supervisor.h
++++ source/daemon_supervisor.h
+@@ -8,6 +8,7 @@
+ #include <vector>
+ 
+ #include "base/files/file_path.h"
++#include "AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/direct_daemon_quiesce_result.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/scoped_refptr.h"
+@@ -49,6 +50,10 @@
+                    StateCallback changed,
+                    bool allow_node_fallback = false);
+   ~DaemonSupervisor();
++  // Sources the home/process only from the actual installed native owner.
++  static std::unique_ptr<DaemonSupervisor> AdoptInstalledNativeChild(
++      BundlePaths paths, uint16_t port,
++      scoped_refptr<network::SharedURLLoaderFactory> factory, StateCallback changed);
+   void Start();
+   void SetStateCallback(StateCallback callback) {
+     changed_ = std::move(callback);
+@@ -60,8 +65,8 @@
+   void QuiesceDirectDaemonForMigration(DirectDaemonQuiesceCallback done);
+   void Shutdown(base::OnceClosure done);
+   State state() const { return state_; }
+-  bool healthy() const { return healthy_; }
+-  const std::string& authorization() const { return authorization_; }
++  bool healthy() const;
++  const std::string& authorization() const;
+   // UI sequence; completion is always posted. Force invalidates the cached
+   // token and joins or starts the same real installation challenge/session.
+   void RequestAuthorization(bool force, AuthorizationCallback callback);
+@@ -80,10 +85,16 @@
+       std::shared_ptr<DaemonLaunchAdmission> admission,
+       uint64_t generation);
+   void SetState(State state, std::string error = {});
++  std::optional<int> OwnedDaemonPid() const;
++  bool CheckNativeSelection();
++  void FinishNativeShutdown();
+   void DidLaunch(uint64_t generation, base::Process process);
+   void Poll();
+   void DidReadHealth(std::optional<std::string> body);
+   void Authenticate();
++  void ObserveNativeSignature();
++  void DidObserveNativeSignature(std::string id, std::string challenge,
++                                 peer::NativeDaemonSignatureReply reply);
+   void CompleteAuthorizationRequests(std::optional<std::string> result);
+   void DidReadChallenge(std::optional<std::string> body);
+   void DidSignChallenge(std::string id, std::optional<std::string> signature);
+@@ -109,6 +120,12 @@
+   std::vector<DirectDaemonQuiesceCallback> quiesce_waiters_;
+   std::optional<DirectDaemonQuiesceResult> quiesce_result_;
+   bool healthy_ = false;
++  bool adopted_native_child_ = false;
++  base::TimeTicks native_shutdown_deadline_;
++  std::optional<std::string> native_challenge_id_, native_challenge_;
++  std::optional<std::string> native_completed_signature_;
++  bool native_sign_inflight_ = false;
++  std::optional<peer::SelectedStateHomeObservation> native_close_observation_;
+   base::Process process_;
+   base::Time process_created_;
+   base::TimeTicks activation_deadline_, token_expires_;
+--- baseline/installation_auth.cc
++++ source/installation_auth.cc
+@@ -29,6 +29,7 @@
+ #include "base/strings/string_util.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/aux/daemon_supervisor.h"
++#include "AuxSelectedStateHome.h"
+ #include "crypto/sign.h"
+ namespace aux {
+ namespace {
+@@ -68,6 +69,9 @@
+ std::optional<base::DictValue> RunCarrier(const base::FilePath &home,
+                                           std::string_view command,
+                                           base::DictValue input) {
++  // Selected native authority is never delegated back to legacy helper/env gates.
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return std::nullopt;
+   auto custody = CarrierCustody().BeginCall();
+   if (!custody) return std::nullopt;
+   auto env = base::Environment::Create();
+@@ -266,6 +270,9 @@
+   return CarrierCustody().Inspect();
+ }
+ base::FilePath StateHome() {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::unselected)
++    return selected.route == peer::SelectedStateHomeRoute::current ? selected.path : base::FilePath();
+   auto env = base::Environment::Create();
+   if (auto value = env->GetVar("AUX_HOME"); value && !value->empty())
+     return base::FilePath(*value);
+@@ -274,6 +281,11 @@
+              ? home.AppendASCII(".aux")
+              : base::FilePath();
+ }
++std::optional<std::array<uint8_t, 32>> LoadAgentInboxV2MasterKey(const base::FilePath& home) {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.path != home) return std::nullopt;
++  return peer::GetNativeSelectedAgentInboxV2MasterKey();
++}
+ std::optional<std::array<uint8_t, 32>>
+ LoadAgentInboxMasterKey(const base::FilePath &home) {
+   auto result = RunCarrier(home, "agent-inbox-key", {});
+@@ -314,15 +326,26 @@
+ }
+ std::optional<crypto::keypair::PublicKey>
+ LoadInstallationPublicKey(const base::FilePath &home) {
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) {
++    auto json = peer::GetNativeSelectedInstallationPublicKeys();
++    return json ? ParseInstallationPublicKey(*json) : std::nullopt;
++  }
+   auto result = RunCarrier(home, "get-public-keys", {});
+   auto json = result ? base::WriteJson(*result) : std::nullopt;
+   return json ? ParseInstallationPublicKey(*json) : std::nullopt;
++}
++peer::NativeDaemonSignatureReply ObserveNativeDaemonChallenge(std::string_view challenge) {
++  auto message = HttpMessage(challenge);
++  if (!message) return {peer::DaemonAuthorityStatus::refused, std::nullopt};
++  return peer::ObserveNativeSelectedDaemonChallenge(base::Base64Encode(*message));
+ }
+ std::optional<std::string> SignDaemonChallenge(const base::FilePath &home,
+                                                std::string_view challenge) {
+   auto message = HttpMessage(challenge);
+   if (!message)
+     return std::nullopt;
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return peer::SignNativeSelectedDaemonChallenge(base::Base64Encode(*message));
+   base::DictValue input;
+   input.Set("challenge", base::Base64Encode(*message));
+   auto result = RunCarrier(home, "cdp-sign", std::move(input));
+--- baseline/installation_auth.h
++++ source/installation_auth.h
+@@ -2,6 +2,7 @@
+ // Supplied native-authority integration; HTTP and raw CDP inputs are distinct.
+ #ifndef CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
+ #define CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
++#include "AuxSelectedStateHome.h"
+ #include <array>
+ #include <cstdint>
+ #include <optional>
+@@ -13,6 +14,8 @@
+ #include "base/process/process.h"
+ #include "crypto/keypair.h"
+ namespace aux {
++peer::NativeDaemonSignatureReply ObserveNativeDaemonChallenge(std::string_view challenge);
++std::optional<std::array<uint8_t, 32>> LoadAgentInboxV2MasterKey(const base::FilePath& home);
+ namespace internal {
+ // Blocking production timeout reaper, shared with the synthetic-child fixture.
+ // The caller transfers its owned unreaped child and retained call; never a PID.

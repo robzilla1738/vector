@@ -1,0 +1,18 @@
+{
+  "format": "aux.native-adopted-daemon.static-evidence.v1",
+  "sourceFiles": 9,
+  "baselineFiles": 9,
+  "sourcePatchVerified": true,
+  "compileInputPinsVerified": true,
+  "sourceVerifierSha256": "ec4f79dd4e2aec27c4c174b93fc82e4131c5a09423430a7d680eccb33e98345a",
+  "compileRecipeSha256": "01e3a01937f727996018a68f9289b58cd86266d868e7efa44b7b7fef3bcee46c",
+  "sourceInputsSha256": "689e1562c00e66b5a22669b62a3fcfeb500b9e4d64ee0317ec8b27bf409e7e65",
+  "compileInputsSha256": "b084c93d58b77c75ef9e7bd9fd13acfc1b37481f4d3a0d09a4b8a4718b532036",
+  "compilerInvoked": false,
+  "ipcExecuted": false,
+  "securityExecuted": false,
+  "sourceApplied": false,
+  "appOrUiChanged": false,
+  "transportDependencyCommit": "34027c6fc",
+  "backendDependencyCommit": "284a3a3b2"
+}

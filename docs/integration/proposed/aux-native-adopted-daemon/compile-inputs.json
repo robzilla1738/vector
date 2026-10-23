@@ -1,0 +1,119 @@
+{
+  "format": "aux.native-adopted-daemon.compile-inputs.v1",
+  "queued": false,
+  "compiled": false,
+  "nativeOrSecurityExecuted": false,
+  "compileInputs": {
+    "docs/integration/proposed/aux-native-adopted-daemon/source/browser_platform.cc": "600148c4f62d39ce1bd3672b34d0af159e3f64b74f9e562f35afe528b119a00e",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc": "407f2cf2964bd960082b09be73514fcda573f5ee495e73340a535bdca9b3063f",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.cc": "35213300f345197ce640eaf3f5fc0d53abf1922404e6185423d0f80b6cdaf0d6",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.cc": "3c8f32d8c268cc4baa182b7e08e74b6cfffd80d8b014fc7cbde09171bd4462cf",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc": "0ab5e23e8efd6a7720e7366941e5f3e609f8ea9bc39463b5b42a52e9588407d4",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h": "0a92527b2177fb0ad4a9574c0d2d2db0d58937647f6245a700bb29c1551b222a",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "4803cac60f4d92c5019efc4c139dd42fa2d6b957316567c6b07993a06dc2734f",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc": "6363bb6bfe4d93db9d88afd8ea644304459e18c40bf7091e7f112747e965479b",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.h": "048433d6100fd0dbebfa4f63ee9fdfe6ebd1f1f8aca5926afeffb7ddb8e3afb6",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "f0f9566f4640edc715799b2f94745267b909c282cde319d7f995fd61123dc545",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxFreshColdBootstrapNativeBridge.h": "78009c7c8d1dfca0685bfda9b3649bee300c9eb4d43330a89241056b132b7782",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/tests/wire-contract.cc": "52112230655ae898aa18a3cc86d66cce8818c98f221b7a915da20b22664872e0"
+  },
+  "nativeConfigInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/base/base.ninja",
+      "sha256": "6e356bb885475d0938400323fde6cdcebf9342b939c651f17d2dc79d336c2e4f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/build/modules/system/module.pcm",
+      "sha256": "4fb27a097159c1cf84b2b58b297144934279fb1934beebdef9f858367305374e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/gen/build/modules/module.modulemap",
+      "sha256": "4af6368f381f18ab9ff37f2ddf6c761fc4de00629d0f28a3d59342547df99514"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+      "sha256": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "sha256": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/launch.h",
+      "sha256": "52b4dc784b0e8678697b10c847fa03f2b482578a323fcd0574d95ef68d6ed008"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+      "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.h",
+      "sha256": "c54d30debfa721763774774ad85e197b8a7b1337d3cb78a830258cd30d73f74f"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/flock.2",
+      "sha256": "54195927032ace18230a4f926d9edfbb672fc8706267be00727d203a01b6d616"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/fcntl.2",
+      "sha256": "9b16ec920ad681d1af2256b2c76d408c7b8506b7cad13aa00d035ba4385787a7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc",
+      "sha256": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc",
+      "sha256": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.h",
+      "sha256": "6dee06872f9b537e9c28af096d54bf9ce3425f39d9841316d6c01dc4a3c8001b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.cc",
+      "sha256": "af408e7f452306db5184556eccc40a181eed6edc33d616bffef051e416af1cc1"
+    }
+  ],
+  "nodeCompiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+  "logicalSources": {
+    "browser_platform.cc": "docs/integration/proposed/aux-native-adopted-daemon/source/browser_platform.cc",
+    "AuxSelectedStateHome.cc": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc",
+    "installation_auth.cc": "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.cc",
+    "AuxOwnedNativePeerChild.h": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h",
+    "daemon_supervisor.cc": "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.cc",
+    "AuxOwnedNativePeerChild.cc": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc",
+    "installation_auth.h": "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.h",
+    "AuxSelectedStateHome.h": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h",
+    "daemon_supervisor.h": "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.h",
+    "AuxNativePeerTransport.h": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h",
+    "AuxNativeParentConnectionBridge.cc": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc",
+    "AuxNativeParentConnectionBridge.h": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.h",
+    "AuxNativePeerTransport.cc": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc",
+    "AuxNativePeerWire.h": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h"
+  },
+  "recipeSha256": "01e3a01937f727996018a68f9289b58cd86266d868e7efa44b7b7fef3bcee46c",
+  "scope": "8 objects: 6 Chromium, 2 Node, pure wire syntax; source only no Swift/link/run"
+}
