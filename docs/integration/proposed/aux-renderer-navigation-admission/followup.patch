@@ -1,0 +1,377 @@
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -6,6 +6,7 @@
+ // channel. There will be one RenderProcessHost per renderer process.
+ 
+ #include "content/browser/renderer_host/render_process_host_impl.h"
++#include "content/browser/renderer_host/aux_renderer_navigation_admission.h"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -1831,6 +1832,7 @@
+ }
+ 
+ RenderProcessHostImpl::~RenderProcessHostImpl() {
++  aux_migration::ObserveRendererHostDestruction(this);
+   TRACE_EVENT("shutdown", "~RenderProcessHostImpl",
+               ChromeTrackEvent::kRenderProcessHost, *this);
+   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M152);
+@@ -1877,6 +1879,10 @@
+ }
+ 
+ bool RenderProcessHostImpl::Init() {
++  aux_migration::ScopedRendererInitAdmission aux_admission;
++  if (!aux_admission.admitted())
++    return false;
++
+   // calling Init() more than once does nothing, this makes it more convenient
+   // for the view host which may not be sure in some cases
+   if (IsInitializedAndNotDead())
+@@ -1950,6 +1956,7 @@
+   if (renderer_path.empty())
+     return false;
+ 
++  aux_migration::ObserveRendererLaunchStarted(this, run_renderer_in_process());
+   is_initialized_ = true;
+   is_dead_ = false;
+   sent_render_process_ready_ = false;
+@@ -6110,6 +6117,7 @@
+ }
+ 
+ void RenderProcessHostImpl::OnProcessLaunched() {
++  aux_migration::ScopedRendererLaunchCallback aux_callback(this);
+   // No point doing anything, since this object will be destructed soon.  We
+   // especially don't want to send the OnRenderProcessHostCreated notification,
+   // since some clients might expect a RenderProcessHostDestroyed() afterwards
+@@ -6257,6 +6265,7 @@
+ }
+ 
+ void RenderProcessHostImpl::OnProcessLaunchFailed(int error_code) {
++  aux_migration::ScopedRendererLaunchCallback aux_callback(this);
+   // If this object will be destructed soon, then observers have already been
+   // sent a RenderProcessHostDestroyed notification, and we must observe our
+   // contract that says that will be the last call.
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/renderer_host/navigation_request.h"
++#include "content/browser/renderer_host/aux_renderer_navigation_admission.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -2249,6 +2250,7 @@
+ }
+ 
+ NavigationRequest::~NavigationRequest() {
++  aux_migration::ObserveNavigationDestruction(this);
+   TRACE_EVENT("navigation", "NavigationRequest::~NavigationRequest",
+               perfetto::TerminatingFlow::FromPointer(this));
+   is_destructing_ = true;
+@@ -2461,6 +2463,19 @@
+ }
+ 
+ void NavigationRequest::BeginNavigation() {
++  aux_migration::ScopedNavigationAdmission aux_admission(this, true);
++  if (!aux_admission.admitted()) {
++    if (frame_tree_node_->navigation_request() == this) {
++      net_error_ = net::ERR_ABORTED;
++      frame_tree_node_->ResetNavigationRequest(
++          NavigationDiscardReason::kInternalCancellation);
++      return;  // The cancellation deleted this request.
++    }
++    // A non-FrameTreeNode-owned route cannot be deleted through
++    // that owner. Preserve its original cleanup and report the gap.
++    aux_migration::ObserveUnsupportedNavigationCancellation();
++  }
++
+   begin_navigation_time_ = base::TimeTicks::Now();
+   TRACE_EVENT("navigation", "NavigationRequest::BeginNavigation",
+               perfetto::Flow::FromPointer(this));
+@@ -2867,6 +2882,19 @@
+ }
+ 
+ void NavigationRequest::BeginNavigationImpl() {
++  aux_migration::ScopedNavigationAdmission aux_admission(this, false);
++  if (!aux_admission.admitted()) {
++    if (frame_tree_node_->navigation_request() == this) {
++      net_error_ = net::ERR_ABORTED;
++      frame_tree_node_->ResetNavigationRequest(
++          NavigationDiscardReason::kInternalCancellation);
++      return;  // The cancellation deleted this request.
++    }
++    // A non-FrameTreeNode-owned route cannot be deleted through
++    // that owner. Preserve its original cleanup and report the gap.
++    aux_migration::ObserveUnsupportedNavigationCancellation();
++  }
++
+   TRACE_EVENT("navigation", "NavigationRequest::BeginNavigationImpl",
+               perfetto::Flow::FromPointer(this));
+   base::ElapsedTimer timer;
+@@ -5959,6 +5987,12 @@
+ 
+ void NavigationRequest::OnStartChecksComplete(
+     NavigationThrottle::ThrottleCheckResult result) {
++  aux_migration::ScopedNavigationAdmission aux_admission(this, false);
++  if (!aux_admission.admitted()) {
++    // Retain the original asynchronous failure/weak-callback cleanup below.
++    result = NavigationThrottle::ThrottleCheckResult(
++        NavigationThrottle::CANCEL_AND_IGNORE);
++  }
+   TRACE_EVENT("navigation", "NavigationRequest::OnStartChecksComplete",
+               perfetto::Flow::FromPointer(this));
+   CHECK(result.action() != NavigationThrottle::DEFER);
+diff --git a/content/public/browser/aux_renderer_navigation_admission.h b/content/public/browser/aux_renderer_navigation_admission.h
+new file mode 100644
+--- /dev/null
++++ b/content/public/browser/aux_renderer_navigation_admission.h
+@@ -0,0 +1,30 @@
++#ifndef CONTENT_PUBLIC_BROWSER_AUX_RENDERER_NAVIGATION_ADMISSION_H_
++#define CONTENT_PUBLIC_BROWSER_AUX_RENDERER_NAVIGATION_ADMISSION_H_
++
++#include <cstddef>
++#include <cstdint>
++#include "content/common/content_export.h"
++
++namespace content::aux_migration {
++
++// Process-local component observations, never renderer exit/storage drain proof.
++struct RendererNavigationAdmissionSnapshot {
++  uint64_t generation;
++  bool closed;
++  size_t active_renderer_init_calls;
++  size_t pending_renderer_launches;
++  size_t unresolved_renderer_launches;
++  size_t late_renderer_launch_callbacks;
++  size_t active_navigation_dispatches;
++  size_t live_navigation_requests;
++  size_t unresolved_navigation_cleanups;
++  size_t unsupported_navigation_cancellations;
++};
++
++// Permanent native close. No reset, scope selector, environment or JS grant.
++CONTENT_EXPORT void CloseRendererNavigationAdmissionForMigration();
++CONTENT_EXPORT RendererNavigationAdmissionSnapshot
++InspectRendererNavigationAdmissionForMigration();
++
++}  // namespace content::aux_migration
++#endif
+diff --git a/content/browser/renderer_host/aux_renderer_navigation_admission.h b/content/browser/renderer_host/aux_renderer_navigation_admission.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/renderer_host/aux_renderer_navigation_admission.h
+@@ -0,0 +1,50 @@
++#ifndef CONTENT_BROWSER_RENDERER_HOST_AUX_RENDERER_NAVIGATION_ADMISSION_H_
++#define CONTENT_BROWSER_RENDERER_HOST_AUX_RENDERER_NAVIGATION_ADMISSION_H_
++
++#include <cstdint>
++#include "content/public/browser/aux_renderer_navigation_admission.h"
++
++namespace content::aux_migration {
++
++class ScopedRendererInitAdmission final {
++ public:
++  ScopedRendererInitAdmission();
++  ~ScopedRendererInitAdmission();
++  ScopedRendererInitAdmission(const ScopedRendererInitAdmission&) = delete;
++  ScopedRendererInitAdmission& operator=(const ScopedRendererInitAdmission&) = delete;
++  bool admitted() const { return admitted_; }
++ private:
++  const bool admitted_;
++};
++
++// Starts the observation before any launch/reentrant embedder callback.
++void ObserveRendererLaunchStarted(const void* host, bool in_process);
++void ObserveRendererHostDestruction(const void* host);
++class ScopedRendererLaunchCallback final {
++ public:
++  explicit ScopedRendererLaunchCallback(const void* host);
++  ~ScopedRendererLaunchCallback();
++  ScopedRendererLaunchCallback(const ScopedRendererLaunchCallback&) = delete;
++  ScopedRendererLaunchCallback& operator=(const ScopedRendererLaunchCallback&) = delete;
++ private:
++  const void* const host_;
++  const uint64_t token_;
++};
++
++// Native owner-keyed entry/resume acquisition. Repeated queued resumes retain
++// the same request observation; closure cannot be reopened by a new request.
++class ScopedNavigationAdmission final {
++ public:
++  ScopedNavigationAdmission(const void* request, bool first_entry);
++  ~ScopedNavigationAdmission();
++  ScopedNavigationAdmission(const ScopedNavigationAdmission&) = delete;
++  ScopedNavigationAdmission& operator=(const ScopedNavigationAdmission&) = delete;
++  bool admitted() const { return admitted_; }
++ private:
++  const bool admitted_;
++};
++void ObserveNavigationDestruction(const void* request);
++void ObserveUnsupportedNavigationCancellation();
++
++}  // namespace content::aux_migration
++#endif
+diff --git a/content/browser/renderer_host/aux_renderer_navigation_admission.cc b/content/browser/renderer_host/aux_renderer_navigation_admission.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/renderer_host/aux_renderer_navigation_admission.cc
+@@ -0,0 +1,156 @@
++#include "content/browser/renderer_host/aux_renderer_navigation_admission.h"
++
++#include <limits>
++#include <map>
++#include <mutex>
++#include <set>
++
++namespace content::aux_migration {
++namespace {
++struct Launch {
++  uint64_t token;
++  bool in_process;
++};
++struct State {
++  State();
++  ~State();
++  std::mutex mutex;
++  bool closed = false;
++  size_t active_init = 0;
++  size_t unresolved_launches = 0;
++  size_t late_callbacks = 0;
++  size_t active_navigation = 0;
++  size_t unresolved_navigation = 0;
++  size_t unsupported_navigation = 0;
++  uint64_t next_token = 0;
++  std::map<const void*, Launch> launches;
++  std::set<const void*> navigations;
++};
++State::State() = default;
++State::~State() = default;
++State& Current() {
++  static State* const state = new State;
++  return *state;
++}
++void Increment(size_t& count) {
++  if (count != std::numeric_limits<size_t>::max())
++    ++count;
++}
++bool AcquireInit() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.closed || state.active_init == std::numeric_limits<size_t>::max())
++    return false;
++  ++state.active_init;
++  return true;
++}
++bool AcquireNavigation(const void* request, bool first_entry) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.closed || !request ||
++      state.active_navigation == std::numeric_limits<size_t>::max())
++    return false;
++  if (!state.navigations.contains(request)) {
++    if (!first_entry)
++      Increment(state.unsupported_navigation);
++    state.navigations.insert(request);
++  }
++  ++state.active_navigation;
++  return true;
++}
++uint64_t BeginLaunchCallback(const void* host) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.closed)
++    Increment(state.late_callbacks);
++  auto found = state.launches.find(host);
++  if (found == state.launches.end()) {
++    Increment(state.unresolved_launches);
++    return 0;
++  }
++  return found->second.token;
++}
++}  // namespace
++
++void CloseRendererNavigationAdmissionForMigration() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  state.closed = true;
++}
++RendererNavigationAdmissionSnapshot
++InspectRendererNavigationAdmissionForMigration() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  return {state.closed ? uint64_t{0} : uint64_t{1}, state.closed,
++          state.active_init, state.launches.size(), state.unresolved_launches,
++          state.late_callbacks, state.active_navigation, state.navigations.size(),
++          state.unresolved_navigation, state.unsupported_navigation};
++}
++ScopedRendererInitAdmission::ScopedRendererInitAdmission()
++    : admitted_(AcquireInit()) {}
++ScopedRendererInitAdmission::~ScopedRendererInitAdmission() {
++  if (admitted_) {
++    auto& state = Current();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    --state.active_init;
++  }
++}
++void ObserveRendererLaunchStarted(const void* host, bool in_process) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (!host || state.next_token == std::numeric_limits<uint64_t>::max() ||
++      state.launches.contains(host)) {
++    Increment(state.unresolved_launches);
++    return;
++  }
++  state.launches.emplace(host, Launch{++state.next_token, in_process});
++}
++void ObserveRendererHostDestruction(const void* host) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.launches.erase(host))
++    Increment(state.unresolved_launches);
++}
++ScopedRendererLaunchCallback::ScopedRendererLaunchCallback(const void* host)
++    : host_(host), token_(BeginLaunchCallback(host)) {}
++ScopedRendererLaunchCallback::~ScopedRendererLaunchCallback() {
++  if (!token_)
++    return;
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  auto found = state.launches.find(host_);
++  if (found == state.launches.end() || found->second.token != token_) {
++    Increment(state.unresolved_launches);
++    return;
++  }
++  // The in-process route calls OnProcessLaunched before starting its thread;
++  // that synthetic callback cannot prove launch completion or thread custody.
++  if (found->second.in_process)
++    Increment(state.unresolved_launches);
++  state.launches.erase(found);
++}
++ScopedNavigationAdmission::ScopedNavigationAdmission(const void* request,
++                                                     bool first_entry)
++    : admitted_(AcquireNavigation(request, first_entry)) {}
++ScopedNavigationAdmission::~ScopedNavigationAdmission() {
++  if (admitted_) {
++    auto& state = Current();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    --state.active_navigation;
++  }
++}
++void ObserveNavigationDestruction(const void* request) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.navigations.erase(request)) {
++    // Destructor entry is not member/backend teardown completion. Retain that
++    // gap explicitly rather than treating request deletion as writer drain.
++    Increment(state.unresolved_navigation);
++  }
++}
++void ObserveUnsupportedNavigationCancellation() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  Increment(state.unsupported_navigation);
++}
++}  // namespace content::aux_migration
