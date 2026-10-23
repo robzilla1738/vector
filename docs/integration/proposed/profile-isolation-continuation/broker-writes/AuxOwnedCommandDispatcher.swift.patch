@@ -1,0 +1,45 @@
+--- docs/integration/proposed/profile-isolation-continuation/broker-writes/baseline/AuxOwnedCommandDispatcher.swift
++++ docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxOwnedCommandDispatcher.swift
+@@ -393,6 +393,27 @@
+ #endif
+         }
+     }
++    // One actual current native context produces this pair. No JS path/account
++    // can choose the control/task home, and v1-v4 layouts have no task capability.
++    func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {
++        try withEntry(handle,guardGenericAction:false){entry in
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            try requireFreshGuard(entry,moment:.beforeAction)
++            var control:Int32 = -1,task:Int32 = -1
++            do {
++                let projection=try captured.owner.duplicateAuthenticatedTaskHome()
++                task=projection.descriptor
++                control=try captured.owner.duplicateRetainedHomeDescriptor()
++                guard projection.generation != 0,control>=0,task>=0 else{throw AuxDispatcherLifetimeError.invalidInput}
++                try requireFreshGuard(entry,moment:.beforeAction)
++                return(projection.generation,control,task)
++            }catch{if control>=0{Darwin.close(control)};if task>=0{Darwin.close(task)};throw error}
++#else
++            throw AuxDispatcherLifetimeError.invalidInput
++#endif
++        }
++    }
+     func validateCurrentAuthority(_ handle:UInt64)->Int32 {
+         do {
+             try withEntry(handle,guardGenericAction:false){entry in try requireFreshGuard(entry,moment:.beforeAction)}
+@@ -599,3 +620,14 @@
+     catch AuxDispatcherLifetimeError.retiring{return -2}
+     catch{return -1}
+ }
++
++// Native-only paired finite storage locator bridge; outputs are initialized on
++// every refusal. Returned descriptors remain capabilities, not JS path setters.
++@_cdecl("AuxNativeContextCopyStorageRoots")
++func auxNativeContextCopyStorageRoots(_ handle:UInt64,_ generation:UnsafeMutablePointer<UInt64>?,_ control:UnsafeMutablePointer<Int32>?,_ task:UnsafeMutablePointer<Int32>?)->Int32 {
++    generation?.pointee=0;control?.pointee = -1;task?.pointee = -1
++    guard let generation,let control,let task else{return -1}
++    do{let roots=try AuxCommandDispatcherRegistry.shared.copyAuthenticatedStorageRoots(handle)
++        generation.pointee=roots.generation;control.pointee=roots.control;task.pointee=roots.task;return 0
++    }catch{return -1}
++}

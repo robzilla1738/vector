@@ -1,0 +1,55 @@
+{
+  "format": "aux.broker-writes.source-fixtures.v1",
+  "passed": true,
+  "inputSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+  "outputSha256": "fe5f0b118a037f411ae230eafecef89fd98f91710322e4aa9701dbc08d215dd3",
+  "changes": [
+    {
+      "name": "finite atomic JSON primitive",
+      "count": 1
+    },
+    {
+      "name": "SQLite constructor",
+      "count": 1
+    },
+    {
+      "name": "detached migration uncertainty",
+      "count": 1
+    },
+    {
+      "name": "protected HTTP native admission",
+      "count": 1
+    },
+    {
+      "name": "actual account procedure",
+      "count": 1
+    },
+    {
+      "name": "resolved WS account admission",
+      "count": 1
+    },
+    {
+      "name": "agent WS open custody",
+      "count": 1
+    },
+    {
+      "name": "agent WS message custody",
+      "count": 1
+    },
+    {
+      "name": "graceful shutdown closes new writes",
+      "count": 1
+    }
+  ],
+  "fixtureClasses": [
+    "actual synchronous atomic JSON body",
+    "SQLite receiver/statement/lazy iterator",
+    "one-way unknown and close refusal",
+    "full transformed source syntax",
+    "changed input pin refusal"
+  ],
+  "nativeBinding": "synthetic fixture only",
+  "actualNativeAuthorityTested": false,
+  "backgroundDrainProven": false,
+  "acceptedAppChanged": false
+}

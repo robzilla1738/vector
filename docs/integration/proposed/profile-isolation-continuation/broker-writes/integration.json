@@ -1,0 +1,32 @@
+{
+  "format": "aux.broker-writes.integration.v1",
+  "active": false,
+  "nativeSuccessors": [
+    {
+      "before": "docs/integration/proposed/profile-isolation-continuation/broker-writes/baseline/AuxDevelopmentWorkerHost.cc",
+      "beforeSha256": "cb155a41136f00f43399e3b3fd945886ea47bd86ed66966346af3d4d0f8aaf56",
+      "after": "docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxDevelopmentWorkerHost.cc",
+      "afterSha256": "f63809339d649f105a6cb6324c24e38c2e3b9950f661f5e2d3813eefc934ae4c"
+    },
+    {
+      "before": "docs/integration/proposed/profile-isolation-continuation/broker-writes/baseline/AuxOwnedCommandDispatcher.swift",
+      "beforeSha256": "8809e7e160d7be23da6a5d63390c6b2e24d181af3753090fdcbfb427d6b86332",
+      "after": "docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxOwnedCommandDispatcher.swift",
+      "afterSha256": "f3c2c4df7b4659973d686a8a8833e4534351b736bf2c20e3586017a8b7d39514"
+    }
+  ],
+  "newNativeFiles": [
+    "docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h",
+    "docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+    "docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc"
+  ],
+  "publicHostHeaderUnchanged": true,
+  "publicHostHeaderSha256": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4",
+  "newNativeCExport": "AuxNativeContextCopyStorageRoots",
+  "jsTransform": "applyAuxBrokerWrites",
+  "applyAfter": "applyAuxNativeTaskPaths",
+  "preludePosition": "strictly after immutable cold-entry refusal",
+  "uiChanged": false,
+  "runtimeExecuted": false,
+  "fullBrokerClosure": false
+}

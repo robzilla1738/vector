@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {applyAuxBrokerWrites,brokerPrelude} from './transform.mjs';
+const input='/Users/rcourson/Documents/Vibe/web/out/provided-final-local-completion-20261023-v2/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs';
+const raw=readFileSync(input,'utf8');
+const result=applyAuxBrokerWrites(raw);
+assert.equal(result.changes.length,9);
+const calls=[];let closed=false,unknown=false;
+const binding={};
+for(const [name,fn] of Object.entries({assertBrokerOwner(){calls.push('owner');if(closed)throw Error('closed')},withBrokerSync(callback){if(closed)throw Error('closed');calls.push('sync');const value=callback();if(value instanceof Promise){unknown=true;throw Error('async')}return value},closeBrokerWriteAdmission(){closed=true},noteUntrackedBrokerWork(){unknown=true}}))Object.defineProperty(binding,name,{value:fn});
+const context=vm.createContext({process:{_linkedBinding(name){assert.equal(name,'aux_owned_native');return binding}},Object,Proxy,Reflect,Error});
+vm.runInContext(brokerPrelude+';globalThis.boundary=auxBrokerBoundary();',context);
+const b=context.boundary;
+let stepped=0;
+const statement={run(...args){assert.equal(this,statement);return args},iterate(){assert.equal(this,statement);return{next(){stepped++;return{done:stepped>1,value:1}},[Symbol.iterator](){return this}}}};
+const database={exec(sql){assert.equal(this,database);return sql},prepare(){assert.equal(this,database);return statement},close(){assert.equal(this,database);return 3}};
+const db=b.database(()=>database);assert.equal(db.exec('SQL'),'SQL');assert.deepEqual(db.prepare('SQL').run(1,2),[1,2]);
+const it=db.prepare('SQL').iterate();const before=calls.length;assert.equal(it.next().value,1);assert.equal(calls.length,before+1);assert.equal(it[Symbol.iterator](),it);
+database.unreviewed=()=>0;assert.throws(()=>db.unreviewed,/UNREVIEWED/);
+
+// Execute the actual changed atomic JSON function body with synthetic primitives.
+const start=result.source.indexOf('function atomicWriteFileSync('),end=result.source.indexOf('var import_proper_lockfile$1',start);
+const writes=[];
+Object.assign(context,{process:{pid:10,_linkedBinding:()=>binding},Buffer,retryFileOperationSync:(p,fn)=>fn(),openSync:()=>4,writeSync:(fd,data,offset,size)=>(writes.push(data.subarray(offset,offset+size).toString()),size),fsyncSync:()=>{},closeSync:()=>{},renameSync:(a,b)=>writes.push([a,b]),rmSync:()=>{},logger:{warn(){}}});
+vm.runInContext(result.source.slice(start,end)+';atomicWriteFileSync("/synthetic/settings.json","hello");',context);
+assert.equal(writes[0],'hello');assert.deepEqual(Array.from(writes[1]),['/synthetic/settings.json.10.tmp','/synthetic/settings.json']);
+b.noteUntracked();assert.equal(unknown,true);b.close();assert.throws(()=>db.exec('SQL'),/closed/);assert.throws(()=>b.assertOwner(),/closed/);
+assert.throws(()=>applyAuxBrokerWrites(raw+' '),/Unreviewed/);
+const out=mkdtempSync(join(tmpdir(),'aux-broker-source-fixture-'));const target=join(out,'combined.mjs');writeFileSync(target,result.source+'\n'+result.prelude);const checked=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});assert.equal(checked.status,0,checked.stderr);
+const receipt={format:'aux.broker-writes.source-fixtures.v1',passed:true,inputSha256:result.inputSha256,outputSha256:result.outputSha256,changes:result.changes,fixtureClasses:['actual synchronous atomic JSON body','SQLite receiver/statement/lazy iterator','one-way unknown and close refusal','full transformed source syntax','changed input pin refusal'],nativeBinding:'synthetic fixture only',actualNativeAuthorityTested:false,backgroundDrainProven:false,acceptedAppChanged:false};
+writeFileSync(new URL('./evidence/source-fixtures.json',import.meta.url),JSON.stringify(receipt,null,2)+'\n');console.log('PASS five bounded source fixture classes; native authority not simulated as accepted');

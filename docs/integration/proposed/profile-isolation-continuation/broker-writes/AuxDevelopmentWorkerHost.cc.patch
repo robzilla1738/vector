@@ -1,0 +1,78 @@
+--- docs/integration/proposed/profile-isolation-continuation/broker-writes/baseline/AuxDevelopmentWorkerHost.cc
++++ docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxDevelopmentWorkerHost.cc
+@@ -7,6 +7,7 @@
+ #include <cstdlib>
+ #include <signal.h>
+ #include "AuxBrowserRootBridge.h"
++#include "AuxStorageRootsBridge.h"
+ #include <array>
+ #include <cstring>
+ #include "AuxNativePtyReservation.h"
+@@ -69,6 +70,9 @@
+   size_t exec_direct = 0;
+   size_t exec_unknown = 0;
+   bool exec_descendants_unknown = false;
++  size_t broker_pending = 0;
++  bool broker_untracked = false;
++  bool broker_closed = false;
+   bool terminal = false;
+   bool initializing = true;
+   bool retiring = false;
+@@ -109,6 +113,7 @@
+     {
+       std::lock_guard<std::mutex> lock(mutex);
+       terminal = true;
++      broker_closed = true;
+       if (close_process_images) { pdf_close_requested = true; pdf_close_unresolved = true; utility_close_requested = true; utility_close_unresolved = true; }
+       close_pdf = pdf_close_requested;
+       close_utility = utility_close_requested;
+@@ -170,9 +175,9 @@
+       // then retain the authenticated Owner through all reservations, including
+       // reentrant close during a producer's JS property/conversion callbacks.
+       result = AuxMergeWorkerDrain(result, retirement_failure);
+-      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown) {
++      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown || broker_untracked) {
+         result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
+-      } else if ((pty_pending || pty_direct || exec_pending || exec_direct) && result == AuxDevelopmentWorkerDrain::drained) {
++      } else if ((pty_pending || pty_direct || exec_pending || exec_direct || broker_pending) && result == AuxDevelopmentWorkerDrain::drained) {
+         result = AuxDevelopmentWorkerDrain::pending;
+       }
+       if (result == AuxDevelopmentWorkerDrain::drained) {
+@@ -261,7 +266,7 @@
+         entry->second->generation == worker->generation) Registry().active.erase(entry);
+     worker->environment_detached = true;
+   }
+-  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown) Registry().retained.erase(worker->generation);
++  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown && !worker->broker_pending && !worker->broker_untracked) Registry().retained.erase(worker->generation);
+ }
+ std::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {
+   if (getpid() != kHostProcess) return nullptr;
+@@ -312,6 +317,8 @@
+       observation.matched && v8::Isolate::GetCurrent() == isolate &&
+       node::GetCurrentEnvironment(isolate->GetCurrentContext()) == environment;
+ }
++#include "AuxStorageRootsNapi.inc"
++#include "AuxBrokerWritesNapi.inc"
+ napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
+   if (getpid() != kHostProcess) return nullptr;
+   auto refuse = [env]() -> napi_value {
+@@ -958,11 +965,14 @@
+   // a trap retaining the function object. Completion refuses success if closed.
+   status = AuxAttachOwnedDispatcher(env, target, handle, adapter_retain, ReleaseAdapterOwner);
+   if (status == napi_ok && worker->CanContinue()) {
+-    const napi_property_descriptor property = {
+-      "captureExecPrivateParent", nullptr, CaptureExecPrivateParent,
+-      nullptr, nullptr, nullptr, napi_default, nullptr
+-    };
+-    status = napi_define_properties(env, target, 1, &property);
++    const napi_property_descriptor properties[] = {
++      {"captureExecPrivateParent",nullptr,CaptureExecPrivateParent,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"captureStorageRoots",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"closeBrokerWriteAdmission",nullptr,CloseBrokerWriteAdmission,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"noteUntrackedBrokerWork",nullptr,NoteUntrackedBrokerWork,nullptr,nullptr,nullptr,napi_default,nullptr}};
++    status = napi_define_properties(env,target,6,properties);
+   }
+   const bool closed = initialization.Complete(status == napi_ok);
+   return status == napi_ok && closed ? napi_closing : status;
