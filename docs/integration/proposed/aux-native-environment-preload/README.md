@@ -12,7 +12,7 @@ The binding remains lazy: preload registers its native consumer before supplied 
 
 Root verified the official source archive SHA256 `0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4`, and byte equality of supplied runtime/config/relevant headers with official darwin-arm64 distribution. This supersedes the earlier provenance inventory's then-unverified upstream identity. The authoritative acquisition/equality evidence remains in root `out/aux-node-26.5.0-source` and is pinned by this proposal when available.
 
-`build-static-runtime.py` is a real, unexecuted recipe: verify exact archive, extract into a fresh output, configure official source with `--enable-static --dest-cpu=arm64`, then `make -j2`. It retains all built static dependency archives with hashes because `libnode.a` alone must not be assumed to absorb every dependency. It never edits supplied runtime bytes or dependencies, or links/executes the future protected host.
+`build-static-runtime.py` is a real, unexecuted recipe: verify exact archive, extract into a fresh output, configure official source with `--enable-static --dest-cpu=arm64`, then `make -j2`. It then compiles the actual new preload component against the exact configured source headers and the existing WorkerHost header; this does not link or execute a host. It retains all built static dependency archives with hashes because `libnode.a` alone must not be assumed to absorb every dependency. It never edits supplied runtime bytes or dependencies, or links/executes the future protected host.
 
 Future root-controlled invocation must be serialized:
 

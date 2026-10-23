@@ -12,7 +12,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-environment-preload/build-static-runtime.py",
-      "sha256": "9a36af346606cf9bffc292ccb06d77b2db602428dae468d31e3408bf9d9aba94"
+      "sha256": "fb41abcf0c91a0f491cd6744908c3cf8a5cfba44cf5b51764f5761f44125c3c5"
     }
   ],
   "externalSourceInputs": [

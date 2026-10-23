@@ -30,6 +30,17 @@ def main():
     subprocess.run(['python3', 'configure', '--enable-static', '--dest-cpu=arm64'],
                    cwd=tree, check=True)
     subprocess.run(['make', '-j2'], cwd=tree, check=True)
+    proposal = Path(__file__).resolve().parent
+    component = proposal / 'source/AuxNativeEnvironmentPreload.cc'
+    worker_headers = proposal.parent / 'aux-development-worker-host/source'
+    component_object = output / 'AuxNativeEnvironmentPreload.o'
+    subprocess.run([
+        'xcrun', 'clang++', '-std=c++20', '-arch', 'arm64',
+        '-mmacosx-version-min=13.0', '-DNAPI_VERSION=8', '-fPIC',
+        '-I', str(tree / 'src'), '-I', str(tree / 'deps/v8/include'),
+        '-I', str(tree / 'deps/uv/include'), '-I', str(worker_headers),
+        '-c', str(component), '-o', str(component_object),
+    ], check=True)
     archives = sorted((tree / 'out/Release').rglob('*.a'))
     if not archives or not any(path.name == 'libnode.a' for path in archives):
         raise SystemExit('Static Node/dependency archive graph missing')
@@ -42,6 +53,8 @@ def main():
                      for path in archives],
         'configSha256': sha(tree / 'config.gypi'),
         'suppliedRuntimeReplaced': False,
+        'preloadSourceSha256': sha(component),
+        'preloadObjectSha256': sha(component_object),
         'embeddingLinked': False,
         'protectedExecution': False,
     }
