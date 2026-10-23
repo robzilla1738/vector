@@ -1,0 +1,178 @@
+--- baseline/AuxFreshNativeHome.swift
++++ source/AuxFreshNativeHome.swift
+@@ -52,9 +52,11 @@
+ 
+     // Only the successful O_EXCL/mkdirat creator can construct this owner.
+     // Existing reservations/children are never adopted, removed or retried.
+-    static func create(inCanonicalPrivateParent parent: String) throws -> AuxFreshNativeHome {
++    static func create(inCanonicalPrivateParent parent: String,retainedParentDescriptor:Int32? = nil) throws -> AuxFreshNativeHome {
+         try requireCanonical(parent)
+-        let parentFD = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        let parentFD:Int32
++        if let retainedParentDescriptor{parentFD=fcntl(retainedParentDescriptor,F_DUPFD_CLOEXEC,0)}
++        else{parentFD=open(parent,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)}
+         guard parentFD >= 0 else { throw AuxFreshHomeError.io(errno) }
+         var reservationFD: Int32 = -1
+         var homeFD: Int32 = -1
+--- baseline/AuxNativeFreshBootstrapFactory.swift
++++ source/AuxNativeFreshBootstrapFactory.swift
+@@ -6,31 +6,40 @@
+ enum AuxNativeFreshBootstrapFactory {
+     // Actual sealed probe consumes the retained home's one initial attempt before
+     // reauthentication/real five-row probes. No caller review/availability flags.
+-    static func prepare(capture:AuxFreshNativeSecureCapture)throws->PreparedFreshAuxCohort {
++    static func prepare(capture:AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard)throws->PreparedFreshAuxCohort {
+         try capture.takeAbsentForGeneration()
++        try coldGuard.revalidate()
+         let os26:Bool
+         if #available(macOS 26.0, *) {os26=true}else{os26=false}
+         let kind=AuxFreshInstallationFactory.selection(secureEnclaveAvailable:SecureEnclave.isAvailable,macOS26Available:os26)
+-        let material=try generate(kind:kind)
+-        return try AuxFreshFourRowPreparation.prepareGeneratedMaterial(material)
++        let material=try generate(kind:kind,coldGuard:coldGuard)
++        let cohort=try AuxFreshFourRowPreparation.prepareGeneratedMaterial(material)
++        try coldGuard.revalidate();return cohort
+     }
+     // Internal implementation, never an input parser/export/alternate admission.
+-    private static func generate(kind:FreshAuthorityKind)throws->FreshAuthorityMaterial {
++    private static func generate(kind:FreshAuthorityKind,coldGuard:AuxFreshColdInstallerGuard)throws->FreshAuthorityMaterial {
++        try coldGuard.revalidate()
+         let root = SymmetricKey(size:.bits256).withUnsafeBytes { Data($0) } //0x3545c..0x35490
+         switch kind {
+         case .softwareP256:
++            try coldGuard.revalidate()
+             let signing = P256.Signing.PrivateKey(compactRepresentable:true) //0x35610/14
++            try coldGuard.revalidate()
+             let kem = P256.KeyAgreement.PrivateKey(compactRepresentable:true) //0x3566c/70
+             return .init(kind:kind,root:root,signingPrivateRepresentation:signing.rawRepresentation,kemPrivateRepresentation:kem.rawRepresentation,signingPublicRepresentation:signing.publicKey.x963Representation,kemPublicRepresentation:kem.publicKey.x963Representation)
+         case .enclaveP256:
+             let acl = try accessControl()
++            try coldGuard.revalidate()
+             let signing = try SecureEnclave.P256.Signing.PrivateKey(compactRepresentable:true,accessControl:acl,authenticationContext:nil)
++            try coldGuard.revalidate()
+             let kem = try SecureEnclave.P256.KeyAgreement.PrivateKey(compactRepresentable:true,accessControl:acl,authenticationContext:nil)
+             return .init(kind:kind,root:root,signingPrivateRepresentation:signing.dataRepresentation,kemPrivateRepresentation:kem.dataRepresentation,signingPublicRepresentation:signing.publicKey.x963Representation,kemPublicRepresentation:kem.publicKey.x963Representation)
+         case .enclavePq:
+             guard #available(macOS 26.0, *) else { throw FreshFactoryError.admissionRefused }
+             let acl = try accessControl()
++            try coldGuard.revalidate()
+             let signing = try SecureEnclave.MLDSA65.PrivateKey(accessControl:acl,authenticationContext:nil)
++            try coldGuard.revalidate()
+             let kem = try SecureEnclave.MLKEM768.PrivateKey(accessControl:acl,authenticationContext:nil)
+             return .init(kind:kind,root:root,signingPrivateRepresentation:signing.dataRepresentation,kemPrivateRepresentation:kem.dataRepresentation,signingPublicRepresentation:signing.publicKey.rawRepresentation,kemPublicRepresentation:kem.publicKey.rawRepresentation)
+         }
+--- baseline/AuxNativeFreshStageCoordinator.swift
++++ source/AuxNativeFreshStageCoordinator.swift
+@@ -14,12 +14,13 @@
+         case fresh(AuxFreshNativeSecureCapture)
+         case resumed(AuxResumedFreshNativeHome)
+     }
++    private let coldGuard:AuxFreshColdInstallerGuard
+     private let owner: NativeOwner
+-    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String, capture: AuxFreshNativeSecureCapture) {
+-        self.journal = journal; durableJournalSha256 = sha256; owner = .fresh(capture)
+-    }
+-    private init(journal: NativeFreshBootstrapJournal, sha256: String, resumed: AuxResumedFreshNativeHome) {
+-        self.journal = journal; durableJournalSha256 = sha256; owner = .resumed(resumed)
++    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String, capture: AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard) {
++        self.journal = journal; durableJournalSha256 = sha256; owner = .fresh(capture);self.coldGuard=coldGuard
++    }
++    private init(journal: NativeFreshBootstrapJournal, sha256: String, resumed: AuxResumedFreshNativeHome,coldGuard:AuxFreshColdInstallerGuard) {
++        self.journal = journal; durableJournalSha256 = sha256; owner = .resumed(resumed);self.coldGuard=coldGuard
+     }
+     var canonicalHome: String {
+         switch owner { case .fresh(let capture): return capture.home.canonicalHome
+@@ -39,15 +40,19 @@
+     }
+     // The disk journal is only a locator/binding. Never return the private
+     // provisional context before real protected-stage/authority authentication.
+-    static func resume(policy: AuxAuthenticatedFreshBootstrapPolicy) throws -> NativeFreshStagedContext {
+-        let home = try AuxResumedFreshNativeHome.reopen(policy: policy)
++    static func resume(coldGuard:AuxFreshColdInstallerGuard) throws -> NativeFreshStagedContext {
++        try coldGuard.revalidate()
++        let policy=coldGuard.policy
++        let retainedParent=try coldGuard.duplicateRetainedParentDescriptor();defer{Darwin.close(retainedParent)}
++        let home = try AuxResumedFreshNativeHome.reopen(policy:policy,retainedParentDescriptor:retainedParent)
+         let stored = try home.readExistingInitialJournal()
+-        let context = NativeFreshStagedContext(journal: stored.journal, sha256: stored.sha256, resumed: home)
++        let context = NativeFreshStagedContext(journal: stored.journal, sha256: stored.sha256, resumed: home,coldGuard:coldGuard)
+         _ = try AuxNativeFreshTargetBoundary(context: context)
+         try context.revalidateNativeStageBinding()
+         return context
+     }
+     func revalidateNativeStageBinding() throws {
++        try coldGuard.revalidate()
+         switch owner {
+         case .fresh(let capture):
+             try capture.policy.revalidateCurrentIdentity()
+@@ -92,6 +97,7 @@
+ #endif
+ final class AuxNativeFreshStageCoordinator {
+ #if !AUX_NATIVE_FRESH_STAGE_FIXTURE
++    private let coldGuard:AuxFreshColdInstallerGuard
+     private let capture:AuxFreshNativeSecureCapture
+ #endif
+     private let record:NativeFreshBootstrapJournal
+@@ -112,13 +118,15 @@
+         return .init(record:record,payload:payload,checkpoint:checkpoint,store:store)
+     }
+ #else
+-    private init(capture:AuxFreshNativeSecureCapture,record:NativeFreshBootstrapJournal,payload:Data,checkpoint:StoredNativeFreshBootstrapJournal,store:PrivateNativeFreshBootstrapJournalStore){self.capture=capture;self.record=record;secretPayload=payload;self.checkpoint=checkpoint;self.store=store}
++    private init(capture:AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard,record:NativeFreshBootstrapJournal,payload:Data,checkpoint:StoredNativeFreshBootstrapJournal,store:PrivateNativeFreshBootstrapJournalStore){self.coldGuard=coldGuard;self.capture=capture;self.record=record;secretPayload=payload;self.checkpoint=checkpoint;self.store=store}
+ 
+     // Exact typed capture is privately produced by the actual signed-policy/home
+     // SecItem probe. It owns the real home's one-shot attempt latch; no second
+     // capture/alias can bypass that latch. No factory fallback after failure.
+-    static func prepare(capture:AuxFreshNativeSecureCapture)throws->AuxNativeFreshStageCoordinator {
+-        let cohort=try AuxNativeFreshBootstrapFactory.prepare(capture:capture)
++    static func prepare(capture:AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard)throws->AuxNativeFreshStageCoordinator {
++        try coldGuard.revalidate()
++        guard capture.policy.policySha256==coldGuard.policy.policySha256 else{throw NativeFreshBootstrapError.binding}
++        let cohort=try AuxNativeFreshBootstrapFactory.prepare(capture:capture,coldGuard:coldGuard)
+         try capture.policy.revalidateCurrentIdentity();try capture.home.validateRetainedIdentity()
+         let reservationHash=try capture.home.currentReservationSha256()
+         let bindings=capture.targetSelectors.map{NativeFreshTargetBinding(row:$0.row.rawValue,target:.init(service:$0.service,account:$0.account,accessGroup:$0.accessGroup))}
+@@ -141,7 +149,7 @@
+         let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,retainedRootDescriptor:retainedRoot)
+         guard try store.load()==nil else{throw NativeFreshBootstrapError.existing}
+         let checkpoint=try store.publish()
+-        return .init(capture:capture,record:journal,payload:secret,checkpoint:checkpoint,store:store)
++        return .init(capture:capture,coldGuard:coldGuard,record:journal,payload:secret,checkpoint:checkpoint,store:store)
+     }
+ #endif
+     private func revalidate()throws {
+@@ -150,6 +158,7 @@
+         guard let current=try store.load(),current.journal==record,current.sha256==checkpoint.sha256,
+               nativeBootstrapHash(secretPayload)==record.stagePayloadSha256 else{throw NativeFreshBootstrapError.binding}
+ #else
++        try coldGuard.revalidate()
+         try capture.policy.revalidateCurrentIdentity();try capture.home.validateRetainedIdentity()
+         guard try capture.home.currentReservationSha256()==record.reservationSha256,
+               capture.scope==record.scope,capture.transactionId==record.reservationTransactionId,
+@@ -215,7 +224,7 @@
+ #if AUX_NATIVE_FRESH_STAGE_FIXTURE
+             return .staged(.init(journal:record,sha256:checkpoint.sha256))
+ #else
+-            return .staged(.init(journal:record,sha256:checkpoint.sha256,capture:capture))
++            return .staged(.init(journal:record,sha256:checkpoint.sha256,capture:capture,coldGuard:coldGuard))
+ #endif
+         }
+     }
+--- baseline/AuxResumedFreshNativeHome.swift
++++ source/AuxResumedFreshNativeHome.swift
+@@ -23,11 +23,13 @@
+     // Only an actually authenticated policy can locate this existing owner.
+     // Disk metadata is a bounded locator; protected-stage authentication is a
+     // separate prerequisite before any staged context may be returned.
+-    static func reopen(policy: AuxAuthenticatedFreshBootstrapPolicy) throws -> AuxResumedFreshNativeHome {
++    static func reopen(policy: AuxAuthenticatedFreshBootstrapPolicy,retainedParentDescriptor:Int32? = nil) throws -> AuxResumedFreshNativeHome {
+         try policy.revalidateCurrentIdentity()
+         let parent = policy.contents.canonicalPrivateParent
+         try requireCanonical(parent)
+-        let parentFD = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        let parentFD:Int32
++        if let retainedParentDescriptor{parentFD=fcntl(retainedParentDescriptor,F_DUPFD_CLOEXEC,0)}
++        else{parentFD=open(parent,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)}
+         guard parentFD >= 0 else { throw AuxFreshHomeError.io(errno) }
+         var reservationFD: Int32 = -1
+         var homeFD: Int32 = -1
