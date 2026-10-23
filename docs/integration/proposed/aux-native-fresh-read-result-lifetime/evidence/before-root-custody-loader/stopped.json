@@ -1,0 +1,10 @@
+{
+  "session": 59690,
+  "pid": 94200,
+  "command": "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app/Contents/MacOS/Python scripts/native-build.py python3 docs/integration/proposed/aux-native-fresh-read-result-lifetime/typecheck.py",
+  "state": "Ts",
+  "children": "",
+  "stoppedFor": "root-authorized root-owned loader custody correction",
+  "compilerStarted": false,
+  "sourcePinsSha256": "943fe1b7b2c0adc2503cf248748d2e617dd9a9797ad7f75eb598ee473e51343f"
+}
