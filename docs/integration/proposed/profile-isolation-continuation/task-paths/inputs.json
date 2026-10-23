@@ -1,0 +1,541 @@
+{
+  "format": "aux.native.task-paths.transform.v1",
+  "source": "/Users/rcourson/Documents/Vibe/web/out/provided-final-local-completion-20261023-v2/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+  "sourceSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+  "outputSha256": "dc4d57bf49beac888e4e75cc4429d537e806a76fd7b5b70fd521c36510049909",
+  "nativeContract": {
+    "binding": "aux_owned_native",
+    "method": "captureStorageRoots",
+    "format": "aux.native.storage-roots.v1",
+    "activation": "inactive until paired native producer and broker/native permission composition"
+  },
+  "rules": [
+    {
+      "label": "sealed helper after unchanged cold refusal",
+      "find": "/* aux-cold-entry-admission-v1 */\nthrow Object.assign(new Error(\"Aux state identity generation 2 is quarantined; migration admission is not implemented.\"), {code:\"AUX_STATE_IDENTITY_QUARANTINED\"});\n\n",
+      "replace": "/* aux-cold-entry-admission-v1 */\nthrow Object.assign(new Error(\"Aux state identity generation 2 is quarantined; migration admission is not implemented.\"), {code:\"AUX_STATE_IDENTITY_QUARANTINED\"});\n\n/* aux-native-task-paths-v1: locator projections, never filesystem admission. */\nlet auxTaskNativeBinding,auxTaskNativeCapture,auxTaskFirstRoots;\nfunction auxTaskLayoutError(message){return Object.assign(new Error(message),{code:'AUX_NATIVE_TASK_LAYOUT_REQUIRED'});}\nfunction auxTaskRoots(){\n  if(!auxTaskNativeBinding){\n    const binding=process._linkedBinding('aux_owned_native');\n    const property=Object.getOwnPropertyDescriptor(binding,'captureStorageRoots');\n    if(!property||typeof property.value!=='function'||property.writable||property.configurable)throw auxTaskLayoutError('Aux requires its retained native task layout.');\n    auxTaskNativeBinding=binding;auxTaskNativeCapture=property.value;\n  }\n  const roots=Reflect.apply(auxTaskNativeCapture,auxTaskNativeBinding,[]);\n  const keys=['format','layoutVersion','ownerGeneration','transportGeneration','controlHome','taskHome'];\n  if(!roots||!Object.isFrozen(roots)||Object.keys(roots).sort().join('\\0')!==keys.sort().join('\\0')||roots.format!=='aux.native.storage-roots.v1'||roots.layoutVersion!==1)throw auxTaskLayoutError('Aux native task layout metadata is invalid.');\n  for(const key of ['ownerGeneration','transportGeneration'])if(typeof roots[key]!=='string'||!(/^[1-9][0-9]{0,19}$/).test(roots[key]))throw auxTaskLayoutError('Aux native task layout generation is invalid.');\n  for(const key of ['controlHome','taskHome'])if(typeof roots[key]!=='string'||!path.isAbsolute(roots[key])||roots[key].includes('\\0')||path.resolve(roots[key])!==roots[key]||roots[key]==='/')throw auxTaskLayoutError('Aux native task layout locator is invalid.');\n  if(roots.controlHome===roots.taskHome||roots.controlHome.startsWith(roots.taskHome+path.sep)||roots.taskHome.startsWith(roots.controlHome+path.sep))throw auxTaskLayoutError('Aux task and control storage must be separate.');\n  if(auxTaskFirstRoots){for(const key of keys)if(roots[key]!==auxTaskFirstRoots[key])throw auxTaskLayoutError('Aux native task layout changed; restart the current native owner.');}\n  else auxTaskFirstRoots=Object.freeze({...roots});\n  return roots;\n}\nfunction auxTaskAccountId(value,roots){\n  if(Number.isSafeInteger(value)&&value>=0)return value;\n  if(typeof value==='string'){\n    for(const base of [roots.controlHome,roots.taskHome]){\n      const relative=path.relative(path.join(base,'u'),value);\n      if((/^(?:0|[1-9][0-9]*)$/).test(relative)&&path.join(base,'u',relative)===value){const id=Number(relative);if(Number.isSafeInteger(id))return id;}\n    }\n  }\n  throw auxTaskLayoutError('Aux refuses an unbound or legacy account storage locator.');\n}\nfunction getAccountTaskRoot(account){const roots=auxTaskRoots();return path.join(roots.taskHome,'u',String(auxTaskAccountId(account,roots)));}\nfunction auxControlAccountRoot(account){const roots=auxTaskRoots();return path.join(roots.controlHome,'u',String(auxTaskAccountId(account,roots)));}\nfunction getSessionTaskDir(session,account){\n  const id=session?.id;\n  if(typeof id!=='string'||!(/^[A-Za-z0-9_-]{1,128}$/).test(id))throw auxTaskLayoutError('Aux task session identity is invalid.');\n  return path.join(getAccountTaskRoot(account),'sessions',id);\n}\nfunction getSharedSessionTaskDir(session,account){return session.trigger?.type==='sidechat'&&session.parentId?getSessionTaskDir({id:session.parentId},account):undefined;}\nfunction auxTaskWorkspacePath(value){\n  const roots=auxTaskRoots(),resolved=path.resolve(value),relative=path.relative(roots.controlHome,resolved);\n  if(relative===''||(!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative)))throw auxTaskLayoutError('Aux refuses a workspace inside private control storage.');\n  return resolved;\n}\nfunction auxTaskRoutineMemoryPath(account,routine){\n  const root=path.join(getAccountTaskRoot(account),'memory','routines');\n  const id=routine.id;\n  if(typeof id!=='string'||!(/^[A-Za-z0-9_-]{1,128}$/).test(id))throw auxTaskLayoutError('Aux routine identity is invalid.');\n  if(routine.metadata.memoryPath!==undefined){\n    const selected=routine.metadata.memoryPath;\n    if(typeof selected!=='string'||path.resolve(selected)!==selected)throw auxTaskLayoutError('Aux refuses a legacy routine memory locator.');\n    const relative=path.relative(root,selected);\n    if(relative===''||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative)||path.extname(selected)!=='.md')throw auxTaskLayoutError('Aux refuses a routine memory locator outside its task projection.');\n    return selected;\n  }\n  return path.join(root,id,'MEMORY.md');\n}\n\n",
+      "count": 1
+    },
+    {
+      "label": "native control home, no environment selection",
+      "find": "AUX_HOME_PATH=process.env.AUX_HOME?path.resolve(process.env.AUX_HOME):path.join(os.homedir(),`.aux`)",
+      "replace": "AUX_HOME_PATH=auxTaskRoots().controlHome",
+      "count": 1
+    },
+    {
+      "label": "native task runtime, no environment selection",
+      "find": "AUX_RUNTIME_DIR=process.env.AUX_AGENT_RUNTIME_DIR?path.resolve(process.env.AUX_AGENT_RUNTIME_DIR):path.join(AUX_HOME_PATH,`runtime`)",
+      "replace": "AUX_RUNTIME_DIR=path.join(auxTaskRoots().taskHome,`runtime`)",
+      "count": 1
+    },
+    {
+      "label": "control account locator revalidates native owner",
+      "find": "getAccountRoot=Cn=>typeof Cn==`number`?path.join(AUX_HOME_PATH,`u`,String(Cn)):Cn",
+      "replace": "getAccountRoot=Cn=>auxControlAccountRoot(Cn)",
+      "count": 1
+    },
+    {
+      "label": "getAccountCacheDir task projection",
+      "find": "getAccountCacheDir=Cn=>path.join(getAccountRoot(Cn),`cache`)",
+      "replace": "getAccountCacheDir=Cn=>path.join(getAccountTaskRoot(Cn),`cache`)",
+      "count": 1
+    },
+    {
+      "label": "getProjectsDir task projection",
+      "find": "getProjectsDir=Cn=>path.join(getAccountRoot(Cn),`projects`)",
+      "replace": "getProjectsDir=Cn=>path.join(getAccountTaskRoot(Cn),`projects`)",
+      "count": 1
+    },
+    {
+      "label": "create private and task session directories independently",
+      "find": "ensureSessionDir=(Cn,ei)=>{let ti=getSessionStorageDir(Cn,ei);return mkdirSync(ti,{recursive:!0}),ti}",
+      "replace": "ensureSessionDir=(Cn,ei)=>{let ti=getSessionStorageDir(Cn,ei);return mkdirSync(ti,{recursive:!0}),mkdirSync(getSessionTaskDir(Cn,ei),{recursive:!0}),ti}",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [2590398, 2590439]",
+      "find": "ce?.sessionId===ei.id&&Cn.msg.routineSource.messageId===ii.id)))continue;let ai=getSessionStorageDir(ei,Cn),si=path.join(getSessionStorageDir(hi,Cn),`attachments`,ei.id),ci=path.join(ai,`attachments`);await fs$1.access(ci",
+      "replace": "ce?.sessionId===ei.id&&Cn.msg.routineSource.messageId===ii.id)))continue;let ai=getSessionTaskDir(ei,Cn),si=path.join(getSessionTaskDir(hi,Cn),`attachments`,ei.id),ci=path.join(ai,`attachments`);await fs$1.access(ci",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [2854532]",
+      "find": "n.accountId,ui.connectionId)?.clearTyping(ui):void 0),ei.statusDelivery),Ci=()=>getSessionStorageDir(Cn.agent.session,Cn.accountId),wi=Cn=>{if(ci||!Cn.thinkingText)return;let ei=fo",
+      "replace": "n.accountId,ui.connectionId)?.clearTyping(ui):void 0),ei.statusDelivery),Ci=()=>getSessionTaskDir(Cn.agent.session,Cn.accountId),wi=Cn=>{if(ci||!Cn.thinkingText)return;let ei=fo",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [3422953]",
+      "find": ".find(Cn=>Cn.targetId===ei)?.snapshot}resolvePath(Cn){return resolveSessionPath(getSessionStorageDir(this.#r,this.#n),Cn,getSharedSessionStorageDir(this.#r,this.#n))}registerReadab",
+      "replace": ".find(Cn=>Cn.targetId===ei)?.snapshot}resolvePath(Cn){return resolveSessionPath(getSessionTaskDir(this.#r,this.#n),Cn,getSharedSessionStorageDir(this.#r,this.#n))}registerReadab",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [6361011]",
+      "find": "permissionMode:mode,permission:mergePermissionConfig(permissionForMode(mode,cwd,getSessionStorageDir(local,accountId),root,[]),settings(accountId).get('permission'))});}\n    const ",
+      "replace": "permissionMode:mode,permission:mergePermissionConfig(permissionForMode(mode,cwd,getSessionTaskDir(local,accountId),root,[]),settings(accountId).get('permission'))});}\n    const ",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [6761671, 6761832]",
+      "find": "odel:fi.selection,status:`running`}),hi=ii??di.systemPrompt(ei.systemPrompt),gi=getSessionStorageDir(ei,Cn);if(SessionStore.update(Cn,mi.id,{systemPrompt:hi,permission:ei.harnessId===`coder`?inheritPermission(SessionStore.get(Cn,ei.id)??ei,[getSessionStorageDir(mi,Cn)]):mergePermissionConfig(mi.permission??{},{files:{readableRoots:[gi],wri",
+      "replace": "odel:fi.selection,status:`running`}),hi=ii??di.systemPrompt(ei.systemPrompt),gi=getSessionTaskDir(ei,Cn);if(SessionStore.update(Cn,mi.id,{systemPrompt:hi,permission:ei.harnessId===`coder`?inheritPermission(SessionStore.get(Cn,ei.id)??ei,[getSessionTaskDir(mi,Cn)]):mergePermissionConfig(mi.permission??{},{files:{readableRoots:[gi],wri",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [9545751]",
+      "find": "terializeInboundAttachments(Cn){let ei=Cn.refs.slice(0,ATTACHMENT_MAX_COUNT),ti=getSessionStorageDir({id:Cn.session.id,createdAt:Cn.session.createdAt instanceof Date?Cn.session.cre",
+      "replace": "terializeInboundAttachments(Cn){let ei=Cn.refs.slice(0,ATTACHMENT_MAX_COUNT),ti=getSessionTaskDir({id:Cn.session.id,createdAt:Cn.session.createdAt instanceof Date?Cn.session.cre",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [9550828]",
+      "find": "ments:Cn.attachments,failedWithoutText:!1};let ti=new Set(ei.map(Cn=>Cn.id)),ni=getSessionStorageDir({id:Cn.session.id,createdAt:Cn.session.createdAt instanceof Date?Cn.session.cre",
+      "replace": "ments:Cn.attachments,failedWithoutText:!1};let ti=new Set(ei.map(Cn=>Cn.id)),ni=getSessionTaskDir({id:Cn.session.id,createdAt:Cn.session.createdAt instanceof Date?Cn.session.cre",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [10127314]",
+      "find": ":ni.permission=mergePermissionConfig(permissionForMode(ti.permissionMode,ti.cwd,getSessionStorageDir(ti,this.#e),getAccountRoot(this.#e),ni.runtimeConfig?.workingDirs??ti.runtimeCo",
+      "replace": ":ni.permission=mergePermissionConfig(permissionForMode(ti.permissionMode,ti.cwd,getSessionTaskDir(ti,this.#e),getAccountRoot(this.#e),ni.runtimeConfig?.workingDirs??ti.runtimeCo",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [10127620]",
+      "find": ",ni.permission=mergePermissionConfig(permissionForMode(ni.permissionMode,ti.cwd,getSessionStorageDir(ti,this.#e),getAccountRoot(this.#e),(ni.runtimeConfig??ti.runtimeConfig).workin",
+      "replace": ",ni.permission=mergePermissionConfig(permissionForMode(ni.permissionMode,ti.cwd,getSessionTaskDir(ti,this.#e),getAccountRoot(this.#e),(ni.runtimeConfig??ti.runtimeConfig).workin",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [10956832]",
+      "find": "timeConfig:ri.runtimeConfig,model:si,permissionMode:ri.permissionMode});let ci=[getSessionStorageDir(ai,ni),...ti.workingDir===void 0?[]:[oi]],li=SessionStore.get(ni,ri.id)??ri;Ses",
+      "replace": "timeConfig:ri.runtimeConfig,model:si,permissionMode:ri.permissionMode});let ci=[getSessionTaskDir(ai,ni),...ti.workingDir===void 0?[]:[oi]],li=SessionStore.get(ni,ri.id)??ri;Ses",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11584782]",
+      "find": "tion:()=>({...this.#y.selection}),accountRoot:Cn,projectWorkspace:ei,sessionDir:getSessionStorageDir(this.session,this.accountId),resolvePath:Cn=>{let ei=path.resolve(ti,Cn),ni=pat",
+      "replace": "tion:()=>({...this.#y.selection}),accountRoot:Cn,projectWorkspace:ei,sessionDir:getSessionTaskDir(this.session,this.accountId),resolvePath:Cn=>{let ei=path.resolve(ti,Cn),ni=pat",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11588638]",
+      "find": "instanceof Error?Cn.message:String(Cn)}}};let ci=createToolResultTruncationHook(getSessionStorageDir(ti,ni));ei.afterToolCall=async(Cn,ei)=>{let ti=await ci(Cn);ti&&(ti.content&&(C",
+      "replace": "instanceof Error?Cn.message:String(Cn)}}};let ci=createToolResultTruncationHook(getSessionTaskDir(ti,ni));ei.afterToolCall=async(Cn,ei)=>{let ti=await ci(Cn);ti&&(ti.content&&(C",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11591464]",
+      "find": ".require(ei,ti.projectId).workspacePath}:{},workingDir:ti.cwd,sessionStorageDir:getSessionStorageDir(ti,ei),outputDir:ti.runtimeConfig.workingDirs[0],permission:ti.permission,inclu",
+      "replace": ".require(ei,ti.projectId).workspacePath}:{},workingDir:ti.cwd,sessionStorageDir:getSessionTaskDir(ti,ei),outputDir:ti.runtimeConfig.workingDirs[0],permission:ti.permission,inclu",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11601774]",
+      "find": "is.#A&&this.browser&&this.#j&&(this.#A=new SessionFileChangeTracker({sessionDir:getSessionStorageDir(this.session,this.accountId)}),await this.#A.start().catch(Cn=>{logger.warn(`[A",
+      "replace": "is.#A&&this.browser&&this.#j&&(this.#A=new SessionFileChangeTracker({sessionDir:getSessionTaskDir(this.session,this.accountId)}),await this.#A.start().catch(Cn=>{logger.warn(`[A",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11619096]",
+      "find": "this.harness.prepareMessages?.(this.ctx,ei)??ei;let ti=await prepareAttachments(getSessionStorageDir(this.session,this.accountId),ei);return this.#Te(ti),await this.hooks.trigger(`",
+      "replace": "this.harness.prepareMessages?.(this.ctx,ei)??ei;let ti=await prepareAttachments(getSessionTaskDir(this.session,this.accountId),ei);return this.#Te(ti),await this.hooks.trigger(`",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11718821]",
+      "find": "sion not found: ${Cn.sessionId}`}),{onFrame:()=>void 0,close:()=>void 0};let ti=getSessionStorageDir(ei,Cn.accountId),ni,ri=[],ii=Promise.resolve(),ai=!1,oi=ei=>{ai||Cn.sendFrame(e",
+      "replace": "sion not found: ${Cn.sessionId}`}),{onFrame:()=>void 0,close:()=>void 0};let ti=getSessionTaskDir(ei,Cn.accountId),ni,ri=[],ii=Promise.resolve(),ai=!1,oi=ei=>{ai||Cn.sendFrame(e",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11818417]",
+      "find": "erBinding(ei)),ii=nanoid(),ai=/* @__PURE__ */ new Date,oi=getAccountRoot(ei),si=getSessionStorageDir({id:ii,createdAt:ai},ei),ci=createDefaultToolState(si),li=await buildSystemProm",
+      "replace": "erBinding(ei)),ii=nanoid(),ai=/* @__PURE__ */ new Date,oi=getAccountRoot(ei),si=getSessionTaskDir({id:ii,createdAt:ai},ei),ci=createDefaultToolState(si),li=await buildSystemProm",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [11884858]",
+      "find": ");if(!ei)throw new TRPCError({code:`NOT_FOUND`,message:`Session not found`});ni=getSessionStorageDir(ei,Cn)}let ri=resolve(ni||``,ei);return{location:ri,targetStat:await stat$1(ri)",
+      "replace": ");if(!ei)throw new TRPCError({code:`NOT_FOUND`,message:`Session not found`});ni=getSessionTaskDir(ei,Cn)}let ri=resolve(ni||``,ei);return{location:ri,targetStat:await stat$1(ri)",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12056036]",
+      "find": "a===void 0||!ti.path||!channelAttachmentPath(ti.path))continue;let ei=path.join(getSessionStorageDir(ii,Cn),ti.path);await fs$1.mkdir(path.dirname(ei),{recursive:!0}),await fs$1.wr",
+      "replace": "a===void 0||!ti.path||!channelAttachmentPath(ti.path))continue;let ei=path.join(getSessionTaskDir(ii,Cn),ti.path);await fs$1.mkdir(path.dirname(ei),{recursive:!0}),await fs$1.wr",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12062658]",
+      "find": ".permission=mergePermissionConfig(ci??{},permissionForMode(ei.permissionMode,si,getSessionStorageDir(ei,Cn),ai,ei.runtimeConfig.workingDirs))),SessionStore.update(Cn,ei.id,ri)}reas",
+      "replace": ".permission=mergePermissionConfig(ci??{},permissionForMode(ei.permissionMode,si,getSessionTaskDir(ei,Cn),ai,ei.runtimeConfig.workingDirs))),SessionStore.update(Cn,ei.id,ri)}reas",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12075590]",
+      "find": " const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionStorageDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbo",
+      "replace": " const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbo",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12080374]",
+      "find": "=await import(\"node:fs/promises\");let missing=false;try{await fs.access(resolve(getSessionStorageDir(ei,Cn),ti));}catch(error){if(error.code===\"ENOENT\")missing=true;else throw erro",
+      "replace": "=await import(\"node:fs/promises\");let missing=false;try{await fs.access(resolve(getSessionTaskDir(ei,Cn),ti));}catch(error){if(error.code===\"ENOENT\")missing=true;else throw erro",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12080642]",
+      "find": "rn resolveSessionFile(Cn,ei,restored,{...ni,auxRestoreAttempted:true});}}let ri=getSessionStorageDir(ei,Cn),ii=resolve(ri,ti),ai=relative(ri,ii);if(ai.startsWith(`..`)||isAbsolute(",
+      "replace": "rn resolveSessionFile(Cn,ei,restored,{...ni,auxRestoreAttempted:true});}}let ri=getSessionTaskDir(ei,Cn),ii=resolve(ri,ti),ai=relative(ri,ii);if(ai.startsWith(`..`)||isAbsolute(",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12093746]",
+      "find": "ut(array(string$3())).query(async({ctx:Cn})=>{try{return(await listSessionFiles(getSessionStorageDir(Cn.session,Cn.accountId))).sort((Cn,ei)=>Cn.localeCompare(ei))}catch(Cn){if(typ",
+      "replace": "ut(array(string$3())).query(async({ctx:Cn})=>{try{return(await listSessionFiles(getSessionTaskDir(Cn.session,Cn.accountId))).sort((Cn,ei)=>Cn.localeCompare(ei))}catch(Cn){if(typ",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12094424]",
+      "find": "g$3()})).mutation(async({ctx:Cn,input:ei})=>{let ti=await prepareFileAttachment(getSessionStorageDir(Cn.session,Cn.accountId),ei.attachment);if(!ti.path)throw new TRPCError({code:`",
+      "replace": "g$3()})).mutation(async({ctx:Cn,input:ei})=>{let ti=await prepareFileAttachment(getSessionTaskDir(Cn.session,Cn.accountId),ei.attachment);if(!ti.path)throw new TRPCError({code:`",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12095680]",
+      "find": ".`)throw new TRPCError({code:`BAD_REQUEST`,message:`Invalid file name`});let ri=getSessionStorageDir(Cn.session,Cn.accountId),ii=resolve(dirname(ti.filePath),ni),ai=relative(ri,ii)",
+      "replace": ".`)throw new TRPCError({code:`BAD_REQUEST`,message:`Invalid file name`});let ri=getSessionTaskDir(Cn.session,Cn.accountId),ii=resolve(dirname(ti.filePath),ni),ai=relative(ri,ii)",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12099084]",
+      "find": "(ei.accountId),ni=permissionForMode(Cn.permissionMode??ii.permissionMode,ii.cwd,getSessionStorageDir(ii,ei.accountId),ti,Cn.runtimeConfig?.workingDirs??ii.runtimeConfig.workingDirs",
+      "replace": "(ei.accountId),ni=permissionForMode(Cn.permissionMode??ii.permissionMode,ii.cwd,getSessionTaskDir(ii,ei.accountId),ti,Cn.runtimeConfig?.workingDirs??ii.runtimeConfig.workingDirs",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12179564]",
+      "find": "||ti.split(`/`).includes(`..`)||!ti.startsWith(`artifacts/`))return null;let ni=getSessionStorageDir(ei,Cn.accountId);return getFilePreviewImage({cacheNamespace:`session-artifact`,",
+      "replace": "||ti.split(`/`).includes(`..`)||!ti.startsWith(`artifacts/`))return null;let ni=getSessionTaskDir(ei,Cn.accountId);return getFilePreviewImage({cacheNamespace:`session-artifact`,",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12188411]",
+      "find": "{code:`BAD_REQUEST`,message:`Invalid session open-folder request`}},400);let ai=getSessionStorageDir(ni,ei),oi=path.resolve(ai,ii.data.path??`.`),si=path.relative(ai,oi);if(si.star",
+      "replace": "{code:`BAD_REQUEST`,message:`Invalid session open-folder request`}},400);let ai=getSessionTaskDir(ni,ei),oi=path.resolve(ai,ii.data.path??`.`),si=path.relative(ai,oi);if(si.star",
+      "count": 1
+    },
+    {
+      "label": "task-facing session callers at v2 text offsets [12189823]",
+      "find": "OT_FOUND`,message:`Session not found`}},404);try{let ri=(await listSessionFiles(getSessionStorageDir(ni,ei))).sort((Cn,ei)=>Cn.localeCompare(ei));return Cn.json({sessionId:ti,files",
+      "replace": "OT_FOUND`,message:`Session not found`}},404);try{let ri=(await listSessionFiles(getSessionTaskDir(ni,ei))).sort((Cn,ei)=>Cn.localeCompare(ei));return Cn.json({sessionId:ti,files",
+      "count": 1
+    },
+    {
+      "label": "shared sidechat task storage only",
+      "find": "getSharedSessionStorageDir(this.#r,this.#n)",
+      "replace": "getSharedSessionTaskDir(this.#r,this.#n)",
+      "count": 1
+    },
+    {
+      "label": "permission account projection",
+      "find": "oi=path.resolve(ni),si=path.resolve(ei),ci=path.resolve(ti)",
+      "replace": "oi=getAccountTaskRoot(ni),si=auxTaskWorkspacePath(ei),ci=auxTaskWorkspacePath(ti)",
+      "count": 1
+    },
+    {
+      "label": "read-only routine write projection",
+      "find": "ri=path.join(Cn.accountRoot,`memory`,`routines`)+path.sep",
+      "replace": "ri=path.join(getAccountTaskRoot(Cn.accountRoot),`memory`,`routines`)+path.sep",
+      "count": 1
+    },
+    {
+      "label": "permission readable account projection",
+      "find": "files:{readableRoots:[Cn.accountRoot,RUNTIME_DIR$1]}",
+      "replace": "files:{readableRoots:[getAccountTaskRoot(Cn.accountRoot),RUNTIME_DIR$1]}",
+      "count": 1
+    },
+    {
+      "label": "account memory/skills writable projection",
+      "find": "accountWritableRoots=Cn=>[path.join(Cn,`memory`),path.join(Cn,`skills`)]",
+      "replace": "accountWritableRoots=Cn=>[path.join(getAccountTaskRoot(Cn),`memory`),path.join(getAccountTaskRoot(Cn),`skills`)]",
+      "count": 1
+    },
+    {
+      "label": "default permission projects account root",
+      "find": "readableRoots:[path.resolve(Cn),RUNTIME_DIR$1],writableRoots:[path.resolve(Cn),RUNTIME_DIR$1]",
+      "replace": "readableRoots:[getAccountTaskRoot(Cn),RUNTIME_DIR$1],writableRoots:[getAccountTaskRoot(Cn),RUNTIME_DIR$1]",
+      "count": 1
+    },
+    {
+      "label": "deny complete private control home as well as existing secrets",
+      "find": "function secretPaths(Cn){return[",
+      "replace": "function secretPaths(Cn){return[auxTaskRoots().controlHome,",
+      "count": 1
+    },
+    {
+      "label": "file tool relative memory projection",
+      "find": "let ti=path.resolve(Cn.accountRoot,`memory`),ni=path.resolve(Cn.accountRoot,ei)",
+      "replace": "let ti=path.resolve(getAccountTaskRoot(Cn.accountRoot),`memory`),ni=path.resolve(getAccountTaskRoot(Cn.accountRoot),ei)",
+      "count": 1
+    },
+    {
+      "label": "new session defaults to task account root",
+      "find": "let ci=getAccountRoot(Cn),li=ensureSessionDir({id:ni,createdAt:ri},Cn)",
+      "replace": "let ci=getAccountTaskRoot(Cn),li=ensureSessionDir({id:ni,createdAt:ri},Cn)",
+      "count": 1
+    },
+    {
+      "label": "new session permission never grants private session directory",
+      "find": "permissionForMode(fi,ui,li,ci,di.workingDirs)",
+      "replace": "permissionForMode(fi,ui,getSessionTaskDir({id:ni},Cn),ci,di.workingDirs)",
+      "count": 1
+    },
+    {
+      "label": "seed task files without moving private account metadata",
+      "find": "function initAccountDirectory(Cn){mkdirSync(Cn,{recursive:!0});",
+      "replace": "function initAccountDirectory(Cn){mkdirSync(auxControlAccountRoot(Cn),{recursive:!0});Cn=getAccountTaskRoot(Cn);mkdirSync(Cn,{recursive:!0});",
+      "count": 1
+    },
+    {
+      "label": "memory markdown/index task projection",
+      "find": "memoryDir=Cn=>path.join(Cn,MEMORY_DIRNAME)",
+      "replace": "memoryDir=Cn=>path.join(getAccountTaskRoot(Cn),MEMORY_DIRNAME)",
+      "count": 1
+    },
+    {
+      "label": "private memory history location",
+      "find": "function historyPath(Cn){return path.join(memoryDir(Cn),`.history.jsonl`)}",
+      "replace": "function historyPath(Cn){return path.join(auxControlAccountRoot(Cn),`memory-private`,`.history.jsonl`)}",
+      "count": 1
+    },
+    {
+      "label": "private memory history parent creation",
+      "find": "async function appendMemoryHistoryEntry(Cn,ei){await ensureMemoryDir(Cn);",
+      "replace": "async function appendMemoryHistoryEntry(Cn,ei){await ensureMemoryDir(Cn);await fs$1.mkdir(path.dirname(historyPath(Cn)),{recursive:!0,mode:448});",
+      "count": 1
+    },
+    {
+      "label": "private dream state location",
+      "find": "function statePath(Cn){return path.join(memoryDir(Cn),FILENAME)}",
+      "replace": "function statePath(Cn){return path.join(auxControlAccountRoot(Cn),`memory-private`,FILENAME)}",
+      "count": 1
+    },
+    {
+      "label": "private dream state parent creation",
+      "find": "async function saveDreamState(Cn,ei){await ensureMemoryDir(Cn),",
+      "replace": "async function saveDreamState(Cn,ei){await fs$1.mkdir(path.dirname(statePath(Cn)),{recursive:!0,mode:448}),",
+      "count": 1
+    },
+    {
+      "label": "persisted routine path validated rather than trusted",
+      "find": "routineMemoryPath=(Cn,ei)=>ei.metadata.memoryPath??path.join(getAccountRoot(Cn),`memory`,`routines`,ei.id,`MEMORY.md`)",
+      "replace": "routineMemoryPath=(Cn,ei)=>auxTaskRoutineMemoryPath(Cn,ei)",
+      "count": 1
+    },
+    {
+      "label": "inline routine memory task projection",
+      "find": "path.join(getAccountRoot(Cn),`memory`,`routines`",
+      "replace": "path.join(getAccountTaskRoot(Cn),`memory`,`routines`",
+      "count": 2
+    },
+    {
+      "label": "agent context",
+      "find": "get ctx(){let Cn=getAccountRoot(this.accountId)",
+      "replace": "get ctx(){let Cn=getAccountTaskRoot(this.accountId)",
+      "count": 1
+    },
+    {
+      "label": "agent skills",
+      "find": "let ai=getAccountRoot(ni),oi=ti.projectId?ProjectStore.require(ni,ti.projectId).workspacePath:void 0;this.skills=",
+      "replace": "let ai=getAccountTaskRoot(ni),oi=ti.projectId?ProjectStore.require(ni,ti.projectId).workspacePath:void 0;this.skills=",
+      "count": 1
+    },
+    {
+      "label": "CLI context",
+      "find": "ii=nanoid(),ai=/* @__PURE__ */ new Date,oi=getAccountRoot(ei),si=getSessionTaskDir",
+      "replace": "ii=nanoid(),ai=/* @__PURE__ */ new Date,oi=getAccountTaskRoot(ei),si=getSessionTaskDir",
+      "count": 1
+    },
+    {
+      "label": "CLI skill catalog",
+      "find": "async function listCliSkills(Cn){let ei=getAccountRoot(Cn);",
+      "replace": "async function listCliSkills(Cn){let ei=getAccountTaskRoot(Cn);",
+      "count": 1
+    },
+    {
+      "label": "channel builtin skill",
+      "find": "ri=path.join(getAccountRoot(Cn.accountId),`skills`,`builtin`,`channel`,`SKILL.md`)",
+      "replace": "ri=path.join(getAccountTaskRoot(Cn.accountId),`skills`,`builtin`,`channel`,`SKILL.md`)",
+      "count": 1
+    },
+    {
+      "label": "tool context prompt",
+      "find": "scanContexts:{accountId:ei,accountRoot:getAccountRoot(ei),",
+      "replace": "scanContexts:{accountId:ei,accountRoot:getAccountTaskRoot(ei),",
+      "count": 1
+    },
+    {
+      "label": "skills settings scope",
+      "find": "let ri=getAccountRoot(Cn.accountId);return ti({ctx:{...Cn,cacheKey:ri,skillsDir:",
+      "replace": "let ri=getAccountTaskRoot(Cn.accountId);return ti({ctx:{...Cn,cacheKey:ri,skillsDir:",
+      "count": 1
+    },
+    {
+      "label": "builtin skills settings",
+      "find": "new Set([path.join(getAccountRoot(Cn.accountId),`skills`),Cn.skillsDir])",
+      "replace": "new Set([path.join(getAccountTaskRoot(Cn.accountId),`skills`),Cn.skillsDir])",
+      "count": 1
+    },
+    {
+      "label": "task project move default",
+      "find": "let ai=getAccountRoot(Cn),oi=(ni.projectId?ProjectStore.get(Cn,ni.projectId):void 0)?.workspacePath??ai",
+      "replace": "let ai=getAccountTaskRoot(Cn),oi=(ni.projectId?ProjectStore.get(Cn,ni.projectId):void 0)?.workspacePath??ai",
+      "count": 1
+    },
+    {
+      "label": "task project restore default",
+      "find": "if(project){const root=getAccountRoot(accountId),cwd=project.workspacePath??root",
+      "replace": "if(project){const root=getAccountTaskRoot(accountId),cwd=project.workspacePath??root",
+      "count": 1
+    },
+    {
+      "label": "context settings read",
+      "find": "readFileSync(path.join(getAccountRoot(Cn.accountId),ei.fileName),`utf-8`)",
+      "replace": "readFileSync(path.join(getAccountTaskRoot(Cn.accountId),ei.fileName),`utf-8`)",
+      "count": 1
+    },
+    {
+      "label": "context settings write",
+      "find": "writeFileSync(path.join(getAccountRoot(Cn.accountId),ei.fileName),ei.content,`utf-8`)",
+      "replace": "writeFileSync(path.join(getAccountTaskRoot(Cn.accountId),ei.fileName),ei.content,`utf-8`)",
+      "count": 1
+    },
+    {
+      "label": "sync scan task file roots",
+      "find": "function scanFileChanges(Cn,ei,ti){let ni=getAccountRoot(Cn),",
+      "replace": "function scanFileChanges(Cn,ei,ti){let ni=getAccountTaskRoot(Cn),",
+      "count": 1
+    },
+    {
+      "label": "sync apply task file roots",
+      "find": "function applyFiles(Cn,ei,ti){let ni=getAccountRoot(Cn),",
+      "replace": "function applyFiles(Cn,ei,ti){let ni=getAccountTaskRoot(Cn),",
+      "count": 1
+    },
+    {
+      "label": "file watchers task roots",
+      "find": "function startWatchers(Cn){let ei=runtimes.get(Cn);if(!ei)return;let ti=getAccountRoot(Cn),",
+      "replace": "function startWatchers(Cn){let ei=runtimes.get(Cn);if(!ei)return;let ti=getAccountTaskRoot(Cn),",
+      "count": 1
+    },
+    {
+      "label": "task cache runtime-computer-use",
+      "find": "path.join(AUX_HOME_PATH,`runtime-computer-use`",
+      "replace": "path.join(auxTaskRoots().taskHome,`runtime-computer-use`",
+      "count": 1
+    },
+    {
+      "label": "task cache memory-catalog.json",
+      "find": "path.join(AUX_HOME_PATH,`memory-catalog.json`",
+      "replace": "path.join(auxTaskRoots().taskHome,`memory-catalog.json`",
+      "count": 1
+    },
+    {
+      "label": "task cache models",
+      "find": "path.join(AUX_HOME_PATH,`models`",
+      "replace": "path.join(auxTaskRoots().taskHome,`models`",
+      "count": 1
+    },
+    {
+      "label": "task cache memory-runtimes",
+      "find": "path.join(AUX_HOME_PATH,`memory-runtimes`",
+      "replace": "path.join(auxTaskRoots().taskHome,`memory-runtimes`",
+      "count": 1
+    },
+    {
+      "label": "local memory activation path projection",
+      "find": "path.join(this.accountRoot,`memory`,`.local-memory-activation`)",
+      "replace": "path.join(getAccountTaskRoot(this.accountRoot),`memory`,`.local-memory-activation`)",
+      "count": 1
+    },
+    {
+      "label": "working directory overrides cannot select private control paths",
+      "find": "li=ri.map(Cn=>path.resolve(Cn))",
+      "replace": "li=ri.map(Cn=>auxTaskWorkspacePath(Cn))",
+      "count": 1
+    },
+    {
+      "label": "cloud session restore default workspace is task-only",
+      "find": "cwd=localProject?.workspacePath??root;",
+      "replace": "cwd=localProject?.workspacePath??getAccountTaskRoot(accountId);",
+      "count": 1
+    },
+    {
+      "label": "cloud restore permission excludes private transcript directory",
+      "find": "permissionForMode(mode,cwd,sessionDirectory,root,[])",
+      "replace": "permissionForMode(mode,cwd,getSessionTaskDir({id},accountId),getAccountTaskRoot(accountId),[])",
+      "count": 1
+    },
+    {
+      "label": "account removal also cleans its task projection",
+      "find": "await Promise.all(Cn.map(Cn=>rm(path.join(ni,Cn),{recursive:!0,force:!0}))),logger.warn(`[accounts] Removed account local data`",
+      "replace": "await Promise.all(Cn.map(Cn=>rm(path.join(ni,Cn),{recursive:!0,force:!0}))),await rm(getAccountTaskRoot(ti),{recursive:!0,force:!0}),logger.warn(`[accounts] Removed account local data`",
+      "count": 1
+    },
+    {
+      "label": "builtin skill seed destinations use task projections",
+      "find": "function syncAccountBuiltinSkills(Cn){let ei=performance.now()",
+      "replace": "function syncAccountBuiltinSkills(Cn){Cn=Cn.map(getAccountTaskRoot);let ei=performance.now()",
+      "count": 1
+    },
+    {
+      "label": "context observer workspace defaults to task root",
+      "find": "function inertObserverSession(Cn){let ei=getAccountRoot(Cn),",
+      "replace": "function inertObserverSession(Cn){let ei=getAccountTaskRoot(Cn),",
+      "count": 1
+    }
+  ],
+  "taskSessionCallerOffsets": [
+    2590398,
+    2590439,
+    2854532,
+    3422953,
+    6361011,
+    6761671,
+    6761832,
+    9545751,
+    9550828,
+    10127314,
+    10127620,
+    10956832,
+    11584782,
+    11588638,
+    11591464,
+    11601774,
+    11619096,
+    11718821,
+    11818417,
+    11884858,
+    12056036,
+    12062658,
+    12075590,
+    12080374,
+    12080642,
+    12093746,
+    12094424,
+    12095680,
+    12099084,
+    12179564,
+    12188411,
+    12189823
+  ],
+  "privateSessionCallers": [
+    "let ti=getSessionStorageDir(ei,Cn);return existsSync(sessionMessagesJsonlPath(ti))",
+    "target=getSessionStorageDir(session,accountId);for(const dir of",
+    "sessionDirectory=getSessionStorageDir({id,createdAt},accountId);",
+    "ensureSessionDir=(Cn,ei)=>{let ti=getSessionStorageDir(Cn,ei);"
+  ],
+  "offsetUnit": "Unicode code points; diagnostic offsets only, exact text anchors and SHA-256 govern replay"
+}

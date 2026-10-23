@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: pinned v2 composition preserves first refusal/private stores and parses without executing daemon
+ok 1 - pinned v2 composition preserves first refusal/private stores and parses without executing daemon
+  ---
+  duration_ms: 433.747083
+  type: 'test'
+  ...
+# Subtest: actual constructors split account/session locations and refuse legacy selectors or native retirement
+ok 2 - actual constructors split account/session locations and refuse legacy selectors or native retirement
+  ---
+  duration_ms: 10.783375
+  type: 'test'
+  ...
+# Subtest: native layout generation changes cannot silently reuse cached locators; persisted routine paths stay bounded
+ok 3 - native layout generation changes cannot silently reuse cached locators; persisted routine paths stay bounded
+  ---
+  duration_ms: 8.327583
+  type: 'test'
+  ...
+# Subtest: actual attachment writer and file resolver use task files while private transcript remains separate
+ok 4 - actual attachment writer and file resolver use task files while private transcript remains separate
+  ---
+  duration_ms: 67.997041
+  type: 'test'
+  ...
+# Subtest: actual permission/file-tool functions grant task projections and retain complete private denial
+ok 5 - actual permission/file-tool functions grant task projections and retain complete private denial
+  ---
+  duration_ms: 11.543458
+  type: 'test'
+  ...
+# Subtest: actual memory-history/dream constructors stay private while markdown follows task projection
+ok 6 - actual memory-history/dream constructors stay private while markdown follows task projection
+  ---
+  duration_ms: 18.162708
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1232.704292

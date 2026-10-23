@@ -1,0 +1,26 @@
+{
+  "format": "aux.native.task-paths.source-check.v1",
+  "baseline": "a14acfc91",
+  "sourceSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+  "sourcePreserved": true,
+  "transformedSha256": "dc4d57bf49beac888e4e75cc4429d537e806a76fd7b5b70fd521c36510049909",
+  "ruleCount": 81,
+  "taskSessionCallerCount": 32,
+  "fixtureTests": 6,
+  "exitCode": 0,
+  "fixtureNativeProjectionSeam": true,
+  "actualNativeAuthorityVerified": false,
+  "fullTransformedSyntaxChecked": true,
+  "daemonExecuted": false,
+  "ownerStateRead": false,
+  "signed": false,
+  "activeStagingChanged": false,
+  "uiChanged": false,
+  "testLogSha256": "391f95b62c8d2e648ff776b2f50812dbf41498b9a2625afd3370397641f90bfe",
+  "sourceFiles": {
+    "inputs.json": "2a15ae10da609335664fdadadc4aa8487a1970e4152a28cf0f7330a15cfdbbdb",
+    "task-layout-runtime.js": "2b222d2da042cbb8f7e5c9a0dd10fdaf562ef83c7404ebc5344977993214b53d",
+    "transform.mjs": "a8aad94ba7fa1d8fca6ac4e55400e988829b658db8b284531ba6a79fe8b0badd",
+    "transform.test.mjs": "ac8da9d6cbef5c10e4dc7719e519e47261fc407e056ee0385e8e17a160622784"
+  }
+}

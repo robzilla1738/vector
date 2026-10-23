@@ -1,0 +1,104 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import vm from 'node:vm';
+import {spawnSync} from 'node:child_process';
+import {applyAuxNativeTaskPaths,auxNativeTaskPathInputs} from './transform.mjs';
+const original=fs.readFileSync(auxNativeTaskPathInputs.source,'utf8');
+const projected=applyAuxNativeTaskPaths(original);
+const code=projected.text;
+const helper=fs.readFileSync(new URL('./task-layout-runtime.js',import.meta.url),'utf8');
+function between(start,end){const a=code.indexOf(start);assert.ok(a>=0,start);const b=code.indexOf(end,a+start.length);assert.ok(b>a,end);return code.slice(a,b);}
+function fixture(t){
+ const base=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'aux-task-paths-fixture-')));
+ t.after(()=>fs.rmSync(base,{recursive:true,force:true}));
+ const roots=Object.freeze({format:'aux.native.storage-roots.v1',layoutVersion:1,ownerGeneration:'7',transportGeneration:'11',controlHome:path.join(base,'control'),taskHome:path.join(base,'task')});
+ fs.mkdirSync(roots.controlHome,{mode:0o700});fs.mkdirSync(roots.taskHome,{mode:0o700});
+ let current=roots,retired=false,calls=0;
+ const binding=Object.freeze({captureStorageRoots(){calls++;if(retired)throw Error('fixture native Owner closed');return current;}});
+ const context=vm.createContext({path,process:{env:{AUX_HOME:'/ignored-env',AUX_AGENT_RUNTIME_DIR:'/ignored-runtime'},_linkedBinding(name){assert.equal(name,'aux_owned_native');return binding;}},existsSync:fs.existsSync,readdirSync:fs.readdirSync,mkdirSync:fs.mkdirSync,isCloudRuntime:()=>false,import_dayjs_min$2:{default:value=>({format:()=>new Date(value).toISOString().slice(0,10)})}});
+ vm.runInContext(helper,context);
+ vm.runInContext(between('getAccountRoot=Cn=>','getLegacyPasswordsDir=').replace(/,$/,';'),context);
+ vm.runInContext(between('AUX_HOME_PATH=auxTaskRoots().controlHome,','DAEMON_CRASH_DUMPS_DIR=').replace(/,$/,';'),context);
+ vm.runInContext(between('getSettingsJsonPath=Cn=>','getExpectedSessionStorageDir=').replace(/,$/,';'),context);
+ vm.runInContext(between('getExpectedSessionStorageDir=','EXEC_DIR=').replace(/,$/,';'),context);
+ return {base,roots,context,calls:()=>calls,setRoots:value=>{current=value;},retire:()=>{retired=true;}};
+}
+test('pinned v2 composition preserves first refusal/private stores and parses without executing daemon',()=>{
+ assert.equal(projected.anchors.length,81);assert.ok(code.includes(helper));
+ assert.ok(code.startsWith(original.slice(0,original.indexOf('import {createRequire'))));
+ for(const anchor of ['getCredentialsJsonPath=Cn=>path.join(getAccountRoot(Cn),`credentials.json`)','getStateDbPath=Cn=>path.join(getAccountRoot(Cn),`state.db`)','getModelsPath=Cn=>path.join(getAccountRoot(Cn),`models.json`)','getSettingsJsonPath=Cn=>path.join(getAccountRoot(Cn),`settings.json`)','sessionDirectory=getSessionStorageDir({id,createdAt},accountId);'])assert.ok(code.includes(anchor),anchor);
+ assert.equal(code.split('getSessionStorageDir(').length-1,4);
+ assert.ok(code.includes('prepareFileAttachment(getSessionTaskDir(Cn.session,Cn.accountId),ei.attachment)'));
+ assert.ok(code.includes('const fs=await import(\'node:fs/promises\'),paths=await import(\'node:path\'),root=getSessionTaskDir(session,accountId);'));
+ assert.throws(()=>applyAuxNativeTaskPaths(original+' '),/source pin/);
+ assert.throws(()=>applyAuxNativeTaskPaths(code),/source pin/);
+ const syntax=spawnSync(process.execPath,['--check','--input-type=module'],{input:code,encoding:'utf8',maxBuffer:1024*1024});assert.equal(syntax.status,0,syntax.stderr);
+});
+test('actual constructors split account/session locations and refuse legacy selectors or native retirement',t=>{
+ const f=fixture(t),c=f.context,account=c.getAccountRoot(0),session={id:'new_session-1',createdAt:new Date('2026-10-23')};
+ assert.equal(account,path.join(f.roots.controlHome,'u','0'));
+ assert.equal(c.getCredentialsJsonPath(0),path.join(account,'credentials.json'));
+ assert.equal(c.getStateDbPath(0),path.join(account,'state.db'));
+ assert.equal(c.getProjectsDir(0),path.join(f.roots.taskHome,'u','0','projects'));
+ assert.equal(c.getAccountCacheDir(account),path.join(f.roots.taskHome,'u','0','cache'));
+ assert.equal(c.getExpectedSessionStorageDir(session,0),path.join(account,'sessions','2026-10-23_new_session-1'));
+ assert.equal(c.getSessionTaskDir(session,0),path.join(f.roots.taskHome,'u','0','sessions',session.id));
+ assert.throws(()=>c.getProjectsDir('/old-layout/u/0'),/legacy/);
+ assert.throws(()=>c.getProjectsDir(-1),/legacy/);
+ assert.throws(()=>c.getSessionTaskDir({id:'../messages.jsonl'},0),/identity/);
+ const calls=f.calls();c.getProjectsDir(0);c.getProjectsDir(0);assert.equal(f.calls(),calls+2);
+ f.retire();assert.throws(()=>c.getProjectsDir(0),/Owner closed/);
+});
+test('native layout generation changes cannot silently reuse cached locators; persisted routine paths stay bounded',t=>{
+ const f=fixture(t),c=f.context,root=path.join(f.roots.taskHome,'u','0','memory','routines');
+ assert.equal(c.auxTaskRoutineMemoryPath(0,{id:'routine-1',metadata:{}}),path.join(root,'routine-1','MEMORY.md'));
+ assert.throws(()=>c.auxTaskRoutineMemoryPath(0,{id:'routine-1',metadata:{memoryPath:path.join(f.roots.controlHome,'u','0','memory','legacy.md')}}),/outside/);
+ assert.throws(()=>c.auxTaskWorkspacePath(path.join(f.roots.controlHome,'u','0')),/private/);
+ f.setRoots(Object.freeze({...f.roots,ownerGeneration:'8'}));assert.throws(()=>c.getProjectsDir(0),/changed/);
+});
+test('actual attachment writer and file resolver use task files while private transcript remains separate',async t=>{
+ const f=fixture(t),c=f.context,session={id:'session_files',createdAt:new Date('2026-10-23')};
+ const privateDir=c.ensureSessionDir(session,0),taskDir=c.getSessionTaskDir(session,0);
+ fs.writeFileSync(path.join(privateDir,'messages.jsonl'),'private fixture transcript\n');
+ Object.assign(c,{fs$1:fsp,Buffer$1:Buffer,constants:fs.constants,import_mime_types$2:{extension:()=> 'txt'},SESSION_MESSAGES_JSONL_FILE:'messages.jsonl',resolve:path.resolve,relative:path.relative,isAbsolute:path.isAbsolute,realpath:fsp.realpath,stat$1:fsp.stat,basename:path.basename,extname:path.extname,auxCloudStoredAttachmentPath:()=>false,TRPCError:class extends Error{constructor(options){super(options.message);this.code=options.code;}},detectSupportedImageMimeTypeFromFile:async()=>undefined,getSessionFileMimeType:()=> 'text/plain',getSessionFileKind:()=> 'text',canPreviewSessionFileInline:()=>true});
+ vm.runInContext(between('function resolveSessionPath(','function resolveStaticFile('),c);
+ vm.runInContext(between('function attachmentFilename(','function normalizeToolResultContent('),c);
+ vm.runInContext(between('async function resolveSessionFile(','async function buildSessionFileResponse('),c);
+ const file=await c.prepareFileAttachment(taskDir,{id:'f1',type:'file',name:'sample.txt',mimeType:'text/plain',data:Buffer.from('task fixture').toString('base64')});
+ assert.equal(file.path,'./attachments/sample.txt');
+ const resolved=await c.resolveSessionFile(0,session,file.path);
+ assert.equal(resolved.filePath,path.join(taskDir,'attachments','sample.txt'));
+ assert.equal(fs.readFileSync(resolved.filePath,'utf8'),'task fixture');
+ assert.equal(fs.readFileSync(path.join(privateDir,'messages.jsonl'),'utf8'),'private fixture transcript\n');
+ await assert.rejects(c.resolveSessionFile(0,session,path.join(privateDir,'messages.jsonl')),/outside/);
+ assert.equal(fs.existsSync(path.join(taskDir,'messages.jsonl')),false);
+});
+test('actual permission/file-tool functions grant task projections and retain complete private denial',t=>{
+ const f=fixture(t),c=f.context,control=c.getAccountRoot(0),session=c.getSessionTaskDir({id:'perm'},0);
+ Object.assign(c,{RUNTIME_DIR$1:c.AUX_RUNTIME_DIR,os:{homedir:()=>f.base},fullAccessPermission:()=>({fixture:'full-access'}),accountWritableRoots:vm.runInContext('Cn=>[path.join(getAccountTaskRoot(Cn),`memory`),path.join(getAccountTaskRoot(Cn),`skills`)]',c)});
+ vm.runInContext(between('function permissionForMode(','function resolvePermission('),c);
+ vm.runInContext(between('function secretPaths(','function mergePermissionConfig('),c);
+ vm.runInContext(between('function resolveFileToolPath(','var init_file_path='),c);
+ const permission=c.permissionForMode('guard',session,session,control,[]);
+ assert.ok(permission.files.readableRoots.includes(c.getAccountTaskRoot(0)));
+ assert.ok(!permission.files.readableRoots.includes(control));
+ assert.ok(!permission.files.writableRoots.includes(control));
+ assert.ok(c.secretPaths(control).includes(f.roots.controlHome));
+ assert.equal(c.resolveFileToolPath({accountRoot:control,session:{cwd:session},sessionDir:session},'memory/note.md'),path.join(c.getAccountTaskRoot(0),'memory','note.md'));
+ assert.throws(()=>c.permissionForMode('guard',control,session,control,[]),/private/);
+});
+test('actual memory-history/dream constructors stay private while markdown follows task projection',t=>{
+ const f=fixture(t),c=f.context;
+ c.MEMORY_DIRNAME='memory';c.FILENAME='.dream-state.json';
+ vm.runInContext('memoryDir='+between('memoryDir=Cn=>','memoryFile=').slice('memoryDir='.length).replace(/,$/,';'),c);
+ vm.runInContext(between('function historyPath(','function createMemoryHistoryEntry('),c);
+ vm.runInContext(between('function statePath(','async function loadDreamState('),c);
+ const account=c.getAccountRoot(0);
+ assert.equal(c.memoryDir(account),path.join(c.getAccountTaskRoot(0),'memory'));
+ assert.equal(c.historyPath(account),path.join(account,'memory-private','.history.jsonl'));
+ assert.equal(c.statePath(c.getAccountTaskRoot(0)),path.join(account,'memory-private','.dream-state.json'));
+});
