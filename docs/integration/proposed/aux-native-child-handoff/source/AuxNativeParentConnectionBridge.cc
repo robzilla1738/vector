@@ -23,10 +23,13 @@ Registry& Connections() { static auto* registry = new Registry; return *registry
 extern "C" uint64_t AuxConnectActualNativeParent(mach_port_t right,
     SecRequirementRef requirement, const uint8_t* hash, size_t length, uint32_t timeout_ms) {
   try {
-    auto& registry = Connections();
-    if (getpid() != registry.process) return 0;
+    // The C argument is an explicitly transferred current-process right, not
+    // an inherited object. Own it before registry allocation or process refusal
+    // so every return/exception consumes it exactly once.
     auto endpoint = aux::peer::NativeSendRight::AdoptReceivedRight(right);
     if (!endpoint.is_valid()) return 0;
+    auto& registry = Connections();
+    if (getpid() != registry.process) return 0;
     if (!hash || (length != 20 && length != 32)) return 0;
     auto policy = aux::peer::ExactCodePolicy::CopyNativePolicy(requirement, {hash, length});
     if (!policy) return 0;

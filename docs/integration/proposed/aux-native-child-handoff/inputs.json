@@ -17,7 +17,7 @@
     {
       "path": "source/AuxNativeParentConnectionBridge.cc",
       "inputSha256": null,
-      "outputSha256": "acaf36448b55594a7d359e90609fa792e37342356efe97ac59b45492d52fe0c0",
+      "outputSha256": "b184d0fa64425a650ae23aac2dd32128bd604dc7cfef90b4e18258cb96ae6d9b",
       "new": true
     },
     {
@@ -57,7 +57,7 @@
       "new": true
     }
   ],
-  "patchSha256": "d2ea3430e0061fcd6da51f63c5a6f6303138aa6e2204a4ca7e0f92213ee5b6b8",
+  "patchSha256": "4c23d1ee321cfc26e113ef206407b5857c653f74fc49ffd498eb01170e5b6159",
   "referenceInputs": [
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
@@ -126,5 +126,12 @@
     "timeoutIsNotPeerLoss": true,
     "priorInputsSha256": "ab569c9d0a2ba75ccb87194f86049929ef60a0baca62d3ebf55d7e11ebc864fe",
     "compiled": false
+  },
+  "ownedRightSuccessor": {
+    "priorInputsSha256": "b2f25bac17109512b2f022b9e0098d20756a7816a58ab5237e38e7fa91dcd073",
+    "preservedRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+    "oneBridgeSourceChanged": true,
+    "compilePending": true,
+    "queuedRecipeMustConsumeSuccessorPins": true
   }
 }

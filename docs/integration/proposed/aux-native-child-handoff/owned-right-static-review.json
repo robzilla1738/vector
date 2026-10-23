@@ -1,0 +1,7 @@
+{
+  "format": "aux.child-handoff.owned-right.static.v1",
+  "sourceSha256": "b184d0fa64425a650ae23aac2dd32128bd604dc7cfef90b4e18258cb96ae6d9b",
+  "adoptBeforeRegistryAllocationAndWrongProcessRefusal": true,
+  "compiled": false,
+  "machOrSecurityExecuted": false
+}

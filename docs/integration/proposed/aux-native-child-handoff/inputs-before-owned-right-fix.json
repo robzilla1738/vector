@@ -1,0 +1,130 @@
+{
+  "format": "aux.native-child-handoff.source.v1",
+  "parentTransportCommit": "d578595e0",
+  "files": [
+    {
+      "path": "source/AuxNativeEndpointDelivery.cc",
+      "inputSha256": null,
+      "outputSha256": "9fd57330f5c4d588d1009ae696c83d17bd28c90841f5cc1b931726a73f7ae565",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativeEndpointDelivery.h",
+      "inputSha256": null,
+      "outputSha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativeParentConnectionBridge.cc",
+      "inputSha256": null,
+      "outputSha256": "acaf36448b55594a7d359e90609fa792e37342356efe97ac59b45492d52fe0c0",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativeParentConnectionBridge.h",
+      "inputSha256": null,
+      "outputSha256": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc",
+      "new": true
+    },
+    {
+      "path": "source/AuxNativePeerTransport.cc",
+      "inputSha256": "4fd48df773f95be407ee013afbd478ac0e3a2c37b9d94b7f51096c7b967af4d9",
+      "outputSha256": "88ef11c6458ce3df253262b7b18add94a5f670a4156a3fcb15bf0b4d75fd7b42",
+      "new": false
+    },
+    {
+      "path": "source/AuxNativePeerTransport.h",
+      "inputSha256": "bf00bc7a4215b77262934d81c22d10f1cabc5c8ffa15a00c38164ddbfbb8b45a",
+      "outputSha256": "0f286400344249f6c01369f50e58772bf0effa42a22465937be3f46d90a96f4a",
+      "new": false
+    },
+    {
+      "path": "source/AuxNativePeerWire.h",
+      "inputSha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb",
+      "outputSha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb",
+      "new": false
+    },
+    {
+      "path": "source/AuxOwnedNativePeerChild.cc",
+      "inputSha256": null,
+      "outputSha256": "a54a4c546f5059529eb5c2895d2d9d1ee44e42da2342820a38325fd845a0e93e",
+      "new": true
+    },
+    {
+      "path": "source/AuxOwnedNativePeerChild.h",
+      "inputSha256": null,
+      "outputSha256": "3779e4fe190eeaa43d4a898fa746416fe42686391481967c6cf0238aebac532f",
+      "new": true
+    }
+  ],
+  "patchSha256": "d2ea3430e0061fcd6da51f63c5a6f6303138aa6e2204a4ca7e0f92213ee5b6b8",
+  "referenceInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/launch.h",
+      "sha256": "52b4dc784b0e8678697b10c847fa03f2b482578a323fcd0574d95ef68d6ed008"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/process_posix.cc",
+      "sha256": "5758b1f02b332dc3b888c0c2ee7b273f9e9f009407edce9200a03eeb781da0d3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.h",
+      "sha256": "c54d30debfa721763774774ad85e197b8a7b1337d3cb78a830258cd30d73f74f"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/flock.2",
+      "sha256": "54195927032ace18230a4f926d9edfbb672fc8706267be00727d203a01b6d616"
+    },
+    {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/fcntl.2",
+      "sha256": "9b16ec920ad681d1af2256b2c76d408c7b8506b7cad13aa00d035ba4385787a7"
+    }
+  ],
+  "compiled": false,
+  "ipcOrSecurityExecuted": false,
+  "defaultSupervisorModified": false,
+  "activeColdCallerIntegrated": false,
+  "firstRefusalChanged": false,
+  "wholeCohortCustodyClaimed": false,
+  "compileRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+  "copySendReviewSha256": "57384f415506f31974221e4bd9402c18626e60fc9ea48b3e709d9495aad13748",
+  "nodeCompiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+  "compileInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/base/base.ninja",
+      "sha256": "6e356bb885475d0938400323fde6cdcebf9342b939c651f17d2dc79d336c2e4f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/build/modules/system/module.pcm",
+      "sha256": "4fb27a097159c1cf84b2b58b297144934279fb1934beebdef9f858367305374e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/gen/build/modules/module.modulemap",
+      "sha256": "4af6368f381f18ab9ff37f2ddf6c761fc4de00629d0f28a3d59342547df99514"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+      "sha256": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "sha256": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5"
+    }
+  ],
+  "proposedGnSha256": "878aeaad4623119e8dbce7bddcd12300e157803598936b29369928a80c6a92d0",
+  "successorNotes": {
+    "parentExceptionOverride": false,
+    "separateCppAbiGraphs": true,
+    "timeoutIsNotPeerLoss": true,
+    "priorInputsSha256": "ab569c9d0a2ba75ccb87194f86049929ef60a0baca62d3ebf55d7e11ebc864fe",
+    "compiled": false
+  }
+}
