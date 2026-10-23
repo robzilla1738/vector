@@ -1,0 +1,236 @@
+{
+  "schema": "aux.provider-funded-launch.v1",
+  "sourceVersion": "1.26.1016.1852",
+  "files": {
+    "assets/route-TQyeTEXE.js": {
+      "originalSha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "defer paid settings navigation",
+          "find": "{label:\"Plan & Usage\",icon:v2,activeIcon:b2,href:\"/u/$userId/settings/billing\",requiresSignIn:!0},",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    },
+    "assets/extension-main-Dz1-AsCT.js": {
+      "originalSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "legacy billing route uses supplied provider settings",
+          "find": "component:a(Oo,\"component\"),validateSearch:",
+          "replace": "component:a(Jo,\"component\"),validateSearch:",
+          "count": 1
+        }
+      ]
+    },
+    "assets/subscription-C_XzJh5Z.js": {
+      "originalSha256": "02b3872561f7e2f15f7d7a882f24b4e0fbcda10bdb6ad57522702ac15138c00c",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "local feature access requires account, not Aux paid plan",
+          "find": "function t(e,a){const r=",
+          "replace": "function t(e,a){if(!AUX_LAUNCH_POLICY.paymentsEnabled)return !!e;const r=",
+          "count": 1
+        }
+      ]
+    },
+    "assets/ai-CzEX5E7S.js": {
+      "originalSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "onboarding defaults to existing API key chooser",
+          "find": "ls=Oe({provider:Me()})",
+          "replace": "ls=Oe({provider:AUX_LAUNCH_POLICY.hostedAiEnabled?Me():\"byok\"})",
+          "count": 1
+        },
+        {
+          "name": "reuse provider row for BYOK instead of hosted plan",
+          "find": "(0,e.jsx)(V,{provider:os,icon:(0,e.jsx)(Se,{className:\"size-full scale-90\"})})",
+          "replace": "(0,e.jsx)(V,{provider:AUX_LAUNCH_POLICY.hostedAiEnabled?os:I,icon:AUX_LAUNCH_POLICY.hostedAiEnabled?(0,e.jsx)(Se,{className:\"size-full scale-90\"}):void 0})",
+          "count": 1
+        },
+        {
+          "name": "ignore obsolete checkout return without polling billing",
+          "find": "r!==\"success\"||l.current",
+          "replace": "!AUX_LAUNCH_POLICY.paymentsEnabled||r!==\"success\"||l.current",
+          "count": 1
+        },
+        {
+          "name": "provider-funded onboarding copy",
+          "find": "Use Aside\u2019s built-in plan, or connect a subscription you already have.",
+          "replace": "Connect a subscription you already have, or use your own API key.",
+          "count": 1
+        },
+        {
+          "name": "reject obsolete hosted onboarding selection",
+          "find": "w=async({provider:i})=>{if(i===\"aside\"",
+          "replace": "w=async({provider:i})=>{if(!AUX_LAUNCH_POLICY.hostedAiEnabled&&i===\"aside\"){b.error(\"Connect your own provider in Settings > Models.\");return}if(i===\"aside\"",
+          "count": 1
+        }
+      ]
+    },
+    "assets/strip-markdown-DRcmtuJc.js": {
+      "originalSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "exclude hosted provider from shared model options",
+          "find": "for(const a of s){const u=Cr(a);",
+          "replace": "for(const a of s){if(!AUX_LAUNCH_POLICY.hostedAiEnabled&&a===\"aside\")continue;const u=Cr(a);",
+          "count": 1
+        }
+      ]
+    },
+    "assets/model-BrFuJM2w.js": {
+      "originalSha256": "28a35f040a415439e44540e81660ee9b738b92843e3ce2f9eeaf1d9808eba9dd",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "hide retained hosted connection without deleting credentials",
+          "find": "[...r.values()].map(n=>",
+          "replace": "[...r.values()].filter(n=>AUX_LAUNCH_POLICY.hostedAiEnabled||n.id!==\"aside\").map(n=>",
+          "count": 1
+        },
+        {
+          "name": "hide hosted provider in disconnected list",
+          "find": "y=[...t.values()].sort",
+          "replace": "y=[...t.values()].filter(d=>AUX_LAUNCH_POLICY.hostedAiEnabled||d.id!==\"aside\").sort",
+          "count": 1
+        },
+        {
+          "name": "do not market hosted AI sign-in as provider connection",
+          "find": "if(r?.mode===\"cloud\"&&r.authStatus!==\"paused\")return null;",
+          "replace": "if(!AUX_LAUNCH_POLICY.hostedAiEnabled||r?.mode===\"cloud\"&&r.authStatus!==\"paused\")return null;",
+          "count": 1
+        }
+      ]
+    },
+    "assets/model-select-BvZsM1Kl.js": {
+      "originalSha256": "b62a239e65e525c354997c7b45be4105147d610b5ab3de5a87d0dd0f1c541505",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "provider reasoning does not require Aux paid plan",
+          "find": "G=g.subscriptionPlan!==\"free\"",
+          "replace": "G=!AUX_LAUNCH_POLICY.paymentsEnabled||g.subscriptionPlan!==\"free\"",
+          "count": 1
+        }
+      ]
+    },
+    "assets/routines-BNdQOEUt.js": {
+      "originalSha256": "254d21732416350c8ceb58404d01cbf6cf65211b46b0e1004f802f59c97811ac",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "local routine capacity has no paid tier",
+          "find": "h=(j?.subscriptionPlan??\"free\")===\"free\"",
+          "replace": "h=AUX_LAUNCH_POLICY.paymentsEnabled&&(j?.subscriptionPlan??\"free\")===\"free\"",
+          "count": 1
+        }
+      ]
+    },
+    "assets/island-C0ouZ54e.js": {
+      "originalSha256": "6fa03ce1c54b5a5c3a6ed0439e63d08560c5715be8ff568afc8a07eee4a078e2",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "skip unnecessary billing fetch",
+          "find": "staleTime:6e4,enabled:d",
+          "replace": "staleTime:6e4,enabled:d&&AUX_LAUNCH_POLICY.paymentsEnabled",
+          "count": 1
+        },
+        {
+          "name": "defer credit referral promo",
+          "find": "d&&(0,e.jsx)(ge,{accountId:t,pending:a.isPending,onCopy:v})",
+          "replace": "d&&AUX_LAUNCH_POLICY.paymentsEnabled&&(0,e.jsx)(ge,{accountId:t,pending:a.isPending,onCopy:v})",
+          "count": 1
+        },
+        {
+          "name": "defer payment status badge",
+          "find": "(0,e.jsx)(pe,{accountId:t,billing:o})",
+          "replace": "AUX_LAUNCH_POLICY.paymentsEnabled&&(0,e.jsx)(pe,{accountId:t,billing:o})",
+          "count": 1
+        },
+        {
+          "name": "hide paid menu only, preserve authenticated account actions",
+          "find": "(0,e.jsxs)(c,{className:\"flex-col items-start gap-0.5\",render:(0,e.jsx)(\"a\",{href:p(`/u/${t}/settings/billing`),onClick:m}),children:[(0,e.jsx)(\"span\",{className:\"text-foreground text-sm font-medium\",children:l}),(0,e.jsx)(\"span\",{className:\"text-muted-foreground text-xs\",children:f===void 0?\"Loading...\":`${f}% remaining`})]}),(0,e.jsx)(b,{}),(0,e.jsxs)(c,{className:\"[&_svg]:text-muted-foreground [&_svg]:-mx-0.5\",disabled:a.isPending,onClick:v,children:[a.isPending?(0,e.jsx)(C,{}):(0,e.jsx)(N,{}),(0,e.jsx)(\"span\",{children:\"Invite friends\"})]}),(0,e.jsx)(b,{})",
+          "replace": "...AUX_LAUNCH_POLICY.paymentsEnabled?[(0,e.jsxs)(c,{className:\"flex-col items-start gap-0.5\",render:(0,e.jsx)(\"a\",{href:p(`/u/${t}/settings/billing`),onClick:m}),children:[(0,e.jsx)(\"span\",{className:\"text-foreground text-sm font-medium\",children:l}),(0,e.jsx)(\"span\",{className:\"text-muted-foreground text-xs\",children:f===void 0?\"Loading...\":`${f}% remaining`})]}),(0,e.jsx)(b,{}),(0,e.jsxs)(c,{className:\"[&_svg]:text-muted-foreground [&_svg]:-mx-0.5\",disabled:a.isPending,onClick:v,children:[a.isPending?(0,e.jsx)(C,{}):(0,e.jsx)(N,{}),(0,e.jsx)(\"span\",{children:\"Invite friends\"})]}),(0,e.jsx)(b,{})]:[]",
+          "count": 1
+        }
+      ]
+    },
+    "assets/session-composer-Dc0LRfZA.js": {
+      "originalSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "edits": [
+        {
+          "name": "explicit provider-funded public launch policy",
+          "find": "!function(){try{var",
+          "replace": "const AUX_LAUNCH_POLICY=Object.freeze({paymentsEnabled:false,hostedAiEnabled:false});!function(){try{var",
+          "count": 1
+        },
+        {
+          "name": "suppress Aux hosted credit warning only",
+          "find": "if(!t.exhausted&&n)return null;const{plan:s,resetsAt:o}=t",
+          "replace": "if(!AUX_LAUNCH_POLICY.hostedAiEnabled||!t.exhausted&&n)return null;const{plan:s,resetsAt:o}=t",
+          "count": 1
+        },
+        {
+          "name": "external provider reasoning is not Aux plan gated",
+          "find": "disabled:y===\"free\",onCheckedChange:he(w,!0)",
+          "replace": "disabled:AUX_LAUNCH_POLICY.paymentsEnabled&&y===\"free\",onCheckedChange:he(w,!0)",
+          "count": 1
+        }
+      ]
+    }
+  }
+}
