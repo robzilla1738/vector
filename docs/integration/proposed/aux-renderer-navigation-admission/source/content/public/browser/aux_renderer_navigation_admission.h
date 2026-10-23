@@ -9,7 +9,7 @@ namespace content::aux_migration {
 
 // Process-local component observations, never renderer exit/storage drain proof.
 struct RendererNavigationAdmissionSnapshot {
-  uint64_t generation;
+  uint64_t generation;  // 1 open -> 2 permanently closed.
   bool closed;
   size_t active_renderer_init_calls;
   size_t pending_renderer_launches;

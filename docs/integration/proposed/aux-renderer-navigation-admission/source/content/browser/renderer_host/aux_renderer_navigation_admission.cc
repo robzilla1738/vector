@@ -81,7 +81,7 @@ RendererNavigationAdmissionSnapshot
 InspectRendererNavigationAdmissionForMigration() {
   auto& state = Current();
   std::lock_guard<std::mutex> lock(state.mutex);
-  return {state.closed ? uint64_t{0} : uint64_t{1}, state.closed,
+  return {state.closed ? uint64_t{2} : uint64_t{1}, state.closed,
           state.active_init, state.launches.size(), state.unresolved_launches,
           state.late_callbacks, state.active_navigation, state.navigations.size(),
           state.unresolved_navigation, state.unsupported_navigation};

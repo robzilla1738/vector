@@ -44,7 +44,7 @@ int main() {
   }
   CloseRendererNavigationAdmissionForMigration();
   const auto end = InspectRendererNavigationAdmissionForMigration();
-  assert(end.closed && end.generation == 0 && end.active_renderer_init_calls == 0);
+  assert(end.closed && end.generation == 2 && end.active_renderer_init_calls == 0);
   assert(end.active_navigation_dispatches == 0 && end.pending_renderer_launches == 0);
   assert(end.unresolved_renderer_launches == 2 && end.unresolved_navigation_cleanups == 1);
   assert(end.unsupported_navigation_cancellations == 1);

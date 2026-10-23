@@ -85,7 +85,7 @@
     {
       "path": "content/public/browser/aux_renderer_navigation_admission.h",
       "inputSha256": null,
-      "outputSha256": "10b5a6d05d54335aa2ded38b6b8271b2329de63e8392356fd21ecf8ac5398eec"
+      "outputSha256": "d5a83fef104fd4e4beccb865904405eeae6d5eeda217aef3fbb0b2c2dfb0b9f2"
     },
     {
       "path": "content/browser/renderer_host/aux_renderer_navigation_admission.h",
@@ -95,10 +95,10 @@
     {
       "path": "content/browser/renderer_host/aux_renderer_navigation_admission.cc",
       "inputSha256": null,
-      "outputSha256": "502bcd94ca2b89455c52bbdc040ff97c3c9139c1138c84bd469b38b1cbad33e9"
+      "outputSha256": "29606e36dcc9035d7c5ed033aa5288a5cfe3c8ed2064e2ec1f6dc6a630d0d341"
     }
   ],
-  "patchSha256": "a2c393e4056c927830b57f6a151db7cc144b06f3c370068de6bd5b1c39dbad5c",
+  "patchSha256": "a8777c34c5401e0ad21c582e351dbde16ff1e787189cad99afd622394f5bfb10",
   "applied": false,
   "compiled": false,
   "coldRefusalChanged": false,
