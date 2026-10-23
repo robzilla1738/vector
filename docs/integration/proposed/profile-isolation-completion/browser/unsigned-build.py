@@ -12,7 +12,7 @@ R.mkdir();cfg=S/'build/config/mac/BUILD.gn';baseline=sha(N/'build/config/mac/BUI
 s=(N/'build/config/mac/BUILD.gn').read_text();needle='  ldflags = common_mac_flags\n';assert s.count(needle)==1
 unsigned=s.replace(needle,needle+'  # This isolated local candidate must not be implicitly ad-hoc signed.\n  ldflags += [ "-Wl,-no_adhoc_codesign" ]\n')
 if cfg.read_text() not in [s,unsigned]:raise SystemExit('link config not matching exact unsigned successor')
-cfg.write_text(unsigned)
+if cfg.read_text()!=unsigned:cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
 try:
  reuse=None
