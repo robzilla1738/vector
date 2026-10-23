@@ -1,14 +1,20 @@
-✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (58.477541ms)
-✔ callback state, nonce, signature, identity, permissions and replay fail closed (49.11275ms)
-✔ unsafe storage refuses; logout retains registration and clears all local tokens (41.623875ms)
-✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.228167ms)
-✔ inference stream requires actual completion; interrupted and incomplete streams refuse (3.793ms)
-✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (30.301083ms)
-ℹ tests 6
+✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (95.551166ms)
+✔ callback state, nonce, signature, identity, permissions and replay fail closed (74.422834ms)
+✔ unsafe storage refuses; logout retains registration and clears all local tokens (65.437334ms)
+✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.594958ms)
+✔ inference stream requires actual completion; interrupted and incomplete streams refuse (3.621333ms)
+✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (50.674542ms)
+✔ kernel auth lock survives utility exit, refuses live contenders and recovers after actual process crash (163.537583ms)
+✔ unknown legacy lock is preserved and never guessed stale (4.303084ms)
+✔ plan metadata uses exact supplied slugs and conservative unknown bounds without inventing capabilities (0.253ms)
+✔ official plan payload removes unsupported fields, preserves history and local tool names, refuses unsupported tools/modalities (0.3095ms)
+✔ rejected refresh sets truthful local expired state without exposing provider body or retrying (72.730125ms)
+✔ local disconnect aborts a pending refresh and cannot resurrect cleared tokens (71.904584ms)
+ℹ tests 12
 ℹ suites 0
-ℹ pass 6
+ℹ pass 12
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 424.291417
+ℹ duration_ms 756.715333

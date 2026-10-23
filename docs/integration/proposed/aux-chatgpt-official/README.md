@@ -30,3 +30,7 @@ Official contracts reviewed: [Registration and sign-in](https://developers.opena
 ## Bounded source follow-up
 
 The actual source route `models.removeCredential` → `ModelsManager.removeCredential` → `CredentialStorage.logout` is now asynchronous and awaited; unconfirmed provider revocation is surfaced explicitly after local disconnection. A focused fixture executes these actual transformed methods with confirmed/unconfirmed revocation results. A second fixture calls the actual transformed image-provider API and proves its model list is empty and no private transport initializer is reached. The underlying legacy image-driver entry independently refuses. All 28 anchors, full state2 syntax and six no-network module tests passed; no real provider request or accepted-app mutation occurred.
+
+## Current stabilization successor
+
+The 2026-10-23 final-completion AI batch replaces the original O_EXCL presence lock with version2 kernel-backed descriptor locking, adds active request/refresh cancellation and truthful expiry state, and maps the documented plan payload/tool requirements. Twelve focused checks now pass. The original paragraph describing manual crash-left lock recovery is historical for v1 only; v2 process crashes release the kernel lock automatically, while unknown empty legacy/incomplete markers still refuse. Exact current behavior, integration consequences and distribution eligibility gap: [provider stabilization](../aux-provider-stabilization-20261023/README.md).

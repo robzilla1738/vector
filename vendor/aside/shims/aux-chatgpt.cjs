@@ -1,8 +1,9 @@
 // Official public-client ChatGPT plan flow. Never import from a renderer or sync this directory.
 const { randomBytes, randomUUID, createHash, createPublicKey, verify, timingSafeEqual } = require('node:crypto');
-const { constants, openSync, closeSync, readFileSync, writeFileSync, fsyncSync, renameSync, unlinkSync, mkdirSync, lstatSync, fstatSync } = require('node:fs');
+const { constants, openSync, closeSync, readFileSync, writeFileSync, fsyncSync, renameSync, unlinkSync, mkdirSync, lstatSync, fstatSync, readSync } = require('node:fs');
 const { join, resolve, parse } = require('node:path');
 const { homedir } = require('node:os');
+const { spawn } = require('node:child_process');
 const ISSUER = 'https://auth.openai.com';
 const RESOURCE = 'https://api.openai.com/v1';
 const SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
@@ -56,11 +57,37 @@ class LocalChatGPTStore {
     try { return await operation; } finally { if (this.operations.get(key) === operation) this.operations.delete(key); }
   }
   async diskLocked(key, fn) {
+    privateDirectory(this.root);
+    need(process.platform === 'darwin', 'protected local locking is supported only on macOS');
     const path = join(this.root, `${digest(key)}.lock`);
+    const marker = { schema: 'aux.chatgpt.auth-lock.v2', account: digest(key) };
     let fd;
-    try { fd = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600); }
-    catch (e) { if (e.code === 'EEXIST') throw Error('ChatGPT: another local credential operation is in progress'); throw e; }
-    try { return await fn(); } finally { closeSync(fd); unlinkSync(path); }
+    try {
+      try {
+        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);
+        writeFileSync(fd, JSON.stringify(marker)); fsyncSync(fd);
+      } catch (error) {
+        if (fd !== undefined || error.code !== 'EEXIST') throw error;
+        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | nofollow);
+      }
+      const stat = fstatSync(fd);
+      need(stat.isFile() && stat.uid === process.getuid() && (stat.mode & 0o077) === 0 && stat.nlink === 1 && stat.size < 1024, 'unsafe local lock file');
+      let existing; try { const bytes = Buffer.alloc(stat.size); need(readSync(fd, bytes, 0, bytes.length, 0) === bytes.length, 'incomplete lock marker'); existing = JSON.parse(bytes.toString('utf8')); } catch { throw Error('ChatGPT: legacy or incomplete lock needs explicit recovery review'); }
+      need(existing.schema === marker.schema && existing.account === marker.account, 'legacy or mismatched lock needs explicit recovery review');
+      // macOS lockf's descriptor form takes BSD flock on the inherited open-file
+      // description. This process retains the same descriptor after lockf exits.
+      // Its crash releases the kernel lock; the permanent inode is never unlinked.
+      const code = await new Promise((resolve, reject) => {
+        const child = spawn('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } });
+        const timeout = setTimeout(() => { child.kill('SIGKILL'); }, 5000);
+        child.once('error', error => { clearTimeout(timeout); reject(Error('ChatGPT: local lock service unavailable')); });
+        child.once('close', (code, signal) => { clearTimeout(timeout); signal ? reject(Error('ChatGPT: local lock acquisition interrupted')) : resolve(code); });
+      });
+      need(code === 0, code === 75 ? 'another local credential operation is in progress' : 'local lock acquisition failed');
+      const current = lstatSync(path); privateDirectory(this.root);
+      need(current.dev === stat.dev && current.ino === stat.ino && current.nlink === 1, 'local lock namespace changed');
+      return await fn();
+    } finally { if (fd !== undefined) closeSync(fd); }
   }
   hostId() {
     privateDirectory(this.root);
@@ -98,12 +125,17 @@ class LocalChatGPTStore {
 }
 class ChatGPTPlanClient {
   constructor({ store, fetch: request = globalThis.fetch, now = Date.now } = {}) {
-    need(store, 'local credential store required'); this.store = store; this.fetch = request; this.now = now; this.pending = new Map(); this.inflight = new Map();
+    need(store, 'local credential store required'); this.store = store; this.fetch = request; this.now = now; this.pending = new Map(); this.inflight = new Map(); this.refreshes = new Map();
   }
   async json(url, options) {
-    const response = await this.fetch(url, { ...options, redirect: 'error', signal: options?.signal || AbortSignal.timeout(15000) });
-    need(response.ok, `provider request failed (${response.status})`);
+    const response = await this.fetch(url, { ...options, redirect: 'error', signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
     const text = await response.text(); need(text.length <= 1024 * 1024, 'provider response too large');
+    if (!response.ok) {
+      const error = Error(`ChatGPT: provider request failed (${response.status})`); error.status = response.status;
+      let code; try { const body = JSON.parse(text); code = typeof body.error === 'string' ? body.error : body.error?.code; } catch {}
+      error.authRejected = response.status === 401 || response.status === 403 || code === 'invalid_grant' || code === 'invalid_token';
+      throw error;
+    }
     try { return JSON.parse(text); } catch { throw Error('ChatGPT: invalid provider response'); }
   }
   begin(flowId, redirectUri, account) {
@@ -117,19 +149,19 @@ class ChatGPTPlanClient {
     const params = new URLSearchParams({ client_id: clientId, ext_agent_host_id: this.store.hostId(), response_type: 'code', redirect_uri: redirectUri, scope: SCOPES, resource: RESOURCE, state, nonce, code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url') });
     if (!saved) params.set('agent_name_hint', 'Aux');
     // Retained ID tokens stay local; do not expose them in authorization URLs returned to extension UI.
-    this.pending.set(flowId, { account, clientId, subject: saved?.subject, redirectUri, state, nonce, verifier, created: this.now() });
+    this.pending.set(flowId, { account, clientId, subject: saved?.subject, redirectUri, state, nonce, verifier, created: this.now(), controller: new AbortController() });
     return { redirectUri, state, url: `${ISSUER}/api/accounts/authorize?${params}` };
   }
-  cancelAccount(account) { for (const [id, attempt] of [...this.pending, ...this.inflight]) if (attempt.account === account) this.cancel(id); }
+  cancelAccount(account) { for (const [id, attempt] of [...this.pending, ...this.inflight]) if (attempt.account === account) this.cancel(id); for (const controller of this.refreshes.get(account) || []) controller.abort(); }
   disconnectLocal(account) { this.cancelAccount(account); this.store.clearTokens(account); }
-  cancel(flowId) { const pending = this.pending.get(flowId) || this.inflight.get(flowId); if (pending) pending.cancelled = true; this.pending.delete(flowId); }
-  async verifyIdentity(token, clientId, nonce, expectedSubject) {
+  cancel(flowId) { const pending = this.pending.get(flowId) || this.inflight.get(flowId); if (pending) { pending.cancelled = true; pending.controller.abort(); } this.pending.delete(flowId); }
+  async verifyIdentity(token, clientId, nonce, expectedSubject, signal) {
     need(present(token), 'ID token missing');
     const parts = token.split('.'); need(parts.length === 3 && parts.every(p => /^[A-Za-z0-9_-]+$/.test(p)), 'invalid ID token');
     let header, claims;
     try { header = JSON.parse(Buffer.from(parts[0], 'base64url')); claims = JSON.parse(Buffer.from(parts[1], 'base64url')); } catch { throw Error('ChatGPT: invalid ID token'); }
     need(header.alg === 'RS256' && present(header.kid) && !header.crit && !header.jku && !header.jwk && !header.x5u, 'unsupported ID token signature');
-    const jwks = await this.json(`${ISSUER}/.well-known/jwks.json`);
+    const jwks = await this.json(`${ISSUER}/.well-known/jwks.json`, {signal});
     const keys = jwks.keys?.filter(k => k.kid === header.kid && k.kty === 'RSA' && (!k.use || k.use === 'sig') && (!k.alg || k.alg === 'RS256'));
     need(keys?.length === 1, 'ID token signing key unavailable');
     need(verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), createPublicKey({ key: keys[0], format: 'jwk' }), Buffer.from(parts[2], 'base64url')), 'invalid ID token signature');
@@ -140,11 +172,11 @@ class ChatGPTPlanClient {
     if (nonce !== undefined) need(equal(claims.nonce, nonce), 'ID token nonce mismatch');
     return claims;
   }
-  async tokenRecord(body, clientId, pending, previous) {
+  async tokenRecord(body, clientId, pending, previous, signal) {
     const granted = body.scope === undefined && previous ? previous.scopes : scopes(body.scope);
     need(requiredScopes.every(s => granted.includes(s)), 'ChatGPT plan permission not granted');
     need(present(body.access_token) && (present(body.refresh_token) || previous?.refresh) && body.token_type?.toLowerCase() === 'bearer' && Number.isFinite(body.expires_in) && body.expires_in > 0 && body.expires_in <= 86400, 'invalid token response');
-    const identity = body.id_token ? await this.verifyIdentity(body.id_token, clientId, pending?.nonce, pending?.subject || previous?.subject) : undefined;
+    const identity = body.id_token ? await this.verifyIdentity(body.id_token, clientId, pending?.nonce, pending?.subject || previous?.subject, signal) : undefined;
     need(identity || previous, 'verified identity required');
     return { version: 1, type: 'oauth', source: 'aux-chatgpt-plan-v1', issuer: ISSUER, clientId, hostId: this.store.hostId(), subject: identity?.sub || previous.subject, accountId: identity?.sub || previous.subject, email: identity?.email || previous?.email, idToken: body.id_token || previous?.idToken, access: body.access_token, refresh: body.refresh_token || previous?.refresh, scopes: granted, expires: this.now() + body.expires_in * 1000, savedAt: new Date(this.now()).toISOString() };
   }
@@ -163,29 +195,50 @@ class ChatGPTPlanClient {
     this.inflight.set(flowId, pending);
     return this.store.locked(pending.account, async () => {
       const existing = this.store.read(pending.account);
-      need(!existing || !pending.subject || existing.subject === pending.subject, 'selected registration changed');
+      need(!pending.cancelled, 'authorization cancelled');
+      need(!existing || (pending.subject && existing.subject === pending.subject && existing.clientId === pending.clientId), 'selected registration changed');
       this.store.saveRegistration(pending.account, clientId);
-      const body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', client_id: clientId, code, code_verifier: pending.verifier, redirect_uri: pending.redirectUri, resource: RESOURCE }) });
-      const record = await this.tokenRecord(body, clientId, pending);
+      const body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', client_id: clientId, code, code_verifier: pending.verifier, redirect_uri: pending.redirectUri, resource: RESOURCE }), signal: pending.controller.signal });
+      const record = await this.tokenRecord(body, clientId, pending, undefined, pending.controller.signal);
       need(!pending.cancelled, 'authorization cancelled');
       this.store.write(pending.account, record); this.store.clearRegistration(pending.account);
       return { status: 'completed', providerId: 'openai-codex' };
     }).finally(() => this.inflight.delete(flowId));
   }
-  async auth(account, rejectedAccess) {
-    return this.store.locked(account, async () => {
-      let record = this.store.read(account);
-      if (!record?.access) return undefined;
-      need(requiredScopes.every(s => record.scopes.includes(s)), 'ChatGPT plan permission not granted');
-      if (record.expires <= this.now() + 300000 || rejectedAccess === record.access) {
-        const body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'refresh_token', client_id: record.clientId, refresh_token: record.refresh, resource: RESOURCE }) });
-        const current = this.store.read(account); need(current?.access === record.access && current?.refresh === record.refresh, 'local session changed during refresh');
-        record = await this.tokenRecord(body, record.clientId, undefined, record);
-        const latest = this.store.read(account); need(latest?.access === current.access && latest?.refresh === current.refresh, 'local session changed during refresh');
-        this.store.write(account, record);
-      }
-      return { apiKey: record.access };
-    });
+  async auth(account, rejectedAccess, signal) {
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, {once: true}); if (signal?.aborted) abort();
+    const refreshes = this.refreshes.get(account) || new Set(); refreshes.add(controller); this.refreshes.set(account, refreshes);
+    try {
+      return await this.store.locked(account, async () => {
+        controller.signal.throwIfAborted();
+        let record = this.store.read(account);
+        if (!record?.access) return undefined;
+        need(record.state !== 'auth-expired', 'connection expired; reconnect ChatGPT in settings');
+        need(requiredScopes.every(s => record.scopes.includes(s)), 'ChatGPT plan permission not granted');
+        if (record.expires <= this.now() + 300000 || rejectedAccess === record.access) {
+          let body;
+          try {
+            body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'refresh_token', client_id: record.clientId, refresh_token: record.refresh, resource: RESOURCE }), signal: controller.signal });
+          } catch (error) {
+            const latest = this.store.read(account);
+            if (error.authRejected && latest?.access === record.access && latest?.refresh === record.refresh) {
+              this.store.write(account, {...latest, state: 'auth-expired'});
+              throw Error('ChatGPT: connection expired; reconnect ChatGPT in settings');
+            }
+            throw error;
+          }
+          const current = this.store.read(account); need(current?.access === record.access && current?.refresh === record.refresh, 'local session changed during refresh');
+          record = await this.tokenRecord(body, record.clientId, undefined, record, controller.signal);
+          controller.signal.throwIfAborted();
+          const latest = this.store.read(account); need(latest?.access === current.access && latest?.refresh === current.refresh, 'local session changed during refresh');
+          this.store.write(account, record);
+        }
+        return { apiKey: record.access };
+      });
+    } finally {
+      signal?.removeEventListener('abort', abort); refreshes.delete(controller); if (!refreshes.size) this.refreshes.delete(account);
+    }
   }
   async modelIds(access) {
     const result = await this.json(`${RESOURCE}/models`, { headers: { Authorization: `Bearer ${access}` } });
@@ -242,9 +295,62 @@ function completedResponsesFetch(request = globalThis.fetch) {
     return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
 }
+const planCompat = Object.freeze({ supportsDeveloperRole: true, supportsAdditionalTools: true, supportsToolSearch: false, supportsMaxOutputTokens: false, supportsLongCacheRetention: false, supportsExplicitPromptCacheMode: false });
+const unsupportedPlanFields = ['background', 'conversation', 'max_output_tokens', 'max_tool_calls', 'metadata', 'moderation', 'multi_agent', 'prompt', 'prompt_cache_retention', 'safety_identifier', 'temperature', 'top_logprobs', 'top_p', 'truncation', 'user', 'previous_response_id'];
+function planModels(catalog, ...knownCatalogs) {
+  if (!Array.isArray(catalog)) return [];
+  const known = new Map(knownCatalogs.flat().map(model => [model.id, model]));
+  return catalog.map(entry => {
+    const supplied = known.get(entry.slug);
+    // Exact slugs can retain their pinned supplied metadata. The public plan
+    // catalog currently documents names/order, not arbitrary capability keys.
+    const input = supplied?.input?.filter(kind => kind === 'text' || kind === 'image') || ['text'];
+    const conservative = { contextWindow: 8192, maxTokens: 4096, reasoning: false, input: ['text'], cost: {input:0,output:0,cacheRead:0,cacheWrite:0} };
+    return { ...(supplied || conservative), id: entry.slug, name: entry.displayName, provider: 'openai-codex', api: 'openai-responses', baseUrl: RESOURCE, input: input.length ? input : ['text'], compat: { ...supplied?.compat, ...planCompat }, auxPlanMetadata: { source: supplied ? 'pinned-supplied-model' : 'conservative-local-bounds', capabilityVerified: !!supplied } };
+  });
+}
+function normalizePlanPayload(payload, model) {
+  need(payload && typeof payload === 'object' && !Array.isArray(payload), 'invalid Responses payload');
+  const result = {...payload, store: false, stream: true};
+  if (model?.id) need(result.model === model.id, 'selected plan model changed');
+  for (const field of unsupportedPlanFields) delete result[field];
+  need(Array.isArray(result.input), 'plan inference requires complete input history');
+  const checkTools = tools => {
+    need(Array.isArray(tools), 'invalid plan tools');
+    for (const tool of tools) {
+      need(tool && typeof tool === 'object', 'invalid plan tool');
+      if (tool.type === 'namespace') { need(present(tool.name), 'invalid tool namespace'); checkTools(tool.tools); }
+      else need(['function','custom'].includes(tool.type), 'tool is unsupported by the ChatGPT plan connection');
+    }
+  };
+  result.input = result.input.map(item => {
+    need(item && typeof item === 'object', 'invalid plan input item');
+    need(!['tool_search_call','tool_search_output'].includes(item.type), 'tool search history is unsupported by the ChatGPT plan connection');
+    if (item.type === 'additional_tools') checkTools(item.tools);
+    const message = item.role === 'system' ? {...item, role:'developer'} : item;
+    if (Array.isArray(message.content)) for (const part of message.content) {
+      need(!['input_audio','input_video'].includes(part?.type), 'audio/video input is unsupported by the ChatGPT plan connection');
+      if (part?.type === 'input_image' && model) need(model.input?.includes('image'), 'image input capability is not verified for this model');
+    }
+    return message;
+  });
+  if (result.tools?.length) {
+    const flat = [], declared = [];
+    for (const tool of result.tools) {
+      if (tool?.type === 'web_search' || tool?.type === 'web_search_preview') { declared.push(tool); continue; }
+      checkTools([tool]); (tool.type === 'namespace' ? declared : flat).push(tool);
+    }
+    if (flat.length) result.input.unshift({type:'additional_tools',role:'developer',tools:flat});
+    result.tools = declared; if (!declared.length) delete result.tools;
+  }
+  return result;
+}
 function planResponsesApi(api) {
-  const wrap = method => (model, context, options = {}) => api[method]({ ...model, api: 'openai-responses', baseUrl: RESOURCE }, context, { ...options, maxRetries: 0, fetch: completedResponsesFetch(options.fetch), onPayload: async payload => ({ ...(await options.onPayload?.(payload) ?? payload), store: false, stream: true }) });
+  const wrap = method => (model, context, options = {}) => {
+    const planModel = {...model, api:'openai-responses',baseUrl:RESOURCE,compat:{...model.compat,...planCompat}};
+    return api[method](planModel, context, { ...options, maxRetries: 0, fetch: completedResponsesFetch(options.fetch), onPayload: async payload => normalizePlanPayload(await options.onPayload?.(payload, planModel) ?? payload, planModel) });
+  };
   return { ...api, stream: wrap('stream'), streamSimple: wrap('streamSimple') };
 }
 
-module.exports = { ISSUER, RESOURCE, SCOPES, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch };
+module.exports = { ISSUER, RESOURCE, SCOPES, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };
