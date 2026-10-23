@@ -1,0 +1,56 @@
+{
+  "format": "aux.native-fresh-resume.filesystem.v1",
+  "sourceOwnerCommit": "5cf92b98d",
+  "authenticatedPolicyExecuted": false,
+  "securityExecuted": false,
+  "authorityGenerated": false,
+  "inputCount": 9,
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "sha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "sha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-resume/source/AuxFreshNativeHome.swift",
+      "sha256": "4fcb3542d452e4abce6b433b09eb586251a950c0142a741efdd34db57baa4388"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "sha256": "1e460a27c2ed11a5aa3e9ab3e61a36f11d2038da571c4dcefd19b6f4055b30f6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-resume/source/AuxResumedFreshNativeHome.swift",
+      "sha256": "0d772f790b822b410b8759bcbd3125d62ea3881b7a6568cb34ccffcb104b559c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-resume-filesystem/tests/CapturedPolicy.swift",
+      "sha256": "42af37cec187c3896b1aaa426e835de7c8d7d6a4967826dd928af35a27c9c572"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-resume-filesystem/tests/main.swift",
+      "sha256": "7691a1398e371fa1f96e4e37282418dc05bcce1637032401a9c2b6725367713e"
+    }
+  ],
+  "fixtureFiles": [
+    {
+      "path": "check.sh",
+      "sha256": "408d8439293ae312b706f7142a818666c23d589edce456d755989d32310d4080"
+    },
+    {
+      "path": "README.md",
+      "sha256": "a33a2fa1f8ef9d1867f8401e0bebe76c96d4e1378bf35bed0986806d1be0beb5"
+    }
+  ]
+}
