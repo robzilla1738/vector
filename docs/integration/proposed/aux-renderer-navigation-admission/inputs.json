@@ -90,15 +90,15 @@
     {
       "path": "content/browser/renderer_host/aux_renderer_navigation_admission.h",
       "inputSha256": null,
-      "outputSha256": "1824e2c58b15a3c660c1c1aebe186ef9cf4845f7828c63121c3c879ee8b5f8c5"
+      "outputSha256": "0f46afc6e65ce7f9719e81a6f9b41226c7a4454a05efc918a5aee61c3d1300ec"
     },
     {
       "path": "content/browser/renderer_host/aux_renderer_navigation_admission.cc",
       "inputSha256": null,
-      "outputSha256": "29606e36dcc9035d7c5ed033aa5288a5cfe3c8ed2064e2ec1f6dc6a630d0d341"
+      "outputSha256": "4c0523041076dcc8f7a39c5ac9b431bfe033218326df701e287daebbe81ee53a"
     }
   ],
-  "patchSha256": "a8777c34c5401e0ad21c582e351dbde16ff1e787189cad99afd622394f5bfb10",
+  "patchSha256": "fdd8be26bb16bec31c8703a85f3f710d0363cf18407882f856afdc574dac9790",
   "applied": false,
   "compiled": false,
   "coldRefusalChanged": false,

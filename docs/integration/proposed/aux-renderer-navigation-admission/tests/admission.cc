@@ -3,7 +3,7 @@
 
 using namespace content::aux_migration;
 int main() {
-  int renderer, abandoned, in_process, request, denied_request;
+  int renderer = 0, abandoned = 0, in_process = 0, request = 0, denied_request = 0;
   assert(!InspectRendererNavigationAdmissionForMigration().closed);
   {
     ScopedRendererInitAdmission actual_init;

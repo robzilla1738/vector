@@ -193,7 +193,7 @@ new file mode 100644
 +  ScopedRendererLaunchCallback(const ScopedRendererLaunchCallback&) = delete;
 +  ScopedRendererLaunchCallback& operator=(const ScopedRendererLaunchCallback&) = delete;
 + private:
-+  const void* const host_;
++  const uintptr_t host_identity_;
 +  const uint64_t token_;
 +};
 +
@@ -218,7 +218,7 @@ diff --git a/content/browser/renderer_host/aux_renderer_navigation_admission.cc 
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/renderer_host/aux_renderer_navigation_admission.cc
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,157 @@
 +#include "content/browser/renderer_host/aux_renderer_navigation_admission.h"
 +
 +#include <limits>
@@ -333,13 +333,14 @@ new file mode 100644
 +    Increment(state.unresolved_launches);
 +}
 +ScopedRendererLaunchCallback::ScopedRendererLaunchCallback(const void* host)
-+    : host_(host), token_(BeginLaunchCallback(host)) {}
++    : host_identity_(reinterpret_cast<uintptr_t>(host)),
++      token_(BeginLaunchCallback(host)) {}
 +ScopedRendererLaunchCallback::~ScopedRendererLaunchCallback() {
 +  if (!token_)
 +    return;
 +  auto& state = Current();
 +  std::lock_guard<std::mutex> lock(state.mutex);
-+  auto found = state.launches.find(host_);
++  auto found = state.launches.find(reinterpret_cast<const void*>(host_identity_));
 +  if (found == state.launches.end() || found->second.token != token_) {
 +    Increment(state.unresolved_launches);
 +    return;

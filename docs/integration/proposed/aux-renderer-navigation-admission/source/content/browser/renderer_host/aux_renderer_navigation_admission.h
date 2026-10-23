@@ -27,7 +27,7 @@ class ScopedRendererLaunchCallback final {
   ScopedRendererLaunchCallback(const ScopedRendererLaunchCallback&) = delete;
   ScopedRendererLaunchCallback& operator=(const ScopedRendererLaunchCallback&) = delete;
  private:
-  const void* const host_;
+  const uintptr_t host_identity_;
   const uint64_t token_;
 };
 

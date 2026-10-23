@@ -112,13 +112,14 @@ void ObserveRendererHostDestruction(const void* host) {
     Increment(state.unresolved_launches);
 }
 ScopedRendererLaunchCallback::ScopedRendererLaunchCallback(const void* host)
-    : host_(host), token_(BeginLaunchCallback(host)) {}
+    : host_identity_(reinterpret_cast<uintptr_t>(host)),
+      token_(BeginLaunchCallback(host)) {}
 ScopedRendererLaunchCallback::~ScopedRendererLaunchCallback() {
   if (!token_)
     return;
   auto& state = Current();
   std::lock_guard<std::mutex> lock(state.mutex);
-  auto found = state.launches.find(host_);
+  auto found = state.launches.find(reinterpret_cast<const void*>(host_identity_));
   if (found == state.launches.end() || found->second.token != token_) {
     Increment(state.unresolved_launches);
     return;

@@ -1,0 +1,9 @@
+{
+  "reason": "Actual Chromium raw-pointer field diagnostic; address identity is never dereferenced",
+  "privateField": "uintptr_t host_identity_",
+  "fixtureSentinelsInitialized": true,
+  "fixtureOriginalSha256": "49dff7148ed1ec78070bf4b5b113c75c8fba50266aadc00f79f8e802a548463c",
+  "fixtureSuccessorSha256": "41bfb459f1e2a5adbc919a63d64924b3ca297f1c28f2cb8cf72a8fa11bb42ccb",
+  "compilePending": true,
+  "historicalFailureRetained": true
+}

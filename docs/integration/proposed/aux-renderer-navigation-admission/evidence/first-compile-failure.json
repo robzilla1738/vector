@@ -1,0 +1,115 @@
+{
+  "session": 9874,
+  "exitCode": 1,
+  "resultsPath": "/tmp/aux-renderer-navigation-tus-20261022/results.json",
+  "logPath": "/tmp/aux-renderer-navigation-tus-20261022/navigation_request.cc.log",
+  "attemptedSourcePins": {
+    "format": "aux.renderer-navigation-admission.v1",
+    "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+    "files": [
+      {
+        "path": "content/browser/renderer_host/render_process_host_impl.cc",
+        "inputSha256": "6d9b90abeb902d47259d5baa78c87672be140729fc86e53481b33de6221f4725",
+        "outputSha256": "d747f427e8745170bb3e6a1c4e9ccbef09a0289a59ca06763d867cb92672eb4a",
+        "edits": [
+          {
+            "name": "include",
+            "find": "#include \"content/browser/renderer_host/render_process_host_impl.h\"",
+            "replace": "#include \"content/browser/renderer_host/render_process_host_impl.h\"\n#include \"content/browser/renderer_host/aux_renderer_navigation_admission.h\"",
+            "count": 1
+          },
+          {
+            "name": "reuse and init entry admission",
+            "find": "bool RenderProcessHostImpl::Init() {",
+            "replace": "bool RenderProcessHostImpl::Init() {\n  aux_migration::ScopedRendererInitAdmission aux_admission;\n  if (!aux_admission.admitted())\n    return false;\n",
+            "count": 1
+          },
+          {
+            "name": "observe launch before initialization callbacks",
+            "find": "  if (renderer_path.empty())\n    return false;\n\n  is_initialized_ = true;",
+            "replace": "  if (renderer_path.empty())\n    return false;\n\n  aux_migration::ObserveRendererLaunchStarted(this, run_renderer_in_process());\n  is_initialized_ = true;",
+            "count": 1
+          },
+          {
+            "name": "launch callback lifetime",
+            "find": "void RenderProcessHostImpl::OnProcessLaunched() {",
+            "replace": "void RenderProcessHostImpl::OnProcessLaunched() {\n  aux_migration::ScopedRendererLaunchCallback aux_callback(this);",
+            "count": 1
+          },
+          {
+            "name": "launch failure callback lifetime",
+            "find": "void RenderProcessHostImpl::OnProcessLaunchFailed(int error_code) {",
+            "replace": "void RenderProcessHostImpl::OnProcessLaunchFailed(int error_code) {\n  aux_migration::ScopedRendererLaunchCallback aux_callback(this);",
+            "count": 1
+          },
+          {
+            "name": "no-callback destruction remains unknown",
+            "find": "RenderProcessHostImpl::~RenderProcessHostImpl() {",
+            "replace": "RenderProcessHostImpl::~RenderProcessHostImpl() {\n  aux_migration::ObserveRendererHostDestruction(this);",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "path": "content/browser/renderer_host/navigation_request.cc",
+        "inputSha256": "e3cbbb2630f28e3684247796da62d1655ecd4f62501680fce3ac1356902718c2",
+        "outputSha256": "69fbe2a2375ae6f726ac181856a9efc974c182080ae5de24c28bcd5f7a22467d",
+        "edits": [
+          {
+            "name": "include",
+            "find": "#include \"content/browser/renderer_host/navigation_request.h\"",
+            "replace": "#include \"content/browser/renderer_host/navigation_request.h\"\n#include \"content/browser/renderer_host/aux_renderer_navigation_admission.h\"",
+            "count": 1
+          },
+          {
+            "name": "object destruction is not storage cleanup",
+            "find": "NavigationRequest::~NavigationRequest() {",
+            "replace": "NavigationRequest::~NavigationRequest() {\n  aux_migration::ObserveNavigationDestruction(this);",
+            "count": 1
+          },
+          {
+            "name": "BeginNavigation actual entry/resume admission",
+            "find": "void NavigationRequest::BeginNavigation() {",
+            "replace": "void NavigationRequest::BeginNavigation() {\n  aux_migration::ScopedNavigationAdmission aux_admission(this, true);\n  if (!aux_admission.admitted()) {\n    if (frame_tree_node_->navigation_request() == this) {\n      net_error_ = net::ERR_ABORTED;\n      frame_tree_node_->ResetNavigationRequest(\n          NavigationDiscardReason::kInternalCancellation);\n      return;  // The cancellation deleted this request.\n    }\n    // A non-FrameTreeNode-owned route cannot be deleted through\n    // that owner. Preserve its original cleanup and report the gap.\n    aux_migration::ObserveUnsupportedNavigationCancellation();\n  }\n",
+            "count": 1
+          },
+          {
+            "name": "BeginNavigationImpl actual entry/resume admission",
+            "find": "void NavigationRequest::BeginNavigationImpl() {",
+            "replace": "void NavigationRequest::BeginNavigationImpl() {\n  aux_migration::ScopedNavigationAdmission aux_admission(this, false);\n  if (!aux_admission.admitted()) {\n    if (frame_tree_node_->navigation_request() == this) {\n      net_error_ = net::ERR_ABORTED;\n      frame_tree_node_->ResetNavigationRequest(\n          NavigationDiscardReason::kInternalCancellation);\n      return;  // The cancellation deleted this request.\n    }\n    // A non-FrameTreeNode-owned route cannot be deleted through\n    // that owner. Preserve its original cleanup and report the gap.\n    aux_migration::ObserveUnsupportedNavigationCancellation();\n  }\n",
+            "count": 1
+          },
+          {
+            "name": "actual URL-loader dispatch admission",
+            "find": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {\n  TRACE_EVENT(\"navigation\", \"NavigationRequest::OnStartChecksComplete\",\n              perfetto::Flow::FromPointer(this));\n  CHECK(result.action() != NavigationThrottle::DEFER);\n  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);",
+            "replace": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {\n  TRACE_EVENT(\"navigation\", \"NavigationRequest::OnStartChecksComplete\",\n              perfetto::Flow::FromPointer(this));\n  CHECK(result.action() != NavigationThrottle::DEFER);\n  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);\n  aux_migration::ScopedNavigationAdmission aux_admission(this, false);\n  if (!aux_admission.admitted()) {\n    // Retain the original asynchronous failure/weak-callback cleanup below.\n    result = NavigationThrottle::ThrottleCheckResult(\n        NavigationThrottle::CANCEL_AND_IGNORE);\n  }",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "path": "content/public/browser/aux_renderer_navigation_admission.h",
+        "inputSha256": null,
+        "outputSha256": "d5a83fef104fd4e4beccb865904405eeae6d5eeda217aef3fbb0b2c2dfb0b9f2"
+      },
+      {
+        "path": "content/browser/renderer_host/aux_renderer_navigation_admission.h",
+        "inputSha256": null,
+        "outputSha256": "1824e2c58b15a3c660c1c1aebe186ef9cf4845f7828c63121c3c879ee8b5f8c5"
+      },
+      {
+        "path": "content/browser/renderer_host/aux_renderer_navigation_admission.cc",
+        "inputSha256": null,
+        "outputSha256": "29606e36dcc9035d7c5ed033aa5288a5cfe3c8ed2064e2ec1f6dc6a630d0d341"
+      }
+    ],
+    "patchSha256": "a8777c34c5401e0ad21c582e351dbde16ff1e787189cad99afd622394f5bfb10",
+    "applied": false,
+    "compiled": false,
+    "coldRefusalChanged": false,
+    "uiViewsChanged": false
+  },
+  "diagnostic": "chromium-rawptr: const void* const host_ field must not be an unannotated pointer",
+  "laterTUsExecuted": false,
+  "fixtureExecuted": false
+}
