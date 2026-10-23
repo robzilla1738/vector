@@ -1,0 +1,6 @@
+{
+  "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift",
+  "beforeSha256": "84b60e71e559b33a97fb0b6d9ebb56df839f6e115ae0b9e40f0969f30466b7b8",
+  "after": "/private/tmp/aux-browser-root-provenance/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxOwnedCommandDispatcher.swift",
+  "afterSha256": "8809e7e160d7be23da6a5d63390c6b2e24d181af3753090fdcbfb427d6b86332"
+}

@@ -1,0 +1,33 @@
+{
+  "format": "aux.profile-isolation.startup.successor.v1",
+  "baseline": "43914674f",
+  "replacements": [
+    {
+      "before": "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdInstallerGuard.swift",
+      "beforeSha256": "036a4b594c47c9feb0d10143ad50cb824f5e41743b3e02d417d2082952fa995d",
+      "after": "docs/integration/proposed/profile-isolation-next/startup/source/AuxFreshColdInstallerGuard.swift",
+      "afterSha256": "e841cf779671555ea70529fb6f2969fbe95914c1815a41db9ce8a58ea25a1221"
+    },
+    {
+      "before": "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshStageCoordinator.swift",
+      "beforeSha256": "7763379c8779e37bdc4a08fd9f7493a01d11c5e65f447709ba407057407dec18",
+      "after": "docs/integration/proposed/profile-isolation-next/startup/source/AuxNativeFreshStageCoordinator.swift",
+      "afterSha256": "d30a8d50b592955320c2560c3137f86a456079502fdedfb7f8c7c0f230a9123c"
+    },
+    {
+      "before": "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "beforeSha256": "a5ef16bd25d1e17c51b2a9128a5e63d52e488629b77f8512839aac4833556953",
+      "after": "docs/integration/proposed/profile-isolation-next/startup/source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "afterSha256": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b"
+    },
+    {
+      "before": "docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift",
+      "beforeSha256": "b77181057bc99c054877d166a55941a8c85aa866543bcd2c64386af21c0c2e82",
+      "after": "docs/integration/proposed/profile-isolation-next/startup/source/AuxFreshColdBootstrapNativeBridge.swift",
+      "afterSha256": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4"
+    }
+  ],
+  "coldHookEnabled": false,
+  "allWriterDrainProven": false,
+  "protectedRuntimeExecuted": false
+}

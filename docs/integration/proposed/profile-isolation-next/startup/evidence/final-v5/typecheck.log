@@ -1,0 +1,65 @@
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift:126:48: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+124 |             kSecAttrAccessGroup as String: selector.accessGroup,
+125 |             kSecUseDataProtectionKeychain as String: true,
+126 |             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                                `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+127 |             kSecReturnData as String: true,
+128 |             kSecMatchLimit as String: kSecMatchLimitOne,
+
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:206:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+204 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+205 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+206 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+207 |          kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+208 |     }
+
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:213:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+211 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+212 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+213 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+214 |          kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+215 |          kSecValueData as String: payload]
+
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift:80:87: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 78 |          kSecAttrAccount as String:selected.account,kSecAttrAccessGroup as String:selected.accessGroup,
+ 79 |          kSecUseDataProtectionKeychain as String:true,kSecReturnData as String:true,
+ 80 |          kSecMatchLimit as String:kSecMatchLimitOne,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                                                                       `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 81 |     }
+ 82 |     static func result(status:OSStatus,value:CFTypeRef?)->AuxRuntimeTargetRead {
+
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift:71:44: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 69 |          kSecAttrAccount as String:s.account,kSecAttrAccessGroup as String:s.accessGroup,
+ 70 |          kSecUseDataProtectionKeychain as String:true,
+ 71 |          kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                            `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 72 |     }
+ 73 |     static func read(_ s:AuxSecureStoreSelector)->[String:Any] {
+
+/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeFreshStageCoordinator.swift:197:294: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+195 | #else
+196 |         var result:CFTypeRef?
+197 |         let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecReturnData as String:true,kSecMatchLimit as String:kSecMatchLimitOne]
+    |                                                                                                                                                                                                                                                                                                      `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+198 |         let status=SecItemCopyMatching(query as CFDictionary,&result)
+199 |         if status==errSecItemNotFound{return result==nil ? .absent:.invalid}
+
+/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeFreshStageCoordinator.swift:212:294: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+210 | #else
+211 |         let selector=record.stageSelector
+212 |         let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,kSecValueData as String:secretPayload]
+    |                                                                                                                                                                                                                                                                                                      `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+213 |         return SecItemAdd(query as CFDictionary,nil)
+214 | #endif
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/malloc/_malloc.h:56:35: warning: could not load macro '_SwiftifyImport'; this may cause errors down the line
+ 54 | __BEGIN_DECLS
+ 55 | 
+ 56 | void * __sized_by_or_null(__size) malloc(size_t __size) __result_use_check __alloc_size(1) _MALLOC_TYPED(malloc_type_malloc, 1);
+    |                                   `- warning: could not load macro '_SwiftifyImport'; this may cause errors down the line
+ 57 | void * __sized_by_or_null(__count * __size) calloc(size_t __count, size_t __size) __result_use_check __alloc_size(1,2) _MALLOC_TYPED(malloc_type_calloc, 2);
+ 58 | void  free(void * __unsafe_indexable);
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>

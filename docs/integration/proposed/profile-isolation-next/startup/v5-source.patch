@@ -1,0 +1,514 @@
+--- docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdInstallerGuard.swift
++++ docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdInstallerGuard.swift
+@@ -4,6 +4,8 @@
+ @_silgen_name("AuxRetainNativeParentConnection") private func retainNativeParent(_ id:UInt64)->Int32
+ @_silgen_name("AuxReleaseNativeParentConnection") private func releaseNativeParent(_ id:UInt64)
+ @_silgen_name("AuxRevalidateNativeParentConnection") private func revalidateNativeParent(_ id:UInt64,_ timeout:UInt32)->Int32
++
++@_silgen_name("AuxCopyAuthenticatedNativeParentBrowserRoot") private func copyNativeParentBrowserRoot(_ id:UInt64,_ role:UInt32,_ generation:UnsafeMutablePointer<UInt64>,_ descriptor:UnsafeMutablePointer<Int32>)->Int32
+ 
+ enum AuxFreshColdGuardError:Error {case peer(Int32),path,metadata,installerBusy,io(Int32),wrongProcess}
+ final class AuxLiveNativeParentConnection {
+@@ -22,21 +24,88 @@
+         let status=revalidateNativeParent(handle,2_000)
+         guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
+     }
++    // Finite native capability. Every successful query transfers one new FD;
++    // no path, caller PID, environment field or claimed generation is accepted.
++    func copyAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        guard role==1 || role==2 else{throw AuxFreshColdGuardError.metadata}
++        try revalidate()
++        var generation:UInt64=0,descriptor:Int32 = -1
++        let status=copyNativeParentBrowserRoot(handle,role,&generation,&descriptor)
++        do {
++            guard status==0,generation != 0,descriptor>=0 else{throw AuxFreshColdGuardError.peer(status)}
++            var value=stat();let flags=fcntl(descriptor,F_GETFD)
++            guard fstat(descriptor,&value)==0,(value.st_mode&S_IFMT)==S_IFDIR,value.st_uid==geteuid(),
++                  flags>=0,flags&FD_CLOEXEC != 0 else{throw AuxFreshColdGuardError.metadata}
++            try revalidate()
++            return(generation,descriptor)
++        }catch{if descriptor>=0{close(descriptor)};throw error}
++    }
+     deinit{if getpid()==process{releaseNativeParent(handle)}}
++}
++// Bound together at acquisition, retained through the real fresh/resumed Owner.
++// These roots establish browser provenance, never all-writer closure or task IO policy.
++private final class AuxAuthenticatedBrowserRootSet {
++    private let process=getpid()
++    private let generation:UInt64
++    private let data:Int32
++    private let cache:Int32
++    private init(generation:UInt64,data:Int32,cache:Int32){self.generation=generation;self.data=data;self.cache=cache}
++    static func capture(peer:AuxLiveNativeParentConnection)throws->AuxAuthenticatedBrowserRootSet {
++        let data=try peer.copyAuthenticatedBrowserRoot(role:1)
++        var transferred=false
++        do {
++            let cache=try peer.copyAuthenticatedBrowserRoot(role:2)
++            guard data.generation==cache.generation else{close(cache.descriptor);throw AuxFreshColdGuardError.path}
++            let roots=AuxAuthenticatedBrowserRootSet(generation:data.generation,data:data.descriptor,cache:cache.descriptor)
++            transferred=true
++            // Transfer before revalidation; failure releases only the new owner.
++            try roots.revalidate(peer:peer)
++            return roots
++        }catch{if !transferred{close(data.descriptor)};throw error}
++    }
++    private func requireSame(_ held:Int32,_ observed:Int32)throws {
++        var a=stat(),b=stat()
++        guard fstat(held,&a)==0,fstat(observed,&b)==0,a.st_dev==b.st_dev,a.st_ino==b.st_ino,
++              (a.st_mode&S_IFMT)==S_IFDIR,a.st_uid==geteuid() else{throw AuxFreshColdGuardError.path}
++    }
++    func revalidate(peer:AuxLiveNativeParentConnection)throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        let observedData=try peer.copyAuthenticatedBrowserRoot(role:1);defer{close(observedData.descriptor)}
++        let observedCache=try peer.copyAuthenticatedBrowserRoot(role:2);defer{close(observedCache.descriptor)}
++        guard observedData.generation==generation,observedCache.generation==generation else{throw AuxFreshColdGuardError.path}
++        try requireSame(data,observedData.descriptor);try requireSame(cache,observedCache.descriptor)
++        try peer.revalidate()
++    }
++    func duplicate(role:UInt32,peer:AuxLiveNativeParentConnection)throws->(generation:UInt64,descriptor:Int32) {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        guard role==1 || role==2 else{throw AuxFreshColdGuardError.metadata}
++        try revalidate(peer:peer)
++        let fd=fcntl(role==1 ? data:cache,F_DUPFD_CLOEXEC,0)
++        guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
++        do{try revalidate(peer:peer);return(generation,fd)}catch{close(fd);throw error}
++    }
++    deinit{if getpid()==process{close(data);close(cache)}}
+ }
+ final class AuxFreshColdInstallerGuard {
+     static let installerName=".aux-native-cold-installer.v1"
+     let policy:AuxAuthenticatedFreshBootstrapPolicy
+     private let peer:AuxLiveNativeParentConnection
++    private let browserRoots:AuxAuthenticatedBrowserRootSet
+     private let process=getpid()
+     private let parentFD:Int32
+     private let installerFD:Int32
+-    private init(policy:AuxAuthenticatedFreshBootstrapPolicy,peer:AuxLiveNativeParentConnection,parentFD:Int32,installerFD:Int32){
+-        self.policy=policy;self.peer=peer;self.parentFD=parentFD;self.installerFD=installerFD
++    private let taskParentFD:Int32
++    private init(policy:AuxAuthenticatedFreshBootstrapPolicy,peer:AuxLiveNativeParentConnection,parentFD:Int32,installerFD:Int32,taskParentFD:Int32,browserRoots:AuxAuthenticatedBrowserRootSet){
++        self.policy=policy;self.peer=peer;self.parentFD=parentFD;self.installerFD=installerFD;self.taskParentFD=taskParentFD;self.browserRoots=browserRoots
+     }
+     static func acquire(peer:AuxLiveNativeParentConnection)throws->AuxFreshColdInstallerGuard {
+         try peer.revalidate()
+         let policy=try AuxSignedFreshBootstrapPolicyLoader.load()
++        let browserRoots=try AuxAuthenticatedBrowserRootSet.capture(peer:peer)
++        let taskParent=try AuxNativeTaskLayout.openAuthenticatedParent(policy:policy)
++        var objectOwnsDescriptors=false
++        defer{if !objectOwnsDescriptors{close(taskParent)}}
+         let path=policy.contents.canonicalPrivateParent
+         guard let canonical=realpath(path,nil)else{throw AuxFreshColdGuardError.io(errno)}
+         defer{free(canonical)}
+@@ -44,9 +113,11 @@
+         let parent=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
+         guard parent>=0 else{throw AuxFreshColdGuardError.io(errno)}
+         var installer:Int32 = -1
+-        var objectOwnsDescriptors=false
+         do {
+             try requirePrivate(parent,directory:true);try requirePath(path,fd:parent)
++            var controlMetadata=stat(),taskMetadata=stat()
++            guard fstat(parent,&controlMetadata)==0,fstat(taskParent,&taskMetadata)==0,
++                  controlMetadata.st_dev != taskMetadata.st_dev || controlMetadata.st_ino != taskMetadata.st_ino else{throw AuxFreshColdGuardError.path}
+             try requireFreshParentInventory(policy:policy,parentFD:parent)
+             installer=openat(parent,installerName,O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)
+             guard installer>=0 else{throw AuxFreshColdGuardError.io(errno)}
+@@ -56,7 +127,7 @@
+                 throw AuxFreshColdGuardError.io(errno)
+             }
+             // Actual owner retains both descriptors and the live parent object.
+-            let guardOwner=AuxFreshColdInstallerGuard(policy:policy,peer:peer,parentFD:parent,installerFD:installer)
++            let guardOwner=AuxFreshColdInstallerGuard(policy:policy,peer:peer,parentFD:parent,installerFD:installer,taskParentFD:taskParent,browserRoots:browserRoots)
+             // Ownership moved before callback-capable revalidation. Destruction
+             // alone closes these FDs on failure; no duplicate close/reopen path.
+             objectOwnsDescriptors=true
+@@ -71,14 +142,32 @@
+     func revalidate()throws {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         try peer.revalidate();try policy.revalidateCurrentIdentity()
++        try browserRoots.revalidate(peer:peer)
++        let checkedTask=try AuxNativeTaskLayout.openAuthenticatedParent(policy:policy);defer{close(checkedTask)}
++        var heldTask=stat(),freshTask=stat()
++        guard fstat(taskParentFD,&heldTask)==0,fstat(checkedTask,&freshTask)==0,
++              heldTask.st_dev==freshTask.st_dev,heldTask.st_ino==freshTask.st_ino else{throw AuxFreshColdGuardError.path}
+         try Self.requirePrivate(parentFD,directory:true)
+         try Self.requirePath(policy.contents.canonicalPrivateParent,fd:parentFD)
+         try Self.requirePrivate(installerFD,directory:false)
+         try Self.requireInstaller(parent:parentFD,fd:installerFD)
+     }
++    func duplicateAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {
++        try revalidate()
++        let root=try browserRoots.duplicate(role:role,peer:peer)
++        do{try revalidate();return root}catch{close(root.descriptor);throw error}
++    }
+     func createFreshHome()throws->AuxFreshNativeHome {
+         try revalidate()
+-        return try AuxFreshNativeHome.create(inCanonicalPrivateParent:policy.contents.canonicalPrivateParent,retainedParentDescriptor:parentFD)
++        let home=try AuxFreshNativeHome.create(inCanonicalPrivateParent:policy.contents.canonicalPrivateParent,retainedParentDescriptor:parentFD)
++        let task=try AuxNativeTaskLayout.create(policy:policy,home:home,retainedTaskParent:taskParentFD)
++        try task.revalidate();try revalidate()
++        return home
++    }
++    func reopenTaskLayout(journal:NativeFreshBootstrapJournal)throws->AuxNativeTaskLayout {
++        try revalidate()
++        let task=try AuxNativeTaskLayout.reopen(policy:policy,journal:journal,retainedTaskParent:taskParentFD)
++        try revalidate();return task
+     }
+     func duplicateRetainedParentDescriptor()throws->Int32 {
+         try revalidate()
+@@ -126,5 +215,5 @@
+         var entry:acl_entry_t?;errno=0
+         guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry) == -1,errno==EINVAL,entry==nil else{throw AuxFreshColdGuardError.metadata}
+     }
+-    deinit{if getpid()==process{close(installerFD);close(parentFD)}} // no unlock/unlink/replacement API
++    deinit{if getpid()==process{close(installerFD);close(parentFD);close(taskParentFD)}} // no unlock/unlink/replacement API
+ }
+--- docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshStageCoordinator.swift
++++ docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeFreshStageCoordinator.swift
+@@ -16,11 +16,14 @@
+     }
+     private let coldGuard:AuxFreshColdInstallerGuard
+     private let owner: NativeOwner
+-    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String, capture: AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard) {
++    private let taskLayout:AuxNativeTaskLayout
++    fileprivate init(journal: NativeFreshBootstrapJournal, sha256: String, capture: AuxFreshNativeSecureCapture,coldGuard:AuxFreshColdInstallerGuard)throws {
+         self.journal = journal; durableJournalSha256 = sha256; owner = .fresh(capture);self.coldGuard=coldGuard
+-    }
+-    private init(journal: NativeFreshBootstrapJournal, sha256: String, resumed: AuxResumedFreshNativeHome,coldGuard:AuxFreshColdInstallerGuard) {
++        taskLayout=try coldGuard.reopenTaskLayout(journal:journal)
++    }
++    private init(journal: NativeFreshBootstrapJournal, sha256: String, resumed: AuxResumedFreshNativeHome,coldGuard:AuxFreshColdInstallerGuard)throws {
+         self.journal = journal; durableJournalSha256 = sha256; owner = .resumed(resumed);self.coldGuard=coldGuard
++        taskLayout=try coldGuard.reopenTaskLayout(journal:journal)
+     }
+     var canonicalHome: String {
+         switch owner { case .fresh(let capture): return capture.home.canonicalHome
+@@ -37,6 +40,20 @@
+     func duplicateRetainedHomeDescriptor() throws -> Int32 {
+         switch owner { case .fresh(let capture): return try capture.home.duplicateDirectoryForNativeBootstrap()
+         case .resumed(let home): return try home.duplicateDirectoryForNativeBootstrap() }
++    }
++    func duplicateAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {
++        try revalidateNativeStageBinding()
++        let root=try coldGuard.duplicateAuthenticatedBrowserRoot(role:role)
++        do{try revalidateNativeStageBinding();return root}catch{Darwin.close(root.descriptor);throw error}
++    }
++    // Finite task-home capability for the future caller projection migration.
++    // It does not expose any control root or accept an arbitrary account path.
++    func duplicateAuthenticatedTaskHome()throws->(generation:UInt64,descriptor:Int32) {
++        try revalidateNativeStageBinding()
++        let browser=try coldGuard.duplicateAuthenticatedBrowserRoot(role:1)
++        defer{Darwin.close(browser.descriptor)}
++        let fd=try taskLayout.duplicateTaskHome()
++        do{try revalidateNativeStageBinding();return(browser.generation,fd)}catch{Darwin.close(fd);throw error}
+     }
+     // The disk journal is only a locator/binding. Never return the private
+     // provisional context before real protected-stage/authority authentication.
+@@ -46,13 +63,14 @@
+         let retainedParent=try coldGuard.duplicateRetainedParentDescriptor();defer{Darwin.close(retainedParent)}
+         let home = try AuxResumedFreshNativeHome.reopen(policy:policy,retainedParentDescriptor:retainedParent)
+         let stored = try home.readExistingInitialJournal()
+-        let context = NativeFreshStagedContext(journal: stored.journal, sha256: stored.sha256, resumed: home,coldGuard:coldGuard)
++        let context = try NativeFreshStagedContext(journal: stored.journal, sha256: stored.sha256, resumed: home,coldGuard:coldGuard)
+         _ = try AuxNativeFreshTargetBoundary(context: context)
+         try context.revalidateNativeStageBinding()
+         return context
+     }
+     func revalidateNativeStageBinding() throws {
+         try coldGuard.revalidate()
++        try taskLayout.revalidate()
+         switch owner {
+         case .fresh(let capture):
+             try capture.policy.revalidateCurrentIdentity()
+@@ -266,8 +284,8 @@
+ #if AUX_NATIVE_FRESH_STAGE_FIXTURE
+             return .staged(.init(journal:record,sha256:checkpoint.sha256))
+ #else
+-            return .staged(.init(journal:record,sha256:checkpoint.sha256,capture:capture,coldGuard:coldGuard))
+-#endif
+-        }
+-    }
+-}
++            return .staged(try .init(journal:record,sha256:checkpoint.sha256,capture:capture,coldGuard:coldGuard))
++#endif
++        }
++    }
++}
+--- docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxAuthenticatedFreshColdBootstrap.swift
++++ docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift
+@@ -15,7 +15,7 @@
+     case failed(AuxFreshColdBootstrapStep,Error)
+     indirect case guardStopped(Error,AuxFreshColdBootstrapOutcome)
+ }
+-enum AuxFreshColdBootstrapError:Error {case legacyOrUnknownExistingState,invalidReservation,pathChanged,busy,noSelectedHome,io(Int32)}
++enum AuxFreshColdBootstrapError:Error {case legacyOrUnknownExistingState,invalidReservation,pathChanged,busy,noSelectedHome,creationClosed,io(Int32)}
+ final class AuxAuthenticatedFreshColdBootstrap {
+     private enum Phase {
+         case authenticated
+@@ -33,14 +33,43 @@
+         case terminal(NativeFreshTerminalSelection)
+         case provider(AuxPreparedFreshRuntimeProvider)
+     }
++    private final class State {
++        let guardOwner:AuxFreshColdInstallerGuard
++        let lock=NSLock()
++        var advancing=false
++        var creationClosed=false
++        var phase=Phase.authenticated
++        var observed:AuxFreshColdBootstrapOutcome?
++        init(_ guardOwner:AuxFreshColdInstallerGuard){self.guardOwner=guardOwner}
++    }
+     private let process=getpid()
+-    private let guardOwner:AuxFreshColdInstallerGuard
++    // Manual retention prevents a foreign-process destructor from ARC-releasing
++    // inherited locks or the entire phase/FD graph. It is not fork admission.
++    private let retained:Unmanaged<State>
++    private var state:State{retained.takeUnretainedValue()}
++    private var guardOwner:AuxFreshColdInstallerGuard{state.guardOwner}
+     private var policy:AuxAuthenticatedFreshBootstrapPolicy{guardOwner.policy}
+-    private let lock=NSLock()
+-    private var advancing=false
+-    private var phase=Phase.authenticated
+-    private var observed:AuxFreshColdBootstrapOutcome?
+-    private init(guardOwner:AuxFreshColdInstallerGuard){self.guardOwner=guardOwner}
++    private var lock:NSLock{state.lock}
++    private var advancing:Bool{get{state.advancing}set{state.advancing=newValue}}
++    private var phase:Phase{get{state.phase}set{state.phase=newValue}}
++    private var observed:AuxFreshColdBootstrapOutcome?{get{state.observed}set{state.observed=newValue}}
++    private init(guardOwner:AuxFreshColdInstallerGuard){retained = .passRetained(State(guardOwner))}
++    // Stops creation only; it does not certify Owner/child/all-writer drain.
++    // A pending call owns its actual phase until its completion can close it.
++    func closeCreationAdmission()->Int32 {
++        guard getpid()==process else{return -1}
++        lock.lock();state.creationClosed=true
++        guard !advancing else{lock.unlock();return 1}
++        let current=phase;lock.unlock()
++        return closeProvider(in:current)
++    }
++    private func closeProvider(in phase:Phase)->Int32 {
++        switch phase {
++        case .provider(let provider):return provider.closeCreationAdmission()
++        case .guardStopped(_,_,let retained):return closeProvider(in:retained)
++        default:return 0
++        }
++    }
+     // Actual sealed-resource authentication, not supplied policy JSON/flags.
+     static func authenticate(connectedParent:AuxLiveNativeParentConnection)throws->AuxAuthenticatedFreshColdBootstrap {
+         .init(guardOwner:try AuxFreshColdInstallerGuard.acquire(peer:connectedParent))
+@@ -49,16 +78,21 @@
+     func copySelectedHomeDescriptor()throws->Int32 {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         lock.lock()
++        guard !state.creationClosed else{lock.unlock();throw AuxFreshColdBootstrapError.creationClosed}
+         guard !advancing else{lock.unlock();throw AuxFreshColdBootstrapError.busy}
+         guard case .provider(let provider)=phase else{lock.unlock();throw AuxFreshColdBootstrapError.noSelectedHome}
+         advancing=true;lock.unlock()
+         defer{if getpid()==process{lock.lock();advancing=false;lock.unlock()}}
+-        return try provider.copyReadyHomeDescriptor()
++        let fd=try provider.copyReadyHomeDescriptor()
++        lock.lock();let closed=state.creationClosed;lock.unlock()
++        if closed{Darwin.close(fd);_ = provider.closeCreationAdmission();throw AuxFreshColdBootstrapError.creationClosed}
++        return fd
+     }
+     private func set(_ phase:Phase){lock.lock();self.phase=phase;lock.unlock()}
+     func advance()->AuxFreshColdBootstrapOutcome {
+         guard getpid()==process else{return .failed(.guardCheck,AuxFreshColdGuardError.wrongProcess)}
+         lock.lock()
++        guard !state.creationClosed else{lock.unlock();return .failed(.guardCheck,AuxFreshColdBootstrapError.creationClosed)}
+         guard !advancing else{lock.unlock();return .busy}
+         advancing=true;let current=phase;lock.unlock()
+         let outcome:AuxFreshColdBootstrapOutcome
+@@ -75,7 +109,11 @@
+             }
+         }catch{outcome = .failed(.guardCheck,error)}
+         guard getpid()==process else{return .failed(.guardCheck,AuxFreshColdGuardError.wrongProcess)}
+-        lock.lock();observed=outcome;advancing=false;lock.unlock()
++        lock.lock();let closed=state.creationClosed;observed=outcome;advancing=false;let retainedPhase=phase;lock.unlock()
++        if closed {
++            _ = closeProvider(in:retainedPhase)
++            return .failed(.guardCheck,AuxFreshColdBootstrapError.creationClosed)
++        }
+         return outcome
+     }
+     private func stage(_ outcome:NativeFreshStageSubmitOutcome,coordinator:AuxNativeFreshStageCoordinator)->AuxFreshColdBootstrapOutcome {
+@@ -193,7 +231,15 @@
+     // then performs real guard acquisition. Neither C nor Swift accepts claimed
+     // rows/home/policy/status. Native entry must retain registration before Node.
+     func registerForNativeEmbedding()throws->AuxFreshColdBootstrapRegistration {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        lock.lock();let closed=state.creationClosed;lock.unlock()
++        guard !closed else{throw AuxFreshColdBootstrapError.creationClosed}
+         try guardOwner.revalidate()
+         return try .init(service:self)
+     }
++    deinit {
++        // Unknown/pending actual closure retains the graph, rather than releasing
++        // a provider/installer lease merely because a wrapper went out of scope.
++        if getpid()==process && closeCreationAdmission()==0{retained.release()}
++    }
+ }
+--- docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift
++++ docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift
+@@ -3,9 +3,10 @@
+ import Foundation
+ import Darwin
+ final class AuxFreshColdBootstrapRegistration {
++    private let process=getpid()
+     let nativeHandle:UInt64
+     init(service:AuxAuthenticatedFreshColdBootstrap)throws{nativeHandle=try FreshColdNativeServices.publish(service)}
+-    deinit{FreshColdNativeServices.release(nativeHandle)}
++    deinit{if getpid()==process{FreshColdNativeServices.release(nativeHandle)}}
+ }
+ private enum FreshColdNativeServices {
+     private final class Entry {
+@@ -13,12 +14,23 @@
+         var references:UInt64=1
+         var active:UInt64=0
+         var closed=false
++        var closeStatus:Int32?
++        var uncertainClose:Int32?
+         init(_ service:AuxAuthenticatedFreshColdBootstrap){self.service=service}
+     }
+-    private static let process=getpid()
+-    private static let lock=NSLock()
+-    private static var next:UInt64=1
+-    private static var entries:[UInt64:Entry]=[:]
++    private final class State {
++        // This PID and lock/map are initialized TOGETHER. A new first use in a
++        // fresh process is legitimate; an inherited initialized registry refuses.
++        let process=getpid()
++        let lock=NSLock()
++        var next:UInt64=1
++        var entries:[UInt64:Entry]=[:]
++    }
++    private static let state=State()
++    private static var process:pid_t{state.process}
++    private static var lock:NSLock{state.lock}
++    private static var next:UInt64{get{state.next}set{state.next=newValue}}
++    private static var entries:[UInt64:Entry]{get{state.entries}set{state.entries=newValue}}
+     static func publish(_ service:AuxAuthenticatedFreshColdBootstrap)throws->UInt64 {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         lock.lock();defer{lock.unlock()}
+@@ -31,15 +43,37 @@
+         guard let e=entries[id],!e.closed,e.references<UInt64.max else{return -1}
+         e.references += 1;return 0
+     }
++    // Never call service/provider closure while holding the registry mutex.
++    // Unknown/quarantined results are sticky; late benign callbacks cannot turn
++    // incomplete shutdown into a settled receipt or destroy the retained graph.
++    private static func settleClose(_ id:UInt64,_ entry:Entry)->Int32 {
++        let actual=entry.service.closeCreationAdmission()
++        var released:Entry?
++        lock.lock()
++        if actual != 0 && actual != 1 && entry.uncertainClose==nil{entry.uncertainClose=actual==2 ? 2:-1}
++        let result=entry.uncertainClose ?? actual
++        entry.closeStatus=result
++        if entry.closed && entry.references==0 && entry.active==0 && result==0{released=entries.removeValue(forKey:id)}
++        lock.unlock();withExtendedLifetime(released){}
++        return result
++    }
++    static func closeCreation(_ id:UInt64)->Int32 {
++        guard getpid()==process else{return -1}
++        lock.lock()
++        guard let entry=entries[id] else{lock.unlock();return -1}
++        entry.closed=true;lock.unlock()
++        return settleClose(id,entry)
++    }
+     static func release(_ id:UInt64){
+         guard getpid()==process else{return}
+-        var released:Entry?
++        var closing:Entry?
+         lock.lock()
+-        if let e=entries[id],e.references>0 {
+-            e.references -= 1
+-            if e.references==0{e.closed=true;if e.active==0{released=entries.removeValue(forKey:id)}}
++        if let entry=entries[id],entry.references>0 {
++            entry.references -= 1
++            if entry.references==0{entry.closed=true;closing=entry}
+         }
+-        lock.unlock();withExtendedLifetime(released){}
++        lock.unlock()
++        if let closing{_ = settleClose(id,closing)}
+     }
+     static func copyHome(_ id:UInt64,_ result:UnsafeMutablePointer<Int32>)->Int32 {
+         guard getpid()==process else{return -1}
+@@ -54,9 +88,8 @@
+         lock.lock();let closed=entry.closed
+         if !closed && fd>=0{result.pointee=fd}
+         entry.active -= 1
+-        if entry.references==0 && entry.active==0{entries.removeValue(forKey:id)}
+         lock.unlock()
+-        if closed && fd>=0{Darwin.close(fd)}
++        if closed{if fd>=0{Darwin.close(fd)};_ = settleClose(id,entry)}
+         // Genuine lease contention publishes no FD/admission. Only its typed
+         // busy error is retryable; all other errors/closed races stay refused.
+         return closed ? -1:(fd>=0 ? 0:(status==1 ? 1:-1))
+@@ -89,11 +122,11 @@
+         let closed=entry.closed
+         if !closed && status==0{ready.pointee=copiedProvider}
+         entry.active -= 1
+-        if entry.references==0 && entry.active==0{entries.removeValue(forKey:id)}
+         lock.unlock()
+         if closed {
+             if case .ready(let provider)=outcome{_ = provider.closeCreationAdmission()}
+             if copiedProvider != 0{AuxReleasePreparedFreshRuntimeProvider(copiedProvider)}
++            _ = settleClose(id,entry)
+             return -1
+         }
+         return status
+@@ -131,3 +164,8 @@
+     // is process-local; send a kernel fileport, never serialize the integer/path.
+     return FreshColdNativeServices.copyHome(id,descriptor)
+ }
++
++// Creation-close only: 0 settled, 1 active creation pending, 2 quarantined,
++// -1 unknown/invalid. No result certifies native Owner or descendant drain.
++@_cdecl("AuxCloseAuthenticatedFreshColdBootstrap")
++func AuxCloseAuthenticatedFreshColdBootstrap(_ id:UInt64)->Int32{FreshColdNativeServices.closeCreation(id)}
+--- docs/integration/proposed/aux-native-rebuilt-pty-policy/source/AuxFreshBootstrapPolicy.swift
++++ docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshBootstrapPolicy.swift
+@@ -46,6 +46,7 @@
+     let role:Role
+     let canonicalPrivateParent:String
+     let accessGroup:String
++    var canonicalTaskParent:String?=nil
+     var embeddedDaemon:Bool=false
+     var ptyArtifacts:AuxFreshBootstrapPtyArtifacts?=nil
+     // A successor host must require this before its native PTY capability route.
+@@ -71,7 +72,9 @@
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+         if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
+-        let rebuiltPty=object["format"] as? String=="aux.fresh.bootstrap.policy.v4"
++        let splitTask=object["format"] as? String=="aux.fresh.bootstrap.policy.v5"
++        if splitTask{keys.formUnion(["canonicalTaskParent","taskLayout"])}
++        let rebuiltPty=object["format"] as? String=="aux.fresh.bootstrap.policy.v4" || splitTask
+         let ptyVersion=object["format"] as? String=="aux.fresh.bootstrap.policy.v3" || rebuiltPty
+         let pty:AuxFreshBootstrapPtyArtifacts?
+         if ptyVersion {pty=try AuxFreshBootstrapPtyArtifacts.decode(object)} else {pty=nil}
+@@ -82,7 +85,15 @@
+               let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
+               parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
+               let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
+-        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded,ptyArtifacts:pty,includesRebuiltPtyModule:rebuiltPty)
++        var taskParent:String?=nil
++        if splitTask {
++            guard role == .daemon,object["taskLayout"] as? String=="aux.native.task-control-split.v1",
++                  let task=object["canonicalTaskParent"] as? String,validCanonicalParentSyntax(task),
++                  task != parent,!task.hasPrefix(parent+"/"),!parent.hasPrefix(task+"/"),
++                  task != AuxFreshBootstrapIdentity.historicalHome,!task.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/") else{throw AuxFreshBootstrapPolicyError.policy}
++            taskParent=task
++        }
++        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,canonicalTaskParent:taskParent,embeddedDaemon:embedded,ptyArtifacts:pty,includesRebuiltPtyModule:rebuiltPty)
+     }
+ }
+ struct AuxCapturedFreshBootstrapSignature {
+@@ -164,7 +175,7 @@
+         let moduleSource:String
+         switch object["format"] as? String {
+         case "aux.fresh.bootstrap.policy.v3":moduleSource=moduleSourceSha256
+-        case "aux.fresh.bootstrap.policy.v4":moduleSource=rebuiltModuleSourceSha256
++        case "aux.fresh.bootstrap.policy.v4","aux.fresh.bootstrap.policy.v5":moduleSource=rebuiltModuleSourceSha256
+         default:throw AuxFreshBootstrapPolicyError.policy
+         }
+         func artifact(_ value:Any?,path:String,identifier:String,source:String)throws->AuxFreshBootstrapPtyArtifact {

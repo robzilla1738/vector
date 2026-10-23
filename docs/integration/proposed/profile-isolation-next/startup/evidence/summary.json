@@ -1,0 +1,20 @@
+{
+  "format": "aux.profile-isolation.startup.evidence.v1",
+  "actualCompilerGraph": "final-v5/results.json",
+  "terminalExitCode": 0,
+  "wholeModuleFrontend": true,
+  "swiftSourceCount": 47,
+  "localSuccessorSourceCount": 6,
+  "pairedDispatcherSourceCount": 1,
+  "allInputsPreserved": true,
+  "initialDriverCheck": "initial-interrupted/results.json",
+  "initialDriverCheckWasPass": false,
+  "linked": false,
+  "executed": false,
+  "signed": false,
+  "protectedIO": false,
+  "uiSourceChanged": false,
+  "coldHookEnabled": false,
+  "callerProjectionMigrated": false,
+  "allWriterClosureProven": false
+}
