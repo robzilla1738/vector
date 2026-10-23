@@ -1,0 +1,11 @@
+{
+  "format": "aux.selected-home.native-object-check.v1",
+  "session": 87362,
+  "exitCode": 0,
+  "actualNativeSourceSha256": "e79b4b0631a0d82ef156eed9500df01838cfcd9ca118405c192bea9c97eaaa6f",
+  "objectSha256": "f9e0098a27f39d3cc3f8e9ae14c1bf4d381822884d28235264bea5bc502f1d11",
+  "nativePathUnsafeChecks": true,
+  "compiledObjects": 1,
+  "nativeCodeExecuted": false,
+  "composition": "out/native-reuse-composition-aux-selected-home-safe"
+}

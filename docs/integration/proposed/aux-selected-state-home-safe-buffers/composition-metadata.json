@@ -1,0 +1,13 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "baselineSha256": "e97490b8b74f03ffc4e790fe74a06cd9c7b0c26a3bab1eb4d3f5a03cd062dc61",
+      "outputSha256": "e79b4b0631a0d82ef156eed9500df01838cfcd9ca118405c192bea9c97eaaa6f",
+      "origin": "docs/integration/proposed/aux-selected-state-home-safe-buffers/source/chrome/browser/aux/AuxSelectedStateHome.cc"
+    }
+  ],
+  "patchSha256": "fd6fe783ae0638a34e53e83b487c1f7b4481a5ebad84ecb54b01dfbfceef847a",
+  "applied": false,
+  "compiled": false
+}

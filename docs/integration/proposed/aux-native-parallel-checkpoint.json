@@ -314,15 +314,27 @@
       "exitCode": 1,
       "role": "actualparentSwiftmodulepasses, selectedhome nativepathunsafe warnings",
       "evidence": "docs/integration/proposed/aux-native-parent-json-fixture-integration/evidence/actual-browser-unsafe-failure.txt"
+    },
+    {
+      "session": 87362,
+      "exitCode": 0,
+      "role": "actualnativepathSelectedHome objectpassesunsafebufferchecks",
+      "evidence": "docs/integration/proposed/aux-selected-state-home-safe-buffers/evidence/actual-home-object.json"
+    },
+    {
+      "session": 51295,
+      "exitCode": 1,
+      "role": "3remainingactualnativeTUs targetedonce tocollectsevenunsafeoperations",
+      "evidence": "docs/integration/proposed/aux-selected-state-home-safe-buffers/evidence/other-three-native-path-diagnostics.txt"
     }
   ],
   "appliedCurrentNativeComposition": {
-    "composition": "out/native-reuse-composition-aux-parent-json-fixture",
+    "composition": "out/native-reuse-composition-aux-selected-home-safe",
     "sources": 831,
     "assets": 23,
     "applied": true,
     "compiled": false,
-    "applyReceipt": "out/native-reuse-composition-aux-parent-json-fixture/native-before-apply-ybxh2a6c/apply-receipt.json"
+    "applyReceipt": "out/native-reuse-composition-aux-selected-home-safe/native-before-apply-n06x5yey/apply-receipt.json"
   },
   "rootQueuedChecks": [],
   "lastBuildObservation": {
