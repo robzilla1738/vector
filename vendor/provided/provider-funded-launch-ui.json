@@ -31,7 +31,7 @@
         {
           "name": "legacy billing route uses supplied provider settings",
           "find": "component:a(Oo,\"component\"),validateSearch:",
-          "replace": "component:a(Jo,\"component\"),validateSearch:",
+          "replace": "component:a(()=>Jo(),\"component\"),validateSearch:",
           "count": 1
         }
       ]
