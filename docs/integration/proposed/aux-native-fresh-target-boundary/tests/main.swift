@@ -7,10 +7,14 @@ setbuf(stdout, nil)
 setbuf(stderr, nil)
 
 var checks = 0
-func check(_ value: @autoclosure () -> Bool) { precondition(value()); checks += 1 }
-func refuses(_ action: () throws -> Void) {
-    do { try action(); preconditionFailure("Expected refusal") }
-    catch { checks += 1 }
+func check(_ value: @autoclosure () -> Bool, line: Int = #line) {
+    guard value() else { fputs("Failed check at line \(line)\n", stderr); exit(1) }
+    checks += 1
+}
+func refuses(line: Int = #line, _ action: () throws -> Void) {
+    do { try action() }
+    catch { checks += 1; return }
+    fputs("Expected refusal at line \(line)\n", stderr); exit(1)
 }
 // Fixed synthetic imports, no installation factory/key generation/hardware.
 print("PHASE: fixed software imports")
@@ -133,21 +137,25 @@ let invalidEdits: [(inout [String: Any]) -> Void] = [
     { $0["unexpected"] = true },
     { object in var map = object["payloads"] as! [String: String]; map["metadata"]! += "="; object["payloads"] = map },
 ]
-for edit in invalidEdits {
+for (index, edit) in invalidEdits.enumerated() {
+    print("PHASE: malformed edit \(index)")
     let (invalidContext, invalidStage) = try fixture(edit: edit)
     configure(invalidContext, invalidStage)
     refuses { _ = try AuxNativeFreshTargetBoundary(context: invalidContext) }
 }
+print("PHASE: duplicate metadata")
 var invalidMetadata = fixedPayloads
 invalidMetadata["metadata"] = Data("{\"scheme\":\"p256_v1\",\"scheme\":\"p256_v1\",\"key_storage\":\"software\"}".utf8)
 let (duplicateContext, duplicateStage) = try fixture(payloads: invalidMetadata)
 configure(duplicateContext, duplicateStage)
 refuses { _ = try AuxNativeFreshTargetBoundary(context: duplicateContext) }
+print("PHASE: wrong key")
 var wrongKey = fixedPayloads
 wrongKey["signing"] = Data(repeating: 5, count: 32)
 let (wrongContext, wrongStage) = try fixture(payloads: wrongKey)
 configure(wrongContext, wrongStage)
 refuses { _ = try AuxNativeFreshTargetBoundary(context: wrongContext) }
+print("PHASE: wrong cipher")
 var wrongCipher = fixedPayloads
 var ciphertext = sealed.ciphertext + sealed.tag
 ciphertext[0] ^= 1

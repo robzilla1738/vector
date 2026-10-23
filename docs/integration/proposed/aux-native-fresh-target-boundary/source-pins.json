@@ -27,7 +27,7 @@
     },
     {
       "path": "tests/main.swift",
-      "sha256": "6ae0dabfb0238cfbbac9fe03e1aa56c2eabdebdabde06fc3197110f06a37953e"
+      "sha256": "667f6651f7ec542b9e749012dfc55b539115e7290ca275d5fad628c43eaf5226"
     },
     {
       "path": "verify.py",
