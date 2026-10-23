@@ -1,0 +1,33 @@
+{
+  "format": "aux.native-selected-state-home.integration.v1",
+  "sourceInputs": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main.cc": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.h": "6dee06872f9b537e9c28af096d54bf9ce3425f39d9841316d6c01dc4a3c8001b",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.cc": "af408e7f452306db5184556eccc40a181eed6edc33d616bffef051e416af1cc1"
+  },
+  "stateHomeAnchor": "base::FilePath StateHome() {\n  auto env = base::Environment::Create();\n  if (auto value = env->GetVar(\"AUX_HOME\"); value && !value->empty())\n    return base::FilePath(*value);\n  base::FilePath home;\n  return base::PathService::Get(base::DIR_HOME, &home)\n             ? home.AppendASCII(\".aux\")\n             : base::FilePath();\n}",
+  "stateHomeAnchorCount": 1,
+  "proposedStateHomePrefix": "auto selected = aux::peer::ReadNativeSelectedStateHome();\nif (selected.route != aux::peer::SelectedStateHomeRoute::unselected)\n  return selected.route == aux::peer::SelectedStateHomeRoute::current ? selected.path : base::FilePath();",
+  "notApplied": true,
+  "startupOrder": [
+    "Before profile/local-state/defaultStateHome writer entry, launch genuine native child and service actual handshake/ready export.",
+    "Complete actual prior parent pump and take real owned child SelectedNativeHome exactly once.",
+    "InstallNativeSelectedStateHome consumes this actual typed owner, retains it and starts its own bounded parent receive pump.",
+    "StateHome uses proposed prefix: only never-selected compatibility baseline may still use old env/default; selected unavailable/closed/wrongProcess never falls back.",
+    "BrowserPlatform must adopt existing native child/endpoint/auth transport rather than calling ordinary DaemonSupervisor::Start on same home.",
+    "Observe ReadNativeSelectedStateHome current status before startup and throughout browser lifetime; close actual writer admission on unavailable/closed before accepting new work.",
+    "Close on owning creator thread joins actual monitor; snapshots retain pending initialization/read/monitor/child outcomes, not whole-profile drain."
+  ],
+  "freshnessContract": {
+    "childReadyExportCadenceMs": 1000,
+    "perCallTimeoutMs": 2000,
+    "parentMaximumPulseAgeMs": 10000,
+    "parentReceiveTimeoutMs": 250,
+    "timeoutIsNotIdentityLoss": true,
+    "stalePulseGrantsNoPath": true
+  },
+  "remainingActualGap": "BrowserPlatform lacks an owned-child adoption/authorization consumer; skipping Start alone would not implement current authorization/readiness contracts. Root must pair exact existing native process/endpoint before applying shared patch. No custody or startup admission supplied by holder."
+}

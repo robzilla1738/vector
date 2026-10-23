@@ -1,0 +1,132 @@
+--- baseline/AuxNativePeerTransport.cc
++++ source/AuxNativePeerTransport.cc
+@@ -285,6 +285,7 @@
+   // Retains the actual accepted identity even after its one-shot typed take.
+   std::shared_ptr<AuthenticatedSelectedHomeTransfer> accepted_home;
+   bool selected_home_taken = false;
++  std::chrono::steady_clock::time_point last_ready_export;
+ };
+ ParentTransport::State::State(std::shared_ptr<const ExactCodePolicy> value)
+     : policy(std::move(value)) {}
+@@ -336,6 +337,18 @@
+     if (owner->snapshot.closed || owner->snapshot.generation != value->generation) { close(duplicate); return -1; }
+   }
+   return duplicate;
++}
++std::optional<ReadyHomePulse> AuthenticatedSelectedHomeTransfer::InspectReadyPulse() {
++  auto value = state_;
++  if (getpid() != value->process) return std::nullopt;
++  auto owner = value->owner.lock();
++  if (!owner) return std::nullopt;
++  std::lock_guard<std::mutex> lock(owner->mutex);
++  if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
++      owner->accepted_home.get() != this || !owner->snapshot.authenticated_ready_home_exports)
++    return std::nullopt;
++  return ReadyHomePulse{value->generation, owner->snapshot.authenticated_ready_home_exports,
++                       owner->last_ready_export};
+ }
+ std::shared_ptr<AuthenticatedSelectedHomeTransfer> ParentTransport::TakeSelectedHomeTransfer() {
+   auto state = state_;
+@@ -570,6 +583,10 @@
+   reply_cleanup.Disarm();
+   state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
+   ++state->snapshot.authenticated_exchanges;
++  if (selected_request) {
++    ++state->snapshot.authenticated_ready_home_exports;
++    state->last_ready_export = std::chrono::steady_clock::now();
++  }
+   if (selected_request && !retry) {
+     state->accepted_home = selected;
+     state->pending_home = std::move(selected);
+--- baseline/AuxNativePeerTransport.h
++++ source/AuxNativePeerTransport.h
+@@ -5,6 +5,8 @@
+ #include <cstdint>
+ #include <memory>
+ #include <span>
++#include <chrono>
++#include <optional>
+ 
+ namespace aux::peer {
+ // Immutable code policy supplied by trusted native host policy. Copying this
+@@ -50,6 +52,7 @@
+   uint64_t active_code_validations = 0;
+   uint64_t active_selected_home_validations = 0;
+   uint64_t authenticated_exchanges = 0;
++  uint64_t authenticated_ready_home_exports = 0;
+   uint64_t rejected_peer_identities = 0;
+   uint64_t unresolved_reply_cleanup = 0;
+   bool child_pid_version_observed = false;
+@@ -71,6 +74,12 @@
+ class PreparedParentEndpoint;
+ class OwnedNativePeerChild;
+ class SelectedNativeHome;
++// Observational only: constructed from completed genuine ready-home exchanges.
++struct ReadyHomePulse {
++  uint64_t generation;
++  uint64_t exports;
++  std::chrono::steady_clock::time_point observed;
++};
+ // Internal transport product: only actual authenticated Mach FD receipt creates
+ // it; only the real owned child can promote it to a retained selected home.
+ class AuthenticatedSelectedHomeTransfer final {
+@@ -82,6 +91,7 @@
+   struct State;
+   explicit AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> state);
+   int DuplicateRevalidatedDirectory();
++  std::optional<ReadyHomePulse> InspectReadyPulse();
+   std::shared_ptr<State> state_;
+   friend class ParentTransport;
+   friend class SelectedNativeHome;
+--- baseline/AuxOwnedNativePeerChild.cc
++++ source/AuxOwnedNativePeerChild.cc
+@@ -241,6 +241,37 @@
+   }
+   return descriptor;
+ }
++std::optional<ReadyHomePulse> SelectedNativeHome::InspectReadyPulse() {
++  auto selected = state_;
++  auto owner = selected->child;
++  if (getpid() != selected->process || getpid() != owner->process) return std::nullopt;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !owner->child.IsValid()) return std::nullopt;
++  }
++  return selected->transfer->InspectReadyPulse();
++}
++ExchangeStatus SelectedNativeHome::ServicePeerOnce(uint32_t timeout_ms) {
++  auto owner = state_->child;
++  if (getpid() != owner->process) return ExchangeStatus::wrongProcess;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown) return ExchangeStatus::closed;
++    peer = owner->peer;
++  }
++  return peer ? peer->ServiceOne(timeout_ms) : ExchangeStatus::refused;
++}
++NativeChildObservation SelectedNativeHome::CloseNativeAdmission() {
++  if (getpid() != state_->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  OwnedNativePeerChild::State::CloseAndRetain(state_->child);
++  std::lock_guard<std::mutex> lock(state_->child->mutex);
++  return state_->child->ObserveLocked();
++}
+ std::unique_ptr<SelectedNativeHome> OwnedNativePeerChild::TakeSelectedHome() {
+   auto state = state_;
+   if (getpid() != state->process) return {};
+--- baseline/AuxOwnedNativePeerChild.h
++++ source/AuxOwnedNativePeerChild.h
+@@ -26,6 +26,9 @@
+   SelectedNativeHome(const SelectedNativeHome&) = delete;
+   SelectedNativeHome& operator=(const SelectedNativeHome&) = delete;
+   int DuplicateRevalidatedDirectory();
++  std::optional<ReadyHomePulse> InspectReadyPulse();
++  ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
++  NativeChildObservation CloseNativeAdmission();
+  private:
+   struct State;
+   explicit SelectedNativeHome(std::shared_ptr<State> state);

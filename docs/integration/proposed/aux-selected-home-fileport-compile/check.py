@@ -13,6 +13,7 @@ NATIVE = Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium
 BUILD = NATIVE / 'out/AuxFast'
 PROPOSALS = ROOT / 'docs/integration/proposed'
 SOURCE = PROPOSALS / 'aux-selected-home-fileport-retry/source'
+SELECTED = PROPOSALS / 'aux-native-selected-state-home/source'
 
 
 def sha(path):
@@ -61,24 +62,18 @@ def main():
         parent += ['-fmodule-name=' + variables['cc_module_name'] + '_Private']
         child = [manifest['nodeCompiler'], '-std=c++20', '-Wall', '-Wextra', '-Werror',
                  '-arch', 'arm64', '-mmacosx-version-min=13.0', '-fPIC']
-        includes = ['-I', str(SOURCE), '-I', str(PROPOSALS / 'aux-native-child-handoff/source'),
+        includes = ['-I', str(SELECTED), '-I', str(SOURCE), '-I', str(PROPOSALS / 'aux-native-child-handoff/source'),
                     '-I', str(PROPOSALS / 'aux-native-fresh-cold-bootstrap/source')]
         jobs = []
-        for name in ('AuxNativePeerTransport.cc', 'AuxOwnedNativePeerChild.cc'):
-            jobs.append(('chromium-' + name, parent + includes + ['-c', str(SOURCE / name)]))
+        for name in ('AuxNativePeerTransport.cc', 'AuxOwnedNativePeerChild.cc', 'AuxSelectedStateHome.cc'):
+            jobs.append(('chromium-' + name, parent + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
         jobs.append(('chromium-AuxNativeEndpointDelivery.cc', parent + includes + ['-c',
                      str(PROPOSALS / 'aux-native-child-handoff/source/AuxNativeEndpointDelivery.cc')]))
         for name in ('AuxNativePeerTransport.cc', 'AuxNativeParentConnectionBridge.cc'):
-            jobs.append(('node-' + name, child + includes + ['-c', str(SOURCE / name)]))
+            jobs.append(('node-' + name, child + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
         jobs = [(name, command + ['-o', str(output / (name + '.o'))]) for name, command in jobs]
         jobs.append(('pure-wire-predicate', child + includes + ['-fsyntax-only',
                      str(PROPOSALS / 'aux-selected-home-fileport-retry/tests/wire-contract.cc')]))
-        swift = ['xcrun', 'swiftc', '-typecheck', '-target', 'arm64-apple-macos13.0',
-                 '-module-name', 'AuxFileportReadyHome', '-module-cache-path', str(output / 'swift-cache')]
-        for flag in ('AUX_NATIVE_FRESH_RUNTIME_CONSUMER', 'AUX_MINIMAL_RUNTIME_DISPATCH',
-                     'AUX_SCOPED_SECURE_STORE_DISPATCH', 'AUX_ATOMIC_CSK_DISPATCH', 'AUX_MACOS_UTILITY_DISPATCH'):
-            swift += ['-D', flag]
-        jobs.append(('swift-actual-loader-successor', swift + [str(ROOT / path) for path in manifest['swiftInputs']]))
         for name, command in jobs:
             result = subprocess.run(command, cwd=BUILD, capture_output=True, text=True)
             log = output / (name + '.log')
@@ -107,7 +102,7 @@ def main():
         (output / 'results.json').write_text(json.dumps(receipt, indent=2) + '\n')
     if error:
         raise SystemExit(str(error))
-    print('PASS: five objects/two ABI graphs, pure wire predicate and actual Swift loader successor; no link/native execution')
+    print('PASS: six objects/two ABI graphs and pure wire predicate; no Swift repeat/link/native execution')
 
 
 if __name__ == '__main__':

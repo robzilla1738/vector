@@ -69,52 +69,19 @@
     "docs/integration/proposed/aux-selected-home-fileport-retry/source-pins.json": "34da60222aa20f96bfeced56f6d3b2cf1f390cf9e227ba01e543797c0b366553",
     "docs/integration/proposed/aux-selected-home-fileport-retry/verify.py": "dfc8a3c45ad8eaa827a5ffe564a30cd09af4538bfbb67b638b8460362764228c",
     "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeEndpointDelivery.cc": "5cdefc38ed0ea72946aa619af8a36a2cae6c218ef698400da2bf35b056643886",
-    "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeEndpointDelivery.h": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeEndpointDelivery.h": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxNativePeerTransport.cc": "aed5a32ed83cf100a9b8ff3c13b579778898ab397d729dc6649e09f214e88465",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxNativePeerTransport.h": "1f776968781ad612ac17f3c8aec5dac22f610a9ddb121a0a40cbd64768f67b46",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxOwnedNativePeerChild.cc": "87cbd0c8dba3b2a3140a9a15d7959bce79ac19036647e246c46d9ab896f27e10",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxOwnedNativePeerChild.h": "6091b1a79e23a76698aaf7ce0142f693a0f91424c7f70a84ee26875e1546dc1e",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxSelectedStateHome.cc": "14c49faedf26a1217584fc0a856a34befc036ebf711f27cf6ed19da96bc17caa",
+    "docs/integration/proposed/aux-native-selected-state-home/source/AuxSelectedStateHome.h": "5c0fca650493a450e78d6e273a61a3f30f4fe46df38762efb53732fd63bcc621",
+    "docs/integration/proposed/aux-native-selected-state-home/baseline/AuxNativePeerTransport.cc": "8847bd88e1578cca903bf9bbf557c2168d3ae22e096943e15e97e604509b521e",
+    "docs/integration/proposed/aux-native-selected-state-home/baseline/AuxNativePeerTransport.h": "3d1c29647629496bb79970b1d54ccaf1281b6e1ab7290156c23a38db16e7572e",
+    "docs/integration/proposed/aux-native-selected-state-home/baseline/AuxOwnedNativePeerChild.cc": "c775bc184347afcef64d1fd5b16c4c597f47dec7ef13770f0f968c85202e3929",
+    "docs/integration/proposed/aux-native-selected-state-home/baseline/AuxOwnedNativePeerChild.h": "f0fac47546ed0bfa7035a6ca2f5612d1ef252c2431038856264de80d578213e4",
+    "docs/integration/proposed/aux-native-selected-state-home/change.patch": "a1357fb4d9be4a586852a09c671d8eb693034144af3a5bf4d3e0fb72ebbd142b"
   },
-  "swiftInputs": [
-    "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
-    "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
-    "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
-    "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
-    "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
-    "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
-    "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
-    "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
-    "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
-    "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
-    "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift",
-    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift",
-    "docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
-    "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
-    "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
-    "docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
-    "docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
-    "docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
-    "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxOwnedCommandDispatcher.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
-    "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift",
-    "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
-    "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
-    "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
-    "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
-    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxFreshNativeHome.swift",
-    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxResumedFreshNativeHome.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshStageCoordinator.swift",
-    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxAuthenticatedFreshColdBootstrap.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdInstallerGuard.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdBootstrapNativeBridge.swift",
-    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
-    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
-    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedNativeDaemonEntry.swift",
-    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSignedFreshBootstrapPolicyLoader.swift"
-  ],
   "nodeCompiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
   "nativeConfigInputs": [
     {
@@ -164,7 +131,38 @@
     {
       "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/share/man/man2/fcntl.2",
       "sha256": "9b16ec920ad681d1af2256b2c76d408c7b8506b7cad13aa00d035ba4385787a7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/installation_auth.cc",
+      "sha256": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/browser_platform.cc",
+      "sha256": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.h",
+      "sha256": "6dee06872f9b537e9c28af096d54bf9ce3425f39d9841316d6c01dc4a3c8001b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/threading/thread.cc",
+      "sha256": "af408e7f452306db5184556eccc40a181eed6edc33d616bffef051e416af1cc1"
     }
   ],
-  "recipeSha256": "729ab5e82263273e1dfd8da31de51dbd741e2417d6389b5233708ad4bc743d33"
+  "recipeSha256": "53a9b9b74db6e82f8ddacb7435845cdb392e91b8734d0374b3c96bf32580fe00",
+  "logicalSources": {
+    "AuxNativePeerTransport.cc": "docs/integration/proposed/aux-native-selected-state-home/source/AuxNativePeerTransport.cc",
+    "AuxOwnedNativePeerChild.cc": "docs/integration/proposed/aux-native-selected-state-home/source/AuxOwnedNativePeerChild.cc",
+    "AuxSelectedStateHome.cc": "docs/integration/proposed/aux-native-selected-state-home/source/AuxSelectedStateHome.cc",
+    "AuxNativeParentConnectionBridge.cc": "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxNativeParentConnectionBridge.cc"
+  },
+  "singleSwiftGraph": "Nativeaudit actual59690 selects root v2 policy/loader and latest dispatcher; this recipe does NOT repeat it."
 }
