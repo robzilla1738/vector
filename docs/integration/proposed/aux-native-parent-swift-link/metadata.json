@@ -1,0 +1,13 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/native_peer_policy/BUILD.gn",
+      "baselineSha256": "bef2094d0672780870809eda52e343490cdd3afdfa77686c03e4a6fbe0a1c799",
+      "outputSha256": "42ef363550925fec98b366b70837327f171b3c8326779bc26971014f71725278",
+      "origin": "docs/integration/proposed/aux-native-parent-swift-link/source/chrome/browser/aux/native_peer_policy/BUILD.gn"
+    }
+  ],
+  "patchSha256": "23c533d5abca37c6823a2af786be82cb28cae69ef9b956968cb6dc3d8b3b319d",
+  "applied": false,
+  "linked": false
+}

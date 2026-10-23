@@ -1,0 +1,58 @@
+{
+  "format": "aux.native-parent-swift-link.inputs.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-parent-swift-link/source/chrome/browser/aux/native_peer_policy/BUILD.gn": "42ef363550925fec98b366b70837327f171b3c8326779bc26971014f71725278",
+    "docs/integration/proposed/aux-native-parent-swift-link/driver-evidence.json": "e3e6ddfda3f3f4d6ddb1b7a486557ba4d4883d0c01f80889921e29cb6f2ac6b9",
+    "docs/integration/proposed/aux-native-parent-swift-link/failed-link-prefix.json": "fc06cb2ade5813197ed4c90b6c96ef869260a2488f2368c630f3816a35f3a2d7",
+    "docs/integration/proposed/aux-native-parent-swift-link/probe.c": "b8dd65a1359d718adaf25bffb8556e5496a4e4d18b306ac9b54a5309e179725e",
+    "docs/integration/proposed/aux-native-parent-swift-link/check-link.py": "10505ba23bc8d66f5e4e30494dffeb6ee1cb67782bc4d6225d17b18fc9ea1c41"
+  },
+  "nativeInputs": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/toolchain.ninja": "08bf8271cfa612b1e5054c99c092fe75381ea272f5264897ac0bba43cf4f6aa9",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/toolchain/apple/linker_driver.py": "0b0f5458b7f6d763a76285dd17494bf6a5ea0936c11cdcb193d6fa988bdc0ef5",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/ld64.lld": "2bc7f5af1d5fd32e9bfe5305baa0996b93a4170b484907b71ef8740f5e6fbe79",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc": "84b410d8143298f90ab0b721d488dab90e2fdbf23577ae6186162832a1155cb7",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCompatibilityPacks.a": "951e0b04339b78ed762cc78010075d4fc6af065abc6d4cb77d1c14eeefea5aa7"
+  },
+  "objects": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy/AuxAuthenticatedChildParentPolicyReader.o": "a16480fb67c7d1772df7dc670a691c4ea8e2023d133c0d16d64a8aebce687790",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy/AuxFreshBootstrapPolicy.o": "d6b0d2288045b0b0d1d3967c092911e041d952e6c7596f66b871e2463cc8209d",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy/AuxStrictEnvelopeObject.o": "3b39d2f14026c15d6ed15ba9e391cb26ef1cc38e8fb27a8d33ed1037a6c82b1d"
+  },
+  "runtimePaths": {
+    "toolchain": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx",
+    "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift",
+    "rpath": "/usr/lib/swift",
+    "compatibilityArchive": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCompatibilityPacks.a"
+  },
+  "compiled": false,
+  "linked": false,
+  "nativeExecuted": false,
+  "sdkStubInputs": {
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftFoundation.tbd": "4ff1abecb4f54187c09d173e415c88e8587c6119a4be9a862388b0f76b4adea7",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftCore.tbd": "0846a81448783ce6702d88d5f8d4fa88bba57a81d6cbea5878cc65b8948e3cee",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_DarwinFoundation3.tbd": "4efc13ca56c5df9377fee8cf60bb64260ff6f2088d96c21780a49034a49dd995",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_DarwinFoundation1.tbd": "b993061b0979b881a1fd20564c7551cf7b209cffcab16b9ad863f43d7b00ce66",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_Builtin_float.tbd": "3ac8597e85fc7b5acd57a7ae5f3ad02f64f74dd1a363fb698e10e6eb4088b140",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_DarwinFoundation2.tbd": "8b5226f5154e1ada8044ef8e302335b32cd208086aa0ab1bab16e738cde95768",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_StringProcessing.tbd": "723226877ed8979573742a83c2eca202b06f553e63775f4eca113ea354e50fce",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswift_Concurrency.tbd": "c0f4102ccdb5d4a80a2591d4e42da477fa0b1b7fd313386f3eca0e42735aaa4c",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftSystem.tbd": "360d4f477de3a56c192c8b1a4d25dd5d8f6e5f15e5b4a4074af5fe2c6afd4f5a",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftDarwin.tbd": "e7be79b376c19653fc971908163e43a10115058d3170c41d0a55dd43e9250cee",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftObservation.tbd": "4e72296976e22ca340083b71e6b10cc94a9cd51e769c4d7744e372713ba46243",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftObjectiveC.tbd": "c6de84a2bc75042e4c17e3f70a64bb154ea71afd39c7dc0928051ea6fce668e0",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftCoreFoundation.tbd": "b6773f26f4e61f9dc64a59b4d6c8e39bf4a29367085d283de6e858ed71f0a57a",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftDispatch.tbd": "fcc6307e947430052543039c01885fef2287c8d541e0e9bd6b47bbda93643829",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftXPC.tbd": "c2bf61e0bd8acf8b3f127c125d1178445a8b413063b25004c83a26919bea8b07",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftIOKit.tbd": "c3b282f2707419740c774ac72c8fe56b46354ad1e50c26b1f7a1faad85337286",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftSwiftOnoneSupport.tbd": "97a6d3cc2dca51a7c03bbd2b89946681b71289384e57c426ddbbe94c5c9137b7",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/lib/swift/libswiftos.tbd": "e0db3b0c5931cccf3dc1ad4bf02771396f8c73aaa747b4030ece6754f2a30452",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCompatibilityPacks.a": "951e0b04339b78ed762cc78010075d4fc6af065abc6d4cb77d1c14eeefea5aa7"
+  },
+  "nativeGn": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/native_peer_policy/BUILD.gn",
+    "baselineSha256": "bef2094d0672780870809eda52e343490cdd3afdfa77686c03e4a6fbe0a1c799",
+    "successorSha256": "42ef363550925fec98b366b70837327f171b3c8326779bc26971014f71725278"
+  }
+}

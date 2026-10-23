@@ -1,0 +1,39 @@
+# New native destination is chosen by the integrator; this is not applied.
+import("//build/config/apple/swift_source_set.gni")
+import("//build/config/mac/mac_sdk.gni")
+
+
+# Match the actual Apple Swift driver's Mac runtime search/compatibility inputs.
+_aux_parent_swift_toolchain = swift_toolchain_path
+if (_aux_parent_swift_toolchain == "") {
+  _aux_parent_swift_toolchain =
+      get_path_info(mac_sdk_path, "dir") + "/XcodeDefault.xctoolchain"
+}
+config("aux_parent_swift_runtime_link") {
+  lib_dirs = [
+    "$_aux_parent_swift_toolchain/usr/lib/swift/macosx",
+    "$mac_sdk_path/usr/lib/swift",
+  ]
+  libs = [
+    "$_aux_parent_swift_toolchain/usr/lib/swift/macosx/libswiftCompatibilityPacks.a",
+  ]
+  ldflags = [ "-Wl,-rpath,/usr/lib/swift" ]
+}
+
+# C ABI only. No Swift/C++ interop, runtime factory, installation or child code.
+swift_source_set("aux_parent_sealed_policy") {
+  sources = [
+    "AuxAuthenticatedChildParentPolicyReader.swift",
+    "AuxFreshBootstrapPolicy.swift",
+    "AuxStrictEnvelopeObject.swift",
+  ]
+  all_dependent_configs = [ ":aux_parent_swift_runtime_link" ]
+  module_name = "AuxParentSealedPolicy"
+  frameworks = [ "Foundation.framework", "Security.framework", "CryptoKit.framework" ]
+}
+# The actual browser target containing AuxNativePeerTransport.cc must depend on
+# :aux_parent_sealed_policy. This target must NOT be linked into the child graph,
+# which already supplies the same C symbol from its complete sealed loader.
+# Parent transport: no AUX_NATIVE_DAEMON_AUTHORITY_SERVER define.
+# Child transport: define AUX_NATIVE_DAEMON_AUTHORITY_SERVER=1 and link real
+# AuxFreshColdBootstrapNativeBridge.swift plus prepared authority backend.

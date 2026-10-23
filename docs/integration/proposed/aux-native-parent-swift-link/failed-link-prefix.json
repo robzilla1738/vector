@@ -1,0 +1,31 @@
+{
+  "environment": {
+    "TOOL_VERSION": "1792269227"
+  },
+  "commandPrefix": [
+    "../../build/toolchain/apple/linker_driver.py",
+    "-Wcrl,driver,../../third_party/llvm-build/Release+Asserts/bin/clang++",
+    "-Wcrl,strippath,../../third_party/llvm-build/Release+Asserts/bin/llvm-strip",
+    "-Wcrl,installnametoolpath,../../third_party/llvm-build/Release+Asserts/bin/llvm-install-name-tool",
+    "-Wl,--no-warn-duplicate-rpath",
+    "-Wl,-no_warn_duplicate_libraries",
+    "-Werror",
+    "--target=arm64-apple-macos",
+    "-no-canonical-prefixes",
+    "-Wl,-dead_strip",
+    "-nostdlib++",
+    "-isysroot",
+    "sdk/xcode_links/MacOSX27.0.sdk",
+    "-mmacos-version-min=13.0",
+    "-fuse-ld=lld",
+    "-Wl,-fatal_warnings",
+    "-Wl,--icf=all",
+    "-Wl,--color-diagnostics",
+    "-Wl,--strict-auto-link",
+    "-Wl,--read-workers=4",
+    "-Wl,--no-call-graph-profile-sort",
+    "-Wl,-ObjC"
+  ],
+  "originalOutput": "./auth_scheme_probe",
+  "fullOriginalCommandSha256": "43f2e609b632ec34e124108f038d089611513b9f70eda74a5c3f1dab968bdc3b"
+}
