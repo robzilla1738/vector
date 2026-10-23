@@ -1,0 +1,15 @@
+{
+  "format": "aux.provider-funded.final-stage.v1",
+  "stage": "out/provided-provider-funded-final-20261023",
+  "files": {
+    "manifest.json": "85c2402f69af117a42a31afb2c2a03d40261aa109433f2fc3135b0f8cdd43b29",
+    "ui/manifest.json": "20f69b59b224e2e75f18aca3b3844b3be36f46a5da0eac8d00a7ec024682d062",
+    "apps/manifest.json": "31917c46bce03461ed1b552c1b9169372c32fb21b53b0c92d97d7bddfec1429d",
+    "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs": "1aad24f51525251838593f3c06adab824c3eec6962dfc26434b6901194c3c92b",
+    "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-chatgpt.cjs": "26392b348415562fc50c1936516e75c0030cabb510ab220f649ca09e0468327f"
+  },
+  "acceptedAppChanged": false,
+  "runtimeAccepted": false,
+  "signed": false,
+  "deployed": false
+}

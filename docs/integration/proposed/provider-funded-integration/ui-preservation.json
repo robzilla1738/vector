@@ -1,0 +1,27 @@
+{
+  "format": "aux.provider-funded.ui-preservation.v1",
+  "stage": "out/provided-provider-funded-final-20261023/ui/agent",
+  "baseline": "out/provided-candidate-aux-rebuilt-pty-v4/Aux.app/Contents/Resources/aux/apps/extension/dist",
+  "stageFiles": 1217,
+  "baselineFiles": 1217,
+  "added": [],
+  "removed": [],
+  "changed": [
+    "assets/ai-CzEX5E7S.js",
+    "assets/extension-main-Dz1-AsCT.js",
+    "assets/island-C0ouZ54e.js",
+    "assets/model-BrFuJM2w.js",
+    "assets/model-select-BvZsM1Kl.js",
+    "assets/openai-codex-oauth-DBNnab2L.js",
+    "assets/route-TQyeTEXE.js",
+    "assets/routines-BNdQOEUt.js",
+    "assets/session-composer-Dc0LRfZA.js",
+    "assets/strip-markdown-DRcmtuJc.js",
+    "assets/subscription-C_XzJh5Z.js",
+    "manifest.json"
+  ],
+  "stylesheets": 5,
+  "stylesheetsUnchanged": true,
+  "runtimeComparisonPerformed": false,
+  "finalStageUiMatchesAuditedStage": true
+}

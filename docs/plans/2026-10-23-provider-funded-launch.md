@@ -19,7 +19,9 @@ This is an actual supported integration category. Current [OpenAI integration do
 
 The accepted supplied runtime currently contains an older shared Codex OAuth/provider path. Preserve its UI structure, but adapt its authentication and provider boundary to the current [official registration contract](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), using Aux's actual app identity. Do not reuse another product's identity, session cookies, OAuth tokens or owner login files.
 
-Required integration work:
+Source integration now exists in `vendor/provided/provider-launch-stage.mjs` and the count-checked official ChatGPT adapter/sidecar. The supplied dialogs and model picker are retained. Strict authorization, local-only token custody, refresh, public Responses streaming, catalog isolation and awaited disconnect are implemented and covered by focused no-network fixtures. Unsupported legacy ChatGPT images refuse before transport. Fresh staging is separate from actual account/runtime acceptance; see [the integration evidence](../integration/proposed/provider-funded-integration/README.md).
+
+Required behavior and remaining acceptance:
 
 1. Retain a local per-installation host ID, register Aux through the eligible official flow and persist the issued client registration per verified account/workspace.
 2. Keep fresh PKCE/state/nonce and the exact loopback callback bound to each attempt. Reject missing/mismatched state, incorrect identity or a replaced returning client ID. Verify token signature/issuer/audience/expiry/nonce and returned permissions.

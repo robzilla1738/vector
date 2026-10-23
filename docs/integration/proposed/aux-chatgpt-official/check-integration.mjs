@@ -15,7 +15,7 @@ const binary = readFileSync(binaryPath), section = findMachOSeaSection(binary);
 const original = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
 assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
 const baseline = adaptDaemonCode(original, {}, 'aux-v1', 2);
-const result = { source: baseline.code, patches: baseline.applied.slice(-24) };
+const result = { source: baseline.code, patches: baseline.applied.slice(-28) };
 assert.equal(result.patches.at(-1).name, 'no private ChatGPT usage requests');
 const temp = mkdtempSync(join(tmpdir(), 'aux-chatgpt-source-check-'));
 try {
