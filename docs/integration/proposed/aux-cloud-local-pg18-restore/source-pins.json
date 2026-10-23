@@ -1,0 +1,21 @@
+{
+  "sha256": {
+    "services/aux-cloud/scripts/recovery-restore-core.mjs": "622cbd029a27d18867f66125f458121811dcf4f6c54b83072f41431ba8694d9b",
+    "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
+    "services/aux-cloud/scripts/online-recovery-objects.mjs": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f",
+    "services/aux-cloud/scripts/recovery-restore-process.mjs": "f84663aeabcdc9d88fc4acd6d763b5ee6c28f22a4b1d8c3985497370030a12d7",
+    "services/aux-cloud/scripts/recovery-tool-process.mjs": "c7a65ad72805a03180de813005a5301e62a4e2beeb3f4d7d8d20db2b139354b4",
+    "services/aux-cloud/src/schema-manifest.json": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
+    "docs/integration/proposed/aux-cloud-local-pg18-restore/check.mjs": "0d59d3f0141dfcfd7f14b502f980f52dab8815c47b96c3035255904a5cc4073a",
+    "/opt/homebrew/opt/postgresql@18/bin/initdb": "ac53919b2276c58adeee1561ec91e68d48954406c742ae0bf4867e48221bbac8",
+    "/opt/homebrew/opt/postgresql@18/bin/pg_ctl": "3021087af95fd33bfd83106c85de47c4756e44aa7edde78446e7593604d1b451",
+    "/opt/homebrew/opt/postgresql@18/bin/postgres": "99d96184c6675f35caa64761714aeb0c3af5ac61337910b31c36bfb45c75bc33",
+    "/opt/homebrew/opt/postgresql@18/bin/pg_dump": "d18894fa3646683c41e8f356688f77254452a59a4350f2f3f163cdc6d078a899",
+    "/opt/homebrew/opt/postgresql@18/bin/pg_restore": "e9dd3165d3a0930c0d1ff9f3cde80b4f08e014c9a16bf984c373ec50291450ee"
+  },
+  "fixtureDriver": {
+    "version": "8.16.3",
+    "resolved": "https://registry.npmjs.org/pg/-/pg-8.16.3.tgz",
+    "integrity": "sha512-enxc1h0jA/aq5oSDMvqyW3q89ra6XIIDZgCX9vkMrnz5DFTw/Ny3Li2lFQ+pt3L6MCgm/5o2o8HW9hiJji+xvw=="
+  }
+}
