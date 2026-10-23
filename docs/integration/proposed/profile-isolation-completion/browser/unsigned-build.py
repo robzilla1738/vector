@@ -67,3 +67,4 @@ except Exception as e:
 finally:
  r['sharedLinkConfigUnchanged']=sha(N/'build/config/mac/BUILD.gn')==baseline;(R/'receipt.json').write_text(json.dumps(r,indent=2)+'\n')
 print(json.dumps({'prepared':r['prepared'],'passed':r['passed'],'receipt':str(R/'receipt.json')}))
+if not r['prepared'] or (a.build and not r['passed']):raise SystemExit(1)
