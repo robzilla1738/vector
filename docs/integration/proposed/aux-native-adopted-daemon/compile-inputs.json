@@ -114,6 +114,6 @@
     "AuxNativePeerTransport.cc": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc",
     "AuxNativePeerWire.h": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h"
   },
-  "recipeSha256": "01e3a01937f727996018a68f9289b58cd86266d868e7efa44b7b7fef3bcee46c",
+  "recipeSha256": "499e5eb5e8b39a945113c0973015c23a662ff954f24d6081ac6eb56c26af17e5",
   "scope": "8 objects: 6 Chromium, 2 Node, pure wire syntax; source only no Swift/link/run"
 }

@@ -43,6 +43,11 @@
       "session": 44910,
       "role": "bounded real prepared authority lifecycle fixture",
       "state": "agent polled same wrapper; still queued, no new compiler/result evidence"
+    },
+    {
+      "session": 79061,
+      "role": "6 actual changed Chromium adoption TUs plus pure-wire predicate; final main covers child TUs",
+      "state": "root queued behind same native serializer; not compiled"
     }
   ],
   "unappliedNativeSuccessor": null,
@@ -52,7 +57,9 @@
     "paired notification inbox master-key/envelope migration from actual reader; no guessed key",
     "same queued final42 and focused lifetime/WorkerHost checks; final adoption transport compile only once",
     "legacy existing authority/CSK migration and exact native resource/package review",
-    "fixed-path lazy PTY load and explicit sealed image/signature policy pairing; no generic guard widening"
+    "fixed-path lazy PTY load and explicit sealed image/signature policy pairing; no generic guard widening",
+    "actual browser native launch/selected-holder installation caller before BrowserPlatform",
+    "parent-only sealed child-policy/private-parent-FD bridge link dependency; no dead-strip assumption"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -91,7 +98,11 @@
     "currentNativeMainLinkPlan": "1f67407b6",
     "finiteNativeAuthorityTransport": "19b595e2a",
     "inboxV2CodecAndPurpose": "fff614c6f / 2337c1dac",
-    "auxBuiltinIconStageAudit": "c610ed32f"
+    "auxBuiltinIconStageAudit": "c610ed32f",
+    "replyBoundPublicationTicket": "897c17435",
+    "actualBrowserAdoption": "09fc9cc15",
+    "fixedPtyLoadingProposal": "621e0005d",
+    "inboxV2DeferredFixture": "4694d8d66"
   },
   "terminalRootChecks": [
     {

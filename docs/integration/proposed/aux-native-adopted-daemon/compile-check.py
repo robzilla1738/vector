@@ -34,6 +34,8 @@ def verify(manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--parent-only', action='store_true',
+                        help='Skip child objects covered by the final actual executable build')
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists() or NATIVE == output or NATIVE in output.parents:
@@ -44,6 +46,7 @@ def main():
     receipt = {'format': 'aux.native-adopted-daemon.compile.v1', 'commands': [],
                'inputsSha256': hashlib.sha256(manifest_bytes).hexdigest(),
                'passed': False, 'linked': False, 'nativeCodeExecuted': False,
+               'parentOnly': args.parent_only,
                'ipcOrSecurityExecuted': False}
     error = None
     try:
@@ -75,8 +78,9 @@ def main():
         for name in ('AuxNativePeerTransport.cc', 'AuxOwnedNativePeerChild.cc', 'AuxSelectedStateHome.cc',
                      'daemon_supervisor.cc', 'installation_auth.cc', 'browser_platform.cc'):
             jobs.append(('chromium-' + name, parent + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
-        for name in ('AuxNativePeerTransport.cc', 'AuxNativeParentConnectionBridge.cc'):
-            jobs.append(('node-' + name, child + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
+        if not args.parent_only:
+            for name in ('AuxNativePeerTransport.cc', 'AuxNativeParentConnectionBridge.cc'):
+                jobs.append(('node-' + name, child + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
         jobs = [(name, command + ['-o', str(output / (name + '.o'))]) for name, command in jobs]
         jobs.append(('pure-wire-predicate', child + includes + ['-fsyntax-only',
                      str(PROPOSALS / 'aux-selected-home-fileport-retry/tests/wire-contract.cc')]))
@@ -108,7 +112,7 @@ def main():
         (output / 'results.json').write_text(json.dumps(receipt, indent=2) + '\n')
     if error:
         raise SystemExit(str(error))
-    print('PASS: eight objects/two ABI graphs and pure wire predicate; no Swift repeat/link/native execution')
+    print('PASS: ' + str(len(receipt['commands']) - 1) + ' objects and pure wire predicate; no Swift repeat/link/native execution')
 
 
 if __name__ == '__main__':
