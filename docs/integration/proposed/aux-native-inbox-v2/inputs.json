@@ -1,0 +1,36 @@
+{
+  "format": "aux.native-inbox.v2-source.v1",
+  "priorCore": {
+    "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+    "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+  },
+  "files": {
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxCodec.cc": "0b53eeddd5ad523f67eea6092ec41e5894ff8643005c8fbd6f6fee085f29634f",
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxCodec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947"
+  },
+  "corePatchSha256": "2d2052028afc1cfc96cf5bf186da82c91c704382fe6e406afc6399fbebeadc0e",
+  "purpose": {
+    "algorithm": "HKDF-SHA256",
+    "saltHex": "",
+    "infoUtf8": "aux.agent-inbox.master-key.v2",
+    "outputBytes": 32
+  },
+  "independentVector": {
+    "rootHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "keyHex": "5666ac7f86a88ffaea842699ae972e270a0a97d1eb94b815711395c86429d003",
+    "generator": "Python standard hmac/hashlib RFC5869 single-block calculation; not a Swift execution claim"
+  },
+  "envelope": {
+    "magic": "AUXAI002",
+    "nonceBytes": 12,
+    "tagBytes": 16,
+    "aadUtf8": "AUXAI002",
+    "cipher": "AES-256-GCM"
+  },
+  "compiled": false,
+  "protectedCalls": 0,
+  "historicalRecordsModified": false,
+  "currentAppModified": false
+}

@@ -1,0 +1,18 @@
+--- docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift
++++ docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift
+@@ -145,6 +145,15 @@
+             case "cdp-sign":
+                 let challenge = try input(text, challenge: true)!
+                 reply = ["signature": try authority().sign(challenge).base64EncodedString()]
++            case "inbox-key-v2":
++                _ = try input(text)
++#if AUX_ATOMIC_CSK_DISPATCH
++                reply = ["key": try withCskPublicationRoot { root in
++                    try AuxInboxV2Key.derive(from: root).base64EncodedString()
++                }]
++#else
++                throw AuxCommandError.unavailable
++#endif
+             case "dk-unwrap":
+                 _ = try input(text); let root = try authority().openRoot()
+                 guard root.count == 32 else { throw AuxCommandError.operation }
