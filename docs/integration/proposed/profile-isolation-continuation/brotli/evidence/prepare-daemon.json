@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "version": "1.2.1",
+  "deploymentTarget": "13.5",
+  "path": "/private/tmp/aux-brotli-1.2.1-20261023/build/libbrotli.a",
+  "sha256": "8242699baf1367dab8677cfba29efec1086a184db84b950f90fc494b05fd2f0d"
+}

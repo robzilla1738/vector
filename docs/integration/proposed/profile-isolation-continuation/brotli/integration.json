@@ -1,0 +1,27 @@
+{
+  "format": "aux.brotli.static.integration.v1",
+  "oldArchive": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libbrotli.a",
+    "sha256": "1a6c7fe1d223ade5117340b410af232188cda61ed9b56c27910a9641dcd8d661",
+    "version": "1.2.0"
+  },
+  "replacement": {
+    "passed": true,
+    "version": "1.2.1",
+    "deploymentTarget": "13.5",
+    "path": "/private/tmp/aux-brotli-1.2.1-20261023/build/libbrotli.a",
+    "sha256": "8242699baf1367dab8677cfba29efec1086a184db84b950f90fc494b05fd2f0d"
+  },
+  "receipt": {
+    "path": "/private/tmp/aux-brotli-1.2.1-20261023/build/results.json",
+    "sha256": "7257744d076a4f5a2559495f79d670d991c7896e92ab96531ef3ec88f1bc6e1d"
+  },
+  "recipeSha256": "f9447ee879232213ed1b82418aebce8e5c44f9a3ce852ac7b3011be0d2969df8",
+  "officialSourceArchiveSha256": "98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f",
+  "symbolCoverage": "all 130 original global definitions retained; 130 successor definitions",
+  "target": "arm64-apple-macos13.5",
+  "homebrewBottleUsed": false,
+  "loaded": false,
+  "signed": false,
+  "fullDaemonLinkedByThisLane": false
+}
