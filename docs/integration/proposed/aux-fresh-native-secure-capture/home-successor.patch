@@ -1,0 +1,40 @@
+--- a/AuxFreshNativeHome.swift
++++ b/AuxFreshNativeHome.swift
+@@ -5,6 +5,7 @@
+ 
+ enum AuxFreshHomeError: Error {
+     case unsafePath, unsafeMetadata, existingReservation, pathChanged, notEmpty
++    case generationAlreadyAttempted
+     case io(Int32)
+ }
+ 
+@@ -20,6 +21,8 @@
+     private let parentFD: Int32
+     private let reservationFD: Int32
+     private let homeFD: Int32
++    private let generationAttemptLock = NSLock()
++    private var generationAttempted = false
+ 
+     // Only the successful O_EXCL/mkdirat creator can construct this owner.
+     // Existing reservations/children are never adopted, removed or retried.
+@@ -122,6 +125,20 @@
+               captured.prefix(count) == reservationBytes else { throw AuxFreshHomeError.pathChanged }
+     }
+ 
++    // Operation state on this real private-init owner, not an admission claim.
++    // Consume before callbacks; failures never silently permit another factory.
++    func claimInitialAuthorityGenerationAttempt() throws {
++        generationAttemptLock.lock()
++        defer { generationAttemptLock.unlock() }
++        guard !generationAttempted else { throw AuxFreshHomeError.generationAlreadyAttempted }
++        generationAttempted = true
++    }
++
++    func currentReservationSha256() throws -> String {
++        try validateRetainedIdentity()
++        return SHA256.hash(data: reservationBytes).map { String(format: "%02x", $0) }.joined()
++    }
++
+     func requireEmptyBeforeAuthorityGeneration() throws {
+         try validateRetainedIdentity()
+         try Self.requireEmptyDirectory(homeFD)

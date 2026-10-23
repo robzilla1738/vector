@@ -1,0 +1,26 @@
+# Authenticated fresh-home secure capture
+
+Inactive native source, separate from legacy migration and selected-runtime startup. It consumes the actual fileprivate-initialized `AuxAuthenticatedFreshBootstrapPolicy` and the actual private-initialized, fd-retained `AuxFreshNativeHome`. It never accepts a caller scope, selector, Boolean absence/custody assertion, arbitrary policy path, receipt or prebuilt authority. The current app/UI, selected policy versions, packaging and native checkout are unchanged.
+
+`AuxFreshNativeSecureCapture.capture(policy:home:)` reauthenticates the current sealed policy through its actual loader, verifies the retained home is still empty/private/inode-bound, binds its actual canonical parent and recomputed scope to policy, and captures exactly these five explicit-group Data Protection generic-password rows:
+
+- Four target rows: service `aux.<scope>.installation.v2`, accounts **that service** plus `.meta`, `.sig`, `.kem`, `.dk`.
+- Transaction-bound stage: service `aux.<scope>.install.secure-stage.v1`, account `aux.<scope>.fresh.<lowercase transaction UUID>`.
+
+These are the actual runtime target and secure-stage contracts. The reader uses explicit group, DP true, return-data, match-one and authentication-UI-fail, with no fallback, enumeration, update, delete, Add, initialization or access prompt. Only item-not-found with no contradictory result is absence. Success requires nonempty bounded CFData and is **present**, never fresh; malformed values and every other OS status refuse. Private row payloads are not retained in the capture object or written/logged. Reauthentication and home-empty verification run again after all probes. The deprecated authentication-UI-fail SDK constant is intentionally preserved from the reviewed original query semantics.
+
+The private-initialized capture exposes readonly `.policy/.home/.scope/.transactionId`, `.selectors` (all five), `.targetSelectors` (first four) and `.stageSelector`. Each selector has readonly row/service/account/accessGroup fields and a fileprivate initializer. The bridge can map those exact fields into actual create-only coordinator requests; it cannot inject selectors into this producer.
+
+## Native one-shot generation attempt
+
+A capture-local consumed flag would be insufficient: another probe of the same home could mint another initial-generation attempt. This proposal therefore includes an exact source-pinned **successor copy** of the logical `AuxFreshNativeHome.swift`, retaining historical source unchanged. It adds only a private NSLock-protected native attempt state and `currentReservationSha256()` (actual retained marker validation before returning the nonsecret digest).
+
+`takeAbsentForGeneration()` consumes that actual home's attempt before any policy/read callback, releases the lock, then repeats the exact policy/home/five-absence checks. Every alias/repeated capture of the same actual owner shares the latch. Failure consumes the attempt; no automatic retry, availability downgrade or authority regeneration is permitted. The private owner initializer plus durable O_EXCL reservation prevents a new process from reopening an existing marker as fresh. No mutex is held across policy/Security callbacks. The attempt state controls an operation; it is not an authorization/writer-custody Boolean or claim that Security writes are atomic.
+
+Build the successor home **instead of**, not beside, the historical logical source. `home-successor.patch` and pins show the narrow change. The real factory bridge must invoke this one-shot method immediately before its one actual factory call and select hardware from `SecureEnclave.isAvailable` and actual OS availability using the existing recovered factory policy. This capture component exposes no hardware/downgrade flags and performs no authority generation. Legacy scopes/rows are not probed or claimed absent, and old v1 caller-review journal records are not converted into native admission records.
+
+## Evidence and exact limits
+
+`check.sh` first typechecks actual sealed reader, successor home and production capture as separate Swift files. Its second build executes the actual producer body with a compile-conditional captured read effect and an explicitly captured policy API; **it does not execute/authenticate the real loader**. Real fresh-home filesystem operations are disposable. Tests cover all selectors/queries, status classification, each row's present/unavailable/invalid refusal, changed home/policy, and shared-home one-shot consumption including failed-attempt no-retry. No Keychain/Security query, hardware, authority generation, signing, owner data, cloud or app/runtime launch occurs.
+
+Actual host entitlements/resource approval, early native launch ownership, public factory activation, five-row create-only persistence and authenticated terminal publication remain separate source/integration boundaries. An authenticated resource and private fd prove neither all-process exclusion nor permission to call protected APIs. A foreign same-UID/native process can still access the same group; these observations cannot supply whole-profile writer custody. Running first-use initialization before any profile/runtime receives the new home is still required. Legacy migration remains required, independently; no first-refusal/state-2 bypass is introduced.
