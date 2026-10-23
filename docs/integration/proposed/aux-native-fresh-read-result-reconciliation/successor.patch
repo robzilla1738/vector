@@ -1,0 +1,294 @@
+--- baseline/AuxDevelopmentWorkerHost.cc
++++ source/AuxDevelopmentWorkerHost.cc
+@@ -1,8 +1,8 @@
+-#include "AuxDevelopmentWorkerHost.h"
++#include "../../aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h"
+ #include "../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
+ #include "../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
+ #include "aux-owned-napi-adapter.h"
+-#include "../../aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h"
++#include "aux-owned-command-dispatcher.h"
+ #include <node.h>
+ #include <uv.h>
+ #include <unistd.h>
+@@ -81,11 +81,13 @@
+     int32_t status = captured ? AuxNativeContextRetire(captured->handle) : 0;
+     auto result = AuxDevelopmentWorkerDrain::drained;
+     if (status == -2) result = AuxDevelopmentWorkerDrain::reentrant;
++    else if (status == -3) result = AuxDevelopmentWorkerDrain::untracked;
++    else if (status == -4) result = AuxDevelopmentWorkerDrain::wrongProcess;
+     else if (status != 0 && status != -1) result = AuxDevelopmentWorkerDrain::pending;
+-    else if (captured) {
++    if (captured && (status == 0 || status == -1 || status == -3)) {
+       const int32_t os = AuxCloseDevelopmentOwnerOSAdmission(captured->retained);
+       if (os == 2) result = AuxDevelopmentWorkerDrain::untracked;
+-      else if (os != 0) result = AuxDevelopmentWorkerDrain::pending;
++      else if (os != 0 && result == AuxDevelopmentWorkerDrain::drained) result = AuxDevelopmentWorkerDrain::pending;
+     }
+     // Only explicit host close initiates process-image-wide PDF closure.
+     // Per-environment cleanup merely observes an already-started closure and
+--- baseline/AuxOwnedCommandDispatcher.swift
++++ source/AuxOwnedCommandDispatcher.swift
+@@ -1,6 +1,7 @@
+ // Inactive in-process lifetime boundary. Not host authentication/admission.
+ import Foundation
+ import Darwin
++import CryptoKit
+ 
+ enum AuxDispatcherLifetimeError:Error { case invalidHandle,retiring,reentrantRetirement,reentrantCall,exhaustedHandles,invalidInput }
+ 
+@@ -9,11 +10,25 @@
+ final class AuxCommandDispatcherRegistry {
+     static let shared=AuxCommandDispatcherRegistry()
+     private enum Phase { case open,retiring,closed }
++    private struct RetainedRead {
++        let command:String
++        let inputSha256:Data
++        let response:String
++    }
++    // Pinned actual core routes: these return reads, public material/signatures
++    // or imported root bytes. init aliases only return existing captured keys;
++    // actual absent-state generation is refused by the unchanged core.
++    private static let readOnlyCommands:Set<String>=["install-status","keys-status","get-public-keys","public-keys","install-init","init-keys","cdp-sign","dk-unwrap","secure-read"]
++    private static func requestDigest(_ input:String)->Data{Data(SHA256.hash(data:Data(input.utf8)))}
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
+         var nativeGuardFailure:AuxNativeFreshGuardFailure? = nil
+         var pendingPostGuardObservation:AuxNativeFreshGuardFailure? = nil
++        // Exact completed read reply stays private process memory only. Never
++        // persist/log the response (which may contain credential/root bytes).
++        var retainedRead:RetainedRead? = nil
++        var reconcilingRead=false
+ #endif
+         let core:AuxInstallationCommandCore
+ #if AUX_MACOS_UTILITY_DISPATCH
+@@ -129,25 +144,89 @@
+     func withContext<T>(_ handle:UInt64,_ action:(AuxInstallationCommandCore)throws->T)throws->T {
+         try withEntry(handle){try action($0.core)}
+     }
+-    fileprivate func withCommandHandler<T>(_ handle:UInt64,_ action:((String,String)->String)throws->T)throws->T {
+-        try withEntry(handle){entry in
+-            try action({command,input in
+-#if AUX_SCOPED_SECURE_STORE_DISPATCH
+-                var secureCommands=["secure-save","secure-read","secure-clear"]
++    fileprivate func withCommandHandler<T>(_ handle:UInt64,_ action:((String,String)throws->String)throws->T)throws->T {
++        try withEntry(handle,guardGenericAction:false){entry in
++            try action({command,input in try self.runKnownCommand(entry,command:command,input:input)})
++        }
++    }
++    private func dispatchKnownCommand(_ entry:Entry,command:String,input:String)->String {
++#if AUX_SCOPED_SECURE_STORE_DISPATCH
++        var secureCommands=["secure-save","secure-read","secure-clear"]
+ #if AUX_ATOMIC_CSK_DISPATCH
+-                secureCommands.append("csk-publish-absent-or-same")
+-#endif
+-                if let secure=entry.secureStore,secureCommands.contains(command) {
+-                    return secure.run(command:command,input:input)
++        secureCommands.append("csk-publish-absent-or-same")
++#endif
++        if let secure=entry.secureStore,secureCommands.contains(command){return secure.run(command:command,input:input)}
++#endif
++#if AUX_MACOS_UTILITY_DISPATCH
++        if let reply=entry.macOSUtilities?.run(command:command,input:input){return reply}
++#endif
++        return entry.core.run(command:command,input:input)
++    }
++    private func runKnownCommand(_ entry:Entry,command:String,input:String)throws->String {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        if let previous=try reconcileRetainedRead(entry) {
++            // Same explicit request gets the ORIGINAL result; no repeated sign,
++            // unwrap, credential query or native action occurs. A new request
++            // acknowledges the reconciled read and runs only its new action.
++            if previous.command==command,previous.inputSha256==Self.requestDigest(input){return previous.response}
++        }
++#endif
++        try requireFreshGuard(entry,moment:.beforeAction)
++        let result=dispatchKnownCommand(entry,command:command,input:input)
++        do{try requireFreshGuard(entry,moment:.afterAction)}
++        catch {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            // Only this actual source-known route can bind a completed result.
++            // Generic trusted closures/account callbacks never enter this path.
++            if let failure=error as? AuxNativeFreshGuardFailure,
++               failure.disposition == .postOutcomeUnknown,Self.readOnlyCommands.contains(command) {
++                condition.lock()
++                if entry.nativeGuardFailure==nil,entry.pendingPostGuardObservation != nil {
++                    entry.retainedRead=RetainedRead(command:command,inputSha256:Self.requestDigest(input),response:result)
+                 }
+-#endif
+-#if AUX_MACOS_UTILITY_DISPATCH
+-                if let reply=entry.macOSUtilities?.run(command:command,input:input){return reply}
+-#endif
+-                return entry.core.run(command:command,input:input)
+-            })
+-        }
+-    }
++                condition.unlock()
++            }
++#endif
++            throw error
++        }
++        return result
++    }
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++    private func reconcileRetainedRead(_ entry:Entry,closing:Bool=false)throws->RetainedRead? {
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++        condition.lock()
++        if let lost=entry.nativeGuardFailure{condition.unlock();throw lost}
++        guard let pending=entry.pendingPostGuardObservation else{condition.unlock();return nil}
++        let permitted=entry.phase == .open || (closing && entry.phase == .retiring)
++        guard permitted,let read=entry.retainedRead,let captured=entry.nativeFreshRuntime else{condition.unlock();throw pending}
++        guard !entry.reconcilingRead else{condition.unlock();throw AuxDispatcherLifetimeError.reentrantRetirement}
++        entry.reconcilingRead=true;condition.unlock()
++        defer{if getpid()==process{condition.lock();entry.reconcilingRead=false;condition.broadcast();condition.unlock()}}
++        // The actual command has already returned. This checks only current
++        // authority; it cannot repeat or reinterpret an unknown write/CAS.
++        do{try captured.revalidateCurrentCommandBinding()}
++        catch {
++            let disposition=classifyAuxNativeFreshGuard(error)
++            if disposition == .provenBindingLoss {
++                let lost=AuxNativeFreshGuardFailure(moment:.beforeAction,underlying:error,operationError:nil,disposition:.provenBindingLoss)
++                condition.lock();entry.nativeGuardFailure=lost;entry.phase = .retiring;condition.broadcast();condition.unlock()
++#if AUX_MACOS_UTILITY_DISPATCH
++                entry.macOSUtilities?.closeAdmission()
++#endif
++                throw lost
++            }
++            // Retain exact prior reply/failure on timeout, locked DP or unknown
++            // read errors. Later native requests may freshly observe again.
++            throw AuxNativeFreshGuardFailure(moment:.beforeAction,underlying:error,operationError:nil,disposition:disposition)
++        }
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++        condition.lock();defer{condition.unlock()}
++        if let lost=entry.nativeGuardFailure{throw lost}
++        guard (entry.phase == .open || (closing && entry.phase == .retiring)),entry.pendingPostGuardObservation != nil else{throw AuxDispatcherLifetimeError.retiring}
++        entry.pendingPostGuardObservation=nil;entry.retainedRead=nil
++        return read
++    }
++#endif
+ #if AUX_ATOMIC_CSK_DISPATCH && AUX_SCOPED_SECURE_STORE_DISPATCH
+     func withAccountRegistryLock(_ handle:UInt64,_ body:()throws->Int32)throws->Int32 {
+         try withEntry(handle){entry in
+@@ -158,7 +237,7 @@
+         }
+     }
+ #endif
+-    private func withEntry<T>(_ handle:UInt64,_ action:(Entry)throws->T)throws->T {
++    private func withEntry<T>(_ handle:UInt64,guardGenericAction:Bool=true,_ action:(Entry)throws->T)throws->T {
+         guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         let threadActive=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+         guard threadActive[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantCall}
+@@ -184,7 +263,8 @@
+             condition.broadcast();condition.unlock()
+           }
+         }
+-        return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){try action(entry)}
++        if guardGenericAction{return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){try action(entry)}}
++        return try action(entry)
+     }
+     private func hasUntrackedFreshGuard(_ entry:Entry)->Bool {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+@@ -262,24 +342,47 @@
+         guard let entry=entries[handle],entry.phase == .open else{return false}
+         return !hasUntrackedFreshGuard(entry)
+     }
++    // 0 idle/no unknown result;1 acquired native call;2 completed unknown read;
++    // 3 completed unknown generic/write;4 proven binding loss;-1 no owned entry;
++    // -4 wrong process. This says NOTHING about separate OS/PDF image custody.
++    func observeOperationState(_ handle:UInt64)->Int32 {
++        guard getpid()==process else{return -4}
++        condition.lock();defer{condition.unlock()}
++        guard let entry=entries[handle]else{return -1}
++        if entry.active>0{return 1}
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        if entry.reconcilingRead{return 1}
++#endif
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        if entry.nativeGuardFailure != nil{return 4}
++        if entry.pendingPostGuardObservation != nil{return entry.retainedRead == nil ? 3:2}
++#endif
++        return 0
++    }
+     func retire(_ handle:UInt64)throws {
+         guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+-        // Reentrant close would wait for this same thread's acquired lease.
+         let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+         guard active[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantRetirement}
++        condition.lock()
++        guard let entry=entries[handle]else{condition.unlock();throw AuxDispatcherLifetimeError.invalidHandle}
++        entry.phase = .retiring
++#if AUX_MACOS_UTILITY_DISPATCH
++        entry.macOSUtilities?.closeAdmission()
++#endif
++        while entry.active>0 {condition.wait()}
++        condition.unlock()
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        // Explicit native close acknowledges any completed READ reply only
++        // after real current authority revalidation, with no mutex over it.
++        // Unknown writes/generic callbacks cannot pass this reconciliation.
++        _ = try reconcileRetainedRead(entry,closing:true)
++#endif
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         condition.lock();defer{condition.unlock()}
+-        guard let entry=entries[handle]else{throw AuxDispatcherLifetimeError.invalidHandle}
+-        entry.phase = .retiring
+-#if AUX_MACOS_UTILITY_DISPATCH
+-        entry.macOSUtilities?.closeAdmission()
+-#endif
+-        while entry.active>0 {condition.wait()}
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         if let failure=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation{throw failure}
+ #endif
+         entry.phase = .closed
+-        // A simultaneous retiring caller can still hold the same entry, but
+-        // no call can acquire it once retirement begins or after removal.
+         entries.removeValue(forKey:handle);condition.broadcast()
+     }
+ }
+@@ -403,7 +506,7 @@
+         return try AuxCommandDispatcherRegistry.shared.withCommandHandler(handle){run in
+             let name=try dispatcherString(command,commandLength,128)
+             let value=try dispatcherString(input,inputLength,16_384)
+-            return dispatcherCString(run(name,value))
++            return dispatcherCString(try run(name,value))
+         }
+     }catch{return dispatcherError(error)}
+ }
+@@ -414,8 +517,11 @@
+ @_cdecl("AuxNativeContextRetire")
+ func auxNativeContextRetire(_ handle:UInt64)->Int32 {
+     do{try AuxCommandDispatcherRegistry.shared.retire(handle);return 0}
++    catch AuxDispatcherLifetimeError.invalidHandle{return -1}
+     catch AuxDispatcherLifetimeError.reentrantRetirement{return -2}
+-    catch{return -1}
++    catch is AuxNativeFreshGuardFailure{return -3}
++    catch AuxNativeFreshGuardProcessError.wrongProcess{return -4}
++    catch{return -5}
+ }
+ 
+ #if AUX_ATOMIC_CSK_DISPATCH && AUX_SCOPED_SECURE_STORE_DISPATCH
+@@ -425,3 +531,6 @@
+     do{return try AuxCommandDispatcherRegistry.shared.withAccountRegistryLock(handle){body(context)}}catch{return -2}
+ }
+ #endif
++
++@_cdecl("AuxNativeContextObserveOperationState")
++func auxNativeContextObserveOperationState(_ handle:UInt64)->Int32{AuxCommandDispatcherRegistry.shared.observeOperationState(handle)}
+--- baseline/aux-owned-command-dispatcher.h
++++ source/aux-owned-command-dispatcher.h
+@@ -14,7 +14,13 @@
+                          intptr_t input_length);
+ void AuxNativeResultFree(char* result);
+ // Closes admission to this instance, drains acquired operations, then retires.
+-// 0 success, -1 invalid/already-retired, -2 attempted from this thread's lease.
++// 0 success, -1 invalid/already-retired, -2 reentrant observation/lease,
++// -3 completed result/binding unresolved (owner retained), -4 wrong process,
++// -5 other unresolved failure. Never treat -3/-4/-5 as already-retired.
++// This observation excludes OS/PDF image custody:0 idle/no unknown result,
++// 1 acquired call/reconciliation,2 unknown completed read,3 unknown completed
++// write/generic operation,4 binding lost,-1 no entry,-4 wrong process.
++int32_t AuxNativeContextObserveOperationState(uint64_t handle);
+ int32_t AuxNativeContextRetire(uint64_t handle);
+ #ifdef AUX_ATOMIC_CSK_DISPATCH
+ // Synchronous actual body runs under this instance's lease and fixed-home lock.
