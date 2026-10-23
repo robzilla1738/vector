@@ -1,0 +1,33 @@
+{
+  "format": "aux.protected-startup.actual-package-integration.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/receipt.json",
+  "receiptSha256": "d9e4ec87b48608412573d9450e7c6c22e2866e60ad2400d9d1214480fb3d94cc",
+  "inventorySha256": "25b453648b3b35ae6bda084ad39a7dff10c44604068e486160c2acfc790701bd",
+  "leafCount": 11191,
+  "previousReceiptSha256": "f9046b9d9267a146e4ad88db34f5bd55eadd826281400d2b1e44ff995486ace2",
+  "comparison": "Complete recorded package leaf inventories; actual new assembly also rechecks baseline/native source apps",
+  "changedLeaves": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+    "Contents/Resources/aux/bundle.json"
+  ],
+  "otherLeavesIdentical": true,
+  "uiPreserved": true,
+  "sourceAppsUnchanged": true,
+  "exactlyOneSwiftSourceChanged": true,
+  "nativeInterfaceImportPairUnchanged": true,
+  "daemonSha256": "420fae0a46654433a2f3f449bab0114619c352e5915385721a9926cdfabf6b17",
+  "daemonReceiptSha256": "4ef12198bbd92df5c40e2cefb4f95036f94b0e404ee3c6b47f4a6063a052fa3c",
+  "sourcePairSha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4",
+  "packageRecipeSha256": "6b41db40b135d075f620227cbd94dff49923c80862dc13976cd8fb56d5a49f26",
+  "currentMetadataPairVerified": true,
+  "defaultEntryRefusalPreserved": true,
+  "productSigned": false,
+  "appExecuted": false,
+  "coldHookEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "testable": false,
+  "acceptedAppReplaced": false,
+  "shutdownOrRestartPerformed": false
+}

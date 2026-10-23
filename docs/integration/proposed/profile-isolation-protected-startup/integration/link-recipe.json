@@ -1,0 +1,20 @@
+{
+  "baseManifest": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/integration/daemon-inputs.json",
+  "baseReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/integration/evidence/daemon-link.json",
+  "output": "/private/tmp/aux-protected-startup-link-20261023",
+  "replacements": [
+    {
+      "before": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxBrowserFreshRootAdmission.swift",
+      "after": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/source/AuxBrowserFreshRootAdmission.swift",
+      "beforeSha256": "f8cf506d60dbc5119e9744d7dd30c6b5e057923419aff2431997036cd519ccd7",
+      "afterSha256": "441ad3f02266cb20a5b851bed1a3573bb24e05a4106bce3225cc07111e281a03"
+    }
+  ],
+  "additions": [],
+  "checkedInputs": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration.json": "ae30450f473beb34195d4a306fba8498d092bd984f33033fd3a24f0dec111e5b"
+  },
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "additionalPrivateDefinitions": [],
+  "manifestOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-inputs.json"
+}

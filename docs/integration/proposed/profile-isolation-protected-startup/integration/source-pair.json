@@ -1,0 +1,22 @@
+{
+  "format": "aux.exact-successor.source-pair.v1",
+  "passed": true,
+  "daemon": "/private/tmp/aux-protected-startup-link-20261023/Aux Daemon",
+  "daemonSha256": "420fae0a46654433a2f3f449bab0114619c352e5915385721a9926cdfabf6b17",
+  "daemonReceiptSha256": "4ef12198bbd92df5c40e2cefb4f95036f94b0e404ee3c6b47f4a6063a052fa3c",
+  "pty": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+  "ptySha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "source": "/private/tmp/aux-offline-runtime-source-20261023/index.mjs",
+  "sourceSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+  "entry": "/private/tmp/aux-offline-runtime-entry-20261023/aux-native-entry.mjs",
+  "entrySha256": "541917242bf9134a2bb7915cb8b65a1ecb28d84c2ed91264639c82245e3f3b7e",
+  "loader": "/private/tmp/aux-offline-runtime-entry-20261023/aux-owned-native.cjs",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "nativeBrowserBuildPending": false,
+  "uiModified": false,
+  "nativeBrowserReceiptSha256": "96a62cb4742814f90ec082bdb6b08640bfac7f0f74a8c5affd927a3413b6ad35",
+  "predecessorSourcePairSha256": "2792f63c6b6ba33f9a5f959c5b92eb5343ec91dacc847319ee0b3a0d73846420"
+}
