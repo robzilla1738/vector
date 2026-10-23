@@ -1,0 +1,9 @@
+{
+  "parent": "out/native-reuse-composition-aux-browser-compiler-ready",
+  "parentManifestSha256": "543a34e8072486301ca32bc2f56b6a584f653779526c025f0ab7949d27c7dbb6",
+  "workspaceInputs": {
+    "docs/integration/proposed/aux-native-cold-entry-api-successor/source/AuxNativeParentColdLaunch.cc": "f293217f677fea2090a0d1ad54a0e5c869fe1bf88ecd236404a0bf5bd5e9678a"
+  },
+  "changedSourceRecords": 1,
+  "uiAssetsChanged": 0
+}

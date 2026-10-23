@@ -1,0 +1,17 @@
+{
+  "format": "aux.cold-api.actual-composition.v1",
+  "manifestSha256": "1421718da01ab018070ce60e0068a7f262f74d82d043b68e35c09300ed1d18d2",
+  "sources": 826,
+  "assets": 23,
+  "changed": [
+    "chrome/browser/aux/AuxNativeParentColdLaunch.cc"
+  ],
+  "unchangedSourceRecords": 825,
+  "artworkUnchanged": true,
+  "applied": false,
+  "wholeBrowserCompiled": false,
+  "focusedCompileSession": 5216,
+  "focusedCompileExitCode": 0,
+  "enabledHookOnlyInIsolatedObject": true,
+  "nativeExecutableRun": false
+}

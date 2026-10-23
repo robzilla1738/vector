@@ -1,0 +1,13 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "baselineSha256": "9a9f035305d412d53f34ceb409fb96639f5e8a5303ecc6e26227c403044e223e",
+      "outputSha256": "f293217f677fea2090a0d1ad54a0e5c869fe1bf88ecd236404a0bf5bd5e9678a",
+      "source": "docs/integration/proposed/aux-native-cold-entry-api-successor/source/AuxNativeParentColdLaunch.cc"
+    }
+  ],
+  "patchSha256": "a33d0d16dd44da2ab7d40df169c367ece015e4ec12e951640afa3d5d5ca2f365",
+  "applied": false,
+  "compiled": false
+}
