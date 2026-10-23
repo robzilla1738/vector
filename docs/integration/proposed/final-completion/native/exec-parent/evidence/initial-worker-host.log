@@ -1,0 +1,5 @@
+In file included from /private/tmp/aux-worker-close-successor/docs/integration/proposed/final-completion/native/exec-parent/source/AuxDevelopmentWorkerHost.cc:1:
+/private/tmp/aux-worker-close-successor/docs/integration/proposed/final-completion/native/exec-parent/source/AuxDevelopmentWorkerHost.h:3:10: fatal error: 'memory' file not found
+    3 | #include <memory>
+      |          ^~~~~~~~
+1 error generated.

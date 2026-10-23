@@ -1,0 +1,33 @@
+{
+  "format": "aux.exec-private-parent.source-integration.v1",
+  "replacements": [
+    {
+      "role": "workerHost",
+      "original": "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.cc",
+      "originalSha256": "7bc2e1de231747fd44f6626c1c1ca334edbf76e609ef89bce6a25be41037d565",
+      "successor": "docs/integration/proposed/final-completion/native/exec-parent/source/AuxDevelopmentWorkerHost.cc",
+      "successorSha256": "45f5ac44685822b5561b57c225d210a8d7b879bee3a5de7b7afa8b6567512b0d"
+    },
+    {
+      "role": "policyLoader",
+      "original": "/private/tmp/aux-pty-v4-coherent-link/docs/integration/proposed/aux-native-rebuilt-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "originalSha256": "0f46783f23e4fe3598e024e0c9d5c82bc8d3acf849b47db2f9d1d937f764c22b",
+      "successor": "docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "successorSha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877"
+    }
+  ],
+  "newCAbiHeader": "docs/integration/proposed/final-completion/native/exec-parent/source/AuxExecPrivateParent.h",
+  "sameWorkerClassHeader": {
+    "path": "docs/integration/proposed/final-completion/native/exec-parent/source/AuxDevelopmentWorkerHost.h",
+    "sha256": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4"
+  },
+  "call": "process._linkedBinding('aux_owned_native').captureExecPrivateParent()",
+  "consumer": "docs/integration/proposed/final-completion/sandbox-containment/",
+  "notLinked": true,
+  "notPackaged": true,
+  "notActivated": true,
+  "protectedExecutionApproved": false,
+  "privateParentOnly": true,
+  "browserRootProvided": false,
+  "custodyReceiptProvided": false
+}

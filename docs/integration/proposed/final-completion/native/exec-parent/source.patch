@@ -1,0 +1,148 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -1,9 +1,12 @@
+ #include "AuxDevelopmentWorkerHost.h"
+ #include "AuxWorkerDrain.h"
++#include "AuxExecPrivateParent.h"
++#include <array>
++#include <cstring>
+ #include "AuxNativePtyReservation.h"
+ #include "AuxAuthenticatedPtyHelper.h"
+-#include "../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
+-#include "../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
++#include "../../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
++#include "../../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
+ #include "aux-owned-napi-adapter.h"
+ #include "aux-owned-command-dispatcher.h"
+ #include <node.h>
+@@ -275,6 +278,63 @@
+       observation.matched && v8::Isolate::GetCurrent() == isolate &&
+       node::GetCurrentEnvironment(isolate->GetCurrentContext()) == environment;
+ }
++napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
++  if (getpid() != kHostProcess) return nullptr;
++  auto refuse = [env]() -> napi_value {
++    napi_throw_error(env, "AUX_EXEC_PRIVATE_PARENT_UNAVAILABLE", "Authenticated private-state owner is unavailable");
++    return nullptr;
++  };
++  try {
++    size_t argc = 1;
++    napi_value unused;
++    if (napi_get_cb_info(env, info, &argc, &unused, nullptr, nullptr) != napi_ok || argc != 0)
++      return refuse(); // No caller path, owner selector, PID or approval flag.
++    auto* isolate = v8::Isolate::GetCurrent();
++    if (!isolate || isolate->GetCurrentContext().IsEmpty()) return refuse();
++    auto* environment = node::GetCurrentEnvironment(isolate->GetCurrentContext());
++    std::shared_ptr<Worker> worker;
++    {
++      std::lock_guard<std::mutex> lock(Registry().mutex);
++      auto found = Registry().active.find(environment);
++      if (found != Registry().active.end()) worker = found->second;
++    }
++    if (!worker || !SameRuntimeEnvironment(env, environment, isolate)) return refuse();
++    std::shared_ptr<Owner> owner;
++    {
++      std::lock_guard<std::mutex> lock(worker->mutex);
++      if (CurrentWorker(*worker) && !worker->terminal && !worker->initializing &&
++          !worker->environment_detached) owner = worker->owner;
++    }
++    if (!owner) return refuse();
++    std::array<char, 4096> parent{};
++    uint32_t count = 0;
++    // Both native ownership and the actual signed policy are revalidated.
++    // Neither host lock crosses Swift/Security/file-identity inspection.
++    if (AuxNativeContextValidateCurrentAuthority(owner->handle) != 0 ||
++        AuxCopyAuthenticatedExecPrivateParent(parent.data(), parent.size(), &count) != 0 ||
++        count < 2 || count > parent.size() || parent.front() != '/' ||
++        parent[count - 1] != '\0' || std::memchr(parent.data(), '\0', count - 1) ||
++        AuxNativeContextValidateCurrentAuthority(owner->handle) != 0) return refuse();
++    bool current;
++    {
++      std::lock_guard<std::mutex> lock(worker->mutex);
++      current = CurrentWorker(*worker) && !worker->terminal && !worker->initializing &&
++          !worker->environment_detached && worker->owner == owner;
++    }
++    if (!current) return refuse();
++    napi_value output, format, path;
++    if (napi_create_object(env, &output) != napi_ok ||
++        napi_create_string_utf8(env, "aux.native.exec-private-parent.v1", NAPI_AUTO_LENGTH, &format) != napi_ok ||
++        napi_create_string_utf8(env, parent.data(), count - 1, &path) != napi_ok) return refuse();
++    const napi_property_descriptor fields[] = {
++      {"format", nullptr, nullptr, nullptr, nullptr, format, napi_enumerable, nullptr},
++      {"privateParent", nullptr, nullptr, nullptr, nullptr, path, napi_enumerable, nullptr}
++    };
++    if (napi_define_properties(env, output, 2, fields) != napi_ok || napi_object_freeze(env, output) != napi_ok)
++      return refuse();
++    return output;
++  } catch (...) { return refuse(); }
++}
+ void ReleaseAdapterOwner(void* value) {
+   delete static_cast<std::shared_ptr<Owner>*>(value);
+ }
+@@ -611,6 +671,13 @@
+   // reports pending while initialization is active, and cannot be bypassed by
+   // a trap retaining the function object. Completion refuses success if closed.
+   status = AuxAttachOwnedDispatcher(env, target, handle, adapter_retain, ReleaseAdapterOwner);
++  if (status == napi_ok && worker->CanContinue()) {
++    const napi_property_descriptor property = {
++      "captureExecPrivateParent", nullptr, CaptureExecPrivateParent,
++      nullptr, nullptr, nullptr, napi_default, nullptr
++    };
++    status = napi_define_properties(env, target, 1, &property);
++  }
+   const bool closed = initialization.Complete(status == napi_ok);
+   return status == napi_ok && closed ? napi_closing : status;
+ 
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -585,3 +585,50 @@
+     auxPtyHelperLock.unlock()
+     withExtendedLifetime(helper) {}
+ }
++
++// Native-only containment metadata producer. No JavaScript/environment path,
++// caller policy or status receipt can select a protected directory.
++extension AuxSignedFreshBootstrapPolicyLoader {
++    fileprivate static func execPrivateParent() throws -> String {
++        let policy = try load()
++        guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,
++              policy.contents.includesRebuiltPtyModule else { throw AuxFreshBootstrapPolicyError.policy }
++        let path = policy.contents.canonicalPrivateParent
++        guard try canonical(path) == path else { throw AuxFreshBootstrapPolicyError.path }
++        let fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        guard fd >= 0 else { throw AuxFreshBootstrapPolicyError.path }
++        defer { close(fd) }
++        let held = try metadata(fd, directory: true, privateDirectory: true)
++        func sameParent() throws {
++            let now = try metadata(fd, directory: true, privateDirectory: true)
++            var entry = stat()
++            guard lstat(path, &entry) == 0, entry.st_dev == held.st_dev,
++                  entry.st_ino == held.st_ino, now.st_dev == held.st_dev,
++                  now.st_ino == held.st_ino, try canonical(path) == path else {
++                throw AuxFreshBootstrapPolicyError.path
++            }
++        }
++        try sameParent()
++        try policy.revalidateCurrentIdentity()
++        try sameParent()
++        return path
++    }
++}
++@_cdecl("AuxCopyAuthenticatedExecPrivateParent")
++func AuxCopyAuthenticatedExecPrivateParent(_ output: UnsafeMutablePointer<CChar>?,
++                                         _ capacity: UInt32,
++                                         _ count: UnsafeMutablePointer<UInt32>?) -> Int32 {
++    guard getpid() == auxImagePreparationProcess, let count else { return -1 }
++    count.pointee = 0
++    guard let output, capacity > 1, capacity <= 4096 else { return -1 }
++    output.pointee = 0
++    auxImagePreparationLock.lock(); let prepared = auxImagePreparationComplete; auxImagePreparationLock.unlock()
++    guard prepared else { return -1 }
++    do {
++        let bytes = try AuxSignedFreshBootstrapPolicyLoader.execPrivateParent().utf8CString
++        guard bytes.count > 1, bytes.count <= Int(capacity), bytes.count <= 4096 else { return -1 }
++        for index in bytes.indices { output[index] = bytes[index] }
++        count.pointee = UInt32(bytes.count)
++        return 0
++    } catch { return -1 }
++}
