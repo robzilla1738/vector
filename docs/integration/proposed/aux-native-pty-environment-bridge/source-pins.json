@@ -1,0 +1,14 @@
+{
+  "baseHost": {
+    "path": "docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.cc",
+    "sha256": "35a2635bacf6f4fa1572c0506aae05bc08f673f12ad40c705baf2ac32a8b947d"
+  },
+  "successor": {
+    "docs/integration/proposed/aux-native-pty-environment-bridge/source/AuxDevelopmentWorkerHost.cc": "e9ee07985d835e1b61f20f3d5ad1dcfbc25e3b24ba5335cb45964f6f20c55073",
+    "docs/integration/proposed/aux-native-pty-environment-bridge/source/AuxNativePtyReservation.h": "4a0d27c476b39a0d5144fe7463c5be3630764af5e592b50bc95a86842aea9220"
+  },
+  "historicalInputsChanged": false,
+  "helperCapabilityBound": false,
+  "productActive": false,
+  "runtimeAccepted": false
+}
