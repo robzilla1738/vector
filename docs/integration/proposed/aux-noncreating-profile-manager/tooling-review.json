@@ -1,0 +1,19 @@
+{
+  "format": "aux.noncreating-profile-manager.tooling.v1",
+  "change": "Readable normal Python only; same input checks, exact edits, command arguments and successor assertions",
+  "productionSourceChanged": false,
+  "originalStaticEvidenceRetained": true,
+  "syntaxParsed": true,
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-noncreating-profile-manager/prepare-composition.py",
+      "previousSha256": "a29ab3eb0120c9ec36bba924deeacca391e0192cb344c587da5152e49c227abe",
+      "currentSha256": "c9f960be3fcd3a851267b39ebdb004ffd7ff805d55c186b754634fd7c5e015e3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-noncreating-profile-manager/verify.py",
+      "previousSha256": "9fbe3637bd08eef2390f5cda4327d62d3599c55dd002a9f04acc9a735b2ad293",
+      "currentSha256": "ea212fc53146595ad5342789475bafeece8bb1aad23d5253a3ced799f8410bb3"
+    }
+  ]
+}
