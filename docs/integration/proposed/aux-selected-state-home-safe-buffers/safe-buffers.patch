@@ -1,0 +1,62 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -10,7 +10,8 @@
+ #include <chrono>
+ #include <algorithm>
+ #include <cstdlib>
+-#include <cstring>
++#include <array>
++#include <iterator>
+ #include <mutex>
+ #include <optional>
+ 
+@@ -40,14 +41,18 @@
+   return pulse.exports && pulse.observed <= now && now - pulse.observed <= kMaximumReadyPulseAge;
+ }
+ std::optional<base::FilePath> PhysicalPath(int descriptor) {
+-  char path[PATH_MAX]{}, resolved[PATH_MAX]{};
+-  if (fcntl(descriptor, F_GETPATH, path) != 0 || !realpath(path, resolved) ||
+-      std::strcmp(path, resolved) != 0) return std::nullopt;
+-  base::ScopedFD reopened(open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC));
++  std::array<char, PATH_MAX> path{}, resolved{};
++  if (fcntl(descriptor, F_GETPATH, path.data()) != 0) return std::nullopt;
++  const auto path_end = std::find(path.begin(), path.end(), '\0');
++  if (path_end == path.end() || !realpath(path.data(), resolved.data())) return std::nullopt;
++  const auto resolved_end = std::find(resolved.begin(), resolved.end(), '\0');
++  if (resolved_end == resolved.end() ||
++      !std::equal(path.begin(), path_end, resolved.begin(), resolved_end)) return std::nullopt;
++  base::ScopedFD reopened(open(path.data(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC));
+   struct stat retained{}, current{};
+   if (!reopened.is_valid() || fstat(descriptor, &retained) != 0 || fstat(reopened.get(), &current) != 0 ||
+       retained.st_dev != current.st_dev || retained.st_ino != current.st_ino) return std::nullopt;
+-  return base::FilePath(path);
++  return base::FilePath(std::string(path.begin(), path_end));
+ }
+ void Monitor(std::shared_ptr<SelectedNativeHome> selected) {
+   auto& state = CurrentState();
+@@ -86,8 +91,10 @@
+ }
+ enum class AuthorityOperation { daemonSignature, publicKeys, inboxKeyV2 };
+ void ClearPayload(DaemonAuthorityReply& reply) {
+-  volatile uint8_t* owned_bytes = reply.payload.data();
+-  for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
++  for (auto& byte : reply.payload) {
++    volatile uint8_t& owned_byte = byte;
++    owned_byte = 0;
++  }
+   reply.payload.clear();
+ }
+ DaemonAuthorityReply CallAuthority(AuthorityOperation operation, std::span<const uint8_t> message) {
+@@ -261,10 +268,10 @@
+   constexpr char prefix[] = "Aux Daemon Auth v1\0";
+   constexpr size_t prefix_size = sizeof(prefix) - 1;
+   if (!message || message->size() != prefix_size + 32 ||
+-      std::memcmp(message->data(), prefix, prefix_size) != 0)
++      !std::equal(std::begin(prefix), std::prev(std::end(prefix)), message->begin()))
+     return {DaemonAuthorityStatus::refused, std::nullopt};
+   auto reply = CallAuthority(AuthorityOperation::daemonSignature,
+-      std::span(reinterpret_cast<const uint8_t*>(message->data()), message->size()));
++      std::span(*message));
+   if (reply.status != DaemonAuthorityStatus::ready) return {reply.status, std::nullopt};
+   auto signature = base::Base64Encode(reply.payload);
+   ClearPayload(reply);

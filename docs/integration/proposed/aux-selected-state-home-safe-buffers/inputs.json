@@ -1,0 +1,9 @@
+{
+  "format": "aux.selected-state-home.safe-buffers.v1",
+  "nativePath": "chrome/browser/aux/AuxSelectedStateHome.cc",
+  "actualNativeBaselineSha256": "e97490b8b74f03ffc4e790fe74a06cd9c7b0c26a3bab1eb4d3f5a03cd062dc61",
+  "successorSha256": "e79b4b0631a0d82ef156eed9500df01838cfcd9ca118405c192bea9c97eaaa6f",
+  "sourceOnly": true,
+  "nativeMutation": false,
+  "compiled": false
+}
