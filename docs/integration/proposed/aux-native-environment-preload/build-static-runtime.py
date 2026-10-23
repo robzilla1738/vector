@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 
 ARCHIVE_SHA = '0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4'
@@ -27,12 +28,12 @@ def main():
     tree = output / 'node-v26.5.0'
     # Default bundled dependency graph, snapshot and code-cache remain enabled.
     # --enable-static is the intentional change from the official executable.
-    subprocess.run(['python3', 'configure', '--enable-static', '--dest-cpu=arm64'],
+    subprocess.run([sys.executable, 'configure', '--enable-static', '--dest-cpu=arm64'],
                    cwd=tree, check=True)
     subprocess.run(['make', '-j2'], cwd=tree, check=True)
     proposal = Path(__file__).resolve().parent
     component = proposal / 'source/AuxNativeEnvironmentPreload.cc'
-    worker_headers = proposal.parent / 'aux-development-worker-host/source'
+    worker_headers = proposal.parent / 'aux-native-fresh-runtime-provider-quarantine/source'
     component_object = output / 'AuxNativeEnvironmentPreload.o'
     subprocess.run([
         'xcrun', 'clang++', '-std=c++20', '-arch', 'arm64',
