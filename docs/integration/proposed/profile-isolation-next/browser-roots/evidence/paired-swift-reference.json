@@ -1,0 +1,16 @@
+{
+  "format": "aux.browser-roots.paired-swift-reference.v1",
+  "receipt": "/private/tmp/aux-profile-startup-typecheck-20261023-v5/results.json",
+  "sha256": "c01a137c1dda87daf9df194aa4967377835f4bb9b589f3add1c96a32bb1eb441",
+  "startupCommit": "af9045f52",
+  "pairedDispatcher": {
+    "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift",
+    "beforeSha256": "84b60e71e559b33a97fb0b6d9ebb56df839f6e115ae0b9e40f0969f30466b7b8",
+    "after": "/private/tmp/aux-browser-root-provenance/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxOwnedCommandDispatcher.swift",
+    "afterSha256": "8809e7e160d7be23da6a5d63390c6b2e24d181af3753090fdcbfb427d6b86332"
+  },
+  "swiftSourceCount": 47,
+  "exitCode": 0,
+  "inputsPreserved": true,
+  "duplicateCheckRun": false
+}

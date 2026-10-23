@@ -1,0 +1,33 @@
+# Genuine browser root transfer and owner binding
+
+This inactive successor supplies genuine native browser user-data and default-cache directory capabilities to the actual current daemon Owner. It preserves the accepted app/UI, ordinary state2 refusal and default-off cold hook. No root is selected from JavaScript, environment variables, caller JSON, a PID or a pathname argument. Original source/build/package evidence stays immutable.
+
+## Actual producer and receiver
+
+`AuxChromiumBrowserRootProducer.cc` obtains `chrome::DIR_USER_DATA` from actual PathService and derives its default cache root through Chromium's `chrome::GetUserCacheDirectory`. Its private constructor retains two nofollow/cloexec directory FDs, canonical native names and a native selection revalidator. Both root identities require current-user ownership, no group/other write access and no extended ACL. Missing native-derived cache directories use Chromium's normal creation helper; existing contents/permissions are never reset. A failed one-shot capture cannot be adopted/reset. Native process identity is inspected before inherited locks or FDs.
+
+`native.patch` captures before BrowserMainParts extra-parts/BrowserProcess/profile services and rechecks before PreProfileInit. The owned child cannot prepare a spawn without this actual typed capture. The immutable set is retained by the genuine ParentTransport before child binding; neither a Boolean nor a public path/FD constructor can create it.
+
+The distinct v5 `AUXN`/`AUXO` Mach exchange sends exactly two fileports. Existing v1 heartbeat/v2 home/v4 authority bytes remain unchanged. Both ends check actual live parent/direct-child birth, kernel audit PID/version, exact native code policy, nonce and the actual handshake/transport generation. The reply contains digests of the producer's original canonical names; rename during handoff cannot silently reinterpret an FD as a new selected root. The daemon retains first received identities and rejects replacement device/inode, even under the same pathname. Real kernel-rewritten buffers govern complex-right cleanup; unknown send/receive cleanup closes admission and preserves uncertainty.
+
+`AuxCopyAuthenticatedNativeParentBrowserRoot` is the finite native bootstrap bridge: roles 1=user-data and 2=default cache, no path inputs, success transfers a fresh owned CLOEXEC FD and actual transport generation. Startup's retained cold guard/staged context carries that capability transitively into `Entry.nativeFreshRuntime`. The paired Dispatcher successor exposes `AuxNativeContextCopyBrowserRoot` only through its actual `withEntry` lifetime and current native guard before/after the FD handoff. Nonnative, stale and retiring contexts refuse; failure closes a copied FD. This is not a JS root allowlist, native spawn lease or drain receipt.
+
+Whole user-data exclusion covers its profile subtrees. Default cache/data roles can legitimately name the same directory for custom user-data locations; retain/revalidate both role identities and deduplicate only equal names when constructing the eventual native denial envelope.
+
+## Earlier Local State provenance
+
+Apply `early-local-state.patch` AFTER `native.patch`. `ChromeFeatureListCreator::CreateFeatureList` calls `CreatePrefService` before BrowserMainParts; that function obtains FILE_LOCAL_STATE, constructs JsonPrefStore and calls ReadPrefs. The additional cold-only branch records/revalidates actual native root provenance before that path resolution/read. PreEarlyInitialization idempotently reuses/revalidates that capture. Metrics `impl` gets the direct native producer dependency; the existing aux platform GN deps have no metrics backedge. The ordinary cold define remains off. The isolated metrics check enables it only for one compiled object.
+
+This early check is **provenance only, not authorization for Local State IO**. Actual native Owner admission still occurs later; moving its required startup/thread/task lifecycle earlier is unfinished. ChromeMainDelegate::PreSandboxStartup selects/creates DIR_USER_DATA through InitializeUserDataDir; that native directory creation and earlier crash/setup IO are not made owner-admitted here. No CHECK/status is counted as ownership or custody.
+
+## Exact coverage limit
+
+The cache root is Chromium's actual default mapping, not every later policy-selected cache. `ProfileNetworkContextService::GetHttpCacheParams` in `chrome/browser/net/profile_network_context_service.cc` reads `prefs::kDiskCacheDir` around lines1391–1394 and can place HTTP cache outside that root. No cache policy is rewritten or silently adopted. Root/owner admission must remain unavailable for an unsupported private-root layout until an actual native resolver/policy-change lifecycle can fence it, including while children exist. Source capture alone must not activate the proposed sandbox as full writer isolation. Other native-selected private paths outside these two roots need the same treatment.
+
+## Integration and evidence
+
+`integration.json` pins full source operands. Root applies the two normal-context Chromium patches in order and owns GN/shared registration/build/startup. A new daemon graph replaces transport, parent bridge and Dispatcher, adds `AuxBrowserPrivateRoots.cc`, and selects the paired transport/wire/root/C-bridge headers. Startup's v5 six-source graph supplies the exact staged-context browser-root method. The spawn lane calls the owner-bound API using only its retained current Owner and keeps FD/identity/generation until its native launch decision. Existing frozen linked executables cannot be relabeled as containing this source.
+
+Seven actual changed TUs passed serialized session46207: four Chromium units with the real platform target flags/modules and three daemon units with the actual Node/native flags. One additional real metrics TU passed session78336 with its own target flags and isolated cold define. Frozen source/config checks remained unchanged. These proposal-path compiles do not establish native-path unsafe-buffer diagnostic acceptance, GN full-graph linking, real Mach exchange/cleanup races, protected startup or actual root-directory behavior.
+
+Startup's single combined explicit frontend check also passed: 47 actual Swift sources, including this exact Dispatcher, with preserved hashes. `evidence/paired-swift-reference.json` refers to that existing receipt; this lane did not duplicate it. No executable/module/helper was linked, loaded, run, signed or activated by these checks, and no owner profile/state/Keychain was accessed. Full same-candidate runtime acceptance remains separate.

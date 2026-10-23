@@ -1,0 +1,62 @@
+--- a/chrome/browser/metrics/chrome_feature_list_creator.cc
++++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
+@@ -24,6 +24,9 @@
+ #include "chrome/browser/prefs/chrome_pref_service_factory.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "third_party/blink/public/common/features.h"
+ #include "content/public/common/content_features.h"
+@@ -115,6 +118,12 @@
+ }
+ 
+ void ChromeFeatureListCreator::CreatePrefService() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  // Genuine root provenance before FILE_LOCAL_STATE resolution/read. This is
++  // not writer custody or native owner admission for this earlier browser IO.
++  CHECK(aux::peer::CaptureActualChromiumBrowserRoots() ||
++        aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO());
++#endif
+   base::FilePath local_state_file;
+   bool result =
+       base::PathService::Get(chrome::FILE_LOCAL_STATE, &local_state_file);
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -1012,9 +1012,10 @@
+ int ChromeBrowserMainParts::PreEarlyInitialization() {
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreEarlyInitialization");
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+-  // Native-selected held roots precede BrowserMainParts profile services. This
+-  // does not retroactively guard FeatureListCreator's earlier Local State IO.
+-  if (!aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO())
++  // Reuse/revalidate the actual capture from before Local State, or prepare it
++  // if that path was not taken. A failed capture is never reset or adopted.
++  if (!aux::peer::CaptureActualChromiumBrowserRoots() &&
++      !aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO())
+     return CHROME_RESULT_CODE_MISSING_DATA;
+ #endif
+   for (auto& chrome_extra_part : chrome_extra_parts_) {
+--- a/chrome/browser/metrics/BUILD.gn
++++ b/chrome/browser/metrics/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//chrome/browser/buildflags.gni")
+ import("//components/metrics/generate_expired_histograms_array.gni")
+ import("//extensions/buildflags/buildflags.gni")
+ import("//pdf/features.gni")
+@@ -514,6 +515,10 @@
+     sources += [ "extensions_metrics_provider.cc" ]
+     deps += [ "//chrome/browser/extensions" ]
+   }
++  if (is_mac && enable_aux_browser) {
++    # Finite native root producer; aux:platform has no browser/metrics dependency.
++    deps += [ "//chrome/browser/aux:platform" ]
++  }
+ }
+ 
+ source_set("test_support") {

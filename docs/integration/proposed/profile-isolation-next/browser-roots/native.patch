@@ -1,0 +1,566 @@
+--- /dev/null
++++ b/chrome/browser/aux/AuxBrowserPrivateRoots.h
+@@ -0,0 +1,33 @@
++#pragma once
++#include <array>
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <sys/types.h>
++namespace aux::peer {
++class AuthenticatedNativeParentConnection;
++// A pair of actual held directory identities. No public path/FD constructor.
++class BrowserPrivateRoots final {
++ public:
++  ~BrowserPrivateRoots();
++  BrowserPrivateRoots(const BrowserPrivateRoots&) = delete;
++  BrowserPrivateRoots& operator=(const BrowserPrivateRoots&) = delete;
++  // Finite roles: 1 whole user-data tree, 2 actual Chromium cache tree.
++  int DuplicateRevalidatedRoot(uint32_t role) const;
++  bool Revalidate() const;
++  std::array<uint8_t, 32> PathDigest(uint32_t role) const;
++ private:
++  using SourceCheck = bool (*)(const std::array<std::string, 2>&);
++  BrowserPrivateRoots(std::array<int, 2> roots, SourceCheck check);
++  const pid_t process_;
++  const std::array<int, 2> roots_;
++  const std::array<std::string, 2> paths_;
++  const SourceCheck source_check_;
++  friend bool PrepareBrowserPrivateRootsBeforeProfileIO();
++  friend std::shared_ptr<const BrowserPrivateRoots> CaptureActualChromiumBrowserRoots();
++  friend class AuthenticatedNativeParentConnection;
++};
++// Actual Chromium lifecycle only; no args, ENV or JS-selected path source.
++bool PrepareBrowserPrivateRootsBeforeProfileIO();
++std::shared_ptr<const BrowserPrivateRoots> CaptureActualChromiumBrowserRoots();
++}
+--- /dev/null
++++ b/chrome/browser/aux/AuxBrowserPrivateRoots.cc
+@@ -0,0 +1,73 @@
++#include "AuxBrowserPrivateRoots.h"
++#include <CommonCrypto/CommonDigest.h>
++#include <algorithm>
++#include <cerrno>
++#include <array>
++#include <cstdlib>
++#include <fcntl.h>
++#include <limits.h>
++#include <sys/acl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++namespace aux::peer {
++namespace {
++std::string PhysicalRoot(int descriptor) {
++  std::array<char, PATH_MAX> named{}, physical{};
++  if (fcntl(descriptor, F_GETPATH, named.data()) != 0 ||
++      std::find(named.begin(), named.end(), '\0') == named.end() ||
++      !realpath(named.data(), physical.data()) || named[0] != '/' ||
++      std::string(named.data()) != physical.data() || std::string(named.data()) == "/") return {};
++  return named.data();
++}
++bool ValidDirectory(int descriptor) {
++  struct stat value{};
++  const int flags = fcntl(descriptor, F_GETFD);
++  if (flags < 0 || fstat(descriptor, &value) != 0 || !S_ISDIR(value.st_mode) ||
++      value.st_uid != geteuid() || (value.st_mode & 0022) != 0 ||
++      (flags & FD_CLOEXEC) == 0) return false;
++  errno = 0;
++  acl_t acl = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED);
++  if (!acl) return errno == ENOENT;
++  acl_entry_t entry{}; errno = 0;
++  const bool empty = acl_valid(acl) == 0 && acl_get_entry(acl, 0, &entry) == -1 &&
++      errno == EINVAL && entry == nullptr;
++  acl_free(acl);
++  return empty;
++}
++bool SameNamedRoot(int retained, const std::string& path) {
++  if (path.empty() || !ValidDirectory(retained) || PhysicalRoot(retained) != path) return false;
++  const int current = open(path.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
++  if (current < 0) return false;
++  struct stat a{}, b{};
++  const bool same = ValidDirectory(current) && fstat(retained, &a) == 0 && fstat(current, &b) == 0 &&
++      a.st_dev == b.st_dev && a.st_ino == b.st_ino;
++  close(current);
++  return same;
++}
++}
++BrowserPrivateRoots::BrowserPrivateRoots(std::array<int, 2> roots, SourceCheck check)
++    : process_(getpid()), roots_(roots), paths_{PhysicalRoot(roots[0]), PhysicalRoot(roots[1])}, source_check_(check) {}
++BrowserPrivateRoots::~BrowserPrivateRoots() {
++  if (getpid() == process_) for (int fd : roots_) if (fd >= 0) close(fd);
++}
++bool BrowserPrivateRoots::Revalidate() const {
++  if (getpid() != process_) return false;
++  return SameNamedRoot(roots_[0], paths_[0]) && SameNamedRoot(roots_[1], paths_[1]) &&
++      (!source_check_ || source_check_(paths_)) &&
++      SameNamedRoot(roots_[0], paths_[0]) && SameNamedRoot(roots_[1], paths_[1]);
++}
++std::array<uint8_t, 32> BrowserPrivateRoots::PathDigest(uint32_t role) const {
++  std::array<uint8_t, 32> digest{};
++  if (getpid() != process_ || role < 1 || role > 2 || paths_[role - 1].empty()) return digest;
++  const auto& path = paths_[role - 1];
++  CC_SHA256(path.data(), static_cast<CC_LONG>(path.size()), digest.data());
++  return digest;
++}
++int BrowserPrivateRoots::DuplicateRevalidatedRoot(uint32_t role) const {
++  if (role < 1 || role > 2 || !Revalidate()) return -1;
++  const int copied = fcntl(roots_[role - 1], F_DUPFD_CLOEXEC, 0);
++  if (copied < 0) return -1;
++  if (!Revalidate()) { close(copied); return -1; }
++  return copied;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/AuxChromiumBrowserRootProducer.cc
+@@ -0,0 +1,75 @@
++#include "AuxBrowserPrivateRoots.h"
++#include "base/files/file_path.h"
++#include "base/files/file_util.h"
++#include "base/path_service.h"
++#include "chrome/common/chrome_paths.h"
++#include "chrome/common/chrome_paths_internal.h"
++#include <array>
++#include <cstdlib>
++#include <fcntl.h>
++#include <limits.h>
++#include <mutex>
++#include <unistd.h>
++namespace aux::peer {
++namespace {
++const pid_t kProducerProcess = getpid();
++struct Captured {
++  std::mutex mutex;
++  bool attempted = false;
++  std::shared_ptr<const BrowserPrivateRoots> roots;
++};
++Captured& ActualCapture() { static auto* value = new Captured; return *value; }
++std::array<base::FilePath, 2> CurrentNativePaths() {
++  base::FilePath user_data, cache;
++  if (!base::PathService::Get(chrome::DIR_USER_DATA, &user_data) ||
++      !user_data.IsAbsolute() || user_data.ReferencesParent()) return {};
++  chrome::GetUserCacheDirectory(user_data, &cache);
++  if (!cache.IsAbsolute() || cache.ReferencesParent()) return {};
++  return {user_data, cache};
++}
++std::string CanonicalNativePath(const base::FilePath& path) {
++  std::array<char, PATH_MAX> resolved{};
++  if (path.empty() || !realpath(path.value().c_str(), resolved.data()) ||
++      resolved[0] != '/' || std::string(resolved.data()) == "/") return {};
++  return resolved.data();
++}
++bool SameNativeSelection(const std::array<std::string, 2>& paths) {
++  if (getpid() != kProducerProcess) return false;
++  const auto actual = CurrentNativePaths();
++  return CanonicalNativePath(actual[0]) == paths[0] && CanonicalNativePath(actual[1]) == paths[1];
++}
++}
++std::shared_ptr<const BrowserPrivateRoots> CaptureActualChromiumBrowserRoots() {
++  if (getpid() != kProducerProcess) return {};
++  auto& registry = ActualCapture();
++  std::shared_ptr<const BrowserPrivateRoots> roots;
++  { std::lock_guard<std::mutex> lock(registry.mutex); roots = registry.roots; }
++  return roots && roots->Revalidate() ? roots : nullptr;
++}
++bool PrepareBrowserPrivateRootsBeforeProfileIO() {
++  if (getpid() != kProducerProcess) return false;
++  auto& registry = ActualCapture();
++  { std::lock_guard<std::mutex> lock(registry.mutex);
++    if (registry.attempted) return false;
++    registry.attempted = true;
++  }
++  const auto paths = CurrentNativePaths();
++  if (paths[0].empty() || paths[1].empty()) return false;
++  // Chromium already selects/creates user-data before BrowserMainParts. Cache
++  // can be absent on first start; use its actual native-derived directory only.
++  // No directory identity is published until both held FDs and native selection
++  // have been revalidated. Existing files/permissions are never reset.
++  if (!base::DirectoryExists(paths[0]) || !base::CreateDirectory(paths[1])) return false;
++  std::array<int, 2> fds{-1, -1};
++  for (size_t i = 0; i < fds.size(); ++i) {
++    const auto physical = CanonicalNativePath(paths[i]);
++    if (!physical.empty()) fds[i] = open(physical.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
++  }
++  // Constructor is private; this actual native PathService producer and the
++  // audited child receiver are the only callers capable of minting this type.
++  auto captured = std::shared_ptr<const BrowserPrivateRoots>(new BrowserPrivateRoots(fds, SameNativeSelection));
++  if (!captured->Revalidate()) return false;
++  { std::lock_guard<std::mutex> lock(registry.mutex); registry.roots = std::move(captured); }
++  return true;
++}
++}
+--- a/chrome/browser/aux/AuxNativePeerTransport.h
++++ b/chrome/browser/aux/AuxNativePeerTransport.h
+@@ -12,6 +12,7 @@
+ namespace aux::peer {
+ // Immutable code policy supplied by trusted native host policy. Copying this
+ // policy does not authenticate that host or establish profile writer custody.
++class BrowserPrivateRoots;
+ class ExactCodePolicy final {
+  public:
+   static std::shared_ptr<const ExactCodePolicy> CopyNativePolicy(
+@@ -151,7 +152,8 @@
+  public:
+   ~PreparedParentEndpoint();
+   static std::unique_ptr<PreparedParentEndpoint> PrepareBeforeSpawn(
+-      std::shared_ptr<const ExactCodePolicy> child_policy);
++      std::shared_ptr<const ExactCodePolicy> child_policy,
++      std::shared_ptr<const BrowserPrivateRoots> browser_roots = {});
+   NativeSendRight CopySendRightForNativeHandoff();
+   std::unique_ptr<ParentTransport> BindActualDirectChild(pid_t child);
+   TransportSnapshot CloseAndInspect();
+@@ -182,6 +184,7 @@
+   AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
+   AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
+   ExchangeStatus Revalidate(uint32_t timeout_ms);
++  int32_t CopyBrowserPrivateRoot(uint32_t role, uint64_t* generation, int32_t* descriptor, uint32_t timeout_ms);
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+   // Descriptor source is ONLY actual ready-service C producer, never a caller FD.
+   ParentExchange SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms);
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -1,4 +1,5 @@
+ #include "AuxNativePeerTransport.h"
++#include "AuxBrowserPrivateRoots.h"
+ #include "AuxNativePeerWire.h"
+ #include "AuxSelectedHomePolicyBridge.h"
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+@@ -354,6 +355,7 @@
+   std::optional<BirthIdentity> child;
+   const std::shared_ptr<const ExactCodePolicy> policy;
+   ReceiveRight receiver;
++  std::shared_ptr<const BrowserPrivateRoots> browser_roots;
+   std::mutex mutex;
+   TransportSnapshot snapshot;
+   std::optional<int> child_pid_version;
+@@ -469,9 +471,10 @@
+     : state_(std::move(state)) {}
+ PreparedParentEndpoint::~PreparedParentEndpoint() = default;
+ std::unique_ptr<PreparedParentEndpoint> PreparedParentEndpoint::PrepareBeforeSpawn(
+-    std::shared_ptr<const ExactCodePolicy> policy) {
+-  if (!policy) return {};
++    std::shared_ptr<const ExactCodePolicy> policy, std::shared_ptr<const BrowserPrivateRoots> roots) {
++  if (!policy || (roots && !roots->Revalidate())) return {};
+   auto state = std::make_shared<ParentTransport::State>(std::move(policy));
++  state->browser_roots = std::move(roots);
+   if (state->receiver.get() == MACH_PORT_NULL) return {};
+   return std::unique_ptr<PreparedParentEndpoint>(new PreparedParentEndpoint(std::move(state)));
+ }
+@@ -598,6 +601,7 @@
+   DestroyMessage destroy(header);
+   const bool authority_registration = header->msgh_id == kAuthorityRegister;
+   const bool selected_request = header->msgh_id == kSelectedHomeRequest;
++  const bool browser_roots_request = header->msgh_id == kBrowserRootsRequest;
+   if (MACH_MSGH_BITS_REMOTE(header->msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
+     return ExchangeStatus::refused;
+   audit_token_t audit{};
+@@ -622,7 +626,10 @@
+     static_assert(sizeof(Received) <= sizeof(Incoming));
+     std::copy_n(bytes.begin(), prefix.size(), prefix.begin());
+     auto parsed = std::bit_cast<Received>(prefix);
+-    if (!ValidWire(parsed, kRequest) || parsed.wire.generation != 0)
++    auto checked = parsed;
++    if (browser_roots_request) checked.wire.version = kVersion;
++    if ((browser_roots_request && parsed.wire.version != kBrowserRootsVersion) ||
++        !ValidWire(checked, browser_roots_request ? kBrowserRootsRequest : kRequest) || parsed.wire.generation != 0)
+       return ExchangeStatus::refused;
+     audit = parsed.trailer.msgh_audit;
+     nonce = parsed.wire.nonce;
+@@ -650,6 +657,22 @@
+       if (home >= 0) close(home);
+       if (parent >= 0) close(parent);
+     }
++  }
++  std::array<std::optional<NativeSendRight>, 2> root_ports;
++  std::array<std::array<uint8_t, 32>, 2> root_paths{};
++  if (valid && browser_roots_request) {
++    auto roots = state->browser_roots; // Immutable before child binding/publication.
++    valid = roots && roots->Revalidate();
++    for (uint32_t role = 1; valid && role <= 2; ++role) {
++      int fd = roots->DuplicateRevalidatedRoot(role);
++      mach_port_t port = MACH_PORT_NULL;
++      valid = fd >= 0 && fileport_makeport(fd, &port) == KERN_SUCCESS;
++      if (fd >= 0) close(fd);
++      if (port != MACH_PORT_NULL) root_ports[role - 1].emplace(NativeSendRight::AdoptReceivedRight(port));
++      valid = valid && root_ports[role - 1] && root_ports[role - 1]->is_valid();
++      root_paths[role - 1] = roots->PathDigest(role);
++    }
++    valid = valid && roots->Revalidate();
+   }
+   valid = valid && SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
+   std::lock_guard<std::mutex> lock(state->mutex);
+@@ -682,6 +705,38 @@
+       auto* actual = reinterpret_cast<SelectedHomeWire*>(header);
+       actual->fileport.name = MACH_PORT_NULL;
+     }
++  }
++  if (browser_roots_request) {
++    BrowserRootsWire reply{};
++    reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0) | MACH_MSGH_BITS_COMPLEX;
++    reply.header.msgh_size = sizeof(reply);
++    reply.header.msgh_remote_port = header->msgh_remote_port;
++    reply.header.msgh_id = kBrowserRootsReply;
++    reply.body.msgh_descriptor_count = 2;
++    for (size_t i = 0; i < root_ports.size(); ++i) {
++      reply.roots[i].type = MACH_MSG_PORT_DESCRIPTOR;
++      reply.roots[i].disposition = MACH_MSG_TYPE_MOVE_SEND;
++      reply.roots[i].name = root_ports[i]->ReleaseForNativeHandoff();
++    }
++    reply.generation = generation; reply.nonce = nonce;
++    reply.canonical_path_sha256 = root_paths;
++    header->msgh_remote_port = MACH_PORT_NULL;
++    // Transfer actual owned refs into the actual kernel-rewritten send buffer.
++    DestroyMessage reply_cleanup(&reply.header);
++    result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++        sizeof(reply), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++    if (result != KERN_SUCCESS) {
++      if (!RecoverableSendError(result)) {
++        reply_cleanup.Disarm();
++        ++state->snapshot.unresolved_reply_cleanup;
++        state->snapshot.closed = true; ++state->snapshot.generation;
++      }
++      return ExchangeStatus::refused;
++    }
++    reply_cleanup.Disarm();
++    state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
++    ++state->snapshot.authenticated_exchanges;
++    return ExchangeStatus::authenticated;
+   }
+   Wire reply{};
+   reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
+@@ -791,12 +846,14 @@
+   NativeSendRight endpoint;
+   const std::shared_ptr<const ExactCodePolicy> policy;
+   const BirthIdentity birth;
++  const uint64_t transport_generation;
++  std::shared_ptr<const BrowserPrivateRoots> browser_roots;
+   std::mutex mutex;
+   NativeParentConnectionSnapshot snapshot;
+ };
+ AuthenticatedNativeParentConnection::State::State(NativeSendRight right,
+     std::shared_ptr<const ExactCodePolicy> value, BirthIdentity birth_value, ParentExchange verified)
+-    : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value) {
++    : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value), transport_generation(verified.transport_generation) {
+   snapshot.parent_pid = verified.peer_pid;
+   snapshot.parent_pid_version = verified.peer_pid_version;
+ }
+@@ -881,6 +938,115 @@
+   }
+   return ExchangeStatus::authenticated;
+ }
++int32_t AuthenticatedNativeParentConnection::CopyBrowserPrivateRoot(uint32_t role,
++    uint64_t* output_generation, int32_t* output_descriptor, uint32_t timeout_ms) {
++  if (output_generation) *output_generation = 0;
++  if (output_descriptor) *output_descriptor = -1;
++  auto state = state_;
++  if (getpid() != state->process) return -3;
++  if (!output_generation || !output_descriptor || role < 1 || role > 2 || !ValidTimeout(timeout_ms)) return -1;
++  const auto checked = Revalidate(timeout_ms);
++  if (checked != ExchangeStatus::authenticated) return checked == ExchangeStatus::closed ? -2 : -1;
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if (!endpoint->is_valid()) return -1;
++    ++state->snapshot.active_checks;
++  }
++  auto finish = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<State, decltype(finish)> active(state.get(), finish);
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return -1;
++  Wire request{};
++  request.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.header.msgh_size = sizeof(request);
++  request.header.msgh_remote_port = endpoint->BorrowNativeName();
++  request.header.msgh_local_port = reply.get();
++  request.header.msgh_id = kBrowserRootsRequest;
++  request.version = kBrowserRootsVersion;
++  arc4random_buf(request.nonce.data(), request.nonce.size());
++  const auto nonce = request.nonce;
++  auto result = mach_msg(&request.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(request), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.header.msgh_local_port);
++    } else {
++      std::lock_guard<std::mutex> lock(state->mutex);
++      ++state->snapshot.unresolved_send_cleanup; state->snapshot.closed = true;
++    }
++    return -1;
++  }
++  BrowserRootsReceived received{};
++  result = mach_msg(&received.wire.header, kReceiveOptions, 0, sizeof(received),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return -1;
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.unresolved_receive_cleanup; state->snapshot.last_receive_error = result;
++    state->snapshot.closed = true; return -2;
++  }
++  DestroyMessage destroy(&received.wire.header);
++  const auto audit = received.trailer.msgh_audit;
++  if (!ValidBrowserRootsWire(received) || received.wire.nonce != nonce ||
++      received.wire.generation != state->transport_generation ||
++      audit_token_to_pid(audit) != state->birth.pid ||
++      audit_token_to_pidversion(audit) != state->snapshot.parent_pid_version ||
++      getppid() != state->birth.pid || !SameBirth(state->birth, 0) ||
++      !NativeOperations::Validate(audit, *state->policy)) return -1;
++  struct OwnedReceivedRoots {
++    const pid_t process = getpid();
++    std::array<int, 2> fds{-1, -1};
++    ~OwnedReceivedRoots() { if (getpid() == process) for (int fd : fds) if (fd >= 0) close(fd); }
++  } pending;
++  for (size_t i = 0; i < pending.fds.size(); ++i) {
++    pending.fds[i] = fileport_makefd(received.wire.roots[i].name);
++    if (pending.fds[i] < 0 || fcntl(pending.fds[i], F_SETFD, FD_CLOEXEC) != 0) return -1;
++  }
++  auto roots = std::shared_ptr<const BrowserPrivateRoots>(new BrowserPrivateRoots(pending.fds, nullptr));
++  pending.fds = {-1, -1};
++  if (!roots->Revalidate() || roots->PathDigest(1) != received.wire.canonical_path_sha256[0] ||
++      roots->PathDigest(2) != received.wire.canonical_path_sha256[1] ||
++      getppid() != state->birth.pid || !SameBirth(state->birth, 0) ||
++      !NativeOperations::Validate(audit, *state->policy)) return -1;
++  std::shared_ptr<const BrowserPrivateRoots> previous;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++    previous = state->browser_roots;
++  }
++  if (previous) {
++    // The same authenticated pathname must never silently adopt a replacement
++    // inode, including a cache/root moved while the reply was in flight.
++    for (uint32_t check_role = 1; check_role <= 2; ++check_role) {
++      int before = previous->DuplicateRevalidatedRoot(check_role);
++      int now = roots->DuplicateRevalidatedRoot(check_role);
++      const bool same = before >= 0 && now >= 0 && SameDirectory(before, now);
++      if (before >= 0) close(before);
++      if (now >= 0) close(now);
++      if (!same) return -1;
++    }
++  }
++  const int duplicated = roots->DuplicateRevalidatedRoot(role);
++  if (duplicated < 0) return -1;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed || state->browser_roots != previous) { close(duplicated); return -2; }
++    if (!previous) state->browser_roots = roots;
++  }
++  *output_generation = state->transport_generation;
++  *output_descriptor = duplicated;
++  return 0;
++}
++
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ ParentExchange AuthenticatedNativeParentConnection::SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms) {
+   ParentExchange observation;
+--- a/chrome/browser/aux/AuxNativePeerWire.h
++++ b/chrome/browser/aux/AuxNativePeerWire.h
+@@ -64,6 +64,37 @@
+       received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
+ }
+ 
++// Finite reverse native directory transfer. Never a JSON/path setter.
++constexpr mach_msg_id_t kBrowserRootsRequest = 0x4155584e; // AUXN
++constexpr mach_msg_id_t kBrowserRootsReply = 0x4155584f; // AUXO
++constexpr uint32_t kBrowserRootsVersion = 5;
++struct BrowserRootsWire {
++  mach_msg_header_t header{};
++  mach_msg_body_t body{};
++  std::array<mach_msg_port_descriptor_t, 2> roots{};
++  uint32_t version = kBrowserRootsVersion;
++  uint32_t reserved = 0;
++  uint64_t generation = 0;
++  std::array<uint8_t, 32> nonce{};
++  std::array<std::array<uint8_t, 32>, 2> canonical_path_sha256{};
++};
++struct BrowserRootsReceived { BrowserRootsWire wire; mach_msg_audit_trailer_t trailer; };
++static_assert(sizeof(BrowserRootsWire) % 4 == 0);
++inline bool ValidBrowserRootsWire(const BrowserRootsReceived& received) {
++  if (received.wire.header.msgh_size != sizeof(BrowserRootsWire) ||
++      received.wire.header.msgh_id != kBrowserRootsReply ||
++      !(received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) ||
++      received.wire.body.msgh_descriptor_count != 2 ||
++      received.wire.version != kBrowserRootsVersion || received.wire.reserved != 0 ||
++      received.wire.generation == 0 ||
++      received.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
++      received.trailer.msgh_trailer_size < sizeof(mach_msg_audit_trailer_t)) return false;
++  for (const auto& root : received.wire.roots)
++    if (root.type != MACH_MSG_PORT_DESCRIPTOR || root.disposition != MACH_MSG_TYPE_PORT_SEND ||
++        root.name == MACH_PORT_NULL) return false;
++  return true;
++}
++
+ // Finite native daemon authority RPC; never a generic command envelope.
+ constexpr mach_msg_id_t kAuthorityRegister = 0x4155584a; // AUXJ
+ constexpr mach_msg_id_t kAuthorityRegistered = 0x4155584b; // AUXK
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -1,4 +1,5 @@
+ #include "AuxOwnedNativePeerChild.h"
++#include "AuxBrowserPrivateRoots.h"
+ #include "AuxOwnedChildWait.h"
+ #include <cerrno>
+ #include "base/apple/mach_port_rendezvous.h"
+@@ -72,7 +73,9 @@
+       options.environment.contains("AUX_ENABLE_PROVIDED_NATIVE_CARRIER") ||
+       options.environment.contains("AUX_PROVIDED_NATIVE_LOAD_ONLY") ||
+       options.mach_ports_for_rendezvous.contains(kNativeParentPeerPort)) return {};
+-  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
++  auto roots = CaptureActualChromiumBrowserRoots();
++  if (!roots) return {};
++  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy), std::move(roots));
+   if (!prepared) return {};
+   auto right = prepared->CopySendRightForNativeHandoff();
+   if (!right.is_valid()) return {};
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -22,6 +22,9 @@
+     sources += [
+       "AuxNativeParentColdLaunch.cc",
+       "AuxNativeParentColdLaunch.h",
++      "AuxBrowserPrivateRoots.cc",
++      "AuxBrowserPrivateRoots.h",
++      "AuxChromiumBrowserRootProducer.cc",
+       "AuxNativePeerTransport.cc",
+       "AuxNativePeerTransport.h",
+       "AuxNativePeerWire.h",
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -56,6 +56,7 @@
+ #include "chrome/browser/aux/browser_platform.h"
+ #if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+ #endif
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
+@@ -1010,6 +1011,12 @@
+ 
+ int ChromeBrowserMainParts::PreEarlyInitialization() {
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreEarlyInitialization");
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  // Native-selected held roots precede BrowserMainParts profile services. This
++  // does not retroactively guard FeatureListCreator's earlier Local State IO.
++  if (!aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO())
++    return CHROME_RESULT_CODE_MISSING_DATA;
++#endif
+   for (auto& chrome_extra_part : chrome_extra_parts_) {
+     chrome_extra_part->PreEarlyInitialization();
+   }
+@@ -1936,6 +1943,10 @@
+   }
+ #endif
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  if (!aux::peer::CaptureActualChromiumBrowserRoots())
++    return CHROME_RESULT_CODE_MISSING_DATA;
++#endif
+   // Create desktop/profile observers after bundled component validation.
+   PreProfileInit();
+ 

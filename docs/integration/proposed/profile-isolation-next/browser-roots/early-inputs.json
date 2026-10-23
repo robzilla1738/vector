@@ -1,0 +1,14 @@
+{
+  "format": "aux.browser-roots.early-provenance.v1",
+  "applyAfter": "native.patch",
+  "baselineFiles": {
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": "64fd24107caaa1988afdf3731b56b7e0b03aa980a26074e0f10f2c1413a14600",
+    "chrome/browser/chrome_browser_main.cc": "cd10470b87a0c830695469d2f5264e9b5a41c04a7046f8d1832526148f5d26ba",
+    "chrome/browser/metrics/BUILD.gn": "2b3752e0bccdd95ec0ebb8df21cc10d37903561256be96696a936d178a01688f"
+  },
+  "patchSha256": "dfca2b9d3133d087ada9b7e5bb25d8db7fa8485ec53ead116dd66226fff0e3d9",
+  "ordinaryColdFlagEnabled": false,
+  "rootProvenanceBeforeReadPrefs": true,
+  "nativeOwnerAdmissionBeforeReadPrefs": false,
+  "sharedTreeApplied": false
+}

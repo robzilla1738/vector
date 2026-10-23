@@ -1,0 +1,36 @@
+{
+  "format": "aux.browser-roots.source-integration.v1",
+  "nativePatches": [
+    "native.patch",
+    "early-local-state.patch"
+  ],
+  "daemonReplacements": {
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "source/AuxNativePeerTransport.cc",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc": "source/AuxNativeParentConnectionBridge.cc",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift": "source/AuxOwnedCommandDispatcher.swift"
+  },
+  "daemonNewCppSource": "source/AuxBrowserPrivateRoots.cc",
+  "pairedTransportHeader": "source/AuxNativePeerTransport.h",
+  "pairedWireHeader": "source/AuxNativePeerWire.h",
+  "sourceSha256": {
+    "source/AuxOwnedCommandDispatcher.swift": "8809e7e160d7be23da6a5d63390c6b2e24d181af3753090fdcbfb427d6b86332",
+    "source/AuxBrowserRootBridge.h": "dd6c31c3a3a72670426c09c86758d23ba14ea654c4345fc3d627dce6f5ea013d",
+    "source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+    "source/AuxNativePeerTransport.h": "a6456369f9e1f03e322516c5988112f29094063379e5170cf090fe65ce89cb92",
+    "source/AuxNativeParentConnectionBridge.cc": "0e92d23b8cecdcee80d0712bec6ad8f50976d25edad9e5135c6f89cca3526961",
+    "source/AuxBrowserPrivateRoots.cc": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+    "source/AuxNativeParentConnectionBridge.h": "048433d6100fd0dbebfa4f63ee9fdfe6ebd1f1f8aca5926afeffb7ddb8e3afb6",
+    "source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "source/AuxOwnedChildWait.h": "b5bc81eb518ecd1f5158eb2f65cf5e78db89eced0266257beb33fc11f1434582",
+    "source/AuxNativePeerTransport.cc": "811ab2a34f8e871703efdc59e84de52715eb96bca0fa5b0e055a6c94ac6ce22d",
+    "source/AuxNativePeerWire.h": "34e406e583e8df0135af0b4de23c687f6590632c4c4bbda58ccdf024cc1557be",
+    "source/AuxChromiumBrowserRootProducer.cc": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+    "source/AuxOwnedNativePeerChild.cc": "8333b7664d73795bc2d39a9031dcbda4172874e5c3f6e216bbf854d59f35f9f6",
+    "source/AuxBrowserPrivateRoots.h": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636"
+  },
+  "startupPair": "docs/integration/proposed/profile-isolation-next/startup/integration-v5.json",
+  "nativeRootAdmissionProven": false,
+  "defaultCacheOnly": true,
+  "sharedTreeApplied": false,
+  "compiledArtifactActivated": false
+}

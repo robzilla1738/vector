@@ -1,0 +1,16 @@
+{
+  "format": "aux.authenticated-browser-roots.native-proposal.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "baselineFiles": {
+    "chrome/browser/aux/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e",
+    "chrome/browser/aux/AuxNativePeerTransport.cc": "c734d4608bb0fc0e9aac21c37ac6db6419ddfc95f5fdd3bb2524e7988e8d6538",
+    "chrome/browser/aux/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": "d19283716fb4e5137016f090153effcd6ce672492cb3d356a3f7c96a6333b4a9",
+    "chrome/browser/aux/BUILD.gn": "c0524f00ddb655f5d55ca40a9902903d4334dd2d7820467b17741877cd4cc7a7",
+    "chrome/browser/chrome_browser_main.cc": "ad9c721123dfe37333cbca49e949679f1dcdbd1fb0dd7e3bbfbcd86ef03fa963"
+  },
+  "defaultOffColdHookUnchanged": true,
+  "earlierFeatureListLocalStateProtected": false,
+  "sharedTreeApplied": false,
+  "patchSha256": "20786efd77fb70700f307c69d693d21214c7ad2e05851f0ccdb57ba6cefe1261"
+}
