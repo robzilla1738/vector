@@ -65,7 +65,7 @@ The command authenticates/unpacks the bundle, imports the archive into the empty
 
 Before any later cutover, preserve the original **AUX_DATA_ENCRYPTION_KEY** separately and configure a **new AUX_AUTH_SECRET**. They serve different purposes: changing the data key would lose CSK access, while keeping the old auth secret could revive stateless avatar capabilities despite database session revocation. Reconcile external identity/billing state and post-snapshot deletions separately.
 
-The focused offline check used the actual twelve migration DDL files and encrypted bundle/filesystem path; no real PostgreSQL archive import, provider restore or activation has run. Exact usage, target-review format, evidence and limits: [isolated restore review](../../../docs/integration/proposed/aux-cloud-isolated-restore/README.md).
+The original offline check used the actual twelve migration DDL files and encrypted bundle/filesystem path. A later [real local PostgreSQL18 drill](../../../docs/integration/proposed/aux-cloud-local-pg18-restore/README.md) passed actual current-schema custom-archive import, quarantine, key/generation preservation and original CSK decryption, plus attachment/avatar readback through an explicitly local memory adapter. It used the current capture/restore process helpers and stopped/removed its private Unix-socket-only cluster. Hosted Neon/Blob restoration, full provider CLI admission and activation remain unverified. Exact usage, target-review format, evidence and limits: [isolated restore review](../../../docs/integration/proposed/aux-cloud-isolated-restore/README.md).
 
 
 ## Local operator delivery and explicit expiry
