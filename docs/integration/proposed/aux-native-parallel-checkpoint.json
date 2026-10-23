@@ -282,15 +282,23 @@
     }
   ],
   "appliedCurrentNativeComposition": {
-    "composition": "out/native-reuse-composition-aux-participant-addresses",
-    "sha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107",
-    "sources": 808,
+    "composition": "out/native-reuse-composition-aux-browser-cold-api-ready",
+    "sha256": "1421718da01ab018070ce60e0068a7f262f74d82d043b68e35c09300ed1d18d2",
+    "sources": 826,
     "assets": 23,
     "applied": true,
-    "compiled": true,
-    "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json"
+    "compiled": false,
+    "applyReceipt": "out/native-reuse-composition-aux-browser-cold-api-ready/native-before-apply-v9tx8kcl/apply-receipt.json"
   },
-  "rootQueuedChecks": [],
+  "rootQueuedChecks": [
+    {
+      "session": 20899,
+      "role": "actual combined826source23asset browser build",
+      "receiptOnSuccess": "out/aux-browser-cold-api-native-build.json",
+      "jobs": 2,
+      "nativeSourceFrozen": true
+    }
+  ],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -360,6 +368,13 @@
       "role": "303 finite backend/dispatcher lifecycle assertions with fake authority/provider",
       "reportedBy": "aux_identity_native_audit",
       "runtimeAcceptance": false
+    },
+    {
+      "session": 29663,
+      "exitCode": 1,
+      "role": "three actual legacy/v2codec/fixture TUs compiled; Appleld rejected thinarchives beforefixtureexecution",
+      "evidence": "docs/integration/proposed/aux-native-legacy-inbox-decoder/evidence/receipt.json",
+      "fixtureExecuted": false
     }
   ],
   "currentCompatibility": {

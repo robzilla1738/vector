@@ -1,3 +1,11 @@
+# Complete corrected source applied; combined browser build live — 2026-10-23
+
+The826-source/23-artwork cold-API composition was applied after all prior source-dependent checks were terminal. All849 actual source/artwork targets passed preconditions; every existing target was backed up under `out/native-reuse-composition-aux-browser-cold-api-ready/native-before-apply-v9tx8kcl/`. Exact source hashes matched after application. No owner changes were reset or unrelated files removed.
+
+Actual browser build20899 is live through the native serializer with two jobs, beginning GN regeneration. It targets chrome/auth_scheme_probe and will record `out/aux-browser-cold-api-native-build.json` only on success. The native checkout is frozen for this build. Parent Swift/GN/final browser linking are not yet proven. The current accepted packaged app/UI is unchanged; this is build-output preparation, not runtime activation or replacement.
+
+The actual legacy notification decoder, unchanged v2 codec and synthetic fixture all compiled in check29663, but Apple ld rejected Chromium thin archives, so no fixture ran. Its exact failed link/compile receipts are retained. A linker-only successor may reuse the three real objects; it must not create keys, touch stored rows or infer a legacy-key authority. Cloud restore implementation continues independently without provider execution.
+
 # Startup caller compiles; final source application waiting on one codec check — 2026-10-23
 
 Actual check5216 passed both corrected cold-launch and exact enabled Chrome-main caller objects with genuine platform/core flags. The startup macro was enabled only in an isolated object, not the product. Source commit `871c1e57e` independently composes that one source correction on the compiler-ready graph:826 source records/23 unchanged artwork assets. All849 actual source/artwork apply preconditions pass; the native checkout is not yet changed.
