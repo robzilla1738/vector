@@ -1,0 +1,23 @@
+{
+  "format": "aux.noncreating-profile-manager-style.build-run.v1",
+  "state": "running",
+  "session": 51532,
+  "composition": "out/native-reuse-composition-aux-noncreating-profile-manager-style",
+  "compositionSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43",
+  "applySession": 18239,
+  "applyExitCode": 0,
+  "applyReceipt": "out/native-reuse-composition-aux-noncreating-profile-manager-style/native-before-apply-r5yowhz1/apply-receipt.json",
+  "sourceRecords": 792,
+  "assets": 23,
+  "changedSources": [
+    "chrome/browser/browser_process.cc",
+    "chrome/browser/browser_process.h"
+  ],
+  "log": "out/aux-noncreating-profile-manager-style-native-build.log",
+  "receipt": "out/aux-noncreating-profile-manager-style-native-build.json",
+  "jobs": 2,
+  "firstPreviouslyFailingTranslationUnitCompiled": true,
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "state2Authorized": false
+}

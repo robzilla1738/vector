@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-23T01:35:56.337615+00:00",
+  "origin": "https://dev-cloud.getaux.co",
+  "sendRequests": 1,
+  "verificationAttempted": false,
+  "accountCreationAttempted": false,
+  "inboxRead": false,
+  "httpStatus": 200,
+  "sendAccepted": true,
+  "providerDeliveryStatus": "delivered",
+  "providerEmailId": "01a16666-8b8e-71d7-9da2-d498b9017ece",
+  "providerSubject": "Your Aux sign-in code",
+  "deliveryObservedAt": "2026-10-23T01:36:59.701080+00:00",
+  "deliveryEvidence": "Actual logged-in Aux Resend dashboard Sending row; recipient, subject and Delivered status matched",
+  "emailBodyRead": false,
+  "codeRead": false,
+  "codeUsed": false,
+  "auxAccountCreated": false,
+  "recipient": "owner-authorized inbox (redacted)"
+}
