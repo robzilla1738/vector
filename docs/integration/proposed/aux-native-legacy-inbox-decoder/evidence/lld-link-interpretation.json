@@ -1,0 +1,13 @@
+{
+  "session": 48469,
+  "terminalExitCode": 1,
+  "phase": "actual LLVM link",
+  "recompiledTranslationUnits": 0,
+  "hashedInputs": 2627,
+  "thinArchiveMemberCount": 2248,
+  "fixtureExecuted": false,
+  "linkerTool": "actual Chromium ld64.lld selected through clang -fuse-ld=lld, consistent with crypto_unittests target",
+  "remainingGap": "External hand-selected closure omitted non-Abseil production source-set objects (Perfetto/protozero). Those symbols are pulled by real base logging/dump_without_crashing. This is an incomplete external link recipe, not a decoder compile failure.",
+  "noSuppressedSymbols": true,
+  "nextAction": "A reviewed complete production source-set closure/actual GN target is needed; no additional link retry queued."
+}

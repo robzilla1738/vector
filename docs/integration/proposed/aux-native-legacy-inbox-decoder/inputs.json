@@ -44,7 +44,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/README.md",
-      "sha256": "ffd92542981696646802269a8661ac10c02c20f6723aa5e4ed63b0dd731e2ebd"
+      "sha256": "9f3939f2a5dee4395dad1ff8a3958abf9d4f37524c7dbee4c3bfe94a1d8da617"
     },
     {
       "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/deferred-target.gni",
