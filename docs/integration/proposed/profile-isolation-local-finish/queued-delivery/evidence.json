@@ -1,0 +1,26 @@
+{
+  "inputSha256": "9bdcbf055fbc9e7b58023e8dbacb635bbf17020cb90ed0933d4c8f2b928ab190",
+  "outputSha256": "156c9361fc37848175c920d2fab53b89526870a2358803ef01f147af5ecb1ed6",
+  "changes": [
+    {
+      "name": "revalidate deferred live delivery",
+      "count": 1
+    },
+    {
+      "name": "revalidate queued callback",
+      "count": 1
+    },
+    {
+      "name": "revalidate resumed wait before consuming pending output",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "actual queued function refuses after close before taking payload",
+    "actual steerable wait refuses after close before taking payload",
+    "baseline consumes and saves in both cases",
+    "full source syntax"
+  ],
+  "nativeAuthority": "controlled synthetic boundary",
+  "drainClaim": false
+}
