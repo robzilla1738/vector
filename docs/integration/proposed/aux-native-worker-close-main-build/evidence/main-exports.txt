@@ -1,0 +1,6 @@
+        0x001347C4  _AuxNativePtyBeginCurrent
+        0x001359E0  _AuxNativePtyCanSpawn
+        0x00136818  _AuxNativePtyChildCreated
+        0x00135F20  _AuxNativePtyCopyHelperPath
+        0x00136A9C  _AuxNativePtyDirectWaitResult
+        0x001356F4  _AuxNativePtySpawnFailed
