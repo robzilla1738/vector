@@ -1,0 +1,11 @@
+{
+  "format": "aux.native.fresh-target-boundary.v1",
+  "active": false,
+  "sourceSha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435",
+  "contextPrerequisiteCommit": "d3c53fc18",
+  "intentPrerequisiteCommit": "7e16b5e68",
+  "protectedCallsExecuted": false,
+  "authorityGenerated": false,
+  "currentProductionTypecheck": "pending serialized native build lock",
+  "sourceOnly": true
+}
