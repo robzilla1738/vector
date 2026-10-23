@@ -1,0 +1,42 @@
+{
+  "sourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "beforeSha256": "7890978bb93a6721c792f2ff2961f0ed369bc9734ac148cec63f26fd779032cb",
+      "afterSha256": "15f8a9c74516b92479f84862e766ff3fe43ae8f633b6436bdb99c433e1259c80"
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "beforeSha256": "0deb0d52a5efb3282f4b98196bdf27d00ac3f9c3d2fe1d8a9ae6cd162b496477",
+      "afterSha256": "580883a9d058ff1b9036aa0977f2af9f787654c4780c6f4b7850131bae695d1f"
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "beforeSha256": "c2ddb76106759eec41d3fc4c2218583e98a8a366df509963c6d3fa953c8e3e91",
+      "afterSha256": "aebfa0e8760dda73cc26d6380e506237ffb6abfd15a19c832333601d857276a5"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
+      "beforeSha256": "7c3dc71b4a325259cf2cf3c4971c3c3f23a6a4874492304d8c74463fb363e6f3",
+      "afterSha256": "7974b1c8f698ecbacf01bf9089e08be4df7ade04c6c5aaa452b8dd7c8acba947"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "beforeSha256": "4c3fb8f52dd86bedf6915c20b33c6b1f512038ca82362fabd7c9023ae257afb3",
+      "afterSha256": "246f57bcd77092ce4b452e6a039c8376c73fb6af2e6ef44c053201d62a82f38c"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e",
+      "afterSha256": "eef26e8e7d2713dc8f307cb85b9e19172678d72fa1a081175154cdd4417bbb3f"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "beforeSha256": "6aa9d1c9bdd9cc0643d960a5a4906ceeb52b72e9fa73b79e1ec93b4b5738483e",
+      "afterSha256": "563e59469432f4aaaf31916d1e45af113faed3fb7291cfeef920c2da8906155e"
+    }
+  ],
+  "built": false,
+  "runtimeAccepted": false
+}

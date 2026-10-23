@@ -1,0 +1,46 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_command_controller.cc",
+      "beforeSha256": "36be4a8a12ebe9b9320788d15cd462b5ffb6998e0277c0e97f5a23f21f61d929",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/browser_commands.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_commands.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/views/frame/aux_tab_search_bubble.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "    case IDC_NEW_TAB: {",
+          "replace": "    case IDC_NEW_TAB: {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n      if (ShowAuxCommandBar(browser_, AuxCommandBarMode::kNewTab)) break;\n#endif",
+          "count": 1
+        },
+        {
+          "find": "    case IDC_FOCUS_LOCATION:",
+          "replace": "    case IDC_FOCUS_LOCATION:\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n      if (ShowAuxCommandBar(browser_, AuxCommandBarMode::kNavigate)) break;\n#endif",
+          "count": 1
+        },
+        {
+          "find": "    case IDC_FOCUS_SEARCH:",
+          "replace": "    case IDC_FOCUS_SEARCH:\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n      if (ShowAuxCommandBar(browser_, AuxCommandBarMode::kCommands)) break;\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  command_updater_->UpdateCommandEnabled(IDC_FOCUS_LOCATION, show_location_bar);\n  command_updater_->UpdateCommandEnabled(IDC_FOCUS_SEARCH, show_main_ui);",
+          "replace": "  command_updater_->UpdateCommandEnabled(IDC_FOCUS_LOCATION,\n      BUILDFLAG(ENABLE_AUX_BROWSER) || show_location_bar);\n  command_updater_->UpdateCommandEnabled(IDC_FOCUS_SEARCH,\n      BUILDFLAG(ENABLE_AUX_BROWSER) || show_main_ui);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "histogramNames": [
+    "AUXBROWSERPREFERENCES_GETCOMMANDCONTEXT",
+    "AUXBROWSERPREFERENCES_COMMITCOMMAND",
+    "AUXBROWSERPREFERENCES_GETALWAYSSHOWFULLURL",
+    "AUXBROWSERPREFERENCES_SETALWAYSSHOWFULLURL"
+  ],
+  "notes": [
+    "Integrator allocates histogram enum values and regenerates actual selected extension registration; no new browser command IDs needed.",
+    "Existing aux_tab_search_bubble and keyboard_shortcuts native compile units receive implementations; no new source GN file required.",
+    "Shortcut Settings existing capture owner is reused."
+  ]
+}
