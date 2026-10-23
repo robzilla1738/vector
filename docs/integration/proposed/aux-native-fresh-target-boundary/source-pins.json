@@ -3,7 +3,7 @@
   "active": false,
   "sourceSha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435",
   "contextPrerequisiteCommit": "d3c53fc18",
-  "intentPrerequisiteCommit": "7e16b5e68",
+  "intentPrerequisiteCommit": "fcd3084ec",
   "protectedCallsExecuted": false,
   "authorityGenerated": false,
   "currentProductionTypecheck": "pending serialized native build lock",
@@ -77,14 +77,29 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift",
-      "sha256": "137067c11f19a201d4491e72578219ff7a8237dbc6b83d317356f02d9635e863"
+      "sha256": "7f34be5f11881c53be065133c114c4480ad106a4a534c028eb362a6dd6c3ec0d"
     },
     {
       "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshTargetCoordinator.swift",
-      "sha256": "a88c4497fb619919af4ce4afd39aa4ededc73378dd85f9e5643e4c679ad6c25d"
+      "sha256": "90aedc1ada02ba78e90e4b9374b1c64445c5a3a1d069e05729762792195c84f5"
     }
   ],
   "pairedProductionGraphOwner": "aux-native-fresh-target-coordinator",
   "capturedFixtureExecSession": 96148,
-  "capturedFixtureStatus": "queued; no execution claim"
+  "capturedFixtureStatus": "queued; no execution claim",
+  "reviewedDependencySuccessors": [
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift",
+      "previousSha256": "137067c11f19a201d4491e72578219ff7a8237dbc6b83d317356f02d9635e863",
+      "currentSha256": "7f34be5f11881c53be065133c114c4480ad106a4a534c028eb362a6dd6c3ec0d",
+      "reason": "Reviewed fcd3084ec full private CURRENT-head intent/retained-FD coordinator successor; boundary source unchanged; paired production typecheck24645 queued."
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshTargetCoordinator.swift",
+      "previousSha256": "a88c4497fb619919af4ce4afd39aa4ededc73378dd85f9e5643e4c679ad6c25d",
+      "currentSha256": "90aedc1ada02ba78e90e4b9374b1c64445c5a3a1d069e05729762792195c84f5",
+      "reason": "Reviewed fcd3084ec full private CURRENT-head intent/retained-FD coordinator successor; boundary source unchanged; paired production typecheck24645 queued."
+    }
+  ],
+  "pairedProductionGraphExecSession": 24645
 }
