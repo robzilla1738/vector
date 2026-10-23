@@ -1,0 +1,105 @@
+--- a/AuxNativeFreshStageCoordinator.swift
++++ b/AuxNativeFreshStageCoordinator.swift
+@@ -8,14 +8,24 @@
+     private let sensitiveStagePayload:Data
+     fileprivate init(journal:NativeFreshBootstrapJournal,sha256:String,payload:Data){self.journal=journal;durableJournalSha256=sha256;sensitiveStagePayload=payload}
+ }
+-private enum NativeFreshStageRead {case absent,bytes(Data),unavailable(Int32),invalid}
++enum NativeFreshStageRead {case absent,bytes(Data),unavailable(Int32),invalid}
+ enum NativeFreshStageSubmitOutcome {
+     case staged(NativeFreshStagedContext)
+     case unresolved(String)
+     case blocked(String)
+ }
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++// Captured effects exist only in this explicitly compiled fixture, never production.
++enum NativeFreshStageFixtureEffects {
++    static var read:((NativeFreshTargetSelector)->NativeFreshStageRead)!
++    static var add:((NativeFreshTargetSelector,Data)->OSStatus)!
++    static var revalidate:(()->Void)!
++}
++#endif
+ final class AuxNativeFreshStageCoordinator {
++#if !AUX_NATIVE_FRESH_STAGE_FIXTURE
+     private let capture:AuxFreshNativeSecureCapture
++#endif
+     private let record:NativeFreshBootstrapJournal
+     private let secretPayload:Data
+     private let checkpoint:StoredNativeFreshBootstrapJournal
+@@ -23,6 +33,17 @@
+     private let lock=NSLock()
+     private var attempted=false
+     private var terminalFailure:String?
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++    private init(record:NativeFreshBootstrapJournal,payload:Data,checkpoint:StoredNativeFreshBootstrapJournal,store:PrivateNativeFreshBootstrapJournalStore){self.record=record;secretPayload=payload;self.checkpoint=checkpoint;self.store=store}
++    // No such initializer or captured-effect admission exists in production.
++    static func capturedFixture(root:String,record:NativeFreshBootstrapJournal,payload:Data)throws->AuxNativeFreshStageCoordinator {
++        guard nativeBootstrapHash(payload)==record.stagePayloadSha256 else{throw NativeFreshBootstrapError.binding}
++        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:root,journal:record)
++        guard try store.load()==nil else{throw NativeFreshBootstrapError.existing}
++        let checkpoint=try store.publish()
++        return .init(record:record,payload:payload,checkpoint:checkpoint,store:store)
++    }
++#else
+     private init(capture:AuxFreshNativeSecureCapture,record:NativeFreshBootstrapJournal,payload:Data,checkpoint:StoredNativeFreshBootstrapJournal,store:PrivateNativeFreshBootstrapJournalStore){self.capture=capture;self.record=record;secretPayload=payload;self.checkpoint=checkpoint;self.store=store}
+ 
+     // Exact typed capture is privately produced by the actual signed-policy/home
+@@ -53,15 +74,25 @@
+         let checkpoint=try store.publish()
+         return .init(capture:capture,record:journal,payload:secret,checkpoint:checkpoint,store:store)
+     }
++#endif
+     private func revalidate()throws {
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++        NativeFreshStageFixtureEffects.revalidate()
++        guard let current=try store.load(),current.journal==record,current.sha256==checkpoint.sha256,
++              nativeBootstrapHash(secretPayload)==record.stagePayloadSha256 else{throw NativeFreshBootstrapError.binding}
++#else
+         try capture.policy.revalidateCurrentIdentity();try capture.home.validateRetainedIdentity()
+         guard try capture.home.currentReservationSha256()==record.reservationSha256,
+               capture.scope==record.scope,capture.transactionId==record.reservationTransactionId,
+               capture.policy.policySha256==record.policySha256,
+               let current=try store.load(),current.journal==record,current.sha256==checkpoint.sha256,
+               nativeBootstrapHash(secretPayload)==record.stagePayloadSha256 else{throw NativeFreshBootstrapError.binding}
++#endif
+     }
+     private func read(_ selector:NativeFreshTargetSelector)->NativeFreshStageRead {
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++        return NativeFreshStageFixtureEffects.read(selector)
++#else
+         var result:CFTypeRef?
+         let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecReturnData as String:true,kSecMatchLimit as String:kSecMatchLimitOne]
+         let status=SecItemCopyMatching(query as CFDictionary,&result)
+@@ -71,6 +102,16 @@
+         let bytes=result as! CFData,count=CFDataGetLength(bytes)
+         guard count>0,count<=16_384,let base=CFDataGetBytePtr(bytes)else{return .invalid}
+         return .bytes(Data(bytes:base,count:count))
++#endif
++    }
++    private func addStage()->OSStatus {
++#if AUX_NATIVE_FRESH_STAGE_FIXTURE
++        return NativeFreshStageFixtureEffects.add(record.stageSelector,secretPayload)
++#else
++        let selector=record.stageSelector
++        let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,kSecValueData as String:secretPayload]
++        return SecItemAdd(query as CFDictionary,nil)
++#endif
+     }
+     private func block(_ reason:String)->NativeFreshStageSubmitOutcome {
+         lock.lock();terminalFailure=reason;lock.unlock();return .blocked(reason)
+@@ -82,10 +123,11 @@
+         try revalidate()
+         for binding in record.targetBindings {guard case .absent=read(binding.target)else{return block("target-no-longer-absent")}}
+         guard case .absent=read(record.stageSelector)else{return block("stage-no-longer-absent")}
+-        let selector=record.stageSelector
+-        let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,kSecValueData as String:secretPayload]
+-        let status=SecItemAdd(query as CFDictionary,nil)
+-        guard status==errSecSuccess else{return block(status==errSecDuplicateItem ? "stage-duplicate":"stage-add-failed")}
++        // Absence queries can run authentication/UI/system callbacks. Revalidate
++        // actual policy/home/journal after all five reads, immediately before Add.
++        try revalidate()
++        let status=addStage()
++        guard status==errSecSuccess else{return .unresolved("stage-add-non-success-observe-without-replay")}
+         return try observeStageWithoutReplay()
+     }
+     // Matching observation after a lost/uncertain in-process Add needs no replay.
