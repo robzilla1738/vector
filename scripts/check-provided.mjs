@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 import {relocateAuxAssetPath} from '../vendor/provided/aux-asset-path-identity.mjs';
+import {applyAuxBuiltinIconIdentity} from '../vendor/provided/aux-builtin-icon-identity.mjs';
+import {applyAuxRuntimeContractIdentity} from '../vendor/provided/aux-runtime-contract-identity.mjs';
+import {CLI_COMMAND} from '../vendor/aside/patches/brand.mjs';
+import {disabledSeed} from '../vendor/provided/vault-product-exclusion.mjs';
 import {loadAuxBrowserIconReplacement} from './lib/aux-browser-icon.mjs';
 import {providedRecoveryEnrollmentUiResources} from './lib/provided-ui.mjs';
 // Preservation audit: unchanged source equality is expected, never a clean-room failure.
@@ -119,6 +123,7 @@ const appPins = await json(join(repository, 'docs/source/provided-app-inputs.jso
 let appFiles = 0;
 for (const component of ['daemon', 'cli']) {
   const report = apps.components[component];
+  const builtinIconEdits = [];
   if (!safe(report.app)) throw new Error('Unsafe app report path');
   for (const name of providedIntegrationFiles[component]) {
     const expected = await providedIntegrationInput(name);
@@ -151,6 +156,26 @@ for (const component of ['daemon', 'cli']) {
       sources.delete(source);
     }
     if (file.outputSha256 && hash(await readFile(join(root, file.path))) !== file.outputSha256) throw new Error('App resource output hash mismatch');
+    if (file.outputSha256 && source.startsWith('Contents/Resources/static/skills/') && source.endsWith('.md')) {
+      const original = await readFile(join(sourceSnapshot?.roots[component] ?? providedAppRoots[component], source));
+      if (hash(original) !== (file.sourceSha256 ?? file.sha256)) throw new Error('Skill metadata source drift');
+      let text;
+      if (component === 'daemon' && source === 'Contents/Resources/static/skills/builtin/password-manager/SKILL.md') {
+        text = disabledSeed;
+      } else {
+        text = original.toString('utf8').replaceAll('Aside', 'Aux');
+        if (stateIdentityVersion === 2) {
+          text = applyAuxRuntimeContractIdentity({component: 'skill', path: source.slice('Contents/Resources/static/skills/'.length), text, original: original.toString('utf8'), branding: 'aux'}).text;
+          if (component === 'daemon' && cloudOptions.enableCloud) {
+            const icons = applyAuxBuiltinIconIdentity({component, path: source, text, original}, cloudOptions);
+            text = icons.text;
+            if (icons.anchors.length) builtinIconEdits.push({path: source, sourceSha256: hash(original), anchors: icons.anchors});
+          }
+        }
+        text = text.replace(CLI_COMMAND, 'aux ');
+      }
+      if (!Buffer.from(text).equals(await readFile(join(root, file.path)))) throw new Error('Unreported skill metadata modification');
+    }
     if (file.generatedBy) {
       const expected = developmentFiles.get(file.path);
       if (!expected || file.generatedBy !== expected.generatedBy || !file.added || hash(expected.bytes) !== file.outputSha256 || file.outputMode !== expected.mode) throw new Error('Unexpected generated daemon development resource');
@@ -165,6 +190,9 @@ for (const component of ['daemon', 'cli']) {
     appFiles++;
   }
   if (sources.size) throw new Error('Unreported omitted app source resources');
+  if (component === 'daemon' && stateIdentityVersion === 2 && cloudOptions.enableCloud && builtinIconEdits.length !== 47) throw new Error('Incomplete Aux builtin icon relocation');
+  const expectedIconIdentity = builtinIconEdits.length ? {format: 'aux.builtin-icon-stage.v1', edits: builtinIconEdits} : undefined;
+  if (JSON.stringify(report.builtinIconIdentity) !== JSON.stringify(expectedIconIdentity)) throw new Error('Unreported builtin icon identity changes');
 }
 let runtimeFiles = 0, memoryFiles = 0;
 if (stack.components.distribution) {
