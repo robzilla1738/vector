@@ -1,0 +1,7 @@
+# Revalidate retained account home after lock acquisition
+
+This narrow successor selects only the account coordinator logical file from the typed native fresh-runtime consumer. After a real flock acquisition it validates the retained directory's canonical name/inode/private metadata/ACL again, before inspecting the lock entry or invoking the account-registry callback. A directory swap during contention now refuses rather than operating through the detached original FD. It neither adopts the replacement nor falls back to a path reopen. Existing non-retained callers retain their old semantics.
+
+The additional contention callback compiles only under `AUX_RETAINED_ACCOUNT_FD_FIXTURE`; production has no hook or callback. The focused fixture creates one disposable directory and fixed software authority, holds the actual lock through an independent FD, observes a genuine failed nonblocking flock, replaces the directory path, releases the lock and requires refusal before the registry body. Time bounds detect fixture failure only, never establish writer shutdown or success. No protected read/write, Keychain, OS grant or owner state is touched.
+
+The prior 31-input graph and earlier retained-FD fixture sources remain frozen. This proposal's focused compile/check is queued separately; no actual pass or production link is claimed yet. Full-profile/foreign-process custody, early-host/Node admission and activation remain missing.

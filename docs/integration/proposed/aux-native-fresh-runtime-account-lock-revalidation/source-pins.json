@@ -1,0 +1,11 @@
+{
+  "format": "aux.native-fresh.account-lock-revalidation.v1",
+  "predecessor": {
+    "docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxAccountsCskCoordinator.swift": "ed76dd9400aa0757dd27f968d137645ffb0a63bd2a305e505d60e10d71565541"
+  },
+  "files": {
+    "docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
+    "docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/check.sh": "0b178d529d0d6232074243fcac90b7eac744c9af69d5f8a27c3ce53808896ccf",
+    "docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/tests/main.swift": "e798183525ece292ef97156c1ed90bc0e938b6b326e0c992c31f9d1c46534854"
+  }
+}

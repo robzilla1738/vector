@@ -1,0 +1,22 @@
+--- baseline/AuxAccountsCskCoordinator.swift
++++ source/AuxAccountsCskCoordinator.swift
+@@ -56,8 +56,18 @@
+         guard fd>=0 else{throw AuxAccountsCskError.unavailable};defer{close(fd)}
+         var metadata=stat();guard fstat(fd,&metadata)==0,(metadata.st_mode&S_IFMT)==S_IFREG,metadata.st_uid==geteuid(),metadata.st_nlink==1,metadata.st_mode&0o077==0 else{throw AuxAccountsCskError.unavailable}
+         var acquired=false
+-        for _ in 0..<200 {if flock(fd,LOCK_EX|LOCK_NB)==0{acquired=true;break};guard errno==EWOULDBLOCK || errno==EAGAIN else{throw AuxAccountsCskError.unavailable};usleep(5_000)}
++        for _ in 0..<200 {
++            if flock(fd,LOCK_EX|LOCK_NB)==0{acquired=true;break}
++            guard errno==EWOULDBLOCK || errno==EAGAIN else{throw AuxAccountsCskError.unavailable}
++#if AUX_RETAINED_ACCOUNT_FD_FIXTURE
++            AuxRetainedAccountFDTestHooks.observedContention?()
++#endif
++            usleep(5_000)
++        }
+         guard acquired else{throw AuxAccountsCskError.unavailable};defer{_ = flock(fd,LOCK_UN)}
++        // The lock wait can outlive a pathname replacement. Keep operations on
++        // the retained owner only while that owner still occupies its exact path.
++        if let retainedHomeFD{try Self.requireRetainedHome(home,fd:retainedHomeFD)}
+         var entry=stat();guard fstatat(directory,".aux-accounts-csk.lock",&entry,AT_SYMLINK_NOFOLLOW)==0,entry.st_dev==metadata.st_dev,entry.st_ino==metadata.st_ino else{throw AuxAccountsCskError.unavailable}
+         return try body(directory) // The persistent lock inode is NEVER unlinked/replaced.
+     }
