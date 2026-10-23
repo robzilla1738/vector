@@ -1,6 +1,6 @@
 # Current12 hosted recovery drill
 
-Prepared operator runner only; no provider execution or hosted acceptance is claimed. The runner uses the actual online capture and full isolated restore CLIs. It reuses synthetic data shapes from the real local PostgreSQL18 fixture, including both private object families, server-wrapped generation3 CSK, recovery material, deleted user, sessions/challenges, snapshot, share and excluded transient uploads.
+Actual session61967 passed against the reviewed temporary Neon endpoint and existing separate Aux private Blob stores; cleanup47621 also passed. `evidence.json` records exact exercised source hashes and sanitized results. The temporary branch is deleted, so the fixed review is historical and must not be reused. The runner uses the actual online capture and full isolated restore CLIs. It reuses synthetic data shapes from the real local PostgreSQL18 fixture, including both private object families, server-wrapped generation3 CSK, recovery material, deleted user, sessions/challenges, snapshot, share and excluded transient uploads.
 
 Run from the repository root after reviewing the exact one-hour 0.25 CU branch and both existing Aux stores:
 
@@ -35,3 +35,9 @@ After successful actual capture, only generated source objects and records are d
 Success retains the isolated target and private bundle/key/progress for explicit reviewed cleanup. Failure also retains partial targets and records generated source IDs/object paths for review, without resetting, adopting or deleting unknown destinations. Subprocess errors after spawn remain owned until actual exit; the wrapper never times out or kills the CLI while its importer might own staging. No retry is automatic.
 
 After retaining sanitized proof, root must remove exactly the two generated target object paths, verify absence, drop only the newly generated target database, delete only the reviewed temporary branch and remove private local key/bundle/plaintext. Independent backup custody, scheduling, production cutover and real-user scale remain outside this drill.
+
+## Actual execution and cleanup — 2026-10-23
+
+The actual source had all29 application tables empty. The drill added only generated fixtures, ran the real snapshot capture CLI, removed those fixtures and verified all29 tables empty again. The full restore CLI imported all12 schema hashes into the empty temporary Neon database, applied quarantine, and restored both object families to the separate existing Aux development private store. Actual readback matched, the recovered wrapping key decrypted the original synthetic CSK, and generation/recovery/deleted-owner/snapshot state was preserved.
+
+Root verified both target objects against their exact restore-progress hashes before deleting either, verified their absence, dropped only the generated database, and deleted the named one-hour branch. The actual Neon table then showed one branch, main only. The owned private local root, encrypted bundle and recovery key were removed after sanitized evidence was retained. No existing user data, provider credentials, deployment, desktop UI or production traffic changed. This does not establish independent backup custody, scheduling, cutover, identity/billing reconciliation or native recovery acceptance.

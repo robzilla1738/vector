@@ -18,7 +18,7 @@ let source, target, targetAdmin, stage = 'admission', root, sequence = 0;
 let sourceSeeded = false, sourceCleaned = false;
 const ownedObjects = [];
 const user = randomUUID(), deletedUser = randomUUID(), session = randomUUID(), attachment = randomUUID();
-const share = 'restore-' + randomUUID(), email = user + '@example.invalid';
+const share = randomBytes(16).toString('hex'), email = user + '@example.invalid';
 const rateKey = 'restore-' + user, device = 'restore-' + randomUUID();
 const pathname = `aux/${user}/${attachment}/content`, avatar = `avatars/${user}/${randomUUID()}`;
 const payloads = new Map([[pathname, randomBytes(65536)], [avatar, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII=', 'base64')]]);
