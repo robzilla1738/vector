@@ -1,0 +1,123 @@
+{
+  "format": "aux.completion-writers.integration.v1",
+  "passed": true,
+  "inputSha256": "18edabeb2303d834f51f3d99effcdf1c49286fc495d76dd16cfe2e6de56a5596",
+  "outputSha256": "cd56bbb6245d56f1714dc498907653deb06f7a704946f55ee87652a9d0f053c1",
+  "changes": [
+    {
+      "name": "model decompression output",
+      "count": 1
+    },
+    {
+      "name": "skill archive output",
+      "count": 1
+    },
+    {
+      "name": "runtime archive output",
+      "count": 1
+    },
+    {
+      "name": "runtime zip entry output",
+      "count": 1
+    },
+    {
+      "name": "webfetch artifact output",
+      "count": 1
+    },
+    {
+      "name": "sync metadata SQLite custody",
+      "count": 1
+    },
+    {
+      "name": "preserveWritableDirectories",
+      "count": 1
+    },
+    {
+      "name": "applyFiles",
+      "count": 1
+    },
+    {
+      "name": "mergeMigrationEntry",
+      "count": 1
+    },
+    {
+      "name": "ensureOwnedDirectory",
+      "count": 1
+    },
+    {
+      "name": "hasExternalStorageMarker",
+      "count": 1
+    },
+    {
+      "name": "markExternalStorageComplete",
+      "count": 1
+    },
+    {
+      "name": "ensureProjectV6SessionAlias",
+      "count": 1
+    },
+    {
+      "name": "migration merge uncertainty",
+      "count": 1
+    },
+    {
+      "name": "migration alias uncertainty",
+      "count": 1
+    },
+    {
+      "name": "migration marker uncertainty",
+      "count": 1
+    },
+    {
+      "name": "skill extraction admission",
+      "count": 1
+    },
+    {
+      "name": "zip extraction admission",
+      "count": 1
+    },
+    {
+      "name": "runtime installation admission",
+      "count": 1
+    },
+    {
+      "name": "runtime replacement callback admission",
+      "count": 1
+    },
+    {
+      "name": "runtime download admission",
+      "count": 1
+    },
+    {
+      "name": "sync queue dispatch",
+      "count": 1
+    },
+    {
+      "name": "watch callback admission",
+      "count": 1
+    },
+    {
+      "name": "watch creation admission",
+      "count": 1
+    },
+    {
+      "name": "dream scheduled producer",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "actual recursive migration preserves destination conflicts and guarded refusal",
+    "actual runtime writable directory preservation",
+    "actual queued producer rechecks admission at dispatch",
+    "whole source syntax",
+    "changed input refusal"
+  ],
+  "filesystem": "disposable fixture only",
+  "nativeBinding": "synthetic only",
+  "allWritersClosed": false,
+  "uiChanged": false,
+  "newNativeAbi": false,
+  "active": false,
+  "nativeSourceChanged": false,
+  "transformSha256": "8cf1c41ce5228cdaff0b85b7afa29c201c3de2026c90fff214f486e17d829286"
+}
