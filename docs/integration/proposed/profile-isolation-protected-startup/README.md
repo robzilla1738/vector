@@ -1,0 +1,19 @@
+# Protected startup: validate both retained root inventories before the first grant
+
+This inactive single-file successor tightens `AuxBrowserFreshRootAdmission` without changing its native authority, wire, policy, ABI, startup switch or UI. The source starts from the exact final package generation's v8/v2 admission implementation. `integration.json` pins the predecessor, successor and count-checked patch; the integrator must select this replacement in the existing 48-source daemon recipe. No shared recipe, GN, registration or packaging file is changed here.
+
+Previously, receipt publication checked each root's inventory immediately before writing that root's admitted marker. An unexpected file in the first root while the second marker was processed could escape the final validation, which checked only policy/root/marker identity and bytes. The successor checks the complete pair through the actual retained authenticated FDs whenever the Owner is still prepared, and again after both durable admitted writes before serializing the first receipt. An observed unexpected prepared entry poisons that Owner; deleting the entry later cannot obtain a grant from it. Either marker write failure still leaves the existing pre-write failed phase in place. No marker rollback, unlink, repair or root deletion is added.
+
+The post-write pair check occurs only inside the original first-publication branch. Once that same native Owner is admitted, ordinary browser files remain permitted and repeated receipt serialization is byte-for-byte unchanged. Existing admitted records still refuse acquisition by another Owner. The cold feature remains disabled and no authority is granted by these source changes.
+
+## Focused evidence
+
+`static-check.json` records exact pins, patch applicability, retained-FD source boundaries, unchanged same-Owner receipt serialization and unchanged writer-mutation calls. All 47 other Swift sources match the frozen final delivery manifest. `object-compile.json` records an actual whole-module object-only compile of all 48 production Swift sources with this one replacement, under `scripts/native-build.py` and the existing signed Xcode compiler. It passed in 23.81 seconds; the output is an object, with no executable link, native fixture execution, signing or application action. Existing Keychain API deprecation warnings occur in unchanged sources; no Keychain call was executed. The exact command, all input hashes, unchanged-input check, object hash and compiler log are retained.
+
+These are source/compilation checks. No dynamic race fixture, actual signed-policy admission, browser launch, quit, shutdown, restart, installation, owner-profile access or final-app comparison occurred. Live apps and processes were preserved. No active frozen browser snapshot or shared Chromium checkout was modified.
+
+## Remaining boundaries
+
+The pair checks reject unexpected entries that are observed before first-grant publication. They cannot prevent an unrelated writer creating an entry after the last check. Mandatory namespace/object custody remains absent, and the already confirmed external-hardlink bypass remains unresolved. This successor does not claim complete protected startup or permit enabling the dormant entry.
+
+Further integration requires the root integrator's exact recipe selection, a newly paired daemon artifact and corresponding source/package receipts. Runtime acceptance still requires genuine policy/helper/owner association and an authorized disposable early-startup observation, including incidental Chromium bootstrap files. None is authorized or attempted by this source-only slice. Reusing admitted roots and all writer/service/descendant lifetime claims retain their existing refusal boundaries; shutdown and restart implementations are outside this scope.

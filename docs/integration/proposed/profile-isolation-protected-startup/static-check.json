@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "kind": "static-source-and-patch-review",
+  "checks": {
+    "predecessorPin": true,
+    "successorPin": true,
+    "patchPin": true,
+    "onePreparedOnlyInventoryFence": true,
+    "retainedFDOnlyHelper": true,
+    "postPairCheckBeforeSerialization": true,
+    "preWriteFailurePoisonPreserved": true,
+    "sameOwnerReceiptSerializationUnchanged": true,
+    "noNewWriterMutationAPI": true,
+    "all47OtherSwiftInputsMatchFrozenDeliveryManifest": true
+  },
+  "patchApplyCheckExitCode": 0,
+  "dynamicRaceFixtureExecuted": false,
+  "signedPolicyAcceptanceTested": false,
+  "appExecuted": false,
+  "liveProcessAction": false
+}

@@ -1,0 +1,32 @@
+{
+  "format": "aux.protected-startup-inventory.integration.v1",
+  "baseCommit": "e8bb04a2f",
+  "replacements": [
+    {
+      "before": "docs/integration/proposed/profile-isolation-recovery/restart/source/AuxBrowserFreshRootAdmission.swift",
+      "beforeSha256": "f8cf506d60dbc5119e9744d7dd30c6b5e057923419aff2431997036cd519ccd7",
+      "after": "docs/integration/proposed/profile-isolation-protected-startup/source/AuxBrowserFreshRootAdmission.swift",
+      "afterSha256": "441ad3f02266cb20a5b851bed1a3573bb24e05a4106bce3225cc07111e281a03"
+    }
+  ],
+  "sharedWiring": "Integrator selects this single Swift replacement in the existing 48-source daemon graph. No ABI, authority wire, GN, registration, policy, startup hook or packaging change.",
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "shutdownOrRestartChanged": false,
+  "newNativeExecutableExecuted": false,
+  "countCheckedChanges": [
+    {
+      "change": "retained-FD pair inventory helper",
+      "count": 1
+    },
+    {
+      "change": "prepared-only inventory revalidation with failure poison",
+      "count": 1
+    },
+    {
+      "change": "post-durable-pair inventory before first receipt serialization",
+      "count": 1
+    }
+  ],
+  "patchSha256": "acf1da597fcfc2978c40c4cd421d6b3b97294a5ca3a9661544494359176fe574"
+}

@@ -1,0 +1,41 @@
+--- a/AuxBrowserFreshRootAdmission.swift
++++ b/AuxBrowserFreshRootAdmission.swift
+@@ -98,6 +98,11 @@
+         }
+         guard fsync(fd)==0 else{throw AuxFreshColdGuardError.io(errno)}
+     }
++    // Both inventories are checked together while this Owner still withholds
++    // the first browser grant. Use only its retained authenticated root FDs.
++    private func validateStartupInventoriesLocked()throws {
++        for root in roots{try Self.inventory(root,allowed:[".","..",Self.marker])}
++    }
+     private func validateLocked()throws {
+         guard phase != .failed else{throw AuxFreshColdGuardError.path}
+         try policy.revalidateCurrentIdentity()
+@@ -105,6 +110,11 @@
+             try Self.metadata(roots[i],directory:true);try Self.pathIdentity(paths[i],roots[i])
+             try Self.metadata(markers[i],directory:false);try Self.entry(roots[i],Self.marker,markers[i])
+             guard try Self.readRecord(markers[i])==records[i] else{throw AuxFreshColdGuardError.path}
++        }
++        if phase == .prepared {
++            // An observed unexpected entry permanently refuses this startup
++            // Owner; removing the entry later cannot turn it into a grant.
++            do{try validateStartupInventoriesLocked()}catch{phase = .failed;throw error}
+         }
+     }
+     func revalidate()throws {
+@@ -125,7 +135,13 @@
+                 try Self.writeRecord(record,fd:markers[i]);admitted.append(record)
+             }
+             records=admitted;phase = .admitted
+-            do{try validateLocked()}catch{phase = .failed;throw error}
++            do {
++                try validateLocked()
++                // The first root may have changed while the other marker was
++                // written. Recheck the entire pair after both durable writes
++                // and before any receipt bytes can leave this Owner.
++                try validateStartupInventoriesLocked()
++            }catch{phase = .failed;throw error}
+         }
+         var g=generation.littleEndian
+         var bytes=withUnsafeBytes(of:&g){Data($0)}
