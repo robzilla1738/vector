@@ -1,0 +1,24 @@
+--- docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdBootstrapNativeBridge.swift
++++ docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift
+@@ -47,14 +47,19 @@
+         lock.lock()
+         guard let e=entries[id],!e.closed,e.active<UInt64.max else{lock.unlock();return -1}
+         e.active += 1;entry=e;lock.unlock()
+-        let fd=(try? entry.service.copySelectedHomeDescriptor()) ?? -1
++        let fd:Int32,status:Int32
++        do{fd=try entry.service.copySelectedHomeDescriptor();status=0}
++        catch NativeFreshRuntimeConsumerError.busy{fd = -1;status=1}
++        catch{fd = -1;status = -1}
+         lock.lock();let closed=entry.closed
+         if !closed && fd>=0{result.pointee=fd}
+         entry.active -= 1
+         if entry.references==0 && entry.active==0{entries.removeValue(forKey:id)}
+         lock.unlock()
+         if closed && fd>=0{Darwin.close(fd)}
+-        return !closed && fd>=0 ? 0:-1
++        // Genuine lease contention publishes no FD/admission. Only its typed
++        // busy error is retryable; all other errors/closed races stay refused.
++        return closed ? -1:(fd>=0 ? 0:status)
+     }
+     static func advance(_ id:UInt64,_ ready:UnsafeMutablePointer<UInt64>)->Int32 {
+         guard getpid()==process else{return -1}

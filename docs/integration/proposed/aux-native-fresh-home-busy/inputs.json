@@ -1,0 +1,8 @@
+{
+  "baseline": {
+    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxFreshColdBootstrapNativeBridge.swift": "54bbeca44a7f7b2b061f02631880e6e4274322499a5d41da913dabc05a7fd06e"
+  },
+  "successor": {
+    "docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift": "94ed2b16755063acc3801da0f1fdbd04172c0b15867d97e8b98675ae6abb6b60"
+  }
+}
