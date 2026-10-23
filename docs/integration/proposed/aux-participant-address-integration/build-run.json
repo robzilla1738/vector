@@ -1,0 +1,20 @@
+{
+  "format": "aux.participant-addresses.native-run.v1",
+  "recordedAt": "2026-10-23T02:29:35.944085+00:00",
+  "composition": "out/native-reuse-composition-aux-participant-addresses",
+  "compositionSha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107",
+  "sourceRecords": 808,
+  "assets": 23,
+  "applySession": 22046,
+  "applyExitCode": 0,
+  "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json",
+  "applyReceiptSha256": "d32a480884bbf85c638740b0db713c8a7558ed007293069e07bdbf04ed3b5cac",
+  "buildSession": 93645,
+  "buildState": "running",
+  "buildLog": "out/aux-participant-addresses-native-build.log",
+  "buildReceipt": "out/aux-participant-addresses-native-build.json",
+  "jobs": 2,
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "state2Authorized": false
+}

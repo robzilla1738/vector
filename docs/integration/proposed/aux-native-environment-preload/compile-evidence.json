@@ -1,0 +1,29 @@
+{
+  "format": "aux.native-preload.actual-compile.v1",
+  "recordedAt": "2026-10-23T02:29:35.944085+00:00",
+  "session": 98636,
+  "exitCode": 0,
+  "sourceSha256": "4864d389114736b0c3ac8d5439e5715f67af0b1a227deb7de46a5e9fe0580f2c",
+  "headerSha256": "8fc9494209576427fb37038a1862eacb42ed1c59c28cba1e5010483c5158ab62",
+  "object": "out/aux-native-environment-preload-compile/AuxNativeEnvironmentPreload.o",
+  "objectSha256": "c6025de994ff312cfca7bf6803de2268aedc0e0223a51a15b470638a1078aed1",
+  "inputPinsSha256": "ca2549a75aa624160ea5dbe4bd47808cd9f9933ac5b1bdad12233b4b6ff3518f",
+  "compiler": "xcrun clang++",
+  "flags": [
+    "-std=c++20",
+    "-arch",
+    "arm64",
+    "-mmacosx-version-min=13.0",
+    "-DNAPI_VERSION=8",
+    "-fPIC"
+  ],
+  "includes": [
+    "out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node",
+    "docs/integration/proposed/aux-development-worker-host/source"
+  ],
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "linked": false,
+  "runtimeExecuted": false,
+  "protectedOperations": 0,
+  "parentAdmissionImplemented": false
+}
