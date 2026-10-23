@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "baselineSha256": "b2c00363429d13414ae5a37c86a6664f02845d232ebe7d716c6f68103575362a",
+      "outputSha256": "0f595da0f28ffdaa74c10fd850743170592b6e519ea9718c63a086241431161b",
+      "source": "docs/integration/proposed/aux-native-peer-compiler-compatibility/source/AuxNativePeerTransport.cc"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "baselineSha256": "0ab5e23e8efd6a7720e7366941e5f3e609f8ea9bc39463b5b42a52e9588407d4",
+      "outputSha256": "9233fffc3f15fba4cad433f8b87153252b07fcd85de2df5b1c25c33d4a132f38",
+      "source": "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxOwnedNativePeerChild.cc"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "baselineSha256": "407f2cf2964bd960082b09be73514fcda573f5ee495e73340a535bdca9b3063f",
+      "outputSha256": "e97490b8b74f03ffc4e790fe74a06cd9c7b0c26a3bab1eb4d3f5a03cd062dc61",
+      "source": "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxSelectedStateHome.cc"
+    }
+  ],
+  "patchSha256": "588d6f686039ba9e09b0d040e1097a2eed00d81e49aae850be32bb5e1b815b8d",
+  "applied": false,
+  "compiled": false
+}

@@ -1,0 +1,17 @@
+{
+  "format": "aux.actual-compiler-source-composition.v1",
+  "manifestSha256": "543a34e8072486301ca32bc2f56b6a584f653779526c025f0ab7949d27c7dbb6",
+  "sources": 826,
+  "assets": 23,
+  "changedRecords": [
+    "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "chrome/browser/aux/AuxSelectedStateHome.cc"
+  ],
+  "remainingSourceRecordsUnchanged": 823,
+  "allAssetsUnchanged": true,
+  "applied": false,
+  "wholeBrowserCompiled": false,
+  "focusedCompilerEvidence": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/actual-parent-summary.json",
+  "linkedDaemonEvidence": "docs/integration/proposed/aux-native-peer-compiler-compatibility/evidence/actual-link-summary.json"
+}

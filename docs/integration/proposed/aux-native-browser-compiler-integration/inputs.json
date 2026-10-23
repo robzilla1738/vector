@@ -1,0 +1,12 @@
+{
+  "parent": "out/native-reuse-composition-aux-browser-pty-policy",
+  "parentManifestSha256": "03d42b6f3c2ddc183d41030db12b5615cb84c2d0e78bd64c2a0750ca052c5df5",
+  "workspaceInputs": {
+    "docs/integration/proposed/aux-native-peer-compiler-compatibility/source/AuxNativePeerTransport.cc": "0f595da0f28ffdaa74c10fd850743170592b6e519ea9718c63a086241431161b",
+    "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxOwnedNativePeerChild.cc": "9233fffc3f15fba4cad433f8b87153252b07fcd85de2df5b1c25c33d4a132f38",
+    "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxSelectedStateHome.cc": "e97490b8b74f03ffc4e790fe74a06cd9c7b0c26a3bab1eb4d3f5a03cd062dc61"
+  },
+  "changedSourceRecords": 3,
+  "uiAssetsChanged": 0,
+  "scope": "Actual source compiler fixes only; existing main graph linked separately, combined browser graph uncompiled"
+}

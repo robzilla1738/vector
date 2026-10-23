@@ -1,0 +1,76 @@
+diff --git a/chrome/browser/aux/AuxNativePeerTransport.cc b/chrome/browser/aux/AuxNativePeerTransport.cc
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -30,18 +30,26 @@
+ #include <vector>
+ 
+ namespace aux::peer {
++namespace {
++// Volatile stores are observable side effects and cannot be optimized into a
++// discarded ordinary memset. No libc optional-extension declaration required.
++void WipeOwnedBytes(std::span<uint8_t> bytes) {
++  volatile uint8_t* output = bytes.data();
++  for (size_t index = 0; index < bytes.size(); ++index) output[index] = 0;
++}
++}  // namespace
+ DaemonAuthorityReply::DaemonAuthorityReply() = default;
+ DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes)
+     : status(result), payload(std::move(bytes)) {}
+ DaemonAuthorityReply::~DaemonAuthorityReply() {
+-  if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++  WipeOwnedBytes(payload);
+ }
+ DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityReply&& other) noexcept
+     : status(other.status), payload(std::move(other.payload)),
+       publication_(std::move(other.publication_)) { other.status = DaemonAuthorityStatus::refused; }
+ DaemonAuthorityReply& DaemonAuthorityReply::operator=(DaemonAuthorityReply&& other) noexcept {
+   if (this != &other) {
+-    if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++    WipeOwnedBytes(payload);
+     status = other.status;
+     payload = std::move(other.payload);
+     publication_ = std::move(other.publication_);
+@@ -51,7 +59,7 @@
+ }
+ namespace {
+ void WipeBytes(std::span<uint8_t> bytes) {
+-  if (!bytes.empty()) memset_s(bytes.data(), bytes.size(), 0, bytes.size());
++  WipeOwnedBytes(bytes);
+ }
+ struct PayloadWiper {
+   explicit PayloadWiper(std::span<uint8_t> value);
+@@ -265,7 +273,7 @@
+     if (result != errSecSuccess || !code) return -1;
+     int32_t descriptor = -1;
+     const int32_t status = AuxCopyAuthenticatedFreshChildParentDescriptor(
+-        code, policy.data_->requirement, policy.data_->cd_hash.data(),
++        code, policy.data_->requirement.get(), policy.data_->cd_hash.data(),
+         static_cast<uint32_t>(policy.data_->cd_hash.size()), &descriptor);
+     CFRelease(code);
+     if (status != 0) { if (descriptor >= 0) close(descriptor); return -1; }
+diff --git a/chrome/browser/aux/AuxOwnedNativePeerChild.cc b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -298,7 +298,8 @@
+   auto reply = state_->transfer->GetAgentInboxV2MasterKey(timeout_ms);
+   auto after = InspectOwnedChild();
+   if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid) {
+-    if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++    volatile uint8_t* owned_bytes = reply.payload.data();
++    for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
+     return {DaemonAuthorityStatus::closed, {}};
+   }
+   return reply;
+diff --git a/chrome/browser/aux/AuxSelectedStateHome.cc b/chrome/browser/aux/AuxSelectedStateHome.cc
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -86,7 +86,8 @@
+ }
+ enum class AuthorityOperation { daemonSignature, publicKeys, inboxKeyV2 };
+ void ClearPayload(DaemonAuthorityReply& reply) {
+-  if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++  volatile uint8_t* owned_bytes = reply.payload.data();
++  for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
+   reply.payload.clear();
+ }
+ DaemonAuthorityReply CallAuthority(AuthorityOperation operation, std::span<const uint8_t> message) {
