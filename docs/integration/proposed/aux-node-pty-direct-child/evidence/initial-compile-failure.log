@@ -1,0 +1,7 @@
+Actual serialized session5951: terminal exit1, 2026-10-23.
+/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc:488:13: error: use of undeclared identifier 'openpty'
+  488 |   int ret = openpty(&master, &slave, nullptr, NULL, static_cast<winsize*>(&winp));
+      |             ^
+1 error generated.
+Cause: -I Node source src selected Node's util.h instead of the system util.h.
+The final recipe uses -idirafter for actual Node source API headers.

@@ -1,0 +1,264 @@
+--- a/src/unix/pty.cc
++++ b/src/unix/pty.cc
+@@ -25,6 +25,11 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <thread>
++#include <atomic>
++#include <condition_variable>
++#include <memory>
++#include <mutex>
++#include "direct-child-wait.h"
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -107,110 +112,111 @@
+ #endif
+ 
+ struct ExitEvent {
+-  int exit_code = 0, signal_code = 0;
++  int exit_code = 0, signal_code = 0, wait_error = 0;
+ };
+ 
+-void SetupExitCallback(Napi::Env env, Napi::Function cb, pid_t pid) {
+-  std::thread *th = new std::thread;
+-  // Don't use Napi::AsyncWorker which is limited by UV_THREADPOOL_SIZE.
+-  auto tsfn = Napi::ThreadSafeFunction::New(
+-      env,
+-      cb,                           // JavaScript function called asynchronously
+-      "SetupExitCallback_resource", // Name
+-      0,                            // Unlimited queue
+-      1,                            // Only one thread will use this initially
+-      [th](Napi::Env) {   // Finalizer used to clean threads up
+-        th->join();
+-        delete th;
++struct UnknownChild {
++  pid_t pid = 0;
++  int wait_error = 0;
++  UnknownChild* next = nullptr;
++};
++
++// A failed sole wait cannot be turned into exit, even if JS delivery is gone.
++// Retain the native creation identity until a separately designed recovery path.
++static std::atomic<UnknownChild*> unknown_children{nullptr};
++
++class PreparedExitCallback {
++ public:
++  PreparedExitCallback(Napi::Env env, Napi::Function cb)
++      : state_(std::make_shared<State>()) {
++    auto state = state_;
++    auto tsfn = Napi::ThreadSafeFunction::New(
++        env, cb, "SetupExitCallback_resource", 0, 1,
++        [state](Napi::Env) {
++          if (state->thread.joinable()) state->thread.join();
++        });
++    try {
++      state->thread = std::thread([state, tsfn]() mutable {
++        pid_t pid;
++        {
++          std::unique_lock<std::mutex> lock(state->mutex);
++          state->ready.wait(lock, [&] { return state->published; });
++          pid = state->pid;
++        }
++        if (pid > 0) {
++          state->unknown->pid = pid;
++          const auto result = WaitForDirectChild(pid);
++          state->event.wait_error = result.error;
++          if (result.error != 0) {
++            auto* unknown = state->unknown.release();
++            unknown->wait_error = result.error;
++            unknown->next = unknown_children.load();
++            while (!unknown_children.compare_exchange_weak(unknown->next, unknown)) {}
++          } else {
++            if (WIFEXITED(result.status))
++              state->event.exit_code = WEXITSTATUS(result.status);
++            if (WIFSIGNALED(result.status))
++              state->event.signal_code = WTERMSIG(result.status);
++          }
++          auto callback = [](Napi::Env env, Napi::Function cb, ExitEvent* event) {
++            if (env == nullptr) return;
++            if (event->wait_error != 0) {
++              // Do not call onexit: its consumer treats that as completed custody.
++              Napi::Error::New(env, "PTY child wait failed; child state is unknown")
++                  .ThrowAsJavaScriptException();
++              return;
++            }
++            cb.Call({Napi::Number::New(env, event->exit_code),
++                     Napi::Number::New(env, event->signal_code)});
++          };
++          const auto status = tsfn.BlockingCall(&state->event, callback);
++          if (status == napi_closing) return;
++          if (status != napi_ok)
++            Napi::Error::Fatal("SetupExitCallback", "Exit delivery failed");
++        }
++        if (tsfn.Release() != napi_ok)
++          Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
+       });
+-  *th = std::thread([tsfn = std::move(tsfn), pid] {
+-    auto callback = [](Napi::Env env, Napi::Function cb, ExitEvent *exit_event) {
+-      cb.Call({Napi::Number::New(env, exit_event->exit_code),
+-               Napi::Number::New(env, exit_event->signal_code)});
+-      delete exit_event;
+-    };
+-
+-    int ret;
+-    int stat_loc;
+-#if defined(__APPLE__)
+-    // Based on
+-    // https://source.chromium.org/chromium/chromium/src/+/main:base/process/kill_mac.cc;l=35-69?
+-    int kq = HANDLE_EINTR(kqueue());
+-    struct kevent change = {0};
+-    EV_SET(&change, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
+-    ret = HANDLE_EINTR(kevent(kq, &change, 1, NULL, 0, NULL));
+-    if (ret == -1) {
+-      if (errno == ESRCH) {
+-        // At this point, one of the following has occurred:
+-        // 1. The process has died but has not yet been reaped.
+-        // 2. The process has died and has already been reaped.
+-        // 3. The process is in the process of dying. It's no longer
+-        //    kqueueable, but it may not be waitable yet either. Mark calls
+-        //    this case the "zombie death race".
+-        ret = HANDLE_EINTR(waitpid(pid, &stat_loc, WNOHANG));
+-        if (ret == 0) {
+-          ret = kill(pid, SIGKILL);
+-          if (ret != -1) {
+-            HANDLE_EINTR(waitpid(pid, &stat_loc, 0));
+-          }
+-        }
+-      }
+-    } else {
+-      struct kevent event = {0};
+-      ret = HANDLE_EINTR(kevent(kq, NULL, 0, &event, 1, NULL));
+-      if (ret == 1) {
+-        if ((event.fflags & NOTE_EXIT) &&
+-            (event.ident == static_cast<uintptr_t>(pid))) {
+-          // The process is dead or dying. This won't block for long, if at
+-          // all.
+-          HANDLE_EINTR(waitpid(pid, &stat_loc, 0));
+-        }
+-      }
++    } catch (...) {
++      if (tsfn.Release() != napi_ok)
++        Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
++      throw;
+     }
+-#else
+-    while (true) {
+-      errno = 0;
+-      if ((ret = waitpid(pid, &stat_loc, 0)) != pid) {
+-        if (ret == -1 && errno == EINTR) {
+-          continue;
+-        }
+-        if (ret == -1 && errno == ECHILD) {
+-          // XXX node v0.8.x seems to have this problem.
+-          // waitpid is already handled elsewhere.
+-          ;
+-        } else {
+-          assert(false);
+-        }
+-      }
+-      break;
++  }
++
++  ~PreparedExitCallback() { Publish(0); }
++
++  void Publish(pid_t pid) noexcept {
++    {
++      std::lock_guard<std::mutex> lock(state_->mutex);
++      if (state_->published) return;
++      state_->pid = pid;
++      state_->published = true;
+     }
+-#endif
+-    ExitEvent *exit_event = new ExitEvent;
+-    if (WIFEXITED(stat_loc)) {
+-      exit_event->exit_code = WEXITSTATUS(stat_loc); // errno?
+-    }
+-    if (WIFSIGNALED(stat_loc)) {
+-      exit_event->signal_code = WTERMSIG(stat_loc);
+-    }
+-    auto status = tsfn.BlockingCall(exit_event, callback); // In main thread
+-    switch (status) {
+-      case napi_closing:
+-        break;
+-
+-      case napi_queue_full:
+-        Napi::Error::Fatal("SetupExitCallback", "Queue was full");
+-
+-      case napi_ok:
+-        if (tsfn.Release() != napi_ok) {
+-          Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
+-        }
+-        break;
+-
+-      default:
+-        Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.BlockingCall() failed");
+-    }
+-  });
+-}
++    state_->ready.notify_one();
++  }
++
++ private:
++  struct State {
++    std::mutex mutex;
++    std::condition_variable ready;
++    bool published = false;
++    pid_t pid = 0;
++    ExitEvent event;
++    std::unique_ptr<UnknownChild> unknown{new UnknownChild};
++    std::thread thread;
++  };
++  std::shared_ptr<State> state_;
++};
++
++class ScopedPtyMaster {
++ public:
++  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}
++  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }
++  void Release() { fd_ = -1; }
++ private:
++  int& fd_;
++};
+ 
+ /**
+  * Methods
+@@ -351,8 +357,10 @@
+   // helperPath
+   std::string helper_path = info[9].As<Napi::String>();
+ 
++  PreparedExitCallback exit_callback(napiEnv, info[10].As<Napi::Function>());
+   pid_t pid;
+-  int master;
++  int master = -1;
++  ScopedPtyMaster master_owner(master);
+ #if defined(__APPLE__)
+   int argc = argv_.Length();
+   int argl = argc + 4;
+@@ -372,6 +380,7 @@
+   if (err != 0) {
+     throw Napi::Error::New(napiEnv, "posix_spawnp failed.");
+   }
++  exit_callback.Publish(pid);
+   if (pty_nonblock(master) == -1) {
+     throw Napi::Error::New(napiEnv, "Could not set master fd to nonblocking.");
+   }
+@@ -442,6 +451,7 @@
+         _exit(1);
+       }
+     default:
++      exit_callback.Publish(pid);
+       if (pty_nonblock(master) == -1) {
+         throw Napi::Error::New(napiEnv, "Could not set master fd to nonblocking.");
+       }
+@@ -453,9 +463,7 @@
+   obj.Set("pid", Napi::Number::New(napiEnv, pid));
+   obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));
+ 
+-  // Set up process exit callback.
+-  Napi::Function cb = info[10].As<Napi::Function>();
+-  SetupExitCallback(napiEnv, cb, pid);
++  master_owner.Release();
+   return obj;
+ }
+ 
