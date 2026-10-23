@@ -1,0 +1,114 @@
+--- baseline/AuxNativePeerTransport.cc
++++ source/AuxNativePeerTransport.cc
+@@ -282,6 +282,8 @@
+   TransportSnapshot snapshot;
+   std::optional<int> child_pid_version;
+   std::shared_ptr<AuthenticatedSelectedHomeTransfer> pending_home;
++  // Retains the actual accepted identity even after its one-shot typed take.
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> accepted_home;
+   bool selected_home_taken = false;
+ };
+ ParentTransport::State::State(std::shared_ptr<const ExactCodePolicy> value)
+@@ -390,6 +392,7 @@
+     ++state_->snapshot.generation;
+   }
+   state_->pending_home.reset();
++  state_->accepted_home.reset();
+   state_->snapshot.selected_home_pending = false;
+   return state_->snapshot;
+ }
+@@ -417,6 +420,7 @@
+     ++state->snapshot.generation;
+   }
+   state->pending_home.reset();
++  state->accepted_home.reset();
+   state->snapshot.selected_home_pending = false;
+   // Receive right remains retained by every live call; close is not a claim
+   // that its Security validation/IPC thread has returned.
+@@ -431,7 +435,7 @@
+ ExchangeStatus ParentTransport::ServiceOne(uint32_t timeout_ms) {
+   auto state = state_;
+   if (getpid() != state->process) return ExchangeStatus::wrongProcess;
+-  if (!timeout_ms || timeout_ms > kMaximumTimeoutMs) return ExchangeStatus::refused;
++  if (!ValidTimeout(timeout_ms)) return ExchangeStatus::refused;
+   uint64_t generation;
+   {
+     std::lock_guard<std::mutex> lock(state->mutex);
+@@ -508,8 +512,17 @@
+   std::lock_guard<std::mutex> lock(state->mutex);
+   --state->snapshot.active_code_validations;
+   if (state->snapshot.closed || state->snapshot.generation != generation) return ExchangeStatus::closed;
+-  if (!valid || (state->child_pid_version && *state->child_pid_version != version) ||
+-      (selected_request && (state->pending_home || state->selected_home_taken))) {
++  // Retry ACK is bound to the originally accepted real directory identity.
++  // The new incoming FD was freshly audit/code/sealed-policy/path validated;
++  // neither a nonce nor a status can replace a pending or already-taken home.
++  const bool retry = selected_request && state->accepted_home;
++  const bool same_selection = !retry || (selected &&
++      state->accepted_home->state_->version == version &&
++      state->accepted_home->state_->generation == generation &&
++      SameDirectory(state->accepted_home->state_->home, selected->state_->home) &&
++      SameDirectory(state->accepted_home->state_->parent, selected->state_->parent));
++  if (!valid || !same_selection ||
++      (state->child_pid_version && *state->child_pid_version != version)) {
+     ++state->snapshot.rejected_peer_identities;
+     return ExchangeStatus::refused;
+   }
+@@ -535,7 +548,8 @@
+   reply_cleanup.Disarm();
+   state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
+   ++state->snapshot.authenticated_exchanges;
+-  if (selected_request) {
++  if (selected_request && !retry) {
++    state->accepted_home = selected;
+     state->pending_home = std::move(selected);
+     state->snapshot.selected_home_pending = true;
+   }
+@@ -544,7 +558,7 @@
+ ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
+     std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
+   ParentExchange observation;
+-  if (!endpoint.is_valid() || !policy || !timeout_ms || timeout_ms > kMaximumTimeoutMs) return observation;
++  if (!endpoint.is_valid() || !policy || !ValidTimeout(timeout_ms)) return observation;
+   const pid_t parent = getppid();
+   auto birth = ReadBirth(parent, 0);
+   if (!birth) return observation;
+@@ -624,6 +638,7 @@
+     NativeSendRight endpoint, std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
+   // No externally supplied status/evidence can reach this constructor. This
+   // observation is produced here by the actual kernel/live-code handshake.
++  if (!ValidTimeout(timeout_ms)) return {};
+   auto verified = AuthenticateActualNativeParent(endpoint, policy, timeout_ms);
+   if (verified.status != ExchangeStatus::authenticated) return {};
+   auto birth = ReadBirth(verified.peer_pid, 0);
+@@ -648,6 +663,7 @@
+   return state->snapshot;
+ }
+ ExchangeStatus AuthenticatedNativeParentConnection::Revalidate(uint32_t timeout_ms) {
++  if (!ValidTimeout(timeout_ms)) return ExchangeStatus::refused;
+   auto state = state_;
+   if (getpid() != state->process) return ExchangeStatus::wrongProcess;
+   // NativeSendRight is non-default-constructible; its temporary is acquired
+@@ -691,7 +707,7 @@
+   ParentExchange observation;
+   auto state = state_;
+   if (getpid() != state->process) { observation.status = ExchangeStatus::wrongProcess; return observation; }
+-  if (!ready_service || !timeout_ms || timeout_ms > kMaximumTimeoutMs) return observation;
++  if (!ready_service || !ValidTimeout(timeout_ms)) return observation;
+   const auto current = Revalidate(timeout_ms);
+   if (current != ExchangeStatus::authenticated) { observation.status = current; return observation; }
+   std::optional<NativeSendRight> endpoint;
+--- baseline/AuxNativePeerWire.h
++++ source/AuxNativePeerWire.h
+@@ -7,7 +7,10 @@
+ constexpr mach_msg_id_t kRequest = 0x41555851;  // AUXQ
+ constexpr mach_msg_id_t kReply = 0x41555852;    // AUXR
+ constexpr uint32_t kVersion = 1;
+-constexpr uint32_t kMaximumTimeoutMs = 250;
++constexpr uint32_t kMaximumTimeoutMs = 2'000;
++inline constexpr bool ValidTimeout(uint32_t timeout_ms) {
++  return timeout_ms > 0 && timeout_ms <= kMaximumTimeoutMs;
++}
+ struct Wire {
+   mach_msg_header_t header{};
+   uint32_t version = kVersion;

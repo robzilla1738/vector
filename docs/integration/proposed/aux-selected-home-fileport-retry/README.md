@@ -1,0 +1,11 @@
+# Selected-home lost-ACK and timeout successor
+
+New inactive same-logical source successor of681295f29. Original nine fileport sources, old handoff sources, frozen42 graph and all prior evidence remain unchanged. Select these nine files instead of the original fileport source directory.
+
+The actual existing cold guard and sealed parent producer both call with2000ms. The original transport bound250ms therefore refused them before Mach. This successor's single `ValidTimeout` predicate accepts1..2000ms and is consulted by all five transport entrypoints (service, authenticate, connect, revalidate, selected-home send). The compile-only pure wire fixture statically asserts0/250/2000/2001 against the actual header predicate. Actual caller files/hashes/constants are pinned separately; no arbitrary timeout acceptance or native runtime claim is made.
+
+A successful original selection retains its actual private transfer as `accepted_home`, even after one-shot typed take. A retry must freshly pass kernel audit/PIDversion/birth/livecode/sealedpolicy/privatephysicalFD checks, then match the retained original generation and actual home+parent dev/inode. Only that exact identity gets an idempotent ACK. It never replaces/reconstructs the pending/taken selection, never publishes a second owner, and cannot obtain acceptance from a nonce/status. Closing clears the retained transfer and prevents retries. A retry for another home or replaced inode refuses.
+
+Static hash/source/caller inventory verification passed. No compiler, fixture, Mach, Security, daemon or app execution has occurred for this successor. After root review, `clang++ -std=c++20 -fsyntax-only -I <this proposal>/source <this proposal>/tests/wire-contract.cc` supplies only the narrow pure predicate check; actual source composition compilation and authorized protocol/lifetime execution remain separate unfinished work. No queue is started here.
+
+Parent startup still must retain/monitor actual remote provider readiness/lifetime. The typed FD authenticates physical selection at export time; it is not current remote provider status, whole-profile writer custody or a new admission grant. No existing startup refusal is changed.
