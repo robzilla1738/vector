@@ -1,0 +1,221 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -7,6 +7,25 @@
+ #include <string_view>
+ 
+ namespace aux::peer {
++// Factual native lifecycle observation. Even the final phase is not a whole-
++// browser drain certificate and cannot authorize recovery or release a lease.
++struct BrowserShutdownObservation {
++  bool wrong_process = false;
++  bool admission_closed = false;
++  bool sequence_uncertain = false;
++  uint32_t phase = 0;
++  uint64_t admitted_generation = 0;
++  uint64_t active_authority_reads = 0;
++  bool monitor_running = false;
++  bool whole_writer_drain_proven = false;
++};
++void BeginNativeBrowserShutdown();
++void ObserveNativeBrowserProfileTeardown();
++void ObserveNativeBrowserThreadsDestroyed();
++void ObserveNativeBrowserProcessDestroyed();
++void ObserveNativeBrowserPostShutdownIO();
++void ObserveNativeBrowserPartsDestroyed();
++BrowserShutdownObservation InspectNativeBrowserShutdown();
+ // Fresh-only native retained grant; old policy, existing roots and unknown refuse.
+ bool AuthorizeNativeBrowserStartupBeforeLocalState();
+ enum class SelectedStateHomeRoute { unselected, current, unavailable, closed, wrongProcess };
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -32,6 +32,9 @@
+   std::shared_ptr<const BrowserPrivateRoots> admitted_browser_roots;
+   uint64_t browser_generation = 0;
+   bool browser_attempted = false;
++  uint32_t browser_shutdown_phase = 0;
++  bool browser_shutdown_uncertain = false;
++  std::optional<base::PlatformThreadRef> browser_shutdown_thread;
+   std::optional<NativeChildObservation> child_close;
+   std::unique_ptr<base::Thread> monitor;
+   std::optional<base::PlatformThreadRef> monitor_creator;
+@@ -107,7 +110,7 @@
+   std::shared_ptr<SelectedNativeHome> owner;
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if (state.closed) return {DaemonAuthorityStatus::closed, {}};
++    if ((state.closed || state.browser_shutdown_phase != 0)) return {DaemonAuthorityStatus::closed, {}};
+     if (!state.selected_route || state.initializing || !state.selected)
+       return {DaemonAuthorityStatus::refused, {}};
+     owner = state.selected;
+@@ -145,7 +148,7 @@
+   auto after = owner->InspectReadyPulse();
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if (state.closed || state.selected != owner) {
++    if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) {
+       ClearPayload(reply);
+       return {DaemonAuthorityStatus::closed, {}};
+     }
+@@ -178,7 +181,7 @@
+   auto owner = std::shared_ptr<SelectedNativeHome>(std::move(selected));
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if (state.closed || state.selected_route) return false;
++    if ((state.closed || state.browser_shutdown_phase != 0) || state.selected_route) return false;
+     state.selected_route = true;
+     state.initializing = true;
+     state.selected = owner;
+@@ -199,7 +202,7 @@
+       state.monitor_creator = base::PlatformThread::CurrentRef();
+       state.monitor = std::move(monitor);
+     }
+-    installed = queued && !state.closed;
++    installed = queued && !(state.closed || state.browser_shutdown_phase != 0);
+     if (!installed) state.closed = true;
+   }
+   if (!installed) {
+@@ -215,7 +218,7 @@
+   std::shared_ptr<SelectedNativeHome> owner;
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if (state.closed) return {SelectedStateHomeRoute::closed, {}};
++    if ((state.closed || state.browser_shutdown_phase != 0)) return {SelectedStateHomeRoute::closed, {}};
+     if (!state.selected_route) return {SelectedStateHomeRoute::unselected, {}};
+     if (state.initializing || !state.selected) return {SelectedStateHomeRoute::unavailable, {}};
+     owner = state.selected;
+@@ -236,7 +239,7 @@
+   if (child.closed || child.wrong_process || child.exit_observed_and_reaped ||
+       child.exit_ownership_unknown || child.child_pid <= 1) return {SelectedStateHomeRoute::unavailable, {}};
+   std::lock_guard<std::mutex> lock(state.mutex);
+-  if (state.closed) return {SelectedStateHomeRoute::closed, {}};
++  if ((state.closed || state.browser_shutdown_phase != 0)) return {SelectedStateHomeRoute::closed, {}};
+   if (state.selected != owner || !current || current->generation != pulse->generation ||
+       current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
+   return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
+@@ -251,7 +254,7 @@
+   uint64_t admitted_generation = 0;
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if (state.closed || state.initializing || !state.selected) return false;
++    if ((state.closed || state.browser_shutdown_phase != 0) || state.initializing || !state.selected) return false;
+     owner = state.selected;
+     admitted_generation = state.browser_generation;
+     if (!admitted_generation) {
+@@ -278,7 +281,7 @@
+     if (!current || !Fresh(*current) || current->generation != generation || !roots->Revalidate()) return false;
+     {
+       std::lock_guard<std::mutex> lock(state.mutex);
+-      if (state.closed || state.selected != owner) return false;
++      if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return false;
+     }
+     if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return false;
+     admitted_generation = generation;
+@@ -288,11 +291,44 @@
+   if (child.closed || child.wrong_process || child.exit_observed_and_reaped || child.exit_ownership_unknown ||
+       !after || !Fresh(*after) || after->generation != admitted_generation || !roots->Revalidate()) return false;
+   std::lock_guard<std::mutex> lock(state.mutex);
+-  if (state.closed || state.selected != owner ||
++  if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner ||
+       (state.admitted_browser_roots && state.admitted_browser_roots != roots)) return false;
+   state.admitted_browser_roots = std::move(roots);
+   state.browser_generation = admitted_generation;
+   return true;
++}
++namespace {
++void AdvanceNativeBrowserShutdown(uint32_t expected) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return;
++  std::lock_guard<std::mutex> lock(state.mutex);
++  const auto thread = base::PlatformThread::CurrentRef();
++  if (expected == 1 && !state.browser_shutdown_thread)
++    state.browser_shutdown_thread = thread;
++  if (!state.browser_shutdown_thread || *state.browser_shutdown_thread != thread ||
++      expected != state.browser_shutdown_phase + 1) {
++    state.browser_shutdown_uncertain = true;
++    // Even an out-of-order first observation closes future admissions.
++    if (!state.browser_shutdown_phase) state.browser_shutdown_phase = 1;
++    return;
++  }
++  state.browser_shutdown_phase = expected;
++}
++}
++void BeginNativeBrowserShutdown() { AdvanceNativeBrowserShutdown(1); }
++void ObserveNativeBrowserProfileTeardown() { AdvanceNativeBrowserShutdown(2); }
++void ObserveNativeBrowserThreadsDestroyed() { AdvanceNativeBrowserShutdown(3); }
++void ObserveNativeBrowserProcessDestroyed() { AdvanceNativeBrowserShutdown(4); }
++void ObserveNativeBrowserPostShutdownIO() { AdvanceNativeBrowserShutdown(5); }
++void ObserveNativeBrowserPartsDestroyed() { AdvanceNativeBrowserShutdown(6); }
++BrowserShutdownObservation InspectNativeBrowserShutdown() {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {.wrong_process = true};
++  std::lock_guard<std::mutex> lock(state.mutex);
++  return {false, state.browser_shutdown_phase != 0,
++          state.browser_shutdown_uncertain, state.browser_shutdown_phase,
++          state.browser_generation, state.active_reads, state.monitor_running,
++          false}; // Later content/service/file writers are not proven drained.
+ }
+ SelectedStateHomeObservation CloseNativeSelectedStateHome() {
+   auto& state = CurrentState();
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -901,6 +901,10 @@
+   // browser_shutdown::ShutdownPostThreadsStop() I/O. The remaining
+   // content-layer exit path is short and not worth a false-positive kill.
+   shutdown_watchdog::OnShutdownComplete();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::ObserveNativeBrowserPartsDestroyed();
++#endif
++
+ #endif
+ }
+ 
+@@ -2272,6 +2276,10 @@
+ }
+ 
+ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::BeginNativeBrowserShutdown();
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   // Keep networking and the UI task runner alive until owned daemon shutdown.
+   extensions::ShutdownAuxMiniPopup();
+@@ -2326,6 +2334,10 @@
+ 
+   restart_mode_ = browser_shutdown::ShutdownPreThreadsStop();
+   browser_process_->StartTearDown();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::ObserveNativeBrowserProfileTeardown();
++#endif
++
+ 
+   publisher_host_factory_resetter_.reset();
+ #endif  // BUILDFLAG(IS_ANDROID)
+@@ -2338,6 +2350,10 @@
+ }
+ 
+ void ChromeBrowserMainParts::PostDestroyThreads() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::ObserveNativeBrowserThreadsDestroyed();
++#endif
++
+ #if BUILDFLAG(IS_ANDROID)
+   // On Android, there is no quit/exit. So the browser's main message loop will
+   // not finish.
+@@ -2396,8 +2412,16 @@
+ 
+   // From this point, the BrowserProcess class is no longer alive.
+   browser_process_.reset();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::ObserveNativeBrowserProcessDestroyed();
++#endif
++
+ 
+   browser_shutdown::ShutdownPostThreadsStop(restart_mode);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  aux::peer::ObserveNativeBrowserPostShutdownIO();
++#endif
++
+ 
+ #if !BUILDFLAG(IS_CHROMEOS)
+   master_prefs_.reset();

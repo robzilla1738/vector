@@ -1,0 +1,14 @@
+{
+  "AuxSelectedStateHome.h": {
+    "before": "8dc1feeb36eb8846704b4df576e069db3e83164fbd98037934e0e9141c506463",
+    "after": "7a5cacaa8ec45bd8faef778d260ceecdb25d620751d80963593afe2ea8d39195"
+  },
+  "AuxSelectedStateHome.cc": {
+    "before": "9883558d84357d3ecc730fa622e0d24bdb495346eef32cdd7e053956f38358be",
+    "after": "925d20ff60cd1e7cd8fccae71559b5785d042cb4a67f5802ab17eba9cba96915"
+  },
+  "chrome/browser/chrome_browser_main.cc": {
+    "before": "5a3c3b49207eedd03aeeff1efac203f6a48e3dfe357ab7cc7b471ee73e27a27d",
+    "after": "6407d666a21e93b1bd43774045447bc369e86fa3491977b0ab4cd0a7920a2ca0"
+  }
+}
