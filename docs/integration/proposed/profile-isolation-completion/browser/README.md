@@ -57,3 +57,18 @@ this frozen source-only projection, not a generic graph cache.
 
 Current output: `/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-custody-build/`.
 Runtime execution and a successful app build remain unproven until the final receipt.
+
+## Existing host-tool reuse
+
+The first full graph compiled 106 actions and stopped when macOS killed a newly
+unsigned Rust host build-script executable. Its failed receipt is retained.
+`reuse-host-tools.py` checks the two original host build tools against exact crate
+source, linked prebuilt Rust libraries, response files, and generated flags (only
+the no-ad-hoc-link flag differs), preserves the failed unsigned bytes, and copies
+the existing signed build-tool bytes with explicit provenance. These are static
+build tools, not product objects, and no new signing is performed.
+
+Continuation output: `unsigned-existing-host-build` under the isolated snapshot.
+`--resume-reviewed` is used only for the same unchanged graph; full command review
+is still scanned and recorded, while redundant command generation is avoided.
+A new graph or source configuration requires a new inventory.
