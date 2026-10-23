@@ -1,0 +1,13 @@
+{
+  "format": "aux.native-fresh-target.context-source.v1",
+  "parent": {
+    "path": "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/AuxNativeFreshStageCoordinator.swift",
+    "sha256": "d420e239dc6c291f14cbb597017e0680a61313b0b5169d226ec3cb7278b9d8a3"
+  },
+  "source": {
+    "path": "source/AuxNativeFreshStageCoordinator.swift",
+    "sha256": "137067c11f19a201d4491e72578219ff7a8237dbc6b83d317356f02d9635e863"
+  },
+  "productionExecuted": false,
+  "authorityClaimed": false
+}
