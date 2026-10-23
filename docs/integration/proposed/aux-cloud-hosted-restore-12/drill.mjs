@@ -21,7 +21,7 @@ const user = randomUUID(), deletedUser = randomUUID(), session = randomUUID(), a
 const share = 'restore-' + randomUUID(), email = user + '@example.invalid';
 const rateKey = 'restore-' + user, device = 'restore-' + randomUUID();
 const pathname = `aux/${user}/${attachment}/content`, avatar = `avatars/${user}/${randomUUID()}`;
-const payloads = new Map([[pathname, randomBytes(65536)], [avatar, Buffer.from('synthetic hosted private avatar')]]);
+const payloads = new Map([[pathname, randomBytes(65536)], [avatar, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII=', 'base64')]]);
 const csk = randomBytes(32);
 async function privateEnv(path) {
   const info = await lstat(path);
