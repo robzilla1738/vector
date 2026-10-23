@@ -22,3 +22,5 @@ outside this fixture. Live retained-owner replacement is explicitly refused.
 
 Run once through `scripts/native-build.py sh .../check.sh`; never run the actual
 signed loader merely to test this fixture. No production source fork is added.
+
+Actual serialized session42833 exited0:23 focused filesystem checks passed against the frozen nine inputs. `evidence.json` pins that result; no authenticated policy, Security or authority generation executed.

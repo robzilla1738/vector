@@ -1,0 +1,15 @@
+{
+  "format": "aux.native-fresh-resume.filesystem.evidence.v1",
+  "session": 42833,
+  "exitCode": 0,
+  "sourceCommit": "9f2bbe910",
+  "inputManifestSha256": "9cd1046cc14ede35b72b6fef5b9a73219b7eb5603a7ded89200d79fe72073d0d",
+  "result": "PASS:23 actual resumed-owner disposable filesystem checks; captured policy is not authenticated; no Security or generation",
+  "checks": 23,
+  "authenticatedPolicyExecuted": false,
+  "securityExecuted": false,
+  "authorityGenerated": false,
+  "wholeProductionGraphRepeated": false,
+  "checkScript": "docs/integration/proposed/aux-native-fresh-resume-filesystem/check.sh",
+  "serializedWith": "scripts/native-build.py /tmp/aux-build.lock"
+}
