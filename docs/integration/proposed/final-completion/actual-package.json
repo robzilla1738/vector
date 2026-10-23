@@ -1,0 +1,44 @@
+{
+  "format": "aux.final-local.actual-package.v1",
+  "passed": true,
+  "candidate": "out/provided-candidate-final-local-completion-20261023/Aux.app",
+  "suppliedResources": 10767,
+  "nativeLeaves": 418,
+  "packageSha256": "ce4b8eaba25b6b3e66f91a6bd4ce2051a686a0f3b950aac320196494c54ff15e",
+  "bundleManifestSha256": "1b8dcc83d7398d526c4b68df2e8b473299cab2c0bbed45a3426a23f80eacb302",
+  "criticalCopiedLeaves": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "3e48f01554e35228945604fdeafcb1aaccee248151b2337f3596cfe0d1b75e2e"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "sha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "f9d4703a219c0430fd4652d18ab40b02b1f4d1a806bbc0d8af8a2d2cc3136d6d"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-chatgpt.cjs",
+      "sha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede"
+    }
+  ],
+  "agentStylesheetsVerified": [
+    "assets/session-composer-BoATOu3F.css",
+    "assets/styles-CEC_MU8r.css",
+    "assets/liquid-glass-BmSyeXQT.css",
+    "assets/globals-B-8L9em-.css",
+    "assets/minipopup-options-CxOtM5A8.css"
+  ],
+  "signed": false,
+  "appExecuted": false,
+  "actualUiCompared": false,
+  "acceptedPreviewChanged": false,
+  "nativeCustodyProven": false,
+  "runtimeReady": false
+}

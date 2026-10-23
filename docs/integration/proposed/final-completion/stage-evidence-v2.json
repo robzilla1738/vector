@@ -1,0 +1,24 @@
+{
+  "format": "aux.final-local-stage-evidence.v1",
+  "stage": "out/provided-final-local-completion-20261023-v2",
+  "passed": true,
+  "preservationCheckExitCode": 0,
+  "unchangedUiFiles": 1113,
+  "explicitUiChanges": 148,
+  "preservedStylesheets": 7,
+  "appResourceRecords": 176,
+  "runtimeFiles": 9346,
+  "memoryFiles": 19,
+  "helperFiles": 11,
+  "binaryPatchRanges": 44,
+  "nativeIntegrationAccepted": false,
+  "runtimeAccepted": false,
+  "signed": false,
+  "manifests": {
+    "manifest.json": "eca5b1aedff8785cf0dfa17c280795d0978915fc90fc8516bab8f91343a3e1d7",
+    "ui/manifest.json": "191f3da1e882c9e104cc71ee96f6038fe68c65925aea2a30588280a8d4d4d8d7",
+    "apps/manifest.json": "843e51bb38153645791fb9e23303c047f07f4d7499426b6bb8ea1ec87e733d5b"
+  },
+  "supersedes": "stage-evidence.json",
+  "reason": "Active command parser offset correction"
+}

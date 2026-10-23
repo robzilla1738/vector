@@ -2,7 +2,11 @@
 
 Drafted 2026-10-23 for parallel execution. This is the canonical remaining-work plan. It preserves the original outcome IDs and replaces scheduling/current-state claims in the [archived previous graph](archive/execution-graph-2026-10-23-before-final-completion-plan.md). Historical receipts remain unchanged.
 
-This planning request does not start implementation, builds, signing, provisioning, deployment or release. Read [STATUS](STATUS.md), the [supplied contract](design/aside-contract.md), [reuse plan](plans/2026-10-19-supplied-implementation-reuse.md) and [provider-funded scope](plans/2026-10-23-provider-funded-launch.md).
+Execution was subsequently authorized by the owner on 2026-10-23. Local implementation and unsigned builds are in progress; signing, provisioning, deployment and release remain separate. See `docs/integration/proposed/final-completion/` for current evidence. The original planning baseline below remains historical. Read [STATUS](STATUS.md), the [supplied contract](design/aside-contract.md), [reuse plan](plans/2026-10-19-supplied-implementation-reuse.md) and [provider-funded scope](plans/2026-10-23-provider-funded-launch.md).
+
+## Execution checkpoint — local batch built
+
+The substantial parallel batch is integrated and built as an unsigned inactive review candidate. Exact result and remaining implementation/acceptance are recorded in [the execution ledger](integration/proposed/final-completion/execution.md) and [package evidence](integration/proposed/final-completion/actual-package.json). This does not close NATIVE/AUTH/COLD/JOURNEY/READY: full private-state writer isolation and protected startup remain incomplete. Signing/release remain separate. Accepted preview/UI are preserved.
 
 ## 1. Desired result and boundaries
 
