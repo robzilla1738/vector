@@ -1,0 +1,27 @@
+{
+  "format": "aux.native.adopted-wipe-successor.inputs.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxOwnedNativePeerChild.cc": "9233fffc3f15fba4cad433f8b87153252b07fcd85de2df5b1c25c33d4a132f38",
+    "docs/integration/proposed/aux-native-adopted-wipe-successor/source/AuxSelectedStateHome.cc": "e97490b8b74f03ffc4e790fe74a06cd9c7b0c26a3bab1eb4d3f5a03cd062dc61",
+    "docs/integration/proposed/aux-native-adopted-wipe-successor/resume.py": "0ff911d1addf653987737a96ff31ce4f9d68a8e13560ae0cee7689a70eebe84c"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc": "0ab5e23e8efd6a7720e7366941e5f3e609f8ea9bc39463b5b42a52e9588407d4",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc": "407f2cf2964bd960082b09be73514fcda573f5ee495e73340a535bdca9b3063f"
+  },
+  "parentCompileInputs": {
+    "path": "docs/integration/proposed/aux-native-parent-compiler-successor/compile-inputs.json",
+    "sha256": "ee0264600ab707e45e0be34c99b3b0a7215a635b2344ca0a787e1b4584d0bef1"
+  },
+  "priorOutput": "/tmp/aux-native-parent-compiler-successor-20261023",
+  "priorReceiptSha256": "11f28c4920abac5c91b1d33bd3da50c5bfb798c392c48706d7c10a5fc8a384cf",
+  "passedObject": {
+    "name": "chromium-AuxNativePeerTransport.cc.o",
+    "sha256": "c1be1043b1f6b3e8665378c24339058c6cf814a12df48289e6108178fef98495"
+  },
+  "oldOverlay": {
+    "include/chrome/browser/aux/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "include/chrome/browser/aux/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de"
+  },
+  "compiled": false
+}

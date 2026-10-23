@@ -1,0 +1,24 @@
+--- adopted/AuxOwnedNativePeerChild.cc
++++ wipe-successor/AuxOwnedNativePeerChild.cc
+@@ -298,7 +298,8 @@
+   auto reply = state_->transfer->GetAgentInboxV2MasterKey(timeout_ms);
+   auto after = InspectOwnedChild();
+   if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid) {
+-    if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++    volatile uint8_t* owned_bytes = reply.payload.data();
++    for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
+     return {DaemonAuthorityStatus::closed, {}};
+   }
+   return reply;
+--- adopted/AuxSelectedStateHome.cc
++++ wipe-successor/AuxSelectedStateHome.cc
+@@ -86,7 +86,8 @@
+ }
+ enum class AuthorityOperation { daemonSignature, publicKeys, inboxKeyV2 };
+ void ClearPayload(DaemonAuthorityReply& reply) {
+-  if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++  volatile uint8_t* owned_bytes = reply.payload.data();
++  for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
+   reply.payload.clear();
+ }
+ DaemonAuthorityReply CallAuthority(AuthorityOperation operation, std::span<const uint8_t> message) {
