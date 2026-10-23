@@ -38,4 +38,12 @@ for forbidden in ['CallerAsserted','newScopeReviewId','legacyObservedAbsentRoles
  assert forbidden not in s+journal+context,forbidden
 store=(HERE/'source/PrivateNativeFreshTargetJournalStore.swift').read_text()
 assert 'F_DUPFD_CLOEXEC' in store and store.index('try Self.requireRootIdentity(canonicalDisposableRoot,fd:rootFD)')<store.index('if mkdirat(')
+old=(ROOT/'docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/AuxNativeFreshStageCoordinator.swift').read_text()
+new=(HERE/'source/AuxNativeFreshStageCoordinator.swift').read_text()
+submit=lambda s:s.split('    func submitStageOnce()throws->NativeFreshStageSubmitOutcome {',1)[1].split('    // Matching observation after a lost/uncertain',1)[0]
+assert submit(old)==submit(new)
+observe=lambda s:s.split('    func observeStageWithoutReplay()throws->NativeFreshStageSubmitOutcome {',1)[1]
+old_return='            return .staged(.init(journal:record,sha256:checkpoint.sha256,payload:bytes))'
+new_return='#if AUX_NATIVE_FRESH_STAGE_FIXTURE\n            return .staged(.init(journal:record,sha256:checkpoint.sha256))\n#else\n            return .staged(.init(journal:record,sha256:checkpoint.sha256,capture:capture))\n#endif'
+assert observe(old).replace(old_return,new_return)==observe(new)
 print('PASS:current nativev2 source/FD pins, draft-only durable ticket, currentHEAD one-shot, loadedintent observationonly, typed actual-core terminal')
