@@ -17,3 +17,5 @@ The original seed implementation still enforces private home ownership/mode, ori
 ## Focused verification
 
 `check.mjs` executes the actual successor bootstrap with real temporary bundle metadata, actual pinned runtime inventory and a controlled seed writing only into disposable task storage. It verifies wrong/control-root refusal, ignoring environment authority, active owner-generation mismatch, retaining pending custody, valid pinned historical metadata and rejection of changed metadata before seeding. Native binding and seed body are controlled adapters, explicitly recorded; no real runtime executable, model, network, owner home or application was run. `node --check` passed.
+
+A further bounded read-only check executes the actual seed implementation’s originalBytes transformation on all nine actual staged runtime text leaves. The new metadata reverses each leaf to its exact original size/hash. Evidence: staged-text-evidence.json. No runtime copy, executable, native binding or owner data is involved; this verifies the retained stage anchor, not full seeding acceptance.

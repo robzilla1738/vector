@@ -1,0 +1,67 @@
+{
+  "format": "aux.runtime-staged-text-compatibility.v1",
+  "passed": true,
+  "metadataSha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+  "sourcePinsSha256": "7fa5c41acab7c3e9c052bf44b9daa4c0892e717f70718ca9f6a65b030e13bba8",
+  "seedImplementationSha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af",
+  "checked": [
+    {
+      "path": "python/venv/bin/activate",
+      "stagedSha256": "23eb1d45df2a2489d4729d6adb65ba15122e80eaf59f5a31d7215cc588598016",
+      "originalSha256": "e12ed30d6ebc3303d2cc7d637311988bb701fc8e4763c7db921e8b691afa5074",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/activate.csh",
+      "stagedSha256": "61a0941331874d1577d50d95805a77eed3fcb5224c1e88835f85c93188eda775",
+      "originalSha256": "f7f99697034fe48266d5f5ae3b4aecc313f8a25311e69191ac9bf4b74e40e2df",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/activate.fish",
+      "stagedSha256": "3732c45e7c7ffe32307b6ce1acefce4ba987df0a59ab4d8c9610f80dfa3767cd",
+      "originalSha256": "e1ff1064708f76dd98b1a5daf73deb57f92bf7ab2cf1db5a58b0d5d0f3e26bce",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/pip",
+      "stagedSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "originalSha256": "ac9c6fc7948e76ad43b896f8413f5f17163c452649e2e8a3e2c26a47c49086ac",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/pip3",
+      "stagedSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "originalSha256": "ac9c6fc7948e76ad43b896f8413f5f17163c452649e2e8a3e2c26a47c49086ac",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/pip3.13",
+      "stagedSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "originalSha256": "ac9c6fc7948e76ad43b896f8413f5f17163c452649e2e8a3e2c26a47c49086ac",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/bin/vba_extract.py",
+      "stagedSha256": "702f03a489798dca946e486fe6e125ad8eb8701c6d34bab79e4a5e0c667f2370",
+      "originalSha256": "5cf5c20da3ebf16e2f71753a55e5fd99a1b3dcb3d808ebec186c470b1ac3136e",
+      "anchors": 1
+    },
+    {
+      "path": "python/venv/pyvenv.cfg",
+      "stagedSha256": "882aa20f37fb1d1f9a8baa7d8e79565616c3c8a3cd0c6d765c467772bd8294cc",
+      "originalSha256": "5cb89fd8fa1682c61b86bc71f92053725bc8503e26386fc714ffa7bb3e770b45",
+      "anchors": 1
+    },
+    {
+      "path": "env.sh",
+      "stagedSha256": "4622cdda36d2b597727c1d603e735a88828640eff3b3f4c5dd72b1e71054e0ff",
+      "originalSha256": "b855fe75e602eb3ddc1b1c3dd1005931e1b95561206412624d4d0ed71a60e4f4",
+      "anchors": 1
+    }
+  ],
+  "staticRuntimeExecutablesRun": false,
+  "ownerStateAccessed": false,
+  "resourcesChanged": false,
+  "fullSeedingProven": false
+}
