@@ -1,0 +1,16 @@
+{
+  "format": "aux.retained-browser-authority-cache-cleanup.v1",
+  "baseline": "8b421dd4d",
+  "replacements": [
+    {
+      "before": "docs/integration/proposed/profile-isolation-completion/restart/source/AuxPreparedDaemonAuthority.swift",
+      "beforeSha256": "19b2b7e5653b2e0e1f44ca2110b0830eddc6976049f2de371459aa6788e7df6b",
+      "after": "docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "afterSha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0"
+    }
+  ],
+  "admittedRestartImplemented": false,
+  "wholeBrowserDrainProven": false,
+  "runtimeExecuted": false,
+  "uiChanged": false
+}

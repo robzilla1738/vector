@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "stdout": "PASS: grant cancellation, in-flight cancellation suppresses publication, failed attempt retains owner, unused close preserved, closed and late-result caches wiped; synthetic owner callbacks\n",
+  "stderr": "",
+  "sourceSha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+  "syntheticNativeOwner": true,
+  "protectedIO": false
+}
