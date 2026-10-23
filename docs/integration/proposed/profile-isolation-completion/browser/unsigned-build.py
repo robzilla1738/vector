@@ -3,7 +3,7 @@
 import argparse,pathlib,hashlib,json,subprocess,time,re,os,stat,struct
 H=pathlib.Path(__file__).resolve().parent;N=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');p.add_argument('--jobs',type=int,default=4);p.add_argument('--receipt-name',default='');p.add_argument('--resume-reviewed',default='');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/(a.receipt_name or ('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build'))
+p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');p.add_argument('--require-input-pins',action='store_true');p.add_argument('--jobs',type=int,default=4);p.add_argument('--receipt-name',default='');p.add_argument('--resume-reviewed',default='');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/(a.receipt_name or ('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build'))
 if R.parent!=O or not R.name.startswith('unsigned-'):raise SystemExit('receipt name must be a direct unsigned- child')
 prior=json.loads((O/'build-preparation.json').read_text())
 if not prior['passed']:raise SystemExit('initial preparation must pass')
@@ -16,11 +16,17 @@ if cfg.read_text()!=unsigned:cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
 def verify_input_pins():
  pins=O/'final-native-input-pins.json'
- if not pins.exists():return
+ if not pins.exists():
+  if a.require_input_pins or 'nativeInputPinsSha256' in r:raise RuntimeError('native input manifest disappeared or required')
+  return
+ if pins.is_symlink() or not pins.is_file():raise RuntimeError('native input manifest must be regular')
  contents=json.loads(pins.read_text())
+ if not isinstance(contents.get('files'),dict) or not contents['files']:raise RuntimeError('native input pins must be nonempty')
  for name,digest in contents['files'].items():
+  relative=pathlib.PurePosixPath(name)
+  if relative.is_absolute() or '..' in relative.parts or str(relative)!=name:raise RuntimeError('noncanonical input path')
   path=S/name
-  if not path.resolve().is_relative_to(S.resolve()) or sha(path)!=digest:raise RuntimeError('native input changed: '+name)
+  if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(S.resolve()) or sha(path)!=digest:raise RuntimeError('native input changed: '+name)
  digest=sha(pins)
  if r.get('nativeInputPinsSha256',digest)!=digest:raise RuntimeError('native input manifest changed')
  r['nativeInputPinsSha256']=digest;r['nativeInputPins']=contents
