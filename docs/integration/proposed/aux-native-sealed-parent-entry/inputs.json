@@ -1,7 +1,7 @@
 {
   "format": "aux.sealed-outer-parent.source.v1",
   "files": {
-    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "5294391eaf6af92ae59f57fb1925efe7e1e155b6b8e4c20107cf1cabd6beefdd",
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
     "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
     "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
     "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeParentConnectionBridge.h": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc",
@@ -10,5 +10,9 @@
   "compilePending": true,
   "runtimeExecuted": false,
   "protectedCalls": 0,
-  "packagingLayoutApplied": false
+  "packagingLayoutApplied": false,
+  "suppliedLayoutSource": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+    "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed"
+  }
 }

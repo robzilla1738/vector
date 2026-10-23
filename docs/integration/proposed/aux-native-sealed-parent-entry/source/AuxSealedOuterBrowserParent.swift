@@ -14,10 +14,10 @@ enum AuxSealedOuterParentError: Error {
 }
 
 enum AuxSealedOuterBrowserParent {
-    // This is the deliberate new native-host packaging contract, not the
-    // legacy flat daemon/Node fallback. Parent and child must be assembled at
-    // this exact relative path; a standalone development host cannot admit it.
-    static let daemonSuffix = "/Contents/Resources/aux/native-hosts/Aux Daemon.app"
+    // Preserve the supplied daemon application layout. The new native entry
+    // replaces only the reviewed successor executable; standalone review
+    // hosts and external Node fallbacks cannot admit this nested role.
+    static let daemonSuffix = "/Contents/Resources/aux/apps/daemon/Aux Daemon.app"
 
     // Consumes one genuine send-right reference in this process on every normal
     // return/throw. Delivery/authentication are separate: this function derives
