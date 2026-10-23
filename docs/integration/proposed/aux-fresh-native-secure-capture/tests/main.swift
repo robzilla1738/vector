@@ -25,6 +25,15 @@ func fixture(_ name: String) throws -> (AuxAuthenticatedFreshBootstrapPolicy, Au
         role: .cli, canonicalPrivateParent: parent, accessGroup: group
     )
     let policy = AuxAuthenticatedFreshBootstrapPolicy(contents: contents)
+    if name == "ordinary" {
+        let parserInput = try JSONSerialization.data(withJSONObject: [
+            "format": AuxFreshBootstrapPolicyContents.format, "role": "cli",
+            "canonicalPrivateParent": parent, "accessGroup": group,
+            "authoritySelection": AuxFreshBootstrapPolicyContents.authoritySelection,
+        ])
+        let accepted = (try? AuxFreshBootstrapPolicyContents.decode(parserInput)) != nil
+        print("DISPOSABLE-POLICY-PARSER: accepted=\(accepted); canonical=\(parent); standardized=\(URL(fileURLWithPath: parent).standardizedFileURL.path)")
+    }
     return (policy, try .create(inCanonicalPrivateParent: parent))
 }
 func reset() {
