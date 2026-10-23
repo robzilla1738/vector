@@ -12,7 +12,7 @@ const service = fileURLToPath(new URL('../../../../services/aux-cloud/', import.
 const require = createRequire(join(service, 'package.json'));
 const { Pool, neonConfig } = require('@neondatabase/serverless');
 const { get, put, del, head, BlobNotFoundError } = require('@vercel/blob');
-const [privateDirectory, reviewPath, targetEnvironmentFile] = process.argv.slice(2);
+const [privateDirectory, reviewPath] = process.argv.slice(2);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 let source, target, targetAdmin, stage = 'admission', root, sequence = 0;
 let sourceSeeded = false, sourceCleaned = false;
@@ -69,7 +69,7 @@ async function removeSourceFixtures(sourceToken, sourceHostname) {
   sourceCleaned = true;
 }
 try {
-  assert(privateDirectory && reviewPath && targetEnvironmentFile);
+  assert(privateDirectory && reviewPath);
   root = resolve(privateDirectory);
   await mkdir(root, { mode: 0o700 });
   assert.equal(await realpath(root), root);
@@ -87,9 +87,10 @@ try {
   const bootstrap = await privateEnv(join(service, '.env.production-bootstrap.local'));
   const secrets = await privateEnv(join(service, '.env.production-secrets.local'));
   const development = await privateEnv(join(service, '.env.local'));
-  const targetConfig = await privateEnv(targetEnvironmentFile);
   const sourceUrl = new URL(bootstrap.DATABASE_URL_UNPOOLED);
-  const targetUrl = new URL(targetConfig.AUX_RESTORE_DATABASE_URL);
+  const targetUrl = new URL(sourceUrl);
+  targetUrl.hostname = review.targetHost;
+  targetUrl.pathname = '/' + review.targetDatabase;
   assert.equal(sourceUrl.hostname, review.sourceHost);
   assert.equal(bootstrap.NEON_PROJECT_ID, review.sourceProject);
   assert.equal(targetUrl.hostname, review.targetHost);

@@ -5,10 +5,10 @@ Prepared operator runner only; no provider execution or hosted acceptance is cla
 Run from the repository root after reviewing the exact one-hour 0.25 CU branch and both existing Aux stores:
 
 ```
-node docs/integration/proposed/aux-cloud-hosted-restore-12/drill.mjs NEW_PRIVATE_DIRECTORY REVIEW_JSON PRIVATE_TARGET_ENV_FILE
+node docs/integration/proposed/aux-cloud-hosted-restore-12/drill.mjs NEW_PRIVATE_DIRECTORY REVIEW_JSON
 ```
 
-The three existing service environment files must be owned regular mode0600 files: `.env.production-bootstrap.local`, `.env.production-secrets.local`, `.env.local`. Only explicit production capture values and development Blob token enter the respective child environments. The separate mode0600 target environment file supplies only `AUX_RESTORE_DATABASE_URL`, privately derived for the reviewed direct endpoint and new database. No connection string or token enters argv, evidence or logs. Never print these files.
+The three existing service environment files must be owned regular mode0600 files: `.env.production-bootstrap.local`, `.env.production-secrets.local`, `.env.local`. Only explicit production capture values and development Blob token enter the respective child environments. The target URL is derived privately from the existing production direct connection by substituting only the exact reviewed temporary endpoint/database; the inherited role/password are unchanged. No connection string or token enters argv, evidence or logs. Never print these files.
 
 Review JSON fields:
 
