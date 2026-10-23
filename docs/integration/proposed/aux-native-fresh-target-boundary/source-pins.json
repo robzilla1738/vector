@@ -85,8 +85,8 @@
     }
   ],
   "pairedProductionGraphOwner": "aux-native-fresh-target-coordinator",
-  "capturedFixtureExecSession": 96148,
-  "capturedFixtureStatus": "queued; no execution claim",
+  "capturedFixtureExecSession": 56824,
+  "capturedFixtureStatus": "passed33; captured effects/software only",
   "reviewedDependencySuccessors": [
     {
       "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift",
