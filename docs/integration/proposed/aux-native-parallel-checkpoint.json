@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:01:27.069551+00:00",
+  "recordedAt": "2026-10-23T02:09:42.837411+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -22,6 +22,12 @@
       "session": 21096,
       "role": "five service-worker TUs and one captured state fixture",
       "log": "out/aux-content-service-worker-admission-check.log",
+      "state": "queued behind native build lock"
+    },
+    {
+      "session": 60495,
+      "role": "one installed-app session TU and actual-source schema fixture",
+      "log": "out/aux-installed-app-session-writer-check.log",
       "state": "queued behind native build lock"
     }
   ],
@@ -56,16 +62,16 @@
     }
   ],
   "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-renderer-navigation/owner",
-    "sha256": "65cd78c54b77ffa18eee83ea18746bcdba814c45b4fea89bb723ffc70d07da4c",
-    "sources": 798,
+    "composition": "out/native-reuse-composition-aux-worker-app-submission/owner",
+    "sha256": "2bab7214042dbf2fead85cd9e1925cbbeaf3f56c0ce4ccbbd3b1d935f073bc76",
+    "sources": 808,
     "assets": 23,
     "compiled": false
   },
   "nextSourceReview": [
-    "native-v2 target context/boundary/journal plus shared-cohort concurrency and transient-unavailability correction",
-    "service-worker GN/native owner composition",
-    "existing-only AppSessionService participant"
+    "native-v2 target shared-cohort operation lease and transient-unavailability correction; final paired dependency pins must include61b87 boundary and40ef retained journal",
+    "resumed-only native home/stage adoption: pinned design, no implementation yet",
+    "trusted in-child native startup/per-Environment owner registration and cleanup: production producer still missing"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -73,5 +79,12 @@
     "evidence": "services/aux-cloud/evidence/production-recovery-migration.json"
   },
   "runtimeAcceptance": false,
-  "protectedCallsExecuted": false
+  "protectedCallsExecuted": false,
+  "sourceIntegratedNotYetGraphVerified": {
+    "targetCoordinator": "423167c4e",
+    "targetBoundary": "27f34cc26",
+    "boundaryStaticPinsPass": true,
+    "coordinatorStaticPinsPass": false,
+    "reason": "frozen coordinator dependency predates boundary61b87; correction pending in successor, no compile result claimed"
+  }
 }
