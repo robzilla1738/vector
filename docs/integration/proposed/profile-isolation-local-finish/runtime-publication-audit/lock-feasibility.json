@@ -1,0 +1,79 @@
+{
+  "format": "aux.runtime-publication.existing-lock-feasibility.v1",
+  "result": "blocked-no-exclusive-source-namespace-custody",
+  "inputs": {
+    "dispatcher": {
+      "path": "/private/tmp/aux-browser-admitted-recovery/docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    },
+    "brokerGuard": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "sha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033"
+    },
+    "workerHost": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7"
+    },
+    "stageCoordinator": {
+      "path": "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "a5215891f3f66d1d71622b3fa7ac712d2ff58d677452c672615d3906f1f469e7"
+    },
+    "taskLayout": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "sha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc"
+    },
+    "daemonSource": {
+      "path": "/private/tmp/aux-offline-runtime-source-20261023/index.mjs",
+      "sha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484"
+    },
+    "linkReceipt": {
+      "path": "/private/tmp/aux-delivery-link-20261023/results.json",
+      "sha256": "78cfe6b6966ea4d0d8081dfe9ebc6b043bf40990a242b4f7f25b849a818b9ce2"
+    }
+  },
+  "countCheckedAnchors": [
+    {
+      "input": "dispatcher",
+      "anchor": "entry.execution.lock()",
+      "count": 1
+    },
+    {
+      "input": "dispatcher",
+      "anchor": "condition.unlock()\n        entry.execution.lock()",
+      "count": 1
+    },
+    {
+      "input": "brokerGuard",
+      "anchor": "if(admitted){++active.captured.worker->broker_pending;active.counted=true;}",
+      "count": 1
+    },
+    {
+      "input": "workerHost",
+      "anchor": "roots->denied.count = 3;",
+      "count": 1
+    },
+    {
+      "input": "stageCoordinator",
+      "anchor": "let fd=try taskLayout.duplicateTaskHome()",
+      "count": 1
+    },
+    {
+      "input": "taskLayout",
+      "anchor": "func duplicateTaskHome()throws->Int32",
+      "count": 1
+    },
+    {
+      "input": "daemonSource",
+      "anchor": "async function performInstall(Cn){auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked();",
+      "count": 1
+    }
+  ],
+  "implementationStarted": false,
+  "sourcePairChanged": false,
+  "nativeAbiOrRecipeChanged": false,
+  "nativeCompilationOrExecution": false,
+  "cacheOperations": false,
+  "managedWorktreeOperation": "567f89b1-b055-47d0-aca4-ec44d629d4b3",
+  "managedWorktreeStatus": "creating revision97; untouched",
+  "scope": "Read actual coupled link recipe and seven named static inputs; no native build or executable/module execution."
+}
