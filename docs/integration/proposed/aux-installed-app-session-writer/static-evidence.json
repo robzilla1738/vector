@@ -1,0 +1,13 @@
+{
+  "format": "aux.installed-app-session-writer.static.v1",
+  "exactSourceReplayVerified": true,
+  "sourceFiles": 2,
+  "countedAnchors": 11,
+  "actualServiceContractSha256": "491d27b4d2a8d2f3e6557f9d4ede91dc9cb667fa55a1bd52d0e51fb43806545a",
+  "inputsSha256": "4b0234ac59bc042678610b522158c2535e8adb1f6a322f21bf1d16d56c5d3d67",
+  "compiled": false,
+  "fixtureExecuted": false,
+  "newServiceCreated": false,
+  "nativeApplied": false,
+  "wholeProfileCustodyClaimed": false
+}

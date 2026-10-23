@@ -1,0 +1,91 @@
+{
+  "format": "aux.installed-app-session-writer.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_session_writer_participant.h",
+      "inputSha256": "344a1289abff18b86859f907e6607b9a9f1d9f0507a9dcadbc26250f4cef719c",
+      "outputSha256": "3d437254cad95ca64f4ac6283b7055981853e06948601becccc98e2570d0c0f9",
+      "edits": [
+        {
+          "name": "independent installed-app observation",
+          "find": "struct ProfileSessionWriterObservation {",
+          "replace": "// The installed-web-app service is a sibling writer with its own app-restore\n// backend. Never fold its absence, failure or owner loss into the browser row.\nstruct ProfileAppSessionWriterObservation {\n  ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;\n  std::optional<sessions::SessionWriteCompletion> write;\n  std::optional<sessions::SessionManagerCloseObservation> close;\n};\n\nstruct ProfileSessionWriterObservation {",
+          "count": 1
+        },
+        {
+          "name": "preserve browser fields append app sibling",
+          "find": "  size_t inventory_index = 0;\n  ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;\n  std::optional<sessions::SessionWriteCompletion> write;\n  std::optional<sessions::SessionManagerCloseObservation> close;\n};",
+          "replace": "  size_t inventory_index = 0;\n  ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;\n  std::optional<sessions::SessionWriteCompletion> write;\n  std::optional<sessions::SessionManagerCloseObservation> close;\n  ProfileAppSessionWriterObservation app_session;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "inputSha256": "15b56506654e199357735f54c1c3b5942c7ddda0595786617ed846bfc33fd294",
+      "outputSha256": "7a536fe8cd9ffef5549d9a668007dd861763bc842d3933b0cc17d0839f48758a",
+      "edits": [
+        {
+          "name": "actual app service and existing-only factory types",
+          "find": "#include \"chrome/browser/sessions/session_service.h\"",
+          "replace": "#include \"chrome/browser/sessions/app_session_service.h\"\n#include \"chrome/browser/sessions/app_session_service_factory.h\"\n#include \"chrome/browser/sessions/session_service.h\"",
+          "count": 1
+        },
+        {
+          "name": "distinct app write callback",
+          "find": "  void DidWrite(size_t index, sessions::SessionWriteCompletion result);",
+          "replace": "  void DidWrite(size_t index, sessions::SessionWriteCompletion result);\n  void DidAppWrite(size_t index, sessions::SessionWriteCompletion result);",
+          "count": 1
+        },
+        {
+          "name": "distinct app close callback",
+          "find": "  void DidClose(size_t index, sessions::SessionManagerCloseObservation result);",
+          "replace": "  void DidClose(size_t index, sessions::SessionManagerCloseObservation result);\n  void DidAppClose(size_t index, sessions::SessionManagerCloseObservation result);",
+          "count": 1
+        },
+        {
+          "name": "separate weak native service lifetimes",
+          "find": "  std::vector<base::WeakPtr<SessionServiceBase>> services_;",
+          "replace": "  std::vector<base::WeakPtr<SessionServiceBase>> services_;\n  std::vector<base::WeakPtr<SessionServiceBase>> app_services_;",
+          "count": 1
+        },
+        {
+          "name": "app owner slots match same profile inventory",
+          "find": "      services_(profiles_.size()),",
+          "replace": "      services_(profiles_.size()),\n      app_services_(profiles_.size()),",
+          "count": 1
+        },
+        {
+          "name": "actual existing-only app final writes inside same submission guard",
+          "find": "  write_submission_.Finish();\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::DidWrite(",
+          "replace": "  for (size_t i = 0; i < profiles_.size(); ++i) {\n    auto& observation = result_.profiles[i].app_session;\n    // A browser-service write above can reenter profile destruction. Check the\n    // weak owner again before the separate existing-only app-service lookup.\n    if (!profiles_[i]) {\n      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;\n      continue;\n    }\n    AppSessionService* service =\n        AppSessionServiceFactory::GetForProfileIfExisting(profiles_[i].get());\n    if (!service) {\n      observation.outcome = ProfileSessionWriterOutcome::kNoExistingService;\n      continue;\n    }\n    app_services_[i] = service->GetWeakPtrForNativeSessionWriterParticipant();\n    observation.outcome = ProfileSessionWriterOutcome::kServiceObserved;\n    ++pending_writes_;\n    service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(\n        &LoadedSessionWriterParticipant::DidAppWrite, base::WrapRefCounted(this), i));\n    // No raw app service/profile access after this potentially reentrant call.\n  }\n  write_submission_.Finish();\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::DidWrite(",
+          "count": 1
+        },
+        {
+          "name": "retain actual app write outcome separately",
+          "find": "void LoadedSessionWriterParticipant::BeginManagerCloses() {",
+          "replace": "void LoadedSessionWriterParticipant::DidAppWrite(\n    size_t index, sessions::SessionWriteCompletion result) {\n  CHECK(phase_ == Phase::kWriting);\n  CHECK(pending_writes_ && !result_.profiles[index].app_session.write.has_value());\n  result_.profiles[index].app_session.write = std::move(result);\n  --pending_writes_;\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::BeginManagerCloses() {",
+          "count": 1
+        },
+        {
+          "name": "app manager and backend close uses common real seam",
+          "find": "  close_submission_.Finish();\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::DidClose(",
+          "replace": "  for (size_t i = 0; i < app_services_.size(); ++i) {\n    auto& observation = result_.profiles[i].app_session;\n    if (!observation.write.has_value()) continue;\n    if (!profiles_[i]) {\n      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;\n      continue;\n    }\n    if (!app_services_[i]) {\n      observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;\n      continue;\n    }\n    ++pending_closes_;\n    app_services_[i]->CloseCommandWriterAdmissionAndObserve(base::BindOnce(\n        &LoadedSessionWriterParticipant::DidAppClose,\n        base::WrapRefCounted(this), i));\n  }\n  close_submission_.Finish();\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::DidClose(",
+          "count": 1
+        },
+        {
+          "name": "app close completion preserves per-profile owner loss",
+          "find": "void LoadedSessionWriterParticipant::Finish() {",
+          "replace": "void LoadedSessionWriterParticipant::DidAppClose(\n    size_t index, sessions::SessionManagerCloseObservation result) {\n  CHECK(phase_ == Phase::kClosing);\n  CHECK(pending_closes_ && !result_.profiles[index].app_session.close.has_value());\n  auto& observation = result_.profiles[index].app_session;\n  observation.close = std::move(result);\n  if (!profiles_[index])\n    observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;\n  else if (!app_services_[index])\n    observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;\n  --pending_closes_;\n  ScheduleAdvance();\n}\n\nvoid LoadedSessionWriterParticipant::Finish() {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "1f642595b41e50fed83cbe819ef581798dfa879058e9ec0bb17f6eb962000cf4",
+  "applied": false,
+  "compiled": false,
+  "uiGeometryAssetsChanged": false,
+  "newServiceCreated": false
+}

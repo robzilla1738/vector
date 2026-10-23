@@ -1,0 +1,161 @@
+{
+  "format": "aux.installed-app-session-writer.actual-contract.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/app_session_service_factory.cc",
+      "sha256": "20fe143d66a2aba58797d7c150ed8133bf82295cb06c87e7d74a15ab3205ccc6",
+      "anchors": [
+        {
+          "anchor": "AppSessionServiceFactory::GetForProfileIfExisting",
+          "lines": [
+            21
+          ]
+        },
+        {
+          "anchor": "GetServiceForBrowserContext(profile, false)",
+          "lines": [
+            24
+          ]
+        },
+        {
+          "anchor": "AppSessionServiceFactory::ShutdownForProfile",
+          "lines": [
+            41
+          ]
+        },
+        {
+          "anchor": "GetServiceForBrowserContext(profile, true)",
+          "lines": [
+            17,
+            49
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/sessions/app_session_service.cc",
+      "sha256": "b3b6f628e5217574a1d3acbb58420cc0dedb507473c7da78f5cf8020e7b39d98",
+      "anchors": [
+        {
+          "anchor": "SessionServiceBase::SessionServiceType::kAppRestore",
+          "lines": [
+            49
+          ]
+        },
+        {
+          "anchor": "AppSessionService::ScheduleResetCommands",
+          "lines": [
+            143
+          ]
+        },
+        {
+          "anchor": "AppSessionService::GetDesiredBrowserTypeForWebContents",
+          "lines": [
+            129
+          ]
+        },
+        {
+          "anchor": "command_storage_manager()->Save();",
+          "lines": [
+            52
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "sha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827",
+      "anchors": [
+        {
+          "anchor": "TaskRunnerData::GetBackendTaskRunnerForProfile",
+          "lines": [
+            179
+          ]
+        },
+        {
+          "anchor": "kProfileTaskRunnerKeyForApps",
+          "lines": [
+            100,
+            129
+          ]
+        },
+        {
+          "anchor": "SessionServiceBase::ResetFromCurrentBrowsersWithWriteCompletion",
+          "lines": [
+            239
+          ]
+        },
+        {
+          "anchor": "command_storage_manager_->SaveWithCompletion",
+          "lines": [
+            258
+          ]
+        },
+        {
+          "anchor": "SessionServiceBase::CloseCommandWriterAdmissionAndObserve",
+          "lines": [
+            266
+          ]
+        },
+        {
+          "anchor": "command_storage_manager_->CloseWriterAdmissionAndObserve",
+          "lines": [
+            275
+          ]
+        },
+        {
+          "anchor": "SessionServiceBase::BuildCommandsFromBrowsers",
+          "lines": [
+            863
+          ]
+        }
+      ]
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "sha256": "03eed34420995834fe17d26254a26bacdcbc5a3bf6377f616125d950d6c3bf98",
+      "anchors": [
+        {
+          "anchor": "CommandStorageManager::SaveWithCompletion",
+          "lines": [
+            387
+          ]
+        },
+        {
+          "anchor": "CommandStorageManager::CloseWriterAdmissionAndObserve",
+          "lines": [
+            536
+          ]
+        },
+        {
+          "anchor": "CommandStorageBackend::CloseWriterAdmissionAndObserve",
+          "lines": [
+            570
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/sessions/BUILD.gn",
+      "sha256": "74e50b3cdae70d7946e2e073ee790bd3e7affa3a7fdcda3e7052e8d489b782da",
+      "anchors": [
+        {
+          "anchor": "app_session_service_factory.h",
+          "lines": [
+            38
+          ]
+        },
+        {
+          "anchor": "app_session_service_factory.cc",
+          "lines": [
+            115
+          ]
+        }
+      ]
+    }
+  ],
+  "ordinaryFactoryShutdownUsed": false,
+  "newServiceCreated": false,
+  "backendSemantics": "Actual inherited AppRestore manager append/close observations, no fsync or whole-profile exclusion claim"
+}

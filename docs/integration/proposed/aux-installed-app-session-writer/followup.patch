@@ -1,0 +1,148 @@
+diff --git a/chrome/browser/ui/aux_session_writer_participant.h b/chrome/browser/ui/aux_session_writer_participant.h
+--- a/chrome/browser/ui/aux_session_writer_participant.h
++++ b/chrome/browser/ui/aux_session_writer_participant.h
+@@ -38,11 +38,20 @@
+   kNoExistingService,
+ };
+ 
++// The installed-web-app service is a sibling writer with its own app-restore
++// backend. Never fold its absence, failure or owner loss into the browser row.
++struct ProfileAppSessionWriterObservation {
++  ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;
++  std::optional<sessions::SessionWriteCompletion> write;
++  std::optional<sessions::SessionManagerCloseObservation> close;
++};
++
+ struct ProfileSessionWriterObservation {
+   size_t inventory_index = 0;
+   ProfileSessionWriterOutcome outcome = ProfileSessionWriterOutcome::kNotAttempted;
+   std::optional<sessions::SessionWriteCompletion> write;
+   std::optional<sessions::SessionManagerCloseObservation> close;
++  ProfileAppSessionWriterObservation app_session;
+ };
+ 
+ enum class SessionWriterParticipantOutcome {
+diff --git a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -20,6 +20,8 @@
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/sessions/app_session_service.h"
++#include "chrome/browser/sessions/app_session_service_factory.h"
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/exit_type_service.h"
+ #include "chrome/browser/ui/browser_init_state.h"
+@@ -219,12 +221,15 @@
+   void Advance();
+   void BeginFinalWrites();
+   void DidWrite(size_t index, sessions::SessionWriteCompletion result);
++  void DidAppWrite(size_t index, sessions::SessionWriteCompletion result);
+   void BeginManagerCloses();
+   void DidClose(size_t index, sessions::SessionManagerCloseObservation result);
++  void DidAppClose(size_t index, sessions::SessionManagerCloseObservation result);
+   void Finish();
+ 
+   std::vector<base::WeakPtr<Profile>> profiles_;
+   std::vector<base::WeakPtr<SessionServiceBase>> services_;
++  std::vector<base::WeakPtr<SessionServiceBase>> app_services_;
+   base::OnceCallback<void(SessionWriterParticipantObservation)> done_;
+   SessionWriterParticipantObservation result_;
+   base::CallbackListSubscription snapshot_subscription_;
+@@ -244,6 +249,7 @@
+     base::OnceCallback<void(SessionWriterParticipantObservation)> done)
+     : profiles_(std::move(profiles)),
+       services_(profiles_.size()),
++      app_services_(profiles_.size()),
+       done_(base::BindPostTaskToCurrentDefault(std::move(done))),
+       runner_(base::SequencedTaskRunner::GetCurrentDefault()) {
+   result_.loaded_profile_count = profiles_.size();
+@@ -320,6 +326,27 @@
+         &LoadedSessionWriterParticipant::DidWrite, base::WrapRefCounted(this), i));
+     // No raw profile/service access after the reset can reenter destruction.
+   }
++  for (size_t i = 0; i < profiles_.size(); ++i) {
++    auto& observation = result_.profiles[i].app_session;
++    // A browser-service write above can reenter profile destruction. Check the
++    // weak owner again before the separate existing-only app-service lookup.
++    if (!profiles_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++      continue;
++    }
++    AppSessionService* service =
++        AppSessionServiceFactory::GetForProfileIfExisting(profiles_[i].get());
++    if (!service) {
++      observation.outcome = ProfileSessionWriterOutcome::kNoExistingService;
++      continue;
++    }
++    app_services_[i] = service->GetWeakPtrForNativeSessionWriterParticipant();
++    observation.outcome = ProfileSessionWriterOutcome::kServiceObserved;
++    ++pending_writes_;
++    service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(
++        &LoadedSessionWriterParticipant::DidAppWrite, base::WrapRefCounted(this), i));
++    // No raw app service/profile access after this potentially reentrant call.
++  }
+   write_submission_.Finish();
+   ScheduleAdvance();
+ }
+@@ -329,6 +356,15 @@
+   CHECK(phase_ == Phase::kWriting);
+   CHECK(pending_writes_ && !result_.profiles[index].write.has_value());
+   result_.profiles[index].write = std::move(result);
++  --pending_writes_;
++  ScheduleAdvance();
++}
++
++void LoadedSessionWriterParticipant::DidAppWrite(
++    size_t index, sessions::SessionWriteCompletion result) {
++  CHECK(phase_ == Phase::kWriting);
++  CHECK(pending_writes_ && !result_.profiles[index].app_session.write.has_value());
++  result_.profiles[index].app_session.write = std::move(result);
+   --pending_writes_;
+   ScheduleAdvance();
+ }
+@@ -350,6 +386,22 @@
+     ++pending_closes_;
+     services_[i]->CloseCommandWriterAdmissionAndObserve(base::BindOnce(
+         &LoadedSessionWriterParticipant::DidClose, base::WrapRefCounted(this), i));
++  }
++  for (size_t i = 0; i < app_services_.size(); ++i) {
++    auto& observation = result_.profiles[i].app_session;
++    if (!observation.write.has_value()) continue;
++    if (!profiles_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++      continue;
++    }
++    if (!app_services_[i]) {
++      observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;
++      continue;
++    }
++    ++pending_closes_;
++    app_services_[i]->CloseCommandWriterAdmissionAndObserve(base::BindOnce(
++        &LoadedSessionWriterParticipant::DidAppClose,
++        base::WrapRefCounted(this), i));
+   }
+   close_submission_.Finish();
+   ScheduleAdvance();
+@@ -369,6 +421,20 @@
+   ScheduleAdvance();
+ }
+ 
++void LoadedSessionWriterParticipant::DidAppClose(
++    size_t index, sessions::SessionManagerCloseObservation result) {
++  CHECK(phase_ == Phase::kClosing);
++  CHECK(pending_closes_ && !result_.profiles[index].app_session.close.has_value());
++  auto& observation = result_.profiles[index].app_session;
++  observation.close = std::move(result);
++  if (!profiles_[index])
++    observation.outcome = ProfileSessionWriterOutcome::kProfileOwnerLost;
++  else if (!app_services_[index])
++    observation.outcome = ProfileSessionWriterOutcome::kServiceOwnerLost;
++  --pending_closes_;
++  ScheduleAdvance();
++}
++
+ void LoadedSessionWriterParticipant::Finish() {
+   auto keep_alive = base::WrapRefCounted(this);
+   phase_ = Phase::kFinished;
