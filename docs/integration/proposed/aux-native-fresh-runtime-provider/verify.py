@@ -15,5 +15,11 @@ assert s.count('AuxCreatePreparedFreshRuntimeOwner(state_->prepared_fresh_provid
 print('PASS: exact source pins, default native constructor, closed-before-factory ordering and explicit provider caller pair')
 
 routing=json.loads((p/'deferred-check-routing.json').read_text())
-for pathKey,hashKey in [('original31Recipe','original31RecipeSha256'),('deferredEntry','deferredEntrySha256'),('finalRecipe','finalRecipeSha256')]:assert sha(repo/routing[pathKey])==routing[hashKey],pathKey
+for pathKey,hashKey in [('original31Recipe','original31RecipeSha256'),('finalRecipe','finalRecipeSha256')]:assert sha(repo/routing[pathKey])==routing[hashKey],pathKey
+if sha(repo/routing['deferredEntry']) != routing['deferredEntrySha256']:
+ successor=json.loads((repo/'docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/deferred-check-routing.json').read_text())
+ assert successor['previousEntrySha256']==routing['deferredEntrySha256']
+ assert sha(repo/successor['previousEntry'])==successor['previousEntrySha256']
+ assert sha(repo/successor['deferredEntry'])==successor['deferredEntrySha256']
+else:assert sha(repo/routing['deferredEntry'])==routing['deferredEntrySha256']
 print('PASS: preserved31 recipe and same-session deferred36 route pins')

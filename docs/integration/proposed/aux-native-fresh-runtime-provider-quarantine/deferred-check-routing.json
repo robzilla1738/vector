@@ -1,0 +1,14 @@
+{
+  "format": "aux.prepared-fresh-provider.quarantine-deferred-route.v1",
+  "session": 40860,
+  "waitingSerializerPid": 5405,
+  "observedNoChildBeforeRedirect": true,
+  "previousEntry": "docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/baseline/prior-deferred-entry.py",
+  "previousEntrySha256": "2ac866ad3e3aaa56a528f94033609b9acd971006e3125ea66ab20d82f6bf4916",
+  "deferredEntry": "docs/integration/proposed/aux-native-fresh-runtime-consumer/typecheck.py",
+  "deferredEntrySha256": "648375dc7c4c73269ae28c0bbdbcd483c8feca281d1365de364fbec289a4041b",
+  "finalRecipe": "docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/typecheck.py",
+  "finalRecipeSha256": "019d202c946d37ef823ed595a1002776bbe256420c54c2594b991c791602ab69",
+  "finalInputCount": 36,
+  "executed": false
+}

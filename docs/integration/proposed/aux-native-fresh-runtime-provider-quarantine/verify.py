@@ -15,3 +15,7 @@ assert 'catch{unresolved=owner}' in s
 assert 'try? owner.retire()' not in s
 assert 'creation < 0 || creation == 2' in (p/'source/AuxDevelopmentWorkerHost.cc').read_text()
 print('PASS: exact source graph and late-owner publication/quarantine/host status pairs')
+
+routing=json.loads((p/'deferred-check-routing.json').read_text())
+for pathKey,hashKey in [('previousEntry','previousEntrySha256'),('deferredEntry','deferredEntrySha256'),('finalRecipe','finalRecipeSha256')]:assert sha(repo/routing[pathKey])==routing[hashKey],pathKey
+print('PASS: same40860 successor route with immutable prior recipe/entry')
