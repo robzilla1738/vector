@@ -1,3 +1,9 @@
+# Bundled runtime remains usable when optional release metadata is offline — 2026-10-23
+
+A one-count supplied performInstall correction now preserves a valid non-quarantined local runtime when only optional release metadata fails, reporting installed with latestVersion:null. Forced updates, missing/incomplete runtime, quarantine and actual install/bootstrap errors still fail. The extracted actual-function fixture reproduces the prior false failure after seed and verifies those refusal cases with controlled dependencies. No network/product execution or UI layout change occurred.
+
+Final source SHA256 `ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484`; exact ordinary source/dormant-entry projection and syntax passed, cold refusal retained. Source-pair.json now pins this successor. Native ABI/policy/daemon/PTY pair and runtime integration remain unchanged. Coherent native build, queued path-defense object check, incremental integration and exact assembly remain pending; no ready/activated runtime claim.
+
 # Runtime bootstrap task-root and missing metadata defects corrected — 2026-10-23
 
 The copied runtime bootstrap required an absent distribution provenance file and selected AUX_HOME/runtime despite native task/runtime separation. Its two-leaf successor uses native immutable captureStorageRoots, requires the caller destination to match taskHome/runtime, rechecks owner generations and retains withBrokerAwaited through actual seed cleanup. Exact pinned historical text-root metadata replaces the missing-file dependency; the existing nine runtime text files and all static runtime executables stay unchanged. A focused actual-bootstrap fixture with controlled native/seed adapters passed ownership/destination, pending lifetime and metadata refusal; full native runtime seeding is not claimed. Source index/entry/daemon pair is unchanged.
