@@ -12,6 +12,8 @@ Updated 2026-10-22. This reconciles the owner's continuing implementation goal w
 - Separate production database now has12 matching migrations. Production profile remains null/inactive, nine live billing/webhook settings remain absent, provider pairing/operations are incomplete. No production-ready claim.
 - Exact supplied Node26.5.0 executable/config and relevant headers match official archives. Preload component compiled as one object; no embedding executable/runtime activation exists. Queued library job26750 was canceled before execution to prioritize corrected graphs; do not treat it as running or as a compiler failure.
 
+The original BASE, FRAME, BROWSER, AGENT, TOOLS, PACKAGE, JOURNEY and READY identifiers remain stable. The owner’s later cloud/production objective expands READY; it does not waive the older local-browser requirements. The prior detailed dated execution record is preserved in `docs/archive/execution-graph-2026-10-21-before-cloud-integration.md`; its active-worker/build statements are historical.
+
 The next integrator actions are to finish review of provider-quarantine and peer-right ownership corrections, integrate their frozen sources, and attach the single pending final Swift graph to exact input hashes. Do not launch a duplicate full graph. Continue actual parent/child/embedding implementation while build93645 runs; do not mutate its native checkout. The live/terminal handle ledger is `docs/integration/proposed/aux-native-parallel-checkpoint.json`.
 
 ## Dependency graph
@@ -30,20 +32,29 @@ flowchart LR
   BASE --> LEGACY[Explicit authority preserving legacy transition]
   EMBED --> PACKAGE[One complete Aux candidate]
   LEGACY --> PACKAGE
-  PACKAGE --> DESKTOP[Disposable real desktop journeys]
+  PACKAGE --> JOURNEY[Disposable real desktop journeys]
   BASE --> CLOUD[Compatible development service integration]
-  CLOUD -.-> DESKTOP
+  CLOUD -.-> JOURNEY
   CLOUD --> AI[Funded strict ZDR text and speech]
   CLOUD --> PROD[Production configuration and operational readiness]
   BASE --> OPS[Independent backup and recovery operations]
   OPS --> PROD
   PACKAGE -.-> EXT[External manager and OS integration]
-  DESKTOP --> DONE[Complete product before final release]
-  AI --> DONE
-  PROD --> DONE
-  EXT --> DONE
-  PACKAGE -.-> FIDELITY[Actual app UI and delivered identity audit]
-  FIDELITY --> DONE
+  BASE --> BROWSER[Ordinary browser and persistence]
+  PACKAGE -.-> BROWSER
+  CLOUD -.-> AGENT[Real supplied Agent workflows]
+  EMBED -.-> AGENT
+  AI -.-> TOOLS[Tools shortcuts and capture]
+  EXT -.-> TOOLS
+  BROWSER -.-> JOURNEY
+  AGENT -.-> JOURNEY
+  TOOLS -.-> JOURNEY
+  JOURNEY --> READY[Complete product before final release]
+  AI --> READY
+  PROD --> READY
+  EXT --> READY
+  PACKAGE -.-> FRAME[Actual app UI and delivered identity audit]
+  FRAME --> READY
 ```
 
 Critical edges: the real native caller must own the installation and lifecycle before an Environment can receive a protected dispatcher. A signed policy or authenticated IPC peer alone cannot grant whole-profile custody. The supplied entry/native routing cannot be activated merely because an object compiled. Legacy migration cannot be silently replaced with key regeneration. Real desktop/cloud journeys require the same assembled native/resource generation; old service tests or UI screenshots cannot accept it. Production operations require independent recoverable content and key custody, not only a database branch restore.
@@ -62,12 +73,15 @@ Critical edges: the real native caller must own the installation and lifecycle b
 | PACKAGE / prior package static only | Recovery-enrollment package inventoried10,764 resources/418 native leaves;1217 UI files retained with reviewed enrollment deltas. Current native/owner successors are not in an accepted running package. | Assemble one complete native/resource/SEA/Node/extension/CLI/carrier generation; preserve exact addons required by reviewed plan; verify actual paired identities/wires/resources/retired leaves. Prepare concrete exact-byte local runtime/signing review where required. No release/notarization. |
 | CLOUD / implemented and deployed development, desktop inactive | Compatible auth, rotating sessions, Clerk, sandbox Stripe, encrypted sync/media/sharing/recovery/cookie API and strict provider adapters have actual development evidence. Current desktop still needs the paired new stack. | Reuse unchanged API evidence; finish actual app sign-in/token exchange/restart, subscription UI/portal/entitlements, independent-device sync/conflict/recovery, cookie restore and explicit share/revoke/large attachment journeys. No fabricated accounts/plans or owner email-code use. |
 | AI / implemented, funded acceptance pending | Gateway server-held credentials, per-request ZDR and configurable model; owner selected GPT-6 Luna ≤$5. Prior credit checkout separately needs unanswered AI Product Terms consent. | After that consent, complete only approved purchase (≤$12, auto reload off) and bounded real ZDR text/browser-task/fast-model/lasso and synthetic speech checks, including debit/refund/routing/error evidence. Confirm actual desktop controls, microphone/recording separately. No provider call before approval. |
-| DESKTOP / not accepted current generation | Historical profile/window/draft/attachment/notification/sidebar tests remain valid only for their named previews; current resources/native startup are not accepted. | One focused real app batch: active work across profiles, normal+popup+installed-app restart, drafts/attachment recovery/failure, notification target, shortcuts/sidebars/chat/settings, cloud/provider work. Preserve current UI; capture exact candidate/state/evidence and cleanup. Do not repeat unrelated20-case browser-agent suite. |
+| BROWSER / historically implemented, current-generation acceptance pending | Existing supplied tabs/navigation/bookmarks/history/downloads/imports, normal/popup/installed-app session restoration and external extension paths remain. | Reuse unchanged historical evidence; prove affected ordinary browser/persistence/import/native-message boundaries on the exact final candidate without owner profiles or password import. Vendor trust is EXT, not inferred here. |
+| AGENT / supplied implementation preserved, new stack pending | Original chat/model/reasoning/project/guard/task/stream/cancel/history/context/settings contracts and the20 genuine prior Muse cases remain the baseline. | Real packaged current-provider and profile-scoped task/config/context journeys using the agreed bounded model; no UI approximation or repeat of the unaffected20-case suite. Final failures/availability must remain truthful. |
+| TOOLS / partial local evidence, setup-specific acceptance pending | Notifications, Mini Popup, lasso, observer/Computer Use, hosted dictation and native CLI/runtime utilities remain distinct capabilities. | Focus affected routes through real reviewed native helpers and services; actual physical shortcut/capture/microphone/OS permission evidence only where required. AI/EXT carry external prerequisites; source registration alone does not accept this outcome. |
+| JOURNEY / not accepted current generation | Historical profile/window/draft/attachment/notification/sidebar tests remain valid only for their named previews; current resources/native startup are not accepted. | One focused real app batch: active work across profiles, normal+popup+installed-app restart, drafts/attachment recovery/failure, notification target, shortcuts/sidebars/chat/settings, cloud/provider work. Preserve current UI; capture exact candidate/state/evidence and cleanup. Do not repeat unrelated20-case browser-agent suite. |
 | EXT / partly checked, external setup pending | Generic native-message and dummy fill checks passed. Existing owner-approved observer checks/grants are exact-helper historical evidence. | Real1Password official extension/desktop pairing with exact Apple identity and explicit trust using only a dummy login; actual reviewed observer/helper permissions and bounded capture if required; physical Mini Popup/global shortcut confirmation. No owner vault, unrelated Contacts/Messages or new OS grant inferred. |
 | OPS / tooling and narrow drills verified, operations missing | Independent archive/local restore and isolated Neon/Blob synthetic recovery drills passed. Database restore alone cannot restore deleted Blob or lost wrapping keys. | Provision/authorize durable independent backup and key custody, scheduling, retention deletion and alerts; run one complete restore from those actual stores, record cleanup and measured limits. Do not claim production RPO/RTO from fixture size. |
 | PROD / resources/schema prepared, configuration incomplete | Separate Aux prod DB/Blob/credentials,12 matching migrations and public origins exist; nine live billing/webhook settings plus provider/sender pairing/runtime verification remain. | Owner completes live Stripe business/KYC where required; prepare exact Aux live prices/portal/webhooks, Clerk/Resend pairing and production resource profile. Obtain concrete activation approval only after reviewable preparation. Perform authorized isolated readiness/provider/operations checks; marketing and old projects stay untouched. |
-| FIDELITY / accepted baseline preserved, final observation missing | Current batch changes no UI views/CSS/artwork. Static package preservation and older actual side-by-side captures are scoped historical evidence. | Compare the actual final app to accepted Aux/Aside references at matching scale: window and both-sidebar corners, toolbar/bookmarks blend, glass/transparency, collapsed/hover/floating/pinned states, chat/model controls, settings and empty/loading/error states. Audit actual delivered files/native identifiers/endpoints; retain HTML semantics and required legal attribution. No screenshot/static grep substitutes for behavior. |
-| DONE / unproven | Whole owner objective, not a package/compiler milestone. | All above outcomes accepted at their stated scope, one reproducible ready candidate and operational handoff with clear optional owner choices. Final desktop release/distribution remains excluded. No completion percentage or “ready” from unresolved gates. |
+| FRAME / accepted baseline preserved, final observation missing | Current batch changes no UI views/CSS/artwork. Static package preservation and older actual side-by-side captures are scoped historical evidence. | Compare the actual final app to accepted Aux/Aside references at matching scale: window and both-sidebar corners, toolbar/bookmarks blend, glass/transparency, collapsed/hover/floating/pinned states, chat/model controls, settings and empty/loading/error states. Audit actual delivered files/native identifiers/endpoints; retain HTML semantics and required legal attribution. No screenshot/static grep substitutes for behavior. |
+| READY / unproven | Whole owner objective, not a package/compiler milestone. | All above outcomes accepted at their stated scope, one reproducible ready candidate and operational handoff with clear optional owner choices. Final desktop release/distribution remains excluded. No completion percentage or “ready” from unresolved gates. |
 
 ## Ownership, scheduling and execution protocol
 
