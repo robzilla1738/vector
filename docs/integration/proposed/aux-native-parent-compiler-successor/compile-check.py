@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Compile the pinned selected-home successor without linking or native execution."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shlex
+import subprocess
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+NATIVE = Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
+BUILD = NATIVE / 'out/AuxFast'
+PROPOSALS = ROOT / 'docs/integration/proposed'
+SOURCE = PROPOSALS / 'aux-native-peer-compiler-compatibility/source'
+ORIGINAL_SOURCE = PROPOSALS / 'aux-native-daemon-authority-transport/source'
+SELECTED = PROPOSALS / 'aux-native-adopted-daemon/source'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def verify(manifest):
+    for relative, expected in manifest['compileInputs'].items():
+        if sha(ROOT / relative) != expected:
+            raise ValueError('Workspace input changed: ' + relative)
+    for row in manifest['nativeConfigInputs']:
+        if sha(Path(row['path'])) != row['sha256']:
+            raise ValueError('Compiler/configuration input changed: ' + row['path'])
+    if sha(HERE / 'compile-check.py') != manifest['recipeSha256']:
+        raise ValueError('Compile recipe changed')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--execute', action='store_true', help='Compile only under root native-build serialization')
+    args = parser.parse_args()
+    output = args.output.resolve()
+    if output.exists() or NATIVE == output or NATIVE in output.parents:
+        raise SystemExit('Fresh external output required')
+    output.mkdir(parents=True)
+    manifest_bytes = (HERE / 'compile-inputs.json').read_bytes()
+    manifest = json.loads(manifest_bytes)
+    receipt = {'format': 'aux.native-adopted-daemon.compile.v1', 'commands': [],
+               'inputsSha256': hashlib.sha256(manifest_bytes).hexdigest(),
+               'passed': False, 'linked': False, 'nativeCodeExecuted': False,
+               'parentOnly': True, 'executed': args.execute,
+               'ipcOrSecurityExecuted': False}
+    error = None
+    try:
+        verify(manifest)
+        failed = Path(manifest['priorFailure']['path'])
+        if sha(failed) != manifest['priorFailure']['sha256']:
+            raise ValueError('Original failure receipt changed')
+        prior = json.loads(failed.read_text())
+        if len(prior['commands']) != 1 or prior['commands'][0]['exitCode'] != 1 or prior['passed'] is not False or prior['parentOnly'] is not True:
+            raise ValueError('Expected actual first-TU failure; no prior successful objects')
+        receipt['priorFailureSha256'] = sha(failed)
+        receipt['prePinsVerified'] = True
+        variables = {}
+        for line in (BUILD / 'obj/base/base.ninja').read_text().splitlines():
+            if ' = ' in line and not line.startswith(' '):
+                key, value = line.split(' = ', 1)
+                variables[key] = value.replace('$:', ':')
+        parent = [str(NATIVE / 'third_party/llvm-build/Release+Asserts/bin/clang++')]
+        for key in ('defines', 'include_dirs', 'cflags', 'cflags_cc', 'module_deps'):
+            parent += shlex.split(variables[key])
+        if parent.count('-fno-exceptions') != 1 or '-fexceptions' in parent:
+            raise ValueError('Actual Chromium exception mode changed')
+        parent += ['-fmodule-name=' + variables['cc_module_name'] + '_Private']
+        overlay = output / 'include/chrome/browser/aux'
+        overlay.mkdir(parents=True)
+        for name in ('daemon_supervisor.h', 'installation_auth.h'):
+            (overlay / name).write_bytes((SELECTED / name).read_bytes())
+        parent[1:1] = ['-I', str(output / 'include')]
+        child = [manifest['nodeCompiler'], '-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER', '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                 '-arch', 'arm64', '-mmacosx-version-min=13.0', '-fPIC']
+        includes = ['-I', str(SELECTED), '-I', str(SOURCE), '-I', str(ORIGINAL_SOURCE), '-I', str(PROPOSALS / 'aux-native-child-handoff/source'),
+                    '-I', str(PROPOSALS / 'aux-selected-home-fileport-retry/source'),
+                    '-I', str(PROPOSALS / 'aux-native-prepared-daemon-authority/source'),
+                    '-I', str(PROPOSALS / 'aux-native-fresh-cold-bootstrap/source')]
+        jobs = []
+        for name in ('AuxNativePeerTransport.cc', 'AuxOwnedNativePeerChild.cc', 'AuxSelectedStateHome.cc',
+                     'daemon_supervisor.cc', 'installation_auth.cc', 'browser_platform.cc'):
+            jobs.append(('chromium-' + name, parent + includes + ['-c', str(ROOT / manifest['logicalSources'][name])]))
+        jobs = [(name, command + ['-o', str(output / (name + '.o'))]) for name, command in jobs]
+        jobs.append(('pure-wire-predicate', child + includes + ['-fsyntax-only',
+                     str(PROPOSALS / 'aux-selected-home-fileport-retry/tests/wire-contract.cc')]))
+        # Authenticate reconstruction against the exact real first failed command.
+        prior_command = prior['commands'][0]['command']
+        old_output = Path(manifest['priorFailure']['path']).parent.resolve()
+        expected = [value.replace(str(old_output), str(output)) for value in prior_command]
+        original_include = str(ORIGINAL_SOURCE)
+        index = expected.index(original_include)
+        if expected[index - 1] != '-I':
+            raise ValueError('Original transport include anchor differs')
+        expected[index - 1:index - 1] = ['-I', str(SOURCE)]
+        index = expected.index('-c') + 1
+        if expected[index] != str(ORIGINAL_SOURCE / 'AuxNativePeerTransport.cc'):
+            raise ValueError('Original transport source differs')
+        expected[index] = str(SOURCE / 'AuxNativePeerTransport.cc')
+        if jobs[0][1] != expected:
+            raise ValueError('Parent flags changed beyond exact source/header successor')
+        receipt['plannedCommands'] = [{'name': name, 'command': command} for name, command in jobs]
+        if len(jobs) != 7:
+            raise ValueError('Exactly six parent TUs and one pure-wire predicate required')
+        if args.execute:
+            run_jobs = jobs
+        else:
+            run_jobs = []
+        for name, command in run_jobs:
+            result = subprocess.run(command, cwd=BUILD, capture_output=True, text=True)
+            log = output / (name + '.log')
+            log.write_text(result.stdout + result.stderr)
+            receipt['commands'].append({'name': name, 'command': command,
+                                        'exitCode': result.returncode, 'logSha256': sha(log)})
+            artifact = output / (name + '.o')
+            if artifact.is_file():
+                receipt['commands'][-1]['objectSha256'] = sha(artifact)
+            if result.returncode:
+                raise RuntimeError('Compile failed: ' + name)
+        receipt['passed'] = True
+    except Exception as caught:
+        error = caught
+        receipt['error'] = str(caught)
+    finally:
+        try:
+            if (HERE / 'compile-inputs.json').read_bytes() != manifest_bytes:
+                raise ValueError('Manifest changed during compile')
+            verify(manifest)
+            receipt['postPinsVerified'] = True
+        except Exception as caught:
+            error = caught
+            receipt['passed'] = False
+            receipt['postPinError'] = str(caught)
+        (output / 'results.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    if error:
+        raise SystemExit(str(error))
+    print('PASS: six actual parent objects + pure-wire predicate' if args.execute else 'PREPARED: seven parent-only commands; no compiler/link/native execution')
+
+
+if __name__ == '__main__':
+    main()
