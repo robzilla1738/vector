@@ -60,8 +60,8 @@ test('unsafe storage refuses; logout retains registration and clears all local t
   chmodSync(join(f.dir,'local-only'),0o755);assert.throws(()=>new LocalChatGPTStore(join(f.dir,'local-only')),/private/);
 });
 test('supplied Responses adapter forces public endpoint and stateless streaming after hooks',async()=>{
-  let seen;const original={stream:(m,c,o)=>{seen={m,c,o};return 'existing-stream';},streamSimple(){}};const adapter=planResponsesApi(original);
-  assert.equal(adapter.stream({baseUrl:'https://invalid.test'},[],{onPayload:()=>({store:true,stream:false})}),'existing-stream');assert.equal(seen.m.baseUrl,'https://api.openai.com/v1');assert.deepEqual(await seen.o.onPayload({}),{store:false,stream:true});
+  let seen;const original={fixtureMetadata:'preserved',stream:(m,c,o)=>{seen={m,c,o};return 'existing-stream';},streamSimple(){}};const adapter=planResponsesApi(original);
+  assert.equal(adapter.fixtureMetadata,'preserved');assert.equal(adapter.stream({baseUrl:'https://invalid.test'},[],{onPayload:()=>({store:true,stream:false})}),'existing-stream');assert.equal(seen.m.baseUrl,'https://api.openai.com/v1');assert.deepEqual(await seen.o.onPayload({}),{store:false,stream:true});
 });
 
 test('inference stream requires actual completion; interrupted and incomplete streams refuse',async()=>{

@@ -244,7 +244,7 @@ function completedResponsesFetch(request = globalThis.fetch) {
 }
 function planResponsesApi(api) {
   const wrap = method => (model, context, options = {}) => api[method]({ ...model, api: 'openai-responses', baseUrl: RESOURCE }, context, { ...options, maxRetries: 0, fetch: completedResponsesFetch(options.fetch), onPayload: async payload => ({ ...(await options.onPayload?.(payload) ?? payload), store: false, stream: true }) });
-  return { stream: wrap('stream'), streamSimple: wrap('streamSimple') };
+  return { ...api, stream: wrap('stream'), streamSimple: wrap('streamSimple') };
 }
 
 module.exports = { ISSUER, RESOURCE, SCOPES, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch };
