@@ -1,0 +1,33 @@
+{
+  "format": "aux.native.fresh-home.v1",
+  "active": false,
+  "authorityGenerated": false,
+  "protectedCallsExecuted": false,
+  "legacyMigrationRequired": true,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "19055be2be1f92b66e285161028a2bfcf53cbcab92fd3a13b202ae073b2397da"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "4cba0b0154f8fba627da16a9df0eab339bd64c7e3be9537318392dbece60c361"
+    },
+    {
+      "path": "source/AuxFreshNativeHome.swift",
+      "sha256": "f72bdda8fffbe29d903f78e65984cfbbe53d9f2d3890c46f2f484fabcf2f5874"
+    },
+    {
+      "path": "source-evidence.json",
+      "sha256": "76213e042ceb93787a450b35b893560158db76c86ac9904cc2bc20ee9bec3474"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "9afc2cdeb424862f5fc46059dee74d42e46740d8e9b0cfdb982dba96b38b8dbe"
+    },
+    {
+      "path": "verify.py",
+      "sha256": "2485ec01fb450527e51f5b71c7e23434e795a2be3f8fab2f9b1b742ad2b53cf4"
+    }
+  ]
+}

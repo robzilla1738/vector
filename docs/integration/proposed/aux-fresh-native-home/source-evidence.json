@@ -1,0 +1,144 @@
+{
+  "format": "aux.native.fresh-home-source-evidence.v1",
+  "baseCommit": "ac3646e44",
+  "staticSourcesOnly": true,
+  "contracts": [
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+      "anchors": [
+        {
+          "anchor": "struct CallerAssertedFreshAdmission",
+          "line": 8
+        },
+        {
+          "anchor": "static func prepare(admission:",
+          "line": 42
+        },
+        {
+          "anchor": "static func selection(secureEnclaveAvailable:",
+          "line": 39
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-security-coordinator/source/FreshSecurityStepCoordinator.swift",
+      "sha256": "46777e968aacda4515892b2f5ac65dd0381077b2481ee73d1e333e741a59e165",
+      "anchors": [
+        {
+          "anchor": "func begin(cohort:",
+          "line": 36
+        },
+        {
+          "anchor": "let actualReview=CallerAssertedNeverUsedScopeReview",
+          "line": 40
+        },
+        {
+          "anchor": "func advanceOne()",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-security-coordinator/source/FreshDataProtectionBoundary.swift",
+      "sha256": "85de6f653f0f254bfe236ec256a8b997d5f32233b64b595b124cacdc3649b095",
+      "anchors": [
+        {
+          "anchor": "SecItemCopyMatching(Self.readQuery(selector)",
+          "line": 61
+        },
+        {
+          "anchor": "func addStage(",
+          "line": 39
+        },
+        {
+          "anchor": "func addTarget(",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-selected-command/source/PreparedFreshNativeCommandProvider.swift",
+      "sha256": "4decc55aea1fed4154a62e7ca42c210a515394005afcbfe4f120daf526a4b646",
+      "anchors": []
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900",
+      "anchors": [
+        {
+          "anchor": "static let home=",
+          "line": 10
+        },
+        {
+          "anchor": "static let scope=",
+          "line": 11
+        },
+        {
+          "anchor": "static let group=",
+          "line": 12
+        },
+        {
+          "anchor": "static func decode(",
+          "line": 66
+        },
+        {
+          "anchor": "object[\"home\"] as? String==AuxReviewedDevelopmentIdentity.home",
+          "line": 80
+        },
+        {
+          "anchor": "let selection=try AuxRuntimeSelection(",
+          "line": 93
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2",
+      "anchors": [
+        {
+          "anchor": "let before=try AuxSignedDevelopmentPolicyLoader.load()",
+          "line": 16
+        },
+        {
+          "anchor": "let rows=try AuxRuntimeDataProtectionCapture.capture",
+          "line": 17
+        },
+        {
+          "anchor": "let terminal=try AuxRuntimeCapturedCommandContext.validate",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-journal/source/PrivateFreshInstallationJournalStore.swift",
+      "sha256": "4ac528263eacd45516bb19f4f09bc062adf31dec7a4db4d4be17eea25f50b263",
+      "anchors": [
+        {
+          "anchor": "acl_get_fd_np(fd,ACL_TYPE_EXTENDED)",
+          "line": 54
+        },
+        {
+          "anchor": "private static func sameEntry(",
+          "line": 65
+        },
+        {
+          "anchor": "private static func sync(",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "nativePath": "chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+      "anchors": [
+        {
+          "anchor": "//   PreProfileInit()",
+          "purpose": "Profile creation follows this stage; PreProfileInit itself already performs profile cleanup. Fresh gate must precede it."
+        }
+      ]
+    }
+  ],
+  "currentBlocker": "Selected policy fixes historical home/scope/group and requires scheme/public keys/target hashes before runtime capture; native pre-generation fresh policy must be a distinct authenticated variant.",
+  "legacyMigrationRequired": true
+}
