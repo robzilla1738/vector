@@ -1,0 +1,18 @@
+{
+  "format": "aux.browser.late-drain-source-audit.v1",
+  "files": {
+    "content/browser/browser_main_runner_impl.cc": "69998f19d6fe4ac6f645e74a4c68907a7cc2a297886163700efe58da8be5ef6a",
+    "content/browser/browser_main_loop.cc": "b78b75c592ecb0e4997e8044dba49b77b1cc56c02cffe2b1d091111cfbe321ac",
+    "content/browser/browser_child_process_host_impl.cc": "5dae61fcbea54a208d3cef111b74a38378aa65d6b68b27c58447ad55e5cec09c",
+    "content/browser/child_process_launcher_helper_mac.cc": "9be8f233064e315009400054f9a13c7f69823ffb88679d99c6e85e240f707c4e"
+  },
+  "findings": [
+    "IO thread and thread-pool shutdown precede PostDestroyThreads but later Chrome Local State/metrics/deleted-profile writes still occur.",
+    "BrowserMainLoop intentionally retains AudioSystem and may leak failed AudioManager shutdown; main-loop reset does not establish universal native ownership drain.",
+    "macOS child termination calls Terminate(..., false) and schedules EnsureProcessTerminated; request success is not synchronous process-exit or descendant-drain proof.",
+    "No clean-admitted-root marker producer is justified by these callbacks. Existing phased observation remains diagnostic and whole_writer_drain_proven remains false."
+  ],
+  "fullDrainProven": false,
+  "runtimeExecuted": false,
+  "uiChanged": false
+}
