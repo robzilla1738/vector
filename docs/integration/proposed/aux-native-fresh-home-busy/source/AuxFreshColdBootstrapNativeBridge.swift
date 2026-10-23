@@ -59,7 +59,7 @@ private enum FreshColdNativeServices {
         if closed && fd>=0{Darwin.close(fd)}
         // Genuine lease contention publishes no FD/admission. Only its typed
         // busy error is retryable; all other errors/closed races stay refused.
-        return closed ? -1:(fd>=0 ? 0:status)
+        return closed ? -1:(fd>=0 ? 0:(status==1 ? 1:-1))
     }
     static func advance(_ id:UInt64,_ ready:UnsafeMutablePointer<UInt64>)->Int32 {
         guard getpid()==process else{return -1}
