@@ -9,3 +9,7 @@ A future explicit `--execute` runs only command9 and the unchanged46-Swift final
 Use the same `--node-tree`, `--node-receipt`, reviewed `--node-receipt-sha256` as31927, plus a fresh external `--output`. Default mode prepares only. Root may add `--execute` under native-build serialization after its full browser build releases the lock. There is no caller-selected skip list or arbitrary source path. A changed success receipt, object, planner, Node receipt, source/header graph or actual browser generation refuses for explicit review.
 
 Static source/success/Node-plan/object pins and Python syntax passed. No compiler was queued by this lane; the new standalone generation remains uncompiled until root performs this finite successor. Accepted UI, cloud and STATUS are untouched.
+
+## Root actual build
+
+Actual serialized build68715 passed, reusing the ten pinned existing objects, recompiling the exact current shared transport and linking the46 Swift sources against the existing Node static archives. Output SHA256 `972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435`. Read-only metadata reports all38 original PTY imports satisfied by145 Node-API exports. Actual receipts/logs are under `evidence/`. The executable and module were not run or loaded; no signing, installation, Keychain operation or app replacement occurred.

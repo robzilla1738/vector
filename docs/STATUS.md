@@ -1,3 +1,11 @@
+# Daemon link passes; browser Swift runtime correction applied — 2026-10-23
+
+Actual current daemon build68715 passed: ten verified existing objects reused, exact shared safe-container transport recompiled,46 Swift sources linked, and metadata confirms all38 original PTY imports among145 Node-API exports. Executable SHA256 `972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435`. It was not run, signed, installed or loaded. Actual receipts/logs: `docs/integration/proposed/aux-native-main-safe-transport-resume/evidence/`.
+
+Browser91150 finished exit1 after53 actual steps and successful parent Swift/native C++ compilation. Final auth_scheme_probe linking lacked Apple Swift runtime search/compatibility inputs; framework linking was cancelled. Focused actual check14125 then linked the existing three Swift objects with the genuine Chromium C++ driver, retained both real C wrappers, and passed without running its binary. The one-file transitive GN runtime-link correction is applied atop831 sources/23 unchanged artwork assets, all854 targets backed up and verified. Actual full browser resume18769 is live through the serializer with two jobs; final browser link and new app acceptance remain unproven.
+
+Read-only personal Vercel metadata refresh confirms nine missing Production configuration names, two unverified public origin values and no production resource profile. Public Clerk signing keys are available, but secret pairing and production readiness are not verified. Sanitized evidence: `services/aux-cloud/evidence/production-configuration.json`. No activation, provider secrets inspection, signing, paid AI call, new email or accepted app/UI changes occurred. The approved single development email was already delivered; no additional send or code use is authorized by that delivery.
+
 # Consistent native source build continues; operator recovery code complete locally — 2026-10-23
 
 The same actual browser build91150 remains live, advancing through platform/native, notification and preserved UI objects (last observed36 finished with adaptive557 scheduled). It has not linked or replaced the app. The paired one-object daemon relink68715 is queued behind it, retaining ten unchanged successful objects and using the exact same safe-container transport source; no duplicate Node build or provider graph runs.

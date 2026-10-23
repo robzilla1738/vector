@@ -333,31 +333,43 @@
       "exitCode": 0,
       "role": "threeactualnativepathpeer/ownedchild/coldlaunchobjectspassallbufferchecks",
       "evidence": "docs/integration/proposed/aux-native-peer-safe-containers/evidence/actual-three-objects.json"
+    },
+    {
+      "session": 91150,
+      "exitCode": 1,
+      "role": "53 actual browser steps compiled then auth_scheme_probe link missing Swift runtime search inputs; framework cancelled"
+    },
+    {
+      "session": 68715,
+      "exitCode": 0,
+      "role": "current coherent daemon transport recompile and final link; ten existing objects reused",
+      "evidence": "docs/integration/proposed/aux-native-main-safe-transport-resume/evidence/results.json",
+      "executableSha256": "972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435",
+      "nativeExecutableRun": false
+    },
+    {
+      "session": 14125,
+      "exitCode": 0,
+      "role": "actual three parent Swift objects linked with genuine C++ driver and forced C wrappers retained; output never run",
+      "evidence": "docs/integration/proposed/aux-native-parent-swift-link/evidence/results.json"
     }
   ],
   "appliedCurrentNativeComposition": {
-    "composition": "out/native-reuse-composition-aux-native-safe-containers",
+    "composition": "out/native-reuse-composition-aux-parent-swift-runtime",
     "sources": 831,
     "assets": 23,
     "applied": true,
     "compiled": false,
-    "applyReceipt": "out/native-reuse-composition-aux-native-safe-containers/native-before-apply-6091h6mu/apply-receipt.json"
+    "applyReceipt": "out/native-reuse-composition-aux-parent-swift-runtime/native-before-apply-19ru6kjl/apply-receipt.json"
   },
   "rootQueuedChecks": [
     {
-      "session": 91150,
-      "role": "actualcombined831source browserbuild incrementalresume",
-      "receiptOnSuccess": "out/aux-native-safe-containers-browser-build.json",
+      "session": 18769,
+      "role": "actual combined browser final link with propagated Swift runtime config",
+      "receiptOnSuccess": "out/aux-parent-swift-runtime-browser-build.json",
       "jobs": 2,
       "nativeSourceFrozen": true,
-      "state": "samehandleconfirmedlive; latestactual36/557 finished at2m10s (adaptivecount, notoverallpercentage)"
-    },
-    {
-      "session": 68715,
-      "role": "sharedsafecontainers transport-onlydaemonrecompile/link",
-      "output": "/tmp/aux-native-main-safe-transport-20261023",
-      "state": "samehandleconfirmedlive, queuedbehind91150; tenunchangedobjectsretained",
-      "sourceCommit": "61f1a4bac"
+      "state": "live; started after actual focused parent link passed and all854 apply targets verified"
     }
   ],
   "lastBuildObservation": {

@@ -17,3 +17,7 @@ The only native change is `native_peer_policy/BUILD.gn`: import the existing mac
 Default invocation with fresh external `--output` prepares only. Root can add `--execute` under native-build serialization to perform the two bounded compiler/link steps, before resuming the actual framework link. The native GN must be the exact reviewed baseline or exact successor and remain unchanged during the check; its observed hash is recorded. Both configurations are accepted only for source/link testing, not as an authority/activation flag. The future whole framework link validates genuine transitive GN propagation; this isolated recipe alone does not.
 
 Source, object, real toolchain/SDK library, captured driver metadata and Python syntax checks passed. No link test, module load, native call, Security/Keychain operation, signing tool or executable run occurred in this lane. All previously compiled objects, failure receipts, policies, accepted UI, native checkout and STATUS remain untouched.
+
+## Root actual check
+
+Actual serialized check14125 passed both compiler/linker steps against the three real parent objects. Both C wrappers were explicitly retained; the output was not run. Receipt and logs are under `evidence/`. The one-file GN correction was then composed/applied with854 verified source/artwork targets; actual full browser resume18769 remains separate and pending. No runtime or accepted-app claim follows from the bounded link result.
