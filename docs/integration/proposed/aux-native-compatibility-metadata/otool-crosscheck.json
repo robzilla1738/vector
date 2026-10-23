@@ -1,0 +1,16 @@
+[
+  {
+    "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+    "command": "xcrun otool -l <fixed artifact>",
+    "loadCommand": [
+      "      cmd LC_BUILD_VERSION\n  cmdsize 32\n platform 1\n    minos 27.0\n      sdk 27.0\n   ntools 1\n     tool 3\n  version 27037.1"
+    ]
+  },
+  {
+    "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/bin/pdftoppm",
+    "command": "xcrun otool -l <fixed artifact>",
+    "loadCommand": [
+      "      cmd LC_BUILD_VERSION\n  cmdsize 32\n platform 1\n    minos 26.0\n      sdk 26.5\n   ntools 1\n     tool 3\n  version 27037.1"
+    ]
+  }
+]

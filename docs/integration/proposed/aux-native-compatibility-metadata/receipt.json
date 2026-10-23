@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.compatibility.metadata.receipt.v1",
+  "files": {
+    "inspect.py": "ed064ae9a3d9f8323dbe170c3b6338a2b26f8db0e5626666a549b1cf9dd2f49c",
+    "evidence.json": "dd83e06f80101e7f3f7bf1d283607c32b33850df2147808b9d61d7d435b01b5e",
+    "otool-crosscheck.json": "afb52065f59042547ad0ea4601a37a908b38c408d3984019dd0630f472098dfa",
+    "README.md": "0cd0694c77fdbaec07cb93b6d73759257cb36ab79a288649bfe8c7f4dd381a88"
+  },
+  "actualNativeExecution": false,
+  "compilerRun": false,
+  "wholeProduct13_5Supported": false,
+  "maximumDeclaredArm64MacOSMinimum": "27.0.0",
+  "futureMain13_5TargetIsRuntimeEvidence": false
+}

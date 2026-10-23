@@ -1,0 +1,3709 @@
+{
+  "format": "aux.native.compatibility.metadata.v1",
+  "nativeExecution": false,
+  "scope": "Actual candidate Mach-O files plus exact supplied critical inputs and retained own-runtime proposal; symlink aliases omitted",
+  "candidate": "out/provided-candidate-aux-recovery-enrollment/Aux.app",
+  "records": [
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 452704448,
+      "sha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork",
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/OpenDirectory.framework/Versions/A/OpenDirectory",
+            "/System/Library/Frameworks/CryptoTokenKit.framework/Versions/A/CryptoTokenKit",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+            "/System/Library/Frameworks/AudioUnit.framework/Versions/A/AudioUnit",
+            "/System/Library/Frameworks/AVFAudio.framework/Versions/A/AVFAudio",
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Carbon",
+            "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+            "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+            "/System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage",
+            "/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit",
+            "/System/Library/Frameworks/UniformTypeIdentifiers.framework/Versions/A/UniformTypeIdentifiers",
+            "/System/Library/Frameworks/Network.framework/Versions/A/Network",
+            "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration",
+            "/System/Library/Frameworks/IOSurface.framework/Versions/A/IOSurface",
+            "/System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia",
+            "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+            "/System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight",
+            "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+            "/System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio",
+            "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+            "/System/Library/Frameworks/Quartz.framework/Versions/A/Quartz",
+            "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa",
+            "/System/Library/Frameworks/AVFoundation.framework/Versions/A/AVFoundation",
+            "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox",
+            "/System/Library/Frameworks/CoreMediaIO.framework/Versions/A/CoreMediaIO",
+            "/System/Library/Frameworks/Accessibility.framework/Versions/A/Accessibility",
+            "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit",
+            "/System/Library/Frameworks/CoreBluetooth.framework/Versions/A/CoreBluetooth",
+            "/System/Library/Frameworks/IOBluetooth.framework/Versions/A/IOBluetooth",
+            "/System/Library/Frameworks/CoreMIDI.framework/Versions/A/CoreMIDI",
+            "/System/Library/Frameworks/MediaAccessibility.framework/Versions/A/MediaAccessibility",
+            "/System/Library/Frameworks/SecurityInterface.framework/Versions/A/SecurityInterface",
+            "/System/Library/Frameworks/MediaPlayer.framework/Versions/A/MediaPlayer",
+            "/System/Library/Frameworks/AuthenticationServices.framework/Versions/A/AuthenticationServices",
+            "/System/Library/Frameworks/CoreHaptics.framework/Versions/A/CoreHaptics",
+            "/System/Library/Frameworks/GameController.framework/Versions/A/GameController",
+            "/System/Library/Frameworks/ForceFeedback.framework/Versions/A/ForceFeedback",
+            "/System/Library/Frameworks/CoreWLAN.framework/Versions/A/CoreWLAN",
+            "/System/Library/Frameworks/CoreLocation.framework/Versions/A/CoreLocation",
+            "/System/Library/Frameworks/Vision.framework/Versions/A/Vision",
+            "/System/Library/Frameworks/CoreML.framework/Versions/A/CoreML",
+            "/System/Library/Frameworks/DiskArbitration.framework/Versions/A/DiskArbitration",
+            "/System/Library/Frameworks/ServiceManagement.framework/Versions/A/ServiceManagement",
+            "/System/Library/Frameworks/SafariServices.framework/Versions/A/SafariServices",
+            "/System/Library/Frameworks/UserNotifications.framework/Versions/A/UserNotifications",
+            "/System/Library/Frameworks/LocalAuthenticationEmbeddedUI.framework/Versions/A/LocalAuthenticationEmbeddedUI",
+            "/usr/lib/libcups.2.dylib",
+            "/usr/lib/libbsm.0.dylib",
+            "/usr/lib/libpmenergy.dylib",
+            "/usr/lib/libpmsample.dylib",
+            "/usr/lib/libresolv.9.dylib",
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libcompression.dylib",
+            "/usr/lib/libbz2.1.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 83424,
+      "sha256": "84d6324b76ffa739d2ba63be6d7a7af19df6bc1a38fce42a7d80788165269a28",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 33632,
+      "sha256": "215a4eaa410f20aed5c07f99b04334318c1e1a1883c9bd2f8d38935a189f40be",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "@executable_path/../../../../Libraries/libaperitif.dylib",
+            "@executable_path/../../../../Aux Framework",
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 33632,
+      "sha256": "461dec752164baa6466eaea3812599b24600090ed62cca3029131ba537d04bbf",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "@executable_path/../../../../Libraries/libaperitif.dylib",
+            "@executable_path/../../../../Aux Framework",
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 33632,
+      "sha256": "30a19455b48553c28e976ee3ab4ecaea81b54ef2bacb2bcef462931780d8df06",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "@executable_path/../../../../Libraries/libaperitif.dylib",
+            "@executable_path/../../../../Aux Framework",
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 33632,
+      "sha256": "6b4f11ed29ddb187534b4a997dc5e171f12be380efbe39d3f406dd2b22f014e5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "@executable_path/../../../../Libraries/libaperitif.dylib",
+            "@executable_path/../../../../Aux Framework",
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 83424,
+      "sha256": "c6af549bd2c3873cf5789de612926ef206ff2785ff76835e02fae271fb7ff41c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 83424,
+      "sha256": "554cf4b1564256f499193a0d199b3a361c006a8fecdc1a5bcae197ad1f7a3789",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 83408,
+      "sha256": "5786bf553885028c8fb900380259b96d9cb24a4b7b5bdb5effdc86e4380182d2",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1230112,
+      "sha256": "e1a30f67be14e22726969690b86820b383ec98835199db1ae8c2c3ad385f40fc",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/OpenDirectory.framework/Versions/A/OpenDirectory",
+            "/System/Library/Frameworks/CryptoTokenKit.framework/Versions/A/CryptoTokenKit",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libbsm.0.dylib",
+            "/usr/lib/libpmenergy.dylib",
+            "/usr/lib/libpmsample.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/aux_owned_headless_launcher",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 34160,
+      "sha256": "0873aed3a88bd283649cac105eb158e90f3104cd5329efdb5f7eb4055bae4c9f",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 2472800,
+      "sha256": "7287bd4bb8840811399be34d2c6df340d9538d6f84ad6797b06e5e9ee2d38ec1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/OpenDirectory.framework/Versions/A/OpenDirectory",
+            "/usr/lib/libbsm.0.dylib",
+            "/usr/lib/libpmenergy.dylib",
+            "/usr/lib/libpmsample.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 33520,
+      "sha256": "c40d9df5997b1e4580fb8e6bd622a96e2a385e882fa530b3652e829e840e73c3",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "@executable_path/../Aux Framework",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 83488,
+      "sha256": "441fca0be73089449a1604fb1c444f137a1ba7476d857168afb65b85dddff488",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libsandbox.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 21956896,
+      "sha256": "ef14b004c77ef04cb63169d2a6ce4478b8e8a3fda5dc404033634ae546505d27",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+            "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa",
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/usr/lib/libobjc.A.dylib",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 558544,
+      "sha256": "a68baf4d29a0c32298a0bb9fc96140c3f79e4c0c39f523ff3549aa2e5334f430",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Helpers/Aux Runtime",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 75770640,
+      "sha256": "58f50545883acd65c4074f7ec68897c13875f1d10e3be484c4f46f8e0d6121fb",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/MacOS/Aux",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 76032,
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/bin/pdfinfo",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 130640,
+      "sha256": "483852d6e86c51c172e0eea23e16fd6645397c77ef255683bbb01fcdb64c8c99",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/../lib/libpoppler.165.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/bin/pdftoppm",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 93152,
+      "sha256": "166a083ba0a567a3cc9e831505f1f5969d3e1c95856e5795fb925b488f128067",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/../lib/liblcms2.2.dylib",
+            "@loader_path/../lib/libpoppler.165.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/bin/pdftotext",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 128640,
+      "sha256": "00c36d6798b8e8c70474a7c52ba9eff0a2286f2136c6a2816795920c4d0ad578",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/../lib/libpoppler.165.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/bin/rg",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 6492816,
+      "sha256": "c96883f162d76b148b362455a06fe32fc766f51332ce86458145ce8a7a8041d2",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/../lib/libpcre2-8.0.dylib",
+            "/usr/lib/libiconv.2.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libassuan.9.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 116496,
+      "sha256": "a7280e06f48f80bcab49e4585891389acdf0ad44519eb95c653dd2ef96c9a7d8",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.0.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libgpg-error.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libbrotlicommon.1.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 167440,
+      "sha256": "d5c9e928e339ec5355cb7aaebfe86f8984f4b3bf2fb30bfa433b04314f7a1fc0",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libbrotlidec.1.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 87904,
+      "sha256": "c851e32c8fadbd21550059e424333f63a892f2c8d990d528959b11fec0b49b69",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.0.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libbrotlicommon.1.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libfontconfig.1.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 471504,
+      "sha256": "97f76096b5bb6c0c85980ffce27af1734b903fb36c634c66f928efeb5e2d1ee8",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libfreetype.6.dylib",
+            "/usr/lib/libexpat.1.dylib",
+            "@loader_path/libintl.8.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libfreetype.6.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 639008,
+      "sha256": "67d04b189d412717cfa1928c82eecc3701c62e0ec80ee399e82c6204180d3780",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libz.1.dylib",
+            "/usr/lib/libbz2.1.0.dylib",
+            "@loader_path/libpng16.16.dylib",
+            "@loader_path/libbrotlidec.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libglib-2.0.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1372976,
+      "sha256": "6e4079138fe2a05ad7c47127be6ef43561a64073e6c055247a33abf57de75c15",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libiconv.2.dylib",
+            "@loader_path/libintl.8.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libpcre2-8.0.dylib",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/usr/lib/libobjc.A.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libgpg-error.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 199040,
+      "sha256": "762b5eeaa1c449f8fa975faa990822cfc2c8a2c9fa3409a74d8dfb2ce40c5ac1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.4.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libintl.8.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libgpgme.45.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 345808,
+      "sha256": "110ccc7d36b885fdccc5a8ba5b5e0a7f8400a098a251afbeb909c46b95dd32b3",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libassuan.9.dylib",
+            "@loader_path/libgpg-error.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libgpgmepp.7.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 417344,
+      "sha256": "9ad7e883a746ff0a4892b0fb6c0bd78db63220ea20a1ccd297b1f9b9f730e44c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libgpgme.45.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libgraphite2.3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 142688,
+      "sha256": "82e0f92bfc80c552cc6d5274872511b8ac31bbea750b0ba25ff1387bc34725c9",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.4.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libharfbuzz-subset.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1581312,
+      "sha256": "dc923849491fe1a2a7857d556a9e05c670c7c96256472a8d91ae3fc229b47431",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libharfbuzz.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libharfbuzz.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1296896,
+      "sha256": "dd0460d2bf9237c19ec0b52552675e21f7025080efdbdb5dd43e2c96643cbef5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libfreetype.6.dylib",
+            "@loader_path/libglib-2.0.0.dylib",
+            "@loader_path/libgraphite2.3.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libintl.8.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 229008,
+      "sha256": "846181fa8c5ab96cf7f34d29b065c7b8c565c8ff10571b8f5dbc6336c0fb096a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libiconv.2.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libjpeg.8.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 472416,
+      "sha256": "bb02e1bbcd3a31e626b6f8ce78f7fbf221ffe691af2a8b8e2a1e93f6ab506f4c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/liblcms2.2.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 356432,
+      "sha256": "b205ac061c9fd6ec10cb190278ef5c1a2aa919f1ce889a903a17a0ae94d52ac5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/liblzma.5.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 184736,
+      "sha256": "950fe81706f0942d1d71751208420878de1f707d40d1cf86ffcd0420a6c75ca0",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libnspr4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 238864,
+      "sha256": "1e6ffe8b0792dfdab53a7ce134cb3ac2ad3b37892b1153106d0a81b0b7e83c37",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libnss3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1165872,
+      "sha256": "e65b6817a0328817bab840a1234964e46a5a7b0fb96689e07a89d8c5696c66f1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libnssutil3.dylib",
+            "@loader_path/libplc4.dylib",
+            "@loader_path/libplds4.dylib",
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libnssutil3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 222384,
+      "sha256": "e4a9e4ada55aee75dba11f43cf6e5fcf34b079ea1c4997557cde7c8aae19773a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libplc4.dylib",
+            "@loader_path/libplds4.dylib",
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libopenjp2.7.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 324256,
+      "sha256": "6a450299348bec2a36a5b3a62e1275636e7828bef0dde1d06d271caa68fd72c8",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libpcre2-8.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 588912,
+      "sha256": "50e1561928991afd879b475f0d5d1ac200d8c867c902dc7eacf0fba3c961fcd3",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libplc4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 70880,
+      "sha256": "2eb1a7b0bac634e67eb4708ca00d4873faad1351f295429da48b31bea79d541b",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libplds4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 69744,
+      "sha256": "cddfad9344daa2b40a4b0175a098893213b573a5571b44637d629c34db33324d",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libpng16.16.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 208384,
+      "sha256": "fb0c2c7d30d5552cf44ab56b352795db100aefa98cd56c19171bdc6a6ee77232",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libz.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libpoppler.165.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 3520096,
+      "sha256": "0dadc997fcde3ad9e245034671866e1c28e4d0b27609c593c94b4027a114c0ce",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libfreetype.6.dylib",
+            "/usr/lib/libz.1.dylib",
+            "@loader_path/libfontconfig.1.dylib",
+            "@loader_path/libjpeg.8.dylib",
+            "/usr/lib/libcurl.4.dylib",
+            "@loader_path/libgpgmepp.7.dylib",
+            "@loader_path/libopenjp2.7.dylib",
+            "@loader_path/liblcms2.2.dylib",
+            "@loader_path/libpng16.16.dylib",
+            "@loader_path/libtiff.6.dylib",
+            "@loader_path/libbrotlidec.1.dylib",
+            "@loader_path/libnss3.dylib",
+            "@loader_path/libnssutil3.dylib",
+            "@loader_path/libsmime3.dylib",
+            "@loader_path/libssl3.dylib",
+            "@loader_path/libplds4.dylib",
+            "@loader_path/libplc4.dylib",
+            "@loader_path/libnspr4.dylib",
+            "@loader_path/libgpgme.45.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libharfbuzz-subset.0.dylib",
+            "@loader_path/libharfbuzz.0.dylib",
+            "/usr/lib/libc++.1.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libsharpyuv.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 69744,
+      "sha256": "6f4abef4013ed205da0e78e1ff42cba464571b8d10bf95447a978e311d0d6b7e",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libsmime3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 181616,
+      "sha256": "3aec76393f8d82ac944ee0e71f5fc62d84e9fd7f69ceb64248dd16b18126b1ac",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libnss3.dylib",
+            "@loader_path/libnssutil3.dylib",
+            "@loader_path/libplc4.dylib",
+            "@loader_path/libplds4.dylib",
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libssl3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 384384,
+      "sha256": "790e7a206e8dcd6f162ec2694a8d301faf7fe4ed280dd6ffb54dc558881c6fa3",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libnss3.dylib",
+            "@loader_path/libnssutil3.dylib",
+            "@loader_path/libplc4.dylib",
+            "@loader_path/libplds4.dylib",
+            "@loader_path/libnspr4.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libtiff.6.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 543664,
+      "sha256": "a12ce7b5f857f99b6ced8d523cc6ff8776897b871448e11bb4804c75e85438c6",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libwebp.7.dylib",
+            "@loader_path/libzstd.1.dylib",
+            "@loader_path/liblzma.5.dylib",
+            "@loader_path/libjpeg.8.dylib",
+            "/usr/lib/libz.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libwebp.7.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 352432,
+      "sha256": "316a1c2ca5905076b6912a8e4d967b881649353066e6f2e8a4dbacb1561e754a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libsharpyuv.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/native/lib/libzstd.1.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 649824,
+      "sha256": "80e0c873acb84df71819f36687c7a7628148fc977343d545bd8fff777d650b61",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "26.0.0",
+              "sdk": "26.2.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/node/bin/node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 145307392,
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/bin/python3.13",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 68464,
+      "sha256": "aa297d23f1ad4ec74dc2fde694556b005c1aac0e6e156d060803bcbcf2fb6e1c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "@rpath/libpython3.13.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/itcl4.3.5/libitcl4.3.5.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 316336,
+      "sha256": "a2b4da029cea48a0cf18ea3e460e894c6761ed6bb1ded022f76f5b3a9b829a5c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/itcl4.3.5/libtcl9itcl4.3.5.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 316688,
+      "sha256": "ec9a2ff1eee00b860abbc38080b51853b33ca61cda855ae9f80514eebb61e2f1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/libpython3.13.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 17205248,
+      "sha256": "d544d0dc79a8d75611e9b3017a19e4174d89ec9a65ef541fd71a44dc18f33ed5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "/usr/lib/libncurses.5.4.dylib",
+            "/usr/lib/libpanel.5.4.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration",
+            "/usr/lib/libedit.3.dylib",
+            "/usr/lib/libz.1.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/libtcl9.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 2046736,
+      "sha256": "06b6d0424e4fdcb74f38c2695ecb99bb2dd3c320e6d8a45ea51ba07981262595",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/libtcl9tk9.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1830224,
+      "sha256": "2fb1d828f0d48dada72dc2a7938f81e030779932c5eafbd35082245916badd49",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa",
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Carbon",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/UniformTypeIdentifiers.framework/Versions/A/UniformTypeIdentifiers",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/python3.13/lib-dynload/_ctypes_test.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 74240,
+      "sha256": "4c8ae001ebee1c0718803c13b2cc6cde227332bc98b0598eae2b7be338d3de99",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/python3.13/lib-dynload/_dbm.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 72000,
+      "sha256": "8dca76d0bfa25233df2b1016db38aad295ef7bfc10bce13ba8208fa83245ae91",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/python3.13/lib-dynload/_tkinter.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 117856,
+      "sha256": "726a4b3114dfc4f2eae5317e8f412ee5d7bef44d477f872a1b066f6fa7bd837c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "@rpath/libtcl9.0.dylib",
+            "@rpath/libtcl9tk9.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/thread3.0.4/libtcl9thread3.0.4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 156240,
+      "sha256": "eddbf7f001ede31a0153ab9789eb9df5cdf14e56bef734034842be21eb6ca411",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/runtime/lib/thread3.0.4/libthread3.0.4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 156240,
+      "sha256": "ea0e8a6fdaca1f2dbfa6e1e143686b5e632f48f755e5d6907e70eccce1ccad56",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/python",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 68464,
+      "sha256": "9ebe3bab25ebb3b8134e2aface3621242e98ab13132c6f39bdaab70409032d0d",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "@rpath/libpython3.13.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/python3",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 68464,
+      "sha256": "877f6bb7c68dd0ff3facb75da152f742f407b7e43bbbdca1811e4df8251b5ec4",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "@rpath/libpython3.13.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/python3.13",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 68464,
+      "sha256": "abaf21b06f2f7923d5aab5a1c88713888f8dd61c29b123e91d9eb747ca2c37e8",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "@rpath/libpython3.13.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/libpython3.13.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 17205248,
+      "sha256": "cf71f496779fe2044252157b04a76aa99fcf64bd07e4e26e9032d130904072c5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "/usr/lib/libncurses.5.4.dylib",
+            "/usr/lib/libpanel.5.4.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration",
+            "/usr/lib/libedit.3.dylib",
+            "/usr/lib/libz.1.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libXau.6.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 69744,
+      "sha256": "92f89fe3c1ab6effc9e6a592d640139ebcb3c6b1b9f353c7e0ee229e18bc62d4",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libavif.16.4.2.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 2999312,
+      "sha256": "ea2a77369f47c6b82ca7a26b1abb76e7ef8d444d956dc8b6d01dfb8a09c67840",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libbrotlicommon.1.2.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 183888,
+      "sha256": "623775f447babf2a9dde797e2a666614064edae3d832687636785cd7a9544200",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libbrotlidec.1.2.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 104256,
+      "sha256": "f2eae5fd343a394be7d002fe287190505303c213961833929104e6d085aed965",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libbrotlicommon.1.2.0.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libfreetype.6.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 770048,
+      "sha256": "3730105a746a3819c4275c23016af4b355ee293a80b651862e8450b253ebb581",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libbz2.1.0.dylib",
+            "@loader_path/libpng16.16.dylib",
+            "@loader_path/libz.1.3.1.zlib-ng.dylib",
+            "@loader_path/libharfbuzz.0.dylib",
+            "@loader_path/libbrotlidec.1.2.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libharfbuzz.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1625424,
+      "sha256": "96fafdcb33c3e1074ecc9676f2f23d1a3803f16e0e185402c823edd8ac2fb1a8",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libfreetype.6.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libjpeg.62.4.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 701296,
+      "sha256": "f36102687e7962f41a5bf4a2fab3b6da9d1c47ef832cc29bcdce44ad2fa27185",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/liblcms2.2.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 421280,
+      "sha256": "1b0150a093615f6d4e585f936e43d7e1a94b543ea5ab901b1e851a7ca5c5f366",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/liblzma.5.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 217120,
+      "sha256": "0456fbe85a99ea9e65565d0f7bb6143737aaf7288bdce46b157c79ba6b18027d",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libopenjp2.2.5.4.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 430704,
+      "sha256": "a1d21081165e9085b3f3a7754b4f28e4a22d3db53734ac530dcb0c1aea041bb7",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libpng16.16.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 257408,
+      "sha256": "f08bfb449be78a119426699e64b1edebd0e31e6d7b6c85fb23ad2613cea95ea3",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libz.1.3.1.zlib-ng.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libsharpyuv.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 86032,
+      "sha256": "dd140b9c3a81a3db353c0031c8bfb9c89b7445ec806b1f037c68e9c17d4fdf44",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libtiff.6.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 572720,
+      "sha256": "c22129f8210b4092bf007c4dceedbec41506e7d98508b92749bd24b3d1ea4512",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/liblzma.5.dylib",
+            "@loader_path/libjpeg.62.4.0.dylib",
+            "@loader_path/libz.1.3.1.zlib-ng.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebp.7.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 512848,
+      "sha256": "b6de60255a5f1b626408ef011901942497ca7fa9f679b3ff5602b9454e4a0d3e",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libsharpyuv.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebpdemux.2.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 69792,
+      "sha256": "c65475c301a424fd102ca7692a50c8328de1517fb1fefafca1f156d0b33912ae",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libwebp.7.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libwebpmux.3.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 105968,
+      "sha256": "2fd577022d3115f296ef06aa880e8e09c7a01763ec3901d227a18f9cd65888cc",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib",
+            "@loader_path/libwebp.7.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libxcb.1.1.0.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 193920,
+      "sha256": "5a5635f37dcd01117bdb94ba25d7b7a663358c22422a2785cb8fee575cbf2d43",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/libXau.6.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/.dylibs/libz.1.3.1.zlib-ng.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 176496,
+      "sha256": "72416bfd77ffd44f4a92544e5bd087e069aef33352f2311e9eed92fb44dd0611",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_avif.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 73824,
+      "sha256": "78bc878dabdd65eb34ed585087c367252fc2f0b7f0e57b12676caeec4389e15e",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/.dylibs/libavif.16.4.2.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imaging.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 634432,
+      "sha256": "46a0c06ed5a12a577424df2ee4afba0b298223900f77e0f1cd41e0e3eef9f53b",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/.dylibs/libtiff.6.dylib",
+            "@loader_path/.dylibs/libjpeg.62.4.0.dylib",
+            "@loader_path/.dylibs/libopenjp2.2.5.4.dylib",
+            "@loader_path/.dylibs/libz.1.3.1.zlib-ng.dylib",
+            "@loader_path/.dylibs/libxcb.1.1.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imagingcms.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 98016,
+      "sha256": "dd95ceab768b421856cda92de073a39f5b08a5543d10727daefefecf236c9adf",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/.dylibs/liblcms2.2.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imagingft.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 117488,
+      "sha256": "1d682f6aa7f760d184259f300069be45404d466de649c45c4314a5ca7ccaf065",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/.dylibs/libfreetype.6.dylib",
+            "@loader_path/.dylibs/libharfbuzz.0.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imagingmath.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 90032,
+      "sha256": "d158bfa2fea7539f2cbf11330eb90fd2dc269325b1cc74c978961ea59bc9f5e5",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imagingmorph.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 69440,
+      "sha256": "2da05dc9e8aab96e91c501e09b6afa6be3575d61dd6447314893063983508451",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_imagingtk.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 70784,
+      "sha256": "d1550a3a128ea40d7998f6a9f859cfa6754ce42ff7c17e7ecdee5595f1788b8c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/PIL/_webp.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 75904,
+      "sha256": "d96d1c236d31d5a138e2d977925f123658ab262dd1bb3bf41d9feeeb4a04337b",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "@loader_path/.dylibs/libwebp.7.dylib",
+            "@loader_path/.dylibs/libwebpmux.3.dylib",
+            "@loader_path/.dylibs/libwebpdemux.2.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/_elementpath.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 507808,
+      "sha256": "fd800e939f1cca3e66b0cd28aa56de4b4dcb26972e7dc7a005bc2ac8504e3c21",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/builder.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 337696,
+      "sha256": "003751efefab4ccb8e4c76eeb91646163b48c99d7ea177fd73bf3a61ffaeec10",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/etree.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 9662096,
+      "sha256": "b02e751709b1a5ad233e66be77bb7589a8065c5dfbfbf60b1c737304f70359f0",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/html/_difflib.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 1131024,
+      "sha256": "ff2349b90e4295e181237d54605b7e342758afcf093251def8ac0b49e92cc328",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/html/diff.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 753296,
+      "sha256": "dd52988d6474fa6b3b8bbaeb5754024989242e6fc88aad3c7bda01bbf30c01d9",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/objectify.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 5297376,
+      "sha256": "6250095e9ea9804ebf7ff974f7b7b2e6579eeb2dbe542e7c1ce3044e9607e581",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/lib/python3.13/site-packages/lxml/sax.cpython-313-darwin.so",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 441776,
+      "sha256": "39835d3eb98b98fc33bd0c20f9488d1e85df50c3cec0b3d5d133ba30e4113794",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.13.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        },
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 145776,
+      "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "27.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 146277488,
+      "sha256": "3a9ccd7a0ac13560eedb7d5c655b8144640648a9abeb6d1f2f4050bc58fb3185",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/aux-native-guard.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 56232,
+      "sha256": "c11f4ebd86626768c56d7dfb3a17f227498a281307782148c490ca919773fb77",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "27.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 9246656,
+      "sha256": "66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "26.2.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 2064608,
+      "sha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Carbon",
+            "/System/Library/Frameworks/Contacts.framework/Versions/A/Contacts",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit",
+            "/System/Library/Frameworks/Vision.framework/Versions/A/Vision",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftAVFoundation.dylib",
+            "/usr/lib/swift/libswiftAccelerate.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreAudio.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftCoreMIDI.dylib",
+            "/usr/lib/swift/libswiftCoreMedia.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswift_Concurrency.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib",
+            "/usr/lib/swift/libswiftCoreGraphics.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 158293872,
+      "sha256": "22bd19691e43edf5c991de471be5db0148d424bde85e6a705db813cc8329c38d",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 393720,
+      "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing",
+            "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-native-guard.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 56232,
+      "sha256": "c11f4ebd86626768c56d7dfb3a17f227498a281307782148c490ca919773fb77",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "27.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 9474752,
+      "sha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 103280,
+      "sha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/spawn-helper",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 68464,
+      "sha256": "b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-x64/pty.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 72080,
+      "sha256": "c8e53ab3e0f190b691fd838768a24771b6d352c6ae817a4b3049c817f27ac262",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.7.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-x64/spawn-helper",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 27968,
+      "sha256": "3ddfd4ac6b1500fc8c3a28b185d7973c193a8ab035f4763b2a5d4636eccf4514",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "cpuSubtype": 3,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_VERSION_MIN_MACOSX",
+              "platform": 1,
+              "minimumOS": "10.7.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 9255280,
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/memory-distribution/memory-runtimes/ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934/04175566-995b-42b3-840a-52d2d74d0605/aside-memory",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 3384480,
+      "sha256": "c6a883c7b43f4db4199812ac98168af82b8ec4ec204b51bc82fcb07b125e08f1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/System/Library/Frameworks/CoreML.framework/Versions/A/CoreML",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/usr/lib/libiconv.2.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/usr/lib/libobjc.A.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/native/aux-native-carrier",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 80496,
+      "sha256": "c19d87157f0bae98e9c8f990cebfadedcd84c7d3120ec7d973c1b209defe92a1",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "27.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-candidate-aux-recovery-enrollment/Aux.app/Contents/Resources/aux/native/libaux-native-boundary.dylib",
+      "cohort": "actual-packaged-candidate",
+      "bytes": 82352,
+      "sha256": "c859bad217238e59b1bd2b3173f574109f12cc813e9729ec153f98efe19073fe",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "27.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 145307392,
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 158228336,
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/cli/Contents/MacOS/aside",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 146277488,
+      "sha256": "17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38b79bc7bed3c599320a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.5.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/computer-use/Contents/MacOS/aside-computer-use",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 2064608,
+      "sha256": "a17241d3149df77a8b05b17853053ca0318c7f78e6449800bafcfd3e14c97026",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices",
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Carbon",
+            "/System/Library/Frameworks/Contacts.framework/Versions/A/Contacts",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+            "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit",
+            "/System/Library/Frameworks/Vision.framework/Versions/A/Vision",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftAVFoundation.dylib",
+            "/usr/lib/swift/libswiftAccelerate.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreAudio.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftCoreMIDI.dylib",
+            "/usr/lib/swift/libswiftCoreMedia.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswift_Concurrency.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib",
+            "/usr/lib/swift/libswiftCoreGraphics.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/aside-native.node",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 9255280,
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "26.5.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit",
+            "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+            "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+            "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+            "/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 103280,
+      "sha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 8,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/spawn-helper",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 68464,
+      "sha256": "b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 2,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "11.0.0",
+              "sdk": "15.5.0"
+            }
+          ],
+          "dependencies": [
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "out/aux-runtime-utilities-atomic-v4/aux-runtime-owned.node",
+      "cohort": "supplied-source-or-retained-proposal",
+      "bytes": 1406856,
+      "sha256": "65d89da3aa148831a4ace2d22d2a3b335c28aa18e986d08851937515c502a780",
+      "slices": [
+        {
+          "architecture": "arm64",
+          "cpuSubtype": 0,
+          "fileType": 6,
+          "build": [
+            {
+              "command": "LC_BUILD_VERSION",
+              "platform": 1,
+              "minimumOS": "13.0.0",
+              "sdk": "27.0.0"
+            }
+          ],
+          "dependencies": [
+            "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+            "/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing",
+            "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+            "/usr/lib/libc++.1.dylib",
+            "/usr/lib/libSystem.B.dylib",
+            "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+            "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit",
+            "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+            "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+            "/usr/lib/libobjc.A.dylib",
+            "/usr/lib/swift/libswiftCore.dylib",
+            "/usr/lib/swift/libswiftCoreFoundation.dylib",
+            "/usr/lib/swift/libswiftCoreImage.dylib",
+            "/usr/lib/swift/libswiftDarwin.dylib",
+            "/usr/lib/swift/libswiftDispatch.dylib",
+            "/usr/lib/swift/libswiftIOKit.dylib",
+            "/usr/lib/swift/libswiftMetal.dylib",
+            "/usr/lib/swift/libswiftOSLog.dylib",
+            "/usr/lib/swift/libswiftObjectiveC.dylib",
+            "/usr/lib/swift/libswiftQuartzCore.dylib",
+            "/usr/lib/swift/libswiftSpatial.dylib",
+            "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+            "/usr/lib/swift/libswiftXPC.dylib",
+            "/usr/lib/swift/libswiftos.dylib",
+            "/usr/lib/swift/libswiftsimd.dylib"
+          ]
+        }
+      ]
+    }
+  ],
+  "machOFiles": 127,
+  "maximumDeclaredArm64MacOSMinimum": "27.0.0",
+  "runtimeCompatibilityProven": false,
+  "newNativeMainBuilt": false
+}
