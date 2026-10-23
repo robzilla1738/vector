@@ -1,0 +1,30 @@
+{
+  "format": "aux.isolated-node-archives.v1",
+  "passed": true,
+  "planSha256": "9333a5216121c619d15c5be0659aa40da00acb92a321e9b90709d14ba403c382",
+  "archives": [
+    {
+      "path": "/private/tmp/aux-isolated-node-archives-20261023/libnode_base.a",
+      "sha256": "dcf36590301ffe2555e87f1ebc4afb460944f43ba7c61179e08e2b4cbb2fcbef",
+      "memberCount": 207,
+      "replaced": [
+        "process_wrap.o",
+        "spawn_sync.o"
+      ],
+      "allOtherMemberBytesPreserved": true
+    },
+    {
+      "path": "/private/tmp/aux-isolated-node-archives-20261023/libuv.a",
+      "sha256": "f82b3182c095a5ab1064dd167d92a0f68174daccfb2dd04fe62c65496df0e263",
+      "memberCount": 37,
+      "replaced": [
+        "process.o"
+      ],
+      "allOtherMemberBytesPreserved": true
+    }
+  ],
+  "linked": false,
+  "executed": false,
+  "signed": false,
+  "originalsChanged": false
+}

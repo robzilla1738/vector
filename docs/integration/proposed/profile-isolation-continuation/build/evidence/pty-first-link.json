@@ -1,0 +1,20 @@
+{
+  "format": "aux.contained-pty.link.v1",
+  "passed": false,
+  "compileReceiptSha256": "b5fd20d19aef7d53b75ca6d3a6e7525b22335ba7acbdc93dfa692dade1602b6a",
+  "objectSha256": "125ba9474a2e52c36ff138d9399270ea3d85faf5be225beafc2ddd537591d30f",
+  "command": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+    "-bundle",
+    "-undefined",
+    "dynamic_lookup",
+    "-Wl,-no_adhoc_codesign",
+    "-mmacosx-version-min=13.5",
+    "/private/tmp/aux-spawn-custody-native-20261023-r4-pty/pty-addon.o",
+    "-o",
+    "/private/tmp/aux-contained-pty-module-20261023/pty.node"
+  ],
+  "exitCode": 1,
+  "loaded": false,
+  "signed": false
+}

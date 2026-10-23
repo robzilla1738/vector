@@ -1,0 +1,41 @@
+{
+  "format": "aux.contained-pty.link.v1",
+  "passed": true,
+  "compileReceiptSha256": "b5fd20d19aef7d53b75ca6d3a6e7525b22335ba7acbdc93dfa692dade1602b6a",
+  "objectSha256": "125ba9474a2e52c36ff138d9399270ea3d85faf5be225beafc2ddd537591d30f",
+  "command": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+    "-isysroot",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+    "-bundle",
+    "-undefined",
+    "dynamic_lookup",
+    "-Wl,-no_adhoc_codesign",
+    "-mmacosx-version-min=13.5",
+    "/private/tmp/aux-spawn-custody-native-20261023-r4-pty/pty-addon.o",
+    "-o",
+    "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node"
+  ],
+  "exitCode": 0,
+  "loaded": false,
+  "signed": false,
+  "module": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+  "moduleSha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "moduleBytes": 246072,
+  "nativeImports": [
+    "_AuxNativeExecBeginCurrent",
+    "_AuxNativeExecCanSpawn",
+    "_AuxNativeExecChildCreated",
+    "_AuxNativeExecCopyDeniedRoots",
+    "_AuxNativeExecDirectWaitResult",
+    "_AuxNativeExecSpawnFailed",
+    "_AuxNativePtyBeginCurrent",
+    "_AuxNativePtyCanSpawn",
+    "_AuxNativePtyChildCreated",
+    "_AuxNativePtyCopyHelperPath",
+    "_AuxNativePtyDirectWaitResult",
+    "_AuxNativePtySpawnFailed"
+  ],
+  "codeSignatureAbsent": true,
+  "hostImportsResolved": false
+}

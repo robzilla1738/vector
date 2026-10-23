@@ -1,0 +1,12 @@
+{
+  "format": "aux.contained-pty.policy-successor.v1",
+  "before": "docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshBootstrapPolicy.swift",
+  "beforeSha256": "24c835eca28aaa77107137f5a411c7b1120947a3794d886ca7fff290565a27de",
+  "after": "docs/integration/proposed/profile-isolation-continuation/build/source/AuxFreshBootstrapPolicy.swift",
+  "afterSha256": "4aa9a9477b7579066ef88d0bb33e46226e205e85a57909246adaaae7461f5ec1",
+  "exactChanges": 6,
+  "policyFormat": "aux.fresh.bootstrap.policy.v6",
+  "moduleSha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "activated": false,
+  "signed": false
+}

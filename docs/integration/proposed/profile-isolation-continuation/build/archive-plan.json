@@ -1,0 +1,32 @@
+{
+  "format": "aux.native-spawn-archive-plan.v1",
+  "archives": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnode_base.a",
+      "sha256": "2a8da51031b5d40d375846904ca380f8fd744a7a07dddacc1674d4692c4edb14",
+      "replacements": [
+        {
+          "member": "process_wrap.o",
+          "path": "/private/tmp/aux-spawn-custody-native-20261023-r3/process-wrap.o",
+          "sha256": "70b329cb47d59c831ff09aacd933bc376987531448bb28aad888df51ffc11cd7"
+        },
+        {
+          "member": "spawn_sync.o",
+          "path": "/private/tmp/aux-spawn-custody-native-20261023-r3/spawn-sync.o",
+          "sha256": "dd1cd359346593edb47096957ebbe3d73ccfd01c4d6444051e84a52794422a85"
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libuv.a",
+      "sha256": "cffff28ef5080327fb1133bfe81ac6b4f96579a3cff6378bb9b12e5c09f23c7d",
+      "replacements": [
+        {
+          "member": "process.o",
+          "path": "/private/tmp/aux-spawn-custody-native-20261023-r3/libuv-process.o",
+          "sha256": "cfad091c3b20f5f38ed5ca41f97bd367d8dbbd6b336c3818a301b6eee5d8501d"
+        }
+      ]
+    }
+  ]
+}
