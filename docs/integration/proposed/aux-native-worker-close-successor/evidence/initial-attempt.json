@@ -1,0 +1,9 @@
+{
+  "accepted": false,
+  "exitCode": 1,
+  "reason": "Source-hash postcondition rejected the attempt after review correction was saved during compilation. No receipt was accepted.",
+  "outputDirectory": "/private/tmp/aux-worker-close-object-20261023",
+  "exactError": "source changed during check: docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.cc",
+  "executedOrLoaded": false,
+  "signed": false
+}

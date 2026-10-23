@@ -1,0 +1,14 @@
+{
+  "accepted": false,
+  "session": 86243,
+  "compileExitCodes": [
+    0,
+    0
+  ],
+  "exitCode": 1,
+  "reason": "Actual non-system compiler dependency list includes SDKSettings.json; initial checker enumerated headers only, so metadata gate refused. Canonical SDK metadata is already pinned in the historical v4 build. Checker now verifies that exact SDK hash before compilation.",
+  "outputDirectory": "/private/tmp/aux-worker-close-object-20261023-final",
+  "exactError": "dependency missing or changed: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/SDKSettings.json",
+  "executedOrLoaded": false,
+  "signed": false
+}

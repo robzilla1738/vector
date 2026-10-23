@@ -1,0 +1,14 @@
+                 U _AuxAuthenticatedPtyHelperCopyPath
+                 U _AuxAuthenticatedPtyHelperRelease
+                 U _AuxAuthenticatedPtyHelperRevalidate
+                 U _AuxCaptureAuthenticatedPtyHelper
+                 U _AuxNativeContextValidateCurrentAuthority
+0000000000000000 T _AuxNativePtyBeginCurrent
+00000000000012a0 T _AuxNativePtyCanSpawn
+00000000000020d8 T _AuxNativePtyChildCreated
+00000000000017e0 T _AuxNativePtyCopyHelperPath
+000000000000235c T _AuxNativePtyDirectWaitResult
+0000000000000fb4 T _AuxNativePtySpawnFailed
+                 U __ZN20AuxLoadedPdfLifetime13CloseAndDrainEv
+000000000000260c T __ZN24AuxDevelopmentWorkerHost13CloseAndDrainEv
+                 U __ZN24AuxLoadedUtilityLifetime13CloseAndDrainEv

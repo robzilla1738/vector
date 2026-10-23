@@ -1,0 +1,116 @@
+--- docs/integration/proposed/aux-native-pty-helper-host/source/AuxDevelopmentWorkerHost.cc
++++ docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.cc
+@@ -1 +1,2 @@
+-#include "../../aux-native-daemon-main/source/AuxDevelopmentWorkerHost.h"
++#include "AuxDevelopmentWorkerHost.h"
++#include "AuxWorkerDrain.h"
+@@ -58,0 +60 @@
++  AuxDevelopmentWorkerDrain retirement_failure = AuxDevelopmentWorkerDrain::drained;
+@@ -67 +69,20 @@
+-  AuxDevelopmentWorkerDrain Close(bool close_process_images = false) {
++  AuxDevelopmentWorkerDrain Close(bool close_process_images = false) noexcept {
++    // Inspect before inherited mutexes or runtime APIs, including cleanup calls.
++    if (getpid() != process) return AuxDevelopmentWorkerDrain::wrongProcess;
++    auto observed = AuxDevelopmentWorkerDrain::drained;
++    try {
++      return CloseAttempt(close_process_images, observed);
++    } catch (...) {
++      // Image census/quarantine allocation can fail after admission was closed.
++      // Keep the exact Owner in the native registry; neither destructor failure
++      // nor retry can reinterpret this interrupted retirement as completion.
++      std::lock_guard<std::mutex> lock(mutex);
++      terminal = true;
++      retiring = false;
++      retirement_failure = AuxMergeWorkerDrain(retirement_failure,
++          AuxMergeWorkerDrain(observed, AuxDevelopmentWorkerDrain::untracked));
++      return retirement_failure;
++    }
++  }
++  AuxDevelopmentWorkerDrain CloseAttempt(bool close_process_images,
++                                        AuxDevelopmentWorkerDrain& result) {
+@@ -79 +100,2 @@
+-      if (retiring) return AuxDevelopmentWorkerDrain::pending;
++      if (retiring) return AuxMergeWorkerDrain(
++          retirement_failure, AuxDevelopmentWorkerDrain::pending);
+@@ -87 +109 @@
+-        return AuxDevelopmentWorkerDrain::drained;
++        return retirement_failure;
+@@ -94 +116 @@
+-    auto result = AuxDevelopmentWorkerDrain::drained;
++    result = AuxDevelopmentWorkerDrain::drained;
+@@ -101,2 +123,2 @@
+-      if (os == 2) result = AuxDevelopmentWorkerDrain::untracked;
+-      else if (os != 0 && result == AuxDevelopmentWorkerDrain::drained) result = AuxDevelopmentWorkerDrain::pending;
++      if (os == 2) result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
++      else if (os != 0) result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::pending);
+@@ -110,6 +132 @@
+-    if (pdf_status == AuxPdfHostDrain::wrongProcess)
+-      result = AuxDevelopmentWorkerDrain::wrongProcess;
+-    else if (pdf_status == AuxPdfHostDrain::untracked)
+-      result = AuxDevelopmentWorkerDrain::untracked;
+-    else if (pdf_status == AuxPdfHostDrain::pending && result == AuxDevelopmentWorkerDrain::drained)
+-      result = AuxDevelopmentWorkerDrain::pending;
++    if (pdf_status) result = AuxMergeWorkerDrain(result, AuxWorkerDrainFromPdf(*pdf_status));
+@@ -119,6 +136 @@
+-    if (utility_status == AuxUtilityHostDrain::wrongProcess)
+-      result = AuxDevelopmentWorkerDrain::wrongProcess;
+-    else if (utility_status == AuxUtilityHostDrain::untracked && result != AuxDevelopmentWorkerDrain::wrongProcess)
+-      result = AuxDevelopmentWorkerDrain::untracked;
+-    else if (utility_status == AuxUtilityHostDrain::pending && result == AuxDevelopmentWorkerDrain::drained)
+-      result = AuxDevelopmentWorkerDrain::pending;
++    if (utility_status) result = AuxMergeWorkerDrain(result, AuxWorkerDrainFromUtility(*utility_status));
+@@ -144,0 +157 @@
++      result = AuxMergeWorkerDrain(result, retirement_failure);
+@@ -146,2 +159 @@
+-        if (result != AuxDevelopmentWorkerDrain::wrongProcess)
+-          result = AuxDevelopmentWorkerDrain::untracked;
++        result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
+@@ -215 +227 @@
+-  if (!worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown) Registry().retained.erase(worker->generation);
++  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown) Registry().retained.erase(worker->generation);
+@@ -607 +619 @@
+-AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() {
++AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() noexcept {
+@@ -609 +621 @@
+-  std::vector<std::shared_ptr<Worker>> workers;
++  size_t worker_count;
+@@ -613 +625,3 @@
+-    workers = state_->workers;
++    // RegisterCurrentWorker holds this same mutex from its admission check
++    // through push_back. Once closed, this vector cannot grow or erase.
++    worker_count = state_->workers.size();
+@@ -618,9 +632,20 @@
+-    if (creation < 0 || creation == 2) result = AuxDevelopmentWorkerDrain::untracked;
+-    else if (creation == 1) result = AuxDevelopmentWorkerDrain::pending;
+-  }
+-  const auto retained_utility = AuxLoadedUtilityLifetime::InspectRetainedClosures();
+-  if (retained_utility == AuxUtilityHostDrain::wrongProcess) result = AuxDevelopmentWorkerDrain::wrongProcess;
+-  else if (retained_utility == AuxUtilityHostDrain::untracked) result = AuxDevelopmentWorkerDrain::untracked;
+-  else if (retained_utility == AuxUtilityHostDrain::pending) result = AuxDevelopmentWorkerDrain::pending;
+-  for (auto& worker : workers) {
+-    auto status = worker->Close(true);
++    if (creation < 0 || creation == 2)
++      result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
++    else if (creation == 1)
++      result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::pending);
++  }
++  try {
++    result = AuxMergeWorkerDrain(result, AuxWorkerDrainFromUtility(
++        AuxLoadedUtilityLifetime::InspectRetainedClosures()));
++  } catch (...) {
++    // A failed image census is unknown, not an empty image set. Continue
++    // closing actual workers; no snapshot allocation is needed for that pass.
++    result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
++  }
++  for (size_t i = 0; i < worker_count; ++i) {
++    std::shared_ptr<Worker> worker;
++    {
++      std::lock_guard<std::mutex> lock(state_->mutex);
++      worker = state_->workers[i]; // shared_ptr copy does not allocate.
++    }
++    result = AuxMergeWorkerDrain(result, worker->Close(true));
+@@ -628,4 +652,0 @@
+-    if (status == AuxDevelopmentWorkerDrain::wrongProcess ||
+-        (status == AuxDevelopmentWorkerDrain::untracked && result != AuxDevelopmentWorkerDrain::wrongProcess) ||
+-        (status == AuxDevelopmentWorkerDrain::reentrant && result != AuxDevelopmentWorkerDrain::untracked && result != AuxDevelopmentWorkerDrain::wrongProcess) ||
+-        (status == AuxDevelopmentWorkerDrain::pending && result == AuxDevelopmentWorkerDrain::drained)) result = status;

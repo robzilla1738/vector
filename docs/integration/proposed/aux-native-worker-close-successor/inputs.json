@@ -1,0 +1,12 @@
+{
+  "files": {
+    "docs/integration/proposed/aux-native-worker-close-successor/source/AuxWorkerDrain.h": "945afe8b48bae915057d2131153f3285984ef4b2ad4045334a9bd6d32ebda786",
+    "docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.cc": "7bc2e1de231747fd44f6626c1c1ca334edbf76e609ef89bce6a25be41037d565",
+    "docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.h": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4",
+    "docs/integration/proposed/aux-native-worker-close-successor/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "docs/integration/proposed/aux-native-worker-close-successor/tests/check-close.cc": "03cf0b32bc56306f9b52577e22fa000aae848b5e06a38b1b5896f3b772d09f5f",
+    "docs/integration/proposed/aux-native-pty-helper-host/source/AuxDevelopmentWorkerHost.cc": "9a26d7134bd5b9ab1229e6da5dbfb04be87c308cad26b6553f1c07eb3a546f86",
+    "docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.h": "3e6254dfce678e0036cb2bbfd7956ababea4cb4dd4375f5ae39c4705a2ce184d",
+    "docs/integration/proposed/aux-native-authenticated-pty-helper/source/AuxAuthenticatedPtyHelper.h": "0b1810de91c6c2d29b536a3ff405b56cea62748f783e8e21907b1722012ec944"
+  }
+}
