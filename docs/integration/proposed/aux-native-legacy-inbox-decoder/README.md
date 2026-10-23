@@ -1,6 +1,6 @@
 # Explicit legacy notification-backup decoder
 
-Source-only, inactive successor. No existing reader, writer, startup path or stored row is changed. No native compilation or fixture execution has occurred for this proposal.
+Source-only, inactive successor. No existing reader, writer, startup path or stored row is changed. The actual three fixture translation units now compile; isolated linking failed before execution. See the compile evidence below.
 
 The historical writer produces `ASIDEAI1` + 12-byte nonce + AES-256-GCM ciphertext/tag with **empty AAD**. The new unchanged codec produces `AUXAI002` with its prefix as AAD. This helper explicitly classifies the old framing, requires an independently supplied historical 32-byte key, and returns authenticated plaintext bytes or a typed refusal. It never tries the new key, DK or another key on failure.
 
@@ -20,4 +20,10 @@ An explicitly reviewed, genuine native read-only historical selector producer mu
 
 ## Deferred focused check
 
-`tests/legacy-inbox-test.cc` calls the two actual codec implementations with synthetic bytes. It covers independent keys, binary plaintext, nonce/body/tag tampering, truncation, version refusal and authenticated byte preparation. It has not been compiled or run. For a future reviewed isolated Chromium target, use the three source TUs listed in `deferred-target.gni`, `//crypto`, and existing Chromium base/runtime link configuration. The proposal adds no shared GN registration and schedules no build.
+`tests/legacy-inbox-test.cc` calls the two actual codec implementations with synthetic bytes. It covers independent keys, binary plaintext, nonce/body/tag tampering, truncation, version refusal and authenticated byte preparation. All three actual translation units compiled once; the fixture has not run. For a future reviewed isolated Chromium target, use the three source TUs listed in `deferred-target.gni`, `//crypto`, and existing Chromium base/runtime link configuration. The proposal adds no shared GN registration and schedules no build.
+
+## Actual focused compile checkpoint — 2026-10-23
+
+Single serialized session `29663` compiled the actual legacy codec, unchanged v2 codec and synthetic fixture with the existing AuxFast crypto target flags, PCM and diagnostic plugins. All three compiler exits were zero. External linking failed: Apple ld does not accept Chromium's existing thin archives; it also warned that the bundled libLTO path was absent. No binary was produced or executed. This is compile evidence only, not successful decryption/roundtrip/runtime acceptance.
+
+`evidence/receipt.json` preserves exact commands and source/index hashes, plus actual compiler/link logs. Thin archive hashes cover indexes, not all transitive object members. `check-existing.py` is the bounded external recipe; it changes neither shared source nor GN and refuses an existing output. No retry or additional native graph was queued. A future reviewed link using the actual compatible Chromium linker/target remains needed.

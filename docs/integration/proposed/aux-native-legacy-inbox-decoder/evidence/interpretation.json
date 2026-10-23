@@ -1,0 +1,14 @@
+{
+  "actualSession": 29663,
+  "terminalExitCode": 1,
+  "nativeSerialization": "scripts/native-build.py; actual lock released on terminal",
+  "compiledActualSources": 3,
+  "nativeFixtureExecuted": false,
+  "protectedLookup": false,
+  "databaseAccess": false,
+  "nativeCheckoutMutation": false,
+  "GNMutation": false,
+  "linkGap": "Apple ld rejects existing Chromium !<thin> archives; default driver also warns absent libLTO. No target binary exists. An external linker supporting these exact archives or future reviewed GN target is required.",
+  "archivePinScope": "Receipt hashes thin archive index files, not transitive member content. No link/runtime proof is claimed.",
+  "scriptAfterRunEdit": "Comment only corrected to state plugins remained unchanged; execution command arrays are preserved in receipt.json."
+}

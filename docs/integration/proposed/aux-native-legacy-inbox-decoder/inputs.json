@@ -1,6 +1,6 @@
 {
   "format": "aux.explicit-legacy-inbox.source.v1",
-  "scope": "static-source-only; no compile or execution",
+  "scope": "source pins plus actual three-TU compile; link failed, no fixture execution",
   "inputs": [
     {
       "path": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h",
@@ -44,7 +44,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/README.md",
-      "sha256": "4fb82082695302835ffe8f28c828454e5e12bf47c43dc0409de95d40ee99606b"
+      "sha256": "ffd92542981696646802269a8661ac10c02c20f6723aa5e4ed63b0dd731e2ebd"
     },
     {
       "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/deferred-target.gni",
