@@ -1,6 +1,6 @@
 {
   "format": "aux.stripe.onboarding-progress.v1",
-  "recordedAt": "2026-10-23T11:23:50.307619+00:00",
+  "recordedAt": "2026-10-23T11:43:48.833627+00:00",
   "accountId": "acct_1UTgXFGl2zPejOSb",
   "accountName": "Aux",
   "observedInitialMode": "test",
@@ -14,7 +14,7 @@
     "managedPaymentsUpgradeAccepted": false
   },
   "existingAccountInformationCopied": false,
-  "currentStep": "personal-verification-owner-input-required",
+  "currentStep": "review-and-submit-owner-action-required",
   "legalEntityConfirmationPending": false,
   "finalVerificationSubmitted": false,
   "liveAccountActivated": false,
@@ -28,5 +28,21 @@
   "businessAddressSource": "Owner supplied directly for Stripe form; exact address omitted from receipt",
   "taxDetailsCompletedByOwner": true,
   "ownerNameEntered": true,
-  "sensitiveIdentityOrBankingDataEnteredByAgent": false
+  "sensitiveIdentityOrBankingDataEnteredByAgent": false,
+  "productCategory": "Software as a service",
+  "productDescriptionEntered": true,
+  "supportName": "Aux",
+  "supportAddressUsesOwnerProvidedBusinessAddress": true,
+  "supportPhoneProvidedByOwner": true,
+  "supportPhoneEntered": true,
+  "supportDetailsSaved": true,
+  "statementDescriptor": "GETAUX.CO",
+  "statementDescriptorSaved": true,
+  "fraudProtection": "included Lite",
+  "paidFraudUpgradeSelected": false,
+  "accountRepresentativeStillMarkedIncomplete": false,
+  "taxProductEnrollmentSkipped": true,
+  "climateContributionEnrollmentSkipped": true,
+  "representativeContactUsesOwnerProvidedStripePhone": true,
+  "finalAgreeAndSubmitEnabled": true
 }
