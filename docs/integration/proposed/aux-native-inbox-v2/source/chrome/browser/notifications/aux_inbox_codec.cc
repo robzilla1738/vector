@@ -1,4 +1,4 @@
-#include "AuxInboxCodec.h"
+#include "chrome/browser/notifications/aux_inbox_codec.h"
 #include "base/containers/span.h"
 #include "crypto/aead.h"
 #include "crypto/random.h"

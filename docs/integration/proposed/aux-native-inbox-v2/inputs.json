@@ -5,10 +5,11 @@
     "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
   },
   "files": {
-    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxCodec.cc": "0b53eeddd5ad523f67eea6092ec41e5894ff8643005c8fbd6f6fee085f29634f",
-    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxCodec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
     "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
-    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947"
+    "docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_notification_inbox.cc": "7ba04067c8235cb310eb2ab741cf0628ea535256f2274cae32ec1d2ee347c486"
   },
   "corePatchSha256": "2d2052028afc1cfc96cf5bf186da82c91c704382fe6e406afc6399fbebeadc0e",
   "purpose": {
@@ -32,5 +33,11 @@
   "compiled": false,
   "protectedCalls": 0,
   "historicalRecordsModified": false,
-  "currentAppModified": false
+  "currentAppModified": false,
+  "priorWriter": {
+    "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/notifications/aux_notification_inbox.cc",
+    "sha256": "6485cdd5bcf46ca1007a82cad7f96de36ac5bc093ee41cdd703f6148bf53a91d"
+  },
+  "writerRequires": "LoadAgentInboxV2MasterKey defined by actual selected-child authority RPC; no carrier fallback",
+  "writerPatchSha256": "c555f5b94920aff32ddd1a410e4d68e4a2983630220fdf68875c58d4f52a4073"
 }

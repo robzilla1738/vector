@@ -1,0 +1,47 @@
+--- chrome/browser/notifications/aux_notification_inbox.cc
++++ docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_notification_inbox.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/notifications/aux_notification_inbox.h"
++#include "chrome/browser/notifications/aux_inbox_codec.h"
+ 
+ #include <utility>
+ #include "base/base64.h"
+@@ -21,8 +22,6 @@
+ #include "components/content_settings/core/common/content_settings_types.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
+-#include "crypto/aead.h"
+-#include "crypto/random.h"
+ #include "extensions/browser/api/messaging/channel_endpoint.h"
+ #include "extensions/browser/api/messaging/message_port.h"
+ #include "extensions/browser/api/messaging/message_service.h"
+@@ -99,22 +98,17 @@
+   if (!database.Open(path) || !database.Execute(kCreateTable)) return std::nullopt;
+   std::string serialized;
+   if (!base::JSONWriter::Write(payload, &serialized)) return std::nullopt;
+-  auto key = LoadAgentInboxMasterKey(StateHome());
++  // New records use the fixed v2 purpose from the actual owned native peer.
++  // Historical encrypted rows are never rewritten or tried with this key.
++  auto key = LoadAgentInboxV2MasterKey(StateHome());
+   if (!key) return std::nullopt;
+-  crypto::Aead aead(crypto::Aead::AES_256_GCM, *key);
+-  std::string nonce(aead.NonceLength(), '\0');
+-  crypto::RandBytes(base::as_writable_byte_span(nonce));
+-  std::string ciphertext;
+-  if (!aead.Seal(serialized, nonce, std::string_view(), &ciphertext))
+-    return std::nullopt;
+-  std::string encrypted = "ASIDEAI1";
+-  encrypted.append(nonce);
+-  encrypted.append(ciphertext);
++  auto encrypted = SealInboxV2(serialized, *key);
++  if (!encrypted) return std::nullopt;
+   sql::Statement statement(database.GetCachedStatement(SQL_FROM_HERE, kInsert));
+   statement.BindTime(0, base::Time::Now());
+   const auto* site = payload.FindString("site_url");
+   statement.BindString(1, site ? *site : std::string());
+-  statement.BindBlob(2, std::move(encrypted));
++  statement.BindBlob(2, std::move(*encrypted));
+   statement.BindBool(3, persistent);
+   if (!statement.Run()) return std::nullopt;
+   return database.GetLastInsertRowId();
