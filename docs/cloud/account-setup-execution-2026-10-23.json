@@ -1,0 +1,67 @@
+{
+  "format": "aux.account-setup.execution.v1",
+  "recordedAt": "2026-10-23T11:14:54.157659+00:00",
+  "gateway": {
+    "termsApproved": true,
+    "checkoutSubmittedUsd": 11.58,
+    "purchasedCreditUsd": 10,
+    "observedBalanceUsd": 15,
+    "autoReloadEnabled": false,
+    "fundedTextEvidence": "../integration/proposed/aux-funded-gateway-check/evidence.json",
+    "speechVerified": false
+  },
+  "clerk": {
+    "productionInstance": "ins_3L29Mzbc6B8iAxm7GYrD7e73HDc",
+    "endpointId": "ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy",
+    "endpoint": "https://api.getaux.co/api/v1/webhooks/clerk",
+    "events": [
+      "user.updated",
+      "user.deleted",
+      "session.ended",
+      "session.removed",
+      "session.revoked"
+    ],
+    "secretInOnePasswordProduction": true,
+    "secretInVercelProduction": true,
+    "vercelType": "sensitive",
+    "vercelVisibility": "secret",
+    "deliveryVerified": false
+  },
+  "r2": {
+    "accountId": "5a5f6f8a4d1c1d35cfe82c4a74c966b9",
+    "bucket": "aux-recovery-prod",
+    "storageClass": "Standard",
+    "publicAccess": "Disabled",
+    "credentialName": "Aux Recovery Operator",
+    "credentialPermission": "Object Read & Write",
+    "onlyBucket": "aux-recovery-prod",
+    "credentialExpiresOn": "2026-11-22",
+    "credentialStoredInOnePasswordRecovery": true,
+    "credentialStoredInVercel": false,
+    "syntheticCheckPending": false,
+    "schedulerConfigured": false,
+    "syntheticCheckPassed": true,
+    "syntheticObjects": 4,
+    "syntheticBytes": 669,
+    "remoteFetchWithoutOriginalJobPassed": true,
+    "expiryAndExactCleanupPassed": true,
+    "transientCredentialsRemoved": true,
+    "evidence": "../integration/proposed/aux-backup-r2-live/evidence.json"
+  },
+  "onePassword": {
+    "developmentVariablesCopiedFromExistingAuxConfig": true,
+    "productionVariablesCopiedFromExistingAuxConfig": true,
+    "ephemeralOidcCopied": false,
+    "localMountsCreated": false,
+    "independentEmergencyCopyVerified": false
+  },
+  "productionConfigurationMissingCount": 8,
+  "productionConfigurationMissingCategory": "live Stripe",
+  "providerPublicOriginsMatchIntendedValue": true,
+  "providerPublicOriginsRuntimeVerified": false,
+  "productionActivated": false,
+  "acceptedDesktopChanged": false,
+  "uiChanged": false,
+  "dedicatedRunnerReview": "dedicated-backup-runner-review/README.md",
+  "dedicatedRunnerProvisioned": false
+}
