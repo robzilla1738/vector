@@ -1,3 +1,11 @@
+# Exact host-tool exception authorized; coherent build advancing — 2026-10-23
+
+Owner explicitly approved compiler-default ad-hoc signatures only for48host executables and20host macro libraries in the prepared review.20Aux product outputs retain no-ad-hoc. Authorization hashes, inactive-review tests and exact clone activation are recorded in `docs/integration/proposed/profile-isolation-completion/browser/host-tool-signing-review/` and browser evidence. No developer identity, Keychain, provisioning, notarization or release was authorized by this exception.
+
+The first approved build passed `protoc` then caught unsigned `cxxbridge_macro` loading through a different Rust linker route. The same20-output approved macro guard is now applied at that actual route; no signing scope was broadened. The current coherent build is `unsigned-approved-macro-route-build` under `/private/tmp/aux-chromium-recovery-snapshot-20261023`, running8jobs. It has passed the prior macro failure and advanced848actions at last observation; no full-build/package/runtime-readiness claim. All15child/message sources and two GN registrations are in that frozen graph. Native custody actual8TU checks passed separately.
+
+Final migration-fixed source/entry, exact daemon/module pairing, strict package recipe/assembler and static11192-leaf baseline are prepared. Assembly waits the successful final native app inventory. Remaining external-helper filesystem containment, all-browser/descendant drain and admitted-root reopen still require sound implementation/actual acceptance. UI/app/shared checkout preserved. Product signing and release remain separate.
+
 # Local source checks complete for child/message custody; full build needs host-tool exception — 2026-10-23
 
 All8 actual Chromium translation units passed for the content-child/native-messaging source graph after correcting the inline-virtual style failure. The two daemon-monitor units also passed. Exact15successor files and two GN header registrations are already in the isolated tree, not the shared owner checkout. These track known process identities through sole native reapers; they do not certify whole-browser/descendant drain or enable admitted-root reopening.
