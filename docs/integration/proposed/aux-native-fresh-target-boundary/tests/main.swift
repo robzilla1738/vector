@@ -158,7 +158,7 @@ refuses { _ = try AuxNativeFreshTargetBoundary(context: wrongContext) }
 print("PHASE: wrong cipher")
 var wrongCipher = fixedPayloads
 var ciphertext = sealed.ciphertext + sealed.tag
-ciphertext[0] ^= 1
+ciphertext[ciphertext.startIndex] ^= 1
 wrongCipher["wrappedRoot"] = try P256DkEnvelope(
     version: .auxV2, ephemeralPublicKey: ephemeral.publicKey.x963Representation,
     nonce: Data(repeating: 4, count: 12), ciphertextAndTag: ciphertext

@@ -27,7 +27,7 @@
     },
     {
       "path": "tests/main.swift",
-      "sha256": "667f6651f7ec542b9e749012dfc55b539115e7290ca275d5fad628c43eaf5226"
+      "sha256": "cc3295706ac60e87b2523591dbccd339287bd498da0c6e8bab758ddf6ee56337"
     },
     {
       "path": "verify.py",
@@ -112,6 +112,7 @@
     "exitCode": 133,
     "compileSucceeded": true,
     "sourceSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
-    "runtime": "fixed-software/captured fixture trap without location; successor adds nonsecret phase diagnostics only"
+    "runtime": "fixed-software/captured fixture trap without location; successor adds nonsecret phase diagnostics only",
+    "diagnosis": "97511 localized failure to fixture mutation using index0 on CryptoKit Data with a nonzero startIndex; fixed to ciphertext.startIndex. Production61b source unchanged."
   }
 }
