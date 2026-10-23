@@ -14,4 +14,4 @@ assert 'message->event.exec.target' in s and 'process->start_time' in s
 assert 'state->client = nullptr;' in s and 'State::ReleaseRetention(state);' in s
 assert 'ES_EVENT_TYPE_AUTH_' not in s and 'waitpid(' not in s
 assert 'std::nullopt' in s
-print('PASS: pinned actual ES producer/SDK, observational-only source; NO compile, client creation or OS effects')
+print('PASS: pinned actual ES producer/SDK; static verification only, no client creation or OS effects')

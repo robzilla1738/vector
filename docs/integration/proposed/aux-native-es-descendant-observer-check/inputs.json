@@ -1,0 +1,15 @@
+{
+  "format": "aux.es.observer.compile-only.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/check.py": "1065e24318c670a99a3ef22b149c8a9ef6cc3161e830560e147cb81ce23d4479",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/README.md": "2ecf87707356dbe1154220b9814eab065fc13008e23f1faec832f2d4cb16c346",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/macho-headers.txt": "9bfe5f65d64b38a00313cc261cf91f4c5bcba4ac6c33c6e056f6246b07c04d23",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/undefined-imports.txt": "8379abf39fa02ee1ae3d6bb5b55f3df27103483dc18832148e594392d11e1a1e",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/load-commands.txt": "255d0e9ac14db03798875293967521385609289e07d52c15852d15bf50aeba7c",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/compile-link.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/receipt.json": "06e2426f64a3d76ba492d542c4eb52440bf6a64b34a4106043cfe74b42aba276",
+    "docs/integration/proposed/aux-native-es-descendant-observer/inputs.json": "61c3f426d52941fcff29f91c41291d933215e28d75314df155ec5a5b0589d093",
+    "docs/integration/proposed/aux-native-es-descendant-observer/source/AuxEsDescendantObserver.cc": "5d6f7abe4cd2d9058de5acaf1c2fb1d0011cbc7525af58ea53cc429f39ff3f6f",
+    "docs/integration/proposed/aux-native-es-descendant-observer/source/AuxEsDescendantObserver.h": "359282424a5aa929ba85fafee1c583c5e348d9eb5f1cae3c71674f1e53af11f6"
+  }
+}

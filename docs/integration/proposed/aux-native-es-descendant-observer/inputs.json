@@ -1,8 +1,8 @@
 {
   "format": "aux.es.descendant.observer.source.v1",
   "files": {
-    "README.md": "cc70547fdd264c699c490c2d0d0a0b45de26b8aea5e7f3a39ce458a9019f8223",
-    "verify.py": "93bcbe0acf585542072f30740ecc4d021b97f9aa0660a4f2093191aca5963e0b",
+    "README.md": "88b05a9eeed1e03b276cf02ea52be2d97896044016dac387d2dcfdeb148973f0",
+    "verify.py": "6120e9d0bb16ca4dc83c74adcfd13b7dc9311cefff6460da711967c330e03a54",
     "source/AuxEsDescendantObserver.h": "359282424a5aa929ba85fafee1c583c5e348d9eb5f1cae3c71674f1e53af11f6",
     "source/AuxEsDescendantObserver.cc": "5d6f7abe4cd2d9058de5acaf1c2fb1d0011cbc7525af58ea53cc429f39ff3f6f"
   },
@@ -29,6 +29,8 @@
     }
   ],
   "factoryExecuted": false,
-  "compiled": false,
-  "queued": false
+  "compiled": true,
+  "queued": false,
+  "compileEvidence": "../aux-native-es-descendant-observer-check/evidence/receipt.json",
+  "compileScope": "isolated actual SDK syntax/link only; no production Chromium integration or factory execution"
 }

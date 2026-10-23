@@ -1,0 +1,4 @@
+/Users/rcourson/Documents/Vibe/web/out/aux-native-es-observer-compile-only/observer.dylib:
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64    ARM64        ALL  0x00       DYLIB    18       1984   NOUNDEFS DYLDLINK TWOLEVEL WEAK_DEFINES BINDS_TO_WEAK NO_REEXPORTED_DYLIBS MH_HAS_TLV_DESCRIPTORS
