@@ -15,7 +15,7 @@ const { get, put, del, head, BlobNotFoundError } = require('@vercel/blob');
 const [privateDirectory, reviewPath, targetEnvironmentFile] = process.argv.slice(2);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 let source, target, targetAdmin, stage = 'admission', root, sequence = 0;
-let sourceSeeded = false, sourceCleaned = false, success = false;
+let sourceSeeded = false, sourceCleaned = false;
 const ownedObjects = [];
 const user = randomUUID(), deletedUser = randomUUID(), session = randomUUID(), attachment = randomUUID();
 const share = 'restore-' + randomUUID(), email = user + '@example.invalid';
@@ -79,7 +79,9 @@ try {
   assert.equal(review.sourceHost, 'ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech');
   assert.equal(review.sourceBlob, 'uur9brkrqm4lu0z2.private.blob.vercel-storage.com');
   assert.equal(review.targetBlob, '6koqauoahm1ivxeq.private.blob.vercel-storage.com');
-  assert(/^br-[a-z0-9-]+$/.test(review.targetBranch) && review.targetBranch !== 'br-red-hall-b857cl2i');
+  assert.equal(review.targetBranch, 'br-dark-bread-b8v0xmd8');
+  assert.equal(review.targetHost, 'ep-small-band-b87iop7i.c-14.us-east-1.aws.neon.tech');
+  assert.equal(review.targetDatabase, 'aux_recovery_12_20261023');
   assert(review.targetComputeCu === 0.25 && review.targetExpiryHours === 1 && review.targetUnserved === true);
   assert(/^[a-z_][a-z0-9_]{0,62}$/.test(review.targetDatabase));
   const bootstrap = await privateEnv(join(service, '.env.production-bootstrap.local'));
@@ -186,7 +188,6 @@ try {
   for (const path of payloads.keys()) await verifyObject(path, targetToken, review.targetBlob);
   await checkpoint({ success: true, migrations: 12, realCaptureCli: true, realRestoreCli: true, recoveredCSK: true, bothPrivateObjectFamilies: true,
     quarantineVerified: true, sourceFixturesRemoved: true, targetRetainedForExplicitCleanup: true, targetObjectPaths: [...payloads.keys()], targetDatabase: review.targetDatabase, targetBranch: review.targetBranch, productionActivated: false });
-  success = true;
   console.log('Current12 hosted capture/restore and private-object acceptance passed; isolated target retained for reviewed cleanup.');
 } catch {
   if (root) await checkpoint({ success: false, stoppedForReview: true, sourceSeeded, sourceCleaned, generatedSourceUsers: [user, deletedUser], ownedObjectPaths: ownedObjects, partialTargetsRetained: true }).catch(() => {});

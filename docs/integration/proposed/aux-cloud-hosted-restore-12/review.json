@@ -1,0 +1,13 @@
+{
+  "format": "aux.hosted-restore-12.review.v1",
+  "sourceProject": "ancient-river-76453764",
+  "sourceHost": "ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech",
+  "sourceBlob": "uur9brkrqm4lu0z2.private.blob.vercel-storage.com",
+  "targetBranch": "br-dark-bread-b8v0xmd8",
+  "targetHost": "ep-small-band-b87iop7i.c-14.us-east-1.aws.neon.tech",
+  "targetDatabase": "aux_recovery_12_20261023",
+  "targetBlob": "6koqauoahm1ivxeq.private.blob.vercel-storage.com",
+  "targetComputeCu": 0.25,
+  "targetExpiryHours": 1,
+  "targetUnserved": true
+}
