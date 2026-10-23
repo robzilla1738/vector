@@ -1,3 +1,9 @@
+# Startup caller compiles; final source application waiting on one codec check — 2026-10-23
+
+Actual check5216 passed both corrected cold-launch and exact enabled Chrome-main caller objects with genuine platform/core flags. The startup macro was enabled only in an isolated object, not the product. Source commit `871c1e57e` independently composes that one source correction on the compiler-ready graph:826 source records/23 unchanged artwork assets. All849 actual source/artwork apply preconditions pass; the native checkout is not yet changed.
+
+One bounded synthetic legacy/v2 codec fixture29663 is running through the native serializer. Root will apply the complete reviewed source only after that source-dependent check is terminal, then run one actual combined browser build. No duplicate successful native graphs or original Node library build are needed. The legacy decoder remains inactive: it accepts only explicit independent legacy/new keys, and there is no safe read-only legacy key authority or durable row migration yet. The old helper's create-on-missing behavior is not reused for recovery. No owner data, Keychain, signing, protected runtime, production activation or UI mutation occurred.
+
 # Compiler fixes composed; startup source check found three API errors — 2026-10-23
 
 Source commit `f4c70bed4` composes the actual three compiler corrections into `out/native-reuse-composition-aux-browser-compiler-ready`:826 source records/23 unchanged artwork assets, with independent replay and all849 native/artwork apply preconditions checked. It remains unapplied/uncompiled as a whole browser graph.

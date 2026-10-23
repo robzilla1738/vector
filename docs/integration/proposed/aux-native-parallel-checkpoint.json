@@ -42,11 +42,17 @@
       "session": 79061,
       "role": "6 actual changed Chromium adoption TUs plus pure-wire predicate; final main covers child TUs",
       "state": "terminal exit1 at firstTU; laterTUs unrun, see terminalRootChecks"
+    },
+    {
+      "session": 29663,
+      "role": "actuallegacy+v2purecodec syntheticfixture compile/link",
+      "state": "agent reports same realserializerhandle queued/running",
+      "nativeCheckoutMutated": false
     }
   ],
   "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-browser-compiler-ready",
-    "review": "docs/integration/proposed/aux-native-browser-compiler-integration/review.json",
+    "composition": "out/native-reuse-composition-aux-browser-cold-api-ready",
+    "review": "docs/integration/proposed/aux-native-browser-cold-api-integration/review.json",
     "sourceRecords": 826,
     "artworkAssets": 23,
     "applied": false,
@@ -54,8 +60,9 @@
     "startupHookIncluded": true,
     "productHookDefaultOff": true,
     "ptyParentV3Included": true,
-    "commit": "f4c70bed4",
-    "compilerFixesIncluded": true
+    "commit": "871c1e57e",
+    "compilerFixesIncluded": true,
+    "coldApiCorrectionsIncluded": true
   },
   "nextSourceReview": [
     "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
@@ -264,6 +271,14 @@
       "role": "actual coldlaunch firstTU compile failed at three Chromium API/style sites; enabledmainhook unrun",
       "receipt": "/tmp/aux-native-cold-entry-focused-check-20261023/results.json",
       "successorSourceInProgress": true
+    },
+    {
+      "session": 5216,
+      "exitCode": 0,
+      "role": "actual coldlaunch platformTU and isolated enabledChromeMain coreTU",
+      "receipt": "docs/integration/proposed/aux-native-browser-cold-api-integration/evidence/results.json",
+      "productHookEnabled": false,
+      "nativeExecution": false
     }
   ],
   "appliedCurrentNativeComposition": {
