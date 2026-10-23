@@ -1,7 +1,7 @@
 {
   "format": "aux.owned-browser-quiesce.build-run.v1",
   "session": 42082,
-  "state": "running",
+  "state": "completed",
   "composition": "out/native-reuse-composition-aux-owned-browser-quiesce-mac/owner",
   "compositionSha256": "0095039dad1a8061db63fca5651ee5ab2c8fc8a84f7a060a6778dc5bc4596d8e",
   "applySession": 25528,
@@ -13,5 +13,24 @@
   "acceptedPreviewReplaced": false,
   "appLaunched": false,
   "wholeProfileCustodyClaimed": false,
-  "state2Authorized": false
+  "state2Authorized": false,
+  "exitCode": 0,
+  "receiptSha256": "9ed354036097f3c7e6d1312f50669e289ac65f841cb78803cb9ecefce4b2f05f",
+  "generatedKeyProbePassed": true,
+  "artifacts": [
+    {
+      "path": "Aux.app/Contents/MacOS/Aux",
+      "sha256": "2dea52b1659845dfaf72c99c81bbba4a6d357466582ffb17ec2a0cd8dbc52d99"
+    },
+    {
+      "path": "auth_scheme_probe",
+      "sha256": "e0f02e34745f5dd28505d75f7b80515c0af79fe6cfa45ec0b2dc402cf1d2dc5a"
+    },
+    {
+      "path": "Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "683c841042f8e16878222ae7ce7f9ffc26f74ce4cf8d422b2ef22b4139c62ae1"
+    }
+  ],
+  "recordedAt": "2026-10-23T01:29:44.339644+00:00",
+  "knownLifecycleDefect": "lazy profile_manager getter; separately pinned correction required"
 }

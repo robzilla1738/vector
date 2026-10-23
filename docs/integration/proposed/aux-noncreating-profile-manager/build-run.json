@@ -1,0 +1,28 @@
+{
+  "format": "aux.noncreating-profile-manager.build-run.v1",
+  "state": "failed",
+  "session": 71878,
+  "composition": "out/native-reuse-composition-aux-noncreating-profile-manager",
+  "compositionSha256": "3fbf8b1c59ea8286aed1c98d5a0903575dddff4c42fba522e296c918f5e933c1",
+  "applySession": 64757,
+  "applyExitCode": 0,
+  "applyReceipt": "out/native-reuse-composition-aux-noncreating-profile-manager/native-before-apply-l7a83266/apply-receipt.json",
+  "changedSourceFiles": [
+    "chrome/browser/browser_process.h",
+    "chrome/browser/browser_process_impl.cc",
+    "chrome/browser/browser_process_impl.h",
+    "chrome/browser/ui/aux_owned_browser_quiesce.cc"
+  ],
+  "sourceRecords": 791,
+  "assets": 23,
+  "log": "out/aux-noncreating-profile-manager-native-build.log",
+  "receipt": "out/aux-noncreating-profile-manager-native-build.json",
+  "jobs": 2,
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "state2Authorized": false,
+  "exitCode": 1,
+  "failure": "Chromium style rejects inline virtual method body in browser_process.h:182",
+  "logSha256": "c460f2e7ca13f575c3f878a21561b01be1e23aa027c69746a7605378276e2010",
+  "receiptProduced": false
+}
