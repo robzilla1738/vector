@@ -1,0 +1,34 @@
+{
+  "format": "aux.es.descendant.observer.source.v1",
+  "files": {
+    "README.md": "cc70547fdd264c699c490c2d0d0a0b45de26b8aea5e7f3a39ce458a9019f8223",
+    "verify.py": "93bcbe0acf585542072f30740ecc4d021b97f9aa0660a4f2093191aca5963e0b",
+    "source/AuxEsDescendantObserver.h": "359282424a5aa929ba85fafee1c583c5e348d9eb5f1cae3c71674f1e53af11f6",
+    "source/AuxEsDescendantObserver.cc": "5d6f7abe4cd2d9058de5acaf1c2fb1d0011cbc7525af58ea53cc429f39ff3f6f"
+  },
+  "sdk": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESClient.h",
+      "sha256": "900e1cafa947ba3ba1cfcac02dd4c22a1ba01ed7c03dda8196971c1d0f88f004"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESMessage.h",
+      "sha256": "2a05238ee9eb74adb9ad21ac6d68e7ff3389d9c35b23a1bf04355282bdec65cf"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESMessageCore.h",
+      "sha256": "14ebe087bb8379549825be6dad7a324ba6b74ba1304e9e2faa6f8c0cd5ae8ed6"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESTypes.h",
+      "sha256": "9749e821138f2204b2b373cedaeec829e5e9042643dedc6e632c5495c18200e9"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/bsm/libbsm.h",
+      "sha256": "103f140eeeb89cfe35f0f5b8f6c5dd27e53d01c2ae13e82514777c2e6f33de2b"
+    }
+  ],
+  "factoryExecuted": false,
+  "compiled": false,
+  "queued": false
+}
