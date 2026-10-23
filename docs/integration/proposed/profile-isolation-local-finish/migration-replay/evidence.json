@@ -1,0 +1,45 @@
+{
+  "sourceSha256": "9bdcbf055fbc9e7b58023e8dbacb635bbf17020cb90ed0933d4c8f2b928ab190",
+  "functionSha256": "aa0b120eb4e54bd336b571c38e476c715a13df082aeb6f9e1afb5cf204f02f80",
+  "checks": [
+    {
+      "fault": "after-report-append",
+      "passed": true,
+      "reportCount": 1,
+      "compactionCount": 1,
+      "sourceRowDeletedOnlyAfterTransaction": true,
+      "attachmentRecovered": true,
+      "repeatReplayNoOp": true,
+      "finalizations": 2
+    },
+    {
+      "fault": "before-final-transaction",
+      "passed": true,
+      "reportCount": 1,
+      "compactionCount": 1,
+      "sourceRowDeletedOnlyAfterTransaction": true,
+      "attachmentRecovered": true,
+      "repeatReplayNoOp": true,
+      "finalizations": 2
+    },
+    {
+      "fault": "none",
+      "passed": true,
+      "reportCount": 1,
+      "compactionCount": 1,
+      "sourceRowDeletedOnlyAfterTransaction": true,
+      "attachmentRecovered": true,
+      "repeatReplayNoOp": true,
+      "finalizations": 2
+    }
+  ],
+  "usesActualMigrationFunction": true,
+  "realSQLiteAndFilesystem": true,
+  "sessionStoreAndOrmAdapters": true,
+  "actualSessionStoreFinalizeFunctionExecuted": true,
+  "sessionStoreStartAndReadAdapters": true,
+  "finalizeFunctionSha256": "456e97d5c1280987ac2ceecb528307118e3c1245f594e51f436ea93835dacb30",
+  "inputSha256": "3a29d60f367cb450c948778e5157bafa37e0c5b8b36acee662aaf5de072a53a8",
+  "crashModel": "exception injection at persistent boundaries, not OS kill",
+  "ownerData": false
+}
