@@ -10,7 +10,7 @@ InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault
 
 
 
-/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.node:
+/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.node:
 Load command 0
       cmd LC_SEGMENT_64
   cmdsize 632
@@ -27,7 +27,7 @@ Section
   sectname __text
    segname __TEXT
       addr 0x00000000000006a0
-      size 0x000000000000ae54
+      size 0x000000000000b120
     offset 1696
      align 2^2 (4)
     reloff 0
@@ -38,9 +38,9 @@ Section
 Section
   sectname __stubs
    segname __TEXT
-      addr 0x000000000000b4f4
-      size 0x000000000000096c
-    offset 46324
+      addr 0x000000000000b7c0
+      size 0x00000000000009d8
+    offset 47040
      align 2^2 (4)
     reloff 0
     nreloc 0
@@ -50,9 +50,9 @@ Section
 Section
   sectname __stub_helper
    segname __TEXT
-      addr 0x000000000000be60
-      size 0x00000000000004bc
-    offset 48736
+      addr 0x000000000000c198
+      size 0x0000000000000504
+    offset 49560
      align 2^2 (4)
     reloff 0
     nreloc 0
@@ -62,9 +62,9 @@ Section
 Section
   sectname __gcc_except_tab
    segname __TEXT
-      addr 0x000000000000c31c
-      size 0x0000000000000744
-    offset 49948
+      addr 0x000000000000c69c
+      size 0x0000000000000770
+    offset 50844
      align 2^2 (4)
     reloff 0
     nreloc 0
@@ -74,9 +74,9 @@ Section
 Section
   sectname __cstring
    segname __TEXT
-      addr 0x000000000000ca60
-      size 0x0000000000000417
-    offset 51808
+      addr 0x000000000000ce0c
+      size 0x000000000000043a
+    offset 52748
      align 2^0 (1)
     reloff 0
     nreloc 0
@@ -86,9 +86,9 @@ Section
 Section
   sectname __const
    segname __TEXT
-      addr 0x000000000000ce78
-      size 0x0000000000000274
-    offset 52856
+      addr 0x000000000000d248
+      size 0x0000000000000278
+    offset 53832
      align 2^2 (4)
     reloff 0
     nreloc 0
@@ -98,9 +98,9 @@ Section
 Section
   sectname __unwind_info
    segname __TEXT
-      addr 0x000000000000d0ec
-      size 0x00000000000005c8
-    offset 53484
+      addr 0x000000000000d4c0
+      size 0x00000000000005d8
+    offset 54464
      align 2^2 (4)
     reloff 0
     nreloc 0
@@ -135,13 +135,13 @@ Section
   sectname __got
    segname __DATA_CONST
       addr 0x0000000000010200
-      size 0x00000000000003a0
+      size 0x00000000000003b8
     offset 66048
      align 2^3 (8)
     reloff 0
     nreloc 0
      flags 0x00000006
- reserved1 201 (index into indirect symbol table)
+ reserved1 210 (index into indirect symbol table)
  reserved2 0
 Load command 2
       cmd LC_SEGMENT_64
@@ -159,20 +159,20 @@ Section
   sectname __la_symbol_ptr
    segname __DATA
       addr 0x0000000000014000
-      size 0x0000000000000318
+      size 0x0000000000000348
     offset 81920
      align 2^3 (8)
     reloff 0
     nreloc 0
      flags 0x00000007
- reserved1 317 (index into indirect symbol table)
+ reserved1 329 (index into indirect symbol table)
  reserved2 0
 Section
   sectname __data
    segname __DATA
-      addr 0x0000000000014318
+      addr 0x0000000000014348
       size 0x0000000000000008
-    offset 82712
+    offset 82760
      align 2^3 (8)
     reloff 0
     nreloc 0
@@ -182,7 +182,7 @@ Section
 Section
   sectname __bss
    segname __DATA
-      addr 0x0000000000014320
+      addr 0x0000000000014350
       size 0x0000000000000008
     offset 0
      align 2^3 (8)
@@ -198,7 +198,7 @@ Load command 3
    vmaddr 0x0000000000018000
    vmsize 0x0000000000014000
   fileoff 98304
- filesize 67920
+ filesize 69240
   maxprot 0x00000001
  initprot 0x00000001
    nsects 0
@@ -211,35 +211,35 @@ Load command 4
        bind_off 98344
       bind_size 760
   weak_bind_off 99104
- weak_bind_size 6712
-  lazy_bind_off 105816
- lazy_bind_size 2992
-     export_off 108808
-    export_size 5824
+ weak_bind_size 6864
+  lazy_bind_off 105968
+ lazy_bind_size 3176
+     export_off 109144
+    export_size 5960
 Load command 5
      cmd LC_SYMTAB
  cmdsize 24
-  symoff 115112
-   nsyms 613
-  stroff 126584
- strsize 39640
+  symoff 115592
+   nsyms 626
+  stroff 127344
+ strsize 40200
 Load command 6
             cmd LC_DYSYMTAB
         cmdsize 80
       ilocalsym 0
-      nlocalsym 385
-     iextdefsym 385
-     nextdefsym 107
-      iundefsym 492
-      nundefsym 121
+      nlocalsym 389
+     iextdefsym 389
+     nextdefsym 110
+      iundefsym 499
+      nundefsym 127
          tocoff 0
            ntoc 0
       modtaboff 0
         nmodtab 0
    extrefsymoff 0
     nextrefsyms 0
- indirectsymoff 124920
-  nindirectsyms 416
+ indirectsymoff 125608
+  nindirectsyms 434
       extreloff 0
         nextrel 0
       locreloff 0
@@ -247,7 +247,7 @@ Load command 6
 Load command 7
      cmd LC_UUID
  cmdsize 24
-    uuid 907E7BF3-65BC-3F55-ADA3-ECEC2A5DBFDC
+    uuid 1E23A368-7DAC-328E-B260-50D639F1F40C
 Load command 8
       cmd LC_BUILD_VERSION
   cmdsize 32
@@ -278,14 +278,19 @@ compatibility version 1.0.0
 Load command 12
       cmd LC_FUNCTION_STARTS
   cmdsize 16
-  dataoff 114632
- datasize 480
+  dataoff 115104
+ datasize 488
 Load command 13
       cmd LC_DATA_IN_CODE
   cmdsize 16
-  dataoff 115112
+  dataoff 115592
  datasize 0
 
+_AuxNativePtyBeginCurrent
+_AuxNativePtyCanSpawn
+_AuxNativePtyChildCreated
+_AuxNativePtyDirectWaitResult
+_AuxNativePtySpawnFailed
 __Unwind_Resume
 __ZNKSt3__119__shared_weak_count13__get_deleterERKSt9type_info
 __ZNKSt9exception4whatEv
@@ -336,6 +341,7 @@ ___error
 ___gxx_personality_v0
 ___stack_chk_fail
 ___stack_chk_guard
+_bzero
 _cfsetispeed
 _cfsetospeed
 _close

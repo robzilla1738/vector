@@ -30,6 +30,7 @@
 #include <memory>
 #include <mutex>
 #include "direct-child-wait.h"
+#include <AuxNativePtyReservation.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -125,10 +126,28 @@ struct UnknownChild {
 // Retain the native creation identity until a separately designed recovery path.
 static std::atomic<UnknownChild*> unknown_children{nullptr};
 
+class NativePtyReservation {
+ public:
+  explicit NativePtyReservation(void* handle) noexcept : handle_(handle) {}
+  ~NativePtyReservation() {
+    if (handle_ != nullptr && pending_) AuxNativePtySpawnFailed(handle_);
+  }
+  void* Handle() const noexcept { return handle_; }
+  bool CanSpawn() const noexcept { return AuxNativePtyCanSpawn(handle_) != 0; }
+  void ChildCreated(pid_t pid) noexcept {
+    pending_ = false;
+    AuxNativePtyChildCreated(handle_, pid);
+  }
+ private:
+  void* handle_;
+  bool pending_ = true;
+};
+
 class PreparedExitCallback {
  public:
-  PreparedExitCallback(Napi::Env env, Napi::Function cb)
+  PreparedExitCallback(Napi::Env env, Napi::Function cb, void* reservation)
       : state_(std::make_shared<State>()) {
+    state_->reservation = reservation;
     auto state = state_;
     auto tsfn = Napi::ThreadSafeFunction::New(
         env, cb, "SetupExitCallback_resource", 0, 1,
@@ -146,6 +165,8 @@ class PreparedExitCallback {
         if (pid > 0) {
           state->unknown->pid = pid;
           const auto result = WaitForDirectChild(pid);
+          AuxNativePtyDirectWaitResult(
+              state->reservation, result.waited, result.raw_status);
           state->event.wait_error = result.error;
           if (result.error != 0) {
             auto* unknown = state->unknown.release();
@@ -202,6 +223,7 @@ class PreparedExitCallback {
     std::condition_variable ready;
     bool published = false;
     pid_t pid = 0;
+    void* reservation = nullptr;
     ExitEvent event;
     std::unique_ptr<UnknownChild> unknown{new UnknownChild};
     std::thread thread;
@@ -249,7 +271,7 @@ pty_posix_spawn(char** argv, char** env,
                 const struct winsize *winp,
                 int* master,
                 pid_t* pid,
-                int* err);
+                int* err, NativePtyReservation& reservation);
 #endif
 
 struct DelBuf {
@@ -265,8 +287,11 @@ struct DelBuf {
 };
 
 Napi::Value PtyFork(const Napi::CallbackInfo& info) {
+  NativePtyReservation reservation(AuxNativePtyBeginCurrent());
   Napi::Env napiEnv(info.Env());
   Napi::HandleScope scope(napiEnv);
+  if (reservation.Handle() == nullptr)
+    throw Napi::Error::New(napiEnv, "Native PTY creation is unavailable");
 
   if (info.Length() != 11 ||
       !info[0].IsString() ||
@@ -292,7 +317,7 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   // env
   Napi::Array env_ = info[2].As<Napi::Array>();
   int envc = env_.Length();
-  std::unique_ptr<char *, DelBuf> env_unique_ptr(new char *[envc + 1], DelBuf(envc + 1));
+  std::unique_ptr<char *, DelBuf> env_unique_ptr(new char *[envc + 1](), DelBuf(envc + 1));
   char **env = env_unique_ptr.get();
   env[envc] = NULL;
   for (int i = 0; i < envc; i++) {
@@ -357,14 +382,15 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   // helperPath
   std::string helper_path = info[9].As<Napi::String>();
 
-  PreparedExitCallback exit_callback(napiEnv, info[10].As<Napi::Function>());
+  PreparedExitCallback exit_callback(
+      napiEnv, info[10].As<Napi::Function>(), reservation.Handle());
   pid_t pid;
   int master = -1;
   ScopedPtyMaster master_owner(master);
 #if defined(__APPLE__)
   int argc = argv_.Length();
   int argl = argc + 4;
-  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl], DelBuf(argl));
+  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
   char **argv = argv_unique_ptr.get();
   argv[0] = strdup(helper_path.c_str());
   argv[1] = strdup(cwd_.c_str());
@@ -376,7 +402,7 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   }
 
   int err = -1;
-  pty_posix_spawn(argv, env, term, &winp, &master, &pid, &err);
+  pty_posix_spawn(argv, env, term, &winp, &master, &pid, &err, reservation);
   if (err != 0) {
     throw Napi::Error::New(napiEnv, "posix_spawnp failed.");
   }
@@ -387,7 +413,7 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
 #else
   int argc = argv_.Length();
   int argl = argc + 2;
-  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl], DelBuf(argl));
+  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
   char** argv = argv_unique_ptr.get();
   argv[0] = strdup(file.c_str());
   argv[argl - 1] = NULL;
@@ -405,7 +431,12 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   sigfillset(&newmask);
   pthread_sigmask(SIG_SETMASK, &newmask, &oldmask);
 
+  if (!reservation.CanSpawn()) {
+    pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
+    throw Napi::Error::New(napiEnv, "Native PTY creation is closed");
+  }
   pid = forkpty(&master, nullptr, static_cast<termios*>(term), static_cast<winsize*>(&winp));
+  if (pid > 0) reservation.ChildCreated(pid);
 
   if (!pid) {
     // remove all signal handler from child
@@ -698,7 +729,7 @@ pty_posix_spawn(char** argv, char** env,
                 const struct winsize *winp,
                 int* master,
                 pid_t* pid,
-                int* err) {
+                int* err, NativePtyReservation& reservation) {
   int low_fds[3] = {-1, -1, -1};
   size_t count = 0;
   int master_fd = -1, slave = -1;
@@ -793,9 +824,14 @@ pty_posix_spawn(char** argv, char** env,
   if (*err != 0) goto done;
 
   do {
+    if (!reservation.CanSpawn()) {
+      *err = ECANCELED;
+      goto done;
+    }
     *err = posix_spawn(&child_pid, argv[0], &acts, &attrs, argv, env);
   } while (*err == EINTR);
   if (*err == 0) {
+    reservation.ChildCreated(child_pid);
     *pid = child_pid;
     *master = master_fd;
     master_fd = -1;
