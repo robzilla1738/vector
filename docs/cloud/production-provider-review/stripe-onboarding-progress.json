@@ -1,0 +1,32 @@
+{
+  "format": "aux.stripe.onboarding-progress.v1",
+  "recordedAt": "2026-10-23T11:23:50.307619+00:00",
+  "accountId": "acct_1UTgXFGl2zPejOSb",
+  "accountName": "Aux",
+  "observedInitialMode": "test",
+  "ownerCreatedAccount": true,
+  "website": "getaux.co",
+  "businessDescription": "Aux is a desktop web browser with an integrated AI assistant. We sell software subscriptions directly to users through getaux.co, with monthly and annual plans for hosted AI services, encrypted sync and related cloud features.",
+  "onboardingPreferences": {
+    "recurringSubscriptions": true,
+    "standaloneInvoicing": false,
+    "collectTaxProduct": false,
+    "managedPaymentsUpgradeAccepted": false
+  },
+  "existingAccountInformationCopied": false,
+  "currentStep": "personal-verification-owner-input-required",
+  "legalEntityConfirmationPending": false,
+  "finalVerificationSubmitted": false,
+  "liveAccountActivated": false,
+  "liveProductsCreated": false,
+  "newCredentialsCreated": false,
+  "acceptedUiChanged": false,
+  "legalEntity": "Courson Digital LLC",
+  "businessType": "registered_business",
+  "businessStructure": "single_member_llc",
+  "companyDetailsEntered": true,
+  "businessAddressSource": "Owner supplied directly for Stripe form; exact address omitted from receipt",
+  "taxDetailsCompletedByOwner": true,
+  "ownerNameEntered": true,
+  "sensitiveIdentityOrBankingDataEnteredByAgent": false
+}

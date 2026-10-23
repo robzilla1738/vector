@@ -1,3 +1,9 @@
+# Separate Aux Stripe onboarding in progress — 2026-10-23
+
+The owner created the separate Aux account acct_1UTgXFGl2zPejOSb. Actual dashboard onboarding preferences now describe the Aux software-subscription business and select recurring subscriptions; optional standalone invoicing, tax product and Managed Payments upgrade were not selected. The owner confirmed Courson Digital LLC, single-member LLC, completed the tax step directly and supplied the operating business address for the form. The agent entered those confirmed company details and the known owner name. Stripe is now at personal verification; home address, birth date, phone and SSN verification were left for direct owner entry. No sensitive personal identifiers/bank data were copied, and final verification was not submitted by the agent.
+
+This is onboarding progress, not live billing readiness. The observed account began in sandbox mode; activation, Aux live products/prices/portal, webhook, scoped credential, Production configuration and live acceptance remain unfinished. Joyflow and the existing Aux Development sandbox remain unchanged. Exact sanitized progress: `docs/cloud/production-provider-review/stripe-onboarding-progress.json`. Accepted desktop/UI unchanged.
+
 # Approved account connections completed; operating acceptance remains — 2026-10-23
 
 The owner approved the prepared Gateway terms/purchase, production Clerk webhook and private R2 bucket, then the exact30-day bucket-only credential and bounded synthetic check. Gateway Pay$11.58 completed; dashboard credit became$15 and auto-reload remains disabled. One funded strict-ZDR GPT-6 Luna text request passed200 (12input/7output tokens, catalog estimate$0.0000047); this is boundary evidence, not hosted wallet or desktop inference acceptance. Exact-model catalog has no audio support, so no speech request was sent. Evidence: `docs/integration/proposed/aux-funded-gateway-check/`.
