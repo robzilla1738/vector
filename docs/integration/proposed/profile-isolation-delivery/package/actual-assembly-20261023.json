@@ -1,0 +1,32 @@
+{
+  "format": "aux.inactive-successor.actual-assembly.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-profile-isolation-completion-20261023/Aux.app",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-profile-isolation-completion-20261023/receipt.json",
+  "receiptSha256": "f9046b9d9267a146e4ad88db34f5bd55eadd826281400d2b1e44ff995486ace2",
+  "packageInventorySha256": "78d70f7b2f458ec029d95f5f940daf4ce1b01c63bf90901a2f6bed954359127b",
+  "leafCount": 11191,
+  "recipe": "/private/tmp/aux-final-successor-package-recipe-20261023.json",
+  "recipeSha256": "fbf03d7a33efcd2a1a4105e6ce1ecbaeef8ea55b91b5d98b6c4fdf7d35ce3ced",
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-final-native-successor-build-20261023/receipt.json",
+  "nativeReceiptSha256": "96a62cb4742814f90ec082bdb6b08640bfac7f0f74a8c5affd927a3413b6ad35",
+  "sourcePairSha256": "2792f63c6b6ba33f9a5f959c5b92eb5343ec91dacc847319ee0b3a0d73846420",
+  "runtimeIntegrationManifestSha256": "6667bc39185609eb0f406e00fa0f06274c817d5277752c3ee384a5cad521df27",
+  "uiPreserved": true,
+  "sourceAppsUnchanged": true,
+  "exactFiveReplacementRecheckPassed": true,
+  "outerNodeScopeBoundaryPreserved": true,
+  "currentBundlePathVerified": true,
+  "productSigned": false,
+  "appExecuted": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "remaining": [
+    "protected startup and native runtime authority",
+    "complete browser/service/external writer custody and drain",
+    "admitted-root reopen and restart recovery",
+    "atomic protected runtime-cache publication",
+    "actual final-app UI and behavior acceptance"
+  ]
+}
