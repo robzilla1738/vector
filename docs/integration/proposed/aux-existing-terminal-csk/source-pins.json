@@ -1,0 +1,79 @@
+{
+  "format": "aux.existing-terminal-csk.source.v1",
+  "active": false,
+  "typecheck": "recipe prepared, not queued",
+  "protectedCallsExecuted": false,
+  "authorityGenerated": false,
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-terminal-command-context/source/CapturedTerminalCommandContext.swift",
+      "sha256": "e8f91eaeb0f56134f1d0e3a8303b6097f74f4af598a587f14748de0b7bacaa23"
+    },
+    {
+      "path": "docs/integration/proposed/aux-authority-selection-composition/source/PrivateInstallationJournalStore.swift",
+      "sha256": "2fcd2078c79f662a3da439b375cefccf4d3c0a761f682d316a5169a208a06542"
+    },
+    {
+      "path": "docs/integration/proposed/aux-durable-selection/source/InstallationSelection.swift",
+      "sha256": "cc220ebd2507aae0cbb5cbafd40031f56355058c726d0b23124e4bbad1c38312"
+    },
+    {
+      "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/CapturedInstallation.swift",
+      "sha256": "d97d273440bd5c4573e7a41da5f9cc769fde66f87fae48d6ebfb84d722126ca5"
+    },
+    {
+      "path": "docs/integration/proposed/aux-existing-candidate-recovery/source/AdditiveInstallationTransaction.swift",
+      "sha256": "7adbd3fefec37c46faebf7be4a39018c5e37d34a04c31067a2909064c72b5f99"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-prepared-handoff/source/DurableCapturedCskHandoff.swift",
+      "sha256": "42efe4a43125dfd8039088912c9dbba2970a10b004137c3d4e5266441eda830d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-prepared-handoff/source/CapturedCskPreparation.swift",
+      "sha256": "7b01bef618e6ffdc1ff41e4327c62f4a743db2e930f1338926ee5b469cc165f2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-prepared-handoff/source/CskHandoffRecords.swift",
+      "sha256": "7f682442ef830274925ef7c4924013557f4ac86ad022dead030fcdc741e8e3ac"
+    },
+    {
+      "path": "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift",
+      "sha256": "7d4d765391fdbb2f687c50aab3e6ba9776c9048fe6ae7cc48feb66ec446432d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-prepared-handoff/generate.mjs",
+      "sha256": "348772015599a26c9cc00a966f4c39cb577650f1b7dc8a6dacb6290d1fa4b8b2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-prepared-handoff/source-pins.json",
+      "sha256": "4eb3ccdc2341c7383ced25303ab2bfd62352bf7bd70330d8b49e3638d614e362"
+    },
+    {
+      "path": "docs/integration/proposed/aux-terminal-command-context/check.sh",
+      "sha256": "8132e142644c9aeac71791f7da70449f1d6eb04fee68a6a6c359d58bff11303b"
+    }
+  ],
+  "sources": [
+    {
+      "path": "README.md",
+      "sha256": "b18b4c5bca970b48f7c4a9ddda5f8e5d8955f6b04900ba2af91048bb98eb8d30"
+    },
+    {
+      "path": "typecheck.mjs",
+      "sha256": "ca2687bc7ac08d29e5d2742f9a3eb406bd5a04cdcb3c2e1f74b84d21493b0596"
+    },
+    {
+      "path": "source/ExistingTerminalCskHandoff.swift",
+      "sha256": "979f90dd63e393c1c788bba2cdd076284805da354a268ecf3b16795bb36ce890"
+    }
+  ]
+}
