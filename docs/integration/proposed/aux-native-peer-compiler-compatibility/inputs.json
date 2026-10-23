@@ -1,0 +1,32 @@
+{
+  "format": "aux.native-peer.compiler-compatibility.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-peer-compiler-compatibility/source/AuxNativePeerTransport.cc": "0f595da0f28ffdaa74c10fd850743170592b6e519ea9718c63a086241431161b",
+    "docs/integration/proposed/aux-native-peer-compiler-compatibility/source/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e",
+    "docs/integration/proposed/aux-native-peer-compiler-compatibility/resume-main.py": "e057bb1a0212b0f04a2dd5f958595e2efe176e5d7e1bef4cc31edb0f293fb096",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.cc": "b2c00363429d13414ae5a37c86a6664f02845d232ebe7d716c6f68103575362a",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e"
+  },
+  "mainPlanningInputs": {
+    "docs/integration/proposed/aux-native-daemon-main/build.py": "7c076b583b8fbb7fffbe336e376d1549d583a83a395c20cec1d998fd7dfdea43",
+    "docs/integration/proposed/aux-native-daemon-main/inputs.json": "fe36431ceddc69a84d77afa1945036093693a49a42da74721ea92cb25e5a9e5b"
+  },
+  "priorOutput": "/tmp/aux-native-daemon-main-v3-20261023",
+  "priorReceiptSha256": "d702415082731016cff288d367e0cc5cc5fdf660287063476d02ecc73dd10f18",
+  "reusableObjects": {
+    "0.o": "cb2e9969a809bbc1964fcb8450a53617bc3f67560833a83e997e289b6bacb984",
+    "1.o": "a1d40ad89db6fe26bb7bf1a3d221985f1a8f7abd0893d23a1f08afd1c6621856",
+    "2.o": "506fb1d94ba875505d161fc116ace2d89985cbd3e156c979969625bf9b8f6db4",
+    "3.o": "e889fd741939a9a26d8d0580ccfff1d4b8921669f506f755af0a3d1a275ba87a",
+    "4.o": "84d8073bbaee69adeac22677f64f0ed80c114dca7258b6d910d1bad265914c19",
+    "5.o": "73da7f6e5476951b2bc60cc5cbce8d8b8921ee0e0def2614799b1d26cb2e9491",
+    "6.o": "881ac50c4f483e56941be6d1cca96296440c71d5cb25c479573f1d6f4f513c89",
+    "7.o": "29025583e537b385e7aed613c9fc97a263a177cacab6ea29d7b29cf2a6a8ab4b",
+    "8.o": "65add741603c0d6a539dc60699661fb40fc119172651db5b8c0dead388d11b4f"
+  },
+  "compiled": false,
+  "executed": false
+}

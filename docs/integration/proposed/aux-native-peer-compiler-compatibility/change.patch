@@ -1,0 +1,49 @@
+--- link-boundary/AuxNativePeerTransport.cc
++++ compiler-successor/AuxNativePeerTransport.cc
+@@ -30,18 +30,26 @@
+ #include <vector>
+ 
+ namespace aux::peer {
++namespace {
++// Volatile stores are observable side effects and cannot be optimized into a
++// discarded ordinary memset. No libc optional-extension declaration required.
++void WipeOwnedBytes(std::span<uint8_t> bytes) {
++  volatile uint8_t* output = bytes.data();
++  for (size_t index = 0; index < bytes.size(); ++index) output[index] = 0;
++}
++}  // namespace
+ DaemonAuthorityReply::DaemonAuthorityReply() = default;
+ DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes)
+     : status(result), payload(std::move(bytes)) {}
+ DaemonAuthorityReply::~DaemonAuthorityReply() {
+-  if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++  WipeOwnedBytes(payload);
+ }
+ DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityReply&& other) noexcept
+     : status(other.status), payload(std::move(other.payload)),
+       publication_(std::move(other.publication_)) { other.status = DaemonAuthorityStatus::refused; }
+ DaemonAuthorityReply& DaemonAuthorityReply::operator=(DaemonAuthorityReply&& other) noexcept {
+   if (this != &other) {
+-    if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++    WipeOwnedBytes(payload);
+     status = other.status;
+     payload = std::move(other.payload);
+     publication_ = std::move(other.publication_);
+@@ -51,7 +59,7 @@
+ }
+ namespace {
+ void WipeBytes(std::span<uint8_t> bytes) {
+-  if (!bytes.empty()) memset_s(bytes.data(), bytes.size(), 0, bytes.size());
++  WipeOwnedBytes(bytes);
+ }
+ struct PayloadWiper {
+   explicit PayloadWiper(std::span<uint8_t> value);
+@@ -265,7 +273,7 @@
+     if (result != errSecSuccess || !code) return -1;
+     int32_t descriptor = -1;
+     const int32_t status = AuxCopyAuthenticatedFreshChildParentDescriptor(
+-        code, policy.data_->requirement, policy.data_->cd_hash.data(),
++        code, policy.data_->requirement.get(), policy.data_->cd_hash.data(),
+         static_cast<uint32_t>(policy.data_->cd_hash.size()), &descriptor);
+     CFRelease(code);
+     if (status != 0) { if (descriptor >= 0) close(descriptor); return -1; }
