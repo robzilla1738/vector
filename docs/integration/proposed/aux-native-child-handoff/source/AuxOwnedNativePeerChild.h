@@ -38,8 +38,4 @@ class OwnedNativePeerChild final {
   explicit OwnedNativePeerChild(std::shared_ptr<State> state);
   std::shared_ptr<State> state_;
 };
-// Called from actual child native bootstrap, not a JS/env selector. Stock
-// rendezvous is only right delivery; live authentication is the separate
-// AuthenticatedNativeParentConnection::Connect producer.
-NativeSendRight TakeLaunchedNativeParentEndpoint();
 }  // namespace aux::peer

@@ -9,7 +9,6 @@
 #include <optional>
 #include <limits>
 #include <algorithm>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -69,6 +68,7 @@ std::unique_ptr<OwnedNativePeerChild> OwnedNativePeerChild::PrepareBeforeSpawn(
   auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
   if (!prepared) return {};
   auto right = prepared->CopySendRightForNativeHandoff();
+  if (!right.is_valid()) return {};
   options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
       base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND));
   return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
@@ -183,12 +183,5 @@ size_t OwnedNativePeerChild::PollRetainedOwnedChildren() {
     }
   }
   return RetainedUnresolvedChildren();
-}
-NativeSendRight TakeLaunchedNativeParentEndpoint() {
-  auto* rendezvous = base::MachPortRendezvousClient::GetInstance();
-  if (!rendezvous) throw std::runtime_error("Native parent endpoint unavailable");
-  auto actual = rendezvous->TakeSendRight(kNativeParentPeerPort);
-  if (!actual) throw std::runtime_error("Native parent endpoint missing");
-  return NativeSendRight::AdoptReceivedRight(actual.release());
 }
 }  // namespace aux::peer

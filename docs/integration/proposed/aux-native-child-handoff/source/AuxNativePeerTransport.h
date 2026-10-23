@@ -25,6 +25,7 @@ class NativeSendRight final {
  public:
   // Adopts one real received send-right ref, not a descriptor supplied by JS.
   static NativeSendRight AdoptReceivedRight(mach_port_t right);
+  bool is_valid() const;
   NativeSendRight CopyOwnedRight() const;
   mach_port_t ReleaseForNativeHandoff();
   mach_port_t BorrowNativeName() const;
@@ -84,6 +85,7 @@ class ParentTransport final {
 // completed only once using the actual live direct child after spawn returns.
 class PreparedParentEndpoint final {
  public:
+  ~PreparedParentEndpoint();
   static std::unique_ptr<PreparedParentEndpoint> PrepareBeforeSpawn(
       std::shared_ptr<const ExactCodePolicy> child_policy);
   NativeSendRight CopySendRightForNativeHandoff();

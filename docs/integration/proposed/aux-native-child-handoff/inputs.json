@@ -17,7 +17,7 @@
     {
       "path": "source/AuxNativeParentConnectionBridge.cc",
       "inputSha256": null,
-      "outputSha256": "9b99ac60a747c82d021b01c60563a26673509b0640d07c835e3feeefcd0ea175",
+      "outputSha256": "acaf36448b55594a7d359e90609fa792e37342356efe97ac59b45492d52fe0c0",
       "new": true
     },
     {
@@ -29,13 +29,13 @@
     {
       "path": "source/AuxNativePeerTransport.cc",
       "inputSha256": "4fd48df773f95be407ee013afbd478ac0e3a2c37b9d94b7f51096c7b967af4d9",
-      "outputSha256": "132a845d604012182625c934e543772ccc7a7f1e670d4ff1c1d81acd284e6f15",
+      "outputSha256": "88ef11c6458ce3df253262b7b18add94a5f670a4156a3fcb15bf0b4d75fd7b42",
       "new": false
     },
     {
       "path": "source/AuxNativePeerTransport.h",
       "inputSha256": "bf00bc7a4215b77262934d81c22d10f1cabc5c8ffa15a00c38164ddbfbb8b45a",
-      "outputSha256": "a3894f15466748a23a958346a020a60873bbc1d4bb3e50e432a5cefd9039940c",
+      "outputSha256": "0f286400344249f6c01369f50e58772bf0effa42a22465937be3f46d90a96f4a",
       "new": false
     },
     {
@@ -47,17 +47,17 @@
     {
       "path": "source/AuxOwnedNativePeerChild.cc",
       "inputSha256": null,
-      "outputSha256": "430c21adec70776c7b2844c80dd7455cbc2a42bf95358f5a07ea36018a095d4b",
+      "outputSha256": "a54a4c546f5059529eb5c2895d2d9d1ee44e42da2342820a38325fd845a0e93e",
       "new": true
     },
     {
       "path": "source/AuxOwnedNativePeerChild.h",
       "inputSha256": null,
-      "outputSha256": "0b62aa9fa67b8cb8df3bb9a6641f24931f8da9a633459175c5b0d0c05535bcdb",
+      "outputSha256": "3779e4fe190eeaa43d4a898fa746416fe42686391481967c6cf0238aebac532f",
       "new": true
     }
   ],
-  "patchSha256": "038ab5c0807c3ea4366a63ff1d455c2ab9ab61c1676eca76dd406acea5b018d4",
+  "patchSha256": "d2ea3430e0061fcd6da51f63c5a6f6303138aa6e2204a4ca7e0f92213ee5b6b8",
   "referenceInputs": [
     {
       "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
@@ -94,6 +94,37 @@
   "activeColdCallerIntegrated": false,
   "firstRefusalChanged": false,
   "wholeCohortCustodyClaimed": false,
-  "compileRecipeSha256": "df0830c26eeab1b5d36065c062e1ab1284fe3408471293a6a3030fcf62fe5b66",
-  "copySendReviewSha256": "57384f415506f31974221e4bd9402c18626e60fc9ea48b3e709d9495aad13748"
+  "compileRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+  "copySendReviewSha256": "57384f415506f31974221e4bd9402c18626e60fc9ea48b3e709d9495aad13748",
+  "nodeCompiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+  "compileInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/base/base.ninja",
+      "sha256": "6e356bb885475d0938400323fde6cdcebf9342b939c651f17d2dc79d336c2e4f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/build/modules/system/module.pcm",
+      "sha256": "4fb27a097159c1cf84b2b58b297144934279fb1934beebdef9f858367305374e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/gen/build/modules/module.modulemap",
+      "sha256": "4af6368f381f18ab9ff37f2ddf6c761fc4de00629d0f28a3d59342547df99514"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+      "sha256": "b3785ad91b93cb56eac31eaef5d8cf5ef71fae512843417a55bd3912b4d41766"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "sha256": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5"
+    }
+  ],
+  "proposedGnSha256": "878aeaad4623119e8dbce7bddcd12300e157803598936b29369928a80c6a92d0",
+  "successorNotes": {
+    "parentExceptionOverride": false,
+    "separateCppAbiGraphs": true,
+    "timeoutIsNotPeerLoss": true,
+    "priorInputsSha256": "ab569c9d0a2ba75ccb87194f86049929ef60a0baca62d3ebf55d7e11ebc864fe",
+    "compiled": false
+  }
 }

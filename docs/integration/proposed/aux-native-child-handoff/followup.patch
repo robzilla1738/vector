@@ -1,5 +1,3 @@
-diff --git a/AuxNativeEndpointDelivery.cc b/AuxNativeEndpointDelivery.cc
-new file mode 100644
 --- /dev/null
 +++ b/AuxNativeEndpointDelivery.cc
 @@ -0,0 +1,11 @@
@@ -14,8 +12,6 @@ new file mode 100644
 +  auto right = actual->TakeSendRight(kNativeParentPeerPort);
 +  return right ? right.release() : MACH_PORT_NULL;
 +}
-diff --git a/AuxNativeEndpointDelivery.h b/AuxNativeEndpointDelivery.h
-new file mode 100644
 --- /dev/null
 +++ b/AuxNativeEndpointDelivery.h
 @@ -0,0 +1,12 @@
@@ -31,11 +27,9 @@ new file mode 100644
 +#ifdef __cplusplus
 +}
 +#endif
-diff --git a/AuxNativeParentConnectionBridge.cc b/AuxNativeParentConnectionBridge.cc
-new file mode 100644
 --- /dev/null
 +++ b/AuxNativeParentConnectionBridge.cc
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,89 @@
 +#include "AuxNativeParentConnectionBridge.h"
 +#include "AuxNativePeerTransport.h"
 +#include <limits>
@@ -64,6 +58,7 @@ new file mode 100644
 +    auto& registry = Connections();
 +    if (getpid() != registry.process) return 0;
 +    auto endpoint = aux::peer::NativeSendRight::AdoptReceivedRight(right);
++    if (!endpoint.is_valid()) return 0;
 +    if (!hash || (length != 20 && length != 32)) return 0;
 +    auto policy = aux::peer::ExactCodePolicy::CopyNativePolicy(requirement, {hash, length});
 +    if (!policy) return 0;
@@ -124,8 +119,6 @@ new file mode 100644
 +  } catch (...) { return -1; }
 +  return -1;
 +}
-diff --git a/AuxNativeParentConnectionBridge.h b/AuxNativeParentConnectionBridge.h
-new file mode 100644
 --- /dev/null
 +++ b/AuxNativeParentConnectionBridge.h
 @@ -0,0 +1,20 @@
@@ -149,44 +142,162 @@ new file mode 100644
 +#ifdef __cplusplus
 +}
 +#endif
-diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 --- a/AuxNativePeerTransport.cc
 +++ b/AuxNativePeerTransport.cc
-@@ -135,6 +135,19 @@
-       !(type & MACH_PORT_TYPE_SEND)) throw std::invalid_argument("Actual native send right required");
-   return NativeSendRight(value);
+@@ -9,7 +9,8 @@
+ #include <cstring>
+ #include <mutex>
+ #include <optional>
+-#include <stdexcept>
++#include <functional>
++#include <type_traits>
+ #include <utility>
+ #include <vector>
+ 
+@@ -43,47 +44,68 @@
  }
+ class DestroyMessage {
+  public:
+-  explicit DestroyMessage(mach_msg_header_t* value) : value_(value) {}
+-  ~DestroyMessage() { if (getpid() == process_ && value_) mach_msg_destroy(value_); }
+-  void Disarm() { value_ = nullptr; }
++  explicit DestroyMessage(mach_msg_header_t* value);
++  ~DestroyMessage();
++  void Disarm();
+  private:
+-  mach_msg_header_t* value_;
++  std::optional<std::reference_wrapper<mach_msg_header_t>> value_;
+   const pid_t process_ = getpid();
+ };
++DestroyMessage::DestroyMessage(mach_msg_header_t* value) : value_(std::ref(*value)) {}
++DestroyMessage::~DestroyMessage() {
++  if (getpid() == process_ && value_) mach_msg_destroy(&value_->get());
++}
++void DestroyMessage::Disarm() { value_.reset(); }
+ class ReceiveRight {
+  public:
+-  ReceiveRight() {
+-    if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port_) != KERN_SUCCESS)
+-      throw std::runtime_error("Native receive right unavailable");
+-  }
+-  ~ReceiveRight() {
+-    if (getpid() == process_ && port_ != MACH_PORT_NULL)
+-      mach_port_mod_refs(mach_task_self(), port_, MACH_PORT_RIGHT_RECEIVE, -1);
+-  }
+-  mach_port_t get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }
++  ReceiveRight();
++  ~ReceiveRight();
++  mach_port_t get() const;
+  private:
+   mach_port_t port_ = MACH_PORT_NULL;
+   const pid_t process_ = getpid();
+ };
++ReceiveRight::ReceiveRight() {
++  if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port_) != KERN_SUCCESS)
++    port_ = MACH_PORT_NULL;
++}
++ReceiveRight::~ReceiveRight() {
++  if (getpid() == process_ && port_ != MACH_PORT_NULL)
++    mach_port_mod_refs(mach_task_self(), port_, MACH_PORT_RIGHT_RECEIVE, -1);
++}
++mach_port_t ReceiveRight::get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }
+ constexpr mach_msg_option_t kReceiveOptions =
+     MACH_RCV_MSG | MACH_RCV_TIMEOUT |
+     MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) |
+     MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT);
+ }  // namespace
+ 
++namespace {
++struct ReleaseRequirement {
++  const pid_t process = getpid();
++  void operator()(SecRequirementRef requirement) const {
++    if (getpid() == process && requirement) CFRelease(requirement);
++  }
++};
++SecRequirementRef RetainRequirement(SecRequirementRef value) {
++  CFRetain(value);
++  return value;
++}
++using OwnedRequirement = std::unique_ptr<std::remove_pointer_t<SecRequirementRef>, ReleaseRequirement>;
++}
+ struct ExactCodePolicy::Data {
+-  SecRequirementRef requirement;
++  Data(SecRequirementRef value, std::span<const uint8_t> hash);
++  ~Data();
++  OwnedRequirement requirement;
+   std::vector<uint8_t> cd_hash;
+   const pid_t process = getpid();
+ };
++ExactCodePolicy::Data::Data(SecRequirementRef value, std::span<const uint8_t> hash)
++    : requirement(RetainRequirement(value)), cd_hash(hash.begin(), hash.end()) {}
++ExactCodePolicy::Data::~Data() = default;
+ ExactCodePolicy::ExactCodePolicy(SecRequirementRef requirement, std::span<const uint8_t> hash)
+-    : data_(std::make_unique<Data>(Data{requirement,
+-          std::vector<uint8_t>(hash.begin(), hash.end())})) {
+-  CFRetain(requirement);
+-}
+-ExactCodePolicy::~ExactCodePolicy() {
+-  if (getpid() == data_->process) CFRelease(data_->requirement);
+-}
++    : data_(std::make_unique<Data>(requirement, hash)) {}
++ExactCodePolicy::~ExactCodePolicy() = default;
+ std::shared_ptr<const ExactCodePolicy> ExactCodePolicy::CopyNativePolicy(
+     SecRequirementRef requirement, std::span<const uint8_t> hash) {
+   if (!requirement || CFGetTypeID(requirement) != SecRequirementGetTypeID() ||
+@@ -109,7 +131,7 @@
+     OSStatus status = SecCodeCopyGuestWithAttributes(nullptr, attributes, kSecCSDefaultFlags, &code);
+     CFRelease(attributes);
+     if (status != errSecSuccess || !code) return false;
+-    status = SecCodeCheckValidity(code, kSecCSDefaultFlags, policy.data_->requirement);
++    status = SecCodeCheckValidity(code, kSecCSDefaultFlags, policy.data_->requirement.get());
+     CFDictionaryRef information = nullptr;
+     if (status == errSecSuccess)
+       status = SecCodeCopySigningInformation(code, kSecCSSigningInformation, &information);
+@@ -132,8 +154,22 @@
+ NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
+   mach_port_type_t type = 0;
+   if (value == MACH_PORT_NULL || mach_port_type(mach_task_self(), value, &type) != KERN_SUCCESS ||
+-      !(type & MACH_PORT_TYPE_SEND)) throw std::invalid_argument("Actual native send right required");
++      !(type & MACH_PORT_TYPE_SEND)) return NativeSendRight(MACH_PORT_NULL);
+   return NativeSendRight(value);
++}
++bool NativeSendRight::is_valid() const { return getpid() == process_ && right_ != MACH_PORT_NULL; }
 +NativeSendRight NativeSendRight::CopyOwnedRight() const {
 +  if (getpid() != process_ || right_ == MACH_PORT_NULL ||
 +      mach_port_mod_refs(mach_task_self(), right_, MACH_PORT_RIGHT_SEND, 1) != KERN_SUCCESS)
-+    throw std::runtime_error("Native send right unavailable");
++    return NativeSendRight(MACH_PORT_NULL);
 +  return NativeSendRight(right_);
 +}
 +mach_port_t NativeSendRight::BorrowNativeName() const {
 +  return getpid() == process_ ? right_ : MACH_PORT_NULL;
 +}
 +mach_port_t NativeSendRight::ReleaseForNativeHandoff() {
-+  if (getpid() != process_) throw std::runtime_error("Native process changed");
++  if (getpid() != process_) return MACH_PORT_NULL;
 +  return std::exchange(right_, MACH_PORT_NULL);
-+}
+ }
  NativeSendRight::NativeSendRight(NativeSendRight&& other) noexcept
      : right_(std::exchange(other.right_, MACH_PORT_NULL)),
-       process_(std::exchange(other.process_, -1)) {}
-@@ -152,10 +165,10 @@
+@@ -152,33 +188,78 @@
      mach_port_deallocate(mach_task_self(), right_);
  }
  struct ParentTransport::State {
 -  State(BirthIdentity child_value, std::shared_ptr<const ExactCodePolicy> value)
 -      : child(child_value), policy(std::move(value)) {}
-+  explicit State(std::shared_ptr<const ExactCodePolicy> value)
-+      : policy(std::move(value)) {}
++  explicit State(std::shared_ptr<const ExactCodePolicy> value);
++  ~State();
    const pid_t process = getpid();
 -  const BirthIdentity child;
 +  std::optional<BirthIdentity> child;
    const std::shared_ptr<const ExactCodePolicy> policy;
    ReceiveRight receiver;
    std::mutex mutex;
-@@ -166,11 +179,51 @@
+   TransportSnapshot snapshot;
+   std::optional<int> child_pid_version;
+ };
++ParentTransport::State::State(std::shared_ptr<const ExactCodePolicy> value)
++    : policy(std::move(value)) {}
++ParentTransport::State::~State() = default;
+ ParentTransport::ParentTransport(std::shared_ptr<State> state) : state_(std::move(state)) {}
  ParentTransport::~ParentTransport() { CloseAndInspect(); }
  std::unique_ptr<ParentTransport> ParentTransport::BindActualDirectChild(
      pid_t child, std::shared_ptr<const ExactCodePolicy> policy) {
@@ -197,19 +308,21 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 +}
 +PreparedParentEndpoint::PreparedParentEndpoint(std::shared_ptr<ParentTransport::State> state)
 +    : state_(std::move(state)) {}
++PreparedParentEndpoint::~PreparedParentEndpoint() = default;
 +std::unique_ptr<PreparedParentEndpoint> PreparedParentEndpoint::PrepareBeforeSpawn(
 +    std::shared_ptr<const ExactCodePolicy> policy) {
 +  if (!policy) return {};
-+  return std::unique_ptr<PreparedParentEndpoint>(new PreparedParentEndpoint(
-+      std::make_shared<ParentTransport::State>(std::move(policy))));
++  auto state = std::make_shared<ParentTransport::State>(std::move(policy));
++  if (state->receiver.get() == MACH_PORT_NULL) return {};
++  return std::unique_ptr<PreparedParentEndpoint>(new PreparedParentEndpoint(std::move(state)));
 +}
 +NativeSendRight PreparedParentEndpoint::CopySendRightForNativeHandoff() {
-+  if (getpid() != state_->process) throw std::runtime_error("Native process changed");
++  if (getpid() != state_->process) return NativeSendRight::AdoptReceivedRight(MACH_PORT_NULL);
 +  std::lock_guard<std::mutex> lock(state_->mutex);
 +  if (state_->snapshot.closed || state_->child ||
 +      mach_port_insert_right(mach_task_self(), state_->receiver.get(),
 +          state_->receiver.get(), MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
-+    throw std::runtime_error("Native endpoint handoff closed");
++    return NativeSendRight::AdoptReceivedRight(MACH_PORT_NULL);
 +  return NativeSendRight::AdoptReceivedRight(state_->receiver.get());
 +}
 +std::unique_ptr<ParentTransport> PreparedParentEndpoint::BindActualDirectChild(pid_t child) {
@@ -242,7 +355,17 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
  }
  NativeSendRight ParentTransport::CopySendRightForNativeHandoff() {
    auto state = state_;
-@@ -207,6 +260,7 @@
+-  if (getpid() != state->process) throw std::runtime_error("Native process changed");
++  if (getpid() != state->process) return NativeSendRight(MACH_PORT_NULL);
+   std::lock_guard<std::mutex> lock(state->mutex);
+   if (state->snapshot.closed || mach_port_insert_right(mach_task_self(), state->receiver.get(),
+       state->receiver.get(), MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
+-    throw std::runtime_error("Native handoff closed");
++    return NativeSendRight(MACH_PORT_NULL);
+   return NativeSendRight(state->receiver.get());
+ }
+ TransportSnapshot ParentTransport::CloseAndInspect() {
+@@ -207,18 +288,18 @@
    {
      std::lock_guard<std::mutex> lock(state->mutex);
      if (state->snapshot.closed) return ExchangeStatus::closed;
@@ -250,7 +373,26 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
      generation = state->snapshot.generation;
      ++state->snapshot.active_exchanges;
      ++state->snapshot.active_receives;
-@@ -238,15 +292,15 @@
+   }
+-  struct ActiveExchange {
+-    State* state;
+-    ~ActiveExchange() {
+-      if (getpid() != state->process) return;
+-      std::lock_guard<std::mutex> lock(state->mutex);
+-      --state->snapshot.active_exchanges;
+-    }
+-  } active{state.get()};
++  auto finish_exchange = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_exchanges;
++  };
++  // Non-deleting scope guard; the actual shared state above owns its lifetime.
++  std::unique_ptr<State, decltype(finish_exchange)> active(state.get(), finish_exchange);
+   Received request{};
+   auto result = mach_msg(&request.wire.header, kReceiveOptions, 0, sizeof(request),
+       state->receiver.get(), timeout_ms, MACH_PORT_NULL);
+@@ -238,15 +319,15 @@
      return ExchangeStatus::refused;
    const audit_token_t audit = request.trailer.msgh_audit;
    const int version = audit_token_to_pidversion(audit);
@@ -269,7 +411,21 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
    std::lock_guard<std::mutex> lock(state->mutex);
    --state->snapshot.active_code_validations;
    if (state->snapshot.closed || state->snapshot.generation != generation)
-@@ -341,3 +395,82 @@
+@@ -288,11 +369,12 @@
+ ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
+     std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
+   ParentExchange observation;
+-  if (!policy || !timeout_ms || timeout_ms > kMaximumTimeoutMs) return observation;
++  if (!endpoint.is_valid() || !policy || !timeout_ms || timeout_ms > kMaximumTimeoutMs) return observation;
+   const pid_t parent = getppid();
+   auto birth = ReadBirth(parent, 0);
+   if (!birth) return observation;
+   ReceiveRight reply_port;
++  if (reply_port.get() == MACH_PORT_NULL) return observation;
+   Received exchange{};
+   exchange.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
+   exchange.wire.header.msgh_size = sizeof(Wire);
+@@ -341,3 +423,93 @@
    return observation;
  }
  }  // namespace aux::peer
@@ -277,11 +433,8 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 +namespace aux::peer {
 +struct AuthenticatedNativeParentConnection::State {
 +  State(NativeSendRight right, std::shared_ptr<const ExactCodePolicy> value,
-+        BirthIdentity birth_value, ParentExchange verified)
-+      : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value) {
-+    snapshot.parent_pid = verified.peer_pid;
-+    snapshot.parent_pid_version = verified.peer_pid_version;
-+  }
++        BirthIdentity birth_value, ParentExchange verified);
++  ~State();
 +  const pid_t process = getpid();
 +  NativeSendRight endpoint;
 +  const std::shared_ptr<const ExactCodePolicy> policy;
@@ -289,6 +442,13 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 +  std::mutex mutex;
 +  NativeParentConnectionSnapshot snapshot;
 +};
++AuthenticatedNativeParentConnection::State::State(NativeSendRight right,
++    std::shared_ptr<const ExactCodePolicy> value, BirthIdentity birth_value, ParentExchange verified)
++    : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value) {
++  snapshot.parent_pid = verified.peer_pid;
++  snapshot.parent_pid_version = verified.peer_pid_version;
++}
++AuthenticatedNativeParentConnection::State::~State() = default;
 +AuthenticatedNativeParentConnection::AuthenticatedNativeParentConnection(std::shared_ptr<State> state)
 +    : state_(std::move(state)) {}
 +std::unique_ptr<AuthenticatedNativeParentConnection> AuthenticatedNativeParentConnection::Connect(
@@ -328,16 +488,18 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 +    std::lock_guard<std::mutex> lock(state->mutex);
 +    if (state->snapshot.closed) return ExchangeStatus::closed;
 +    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if (!endpoint->is_valid()) {
++      state->snapshot.closed = true;
++      return ExchangeStatus::refused;
++    }
 +    ++state->snapshot.active_checks;
 +  }
-+  struct Check {
-+    State* state;
-+    ~Check() {
-+      if (getpid() != state->process) return;
-+      std::lock_guard<std::mutex> lock(state->mutex);
-+      --state->snapshot.active_checks;
-+    }
-+  } retained{state.get()};
++  auto finish_check = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<State, decltype(finish_check)> retained(state.get(), finish_check);
 +  auto current = AuthenticateActualNativeParent(*endpoint, state->policy, timeout_ms);
 +  const bool same = current.status == ExchangeStatus::authenticated &&
 +      current.peer_pid == state->birth.pid && getppid() == state->birth.pid &&
@@ -346,26 +508,31 @@ diff --git a/AuxNativePeerTransport.cc b/AuxNativePeerTransport.cc
 +  std::lock_guard<std::mutex> lock(state->mutex);
 +  if (state->snapshot.closed) return ExchangeStatus::closed;
 +  if (!same) {
++    // No reply is not evidence of peer loss. Retain the same immutable peer
++    // binding for a later real handshake; this call grants no admission.
++    if (current.status == ExchangeStatus::timedOut &&
++        getppid() == state->birth.pid && SameBirth(state->birth, 0))
++      return ExchangeStatus::timedOut;
 +    state->snapshot.closed = true;
 +    return current.status == ExchangeStatus::authenticated ? ExchangeStatus::refused : current.status;
 +  }
 +  return ExchangeStatus::authenticated;
 +}
 +}  // namespace aux::peer
-diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
 --- a/AuxNativePeerTransport.h
 +++ b/AuxNativePeerTransport.h
-@@ -25,6 +25,9 @@
+@@ -25,6 +25,10 @@
   public:
    // Adopts one real received send-right ref, not a descriptor supplied by JS.
    static NativeSendRight AdoptReceivedRight(mach_port_t right);
++  bool is_valid() const;
 +  NativeSendRight CopyOwnedRight() const;
 +  mach_port_t ReleaseForNativeHandoff();
 +  mach_port_t BorrowNativeName() const;
    NativeSendRight(NativeSendRight&& other) noexcept;
    NativeSendRight& operator=(NativeSendRight&& other) noexcept;
    ~NativeSendRight();
-@@ -48,6 +51,7 @@
+@@ -48,6 +52,7 @@
    uint64_t rejected_peer_identities = 0;
    uint64_t unresolved_reply_cleanup = 0;
    bool child_pid_version_observed = false;
@@ -373,7 +540,7 @@ diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
  };
  enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
  struct ParentExchange {
-@@ -57,6 +61,7 @@
+@@ -57,6 +62,7 @@
    int peer_pid_version = -1;
    bool right_cleanup_unresolved = false;
  };
@@ -381,7 +548,7 @@ diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
  class ParentTransport final {
   public:
    // Native launch owner calls only after its actual spawn. Kernel checks require
-@@ -70,8 +75,48 @@
+@@ -70,8 +76,49 @@
    TransportSnapshot CloseAndInspect();
    TransportSnapshot Inspect() const;
   private:
@@ -394,6 +561,7 @@ diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
 +// completed only once using the actual live direct child after spawn returns.
 +class PreparedParentEndpoint final {
 + public:
++  ~PreparedParentEndpoint();
 +  static std::unique_ptr<PreparedParentEndpoint> PrepareBeforeSpawn(
 +      std::shared_ptr<const ExactCodePolicy> child_policy);
 +  NativeSendRight CopySendRightForNativeHandoff();
@@ -430,12 +598,9 @@ diff --git a/AuxNativePeerTransport.h b/AuxNativePeerTransport.h
    std::shared_ptr<State> state_;
  };
  // Child native bootstrap consumes a private endpoint transferred by actual
-diff --git a/AuxNativePeerWire.h b/AuxNativePeerWire.h
-diff --git a/AuxOwnedNativePeerChild.cc b/AuxOwnedNativePeerChild.cc
-new file mode 100644
 --- /dev/null
 +++ b/AuxOwnedNativePeerChild.cc
-@@ -0,0 +1,194 @@
+@@ -0,0 +1,187 @@
 +#include "AuxOwnedNativePeerChild.h"
 +#include "base/apple/mach_port_rendezvous.h"
 +#include "base/apple/scoped_mach_port.h"
@@ -447,7 +612,6 @@ new file mode 100644
 +#include <optional>
 +#include <limits>
 +#include <algorithm>
-+#include <stdexcept>
 +#include <utility>
 +#include <vector>
 +
@@ -507,6 +671,7 @@ new file mode 100644
 +  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
 +  if (!prepared) return {};
 +  auto right = prepared->CopySendRightForNativeHandoff();
++  if (!right.is_valid()) return {};
 +  options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
 +      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND));
 +  return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
@@ -622,19 +787,10 @@ new file mode 100644
 +  }
 +  return RetainedUnresolvedChildren();
 +}
-+NativeSendRight TakeLaunchedNativeParentEndpoint() {
-+  auto* rendezvous = base::MachPortRendezvousClient::GetInstance();
-+  if (!rendezvous) throw std::runtime_error("Native parent endpoint unavailable");
-+  auto actual = rendezvous->TakeSendRight(kNativeParentPeerPort);
-+  if (!actual) throw std::runtime_error("Native parent endpoint missing");
-+  return NativeSendRight::AdoptReceivedRight(actual.release());
-+}
 +}  // namespace aux::peer
-diff --git a/AuxOwnedNativePeerChild.h b/AuxOwnedNativePeerChild.h
-new file mode 100644
 --- /dev/null
 +++ b/AuxOwnedNativePeerChild.h
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,41 @@
 +#pragma once
 +#include "AuxNativePeerTransport.h"
 +#include "base/command_line.h"
@@ -675,8 +831,4 @@ new file mode 100644
 +  explicit OwnedNativePeerChild(std::shared_ptr<State> state);
 +  std::shared_ptr<State> state_;
 +};
-+// Called from actual child native bootstrap, not a JS/env selector. Stock
-+// rendezvous is only right delivery; live authentication is the separate
-+// AuthenticatedNativeParentConnection::Connect producer.
-+NativeSendRight TakeLaunchedNativeParentEndpoint();
 +}  // namespace aux::peer

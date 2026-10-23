@@ -1,0 +1,11 @@
+{
+  "format": "aux.child-handoff.exception-mode.static.v1",
+  "sourcePinsVerified": true,
+  "parentExplicitThrowCatchAbsent": true,
+  "samePeerTimeoutRetryBranch": true,
+  "pcmInspectedReadOnly": true,
+  "pcmCppExceptions": false,
+  "compilerExecuted": false,
+  "ipcOrSecurityExecuted": false,
+  "gnApplied": false
+}

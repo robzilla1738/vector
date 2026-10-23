@@ -26,6 +26,7 @@ extern "C" uint64_t AuxConnectActualNativeParent(mach_port_t right,
     auto& registry = Connections();
     if (getpid() != registry.process) return 0;
     auto endpoint = aux::peer::NativeSendRight::AdoptReceivedRight(right);
+    if (!endpoint.is_valid()) return 0;
     if (!hash || (length != 20 && length != 32)) return 0;
     auto policy = aux::peer::ExactCodePolicy::CopyNativePolicy(requirement, {hash, length});
     if (!policy) return 0;

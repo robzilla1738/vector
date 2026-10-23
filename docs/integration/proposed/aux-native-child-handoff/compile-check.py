@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused compile only: actual Chromium command, no checkout/IPC execution."""
+"""Compile isolated parent/child ABI graphs, never link or execute native code."""
 import argparse
 import hashlib
 import json
@@ -11,8 +11,28 @@ HERE = Path(__file__).resolve().parent
 NATIVE = Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 BUILD = NATIVE / 'out/AuxFast'
 
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def verify_pins(inputs):
+    expected = {entry['path'] for entry in inputs['files']}
+    actual = {str(path.relative_to(HERE)) for path in (HERE / 'source').iterdir()
+              if path.suffix in {'.cc', '.h'}}
+    if actual != expected:
+        raise ValueError('Source/header inventory differs from reviewed inputs')
+    for entry in inputs['files']:
+        if sha(HERE / entry['path']) != entry['outputSha256']:
+            raise ValueError('Source pin differs: ' + entry['path'])
+    for entry in inputs['referenceInputs'] + inputs['compileInputs']:
+        if sha(Path(entry['path'])) != entry['sha256']:
+            raise ValueError('Reference/config pin differs: ' + entry['path'])
+    if sha(HERE / 'gn/BUILD.gn') != inputs['proposedGnSha256']:
+        raise ValueError('Proposed GN pin differs')
+    if sha(HERE / 'compile-check.py') != inputs['compileRecipeSha256']:
+        raise ValueError('Compile recipe pin differs')
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -22,41 +42,67 @@ def main():
     if output.exists() or NATIVE == output or NATIVE in output.parents:
         raise SystemExit('Fresh external output required')
     output.mkdir(parents=True)
-    ninja = BUILD / 'obj/base/base.ninja'
-    variables = {}
-    for line in ninja.read_text().splitlines():
-        if ' = ' in line and not line.startswith(' '):
-            key, value = line.split(' = ', 1)
-            variables[key] = value.replace('$:', ':')
-    compiler = NATIVE / 'third_party/llvm-build/Release+Asserts/bin/clang++'
-    results = []
-    for name in ['AuxNativePeerTransport.cc', 'AuxNativeParentConnectionBridge.cc',
-                 'AuxOwnedNativePeerChild.cc', 'AuxNativeEndpointDelivery.cc']:
-        command = [str(compiler)]
+    results = {'format': 'aux.native-child-handoff.compile.v2', 'commands': [],
+               'linked': False, 'nativeCodeExecuted': False, 'passed': False}
+    error = None
+    inputs_bytes = (HERE / 'inputs.json').read_bytes()
+    inputs = json.loads(inputs_bytes)
+    results['inputsSha256'] = hashlib.sha256(inputs_bytes).hexdigest()
+    try:
+        verify_pins(inputs)
+        results['prePinsVerified'] = True
+        variables = {}
+        for line in (BUILD / 'obj/base/base.ninja').read_text().splitlines():
+            if ' = ' in line and not line.startswith(' '):
+                key, value = line.split(' = ', 1)
+                variables[key] = value.replace('$:', ':')
+        parent = [str(NATIVE / 'third_party/llvm-build/Release+Asserts/bin/clang++')]
         for key in ['defines', 'include_dirs', 'cflags', 'cflags_cc', 'module_deps']:
-            command += shlex.split(variables[key])
-        # These inactive component sources explicitly use exception-safe native
-        # error boundaries. No current Chromium TU or shared GN flag changes.
-        exception_override = name != 'AuxNativeEndpointDelivery.cc'
-        if exception_override:
-            assert command.count('-fno-exceptions') == 1
-            command.remove('-fno-exceptions')
-            command.append('-fexceptions')
-        source = HERE / 'source' / name
-        command += ['-I', str(HERE / 'source'),
-                    '-fmodule-name=' + variables['cc_module_name'] + '_Private',
-                    '-c', str(source), '-o', str(output / (name + '.o'))]
-        result = subprocess.run(command, cwd=BUILD, capture_output=True, text=True)
-        (output / (name + '.log')).write_text(result.stdout + result.stderr)
-        results.append({'source': name, 'sourceSha256': sha(source),
-                        'gnCommandInputSha256': sha(ninja),
-                        'exceptionModeOverride': exception_override,
-                        'command': command, 'exitCode': result.returncode})
+            parent += shlex.split(variables[key])
+        if parent.count('-fno-exceptions') != 1 or '-fexceptions' in parent:
+            raise ValueError('Actual reviewed parent exception mode changed')
+        parent += ['-fmodule-name=' + variables['cc_module_name'] + '_Private']
+        child = [inputs['nodeCompiler'], '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                 '-arch', 'arm64', '-mmacosx-version-min=13.0', '-fPIC']
+        graphs = [
+            ('chromium', parent, ['AuxNativePeerTransport.cc',
+                                  'AuxOwnedNativePeerChild.cc',
+                                  'AuxNativeEndpointDelivery.cc']),
+            ('node-system-libcxx', child, ['AuxNativePeerTransport.cc',
+                                         'AuxNativeParentConnectionBridge.cc']),
+        ]
+        for graph, prefix, names in graphs:
+            for name in names:
+                source = HERE / 'source' / name
+                stem = graph + '-' + name
+                command = prefix + ['-I', str(HERE / 'source'), '-c', str(source),
+                                    '-o', str(output / (stem + '.o'))]
+                result = subprocess.run(command, cwd=BUILD, capture_output=True, text=True)
+                (output / (stem + '.log')).write_text(result.stdout + result.stderr)
+                results['commands'].append({'graph': graph, 'source': name,
+                                            'sourceSha256': sha(source),
+                                            'command': command, 'exitCode': result.returncode})
+                if result.returncode:
+                    raise RuntimeError('Compile failed: ' + stem)
+        results['passed'] = True
+    except Exception as caught:
+        error = caught
+        results['error'] = str(caught)
+    finally:
+        try:
+            if (HERE / 'inputs.json').read_bytes() != inputs_bytes:
+                raise ValueError('Inputs changed during compile')
+            verify_pins(inputs)
+            results['postPinsVerified'] = True
+        except Exception as caught:
+            error = caught
+            results['passed'] = False
+            results['postPinError'] = str(caught)
         (output / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
-        if result.returncode:
-            print((result.stdout + result.stderr)[-8000:])
-            raise SystemExit(result.returncode)
-    print('PASS: four actual native TUs compiled; no link/IPC/Security/Node execution')
+    if error:
+        raise SystemExit(str(error))
+    print('PASS: five objects, two ABI graphs; no link/native execution')
+
 
 if __name__ == '__main__':
     main()

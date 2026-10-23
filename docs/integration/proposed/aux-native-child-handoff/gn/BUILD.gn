@@ -1,0 +1,26 @@
+# Proposed isolated target layout; not applied to the Chromium checkout.
+# Place this BUILD.gn adjacent to source/ in the reviewed native integration.
+assert(is_mac)
+
+source_set("parent_peer_launch") {
+  sources = [
+    "../source/AuxNativePeerTransport.cc",
+    "../source/AuxNativePeerTransport.h",
+    "../source/AuxNativePeerWire.h",
+    "../source/AuxOwnedNativePeerChild.cc",
+    "../source/AuxOwnedNativePeerChild.h",
+  ]
+  deps = [ "//base" ]
+  frameworks = [ "CoreFoundation.framework", "Security.framework" ]
+  libs = [ "bsm" ]
+  # Preserve default Chromium exception/module configuration.
+}
+
+source_set("child_endpoint_delivery") {
+  sources = [
+    "../source/AuxNativeEndpointDelivery.cc",
+    "../source/AuxNativeEndpointDelivery.h",
+  ]
+  deps = [ "//base" ]
+  # C-only public API. Node links no parent_peer_launch C++ objects.
+}
