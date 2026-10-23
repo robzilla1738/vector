@@ -1,0 +1,93 @@
+{
+  "format": "aux.fresh-browser-startup.integration.v1",
+  "replacements": {
+    "AuxOwnedCommandDispatcher.swift": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxOwnedCommandDispatcher.swift",
+      "beforeSha256": "f3c2c4df7b4659973d686a8a8833e4534351b736bf2c20e3586017a8b7d39514",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedCommandDispatcher.swift",
+      "afterSha256": "c4350a8ffdcc50d7e86d8c458be4e8fe92c677882f68273d766d817f605ab76d"
+    },
+    "AuxSelectedStateHome.cc": {
+      "before": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "e79b4b0631a0d82ef156eed9500df01838cfcd9ca118405c192bea9c97eaaa6f",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxSelectedStateHome.cc",
+      "afterSha256": "9883558d84357d3ecc730fa622e0d24bdb495346eef32cdd7e053956f38358be"
+    },
+    "AuxNativePeerTransport.h": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxNativePeerTransport.h",
+      "beforeSha256": "a6456369f9e1f03e322516c5988112f29094063379e5170cf090fe65ce89cb92",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxNativePeerTransport.h",
+      "afterSha256": "2d7a3e9a22eea448c48c1cb952a3a5014046106c10cb7080b9706a2de9a44e1e"
+    },
+    "AuxFreshColdInstallerGuard.swift": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdInstallerGuard.swift",
+      "beforeSha256": "dfbcd1921f054803e902450275a640b99826d19c46b76c10d4b86263eb193624",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshColdInstallerGuard.swift",
+      "afterSha256": "4cd3f0fca1e8413fc3d5b4208fbf45ac817506f54b725a830dca851726e766cb"
+    },
+    "AuxPreparedDaemonAuthority.swift": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift",
+      "beforeSha256": "00658efd8f27d9926b584d0ed714e6b3b10b220e34f4451f1d659da319e71238",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxPreparedDaemonAuthority.swift",
+      "afterSha256": "ce1d8e8ff48a91a97fc5c19a35d9b6c52dc7ba41771935aa512f8c97b1c4acec"
+    },
+    "AuxOwnedNativePeerChild.h": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxOwnedNativePeerChild.h",
+      "beforeSha256": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedNativePeerChild.h",
+      "afterSha256": "35812957162af8ff16ecda8e400debbd755314022ec12f01339402387d3cab97"
+    },
+    "AuxNativePeerTransport.cc": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxNativePeerTransport.cc",
+      "beforeSha256": "811ab2a34f8e871703efdc59e84de52715eb96bca0fa5b0e055a6c94ac6ce22d",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxNativePeerTransport.cc",
+      "afterSha256": "d9fc05d9adde67e5a11dd61761a635171221f557b6f01d3db5d2b7f518dfab74"
+    },
+    "AuxFreshBootstrapPolicy.swift": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/build/source/AuxFreshBootstrapPolicy.swift",
+      "beforeSha256": "4aa9a9477b7579066ef88d0bb33e46226e205e85a57909246adaaae7461f5ec1",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshBootstrapPolicy.swift",
+      "afterSha256": "dcba5bbb5baee4a5d3b248cd19bf40df35db8ca315e9529c62e255b6e6782d2e"
+    },
+    "AuxPreparedDaemonAuthority.h": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h",
+      "beforeSha256": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxPreparedDaemonAuthority.h",
+      "afterSha256": "3d775bb044891793e78fb79823079a94824db5912565f6d4de16c449c0e67cf8"
+    },
+    "AuxNativePeerWire.h": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxNativePeerWire.h",
+      "beforeSha256": "34e406e583e8df0135af0b4de23c687f6590632c4c4bbda58ccdf024cc1557be",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxNativePeerWire.h",
+      "afterSha256": "018525272f12b4d8ffbda5158f7fbef0251027b7509b8e8ad2cfba475827290d"
+    },
+    "AuxOwnedNativePeerChild.cc": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxOwnedNativePeerChild.cc",
+      "beforeSha256": "8333b7664d73795bc2d39a9031dcbda4172874e5c3f6e216bbf854d59f35f9f6",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedNativePeerChild.cc",
+      "afterSha256": "a9058116c84012ce1fe616b040015573b3a1bc768aaf779d918563650ea82fb8"
+    },
+    "AuxNativeFreshStageCoordinator.swift": {
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeFreshStageCoordinator.swift",
+      "beforeSha256": "2d7559e726bbcb6cbd8a0d9be86fea7829b15c1ed83496e4472bc62283733e31",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxNativeFreshStageCoordinator.swift",
+      "afterSha256": "a5215891f3f66d1d71622b3fa7ac712d2ff58d677452c672615d3906f1f469e7"
+    },
+    "AuxSelectedStateHome.h": {
+      "before": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "beforeSha256": "0a92527b2177fb0ad4a9574c0d2d2db0d58937647f6245a700bb29c1551b222a",
+      "after": "docs/integration/proposed/profile-isolation-final/startup/source/AuxSelectedStateHome.h",
+      "afterSha256": "8dc1feeb36eb8846704b4df576e069db3e83164fbd98037934e0e9141c506463"
+    }
+  },
+  "addedSources": [
+    "docs/integration/proposed/profile-isolation-final/startup/source/AuxBrowserFreshRootAdmission.swift"
+  ],
+  "policyVersion": 7,
+  "authorityWireVersion": 5,
+  "browserGrantOperation": 6,
+  "coldHookEnabled": false,
+  "realStartupExecuted": false,
+  "allBrowserWriterDrain": false,
+  "freshRestartRecovery": false
+}

@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "stdout": "PASS: v1-v7 decode, v7-only current daemon route, source-version separation, unchanged-source/unknown-key/CLI refusal and ad-hoc captured-signature refusal; no live Security or module execution\n",
+  "stderr": "",
+  "inputs": {
+    "/private/tmp/aux-early-authorization-final/docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshBootstrapPolicy.swift": "dcba5bbb5baee4a5d3b248cd19bf40df35db8ca315e9529c62e255b6e6782d2e",
+    "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/policy-check.swift": "088c5cd079edc1808b1d9c8bcdb02cf327964c927467e835145ddb9026d06102"
+  },
+  "inputsUnchanged": true,
+  "liveSecurityCalls": false,
+  "protectedIO": false,
+  "moduleLoaded": false
+}

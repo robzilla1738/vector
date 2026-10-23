@@ -1,0 +1,25 @@
+--- a/chrome/browser/metrics/chrome_feature_list_creator.cc
++++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "third_party/blink/public/common/features.h"
+@@ -119,10 +120,12 @@
+ 
+ void ChromeFeatureListCreator::CreatePrefService() {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+-  // Genuine root provenance before FILE_LOCAL_STATE resolution/read. This is
+-  // not writer custody or native owner admission for this earlier browser IO.
++  // Native provenance alone cannot authorize the Local State read.
+   CHECK(aux::peer::CaptureActualChromiumBrowserRoots() ||
+         aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO());
++  CHECK(aux::peer::StartSealedNativeDaemonBeforeProfiles().route ==
++        aux::peer::SelectedStateHomeRoute::current);
++  CHECK(aux::peer::AuthorizeNativeBrowserStartupBeforeLocalState());
+ #endif
+   base::FilePath local_state_file;
+   bool result =

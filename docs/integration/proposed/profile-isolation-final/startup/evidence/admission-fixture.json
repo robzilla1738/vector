@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "stdout": "PASS: empty-pair admission, fixed receipt, existing-marker/path/nonempty rejection and mutation refusal; synthetic policy only\n",
+  "stderr": "",
+  "sourceSha256": "2294779a7e7857518dcba38df29dfcefc3a745269d8078ad05a97a1e30e2d41b",
+  "liveSecurity": false,
+  "realBrowserRootAccess": false,
+  "syntheticPolicyDouble": true
+}
