@@ -1,0 +1,83 @@
+{
+  "format": "aux.awaited-writers.integration.v1",
+  "active": false,
+  "nativeHost": {
+    "baselineSha256": "f63809339d649f105a6cb6324c24e38c2e3b9950f661f5e2d3813eefc934ae4c",
+    "successorSha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7",
+    "newBuiltin": "withBrokerAwaited",
+    "newCExports": []
+  },
+  "nodeHandleConversion": {
+    "source": "out/aux-node-static-26.5.0/node-v26.5.0/src/js_native_api_v8.h",
+    "sha256": "1263a615234e5b8ac61b59480520051c8df276e5d9ed9d4d68fb7fa09f821163",
+    "lines": [
+      305,
+      318
+    ]
+  },
+  "allBackgroundWritersClosed": false,
+  "uiChanged": false,
+  "daemonExecuted": false,
+  "nativeObject": {
+    "path": "/private/tmp/aux-awaited-writes-native-20261023-r3/worker-host.o",
+    "sha256": "d9847f322f8da7a58b737ffc94b12c8c1702974cbbe215208f48c2754c53c17e"
+  },
+  "sourceComposition": {
+    "passed": true,
+    "inputSha256": "6a2b15fe81ed3eb0cd8f13bbc0af0dee2d714accf3d9b4f73292fde0f3d17ed0",
+    "outputSha256": "bf82847ebfcdf0aa369f9c900bcc22de0cf2bad4b24eb36ba8285ba7522bf0e0",
+    "changes": [
+      {
+        "name": "native finite writer runtime",
+        "count": 1
+      },
+      {
+        "name": "finite async tool atomic write",
+        "count": 1
+      },
+      {
+        "name": "finite async credential file write",
+        "count": 1
+      },
+      {
+        "name": "credential optional directory cleanup uncertainty",
+        "count": 1
+      },
+      {
+        "name": "finite memory history append",
+        "count": 1
+      },
+      {
+        "name": "file logger refuses late entry",
+        "count": 1
+      },
+      {
+        "name": "logger directory guarded sync",
+        "count": 1
+      },
+      {
+        "name": "actual logger stream close custody",
+        "count": 1
+      },
+      {
+        "name": "shutdown resource lifecycle",
+        "count": 1
+      },
+      {
+        "name": "join actual resource shutdown",
+        "count": 1
+      }
+    ],
+    "checks": [
+      "new writes rejected during shutdown",
+      "active finite write precedes SQLite/log cleanup",
+      "actual async atomic body waits for file close before rename",
+      "full source syntax",
+      "changed input refusal",
+      "logger close error rejects shutdown and retains unknown"
+    ],
+    "nativeBinding": "synthetic only",
+    "nativeAuthorityExecuted": false,
+    "allWritersClosed": false
+  }
+}
