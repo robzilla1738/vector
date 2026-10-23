@@ -1,0 +1,27 @@
+{
+  "format": "aux.rebuilt.pty.policy.pure-check.v1",
+  "sourcePins": {
+    "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/source/AuxFreshBootstrapPolicy.swift": "1ba3dce222aa76d9524a6cebb7185ab677bc9a0ecc8eb573c66f7a566d888338",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/tests/main.swift": "c200a0b3d1ea9a84912db6b190b46aceb97be36c198b6f80bca4855c34e49206",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "docs/integration/proposed/aux-pty-module-artifact/evidence/artifact-receipt.json": "6a5633dbb369166759b76938872abf7be54bbfc38c45c1f3513dc86db69768bf",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/change.patch": "4f7fa531277811db0dec76d01ab7f55ab63fdee5866532a548448384fa0e663b",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/check.py": "b242750469c7e16cb6e7ded2827598242d614c7d76d9ac2ebe1ee5cddfb79fa3",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "0f46783f23e4fe3598e024e0c9d5c82bc8d3acf849b47db2f9d1d937f764c22b",
+    "docs/integration/proposed/aux-native-rebuilt-pty-policy/loader-change.patch": "a227cad8dd5d34bdeb824f929c7a25e7b72181ce6005dbfb056a9c8b9acb59a9",
+    "docs/integration/proposed/aux-native-authenticated-pty-helper/source/AuxSignedFreshBootstrapPolicyLoader.swift": "088c04998571ca723088b95932b3cc9c46269e9cc8e34d45802bb0954b491797"
+  },
+  "interpreter": [
+    "xcrun",
+    "swift",
+    "<private-temporary-main.swift>"
+  ],
+  "exitCode": 0,
+  "stdout": "PASS: v1-v4 decode, source-version separation, unchanged-source/unknown-key/CLI refusal and ad-hoc captured-signature refusal; no live Security or module execution\n",
+  "stderr": "",
+  "liveSecurityCalls": false,
+  "moduleLoaded": false,
+  "signed": false,
+  "activePolicyChanged": false
+}

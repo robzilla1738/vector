@@ -1,0 +1,18 @@
+--- aux-native-authenticated-pty-helper/source/AuxSignedFreshBootstrapPolicyLoader.swift
++++ aux-native-rebuilt-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -164,6 +164,7 @@
+         let bytes=try resource(bundle)
+         let sealed=SecCodeValidateFileResource(staticCode,AuxFreshBootstrapIdentity.resourceRelative as CFString,bytes as CFData,[]);guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
+         let policy=try AuxFreshBootstrapPolicyContents.decode(bytes);guard policy.role==role,policy.accessGroup==captured.accessGroups[0] else{throw AuxFreshBootstrapPolicyError.policy}
++        try validateFreshBootstrapRebuiltDaemonRoute(policy)
+         try images(bundle:bundle,policy:policy,requirement:requirement,preparing:preparing);try privateParent(policy.canonicalPrivateParent)
+         guard try resource(bundle)==bytes else{throw AuxFreshBootstrapPolicyError.resource}
+         let final=SecStaticCodeCheckValidity(staticCode,flags,requirement),live=SecCodeCheckValidity(dynamic,dynamicFlags,requirement)
+@@ -205,6 +206,7 @@
+         guard sealed == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(sealed) }
+         let policy = try AuxFreshBootstrapPolicyContents.decode(bytes)
+         guard policy.role == role else { throw AuxFreshBootstrapPolicyError.policy }
++        try validateFreshBootstrapRebuiltDaemonRoute(policy)
+         try validateCapturedFreshBootstrapSignature(captured, role: role, host: true, accessGroup: policy.accessGroup)
+         // This is a guest-resource proof, not current-process image inspection.
+         // The actual child producer separately revalidates its live image/guard

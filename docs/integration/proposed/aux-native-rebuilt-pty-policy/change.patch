@@ -1,0 +1,77 @@
+--- aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift
++++ aux-native-rebuilt-pty-policy/source/AuxFreshBootstrapPolicy.swift
+@@ -48,6 +48,8 @@
+     let accessGroup:String
+     var embeddedDaemon:Bool=false
+     var ptyArtifacts:AuxFreshBootstrapPtyArtifacts?=nil
++    // A successor host must require this before its native PTY capability route.
++    var includesRebuiltPtyModule:Bool=false
+     var includesPdf:Bool{role == .daemon}
+     var includesMacUtilities:Bool{role == .daemon}
+     var pdfSha256:String{AuxFreshBootstrapPdfIdentity.sha256}
+@@ -69,7 +71,8 @@
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+         if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
+-        let ptyVersion=object["format"] as? String=="aux.fresh.bootstrap.policy.v3"
++        let rebuiltPty=object["format"] as? String=="aux.fresh.bootstrap.policy.v4"
++        let ptyVersion=object["format"] as? String=="aux.fresh.bootstrap.policy.v3" || rebuiltPty
+         let pty:AuxFreshBootstrapPtyArtifacts?
+         if ptyVersion {pty=try AuxFreshBootstrapPtyArtifacts.decode(object)} else {pty=nil}
+         if ptyVersion {keys.formUnion(["ptyModule","ptySpawnHelper"])}
+@@ -79,7 +82,7 @@
+               let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
+               parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
+               let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
+-        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded,ptyArtifacts:pty)
++        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded,ptyArtifacts:pty,includesRebuiltPtyModule:rebuiltPty)
+     }
+ }
+ struct AuxCapturedFreshBootstrapSignature {
+@@ -138,7 +141,7 @@
+     guard policy.includesMacUtilities,sha256==AuxFreshBootstrapMacUtilitiesIdentity.sha256,bytes==AuxFreshBootstrapMacUtilitiesIdentity.bytes else{throw AuxFreshBootstrapPolicyError.image}
+ }
+ 
+-// v3 has exactly two finite arm64 resources. Whole signed output bytes are
++// v3 and v4 each have exactly two finite arm64 resources. Whole signed output bytes are
+ // explicit sealed-policy values, populated only after a separate exact review.
+ struct AuxFreshBootstrapPtyArtifact {
+     let relativePath:String
+@@ -152,10 +155,18 @@
+     static let moduleIdentifier="dev.aux.browser.pty"
+     static let helperIdentifier="dev.aux.browser.pty-spawn-helper"
+     static let moduleSourceSha256="a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a"
++    // The actual retained unsigned successor, never an alias for the original v3 bytes.
++    static let rebuiltModuleSourceSha256="5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726"
+     static let helperSourceSha256="b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f"
+     let module:AuxFreshBootstrapPtyArtifact
+     let helper:AuxFreshBootstrapPtyArtifact
+     static func decode(_ object:[String:Any])throws->Self {
++        let moduleSource:String
++        switch object["format"] as? String {
++        case "aux.fresh.bootstrap.policy.v3":moduleSource=moduleSourceSha256
++        case "aux.fresh.bootstrap.policy.v4":moduleSource=rebuiltModuleSourceSha256
++        default:throw AuxFreshBootstrapPolicyError.policy
++        }
+         func artifact(_ value:Any?,path:String,identifier:String,source:String)throws->AuxFreshBootstrapPtyArtifact {
+             guard let fields=value as? [String:Any],Set(fields.keys)==["path","identifier","sha256","bytes","sourceSha256","architecture"],
+                   fields["path"] as? String==path,fields["identifier"] as? String==identifier,
+@@ -164,7 +175,7 @@
+                   let count=fields["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(count.intValue),count.intValue>0,count.intValue<=32*1024*1024 else{throw AuxFreshBootstrapPolicyError.policy}
+             return .init(relativePath:path,identifier:identifier,sha256:hash,bytes:count.intValue)
+         }
+-        return try .init(module:artifact(object["ptyModule"],path:modulePath,identifier:moduleIdentifier,source:moduleSourceSha256),helper:artifact(object["ptySpawnHelper"],path:helperPath,identifier:helperIdentifier,source:helperSourceSha256))
++        return try .init(module:artifact(object["ptyModule"],path:modulePath,identifier:moduleIdentifier,source:moduleSource),helper:artifact(object["ptySpawnHelper"],path:helperPath,identifier:helperIdentifier,source:helperSourceSha256))
+     }
+ }
+ func validateCapturedFreshBootstrapPtySignature(_ captured:AuxCapturedFreshBootstrapSignature,artifact:AuxFreshBootstrapPtyArtifact)throws {
+@@ -172,3 +183,9 @@
+           captured.identifier==artifact.identifier,captured.flags & 0x2==0,captured.flags & 0x10000 != 0,
+           captured.entitlements.isEmpty,captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
+ }
++
++// This successor host has native PTY custody; historical daemon modules cannot
++// enter its prepare/load route. Pure decoding remains backward compatible.
++func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {
++    guard policy.role != .daemon || policy.includesRebuiltPtyModule else {throw AuxFreshBootstrapPolicyError.policy}
++}
