@@ -1,0 +1,42 @@
+{
+  "environment": {
+    "TOOL_VERSION": "1792270167",
+    "JSON_VERSION": "1792269227"
+  },
+  "command": [
+    "../../third_party/cpython3/host/bin/python3",
+    "../../build/toolchain/apple/swiftc.py",
+    "--module-name",
+    "AuxParentSealedPolicy",
+    "--header-path",
+    "gen/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy.h",
+    "--target-out-dir",
+    "obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy",
+    "--const-gather-protocols-file",
+    "../../build/toolchain/apple/swift_const_gather_protocols.json",
+    "--depfile-path",
+    "obj/chrome/browser/aux/native_peer_policy/AuxParentSealedPolicy.d",
+    "--src-dir",
+    "../../",
+    "--gen-dir",
+    "gen",
+    "--bridge-header",
+    "",
+    "-I../..",
+    "-Igen",
+    "-I../../buildtools/third_party/libc++",
+    "-target",
+    "arm64-apple-macos13.0",
+    "-swift-version",
+    "6",
+    "-file-prefix-map",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src=../..",
+    "-sdk",
+    "sdk/xcode_links/MacOSX27.0.sdk",
+    "../../chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+    "../../chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+    "--fix-generated-header"
+  ],
+  "originalLine": "TOOL_VERSION=1792270167 JSON_VERSION=1792269227 ../../third_party/cpython3/host/bin/python3 ../../build/toolchain/apple/swiftc.py --module-name AuxParentSealedPolicy --header-path gen/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy.h --target-out-dir obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy --const-gather-protocols-file ../../build/toolchain/apple/swift_const_gather_protocols.json --depfile-path obj/chrome/browser/aux/native_peer_policy/AuxParentSealedPolicy.d --src-dir ../../ --gen-dir gen --bridge-header \"\" -I../.. -Igen -I../../buildtools/third_party/libc++  -target arm64-apple-macos13.0 -swift-version 6 -file-prefix-map /Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src=../.. -sdk sdk/xcode_links/MacOSX27.0.sdk ../../chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift ../../chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift --fix-generated-header",
+  "executedByThisLane": false
+}

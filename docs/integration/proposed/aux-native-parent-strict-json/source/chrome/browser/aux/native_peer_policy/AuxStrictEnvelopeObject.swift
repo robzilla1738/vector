@@ -1,0 +1,37 @@
+// External migration/source-port component; no state I/O or authority creation.
+import Foundation
+
+enum EnvelopePortError: Error { case malformedRecord, unsupportedFormat, unsupportedAuthority, pqNotRecovered, authorityMismatch, rootMismatch }
+
+// JSONSerialization validates grammar; bounded walk additionally rejects duplicate
+// decoded member names, including escaped aliases, before interpreting any record.
+func strictEnvelopeObject(_ data: Data) throws -> [String: Any] {
+    guard data.count <= 16_384, let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw EnvelopePortError.malformedRecord }
+    let bytes = [UInt8](data); var index = 0; var nodes = 0
+    func whitespace() { while index < bytes.count && [9,10,13,32].contains(bytes[index]) { index += 1 } }
+    func string() throws -> String {
+        let start = index; index += 1
+        while index < bytes.count { let byte = bytes[index]; index += 1
+            if byte == 34 { return try JSONDecoder().decode(String.self, from: Data(bytes[start..<index])) }
+            if byte == 92 { index += 1 }
+        }; throw EnvelopePortError.malformedRecord
+    }
+    func value(_ depth: Int) throws {
+        nodes += 1; guard depth <= 32, nodes <= 1_000 else { throw EnvelopePortError.malformedRecord }; whitespace()
+        guard index < bytes.count else { throw EnvelopePortError.malformedRecord }
+        if bytes[index] == 34 { _ = try string(); return }
+        if bytes[index] == 123 {
+            index += 1; whitespace(); var names = Set<String>()
+            if index < bytes.count && bytes[index] != 125 { while true {
+                whitespace(); let name = try string(); guard names.insert(name).inserted else { throw EnvelopePortError.malformedRecord }
+                whitespace(); guard index < bytes.count && bytes[index] == 58 else { throw EnvelopePortError.malformedRecord }; index += 1
+                try value(depth+1); whitespace(); if index >= bytes.count || bytes[index] != 44 { break }; index += 1
+            }}; guard index < bytes.count && bytes[index] == 125 else { throw EnvelopePortError.malformedRecord }; index += 1
+        } else if bytes[index] == 91 {
+            index += 1; whitespace(); if index < bytes.count && bytes[index] != 93 { while true { try value(depth+1); whitespace(); if index >= bytes.count || bytes[index] != 44 { break }; index += 1 }}
+            guard index < bytes.count && bytes[index] == 93 else { throw EnvelopePortError.malformedRecord }; index += 1
+        } else { while index < bytes.count && ![9,10,13,32,44,93,125].contains(bytes[index]) { index += 1 } }
+    }
+    try value(0); whitespace(); guard index == bytes.count else { throw EnvelopePortError.malformedRecord }; return object
+}
+

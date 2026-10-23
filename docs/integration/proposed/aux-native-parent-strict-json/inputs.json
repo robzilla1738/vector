@@ -1,0 +1,29 @@
+{
+  "format": "aux.native-parent-strict-json.inputs.v1",
+  "extraction": {
+    "source": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+    "sourceSha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "bytes": 2750,
+    "prefixSha256": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "stopBefore": "struct InstallationAuthorityMetadata {"
+  },
+  "files": {
+    "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/BUILD.gn": "bef2094d0672780870809eda52e343490cdd3afdfa77686c03e4a6fbe0a1c799",
+    "docs/integration/proposed/aux-native-parent-strict-json/failed-command.json": "3620c5e0c609bae40872a0fd9673248d1573983559a63c192991e193995fd742",
+    "docs/integration/proposed/aux-native-parent-strict-json/check-module.py": "e667d9a694445a3bd8e1a6f8da8ed338d40e91f998f1ff0f66abb5f151b76323"
+  },
+  "nativeInputs": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/native_peer_policy/BUILD.gn": "7d20ca53b0b0aca0eee42173b87c9997a340ef9adca5120284c45c8a2a7df9d4",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy.ninja": "270ec1dd54e672c936770f10d295163021250317ac2f87ffe8dcc9ca5aff866a",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/toolchain.ninja": "5d7a9cb2ecfc91f5bef5d606bbb7329488ca9ca7e0a8ef6c08d9dca33ccf6bbf",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/toolchain/apple/swiftc.py": "a89cab3a0723133b0c8c0577029b2f3f85cc15491dc42a1f095dc3d8278ba87f",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/toolchain/apple/swift_const_gather_protocols.json": "b78c534eaedb844857a208c60f627ea4c53845579169226844e8a9464734a23e",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/cpython3/host/bin/python3": "a6fa2028165c9737936df532d7670e21484b8954e453470919c849ed1b950d38",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift": "63a0203e6646c58bf5b303b73407e2d72356c694b836e5aba1b73f175afaaef5",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc": "84b410d8143298f90ab0b721d488dab90e2fdbf23577ae6186162832a1155cb7"
+  },
+  "compiled": false,
+  "nativeApplied": false
+}
