@@ -1,0 +1,10 @@
+--- a/build/toolchain/apple/linker_driver.py
++++ b/build/toolchain/apple/linker_driver.py
+@@ -566,5 +566,6 @@
+ 
+ 
+ if __name__ == '__main__':
+-    LinkerDriver(sys.argv).run()
++    from aux_host_link_filter import filter_arguments
++    LinkerDriver(filter_arguments(sys.argv, os.getcwd())).run()
+     sys.exit(0)
