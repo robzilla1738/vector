@@ -1,0 +1,36 @@
+{
+  "format": "aux.backup-job.actual-empty-production.v1",
+  "checkedAt": "2026-10-23T06:25:07.652Z",
+  "success": true,
+  "approvedProject": "ancient-river-76453764",
+  "sourcePreflight": {
+    "migrations": 12,
+    "applicationTables": 29,
+    "nonemptyApplicationTables": 0
+  },
+  "actualFixedCaptureCliSucceeded": true,
+  "readOnlyDatabaseSnapshot": true,
+  "actualPostgresCustomArchive": true,
+  "archiveIndexCheckedByPgRestore": true,
+  "deliveredBundleAuthenticated": true,
+  "deliveredCiphertextFiles": 3,
+  "unpackedArchiveBytes": 71532,
+  "archiveMigrationsMatch": 12,
+  "sourceWrappingKeyRecovered": true,
+  "wrappingKeyValueRecorded": false,
+  "durableStatusMacsVerified": true,
+  "statusPhases": [
+    "capture-intent-no-automatic-recapture",
+    "capture-authenticated",
+    "delivery-intent",
+    "delivered-ciphertext-verified-local-only"
+  ],
+  "attachmentsOrAvatarsPresent": 0,
+  "sourceWrites": false,
+  "providerObjectUploadsOrDeletes": false,
+  "databaseRestorePerformed": false,
+  "independentRemoteCustodyEstablished": false,
+  "schedulerActivated": false,
+  "productionActivated": false,
+  "temporaryFixtureAndKeyRemoved": true
+}
