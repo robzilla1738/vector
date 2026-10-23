@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T03:47:48.327478+00:00",
+  "recordedAt": "2026-10-23T04:14:19.400135+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -8,7 +8,7 @@
     {
       "session": 1414,
       "role": "first actual Node26.5.0 static library build",
-      "state": "same handle confirmed live; actual build log advanced to LIEF"
+      "state": "same handle confirmed live; actual build advanced through LIEF into V8 objects"
     }
   ],
   "agentReportedPendingChecks": [
@@ -38,20 +38,29 @@
       "session": 39083,
       "role": "paired changed WorkerHost TU retirement mapping",
       "state": "agent reports same wrapper queued; exact6project inputs pinned"
+    },
+    {
+      "session": 44910,
+      "role": "bounded real prepared authority lifecycle fixture",
+      "state": "agent polled same wrapper; still queued, no new compiler/result evidence"
     }
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "coherent finite signing/public-key RPC and real parent adoption without carrier fallback",
+    "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
     "actual main/link graph after Node static library reaches terminal result",
     "paired notification inbox master-key/envelope migration from actual reader; no guessed key",
     "same queued final42 and focused lifetime/WorkerHost checks; final adoption transport compile only once",
-    "legacy existing authority/CSK migration and exact native resource/package review"
+    "legacy existing authority/CSK migration and exact native resource/package review",
+    "fixed-path lazy PTY load and explicit sealed image/signature policy pairing; no generic guard widening"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
     "productionActivated": false,
-    "evidence": "services/aux-cloud/evidence/production-recovery-migration.json"
+    "evidence": "services/aux-cloud/evidence/production-recovery-migration.json",
+    "developmentIconDeployment": "dpl_9Zqn7Mt8E7pmWXhwn6hBms3VpgXa",
+    "developmentIconHttpEvidence": "docs/integration/proposed/aux-builtin-icon-hosting/http-check.json",
+    "actualPublicIconResponsesVerified": 46
   },
   "runtimeAcceptance": false,
   "protectedCallsExecuted": false,
@@ -79,7 +88,10 @@
     "qualifiedOwnedEntryRouting": "5bbfdb522",
     "selectedStateHomeHolder": "4db4db25f",
     "actualNativeDaemonMain": "d29dc2d0e",
-    "currentNativeMainLinkPlan": "1f67407b6"
+    "currentNativeMainLinkPlan": "1f67407b6",
+    "finiteNativeAuthorityTransport": "19b595e2a",
+    "inboxV2CodecAndPurpose": "fff614c6f / 2337c1dac",
+    "auxBuiltinIconStageAudit": "c610ed32f"
   },
   "terminalRootChecks": [
     {

@@ -1,0 +1,656 @@
+{
+  "format": "aux.builtin-icons.http-check.v1",
+  "checkedAt": "2026-10-23T04:13:47.537Z",
+  "deployment": "dpl_9Zqn7Mt8E7pmWXhwn6hBms3VpgXa",
+  "target": "preview",
+  "origin": "https://dev-cloud.getaux.co",
+  "assets": [
+    {
+      "path": "/builtin-skills/v1/1password.jpg",
+      "status": 200,
+      "bytes": 15826,
+      "sha256": "cb7ccb542e0fcb63fc2b01157f800cf839041c9d1c355ab899a8399321b7bfca",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/airtable.svg",
+      "status": 200,
+      "bytes": 1458,
+      "sha256": "339e529a2a5c590123632bec7c0543006e24051993225e4e172b21a2bacc4d6c",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/amazon.svg",
+      "status": 200,
+      "bytes": 2848,
+      "sha256": "7ad1d1d888ac51fa6b0e2a643f461557ca59d5f68879b07b939f5f2d979a711d",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/apple-password.jpg",
+      "status": 200,
+      "bytes": 20283,
+      "sha256": "e6f178b0856c4cdf5f7c9d22d4769050d1879589a4f53a7f7351ddcafd47b0c2",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/asana.svg",
+      "status": 200,
+      "bytes": 1589,
+      "sha256": "415a67505c5520e047aacb98698acc0f0cec71398ff23fb4ddaa2c68e87a8bdf",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/aux.svg",
+      "status": 200,
+      "bytes": 955,
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/bitwarden.svg",
+      "status": 200,
+      "bytes": 2722,
+      "sha256": "e2a4104904c5196ce018536e22e68653b82fd2e47d0f805a02da53036a56a3ab",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/captcha-resolver.jpg",
+      "status": 200,
+      "bytes": 20689,
+      "sha256": "5e74426a4c8e17de402805b915defe6834dcc993eeb10b234552565bb065e46c",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/chrome.jpg",
+      "status": 200,
+      "bytes": 19194,
+      "sha256": "51242c7c8a0b1e3b17f580d45b2c775f32f6be0aa300f5a5aefd079b3116f334",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/clickup.svg",
+      "status": 200,
+      "bytes": 1974,
+      "sha256": "803202196e53fffa78d1a768108ffa3bd90dd0110f78ac2ef1e2e9ba245e4584",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/confluence.svg",
+      "status": 200,
+      "bytes": 1972,
+      "sha256": "c85a12f38fff66d3fc80e17ede7fb5497759ad3179dc0b7b424f3de82ca02bad",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/dashlane.svg",
+      "status": 200,
+      "bytes": 3148,
+      "sha256": "13e451af16a15228ce16af695cd36a4158de500df18610b1a1d1a610ebaeec4b",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/discord.svg",
+      "status": 200,
+      "bytes": 1431,
+      "sha256": "1ddbf8c2b7253722021f846f4e99f6075322c52f3733f0ced56b8d100daeecb0",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/docx.jpg",
+      "status": 200,
+      "bytes": 16626,
+      "sha256": "42d782452f6237a87a2a314ea3aa9f70f57ed5ca70b5004b746ce1fc608dce7c",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/draft-preview.jpg",
+      "status": 200,
+      "bytes": 19536,
+      "sha256": "8319af3208324ea1802659e8ff5685c4e8737e4ace6a6e0e79c062a58bdb0d71",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/github.svg",
+      "status": 200,
+      "bytes": 1470,
+      "sha256": "9038f3ebf6570d5784449ec765512f73080511407d77edb272b8b3e44d05da58",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-accounts.jpg",
+      "status": 200,
+      "bytes": 14544,
+      "sha256": "95953cdce9b60404fa44181581b36d7f1924ce3ae472a2b97f3da791c0d5ab23",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-calendar.svg",
+      "status": 200,
+      "bytes": 2334,
+      "sha256": "ffeac178d501398b3cf779cc63c3f7448e5661936ee582fecf28f412a799ae3c",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-docs.jpg",
+      "status": 200,
+      "bytes": 8801,
+      "sha256": "2f88369dbb407952777817bf87f0a3d5be263e9ab54eaa9e5a2509f48688334d",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-drive.svg",
+      "status": 200,
+      "bytes": 1448,
+      "sha256": "7cab7254d04c321abcaba8d242d7e2df34a3e1b7c5bb062dd37e74d2f6ed70e8",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-gmail.jpg",
+      "status": 200,
+      "bytes": 14728,
+      "sha256": "514c07c8d28013a15d141884b1cc9260f3d3a22267eef2b83120c4da3e7f7db9",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-search.jpg",
+      "status": 200,
+      "bytes": 14551,
+      "sha256": "fd0b9075809a7183be95a16ddc802b2c75c4cbd922a97f1dd882b9b7c828f288",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-sheets.jpg",
+      "status": 200,
+      "bytes": 10607,
+      "sha256": "c3fdf2d6bd20b267055e7c01267b9761176ed34374aab399764b87e1109deac8",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/image-generation.jpg",
+      "status": 200,
+      "bytes": 24365,
+      "sha256": "569f07d41b84d416d0b5a4f6fb95cafedd0a075afa799ed76dbea3f14a4be2ea",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/image-search.jpg",
+      "status": 200,
+      "bytes": 18474,
+      "sha256": "f042df314117821dbcff20825a42d9a29e7ae60074d71c065bc81db9e3ee4b4c",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/imessage.svg",
+      "status": 200,
+      "bytes": 2311,
+      "sha256": "d9f645e66056a63697f904fcad95cb52b7ed41f1222c3e406cda50c3bba3c38a",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/jira.svg",
+      "status": 200,
+      "bytes": 1686,
+      "sha256": "b10d5a91d37f4f4d40cb4b7e566d43750c25fa140d27f8ef4ee84947a212dd43",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/lastpass.svg",
+      "status": 200,
+      "bytes": 2635,
+      "sha256": "5e4a922ba28af3579e32a4841cef80097891f038c51d751ae4397f1c48ff8413",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/linear.svg",
+      "status": 200,
+      "bytes": 1692,
+      "sha256": "85ec2161eeaaef90c77b0df900b00f258a7ce6669b12e3bf5c2d21ee30c4155c",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/linkedin.svg",
+      "status": 200,
+      "bytes": 1279,
+      "sha256": "3c969c817e25ce6fa82e20c4e7d9bd63c3b6caa1f0904809f7f08065634ccf65",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/notification-activation.jpg",
+      "status": 200,
+      "bytes": 19468,
+      "sha256": "5b6e5927d736cdfd28097c413ba30c4c9b3663f94048331d7e1a4043b5e1bf76",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/notion.jpg",
+      "status": 200,
+      "bytes": 11109,
+      "sha256": "92e124da6a9da715a903a6f4884e922316f81fd5e8a03b5397a170ef96768d59",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/notion.svg",
+      "status": 200,
+      "bytes": 3584,
+      "sha256": "b45b07b4beb0f8ef54734758a882cf93abc119cf35880f3c61053defc9fb0c0a",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/pdf.jpg",
+      "status": 200,
+      "bytes": 16231,
+      "sha256": "4aca9f82432d7fff87bcfda4b7862f31f9815d4a68e14aa632eca13cb04e1eac",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/pptx.jpg",
+      "status": 200,
+      "bytes": 19452,
+      "sha256": "87a51f51cec1a0e0dc7424b6903a3467caaa1e3146213372f26cfcc230633139",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/skill-creator.jpg",
+      "status": 200,
+      "bytes": 22397,
+      "sha256": "01290a56f64583d11cd9783182a93ca4e3529ca1f081b497722aad4265d09fe9",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/slack.jpg",
+      "status": 200,
+      "bytes": 14977,
+      "sha256": "2fb7038efcf04aefd3f5d42805f51b328a4d561f6e37f8cd9741d9a8b7c5bf6b",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/trello.svg",
+      "status": 200,
+      "bytes": 1131,
+      "sha256": "00a8b491cb968b80d2a48bc0d90021bcb2eb10ddef07516fdf916f40d7a37fe0",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/visual-browsing.jpg",
+      "status": 200,
+      "bytes": 23133,
+      "sha256": "5899235e06057601b6049ea82828f5c6a1043eac1c9a632c45bd6acd7289d193",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/visualize.jpg",
+      "status": 200,
+      "bytes": 55159,
+      "sha256": "0383b09875c84d2a3b3d0239725cd496351b4d14c241c99b5cc55e73323dff7f",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/x-twitter.svg",
+      "status": 200,
+      "bytes": 857,
+      "sha256": "eab1386728d9cd5e16d7f05d8740d0212c2e68fe17ab5d488897d45157b7998d",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/xlsx.svg",
+      "status": 200,
+      "bytes": 2928,
+      "sha256": "e873d803565f0023cb2513f30593eec3857422f5190247b194f56c611f68a5d5",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/youtube.jpg",
+      "status": 200,
+      "bytes": 6324,
+      "sha256": "432dfcc60757b3f00d6b6ad95ada0445c108b595796c812d2d0cccd2911bf90b",
+      "headers": {
+        "content-type": "image/jpeg",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-forms.svg",
+      "status": 200,
+      "bytes": 4249,
+      "sha256": "a30e1b1874de92d46f4aead4210a2559d944401b8a711c99e210d24f313ac155",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/google-slides.svg",
+      "status": 200,
+      "bytes": 4287,
+      "sha256": "bf5a8d9ceb497827015bf1429c796118a0f43dffd4131266ef6b2fd28765e836",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/builtin-skills/v1/kakaotalk.svg",
+      "status": 200,
+      "bytes": 1763,
+      "sha256": "d0dd63fc11500ada543779a73bc3d13290795da7f73b387b6ea5fe304f244d99",
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+        "cross-origin-resource-policy": "cross-origin",
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff"
+      }
+    }
+  ],
+  "passed": true,
+  "actualAppCompared": false,
+  "productionActivated": false
+}
