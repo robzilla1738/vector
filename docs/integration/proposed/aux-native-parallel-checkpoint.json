@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:58:18.984479+00:00",
+  "recordedAt": "2026-10-23T03:09:53.609406+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -37,10 +37,10 @@
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "freeze actual39-input cold guard/service and mandatory final Add-boundary checks; preserve existing36graph",
-    "real authenticated fileport selection from genuine cold-home FD producer with typed retained livechild owner",
-    "exception-free Chromium child transport and exact C-only graph boundary",
-    "actual native before-Node process entry, parent selected-home install and descendant shutdown"
+    "ready-only homeexport and per-command liveguard/currentbinding successor; retryable precommand timeout/DP-unavailable",
+    "typed pre-Add stage deferral without consuming Addintent or replay permission",
+    "authenticated fileport home selection; guestsealedpolicy validation",
+    "actual daemon nativeentry beforeNode, fixedsealedentrybytes and retained runtime shutdown"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -60,7 +60,10 @@
     "existingTerminalCskConsumer": "cc7799c63",
     "actualNodeEnvironmentRunner": "be26fa9bc",
     "typedChildLaunch": "45173ffdf",
-    "retainedCopySendAndCEndpoint": "d47b26700"
+    "retainedCopySendAndCEndpoint": "d47b26700",
+    "coldGuardServiceHistorical39": "63307dbfd",
+    "sealedOuterParentProducer": "8fefd8fb0",
+    "ownedRightEarlyRefusalFix": "6b73faaae"
   },
   "terminalRootChecks": [
     {
@@ -104,6 +107,11 @@
       "session": 26750,
       "exitCode": 137,
       "role": "own queuedNode library job cancelled before anychild/extraction/configure for changedcheck priority; not a compilefailure"
+    },
+    {
+      "session": 91715,
+      "exitCode": 137,
+      "role": "exact own obsolete waiting peer serializer cancelled after SIGSTOP+nochild; never compiled or executed; superseded by85029"
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -122,14 +130,15 @@
       "state": "queued behind93645"
     },
     {
-      "session": 91715,
-      "role": "actual Mach peer object compile and pure wire predicate",
-      "state": "queued behind93645"
-    },
-    {
       "session": 77772,
       "role": "actual Node Environment runner single-TU compile only",
       "state": "queued behind93645; no linked executable or activation"
+    },
+    {
+      "session": 85029,
+      "role": "actual current child/peer five-object compile across Chromium and Node ABI graphs",
+      "state": "queued; owned-right successor intentionally selected before dispatch",
+      "deferredSuccessor": "docs/integration/proposed/aux-native-child-handoff/deferred-source-successor.json"
     }
   ],
   "lastBuildObservation": {
@@ -141,7 +150,9 @@
     "note": "actual same session returned live; no native source mutation"
   },
   "childLaunchCompilePendingReview": {
-    "queued": false,
-    "reason": "Actual Chromium system.pcm has exceptions disabled; packagegate preparing exception-free parent graph with unchanged GN/module flags and separate Node-side C bridge"
+    "queued": true,
+    "session": 85029,
+    "graph": "exception-free unchanged Chromium PCM/GN plus separate Node-system-libcxx C bridge",
+    "executed": false
   }
 }

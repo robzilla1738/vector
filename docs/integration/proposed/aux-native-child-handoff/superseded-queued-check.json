@@ -1,0 +1,12 @@
+{
+  "format": "aux.queued-peer-check.supersession.v1",
+  "recordedAt": "2026-10-23T03:05:33.540202+00:00",
+  "session": 91715,
+  "serializerPid": 20218,
+  "exactOwnWaitingSerializer": true,
+  "stoppedBeforeChildInspection": true,
+  "childAbsent": true,
+  "cancelledBeforeDispatch": true,
+  "reason": "Superseded by actual five-object two-ABI compile of current typed child/peer source; no old compile result claimed",
+  "ownerAnalysisJobsChanged": false
+}

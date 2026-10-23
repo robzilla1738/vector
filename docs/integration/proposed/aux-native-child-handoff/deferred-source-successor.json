@@ -1,0 +1,15 @@
+{
+  "format": "aux.queued-native-child.successor.v1",
+  "recordedAt": "2026-10-23T03:06:56.473697+00:00",
+  "session": 85029,
+  "serializerPid": 42223,
+  "exactOwnCommandVerified": true,
+  "stoppedBeforeChildInspection": true,
+  "childAbsentBeforeSourceSuccessor": true,
+  "preservedManifest": "inputs-before-owned-right-fix.json",
+  "preservedRecipe": "compile-check-before-owned-right-fix.py",
+  "newManifestSha256": "4ccb75f8176d99511530830255203a6d0485a54da6d7d97c5007c68121ce439d",
+  "newRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+  "executed": false,
+  "reason": "Same queued actual5object check now intentionally consumes endpoint-ownership successor; no duplicate compile"
+}
