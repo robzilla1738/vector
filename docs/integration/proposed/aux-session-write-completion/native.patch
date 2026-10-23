@@ -1,0 +1,497 @@
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/sessions/session_service_base.h"
++#include "base/task/bind_post_task.h"
+ 
+ #include <stddef.h>
+ 
+@@ -235,6 +236,28 @@
+   }
+ }
+ 
++void SessionServiceBase::ResetFromCurrentBrowsersWithWriteCompletion(
++    base::OnceCallback<void(sessions::SessionWriteCompletion)> done) {
++  auto report = base::BindPostTaskToCurrentDefault(std::move(done));
++  if (!is_saving_enabled_) {
++    sessions::SessionWriteCompletion result;
++    result.backend_outcomes.push_back(
++        sessions::SessionBackendWriteOutcome::kSavingDisabled);
++    std::move(report).Run(std::move(result));
++    return;
++  }
++  auto weak = weak_factory_.GetWeakPtr();
++  ResetFromCurrentBrowsers();
++  if (!weak) {
++    sessions::SessionWriteCompletion result;
++    result.backend_outcomes.push_back(
++        sessions::SessionBackendWriteOutcome::kOwnerLost);
++    std::move(report).Run(std::move(result));
++    return;
++  }
++  command_storage_manager_->SaveWithCompletion(std::move(report));
++}
++
+ void SessionServiceBase::SetTabWindow(SessionID window_id, SessionID tab_id) {
+   if (!ShouldTrackChangesToWindow(window_id)) {
+     return;
+--- a/chrome/browser/sessions/session_service_base.h
++++ b/chrome/browser/sessions/session_service_base.h
+@@ -24,6 +24,7 @@
+ #include "components/sessions/content/session_tab_helper_delegate.h"
+ #include "components/sessions/core/command_storage_manager_delegate.h"
+ #include "components/sessions/core/session_service_commands.h"
++#include "components/sessions/core/session_write_completion.h"
+ #include "components/sessions/core/tab_restore_service_client.h"
+ #include "content/public/browser/web_contents.h"
+ #include "ui/base/mojom/window_show_state.mojom-forward.h"
+@@ -80,6 +81,11 @@
+   // Resets the contents of the file from the current state of all open
+   // apps whose profile matches our profile.
+   void ResetFromCurrentBrowsers();
++
++  // Native participant: reset and immediately submit the captured commands to
++  // their existing backend(s), with actual asynchronous write outcomes.
++  void ResetFromCurrentBrowsersWithWriteCompletion(
++      base::OnceCallback<void(sessions::SessionWriteCompletion)> done);
+ 
+   // Associates a tab with a window.
+   void SetTabWindow(SessionID window_id, SessionID tab_id);
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -30,8 +30,8 @@
+ namespace {
+ WorkspaceSnapshotDispatchState& SnapshotDispatchState() {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+-  static base::NoDestructor<WorkspaceSnapshotDispatchState> state;
+-  return *state;
++  static WorkspaceSnapshotDispatchState state;
++  return state;
+ }
+ 
+ auto& LiveRebuildOwners() {
+@@ -161,7 +161,15 @@
+                  << " windows=" << windows << " caches=" << cache_windows
+                  << " tabs=" << tabs;
+     if (service && service->is_saving_enabled()) {
+-      service->ResetFromCurrentBrowsers();
++      if (dispatch.Inspect().admission_closed) {
++        dispatch.BeginWriteObservation();
++        service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(
++            [](sessions::SessionWriteCompletion result) {
++              SnapshotDispatchState().DidObserveWrite(result);
++            }));
++      } else {
++        service->ResetFromCurrentBrowsers();
++      }
+       dispatch.DidDispatchPath();
+     } else {
+       dispatch.DidNotDispatchPath();
+--- a/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
++++ b/chrome/browser/ui/aux_workspace_snapshot_dispatch.h
+@@ -4,6 +4,8 @@
+ 
+ #include <cstdint>
+ #include <limits>
++
++#include "components/sessions/core/session_write_completion.h"
+ 
+ namespace aux {
+ 
+@@ -15,6 +17,13 @@
+   uint64_t in_flight_paths = 0;
+   uint64_t unresolved_paths = 0;
+   bool accounting_unknown = false;
++  uint64_t pending_write_observations = 0;
++  uint64_t failed_write_observations = 0;
++
++  bool captured_writes_complete() const {
++    return dispatch_complete() && !pending_write_observations &&
++           !failed_write_observations;
++  }
+ 
+   bool dispatch_complete() const {
+     return admission_closed && !pending_paths && !in_flight_paths &&
+@@ -58,6 +67,15 @@
+     }
+   }
+ 
++  void BeginWriteObservation() { Add(state_.pending_write_observations, 1); }
++
++  void DidObserveWrite(const sessions::SessionWriteCompletion& result) {
++    if (Take(state_.pending_write_observations, 1) &&
++        !result.captured_writes_completed()) {
++      Add(state_.failed_write_observations, 1);
++    }
++  }
++
+   WorkspaceSnapshotDispatchObservation Inspect() const { return state_; }
+ 
+  private:
+--- a/components/sessions/core/command_storage_backend.cc
++++ b/components/sessions/core/command_storage_backend.cc
+@@ -478,6 +478,45 @@
+     std::vector<std::unique_ptr<SessionCommand>> commands,
+     bool truncate,
+     base::OnceClosure error_callback) {
++  AppendCommandsImpl(std::move(commands), truncate, std::move(error_callback));
++}
++
++void CommandStorageBackend::AppendCommandsWithCompletion(
++    std::vector<std::unique_ptr<SessionCommand>> commands,
++    bool truncate,
++    base::OnceClosure error_callback,
++    base::OnceCallback<void(SessionBackendWriteOutcome)> completion) {
++  const WriteStatus status = AppendCommandsImpl(
++      std::move(commands), truncate, std::move(error_callback));
++  SessionBackendWriteOutcome outcome;
++  switch (status) {
++    case WriteStatus::kUnknown:
++      outcome = SessionBackendWriteOutcome::kSkippedNoInitialState;
++      break;
++    case WriteStatus::kSuccess:
++      outcome = SessionBackendWriteOutcome::kWritten;
++      break;
++    case WriteStatus::kFileNotOpened:
++      outcome = SessionBackendWriteOutcome::kFileNotOpened;
++      break;
++    case WriteStatus::kFileWriteError:
++      outcome = SessionBackendWriteOutcome::kFileWriteError;
++      break;
++    case WriteStatus::kSerializationError:
++      outcome = SessionBackendWriteOutcome::kSerializationError;
++      break;
++    case WriteStatus::kEncryptionUnavailable:
++      outcome = SessionBackendWriteOutcome::kEncryptionUnavailable;
++      break;
++  }
++  callback_task_runner_->PostTask(
++      FROM_HERE, base::BindOnce(std::move(completion), outcome));
++}
++
++CommandStorageBackend::WriteStatus CommandStorageBackend::AppendCommandsImpl(
++    std::vector<std::unique_ptr<SessionCommand>> commands,
++    bool truncate,
++    base::OnceClosure error_callback) {
+   const base::TimeTicks start_time = base::TimeTicks::Now();
+   InitIfNecessary();
+ 
+@@ -493,7 +532,7 @@
+   // contains the marker, and would not be considered
+   // valid. This includes first time through.
+   if (!truncate && !open_file_) {
+-    return;
++    return WriteStatus::kUnknown;
+   }
+ 
+   if (truncate) {
+@@ -556,6 +595,7 @@
+   if (IsError(status) && error_callback) {
+     callback_task_runner_->PostTask(FROM_HERE, std::move(error_callback));
+   }
++  return status;
+ }
+ 
+ // static
+--- a/components/sessions/core/command_storage_backend.h
++++ b/components/sessions/core/command_storage_backend.h
+@@ -23,6 +23,7 @@
+ #include "components/os_crypt/async/common/encryptor.h"
+ #include "components/sessions/core/command_storage_manager.h"
+ #include "components/sessions/core/session_command.h"
++#include "components/sessions/core/session_write_completion.h"
+ #include "components/sessions/core/sessions_export.h"
+ 
+ namespace base {
+@@ -116,6 +117,14 @@
+       bool truncate,
+       base::OnceClosure error_callback);
+ 
++  // Same real append, with a completion posted to the original owning sequence.
++  // A dropped callback stays unobserved; a queue barrier is never success.
++  void AppendCommandsWithCompletion(
++      std::vector<std::unique_ptr<SessionCommand>> commands,
++      bool truncate,
++      base::OnceClosure error_callback,
++      base::OnceCallback<void(SessionBackendWriteOutcome)> completion);
++
+   bool inited_for_testing() const { return inited_; }
+ 
+   // Parses out the timestamp from a path pointing to a session file.
+@@ -175,6 +184,11 @@
+     kMaxValue = kEncryptionUnavailable,
+   };
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/session/enums.xml:CommandStorageWriteStatus)
++
++  WriteStatus AppendCommandsImpl(
++      std::vector<std::unique_ptr<SessionCommand>> commands,
++      bool truncate,
++      base::OnceClosure error_callback);
+ 
+   static bool IsError(WriteStatus status) {
+     return status != WriteStatus::kSuccess;
+--- a/components/sessions/core/command_storage_manager.cc
++++ b/components/sessions/core/command_storage_manager.cc
+@@ -9,6 +9,8 @@
+ #include <utility>
+ 
+ #include "base/files/file_util.h"
++#include "base/barrier_callback.h"
++#include "base/task/bind_post_task.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/location.h"
+@@ -33,6 +35,35 @@
+ 
+ namespace sessions {
+ namespace {
++
++// Each posted closure retains the real backend and its own result callback.
++// Ordinary Save keeps its original error-only route and sequencing.
++void PostAppendWithObservation(
++    scoped_refptr<base::SequencedTaskRunner> runner,
++    scoped_refptr<CommandStorageBackend> backend,
++    std::vector<std::unique_ptr<SessionCommand>> commands,
++    bool reset,
++    base::OnceClosure error_callback,
++    base::RepeatingCallback<void(SessionBackendWriteOutcome)> observe) {
++  if (!observe) {
++    runner->PostNonNestableTask(
++        FROM_HERE, base::BindOnce(&CommandStorageBackend::AppendCommands,
++                                  std::move(backend), std::move(commands), reset,
++                                  std::move(error_callback)));
++    return;
++  }
++  auto completion = base::BindOnce(
++      [](base::RepeatingCallback<void(SessionBackendWriteOutcome)> callback,
++         SessionBackendWriteOutcome outcome) { callback.Run(outcome); },
++      observe);
++  if (!runner->PostNonNestableTask(
++          FROM_HERE,
++          base::BindOnce(&CommandStorageBackend::AppendCommandsWithCompletion,
++                         std::move(backend), std::move(commands), reset,
++                         std::move(error_callback), std::move(completion)))) {
++    observe.Run(SessionBackendWriteOutcome::kTaskRejected);
++  }
++}
+ 
+ // Delay between when a command is received, and when we save it to the
+ // backend.
+@@ -333,13 +364,37 @@
+ }
+ 
+ void CommandStorageManager::Save() {
++  SaveImpl({});
++}
++
++void CommandStorageManager::SaveWithCompletion(
++    base::OnceCallback<void(SessionWriteCompletion)> done) {
++  SaveImpl(base::BindPostTaskToCurrentDefault(std::move(done)));
++}
++
++void CommandStorageManager::SaveImpl(
++    base::OnceCallback<void(SessionWriteCompletion)> done) {
+   weak_factory_for_timer_.InvalidateWeakPtrs();
+ 
+   // Inform the delegate that we will save the commands now, giving it the
+   // opportunity to append more commands.
++  auto weak = weak_factory_.GetWeakPtr();
+   delegate_->OnWillSaveCommands();
++  if (!weak) {
++    if (done) {
++      SessionWriteCompletion result;
++      result.backend_outcomes.push_back(SessionBackendWriteOutcome::kOwnerLost);
++      std::move(done).Run(std::move(result));
++    }
++    return;
++  }
+ 
+   if (pending_commands_.empty()) {
++    if (done) {
++      SessionWriteCompletion result;
++      result.deferred_encryption_work = !pending_encrypted_ops_.empty();
++      std::move(done).Run(std::move(result));
++    }
+     return;
+   }
+ 
+@@ -356,29 +411,45 @@
+   auto error_callback = base::BindOnce(
+       &CommandStorageManager::OnErrorWritingToFile, weak_factory_.GetWeakPtr());
+   EncryptSessionStorageStage encrypt_stage = GetEncryptSessionStorageStage();
++  base::RepeatingCallback<void(SessionBackendWriteOutcome)> observe;
++  if (done) {
++    const bool dual =
++        encrypt_stage == EncryptSessionStorageStage::kWriteBothReadOnlyClear ||
++        encrypt_stage == EncryptSessionStorageStage::kWriteBothReadPreferEncrypted;
++    const bool deferred = !pending_encrypted_ops_.empty();
++    observe = base::BarrierCallback<SessionBackendWriteOutcome>(
++        dual ? 2 : 1,
++        base::BindOnce(
++            [](base::OnceCallback<void(SessionWriteCompletion)> callback,
++               bool had_deferred,
++               std::vector<SessionBackendWriteOutcome> outcomes) {
++              SessionWriteCompletion result;
++              result.captured_batch_had_commands = true;
++              result.deferred_encryption_work = had_deferred;
++              result.backend_outcomes = std::move(outcomes);
++              std::move(callback).Run(std::move(result));
++            }, std::move(done), deferred));
++  }
+   switch (encrypt_stage) {
+     case EncryptSessionStorageStage::kClearOnly:
+-      backend_task_runner_->PostNonNestableTask(
+-          FROM_HERE, base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                                    backend_, std::move(pending_commands_),
+-                                    pending_reset_, std::move(error_callback)));
++      PostAppendWithObservation(
++          backend_task_runner_, backend_, std::move(pending_commands_),
++          pending_reset_, std::move(error_callback), observe);
+       break;
+     case EncryptSessionStorageStage::kWriteBothReadOnlyClear: {
+       // The clear backend is the primary backend (called first, reports errors)
+       // The encrypted backend is secondary (uses a copy of the commands).
+       std::vector<std::unique_ptr<SessionCommand>> pending_commands_copy =
+           DeepCopyCommands(pending_commands_);
+-      backend_task_runner_->PostNonNestableTask(
+-          FROM_HERE, base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                                    backend_, std::move(pending_commands_),
+-                                    pending_reset_, std::move(error_callback)));
++      PostAppendWithObservation(
++          backend_task_runner_, backend_, std::move(pending_commands_),
++          pending_reset_, std::move(error_callback), observe);
+       if (encrypted_backend_) {
+-        backend_task_runner_->PostNonNestableTask(
+-            FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                           encrypted_backend_, std::move(pending_commands_copy),
+-                           pending_reset_, base::DoNothing()));
++        PostAppendWithObservation(
++          backend_task_runner_, encrypted_backend_, std::move(pending_commands_copy),
++          pending_reset_, base::DoNothing(), observe);
+       } else {
++        if (observe) observe.Run(SessionBackendWriteOutcome::kBackendUnavailable);
+         // This should be uncommon, but could occur if OnEncryptorReady is slow.
+         LogEncryptedBackendUninitialized(
+             SessionEncryptedBackendUninitialized::kSave);
+@@ -391,17 +462,15 @@
+       // backend is primary (e.g., for reporting errors).
+       std::vector<std::unique_ptr<SessionCommand>> pending_commands_copy =
+           DeepCopyCommands(pending_commands_);
+-      backend_task_runner_->PostNonNestableTask(
+-          FROM_HERE, base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                                    backend_, std::move(pending_commands_copy),
+-                                    pending_reset_, base::DoNothing()));
++      PostAppendWithObservation(
++          backend_task_runner_, backend_, std::move(pending_commands_copy),
++          pending_reset_, base::DoNothing(), observe);
+       if (encrypted_backend_) {
+-        backend_task_runner_->PostNonNestableTask(
+-            FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                           encrypted_backend_, std::move(pending_commands_),
+-                           pending_reset_, std::move(error_callback)));
++        PostAppendWithObservation(
++          backend_task_runner_, encrypted_backend_, std::move(pending_commands_),
++          pending_reset_, std::move(error_callback), observe);
+       } else {
++        if (observe) observe.Run(SessionBackendWriteOutcome::kBackendUnavailable);
+         LogEncryptedBackendUninitialized(
+             SessionEncryptedBackendUninitialized::kSave);
+         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+@@ -411,12 +480,11 @@
+     }
+     case EncryptSessionStorageStage::kWriteEncryptedReadPreferEncrypted:
+       if (encrypted_backend_) {
+-        backend_task_runner_->PostNonNestableTask(
+-            FROM_HERE,
+-            base::BindOnce(&CommandStorageBackend::AppendCommands,
+-                           encrypted_backend_, std::move(pending_commands_),
+-                           pending_reset_, std::move(error_callback)));
++        PostAppendWithObservation(
++          backend_task_runner_, encrypted_backend_, std::move(pending_commands_),
++          pending_reset_, std::move(error_callback), observe);
+       } else {
++        if (observe) observe.Run(SessionBackendWriteOutcome::kBackendUnavailable);
+         LogEncryptedBackendUninitialized(
+             SessionEncryptedBackendUninitialized::kSave);
+         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+--- a/components/sessions/core/command_storage_manager.h
++++ b/components/sessions/core/command_storage_manager.h
+@@ -21,6 +21,7 @@
+ #include "base/time/time.h"
+ #include "components/os_crypt/async/common/encryptor.h"
+ #include "components/sessions/core/sessions_export.h"
++#include "components/sessions/core/session_write_completion.h"
+ 
+ namespace base {
+ class Value;
+@@ -110,6 +111,11 @@
+   // Passes all pending commands to the backend for saving.
+   void Save();
+ 
++  // Save this captured pending batch and report each selected backend's actual
++  // write-method outcome. Callback is asynchronous and independent of manager
++  // destruction after tasks are posted. Not a storage shutdown/fsync barrier.
++  void SaveWithCompletion(base::OnceCallback<void(SessionWriteCompletion)> done);
++
+   // Returns true if StartSaveTimer() has been called, but a save has not yet
+   // occurred.
+   bool HasPendingSave() const;
+@@ -139,6 +145,7 @@
+ 
+  private:
+   friend class CommandStorageManagerTestHelper;
++  void SaveImpl(base::OnceCallback<void(SessionWriteCompletion)> done);
+   void GetLastSessionCommandsImpl(GetCommandsCallback callback,
+                                  bool preserve_files);
+ 
+diff --git a/components/sessions/core/session_write_completion.h b/components/sessions/core/session_write_completion.h
+new file mode 100644
+--- /dev/null
++++ b/components/sessions/core/session_write_completion.h
+@@ -0,0 +1,42 @@
++// Copyright 2026 The Aux Authors
++#ifndef COMPONENTS_SESSIONS_CORE_SESSION_WRITE_COMPLETION_H_
++#define COMPONENTS_SESSIONS_CORE_SESSION_WRITE_COMPLETION_H_
++
++#include <algorithm>
++#include <vector>
++
++namespace sessions {
++
++// Actual AppendCommands return outcomes, not file flush/fsync or admission.
++enum class SessionBackendWriteOutcome {
++  kWritten,
++  kSkippedNoInitialState,
++  kFileNotOpened,
++  kFileWriteError,
++  kSerializationError,
++  kEncryptionUnavailable,
++  kBackendUnavailable,
++  kTaskRejected,
++  kOwnerLost,
++  kSavingDisabled,
++};
++
++struct SessionWriteCompletion {
++  bool captured_batch_had_commands = false;
++  bool deferred_encryption_work = false;
++  std::vector<SessionBackendWriteOutcome> backend_outcomes;
++
++  // Every selected copy must have a genuine successful write-method return.
++  // No assertion about older/later requests, durability or other writers.
++  bool captured_writes_completed() const {
++    return captured_batch_had_commands && !deferred_encryption_work &&
++           !backend_outcomes.empty() &&
++           std::all_of(backend_outcomes.begin(), backend_outcomes.end(),
++                       [](SessionBackendWriteOutcome value) {
++                         return value == SessionBackendWriteOutcome::kWritten;
++                       });
++  }
++};
++
++}  // namespace sessions
++#endif  // COMPONENTS_SESSIONS_CORE_SESSION_WRITE_COMPLETION_H_

@@ -1,0 +1,87 @@
+{
+  "format": "aux.session.write-completion.focused-check.v1",
+  "currentProductionTUsCompiled": 4,
+  "compileResults": [
+    {
+      "path": "components/sessions/core/command_storage_backend.cc",
+      "exitCode": 0,
+      "seconds": 4.29007925
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "exitCode": 0,
+      "seconds": 1.6571067079999997
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "exitCode": 0,
+      "seconds": 7.986452166000001
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "exitCode": 0,
+      "seconds": 2.4318417500000002
+    }
+  ],
+  "compileCommandsSha256": "ec7be91170ff312278d706c405a60a0ecfee2396912792756ca7a9ce800e0e90",
+  "compileInvocationReconstructedFromPinnedGNFields": true,
+  "compileInputsSha256": "b990825377c4082a77f3a3590bcba2e4e9c342f3b29d1815023c0b80d93d87f9",
+  "sourceManifestSha256": "bb2707000e56b33b11fc2aebbbaee80eaec77d1a0ca7dc8503055e33b92a6ebd",
+  "capturedResultLifetimeChecksPassed": 37,
+  "sourceWiringChecksPassed": true,
+  "nativeApplied": false,
+  "fullBrowserBuilt": false,
+  "backendIOExecuted": false,
+  "realProfileOpened": false,
+  "originalAddonExecuted": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "signed": false,
+  "uiChanged": false,
+  "fsyncClaimed": false,
+  "wholeWriterCustodyClaimed": false,
+  "compiledObjects": [
+    {
+      "path": "aux_profile_switch_session_rebuild.o",
+      "sha256": "86ddca0430df368f9b22d2357ec0fc6e77a974ee15d7867a748547950c32b65f",
+      "bytes": 25800
+    },
+    {
+      "path": "command_storage_backend.o",
+      "sha256": "6cd446d73f52e35f793a626a18fce544753c53b5de79458357735c26ff2000fb",
+      "bytes": 72824
+    },
+    {
+      "path": "command_storage_manager.o",
+      "sha256": "17995a276d830323724444723c22a112b370f11df8377f307b3258d3b5357668",
+      "bytes": 91232
+    },
+    {
+      "path": "session_service_base.o",
+      "sha256": "d05b9c1f0ffcef2351809cd840e0488bfad42aa8143967c9bf4736af3e234921",
+      "bytes": 67368
+    }
+  ],
+  "checkSourcePins": [
+    {
+      "path": "verify.py",
+      "sha256": "a8f8f1377d9b6ca86cb0dd7c2246bbf8e6f6aec807e4063b3f92364d8378aac0"
+    },
+    {
+      "path": "tests/main.cc",
+      "sha256": "d0b99128a0147f22861255baff2a68261e12ea3e7203faa8fcb2e551827d24d9"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "1d94ead888ed33aa323a906c60bf82939d6668adcc97d32b6672fc6404abd122"
+    },
+    {
+      "path": "compile-check.py",
+      "sha256": "aca3ff45c76e6675ac151424b799957f2bf678b6ddcc67ae2f699b549854df4d"
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "2c8a9784be862319629e9650ffde0efd7ff4399d49e3d101e432f062695784be"
+    }
+  ]
+}

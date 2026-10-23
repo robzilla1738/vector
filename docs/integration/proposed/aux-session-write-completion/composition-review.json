@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.session-write-composition.v1",
+  "parentSourcesPreserved": 775,
+  "successorSources": 776,
+  "unchangedBinaryAssets": 23,
+  "modifiedSources": 8,
+  "newHeaders": 1,
+  "parentSha256": "45f930fefd68d687a1100c397f95ad65f60164c8b77d86bdc4d849b3dd01f873",
+  "successorSha256": "6ae53fa7ed30efdfc51f8c2491eddbf77a2fa4d8a1c3bbc60c5810b7cb5326e4",
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false,
+  "allWriterCustodyClaimed": false,
+  "fsyncClaimed": false
+}

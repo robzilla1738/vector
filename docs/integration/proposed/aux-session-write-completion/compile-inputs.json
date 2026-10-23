@@ -1,0 +1,41 @@
+{
+  "format": "aux.session.write-completion.compile-inputs.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "buildDirectory": "out/AuxFast",
+  "gnInputs": [
+    {
+      "path": "out/AuxFast/obj/chrome/browser/sessions/impl.ninja",
+      "sha256": "f73f2f7f27859a2c8267a559580a94a963e91d468b37411b8edd68a92ff7171c"
+    },
+    {
+      "path": "out/AuxFast/obj/chrome/browser/ui/ui.ninja",
+      "sha256": "ec8dd4e951d95aebc0d0109657de027b05080fff6f498f33b2810434d2b52db1"
+    },
+    {
+      "path": "out/AuxFast/obj/components/sessions/shared.ninja",
+      "sha256": "472ba0958fc658ee968827fbd6d0eb98134df9968697b1979b09857306eadc10"
+    },
+    {
+      "path": "out/AuxFast/toolchain.ninja",
+      "sha256": "2b9f6682bfe6716856d1d6d22875d0f9bef53c7b7a4cad61def8de9ed2fa976c"
+    }
+  ],
+  "translationUnits": [
+    {
+      "path": "components/sessions/core/command_storage_backend.cc",
+      "gn": "obj/components/sessions/shared.ninja"
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "gn": "obj/components/sessions/shared.ninja"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "gn": "obj/chrome/browser/sessions/impl.ninja"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "gn": "obj/chrome/browser/ui/ui.ninja"
+    }
+  ]
+}

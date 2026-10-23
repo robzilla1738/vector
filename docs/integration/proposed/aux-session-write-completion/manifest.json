@@ -1,0 +1,77 @@
+{
+  "format": "aux.native.session-write-completion.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "parentComposition": "out/native-reuse-composition-aux-workspace-snapshot-dispatch",
+  "parentCompositionSha256": "45f930fefd68d687a1100c397f95ad65f60164c8b77d86bdc4d849b3dd01f873",
+  "parentStaged": true,
+  "parentSourceCount": 775,
+  "parentBinaryAssetCount": 23,
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": "a03af39ef125345cad99adfcc21f6e383d3b8d5d0cd6b1e94307020117a05411",
+      "sourceSha256": "46f32f53a0e8c0167c727d00e6f07757a8667093483fff7728cb67d97fd61437",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "baselineSha256": "3aef3282d08294dcaa10179c5f043acfce060d962e3d01bb478cb7a6b659fe9b",
+      "sourceSha256": "6c89d723ca4dd60c78f860b3075e612534e6d324b165928530f4c5f9ffbcf979",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": "51621796b2ec1df4397415b7114219f39b94de300568634145d65dd3d59970b1",
+      "sourceSha256": "a1c3121376256350e55526e56d8695ec291dd466d0ca9afda618e5016af626f7",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "baselineSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "sourceSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/ui/aux_workspace_snapshot_dispatch.h",
+      "baselineSha256": "60452f84f5c83db2078045baa4ed4c8486570709c9eb9437b226720f3c4643b3",
+      "sourceSha256": "4df4783b850296b8339cc18af21659a02909d6e58079d5456abf8639276599ca",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/command_storage_backend.cc",
+      "baselineSha256": "623c7d32ec7106bca0349717f89d38ee675d6b59d4b5779af9f115cddaf08a5d",
+      "sourceSha256": "df2b3edd903f3bb5d682f6a696dbb5087e3c6038a83bf25c9dfc7ff7578eeea6",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/command_storage_backend.h",
+      "baselineSha256": "4edf51b323d7e8bb471006299dc55dcf44e6a1a5c02bb297980e9f8afd36f6a0",
+      "sourceSha256": "a3185d5132d629efe408105577a3371d49d1dcdf0a02b2ce9938b0920e4a70eb",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "baselineSha256": "29916bcfac6e954dbecc0cd5d045c8dbe0abf03d4092b21fcd013a6478d4deb0",
+      "sourceSha256": "7ef7ee3856a52d8c01d2ce597eefa3540ab1dd3fdeb626f8e705ea69d19ca670",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.h",
+      "baselineSha256": "b9c1db9f524543561dea16b28f4d12b2589746b2105f1172cf325eabd9ccfedc",
+      "sourceSha256": "988fa374e03334e681403c4f4803d4c38f0a425dbcf12b9944af628d97a119ee",
+      "changed": true
+    },
+    {
+      "path": "components/sessions/core/session_write_completion.h",
+      "baselineSha256": null,
+      "sourceSha256": "dc8cc2ec9ca634c302808a9393eef764ce337ce5fa36e88bef439893b483a278",
+      "changed": true
+    }
+  ],
+  "patchSha256": "c8cb409cd1369d0acbf64b999ced806c12fad84de263dc5ca0ebac960cd939d0",
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "allWriterCustodyClaimed": false,
+  "fsyncClaimed": false,
+  "appliedToNative": false,
+  "actualBackendIOExecuted": false
+}
