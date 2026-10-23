@@ -18,7 +18,7 @@ The existing unselected `LoadAgentInboxMasterKey(home)` still calls the old carr
 
 An explicitly reviewed, genuine native read-only historical selector producer must distinguish missing, inaccessible and malformed keys without Add or fallback. It needs real scope/group authority and writer custody. A real backup reader then needs exact row/version/ciphertext selection, durable compare-and-swap replacement, readback and restart handling before a migration can write. Neither caller-supplied key bytes nor this candidate grants those prerequisites. No automatic fallback, SQL rewrite, key reset or new public endpoint is introduced. Compatibility literals remain historical format metadata, not new product identifiers.
 
-## Deferred focused check
+## Focused actual-code evidence
 
 `tests/legacy-inbox-test.cc` calls the two actual codec implementations with synthetic bytes. It covers independent keys, binary plaintext, nonce/body/tag tampering, truncation, version refusal and authenticated byte preparation. All three actual translation units compiled once; the fixture has not run. For a future reviewed isolated Chromium target, use the three source TUs listed in `deferred-target.gni`, `//crypto`, and existing Chromium base/runtime link configuration. The proposal adds no shared GN registration and schedules no build.
 
