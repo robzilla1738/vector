@@ -72,3 +72,16 @@ Continuation output: `unsigned-existing-host-build` under the isolated snapshot.
 `--resume-reviewed` is used only for the same unchanged graph; full command review
 is still scanned and recorded, while redundant command generation is avoided.
 A new graph or source configuration requires a new inventory.
+
+## Authorized host-tool-only continuation
+
+The owner explicitly approved the prepared 48 host executable and 20 host macro
+library allowlist. The exact reviewed filter is now active only in the isolated
+clone; all 20 product link outputs retain no-ad-hoc signing. The static Rust runner
+override was removed, restoring normal coherent graph execution. Activation pins
+and the permission boundary are recorded in the evidence directory.
+
+Current build output: `unsigned-approved-host-tools-build`. The legacy receipt
+`signed: false` field refers to the native product; the explicit
+`approvedBuildToolOnlyAdHoc` field records this narrowly authorized host exception.
+A successful app build and runtime validation are still required.

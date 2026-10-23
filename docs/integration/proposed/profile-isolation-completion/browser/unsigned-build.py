@@ -15,6 +15,11 @@ if cfg.read_text() not in [s,unsigned]:raise SystemExit('link config not matchin
 if cfg.read_text()!=unsigned:cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
 try:
+ activation=O/'approved-host-tool-filter-activation.json'
+ if activation.exists():
+  authorized=json.loads(activation.read_text())
+  if sha(S/'build/toolchain/apple/linker_driver.py')!=authorized['linkerDriverSHA256'] or sha(S/'build/toolchain/apple/aux_host_link_filter.py')!=authorized['filterSHA256']:raise RuntimeError('authorized host filter changed')
+  r['approvedBuildToolOnlyAdHoc']=authorized;r['productSigned']=False
  reuse=None
  if a.resume_custody:
   reuse=O/(a.resume_reviewed or 'unsigned-direct-build')

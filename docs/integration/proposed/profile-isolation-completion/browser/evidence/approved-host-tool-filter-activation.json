@@ -1,0 +1,12 @@
+{
+  "authorization": "Owner explicit reply: Allow build-tool-only ad hoc signatures; relayed by integrator root this task",
+  "hostExecutableCount": 48,
+  "hostMacroLibraryCount": 20,
+  "unsignedProductOutputCount": 20,
+  "linkerDriverSHA256": "b41a131f74e8ce415bd6f185a02d3025a17c5d4264bb289ad4ec65058430f585",
+  "filterSHA256": "b224684a34dfd2a8b6bf43bffa2acc35ac44f8d6a06ea481c9771968e072c78c",
+  "staticRustOverrideRemoved": true,
+  "restoredRustRunnerSHA256": "7d981d5b5d19781ca46574a57c6e374e36455fc0e6c92d37cb9bcbf603877341",
+  "productSigningAuthorized": false,
+  "identityKeychainProvisioningReleaseAuthorized": false
+}
