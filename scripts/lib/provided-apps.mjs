@@ -7,7 +7,8 @@ import { lstat, readdir, readFile, mkdir, mkdtemp, writeFile, rename, rm } from 
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adaptDaemonBinaryWithMacUtilities as adaptDaemonBinary, buildDaemonNodeDevelopmentWithMacUtilities as buildDaemonNodeDevelopment, macUtilityResources } from '../../vendor/provided/aux-macos-utility-stage.mjs';
+import { adaptProviderLaunchBinary as adaptDaemonBinary, buildProviderLaunchNode as buildDaemonNodeDevelopment } from '../../vendor/provided/provider-launch-stage.mjs';
+import { macUtilityResources } from '../../vendor/provided/aux-macos-utility-stage.mjs';
 import { auxCryptoSeaResources } from '../../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
@@ -22,10 +23,14 @@ export const providedAppRoots = {
   cli: join(homedir(), '.aside/cli/Aside CLI.app'),
 };
 export const providedIntegrationFiles = Object.freeze({
-  daemon: ['aux-native.cjs', 'native-role-pins.cjs', 'aux-pdf.cjs', 'aux-pdf-pins.cjs', 'aux-pdf.node', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
+  daemon: ['aux-chatgpt.cjs', 'aux-native.cjs', 'native-role-pins.cjs', 'aux-pdf.cjs', 'aux-pdf-pins.cjs', 'aux-pdf.node', 'memory-bootstrap.cjs', 'memory-seed.cjs', 'memory-pins.json', 'runtime-bootstrap.cjs', 'runtime-seed.cjs', 'runtime-source-pins.json', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
   cli: ['aux-native.cjs', 'native-role-pins.cjs', 'native-load-diagnostic.cjs', 'native-load-only-probe.cjs'],
 });
 export async function providedIntegrationInput(name) {
+  if (name === 'aux-chatgpt.cjs') {
+    const repositorySource = 'vendor/aside/shims/aux-chatgpt.cjs';
+    return {bytes: await readFile(join(repository, repositorySource)), repositorySource};
+  }
   if (name === 'aux-pdf.node') return auxPdfIntegrationArtifact();
   if (name === 'runtime-source-pins.json') {
     const generatedFrom = 'docs/source/provided-runtime-inputs.json';

@@ -1,6 +1,7 @@
 import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { transformProviderFundedLaunch } from '../../vendor/provided/provider-funded-launch.mjs';
+import { applyOfficialChatGPTCallbackAsset } from '../../vendor/aside/patches/chatgpt.mjs';
 import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
 import { applyAuxCaptureContractIdentity } from '../../vendor/provided/aux-capture-contract-identity.mjs';
 import { applyAuxProfileContextIdentity } from '../../vendor/provided/aux-profile-context-identity.mjs';
@@ -305,6 +306,12 @@ export async function stageProvidedUi({
           }
           const launch = transformProviderFundedLaunch({component, path: file.path, text, stateIdentityVersion});
           text = launch.text; anchors.push(...launch.anchors);
+          if (component === 'agent' && file.path === 'assets/openai-codex-oauth-DBNnab2L.js') {
+            const updated = applyOfficialChatGPTCallbackAsset(text);
+            const callback = {kind: 'integration', name: 'official ChatGPT IPv4 loopback callback', find: 'http://localhost:1455', replace: 'http://127.0.0.1:1455', count: 1};
+            text = apply(text, callback); anchors.push(callback);
+            if (text !== updated) throw Error('ChatGPT callback replay mismatch');
+          }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

@@ -2,7 +2,10 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'vendor/provided/provider-funded-launch.mjs',
+  'vendor/provided/provider-launch-stage.mjs',
   'vendor/provided/provider-funded-launch-ui.json',
+  'vendor/aside/patches/chatgpt.mjs',
+  'vendor/aside/shims/aux-chatgpt.cjs',
   'vendor/provided/aux-macos-utility-stage.mjs',
   'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs',
   'docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/materialize-desktop.mjs',

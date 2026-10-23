@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import vm from 'node:vm';
 import {transformProviderFundedLaunch,providerFundedLaunchUiInputs,providerFundedLaunchPolicy} from './provider-funded-launch.mjs';
-import {adaptDaemonCode} from './daemon-adapter.mjs';
+import {adaptProviderLaunchCode as adaptDaemonCode} from './provider-launch-stage.mjs';
 import {applyAuxProviderIdentity} from './aux-provider-identity.mjs';
 import {applyAuxRuntimeContractIdentity} from './aux-runtime-contract-identity.mjs';
 import {findMachOSeaSection,readSeaBlob} from '../aside/lib/sea.mjs';

@@ -1,5 +1,4 @@
 import { applyAuxColdEntryAdmission } from './aux-cold-entry-admission.mjs';
-import { transformProviderFundedLaunch } from './provider-funded-launch.mjs';
 import { applyAuxContextLedgerIdentity } from './aux-context-ledger-identity.mjs';
 import { applyAuxEphemeralRuntimeIdentity } from './aux-ephemeral-runtime-identity.mjs';
 import { applyAuxPrivateDaemonIdentity } from './aux-private-daemon-identity.mjs';
@@ -126,8 +125,6 @@ export function adaptDaemonCode(original, cloudOptions = {}, identityProfile = '
   }
   const admission = applyAuxColdEntryAdmission({component: 'daemon', path: 'entry.mjs', text: code, original, stateIdentityVersion});
   code = admission.text; applied.push(...admission.anchors);
-  const launch = transformProviderFundedLaunch({component: 'daemon', path: 'entry.mjs', text: code, stateIdentityVersion});
-  code = launch.text; applied.push(...launch.anchors);
   return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 

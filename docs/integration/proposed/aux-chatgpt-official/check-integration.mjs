@@ -6,19 +6,21 @@ import { tmpdir } from 'node:os';
 import { Script, runInNewContext } from 'node:vm';
 import assert from 'node:assert/strict';
 import { findMachOSeaSection, readSeaBlob } from '../../../../vendor/aside/lib/sea.mjs';
-import { adaptDaemonCode, DAEMON_CODE_SHA256 } from '../../../../vendor/provided/daemon-adapter.mjs';
-import { applyOfficialChatGPT, applyOfficialChatGPTCallbackAsset } from '../../../../vendor/aside/patches/chatgpt.mjs';
+import { DAEMON_CODE_SHA256 } from '../../../../vendor/provided/daemon-adapter.mjs';
+import { adaptProviderLaunchCode as adaptDaemonCode } from '../../../../vendor/provided/provider-launch-stage.mjs';
+import { applyOfficialChatGPTCallbackAsset } from '../../../../vendor/aside/patches/chatgpt.mjs';
 const [binaryPath, assetPath] = process.argv.slice(2);
 if (!binaryPath || !assetPath) throw Error('Provide pinned supplied daemon binary and shared callback asset paths');
 const binary = readFileSync(binaryPath), section = findMachOSeaSection(binary);
 const original = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
 assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
 const baseline = adaptDaemonCode(original, {}, 'aux-v1', 2);
-const result = applyOfficialChatGPT(baseline.code, { runtimeExpression: 'new URL(`../native/aux-chatgpt.cjs`,import.meta.url)' });
+const result = { source: baseline.code, patches: baseline.applied.slice(-24) };
+assert.equal(result.patches.at(-1).name, 'no private ChatGPT usage requests');
 const temp = mkdtempSync(join(tmpdir(), 'aux-chatgpt-source-check-'));
 try {
   // Syntax only: never execute supplied daemon/startup/native code.
-  const path = join(temp, 'entry.mjs'); writeFileSync(path, result.prelude + result.source);
+  const path = join(temp, 'entry.mjs'); writeFileSync(path, result.source);
   execFileSync(process.execPath, ['--check', path], { stdio: 'pipe' });
   const classStart = result.source.indexOf('CredentialStorage=class Cn{') + 'CredentialStorage='.length;
   const classEnd = result.source.indexOf('}));function normalizeModelRoutingSelection', classStart);

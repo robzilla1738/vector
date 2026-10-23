@@ -16,7 +16,8 @@ import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-poli
 import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
-import { adaptDaemonCodeWithMacUtilities as adaptDaemonCode, buildDaemonNodeDevelopmentWithMacUtilities as buildDaemonNodeDevelopment, macUtilityResources } from '../vendor/provided/aux-macos-utility-stage.mjs';
+import { adaptProviderLaunchCode as adaptDaemonCode, buildProviderLaunchNode as buildDaemonNodeDevelopment } from '../vendor/provided/provider-launch-stage.mjs';
+import { macUtilityResources } from '../vendor/provided/aux-macos-utility-stage.mjs';
 import { auxCryptoSeaResources } from '../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
