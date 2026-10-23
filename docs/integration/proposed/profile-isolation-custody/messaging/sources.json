@@ -1,0 +1,34 @@
+{
+  "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h": {
+    "before": null,
+    "after": "cea96cac077371596371b95651dd2972607293e3f18295c73c0a78a6e59a3551"
+  },
+  "chrome/browser/extensions/api/messaging/launch_context.cc": {
+    "before": "14736390a9539ca8745977a9efad247adddac52df06211d5b9152fe404487387",
+    "after": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75"
+  },
+  "chrome/browser/extensions/api/messaging/launch_context.h": {
+    "before": "4e8f21a96ca55b171db7b16e7548149ca3ee7fd5c97ff44b97ce17bf1f8ef8ae",
+    "after": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e"
+  },
+  "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+    "before": "02520049bf8030253fe509655c896c614edbf6e8914274a1a0dd50d5366bb541",
+    "after": "c53d29bccce56501fefcb70f83be1091563ce53874fb6e39862311e062a2c71c"
+  },
+  "chrome/browser/extensions/api/messaging/native_message_process_host.cc": {
+    "before": "6b15fe1376055ad425dc4072743161c2e0671477dc6ff5018585a0dbc17937e2",
+    "after": "c97eafdb50c2e15f4895c4236f3a71ef5dfc81633940820de012889b30b2d937"
+  },
+  "chrome/browser/extensions/api/messaging/native_message_process_host.h": {
+    "before": "6693d9abdf469b48371ec3fbcf0dec3da734d6a99b0d804cd52d93bf4cf73195",
+    "after": "a0f38767553956fb6ae6d491e6f2bf2951a99e746410be93c792933f35fd9631"
+  },
+  "chrome/browser/extensions/api/messaging/native_process_launcher.cc": {
+    "before": "b0b6f56ea9b9404350f4ff8a89bb0724b76f1194b44cccf42a4963705c7828a5",
+    "after": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8"
+  },
+  "chrome/browser/extensions/api/messaging/native_process_launcher.h": {
+    "before": "f82c6671d1db41744b84d32ab3631d0e4a234e4f6999c0a19e9f26341be27e0a",
+    "after": "06d71773dbc9b17f1bb76024d32ed252ccec49c16cf8881368f72f7c543abf53"
+  }
+}

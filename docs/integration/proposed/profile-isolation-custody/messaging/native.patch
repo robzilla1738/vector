@@ -1,0 +1,374 @@
+--- /dev/null
++++ b/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
+@@ -0,0 +1,79 @@
++// Copyright 2026 Aux contributors. Chromium integration retains upstream notices.
++#pragma once
++#include "base/process/kill.h"
++#include <algorithm>
++#include <memory>
++#include <mutex>
++#include <vector>
++#include <utility>
++#include <unistd.h>
++
++namespace extensions {
++// Retained evidence for mac native messaging launches only. This is
++// not a process-tree census, filesystem authority, or whole-writer certificate.
++struct AuxNativeMessagingLifetime final {
++  struct Snapshot { size_t unresolved; bool all_writer_coverage = false; };
++  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve() {
++    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(new AuxNativeMessagingLifetime);
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    Registry().push_back(entry);  // Reserve before the actual spawn.
++    return entry;
++  }
++  void BindLaunch(pid_t pid, base::Time creation) {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (getpid() != owner || bound) { uncertain = true; return; }
++    bound = true;
++    child = pid;
++    birth = creation;
++    if (pid > 0 && birth.is_null()) uncertain = true;
++    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.
++  }
++  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {
++    if (getpid() != owner || !bound || pid != child || birth.is_null() ||
++        creation.is_null() || creation != birth) uncertain = true;
++  }
++  // Caller holds mutex across the existing native wait; no second reaper.
++  void ObserveLocked(pid_t pid, base::AuxChildReapEvidence evidence) {
++    if (getpid() != owner || !bound || pid <= 0 || pid != child) {
++      uncertain = true;
++      return;
++    }
++    if (evidence == base::AuxChildReapEvidence::unknown) uncertain = true;
++    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)
++      ReleaseLocked();
++  }
++  static Snapshot Inspect() {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    return {Registry().size(), false};
++  }
++  std::mutex mutex;
++ private:
++  AuxNativeMessagingLifetime() = default;
++  static std::mutex& RegistryMutex() { static auto* m = new std::mutex; return *m; }
++  static std::vector<std::shared_ptr<AuxNativeMessagingLifetime>>& Registry() {
++    static auto* r = new std::vector<std::shared_ptr<AuxNativeMessagingLifetime>>;
++    return *r;
++  }
++  void ReleaseLocked() {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });
++  }
++  const pid_t owner = getpid();
++  pid_t child = -1;
++  base::Time birth;
++  bool bound = false;
++  bool uncertain = false;
++};
++// Invoked by the existing blocking-pool termination task, not a new reaper.
++inline void ReapAuxNativeMessagingProcess(
++    base::Process process, std::shared_ptr<AuxNativeMessagingLifetime> custody) {
++  std::unique_lock<std::mutex> lock;
++  if (custody) {
++    lock = std::unique_lock<std::mutex>(custody->mutex);
++    custody->ValidateBeforeWaitLocked(process.Pid(), process.CreationTime());
++  }
++  const auto pid = process.Pid();
++  auto evidence = base::EnsureProcessTerminatedWithAuxReapEvidence(std::move(process));
++  if (custody) custody->ObserveLocked(pid, evidence);
++}
++}
+--- a/chrome/browser/extensions/api/messaging/launch_context.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context.cc
+@@ -37,11 +37,19 @@
+ #include "components/app_launch_prefetch/app_launch_prefetch.h"
+ #include "net/base/file_stream.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
++
+ namespace extensions {
+ 
+ namespace {
+ 
+-void TerminateNativeProcess(base::Process native_process) {
++void TerminateNativeProcess(base::Process native_process
++#if BUILDFLAG(IS_MAC)
++                            , std::shared_ptr<AuxNativeMessagingLifetime> custody
++#endif
++) {
+ // Kill the host process if necessary to make sure we don't leave zombies.
+ // TODO(crbug.com/41367359): On OSX EnsureProcessTerminated() may
+ // block, so we have to post a task on the blocking pool.
+@@ -49,8 +57,8 @@
+   base::ThreadPool::PostTask(FROM_HERE,
+                              {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+                               base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
+-                             base::BindOnce(&base::EnsureProcessTerminated,
+-                                            std::move(native_process)));
++                             base::BindOnce(&ReapAuxNativeMessagingProcess,
++                                            std::move(native_process), std::move(custody)));
+ #else
+   base::EnsureProcessTerminated(std::move(native_process));
+ #endif
+@@ -274,7 +282,11 @@
+     // The launch was cancelled. Terminate the host process and close the pipes.
+     if (result.process_state.has_value()) {
+       auto& process_state = result.process_state.value();
+-      TerminateNativeProcess(std::move(process_state.process));
++      TerminateNativeProcess(std::move(process_state.process)
++#if BUILDFLAG(IS_MAC)
++                             , std::move(process_state.aux_child_lifetime)
++#endif
++      );
+       // Close the pipes on a background thread since doing so may block.
+       // Ownership of the pipes is passed to a callback that is run in the
+       // thread pool. They will be closed automatically when they go out of
+@@ -297,6 +309,9 @@
+   DCHECK_CALLED_ON_VALID_SEQUENCE(weak_this->sequence_checker_);
+   if (result.result == NativeProcessLauncher::RESULT_SUCCESS) {
+     weak_this->native_process_ = std::move(result.process_state->process);
++#if BUILDFLAG(IS_MAC)
++    weak_this->aux_child_lifetime_ = std::move(result.process_state->aux_child_lifetime);
++#endif
+     weak_this->ConnectPipes(std::move(result.process_state->read_file),
+                             std::move(result.process_state->write_file));
+   } else {
+@@ -317,7 +332,11 @@
+     NativeProcessLauncher::LaunchResult launch_result) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (native_process_.IsValid()) {
+-    TerminateNativeProcess(std::move(native_process_));
++    TerminateNativeProcess(std::move(native_process_)
++#if BUILDFLAG(IS_MAC)
++                           , std::move(aux_child_lifetime_)
++#endif
++    );
+   }
+   std::move(callback_).Run(launch_result, base::Process(),
+                            base::kInvalidPlatformFile, nullptr, nullptr);
+--- a/chrome/browser/extensions/api/messaging/launch_context.h
++++ b/chrome/browser/extensions/api/messaging/launch_context.h
+@@ -8,6 +8,7 @@
+ #include <stdint.h>
+ 
+ #include <memory>
++#include <utility>
+ #include <optional>
+ #include <string>
+ 
+@@ -68,6 +69,11 @@
+   ~LaunchContext();
+ #endif
+ 
++#if BUILDFLAG(IS_MAC)
++  std::shared_ptr<AuxNativeMessagingLifetime> TakeAuxChildLifetime() {
++    return std::move(aux_child_lifetime_);
++  }
++#endif
+  private:
+   LaunchContext(scoped_refptr<base::TaskRunner> background_task_runner,
+                 NativeProcessLauncher::LaunchedCallback callback);
+@@ -95,6 +101,9 @@
+ 
+     // The child process.
+     base::Process process;
++#if BUILDFLAG(IS_MAC)
++    std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime;
++#endif
+ 
+     // The child's stdout.
+     base::ScopedPlatformFile read_file;
+@@ -183,6 +192,9 @@
+   scoped_refptr<base::TaskRunner> background_task_runner_;
+   NativeProcessLauncher::LaunchedCallback callback_;
+   base::Process native_process_;
++#if BUILDFLAG(IS_MAC)
++  std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;
++#endif
+ #if BUILDFLAG(IS_WIN)
+   std::unique_ptr<net::FileStream> read_stream_;
+   std::unique_ptr<net::FileStream> write_stream_;
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -20,6 +20,10 @@
+ #include "chrome/browser/extensions/api/messaging/native_messaging_host_manifest.h"
+ #include "chrome/common/chrome_paths.h"
+ #include "net/base/file_stream.h"
++
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
+ 
+ namespace extensions {
+ 
+@@ -127,7 +131,14 @@
+   options.disclaim_responsibility = true;
+ #endif
+ 
++#if BUILDFLAG(IS_MAC)
++  auto custody = AuxNativeMessagingLifetime::Reserve();
++#endif
+   base::Process local_process = base::LaunchProcess(command_line, options);
++#if BUILDFLAG(IS_MAC)
++  custody->BindLaunch(local_process.IsValid() ? local_process.Pid() : -1,
++                     local_process.IsValid() ? local_process.CreationTime() : base::Time());
++#endif
+   if (!local_process.IsValid()) {
+     LOG(ERROR) << "Error launching process";
+     return std::nullopt;
+@@ -137,8 +148,12 @@
+   write_pipe_read_fd.reset();
+   read_pipe_write_fd.reset();
+ 
+-  return ProcessState(std::move(local_process), std::move(read_pipe_read_fd),
+-                      std::move(write_pipe_write_fd));
++  ProcessState state(std::move(local_process), std::move(read_pipe_read_fd),
++                     std::move(write_pipe_write_fd));
++#if BUILDFLAG(IS_MAC)
++  state.aux_child_lifetime = std::move(custody);
++#endif
++  return state;
+ }
+ 
+ void LaunchContext::ConnectPipes(base::ScopedPlatformFile read_file,
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.cc
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+@@ -37,6 +37,10 @@
+ #include "net/base/net_errors.h"
+ #include "url/gurl.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
++
+ namespace {
+ 
+ // Maximum message size in bytes for messages received from Native Messaging
+@@ -93,7 +97,8 @@
+ #if BUILDFLAG(IS_MAC)
+     base::ThreadPool::PostTask(
+         FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
+-        base::BindOnce(&base::EnsureProcessTerminated, std::move(process_)));
++        base::BindOnce(&ReapAuxNativeMessagingProcess, std::move(process_),
++                       std::move(aux_child_lifetime_)));
+ #else
+     base::EnsureProcessTerminated(std::move(process_));
+ #endif
+@@ -167,6 +172,9 @@
+       break;
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  aux_child_lifetime_ = launcher_->TakeAuxChildLifetime();
++#endif
+   process_ = std::move(process);
+ #if BUILDFLAG(IS_POSIX)
+   // |read_stream| owns |read_file|, yet the underlying file descript is needed
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.h
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.h
+@@ -104,6 +104,9 @@
+   bool closed_;
+ 
+   base::Process process_;
++#if BUILDFLAG(IS_MAC)
++  std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;
++#endif
+ 
+   // Input stream reader.
+   std::unique_ptr<net::FileStream> read_stream_;
+--- a/chrome/browser/extensions/api/messaging/native_process_launcher.cc
++++ b/chrome/browser/extensions/api/messaging/native_process_launcher.cc
+@@ -47,6 +47,9 @@
+               const std::string& native_host_name,
+               LaunchedCallback callback) const override;
+ 
++#if BUILDFLAG(IS_MAC)
++  std::shared_ptr<AuxNativeMessagingLifetime> TakeAuxChildLifetime() const override;
++#endif
+  private:
+   void OnComplete(LaunchedCallback callback,
+                   LaunchResult result,
+@@ -66,6 +69,9 @@
+ 
+   // An in-progress launch.
+   mutable std::unique_ptr<LaunchContext> context_;
++#if BUILDFLAG(IS_MAC)
++  mutable std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;
++#endif
+ };
+ 
+ NativeProcessLauncherImpl::NativeProcessLauncherImpl(
+@@ -85,6 +91,13 @@
+       profile_directory_(profile_directory),
+       connect_id_(connect_id),
+       error_arg_(error_arg) {}
++
++#if BUILDFLAG(IS_MAC)
++std::shared_ptr<AuxNativeMessagingLifetime>
++NativeProcessLauncherImpl::TakeAuxChildLifetime() const {
++  return std::move(aux_child_lifetime_);
++}
++#endif
+ 
+ void NativeProcessLauncherImpl::Launch(const GURL& origin,
+                                        const std::string& native_host_name,
+@@ -110,6 +123,9 @@
+     base::PlatformFile read_file,
+     std::unique_ptr<net::FileStream> read_stream,
+     std::unique_ptr<net::FileStream> write_stream) const {
++#if BUILDFLAG(IS_MAC)
++  aux_child_lifetime_ = context_->TakeAuxChildLifetime();
++#endif
+   context_.reset();
+ 
+   std::move(callback).Run(result, std::move(process), read_file,
+@@ -117,6 +133,13 @@
+ }
+ 
+ }  // namespace
++
++#if BUILDFLAG(IS_MAC)
++std::shared_ptr<AuxNativeMessagingLifetime>
++NativeProcessLauncher::TakeAuxChildLifetime() const {
++  return nullptr;
++}
++#endif
+ 
+ // static
+ std::unique_ptr<NativeProcessLauncher> NativeProcessLauncher::CreateDefault(
+--- a/chrome/browser/extensions/api/messaging/native_process_launcher.h
++++ b/chrome/browser/extensions/api/messaging/native_process_launcher.h
+@@ -11,6 +11,7 @@
+ #include "base/files/platform_file.h"
+ #include "base/functional/callback_forward.h"
+ #include "base/process/process.h"
++#include "build/build_config.h"
+ #include "ui/gfx/native_ui_types.h"
+ 
+ class GURL;
+@@ -26,6 +27,9 @@
+ class Profile;
+ 
+ namespace extensions {
++#if BUILDFLAG(IS_MAC)
++struct AuxNativeMessagingLifetime;
++#endif
+ 
+ class NativeProcessLauncher {
+  public:
+@@ -69,6 +73,11 @@
+   NativeProcessLauncher& operator=(const NativeProcessLauncher&) = delete;
+ 
+   virtual ~NativeProcessLauncher() = default;
++#if BUILDFLAG(IS_MAC)
++  // Transfers the actual successful launch token; custom launchers can leave
++  // coverage unknown by returning null. Never look up custody by PID.
++  virtual std::shared_ptr<AuxNativeMessagingLifetime> TakeAuxChildLifetime() const;
++#endif
+ 
+   // Finds native messaging host with the specified name and launches it
+   // asynchronously. Also checks that the specified `origin` is permitted to
