@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:53:19.829131+00:00",
+  "recordedAt": "2026-10-23T02:58:18.984479+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -37,10 +37,10 @@
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "concrete cold installer guard and paired owner/context validation at actual Add boundary",
-    "two-phase actual native child launch/private endpoint handoff and typed authenticated live peer",
-    "real Node embedding entry and final common-addon retirement",
-    "historical selector producer and genuine existing-home custody; no guessed group"
+    "freeze actual39-input cold guard/service and mandatory final Add-boundary checks; preserve existing36graph",
+    "real authenticated fileport selection from genuine cold-home FD producer with typed retained livechild owner",
+    "exception-free Chromium child transport and exact C-only graph boundary",
+    "actual native before-Node process entry, parent selected-home install and descendant shutdown"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -58,7 +58,9 @@
     "providerQuarantineEvidenceRecipe": "7b7f743d5",
     "peerProcessAndSendOwnership": "2c44e578f",
     "existingTerminalCskConsumer": "cc7799c63",
-    "actualNodeEnvironmentRunner": "be26fa9bc"
+    "actualNodeEnvironmentRunner": "be26fa9bc",
+    "typedChildLaunch": "45173ffdf",
+    "retainedCopySendAndCEndpoint": "d47b26700"
   },
   "terminalRootChecks": [
     {
@@ -137,5 +139,9 @@
     "elapsedLog": "25m34.39s",
     "terminal": false,
     "note": "actual same session returned live; no native source mutation"
+  },
+  "childLaunchCompilePendingReview": {
+    "queued": false,
+    "reason": "Actual Chromium system.pcm has exceptions disabled; packagegate preparing exception-free parent graph with unchanged GN/module flags and separate Node-side C bridge"
   }
 }

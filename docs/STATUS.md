@@ -1,3 +1,11 @@
+# Typed native child launch integrated; final cold entry still pending — 2026-10-22
+
+The real two-phase child launch now precreates its Mach endpoint, uses actual base::LaunchProcess, binds the live direct child, and retains process/peer ownership through observed exit/reap. Root review found pre-spawn failures could escape MOVE_SEND cleanup; the integrated successor borrows COPY_SEND from the retained native right instead. A C-only endpoint-delivery function keeps Chromium and Node C++ standard-library objects out of the ABI boundary. All exact source/reference/patch pins passed. No IPC, Security or process launch ran.
+
+The proposed actual Chromium compile recipe is deliberately not queued yet: read-only module inspection showed the existing system.pcm disables exceptions, so a per-TU exception override would not prove a supported graph. The parent source is being made exception-free with unchanged GN/module flags; the Node-side bridge remains a separate system-libc++ graph with C-only crossing. This is a real integration issue, not a successful compile claim.
+
+The next paired source is the cold guard/service with mandatory live-guard checks at the actual generation/Add boundaries, then authenticated kernel fileport transfer of its genuine selected-home FD into a retained parent-owned selection. Default BrowserPlatform startup still selects StateHome and the old supervisor path; replacing that actual caller and the child's before-Node entry remains necessary. The accepted app/UI and startup refusal remain unchanged; the current browser build93645 is still live, and no production activation or owner-data access occurred.
+
 # Native provider and peer ownership corrections integrated — 2026-10-22
 
 The typed fresh runtime provider now refuses publication unless final revalidation succeeds. Late, failed or reentrant retirement retains the exact owner/context in private quarantine; an unresolved close reports untracked rather than silently dropping custody. The final36-input source graph uses the same deferred40860 with preserved earlier recipes, not a second graph. Actual WorkerHost compile51207 and provider lifecycle fixture22764 are queued, not passed. The resumed filesystem fixture42833 and retained-account/after-lock checks remain pending.
