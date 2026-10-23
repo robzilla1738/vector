@@ -1,0 +1,7 @@
+# Actual Node Environment execution component
+
+This inactive component calls the exact Node26.5.0 public embedding APIs: enters the real setup's isolate/context, installs a retained process-exit handler, loads ModuleData with the existing native preload callback, runs SpinEventLoop, closes native registration and reports its actual drain. A script-requested exit stops that Environment instead of invoking Node's default process/platform disposal. An unresolved native drain never frees the caller-owned Environment/platform/preload. No new process main, argv admission, JS registration method, default host or protected call is introduced.
+
+This is execution plumbing, **not a complete embedding executable**. The real cold caller still must initialize and retain the process/platform/setup, authenticate the supplied entry artifact and image graph, construct the genuine provider-backed host, enforce single entry and retain unresolved ownership through shutdown. SEA/ESM/CJS, snapshot/cache, signal/system-CA and descendant behavior still need the actual assembled executable. The current state2 refusal stays first and unchanged; this component is neither linked nor activated in Aux. Current accepted UI and supplied runtime bytes remain unchanged.
+
+The narrow compile recipe pins the exact sources and actual official public headers. It compiles one object only under the normal native serializer; it does not link or run Node, evaluate JavaScript, load protected modules or assert runtime parity.

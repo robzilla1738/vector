@@ -1,0 +1,12 @@
+{
+  "format": "aux.native-node-runner.inputs.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-node-runner/source/AuxNativeNodeRunner.cc": "9990ae404ab0204e3ce913a4f4f541cc4e3af885294e0b879cab2f63f690469b",
+    "docs/integration/proposed/aux-native-node-runner/source/AuxNativeNodeRunner.h": "e44b71ac04e90297e74801bc7aacbf3f738b44a637a937963a5e126d1d515184",
+    "docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.h": "8fc9494209576427fb37038a1862eacb42ed1c59c28cba1e5010483c5158ab62",
+    "docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h": "242803863a67315ade8477a9c738e40e1f7429e05bd02c90955a79c559a885e5"
+  },
+  "compiled": false,
+  "linked": false,
+  "activated": false
+}
