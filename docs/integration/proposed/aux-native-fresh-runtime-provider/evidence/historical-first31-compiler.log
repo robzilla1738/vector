@@ -1,0 +1,66 @@
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift:126:48: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+124 |             kSecAttrAccessGroup as String: selector.accessGroup,
+125 |             kSecUseDataProtectionKeychain as String: true,
+126 |             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                                `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+127 |             kSecReturnData as String: true,
+128 |             kSecMatchLimit as String: kSecMatchLimitOne,
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshStageCoordinator.swift:166:294: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+164 | #else
+165 |         var result:CFTypeRef?
+166 |         let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecReturnData as String:true,kSecMatchLimit as String:kSecMatchLimitOne]
+    |                                                                                                                                                                                                                                                                                                      `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+167 |         let status=SecItemCopyMatching(query as CFDictionary,&result)
+168 |         if status==errSecItemNotFound{return result==nil ? .absent:.invalid}
+
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshStageCoordinator.swift:181:294: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+179 | #else
+180 |         let selector=record.stageSelector
+181 |         let query:[String:Any]=[kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:selector.service,kSecAttrAccount as String:selector.account,kSecAttrAccessGroup as String:selector.accessGroup,kSecUseDataProtectionKeychain as String:true,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail,kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,kSecValueData as String:secretPayload]
+    |                                                                                                                                                                                                                                                                                                      `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+182 |         return SecItemAdd(query as CFDictionary,nil)
+183 | #endif
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:206:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+204 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+205 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+206 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+207 |          kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+208 |     }
+
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:213:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+211 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+212 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+213 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+214 |          kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+215 |          kSecValueData as String: payload]
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift:80:87: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 78 |          kSecAttrAccount as String:selected.account,kSecAttrAccessGroup as String:selected.accessGroup,
+ 79 |          kSecUseDataProtectionKeychain as String:true,kSecReturnData as String:true,
+ 80 |          kSecMatchLimit as String:kSecMatchLimitOne,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                                                                       `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 81 |     }
+ 82 |     static func result(status:OSStatus,value:CFTypeRef?)->AuxRuntimeTargetRead {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxAccountsCskCoordinator.swift:40:13: error: invalid redeclaration of 'entry'
+ 29 |         guard let canonical=realpath(home,nil)else{throw AuxAccountsCskError.unavailable}
+ 30 |         defer{free(canonical)}
+ 31 |         var held=stat(),entry=stat()
+    |                         `- note: 'entry' previously declared here
+ 32 |         guard String(cString:canonical)==home,fstat(fd,&held)==0,lstat(home,&entry)==0,
+ 33 |               held.st_dev==entry.st_dev,held.st_ino==entry.st_ino,
+    :
+ 38 |         guard let acl else{throw AuxAccountsCskError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
+ 39 |         guard acl_valid(acl)==0 else{throw AuxAccountsCskError.unavailable}
+ 40 |         var entry:acl_entry_t?;errno=0
+    |             `- error: invalid redeclaration of 'entry'
+ 41 |         guard acl_get_entry(acl,0,&entry) == -1,errno==EINVAL,entry==nil else{throw AuxAccountsCskError.unavailable}
+ 42 |     }
