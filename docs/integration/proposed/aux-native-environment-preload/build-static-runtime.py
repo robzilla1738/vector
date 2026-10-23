@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Future serialized, isolated official Node static build. Not executed by review."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import tarfile
+
+ARCHIVE_SHA = '0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4'
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--archive', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    archive = args.archive.resolve(strict=True)
+    output = args.output.resolve()
+    if sha(archive) != ARCHIVE_SHA or output.exists():
+        raise SystemExit('Exact official source archive and fresh output required')
+    output.mkdir(parents=True)
+    with tarfile.open(archive) as source:
+        source.extractall(output, filter='data')
+    tree = output / 'node-v26.5.0'
+    # Default bundled dependency graph, snapshot and code-cache remain enabled.
+    # --enable-static is the intentional change from the official executable.
+    subprocess.run(['python3', 'configure', '--enable-static', '--dest-cpu=arm64'],
+                   cwd=tree, check=True)
+    subprocess.run(['make', '-j2'], cwd=tree, check=True)
+    archives = sorted((tree / 'out/Release').rglob('*.a'))
+    if not archives or not any(path.name == 'libnode.a' for path in archives):
+        raise SystemExit('Static Node/dependency archive graph missing')
+    receipt = {
+        'format': 'aux.node-static.build.v1',
+        'sourceArchiveSha256': ARCHIVE_SHA,
+        'configure': ['--enable-static', '--dest-cpu=arm64'],
+        'jobs': 2,
+        'archives': [{'path': str(path.relative_to(tree)), 'sha256': sha(path)}
+                     for path in archives],
+        'configSha256': sha(tree / 'config.gypi'),
+        'suppliedRuntimeReplaced': False,
+        'embeddingLinked': False,
+        'protectedExecution': False,
+    }
+    (output / 'static-build-receipt.json').write_text(
+        json.dumps(receipt, indent=2) + '\n')
+
+if __name__ == '__main__':
+    main()

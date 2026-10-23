@@ -1,0 +1,61 @@
+{
+  "format": "aux.native-environment-preload.source.v1",
+  "sourceArchiveSha256": "0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4",
+  "files": [
+    {
+      "path": "docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.h",
+      "sha256": "8fc9494209576427fb37038a1862eacb42ed1c59c28cba1e5010483c5158ab62"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.cc",
+      "sha256": "4864d389114736b0c3ac8d5439e5715f67af0b1a227deb7de46a5e9fe0580f2c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-environment-preload/build-static-runtime.py",
+      "sha256": "9a36af346606cf9bffc292ccb06d77b2db602428dae468d31e3408bf9d9aba94"
+    }
+  ],
+  "externalSourceInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/binary-comparison.json",
+      "sha256": "985a95dddb52fc80ca2c42794669006222fb2943c9e26ad642dbe14f8ca7344c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/header-comparison.json",
+      "sha256": "99ef4866d6fd4716e058343cbcf662b3b642da6ec216153fe1be7f668e0149a5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/src/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/src/api/environment.cc",
+      "sha256": "a15d309661ac722d9a3300546943f6d45959111bc5f6cfe6192375b82bc5e976"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/src/node_worker.cc",
+      "sha256": "2fdbfd36e69175a61c13fedacbc6fcb2e5f237aab5cde21668973e8f558c8f60"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/configure.py",
+      "sha256": "c04a8ae0c668ee349587f187493cabaf17e75defc71b52c097340437f84ac7cf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/node.gyp",
+      "sha256": "25872cb9f8c14f8a17a207ee4a63665f287f6ad7298fccd1f4cdf94db170f1f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "sha256": "325bb8ba6a5c33beb5f785b3293f263f5fc3e1b60b92b9a5a6c54b18c18bd4e1"
+    }
+  ],
+  "staticReview": {
+    "pythonRecipeParsed": true,
+    "actualWorkerPreloadPropagationSourceFound": true,
+    "officialSuppliedRuntimeEqualityReceiptRead": true
+  },
+  "compiled": false,
+  "runtimeExecuted": false,
+  "parentAdmissionImplemented": false,
+  "state2Authorized": false
+}
