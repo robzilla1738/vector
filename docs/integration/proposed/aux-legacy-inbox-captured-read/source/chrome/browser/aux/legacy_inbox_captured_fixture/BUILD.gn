@@ -1,0 +1,14 @@
+# Optional deferred fixture, never a shipping/startup dependency.
+executable("aux_legacy_inbox_captured_read_fixture") {
+  testonly = true
+  sources = [
+    "main.cc",
+    "//chrome/browser/notifications/aux_legacy_inbox_captured_read.cc",
+    "//chrome/browser/notifications/aux_legacy_inbox_captured_read.h",
+    "//chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+    "//chrome/browser/notifications/aux_legacy_inbox_codec.h",
+    "//chrome/browser/notifications/aux_inbox_codec.cc",
+    "//chrome/browser/notifications/aux_inbox_codec.h",
+  ]
+  deps = [ "//base", "//crypto" ]
+}

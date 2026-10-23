@@ -1,0 +1,22 @@
+{
+  "format": "aux.captured-legacy-inbox-read.v1",
+  "status": "source-only; no genuine historical authority/reader",
+  "files": {
+    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+    "docs/integration/proposed/aux-native-fresh-resume/source/AuxFreshNativeHome.swift": "4fcb3542d452e4abce6b433b09eb586251a950c0142a741efdd34db57baa4388",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+    "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2",
+    "docs/integration/proposed/aux-copy-only-credentials/source/AuxCapturedCredentialCopy.swift": "7d4d765391fdbb2f687c50aab3e6ba9776c9048fe6ae7cc48feb66ec446432d6",
+    "docs/integration/proposed/aux-existing-terminal-csk/source/ExistingTerminalCskHandoff.swift": "979f90dd63e393c1c788bba2cdd076284805da354a268ecf3b16795bb36ce890",
+    "vendor/provided/native/agent-inbox-master-key.mm": "ec54a67bc8b4ed1a12fe097cae61f60b8c392c7894d1d056e25807d91930ec01",
+    "vendor/provided/native/agent-inbox-keychain-map.mm": "fa180ae31ab41690ed73dd353378ddc2cf84784b98a97ffc420076fe477841ab",
+    "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc": "5f11bac3d2b7a686a9c3ba865036fb2a7e2f5463a66a8611e6c2b76f5446acf7",
+    "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.h": "e2a5bcec03489bb69b5854d32ceaa55a73786fce32228f69d9d6ec1e56ec0d5a",
+    "docs/integration/proposed/aux-legacy-inbox-captured-read/README.md": "d9db210cc3e10c2d6784774c86fb8409fa820dae00f1cbb35fc1253deda954a1",
+    "docs/integration/proposed/aux-legacy-inbox-captured-read/source/chrome/browser/aux/legacy_inbox_captured_fixture/main.cc": "932fea614a8f3bdd84c2b26a6239c2f38e5204ef333190e9d1647471002b0b53",
+    "docs/integration/proposed/aux-legacy-inbox-captured-read/source/chrome/browser/aux/legacy_inbox_captured_fixture/BUILD.gn": "4e94bdfb3ea715389511a546a908cba97b176b7200ac298ee14aa896835f7f7a",
+    "docs/integration/proposed/aux-legacy-inbox-captured-read/source/chrome/browser/notifications/aux_legacy_inbox_captured_read.cc": "0362fa733b94f7a629f7c526616ec32538dc13e8e77c703f9cadc9b200f127fd",
+    "docs/integration/proposed/aux-legacy-inbox-captured-read/source/chrome/browser/notifications/aux_legacy_inbox_captured_read.h": "e2358e21551009187eec83f36f059da614b5b0d3d728e96df0f4a47ea71e6527"
+  }
+}
