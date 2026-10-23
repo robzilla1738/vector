@@ -1,0 +1,17 @@
+{
+  "format": "aux.browser-native-startup.integration.v1",
+  "workspaceInputs": {
+    "docs/integration/proposed/aux-native-browser-authority-integration/extend-startup.py": "773f404f795f3a12ccdf3f0c004c019a9c5e042778b5ca8fb038e023e8110a2b",
+    "docs/integration/proposed/aux-native-browser-authority-integration/metadata.json": "fe3b198a077cedce68a00ae18e99f0e494a9d5c766800e7965351daf67c4b96b",
+    "docs/integration/proposed/aux-native-browser-authority-integration/native.patch": "57c960c88363b8af0332385aceb008390b68538b6145870fff60196cbed20e1f",
+    "docs/integration/proposed/aux-native-parent-cold-launch/chrome-main-hook.patch": "21cec3ac24b3581bfed25b182af4cb8c3141120d76b2606a52001e13418c05ab",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.cc": "9a9f035305d412d53f34ceb409fb96639f5e8a5303ecc6e26227c403044e223e",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.h": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxAuthenticatedChildParentPolicyReader.swift": "c5e25b216dd59496a00acff534434ed78b7601ef7bcbc8d7faccf998e6b0fb6d",
+    "docs/integration/proposed/aux-native-parent-cold-launch/baseline/AuxAuthenticatedChildParentPolicyReader.swift": "85be3fcc4b2c7b2b55e80b411f75d548317e5cd2313993b717e7039f73032aff"
+  },
+  "nativeMainSha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+  "productHookDefaultOff": true,
+  "compiled": false,
+  "applied": false
+}

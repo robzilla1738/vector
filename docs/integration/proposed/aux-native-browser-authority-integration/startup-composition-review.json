@@ -1,0 +1,14 @@
+{
+  "format": "aux.native-browser-startup.composition.v1",
+  "composition": "out/native-reuse-composition-aux-browser-startup",
+  "manifestSha256": "e0b11c5d12596c8be99bd769fd0f56b2db3fe09bfaaca6c32bd9000bfbcbff5c",
+  "sources": 826,
+  "assets": 23,
+  "followupRecords": 5,
+  "patchReplayed": true,
+  "applied": false,
+  "compiled": false,
+  "runtimeAccepted": false,
+  "productHookDefaultOff": true,
+  "acceptedUiModified": false
+}

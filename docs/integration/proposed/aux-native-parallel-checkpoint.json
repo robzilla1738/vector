@@ -51,13 +51,14 @@
     }
   ],
   "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-browser-authority",
-    "review": "docs/integration/proposed/aux-native-browser-authority-integration/composition-review.json",
-    "sourceRecords": 824,
+    "composition": "out/native-reuse-composition-aux-browser-startup",
+    "review": "docs/integration/proposed/aux-native-browser-authority-integration/startup-composition-review.json",
+    "sourceRecords": 826,
     "artworkAssets": 23,
     "applied": false,
     "compiled": false,
-    "startupHookIncluded": false
+    "startupHookIncluded": true,
+    "productHookDefaultOff": true
   },
   "nextSourceReview": [
     "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
@@ -112,7 +113,8 @@
     "fixedPtyLoadingProposal": "621e0005d",
     "inboxV2DeferredFixture": "4694d8d66",
     "parentLinkBoundary": "01edda022",
-    "browserAuthorityComposition": "a476a0289"
+    "browserAuthorityComposition": "a476a0289",
+    "actualParentColdLaunch": "c0bd7cef0"
   },
   "terminalRootChecks": [
     {
