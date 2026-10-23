@@ -1,0 +1,11 @@
+# Authenticated fixed-helper binding in the native PTY host
+
+Separate source successor of `aux-native-pty-environment-bridge`. The prior host/header/pins/compile evidence, historical daemon inputs, signed addon/helper/policy, startup gates and accepted UI remain unchanged.
+
+The actual native Environment reservation retains its exact authenticated Worker and Owner and increments pending admission before external validation. `AuxNativeContextValidateCurrentAuthority(owner.handle)` brackets acquisition of the Swift sealed-policy helper capability. Binding succeeds only after actual native-context and open-admission checks repeat. Preparation failure cancels only this proven no-child reservation.
+
+The producer can copy only the bound canonical helper path into a native buffer of at most4096 bytes including NUL. No JS path is accepted. Copy and immediately-before-each-spawn revalidation bracket the bound Swift capability call with actual Owner authority checks, followed by native Environment/admission checks. Neither Worker nor host registry mutex crosses Swift/Security calls; the genuine pending count and exact Owner retain span them.
+
+Close may race after prelaunch validation. It still cannot transiently report drain or release the pending owner. The syscall's actual successful child is published before any helper cleanup or reaper publication. Native creation success moves the helper capability out under the Worker lock and releases it outside that lock; it performs no post-spawn validation that could turn an actual child into no-child cancellation. Proven failure similarly releases helper-validation FDs outside the host lock. Shared in-flight capability retains prevent premature descriptor closure. A completed creation does not retain an FD chain per spawned child.
+
+PTY direct-child and descendant custody are separate: successful terminal waitpid settles only the actual direct child, while descendants remain explicitly unknown and retain Worker/Owner. Helper descriptor release grants no subtree drain. These sources do not activate a runtime or authenticate the future changed addon bytes; signed-artifact/policy pairing, native startup and same-candidate runtime/UI acceptance remain unfinished.
