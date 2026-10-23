@@ -1,0 +1,11 @@
+{
+  "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source-pins.json": "b88f57bafb31ffaa52d12190de8c536e559b15da2d738440a4bb4b0c77549ad9",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxPreparedFreshRuntimeProvider.swift": "052cc5d346881437e8b23936944fa0999fac8cafe723391fb5e80319d97e2683",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/ScopedAuxCommandContext.swift": "fcbc07a46aee06233cf40edac73b4647f98f1c673d5369939372b8aa7e09bc67",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxOwnedCommandDispatcher.swift": "c81cc7f5e7a0ee011077a9739893f7fd0f2ba22cb1edb6b12f17e1fdca8bb859",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxFreshColdInstallerGuard.swift": "0badaba384c7beb6a7666e512c11b025b764c2aee7553db111e1fffb6db11cc1",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/NativeFreshRuntimeCapturedContext.swift": "6f5d43d7553c09168467bc41af2b2af7be967fc72fa4afb8448f9fb93d8468a6",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxAuthenticatedFreshColdBootstrap.swift": "e3c21c5e1e5d1a7a61c019aa44925e1c642471260918fd939b6fb284c72e9906",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxNativeFreshStageCoordinator.swift": "cb477198518ed6dfd0db1695be5eaabd225ef6852e967f7f6a5c7e10717b0b58",
+  "docs/integration/proposed/aux-native-fresh-runtime-readiness/baseline/AuxFreshColdBootstrapNativeBridge.swift": "8998db30743086da7672da3faa22472695476e58812ae9619d28263c815d71ad"
+}

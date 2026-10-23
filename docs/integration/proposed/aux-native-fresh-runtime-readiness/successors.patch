@@ -1,0 +1,524 @@
+--- baseline/AuxAuthenticatedFreshColdBootstrap.swift
++++ source/AuxAuthenticatedFreshColdBootstrap.swift
+@@ -8,6 +8,7 @@
+     case progressed(AuxFreshColdBootstrapStep)
+     case busy
+     case stageUnresolved(String)
++    case stageDeferredBeforeAdd(Int32)
+     case stageBlocked(String)
+     case target(NativeFreshTargetOutcome)
+     case ready(AuxPreparedFreshRuntimeProvider)
+@@ -15,22 +16,6 @@
+     indirect case guardStopped(Error,AuxFreshColdBootstrapOutcome)
+ }
+ enum AuxFreshColdBootstrapError:Error {case legacyOrUnknownExistingState,invalidReservation,pathChanged,busy,noSelectedHome,io(Int32)}
+-// Typed child-side home export. Physical FD ownership only; parent must pair
+-// a kernel fileport transfer with the actual live child and signed policy.
+-final class AuxSelectedFreshColdHome {
+-    private enum Owner{case fresh(AuxFreshNativeHome),staged(NativeFreshStagedContext)}
+-    private let owner:Owner
+-    private let guardOwner:AuxFreshColdInstallerGuard
+-    fileprivate init(fresh:AuxFreshNativeHome,guardOwner:AuxFreshColdInstallerGuard){owner = .fresh(fresh);self.guardOwner=guardOwner}
+-    fileprivate init(staged:NativeFreshStagedContext,guardOwner:AuxFreshColdInstallerGuard){owner = .staged(staged);self.guardOwner=guardOwner}
+-    func duplicateDescriptor()throws->Int32 {
+-        try guardOwner.revalidate()
+-        switch owner {
+-        case .fresh(let home):try home.validateRetainedIdentity();return try home.duplicateDirectoryForNativeBootstrap()
+-        case .staged(let context):try context.revalidateNativeStageBinding();return try context.duplicateRetainedHomeDescriptor()
+-        }
+-    }
+-}
+ final class AuxAuthenticatedFreshColdBootstrap {
+     private enum Phase {
+         case authenticated
+@@ -55,27 +40,25 @@
+     private var advancing=false
+     private var phase=Phase.authenticated
+     private var observed:AuxFreshColdBootstrapOutcome?
+-    private var selected:AuxSelectedFreshColdHome?
+     private init(guardOwner:AuxFreshColdInstallerGuard){self.guardOwner=guardOwner}
+     // Actual sealed-resource authentication, not supplied policy JSON/flags.
+     static func authenticate(connectedParent:AuxLiveNativeParentConnection)throws->AuxAuthenticatedFreshColdBootstrap {
+         .init(guardOwner:try AuxFreshColdInstallerGuard.acquire(peer:connectedParent))
+     }
+-    var lastOutcome:AuxFreshColdBootstrapOutcome?{lock.lock();defer{lock.unlock()};return observed}
++    var lastOutcome:AuxFreshColdBootstrapOutcome?{guard getpid()==process else{return .failed(.guardCheck,AuxFreshColdGuardError.wrongProcess)};lock.lock();defer{lock.unlock()};return observed}
+     func copySelectedHomeDescriptor()throws->Int32 {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         lock.lock()
+         guard !advancing else{lock.unlock();throw AuxFreshColdBootstrapError.busy}
+-        guard let home=selected else{lock.unlock();throw AuxFreshColdBootstrapError.noSelectedHome}
+-        if case .guardStopped=phase{lock.unlock();throw AuxFreshColdBootstrapError.pathChanged}
++        guard case .provider(let provider)=phase else{lock.unlock();throw AuxFreshColdBootstrapError.noSelectedHome}
+         advancing=true;lock.unlock()
+-        defer{lock.lock();advancing=false;lock.unlock()}
+-        return try home.duplicateDescriptor()
++        defer{if getpid()==process{lock.lock();advancing=false;lock.unlock()}}
++        return try provider.copyReadyHomeDescriptor()
+     }
+-    private func setSelected(_ home:AuxSelectedFreshColdHome){lock.lock();selected=home;lock.unlock()}
+     private func set(_ phase:Phase){lock.lock();self.phase=phase;lock.unlock()}
+     func advance()->AuxFreshColdBootstrapOutcome {
++        guard getpid()==process else{return .failed(.guardCheck,AuxFreshColdGuardError.wrongProcess)}
+         lock.lock()
+-        guard getpid()==process else{lock.unlock();return .failed(.reservation,AuxFreshColdBootstrapError.pathChanged)}
+         guard !advancing else{lock.unlock();return .busy}
+         advancing=true;let current=phase;lock.unlock()
+         let outcome:AuxFreshColdBootstrapOutcome
+@@ -91,6 +74,7 @@
+                 outcome = .guardStopped(error,actual)
+             }
+         }catch{outcome = .failed(.guardCheck,error)}
++        guard getpid()==process else{return .failed(.guardCheck,AuxFreshColdGuardError.wrongProcess)}
+         lock.lock();observed=outcome;advancing=false;lock.unlock()
+         return outcome
+     }
+@@ -98,6 +82,7 @@
+         switch outcome {
+         case .staged(let context):set(.staged(context));return .progressed(.stageObserve)
+         case .unresolved(let reason):return .stageUnresolved(reason)
++        case .deferredBeforeAdd(let status):set(.prepared(coordinator));return .stageDeferredBeforeAdd(status)
+         case .blocked(let reason):set(.stageBlocked(coordinator,reason));return .stageBlocked(reason)
+         }
+     }
+@@ -112,7 +97,7 @@
+                 if existing {set(.resumeOnly);return .progressed(.reservation)}
+                 // O_EXCL fixed reservation is the actual race-closing creator;
+                 // a failed create NEVER falls back to adoption/new UUID retry.
+-                let home=try guardOwner.createFreshHome();setSelected(.init(fresh:home,guardOwner:guardOwner));set(.reserved(home))
++                let home=try guardOwner.createFreshHome();set(.reserved(home))
+                 return .progressed(.reservation)
+             }catch{return .failed(.reservation,error)}
+         case .reserved(let home):
+@@ -143,7 +128,6 @@
+         case .resumeOnly:
+             do {
+                 let context=try NativeFreshStagedContext.resume(coldGuard:guardOwner)
+-                setSelected(.init(staged:context,guardOwner:guardOwner))
+                 set(.staged(context));return .progressed(.resume)
+             }catch{return .failed(.resume,error)} // No fallback, even if partial/absent/locked.
+         case .staged(let context):
+@@ -205,8 +189,9 @@
+         guard errno==0 else{throw AuxFreshColdBootstrapError.io(errno)}
+         try checkIdentity();return false
+     }
+-    // No C entrypoint can authenticate/create/publish a service. Actual native
+-    // Swift child bootstrap must retain this registration before Node startup.
++    // C creation below accepts only an existing actual private peer connection,
++    // then performs real guard acquisition. Neither C nor Swift accepts claimed
++    // rows/home/policy/status. Native entry must retain registration before Node.
+     func registerForNativeEmbedding()throws->AuxFreshColdBootstrapRegistration {
+         try guardOwner.revalidate()
+         return try .init(service:self)
+--- baseline/AuxFreshColdBootstrapNativeBridge.swift
++++ source/AuxFreshColdBootstrapNativeBridge.swift
+@@ -72,6 +72,7 @@
+             if status != 0{copiedProvider=0}
+         case .progressed:status=1
+         case .busy:status=2
++        case .stageDeferredBeforeAdd:status=9
+         case .stageUnresolved:status=3
+         case .stageBlocked:status=4
+         case .target(let target):
+--- baseline/AuxFreshColdInstallerGuard.swift
++++ source/AuxFreshColdInstallerGuard.swift
+@@ -126,5 +126,5 @@
+         var entry:acl_entry_t?;errno=0
+         guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry) == -1,errno==EINVAL,entry==nil else{throw AuxFreshColdGuardError.metadata}
+     }
+-    deinit{close(installerFD);close(parentFD)} // no unlock/unlink/replacement API
++    deinit{if getpid()==process{close(installerFD);close(parentFD)}} // no unlock/unlink/replacement API
+ }
+--- baseline/AuxNativeFreshStageCoordinator.swift
++++ source/AuxNativeFreshStageCoordinator.swift
+@@ -85,6 +85,8 @@
+ enum NativeFreshStageSubmitOutcome {
+     case staged(NativeFreshStagedContext)
+     case unresolved(String)
++    // Only actual pre-Add read unavailability; same prepared draft may retry.
++    case deferredBeforeAdd(Int32)
+     case blocked(String)
+ }
+ #if AUX_NATIVE_FRESH_STAGE_FIXTURE
+@@ -106,6 +108,8 @@
+     private let store:PrivateNativeFreshBootstrapJournalStore
+     private let lock=NSLock()
+     private var attempted=false
++    private var submitting=false
++    private let process=getpid()
+     private var terminalFailure:String?
+ #if AUX_NATIVE_FRESH_STAGE_FIXTURE
+     private init(record:NativeFreshBootstrapJournal,payload:Data,checkpoint:StoredNativeFreshBootstrapJournal,store:PrivateNativeFreshBootstrapJournalStore){self.record=record;secretPayload=payload;self.checkpoint=checkpoint;self.store=store}
+@@ -197,20 +201,58 @@
+     // One process-local Add attempt only; error/unknown outcomes retain all state.
+     // Loaded journals have no API that recreates this coordinator or replays Add.
+     func submitStageOnce()throws->NativeFreshStageSubmitOutcome {
+-        lock.lock();guard !attempted else{lock.unlock();throw NativeFreshBootstrapError.consumed};attempted=true;lock.unlock()
++        guard getpid()==process else{throw NativeFreshBootstrapError.consumed}
++        lock.lock()
++        if let failure=terminalFailure{lock.unlock();return .blocked(failure)}
++        guard !attempted,!submitting else{lock.unlock();throw NativeFreshBootstrapError.consumed}
++        submitting=true;lock.unlock()
++        defer{if getpid()==process{lock.lock();submitting=false;lock.unlock()}}
++#if !AUX_NATIVE_FRESH_STAGE_FIXTURE
++        guard let operation=capture.home.targetProgressLease.tryAcquire() else{throw NativeFreshBootstrapError.consumed}
++        defer{operation.finish()}
++#endif
+         try revalidate()
+-        for binding in record.targetBindings {guard case .absent=read(binding.target)else{return block("target-no-longer-absent")}}
+-        guard case .absent=read(record.stageSelector)else{return block("stage-no-longer-absent")}
+-        // Absence queries can run authentication/UI/system callbacks. Revalidate
+-        // actual policy/home/journal after all five reads, immediately before Add.
++        var unavailable:Int32?
++        var conflict:String?
++        // All five read observations precede any intent/Add consumption. A
++        // definite conflict wins over a concurrent unavailable observation.
++        for binding in record.targetBindings {
++            switch read(binding.target) {
++            case .absent:break
++            case .unavailable(let status):if unavailable==nil{unavailable=status}
++            case .bytes,.invalid:conflict="target-no-longer-absent"
++            }
++        }
++        switch read(record.stageSelector) {
++        case .absent:break
++        case .unavailable(let status):if unavailable==nil{unavailable=status}
++        case .bytes,.invalid:conflict="stage-no-longer-absent"
++        }
++        if let conflict{return block(conflict)}
++        if let unavailable{return .deferredBeforeAdd(unavailable)}
++        // Revalidate after callback-capable reads, immediately before consuming
++        // the sole in-memory Add attempt. No regeneration or post-intent retry.
+         try revalidate()
++        guard getpid()==process else{throw NativeFreshBootstrapError.consumed}
++        lock.lock();attempted=true;lock.unlock()
+         let status=addStage()
+         guard status==errSecSuccess else{return .unresolved("stage-add-non-success-observe-without-replay")}
+-        return try observeStageWithoutReplay()
++        return try observeStageAfterAttempt()
+     }
+     // Matching observation after a lost/uncertain in-process Add needs no replay.
+     // This is not a new-process home-adoption or full installation recovery API.
+     func observeStageWithoutReplay()throws->NativeFreshStageSubmitOutcome {
++        guard getpid()==process else{throw NativeFreshBootstrapError.consumed}
++        lock.lock();guard !submitting else{lock.unlock();throw NativeFreshBootstrapError.consumed};submitting=true;lock.unlock()
++        defer{if getpid()==process{lock.lock();submitting=false;lock.unlock()}}
++#if !AUX_NATIVE_FRESH_STAGE_FIXTURE
++        guard let operation=capture.home.targetProgressLease.tryAcquire() else{throw NativeFreshBootstrapError.consumed}
++        defer{operation.finish()}
++#endif
++        return try observeStageAfterAttempt()
++    }
++    private func observeStageAfterAttempt()throws->NativeFreshStageSubmitOutcome {
++        guard getpid()==process else{throw NativeFreshBootstrapError.consumed}
+         lock.lock();let wasAttempted=attempted,failure=terminalFailure;lock.unlock();guard wasAttempted else{throw NativeFreshBootstrapError.consumed}
+         if let failure{return .blocked(failure)}
+         try revalidate()
+--- baseline/AuxOwnedCommandDispatcher.swift
++++ source/AuxOwnedCommandDispatcher.swift
+@@ -11,7 +11,9 @@
+     private enum Phase { case open,retiring,closed }
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+-        private var nativeFreshOwner:NativeFreshStagedContext? = nil
++        var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
++        var nativeGuardFailure:AuxNativeFreshGuardFailure? = nil
++        var pendingPostGuardObservation:AuxNativeFreshGuardFailure? = nil
+ #endif
+         let core:AuxInstallationCommandCore
+ #if AUX_MACOS_UTILITY_DISPATCH
+@@ -60,7 +62,7 @@
+         init(_ context:ScopedAuxCommandContext){
+             core=context.installation;secureStore=context.secureStore
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+-            nativeFreshOwner=context.nativeFreshOwner
++            nativeFreshRuntime=context.nativeFreshRuntime
+ #endif
+ #if AUX_MACOS_UTILITY_DISPATCH
+             macOSUtilities=nil
+@@ -73,7 +75,7 @@
+         init(wrapping entry:Entry,utilities:AuxMacOSUtilityCommandCore){
+             core=entry.core;macOSUtilities=utilities
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+-            nativeFreshOwner=entry.nativeFreshOwner
++            nativeFreshRuntime=entry.nativeFreshRuntime
+ #endif
+ #if AUX_SCOPED_SECURE_STORE_DISPATCH
+             secureStore=entry.secureStore
+@@ -81,6 +83,7 @@
+         }
+ #endif
+     }
++    private let process=getpid()
+     private let condition=NSCondition()
+     private var entries=[UInt64:Entry]()
+     private var next:UInt64=1
+@@ -117,6 +120,7 @@
+ #endif
+ #endif
+     private func insert(_ entry:Entry)throws->UInt64 {
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         condition.lock();defer{condition.unlock()}
+         guard next<UInt64.max else{throw AuxDispatcherLifetimeError.exhaustedHandles}
+         let handle=next;next += 1;entries[handle]=entry;return handle
+@@ -148,11 +152,14 @@
+     func withAccountRegistryLock(_ handle:UInt64,_ body:()throws->Int32)throws->Int32 {
+         try withEntry(handle){entry in
+             guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}
+-            return try secure.withAccountRegistryLock(body)
++            return try secure.withAccountRegistryLock {
++                try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,body)
++            }
+         }
+     }
+ #endif
+     private func withEntry<T>(_ handle:UInt64,_ action:(Entry)throws->T)throws->T {
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         let threadActive=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+         guard threadActive[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantCall}
+         condition.lock()
+@@ -164,35 +171,99 @@
+         var active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+         active[handle,default:0] += 1;Thread.current.threadDictionary[threadKey]=active
+         defer {
++          if getpid()==process {
+             var current=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+             let count=current[handle,default:1]-1
+             if count==0{current.removeValue(forKey:handle)}else{current[handle]=count}
+             Thread.current.threadDictionary[threadKey]=current
+             entry.execution.unlock()
+             condition.lock();entry.active -= 1
+-            if entry.active==0 && entry.phase == .retiring {
++            if entry.active==0 && entry.phase == .retiring && !hasUntrackedFreshGuard(entry) {
+                 entry.phase = .closed;entries.removeValue(forKey:handle)
+             }
+             condition.broadcast();condition.unlock()
+-        }
+-        return try action(entry)
++          }
++        }
++        return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){try action(entry)}
++    }
++    private func hasUntrackedFreshGuard(_ entry:Entry)->Bool {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        return entry.nativeGuardFailure != nil || entry.pendingPostGuardObservation != nil
++#else
++        return false
++#endif
++    }
++    private func requireFreshGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?=nil)throws {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        guard let captured=entry.nativeFreshRuntime else{return}
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++        condition.lock();let prior=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation;let open=entry.phase == .open;condition.unlock()
++        if let prior{throw prior}
++        let requiresOpen=moment == .beforeAction || moment == .beforeAccountCallback
++        guard open || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}
++        do{try captured.revalidateCurrentCommandBinding()}
++        catch {
++            let classified=classifyAuxNativeFreshGuard(error)
++            let disposition:AuxNativeFreshGuardDisposition=classified == .provenBindingLoss ? .provenBindingLoss : (moment.beforeProtectedBoundary ? classified:.postOutcomeUnknown)
++            let failure=AuxNativeFreshGuardFailure(moment:moment,underlying:error,operationError:operationError,disposition:disposition)
++            // Read-only pre-timeout/unavailable failures refuse this call but
++            // permit a later real guard check. They do not poison the owner.
++            if disposition == .retryableNoCommand || disposition == .unknownNoCommand{throw failure}
++            condition.lock()
++            if disposition == .provenBindingLoss {
++                entry.nativeGuardFailure=entry.nativeGuardFailure ?? failure;entry.phase = .retiring
++            }else{
++                // An operation may already have happened. Retain an unresolved
++                // observation fence, not a permanent identity-loss assertion.
++                entry.pendingPostGuardObservation=entry.pendingPostGuardObservation ?? failure
++            }
++            let retained=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation!;condition.broadcast();condition.unlock()
++#if AUX_MACOS_UTILITY_DISPATCH
++            if disposition == .provenBindingLoss{entry.macOSUtilities?.closeAdmission()}
++#endif
++            throw retained
++        }
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++        condition.lock();let later=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation;let stillOpen=entry.phase == .open;condition.unlock()
++        if let later{throw later}
++        guard stillOpen || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}
++#endif
++    }
++    private func guardedFreshAction<T>(_ entry:Entry,before:AuxNativeFreshGuardMoment,after:AuxNativeFreshGuardMoment,afterThrow:AuxNativeFreshGuardMoment,_ action:()throws->T)throws->T {
++        try requireFreshGuard(entry,moment:before)
++        let result:T
++        do{result=try action()}
++        catch{
++            let original=error
++            // An inner acquired callback already records its exact boundary;
++            // don't relabel a before-callback timeout as an attempted command.
++            if original is AuxNativeFreshGuardFailure{throw original}
++            try requireFreshGuard(entry,moment:afterThrow,operationError:original);throw original
++        }
++        try requireFreshGuard(entry,moment:after)
++        return result
+     }
+     // Owner destruction cannot wait on its own lease; close now and let the
+     // last acquired operation remove the entry. No further acquisition succeeds.
+     fileprivate func closeOwner(_ handle:UInt64) {
++        guard getpid()==process else{return}
+         condition.lock();defer{condition.unlock()}
+         guard let entry=entries[handle]else{return}
+         entry.phase = .retiring
+ #if AUX_MACOS_UTILITY_DISPATCH
+         entry.macOSUtilities?.closeAdmission()
+ #endif
+-        if entry.active==0{entry.phase = .closed;entries.removeValue(forKey:handle)}
++        if entry.active==0 && !hasUntrackedFreshGuard(entry){entry.phase = .closed;entries.removeValue(forKey:handle)}
+         condition.broadcast()
+     }
+     func isAccepting(_ handle:UInt64)->Bool {
+-        condition.lock();defer{condition.unlock()};return entries[handle]?.phase == .open
++        guard getpid()==process else{return false}
++        condition.lock();defer{condition.unlock()}
++        guard let entry=entries[handle],entry.phase == .open else{return false}
++        return !hasUntrackedFreshGuard(entry)
+     }
+     func retire(_ handle:UInt64)throws {
++        guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         // Reentrant close would wait for this same thread's acquired lease.
+         let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+         guard active[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantRetirement}
+@@ -203,6 +274,9 @@
+         entry.macOSUtilities?.closeAdmission()
+ #endif
+         while entry.active>0 {condition.wait()}
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        if let failure=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation{throw failure}
++#endif
+         entry.phase = .closed
+         // A simultaneous retiring caller can still hold the same entry, but
+         // no call can acquire it once retirement begins or after removal.
+@@ -302,6 +376,12 @@
+     case AuxDispatcherLifetimeError.invalidHandle:text="Invalid dispatcher handle"
+     case AuxDispatcherLifetimeError.retiring:text="Dispatcher is retiring"
+     case AuxDispatcherLifetimeError.invalidInput:text="Invalid native command input"
++    case let failure as AuxNativeFreshGuardFailure:
++        switch failure.moment {
++        case .beforeAction,.beforeAccountCallback:text="Fresh native guard unavailable before command boundary"
++        default:text="Fresh native guard unavailable; command outcome unknown"
++        }
++    case AuxNativeFreshGuardProcessError.wrongProcess:text="Wrong native dispatcher process"
+     default:text="Native dispatcher operation failed"
+     }
+     return dispatcherCString("{\"error\":\""+text+"\"}")
+--- baseline/AuxPreparedFreshRuntimeProvider.swift
++++ source/AuxPreparedFreshRuntimeProvider.swift
+@@ -21,6 +21,7 @@
+     }
+     // 0: creation settled, 1: creation pending, 2: quarantined/untracked late owner, -1: invalid handle.
+     // Existing per-Environment owners must separately retire through WorkerHost.
++    func copyReadyHomeDescriptor()throws->Int32{try PreparedFreshRuntimeProviders.copyReadyHome(nativeHandle)}
+     func closeCreationAdmission()->Int32{PreparedFreshRuntimeProviders.close(nativeHandle)}
+     deinit{PreparedFreshRuntimeProviders.release(nativeHandle)}
+ }
+@@ -31,6 +32,7 @@
+         let preparedScoped:ScopedAuxCommandContext
+         var references:UInt64=1
+         var active:UInt64=0
++        var handoffs:UInt64=0
+         var closed=false
+         var quarantinedOwners:[AuxOwnedCommandDispatcher]=[]
+         init(terminal:NativeFreshTerminalSelection,captured:NativeFreshRuntimeCapturedContext,scoped:ScopedAuxCommandContext){
+@@ -63,7 +65,7 @@
+             e.references -= 1
+             if e.references==0 {
+                 e.closed=true
+-                if e.active==0 && e.quarantinedOwners.isEmpty{released=entries.removeValue(forKey:id)}
++                if e.active==0 && e.handoffs==0 && e.quarantinedOwners.isEmpty{released=entries.removeValue(forKey:id)}
+             }
+         }
+         lock.unlock();withExtendedLifetime(released){}
+@@ -73,7 +75,39 @@
+         lock.lock();defer{lock.unlock()}
+         guard let e=entries[id]else{return -1};e.closed=true
+         if !e.quarantinedOwners.isEmpty{return 2}
+-        return e.active==0 ? 0:1
++        return e.active==0 && e.handoffs==0 ? 0:1
++    }
++    static func copyReadyHome(_ id:UInt64)throws->Int32 {
++        guard getpid()==process else{throw AuxPreparedFreshRuntimeError.wrongProcess}
++        let entry:Entry
++        lock.lock()
++        guard let e=entries[id],!e.closed,e.handoffs<UInt64.max else{lock.unlock();throw AuxPreparedFreshRuntimeError.closed}
++        e.handoffs += 1;entry=e;lock.unlock()
++        var descriptor:Int32 = -1
++        do {
++            let current=try NativeFreshRuntimeCapturedContext.capture(entry.terminal)
++            let scoped=try ScopedAuxCommandContext.nativeFresh(current)
++            let expected=entry.preparedScoped.evidence,actual=scoped.evidence
++            guard expected.scope==actual.scope,expected.accessGroupSha256==actual.accessGroupSha256,
++                  expected.runtimeGenerationId==actual.runtimeGenerationId,expected.runtimeSelectionSha256==actual.runtimeSelectionSha256,
++                  expected.installationBindingsSha256==actual.installationBindingsSha256,
++                  expected.logicalKeyPolicySha256==actual.logicalKeyPolicySha256 else{throw NativeFreshRuntimeConsumerError.binding}
++            try current.revalidateCurrentCommandBinding()
++            descriptor=try current.owner.duplicateRetainedHomeDescriptor()
++            try current.revalidateCurrentCommandBinding()
++        }catch {
++            guard getpid()==process else{throw AuxPreparedFreshRuntimeError.wrongProcess}
++            if descriptor>=0{Darwin.close(descriptor)}
++            lock.lock();entry.handoffs -= 1
++            if entry.references==0 && entry.active==0 && entry.handoffs==0 && entry.quarantinedOwners.isEmpty{entries.removeValue(forKey:id)}
++            lock.unlock();throw error
++        }
++        guard getpid()==process else{throw AuxPreparedFreshRuntimeError.wrongProcess}
++        lock.lock();let closed=entry.closed;entry.handoffs -= 1
++        if entry.references==0 && entry.active==0 && entry.handoffs==0 && entry.quarantinedOwners.isEmpty{entries.removeValue(forKey:id)}
++        lock.unlock()
++        if closed{Darwin.close(descriptor);throw AuxPreparedFreshRuntimeError.closed}
++        return descriptor
+     }
+     static func create(_ id:UInt64,_ handle:UnsafeMutablePointer<UInt64>,_ retained:UnsafeMutablePointer<UnsafeMutableRawPointer?>)->Int32 {
+         guard getpid()==process else{return -1}
+@@ -114,7 +148,7 @@
+         entry.active -= 1
+         // Even after all native references release, uncertain owners retain the
+         // genuine context and remain observable; no timeout/reset/reopen/delete.
+-        if entry.references==0 && entry.active==0 && entry.quarantinedOwners.isEmpty{entries.removeValue(forKey:id)}
++        if entry.references==0 && entry.active==0 && entry.handoffs==0 && entry.quarantinedOwners.isEmpty{entries.removeValue(forKey:id)}
+         lock.unlock();return -1
+     }
+ }
+--- baseline/NativeFreshRuntimeCapturedContext.swift
++++ source/NativeFreshRuntimeCapturedContext.swift
+@@ -30,6 +30,17 @@
+         try captured.revalidate()
+         return captured
+     }
++    // No injected grant: use this exact immutable selected runtime plus actual
++    // current four-row recapture/import and the genuine ready HEAD/live guard.
++    func revalidateCurrentCommandBinding()throws {
++        try revalidate()
++        let current=try AuxRuntimeCapturedCommandContext.validate(selection:runtime.selection,
++            rows:AuxRuntimeDataProtectionCapture.capture(runtime.selection))
++        guard current.selection.targetHashes==runtime.selection.targetHashes,
++              current.selection.scope==runtime.selection.scope,
++              current.selection.generationId==runtime.selection.generationId else{throw NativeFreshRuntimeConsumerError.binding}
++        try revalidate()
++    }
+     func revalidate()throws {
+         try owner.revalidateNativeStageBinding()
+         guard initialSha==owner.durableJournalSha256,runtime.selection.scope==owner.journal.scope,
+--- baseline/ScopedAuxCommandContext.swift
++++ source/ScopedAuxCommandContext.swift
+@@ -34,7 +34,7 @@
+ }
+ struct ScopedAuxCommandContext {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+-    private(set) var nativeFreshOwner:NativeFreshStagedContext? = nil
++    private(set) var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
+ #endif
+     let installation:AuxInstallationCommandCore
+     let secureStore:AuxSecureStoreCommandCore
+@@ -123,7 +123,7 @@
+         let fd=try captured.owner.duplicateRetainedHomeDescriptor();defer{Darwin.close(fd)}
+         var result=try runtime(terminal:captured.runtime,policy:.sourceKnownV2(),boundary:ActualAuxSecureStoreBoundary(),
+             atomicAccountHome:captured.owner.canonicalHome,retainedAccountHomeDescriptor:fd)
+-        result.nativeFreshOwner=captured.owner
++        result.nativeFreshRuntime=captured
+         try captured.revalidate()
+         return result
+     }
