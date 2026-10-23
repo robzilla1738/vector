@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-recovery-enrollment/Aux.app",
+  "nativeReceiptSha256": "d185425dc794bf9cddb69a4494a23a6a0c1df8271461f4915718979068405362",
+  "compositionSha256": "d4bb26b71d6e72a3f970fbc6d3ff59c81cd41a3f90f611e82f550a06ad75e82c",
+  "packageReceiptSha256": "b38e4cfcaee1167edceff77546064c1a119f71aabeb78d40b9a8e05f6f435b55",
+  "frameworkSha256": "49801d5e53d1479edd1a41ef06070111d7db0d92e50371ec247a5033c5864c7b",
+  "nativeInputFiles": 563,
+  "nativeRetainedLeafCount": 418,
+  "nativeLeafFilesCompared": 0,
+  "fullNativeInventoryRepeated": false,
+  "nativeFrameworkCompared": true,
+  "retiredIndependentRuntime": {
+    "root": "Contents/Resources/aux-runtime",
+    "exactReceiptFiles": 145,
+    "absent": true
+  },
+  "newUtilityAndRecoveryAssets": [
+    {
+      "path": "Contents/Resources/native/aux-macos-utilities.node",
+      "bytes": 393720,
+      "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e"
+    },
+    {
+      "path": "Contents/Resources/native/aux-macos-utilities.cjs",
+      "bytes": 737,
+      "sha256": "329af1e2897c0b04a45db611d0fea01f7164898dd474745936f157ccfd2a89f4"
+    },
+    {
+      "path": "Contents/Resources/aux-crypto/aux-sync-recovery.mjs",
+      "bytes": 614197,
+      "sha256": "2758fcf38fd300b44e376dacd23a8dccf21fc51d7d19ddcfe21036a681374578"
+    },
+    {
+      "path": "Contents/Resources/node-development/aux-crypto/aux-sync-recovery.mjs",
+      "bytes": 614197,
+      "sha256": "2758fcf38fd300b44e376dacd23a8dccf21fc51d7d19ddcfe21036a681374578"
+    }
+  ],
+  "crypto": {
+    "profile": "development",
+    "generatedManifestSha256": "f0715c88f42570655ca68b0be3f872b0058cd17ba4ea45a7518e84240e1ddec1",
+    "assets": [
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-csk-v2-runtime.mjs",
+        "bytes": 2067,
+        "sha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26",
+        "modeBits": 420,
+        "imports": [
+          "./aux-dk-crypto.mjs",
+          "./aux-json-tokens.mjs"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-live-dk-runtime.mjs",
+        "bytes": 3696,
+        "sha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto",
+          "./aux-dk-crypto.mjs"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-dk-crypto.mjs",
+        "bytes": 3251,
+        "sha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto"
+        ]
+      },
+      {
+        "mode": "sea",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/aux-crypto/aux-json-tokens.mjs",
+        "bytes": 1538,
+        "sha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8",
+        "modeBits": 420,
+        "imports": []
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-csk-v2-runtime.mjs",
+        "bytes": 2067,
+        "sha256": "287fb8532a53cdf20ab30b41d9a2d91023e43db5ae51772668c8f9346555cb26",
+        "modeBits": 420,
+        "imports": [
+          "./aux-dk-crypto.mjs",
+          "./aux-json-tokens.mjs"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-live-dk-runtime.mjs",
+        "bytes": 3696,
+        "sha256": "a7a89b8deddec6105a862d3f1caad81e27303f7ee73baa3067a8faa28fdf7e1e",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto",
+          "./aux-dk-crypto.mjs"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-dk-crypto.mjs",
+        "bytes": 3251,
+        "sha256": "580c8ae4a3deb958ad9facba57cfceaad03469d348064e8d0f87ae19871f1680",
+        "modeBits": 420,
+        "imports": [
+          "node:crypto"
+        ]
+      },
+      {
+        "mode": "node-development",
+        "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-crypto/aux-json-tokens.mjs",
+        "bytes": 1538,
+        "sha256": "b238659d627fb37d7876292773d27da87e2c874ad9b47cf853ddfd0995fb39a8",
+        "modeBits": 420,
+        "imports": []
+      }
+    ],
+    "entrypointsImported": false,
+    "activation": false
+  },
+  "pdf": {
+    "moduleSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+    "moduleBytes": 9474752,
+    "loaderSha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3",
+    "pinFileSha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f",
+    "loaded": false,
+    "extractionRepeated": false
+  },
+  "ui": {
+    "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-aux-recovery-utilities/Aux.app",
+    "comparedFiles": 1217,
+    "priorFiles": 1215,
+    "originalFilesByteIdentical": 1213,
+    "allowedChangedPaths": [
+      "assets/account-Dr_CA8LL.js",
+      "manifest.json"
+    ],
+    "addedAssets": [
+      {
+        "path": "assets/aux-sync-recovery-enrollment-controller.js",
+        "bytes": 4175,
+        "mode": 420,
+        "repositorySource": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js",
+        "sourceSha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3",
+        "outputSha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3",
+        "generatedBy": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs"
+      },
+      {
+        "path": "assets/aux-sync-recovery-enrollment.js",
+        "bytes": 4170,
+        "mode": 420,
+        "repositorySource": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js",
+        "sourceSha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45",
+        "outputSha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45",
+        "generatedBy": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs"
+      }
+    ],
+    "stylesheets": 5,
+    "stylesheetsByteIdentical": true,
+    "revision": 11,
+    "version": "1.26.1016.1863",
+    "fingerprint": "ade97244902afdc5dd345af447090b2c79a715a0500ccc4aed6eeb82ca75eb1d",
+    "accountSha256": "3d3119ea8f2bd1afd7c203efecd07c1f2d2d6d4425a1c94f36b9a9bbb7c65f47",
+    "accountAnchorCount": 3,
+    "inventorySha256": "23b4b79abde6bd2e83a2580db0abe7528232f6f98e10640ca45e865a775de163",
+    "renderedComparison": false
+  },
+  "coldRefusals": [
+    {
+      "label": "daemon-sea",
+      "codeSha256": "d7b09b670cb5b7f8db52bfea1232fa9252a48e637cb96295532bda4877609c97",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    },
+    {
+      "label": "cli-sea",
+      "codeSha256": "3e17ca461994700242d4bdf4e6f4b5c547fc2de7c3bbdd12ac75b41fbee17835",
+      "firstRefusal": true,
+      "preservedCliShebang": true,
+      "evaluated": false
+    },
+    {
+      "label": "node-development",
+      "codeSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+      "firstRefusal": true,
+      "preservedCliShebang": false,
+      "evaluated": false
+    }
+  ],
+  "nativeOrPdfFixturesRepeated": false,
+  "appLaunched": false,
+  "entrypointsEvaluated": false,
+  "protectedOrOSOrCloudOperations": false,
+  "productionReady": false,
+  "signed": false,
+  "state2Authorized": false
+}

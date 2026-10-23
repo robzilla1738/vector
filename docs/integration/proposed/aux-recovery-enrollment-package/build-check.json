@@ -1,0 +1,26 @@
+{
+  "format": "aux.recovery-enrollment.package-build.v1",
+  "integrationCommits": [
+    "cce7afcb5",
+    "0f0565977",
+    "4b6700c28"
+  ],
+  "stage": "out/provided-reuse-aux-recovery-enrollment",
+  "app": "out/provided-candidate-aux-recovery-enrollment/Aux.app",
+  "stageTerminalSession": 11158,
+  "stageExitCode": 0,
+  "packageTerminalSession": 86260,
+  "packageExitCode": 0,
+  "staticCheckTerminalSession": 50168,
+  "staticCheckExitCode": 0,
+  "suppliedResources": 10764,
+  "nativeLeaves": 418,
+  "packageReceiptSha256": "b38e4cfcaee1167edceff77546064c1a119f71aabeb78d40b9a8e05f6f435b55",
+  "evidenceSha256": "a901884b4c832ea9c463af35aa4fa18bbfa3dca254d3a220bf37231f9fd32fba",
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "renderedComparison": false,
+  "signingPerformed": false,
+  "state2Authorized": false,
+  "productionReady": false
+}
