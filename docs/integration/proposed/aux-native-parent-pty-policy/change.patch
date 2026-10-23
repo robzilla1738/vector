@@ -1,0 +1,15 @@
+--- c0bd7cef0/AuxAuthenticatedChildParentPolicyReader.swift
++++ v3/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -134,7 +134,11 @@
+             guard SecCodeCopyPath(code, [], &path) == errSecSuccess, let path else { return -1 }
+             let bytes = try resource((path as URL).path)
+             let policy = try AuxFreshBootstrapPolicyContents.decode(bytes)
+-            guard policy.role == .daemon, policy.embeddedDaemon else { return -1 }
++            let format = try strictEnvelopeObject(bytes)["format"] as? String
++            guard policy.role == .daemon, policy.embeddedDaemon,
++                  format == "aux.fresh.bootstrap.policy.v2" || format == "aux.fresh.bootstrap.policy.v3",
++                  format != "aux.fresh.bootstrap.policy.v3" || policy.ptyArtifacts != nil
++            else { return -1 }
+             let sealed = SecCodeValidateFileResource(code,
+                 AuxFreshBootstrapIdentity.resourceRelative as CFString, bytes as CFData, [])
+             guard sealed == errSecSuccess,

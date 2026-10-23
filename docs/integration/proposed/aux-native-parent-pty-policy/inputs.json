@@ -1,0 +1,21 @@
+{
+  "format": "aux.native-parent-pty-policy.source.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxAuthenticatedChildParentPolicyReader.swift": "63a0203e6646c58bf5b303b73407e2d72356c694b836e5aba1b73f175afaaef5",
+    "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxAuthenticatedChildParentPolicyReader.swift": "c5e25b216dd59496a00acff534434ed78b7601ef7bcbc8d7faccf998e6b0fb6d",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f"
+  },
+  "compiled": false,
+  "executed": false,
+  "mainLogicalReplacements": {
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift": "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift"
+  },
+  "parentLogicalReplacements": {
+    "AuxFreshBootstrapPolicy.swift": "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxFreshBootstrapPolicy.swift",
+    "AuxAuthenticatedChildParentPolicyReader.swift": "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxAuthenticatedChildParentPolicyReader.swift"
+  }
+}
