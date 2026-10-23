@@ -72,7 +72,11 @@ def main():
             '  }\n')
         specs[1][1].append((function + ' actual entry/resume admission', anchor, replacement))
     anchor = '''void NavigationRequest::OnStartChecksComplete(
-    NavigationThrottle::ThrottleCheckResult result) {'''
+    NavigationThrottle::ThrottleCheckResult result) {
+  TRACE_EVENT("navigation", "NavigationRequest::OnStartChecksComplete",
+              perfetto::Flow::FromPointer(this));
+  CHECK(result.action() != NavigationThrottle::DEFER);
+  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);'''
     specs[1][1].append(('actual URL-loader dispatch admission', anchor, anchor + '''
   aux_migration::ScopedNavigationAdmission aux_admission(this, false);
   if (!aux_admission.admitted()) {

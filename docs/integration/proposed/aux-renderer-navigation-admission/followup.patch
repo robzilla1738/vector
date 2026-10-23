@@ -111,19 +111,19 @@ diff --git a/content/browser/renderer_host/navigation_request.cc b/content/brows
    TRACE_EVENT("navigation", "NavigationRequest::BeginNavigationImpl",
                perfetto::Flow::FromPointer(this));
    base::ElapsedTimer timer;
-@@ -5959,6 +5987,12 @@
- 
- void NavigationRequest::OnStartChecksComplete(
-     NavigationThrottle::ThrottleCheckResult result) {
+@@ -5963,6 +5991,12 @@
+               perfetto::Flow::FromPointer(this));
+   CHECK(result.action() != NavigationThrottle::DEFER);
+   CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);
 +  aux_migration::ScopedNavigationAdmission aux_admission(this, false);
 +  if (!aux_admission.admitted()) {
 +    // Retain the original asynchronous failure/weak-callback cleanup below.
 +    result = NavigationThrottle::ThrottleCheckResult(
 +        NavigationThrottle::CANCEL_AND_IGNORE);
 +  }
-   TRACE_EVENT("navigation", "NavigationRequest::OnStartChecksComplete",
-               perfetto::Flow::FromPointer(this));
-   CHECK(result.action() != NavigationThrottle::DEFER);
+ 
+   if (on_start_checks_complete_closure_)
+     std::move(on_start_checks_complete_closure_).Run();
 diff --git a/content/public/browser/aux_renderer_navigation_admission.h b/content/public/browser/aux_renderer_navigation_admission.h
 new file mode 100644
 --- /dev/null

@@ -48,7 +48,7 @@
     {
       "path": "content/browser/renderer_host/navigation_request.cc",
       "inputSha256": "e3cbbb2630f28e3684247796da62d1655ecd4f62501680fce3ac1356902718c2",
-      "outputSha256": "00dd934057d4cb9e479705c5bd9acf6fb522f32b19de1670084792cef58e52d0",
+      "outputSha256": "69fbe2a2375ae6f726ac181856a9efc974c182080ae5de24c28bcd5f7a22467d",
       "edits": [
         {
           "name": "include",
@@ -76,8 +76,8 @@
         },
         {
           "name": "actual URL-loader dispatch admission",
-          "find": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {",
-          "replace": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {\n  aux_migration::ScopedNavigationAdmission aux_admission(this, false);\n  if (!aux_admission.admitted()) {\n    // Retain the original asynchronous failure/weak-callback cleanup below.\n    result = NavigationThrottle::ThrottleCheckResult(\n        NavigationThrottle::CANCEL_AND_IGNORE);\n  }",
+          "find": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {\n  TRACE_EVENT(\"navigation\", \"NavigationRequest::OnStartChecksComplete\",\n              perfetto::Flow::FromPointer(this));\n  CHECK(result.action() != NavigationThrottle::DEFER);\n  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);",
+          "replace": "void NavigationRequest::OnStartChecksComplete(\n    NavigationThrottle::ThrottleCheckResult result) {\n  TRACE_EVENT(\"navigation\", \"NavigationRequest::OnStartChecksComplete\",\n              perfetto::Flow::FromPointer(this));\n  CHECK(result.action() != NavigationThrottle::DEFER);\n  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);\n  aux_migration::ScopedNavigationAdmission aux_admission(this, false);\n  if (!aux_admission.admitted()) {\n    // Retain the original asynchronous failure/weak-callback cleanup below.\n    result = NavigationThrottle::ThrottleCheckResult(\n        NavigationThrottle::CANCEL_AND_IGNORE);\n  }",
           "count": 1
         }
       ]
@@ -98,7 +98,7 @@
       "outputSha256": "502bcd94ca2b89455c52bbdc040ff97c3c9139c1138c84bd469b38b1cbad33e9"
     }
   ],
-  "patchSha256": "2a76b4b1ab3fa335a6484bc66a4b9ad3009428b43f30e111d95c8bb435ca92d0",
+  "patchSha256": "a2c393e4056c927830b57f6a151db7cc144b06f3c370068de6bd5b1c39dbad5c",
   "applied": false,
   "compiled": false,
   "coldRefusalChanged": false,

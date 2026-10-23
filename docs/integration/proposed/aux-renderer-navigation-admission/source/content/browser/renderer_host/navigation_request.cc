@@ -5987,16 +5987,16 @@ ErrorPageProcess NavigationRequest::ComputeErrorPageProcess() {
 
 void NavigationRequest::OnStartChecksComplete(
     NavigationThrottle::ThrottleCheckResult result) {
+  TRACE_EVENT("navigation", "NavigationRequest::OnStartChecksComplete",
+              perfetto::Flow::FromPointer(this));
+  CHECK(result.action() != NavigationThrottle::DEFER);
+  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);
   aux_migration::ScopedNavigationAdmission aux_admission(this, false);
   if (!aux_admission.admitted()) {
     // Retain the original asynchronous failure/weak-callback cleanup below.
     result = NavigationThrottle::ThrottleCheckResult(
         NavigationThrottle::CANCEL_AND_IGNORE);
   }
-  TRACE_EVENT("navigation", "NavigationRequest::OnStartChecksComplete",
-              perfetto::Flow::FromPointer(this));
-  CHECK(result.action() != NavigationThrottle::DEFER);
-  CHECK(result.action() != NavigationThrottle::BLOCK_RESPONSE);
 
   if (on_start_checks_complete_closure_)
     std::move(on_start_checks_complete_closure_).Run();
