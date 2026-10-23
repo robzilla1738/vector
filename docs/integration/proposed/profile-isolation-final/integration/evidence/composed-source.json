@@ -1,0 +1,49 @@
+{
+  "changes": [
+    {
+      "name": "native finite writer runtime",
+      "count": 1
+    },
+    {
+      "name": "finite async tool atomic write",
+      "count": 1
+    },
+    {
+      "name": "finite async credential file write",
+      "count": 1
+    },
+    {
+      "name": "credential optional directory cleanup uncertainty",
+      "count": 1
+    },
+    {
+      "name": "finite memory history append",
+      "count": 1
+    },
+    {
+      "name": "file logger refuses late entry",
+      "count": 1
+    },
+    {
+      "name": "logger directory guarded sync",
+      "count": 1
+    },
+    {
+      "name": "actual logger stream close custody",
+      "count": 1
+    },
+    {
+      "name": "shutdown resource lifecycle",
+      "count": 1
+    },
+    {
+      "name": "join actual resource shutdown",
+      "count": 1
+    }
+  ],
+  "inputSha256": "6a2b15fe81ed3eb0cd8f13bbc0af0dee2d714accf3d9b4f73292fde0f3d17ed0",
+  "outputSha256": "bf82847ebfcdf0aa369f9c900bcc22de0cf2bad4b24eb36ba8285ba7522bf0e0",
+  "passed": true,
+  "coldRefusalPreserved": true,
+  "composedSha256": "bf82847ebfcdf0aa369f9c900bcc22de0cf2bad4b24eb36ba8285ba7522bf0e0"
+}
