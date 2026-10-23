@@ -1,0 +1,60 @@
+{
+  "format": "aux.delivery-writers.source.v1",
+  "passed": true,
+  "inputSha256": "cd56bbb6245d56f1714dc498907653deb06f7a704946f55ee87652a9d0f053c1",
+  "outputSha256": "2c2f8f35308afeb8ba979543410f09fd2462f76c9c00351ba5a8768cbcef3431",
+  "changes": [
+    {
+      "name": "producer close runtime",
+      "count": 1
+    },
+    {
+      "name": "sync startup registered stop",
+      "count": 1
+    },
+    {
+      "name": "history startup registered stop",
+      "count": 1
+    },
+    {
+      "name": "history tick admission",
+      "count": 1
+    },
+    {
+      "name": "watch resource construction",
+      "count": 1
+    },
+    {
+      "name": "watch resource construction end",
+      "count": 1
+    },
+    {
+      "name": "poll stop registration",
+      "count": 1
+    },
+    {
+      "name": "cookie trigger stop registration",
+      "count": 1
+    },
+    {
+      "name": "debounce stop registration",
+      "count": 1
+    },
+    {
+      "name": "OAuth refresh cancellable producer",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "actual stop helper clears timers invalidates queues and unregisters transport",
+    "history original stop awaited with restart disabled",
+    "watcher original close awaited",
+    "provider gets shutdown abort but pending held until callback settles",
+    "unknown retained after abort and settlement",
+    "full source syntax and changed input refusal"
+  ],
+  "nativeBinding": "synthetic only",
+  "allProducersDrained": false,
+  "newNativeAbi": false,
+  "uiChanged": false
+}

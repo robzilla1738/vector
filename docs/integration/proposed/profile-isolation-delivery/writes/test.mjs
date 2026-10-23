@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {applyAuxDeliveryWrites,deliveryPrelude,stopPrelude} from './transform.mjs';
+const raw=readFileSync('/private/tmp/aux-delivery-writer-input.mjs','utf8'),result=applyAuxDeliveryWrites(raw);assert.equal(result.changes.length,10);
+let nativeClosed=false,pending=0,unknown=false;const events=[],binding={};
+for(const [name,value] of Object.entries({assertBrokerOwner(){if(nativeClosed)throw Error('closed')},withBrokerSync(fn){if(nativeClosed)throw Error('closed');return fn()},withBrokerAwaited(fn){if(nativeClosed)throw Error('closed');pending++;try{return Promise.resolve(fn()).then(v=>{pending--;return v},e=>{pending--;unknown=true;throw e})}catch(e){pending--;unknown=true;throw e}},closeBrokerWriteAdmission(){nativeClosed=true},noteUntrackedBrokerWork(){unknown=true}}))Object.defineProperty(binding,name,{value});
+const runtime=vm.createContext({process:{_linkedBinding:()=>binding},Object,Proxy,Reflect,Error,AggregateError,Promise,Set,AbortController,AbortSignal,toOAuthRefreshError:e=>e,clearTimeout:id=>events.push(['timeout',id]),clearInterval:id=>events.push(['interval',id])});
+vm.runInContext(deliveryPrelude+stopPrelude+';globalThis.b=auxBrokerBoundary();',runtime);
+let closeWatcher;const watcher=runtime.b.watcher(()=>({close(){events.push('watchClose');return new Promise(resolve=>closeWatcher=resolve)}}));
+let stopHistory;const history={stopping:false,restart:true,stop(){events.push('historyStop');return new Promise(resolve=>stopHistory=resolve)}};
+let queueDone;const sync={generation:1,debounce:11,poll:12,cookiePoll:13,queue:new Promise(resolve=>queueDone=resolve),watcher,stopCookieTriggers:()=>events.push('unsub')};
+Object.assign(runtime,{runtimes:new Map([[1,sync]]),runtimes$1:new Map([[1,history]])});
+runtime.b.registerProducerStop(runtime.auxStopSyncProducers);
+let refreshDone,providerSignal;
+const refresh=runtime.auxRefreshProducer({refresh(credential,signal){providerSignal=signal;return new Promise(resolve=>refreshDone=resolve)}},{synthetic:true});
+assert.equal(pending,2);assert.equal(unknown,true);
+let finished=false;const shutdown=runtime.b.beginShutdown().then(()=>finished=true);await new Promise(resolve=>setImmediate(resolve));
+assert.equal(sync.generation,2);assert.equal(runtime.runtimes.size,0);assert.equal(history.restart,false);assert.equal(providerSignal.aborted,true);assert.equal(finished,false);assert.equal(nativeClosed,false);assert(events.includes('unsub'));
+queueDone();stopHistory();closeWatcher();await new Promise(resolve=>setImmediate(resolve));assert.equal(finished,false);assert.equal(pending,1);
+refreshDone('done');assert.equal(await refresh,'done');await shutdown;assert.equal(pending,0);assert.equal(nativeClosed,true);assert.equal(unknown,true);assert.equal(runtime.runtimes$1.size,0);
+assert.throws(()=>runtime.b.watcher(()=>({close(){}})),/CLOSED/);
+assert.throws(()=>applyAuxDeliveryWrites(raw+' '),/Unreviewed/);
+const temporary=mkdtempSync(join(tmpdir(),'aux-producer-check-'));try{const target=join(temporary,'index.mjs');writeFileSync(target,result.source);const syntax=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});assert.equal(syntax.status,0,syntax.stderr)}finally{rmSync(temporary,{recursive:true,force:true})}
+writeFileSync(new URL('./evidence/source.json',import.meta.url),JSON.stringify({format:'aux.delivery-writers.source.v1',passed:true,inputSha256:result.inputSha256,outputSha256:result.outputSha256,changes:result.changes,checks:['actual stop helper clears timers invalidates queues and unregisters transport','history original stop awaited with restart disabled','watcher original close awaited','provider gets shutdown abort but pending held until callback settles','unknown retained after abort and settlement','full source syntax and changed input refusal'],nativeBinding:'synthetic only',allProducersDrained:false,newNativeAbi:false,uiChanged:false},null,2)+'\n');console.log('PASS focused producer stop/order/abort checks');
