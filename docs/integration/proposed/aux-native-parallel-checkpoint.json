@@ -1,77 +1,38 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:09:42.837411+00:00",
+  "recordedAt": "2026-10-23T02:30:06.526382+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
   "liveHandlesVerifiedThisCheckpoint": [
     {
-      "session": 51532,
-      "role": "full browser build of applied792-source accessor successor",
-      "log": "out/aux-noncreating-profile-manager-style-native-build.log",
+      "session": 93645,
+      "role": "actual full browser build of applied808-source paired participants",
+      "log": "out/aux-participant-addresses-native-build.log",
       "state": "running",
-      "compositionSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43"
-    },
-    {
-      "session": 89891,
-      "role": "pure retained journal FD fixture",
-      "log": "out/aux-native-fresh-retained-journal-check.log",
-      "state": "queued behind native build lock"
-    },
-    {
-      "session": 21096,
-      "role": "five service-worker TUs and one captured state fixture",
-      "log": "out/aux-content-service-worker-admission-check.log",
-      "state": "queued behind native build lock"
-    },
-    {
-      "session": 60495,
-      "role": "one installed-app session TU and actual-source schema fixture",
-      "log": "out/aux-installed-app-session-writer-check.log",
-      "state": "queued behind native build lock"
+      "compositionSha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107"
     }
   ],
   "agentReportedPendingChecks": [
     {
-      "session": 42337,
-      "role": "secure-capture production typecheck and captured effects"
+      "session": 40860,
+      "role": "paired31source actualruntimeconsumer/resume graph after one correctedvariable failure"
     },
     {
-      "session": 96148,
-      "role": "target boundary captured fixed-software check"
+      "session": 25336,
+      "role": "retainedaccountFD fixture"
     },
     {
-      "session": 38492,
-      "role": "initialv2 journal filesystem check"
-    },
-    {
-      "session": 69805,
-      "role": "initial-stage unknown Add reconciliation check"
-    },
-    {
-      "session": 82218,
-      "role": "target driver captured/recreated-instance check"
-    },
-    {
-      "session": 24645,
-      "role": "paired production graph; current corrections must be pinned before execution"
-    },
-    {
-      "session": 9874,
-      "role": "three renderer/navigation TUs and captured state check"
+      "session": 66115,
+      "role": "afterlock pathswap fixture"
     }
   ],
-  "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-worker-app-submission/owner",
-    "sha256": "2bab7214042dbf2fead85cd9e1925cbbeaf3f56c0ce4ccbbd3b1d935f073bc76",
-    "sources": 808,
-    "assets": 23,
-    "compiled": false
-  },
+  "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "native-v2 target shared-cohort operation lease and transient-unavailability correction; final paired dependency pins must include61b87 boundary and40ef retained journal",
-    "resumed-only native home/stage adoption: pinned design, no implementation yet",
-    "trusted in-child native startup/per-Environment owner registration and cleanup: production producer still missing"
+    "resumed-only actual filesystem fixture; no new25/31 graph duplicate",
+    "actual audit-authenticated child transport source",
+    "genuine native fresh owner provider and explicit WorkerHost consumption",
+    "cold entry/bootstrap/private launch handoff and signed-image/protected execution still absent"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -81,10 +42,62 @@
   "runtimeAcceptance": false,
   "protectedCallsExecuted": false,
   "sourceIntegratedNotYetGraphVerified": {
-    "targetCoordinator": "423167c4e",
-    "targetBoundary": "27f34cc26",
-    "boundaryStaticPinsPass": true,
-    "coordinatorStaticPinsPass": false,
-    "reason": "frozen coordinator dependency predates boundary61b87; correction pending in successor, no compile result claimed"
+    "resume": "42fa844d3",
+    "typedRuntimeConsumer": "ae704412a",
+    "afterLockAccountRevalidation": "4bbb1411c",
+    "actual31GraphPending": true
+  },
+  "terminalRootChecks": [
+    {
+      "session": 51532,
+      "exitCode": 0,
+      "role": "prior792-source fullbrowser+3artifacts+generatedkeyprobe",
+      "receipt": "out/aux-noncreating-profile-manager-style-native-build.json"
+    },
+    {
+      "session": 89891,
+      "exitCode": 0,
+      "role": "16 actual retained journalFD cases",
+      "evidence": "docs/integration/proposed/aux-native-fresh-retained-journal/execution.json"
+    },
+    {
+      "session": 21096,
+      "exitCode": 1,
+      "role": "3 upstreamSW TUs passed then rawpointerstylefail"
+    },
+    {
+      "session": 90019,
+      "exitCode": 1,
+      "role": "2 remainingSW TUs passed then fixture sentinelwarning"
+    },
+    {
+      "session": 40001,
+      "exitCode": 0,
+      "role": "corrected actualSW fixture only; noTUs repeated"
+    },
+    {
+      "session": 60495,
+      "exitCode": 0,
+      "role": "installedapp TU+fixture"
+    },
+    {
+      "session": 98636,
+      "exitCode": 0,
+      "role": "actual Node preload C++ object only; nolink/load"
+    },
+    {
+      "session": 26750,
+      "exitCode": 137,
+      "role": "own queuedNode library job cancelled before anychild/extraction/configure for changedcheck priority; not a compilefailure"
+    }
+  ],
+  "appliedCurrentNativeComposition": {
+    "composition": "out/native-reuse-composition-aux-participant-addresses",
+    "sha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107",
+    "sources": 808,
+    "assets": 23,
+    "applied": true,
+    "compiled": false,
+    "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json"
   }
 }
