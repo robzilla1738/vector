@@ -1,0 +1,28 @@
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -54,6 +54,9 @@
+ #include "chrome/browser/metrics/shutdown_watcher_helper.h"
+ #include "chrome/browser/net/system_network_context_manager.h"
+ #include "chrome/browser/aux/browser_platform.h"
++#if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++#include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
++#endif
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
+ #include "chrome/browser/performance_manager/public/chrome_browser_main_extra_parts_performance_manager.h"
+@@ -1914,6 +1917,15 @@
+ #endif
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
++#if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  // Product-build selection grants no authority: the native producer requires
++  // the actual signed v2 child policy and genuine provider-ready home transfer.
++  if (aux::peer::StartSealedNativeDaemonBeforeProfiles().route !=
++      aux::peer::SelectedStateHomeRoute::current) {
++    LOG(ERROR) << "Aux sealed native startup did not select a current provider";
++    return CHROME_RESULT_CODE_MISSING_DATA;
++  }
++#endif
+   // Validate bundled components and start the owned daemon. The supplied
+   // startup readiness gate runs after profile extension services initialize.
+   if (!aux::BrowserPlatform::Get().Start(

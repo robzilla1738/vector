@@ -1,0 +1,32 @@
+{
+  "format": "aux.native-parent-cold-launch.source.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxAuthenticatedChildParentPolicyReader.swift": "c5e25b216dd59496a00acff534434ed78b7601ef7bcbc8d7faccf998e6b0fb6d",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.h": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+    "docs/integration/proposed/aux-native-parent-cold-launch/source/AuxNativeParentColdLaunch.cc": "9a9f035305d412d53f34ceb409fb96639f5e8a5303ecc6e26227c403044e223e",
+    "docs/integration/proposed/aux-native-parent-cold-launch/baseline/chrome_browser_main.cc": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+    "docs/integration/proposed/aux-native-parent-cold-launch/baseline/AuxAuthenticatedChildParentPolicyReader.swift": "85be3fcc4b2c7b2b55e80b411f75d548317e5cd2313993b717e7039f73032aff",
+    "docs/integration/proposed/aux-native-parent-cold-launch/chrome-main-hook.patch": "21cec3ac24b3581bfed25b182af4cb8c3141120d76b2606a52001e13418c05ab",
+    "docs/integration/proposed/aux-native-parent-cold-launch/parent-reader.patch": "a7e6845386517a77692d00cc2235d85d406d5946a71ecde0c2b3612ba14a65be",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc": "0ab5e23e8efd6a7720e7366941e5f3e609f8ea9bc39463b5b42a52e9588407d4",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h": "0a92527b2177fb0ad4a9574c0d2d2db0d58937647f6245a700bb29c1551b222a",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc": "407f2cf2964bd960082b09be73514fcda573f5ee495e73340a535bdca9b3063f",
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
+    "docs/integration/proposed/aux-native-daemon-main/source/AuxNativeDaemonMain.cc": "16a394a12e8ab2d8541f172c4776f99cefce14a4098ea0697fae4d015c19cff3"
+  },
+  "readOnlyReaderBaselineCommit": "43b696d2b",
+  "sourceFiles": 3,
+  "baselineFiles": 2,
+  "nativeStartupBeforeProfiles": {
+    "browserPlatformStartLine": 1919,
+    "preProfileInitLine": 1928,
+    "preMainMessageLoopRunLine": 1809
+  },
+  "productDefine": "AUX_SEALED_NATIVE_COLD_ENTRY",
+  "productDefineEnabled": false,
+  "compiled": false,
+  "protectedOperationsExecuted": false,
+  "applied": false
+}
