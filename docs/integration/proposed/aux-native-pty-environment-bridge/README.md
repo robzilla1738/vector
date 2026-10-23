@@ -1,0 +1,13 @@
+# Native Environment PTY admission and custody
+
+This is a distinct host-source successor, paired with native-only producer hooks. It does not modify the historical daemon inputs, signed PTY addon, spawn helper, embedded v3 policy, startup gate, accepted app or UI.
+
+`AuxNativePtyBeginCurrent` looks up the actual current Node Environment through V8 and the native host registry. It validates process, creator thread, isolate, event loop, generation-specific active Worker, completed authenticated factory, and open admission. It reserves the exact Worker and authenticated Owner before callback-capable producer argument/property reads. No JS Environment, generation, PID or helper path supplies authority.
+
+`CanSpawn` repeats the real native-context/admission checks after argument conversion, immediately before every spawn attempt. Cross-thread close after that check may still race the syscall; the pending reservation remains counted until native failure or actual child publication, so close cannot transiently report drain or release ownership.
+
+The producer reports its successful syscall PID before waking its sole existing reaper or performing fallible JS result construction. Only that reaper's matching terminal waitpid result can settle the direct child. A failed/nonterminal/mismatched wait result records unknown custody. Every successful spawn leaves descendants explicitly unknown, even after direct-child completion. No secondary reaper, PID probe, JS onexit, PDF drain, utility drain, cleanup hook, or destroyed host can certify PTY subtree closure.
+
+Real Worker close permanently closes admission and includes PTY pending/direct/unknown state in its drain result. Cleanup detaches the actual Environment without releasing unresolved ownership; failed pre-spawn creation revisits retirement only if close already occurred. Opaque native token addresses are retained as process-lifetime tombstones to prevent allocator/Environment ABA; failed tokens release duplicate Owner retention, while successful or unknown tokens deliberately quarantine their exact Worker and Owner.
+
+These hooks establish lifetime/admission only. The signed native addon and fixed helper must still be bound to the authenticated policy as separate capabilities. No JS path, generic symbol, or token is a helper capability. Neither source is currently active in the product build. Protected runtime and full descendant tracking remain unaccepted.
