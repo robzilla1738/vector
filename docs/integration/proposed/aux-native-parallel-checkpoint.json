@@ -1,16 +1,10 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T04:52:50.265871+00:00",
+  "recordedAt": "2026-10-23T04:54:10.271125+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
-  "liveHandlesVerifiedThisCheckpoint": [
-    {
-      "session": 1414,
-      "role": "first actual Node26.5.0 static library build",
-      "state": "same handle confirmed live; actual build advanced into V8 snapshot objects"
-    }
-  ],
+  "liveHandlesVerifiedThisCheckpoint": [],
   "agentReportedPendingChecks": [
     {
       "session": 25336,
@@ -51,14 +45,16 @@
     }
   ],
   "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-browser-startup",
-    "review": "docs/integration/proposed/aux-native-browser-authority-integration/startup-composition-review.json",
+    "composition": "out/native-reuse-composition-aux-browser-pty-policy",
+    "review": "docs/integration/proposed/aux-native-browser-pty-integration/review.json",
     "sourceRecords": 826,
     "artworkAssets": 23,
     "applied": false,
     "compiled": false,
     "startupHookIncluded": true,
-    "productHookDefaultOff": true
+    "productHookDefaultOff": true,
+    "ptyParentV3Included": true,
+    "commit": "b54bffa43"
   },
   "nextSourceReview": [
     "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
@@ -80,10 +76,11 @@
     "onlineSnapshotCapture": {
       "privateAvatarsIncluded": true,
       "focusedOfflineFixturePassed": true,
-      "servicePromotionPendingStaticProvenanceReview": true,
+      "servicePromotionPendingStaticProvenanceReview": false,
       "providerCaptureExecuted": false,
       "schedulerImplemented": false,
-      "independentBackupDestinationConfigured": false
+      "independentBackupDestinationConfigured": false,
+      "servicePromotionCommit": "a78c3d97d"
     }
   },
   "runtimeAcceptance": false,
@@ -202,6 +199,33 @@
       "exitCode": 0,
       "role": "corrected delivery and two previously unrun Node bridge TUs; prior two objects not repeated",
       "receipt": "out/aux-native-child-handoff-remaining-check/results.json"
+    },
+    {
+      "session": 1414,
+      "exitCode": 0,
+      "role": "first actual official Node26.5 static library build",
+      "receipt": "out/aux-node-static-26.5.0/static-build-receipt.json",
+      "receiptSha256": "c547f4f2a2b28998cb889a444e6a640ecca3d464294fdcaac2ac3023c5bcf622",
+      "archivesIndependentlyRehashed": 42,
+      "embeddingLinked": false,
+      "protectedExecution": false
+    },
+    {
+      "session": 79061,
+      "exitCode": 1,
+      "role": "first Chromium parent transport TU failed; later TUs unrun",
+      "receipt": "/tmp/aux-adopted-parent-final-20261023/results.json",
+      "errors": [
+        "memset_s unavailable in Chromium compilation",
+        "owned SecRequirement needs actual pointer at existing C boundary"
+      ]
+    },
+    {
+      "session": 53432,
+      "exitCode": 1,
+      "role": "actual main build first9 C++ objects passed, command9 missing bridge header; command10/Swift/link unrun",
+      "receipt": "/tmp/aux-native-daemon-main-v3-20261023/plan-or-build.json",
+      "preservePassedObjects": true
     }
   ],
   "appliedCurrentNativeComposition": {
