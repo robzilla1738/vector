@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-23T05:37:53.376Z",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "environment": "production",
+  "requiredVariables": 22,
+  "missing": [
+    "CLERK_WEBHOOK_SIGNING_SECRET",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PORTAL_CONFIGURATION_ID",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+    "STRIPE_PRICE_PRO_MONTH",
+    "STRIPE_PRICE_PRO_YEAR",
+    "STRIPE_PRICE_MAX_MONTH",
+    "STRIPE_PRICE_MAX_YEAR"
+  ],
+  "scopeMismatches": [],
+  "typeMismatches": [],
+  "publicValueMismatches": [],
+  "publicValuesUnverified": [
+    "AUX_ALLOWED_ORIGINS",
+    "CLERK_AUTHORIZED_PARTIES"
+  ],
+  "clerkHost": "clerk.getaux.co",
+  "resourceProfileConfigured": false,
+  "configurationComplete": false,
+  "secretValuesInspected": false,
+  "providerSecretPairingVerified": false,
+  "productionReadinessVerified": false,
+  "activationPerformed": false,
+  "publicSigningKeysAvailable": true
+}
