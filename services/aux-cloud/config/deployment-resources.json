@@ -4,5 +4,9 @@
     "apiOrigin": "https://dev-cloud.getaux.co",
     "databaseHost": "ep-spring-darkness-b824br4r-pooler.c-14.us-east-1.aws.neon.tech"
   },
-  "production": null
+  "production": {
+    "appOrigin": "https://app.getaux.co",
+    "apiOrigin": "https://api.getaux.co",
+    "databaseHost": "ep-red-snow-b8ctxcyx-pooler.c-14.us-east-1.aws.neon.tech"
+  }
 }

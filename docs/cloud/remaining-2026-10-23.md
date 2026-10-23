@@ -10,7 +10,7 @@ The active cloud service is Development/Preview at `dev-cloud.getaux.co`. Produc
 
 ## Implementation/integration
 
-- Populate the intentionally null production entry in [deployment resources](../../services/aux-cloud/config/deployment-resources.json) with the reviewed actual production database and origins. The build currently refuses production rather than copying the development profile. Configuration alone does not prove credential pairing or authorize activation.
+- The [deployment resource profile](../../services/aux-cloud/config/deployment-resources.json) now pins the actual separately approved production database and recorded app/API origins. The unchanged build guard still refuses missing required configuration; nine fields were absent in the last provider inventory. The profile is source configuration, not provider pairing, fresh runtime verification or activation. See [focused guard evidence](../integration/proposed/aux-production-profile/README.md).
 - Connect the implemented online capture and isolated restore tools to reviewed operational delivery, scheduler/retry/alerts and physical retention deletion. The seven-day manifest deadline prevents expired unpacking; it does not delete remote copies or keys. No operating backup service exists yet.
 - Finish the separate native desktop/cloud startup, authority migration and lifetime integration, then package the same reviewed candidate. Hosted API evidence does not establish desktop behavior. The accepted UI/app remains preserved; current native status is maintained in [STATUS](../STATUS.md).
 

@@ -1,0 +1,20 @@
+{
+  "format": "aux.production-profile.source-pins.v1",
+  "baseCommit": "84111d3fc",
+  "files": {
+    "services/aux-cloud/config/deployment-resources.json": "6d5babd4e20b63ab0bf35566e0c97c403fc1b7cd8c6397fefeb5a7caccc5a8d5",
+    "services/aux-cloud/scripts/check-environment.mjs": "9616c590a38108f8447e21a4c416a70a6a1f5ed2ade9083e2a406e5cfd97b01d",
+    "services/aux-cloud/scripts/check-production-configuration.mjs": "52ac8674d601b615f4a790e319f51df30e46570cf095586da0f4e62288dcd757",
+    "services/aux-cloud/evidence/production-configuration.json": "36e15123168f4efce2a98612291cc06b77408dc9ace0d229260be96cbe3cd70e",
+    "services/aux-cloud/evidence/production-public-origins.json": "272dbea7974ca4aba3d27204bc6316955ff4c844a6530695e36d8e3a31311613",
+    "services/aux-cloud/evidence/production-recovery-migration.json": "d2909bf95bfe3755a4377ef70dbe759b6db91861af2a6aafaf0df8fdea7c72ed",
+    "docs/cloud/production-resource-review/execution.json": "a116bc91dbb758add48ad7a435495d79dcdb868c2baff408d963b698bd6d832d",
+    "docs/integration/proposed/aux-production-profile/check.mjs": "4ad8beb21492746540db01aae36177bdc018ce27ca4bde9e2bc82bf6c4136afb"
+  },
+  "check": {
+    "exitCode": 0,
+    "missingFieldsIndividuallyRefused": 9,
+    "providerOperations": 0,
+    "productionActivated": false
+  }
+}
