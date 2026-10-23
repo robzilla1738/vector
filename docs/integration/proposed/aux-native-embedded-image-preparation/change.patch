@@ -1,0 +1,141 @@
+--- docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift
++++ docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift
+@@ -46,6 +46,7 @@
+     let role:Role
+     let canonicalPrivateParent:String
+     let accessGroup:String
++    var embeddedDaemon:Bool=false
+     var includesPdf:Bool{role == .daemon}
+     var includesMacUtilities:Bool{role == .daemon}
+     var pdfSha256:String{AuxFreshBootstrapPdfIdentity.sha256}
+@@ -67,11 +68,13 @@
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+         if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
+-        guard Set(object.keys)==keys,object["format"] as? String==format,object["authoritySelection"] as? String==authoritySelection,
++        let embedded=object["format"] as? String=="aux.fresh.bootstrap.policy.v2"
++        if embedded { keys.insert("nativeHostLayout");guard role == .daemon,object["nativeHostLayout"] as? String=="embedded-daemon" else{throw AuxFreshBootstrapPolicyError.policy} }
++        guard Set(object.keys)==keys,(embedded || object["format"] as? String==format),object["authoritySelection"] as? String==authoritySelection,
+               let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
+               parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
+               let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
+-        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group)
++        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded)
+     }
+ }
+ struct AuxCapturedFreshBootstrapSignature {
+@@ -95,7 +98,8 @@
+ 
+ // Pure captured snapshot validation. No signature, image loading or owner call.
+ func freshBootstrapExpectedImageIdentifiers(bundle:String,policy:AuxFreshBootstrapPolicyContents)->[String:String] {
+-    var result=[bundle+"/Contents/MacOS/"+policy.role.executable:policy.role.identifier,bundle+"/Contents/Resources/native/aux-runtime-owned.node":"dev.aux.browser.runtime"]
++    var result=[bundle+"/Contents/MacOS/"+policy.role.executable:policy.role.identifier]
++    if !policy.embeddedDaemon {result[bundle+"/Contents/Resources/native/aux-runtime-owned.node"]="dev.aux.browser.runtime"}
+     if policy.includesPdf {result[bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath]=AuxFreshBootstrapPdfIdentity.identifier}
+     if policy.includesMacUtilities {result[bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath]=AuxFreshBootstrapMacUtilitiesIdentity.identifier}
+     return result
+--- docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSignedFreshBootstrapPolicyLoader.swift
++++ docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -106,7 +106,8 @@
+     private static func pdfDigest(bundle:String,expectedBytes:Int)throws->String {
+         try nativeModuleDigest(bundle:bundle,expectedBytes:expectedBytes,leaf:"aux-pdf.node")
+     }
+-    private static func images(bundle:String,policy:AuxFreshBootstrapPolicyContents,requirement:SecRequirement)throws {
++    private static func images(bundle:String,policy:AuxFreshBootstrapPolicyContents,requirement:SecRequirement,preparing:Bool=false)throws {
++        guard !preparing || policy.embeddedDaemon else{throw AuxFreshBootstrapPolicyError.policy}
+         let role=policy.role
+         for name in ProcessInfo.processInfo.environment.keys {guard !name.hasPrefix("DYLD_"),name != "NODE_OPTIONS",!name.hasPrefix("AUX_ENABLE_PROVIDED_"),name != "AUX_PROVIDED_NATIVE_LOAD_ONLY" else{throw AuxFreshBootstrapPolicyError.image}}
+         let expected=freshBootstrapExpectedImageIdentifiers(bundle:bundle,policy:policy)
+@@ -128,15 +129,21 @@
+             } else {try validateCapturedFreshBootstrapSignature(captured,role:role,host:path.hasSuffix("/Contents/MacOS/"+role.executable),accessGroup:policy.accessGroup)}
+             observed.insert(path)
+         }
+-        try validateCapturedFreshBootstrapImagePaths(paths,bundle:bundle,policy:policy)
+-        guard observed==Set(expected.keys),count==_dyld_image_count() else{throw AuxFreshBootstrapPolicyError.image}
++        if preparing {
++            // Only the two exact native modules may be absent during native
++            // preparation. The embedded host is always present and validated.
++            let optional=Set([bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath,bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath])
++            guard observed.isSubset(of:Set(expected.keys)),Set(expected.keys).subtracting(optional).isSubset(of:observed) else{throw AuxFreshBootstrapPolicyError.image}
++        }else{try validateCapturedFreshBootstrapImagePaths(paths,bundle:bundle,policy:policy);guard observed==Set(expected.keys)else{throw AuxFreshBootstrapPolicyError.image}}
++        guard count==_dyld_image_count() else{throw AuxFreshBootstrapPolicyError.image}
+         let global=UnsafeMutableRawPointer(bitPattern:-2)
+         for symbol in ["AuxNativeBoundaryValidate","AuxNativeBoundaryConfigureScope","AuxNativeBoundaryDenyAll","AuxNativeBoundaryIsDenyAll","AuxNativeBoundaryRefusedCalls"]{guard dlsym(global,symbol)==nil else{throw AuxFreshBootstrapPolicyError.image}}
+         for index:UInt32 in 0..<5 {guard let pointer=developmentImportedSecuritySymbol(index)else{throw AuxFreshBootstrapPolicyError.image};var info=Dl_info();guard dladdr(pointer,&info) != 0,let path=info.dli_fname,String(cString:path)=="/System/Library/Frameworks/Security.framework/Versions/A/Security" else{throw AuxFreshBootstrapPolicyError.image}}
+     }
+     // No policy/path/role parameter: read ONLY this authenticated running bundle's
+     // fixed sealed resource. Source-only until a real native owner admits it.
+-    static func load()throws->AuxAuthenticatedFreshBootstrapPolicy {
++    static func load()throws->AuxAuthenticatedFreshBootstrapPolicy {try authenticatedBase(preparing:false)}
++    private static func authenticatedBase(preparing:Bool)throws->AuxAuthenticatedFreshBootstrapPolicy {
+         var dynamic:SecCode?;let own=SecCodeCopySelf([],&dynamic);guard own==errSecSuccess,let dynamic=dynamic else{throw AuxFreshBootstrapPolicyError.signature(own)}
+         let requirement=try requirement(),dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))
+         let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}
+@@ -153,7 +160,7 @@
+         let bytes=try resource(bundle)
+         let sealed=SecCodeValidateFileResource(staticCode,AuxFreshBootstrapIdentity.resourceRelative as CFString,bytes as CFData,[]);guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
+         let policy=try AuxFreshBootstrapPolicyContents.decode(bytes);guard policy.role==role,policy.accessGroup==captured.accessGroups[0] else{throw AuxFreshBootstrapPolicyError.policy}
+-        try images(bundle:bundle,policy:policy,requirement:requirement);try privateParent(policy.canonicalPrivateParent)
++        try images(bundle:bundle,policy:policy,requirement:requirement,preparing:preparing);try privateParent(policy.canonicalPrivateParent)
+         guard try resource(bundle)==bytes else{throw AuxFreshBootstrapPolicyError.resource}
+         let final=SecStaticCodeCheckValidity(staticCode,flags,requirement),live=SecCodeCheckValidity(dynamic,dynamicFlags,requirement)
+         guard final==errSecSuccess,live==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(final != 0 ? final:live)}
+@@ -246,3 +253,58 @@
+         return 0
+     } catch { return -1 }
+ }
++
++// This entry has no path/hash/policy arguments and grants no installation
++// authority. It validates the actual sealed embedded-daemon graph, loads only
++// its two fixed signed modules, and permanently retains actual dlopen handles.
++private let auxImagePreparationProcess=getpid()
++private let auxImagePreparationLock=NSLock()
++private var auxImagePreparationStarted=false
++private var auxImagePreparationComplete=false
++private var auxPreparedImageHandles=[UnsafeMutableRawPointer]()
++extension AuxSignedFreshBootstrapPolicyLoader {
++    fileprivate static func prepareEmbeddedImages()throws {
++        let policy=try authenticatedBase(preparing:true)
++        guard policy.contents.embeddedDaemon,policy.contents.role == .daemon else{throw AuxFreshBootstrapPolicyError.policy}
++        let requirement=try requirement()
++        var own:SecCode?;let ownStatus=SecCodeCopySelf([],&own)
++        guard ownStatus==errSecSuccess,let own else{throw AuxFreshBootstrapPolicyError.signature(ownStatus)}
++        var ownStatic:SecStaticCode?;let copyStatus=SecCodeCopyStaticCode(own,[],&ownStatic)
++        guard copyStatus==errSecSuccess,let ownStatic else{throw AuxFreshBootstrapPolicyError.signature(copyStatus)}
++        for (leaf,identifier,bytes) in [("aux-pdf.node",AuxFreshBootstrapPdfIdentity.identifier,policy.contents.pdfBytes),("aux-macos-utilities.node",AuxFreshBootstrapMacUtilitiesIdentity.identifier,AuxFreshBootstrapMacUtilitiesIdentity.bytes)] {
++            let path=policy.bundlePath+"/Contents/Resources/native/"+leaf
++            let digest=try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)
++            if identifier==AuxFreshBootstrapPdfIdentity.identifier{try validateCapturedFreshBootstrapPdfBytes(sha256:digest,bytes:bytes,policy:policy.contents)}
++            else{try validateCapturedFreshBootstrapMacUtilityBytes(sha256:digest,bytes:bytes,policy:policy.contents)}
++            var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code)
++            guard created==errSecSuccess,let code else{throw AuxFreshBootstrapPolicyError.signature(created)}
++            let validity=SecStaticCodeCheckValidity(code,flags,requirement)
++            guard validity==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(validity)}
++            let captured=try signature(signingInfo(code))
++            if identifier==AuxFreshBootstrapPdfIdentity.identifier{try validateCapturedFreshBootstrapPdfSignature(captured)}
++            else{try validateCapturedFreshBootstrapMacUtilitySignature(captured)}
++            // Exact module bytes are already pinned and independently signed.
++            // The containing bundle seal must also authenticate those bytes.
++            let moduleBytes=try Data(contentsOf:URL(fileURLWithPath:path),options:.uncached)
++            guard moduleBytes.count==bytes,freshBootstrapDigest(moduleBytes)==digest else{throw AuxFreshBootstrapPolicyError.image}
++            let sealed=SecCodeValidateFileResource(ownStatic,("Resources/native/"+leaf) as CFString,moduleBytes as CFData,[])
++            guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
++            _ = try authenticatedBase(preparing:true)
++            guard let handle=dlopen(path,RTLD_NOW|RTLD_LOCAL)else{throw AuxFreshBootstrapPolicyError.image}
++            // Never dlclose an image whose constructors/threads may have run.
++            auxImagePreparationLock.lock();auxPreparedImageHandles.append(handle);auxImagePreparationLock.unlock()
++            guard try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)==digest else{throw AuxFreshBootstrapPolicyError.image}
++            _ = try authenticatedBase(preparing:true)
++        }
++        let final=try load()
++        guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
++    }
++}
++@_cdecl("AuxPrepareSealedNativeDaemonImages")
++func AuxPrepareSealedNativeDaemonImages()->Int32 {
++    guard getpid()==auxImagePreparationProcess else{return -1}
++    auxImagePreparationLock.lock()
++    if auxImagePreparationStarted {let status:Int32=auxImagePreparationComplete ? 0:-1;auxImagePreparationLock.unlock();return status}
++    auxImagePreparationStarted=true;auxImagePreparationLock.unlock()
++    do{try AuxSignedFreshBootstrapPolicyLoader.prepareEmbeddedImages();auxImagePreparationLock.lock();auxImagePreparationComplete=true;auxImagePreparationLock.unlock();return 0}catch{return -1}
++}

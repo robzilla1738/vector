@@ -1,0 +1,22 @@
+{
+  "format": "aux.embedded-daemon-image-preparation.v1",
+  "sourceOnly": true,
+  "inputs": [
+    {
+      "priorPath": "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift",
+      "priorSha256": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
+      "path": "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1"
+    },
+    {
+      "priorPath": "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "priorSha256": "9b6d5879a048340a76a9ff056ab3c82bb955b0e2092e5120917df6bb1ca132e6",
+      "path": "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "73ab6176dea780147c9054b04a8d7425d4ec99a95fb25ff10a3422627e5976fc"
+    }
+  ],
+  "patchSha256": "ad4778c46115e34fb04df4e9ed42eed6e46796536464daffa93577b73d7b09c7",
+  "loaded": false,
+  "SecurityExecuted": false,
+  "signed": false
+}
