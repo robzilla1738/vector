@@ -1,0 +1,690 @@
+diff --git a/content/browser/service_worker/service_worker_context_wrapper.cc b/content/browser/service_worker/service_worker_context_wrapper.cc
+--- a/content/browser/service_worker/service_worker_context_wrapper.cc
++++ b/content/browser/service_worker/service_worker_context_wrapper.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/service_worker_context_wrapper.h"
++#include "content/browser/service_worker/aux_service_worker_migration.h"
+ 
+ #include <map>
+ #include <memory>
+@@ -307,6 +308,7 @@
+ 
+   // Add this object as an observer of the wrapped |context_core_|. This lets us
+   // forward observer methods to observers outside of content.
++  aux_migration::RegisterAlreadyOwnedServiceWorkerContext(this);
+   core_observer_list_->AddObserver(this);
+ }
+ 
+@@ -351,6 +353,7 @@
+ 
+ void ServiceWorkerContextWrapper::Shutdown() {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  aux_migration::ObserveServiceWorkerContextShutdown(this);
+ 
+   ClearRunningServiceWorkers();
+   NotifyRunningServiceWorkerStoppedToSynchronousObserver();
+@@ -1086,6 +1089,30 @@
+   }
+ }
+ 
++bool ServiceWorkerContextWrapper::HasOwnedCoreForMigrationObservation() const {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  return context_core_ != nullptr;
++}
++
++void ServiceWorkerContextWrapper::StopAlreadyOwnedWorkersForMigration(
++    base::OnceClosure callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!context_core_) {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, std::move(callback));
++    return;
++  }
++  // Retain all actual existing versions before StopWorker can reenter teardown.
++  // No registration, context, StoragePartition or worker is created here.
++  std::vector<scoped_refptr<ServiceWorkerVersion>> versions;
++  for (const auto& [id, version] : context_core_->GetLiveVersions())
++    versions.emplace_back(version.get());
++  base::RepeatingClosure barrier =
++      base::BarrierClosure(versions.size(), std::move(callback));
++  for (const auto& version : versions)
++    version->StopWorker(barrier);
++}
++
+ void ServiceWorkerContextWrapper::StopAllServiceWorkers(
+     base::OnceClosure callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+@@ -1603,6 +1630,7 @@
+ 
+ ServiceWorkerContextWrapper::~ServiceWorkerContextWrapper() {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  aux_migration::UnregisterAlreadyOwnedServiceWorkerContext(this);
+ 
+   for (auto& observer : observer_list_)
+     observer.OnDestruct(static_cast<ServiceWorkerContext*>(this));
+diff --git a/content/browser/service_worker/service_worker_version.cc b/content/browser/service_worker/service_worker_version.cc
+--- a/content/browser/service_worker/service_worker_version.cc
++++ b/content/browser/service_worker/service_worker_version.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/service_worker_version.h"
++#include "content/browser/service_worker/aux_service_worker_migration.h"
+ 
+ #include <stddef.h>
+ 
+@@ -552,6 +553,12 @@
+                       ServiceWorkerMetrics::EventTypeToString(purpose));
+ 
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  callback = aux_migration::TrackServiceWorkerStartCallback(std::move(callback));
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++    RunSoon(base::BindOnce(std::move(callback),
++                          blink::ServiceWorkerStatusCode::kErrorAbort));
++    return;
++  }
+   const bool is_browser_startup_complete =
+       GetContentClient()->browser()->IsBrowserStartupComplete();
+   if (!context_) {
+@@ -1008,6 +1015,12 @@
+ void ServiceWorkerVersion::RunAfterStartWorker(
+     ServiceWorkerMetrics::EventType purpose,
+     StatusCallback callback) {
++  callback = aux_migration::TrackServiceWorkerStartCallback(std::move(callback));
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++    RunSoon(base::BindOnce(std::move(callback),
++                          blink::ServiceWorkerStatusCode::kErrorAbort));
++    return;
++  }
+   ServiceWorkerMetrics::RecordRunAfterStartWorkerStatus(running_status(),
+                                                         purpose);
+   if (running_status() == blink::EmbeddedWorkerStatus::kRunning) {
+@@ -1714,11 +1727,13 @@
+ 
+ void ServiceWorkerVersion::OnStopped(blink::EmbeddedWorkerStatus old_status) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  aux_migration::ObserveServiceWorkerStopped();
+   OnStoppedInternal(old_status);
+ }
+ 
+ void ServiceWorkerVersion::OnDetached(blink::EmbeddedWorkerStatus old_status) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  aux_migration::ObserveServiceWorkerDetached();
+   OnStoppedInternal(old_status);
+ }
+ 
+@@ -2604,6 +2619,11 @@
+     StatusCallback callback,
+     blink::ServiceWorkerStatusCode status,
+     scoped_refptr<ServiceWorkerRegistration> registration) {
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++    RunSoon(base::BindOnce(std::move(callback),
++                          blink::ServiceWorkerStatusCode::kErrorAbort));
++    return;
++  }
+   scoped_refptr<ServiceWorkerRegistration> protect = registration;
+   if (status == blink::ServiceWorkerStatusCode::kErrorNotFound) {
+     // When the registration has already been deleted from the storage but its
+@@ -2664,6 +2684,11 @@
+               "Script", script_url_.spec(), "Purpose",
+               ServiceWorkerMetrics::EventTypeToString(purpose));
+ 
++          if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++            RunSoon(base::BindOnce(std::move(callback),
++                                  blink::ServiceWorkerStatusCode::kErrorAbort));
++            return;
++          }
+           embedded_worker_->ResumeInitializingGlobalScope();
+ 
+           start_callbacks_.push_back(base::BindOnce(
+@@ -2755,6 +2780,10 @@
+   DCHECK_EQ(blink::EmbeddedWorkerStatus::kStopped, running_status());
+   DCHECK(inflight_requests_.IsEmpty());
+   DCHECK(request_timeouts_.empty());
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++    FinishStartWorker(blink::ServiceWorkerStatusCode::kErrorAbort);
++    return;  // The failure callback may delete this version.
++  }
+ 
+   // Don't try to start a new worker thread if the `context_` has been
+   // destroyed.  This can happen during browser shutdown or if corruption
+@@ -2931,6 +2960,7 @@
+     ReportError(blink::ServiceWorkerStatusCode::kErrorTimeout,
+                 "DETACH_STALLED_IN_STOPPING");
+ 
++    aux_migration::ObserveServiceWorkerDetached();
+     embedded_worker_->RemoveObserver(this);
+     embedded_worker_->Detach();
+     embedded_worker_ = std::make_unique<EmbeddedWorkerInstance>(this);
+@@ -3236,6 +3266,7 @@
+ void ServiceWorkerVersion::OnStoppedInternal(
+     blink::EmbeddedWorkerStatus old_status) {
+   TRACE_EVENT0("ServiceWorker", "ServiceWorkerVersion::OnStoppedInternal");
++  aux_migration::ScopedServiceWorkerStopCleanup aux_cleanup;
+   DCHECK_EQ(blink::EmbeddedWorkerStatus::kStopped, running_status());
+   scoped_refptr<ServiceWorkerVersion> protect;
+   if (!in_dtor_) {
+@@ -3245,7 +3276,8 @@
+   // |start_callbacks_| can be non-empty if a start worker request arrived while
+   // the worker was stopping. The worker must be restarted to fulfill the
+   // request.
+-  bool should_restart = !start_callbacks_.empty();
++  bool should_restart = !start_callbacks_.empty() &&
++      aux_migration::ServiceWorkerStartsAllowedForMigration();
+   if (is_redundant() || in_dtor_) {
+     // This worker will be destroyed soon.
+     should_restart = false;
+diff --git a/content/browser/service_worker/embedded_worker_instance.cc b/content/browser/service_worker/embedded_worker_instance.cc
+--- a/content/browser/service_worker/embedded_worker_instance.cc
++++ b/content/browser/service_worker/embedded_worker_instance.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/embedded_worker_instance.h"
++#include "content/browser/service_worker/aux_service_worker_migration.h"
+ 
+ #include <algorithm>
+ #include <utility>
+@@ -247,6 +248,11 @@
+ 
+   for (auto& observer : listener_list_)
+     observer.OnStarting();
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {
++    OnSetupFailed(std::move(callback),
++                  blink::ServiceWorkerStatusCode::kErrorAbort);
++    return;  // Setup failure may delete this instance.
++  }
+ 
+   // service_worker_route_id will be set later in SetupOnUIThread
+   params->service_worker_route_id = IPC::mojom::kRoutingIdNone;
+@@ -469,7 +475,11 @@
+       std::move(coep_reporting_observer_receiver_);
+   params->dip_reporting_observer = std::move(dip_reporting_observer_receiver_);
+ 
+-  SendStartWorker(std::move(params));
++  if (!SendStartWorker(std::move(params))) {
++    OnSetupFailed(std::move(callback),
++                  blink::ServiceWorkerStatusCode::kErrorAbort);
++    return;  // Setup failure may delete this instance.
++  }
+   std::move(callback).Run(blink::ServiceWorkerStatusCode::kOk);
+ }
+ 
+@@ -566,7 +576,7 @@
+     observer.OnRegisteredToDevToolsManager();
+ }
+ 
+-void EmbeddedWorkerInstance::SendStartWorker(
++bool EmbeddedWorkerInstance::SendStartWorker(
+     blink::mojom::EmbeddedWorkerStartParamsPtr params) {
+   CHECK(context_, base::NotFatalUntil::M159);
+   CHECK(params->service_worker_receiver.is_valid(), base::NotFatalUntil::M159);
+@@ -606,11 +616,14 @@
+             blink::mojom::InsecureRequestsPolicy::kDoNotUpgrade);
+   }
+ 
++  if (!aux_migration::ServiceWorkerStartsAllowedForMigration())
++    return false;
+   client_->StartWorker(std::move(params));
+ 
+   starting_phase_ = is_script_streaming ? SCRIPT_STREAMING : SENT_START_WORKER;
+   for (auto& observer : listener_list_)
+     observer.OnStartWorkerMessageSent();
++  return true;
+ }
+ 
+ void EmbeddedWorkerInstance::RequestTermination(
+diff --git a/content/browser/service_worker/service_worker_context_wrapper.h b/content/browser/service_worker/service_worker_context_wrapper.h
+--- a/content/browser/service_worker/service_worker_context_wrapper.h
++++ b/content/browser/service_worker/service_worker_context_wrapper.h
+@@ -243,6 +243,8 @@
+   void StopAllServiceWorkersForStorageKey(
+       const blink::StorageKey& key) override;
+   void StopAllServiceWorkers(base::OnceClosure callback) override;
++  bool HasOwnedCoreForMigrationObservation() const;
++  void StopAlreadyOwnedWorkersForMigration(base::OnceClosure callback);
+   const base::flat_map<int64_t, ServiceWorkerRunningInfo>&
+   GetRunningServiceWorkerInfos() override;
+   bool IsLiveStartingServiceWorker(int64_t service_worker_version_id) override;
+diff --git a/content/browser/service_worker/embedded_worker_instance.h b/content/browser/service_worker/embedded_worker_instance.h
+--- a/content/browser/service_worker/embedded_worker_instance.h
++++ b/content/browser/service_worker/embedded_worker_instance.h
+@@ -306,7 +306,7 @@
+   void OnRegisteredToDevToolsManager(
+       std::unique_ptr<DevToolsProxy> devtools_proxy);
+   // Sends the StartWorker message to the renderer.
+-  void SendStartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params);
++  bool SendStartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params);
+ 
+   // Implements blink::mojom::EmbeddedWorkerInstanceHost.
+   void RequestTermination(uint64_t observed_keepalive_sequence_number,
+diff --git a/content/public/browser/aux_service_worker_migration.h b/content/public/browser/aux_service_worker_migration.h
+new file mode 100644
+--- /dev/null
++++ b/content/public/browser/aux_service_worker_migration.h
+@@ -0,0 +1,32 @@
++#ifndef CONTENT_PUBLIC_BROWSER_AUX_SERVICE_WORKER_MIGRATION_H_
++#define CONTENT_PUBLIC_BROWSER_AUX_SERVICE_WORKER_MIGRATION_H_
++
++#include <cstddef>
++#include <cstdint>
++#include "content/common/content_export.h"
++
++namespace content::aux_migration {
++struct ServiceWorkerMigrationSnapshot {
++  uint64_t generation;  // 1 open -> 2 permanently closed.
++  bool start_admission_closed;
++  size_t pending_start_callbacks;
++  size_t active_start_callback_dispatches;
++  size_t unresolved_start_callbacks;
++  size_t late_successful_start_callbacks;
++  size_t owned_context_wrappers;
++  size_t pending_context_stop_callbacks;
++  size_t observed_context_stop_callbacks;
++  size_t active_stop_cleanup_dispatches;
++  size_t unresolved_context_stops;
++  size_t unavailable_context_cores;
++  size_t detached_worker_observations;
++  size_t stopped_worker_notifications;
++};
++
++// Actual UI-thread native participants only. No context/partition is created.
++CONTENT_EXPORT void CloseServiceWorkerStartAdmissionForMigration();
++CONTENT_EXPORT void StopAlreadyOwnedServiceWorkerContextsForMigration();
++CONTENT_EXPORT ServiceWorkerMigrationSnapshot
++InspectServiceWorkerMigrationAdmission();
++}  // namespace content::aux_migration
++#endif
+diff --git a/content/browser/service_worker/aux_service_worker_admission_state.h b/content/browser/service_worker/aux_service_worker_admission_state.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/service_worker/aux_service_worker_admission_state.h
+@@ -0,0 +1,34 @@
++#ifndef CONTENT_BROWSER_SERVICE_WORKER_AUX_SERVICE_WORKER_ADMISSION_STATE_H_
++#define CONTENT_BROWSER_SERVICE_WORKER_AUX_SERVICE_WORKER_ADMISSION_STATE_H_
++
++#include <cstdint>
++#include "content/public/browser/aux_service_worker_migration.h"
++
++namespace content::aux_migration {
++// Source observations only. These functions neither select a context nor grant
++// authority; actual wrapper/version callbacks supply their native owner keys.
++void CloseServiceWorkerAdmissionState();
++bool ServiceWorkerStartsAllowedForMigration();
++ServiceWorkerMigrationSnapshot InspectServiceWorkerAdmissionState();
++uint64_t ObserveServiceWorkerStartRequested();
++bool ObserveServiceWorkerStartCallbackEntered(uint64_t token, bool succeeded);
++void ObserveServiceWorkerStartCallbackFinished(uint64_t token);
++void ObserveServiceWorkerStartCallbackLost(uint64_t token);
++void ObserveServiceWorkerContextRegistered(const void* context);
++void ObserveServiceWorkerContextUnregistered(const void* context);
++void ObserveServiceWorkerContextShutdown(const void* context);
++uint64_t ObserveServiceWorkerContextStopRequested(const void* context,
++                                                bool core_available);
++void ObserveServiceWorkerContextStopCallback(uint64_t token);
++void ObserveServiceWorkerContextStopCallbackLost(uint64_t token);
++class ScopedServiceWorkerStopCleanup final {
++ public:
++  ScopedServiceWorkerStopCleanup();
++  ~ScopedServiceWorkerStopCleanup();
++  ScopedServiceWorkerStopCleanup(const ScopedServiceWorkerStopCleanup&) = delete;
++  ScopedServiceWorkerStopCleanup& operator=(const ScopedServiceWorkerStopCleanup&) = delete;
++};
++void ObserveServiceWorkerDetached();
++void ObserveServiceWorkerStopped();
++}  // namespace content::aux_migration
++#endif
+diff --git a/content/browser/service_worker/aux_service_worker_admission_state.cc b/content/browser/service_worker/aux_service_worker_admission_state.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/service_worker/aux_service_worker_admission_state.cc
+@@ -0,0 +1,181 @@
++#include "content/browser/service_worker/aux_service_worker_admission_state.h"
++
++#include <limits>
++#include <map>
++#include <mutex>
++#include <set>
++
++namespace content::aux_migration {
++namespace {
++struct Stop {
++  const void* context;
++  bool unavailable;
++};
++struct State {
++  State();
++  ~State();
++  std::mutex mutex;
++  bool closed = false;
++  uint64_t next_token = 0;
++  std::set<uint64_t> starts;
++  std::set<uint64_t> active_callbacks;
++  std::set<const void*> contexts;
++  std::map<uint64_t, Stop> stops;
++  size_t unresolved_starts = 0;
++  size_t late_successes = 0;
++  size_t observed_stops = 0;
++  size_t active_stop_cleanups = 0;
++  size_t unresolved_stops = 0;
++  size_t unavailable_cores = 0;
++  size_t detached = 0;
++  size_t stopped = 0;
++};
++State::State() = default;
++State::~State() = default;
++State& Current() {
++  static State* const state = new State;
++  return *state;
++}
++void Increment(size_t& counter) {
++  if (counter != std::numeric_limits<size_t>::max())
++    ++counter;
++}
++uint64_t Token(State& state) {
++  return state.next_token == std::numeric_limits<uint64_t>::max()
++             ? 0 : ++state.next_token;
++}
++void MarkContextUnavailable(State& state, const void* context) {
++  for (auto& [token, stop] : state.stops) {
++    if (stop.context == context)
++      stop.unavailable = true;
++  }
++}
++}  // namespace
++
++void CloseServiceWorkerAdmissionState() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  state.closed = true;
++}
++bool ServiceWorkerStartsAllowedForMigration() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  return !state.closed;
++}
++ServiceWorkerMigrationSnapshot InspectServiceWorkerAdmissionState() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  return {state.closed ? uint64_t{2} : uint64_t{1}, state.closed,
++          state.starts.size(), state.active_callbacks.size(),
++          state.unresolved_starts, state.late_successes, state.contexts.size(),
++          state.stops.size(), state.observed_stops, state.active_stop_cleanups,
++          state.unresolved_stops,
++          state.unavailable_cores, state.detached, state.stopped};
++}
++uint64_t ObserveServiceWorkerStartRequested() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  auto token = Token(state);
++  if (token)
++    state.starts.insert(token);
++  else
++    Increment(state.unresolved_starts);
++  return token;
++}
++bool ObserveServiceWorkerStartCallbackEntered(uint64_t token, bool succeeded) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (!token || !state.starts.contains(token) ||
++      !state.active_callbacks.insert(token).second) {
++    Increment(state.unresolved_starts);
++    return false;
++  }
++  if (state.closed && succeeded)
++    Increment(state.late_successes);
++  return !state.closed;
++}
++void ObserveServiceWorkerStartCallbackFinished(uint64_t token) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  const bool started = state.starts.erase(token) == 1;
++  const bool active = state.active_callbacks.erase(token) == 1;
++  if (!started || !active)
++    Increment(state.unresolved_starts);
++}
++void ObserveServiceWorkerStartCallbackLost(uint64_t token) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.starts.erase(token)) {
++    state.active_callbacks.erase(token);
++    Increment(state.unresolved_starts);
++  }
++}
++void ObserveServiceWorkerContextRegistered(const void* context) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  state.contexts.insert(context);
++}
++void ObserveServiceWorkerContextUnregistered(const void* context) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  state.contexts.erase(context);
++  MarkContextUnavailable(state, context);
++}
++void ObserveServiceWorkerContextShutdown(const void* context) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  MarkContextUnavailable(state, context);
++}
++uint64_t ObserveServiceWorkerContextStopRequested(const void* context,
++                                                bool core_available) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  const auto token = Token(state);
++  if (!core_available)
++    Increment(state.unavailable_cores);
++  if (token)
++    state.stops.emplace(token, Stop{context, !core_available});
++  else
++    Increment(state.unresolved_stops);
++  return token;
++}
++void ObserveServiceWorkerContextStopCallback(uint64_t token) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  auto found = state.stops.find(token);
++  if (found == state.stops.end()) {
++    Increment(state.unresolved_stops);
++    return;
++  }
++  Increment(state.observed_stops);
++  if (found->second.unavailable)
++    Increment(state.unresolved_stops);
++  state.stops.erase(found);
++}
++void ObserveServiceWorkerContextStopCallbackLost(uint64_t token) {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.stops.erase(token))
++    Increment(state.unresolved_stops);
++}
++ScopedServiceWorkerStopCleanup::ScopedServiceWorkerStopCleanup() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  ++state.active_stop_cleanups;
++}
++ScopedServiceWorkerStopCleanup::~ScopedServiceWorkerStopCleanup() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  --state.active_stop_cleanups;
++}
++void ObserveServiceWorkerDetached() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  Increment(state.detached);
++}
++void ObserveServiceWorkerStopped() {
++  auto& state = Current();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  Increment(state.stopped);
++}
++}  // namespace content::aux_migration
+diff --git a/content/browser/service_worker/aux_service_worker_migration.h b/content/browser/service_worker/aux_service_worker_migration.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/service_worker/aux_service_worker_migration.h
+@@ -0,0 +1,18 @@
++#ifndef CONTENT_BROWSER_SERVICE_WORKER_AUX_SERVICE_WORKER_MIGRATION_H_
++#define CONTENT_BROWSER_SERVICE_WORKER_AUX_SERVICE_WORKER_MIGRATION_H_
++
++#include "base/functional/callback_forward.h"
++#include "content/browser/service_worker/aux_service_worker_admission_state.h"
++#include "third_party/blink/public/common/service_worker/service_worker_status_code.h"
++
++namespace content {
++class ServiceWorkerContextWrapper;
++namespace aux_migration {
++void RegisterAlreadyOwnedServiceWorkerContext(ServiceWorkerContextWrapper* context);
++void UnregisterAlreadyOwnedServiceWorkerContext(ServiceWorkerContextWrapper* context);
++base::OnceCallback<void(blink::ServiceWorkerStatusCode)>
++TrackServiceWorkerStartCallback(
++    base::OnceCallback<void(blink::ServiceWorkerStatusCode)> callback);
++}  // namespace aux_migration
++}  // namespace content
++#endif
+diff --git a/content/browser/service_worker/aux_service_worker_migration.cc b/content/browser/service_worker/aux_service_worker_migration.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/service_worker/aux_service_worker_migration.cc
+@@ -0,0 +1,138 @@
++#include "content/browser/service_worker/aux_service_worker_migration.h"
++
++#include <memory>
++#include <mutex>
++#include <set>
++#include <utility>
++#include <vector>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/raw_ptr.h"
++#include "content/browser/service_worker/service_worker_context_wrapper.h"
++#include "content/public/browser/browser_thread.h"
++
++namespace content::aux_migration {
++namespace {
++struct Registry {
++  Registry();
++  ~Registry();
++  std::mutex mutex;
++  std::set<raw_ptr<ServiceWorkerContextWrapper>> contexts;
++  std::set<const void*> stop_requested;
++};
++Registry::Registry() = default;
++Registry::~Registry() = default;
++Registry& Owned() {
++  static Registry* const registry = new Registry;
++  return *registry;
++}
++class StartCompletion final {
++ public:
++  StartCompletion();
++  ~StartCompletion();
++  bool Enter(bool succeeded);
++  void Finish();
++ private:
++  const uint64_t token_;
++  bool finished_ = false;
++};
++StartCompletion::StartCompletion()
++    : token_(ObserveServiceWorkerStartRequested()) {}
++StartCompletion::~StartCompletion() {
++  if (!finished_)
++    ObserveServiceWorkerStartCallbackLost(token_);
++}
++bool StartCompletion::Enter(bool succeeded) {
++  return ObserveServiceWorkerStartCallbackEntered(token_, succeeded);
++}
++void StartCompletion::Finish() {
++  finished_ = true;
++  ObserveServiceWorkerStartCallbackFinished(token_);
++}
++class StopCompletion final {
++ public:
++  explicit StopCompletion(scoped_refptr<ServiceWorkerContextWrapper> context);
++  ~StopCompletion();
++  void Run();
++ private:
++  const scoped_refptr<ServiceWorkerContextWrapper> context_;
++  const uint64_t token_;
++  bool finished_ = false;
++};
++StopCompletion::StopCompletion(scoped_refptr<ServiceWorkerContextWrapper> context)
++    : context_(std::move(context)),
++      token_(ObserveServiceWorkerContextStopRequested(
++          context_.get(), context_->HasOwnedCoreForMigrationObservation())) {}
++StopCompletion::~StopCompletion() {
++  if (!finished_)
++    ObserveServiceWorkerContextStopCallbackLost(token_);
++}
++void StopCompletion::Run() {
++  finished_ = true;
++  ObserveServiceWorkerContextStopCallback(token_);
++}
++}  // namespace
++
++void CloseServiceWorkerStartAdmissionForMigration() {
++  CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
++  CloseServiceWorkerAdmissionState();
++}
++ServiceWorkerMigrationSnapshot InspectServiceWorkerMigrationAdmission() {
++  return InspectServiceWorkerAdmissionState();
++}
++void RegisterAlreadyOwnedServiceWorkerContext(ServiceWorkerContextWrapper* context) {
++  CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
++  auto& owned = Owned();
++  std::lock_guard<std::mutex> lock(owned.mutex);
++  owned.contexts.insert(context);
++  ObserveServiceWorkerContextRegistered(context);
++}
++void UnregisterAlreadyOwnedServiceWorkerContext(ServiceWorkerContextWrapper* context) {
++  CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
++  auto& owned = Owned();
++  std::lock_guard<std::mutex> lock(owned.mutex);
++  owned.contexts.erase(context);
++  owned.stop_requested.erase(context);
++  ObserveServiceWorkerContextUnregistered(context);
++}
++void StopAlreadyOwnedServiceWorkerContextsForMigration() {
++  CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
++  CloseServiceWorkerAdmissionState();
++  std::vector<scoped_refptr<ServiceWorkerContextWrapper>> existing;
++  {
++    auto& owned = Owned();
++    std::lock_guard<std::mutex> lock(owned.mutex);
++    for (const auto& retained_key : owned.contexts) {
++      auto* context = retained_key.get();
++      if (owned.stop_requested.insert(context).second)
++        existing.emplace_back(context);
++    }
++  }
++  for (auto& context : existing) {
++    // The actual already-owned ref is retained until the real callback is run
++    // or dropped. No Registry lock crosses StopWorker/reentrant callbacks.
++    auto completion = std::make_shared<StopCompletion>(context);
++    context->StopAlreadyOwnedWorkersForMigration(base::BindOnce(
++        [](std::shared_ptr<StopCompletion> observation) { observation->Run(); },
++        std::move(completion)));
++  }
++}
++base::OnceCallback<void(blink::ServiceWorkerStatusCode)>
++TrackServiceWorkerStartCallback(
++    base::OnceCallback<void(blink::ServiceWorkerStatusCode)> callback) {
++  auto completion = std::make_shared<StartCompletion>();
++  return base::BindOnce(
++      [](std::shared_ptr<StartCompletion> observation,
++         base::OnceCallback<void(blink::ServiceWorkerStatusCode)> original,
++         blink::ServiceWorkerStatusCode status) {
++        const bool current = observation->Enter(
++            status == blink::ServiceWorkerStatusCode::kOk);
++        if (!current && status == blink::ServiceWorkerStatusCode::kOk)
++          status = blink::ServiceWorkerStatusCode::kErrorAbort;
++        std::move(original).Run(status);
++        observation->Finish();
++      }, std::move(completion), std::move(callback));
++}
++}  // namespace content::aux_migration

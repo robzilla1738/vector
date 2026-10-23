@@ -1,0 +1,13 @@
+{
+  "format": "aux.content-service-worker-admission.static.v1",
+  "exactSourceVerificationPassed": true,
+  "sourceFileCount": 10,
+  "countedAnchors": 24,
+  "preparedCompileRecipeSyntaxParsed": true,
+  "compiled": false,
+  "fixtureExecuted": false,
+  "nativeApplied": false,
+  "uiViewsChanged": false,
+  "wholeProfileCustodyClaimed": false,
+  "inputsSha256": "7d5486ac9d8da6ae5f3a55737c296e01f7c007fe9bfaba62d604d82d701cd74f"
+}

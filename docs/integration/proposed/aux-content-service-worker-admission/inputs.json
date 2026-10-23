@@ -1,0 +1,216 @@
+{
+  "format": "aux.content-service-worker-admission.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "content/browser/service_worker/service_worker_context_wrapper.cc",
+      "inputSha256": "64fe54718ac5b32d34028b33a2a02af323a414f23db2ee067d7a6c2e0514072c",
+      "outputSha256": "38e26fd92a9a48aee8dd33f7a9d5263d2845f595e1976ac1b318d5a9ef479743",
+      "edits": [
+        {
+          "name": "native participant include",
+          "find": "#include \"content/browser/service_worker/service_worker_context_wrapper.h\"",
+          "replace": "#include \"content/browser/service_worker/service_worker_context_wrapper.h\"\n#include \"content/browser/service_worker/aux_service_worker_migration.h\"",
+          "count": 1
+        },
+        {
+          "name": "register only constructed existing wrapper",
+          "find": "  core_observer_list_->AddObserver(this);\n}",
+          "replace": "  aux_migration::RegisterAlreadyOwnedServiceWorkerContext(this);\n  core_observer_list_->AddObserver(this);\n}",
+          "count": 1
+        },
+        {
+          "name": "remove exact native wrapper owner",
+          "find": "ServiceWorkerContextWrapper::~ServiceWorkerContextWrapper() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);",
+          "replace": "ServiceWorkerContextWrapper::~ServiceWorkerContextWrapper() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  aux_migration::UnregisterAlreadyOwnedServiceWorkerContext(this);",
+          "count": 1
+        },
+        {
+          "name": "shutdown invalidates pending core evidence",
+          "find": "void ServiceWorkerContextWrapper::Shutdown() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);",
+          "replace": "void ServiceWorkerContextWrapper::Shutdown() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  aux_migration::ObserveServiceWorkerContextShutdown(this);",
+          "count": 1
+        },
+        {
+          "name": "non-creating exact core observation",
+          "find": "void ServiceWorkerContextWrapper::StopAllServiceWorkers(\n    base::OnceClosure callback) {",
+          "replace": "bool ServiceWorkerContextWrapper::HasOwnedCoreForMigrationObservation() const {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  return context_core_ != nullptr;\n}\n\nvoid ServiceWorkerContextWrapper::StopAlreadyOwnedWorkersForMigration(\n    base::OnceClosure callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (!context_core_) {\n    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n        FROM_HERE, std::move(callback));\n    return;\n  }\n  // Retain all actual existing versions before StopWorker can reenter teardown.\n  // No registration, context, StoragePartition or worker is created here.\n  std::vector<scoped_refptr<ServiceWorkerVersion>> versions;\n  for (const auto& [id, version] : context_core_->GetLiveVersions())\n    versions.emplace_back(version.get());\n  base::RepeatingClosure barrier =\n      base::BarrierClosure(versions.size(), std::move(callback));\n  for (const auto& version : versions)\n    version->StopWorker(barrier);\n}\n\nvoid ServiceWorkerContextWrapper::StopAllServiceWorkers(\n    base::OnceClosure callback) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/service_worker/service_worker_version.cc",
+      "inputSha256": "641c53b12f75c057b2e58f733c269a035086542c0f0541218b017a2ff4bece45",
+      "outputSha256": "00a5943ae585b1ce74324cf6bd4349f36ab9a963e732f1099b5d9f9ca6721c4b",
+      "edits": [
+        {
+          "name": "native participant include",
+          "find": "#include \"content/browser/service_worker/service_worker_version.h\"",
+          "replace": "#include \"content/browser/service_worker/service_worker_version.h\"\n#include \"content/browser/service_worker/aux_service_worker_migration.h\"",
+          "count": 1
+        },
+        {
+          "name": "central start and actual completion tracking",
+          "find": "  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  const bool is_browser_startup_complete =\n      GetContentClient()->browser()->IsBrowserStartupComplete();",
+          "replace": "  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  callback = aux_migration::TrackServiceWorkerStartCallback(std::move(callback));\n  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n    RunSoon(base::BindOnce(std::move(callback),\n                          blink::ServiceWorkerStatusCode::kErrorAbort));\n    return;\n  }\n  const bool is_browser_startup_complete =\n      GetContentClient()->browser()->IsBrowserStartupComplete();",
+          "count": 1
+        },
+        {
+          "name": "actual running-worker reuse admission",
+          "find": "void ServiceWorkerVersion::RunAfterStartWorker(\n    ServiceWorkerMetrics::EventType purpose,\n    StatusCallback callback) {",
+          "replace": "void ServiceWorkerVersion::RunAfterStartWorker(\n    ServiceWorkerMetrics::EventType purpose,\n    StatusCallback callback) {\n  callback = aux_migration::TrackServiceWorkerStartCallback(std::move(callback));\n  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n    RunSoon(base::BindOnce(std::move(callback),\n                          blink::ServiceWorkerStatusCode::kErrorAbort));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "name": "queued registration result rechecks close",
+          "find": "    scoped_refptr<ServiceWorkerRegistration> registration) {\n  scoped_refptr<ServiceWorkerRegistration> protect = registration;\n  if (status == blink::ServiceWorkerStatusCode::kErrorNotFound) {",
+          "replace": "    scoped_refptr<ServiceWorkerRegistration> registration) {\n  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n    RunSoon(base::BindOnce(std::move(callback),\n                          blink::ServiceWorkerStatusCode::kErrorAbort));\n    return;\n  }\n  scoped_refptr<ServiceWorkerRegistration> protect = registration;\n  if (status == blink::ServiceWorkerStatusCode::kErrorNotFound) {",
+          "count": 1
+        },
+        {
+          "name": "queued network restriction and restart recheck",
+          "find": "void ServiceWorkerVersion::StartWorkerInternal() {\n  DCHECK_EQ(blink::EmbeddedWorkerStatus::kStopped, running_status());\n  DCHECK(inflight_requests_.IsEmpty());\n  DCHECK(request_timeouts_.empty());",
+          "replace": "void ServiceWorkerVersion::StartWorkerInternal() {\n  DCHECK_EQ(blink::EmbeddedWorkerStatus::kStopped, running_status());\n  DCHECK(inflight_requests_.IsEmpty());\n  DCHECK(request_timeouts_.empty());\n  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n    FinishStartWorker(blink::ServiceWorkerStatusCode::kErrorAbort);\n    return;  // The failure callback may delete this version.\n  }",
+          "count": 1
+        },
+        {
+          "name": "paired warmed global-scope resume admission",
+          "find": "          embedded_worker_->ResumeInitializingGlobalScope();",
+          "replace": "          if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n            RunSoon(base::BindOnce(std::move(callback),\n                                  blink::ServiceWorkerStatusCode::kErrorAbort));\n            return;\n          }\n          embedded_worker_->ResumeInitializingGlobalScope();",
+          "count": 1
+        },
+        {
+          "name": "stopping callbacks cannot reopen restart admission",
+          "find": "  bool should_restart = !start_callbacks_.empty();",
+          "replace": "  bool should_restart = !start_callbacks_.empty() &&\n      aux_migration::ServiceWorkerStartsAllowedForMigration();",
+          "count": 1
+        },
+        {
+          "name": "retain actual cleanup body after stop callback",
+          "find": "void ServiceWorkerVersion::OnStoppedInternal(\n    blink::EmbeddedWorkerStatus old_status) {\n  TRACE_EVENT0(\"ServiceWorker\", \"ServiceWorkerVersion::OnStoppedInternal\");",
+          "replace": "void ServiceWorkerVersion::OnStoppedInternal(\n    blink::EmbeddedWorkerStatus old_status) {\n  TRACE_EVENT0(\"ServiceWorker\", \"ServiceWorkerVersion::OnStoppedInternal\");\n  aux_migration::ScopedServiceWorkerStopCleanup aux_cleanup;",
+          "count": 1
+        },
+        {
+          "name": "observe actual stopped notification only",
+          "find": "void ServiceWorkerVersion::OnStopped(blink::EmbeddedWorkerStatus old_status) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);",
+          "replace": "void ServiceWorkerVersion::OnStopped(blink::EmbeddedWorkerStatus old_status) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  aux_migration::ObserveServiceWorkerStopped();",
+          "count": 1
+        },
+        {
+          "name": "detachment is unresolved worker custody",
+          "find": "void ServiceWorkerVersion::OnDetached(blink::EmbeddedWorkerStatus old_status) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);",
+          "replace": "void ServiceWorkerVersion::OnDetached(blink::EmbeddedWorkerStatus old_status) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  aux_migration::ObserveServiceWorkerDetached();",
+          "count": 1
+        },
+        {
+          "name": "timeout detach must not disappear behind stop callbacks",
+          "find": "    embedded_worker_->RemoveObserver(this);\n    embedded_worker_->Detach();\n    embedded_worker_ = std::make_unique<EmbeddedWorkerInstance>(this);",
+          "replace": "    aux_migration::ObserveServiceWorkerDetached();\n    embedded_worker_->RemoveObserver(this);\n    embedded_worker_->Detach();\n    embedded_worker_ = std::make_unique<EmbeddedWorkerInstance>(this);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/service_worker/embedded_worker_instance.cc",
+      "inputSha256": "00aadc7513f27fda75631cc48ed0dac7d62bdd1c74962a6fb02a3c7e74559237",
+      "outputSha256": "0f7cfd387d4d22b2e89ef76ea8f5ff5209fb0389b559678a3096bcb462bb422f",
+      "edits": [
+        {
+          "name": "native participant include",
+          "find": "#include \"content/browser/service_worker/embedded_worker_instance.h\"",
+          "replace": "#include \"content/browser/service_worker/embedded_worker_instance.h\"\n#include \"content/browser/service_worker/aux_service_worker_migration.h\"",
+          "count": 1
+        },
+        {
+          "name": "real embedded start uses original setup-failure cleanup",
+          "find": "  for (auto& observer : listener_list_)\n    observer.OnStarting();\n\n  // service_worker_route_id will be set later in SetupOnUIThread",
+          "replace": "  for (auto& observer : listener_list_)\n    observer.OnStarting();\n  if (!aux_migration::ServiceWorkerStartsAllowedForMigration()) {\n    OnSetupFailed(std::move(callback),\n                  blink::ServiceWorkerStatusCode::kErrorAbort);\n    return;  // Setup failure may delete this instance.\n  }\n\n  // service_worker_route_id will be set later in SetupOnUIThread",
+          "count": 1
+        },
+        {
+          "name": "paired dispatch refusal keeps original callback and cleanup",
+          "find": "  SendStartWorker(std::move(params));\n  std::move(callback).Run(blink::ServiceWorkerStatusCode::kOk);",
+          "replace": "  if (!SendStartWorker(std::move(params))) {\n    OnSetupFailed(std::move(callback),\n                  blink::ServiceWorkerStatusCode::kErrorAbort);\n    return;  // Setup failure may delete this instance.\n  }\n  std::move(callback).Run(blink::ServiceWorkerStatusCode::kOk);",
+          "count": 1
+        },
+        {
+          "name": "paired dispatch bool reports no-message admission refusal",
+          "find": "void EmbeddedWorkerInstance::SendStartWorker(\n    blink::mojom::EmbeddedWorkerStartParamsPtr params) {",
+          "replace": "bool EmbeddedWorkerInstance::SendStartWorker(\n    blink::mojom::EmbeddedWorkerStartParamsPtr params) {",
+          "count": 1
+        },
+        {
+          "name": "actual renderer message rechecks after setup callbacks",
+          "find": "  client_->StartWorker(std::move(params));\n\n  starting_phase_ = is_script_streaming ? SCRIPT_STREAMING : SENT_START_WORKER;",
+          "replace": "  if (!aux_migration::ServiceWorkerStartsAllowedForMigration())\n    return false;\n  client_->StartWorker(std::move(params));\n\n  starting_phase_ = is_script_streaming ? SCRIPT_STREAMING : SENT_START_WORKER;",
+          "count": 1
+        },
+        {
+          "name": "paired dispatch success follows actual message",
+          "find": "  for (auto& observer : listener_list_)\n    observer.OnStartWorkerMessageSent();\n}",
+          "replace": "  for (auto& observer : listener_list_)\n    observer.OnStartWorkerMessageSent();\n  return true;\n}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/service_worker/service_worker_context_wrapper.h",
+      "inputSha256": "e1bcfd260c48467d52d106ece1638df582c89f7d443876732540376acd1283e1",
+      "outputSha256": "6b68081e0b49d8e78b9532999b70a9cf0559c9dfd37b8fb925a9d3fcc8e26778",
+      "edits": [
+        {
+          "name": "declare non-creating observation and retained-version stop",
+          "find": "  void StopAllServiceWorkers(base::OnceClosure callback) override;",
+          "replace": "  void StopAllServiceWorkers(base::OnceClosure callback) override;\n  bool HasOwnedCoreForMigrationObservation() const;\n  void StopAlreadyOwnedWorkersForMigration(base::OnceClosure callback);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/service_worker/embedded_worker_instance.h",
+      "inputSha256": "3078a9550a4dfefde09bea4d81dad6c813c5c57a5c713726b3f38513115e3b12",
+      "outputSha256": "bf32cb80959d5deaab1a894145260a2bc275cbd51be632fc4d04d313dba5acf4",
+      "edits": [
+        {
+          "name": "paired private dispatcher declaration",
+          "find": "  void SendStartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params);",
+          "replace": "  bool SendStartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/aux_service_worker_migration.h",
+      "inputSha256": null,
+      "outputSha256": "ac3df0b3528a0d72c22750d476fbfa5e953d3631ae91f32a94e42a441544b4af"
+    },
+    {
+      "path": "content/browser/service_worker/aux_service_worker_admission_state.h",
+      "inputSha256": null,
+      "outputSha256": "62f0f7e3fb137f9562f75a50eb24987cc020b35e82fbac28bfc1fdc9a085e2ed"
+    },
+    {
+      "path": "content/browser/service_worker/aux_service_worker_admission_state.cc",
+      "inputSha256": null,
+      "outputSha256": "d0ba4e823f04376c3f9d6bd4bad34eea28d9adc0aa0f5798c2ec64723c2dc9d4"
+    },
+    {
+      "path": "content/browser/service_worker/aux_service_worker_migration.h",
+      "inputSha256": null,
+      "outputSha256": "8fae9d7cb2e04ebed201386f22b3ee5043685eaee778e916a01b95d6af8e44b0"
+    },
+    {
+      "path": "content/browser/service_worker/aux_service_worker_migration.cc",
+      "inputSha256": null,
+      "outputSha256": "d74c4ac9f4da0732683879d339b2ceb51f98898250e36b78d1db02c87fb433ca"
+    }
+  ],
+  "patchSha256": "daf8eab58499228489ef6912e465d26ce72a8d39941b95ea34f4fdcca8fe5647",
+  "applied": false,
+  "compiled": false,
+  "storagePartitionsCreated": false,
+  "uiViewsChanged": false,
+  "coldRefusalChanged": false
+}
