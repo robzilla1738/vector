@@ -45,8 +45,8 @@
     }
   ],
   "unappliedNativeSuccessor": {
-    "composition": "out/native-reuse-composition-aux-browser-pty-policy",
-    "review": "docs/integration/proposed/aux-native-browser-pty-integration/review.json",
+    "composition": "out/native-reuse-composition-aux-browser-compiler-ready",
+    "review": "docs/integration/proposed/aux-native-browser-compiler-integration/review.json",
     "sourceRecords": 826,
     "artworkAssets": 23,
     "applied": false,
@@ -54,7 +54,8 @@
     "startupHookIncluded": true,
     "productHookDefaultOff": true,
     "ptyParentV3Included": true,
-    "commit": "b54bffa43"
+    "commit": "f4c70bed4",
+    "compilerFixesIncluded": true
   },
   "nextSourceReview": [
     "publication-fence ACK pairing plus actual browser adoption, finite3 RPC and notification codec composition",
@@ -256,6 +257,13 @@
       "exitCode": 1,
       "role": "all3 platformTUs pass; purewire failed omitted SDK root",
       "receipt": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/platform-results.json"
+    },
+    {
+      "session": 27353,
+      "exitCode": 1,
+      "role": "actual coldlaunch firstTU compile failed at three Chromium API/style sites; enabledmainhook unrun",
+      "receipt": "/tmp/aux-native-cold-entry-focused-check-20261023/results.json",
+      "successorSourceInProgress": true
     }
   ],
   "appliedCurrentNativeComposition": {

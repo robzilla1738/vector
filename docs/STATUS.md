@@ -1,3 +1,9 @@
+# Compiler fixes composed; startup source check found three API errors — 2026-10-23
+
+Source commit `f4c70bed4` composes the actual three compiler corrections into `out/native-reuse-composition-aux-browser-compiler-ready`:826 source records/23 unchanged artwork assets, with independent replay and all849 native/artwork apply preconditions checked. It remains unapplied/uncompiled as a whole browser graph.
+
+Focused check27353 compiled the previously uncompiled cold-launch source using genuine platform flags and found three source-level errors: explicit ScopedCFTypeRef empty construction, base::Environment's cstring_view argument and Chromium's raw-pointer type declaration style. The separate enabled Chrome-main hook object did not run after that failure. A narrow source successor is being prepared; no warning suppression, activation or broad rebuild occurred. Actual compiled six-TU/daemon evidence remains valid for its exact inputs. Accepted UI and app remain untouched.
+
 # Six browser-side integration files compile; standalone wire check passes — 2026-10-23
 
 The corrected transport, owned child and selected-home translation units compile across89233/41279 without repeating the successful objects. Check64606 compiled daemon supervisor, installation authentication and browser platform using their genuine `obj/chrome/browser/aux/platform.ninja` flags. The prior BASE-derived flags had incorrectly enabled conversion warnings for these three files; no upstream source or manual warning suppression changed.
