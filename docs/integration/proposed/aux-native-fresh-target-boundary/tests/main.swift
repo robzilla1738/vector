@@ -171,4 +171,17 @@ staleIntent.isCurrent = false
 let beforeStale = adds
 refuses { _ = try stale.addTarget(staleIntent) }
 check(adds == beforeStale)
+// A target-absence callback may invalidate the retained context. It must not
+// dispatch Add even though the captured return value itself says absent.
+configure(context, bytes)
+let changedAfterAbsence = try AuxNativeFreshTargetBoundary(context: context)
+AuxNativeFreshTargetFixture.read = { selector in
+    if selector == stageSelector { return .bytes(bytes) }
+    CapturedNativeContext.revalidate = { throw CapturedNativeError.stale }
+    return .absent
+}
+let changedIntent = AuxNativeFreshTargetWriteIntent(row: "metadata", context: context)
+let beforeChangedAbsence = adds
+refuses { _ = try changedAfterAbsence.addTarget(changedIntent) }
+check(adds == beforeChangedAbsence)
 print("PASS:\(checks) native-v2 decoder/fixed software authority/captured target checks; no factory, hardware, Security or disk secret writes")

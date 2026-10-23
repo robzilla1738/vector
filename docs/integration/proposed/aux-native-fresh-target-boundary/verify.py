@@ -28,6 +28,8 @@ assert "authority = try .p256(" in source and "authority = try .pq(" in source
 assert "try intent.consumeOnceForNativeBoundary()" in source
 assert source.index("try intent.consumeOnceForNativeBoundary()") < source.index("status = SecItemAdd(")
 assert 'payload: payload' in source and 'let payload = decoded.payloads[intent.row]' in source
+absence_end = source.index('guard case .absent = try Self.read(binding.target)')
+assert source.index('try revalidateStage()', absence_end) < source.index('status = SecItemAdd(')
 assert "bytes == decoded.payloads[row]" in source
 assert 'decoded.makeCommandCore(payloads: payloads)' in source
 assert "try context.revalidateNativeStageBinding()" in source

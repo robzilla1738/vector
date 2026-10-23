@@ -168,6 +168,9 @@ final class AuxNativeFreshTargetBoundary {
         try intent.consumeOnceForNativeBoundary()
         try revalidateStage()
         guard case .absent = try Self.read(binding.target) else { throw AuxNativeFreshTargetError.changed }
+        // The target read is a boundary callback too: revalidate the genuine
+        // stage/context after it, immediately before the create-only dispatch.
+        try revalidateStage()
         let status: OSStatus
 #if AUX_NATIVE_FRESH_TARGET_BOUNDARY_FIXTURE
         status = try AuxNativeFreshTargetFixture.add(binding.target, payload)

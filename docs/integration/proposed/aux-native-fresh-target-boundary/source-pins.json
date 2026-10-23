@@ -1,7 +1,7 @@
 {
   "format": "aux.native.fresh-target-boundary.v1",
   "active": false,
-  "sourceSha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435",
+  "sourceSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
   "contextPrerequisiteCommit": "d3c53fc18",
   "intentPrerequisiteCommit": "fcd3084ec",
   "protectedCallsExecuted": false,
@@ -19,7 +19,7 @@
     },
     {
       "path": "source/AuxNativeFreshTargetBoundary.swift",
-      "sha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435"
+      "sha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a"
     },
     {
       "path": "tests/CapturedContext.swift",
@@ -27,11 +27,11 @@
     },
     {
       "path": "tests/main.swift",
-      "sha256": "08e07889702c929571cd3d4c6ce213f949ed70aa0fe591c22ec992b451f3e388"
+      "sha256": "bdf1c903c879038a47b527a2b17f6e01f6c5176d2c9f12d299b6537bb02964b5"
     },
     {
       "path": "verify.py",
-      "sha256": "ed2c10f17ac0550cc3c07a7349f4f7ae04fff0a2e82485ea56590a667a3be85a"
+      "sha256": "ce8c54c7e6f4ba8f0fe46dbe7bc8da07fe2e8f029acb571f394a9f763d622629"
     }
   ],
   "dependencies": [
@@ -101,5 +101,10 @@
       "reason": "Reviewed fcd3084ec full private CURRENT-head intent/retained-FD coordinator successor; boundary source unchanged; paired production typecheck24645 queued."
     }
   ],
-  "pairedProductionGraphExecSession": 24645
+  "pairedProductionGraphExecSession": 24645,
+  "reviewedSourceSuccessor": {
+    "previousSha256": "5f6595af467947faececad3b4c71fb649b783d747e9f0d5b53efa079a32b0435",
+    "currentSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+    "reason": "Revalidate genuine stage/context after target-absence callback immediately before create-only Add; no replay permission. Existing captured fixture96148 still queued and reads this successor."
+  }
 }
