@@ -44,10 +44,11 @@ bool WaitableLiveChild(pid_t child) {
 class DestroyMessage {
  public:
   explicit DestroyMessage(mach_msg_header_t* value) : value_(value) {}
-  ~DestroyMessage() { if (value_) mach_msg_destroy(value_); }
+  ~DestroyMessage() { if (getpid() == process_ && value_) mach_msg_destroy(value_); }
   void Disarm() { value_ = nullptr; }
  private:
   mach_msg_header_t* value_;
+  const pid_t process_ = getpid();
 };
 class ReceiveRight {
  public:
@@ -56,12 +57,13 @@ class ReceiveRight {
       throw std::runtime_error("Native receive right unavailable");
   }
   ~ReceiveRight() {
-    if (port_ != MACH_PORT_NULL)
+    if (getpid() == process_ && port_ != MACH_PORT_NULL)
       mach_port_mod_refs(mach_task_self(), port_, MACH_PORT_RIGHT_RECEIVE, -1);
   }
-  mach_port_t get() const { return port_; }
+  mach_port_t get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }
  private:
   mach_port_t port_ = MACH_PORT_NULL;
+  const pid_t process_ = getpid();
 };
 constexpr mach_msg_option_t kReceiveOptions =
     MACH_RCV_MSG | MACH_RCV_TIMEOUT |
@@ -72,13 +74,16 @@ constexpr mach_msg_option_t kReceiveOptions =
 struct ExactCodePolicy::Data {
   SecRequirementRef requirement;
   std::vector<uint8_t> cd_hash;
+  const pid_t process = getpid();
 };
 ExactCodePolicy::ExactCodePolicy(SecRequirementRef requirement, std::span<const uint8_t> hash)
     : data_(std::make_unique<Data>(Data{requirement,
           std::vector<uint8_t>(hash.begin(), hash.end())})) {
   CFRetain(requirement);
 }
-ExactCodePolicy::~ExactCodePolicy() { CFRelease(data_->requirement); }
+ExactCodePolicy::~ExactCodePolicy() {
+  if (getpid() == data_->process) CFRelease(data_->requirement);
+}
 std::shared_ptr<const ExactCodePolicy> ExactCodePolicy::CopyNativePolicy(
     SecRequirementRef requirement, std::span<const uint8_t> hash) {
   if (!requirement || CFGetTypeID(requirement) != SecRequirementGetTypeID() ||
@@ -86,8 +91,11 @@ std::shared_ptr<const ExactCodePolicy> ExactCodePolicy::CopyNativePolicy(
   return std::shared_ptr<const ExactCodePolicy>(new ExactCodePolicy(requirement, hash));
 }
 struct NativeOperations {
-  static mach_port_t Port(const NativeSendRight& right) { return right.right_; }
+  static mach_port_t Port(const NativeSendRight& right) {
+    return getpid() == right.process_ ? right.right_ : MACH_PORT_NULL;
+  }
   static bool Validate(audit_token_t token, const ExactCodePolicy& policy) {
+    if (getpid() != policy.data_->process) return false;
     CFDataRef audit = CFDataCreate(kCFAllocatorDefault,
         reinterpret_cast<const UInt8*>(&token), sizeof(token));
     if (!audit) return false;
@@ -120,7 +128,7 @@ struct NativeOperations {
     return valid;
   }
 };
-NativeSendRight::NativeSendRight(mach_port_t value) : right_(value) {}
+NativeSendRight::NativeSendRight(mach_port_t value) : right_(value), process_(getpid()) {}
 NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
   mach_port_type_t type = 0;
   if (value == MACH_PORT_NULL || mach_port_type(mach_task_self(), value, &type) != KERN_SUCCESS ||
@@ -128,16 +136,20 @@ NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
   return NativeSendRight(value);
 }
 NativeSendRight::NativeSendRight(NativeSendRight&& other) noexcept
-    : right_(std::exchange(other.right_, MACH_PORT_NULL)) {}
+    : right_(std::exchange(other.right_, MACH_PORT_NULL)),
+      process_(std::exchange(other.process_, -1)) {}
 NativeSendRight& NativeSendRight::operator=(NativeSendRight&& other) noexcept {
   if (this != &other) {
-    if (right_ != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), right_);
+    if (getpid() == process_ && right_ != MACH_PORT_NULL)
+      mach_port_deallocate(mach_task_self(), right_);
     right_ = std::exchange(other.right_, MACH_PORT_NULL);
+    process_ = std::exchange(other.process_, -1);
   }
   return *this;
 }
 NativeSendRight::~NativeSendRight() {
-  if (right_ != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), right_);
+  if (getpid() == process_ && right_ != MACH_PORT_NULL)
+    mach_port_deallocate(mach_task_self(), right_);
 }
 struct ParentTransport::State {
   State(BirthIdentity child_value, std::shared_ptr<const ExactCodePolicy> value)
@@ -202,6 +214,7 @@ ExchangeStatus ParentTransport::ServiceOne(uint32_t timeout_ms) {
   struct ActiveExchange {
     State* state;
     ~ActiveExchange() {
+      if (getpid() != state->process) return;
       std::lock_guard<std::mutex> lock(state->mutex);
       --state->snapshot.active_exchanges;
     }
@@ -249,10 +262,24 @@ ExchangeStatus ParentTransport::ServiceOne(uint32_t timeout_ms) {
   reply.header.msgh_id = kReply;
   reply.generation = generation;
   reply.nonce = request.wire.nonce;
+  // Transfer the received send-once right to the actual sent buffer. Kernel
+  // pseudo-receive may rewrite that buffer on failure; never clean a stale copy.
+  request.wire.header.msgh_remote_port = MACH_PORT_NULL;
+  DestroyMessage reply_cleanup(&reply.header);
   result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
       sizeof(reply), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
-  if (result != KERN_SUCCESS) return ExchangeStatus::refused;
-  destroy.Disarm();  // Reply consumed the one received send-once right.
+  if (result != KERN_SUCCESS) {
+    if (!RecoverableSendError(result)) {
+      // Kernel may have partially consumed rights. Do not guess or deallocate
+      // a potentially reused name. Record unknown cleanup and close admission.
+      reply_cleanup.Disarm();
+      ++state->snapshot.unresolved_reply_cleanup;
+      state->snapshot.closed = true;
+      ++state->snapshot.generation;
+    }
+    return ExchangeStatus::refused;
+  }
+  reply_cleanup.Disarm();  // Successful send consumed its exact send-once right.
   state->child_pid_version = version;
   state->snapshot.child_pid_version_observed = true;
   ++state->snapshot.authenticated_exchanges;
@@ -274,9 +301,28 @@ ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
   exchange.wire.header.msgh_id = kRequest;
   arc4random_buf(exchange.wire.nonce.data(), exchange.wire.nonce.size());
   const auto nonce = exchange.wire.nonce;
-  auto result = mach_msg(&exchange.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT | kReceiveOptions,
-      sizeof(Wire), sizeof(exchange), reply_port.get(), timeout_ms, MACH_PORT_NULL);
-  if (result == MACH_RCV_TIMED_OUT || result == MACH_SEND_TIMED_OUT) {
+  auto result = mach_msg(&exchange.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
+      sizeof(Wire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
+  if (result != KERN_SUCCESS) {
+    if (RecoverableSendError(result)) {
+      // Match libsyscall's unsent-message handling, including a pseudo-received
+      // local MOVE right. The independent owned endpoint ref remains retained.
+      const auto local = MACH_MSGH_BITS_LOCAL(exchange.wire.header.msgh_bits);
+      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) {
+        mach_port_deallocate(mach_task_self(), exchange.wire.header.msgh_local_port);
+        exchange.wire.header.msgh_local_port = MACH_PORT_NULL;
+      }
+      mach_msg_destroy(&exchange.wire.header);
+    } else {
+      observation.right_cleanup_unresolved = true;
+    }
+    if (result == MACH_SEND_TIMED_OUT) observation.status = ExchangeStatus::timedOut;
+    return observation;
+  }
+  exchange = Received{};
+  result = mach_msg(&exchange.wire.header, kReceiveOptions, 0,
+      sizeof(exchange), reply_port.get(), timeout_ms, MACH_PORT_NULL);
+  if (result == MACH_RCV_TIMED_OUT) {
     observation.status = ExchangeStatus::timedOut;
     return observation;
   }

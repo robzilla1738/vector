@@ -1,0 +1,146 @@
+{
+  "format": "aux.native-peer.ownership-successor.v1",
+  "parentCommit": "1ac78053d",
+  "parentInputsSha256": "a3553132713f5971522191c7f9cef759902b8139b22f1a5feffea46ee3bab2db",
+  "files": [
+    {
+      "path": "source/AuxNativePeerTransport.h",
+      "inputSha256": "f1f66eb9f9866b09ee8b0cb7739850f07379cf2d74e2d7b35a10632d91900d98",
+      "outputSha256": "bf00bc7a4215b77262934d81c22d10f1cabc5c8ffa15a00c38164ddbfbb8b45a",
+      "edits": [
+        {
+          "find": "  mach_port_t right_ = MACH_PORT_NULL;",
+          "replace": "  mach_port_t right_ = MACH_PORT_NULL;\n  pid_t process_ = -1;",
+          "count": 1
+        },
+        {
+          "find": "  uint64_t rejected_peer_identities = 0;",
+          "replace": "  uint64_t rejected_peer_identities = 0;\n  uint64_t unresolved_reply_cleanup = 0;",
+          "count": 1
+        },
+        {
+          "find": "  int peer_pid_version = -1;",
+          "replace": "  int peer_pid_version = -1;\n  bool right_cleanup_unresolved = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "source/AuxNativePeerWire.h",
+      "inputSha256": "84593fd937f08d8f4b14afd0f9f91ff6756fdf18913879d9b931db1d1f69a6fb",
+      "outputSha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb",
+      "edits": [
+        {
+          "find": "}  // namespace aux::peer::detail",
+          "replace": "// Apple libsyscall only treats these send errors as recoverable for cleanup.\ninline bool RecoverableSendError(mach_msg_return_t result) {\n  return result == MACH_SEND_INVALID_DEST || result == MACH_SEND_TIMED_OUT ||\n      result == MACH_SEND_INTERRUPTED;\n}\n}  // namespace aux::peer::detail",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "source/AuxNativePeerTransport.cc",
+      "inputSha256": "ef8f12efd60416630edcfc1fc19026b162f24a15a643c572db6a5d2206984ad3",
+      "outputSha256": "4fd48df773f95be407ee013afbd478ac0e3a2c37b9d94b7f51096c7b967af4d9",
+      "edits": [
+        {
+          "find": "  ~DestroyMessage() { if (value_) mach_msg_destroy(value_); }",
+          "replace": "  ~DestroyMessage() { if (getpid() == process_ && value_) mach_msg_destroy(value_); }",
+          "count": 1
+        },
+        {
+          "find": "  mach_msg_header_t* value_;",
+          "replace": "  mach_msg_header_t* value_;\n  const pid_t process_ = getpid();",
+          "count": 1
+        },
+        {
+          "find": "    if (port_ != MACH_PORT_NULL)\n      mach_port_mod_refs",
+          "replace": "    if (getpid() == process_ && port_ != MACH_PORT_NULL)\n      mach_port_mod_refs",
+          "count": 1
+        },
+        {
+          "find": "  mach_port_t get() const { return port_; }",
+          "replace": "  mach_port_t get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }",
+          "count": 1
+        },
+        {
+          "find": "  mach_port_t port_ = MACH_PORT_NULL;",
+          "replace": "  mach_port_t port_ = MACH_PORT_NULL;\n  const pid_t process_ = getpid();",
+          "count": 1
+        },
+        {
+          "find": "  std::vector<uint8_t> cd_hash;",
+          "replace": "  std::vector<uint8_t> cd_hash;\n  const pid_t process = getpid();",
+          "count": 1
+        },
+        {
+          "find": "ExactCodePolicy::~ExactCodePolicy() { CFRelease(data_->requirement); }",
+          "replace": "ExactCodePolicy::~ExactCodePolicy() {\n  if (getpid() == data_->process) CFRelease(data_->requirement);\n}",
+          "count": 1
+        },
+        {
+          "find": "  static mach_port_t Port(const NativeSendRight& right) { return right.right_; }",
+          "replace": "  static mach_port_t Port(const NativeSendRight& right) {\n    return getpid() == right.process_ ? right.right_ : MACH_PORT_NULL;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  static bool Validate(audit_token_t token, const ExactCodePolicy& policy) {",
+          "replace": "  static bool Validate(audit_token_t token, const ExactCodePolicy& policy) {\n    if (getpid() != policy.data_->process) return false;",
+          "count": 1
+        },
+        {
+          "find": "NativeSendRight::NativeSendRight(mach_port_t value) : right_(value) {}",
+          "replace": "NativeSendRight::NativeSendRight(mach_port_t value) : right_(value), process_(getpid()) {}",
+          "count": 1
+        },
+        {
+          "find": "    : right_(std::exchange(other.right_, MACH_PORT_NULL)) {}",
+          "replace": "    : right_(std::exchange(other.right_, MACH_PORT_NULL)),\n      process_(std::exchange(other.process_, -1)) {}",
+          "count": 1
+        },
+        {
+          "find": "    if (right_ != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), right_);",
+          "replace": "    if (getpid() == process_ && right_ != MACH_PORT_NULL)\n      mach_port_deallocate(mach_task_self(), right_);",
+          "count": 1
+        },
+        {
+          "find": "    right_ = std::exchange(other.right_, MACH_PORT_NULL);",
+          "replace": "    right_ = std::exchange(other.right_, MACH_PORT_NULL);\n    process_ = std::exchange(other.process_, -1);",
+          "count": 1
+        },
+        {
+          "find": "  if (right_ != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), right_);",
+          "replace": "  if (getpid() == process_ && right_ != MACH_PORT_NULL)\n    mach_port_deallocate(mach_task_self(), right_);",
+          "count": 1
+        },
+        {
+          "find": "    ~ActiveExchange() {\n      std::lock_guard",
+          "replace": "    ~ActiveExchange() {\n      if (getpid() != state->process) return;\n      std::lock_guard",
+          "count": 1
+        },
+        {
+          "find": "  result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,",
+          "replace": "  // Transfer the received send-once right to the actual sent buffer. Kernel\n  // pseudo-receive may rewrite that buffer on failure; never clean a stale copy.\n  request.wire.header.msgh_remote_port = MACH_PORT_NULL;\n  DestroyMessage reply_cleanup(&reply.header);\n  result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,",
+          "count": 1
+        },
+        {
+          "find": "  if (result != KERN_SUCCESS) return ExchangeStatus::refused;\n  destroy.Disarm();  // Reply consumed the one received send-once right.",
+          "replace": "  if (result != KERN_SUCCESS) {\n    if (!RecoverableSendError(result)) {\n      // Kernel may have partially consumed rights. Do not guess or deallocate\n      // a potentially reused name. Record unknown cleanup and close admission.\n      reply_cleanup.Disarm();\n      ++state->snapshot.unresolved_reply_cleanup;\n      state->snapshot.closed = true;\n      ++state->snapshot.generation;\n    }\n    return ExchangeStatus::refused;\n  }\n  reply_cleanup.Disarm();  // Successful send consumed its exact send-once right.",
+          "count": 1
+        },
+        {
+          "find": "  auto result = mach_msg(&exchange.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT | kReceiveOptions,\n      sizeof(Wire), sizeof(exchange), reply_port.get(), timeout_ms, MACH_PORT_NULL);\n  if (result == MACH_RCV_TIMED_OUT || result == MACH_SEND_TIMED_OUT) {",
+          "replace": "  auto result = mach_msg(&exchange.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,\n      sizeof(Wire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);\n  if (result != KERN_SUCCESS) {\n    if (RecoverableSendError(result)) {\n      // Match libsyscall's unsent-message handling, including a pseudo-received\n      // local MOVE right. The independent owned endpoint ref remains retained.\n      const auto local = MACH_MSGH_BITS_LOCAL(exchange.wire.header.msgh_bits);\n      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) {\n        mach_port_deallocate(mach_task_self(), exchange.wire.header.msgh_local_port);\n        exchange.wire.header.msgh_local_port = MACH_PORT_NULL;\n      }\n      mach_msg_destroy(&exchange.wire.header);\n    } else {\n      observation.right_cleanup_unresolved = true;\n    }\n    if (result == MACH_SEND_TIMED_OUT) observation.status = ExchangeStatus::timedOut;\n    return observation;\n  }\n  exchange = Received{};\n  result = mach_msg(&exchange.wire.header, kReceiveOptions, 0,\n      sizeof(exchange), reply_port.get(), timeout_ms, MACH_PORT_NULL);\n  if (result == MACH_RCV_TIMED_OUT) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compiled": false,
+  "ipcExecuted": false,
+  "fixture": {
+    "path": "tests/wire.cc",
+    "inputSha256": "55a712a97aa1a4a19400b2279f4c60717f29eaf8bcccf427027878d11787d4d4",
+    "outputSha256": "73c9448a3b7b3196457a1b47723c9868ec1e44cf343ec158633a9ab1bd32b5b7",
+    "addedChecks": 5
+  }
+}

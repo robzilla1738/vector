@@ -33,6 +33,7 @@ class NativeSendRight final {
  private:
   explicit NativeSendRight(mach_port_t right);
   mach_port_t right_ = MACH_PORT_NULL;
+  pid_t process_ = -1;
   friend class ParentTransport;
   friend struct NativeOperations;
 };
@@ -45,6 +46,7 @@ struct TransportSnapshot {
   uint64_t active_code_validations = 0;
   uint64_t authenticated_exchanges = 0;
   uint64_t rejected_peer_identities = 0;
+  uint64_t unresolved_reply_cleanup = 0;
   bool child_pid_version_observed = false;
 };
 enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
@@ -53,6 +55,7 @@ struct ParentExchange {
   uint64_t transport_generation = 0;
   int peer_pid = -1;
   int peer_pid_version = -1;
+  bool right_cleanup_unresolved = false;
 };
 class ParentTransport final {
  public:

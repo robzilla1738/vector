@@ -7,19 +7,19 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-peer-transport/source/AuxNativePeerTransport.cc",
-      "sha256": "ef8f12efd60416630edcfc1fc19026b162f24a15a643c572db6a5d2206984ad3"
+      "sha256": "4fd48df773f95be407ee013afbd478ac0e3a2c37b9d94b7f51096c7b967af4d9"
     },
     {
       "path": "docs/integration/proposed/aux-native-peer-transport/source/AuxNativePeerTransport.h",
-      "sha256": "f1f66eb9f9866b09ee8b0cb7739850f07379cf2d74e2d7b35a10632d91900d98"
+      "sha256": "bf00bc7a4215b77262934d81c22d10f1cabc5c8ffa15a00c38164ddbfbb8b45a"
     },
     {
       "path": "docs/integration/proposed/aux-native-peer-transport/source/AuxNativePeerWire.h",
-      "sha256": "84593fd937f08d8f4b14afd0f9f91ff6756fdf18913879d9b931db1d1f69a6fb"
+      "sha256": "dde424539f4f86fc8b4e446e97475d7659333325658b5bd4f3460f981e2625cb"
     },
     {
       "path": "docs/integration/proposed/aux-native-peer-transport/tests/wire.cc",
-      "sha256": "55a712a97aa1a4a19400b2279f4c60717f29eaf8bcccf427027878d11787d4d4"
+      "sha256": "73c9448a3b7b3196457a1b47723c9868ec1e44cf343ec158633a9ab1bd32b5b7"
     }
   ],
   "reviewedNativePatterns": [
@@ -54,5 +54,8 @@
   "ipcOrSecurityExecuted": false,
   "parentCohortAdmissionImplemented": false,
   "launchHandoffIntegrated": false,
-  "state2Authorized": false
+  "state2Authorized": false,
+  "historicalInputs": "baseline-v1/inputs.json",
+  "parentSourceCommit": "1ac78053d",
+  "ownershipReview": "process-and-send-ownership-review.json"
 }

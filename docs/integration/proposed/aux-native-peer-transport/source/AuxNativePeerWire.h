@@ -28,4 +28,9 @@ inline bool ValidWire(const Received& received, mach_msg_id_t kind) {
       received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
       received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
 }
+// Apple libsyscall only treats these send errors as recoverable for cleanup.
+inline bool RecoverableSendError(mach_msg_return_t result) {
+  return result == MACH_SEND_INVALID_DEST || result == MACH_SEND_TIMED_OUT ||
+      result == MACH_SEND_INTERRUPTED;
+}
 }  // namespace aux::peer::detail

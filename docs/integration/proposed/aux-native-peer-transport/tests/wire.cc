@@ -24,4 +24,9 @@ int main() {
   assert(!ValidWire(request, kRequest));
   request.trailer.msgh_trailer_size++;
   assert(!ValidWire(request, kReply));
+  assert(RecoverableSendError(MACH_SEND_INVALID_DEST));
+  assert(RecoverableSendError(MACH_SEND_TIMED_OUT));
+  assert(RecoverableSendError(MACH_SEND_INTERRUPTED));
+  assert(!RecoverableSendError(KERN_SUCCESS));
+  assert(!RecoverableSendError(MACH_SEND_INVALID_DATA));
 }
