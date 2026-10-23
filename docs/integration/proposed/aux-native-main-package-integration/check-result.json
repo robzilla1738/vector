@@ -1,0 +1,9 @@
+{
+  "format": "aux.inactive-native-main.package-proposal-check.v1",
+  "passed": true,
+  "actualReceiptAndOutputReadOnly": true,
+  "sourceFiles": 79,
+  "patchFiles": 2,
+  "packageProduced": false,
+  "executableRun": false
+}

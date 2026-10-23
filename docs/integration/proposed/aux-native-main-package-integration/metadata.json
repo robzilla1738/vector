@@ -1,0 +1,49 @@
+{
+  "format": "aux.inactive-native-main.package-patch.v1",
+  "files": [
+    {
+      "path": "scripts/package-provided.mjs",
+      "sourceSha256": "653152480198c0521319d2f0e0606693c15b8bd54d711eb34f03ccfb30af3ff4",
+      "outputSha256": "d53ee13dbe5dafed67b9d36c52b70de7fbd15b4f7996caa29af5a9b5eb40f5a3",
+      "edits": [
+        {
+          "find": "'--source-snapshot': 'sourceSnapshotRoot'",
+          "replace": "'--source-snapshot': 'sourceSnapshotRoot', '--native-main-receipt': 'nativeMainReceiptPath'",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "scripts/lib/provided-package.mjs",
+      "sourceSha256": "8900648e1b91744041ec4b35cc60ecedaccccf0ee0dbc243238a11f4f3b59c33",
+      "outputSha256": "a864b7268c7586a72a27ec2a2106aaf9039c1bf00ff46c69b19345323370509f",
+      "edits": [
+        {
+          "find": "import { verifyAuxStateIdentityContract }",
+          "replace": "import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';\nimport { verifyAuxStateIdentityContract }",
+          "count": 1
+        },
+        {
+          "find": "developmentDpLayout = false, sourceSnapshotRoot })",
+          "replace": "developmentDpLayout = false, sourceSnapshotRoot, nativeMainReceiptPath })",
+          "count": 1
+        },
+        {
+          "find": "  const stateIdentityVersion = stageDeclaration.stateIdentityVersion;",
+          "replace": "  const stateIdentityVersion = stageDeclaration.stateIdentityVersion;\n  if (nativeMainReceiptPath && developmentDpLayout) throw Error('Inactive native main cannot use development signing layout');\n  const nativeMainEvidence = nativeMainReceiptPath ? await verifyNativeMainPackageInput({ repositoryRoot: repository, receiptPath: nativeMainReceiptPath, compositionBytes: compositionRaw, stage: stageDeclaration }) : null;",
+          "count": 1
+        },
+        {
+          "find": "    const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });",
+          "replace": "    const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });\n    const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;",
+          "count": 1
+        },
+        {
+          "find": "      developmentDpLayout, layoutChanges, outerPackageBoundary,",
+          "replace": "      developmentDpLayout, layoutChanges, outerPackageBoundary,\n      ...(nativeMainReplacement ? { nativeMainReplacement } : {}),",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
