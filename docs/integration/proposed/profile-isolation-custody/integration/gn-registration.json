@@ -1,0 +1,21 @@
+{
+  "format": "aux.child-custody.gn-registration.v1",
+  "files": [
+    {
+      "path": "content/browser/BUILD.gn",
+      "beforeSha256": "7f3fd37f37e8c045c38e9fdee6661136888b238a227bcde80059481d1ee00bf0",
+      "afterSha256": "d6f937cee9919010cb4c8d6f5668bd893d433b41fa13ce08248da7a0252b579c",
+      "insert": "\"aux_child_lifetime.h\",",
+      "before": "\"child_process_launcher_helper.cc\","
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/BUILD.gn",
+      "beforeSha256": "1d54fe48595da185897ebff4ab869027b15f667ff99e995722ded6d9572b5ba7",
+      "afterSha256": "6cdc3a7d78d4b64827e68a374a29235d6267836c1a33c217ff268adc88631968",
+      "insert": "\"aux_native_messaging_lifetime.h\",",
+      "before": "\"native_message_process_host.cc\","
+    }
+  ],
+  "sharedChromiumChanged": false,
+  "uiModified": false
+}

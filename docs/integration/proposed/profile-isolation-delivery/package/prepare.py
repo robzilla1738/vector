@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bind completed exact outputs into an inactive package recipe."""
-import argparse,json,pathlib,importlib.util
+import argparse,json,pathlib,importlib.util,sys
+sys.dont_write_bytecode=True
 P=pathlib.Path
 spec=importlib.util.spec_from_file_location('aux_assemble',P(__file__).with_name('assemble.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 p=argparse.ArgumentParser()
