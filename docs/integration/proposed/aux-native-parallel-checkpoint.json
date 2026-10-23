@@ -1,16 +1,17 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T03:18:47.324157+00:00",
+  "recordedAt": "2026-10-23T03:29:42.271779+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
-  "liveHandlesVerifiedThisCheckpoint": [],
-  "agentReportedPendingChecks": [
+  "liveHandlesVerifiedThisCheckpoint": [
     {
-      "session": 40860,
-      "role": "same job actual final42 productionSwift graph",
-      "state": "agent reports terminal exit0; immutable evidence commit pending"
-    },
+      "session": 1414,
+      "role": "first official Node26.5.0 static library build; actual ICU compilation observed",
+      "state": "live; no embedding link or runtime acceptance"
+    }
+  ],
+  "agentReportedPendingChecks": [
     {
       "session": 25336,
       "role": "retained account FD fixture"
@@ -20,28 +21,16 @@
       "role": "after-lock path-swap fixture"
     },
     {
-      "session": 42833,
-      "role": "actual resumed-only filesystem fixture with explicit captured identity"
-    },
-    {
       "session": 22764,
       "role": "actual provider registry lifecycle fixture with fake identity/crypto/OS effects only"
-    },
-    {
-      "session": 82351,
-      "role": "actual changed dispatcher/captured guard fixture"
-    },
-    {
-      "session": 50721,
-      "role": "actual changed stage/captured effect fixture"
     }
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "ready-only homeexport and per-command liveguard/currentbinding successor; retryable precommand timeout/DP-unavailable",
-    "typed pre-Add stage deferral without consuming Addintent or replay permission",
-    "authenticated fileport home selection; guestsealedpolicy validation",
-    "actual daemon nativeentry beforeNode, fixedsealedentrybytes and retained runtime shutdown"
+    "actual before-Node executable entry/lifetime and native parent-start pairing",
+    "new fileport2000ms timeout and lost-ACK successor: compile and focused pure wire fixture",
+    "read-only RAM result reconciliation successor: focused fixture and actual changed graph",
+    "explicit legacy custody/CSK migration and original common-addon retirement"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -54,7 +43,7 @@
     "resume": "42fa844d3",
     "typedRuntimeConsumer": "ae704412a",
     "afterLockAccountRevalidation": "4bbb1411c",
-    "actual36GraphPending": true,
+    "actual36GraphPending": false,
     "providerQuarantine": "98d3e1140",
     "providerQuarantineEvidenceRecipe": "7b7f743d5",
     "peerProcessAndSendOwnership": "2c44e578f",
@@ -66,7 +55,10 @@
     "sealedOuterParentProducer": "8fefd8fb0",
     "ownedRightEarlyRefusalFix": "6b73faaae",
     "actual42GraphAgentReportedPassed": true,
-    "readinessSuccessor": "caa53ca88"
+    "readinessSuccessor": "caa53ca88",
+    "readResultReconciliation": "5f572bca1",
+    "selectedHomeRetry": "2a3474cd2",
+    "newSuccessorsStaticOnly": true
   },
   "terminalRootChecks": [
     {
@@ -122,6 +114,30 @@
       "role": "actual combined808-source/23asset browser build,433steps53m48.79s,3artifacts+generatedkeyprobe",
       "receipt": "out/aux-participant-addresses-native-build.json",
       "receiptSha256": "2a5054dc701bc4ac5af0ca13439fc22c23f503fdd32838358fc658974eca1102"
+    },
+    {
+      "session": 51207,
+      "exitCode": 0,
+      "role": "provider-backed WorkerHost single TU",
+      "receipt": "out/aux-native-fresh-runtime-provider-quarantine-worker/receipt.json"
+    },
+    {
+      "session": 77772,
+      "exitCode": 0,
+      "role": "actual Node Environment runner single TU",
+      "receipt": "out/aux-native-node-runner-compile/receipt.json"
+    },
+    {
+      "session": 85029,
+      "exitCode": 1,
+      "role": "two parent TUs passed, delivery validity expression failed; Node TUs not run",
+      "receipt": "out/aux-native-child-handoff-split-check/results.json"
+    },
+    {
+      "session": 74818,
+      "exitCode": 0,
+      "role": "corrected delivery and two previously unrun Node bridge TUs; prior two objects not repeated",
+      "receipt": "out/aux-native-child-handoff-remaining-check/results.json"
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -133,24 +149,7 @@
     "compiled": true,
     "applyReceipt": "out/native-reuse-composition-aux-participant-addresses/native-before-apply-nyhc49v8/apply-receipt.json"
   },
-  "rootQueuedChecks": [
-    {
-      "session": 51207,
-      "role": "actual provider-backed WorkerHost C++ compile only",
-      "state": "queued behind93645"
-    },
-    {
-      "session": 77772,
-      "role": "actual Node Environment runner single-TU compile only",
-      "state": "queued behind93645; no linked executable or activation"
-    },
-    {
-      "session": 85029,
-      "role": "actual current child/peer five-object compile across Chromium and Node ABI graphs",
-      "state": "queued; owned-right successor intentionally selected before dispatch",
-      "deferredSuccessor": "docs/integration/proposed/aux-native-child-handoff/deferred-source-successor.json"
-    }
-  ],
+  "rootQueuedChecks": [],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -160,9 +159,38 @@
     "note": "Siso reduced original scheduled graph; actual receipt matched 3artifacts, not appacceptance"
   },
   "childLaunchCompilePendingReview": {
-    "queued": true,
-    "session": 85029,
-    "graph": "exception-free unchanged Chromium PCM/GN plus separate Node-system-libcxx C bridge",
-    "executed": false
-  }
+    "queued": false,
+    "priorFiveObjectsPassedAcross": [
+      85029,
+      74818
+    ],
+    "newFileportRetryCompiled": false,
+    "runtimeExecuted": false
+  },
+  "terminalAgentChecks": [
+    {
+      "session": 40860,
+      "exitCode": 0,
+      "role": "42 actual Swift files typechecked",
+      "evidence": "docs/integration/proposed/aux-native-fresh-runtime-readiness/evidence/actual42-receipt.json"
+    },
+    {
+      "session": 42833,
+      "exitCode": 0,
+      "role": "23 real disposable resumed filesystem cases",
+      "evidence": "docs/integration/proposed/aux-native-fresh-resume-filesystem/evidence.json"
+    },
+    {
+      "session": 82351,
+      "exitCode": 0,
+      "role": "28 captured guarded dispatcher cases",
+      "evidence": "docs/integration/proposed/aux-native-fresh-runtime-readiness/evidence/actual-captured-checks.json"
+    },
+    {
+      "session": 50721,
+      "exitCode": 0,
+      "role": "6 captured stage deferral cases",
+      "evidence": "docs/integration/proposed/aux-native-fresh-runtime-readiness/evidence/actual-captured-checks.json"
+    }
+  ]
 }

@@ -1,3 +1,13 @@
+# Native checks completed; paired retry fixes integrated — 2026-10-22
+
+Actual immutable evidence now records the42-file Swift graph exit0,28 captured dispatcher cases and6 captured pre-Add stage cases. The actual resumed-only disposable filesystem fixture passed23 cases. Provider-backed WorkerHost51207 and Node Environment runner77772 each compiled their actual C++ translation unit. These are scoped compile/fixture results, not linked/protected runtime acceptance.
+
+Peer check85029 compiled its first two Chromium translation units, then failed the endpoint delivery Boolean conversion; its two Node bridge objects did not run. The corrected `.is_valid()` delivery expression and those two previously unrun Node objects passed in74818. The first two were not repeated; their dependency-pinned reuse is being checked statically. The failed evidence remains preserved.
+
+Review found a genuine caller/transport mismatch: the sealed parent and Swift guard use2000ms while the old peer transport rejected timeouts over250ms. A separate successor now pairs the2000ms contract, authenticates lost-ACK home-transfer retries without replacing retained authority, removes inactive-union receive parsing and retains uncertain failed receive cleanup. Another successor retains completed source-known read replies only in process memory and revalidates authority before reconciliation without replay. Unknown writes/CAS remain unresolved. Both new successors passed static pins; neither is yet compiled or executed.
+
+The first official Node26.5.0 static-library build1414 is live, with actual ICU compilation observed. It uses supported Python3.14, two build jobs and the actual provider-backed host header; it does not replace the supplied runtime. Actual executable entry, parent installation/lifetime integration, linking and protected startup acceptance remain unfinished. The accepted app/UI, all visual assets and the first fallback refusal remain unchanged. No new signing, protected calls, owner data or production activation occurred. Exactly one authorized development sign-in email was delivered; no code or sign-in was used.
+
 # Combined browser build passed; guarded runtime compilation progressed — 2026-10-22
 
 Actual full build93645 passed:433 steps in53m48.79s, three artifacts and generated-key probe. The original2765 scheduled tasks shrank as Siso resolved its graph/cache; that initial count is not the number actually compiled. The exact808-source/23-asset composition remains SHA256 `34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107`. Framework SHA256 is `25a43cb7748d8b013ca4a3291ac3b89bbcb9e5944a5e4c1510cdff41dd704330`. Build-run receipt now records the terminal result. This is not a new packaged/app acceptance.
