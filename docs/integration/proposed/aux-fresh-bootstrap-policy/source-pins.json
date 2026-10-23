@@ -1,0 +1,46 @@
+{
+  "format": "aux.fresh.bootstrap.policy.source-pins.v1",
+  "productionSources": [
+    {
+      "path": "source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a"
+    },
+    {
+      "path": "source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "6ed2e2e50be4119825cc8a6b461599db0306289a62acd5071de439d958cf5898"
+    }
+  ],
+  "baselineSourcePins": [
+    {
+      "path": "baseline/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900",
+      "actualSourcePath": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift"
+    },
+    {
+      "path": "baseline/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f",
+      "actualSourcePath": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-native-home/source/AuxFreshNativeHome.swift",
+      "sha256": "f72bdda8fffbe29d903f78e65984cfbbe53d9f2d3890c46f2f484fabcf2f5874"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    }
+  ],
+  "sourceReviewPatchSha256": "ee00a28df8fc5427b451ecf8592b82c058b555c4a16fde48f0d50e9f712592fb",
+  "upstreamHomeCommit": "0b1bb5fbe",
+  "signedPolicyExecuted": false,
+  "secureRowsReadWritten": false,
+  "authorityCreated": false,
+  "wholeProfileCustodyClaimed": false,
+  "uiChanged": false
+}
