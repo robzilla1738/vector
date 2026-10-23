@@ -1,0 +1,23 @@
+{
+  "format": "aux.final-local-native-package.fixture.v1",
+  "passed": true,
+  "finalStageManifestSha256": "eca5b1aedff8785cf0dfa17c280795d0978915fc90fc8516bab8f91343a3e1d7",
+  "finalIndexSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+  "projectedEntrySha256": "f9d4703a219c0430fd4652d18ab40b02b1f4d1a806bbc0d8af8a2d2cc3136d6d",
+  "nativeMainSha256": "3e48f01554e35228945604fdeafcb1aaccee248151b2337f3596cfe0d1b75e2e",
+  "ptyModuleSha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726",
+  "actualFinalLeafFixture": true,
+  "staleStageAndCompositionRefused": true,
+  "staleNativeReceiptRefused": true,
+  "alteredIndexRefused": true,
+  "mixedProviderModeAndReplayRefused": true,
+  "ordinaryIndexHelperAndChatgptSidecarUnchanged": true,
+  "exactTwoNativeReplacementsAndTwoDormantResources": true,
+  "distinctFinalLocalReport": true,
+  "nativeReaderCompileUnnecessary": true,
+  "signed": false,
+  "moduleLoaded": false,
+  "executableRun": false,
+  "acceptedAppChanged": false,
+  "temporaryFixtureRemoved": true
+}
