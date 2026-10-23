@@ -1,0 +1,68 @@
+{
+  "format": "aux.renderer-navigation.actual-compile.v1",
+  "session": 73603,
+  "terminalExitCode": 0,
+  "sourceInputsSha256": "f7d664c5a5b8efac0956e3d4fa9167888eb32a936857f0adec3b56a62a5f0d11",
+  "rawResultsPath": "/tmp/aux-renderer-navigation-tus-corrected-20261022/results.json",
+  "rawResultsSha256": "0a048ea4d9801da289477a90ddce7450bd2e0966d956ba1d21ae99058eccf2a9",
+  "rawFixturePath": "/tmp/aux-renderer-navigation-tus-corrected-20261022/fixture.json",
+  "rawFixtureSha256": "eb8abfc2024de88a8583373f910640767cd7e6a51f7b01d1bb2180ca92bc53a2",
+  "translationUnits": [
+    {
+      "source": "navigation_request.cc",
+      "sourceSha256": "69fbe2a2375ae6f726ac181856a9efc974c182080ae5de24c28bcd5f7a22467d",
+      "gnSha256": "c61b4b2f2b4f587b493c0097d2853cd211706ba6c89498008219149d35e3ff0c",
+      "exitCode": 0,
+      "commandSha256": "ced700856682d3de161e051a378b50accc43ae1b7bdc0517c602723fa610f00d",
+      "objectSha256": "2eef4e8aa49eb9c5d147a8228e53aca23fa852ef872ff959524e490da32c322b",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "render_process_host_impl.cc",
+      "sourceSha256": "d747f427e8745170bb3e6a1c4e9ccbef09a0289a59ca06763d867cb92672eb4a",
+      "gnSha256": "c61b4b2f2b4f587b493c0097d2853cd211706ba6c89498008219149d35e3ff0c",
+      "exitCode": 0,
+      "commandSha256": "d9be00277895523b125c363aff4b55e5994722a99c1b2f206647eaf051f7ddd7",
+      "objectSha256": "ee6aa6d9e7515b4781c6920389bf7bbac43126af1fbc235ed64583b65160e404",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "aux_renderer_navigation_admission.cc",
+      "sourceSha256": "4c0523041076dcc8f7a39c5ac9b431bfe033218326df701e287daebbe81ee53a",
+      "gnSha256": "c61b4b2f2b4f587b493c0097d2853cd211706ba6c89498008219149d35e3ff0c",
+      "exitCode": 0,
+      "commandSha256": "20b629f0072ae7eda0fbb8e8a82922e325077596cd5d258f94711b660d6d041b",
+      "objectSha256": "02d77a8c4d6304e51dadd277458b5259ca768e4068337db133076cf16bb00cc6",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "fixture": {
+    "exitCode": 0,
+    "command": [
+      "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pthread",
+      "-I",
+      "/private/tmp/aux-renderer-navigation-admission-20261022/docs/integration/proposed/aux-renderer-navigation-admission/source",
+      "-I",
+      "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+      "/private/tmp/aux-renderer-navigation-admission-20261022/docs/integration/proposed/aux-renderer-navigation-admission/source/content/browser/renderer_host/aux_renderer_navigation_admission.cc",
+      "/private/tmp/aux-renderer-navigation-admission-20261022/docs/integration/proposed/aux-renderer-navigation-admission/tests/admission.cc",
+      "-o",
+      "/private/tmp/aux-renderer-navigation-tus-corrected-20261022/admission"
+    ],
+    "fixtureSha256": "41bfb459f1e2a5adbc919a63d64924b3ca297f1c28f2cb8cf72a8fa11bb42ccb",
+    "artifactSha256": "0ca92e611eb1e1045fdc80a74372145d4aa5fe878374587c50c0438a8ce9c4f5",
+    "actualProductionSource": true,
+    "actualBrowserOrRendererExecuted": false
+  },
+  "fixtureLogNote": "Linker warned libLTO.dylib missing; link completed and actual captured fixture exited0",
+  "chromiumCheckoutMutated": false,
+  "browserLinked": false,
+  "actualRendererOrProfileExecuted": false,
+  "state2Authorized": false,
+  "historicalFailure": "first-compile-failure.json"
+}
