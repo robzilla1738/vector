@@ -1,0 +1,15 @@
+{
+  "format": "aux.builtin-icons.actual-cloud-typecheck.v1",
+  "session": 42459,
+  "command": [
+    "pnpm",
+    "exec",
+    "tsc",
+    "--noEmit"
+  ],
+  "workdir": "services/aux-cloud",
+  "exitCode": 0,
+  "configSha256": "f12fa72d83c7fc62486900796c2b5c277ba33f83f2e2e49db57292772b493b01",
+  "cloudDeploymentPerformed": false,
+  "nativeBuildRepeated": false
+}

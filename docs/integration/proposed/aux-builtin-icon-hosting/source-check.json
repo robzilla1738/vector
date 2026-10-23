@@ -1,0 +1,249 @@
+{
+  "format": "aux.builtin-icons.source-check.v1",
+  "metadataReferences": 47,
+  "publicAssets": 46,
+  "helperSha256": "fbbaefd28b0f9de35cb7e840c484ac3eb4a4b82ea0230097a9bab4cff3540a06",
+  "stagerSha256": "01eafc2b18e2cc7463f5044c3c61c8e98dc4997ee5d488a74eaf264d48ef8d9b",
+  "actualMetadataOutputs": [
+    {
+      "path": "Contents/Resources/static/skills/builtin/1password/SKILL.md",
+      "sha256": "ab7c06680bd1144edd9bc5dae8f60688f23d0af83011a57f4cac02299be7d287",
+      "sourceSha256": "0cae18363941c91cb0d553bf87f2303c0014aae72b94fde8f2fe801aeddcd262"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/apple-passwords/SKILL.md",
+      "sha256": "a2c3ae14a4e0b9c6ca823ebe27a1431ea0fa55ad26a9c8545039874dbdefc723",
+      "sourceSha256": "6b016fd75dad47f4c509270fea67788c737a8605bc0aae151db5850c232e87ac"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/aux/SKILL.md",
+      "sha256": "e68a9183b026d56b20ae87dd2c860bea4043a0c5290b00fd8fb6ed9c8f2e853b",
+      "sourceSha256": "05a28f498776693740b737d4f435259aedf8c345a16f38f90a9e479bd66be6a3"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/bitwarden/SKILL.md",
+      "sha256": "accce5e2e3cb0e3ae5bb65951e1d5f854d71160e67f7cb2bf664bab8b5f2a015",
+      "sourceSha256": "71ea6411f019965db8d7cb835b3653db4f43a86864c4d23a09a40c1f921275c2"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/captcha-solver/SKILL.md",
+      "sha256": "3884f83fc3fafa9b8de6c6506ae4ba19157f9944bcd2b6071f3b32ef78544dc9",
+      "sourceSha256": "ad19f1cdc378113ed8a0a7e074a43c28009e6f2b96227a978d96dd179df64eff"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/chrome/SKILL.md",
+      "sha256": "052a5b05f83e454bbbed3c1f645d6ed9e97c668f91f07eed244f0409e777ce4d",
+      "sourceSha256": "e854c4c2285106c1e86cd59e6bea8db333137175c2fae19218c4eded6ee6c4c4"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/dashlane/SKILL.md",
+      "sha256": "9f69c57d0e77cc55988e2064424d8000ecc847ef3ebc01069ea540d5ae3d9338",
+      "sourceSha256": "0599db202256936c3e93a5d383dfa9fa8cc3265ba49ed9b7560425443b686cb9"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/docx/SKILL.md",
+      "sha256": "52e9682fee88e46589f8fc03d0948653bb9a9a7574fb9e96913559b36f544f6a",
+      "sourceSha256": "35e5b1abb150f783f09c7f8cb67a5a0dfd3c835db3125c16a4df7ea519f035dc"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/draft-preview/SKILL.md",
+      "sha256": "e99e86f36a6790314e4a12fc1b816674e1f174807b803e210d9a9fea6515ecfd",
+      "sourceSha256": "1ef1581a57f91a0c6c9dec3908a7e0ae51e03ecb78776f6a4239a61d7eecfae9"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/google-accounts/SKILL.md",
+      "sha256": "77305712820f2ba7b9d717dd099e5a3c7b445aa16d89984fd8d81a4900eca6d1",
+      "sourceSha256": "273ec0d59d040bed445291cf52137fbe1527d10f2015d44c2982ec7f5415c2fd"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/google-docs/SKILL.md",
+      "sha256": "5c0c54c0c7e585c830381b2c28bc5af866a8136b052539fc29c749049e20c44a",
+      "sourceSha256": "b8539dba5c6764256792aef7c2cd1ca34752f93cd45fb3f6bc8f06b00a453007"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/google-gmail/SKILL.md",
+      "sha256": "03d022cae7d096a5620a50f2d7007b86b1817606ba9b4e8cd22179eb96449e12",
+      "sourceSha256": "b9730afa4b0abdf8579fe5f286e3ec436e48fc1fd3ef629c6944e7b0441c6c67"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/google-search/SKILL.md",
+      "sha256": "adab38228f180c2de8c0a5f0357e810dc1b487791ca758e276a6a3e9f1fc16db",
+      "sourceSha256": "95148a7e39ea7994c8003029518e04203a3aa9ab6b7276024cd582652675675d"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/google-sheets/SKILL.md",
+      "sha256": "f9dc9649ddbb0c6dce458c6cf4064127d6725f19d7631bfef7c05682710047d9",
+      "sourceSha256": "677f9f879c152657450440d16a0261bf2af00d9a229205e69b9fcd916183eb85"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/image-search/SKILL.md",
+      "sha256": "ca65b6d97d3794f58ecb45dd4343cc925cac33f8ddd6b2a2cab36ef1ecedd439",
+      "sourceSha256": "549cd7012ea6d3b41c821c1ff9e1334d0cdcaa99647f2a92766130fe4cdd78a8"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/imagegen/SKILL.md",
+      "sha256": "fbe1cd73702b2b1ec570697792b2bec75b739135402242af07f81c7707ee27e1",
+      "sourceSha256": "9e068ed5f96aa8fd8476bb718d06a64cfcf154e6c0ef77a7e636bf72f6d46006"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/imessage/SKILL.md",
+      "sha256": "a05c9cf116a938244f1c46fd70397578406e1994dd44323b856fda84d6b8069c",
+      "sourceSha256": "6cb0d8e50d2cbf688c8f8a791cbe9544d38a25eb81f0ba221ab81fd7d9e85f2a"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/kakaotalk/SKILL.md",
+      "sha256": "cee384fb55a816cbfc7448b2d18349141900ba96e9fedcf9f5b91efd44f1839c",
+      "sourceSha256": "b2fd02d182285c738445d8cd7ff51c2cf5f5c0e323e73172b6318dc45e317dda"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/lastpass/SKILL.md",
+      "sha256": "69469bd86c9c6d6849d8dfa3be3147915e10302997061d72f86d532839aaf7fb",
+      "sourceSha256": "6af1f54c636fbf2c8de9c4e381682d21866c667a36c9841b4c55c26b85307fbf"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/notification-activation/SKILL.md",
+      "sha256": "0a9add4a06b9c6de6b3824c9efd11c47089c12b0e0e79a5f95eaf083a3ff2cf2",
+      "sourceSha256": "35cde0b0ea0fcfaa59fd810fbfff5833c64b396b87f8f62d76479555a55e0e4c"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/notion/SKILL.md",
+      "sha256": "96230bdac7ef3bc4d1fc4d552a39720aa1fef6b5d05b332de256d83a6705a254",
+      "sourceSha256": "f145c1d9f82eea576c25f68e16e850af5110ea1a16e9b7d08e99c18c6ebee7cd"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/onboarding/SKILL.md",
+      "sha256": "e09a588a0fcfc7253006e2d210b09c00943bbf45323181259d641d6852eacdd1",
+      "sourceSha256": "38c13d78b8144a045853a559c619da384925393c3caf7367e19d7be5f881b2fc"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/pdf/SKILL.md",
+      "sha256": "e44f40a7d4236df5d0977fab93683808e51711f8b306b940267b9f10893c5b4b",
+      "sourceSha256": "b72b147c4193036cb7abbb5f84b2ce41a29539ee5aab77ffe68a6c846742b0e5"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/pptx/SKILL.md",
+      "sha256": "7704362f5c7cf5eca72123b6cd29fc59a9277294d789606ef03a3b601915e7a8",
+      "sourceSha256": "f04fcb0f39b74767a70a3d3ecc0f51d96116274cc978f2dd7cd692ae32963823"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/airtable/SKILL.md",
+      "sha256": "077d467e495949a10aa37475e72a72cd90bf70bd027bff20f7fcdf418ffd5b25",
+      "sourceSha256": "8e7f7f3a3b86b291fa4d12498c100b6cadfa4a2cffa40e0b3e2b00b619af5973"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/amazon/SKILL.md",
+      "sha256": "4b4804167b433c949f320773ffed24c494bca21e5267b88b1279d21274388243",
+      "sourceSha256": "867d555144419051d74c008f7449438e57dc2394a61a7c7f24f21447cfe530e2"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/asana/SKILL.md",
+      "sha256": "c49d98187cdba4f590a16810d1db0d9d7553a1faa6fd014564e22d8af38b381c",
+      "sourceSha256": "b8b0ff9515dc76ad0ed1d6ee728a0f29e7f56601ca62b04604b2bd6976fced36"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/clickup/SKILL.md",
+      "sha256": "9f2fc2c7b5d6f4eb188b9542af3344c4db225a0bea906abc34cea9accc7b5f47",
+      "sourceSha256": "da0a8147ad4863a19a4cc18aa44f4980c7976c19eeb9f27dae805fac294cbfb4"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/confluence/SKILL.md",
+      "sha256": "e48f30af99c3492866114d6b08172fe406b836be9a5e4d66a403956f10f3d22c",
+      "sourceSha256": "1a0a8656450bf5c81c8f2c56c0abc090f9f451177d51b164104ac343b139b0c6"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/discord/SKILL.md",
+      "sha256": "4852b25487e50484cf358dfe49b496c8381cb70f28613fea870c81c01c5fadb3",
+      "sourceSha256": "4bf637b7c6598a8270d3fea65691653637b4226476a380cbea92073bd3ae1aca"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/github/SKILL.md",
+      "sha256": "298142676925ea1196a3d1f9000d4d6ed7c60e857dc72443899b5e9795907ed4",
+      "sourceSha256": "169c0055f04f30161a35e20e6761a706416eb425dea250216766db7b13a4193e"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/google-calendar/SKILL.md",
+      "sha256": "317fbdc6adf90d3b2f34122a6e685ff8ba1fc768cdbbab1c3893b66ae234be18",
+      "sourceSha256": "cd7eee24a26265fe18033a787085bc9044ac3da1c49337d397773683e57b72ee"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/google-drive/SKILL.md",
+      "sha256": "8a5858fca4f1b6b187fa56e6349de0fc593a324acf93489c5420f55ecacfe743",
+      "sourceSha256": "5ef0ee8a8962c22cbfc2069f818b93e3efb0b7e1a57c36c0f367df8e0e96a8e8"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/google-forms/SKILL.md",
+      "sha256": "7db05e908e7c21e4e08e5a97d93ea3976933dd5b55c50f72187536391a2dc702",
+      "sourceSha256": "4179190490e26dfce5f220146ed909a63bab05afc13f658f62cd0dff0b9eeb07"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/google-slides/SKILL.md",
+      "sha256": "bcc838ca3d2effc9814a78671236f3db08194b0e8c5f5e66275f8dca8e0d1060",
+      "sourceSha256": "3be8d176c81d2a424045b9326c1ccab5e9d7375ea1813dcc06f0766a21c629cf"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/jira/SKILL.md",
+      "sha256": "aec1509bbb32640d8ecf5c33358df5c9a3cdd0fe362376260907fbf283c0e65c",
+      "sourceSha256": "744988381449edcb479fe4511b7c09efefd9fd2f3411a41b581379824935d8ad"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/linear/SKILL.md",
+      "sha256": "49dabf6b18f20e88ed2cca7acccbe801a28fdabe5bca739ddf60c48c6a547fa9",
+      "sourceSha256": "558744f29b8ace8e797ec4ac1eb128942c250eef7ef6685dfa86058bd465e16d"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/linkedin/SKILL.md",
+      "sha256": "a9858f205d115b1c2bcd4c77ff52999d212ba189fbb1e591005d79431e364abd",
+      "sourceSha256": "cf36b6a4df2be04fac744eaf9c3075ed1cb97bada4d4297ad0f077b3799efcbc"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/notion/SKILL.md",
+      "sha256": "4895d9f4d90eb26385047d57df2af1780ae2f98e48402fd8e5380f1125b434d8",
+      "sourceSha256": "f394fd46cce7f22cb9922737af803ba3d48bc7facc283a2bdb9b7613fa5d1a40"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/site-specific/trello/SKILL.md",
+      "sha256": "a71c9aa469ab53b3df1454f71f97bc145807b8603785fbefc6da59bfed068cd9",
+      "sourceSha256": "06b8193da08b610dd1e02876fa65ba14b9c0fc029c9db0bf050ee14183297210"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/skill-creator/SKILL.md",
+      "sha256": "035a1ea4d8cf2f5b6e93ac788c9c2b0271dad29c0e60005151c1e9aed4d2c80d",
+      "sourceSha256": "13f6ed346c7085156ebbb22869e18c4903031fff1dd44e68f5fd241b2ea82f7a"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/slack/SKILL.md",
+      "sha256": "7af1555a0cf108aca1d3c91f0d53ac5b23ba7c30cc2b963efb842cb27774426a",
+      "sourceSha256": "c46426c304498c5071a6d2b29cda7f1a9c277c9ecd0f459ff17984b3e97d02f5"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/visual-browse/SKILL.md",
+      "sha256": "3b9070208add0f065e660fe3cb14cb4600af3d3fe1097c471281d26df21ef3f4",
+      "sourceSha256": "8249645352269ba92d6f23ca197385ee01df869306087511bbf814f2df01b262"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/visualize/SKILL.md",
+      "sha256": "e2a528acac784a91a32b69916e1bf47c31e964824568ffc0576e01283361b60f",
+      "sourceSha256": "4cb87ed9f931b50006ec6d7bc56b1b15eb7f6470ca130f3c431d156ab8bab37b"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/x-twitter/SKILL.md",
+      "sha256": "25f5dd9b8b7a5e13a40382962956c8bd01dc14c87880bb8ae19b2e63f0ba93fd",
+      "sourceSha256": "cd2eed756a56f9b58f6091b1c567fba10092cb0688cf1febf953caa03fbc560c"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/xlsx/SKILL.md",
+      "sha256": "9ff34132999e866f2fdd3614738beb6169d6b3d3ebff96c4c44bb8e4db09760a",
+      "sourceSha256": "4aa22e76915c7aa2c78448dacb617f6358e861c18c607e0805610525405292c2"
+    },
+    {
+      "path": "Contents/Resources/static/skills/builtin/youtube/SKILL.md",
+      "sha256": "3884fabac6c3d7ccd9d3de5225baf427711c724b730410f8694d119859117875",
+      "sourceSha256": "e13c784330fa5bba868ddc739aca5ed6d11e1f4b255c1cd53c91e33878cf7a7c"
+    }
+  ],
+  "svgNamespaceOnlyChecked": true,
+  "canonicalLogoMatched": true,
+  "deployed": false,
+  "actualAppCompared": false,
+  "acceptedUiModified": false
+}

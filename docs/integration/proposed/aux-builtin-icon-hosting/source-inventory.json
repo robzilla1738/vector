@@ -1,0 +1,475 @@
+{
+  "format": "aux.builtin-icon.sources.v1",
+  "rows": [
+    {
+      "skill": "1password/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/1password.jpg",
+      "file": "1password.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/1password/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/1password/SKILL.md",
+      "sourceSha256": "0cae18363941c91cb0d553bf87f2303c0014aae72b94fde8f2fe801aeddcd262",
+      "targetFile": "1password.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/1password.jpg"
+    },
+    {
+      "skill": "apple-passwords/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/apple-password.jpg",
+      "file": "apple-password.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/apple-passwords/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/apple-passwords/SKILL.md",
+      "sourceSha256": "6b016fd75dad47f4c509270fea67788c737a8605bc0aae151db5850c232e87ac",
+      "targetFile": "apple-password.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/apple-password.jpg"
+    },
+    {
+      "skill": "aux/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/aside.jpg",
+      "file": "aside.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/aside/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/aux/SKILL.md",
+      "sourceSha256": "05a28f498776693740b737d4f435259aedf8c345a16f38f90a9e479bd66be6a3",
+      "targetFile": "aux.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/aside.jpg"
+    },
+    {
+      "skill": "bitwarden/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/bitwarden.svg",
+      "file": "bitwarden.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/bitwarden/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/bitwarden/SKILL.md",
+      "sourceSha256": "71ea6411f019965db8d7cb835b3653db4f43a86864c4d23a09a40c1f921275c2",
+      "targetFile": "bitwarden.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/bitwarden.svg"
+    },
+    {
+      "skill": "captcha-solver/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/captcha-resolver.jpg",
+      "file": "captcha-resolver.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/captcha-solver/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/captcha-solver/SKILL.md",
+      "sourceSha256": "ad19f1cdc378113ed8a0a7e074a43c28009e6f2b96227a978d96dd179df64eff",
+      "targetFile": "captcha-resolver.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/captcha-resolver.jpg"
+    },
+    {
+      "skill": "chrome/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/chrome.jpg",
+      "file": "chrome.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/chrome/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/chrome/SKILL.md",
+      "sourceSha256": "e854c4c2285106c1e86cd59e6bea8db333137175c2fae19218c4eded6ee6c4c4",
+      "targetFile": "chrome.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/chrome.jpg"
+    },
+    {
+      "skill": "dashlane/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/dashlane.svg",
+      "file": "dashlane.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/dashlane/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/dashlane/SKILL.md",
+      "sourceSha256": "0599db202256936c3e93a5d383dfa9fa8cc3265ba49ed9b7560425443b686cb9",
+      "targetFile": "dashlane.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/dashlane.svg"
+    },
+    {
+      "skill": "docx/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/docx.jpg",
+      "file": "docx.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/docx/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/docx/SKILL.md",
+      "sourceSha256": "35e5b1abb150f783f09c7f8cb67a5a0dfd3c835db3125c16a4df7ea519f035dc",
+      "targetFile": "docx.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/docx.jpg"
+    },
+    {
+      "skill": "draft-preview/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/draft-preview.jpg",
+      "file": "draft-preview.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/draft-preview/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/draft-preview/SKILL.md",
+      "sourceSha256": "1ef1581a57f91a0c6c9dec3908a7e0ae51e03ecb78776f6a4239a61d7eecfae9",
+      "targetFile": "draft-preview.jpg",
+      "iconFind": "icon: \"https://static.asidehq.com/apps/builtin-skills/draft-preview.jpg\""
+    },
+    {
+      "skill": "google-accounts/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-accounts.jpg",
+      "file": "google-accounts.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/google-accounts/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/google-accounts/SKILL.md",
+      "sourceSha256": "273ec0d59d040bed445291cf52137fbe1527d10f2015d44c2982ec7f5415c2fd",
+      "targetFile": "google-accounts.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-accounts.jpg"
+    },
+    {
+      "skill": "google-docs/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-docs.jpg",
+      "file": "google-docs.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/google-docs/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/google-docs/SKILL.md",
+      "sourceSha256": "b8539dba5c6764256792aef7c2cd1ca34752f93cd45fb3f6bc8f06b00a453007",
+      "targetFile": "google-docs.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-docs.jpg"
+    },
+    {
+      "skill": "google-gmail/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-gmail.jpg",
+      "file": "google-gmail.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/google-gmail/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/google-gmail/SKILL.md",
+      "sourceSha256": "b9730afa4b0abdf8579fe5f286e3ec436e48fc1fd3ef629c6944e7b0441c6c67",
+      "targetFile": "google-gmail.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-gmail.jpg"
+    },
+    {
+      "skill": "google-search/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-search.jpg",
+      "file": "google-search.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/google-search/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/google-search/SKILL.md",
+      "sourceSha256": "95148a7e39ea7994c8003029518e04203a3aa9ab6b7276024cd582652675675d",
+      "targetFile": "google-search.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-search.jpg"
+    },
+    {
+      "skill": "google-sheets/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-sheets.jpg",
+      "file": "google-sheets.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/google-sheets/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/google-sheets/SKILL.md",
+      "sourceSha256": "677f9f879c152657450440d16a0261bf2af00d9a229205e69b9fcd916183eb85",
+      "targetFile": "google-sheets.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-sheets.jpg"
+    },
+    {
+      "skill": "image-search/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/image-search.jpg",
+      "file": "image-search.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/image-search/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/image-search/SKILL.md",
+      "sourceSha256": "549cd7012ea6d3b41c821c1ff9e1334d0cdcaa99647f2a92766130fe4cdd78a8",
+      "targetFile": "image-search.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/image-search.jpg"
+    },
+    {
+      "skill": "imagegen/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/image-generation.jpg",
+      "file": "image-generation.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/imagegen/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/imagegen/SKILL.md",
+      "sourceSha256": "9e068ed5f96aa8fd8476bb718d06a64cfcf154e6c0ef77a7e636bf72f6d46006",
+      "targetFile": "image-generation.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/image-generation.jpg"
+    },
+    {
+      "skill": "imessage/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/imessage.svg",
+      "file": "imessage.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/imessage/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/imessage/SKILL.md",
+      "sourceSha256": "6cb0d8e50d2cbf688c8f8a791cbe9544d38a25eb81f0ba221ab81fd7d9e85f2a",
+      "targetFile": "imessage.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/imessage.svg"
+    },
+    {
+      "skill": "kakaotalk/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/kakaotalk.svg",
+      "file": "kakaotalk.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/kakaotalk/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/kakaotalk/SKILL.md",
+      "sourceSha256": "b2fd02d182285c738445d8cd7ff51c2cf5f5c0e323e73172b6318dc45e317dda",
+      "targetFile": "kakaotalk.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/kakaotalk.svg"
+    },
+    {
+      "skill": "lastpass/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/lastpass.svg",
+      "file": "lastpass.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/lastpass/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/lastpass/SKILL.md",
+      "sourceSha256": "6af1f54c636fbf2c8de9c4e381682d21866c667a36c9841b4c55c26b85307fbf",
+      "targetFile": "lastpass.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/lastpass.svg"
+    },
+    {
+      "skill": "notification-activation/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/notification-activation.jpg",
+      "file": "notification-activation.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/notification-activation/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/notification-activation/SKILL.md",
+      "sourceSha256": "35cde0b0ea0fcfaa59fd810fbfff5833c64b396b87f8f62d76479555a55e0e4c",
+      "targetFile": "notification-activation.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/notification-activation.jpg"
+    },
+    {
+      "skill": "notion/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/notion.jpg",
+      "file": "notion.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/notion/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/notion/SKILL.md",
+      "sourceSha256": "f145c1d9f82eea576c25f68e16e850af5110ea1a16e9b7d08e99c18c6ebee7cd",
+      "targetFile": "notion.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/notion.jpg"
+    },
+    {
+      "skill": "onboarding/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/aside.jpg",
+      "file": "aside.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/onboarding/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/onboarding/SKILL.md",
+      "sourceSha256": "38c13d78b8144a045853a559c619da384925393c3caf7367e19d7be5f881b2fc",
+      "targetFile": "aux.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/aside.jpg"
+    },
+    {
+      "skill": "pdf/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/pdf.jpg",
+      "file": "pdf.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/pdf/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/pdf/SKILL.md",
+      "sourceSha256": "b72b147c4193036cb7abbb5f84b2ce41a29539ee5aab77ffe68a6c846742b0e5",
+      "targetFile": "pdf.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/pdf.jpg"
+    },
+    {
+      "skill": "pptx/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/pptx.jpg",
+      "file": "pptx.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/pptx/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/pptx/SKILL.md",
+      "sourceSha256": "f04fcb0f39b74767a70a3d3ecc0f51d96116274cc978f2dd7cd692ae32963823",
+      "targetFile": "pptx.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/pptx.jpg"
+    },
+    {
+      "skill": "site-specific/airtable/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/airtable.svg",
+      "file": "airtable.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/airtable/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/airtable/SKILL.md",
+      "sourceSha256": "8e7f7f3a3b86b291fa4d12498c100b6cadfa4a2cffa40e0b3e2b00b619af5973",
+      "targetFile": "airtable.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/airtable.svg"
+    },
+    {
+      "skill": "site-specific/amazon/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/amazon.svg",
+      "file": "amazon.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/amazon/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/amazon/SKILL.md",
+      "sourceSha256": "867d555144419051d74c008f7449438e57dc2394a61a7c7f24f21447cfe530e2",
+      "targetFile": "amazon.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/amazon.svg"
+    },
+    {
+      "skill": "site-specific/asana/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/asana.svg",
+      "file": "asana.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/asana/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/asana/SKILL.md",
+      "sourceSha256": "b8b0ff9515dc76ad0ed1d6ee728a0f29e7f56601ca62b04604b2bd6976fced36",
+      "targetFile": "asana.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/asana.svg"
+    },
+    {
+      "skill": "site-specific/clickup/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/clickup.svg",
+      "file": "clickup.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/clickup/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/clickup/SKILL.md",
+      "sourceSha256": "da0a8147ad4863a19a4cc18aa44f4980c7976c19eeb9f27dae805fac294cbfb4",
+      "targetFile": "clickup.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/clickup.svg"
+    },
+    {
+      "skill": "site-specific/confluence/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/confluence.svg",
+      "file": "confluence.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/confluence/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/confluence/SKILL.md",
+      "sourceSha256": "1a0a8656450bf5c81c8f2c56c0abc090f9f451177d51b164104ac343b139b0c6",
+      "targetFile": "confluence.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/confluence.svg"
+    },
+    {
+      "skill": "site-specific/discord/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/discord.svg",
+      "file": "discord.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/discord/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/discord/SKILL.md",
+      "sourceSha256": "4bf637b7c6598a8270d3fea65691653637b4226476a380cbea92073bd3ae1aca",
+      "targetFile": "discord.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/discord.svg"
+    },
+    {
+      "skill": "site-specific/github/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/github.svg",
+      "file": "github.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/github/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/github/SKILL.md",
+      "sourceSha256": "169c0055f04f30161a35e20e6761a706416eb425dea250216766db7b13a4193e",
+      "targetFile": "github.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/github.svg"
+    },
+    {
+      "skill": "site-specific/google-calendar/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-calendar.svg",
+      "file": "google-calendar.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/google-calendar/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/google-calendar/SKILL.md",
+      "sourceSha256": "cd7eee24a26265fe18033a787085bc9044ac3da1c49337d397773683e57b72ee",
+      "targetFile": "google-calendar.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-calendar.svg"
+    },
+    {
+      "skill": "site-specific/google-drive/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-drive.svg",
+      "file": "google-drive.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/google-drive/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/google-drive/SKILL.md",
+      "sourceSha256": "5ef0ee8a8962c22cbfc2069f818b93e3efb0b7e1a57c36c0f367df8e0e96a8e8",
+      "targetFile": "google-drive.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-drive.svg"
+    },
+    {
+      "skill": "site-specific/google-forms/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-forms.svg",
+      "file": "google-forms.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/google-forms/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/google-forms/SKILL.md",
+      "sourceSha256": "4179190490e26dfce5f220146ed909a63bab05afc13f658f62cd0dff0b9eeb07",
+      "targetFile": "google-forms.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-forms.svg"
+    },
+    {
+      "skill": "site-specific/google-slides/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/google-slides.svg",
+      "file": "google-slides.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/google-slides/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/google-slides/SKILL.md",
+      "sourceSha256": "3be8d176c81d2a424045b9326c1ccab5e9d7375ea1813dcc06f0766a21c629cf",
+      "targetFile": "google-slides.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/google-slides.svg"
+    },
+    {
+      "skill": "site-specific/jira/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/jira.svg",
+      "file": "jira.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/jira/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/jira/SKILL.md",
+      "sourceSha256": "744988381449edcb479fe4511b7c09efefd9fd2f3411a41b581379824935d8ad",
+      "targetFile": "jira.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/jira.svg"
+    },
+    {
+      "skill": "site-specific/linear/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/linear.svg",
+      "file": "linear.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/linear/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/linear/SKILL.md",
+      "sourceSha256": "558744f29b8ace8e797ec4ac1eb128942c250eef7ef6685dfa86058bd465e16d",
+      "targetFile": "linear.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/linear.svg"
+    },
+    {
+      "skill": "site-specific/linkedin/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/linkedin.svg",
+      "file": "linkedin.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/linkedin/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/linkedin/SKILL.md",
+      "sourceSha256": "cf36b6a4df2be04fac744eaf9c3075ed1cb97bada4d4297ad0f077b3799efcbc",
+      "targetFile": "linkedin.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/linkedin.svg"
+    },
+    {
+      "skill": "site-specific/notion/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/notion.svg",
+      "file": "notion.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/notion/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/notion/SKILL.md",
+      "sourceSha256": "f394fd46cce7f22cb9922737af803ba3d48bc7facc283a2bdb9b7613fa5d1a40",
+      "targetFile": "notion.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/notion.svg"
+    },
+    {
+      "skill": "site-specific/trello/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/trello.svg",
+      "file": "trello.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/site-specific/trello/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/site-specific/trello/SKILL.md",
+      "sourceSha256": "06b8193da08b610dd1e02876fa65ba14b9c0fc029c9db0bf050ee14183297210",
+      "targetFile": "trello.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/trello.svg"
+    },
+    {
+      "skill": "skill-creator/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/skill-creator.jpg",
+      "file": "skill-creator.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/skill-creator/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/skill-creator/SKILL.md",
+      "sourceSha256": "13f6ed346c7085156ebbb22869e18c4903031fff1dd44e68f5fd241b2ea82f7a",
+      "targetFile": "skill-creator.jpg",
+      "iconFind": "icon: \"https://static.asidehq.com/apps/builtin-skills/skill-creator.jpg\""
+    },
+    {
+      "skill": "slack/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/slack.jpg",
+      "file": "slack.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/slack/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/slack/SKILL.md",
+      "sourceSha256": "c46426c304498c5071a6d2b29cda7f1a9c277c9ecd0f459ff17984b3e97d02f5",
+      "targetFile": "slack.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/slack.jpg"
+    },
+    {
+      "skill": "visual-browse/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/visual-browsing.jpg",
+      "file": "visual-browsing.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/visual-browse/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/visual-browse/SKILL.md",
+      "sourceSha256": "8249645352269ba92d6f23ca197385ee01df869306087511bbf814f2df01b262",
+      "targetFile": "visual-browsing.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/visual-browsing.jpg"
+    },
+    {
+      "skill": "visualize/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/visualize.jpg",
+      "file": "visualize.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/visualize/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/visualize/SKILL.md",
+      "sourceSha256": "4cb87ed9f931b50006ec6d7bc56b1b15eb7f6470ca130f3c431d156ab8bab37b",
+      "targetFile": "visualize.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/visualize.jpg"
+    },
+    {
+      "skill": "x-twitter/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/x-twitter.svg",
+      "file": "x-twitter.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/x-twitter/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/x-twitter/SKILL.md",
+      "sourceSha256": "cd2eed756a56f9b58f6091b1c567fba10092cb0688cf1febf953caa03fbc560c",
+      "targetFile": "x-twitter.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/x-twitter.svg"
+    },
+    {
+      "skill": "xlsx/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/xlsx.svg",
+      "file": "xlsx.svg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/xlsx/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/xlsx/SKILL.md",
+      "sourceSha256": "4aa22e76915c7aa2c78448dacb617f6358e861c18c607e0805610525405292c2",
+      "targetFile": "xlsx.svg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/xlsx.svg"
+    },
+    {
+      "skill": "youtube/SKILL.md",
+      "sourceUrl": "https://static.asidehq.com/apps/builtin-skills/youtube.jpg",
+      "file": "youtube.jpg",
+      "sourcePath": "Contents/Resources/static/skills/builtin/youtube/SKILL.md",
+      "outputPath": "Contents/Resources/static/skills/builtin/youtube/SKILL.md",
+      "sourceSha256": "e13c784330fa5bba868ddc739aca5ed6d11e1f4b255c1cd53c91e33878cf7a7c",
+      "targetFile": "youtube.jpg",
+      "iconFind": "icon: https://static.asidehq.com/apps/builtin-skills/youtube.jpg"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
+import { applyAuxBuiltinIconIdentity } from '../../vendor/provided/aux-builtin-icon-identity.mjs';
 /** Static app staging. Incomplete native integration is explicit and never silently substituted. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -95,6 +96,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
   try {
     for (const [component, target] of Object.entries(targets)) {
       const app = join(temporary, component, target.app), files = [], removed = [];
+      const builtinIconEdits = [];
       let executable, nodeDevelopment;
       const cryptoRuntime = component === 'daemon' ? auxCryptoSeaResources(stateIdentityVersion) : null;
       const utilities = component === 'daemon' ? macUtilityResources(stateIdentityVersion) : null;
@@ -129,6 +131,14 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
           if (stateIdentityVersion === 2) {
             const runtime = applyAuxRuntimeContractIdentity({component: 'skill', path: file.path.slice('Contents/Resources/static/skills/'.length), text, original: source.toString('utf8'), branding: 'aux'});
             text = runtime.text;
+            if (component === 'daemon' && cloudOptions.enableCloud) {
+              const icons = applyAuxBuiltinIconIdentity({component, path, text, original: source}, cloudOptions);
+              text = icons.text;
+              if (icons.anchors.length) {
+                builtinIconEdits.push({path, sourceSha256: file.sha256, anchors: icons.anchors});
+                kinds.push('identity');
+              }
+            }
           }
           output = Buffer.from(text.replace(CLI_COMMAND, 'aux '));
           if (!source.equals(output)) kinds.push('branding');
@@ -176,7 +186,10 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
         const binary = await lstat(join(app, dirname(file.path), 'MacOS', plist.CFBundleExecutable));
         if (!binary.isFile() || binary.isSymbolicLink() || !(binary.mode & 0o111)) throw new Error('Staged bundle executable declaration does not resolve to executable code');
       }
+      if (component === 'daemon' && stateIdentityVersion === 2 && cloudOptions.enableCloud && builtinIconEdits.length !== 47)
+        throw new Error('Complete pinned builtin icon relocation required');
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
+        ...(builtinIconEdits.length ? {builtinIconIdentity: {format: 'aux.builtin-icon-stage.v1', edits: builtinIconEdits}} : {}),
         ...(nodeDevelopment ? { nodeDevelopment: nodeDevelopment.manifest } : {}),
         ...(cryptoRuntime?.manifest ? { cryptoRuntime: cryptoRuntime.manifest } : {}),
         ...(utilities?.manifest ? { macOSUtilities: utilities.manifest } : {}),
