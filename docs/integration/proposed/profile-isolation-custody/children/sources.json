@@ -1,0 +1,30 @@
+{
+  "base/process/kill.h": {
+    "before": "d64a776576a3cae9f2aeddbcee5974a2782d736f3da631ef392bae3987dfac77",
+    "after": "7ee408e155a1d433ab7320267932305f99418ebcfa2450f39fbb9a6f4eb32f1b"
+  },
+  "base/process/kill_mac.cc": {
+    "before": "4fa75ba5bd57a7c3ef649da2c9f46afb1976543595bb615efc066c7bd70752cd",
+    "after": "ed8c96ff7ad08fcdd44beeacd513dd730fe0197d91a48195564fbb9332c4817d"
+  },
+  "base/process/kill_posix.cc": {
+    "before": "7500d4a99480cf3846133aebdcb71e05bdccea2539d6a7b6128fef658d91a02e",
+    "after": "ae7c6fd656a40ddc7b7c3a88a083cac75b038d8b8507f586bce707346b9bf08a"
+  },
+  "content/browser/aux_child_lifetime.h": {
+    "before": null,
+    "after": "44b5aaf5d6c8a6ea48e92c7f00433b573860b06403a2f097ec80e9497764c7c9"
+  },
+  "content/browser/child_process_launcher_helper.cc": {
+    "before": "bc2e38e6529bf113d2d6b8c49e72ea1bf7dcbec466ae0ecb1385d3436f8d911a",
+    "after": "52eccd4f355a8756ba338d7bc8ff1dbc4fb30725259e7cba24919552b69b429e"
+  },
+  "content/browser/child_process_launcher_helper.h": {
+    "before": "76910c7391eabfbf15d4633e5a443f19315de9d3b581e189b887155e9d7b375a",
+    "after": "d6ccc001aeb6f368fc932b7eb2e9600c3206265c6aed3a5c835ace04ba679653"
+  },
+  "content/browser/child_process_launcher_helper_mac.cc": {
+    "before": "9be8f233064e315009400054f9a13c7f69823ffb88679d99c6e85e240f707c4e",
+    "after": "d0b0ec0d435e0729f41d2eae119e60a795141e2de0081fa8bd95a86a29869d7c"
+  }
+}

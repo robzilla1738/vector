@@ -1,0 +1,289 @@
+--- a/base/process/kill.h
++++ b/base/process/kill.h
+@@ -107,6 +107,19 @@
+                                                    int* exit_code);
+ 
+ #if BUILDFLAG(IS_POSIX)
++// Exact evidence from the existing native wait, independent of compatibility
++// termination status (which can report normal termination after wait failure).
++enum class AuxChildReapEvidence { pending, reaped, unknown };
++BASE_EXPORT TerminationStatus GetTerminationStatusWithAuxReapEvidence(
++    ProcessHandle handle, bool known_dead, int* exit_code,
++    AuxChildReapEvidence* evidence);
++#endif
++#if BUILDFLAG(IS_MAC)
++BASE_EXPORT AuxChildReapEvidence EnsureProcessTerminatedWithAuxReapEvidence(
++    Process process);
++#endif
++
++#if BUILDFLAG(IS_POSIX)
+ // Send a kill signal to the process and then wait for the process to exit
+ // and get the termination status.
+ //
+--- a/base/process/kill_mac.cc
++++ b/base/process/kill_mac.cc
+@@ -19,11 +19,12 @@
+ namespace {
+ 
+ // Reap |child| process. This call blocks until completion.
+-void BlockingReap(pid_t child) {
++AuxChildReapEvidence BlockingReap(pid_t child) {
+   const pid_t result = HANDLE_EINTR(waitpid(child, NULL, 0));
+   if (result == -1) {
+     DPLOG(ERROR) << "waitpid(" << child << ", NULL, 0)";
+   }
++  return result == child ? AuxChildReapEvidence::reaped : AuxChildReapEvidence::unknown;
+ }
+ 
+ }  // namespace
+@@ -65,7 +66,7 @@
+ // to wait on a process that's not even a child is also a problem: kqueue will
+ // work in that case, but waitpid won't, and killing a non-child might not be
+ // the best approach.
+-void WaitForChildToDie(pid_t child, int timeout) {
++AuxChildReapEvidence WaitForChildToDieWithAuxEvidence(pid_t child, int timeout) {
+   DCHECK_GT(child, 0);
+   DCHECK_GT(timeout, 0);
+ 
+@@ -103,7 +104,7 @@
+           // the child. A result of -1 indicates case 2. The child has already
+           // been reaped. In both of these cases, no further action is
+           // necessary.
+-          return;
++          return result == child ? AuxChildReapEvidence::reaped : AuxChildReapEvidence::unknown;
+         }
+ 
+         // |result| is 0, indicating case 3. The process will be waitable in
+@@ -138,8 +139,7 @@
+             (event.ident == static_cast<uintptr_t>(child))) {
+           // The process is dead or dying. This won't block for long, if at
+           // all.
+-          BlockingReap(child);
+-          return;
++          return BlockingReap(child);
+         } else {
+           DLOG(ERROR) << "kevent (wait " << child
+                       << "): unexpected event: fflags=" << event.fflags
+@@ -159,11 +159,20 @@
+   } else {
+     // The child is definitely on the way out now. BlockingReap won't need to
+     // wait for long, if at all.
+-    BlockingReap(child);
++    return BlockingReap(child);
+   }
++  return AuxChildReapEvidence::unknown;
++}
++
++void WaitForChildToDie(pid_t child, int timeout) {
++  WaitForChildToDieWithAuxEvidence(child, timeout);
+ }
+ 
+ #if !BUILDFLAG(IS_IOS)
++AuxChildReapEvidence EnsureProcessTerminatedWithAuxReapEvidence(Process process) {
++  return WaitForChildToDieWithAuxEvidence(process.Pid(), 2);
++}
++
+ void EnsureProcessTerminated(Process process) {
+   constexpr int kWaitBeforeKillSeconds = 2;
+   WaitForChildToDie(process.Pid(), kWaitBeforeKillSeconds);
+--- a/base/process/kill_posix.cc
++++ b/base/process/kill_posix.cc
+@@ -23,12 +23,15 @@
+ 
+ TerminationStatus GetTerminationStatusImpl(ProcessHandle handle,
+                                            bool can_block,
+-                                           int* exit_code) {
++                                           int* exit_code,
++                                           AuxChildReapEvidence* evidence = nullptr) {
+   DCHECK(exit_code);
+ 
+   int status = 0;
+   const pid_t result =
+       HANDLE_EINTR(waitpid(handle, &status, can_block ? 0 : WNOHANG));
++  if (evidence) *evidence = result == handle ? AuxChildReapEvidence::reaped
++      : result == 0 ? AuxChildReapEvidence::pending : AuxChildReapEvidence::unknown;
+   if (result == -1) {
+     DPLOG(ERROR) << "waitpid(" << handle << ")";
+     *exit_code = 0;
+@@ -88,6 +91,14 @@
+   }
+ 
+   return GetTerminationStatusImpl(handle, true /* can_block */, exit_code);
++}
++
++TerminationStatus GetTerminationStatusWithAuxReapEvidence(
++    ProcessHandle handle, bool known_dead, int* exit_code,
++    AuxChildReapEvidence* evidence) {
++  if (known_dead && kill(handle, SIGKILL) != 0)
++    DPLOG(ERROR) << "Unable to terminate process " << handle;
++  return GetTerminationStatusImpl(handle, known_dead, exit_code, evidence);
+ }
+ 
+ bool WaitForProcessesToExit(const FilePath::StringType& executable_name,
+--- /dev/null
++++ b/content/browser/aux_child_lifetime.h
+@@ -0,0 +1,66 @@
++// Copyright 2026 Aux contributors. Chromium integration retains upstream notices.
++#pragma once
++#include "base/process/kill.h"
++#include <algorithm>
++#include <memory>
++#include <mutex>
++#include <vector>
++#include <unistd.h>
++
++namespace content::internal {
++// Retained evidence for launches through the mac content helper only. This is
++// not a process-tree census, filesystem authority, or whole-writer certificate.
++struct AuxChildLifetime final {
++  struct Snapshot { size_t unresolved; bool all_writer_coverage = false; };
++  static std::shared_ptr<AuxChildLifetime> Reserve() {
++    auto entry = std::shared_ptr<AuxChildLifetime>(new AuxChildLifetime);
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    Registry().push_back(entry);  // Reserve before the actual spawn.
++    return entry;
++  }
++  void BindLaunch(pid_t pid, base::Time creation) {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (getpid() != owner || bound) { uncertain = true; return; }
++    bound = true;
++    child = pid;
++    birth = creation;
++    if (pid > 0 && birth.is_null()) uncertain = true;
++    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.
++  }
++  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {
++    if (getpid() != owner || !bound || pid != child || birth.is_null() ||
++        creation.is_null() || creation != birth) uncertain = true;
++  }
++  // Caller holds mutex across the existing native wait; no second reaper.
++  void ObserveLocked(pid_t pid, base::AuxChildReapEvidence evidence) {
++    if (getpid() != owner || !bound || pid <= 0 || pid != child) {
++      uncertain = true;
++      return;
++    }
++    if (evidence == base::AuxChildReapEvidence::unknown) uncertain = true;
++    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)
++      ReleaseLocked();
++  }
++  static Snapshot Inspect() {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    return {Registry().size(), false};
++  }
++  std::mutex mutex;
++ private:
++  AuxChildLifetime() = default;
++  static std::mutex& RegistryMutex() { static auto* m = new std::mutex; return *m; }
++  static std::vector<std::shared_ptr<AuxChildLifetime>>& Registry() {
++    static auto* r = new std::vector<std::shared_ptr<AuxChildLifetime>>;
++    return *r;
++  }
++  void ReleaseLocked() {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });
++  }
++  const pid_t owner = getpid();
++  pid_t child = -1;
++  base::Time birth;
++  bool bound = false;
++  bool uncertain = false;
++};
++}
+--- a/content/browser/child_process_launcher_helper.cc
++++ b/content/browser/child_process_launcher_helper.cc
+@@ -185,6 +185,9 @@
+ 
+ ChildProcessLauncherHelper::Process::Process(Process&& other)
+     : process(std::move(other.process))
++#if BUILDFLAG(IS_MAC)
++      , aux_child_lifetime(std::move(other.aux_child_lifetime))
++#endif
+ #if BUILDFLAG(USE_ZYGOTE)
+       ,
+       zygote(other.zygote)
+--- a/content/browser/child_process_launcher_helper.h
++++ b/content/browser/child_process_launcher_helper.h
+@@ -76,6 +76,10 @@
+ 
+ namespace internal {
+ 
++#if BUILDFLAG(IS_MAC)
++struct AuxChildLifetime;
++#endif
++
+ #if BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
+ using FileMappedForLaunch = PosixFileDescriptorInfo;
+ #else
+@@ -108,6 +112,9 @@
+     Process& operator=(Process&& other);
+ 
+     base::Process process;
++#if BUILDFLAG(IS_MAC)
++    std::shared_ptr<AuxChildLifetime> aux_child_lifetime;
++#endif
+ 
+ #if BUILDFLAG(USE_ZYGOTE)
+     raw_ptr<ZygoteCommunication> zygote = nullptr;
+--- a/content/browser/child_process_launcher_helper_mac.cc
++++ b/content/browser/child_process_launcher_helper_mac.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/child_process_launcher_helper.h"
++#include "content/browser/aux_child_lifetime.h"
++#include "base/process/kill.h"
+ 
+ #include "base/apple/mach_port_rendezvous.h"
+ #include "base/command_line.h"
+@@ -188,7 +190,11 @@
+     int* launch_result) {
+   *is_synchronous_launch = true;
+   ChildProcessLauncherHelper::Process process;
++  process.aux_child_lifetime = AuxChildLifetime::Reserve();
+   process.process = base::LaunchProcess(*command_line(), *options);
++  process.aux_child_lifetime->BindLaunch(
++      process.process.IsValid() ? process.process.Pid() : -1,
++      process.process.IsValid() ? process.process.CreationTime() : base::Time());
+   *launch_result = process.process.IsValid() ? LAUNCH_RESULT_SUCCESS
+                                              : LAUNCH_RESULT_FAILURE;
+   return process;
+@@ -208,10 +214,17 @@
+     const ChildProcessLauncherHelper::Process& process,
+     bool known_dead) {
+   ChildProcessTerminationInfo info;
+-  info.status = known_dead ? base::GetKnownDeadTerminationStatus(
+-                                 process.process.Handle(), &info.exit_code)
+-                           : base::GetTerminationStatus(
+-                                 process.process.Handle(), &info.exit_code);
++  auto custody = process.aux_child_lifetime;
++  // Reuse the upstream single wait, serialized for this actual launch owner.
++  std::unique_lock<std::mutex> lock;
++  if (custody) {
++    lock = std::unique_lock<std::mutex>(custody->mutex);
++    custody->ValidateBeforeWaitLocked(process.process.Pid(), process.process.CreationTime());
++  }
++  base::AuxChildReapEvidence evidence = base::AuxChildReapEvidence::unknown;
++  info.status = base::GetTerminationStatusWithAuxReapEvidence(
++      process.process.Handle(), known_dead, &info.exit_code, &evidence);
++  if (custody) custody->ObserveLocked(process.process.Pid(), evidence);
+   return info;
+ }
+ 
+@@ -229,8 +242,16 @@
+   CHECK(CurrentlyOnProcessLauncherTaskRunner(), base::NotFatalUntil::M159);
+   // Client has gone away, so just kill the process.  Using exit code 0 means
+   // that UMA won't treat this as a crash.
++  auto custody = process.aux_child_lifetime;
++  std::unique_lock<std::mutex> lock;
++  if (custody) {
++    lock = std::unique_lock<std::mutex>(custody->mutex);
++    custody->ValidateBeforeWaitLocked(process.process.Pid(), process.process.CreationTime());
++  }
++  const auto child_pid = process.process.Pid();
+   process.process.Terminate(RESULT_CODE_NORMAL_EXIT, false);
+-  base::EnsureProcessTerminated(std::move(process.process));
++  auto evidence = base::EnsureProcessTerminatedWithAuxReapEvidence(std::move(process.process));
++  if (custody) custody->ObserveLocked(child_pid, evidence);
+ }
+ 
+ void ChildProcessLauncherHelper::SetProcessPriorityOnLauncherThread(
