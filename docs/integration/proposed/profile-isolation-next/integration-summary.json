@@ -1,0 +1,85 @@
+{
+  "format": "aux.profile-isolation.local-source-integration.v1",
+  "baseline": "43914674f",
+  "integratedHead": "1d93951b795fb1d8f49c033eb48167014ee247ca",
+  "receipts": {
+    "browser-roots/evidence/native-compile.json": {
+      "sha256": "54dba1ad89bf3dbc914f4e3c72194f3f8cc718c33a5ae6065fb1a91c30a756ea",
+      "passed": true
+    },
+    "browser-roots/evidence/early-compile.json": {
+      "sha256": "dcbb0dfc105b6558b21f4d5b998ea5ab804a1dcd2bbf2296373daa353172512c",
+      "passed": true
+    },
+    "spawn-custody/evidence/compile-final.json": {
+      "sha256": "b5fd20d19aef7d53b75ca6d3a6e7525b22335ba7acbdc93dfa692dade1602b6a",
+      "passed": true
+    },
+    "startup/evidence/summary.json": {
+      "sha256": "3ae06ef10aa819873c08e21a94334cfdfa737f59a7bfa6c1182c8e3f51def300",
+      "passed": true
+    },
+    "containment/evidence.json": {
+      "sha256": "3f6427269ca62c0408ef00503ee494fef3b629fe5454741f6382d952123caa8c",
+      "passed": true
+    }
+  },
+  "sourceFiles": {
+    "browser-roots/source/AuxBrowserPrivateRoots.cc": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+    "browser-roots/source/AuxBrowserPrivateRoots.h": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+    "browser-roots/source/AuxBrowserRootBridge.h": "dd6c31c3a3a72670426c09c86758d23ba14ea654c4345fc3d627dce6f5ea013d",
+    "browser-roots/source/AuxChromiumBrowserRootProducer.cc": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+    "browser-roots/source/AuxNativeParentConnectionBridge.cc": "0e92d23b8cecdcee80d0712bec6ad8f50976d25edad9e5135c6f89cca3526961",
+    "browser-roots/source/AuxNativeParentConnectionBridge.h": "048433d6100fd0dbebfa4f63ee9fdfe6ebd1f1f8aca5926afeffb7ddb8e3afb6",
+    "browser-roots/source/AuxNativePeerTransport.cc": "811ab2a34f8e871703efdc59e84de52715eb96bca0fa5b0e055a6c94ac6ce22d",
+    "browser-roots/source/AuxNativePeerTransport.h": "a6456369f9e1f03e322516c5988112f29094063379e5170cf090fe65ce89cb92",
+    "browser-roots/source/AuxNativePeerWire.h": "34e406e583e8df0135af0b4de23c687f6590632c4c4bbda58ccdf024cc1557be",
+    "browser-roots/source/AuxOwnedChildWait.h": "b5bc81eb518ecd1f5158eb2f65cf5e78db89eced0266257beb33fc11f1434582",
+    "browser-roots/source/AuxOwnedCommandDispatcher.swift": "8809e7e160d7be23da6a5d63390c6b2e24d181af3753090fdcbfb427d6b86332",
+    "browser-roots/source/AuxOwnedNativePeerChild.cc": "8333b7664d73795bc2d39a9031dcbda4172874e5c3f6e216bbf854d59f35f9f6",
+    "browser-roots/source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "browser-roots/source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+    "browser-roots/early-source/chrome_feature_list_creator.cc": "4c84df319418e574d430d5c70b18b671d7f6c8d910b6a38adf3767e4003c5460",
+    "spawn-custody/source/AuxDevelopmentWorkerHost.cc": "cb155a41136f00f43399e3b3fd945886ea47bd86ed66966346af3d4d0f8aaf56",
+    "spawn-custody/source/AuxDevelopmentWorkerHost.h": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4",
+    "spawn-custody/source/AuxExecPrivateParent.h": "f679e20db7581cb27ec21b254803c7908beaedc70614b031b3915ceccbf70a92",
+    "spawn-custody/source/AuxNativeExecDescriptorPolicy.h": "d72c0fe16823cba6ff2636ccd7e5240520b2d3f82d2954459dec231ec64075db",
+    "spawn-custody/source/AuxNativeExecReservation.h": "3ba0f010dbd8a2e19ba79ee82ae362149c9d34e988f7e3ad71c4253472715542",
+    "spawn-custody/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "spawn-custody/source/AuxWorkerDrain.h": "712a4d3c125a27822dddba220c1325f4fcb3739fa12daa6f2794d9bf245f48db",
+    "spawn-custody/source/descriptor-fixture.cc": "05e2aa1a0a3cbe8a9a80958f4aed898e4fed0884a0fa579e963e5a86168b6f30",
+    "spawn-custody/source/direct-child-wait.h": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+    "spawn-custody/source/process.c": "058b1fd3390c1b1f3777be0490283b497270742db0e960aa3aa85f5387597ea2",
+    "spawn-custody/source/process_wrap.cc": "ca7e729812c0e0d4d7805793d40db74641a53135a8e3dddc20b2fab461547559",
+    "spawn-custody/source/pty.cc": "c9cb4e15c7dc9c52ae12a88d3c540c4780aba24380255d672bae8e1d5b516bcf",
+    "spawn-custody/source/spawn_sync.cc": "1cab9bdcb31999885f2f94183c500ec732c6334fc8a4bec82e297b050581606d",
+    "spawn-custody/source/spawn_sync.h": "ebae4be8f3bd62b0601e65780d721649c506f8707f350eec5ba7cddc028ead1a",
+    "startup/source/AuxAuthenticatedFreshColdBootstrap.swift": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+    "startup/source/AuxFreshColdBootstrapNativeBridge.swift": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+    "startup/source/AuxFreshColdInstallerGuard.swift": "e841cf779671555ea70529fb6f2969fbe95914c1815a41db9ce8a58ea25a1221",
+    "startup/source/AuxNativeFreshStageCoordinator.swift": "d30a8d50b592955320c2560c3137f86a456079502fdedfb7f8c7c0f230a9123c",
+    "startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+    "startup/v5-source/AuxFreshBootstrapPolicy.swift": "24c835eca28aaa77107137f5a411c7b1120947a3794d886ca7fff290565a27de",
+    "startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+    "startup/v5-source/AuxFreshColdInstallerGuard.swift": "dfbcd1921f054803e902450275a640b99826d19c46b76c10d4b86263eb193624",
+    "startup/v5-source/AuxNativeFreshStageCoordinator.swift": "2d7559e726bbcb6cbd8a0d9be86fea7829b15c1ed83496e4472bc62283733e31",
+    "startup/v5-source/AuxNativeTaskLayout.swift": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+    "containment/source/AuxExecSpawnEnvelope.h": "87be38a59da8c21d97062c4a54ff1049d9db73efafc1dedf0fd9f41ed725dff2",
+    "containment/source/envelope-check.cc": "b24a572a6a3c8ff264dd44202714afbdf4cd73360c31cb3d21f06167a50ed9ed"
+  },
+  "nativeExecutableLinked": false,
+  "packaged": false,
+  "protectedRuntimeExecuted": false,
+  "acceptedAppChanged": false,
+  "uiChanged": false,
+  "signed": false,
+  "released": false,
+  "ready": false,
+  "remainingImplementation": [
+    "actual account/session task projections and permission consumers",
+    "cache-policy override lifecycle coverage",
+    "native owner admission before earliest Local State IO",
+    "brokered write generation/cancellation and complete writer closure",
+    "coherent native build and exact entry/package associations"
+  ]
+}
