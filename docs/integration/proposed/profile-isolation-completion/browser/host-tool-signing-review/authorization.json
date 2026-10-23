@@ -1,0 +1,18 @@
+{
+  "format": "aux.local-host-signing.authorization.v1",
+  "ownerAnswer": "Allow build-tool-only ad hoc signatures",
+  "scope": "Exact48host executables and20host macro libraries;20Aux product outputs stay unsigned",
+  "developerIdentity": false,
+  "keychain": false,
+  "provisioning": false,
+  "notarization": false,
+  "release": false,
+  "files": {
+    "host-output-allowlist.json": "ec54f4421d200640b62a5298a18ab3957a22175f0ec52ba2ae9142ec4a8c7c28",
+    "host-proc-macro-allowlist.json": "94c8f65be4a6da042e74a759a59eb45e410906b62ff77c9b4ca6b552f3dd2759",
+    "excluded-product-outputs.json": "cf5ff83bcb5768ecf18ba436694f8b175183829b81b5de0e2a7702ded90f3381",
+    "aux_host_link_filter.py": "b224684a34dfd2a8b6bf43bffa2acc35ac44f8d6a06ea481c9771968e072c78c",
+    "linker-driver.patch": "59a20b784d7391d8fe90007193e9db765bfeff9c9dd856c034ed2241740c4463",
+    "source-pins.json": "68eb03481cd9a463fa19e1b778a689062a78a0f9c9fe3ab0c7ebc6725f986e30"
+  }
+}
