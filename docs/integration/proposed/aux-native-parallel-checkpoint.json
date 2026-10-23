@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T02:49:53.406872+00:00",
+  "recordedAt": "2026-10-23T02:53:19.829131+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -57,7 +57,8 @@
     "providerQuarantine": "98d3e1140",
     "providerQuarantineEvidenceRecipe": "7b7f743d5",
     "peerProcessAndSendOwnership": "2c44e578f",
-    "existingTerminalCskConsumer": "cc7799c63"
+    "existingTerminalCskConsumer": "cc7799c63",
+    "actualNodeEnvironmentRunner": "be26fa9bc"
   },
   "terminalRootChecks": [
     {
@@ -122,6 +123,11 @@
       "session": 91715,
       "role": "actual Mach peer object compile and pure wire predicate",
       "state": "queued behind93645"
+    },
+    {
+      "session": 77772,
+      "role": "actual Node Environment runner single-TU compile only",
+      "state": "queued behind93645; no linked executable or activation"
     }
   ],
   "lastBuildObservation": {
