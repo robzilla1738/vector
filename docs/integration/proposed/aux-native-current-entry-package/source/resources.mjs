@@ -34,7 +34,10 @@ export async function currentNativeEntryResources({repositoryRoot,index}){
 /** Package-private transaction caller only. Inclusion is deliberately not activation. */
 export async function addDormantCurrentNativeEntry({resources,assembled,repositoryRoot}){
  if(assembled.identityProfile!=='aux-v1'||assembled.stateIdentityVersion!==2||assembled.daemonRuntime!=='provided-node-development'||
-    assembled.nativeMainReplacement?.mode!=='inactive-embedded-native-main'||assembled.nativeEntryProjection)throw Error('Inactive state2 native-main package required');
+    assembled.nativeMainReplacement?.mode!=='inactive-embedded-native-main'||
+    assembled.nativeMainReplacement.buildReceiptSha256!==pins.pairedNativeMain.buildReceiptSha256||
+    assembled.nativeMainReplacement.outputSha256!==pins.pairedNativeMain.executableSha256||
+    assembled.nativeMainReplacement.fixedNativeEntryReaderSha256!==pins.reader.proposedSha256||assembled.nativeEntryProjection)throw Error('Inactive state2 native-main package required');
  const entries=assembled.files.filter(f=>f.path===defaultIndexPath);
  if(entries.length!==1||entries[0].type!=='file'||entries[0].sha256!==pins.inputIndexSha256)throw Error('Exact current default-entry inventory required');
  const index=await pinned(join(resources,defaultIndexPath),pins.inputIndexSha256);
@@ -53,7 +56,8 @@ export async function addDormantCurrentNativeEntry({resources,assembled,reposito
  await pinned(join(resources,defaultIndexPath),pins.inputIndexSha256);
  const report={format:'aux.dormant-native-entry.package.v1',dormant:true,sourceSha256:pins.inputIndexSha256,
   files:generated.map(({path,sha256,mode,bytes})=>({path,sha256,mode,bytes:bytes.length})),
-  requiredReaderSha256:pins.reader.proposedSha256,readerPresentInBuild68715:false,
+  requiredReaderSha256:pins.reader.proposedSha256,readerSourceLinked:true,
+  pairedBuildReceiptSha256:pins.pairedNativeMain.buildReceiptSha256,pairedExecutableSha256:pins.pairedNativeMain.executableSha256,
   defaultEntryUnchanged:true,coldHookEnabled:false,runtimeAuthorityGranted:false};
  assembled.nativeEntryProjection=report;
  await writeFile(join(resources,'bundle.json'),JSON.stringify(assembled,null,2)+'\n');

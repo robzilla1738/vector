@@ -1,3 +1,4 @@
+import { addDormantCurrentNativeEntry } from '../../docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs';
 import { verifyNativeMainPackageInput, replaceCopiedDaemonWithNativeMain } from '../../docs/integration/proposed/aux-native-main-package-integration/source/native-main-package.mjs';
 import { verifyAuxStateIdentityContract } from './aux-state-identity-contract.mjs';
 import { verifyAuxIdentityContract, assertAuxVisualAssets } from './aux-identity-contract.mjs';
@@ -176,6 +177,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
     await absent(resources); // Never merge retired independent runtime components.
     const assembled = await assembleProvidedResources({ stageRoot, outputRoot: resources });
     const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;
+    const nativeEntryProjection = nativeMainReplacement ? await addDormantCurrentNativeEntry({ resources, assembled, repositoryRoot: repository }) : null;
     if (assembled.deliveryProvenance) {
       const paths = { stage: 'manifest.json', ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', 'computer-use': 'computer-use/manifest.json' };
       const external = join(temporary, 'source-audit');
@@ -241,6 +243,7 @@ export async function packageProvidedApp({ stageRoot, nativeReceiptPath, composi
       cliSea: `${cliExecutable}-sea`,
       developmentDpLayout, layoutChanges, outerPackageBoundary,
       ...(nativeMainReplacement ? { nativeMainReplacement } : {}),
+      ...(nativeEntryProjection ? { nativeEntryProjection } : {}),
       localDevelopmentOnly: true,
       remaining: ['Guarded original-native loading and common Aux authority', 'Disposable packaged UI/runtime and functional acceptance'],
     };

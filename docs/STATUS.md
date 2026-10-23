@@ -1,3 +1,9 @@
+# Native entry reader linked and paired resource packaging underway — 2026-10-23
+
+Actual serialized95354 successfully linked the fixed native entry reader: all11 genuine C++ objects reused,46 Swift sources linked and42 Node static archive hashes checked. The new executable SHA256 is `0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e`. No executable/module was run. Exact receipt/logs: `docs/integration/proposed/aux-native-current-entry-reader-build/evidence/`. The reader selects only the dedicated `aux-native-entry.mjs` through its existing FD/signature/resource checks; ordinary refused index/SEA/CLI paths remain unchanged.
+
+Exact existing routing projections match the actual current index byte-for-byte and produce two finite dormant resources. The paired package helpers now require this actual new binary receipt/output/reader association before including them and record both binary replacement and resource inventory. No status/receipt grants runtime authority. Fresh58364 stage passed; separate actual package27703 is live at `out/provided-candidate-aux-native-entry-paired`. Earlier candidate55417 and accepted app/UI remain untouched; cold hook remains default-off and real startup/UI acceptance is unproven.
+
 # Production source profile configured; actual provider boundaries inspected — 2026-10-23
 
 The source production profile now pins only the exact already-approved Neon pooled host and recorded Aux app/API origins. The actual environment guard is unchanged; focused source checks prove all nine missing production settings still refuse, along with wrong database/origins/provider mode. No deployment or activation follows from configuration. A fresh sanitized personal-Vercel metadata check61065 confirms resourceProfileConfigured:true, configurationComplete:false and the same nine missing Clerk/live-Stripe settings. No secret values were inspected.

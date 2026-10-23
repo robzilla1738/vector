@@ -372,7 +372,15 @@
     "compiled": true,
     "applyReceipt": "out/native-reuse-composition-aux-parent-swift-runtime/native-before-apply-19ru6kjl/apply-receipt.json"
   },
-  "rootQueuedChecks": [],
+  "rootQueuedChecks": [
+    {
+      "session": 27703,
+      "role": "new separate unsigned paired native-entry candidate package",
+      "stage": "out/provided-reuse-aux-native-entry-paired",
+      "output": "out/provided-candidate-aux-native-entry-paired",
+      "state": "live; existing55417candidate preserved; native checkout unchanged"
+    }
+  ],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -460,6 +468,14 @@
       "exitCode": 1,
       "role": "actualLLVMLinkonlyacceptedthinarchives but omittedproductionPerfettosourcesetobjects; nofixtureexecution",
       "evidence": "docs/integration/proposed/aux-native-legacy-inbox-decoder/evidence/lld-link-receipt.json"
+    },
+    {
+      "session": 95354,
+      "exitCode": 0,
+      "role": "actual fixed native entry reader46Swift final link; all11 C++ objects reused,42 Node archives verified; exports metadata passed",
+      "evidence": "docs/integration/proposed/aux-native-current-entry-reader-build/evidence/results.json",
+      "executableSha256": "0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e",
+      "nativeExecutableRun": false
     }
   ],
   "currentCompatibility": {

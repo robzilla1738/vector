@@ -28,5 +28,12 @@
     "count": 4
   },
   "nativeMainBuild68715HasReaderSuccessor": false,
-  "runtimeAuthorityGranted": false
+  "runtimeAuthorityGranted": false,
+  "pairedNativeMain": {
+    "buildReceiptSha256": "4c4dd1ade382867ddd7138f8c1390ddaa0cfacb1e95b44897189c2be0e5897e8",
+    "executableSha256": "0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e",
+    "readerSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+    "compiledAndLinked": true,
+    "executed": false
+  }
 }
