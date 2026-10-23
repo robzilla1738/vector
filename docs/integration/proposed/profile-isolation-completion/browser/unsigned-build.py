@@ -19,7 +19,7 @@ try:
  if activation.exists():
   authorized=json.loads(activation.read_text())
   if sha(S/'build/toolchain/apple/linker_driver.py')!=authorized['linkerDriverSHA256'] or sha(S/'build/toolchain/apple/aux_host_link_filter.py')!=authorized['filterSHA256']:raise RuntimeError('authorized host filter changed')
-  r['approvedBuildToolOnlyAdHoc']=authorized;r['productSigned']=False
+  r['approvedBuildToolOnlyAdHoc']=authorized;r['productSigned']=False;r['hostToolAdhocSigningAuthorized']=True;r['hostToolApprovalActivationSHA256']=sha(activation)
  reuse=None
  if a.resume_custody:
   reuse=O/(a.resume_reviewed or 'unsigned-direct-build')
