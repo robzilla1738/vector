@@ -1,0 +1,51 @@
+{
+  "format": "aux.native-runtime-path-contract.v1",
+  "inputs": {
+    "out/provided-source-audit/daemon-original.mjs": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+    "out/provided-reuse-aux-recovery-utilities/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs": "522c265e11b5d50e1ab9daacba017fc61ce8cb8870038e3e10f7836458b7a1bd",
+    "vendor/provided/daemon-adapter.mjs": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3",
+    "vendor/provided/runtime-seed.cjs": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af",
+    "out/provided-reuse-aux-recovery-utilities/distribution/runtime/env.sh": "4622cdda36d2b597727c1d603e735a88828640eff3b3f4c5dd72b1e71054e0ff",
+    "docs/integration/proposed/aux-native-daemon-main/source/AuxNativeDaemonMain.cc": "16a394a12e8ab2d8541f172c4776f99cefce14a4098ea0697fae4d015c19cff3"
+  },
+  "spans": [
+    {
+      "start": "async function prepareSessionSpawn(",
+      "end": "var CWD_TRAILER",
+      "originalLength": 1690,
+      "originalSha256": "38ae1023cebe73dab3fb54ba97a75b9ece151bb934e31ba95afdbbb3314329ab",
+      "stagedLength": 1684,
+      "stagedSha256": "f1fe665c9548e41e9966cbc2b26fdfd997e01b63d772e057336d1a63fb2c1e10",
+      "exactIdentityOnlyEquality": true,
+      "originalCharacterOffset": 6803494,
+      "stagedCharacterOffset": 6865374
+    },
+    {
+      "start": "async function findRg()",
+      "end": "var _BashSession_instances",
+      "originalLength": 204,
+      "originalSha256": "c47cb91f7d194beb915f078d658aa33fe9ff4a5a20fedb0f4f12d6b4f81fdeea",
+      "stagedLength": 204,
+      "stagedSha256": "c47cb91f7d194beb915f078d658aa33fe9ff4a5a20fedb0f4f12d6b4f81fdeea",
+      "exactIdentityOnlyEquality": true,
+      "originalCharacterOffset": 5488071,
+      "stagedCharacterOffset": 5489320
+    },
+    {
+      "start": "function prepareMacOSRuntime(",
+      "end": "function setAgentRuntimeProgress(",
+      "originalLength": 725,
+      "originalSha256": "1884610c5a0237e691d2cf7dbac259991f7c8f69ff1a88e2042e16adb8aa917b",
+      "stagedLength": 725,
+      "stagedSha256": "1884610c5a0237e691d2cf7dbac259991f7c8f69ff1a88e2042e16adb8aa917b",
+      "exactIdentityOnlyEquality": true,
+      "originalCharacterOffset": 6762506,
+      "stagedCharacterOffset": 6824269
+    }
+  ],
+  "prepareSessionSpawnOccurrences": 4,
+  "mainSuccessorPrepared": false,
+  "compilerOrEntryExecuted": false,
+  "conclusion": "Preserve per-spawn validated-runtime PATH; no main global prepend required.",
+  "directProcessEnvPathAssignmentOccurrences": 0
+}
