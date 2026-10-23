@@ -1,0 +1,314 @@
+{
+  "unsigned-custody-streamed-build": {
+    "receipt": {
+      "format": "aux.chromium.unsigned-full-build.v1",
+      "passed": false,
+      "prepared": true,
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "sharedLinkConfigSha256": "3b909bd53d1e2335db1fea63c5c22498b57c3deff3a4a6dddfe66ed281d316b5",
+      "isolatedLinkConfigSha256": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+      "coldFeatureEnabled": false,
+      "appExecuted": false,
+      "signed": false,
+      "runs": [
+        {
+          "name": "gn",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+            "gen",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+          ],
+          "exitCode": 0,
+          "seconds": 111.39494316698983,
+          "reused": true
+        },
+        {
+          "name": "dryrun",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-n",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 192.51086999999825,
+          "reused": true
+        },
+        {
+          "name": "commands",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-t",
+            "commands",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 81.72547650011256
+        },
+        {
+          "name": "full-build",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-j4",
+            "chrome"
+          ],
+          "exitCode": 1,
+          "seconds": 493.85298345796764
+        }
+      ],
+      "custodySources": {
+        "AuxOwnedNativePeerChild.cc": {
+          "beforePath": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedNativePeerChild.cc",
+          "beforeSHA256": "a9058116c84012ce1fe616b040015573b3a1bc768aaf779d918563650ea82fb8",
+          "afterSHA256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503"
+        },
+        "AuxSelectedStateHome.cc": {
+          "beforePath": "docs/integration/proposed/profile-isolation-recovery/browser/source/AuxSelectedStateHome.cc",
+          "beforeSHA256": "925d20ff60cd1e7cd8fccae71559b5785d042cb4a67f5802ab17eba9cba96915",
+          "afterSHA256": "5d00c1df70a17b774b47a5ee078ae06c1982e4f3600cd8f84e99c4f111c5b5d5"
+        }
+      },
+      "reusedGraphReceiptSha256": "45d46157e7c1556c36229d2500aaf083448f458e8dee6b484551da2ef8fc76cb",
+      "reviewedCommandCount": 57863,
+      "reviewedLinkCount": 68,
+      "dryRunActionCount": 57863,
+      "sharedLinkConfigUnchanged": true
+    },
+    "receiptSha256": "c301c9305c329e0687492fcccf6b50cf2ff8a3f52131f32e2fff2606b0cdd2e5",
+    "logPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-custody-streamed-build/build.log",
+    "logSha256": "0abcea6161dc74de91f06028c410fd3bfef6517a0b0a3b8e3dd7d387e39d1b98"
+  },
+  "unsigned-existing-host-build": {
+    "receipt": {
+      "format": "aux.chromium.unsigned-full-build.v1",
+      "passed": false,
+      "prepared": true,
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "sharedLinkConfigSha256": "3b909bd53d1e2335db1fea63c5c22498b57c3deff3a4a6dddfe66ed281d316b5",
+      "isolatedLinkConfigSha256": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+      "coldFeatureEnabled": false,
+      "appExecuted": false,
+      "signed": false,
+      "runs": [
+        {
+          "name": "gn",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+            "gen",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+          ],
+          "exitCode": 0,
+          "seconds": 111.39494316698983,
+          "reused": true
+        },
+        {
+          "name": "dryrun",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-n",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 192.51086999999825,
+          "reused": true
+        },
+        {
+          "name": "commands",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-t",
+            "commands",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 81.72547650011256,
+          "reused": true
+        },
+        {
+          "name": "full-build",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-j4",
+            "chrome"
+          ],
+          "exitCode": 1,
+          "seconds": 220.9028767090058
+        }
+      ],
+      "custodySources": {
+        "AuxOwnedNativePeerChild.cc": {
+          "beforePath": "docs/integration/proposed/profile-isolation-final/startup/source/AuxOwnedNativePeerChild.cc",
+          "beforeSHA256": "a9058116c84012ce1fe616b040015573b3a1bc768aaf779d918563650ea82fb8",
+          "afterSHA256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503"
+        },
+        "AuxSelectedStateHome.cc": {
+          "beforePath": "docs/integration/proposed/profile-isolation-recovery/browser/source/AuxSelectedStateHome.cc",
+          "beforeSHA256": "925d20ff60cd1e7cd8fccae71559b5785d042cb4a67f5802ab17eba9cba96915",
+          "afterSHA256": "5d00c1df70a17b774b47a5ee078ae06c1982e4f3600cd8f84e99c4f111c5b5d5"
+        }
+      },
+      "reusedGraphReceiptSha256": "c301c9305c329e0687492fcccf6b50cf2ff8a3f52131f32e2fff2606b0cdd2e5",
+      "commandInventorySha256": "b4259bc51873e30abc5f2c94d87fcf8ac070e386f1b7962e3145c8fba3a085ac",
+      "currentBuildGraphSha256": "6c6eaa1c3334b5b4227378ccf9b4890391a54bf8a2b587a5717bd5515c22dd3d",
+      "reviewedCommandCount": 57863,
+      "reviewedLinkCount": 68,
+      "dryRunActionCount": 57863,
+      "sharedLinkConfigUnchanged": true
+    },
+    "receiptSha256": "e312d9504fd18eb774a98e23f207a28a0c9dfaed6c935244bf9977a5a9e6ebc4",
+    "logPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-existing-host-build/build.log",
+    "logSha256": "05f09086881e643f8cd34bca37fe4848c122029a2bb99cce5e7c203c8f36840b"
+  },
+  "unsigned-children-static-tools-build": {
+    "receipt": {
+      "format": "aux.chromium.unsigned-full-build.v1",
+      "passed": false,
+      "prepared": true,
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "sharedLinkConfigSha256": "3b909bd53d1e2335db1fea63c5c22498b57c3deff3a4a6dddfe66ed281d316b5",
+      "isolatedLinkConfigSha256": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+      "coldFeatureEnabled": false,
+      "appExecuted": false,
+      "signed": false,
+      "runs": [
+        {
+          "name": "gn",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+            "gen",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+          ],
+          "exitCode": 0,
+          "seconds": 59.638547874987125
+        },
+        {
+          "name": "dryrun",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-n",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 33.669630042044446
+        },
+        {
+          "name": "commands",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-t",
+            "commands",
+            "chrome"
+          ],
+          "exitCode": 0,
+          "seconds": 37.978758207987994
+        },
+        {
+          "name": "full-build",
+          "command": [
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+            "-C",
+            "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+            "-j4",
+            "chrome"
+          ],
+          "exitCode": 1,
+          "seconds": 128.62989295902662
+        }
+      ],
+      "commandInventorySha256": "b4259bc51873e30abc5f2c94d87fcf8ac070e386f1b7962e3145c8fba3a085ac",
+      "currentBuildGraphSha256": "6c6eaa1c3334b5b4227378ccf9b4890391a54bf8a2b587a5717bd5515c22dd3d",
+      "reviewedCommandCount": 57863,
+      "reviewedLinkCount": 68,
+      "dryRunActionCount": 1,
+      "sharedLinkConfigUnchanged": true
+    },
+    "receiptSha256": "87e918819f76eb785907ac254548a45af1e2f7e99de80e00ad77970b6b1f6e11",
+    "logPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-children-static-tools-build/build.log",
+    "logSha256": "139c7cbc0386b072be2b88dc70635cc333966966e2d6bd2374d359264ca84571"
+  },
+  "currentSourceProjection": {
+    "children": {
+      "base/process/kill.h": {
+        "before": "d64a776576a3cae9f2aeddbcee5974a2782d736f3da631ef392bae3987dfac77",
+        "after": "7ee408e155a1d433ab7320267932305f99418ebcfa2450f39fbb9a6f4eb32f1b"
+      },
+      "base/process/kill_mac.cc": {
+        "before": "4fa75ba5bd57a7c3ef649da2c9f46afb1976543595bb615efc066c7bd70752cd",
+        "after": "ed8c96ff7ad08fcdd44beeacd513dd730fe0197d91a48195564fbb9332c4817d"
+      },
+      "base/process/kill_posix.cc": {
+        "before": "7500d4a99480cf3846133aebdcb71e05bdccea2539d6a7b6128fef658d91a02e",
+        "after": "ae7c6fd656a40ddc7b7c3a88a083cac75b038d8b8507f586bce707346b9bf08a"
+      },
+      "content/browser/aux_child_lifetime.h": {
+        "before": null,
+        "after": "44b5aaf5d6c8a6ea48e92c7f00433b573860b06403a2f097ec80e9497764c7c9"
+      },
+      "content/browser/child_process_launcher_helper.cc": {
+        "before": "bc2e38e6529bf113d2d6b8c49e72ea1bf7dcbec466ae0ecb1385d3436f8d911a",
+        "after": "52eccd4f355a8756ba338d7bc8ff1dbc4fb30725259e7cba24919552b69b429e"
+      },
+      "content/browser/child_process_launcher_helper.h": {
+        "before": "76910c7391eabfbf15d4633e5a443f19315de9d3b581e189b887155e9d7b375a",
+        "after": "d6ccc001aeb6f368fc932b7eb2e9600c3206265c6aed3a5c835ace04ba679653"
+      },
+      "content/browser/child_process_launcher_helper_mac.cc": {
+        "before": "9be8f233064e315009400054f9a13c7f69823ffb88679d99c6e85e240f707c4e",
+        "after": "d0b0ec0d435e0729f41d2eae119e60a795141e2de0081fa8bd95a86a29869d7c"
+      }
+    },
+    "messaging": {
+      "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h": {
+        "before": null,
+        "after": "cea96cac077371596371b95651dd2972607293e3f18295c73c0a78a6e59a3551"
+      },
+      "chrome/browser/extensions/api/messaging/launch_context.cc": {
+        "before": "14736390a9539ca8745977a9efad247adddac52df06211d5b9152fe404487387",
+        "after": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75"
+      },
+      "chrome/browser/extensions/api/messaging/launch_context.h": {
+        "before": "4e8f21a96ca55b171db7b16e7548149ca3ee7fd5c97ff44b97ce17bf1f8ef8ae",
+        "after": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e"
+      },
+      "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+        "before": "02520049bf8030253fe509655c896c614edbf6e8914274a1a0dd50d5366bb541",
+        "after": "c53d29bccce56501fefcb70f83be1091563ce53874fb6e39862311e062a2c71c"
+      },
+      "chrome/browser/extensions/api/messaging/native_message_process_host.cc": {
+        "before": "6b15fe1376055ad425dc4072743161c2e0671477dc6ff5018585a0dbc17937e2",
+        "after": "c97eafdb50c2e15f4895c4236f3a71ef5dfc81633940820de012889b30b2d937"
+      },
+      "chrome/browser/extensions/api/messaging/native_message_process_host.h": {
+        "before": "6693d9abdf469b48371ec3fbcf0dec3da734d6a99b0d804cd52d93bf4cf73195",
+        "after": "a0f38767553956fb6ae6d491e6f2bf2951a99e746410be93c792933f35fd9631"
+      },
+      "chrome/browser/extensions/api/messaging/native_process_launcher.cc": {
+        "before": "b0b6f56ea9b9404350f4ff8a89bb0724b76f1194b44cccf42a4963705c7828a5",
+        "after": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8"
+      },
+      "chrome/browser/extensions/api/messaging/native_process_launcher.h": {
+        "before": "f82c6671d1db41744b84d32ab3631d0e4a234e4f6999c0a19e9f26341be27e0a",
+        "after": "06d71773dbc9b17f1bb76024d32ed252ccec49c16cf8881368f72f7c543abf53"
+      }
+    }
+  },
+  "staticRustToolManifestSha256": "b1482462c44caa5fb71eb5b806f4551045376a5b4c8eca0b1e4adb6e8d190533",
+  "signingPerformed": false,
+  "hostSigningReviewActivated": false,
+  "readyApp": false
+}
