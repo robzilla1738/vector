@@ -1,0 +1,17 @@
+{
+  "format": "aux.owned-browser-quiesce.build-run.v1",
+  "session": 42082,
+  "state": "running",
+  "composition": "out/native-reuse-composition-aux-owned-browser-quiesce-mac/owner",
+  "compositionSha256": "0095039dad1a8061db63fca5651ee5ab2c8fc8a84f7a060a6778dc5bc4596d8e",
+  "applySession": 25528,
+  "applyExitCode": 0,
+  "applyReceipt": "out/native-reuse-composition-aux-owned-browser-quiesce-mac/owner/native-before-apply-iwz9d37x/apply-receipt.json",
+  "log": "out/aux-owned-browser-quiesce-native-build.log",
+  "receipt": "out/aux-owned-browser-quiesce-native-build.json",
+  "jobs": 2,
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "wholeProfileCustodyClaimed": false,
+  "state2Authorized": false
+}

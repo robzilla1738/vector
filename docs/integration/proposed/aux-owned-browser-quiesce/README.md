@@ -2,7 +2,9 @@
 
 This migration-only browser UI entry point invokes the actual process-wide async-profile and extension-worker admission gates, the owned direct-helper quiesce API, and the loaded-profile session writer participant. It accepts no asserted receipts, authority tokens, profile paths or success flags from JavaScript. Normal startup, normal shutdown and all UI remain unchanged.
 
-The owner marks both asynchronous observations pending before closing admission or invoking any callback. Reentrant requests join the same operation; there is no reopening, reset or timeout. It retains session results and pending callers in native process-owned state. Missing callbacks remain pending. An unavailable ProfileManager is explicit and never replaced by a newly created manager or profile. Callback delivery occurs only after the two native callbacks are observed, and may still report failures, unresolved work or running workers.
+The owner marks both asynchronous observations pending before closing admission or invoking any callback. Reentrant requests join the same operation; there is no reopening, reset or timeout. It retains session results and pending callers in native process-owned state. Missing callbacks remain pending. Callback delivery occurs only after the two native callbacks are observed, and may still report failures, unresolved work or running workers.
+
+Review found an unresolved lifecycle defect in this revision: `BrowserProcessImpl::profile_manager()` lazily creates its manager. The consumer therefore does not yet satisfy the intended non-creating inspection boundary. A separate pinned successor must use an actual non-creating accessor; the current build cannot establish that behavior. No execution of this migration entry point has occurred.
 
 Inspection reads the real current async-profile and extension-worker observations. Once the direct-daemon callback has arrived, it reads fresh helper custody, so later carrier activity does not disappear behind the earlier daemon result. None of these observations is converted into an all-writers-stopped or migration-authorized Boolean.
 
