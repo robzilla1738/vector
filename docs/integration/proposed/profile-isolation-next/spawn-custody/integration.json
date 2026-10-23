@@ -1,0 +1,77 @@
+{
+  "format": "aux.native-spawn-custody.source-integration.v1",
+  "baseline": "43914674f",
+  "replacements": [
+    {
+      "name": "process_wrap.cc",
+      "original": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/process_wrap.cc",
+      "originalSha256": "f4db549965708ad031d372b7b1a2a7d821527316ef9c9d8de4ca3a85b3e9b45f",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/process_wrap.cc",
+      "successorSha256": "ca7e729812c0e0d4d7805793d40db74641a53135a8e3dddc20b2fab461547559"
+    },
+    {
+      "name": "spawn_sync.cc",
+      "original": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/spawn_sync.cc",
+      "originalSha256": "57ce2e62104b374d868360e79d12efcfc43df6f448533cf13f2ac34712efcb38",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.cc",
+      "successorSha256": "3478c6c7d06afbab03c2ad4c9a1b44492c14dde3d06c486590aa0129c3cd0410"
+    },
+    {
+      "name": "spawn_sync.h",
+      "original": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/spawn_sync.h",
+      "originalSha256": "9655e8371d0dfd3d246967297286bc8b929bfe34950b0c01146c72a19f2d4e6b",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.h",
+      "successorSha256": "2486c9ea886c06d56d1ee23f71c948d4b0c006a4c8664757373142e4cbf98d3a"
+    },
+    {
+      "name": "process.c",
+      "original": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/unix/process.c",
+      "originalSha256": "e79f9bd90787011d59d9395f46658caca2ca01d1daad84c36e3b86eba50a4a52",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/process.c",
+      "successorSha256": "058b1fd3390c1b1f3777be0490283b497270742db0e960aa3aa85f5387597ea2"
+    },
+    {
+      "name": "pty.cc",
+      "original": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc",
+      "originalSha256": "85025b57d05232f03daf4627d891e593f0938859af446848fd87e48cb5326807",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/pty.cc",
+      "successorSha256": "c9cb4e15c7dc9c52ae12a88d3c540c4780aba24380255d672bae8e1d5b516bcf"
+    },
+    {
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "original": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/final-completion/native/exec-parent/source/AuxDevelopmentWorkerHost.cc",
+      "originalSha256": "45f5ac44685822b5561b57c225d210a8d7b879bee3a5de7b7afa8b6567512b0d",
+      "successor": "docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxDevelopmentWorkerHost.cc",
+      "successorSha256": "992a5e4001584ac41c5388e358df1b6ec0fb8cbde95fe3aeb26483699195f01b"
+    }
+  ],
+  "newHeaders": [
+    "source/AuxNativeExecReservation.h",
+    "source/AuxNativeExecDescriptorPolicy.h"
+  ],
+  "pairedExternalHeaders": {
+    "envelope": "docs/integration/proposed/profile-isolation-next/containment/source/AuxExecSpawnEnvelope.h",
+    "browserRoots": "docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserRootBridge.h"
+  },
+  "rootCapture": "actual retained Owner.handle -> dispatcher withEntry/guardedFreshAction -> retained parent browser root FD bridge; both finite roles required",
+  "staged": false,
+  "activated": false,
+  "signed": false,
+  "protectedRuntimeAccepted": false,
+  "ipcClosureProven": false,
+  "descendantDrainProven": false,
+  "requiresTrustedRuntimeWorkspaceRelocation": true,
+  "nativeCAbiSymbols": [
+    "AuxNativeExecBeginCurrent",
+    "AuxNativeExecCopyDeniedRoots",
+    "AuxNativeExecCanSpawn",
+    "AuxNativeExecEnterUvSpawn",
+    "AuxNativeExecUvCanSpawn",
+    "AuxNativeExecUvChildCreated",
+    "AuxNativeExecLeaveUvSpawn",
+    "AuxNativeExecSpawnFailed",
+    "AuxNativeExecChildCreated",
+    "AuxNativeExecDirectExitObserved",
+    "AuxNativeExecDirectWaitResult"
+  ]
+}
