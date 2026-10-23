@@ -1,0 +1,20 @@
+{
+  "format": "aux.rebuilt-pty.package-preflight.v1",
+  "passed": true,
+  "buildReceiptSha256": "5b4a6ba26a906214bdeda4a0569991369bf469c8b33c0041dfd0887f4c5d9f5a",
+  "mainSha256": "263186eb7fe9809081034668eb588d5bb5456bd52205aad10a246d052caa34d9",
+  "moduleSha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726",
+  "policyFormat": "aux.fresh.bootstrap.policy.v4",
+  "authorityGranted": false,
+  "coldHookEnabled": false,
+  "appAssembled": false,
+  "executed": false,
+  "signed": false,
+  "repositoryRoot": "/Users/rcourson/Documents/Vibe/web",
+  "repositoryFilesChecked": 108,
+  "frozenExternalInputsChecked": 1416,
+  "initialPreflightCorrections": [
+    "Allow only pinned canonical targets for frozen compiler symlinks",
+    "Stream frozen build-input hashes including archives larger than Node readFile limit"
+  ]
+}
