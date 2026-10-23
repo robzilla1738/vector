@@ -3,7 +3,8 @@
 import argparse,pathlib,hashlib,json,subprocess,time,re,os,stat,struct
 H=pathlib.Path(__file__).resolve().parent;N=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build')
+p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');p.add_argument('--receipt-name',default='');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/(a.receipt_name or ('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build'))
+if R.parent!=O or not R.name.startswith('unsigned-'):raise SystemExit('receipt name must be a direct unsigned- child')
 prior=json.loads((O/'build-preparation.json').read_text())
 if not prior['passed']:raise SystemExit('initial preparation must pass')
 if R.exists():raise SystemExit('fresh build receipt directory required')
@@ -25,9 +26,11 @@ try:
  for name,cmd in [('gn',[str(S/'buildtools/mac/gn'),'gen',str(B)]),('dryrun',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-n','chrome']),('commands',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-t','commands','chrome'])]:
   if reuse and name in ['gn','dryrun']:
    (R/(name+'.log')).write_bytes((reuse/(name+'.log')).read_bytes());r['runs'].append(dict(next(x for x in old['runs'] if x['name']==name),reused=True));continue
-  t=time.monotonic();run=subprocess.run(cmd,cwd=S,capture_output=True,text=True);(R/(name+'.log')).write_text(run.stdout+run.stderr);r['runs'].append({'name':name,'command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t})
+  t=time.monotonic()
+  with (R/(name+'.log')).open('wb') as log:run=subprocess.run(cmd,cwd=S,stdout=log,stderr=subprocess.STDOUT)
+  r['runs'].append({'name':name,'command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t})
   if run.returncode:raise RuntimeError(name+' failed')
- commands=(R/'commands.log').read_text().splitlines()
+ commands=(R/'commands.log').read_text(errors='replace').splitlines()
  forbidden=[x[:800] for x in commands if re.search(r'(^|[ /])codesign(?:\s|$)|(^|[ /])productsign(?:\s|$)|notarytool',x)]
  if forbidden:raise RuntimeError('signing action exists: '+str(forbidden[:3]))
  links=[x for x in commands if 'linker_driver.py' in x]
