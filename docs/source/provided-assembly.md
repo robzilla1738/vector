@@ -41,3 +41,9 @@ The CLI SEA's original hardened-runtime flag and JIT capabilities belong to the 
 ### Explicit local development profile layout
 
 `--development-dp-layout` opts into the separate three-host development-signing topology. It places the carrier in `native/Aux Native Carrier.app`, declares the supplied CLI SEA as its bundle main while preserving the fixed sibling launcher, and writes only the fixed `nativeCarrierLayout:"profile-bundle"` enum in `bundle.json`. The package report pins these plist/marker changes. No profiles are embedded and no signing occurs. This layout requires the matching compiled carrier resolver and the separate development-signing plan; the default ad hoc signer is incompatible. Ordinary packaging remains unchanged.
+
+### Separate rebuilt PTY review candidate
+
+`--native-pty-receipt FILE` selects the exact versioned rebuilt-PTY package inputs. It is exclusive of `--native-main-receipt` and `--development-dp-layout`. Preflight binds the actual coherent daemon link, rebuilt module, source inputs and finite import/export evidence. The private assembly transaction replaces exactly the daemon executable and PTY module, retains the fixed supplied spawn helper, and adds the same two dormant native-entry resources. The checked resource inventory and package report record those changes before atomic publication.
+
+This path does not change the accepted app, create a signed bootstrap policy, enable the cold hook, permit state2 fallback startup, or grant runtime authority. The rebuilt module requires the distinct v4 policy source identity and reviewed signed output; historical v3 source hashes are preserved. A successful unsigned review package remains separate from protected startup and rendered app acceptance.

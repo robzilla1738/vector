@@ -1,0 +1,38 @@
+{
+  "format": "aux.rebuilt-pty.actual-package.v1",
+  "session": 94762,
+  "exitCode": 0,
+  "candidate": "out/provided-candidate-aux-rebuilt-pty-v4/Aux.app",
+  "baseline": "out/provided-candidate-aux-native-entry-paired/Aux.app",
+  "packageReportSha256": "9844f3b3e5d37b815870a3f79c65552409173df065e95a294b006d1db05ca99a",
+  "bundleSha256": "ddbab6708f03387ca81f2385c4842a39ee48bef9da4fddecfa8e4c070b488d28",
+  "suppliedResources": 10766,
+  "nativeLeaves": 418,
+  "resourcePathSetUnchanged": true,
+  "changedResourceLeaves": [
+    "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+    "apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node"
+  ],
+  "actualReplacements": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "263186eb7fe9809081034668eb588d5bb5456bd52205aad10a246d052caa34d9"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "sha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726"
+    }
+  ],
+  "agentFilesDirectlyCompared": 1217,
+  "cssFilesDirectlyCompared": 5,
+  "allAgentFilesEqualToBaseline": true,
+  "originalHelperUnchanged": true,
+  "ordinaryIndexUnchanged": true,
+  "dormantResourcesUnchanged": true,
+  "signed": false,
+  "appLaunched": false,
+  "nativeModuleLoaded": false,
+  "coldHookEnabled": false,
+  "acceptedAppReplaced": false,
+  "productionReady": false
+}
