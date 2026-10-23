@@ -1,0 +1,12 @@
+{
+  "format": "aux.restore-process-lifetime.offline-check.v1",
+  "postSpawnErrorWaitsForExit": true,
+  "timedStopWaitsForExit": true,
+  "zeroExitAfterUncertaintyRefused": true,
+  "failedCheckpointHandled": true,
+  "unavailableSpawnRefused": true,
+  "ordinarySuccessAccepted": true,
+  "syntaxChecksPassed": true,
+  "providerOrRestoreExecuted": false,
+  "productionActivated": false
+}

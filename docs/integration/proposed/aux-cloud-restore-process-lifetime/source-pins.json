@@ -1,0 +1,9 @@
+{
+  "format": "aux.restore-process-lifetime.source-pins.v1",
+  "baseCommit": "5981d6cc9",
+  "files": {
+    "services/aux-cloud/scripts/cloud-recovery-restore.mjs": "33374ab3ba3d7a73b52cf0ca0f7b9fffec5c3e2c2fd85b19759a09cbdb6f463e",
+    "services/aux-cloud/scripts/recovery-restore-process.mjs": "f84663aeabcdc9d88fc4acd6d763b5ee6c28f22a4b1d8c3985497370030a12d7",
+    "docs/integration/proposed/aux-cloud-restore-process-lifetime/check.mjs": "ba1ff7fa12cbf38acf43639b2b4165c07ded1714eb68fc80dd27482e207ed366"
+  }
+}

@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { get, put, head, BlobNotFoundError } from '@vercel/blob';
 import { readRecoveryKey, unpackBundle } from './recovery-bundle.mjs';
+import { waitForRestoreExit } from './recovery-restore-process.mjs';
 import { validateRestoreWrappingKey, validateOnlineRestoreManifest, verifyRestoreArchive, sanitizeRestoredDatabase, restorePrivateObjects } from './recovery-restore-core.mjs';
 
 const [bundle, keyFile, targetReviewFile, reportDirectory, ...flags] = process.argv.slice(2);
@@ -26,19 +27,14 @@ async function checkpoint(value) {
   try { await directory.sync(); } finally { await directory.close(); }
 }
 async function runRestore(archive, url) {
-  await new Promise((done, fail) => {
-    const child = spawn(process.env.AUX_PG_RESTORE || '/opt/homebrew/opt/libpq/bin/pg_restore',
-      ['--no-owner', '--no-privileges', '--single-transaction', '--exit-on-error', '--dbname=' + decodeURIComponent(url.pathname.slice(1)), archive],
-      { env: { PATH: process.env.PATH, LANG: 'C', PGHOST: url.hostname, PGPORT: url.port || '5432',
-        PGDATABASE: decodeURIComponent(url.pathname.slice(1)), PGUSER: decodeURIComponent(url.username),
-        PGPASSWORD: decodeURIComponent(url.password), PGSSLMODE: 'verify-full', PGSSLROOTCERT: 'system',
-        PGCONNECT_TIMEOUT: '20', PGOPTIONS: '-c statement_timeout=300000 -c lock_timeout=10000' }, stdio: ['ignore', 'ignore', 'pipe'] });
-    // Never print SQL/provider diagnostics; they may contain private material.
-    child.stderr.resume();
-    const timer = setTimeout(() => child.kill('SIGTERM'), 300_000);
-    child.once('error', () => { clearTimeout(timer); fail(Error('Restore client unavailable')); });
-    child.once('exit', code => { clearTimeout(timer); code === 0 ? done() : fail(Error('Isolated archive import failed')); });
-  });
+  const child = spawn(process.env.AUX_PG_RESTORE || '/opt/homebrew/opt/libpq/bin/pg_restore',
+    ['--no-owner', '--no-privileges', '--single-transaction', '--exit-on-error', '--dbname=' + decodeURIComponent(url.pathname.slice(1)), archive],
+    { env: { PATH: process.env.PATH, LANG: 'C', PGHOST: url.hostname, PGPORT: url.port || '5432',
+      PGDATABASE: decodeURIComponent(url.pathname.slice(1)), PGUSER: decodeURIComponent(url.username),
+      PGPASSWORD: decodeURIComponent(url.password), PGSSLMODE: 'verify-full', PGSSLROOTCERT: 'system',
+      PGCONNECT_TIMEOUT: '20', PGOPTIONS: '-c statement_timeout=300000 -c lock_timeout=10000' }, stdio: 'ignore' });
+  // Ignore SQL/provider diagnostics; they may contain private material.
+  await waitForRestoreExit(child, checkpoint);
 }
 try {
   assert(bundle && keyFile && targetReviewFile && reportDirectory && Number.isSafeInteger(maxBytes) && maxBytes > 0,
