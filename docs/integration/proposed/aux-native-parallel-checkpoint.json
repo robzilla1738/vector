@@ -326,17 +326,32 @@
       "exitCode": 1,
       "role": "3remainingactualnativeTUs targetedonce tocollectsevenunsafeoperations",
       "evidence": "docs/integration/proposed/aux-selected-state-home-safe-buffers/evidence/other-three-native-path-diagnostics.txt"
+    },
+    {
+      "session": 2233,
+      "exitCode": 0,
+      "role": "threeactualnativepathpeer/ownedchild/coldlaunchobjectspassallbufferchecks",
+      "evidence": "docs/integration/proposed/aux-native-peer-safe-containers/evidence/actual-three-objects.json"
     }
   ],
   "appliedCurrentNativeComposition": {
-    "composition": "out/native-reuse-composition-aux-selected-home-safe",
+    "composition": "out/native-reuse-composition-aux-native-safe-containers",
     "sources": 831,
     "assets": 23,
     "applied": true,
     "compiled": false,
-    "applyReceipt": "out/native-reuse-composition-aux-selected-home-safe/native-before-apply-n06x5yey/apply-receipt.json"
+    "applyReceipt": "out/native-reuse-composition-aux-native-safe-containers/native-before-apply-6091h6mu/apply-receipt.json"
   },
-  "rootQueuedChecks": [],
+  "rootQueuedChecks": [
+    {
+      "session": 91150,
+      "role": "actual combined831source browserbuild incrementalresume",
+      "receiptOnSuccess": "out/aux-native-safe-containers-browser-build.json",
+      "jobs": 2,
+      "nativeSourceFrozen": true,
+      "state": "samehandleverifiedlive; actual core/native/notification/UI objects advancing"
+    }
+  ],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,

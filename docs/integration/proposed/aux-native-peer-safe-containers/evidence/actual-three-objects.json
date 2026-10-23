@@ -1,0 +1,25 @@
+{
+  "format": "aux.actual-peer-safe-objects.v1",
+  "session": 2233,
+  "exitCode": 0,
+  "objects": [
+    {
+      "source": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "sourceSha256": "c734d4608bb0fc0e9aac21c37ac6db6419ddfc95f5fdd3bb2524e7988e8d6538",
+      "objectSha256": "f5ffe4b7085f8022e260a24fde4e232150dbd4764c8656d3cca11747df3db07e"
+    },
+    {
+      "source": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "sourceSha256": "e6793f89c00cd0d9a309e43bd01dca074f195eca5f6003c9270cbcb0e344da67",
+      "objectSha256": "c1e3d35b31f220a9ecc5af51214fa95c15ab121ddea11fe36a723da8304c5f26"
+    },
+    {
+      "source": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "sourceSha256": "368c7c453d1983bb14a1ebedc20934558799f3a5ad46831ef19946a16099e293",
+      "objectSha256": "e8d933ba092b0e1e9e84483c2e66bef253e078ddc8026d43cde19236ea1bd9be"
+    }
+  ],
+  "nativePathUnsafeBufferChecks": true,
+  "nativeCodeExecuted": false,
+  "composition": "out/native-reuse-composition-aux-native-safe-containers"
+}

@@ -1,3 +1,9 @@
+# Native-path buffer fixes compile; combined browser resume advances — 2026-10-23
+
+Actual in-tree object87362 passed the selected-home buffer fixes. Targeted check2233 then passed all three remaining peer/owned-child/cold-launch objects with source-path-sensitive Chromium checks enabled. These fixes use bounded containers/CFData copying and volatile element writes; authentication, exact NUL-inclusive wire domain, ABI layout, ownership and size checks remain unchanged. No warning suppressions or unsafe TODO exemptions were added.
+
+The corrected831-source/23-artwork composition is applied with all854 source/artwork targets backed up and verified. Combined browser build91150 is live through the native serializer with two jobs. Actual platform, installation-authentication, supervisor, browser-platform and notification objects are advancing successfully; final browser link is not yet proven. The same source is being paired into a one-object standalone daemon relink instead of rebuilding Node or unaffected native graphs. Current accepted app/UI and all owner/provider state remain unchanged. No signing, activation, paid inference or release occurred.
+
 # Actual codec behavior passes; real browser-path buffer checks need correction — 2026-10-23
 
 Actual optional GN target59751 compiled/linked the three codec/fixture files successfully in four steps using production //base/crypto dependencies. A byte-identical copied executable then ran once in a disposable HOME and passed the explicit-key legacy-to-v2 fixture: synthetic original framing, binary plaintext, wrong/missing keys, nonce/body/tag tampering, truncation, version rejection and authenticated replacement hashes/reopen. It accessed no legacy key, stored row or owner state. Exact evidence: `aux-native-legacy-inbox-check/evidence/actual-run.json`. The earlier manual link failures remain historical, not current behavior proof.
