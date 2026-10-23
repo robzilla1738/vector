@@ -1,104 +1,89 @@
-# Aux completion execution graph
+# Aux execution and completion graph
 
-## Active continuation — 2026-10-21
+Updated 2026-10-22. This reconciles the owner's continuing implementation goal with current source, artifacts and actual evidence. It does not replace historical receipts or narrow the goal to source compilation. Execution is authorized; final desktop release/distribution remains excluded. Preserve the supplied implementation and current accepted UI, canonical Aux logo, owner data, existing provider projects and password-manager exclusion.
 
-Owner resumed execution and explicitly approved the corrected three-leaf daemon signing. That signature and the fresh589 resource cache passed; final closed-app integration is running. The verified586 package/startup record is archived for recovery. The independently reviewed used-AIM lifecycle is applied in590 and compiling. Preserve current UI and retain the20 passing AI cases. Next: actual589 startup, Vault absence, draft retention, synthetic import/persistence and profile transition observation; then accept590 against its changed lifecycle. No new runtime result or full readiness is inferred.
+## Starting point and immediate queue
 
-## Historical pause — owner request,2026-10-21
+- Local main checkpoint `4f74e71e5` includes the recovery/runtime source chain and exact participant corrections. Later source integrations remain separately identified in Git and STATUS.
+- Accepted preview remains `out/provided-candidate-local-browser-pass/Aux.app`. The unsigned recovery-enrollment package is a separately inventoried, unlaunched/state2-refused candidate; it is not its replacement.
+- Applied native composition: `out/native-reuse-composition-aux-participant-addresses`, SHA256 `34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107`,808 source records/23 assets. Actual build93645 is live; its content module graph invalidated2765 tasks. Native source remains frozen until terminal. The preceding792-source build passed; that is not the current808-source build result.
+- Renderer3TUs, worker5TUs, installed-app1TU and their focused state fixtures passed. These establish changed compilation/state boundaries, not browser shutdown/storage custody or final app behavior. The actual23-input fresh graph and53 target cases passed; new resumed/provider graphs remain pending.
+- Separate development backend is deployed at `dev-cloud.getaux.co`. Its actual auth/rotation, sandbox subscription/payment/refund, encrypted transport, cookie export and synthetic recovery evidence is retained in `docs/cloud/implementation-2026-10-22.md`. One real development email was delivered; no owner code/sign-in was used.
+- Separate production database now has12 matching migrations. Production profile remains null/inactive, nine live billing/webhook settings remain absent, provider pairing/operations are incomplete. No production-ready claim.
+- Exact supplied Node26.5.0 executable/config and relevant headers match official archives. Preload component compiled as one object; no embedding executable/runtime activation exists. Queued library job26750 was canceled before execution to prioritize corrected graphs; do not treat it as running or as a compiler failure.
 
-589 native build and package passed; cache refresh correctly rejected the changed daemon node-development/index.mjs not covered by the exact signed two-leaf review.589 is preserved unaccepted; verified586 and its exact startup acceptance are restored. Aux is closed, no builds or worker jobs running. Resume with this resource/source/signing consistency issue, then one focused589 runtime/UI pass. Separate used-AIM proposal5d1c3e6be remains source-only in /private/tmp/aux-vault-unsigned-review. No full readiness claim. This pause supersedes the active entries below.
-
-## Resumed substantial completion batches — 2026-10-21
-
-Owner resumed execution and requested large coherent batches with lean verification. Preserve actual585 UI as baseline. Batch1 covers profile/context ownership and chat state; batch2 closes remaining visual/interaction journeys; batch3 covers imports, native integrations and stable local delivery. Reuse the20 passing Muse cases and unaffected browser evidence. One native build resource owner; source/UI audits proceed while linking. Do not repeat broad test suites or diagnose by repeatedly rebuilding unchanged code.
-
-The first concrete correction moves the AIM invocation marker after the original idle CloseUI return: the tab-selection observer calls CloseUI when the initial tab appears. The original callback performs no work when hidden, so this must not poison unused-owner admission. Actual switching remains unaccepted until the integrated app passes. No active-work guard, UI styling or permission boundary is removed.
-
-
-Updated 2026-10-21. Owner authorized continued implementation until the local Aux browser is ready, explicitly preserving the improving UI. This graph maintains the active supplied-implementation reuse plan; it does not authorize release, new provisioning, owner-profile access or unrelated OS grants.
-
-## Owner-requested pause — verified585,2026-10-21
-
-585 build/package/final retained-signature inventory complete; normal app open. Actual profile switch remains rejected at aim-cold.content-invoked. Current UI was visually compared with actual Aside captures and preserved. Next step is the AIM startup-callback/session ownership lifecycle, then real forward/back transition acceptance. No further build is running. This pause supersedes older active-build entries below; full readiness remains pending. See STATUS and the continuation ledger.
-
-## Current execution —581c observed,582 diagnostic build
-
-Current testable app is581c at the stable local candidate path. Actual LaunchServices startup now starts the owned daemon and authenticated CDP through the outer Resources Node package boundary. All eight signed helper signatures are retained; no new Apple signing or Keychain operation. Current final receiptSHAf3786a5cfd8db24d27170f7c2c9158a0c578037d7043bbc8772328b73c3211b8. The failed581b root-marker proposal was never launched.
-
-Actual supplied Skills catalog now shows Aux and excludes built-in Vault while retaining external password skills. The supplied chat panel/model/reasoning menus, saved sidebar conversation and unpaid authenticated browser control work. Actual Appearance/dual-panel captures have been compared with saved Aside references; the rounded/glass visual baseline remains preserved. `out/pass1-ui-completion/compare.html` is current581c evidence.
-
-ENGINE remains active: profile switch rejects `bindings.source-interaction-owners` from both NTP and a local external fixture.582 splits that stage into six precise diagnostics without relaxing guards; it is linking. TOOLS remains partially blocked at a fresh administrator prompt; no OS permission changed. Mini Popup preference toggles correctly and is restored off; automated global-key delivery is inconclusive. Vendor password-manager companion pairing and hosted voice remain unaccepted. The20-case Muse suite is retained; test credential removed and owner-confirmed revoked. READY remains pending.
-
-The sections below retain earlier baseline and execution history; they do not supersede this current state.
-
-## Outcome and baseline
-
-Deliver a faithful, usable local Aux app using the supplied implementation and canonical two-path Aux artwork, with matching browser and Agent behavior, isolated state/ports/identity, external password-manager integration and recoverable local installation. Built-in Vault/password management remains excluded. Preserve the current design; no redesign or replacement screens.
-
-Current source: local main26c422f51 plus the reviewed pass1 plan update. Native560 is built and packaged at `out/provided-candidate-local-browser-pass/Aux.app`, using supplied Agent1852 and the frozen snapshot. Package report SHA256062698456102e6dd4de172426851e2741e209e3a1472d63f7c3bb4826d8eb422. Exact signed-resource reuse/native-seal receipt SHA2565237553d7230b846abdb7a042e0196a8879495c888f30ed46f91460b470620fb; no new Apple signing or Keychain operations. Previous556 candidate is preserved. Current normal disposable profile is the existing explicitly approved scope; no incognito acceptance.
-
-Observed560: enabled model menu, genuine chat panel/current-page context, focused bookmark control, single Aux identity, immediate Settings section-title update and delayed page-title update. Shared16DIP native page/panel surfaces now render in the real app. CmdE still fails in560;561 main-menu correction is integrated into566. First real Muse task failed because secure browser-control45203 was unavailable; credential cleanup verified.566 adds authority-ready listener reconciliation. Hover was previously owner-confirmed; this desktop tool has no genuine pointer-hover API. These scoped results are not full-product acceptance.
-
-## Current execution update —566 observed,570 building
-
-566 actual authenticated browser control passes navigation/snapshot/close; unauthenticated access is rejected. Bookmarks section preference works and restores. All20 real Muse tasks pass, including actual memory, delegation, automatic compaction and browser reporting; credential cleanup is verified. Reports retain earlier failed attempts and passing-prefix evidence rather than repeating accepted cases. See current STATUS and `docs/acceptance/completion-continuation-2026-10-20.json`.
-
-567 native command-route diagnostics and568 dormant contextual-task profile lifecycle compile/link successfully.569–570 integrate the supplied Settings shortcut capability contract with actual native persistence/capture/dispatch and required GN/schema/histogram registration;570 is building. Current UI/CSS/geometry remain the baseline. Runtime CmdE, profile forward/back and shortcut-capture checks remain pending the assembled candidate. Do not label these complete from source checks.
-
-PACKAGE audit confirms bundle-relative executable/runtime ownership. A durable explicit existing-scope launch record and reviewed final-path packaging remain separate implementation/review work. Computer Use helper is built but stopped; explicit new OS/capture approval is pending, not inferred from a status read. Third-party native messaging/content-script fixtures pass; vendor1Password companion trust remains unaccepted.
-
-## Current execution update —574 packaged,576 compiling
-
-The actual20-task Muse acceptance is complete on566 and retained without another provider run.574 full native build and supplied packaging passed.566 was quit normally and retained as an observed baseline;574 exact resource reuse/native-seal verification is running at the stable local path. Runtime Ask/menu dispatch, native shortcut capture/reset and profile forward/back remain pending, despite their completed source integrations.
-
-575–576 add effective AppKit menu/Collapse shortcut hints and preserve the accepted launcher's first-run/default-browser flags; their six changed objects are compiling. No supplied CSS, geometry or material parameters changed. The explicit existing-scope startup writer is prepared but has not created a record; normal Finder startup remains unaccepted. The approved Computer Use check is paused after the documented clipboard credential exposure; no helper startup or new OS grant occurred. No further provider calls use the exposed key. Vendor1Password companion trust remains unaccepted; native-message/content-script fixture proof is retained.
-
-Next actual checks:574 command-route diagnostics and genuine profile transitions; combine any concrete repairs with576, then one final package/real-app comparison. Final accepted startup, shortcut capture/menu consistency, profile isolation and a compact ordinary browsing/reopen journey follow on that same coherent app. Reuse existing unaffected evidence and keep full readiness false until these gates pass.
+The next integrator actions are to finish review of provider-quarantine and peer-right ownership corrections, integrate their frozen sources, and attach the single pending final Swift graph to exact input hashes. Do not launch a duplicate full graph. Continue actual parent/child/embedding implementation while build93645 runs; do not mutate its native checkout. The live/terminal handle ledger is `docs/integration/proposed/aux-native-parallel-checkpoint.json`.
 
 ## Dependency graph
 
-Solid arrows are implementation prerequisites; dashed arrows are acceptance prerequisites. Shared native/build/app resources are serialized separately.
+Solid arrows are implementation prerequisites. Dashed arrows are integrated acceptance prerequisites; they do not prevent independent source work. Build-lock and dashboard contention are scheduling constraints below, not product dependencies.
 
 ```mermaid
 flowchart LR
- BASE[Preserve current UI and evidence] --> FRAME[Complete frame and shortcut fidelity]
- BASE --> BROWSER[Ordinary browsing and external password managers]
- BASE --> AGENT[Agent settings tasks and context]
- BASE --> TOOLS[Computer Use utilities and native permissions]
- BASE --> PACKAGE[Self-contained local app and recovery]
- FRAME -.-> JOURNEY[Integrated real-app journeys]
- BROWSER -.-> JOURNEY
- AGENT -.-> JOURNEY
- TOOLS -.-> JOURNEY
- PACKAGE -.-> JOURNEY
- JOURNEY --> READY[Local Aux ready with current evidence]
+  BASE[Preserved UI/source/provider baseline] --> AUTH[Fresh and resumed authority lifecycle]
+  AUTH --> OWNER[Typed runtime owner and Environment provider]
+  BASE --> PEER[Live native parent/child transport]
+  PEER --> COLD[Actual cold owner and private child handoff]
+  AUTH --> COLD
+  OWNER --> EMBED[Real Node embedding and native module routing]
+  COLD --> EMBED
+  BASE --> LEGACY[Explicit authority preserving legacy transition]
+  EMBED --> PACKAGE[One complete Aux candidate]
+  LEGACY --> PACKAGE
+  PACKAGE --> DESKTOP[Disposable real desktop journeys]
+  BASE --> CLOUD[Compatible development service integration]
+  CLOUD -.-> DESKTOP
+  CLOUD --> AI[Funded strict ZDR text and speech]
+  CLOUD --> PROD[Production configuration and operational readiness]
+  BASE --> OPS[Independent backup and recovery operations]
+  OPS --> PROD
+  PACKAGE -.-> EXT[External manager and OS integration]
+  DESKTOP --> DONE[Complete product before final release]
+  AI --> DONE
+  PROD --> DONE
+  EXT --> DONE
+  PACKAGE -.-> FIDELITY[Actual app UI and delivered identity audit]
+  FIDELITY --> DONE
 ```
 
-Implementation can proceed independently against existing native/wire contracts. Final Agent/tool acceptance needs the actual packaged runtime and configured test provider; final installation acceptance needs the accepted local package. No feature is blocked merely on the Settings screen or documentation.
+Critical edges: the real native caller must own the installation and lifecycle before an Environment can receive a protected dispatcher. A signed policy or authenticated IPC peer alone cannot grant whole-profile custody. The supplied entry/native routing cannot be activated merely because an object compiled. Legacy migration cannot be silently replaced with key regeneration. Real desktop/cloud journeys require the same assembled native/resource generation; old service tests or UI screenshots cannot accept it. Production operations require independent recoverable content and key custody, not only a database branch restore.
 
-## Node registry and requirement coverage
+## Outcome registry and requirement coverage
 
-| ID | State / owner | Requirements and next action | Acceptance |
-|---|---|---|---|
-| BASE | verified / root | Preserve560 package, prior556 backup, source hashes and screenshots. Capture current UI before functional changes. | Recoverable app and source; comparisons tied to exact build. |
-| FRAME | active / frame_geometry proposal, root integration | Finish CmdE through genuine Cocoa menu command; verify normal/zoom/fullscreen, sidebar expanded/hidden and panel open/closed; both themes/material preferences. Keep current icons/layout/radius. | Actual corresponding Aside/Aux captures and working controls; no remaining unexplained in-scope regressions. |
-| BROWSER | active audit / frame_style | Tabs/navigation/bookmarks/history/downloads/session restore; genuine extension install and external password-manager/autofill/native-messaging compatibility. Audit source blockers first. Password import excluded; bookmarks/import behavior must be accurately represented. | Disposable ordinary browser journeys and representative external-manager integration; desktop companion capability verified separately. |
-| AGENT | active audit / l4_ui | Supplied New Chat, model/reasoning/project/guard settings, task streaming/cancel/history/context and settings contracts. Fix concrete missing native/runtime owners without altering UI. | Real packaged task/context/config journeys with allowed Muse model; failure behavior and required20-task acceptance recorded, credential removed afterward. |
-| TOOLS | ready for bounded discovery / root after first integration | Computer Use, notifications, mini popup/lasso, voice/dictation, runtime/CLI/helper and conditional native capabilities. Distinguish source implementation, actual availability and account-gated features. | Real authorized local tool journeys; precise external/account/OS prerequisites remain open until resolved, never fabricated. |
-| PACKAGE | ready for audit / root | Self-contained launch without external Node, isolated ports/authentication/state, clean stop/reopen/recovery, canonical branding and stable local launcher/install. | Accepted local app/launcher starts normally with preserved state; no owner data touched or release implied. |
-| JOURNEY | pending integrated acceptance / root | Coherent build combining compatible proposals; focused changed-boundary tests, actual app/Aside comparison and end-to-end browser+Agent checks. Reuse unaffected evidence. | Each claimed journey passes on identified candidate; gaps stay open. |
-| READY | pending / root | Local installation, current STATUS/evidence, coherent local commits and testable app left open. | All in-scope nodes accepted; remaining account/service/permission limitations explicitly resolved or owner-scoped. No blanket parity claim from compilation. |
+| ID / state | Scope and current evidence | Completion evidence / next action |
+| --- | --- | --- |
+| BASE / preserved | Accepted supplied UI, two-path logo, original static source pins, separate Aux storage/resources; no builtin Vault. | Keep all current UI/layout/glass assets byte-identical through this native/cloud batch. Count/hash every integration delta; no resets or owner-profile reads. |
+| AUTH / implemented source, partly checked | Real fresh private-home creator, retained FD journal, five-row capture, immutable v2 stage, one-shot intents, four-row readback, terminal crypto, shared alias lease. Resumed-only owner/context and canonical-parent correction now exist. Actual23-input graph/53 target cases,14 parser cases,55/33 captured checks are scoped evidence. | Final combined graph plus focused real resumed filesystem cases; actual signed/protected fresh/restart/recovery behavior in the approved disposable scope. No absent/unavailable-to-fresh inference, replay or lost private authority. |
+| OWNER / implementation under review | Genuine terminal → recaptured scoped context → retained-home CSK coordinator → owned dispatcher; after-flock identity recheck. Provider adds native-only routing and per-Environment creation. Late failed retirement requires retained/quarantined observation. | One final source-pinned graph (same deferred40860), changed FD/lock/provider fixtures, actual cleanup/late-close behavior; no JS supplied selectors/cores/provider or generic admission flag. Root integrates actual host recipe once. |
+| PEER / implementation under review | Real Mach audit transport source uses direct waitable-child/birth observation, audit PID version, exact native code policy, nonce and monotonic closure. Root review requires wrong-process right-destruction correction. | Actual SDK compile/pure-wire check, then bounded real authenticated parent/child, negative peer and closure cases after a genuine native producer exists. Authenticated transport is not installation authority. |
+| COLD / implementation missing | Existing first native/SEA/Node refusal stays first. Async-profile, helper, session, renderer/navigation and worker participants provide partial real observations only. | Implement actual earliest parent owner, cold fresh/resume/legacy choice, sealed peer-policy provenance, private right handoff and retained spawned-process/descendant lifecycle. Explicitly cover remaining renderer/storage/CLI/foreign writers; never promote raw callback counts/locks into all-writers success. |
+| EMBED / component implemented, unlinked | Exact runtime source acquired; real LoadEnvironment preload component compiles and Node propagates it into child Worker environments. Explicit provider-backed WorkerHost source is separate from its unchanged selected default. | Build exact-version library/embedding executable, consume genuine cold/native provider, preload exact validated runtime/PDF/utility images, pair actual Environment cleanup/descendant closure and route supplied daemon/CLI synchronous/Worker calls. Retire original common addon against full command inventory. Preserve original runtime files; do not replace them opportunistically. |
+| LEGACY / partial implementation | Versioned Aux-v2 crypto/selector ports and private-authority-preserving journal/prepared handoff sources exist; earlier software/FS checks are historical narrow evidence. | Complete explicit migration/recovery for existing formats and current account/session/cache/context ledgers, immutable catalog/trust transitions and rollback. Verify same private authority/data, no reset/delete or unauthorized old-group reads. Scope any real owner-data operation separately. |
+| PACKAGE / prior package static only | Recovery-enrollment package inventoried10,764 resources/418 native leaves;1217 UI files retained with reviewed enrollment deltas. Current native/owner successors are not in an accepted running package. | Assemble one complete native/resource/SEA/Node/extension/CLI/carrier generation; preserve exact addons required by reviewed plan; verify actual paired identities/wires/resources/retired leaves. Prepare concrete exact-byte local runtime/signing review where required. No release/notarization. |
+| CLOUD / implemented and deployed development, desktop inactive | Compatible auth, rotating sessions, Clerk, sandbox Stripe, encrypted sync/media/sharing/recovery/cookie API and strict provider adapters have actual development evidence. Current desktop still needs the paired new stack. | Reuse unchanged API evidence; finish actual app sign-in/token exchange/restart, subscription UI/portal/entitlements, independent-device sync/conflict/recovery, cookie restore and explicit share/revoke/large attachment journeys. No fabricated accounts/plans or owner email-code use. |
+| AI / implemented, funded acceptance pending | Gateway server-held credentials, per-request ZDR and configurable model; owner selected GPT-6 Luna ≤$5. Prior credit checkout separately needs unanswered AI Product Terms consent. | After that consent, complete only approved purchase (≤$12, auto reload off) and bounded real ZDR text/browser-task/fast-model/lasso and synthetic speech checks, including debit/refund/routing/error evidence. Confirm actual desktop controls, microphone/recording separately. No provider call before approval. |
+| DESKTOP / not accepted current generation | Historical profile/window/draft/attachment/notification/sidebar tests remain valid only for their named previews; current resources/native startup are not accepted. | One focused real app batch: active work across profiles, normal+popup+installed-app restart, drafts/attachment recovery/failure, notification target, shortcuts/sidebars/chat/settings, cloud/provider work. Preserve current UI; capture exact candidate/state/evidence and cleanup. Do not repeat unrelated20-case browser-agent suite. |
+| EXT / partly checked, external setup pending | Generic native-message and dummy fill checks passed. Existing owner-approved observer checks/grants are exact-helper historical evidence. | Real1Password official extension/desktop pairing with exact Apple identity and explicit trust using only a dummy login; actual reviewed observer/helper permissions and bounded capture if required; physical Mini Popup/global shortcut confirmation. No owner vault, unrelated Contacts/Messages or new OS grant inferred. |
+| OPS / tooling and narrow drills verified, operations missing | Independent archive/local restore and isolated Neon/Blob synthetic recovery drills passed. Database restore alone cannot restore deleted Blob or lost wrapping keys. | Provision/authorize durable independent backup and key custody, scheduling, retention deletion and alerts; run one complete restore from those actual stores, record cleanup and measured limits. Do not claim production RPO/RTO from fixture size. |
+| PROD / resources/schema prepared, configuration incomplete | Separate Aux prod DB/Blob/credentials,12 matching migrations and public origins exist; nine live billing/webhook settings plus provider/sender pairing/runtime verification remain. | Owner completes live Stripe business/KYC where required; prepare exact Aux live prices/portal/webhooks, Clerk/Resend pairing and production resource profile. Obtain concrete activation approval only after reviewable preparation. Perform authorized isolated readiness/provider/operations checks; marketing and old projects stay untouched. |
+| FIDELITY / accepted baseline preserved, final observation missing | Current batch changes no UI views/CSS/artwork. Static package preservation and older actual side-by-side captures are scoped historical evidence. | Compare the actual final app to accepted Aux/Aside references at matching scale: window and both-sidebar corners, toolbar/bookmarks blend, glass/transparency, collapsed/hover/floating/pinned states, chat/model controls, settings and empty/loading/error states. Audit actual delivered files/native identifiers/endpoints; retain HTML semantics and required legal attribution. No screenshot/static grep substitutes for behavior. |
+| DONE / unproven | Whole owner objective, not a package/compiler milestone. | All above outcomes accepted at their stated scope, one reproducible ready candidate and operational handoff with clear optional owner choices. Final desktop release/distribution remains excluded. No completion percentage or “ready” from unresolved gates. |
 
-## Execution and reservations
+## Ownership, scheduling and execution protocol
 
-Four total workers maximum including root. Existing separate worktrees return narrow, count-checked, hash-pinned proposals and commits. Root alone edits the shared native checkout, root manifests, staging/patch ordering, packaging and startup. Native source changes/builds use `/tmp/aux-build.lock` through project scripts. Root alone operates the live disposable app and comparison captures. Workers never read owner profiles/credentials, access owner Aside services, run native builds or mutate the shared runtime.
+| Resource / surface | Exclusive owner / rule |
+| --- | --- |
+| Shared Chromium tree, GN, root stage/package/patch manifests and `/tmp/aux-build.lock` | Integrator. Current93645 owns native source freeze. Preserve preexisting changes and exact apply receipts. Never restart a confirmed live job because of elapsed time. |
+| Provider/WorkerHost and account-runtime proposals | `/root/aux_identity_native_audit`, separate worktree/new successor paths. Return frozen source/pins, actual queue IDs/results and precise root integration edits. Same40860 may change its deferred recipe only before execution, preserving original recipes/failure receipts. |
+| Resumed-only filesystem implementation/check | `/root/aux_identity_crypto`, separate worktree/new test proposal. Frozen production sources stay unchanged; captured identity is explicitly not actual signing authentication. One narrow physical-FS fixture; no duplicate25/31/36 graphs. |
+| Mach peer transport and native embedding proposal | `/root/aux_identity_package_gate`, separate worktree/new paths. No shared launch/GN changes. Real transport/Environment ownership cannot fabricate parent/profile authority. Root reviews then queues the focused compile. |
+| Vercel/Neon/Clerk/Stripe/Resend and production switches | Integrator, exact Aux project/environment/account checks. Do not mix metadata/accounts or local Development env into Production. Never print/read back secrets or mutate old projects. |
+| Actual app/CUA/OS state | Integrator only, disposable scope; coordinate one bounded session with owner when needed. Keep current preview intact until the replacement is reviewable and authorized. |
 
-Current first assignments: frame_geometry repairs the observed Cocoa shortcut conflict against560; frame_style audits browser/external-manager gaps; l4_ui audits Agent/runtime journeys. Root finishes the UI state matrix and maintains the rolling queue. Integrate compatible ready fixes in one native build; do not rebuild once per unrelated audit. If a lane waits for integration, assign the next independent bounded node only after its handoff is concrete.
+At most three implementation workers plus the integrator. Prefer finish/integrate current outcomes over starting more proposals. When a lane waits, choose an independently useful next node only if its exact producer/contract is available. Frozen source proposals are not running integration, and a proposed lane is not an agent.
 
-Preserve the visual baseline before every new functional batch. Source changes are limited to supplied implementation reuse, branding/isolation and necessary platform adaptations. Retain supplied CSS/component hierarchy and compare changed surfaces in the real app. Re-run checks only for changed dependencies, observed failures or required final acceptance. Do not stop the owner's REA jobs.
+Native compile/apply work uses the existing serializer. Focused changed sources first, one combined integration link at a stable boundary, then one actual-app journey per changed behavior. Reuse unaffected evidence. Node library compilation is a necessary implementation build, not a reason to block higher-priority corrected source checks; schedule it after those checks and never replace supplied runtime bytes implicitly. Owner's two analysis jobs remain untouched.
 
-## Completion gates and external prerequisites
+External boundaries are explicit: no new signing/provisioning/Keychain/OS operation based on historical exceptions; prepare exact current bytes first. No funded AI/legal acceptance inferred from credit-purchase approval. No real sign-in/account creation inferred from the single delivery approval. No production activation inferred from resource bootstrap approval. Keep pending owner decisions in the existing request flow rather than repeatedly asking.
 
-The old clean-room plan is superseded. Cloud deployment, release and notarization remain out of scope. Existing scoped signed helper bytes may be reused only through the exact approved workflow; this graph grants no new signing authority. Test provider credentials must enter through the supplied credential API and never be printed/committed. Owner credentials/profiles and new OS grants require their applicable explicit authorization. A genuine unavailable service/account gate is recorded and surfaced when concrete, while independent work continues.
-
-Continue executing ready nodes until the local app is accepted. Preserve stable node IDs and update state with actual source/build/observation evidence. Do not silently redefine readiness, add fake successful services, fabricate multi-profile data or enable account-gated controls without their real contracts.
+Continue this graph within the active goal: integrate reviewed current lanes, prove real native admission/embedding, assemble and exercise one unchanged-UI desktop/cloud generation, and finish production operations/configuration. Update nodes when authoritative evidence changes. Keep the full objective active until completion is proven requirement by requirement.

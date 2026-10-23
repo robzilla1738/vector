@@ -1,3 +1,5 @@
+> Current cross-workstream execution and completion gates: [Aux execution graph](../ROADMAP-EXECUTION-GRAPH.md). The dated preview evidence below remains historical; cloud/native progress is reconciled in that graph and STATUS.
+
 # Aux completion and setup checklist
 
 This is the current implementation checklist, replacing the stale open-item summaries in older build records. Preserve the supplied UI and existing Aux glass, corners, spacing and interactions. Aux excludes the built-in Vault/password manager. A successful local browser build is not hosted-service or release readiness.
