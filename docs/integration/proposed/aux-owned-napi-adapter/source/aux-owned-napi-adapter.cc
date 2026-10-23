@@ -26,7 +26,10 @@ struct Instance {
 };
 void Finalize(napi_env, void* data, void*) {
   auto* state = static_cast<Instance*>(data);
-  state->Close(); state->Release();
+#ifndef AUX_ATOMIC_CSK_DISPATCH
+  state->Close();
+#endif
+  state->Release();
 }
 void Cleanup(void* data) {
   auto* state = static_cast<Instance*>(data);
@@ -58,6 +61,47 @@ bool Read(napi_env env, napi_value value, size_t maximum, Input* result) {
       reinterpret_cast<char*>(result->bytes.get()), result->length + 1, &copied) == napi_ok &&
       copied == result->length;
 }
+#ifdef AUX_ATOMIC_CSK_DISPATCH
+struct RegistryCallback {
+  napi_env env;
+  napi_value function;
+  napi_value result = nullptr;
+};
+int32_t InvokeRegistryCallback(void* opaque) {
+  auto* call = static_cast<RegistryCallback*>(opaque);
+  napi_value receiver;
+  if (napi_get_undefined(call->env, &receiver) != napi_ok ||
+      napi_call_function(call->env, receiver, call->function, 0, nullptr,
+                         &call->result) != napi_ok) return 1;
+  bool promise = false;
+  if (napi_is_promise(call->env, call->result, &promise) != napi_ok || promise)
+    return 2;  // This boundary deliberately supports synchronous registry callbacks only.
+  return 0;
+}
+napi_value WithAccountRegistryLock(napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value args[1];
+  void* data = nullptr;
+  if (napi_get_cb_info(env, info, &argc, args, nullptr, &data) != napi_ok || !data)
+    return Fail(env, "Account registry callback is unavailable");
+  auto* state = static_cast<Instance*>(data);
+  Lease lease(state);
+  if (state->closed.load(std::memory_order_acquire))
+    return Fail(env, "Native dispatcher instance is closed");
+  napi_valuetype type;
+  if (argc != 1 || napi_typeof(env, args[0], &type) != napi_ok || type != napi_function)
+    return Fail(env, "withAccountRegistryLock requires a synchronous callback", true);
+  RegistryCallback call{env, args[0], nullptr};
+  const int32_t result = AuxNativeContextWithAccountRegistryLock(
+      state->handle, InvokeRegistryCallback, &call);
+  bool pending = false;
+  if (napi_is_exception_pending(env, &pending) != napi_ok || pending) return nullptr;
+  if (result == 2) return Fail(env, "Account registry callback must be synchronous", true);
+  if (result != 0) return Fail(env, "Account registry coordinator unavailable");
+  return call.result;
+}
+#endif
+
 napi_value Run(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   napi_value args[2];
@@ -115,6 +159,25 @@ napi_status AuxAttachOwnedDispatcher(napi_env env, napi_value target,
         function, static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable), nullptr};
     status = napi_define_properties(env, target, 1, &property);
   }
+#ifdef AUX_ATOMIC_CSK_DISPATCH
+  // Callback data is the same immutable native instance as run(), never JS input.
+  // Environment cleanup owns final retirement; collecting either function alone
+  // cannot retire the still-live sibling callback.
+  napi_value account_function;
+  if (status == napi_ok)
+    status = napi_create_function(env, "withAccountRegistryLock", NAPI_AUTO_LENGTH,
+                                 WithAccountRegistryLock, state, &account_function);
+  if (status == napi_ok) {
+    state->Retain();
+    status = napi_add_finalizer(env, account_function, state, Finalize, nullptr, nullptr);
+    if (status != napi_ok) state->Release();
+  }
+  if (status == napi_ok) {
+    napi_property_descriptor property = {"withAccountRegistryLock", nullptr, nullptr,
+        nullptr, nullptr, account_function, napi_enumerable, nullptr};
+    status = napi_define_properties(env, target, 1, &property);
+  }
+#endif
   if (status != napi_ok) state->Close();
   state->Release();
   return status;

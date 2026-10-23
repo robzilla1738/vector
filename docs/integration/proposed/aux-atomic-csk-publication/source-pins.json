@@ -1,0 +1,83 @@
+{
+  "format": "aux.atomic-csk-source.v1",
+  "originalDaemonSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "originalCskConsumerTableSha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba",
+  "edits": [
+    {
+      "name": "central synchronous accounts transaction",
+      "find": "withLock(Cn){this.ensureFileExists();let ei;try{ei=retryFileOperationSync(this.path,()=>import_proper_lockfile$1.default.lockSync(this.path,{realpath:!1,stale:3e4}),this.options.syncLockRetryDelaysMs??[]);let{result:ti,next:ni}=Cn(this.readCurrentOrRecover());return ni!==void 0&&atomicWriteFileSync(this.path,JSON.stringify(ni,null,2)),ti}finally{ei&&ei()}}",
+      "replace": "withLock(Cn){if(process.platform!==`darwin`||this.path!==ACCOUNTS_JSON_PATH)return this.withAuxOriginalLock(Cn);init_src$6();let ei=loadBinding();if(typeof ei?.withAccountRegistryLock!==`function`)throw Error(`Atomic account registry coordinator unavailable`);return ei.withAccountRegistryLock(()=>this.withAuxOriginalLock(Cn))}withAuxOriginalLock(Cn){this.ensureFileExists();let ei;try{ei=retryFileOperationSync(this.path,()=>import_proper_lockfile$1.default.lockSync(this.path,{realpath:!1,stale:3e4}),this.options.syncLockRetryDelaysMs??[]);let{result:ti,next:ni}=Cn(this.readCurrentOrRecover());return ni!==void 0&&atomicWriteFileSync(this.path,JSON.stringify(ni,null,2)),ti}finally{ei&&ei()}}",
+      "count": 1
+    },
+    {
+      "name": "no uncoordinated async accounts writes",
+      "find": "async withLockAsync(Cn){this.ensureFileExists();",
+      "replace": "async withLockAsync(Cn){if(process.platform===`darwin`&&this.path===ACCOUNTS_JSON_PATH)throw Error(`Async account registry transaction unsupported`);this.ensureFileExists();",
+      "count": 1
+    },
+    {
+      "name": "fixed actual accounts path only",
+      "find": "static fromFile(ei=ACCOUNTS_JSON_PATH){return new Cn(new FileJsonStoreBackend(ei,createDefaultAccountRegistry(),",
+      "replace": "static fromFile(ei=ACCOUNTS_JSON_PATH){if(process.platform===`darwin`&&ei!==ACCOUNTS_JSON_PATH)throw Error(`Alternate account registry path unsupported`);return new Cn(new FileJsonStoreBackend(ei,createDefaultAccountRegistry(),",
+      "count": 1
+    },
+    {
+      "name": "typed native CSK publisher replaces generic setter",
+      "find": "async function saveInstallationDerivedKeyBlob(Cn,ei,ti,ni,ri={}){let ii=getExpectedLocalBootstrapKeyOwner(Cn)??null,ai=readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken),oi=()=>{if((getExpectedLocalBootstrapKeyOwner(Cn)??null)!==ii)throw Error(`Account changed while storing its Sync key`);if(readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)!==ai)throw Error(`Sync generation changed while storing its Sync key`)},si=(localKeyWrites.get(ei)??Promise.resolve()).then(async()=>{oi(),await initInstallation(),await unlock();let ai=await readSecureStorageItem(ei);for(let si=0;si<2;si+=1){if(ti!==`csk`)throw Error(`Unsupported local key purpose`);let ci=encryptAuxCskV2(getDk(),ti,ni),li={schemaVersion:1,accountId:Cn,boundUserId:ii,encryptedBlob:ci,...ri.syncGeneration!==void 0&&{syncGeneration:ri.syncGeneration}};oi(),await saveSecureStorageItem(ei,JSON.stringify(li));let ui=await readSecureStorageItem(ei);if(oi(),ui&&(!ai||ui!==ai)){si>0&&logger.warn(`[Auth] Secure storage rewrite required a retry`,{key:ei,purpose:ti});return}}throw Error(`Failed to refresh secure storage item for ${ei}.`)}),ci=si.then(()=>{},()=>{});localKeyWrites.set(ei,ci);try{await si}finally{localKeyWrites.get(ei)===ci&&localKeyWrites.delete(ei)}}",
+      "replace": "async function publishAuxRecoveredCsk(Cn,ei,ti){if(process.platform!==`darwin`||!Number.isSafeInteger(Cn)||Cn<0||!(ei instanceof Uint8Array)||ei.byteLength!==32||!ti||typeof ti.userId!==`string`||!ti.userId||!Number.isSafeInteger(ti.generation)||ti.generation<0)return`unsupported`;init_src$6();let ni=loadBinding();if(typeof ni?.withAccountRegistryLock!==`function`||typeof ni?.run!==`function`)return`unsupported`;let ri=Buffer.from(ei);try{let ii=JSON.parse(ni.run(`csk-publish-absent-or-same`,JSON.stringify({accountId:Cn,owner:ti.userId,generation:ti.generation,keyB64:ri.toString(`base64`)})));return[`stored`,`same`,`conflict`,`unsupported`].includes(ii?.status)?ii.status:`unsupported`}catch{return`unsupported`}finally{ri.fill(0)}}async function saveInstallationDerivedKeyBlob(Cn,ei,ti,ni,ri={}){if(process.platform!==`darwin`){let ii=getExpectedLocalBootstrapKeyOwner(Cn)??null,ai=readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken),oi=()=>{if((getExpectedLocalBootstrapKeyOwner(Cn)??null)!==ii)throw Error(`Account changed while storing its Sync key`);if(readAccessTokenSyncGeneration(AccountRegistry.getSession(Cn)?.accessToken)!==ai)throw Error(`Sync generation changed while storing its Sync key`)},si=(localKeyWrites.get(ei)??Promise.resolve()).then(async()=>{oi(),await initInstallation(),await unlock();let ai=await readSecureStorageItem(ei);for(let si=0;si<2;si+=1){if(ti!==`csk`)throw Error(`Unsupported local key purpose`);let ci=encryptAuxCskV2(getDk(),ti,ni),li={schemaVersion:1,accountId:Cn,boundUserId:ii,encryptedBlob:ci,...ri.syncGeneration!==void 0&&{syncGeneration:ri.syncGeneration}};oi(),await saveSecureStorageItem(ei,JSON.stringify(li));let ui=await readSecureStorageItem(ei);if(oi(),ui&&(!ai||ui!==ai)){si>0&&logger.warn(`[Auth] Secure storage rewrite required a retry`,{key:ei,purpose:ti});return}}throw Error(`Failed to refresh secure storage item for ${ei}.`)}),ci=si.then(()=>{},()=>{});localKeyWrites.set(ei,ci);try{await si}finally{localKeyWrites.get(ei)===ci&&localKeyWrites.delete(ei)};return}if(ti!==`csk`||ei!==getChromeSyncKeyStorageKey(Cn))throw Error(`Unsupported local key purpose`);let ii=getExpectedLocalBootstrapKeyOwner(Cn),ai=ri.syncGeneration;if(typeof ii!==`string`||!ii||!Number.isSafeInteger(ai)||ai<0)throw Error(`Authenticated Sync key context unavailable`);let oi=await publishAuxRecoveredCsk(Cn,ni,{userId:ii,generation:ai});if(oi!==`stored`&&oi!==`same`)throw Error(`Atomic Sync key publication ${oi}`)}",
+      "count": 1
+    },
+    {
+      "name": "repair cannot destroy installation or clear coordinated CSKs",
+      "find": "async function repairInstallation(Cn){logger.alert(`[Installation] repairing installation keys from marker`,{error:errorMessage(Cn)}),await destroyInstallation(),await Promise.all(AccountRegistry.getAll().accounts.map(Cn=>clearSecureStorageItem(getChromeSyncKeyStorageKey(Cn.id)).catch(()=>{}))),rmSync(INSTALLATION_REPAIR_MARKER,{force:!0})}",
+      "replace": "async function repairInstallation(Cn){if(process.platform===`darwin`)throw Error(`Installation repair requires coordinated authority migration`);logger.alert(`[Installation] repairing installation keys from marker`,{error:errorMessage(Cn)}),await destroyInstallation(),await Promise.all(AccountRegistry.getAll().accounts.map(Cn=>clearSecureStorageItem(getChromeSyncKeyStorageKey(Cn.id)).catch(()=>{}))),rmSync(INSTALLATION_REPAIR_MARKER,{force:!0})}",
+      "count": 1
+    }
+  ],
+  "reviewedVariants": {
+    "sea": {
+      "inputSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
+      "outputSha256": "1c388767d30a37ce2759ef6750636526cd9a5c504704bdfd673c6b191ba3e396"
+    },
+    "node": {
+      "inputSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
+      "outputSha256": "40259e646d95cc81f14ecf419ce1226b009bec0aaa07a206a4d8fddb45b60101"
+    }
+  },
+  "callerInventory": {
+    "originalCliSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+    "cliAccountsPathReferences": 0,
+    "cliSecureSaveReferences": 0,
+    "daemonCounts": {
+      "accountsJsonPath": 4,
+      "saveInstallationDerivedKeyBlob": 2,
+      "storeLocalChromeSyncKey": 4,
+      "stampLegacySyncKey": 3,
+      "getChromeSyncKeyStorageKey": 5,
+      "literalAccountsJson": 3
+    },
+    "authenticatedCallers": [
+      {
+        "name": "fetchAccountSyncPassphrase",
+        "offset": 11681775,
+        "guard": "let ei=getAuthenticatedUserId(Cn),ti=AccountRegistry.getSession(Cn);if(!ti||!ei)return null;",
+        "tokenGuard": "if(ii===null)return null;"
+      },
+      {
+        "name": "fetchAccountSyncKeyStatus",
+        "offset": 11683664,
+        "guard": "let ei=await fetchAsideAPIAuthenticated(Cn,`/sync/key/status`,{output:accountSyncKeyStatusSchema})"
+      },
+      {
+        "name": "recoverAccountSyncKey",
+        "offset": 11685220,
+        "guard": "let ti=getAuthenticatedUserId(Cn);if(!ti)throw Error(`Sign in before recovering browser data.`);"
+      },
+      {
+        "name": "stampLegacySyncKey",
+        "offset": 11681578,
+        "guard": "await storeLocalChromeSyncKey(Cn,ei,{syncGeneration:ti}).catch(ei=>logger.warn(`[Auth] Keeping legacy Sync key blob unstamped`,{accountId:Cn,error:ei}))"
+      }
+    ]
+  }
+}

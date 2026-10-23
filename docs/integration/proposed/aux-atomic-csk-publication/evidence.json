@@ -1,0 +1,178 @@
+{
+  "format": "aux.atomic-csk-captured-evidence.v1",
+  "sourceBaseCommit": "d65823341",
+  "compile": {
+    "exitCode": 0,
+    "session": 9391,
+    "serialized": true,
+    "productionSwiftSources": 14,
+    "fixtureSwiftSources": 1,
+    "generatedFixtureHomeSources": 1,
+    "cppSources": 2,
+    "warnings": "Existing kSecUseAuthenticationUIFail deprecations; no suppression added"
+  },
+  "capturedCheck": {
+    "exitCode": 0,
+    "passed": 21,
+    "crossProcessGenerationConflict": true,
+    "crossProcessOneAddOneSame": true,
+    "sameCiphertextPreserved": true,
+    "independentAuxV2Decrypt": true,
+    "fullNodeSourceParses": true,
+    "fullSeaSourceParses": true,
+    "unauthenticatedSetterDoesNotLoadNative": true,
+    "nonMacSetterByteIdentity": true
+  },
+  "artifact": {
+    "sha256": "9e8164ff43129a62eba8f1ed265af87bec437813caabfd097c81aba35e478ce2",
+    "bytes": 656728,
+    "fixtureOnly": true,
+    "productBrandSubstringOccurrences": 0,
+    "runtimeScope": "fixed disposable synthetic home"
+  },
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/tests/fixture-module.cc",
+      "sha256": "ed26217605ce07bbd5015fd52d305fc986e25d090a07d7c6e682824688dd1437",
+      "role": "fixture"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "07fc94cd45a0b1539ef2cc40fd9348e042f5d313b96c53e224ba1be75d9e5852",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3",
+      "role": "production"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/tests/AtomicSyntheticOwner.swift",
+      "sha256": "d2a969316fbe8925004ccc2b8465a4d1b02374746bfafe906437ce602be62129",
+      "role": "fixture"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h",
+      "sha256": "2beb2e3f8cafa4c109107e80f099576b39d3367572efead5f5e6d69f971eedf8",
+      "role": "review"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
+      "sha256": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f",
+      "role": "review"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source-pins.json",
+      "sha256": "f4c15e8bb7765c4c1d4477164edb58b8e6f749ae473a0778fb2267d540496a84",
+      "role": "review"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source/adapt.mjs",
+      "sha256": "08d10c3010fc69175440207fd7a1a91b5b3ee06e47d4979bec83839be072bcf5",
+      "role": "review"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/tests/check.mjs",
+      "sha256": "ea45b7636b9475c7a4f90b90abe0942c95938a5605a4424430e475e6948146bf",
+      "role": "review"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/build.sh",
+      "sha256": "2bf1be50d30714e2ccf900ebb7b731cb6e340b4ade999d4c07e912d6587aabad",
+      "role": "review"
+    }
+  ],
+  "scope": {
+    "realSecurityExecuted": false,
+    "productionFactoryExecuted": false,
+    "actualOwnerDataRead": false,
+    "realAppLaunched": false,
+    "packaged": false,
+    "uiChanged": false,
+    "wholeProfileAdmissionVerified": false,
+    "cloudRecoveryActivated": false
+  },
+  "integrationPending": [
+    "trusted native pre-AccountRegistry bootstrap/cohort admission",
+    "all participating SEA/node graph adaptation and host compiler flag/home wiring",
+    "external legacy/migration/reset writers stopped or coordinated",
+    "actual RecoveryClient daemon route integration",
+    "protected Security and whole-app acceptance remains unexecuted"
+  ],
+  "sourceProjections": {
+    "sea": {
+      "inputSha256": "6e31f5048961e9dee23f222a39985fc77fc316e2a77790039968a5ba96fdbddb",
+      "outputSha256": "1c388767d30a37ce2759ef6750636526cd9a5c504704bdfd673c6b191ba3e396"
+    },
+    "node": {
+      "inputSha256": "bb65ff76b0b8823749910f2523770af9e983ed26bdd3dab213d4a1c433887e1b",
+      "outputSha256": "40259e646d95cc81f14ecf419ce1226b009bec0aaa07a206a4d8fddb45b60101"
+    }
+  },
+  "fixtureRuntimeSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4"
+}

@@ -107,6 +107,14 @@ struct AuxInstallationCommandCore {
               !bytes.isEmpty else { throw AuxCommandError.invalidInput }
         return bytes
     }
+#if AUX_ATOMIC_CSK_DISPATCH
+    // Native-only operation; caller holds the actual owned dispatcher lease.
+    // This returns no key through JSON and erases its temporary unwrapped copy.
+    func withCskPublicationRoot<T>(_ body:(Data)throws->T)throws->T {
+        var root=try authority().openRoot();defer{root.resetBytes(in:0..<root.count)}
+        guard root.count==32 else{throw AuxCommandError.operation};return try body(root)
+    }
+#endif
     func run(command: String, input text: String = "") -> String {
         func json(_ object: [String: Any]) -> String {
             guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),

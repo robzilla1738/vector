@@ -120,7 +120,11 @@ final class AuxCommandDispatcherRegistry {
         try withEntry(handle){entry in
             try action({command,input in
 #if AUX_SCOPED_SECURE_STORE_DISPATCH
-                if let secure=entry.secureStore,["secure-save","secure-read","secure-clear"].contains(command) {
+                var secureCommands=["secure-save","secure-read","secure-clear"]
+#if AUX_ATOMIC_CSK_DISPATCH
+                secureCommands.append("csk-publish-absent-or-same")
+#endif
+                if let secure=entry.secureStore,secureCommands.contains(command) {
                     return secure.run(command:command,input:input)
                 }
 #endif
@@ -131,6 +135,14 @@ final class AuxCommandDispatcherRegistry {
             })
         }
     }
+#if AUX_ATOMIC_CSK_DISPATCH && AUX_SCOPED_SECURE_STORE_DISPATCH
+    func withAccountRegistryLock(_ handle:UInt64,_ body:()throws->Int32)throws->Int32 {
+        try withEntry(handle){entry in
+            guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}
+            return try secure.withAccountRegistryLock(body)
+        }
+    }
+#endif
     private func withEntry<T>(_ handle:UInt64,_ action:(Entry)throws->T)throws->T {
         let threadActive=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
         guard threadActive[handle,default:0]==0 else{throw AuxDispatcherLifetimeError.reentrantCall}
@@ -311,3 +323,11 @@ func auxNativeContextRetire(_ handle:UInt64)->Int32 {
     catch AuxDispatcherLifetimeError.reentrantRetirement{return -2}
     catch{return -1}
 }
+
+#if AUX_ATOMIC_CSK_DISPATCH && AUX_SCOPED_SECURE_STORE_DISPATCH
+@_cdecl("AuxNativeContextWithAccountRegistryLock")
+func auxNativeContextWithAccountRegistryLock(_ handle:UInt64,_ body:(@convention(c)(UnsafeMutableRawPointer?)->Int32)?,_ context:UnsafeMutableRawPointer?)->Int32 {
+    guard let body else{return -1}
+    do{return try AuxCommandDispatcherRegistry.shared.withAccountRegistryLock(handle){body(context)}}catch{return -2}
+}
+#endif

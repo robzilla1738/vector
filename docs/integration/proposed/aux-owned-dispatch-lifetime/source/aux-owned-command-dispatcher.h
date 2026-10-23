@@ -16,6 +16,13 @@ void AuxNativeResultFree(char* result);
 // Closes admission to this instance, drains acquired operations, then retires.
 // 0 success, -1 invalid/already-retired, -2 attempted from this thread's lease.
 int32_t AuxNativeContextRetire(uint64_t handle);
+#ifdef AUX_ATOMIC_CSK_DISPATCH
+// Synchronous actual body runs under this instance's lease and fixed-home lock.
+// No path, scope or lock-held declaration is accepted from the caller.
+typedef int32_t (*AuxAccountRegistryBody)(void*);
+int32_t AuxNativeContextWithAccountRegistryLock(uint64_t handle,
+    AuxAccountRegistryBody body, void* context);
+#endif
 #ifdef __cplusplus
 }
 #endif

@@ -38,7 +38,7 @@ struct ScopedAuxCommandContext {
     private struct Selector {let service:String;let account:String;let group:String}
     private init(installation:AuxInstallationCommandCore,mode:String,transactionId:String?,journal:String?,
                  bindingHash:String,selectors:[Selector],expectedScope:String?,securityReview:String?,reserved:[Selector]=[],
-                 policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,runtimeGeneration:String?=nil,runtimeSelection:String?=nil)throws {
+                 policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,runtimeGeneration:String?=nil,runtimeSelection:String?=nil,atomicAccountHome:String?=nil)throws {
         guard selectors.count==4,let first=selectors.first else{throw ScopedAuxCommandContextError.binding}
         func prefix(_ value:String)throws->String {
             let parts=value.split(separator:".",omittingEmptySubsequences:false)
@@ -65,7 +65,14 @@ struct ScopedAuxCommandContext {
         // Fixed logical keys must not select any installation/stage/source row.
         let protected=Set((selectors+reserved).map{AuxSecureStoreSelector(service:$0.service,account:$0.account,accessGroup:$0.group)})
         for key in policy.keys {guard !protected.contains(try review.selector(key)) else{throw ScopedAuxCommandContextError.binding}}
-        self.installation=installation;secureStore = .init(review:review,boundary:boundary)
+        self.installation=installation
+#if AUX_ATOMIC_CSK_DISPATCH
+        if let home=atomicAccountHome {secureStore=try .init(review:review,boundary:boundary,installation:installation,accountHome:home)}
+        else {secureStore = .init(review:review,boundary:boundary)}
+#else
+        guard atomicAccountHome==nil else{throw ScopedAuxCommandContextError.scope}
+        secureStore = .init(review:review,boundary:boundary)
+#endif
         evidence = .init(mode:mode,transactionId:transactionId,journalSha256:journal,runtimeGenerationId:runtimeGeneration,runtimeSelectionSha256:runtimeSelection,installationBindingsSha256:bindingHash,scope:scope,
             accessGroupSha256:Self.hash(Data(first.group.utf8)),logicalKeyPolicySha256:policy.sha256,securityReviewSha256:securityReview)
     }
@@ -108,7 +115,7 @@ struct ScopedAuxCommandContext {
         try runtime(terminal:terminal,policy:.sourceKnownV2(),boundary:boundary)
     }
     static func runtime(terminal:AuxRuntimeCapturedCommandContext,
-                        policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary)throws->Self {
+                        policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,atomicAccountHome:String?=nil)throws->Self {
         let selection=terminal.selection
         let selected=try AuxRuntimeSelection.roles.map{try selection.selector($0)}
         let bindings=zip(AuxRuntimeSelection.roles,selected).map{role,s in
@@ -124,7 +131,7 @@ struct ScopedAuxCommandContext {
         return try .init(installation:terminal.core,mode:"runtime-target-capture",transactionId:nil,journal:nil,
             bindingHash:digest,selectors:selected.map{.init(service:$0.service,account:$0.account,group:$0.accessGroup)},
             expectedScope:selection.scope,securityReview:nil,policy:policy,boundary:boundary,
-            runtimeGeneration:selection.generationId,runtimeSelection:selectionDigest)
+            runtimeGeneration:selection.generationId,runtimeSelection:selectionDigest,atomicAccountHome:atomicAccountHome)
     }
 #endif
 

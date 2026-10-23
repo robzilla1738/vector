@@ -105,17 +105,43 @@ final class AuxSecureStoreCommandCore {
     private let review:ReviewedAuxSecureStoreScope
     private let boundary:AuxSecureStoreBoundary
     private let lock=NSLock() // This instance only; not cross-process custody/CAS.
-    init(review:ReviewedAuxSecureStoreScope,boundary:AuxSecureStoreBoundary){self.review=review;self.boundary=boundary}
+#if AUX_ATOMIC_CSK_DISPATCH
+    private let accounts:AuxAccountsCskCoordinator?
+    init(review:ReviewedAuxSecureStoreScope,boundary:AuxSecureStoreBoundary,installation:AuxInstallationCommandCore,accountHome:String)throws {
+        self.review=review;self.boundary=boundary
+        accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary)
+    }
+    func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {
+        guard let accounts else{throw AuxAccountsCskError.unavailable};return try accounts.withAccountRegistryLock(body)
+    }
+#endif
+    init(review:ReviewedAuxSecureStoreScope,boundary:AuxSecureStoreBoundary){self.review=review;self.boundary=boundary
+#if AUX_ATOMIC_CSK_DISPATCH
+        accounts=nil
+#endif
+    }
     private func json(_ object:[String:Any])->String {
         guard let data=try? JSONSerialization.data(withJSONObject:object,options:[.sortedKeys,.withoutEscapingSlashes]),let text=String(data:data,encoding:.utf8)
         else{return "{\"error\":\"Secure storage serialization failed\"}"};return text
     }
     func run(command:String,input:String)->String {
-        guard ["secure-save","secure-read","secure-clear"].contains(command) else{return json(["error":"Unknown native secure storage command"])}
+        var commands=["secure-save","secure-read","secure-clear"]
+#if AUX_ATOMIC_CSK_DISPATCH
+        commands.append("csk-publish-absent-or-same")
+#endif
+        guard commands.contains(command) else{return json(["error":"Unknown native secure storage command"])}
         lock.lock();defer{lock.unlock()}
+#if AUX_ATOMIC_CSK_DISPATCH
+        if command=="csk-publish-absent-or-same" {return json(["status":accounts?.publish(input:input).rawValue ?? "unsupported"])}
+#endif
         do {
             let object=try strictEnvelopeObject(Data(input.utf8))
             guard Set(object.keys)==(command=="secure-save" ? Set(["key","data"]):Set(["key"])),let key=object["key"] as? String else{throw AuxSecureStoreError.failed}
+#if AUX_ATOMIC_CSK_DISPATCH
+            // Every current CSK writer must use the typed transaction. A plain
+            // secure-save/clear may never overwrite or delete an authority row.
+            if command != "secure-read" && key.hasPrefix("aux.csk_") {return json(["error":"Atomic CSK coordinator required"])}
+#endif
             let selected=try review.selector(key)
             switch command {
             case "secure-read":
