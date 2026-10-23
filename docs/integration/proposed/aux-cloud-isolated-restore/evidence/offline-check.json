@@ -1,0 +1,29 @@
+{
+  "format": "aux.isolated-restore.offline-evidence.v1",
+  "fixture": {
+    "session": 9677,
+    "exitCode": 0,
+    "tests": 1,
+    "passed": 1,
+    "durationMs": 1552.532541,
+    "command": "AUX_TEST_SERVICE_ROOT=/Users/rcourson/Documents/Vibe/web/services/aux-cloud node --test docs/integration/proposed/aux-cloud-isolated-restore/tests/restore.test.mjs",
+    "coreSHA256AtExecution": "65e6ed811ce8803ceadeeca4dc684b4c0f06234f03a30261b73c03d11370409d",
+    "fixtureSHA256": "83509b1dcb73f21f5d52249e0a74ede282333705a5516835d25c0fd91aa7d0e9",
+    "schemaMigrationCount": 12,
+    "networkDenied": true,
+    "archiveImportExecuted": false,
+    "blobProviderExecuted": false
+  },
+  "laterGuard": {
+    "change": "Added validateRestoreWrappingKey export and CLI pre-connection call; previous tested restore function bodies unchanged.",
+    "checks": [
+      "exact synthetic wrapping key accepted",
+      "changed wrapping key refused",
+      "missing wrapping key refused",
+      "CLI node --check passed"
+    ],
+    "executedAs": "inline node --input-type=module assertions",
+    "providerExecuted": false
+  },
+  "cutoverAuthorized": false
+}

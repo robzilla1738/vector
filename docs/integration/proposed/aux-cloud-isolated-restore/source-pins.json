@@ -1,0 +1,28 @@
+{
+  "format": "aux.isolated-restore.source-pins.v1",
+  "baseCommit": "92cb961bb",
+  "files": {
+    "services/aux-cloud/scripts/cloud-recovery-restore.mjs": "ee788d9934e3930fdf04e672ffed59792897123b24b1496232fc6c7dd930585f",
+    "services/aux-cloud/scripts/recovery-restore-core.mjs": "622cbd029a27d18867f66125f458121811dcf4f6c54b83072f41431ba8694d9b",
+    "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
+    "services/aux-cloud/scripts/online-recovery-objects.mjs": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f",
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "fb35b82925c87d27857173330547055152045c8f21a0631aa8a884516852f1fa",
+    "services/aux-cloud/src/schema-manifest.json": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
+    "services/aux-cloud/src/auth.ts": "25ed16cfe8b825420909ec8b403ece69d3738274d48a5d1f2c868c9972230bf2",
+    "services/aux-cloud/src/sync.ts": "12c675075e408d036ece7731486c9b742b540a3f175b5cbc6e141a9719240ed5",
+    "services/aux-cloud/src/sync-recovery-server-key.ts": "38bf12eea12edb09b50e22b0f7af954d599767cc0b786bd3a0c073348262df7b",
+    "docs/integration/proposed/aux-cloud-isolated-restore/tests/restore.test.mjs": "83509b1dcb73f21f5d52249e0a74ede282333705a5516835d25c0fd91aa7d0e9",
+    "services/aux-cloud/migrations/001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
+    "services/aux-cloud/migrations/002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
+    "services/aux-cloud/migrations/003-billing.sql": "599685cfbf7f8d3b5c7718e9a929b8c9ddd31538b00356d77a17fc267fcb9c6f",
+    "services/aux-cloud/migrations/004-attachments.sql": "bdfdea9499a2ab28da30d0c7cfd967606fb58b23cc28b965f1ca39f617870ead",
+    "services/aux-cloud/migrations/005-attachment-bindings.sql": "619ecc3e36020c0fe58894b7b9568f08812c76f0ce1ede9a09d14bb709aa5500",
+    "services/aux-cloud/migrations/006-auth-refresh.sql": "6f16c5fe55d5777a239df50586ef7fd8f12b7fd55b15bce6ed376e1a71f41276",
+    "services/aux-cloud/migrations/007-sync-gc.sql": "7e87462ecaf46b6e04a1614acd0ebebb3c3b9028d49c00e361705cc4d9863a81",
+    "services/aux-cloud/migrations/008-session-sync.sql": "9a507d4fb9ae33c938f38b1876035e1d715a23e2363d525cab39031765840498",
+    "services/aux-cloud/migrations/009-drive-1852.sql": "f7a3ccb0a52932ca91df331035aa5187fc5ad4f20ae900e8b5902686e23efb41",
+    "services/aux-cloud/migrations/010-drive-cookies.sql": "5cb5eba8f29314b487b4106770180fe243367af09bd87d083366c3e126e43b11",
+    "services/aux-cloud/migrations/011-inference-uploads.sql": "98502eaa3231e388ed794e86f81dba4670506f5eb0d47859f84db4421e6f26a4",
+    "services/aux-cloud/migrations/012-sync-recovery-v2.sql": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
+  }
+}
