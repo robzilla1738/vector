@@ -15,9 +15,11 @@ enum FX {
  static var afterLock:(()->Void)?
  static var afterCommand:(()->Void)?
  static var onGuard:(()->Void)?
- static func reset(){guardLive=true;commands=0;checks=0;afterLock=nil;afterCommand=nil;onGuard=nil;guardError=AuxFreshColdGuardError.peer(1)}
+ static var onContextDeinit:(()->Void)?
+ static func reset(){guardLive=true;commands=0;checks=0;afterLock=nil;afterCommand=nil;onGuard=nil;onContextDeinit=nil;guardError=AuxFreshColdGuardError.peer(1)}
 }
 final class NativeFreshRuntimeCapturedContext {
+ deinit{FX.onContextDeinit?()}
  func revalidateCurrentCommandBinding()throws{FX.checks += 1;let callback=FX.onGuard;FX.onGuard=nil;callback?();if !FX.guardLive{throw FX.guardError}}
 }
 struct AuxInstallationCommandCore{func run(command:String,input:String="")->String{FX.commands += 1;let response="reply-"+String(FX.commands);FX.afterCommand?();return response}}
@@ -99,5 +101,19 @@ do{
  FX.guardLive=true;FX.afterCommand=nil
  check(run(owner).contains("retiring"));check(FX.commands==1)
  check(auxNativeContextRetire(owner.handle ) == -3)
+}
+FX.reset()
+do {
+ let owner=try make();let handle=owner.handle
+ FX.onContextDeinit={check(auxNativeContextObserveOperationState(handle ) == -1)}
+ check(auxNativeContextRetire(handle)==0) // Entry destructor may reenter after registry unlock.
+ FX.onContextDeinit=nil
+}
+FX.reset()
+do {
+ var owner:AuxOwnedCommandDispatcher?=try make();let handle=owner!.handle
+ FX.onContextDeinit={check(auxNativeContextObserveOperationState(handle ) == -1)}
+ owner=nil // Owner deinit closes/removes Entry; its context destructor can observe safely.
+ FX.onContextDeinit=nil
 }
 print("PASS:\(assertions) actual C run/read-reconciliation/retire/lifecycle assertions; fake effects only; protected calls0")

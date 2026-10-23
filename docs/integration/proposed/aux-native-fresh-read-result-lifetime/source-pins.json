@@ -12,8 +12,8 @@
     "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
     "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
     "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift": "1e460a27c2ed11a5aa3e9ab3e61a36f11d2038da571c4dcefd19b6f4055b30f6",
-    "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
-    "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift": "73ab6176dea780147c9054b04a8d7425d4ec99a95fb25ff10a3422627e5976fc",
     "docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
     "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
     "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
@@ -24,7 +24,7 @@
     "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
     "docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift": "24fbf31b9a40228a4744bb094b475b096017dd29df62e7c97c8d0dfa14399a58",
     "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
-    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift": "652f501bc997b81341ff3ea6abf614b5ac79ef4ce6aa457bc3586b233f0f5fd6",
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift": "ef2f6f1f7dacf34c3eb9f1e61a171845567f8cda2a906f265eafdb35b0a04ff1",
     "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
     "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
     "docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
@@ -48,8 +48,8 @@
     "docs/integration/proposed/aux-native-fresh-read-result-lifetime/baseline/AuxOwnedCommandDispatcher.swift": "169160570459cd05c1770634cbe19f52a2351a515f8a4056c73e9fe5b2518964"
   },
   "fixtureInputs": {
-    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/check.sh": "23f90f5df549f12910dea02fedc58df4abc4328e573278d318fb7ccda4a9a1ac",
-    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/tests/main.swift": "3736e8f18385ddc9e5d64de24a9aed149387fb7a8381b33fc17fe4085ac45950",
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/check.sh": "cfb5110c6bff40b7832d7630ba2563f4b030de92e45cdf2b4a9a4303a146f6c6",
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/tests/main.swift": "37e22a638522c70a836112bb3ed7f92d1a23571ddf8b6f703262814ad7075ed5",
     "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
     "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
   },

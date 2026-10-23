@@ -266,6 +266,7 @@ final class AuxCommandDispatcherRegistry {
                 entry.phase = .closed;entries.removeValue(forKey:handle)
             }
             condition.broadcast();condition.unlock()
+            withExtendedLifetime(entry){} // No imported-owner destructor under registry lock.
           }
         }
         if guardGenericAction{return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){try action(entry)}}
@@ -333,8 +334,9 @@ final class AuxCommandDispatcherRegistry {
     // last acquired operation remove the entry. No further acquisition succeeds.
     fileprivate func closeOwner(_ handle:UInt64) {
         guard getpid()==process else{return}
-        condition.lock();defer{condition.unlock()}
-        guard let entry=entries[handle]else{return}
+        condition.lock()
+        guard let entry=entries[handle]else{condition.unlock();return}
+        defer{condition.unlock();withExtendedLifetime(entry){}}
         entry.phase = .retiring
 #if AUX_MACOS_UTILITY_DISPATCH
         entry.macOSUtilities?.closeAdmission()
@@ -384,7 +386,7 @@ final class AuxCommandDispatcherRegistry {
         _ = try reconcileRetainedRead(entry,closing:true)
 #endif
         guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
-        condition.lock();defer{condition.unlock()}
+        condition.lock();defer{condition.unlock();withExtendedLifetime(entry){}}
 #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
         if let failure=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation{throw failure}
 #endif
