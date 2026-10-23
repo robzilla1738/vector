@@ -1,0 +1,7 @@
+{
+  "anchor.json": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb",
+  "inventory.json": "d6c086806aedad5a3974f22c81cd532372776977eb5bd38675eb333e6fd7a23b",
+  "transform.mjs": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f",
+  "tests/check.mjs": "7e6f144afcebb08c1bdb783ef37b633d2bae31eafea8c1d5a414c1101a951c64",
+  "README.md": "2a8a46ddeb4cb9e0f108caabc42a66c651724ab305b67c53449b1c5c06741fd9"
+}

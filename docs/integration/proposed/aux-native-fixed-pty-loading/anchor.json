@@ -1,0 +1,4 @@
+{
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "anchor": "function loadNodePty(){if(loadedNodePty)return loadedNodePty;let Cn=createRequire(import.meta.url);try{return ensureSpawnHelperExecutable(Cn.resolve(`node-pty/package.json`)),loadedNodePty=Cn(\"node-pty\"),loadedNodePty}catch(Cn){let ei=path.dirname(process.execPath),ti=[path.join(ei,`native/node-pty/package.json`),path.join(ei,`../Resources/native/node-pty/package.json`)];for(let Cn of ti)try{let ei=createRequire(Cn);return ensureSpawnHelperExecutable(Cn),loadedNodePty=ei(path.dirname(Cn)),loadedNodePty}catch{}throw Error(`PTY_UNAVAILABLE: node-pty could not be loaded (${Cn instanceof Error?Cn.message:String(Cn)}).`)}}function ensureSpawnHelperExecutable(Cn){if(process.platform!==`darwin`)return;let ei=path.join(path.dirname(Cn),`prebuilds`,`darwin-${process.arch}`,`spawn-helper`);statSync(ei).mode&73||chmodSync(ei,493)}"
+}

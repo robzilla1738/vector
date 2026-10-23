@@ -1,0 +1,42 @@
+{
+  "frozenBase": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty",
+  "files": {
+    "package.json": {
+      "bytes": 1615,
+      "sha256": "f8b6a14f7022c14f1cd5d109486f5dacd32bffb63a9a63e38eced37dacb47439"
+    },
+    "lib/index.js": {
+      "bytes": 2008,
+      "sha256": "c1b82c92c4c63aaa8e8441fc5a291c4727cd3f3550666d2fec7250e0f6d4b173"
+    },
+    "lib/utils.js": {
+      "bytes": 1548,
+      "sha256": "f75ad341c13fbf1a9a6605d7ee42dff5bbc5d43b7b381e413fb97eb1b8300beb"
+    },
+    "lib/unixTerminal.js": {
+      "bytes": 13372,
+      "sha256": "a62e3a60c3bc1b0e7261f58284856df748dcee6761a2bc7a5a5ba98b22660473"
+    },
+    "prebuilds/darwin-arm64/pty.node": {
+      "bytes": 103280,
+      "sha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+      "signatureMetadata": "Executable=<frozen-file>\nIdentifier=pty\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20500 size=367 flags=0x10000(runtime) hashes=6+2 location=embedded\nSignature size=9034\nAuthority=Developer ID Application: At Inc. (8CPD4K4TBB)\nAuthority=Developer ID Certification Authority\nAuthority=Apple Root CA\nTimestamp=Oct 16, 2026 at 4:54:10\u202fAM\nInfo.plist=not bound\nTeamIdentifier=8CPD4K4TBB\nRuntime Version=15.5.0\nSealed Resources=none\nInternal requirements count=1 size=164\nTotal signatures=1\nChosen signature=1\n",
+      "linkedLibraries": "<frozen-file>:\n\t/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1900.180.0)\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1351.0.0)\n"
+    },
+    "prebuilds/darwin-arm64/spawn-helper": {
+      "bytes": 68464,
+      "sha256": "b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f",
+      "signatureMetadata": "Executable=<frozen-file>\nIdentifier=spawn-helper\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20500 size=312 flags=0x10000(runtime) hashes=4+2 location=embedded\nSignature size=9034\nAuthority=Developer ID Application: At Inc. (8CPD4K4TBB)\nAuthority=Developer ID Certification Authority\nAuthority=Apple Root CA\nTimestamp=Oct 16, 2026 at 4:54:10\u202fAM\nInfo.plist=not bound\nTeamIdentifier=8CPD4K4TBB\nRuntime Version=15.5.0\nSealed Resources=none\nInternal requirements count=1 size=172\nTotal signatures=1\nChosen signature=1\n",
+      "linkedLibraries": "<frozen-file>:\n\t/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1900.180.0)\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1351.0.0)\n"
+    },
+    "prebuilds/darwin-x64/pty.node": {
+      "bytes": 72080,
+      "sha256": "c8e53ab3e0f190b691fd838768a24771b6d352c6ae817a4b3049c817f27ac262"
+    },
+    "prebuilds/darwin-x64/spawn-helper": {
+      "bytes": 27968,
+      "sha256": "3ddfd4ac6b1500fc8c3a28b185d7973c193a8ab035f4763b2a5d4636eccf4514"
+    }
+  },
+  "sourceOperations": "codesign -dvv, otool -L and bounded nm -gU only; no addon/helper execution"
+}
