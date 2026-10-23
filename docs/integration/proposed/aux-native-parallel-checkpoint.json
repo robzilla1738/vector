@@ -1,0 +1,77 @@
+{
+  "format": "aux.native.parallel-batch.checkpoint.v1",
+  "recordedAt": "2026-10-23T02:01:27.069551+00:00",
+  "goalComplete": false,
+  "acceptedPreviewReplaced": false,
+  "state2Authorized": false,
+  "liveHandlesVerifiedThisCheckpoint": [
+    {
+      "session": 51532,
+      "role": "full browser build of applied792-source accessor successor",
+      "log": "out/aux-noncreating-profile-manager-style-native-build.log",
+      "state": "running",
+      "compositionSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43"
+    },
+    {
+      "session": 89891,
+      "role": "pure retained journal FD fixture",
+      "log": "out/aux-native-fresh-retained-journal-check.log",
+      "state": "queued behind native build lock"
+    },
+    {
+      "session": 21096,
+      "role": "five service-worker TUs and one captured state fixture",
+      "log": "out/aux-content-service-worker-admission-check.log",
+      "state": "queued behind native build lock"
+    }
+  ],
+  "agentReportedPendingChecks": [
+    {
+      "session": 42337,
+      "role": "secure-capture production typecheck and captured effects"
+    },
+    {
+      "session": 96148,
+      "role": "target boundary captured fixed-software check"
+    },
+    {
+      "session": 38492,
+      "role": "initialv2 journal filesystem check"
+    },
+    {
+      "session": 69805,
+      "role": "initial-stage unknown Add reconciliation check"
+    },
+    {
+      "session": 82218,
+      "role": "target driver captured/recreated-instance check"
+    },
+    {
+      "session": 24645,
+      "role": "paired production graph; current corrections must be pinned before execution"
+    },
+    {
+      "session": 9874,
+      "role": "three renderer/navigation TUs and captured state check"
+    }
+  ],
+  "unappliedNativeSuccessor": {
+    "composition": "out/native-reuse-composition-aux-renderer-navigation/owner",
+    "sha256": "65cd78c54b77ffa18eee83ea18746bcdba814c45b4fea89bb723ffc70d07da4c",
+    "sources": 798,
+    "assets": 23,
+    "compiled": false
+  },
+  "nextSourceReview": [
+    "native-v2 target context/boundary/journal plus shared-cohort concurrency and transient-unavailability correction",
+    "service-worker GN/native owner composition",
+    "existing-only AppSessionService participant"
+  ],
+  "cloudProgress": {
+    "productionRecoverySchemaMigrations": 12,
+    "productionActivated": false,
+    "evidence": "services/aux-cloud/evidence/production-recovery-migration.json"
+  },
+  "runtimeAcceptance": false,
+  "protectedCallsExecuted": false
+}
