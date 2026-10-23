@@ -1,6 +1,6 @@
 {
   "format": "aux.native.parallel-batch.checkpoint.v1",
-  "recordedAt": "2026-10-23T03:40:16.796966+00:00",
+  "recordedAt": "2026-10-23T03:47:48.327478+00:00",
   "goalComplete": false,
   "acceptedPreviewReplaced": false,
   "state2Authorized": false,
@@ -42,11 +42,11 @@
   ],
   "unappliedNativeSuccessor": null,
   "nextSourceReview": [
-    "actual executable main and finite system-ABI rendezvous receiver/link recipe",
-    "real BrowserPlatform/Supervisor adoption and auth without second daemon",
-    "same final42 graph and changed focused checks after Node library terminal",
-    "coherent final native selected-home/adoption source compile; no obsolete graph reruns",
-    "explicit legacy authority/CSK migration and final qualified entry packaging"
+    "coherent finite signing/public-key RPC and real parent adoption without carrier fallback",
+    "actual main/link graph after Node static library reaches terminal result",
+    "paired notification inbox master-key/envelope migration from actual reader; no guessed key",
+    "same queued final42 and focused lifetime/WorkerHost checks; final adoption transport compile only once",
+    "legacy existing authority/CSK migration and exact native resource/package review"
   ],
   "cloudProgress": {
     "productionRecoverySchemaMigrations": 12,
@@ -77,7 +77,9 @@
     "newSuccessorsStaticOnly": true,
     "embeddedImagePreparation": "c4e954511",
     "qualifiedOwnedEntryRouting": "5bbfdb522",
-    "selectedStateHomeHolder": "4db4db25f"
+    "selectedStateHomeHolder": "4db4db25f",
+    "actualNativeDaemonMain": "d29dc2d0e",
+    "currentNativeMainLinkPlan": "1f67407b6"
   },
   "terminalRootChecks": [
     {
