@@ -1,0 +1,23 @@
+{
+  "inputSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+  "edits": [
+    {
+      "name": "Native linked owner replaces original common-addon loader",
+      "find": "function loadBinding(){if(binding!==void 0)return binding;for(let Cn of candidateBindingPaths())if(existsSync(Cn))try{return binding=require$2(Cn),loadedBindingPath=Cn,binding}catch(Cn){bindingLoadError=Cn instanceof Error?Cn.message:String(Cn)}return binding=null,binding}",
+      "replace": "function loadBinding(){if(binding!==void 0)return binding;loadedBindingPath=path.join(__auxDaemonResources,`native/aux-owned-native.cjs`);try{return binding=require$2(loadedBindingPath)}catch(error){bindingLoadError=error instanceof Error?error.message:String(error);throw error}}",
+      "count": 1
+    },
+    {
+      "name": "Actual sync and Worker commands share the linked native owner",
+      "find": "function auxNativeCommandRoute(command){if(process.platform==='darwin'&&['generate-thumbnail','list-open-apps','app-icons','copy-file','open-with'].includes(command))return{binding:loadAuxMacUtilityBinding(),bindingPath:path.join(__auxDaemonResources,'native/aux-macos-utilities.cjs'),error:auxMacUtilityBindingError};return{binding:loadBinding(),bindingPath:loadedBindingPath,error:bindingLoadError}}",
+      "replace": "function auxNativeCommandRoute(command){return{binding:loadBinding(),bindingPath:loadedBindingPath,error:bindingLoadError}}",
+      "count": 1
+    },
+    {
+      "name": "OS availability uses actual owned dispatcher",
+      "find": "function isAuxMacUtilityBindingAvailable(){return process.platform==='darwin'&&loadAuxMacUtilityBinding()!=null}",
+      "replace": "function isAuxMacUtilityBindingAvailable(){return process.platform==='darwin'&&loadBinding()!=null}",
+      "count": 1
+    }
+  ]
+}

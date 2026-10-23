@@ -1,0 +1,7 @@
+# Qualified native entry routing proposal
+
+This is an inactive source projection, not a default staging change or runtime admission. Current fallback entry and accepted app remain unchanged. It is paired only with the actual sealed native executable, its private native provider and inherited real per-Environment preload. No original common native addon is loaded by the replacement loader. PDF keeps its existing dedicated fixed loader; OS commands, installation/secure-store and account registry use the guarded owned dispatcher in both main and actual Worker paths.
+
+The separate proposed native-only entry replaces its quarantine prefix with resolution of the real linked native module. Plain Node has no such registered module, and no argv/environment/status/receipt installs it. This does not establish legacy migration, writer custody or signed image readiness; those remain mandatory native prerequisites. Default SEA and CLI/fallback startup remain unconditionally refused. No proposed entry has been executed, staged, packaged or accepted.
+
+Before integration: bind projection to the final actual generated resource hash (this draft pins the existing quarantined recovery candidate), include and seal the new CJS resource, compile/link the real native main, validate inherited Worker preload and actual command/PDF/OS lifecycle, then perform approved disposable startup checks. The native script reader currently selects fixed index.mjs; final packaging must pair that exact native-only resource and leave fallback/default assets separate.

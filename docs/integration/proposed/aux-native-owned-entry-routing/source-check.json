@@ -1,0 +1,11 @@
+{
+  "format": "aux.owned-entry-routing.source-check.v1",
+  "sourceSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+  "projectedSha256": "d21915cc71cb862df6fd2b11087981fe18bf75e5fd59a5e92cb7e21013c94585",
+  "projectedSyntaxExitCode": 0,
+  "plainNodeRefusesMissingNativeBinding": true,
+  "daemonEntryExecuted": false,
+  "protectedCalls": 0,
+  "packaged": false,
+  "defaultEntryModified": false
+}
