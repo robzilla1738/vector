@@ -1,0 +1,7 @@
+# Fileport successor compilation recipe — not queued
+
+This prepares one pinned check of the actual newer fileport source graph. It does not reuse the earlier original handoff object receipts. The actual Chromium base.ninja/PCM/compiler flags remain exception-free and use the actual Chromium module graph; the Node objects use the separately pinned Xcode compiler/system libc++ graph.
+
+The recipe compiles three Chromium objects (new transport, new owned child, corrected endpoint delivery) and two Node objects (new transport, new connection registry bridge). It syntax-checks the actual wire header's pure0/250/2000/2001 predicate fixture, then typechecks the42 actual Swift production inputs with the same-logical sealed-loader continuation selected instead of its original. No link, module load, Mach, Security, authority generation or native execution occurs. Every command, log and produced object hash is retained; input hashes are checked before/after, including on failure.
+
+After root review and completion of the currently running native check, run through `scripts/native-build.py` with `python3 docs/integration/proposed/aux-selected-home-fileport-compile/check.py --output <fresh external output>`. Do not run directly alongside another native compiler. Static recipe/source/configuration verification passed; no compiler was queued and no fixture has run for this proposal. The original frozen42 result and original handoff85029/74818 evidence remain separate and truthful.
