@@ -1,0 +1,25 @@
+# Native-v2 four-target continuation
+
+Inactive native continuation of the corrected secure-stage source. Old v1 fresh journals/review semantics and migration readers remain unchanged. Public disk records or hashes are never converted into a native admission object.
+
+The actual staged context now retains `AuxFreshNativeSecureCapture`; its fileprivate initializer remains reachable only after actual matching stage observation. `revalidateNativeStageBinding()` authenticates current policy, retained home/reservation/group/role/scope and real immutable initial-journal bytes. Initial-stage preparation, its later context revalidation and the target journal store all duplicate the real retained home FD and validate matching canonical-path inode before any mkdir/write. Path-only store constructors remain nonauthoritative fixture/storage APIs.
+
+`AuxNativeFreshTargetCoordinator(context:)` accepts only that genuine staged context and constructs the actual paired `AuxNativeFreshTargetBoundary`. It creates/loads a distinct `aux.install.native-fresh.targets-journal.v2` with explicit policy/reservation/initial-journal lineage. The private-FD store reuses reviewed exclusive bounded immutable revision, flock/CAS HEAD, metadata/ACL/path checks, fsync and exact readback mechanics. Existing/partial/corrupt mismatches are refused and retained, never deleted/reset.
+
+Only a new draft→intent transition committed by this process can mint `AuxNativeFreshTargetWriteIntent`. Its fileprivate constructor is called once in the actual driver, after durable CAS. The ticket retains the real store/checkpoint and re-reads the exact **current** HEAD/journal/row before consuming its locked single use; SHA fields alone cannot dispatch a stale intent. No protected callback runs under that lock.
+
+The boundary uses only its independently decoded actual stage payload/selector for Add. Unknown thrown outcomes retain intent. Explicit non-success status is durably recorded while leaving intent observation-only. Loaded `.intent`/`.awaitingReadback` never mint tickets: pending absent stays unresolved, matching exact bytes advance without claiming writer identity, and conflicts/invalid/inaccessible or unexpected future/verified rows durably block. There is no Add replay, regeneration, overwrite or deletion. A mechanical in-flight guard prevents callbacks reentering the same driver from racing a new dispatch.
+
+After four actual rows are verified and ready progress is durable, the actual boundary independently recaptures/imports current target signer/KEM/wrapped root, validates real crypto/root continuity against the stage, and returns the command core. The driver revalidates native context and current ready HEAD again, then privately constructs `NativeFreshTerminalSelection` containing the real core, public `AuxRuntimeSelection` and exact lineage checkpoints. There is no generic public core-wrapper initializer, external Boolean grant, selected-state activation or NAPI registration.
+
+The fixture uses the same production advance/ticket/reducer/store methods with explicit `AUX_NATIVE_FRESH_TARGET_FIXTURE` captured read/Add prerequisites; real loader/factory/protected boundary and terminal core creation are absent from that graph. Cases cover unknown-but-written Add with recreated driver, non-success/absent intent with no replay, exact later observation, next rows, ready-conflict blocking, durable blocked reload, reentrancy, current-HEAD stale-ticket rejection and no invalid-FD path fallback. Actual disposable files contain only nonsecret records. The separate final production typecheck selects 23 real Swift inputs, including crypto's decoder/boundary and actual retained-root helper. At source commit these compiler jobs remain queued behind the integrator's browser build; static source/pin checks pass, with no runtime/compile acceptance claimed yet.
+
+Reproduce the changed boundary only:
+
+```sh
+python3 docs/integration/proposed/aux-native-fresh-target-coordinator/verify.py
+python3 scripts/native-build.py sh docs/integration/proposed/aux-native-fresh-target-coordinator/check.sh
+python3 scripts/native-build.py sh docs/integration/proposed/aux-native-fresh-target-coordinator/typecheck.sh
+```
+
+Important limits: “recreated” means a new coordinator consuming the same genuine retained native staged context and actual disk journal. A fresh process cannot manufacture that context from JSON or adopt a prior reservation; genuine cold cross-process home/host provenance and child-host/NAPI admission remain missing. The selection is returned source content, not an activated global selection or all-writer custody grant. No Security/Keychain calls, hardware/factory generation, signing, owner data, active startup/first-refusal, native checkout, shared host pins, package or UI changes occurred. Legacy migration remains required separately.

@@ -23,15 +23,18 @@ final class PrivateNativeFreshTargetJournalStore {
     private let directoryName:String
     private let rootFD:Int32
     private let directoryFD:Int32
-    init(canonicalDisposableRoot:String,transactionId:String)throws {
+    init(canonicalDisposableRoot:String,transactionId:String,retainedRootDescriptor:Int32? = nil)throws {
         guard canonicalDisposableRoot.hasPrefix("/"),let uuid=UUID(uuidString:transactionId),uuid.uuidString==transactionId,
               let resolved=realpath(canonicalDisposableRoot,nil)else{throw NativeFreshTargetStoreError.unsafePath}
         defer{free(resolved)}
         guard String(cString:resolved)==canonicalDisposableRoot else{throw NativeFreshTargetStoreError.unsafePath}
-        let rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+        let rootFD:Int32
+        if let retainedRootDescriptor {rootFD=fcntl(retainedRootDescriptor,F_DUPFD_CLOEXEC,0)}
+        else {rootFD=open(canonicalDisposableRoot,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)}
         guard rootFD>=0 else{throw NativeFreshTargetStoreError.io(errno)}
         do {
             try Self.metadata(rootFD,directory:true)
+            try Self.requireRootIdentity(canonicalDisposableRoot,fd:rootFD)
             let name=".aux-native-fresh-targets-v2-"+transactionId.lowercased()
             if mkdirat(rootFD,name,0o700) != 0 && errno != EEXIST{throw NativeFreshTargetStoreError.io(errno)}
             try Self.sync(rootFD)
@@ -67,6 +70,15 @@ final class PrivateNativeFreshTargetJournalStore {
         guard entry.st_dev==current.st_dev,entry.st_ino==current.st_ino,entry.st_mode==current.st_mode,entry.st_uid==current.st_uid else{throw NativeFreshTargetStoreError.unsafePath}
     }
     private static func sync(_ fd:Int32)throws { guard fsync(fd)==0 else{throw NativeFreshTargetStoreError.io(errno)} }
+    private static func requireRootIdentity(_ path:String,fd:Int32)throws {
+        let current=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+        guard current>=0 else{throw NativeFreshTargetStoreError.io(errno)}
+        defer{close(current)}
+        let retained=try statFD(fd),observed=try statFD(current)
+        guard retained.st_dev==observed.st_dev,retained.st_ino==observed.st_ino else{
+            throw NativeFreshTargetStoreError.unsafePath
+        }
+    }
     private func validateDirectories()throws {
         try Self.metadata(rootFD,directory:true);try Self.metadata(directoryFD,directory:true)
         guard let resolved=realpath(root,nil)else{throw NativeFreshTargetStoreError.unsafePath};defer{free(resolved)}

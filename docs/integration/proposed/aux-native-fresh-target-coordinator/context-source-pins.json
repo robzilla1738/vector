@@ -6,8 +6,13 @@
   },
   "source": {
     "path": "source/AuxNativeFreshStageCoordinator.swift",
-    "sha256": "137067c11f19a201d4491e72578219ff7a8237dbc6b83d317356f02d9635e863"
+    "sha256": "7f34be5f11881c53be065133c114c4480ad106a4a534c028eb362a6dd6c3ec0d"
   },
   "productionExecuted": false,
-  "authorityClaimed": false
+  "authorityClaimed": false,
+  "historicalInitialPinsSha256": "a7fabff0d0f60c987b0ac4feffd40cc3b332543afd9cd46f1ca1f2379dc59f3f",
+  "retainedStoreSource": {
+    "path": "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+    "sha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114"
+  }
 }

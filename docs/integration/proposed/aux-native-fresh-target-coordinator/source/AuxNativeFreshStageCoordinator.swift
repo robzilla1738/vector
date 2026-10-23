@@ -18,7 +18,8 @@ struct NativeFreshStagedContext {
               capture.policy.policySha256==journal.policySha256,capture.policy.contents.accessGroup==journal.accessGroup,
               capture.policy.contents.role.rawValue==journal.role,
               try capture.home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}
-        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal)
+        let retainedRoot=try capture.home.duplicateDirectoryForNativeBootstrap();defer{Darwin.close(retainedRoot)}
+        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,retainedRootDescriptor:retainedRoot)
         guard let stored=try store.load(),stored.journal==journal,stored.sha256==durableJournalSha256 else{throw NativeFreshBootstrapError.binding}
     }
 #endif
@@ -84,7 +85,8 @@ final class AuxNativeFreshStageCoordinator {
         try journal.validate()
         // This immutable v2 record combines initial draft + exact stage binding
         // in one durable nonsecret value, before the first stage Add is possible.
-        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal)
+        let retainedRoot=try capture.home.duplicateDirectoryForNativeBootstrap();defer{Darwin.close(retainedRoot)}
+        let store=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:capture.home.canonicalHome,journal:journal,retainedRootDescriptor:retainedRoot)
         guard try store.load()==nil else{throw NativeFreshBootstrapError.existing}
         let checkpoint=try store.publish()
         return .init(capture:capture,record:journal,payload:secret,checkpoint:checkpoint,store:store)
