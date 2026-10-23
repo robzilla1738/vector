@@ -1,5 +1,6 @@
 #include "AuxDevelopmentWorkerHost.h"
 #include "../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
+#include "../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
 #include "aux-owned-napi-adapter.h"
 #include "../../aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h"
 #include <node.h>
@@ -35,30 +36,38 @@ struct Worker {
   // Independent from the command owner: environment cleanup may retire that
   // owner before explicit process-PDF host closure.
   std::shared_ptr<AuxLoadedPdfLifetime> pdf;
+  std::shared_ptr<AuxLoadedUtilityLifetime> utility;
   bool terminal = false;
   bool initializing = true;
   bool retiring = false;
   bool pdf_close_requested = false;
   bool pdf_close_unresolved = false;
+  bool utility_close_requested = false;
+  bool utility_close_unresolved = false;
   bool cleanup_completed = false;
   bool environment_detached = false;
   Worker(uint64_t g, node::Environment* e, v8::Isolate* i, uv_loop_t* l)
       : generation(g), process(getpid()), environment(e), isolate(i), loop(l), thread(pthread_self()) {}
-  AuxDevelopmentWorkerDrain Close(bool close_process_pdf = false) {
+  AuxDevelopmentWorkerDrain Close(bool close_process_images = false) {
     std::shared_ptr<Owner> captured;
     std::shared_ptr<AuxLoadedPdfLifetime> captured_pdf;
+    std::shared_ptr<AuxLoadedUtilityLifetime> captured_utility;
     bool close_pdf = false;
+    bool close_utility = false;
     {
       std::lock_guard<std::mutex> lock(mutex);
       terminal = true;
-      if (close_process_pdf) { pdf_close_requested = true; pdf_close_unresolved = true; }
+      if (close_process_images) { pdf_close_requested = true; pdf_close_unresolved = true; utility_close_requested = true; utility_close_unresolved = true; }
       close_pdf = pdf_close_requested;
+      close_utility = utility_close_requested;
       if (retiring) return AuxDevelopmentWorkerDrain::pending;
       if (!owner && initializing) return AuxDevelopmentWorkerDrain::pending;
       captured = owner;
       captured_pdf = pdf;
-      if (!captured && !captured_pdf) {
-        pdf_close_unresolved = false; // No successfully captured/owned PDF image.
+      captured_utility = utility;
+      if (!captured && !captured_pdf && !captured_utility) {
+        pdf_close_unresolved = false; // No successfully captured/owned image.
+        utility_close_unresolved = false;
         return AuxDevelopmentWorkerDrain::drained;
       }
       retiring = true;
@@ -86,6 +95,15 @@ struct Worker {
       result = AuxDevelopmentWorkerDrain::untracked;
     else if (pdf_status == AuxPdfHostDrain::pending && result == AuxDevelopmentWorkerDrain::drained)
       result = AuxDevelopmentWorkerDrain::pending;
+    auto utility_status = !captured_utility ? std::optional<AuxUtilityHostDrain>() : close_utility
+        ? std::optional(captured_utility->CloseAndDrain())
+        : captured_utility->InspectIfClosureStarted();
+    if (utility_status == AuxUtilityHostDrain::wrongProcess)
+      result = AuxDevelopmentWorkerDrain::wrongProcess;
+    else if (utility_status == AuxUtilityHostDrain::untracked && result != AuxDevelopmentWorkerDrain::wrongProcess)
+      result = AuxDevelopmentWorkerDrain::untracked;
+    else if (utility_status == AuxUtilityHostDrain::pending && result == AuxDevelopmentWorkerDrain::drained)
+      result = AuxDevelopmentWorkerDrain::pending;
     {
       std::lock_guard<std::mutex> lock(mutex);
       retiring = false;
@@ -97,6 +115,11 @@ struct Worker {
                         pdf_status == AuxPdfHostDrain::notPresent || !captured_pdf))
         pdf_close_unresolved = false;
       if (!close_pdf && pdf_close_requested && result == AuxDevelopmentWorkerDrain::drained)
+        result = AuxDevelopmentWorkerDrain::pending;
+      if (close_utility && (utility_status == AuxUtilityHostDrain::drained ||
+                            utility_status == AuxUtilityHostDrain::notPresent || !captured_utility))
+        utility_close_unresolved = false;
+      if (!close_utility && utility_close_requested && result == AuxDevelopmentWorkerDrain::drained)
         result = AuxDevelopmentWorkerDrain::pending;
       if (result == AuxDevelopmentWorkerDrain::drained) {
         // In-flight factory/attachment is not drained, even if the current
@@ -145,7 +168,7 @@ void DetachCompletedEnvironment(const std::shared_ptr<Worker>& worker) {
         entry->second->generation == worker->generation) Registry().active.erase(entry);
     worker->environment_detached = true;
   }
-  if (!worker->owner && !worker->initializing && !worker->pdf_close_unresolved) Registry().retained.erase(worker->generation);
+  if (!worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved) Registry().retained.erase(worker->generation);
 }
 struct Observation {
   napi_env expected;
@@ -294,8 +317,10 @@ napi_status AuxDevelopmentWorkerHost::RegisterCurrentWorker(napi_env env, napi_v
   // This exact factory success authenticates the current loaded-image policy.
   // Capture only its fixed already-loaded PDF image; no caller/JS path or flag.
   std::shared_ptr<AuxLoadedPdfLifetime> captured_pdf;
+  std::shared_ptr<AuxLoadedUtilityLifetime> captured_utility;
   try {
     captured_pdf = AuxLoadedPdfLifetime::CaptureAfterAuthenticatedOwner();
+    captured_utility = AuxLoadedUtilityLifetime::CaptureAfterAuthenticatedOwner();
     captured = std::make_shared<Owner>(handle, retained_owner);
   }
   catch (...) {
@@ -307,8 +332,10 @@ napi_status AuxDevelopmentWorkerHost::RegisterCurrentWorker(napi_env env, napi_v
     std::lock_guard<std::mutex> lock(worker->mutex);
     worker->owner = captured;
     worker->pdf = captured_pdf;
+    worker->utility = captured_utility;
   }
-  if (captured_pdf->capture_status() == AuxPdfHostCapture::refusedImage)
+  if (captured_pdf->capture_status() == AuxPdfHostCapture::refusedImage ||
+      captured_utility->capture_status() == AuxUtilityHostCapture::refusedImage)
     return napi_generic_failure; // Keep refused image ownership quarantined.
   // A factory finishing after host close is retained only for retirement;
   // it must never reach the NAPI attachment/publication path.
@@ -334,6 +361,10 @@ AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() {
     workers = state_->workers;
   }
   auto result = AuxDevelopmentWorkerDrain::drained;
+  const auto retained_utility = AuxLoadedUtilityLifetime::InspectRetainedClosures();
+  if (retained_utility == AuxUtilityHostDrain::wrongProcess) result = AuxDevelopmentWorkerDrain::wrongProcess;
+  else if (retained_utility == AuxUtilityHostDrain::untracked) result = AuxDevelopmentWorkerDrain::untracked;
+  else if (retained_utility == AuxUtilityHostDrain::pending) result = AuxDevelopmentWorkerDrain::pending;
   for (auto& worker : workers) {
     auto status = worker->Close(true);
     DetachCompletedEnvironment(worker);

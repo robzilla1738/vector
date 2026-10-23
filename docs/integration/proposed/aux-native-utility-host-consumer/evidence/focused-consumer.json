@@ -1,0 +1,43 @@
+{
+  "format": "aux.native.utility-host-consumer.focused.v1",
+  "result": "passed",
+  "changedBoundaryChecks": 16,
+  "scenarios": {
+    "absent": 3,
+    "current": 10,
+    "late": 3
+  },
+  "actualFrozenNode": true,
+  "actualWorkerCleanupPendingToken": true,
+  "consumerSurvivesHostDrop": true,
+  "retainedClosureReobservedAfterLateCompletion": true,
+  "ordinaryInspectionInitiatesClosure": false,
+  "lateImageRemainsUntracked": true,
+  "fixtureOnlyHashProjection": {
+    "hashReplacements": 1,
+    "sizeReplacements": 2,
+    "capturedModuleSha256": "4ddfa6ff58eb954e4668a2a284ed65d8f33c357a3b05e23098a913466a937049",
+    "capturedModuleBytes": 338064,
+    "projectedAlgorithmSha256": "aaa0034561e94b2b08df0ebd010626bf144317e498189cc804be2500ba7d9f93",
+    "productionSourceUnmodified": true
+  },
+  "actualProductionArtifactBytesHashed": true,
+  "productionImageLoaded": false,
+  "realProtectedFactoryCalled": false,
+  "realOSCalls": 0,
+  "SecurityCalls": 0,
+  "changedWorkerHostTranslationUnitCompiled": true,
+  "workerHostSourceSha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae",
+  "workerHostObjectSha256": "cdfcf875e1fc6ee5c0027381038eee82a96e13343d611aa60f5fa62e8d90275d",
+  "fullProductionGraphBuilt": false,
+  "sharedHostSourcePinsChanged": false,
+  "inputPinsSha256": "b041360a22d3745a0ae1c1e98242ca2190f75d19b72165ca3f51956eaa6d8dd0",
+  "capturedFixtureCompileSession": "9077",
+  "finalChangedConsumerCompileSession": "11053",
+  "terminalExitCode": 0,
+  "fixtureOutputsRetained": false,
+  "rootProductionArtifactRetainedUntouched": true,
+  "UIChanged": false,
+  "rootPipelineChanged": false,
+  "wholeProfileCustodyClaimed": false
+}

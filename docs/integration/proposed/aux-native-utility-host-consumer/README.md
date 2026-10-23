@@ -1,0 +1,29 @@
+# Fixed utility-image native lifetime consumer
+
+`AuxLoadedUtilityLifetime` captures only the already-loaded fixed running-bundle `Contents/Resources/native/aux-macos-utilities.node` after the actual signed native owner factory succeeds. The finite current unsigned identity is **393720 bytes / SHA-256 7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e** (root's retained production-only build). The future signing identifier is `dev.aux.browser.macos-utilities`; signing changes image hashes and requires a separate reviewed finite pin. No signature verification or authorization is invented by this consumer.
+
+Capture follows the actual PDF consumer pattern: canonical current executable-derived bundle path; exactly one matching already-loaded basename; owner/regular/private-write/single-link/file-size checks; no-follow/nonblocking held-FD hash with before/after metadata/EOF/path-identity checks; `RTLD_NOLOAD` on that fixed observed image; exact `dlsym` handle; `dladdr` same image base/path for both native close and pending exports; and stable complete non-system loaded-image inventory. It loads no new utility module and accepts no caller path, hash, scope or Boolean admission argument. A different/late image or unknown inventory remains untracked, with no unobserved-future-load allowance.
+
+`CloseAndDrain` initiates the native image's permanent utility closure only for explicit native host shutdown. `InspectIfClosureStarted` never starts process-image closure during ordinary Environment cleanup. Pending/untracked images retain their exact consumer in a process-native quarantine and keep their NOLOAD code reference; destruction never dlcloses outstanding callback code or claims completion. `InspectRetainedClosures` lets native shutdown re-observe already-started closures surviving a destroyed WorkerHost. It cannot open admission or silently release untracked custody. Load-time consumer PID guards refuse child use before inherited quarantine mutex access; no actual multithreaded Node fork was tested.
+
+## Actual WorkerHost pairing
+
+The current `AuxDevelopmentWorkerHost.cc/.h` source now retains the exact utility consumer alongside its PDF consumer after actual factory success and before NAPI attachment. A refused utility image quarantines the current owner instead of publishing a capability. Explicit `CloseAndDrain` closes both captured images and combines wrong-process/untracked/pending statuses without promoting failure to success. Environment cleanup only observes a previously started utility closure. Independent utility close-requested/unresolved flags preserve a raced explicit shutdown and prevent cleanup from dropping pending ownership. New shutdown observation also consumes old closed utility quarantine after a prior host object was destroyed.
+
+The actual production recipe and dynamic translation-unit inventory include the new `utility-lifetime.o` in both production and fixture link paths. This lane does **not** refresh current shared host source pins: root owns the combined v4/CAS/final-production graph integration and its one complete build. Earlier graph receipts stay historical. No protected factory, signed-policy loader, Security operation, actual OS utility or original addon is invoked by this work.
+
+## Focused verification and limits
+
+The changed actual WorkerHost C++ translation unit compiled against frozen Node headers. A focused consumer fixture compiled the actual production consumer with **only its one image hash and two size literals projected** onto the existing captured utility module. The fixed bundle path, inventory, native symbols/base ownership, retained image behavior and production algorithm remain unmodified. The projection exists only in a temporary fixture source and is recorded explicitly; it does not validate the production module's actual signature, artifact lifetime or AppKit behavior. The actual retained production module was not loaded or rebuilt here.
+
+Frozen Node ran16 changed-boundary assertions across absent/current/late-image cases. Current-image checks used the actual captured utility module/native close exports, a real pending worker terminated through actual Environment cleanup, explicit host image closure, consumer destruction while pending, native retained-closure observation, explicit captured late callback completion and eventual drain. Ordinary cleanup-style inspection did not close the image. An image loaded after an absent capture remained untracked. Captured OS producer only: no actual AppKit, protected factory, Keychain/Security, owner data, browser/profile, grant, signing or cloud operation ran. The full21-Swift/now6-C++ graph and actual authenticated WorkerHost runtime remain root's separate checks; compiling the changed TU is not that acceptance.
+
+`inputs.json` binds all new consumer sources, actual paired WorkerHost/recipe outputs and reused captured-module inputs, plus baseline hashes for the three shared files. `verify.py` checks source pairing/order and the finite image identity without executing it. Existing shared source-pin/evidence documents are deliberately not rewritten. Temporary captured outputs were deleted; root's retained production utility image is untouched.
+
+Run the bounded check under the global compiler lock:
+
+```
+python3 scripts/native-build.py sh docs/integration/proposed/aux-native-utility-host-consumer/check.sh /Users/rcourson/Documents/Vibe/web
+```
+
+Finite v4 signed-host image policy is root's coordinated separate lane. Native capture assumes its actual factory succeeded under that policy; it is not its replacement. Whole-profile writer custody, protected startup/selection, actual app/OS acceptance and original-addon retirement remain unfinished. UI/layout/artwork and the first state2 refusal are unchanged.
