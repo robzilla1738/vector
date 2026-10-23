@@ -78,7 +78,7 @@ def main():
         command += ['-c', str(REPO / name), '-o', str(obj)]
         cpp_commands.append(command)
         objects.append(str(obj))
-    link = ['xcrun', 'swiftc', '-target', 'arm64-apple-macos13.0',
+    link = ['xcrun', 'swiftc', '-parse-as-library', '-target', 'arm64-apple-macos13.0',
             '-module-cache-path', str(output / 'swift-cache'),
             '-module-name', 'AuxNativeDaemonExecutable']
     for define in pins['swiftDefines']:

@@ -127,7 +127,7 @@ class ReadyPulse final {
 
 int main(int argc, char** argv) {
   // No argument carries policy, source bytes, provider or a selected home.
-  if (argc != 1) return 64;
+  if (argc != 1 || !argv || !argv[0]) return 64;
   NativeLifetime lifetime;
   const mach_port_t endpoint = AuxTakeNativeParentEndpointForBootstrap();
   if (endpoint == MACH_PORT_NULL) return 78;
