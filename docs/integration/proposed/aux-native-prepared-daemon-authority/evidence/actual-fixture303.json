@@ -1,0 +1,18 @@
+{
+  "format": "aux.actual-captured-fixture.observation.v1",
+  "session": 44910,
+  "terminalExitCode": 0,
+  "observedStdout": "PASS:303 actual finite backend/dispatcher sequence ACK cached-guard recovery and lifecycle assertions; fake authority/provider effects only",
+  "sourceHashes": {
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/check.sh": "0356030bb7a76a4fe4ee008413a315d572dc67e4fdb5d3f062779f7a3c587bf7",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift": "84b60e71e559b33a97fb0b6d9ebb56df839f6e115ae0b9e40f0969f30466b7b8",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift": "00658efd8f27d9926b584d0ed714e6b3b10b220e34f4451f1d659da319e71238",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/tests/main.swift": "f27ef47fcaa51899e4aaaea0813e7a0f0b5622d5a9c0ead913bd1142825da42b",
+    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+    "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+    "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+  },
+  "effectBoundary": "explicit fake prepared provider/authority; actual backend and dispatcher C operations",
+  "protectedOperations": 0,
+  "runtimeAuthorityExecuted": false
+}

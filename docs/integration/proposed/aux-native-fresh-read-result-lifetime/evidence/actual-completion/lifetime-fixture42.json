@@ -1,0 +1,16 @@
+{
+  "format": "aux.actual-captured-fixture.observation.v1",
+  "session": 33884,
+  "terminalExitCode": 0,
+  "observedStdout": "PASS:42 actual C run/read-reconciliation/retire/lifecycle assertions; fake effects only; protected calls0",
+  "sourceHashes": {
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/check.sh": "cfb5110c6bff40b7832d7630ba2563f4b030de92e45cdf2b4a9a4303a146f6c6",
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift": "ef2f6f1f7dacf34c3eb9f1e61a171845567f8cda2a906f265eafdb35b0a04ff1",
+    "docs/integration/proposed/aux-native-fresh-read-result-lifetime/tests/main.swift": "37e22a638522c70a836112bb3ed7f92d1a23571ddf8b6f703262814ad7075ed5",
+    "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+    "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+  },
+  "effectBoundary": "explicit fake authority/current binding and account lock; actual dispatcher C entrypoints",
+  "protectedOperations": 0,
+  "runtimeAuthorityExecuted": false
+}
