@@ -1,0 +1,75 @@
+{
+  "format": "aux.service-worker.gn-owner.v1",
+  "parentManifest": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-renderer-navigation/owner/manifest.json",
+  "parentManifestSha256": "65cd78c54b77ffa18eee83ea18746bcdba814c45b4fea89bb723ffc70d07da4c",
+  "laneInputs": "docs/integration/proposed/aux-content-service-worker-admission/inputs.json",
+  "laneInputsSha256": "7d5486ac9d8da6ae5f3a55737c296e01f7c007fe9bfaba62d604d82d701cd74f",
+  "appInputs": "docs/integration/proposed/aux-installed-app-session-writer/inputs.json",
+  "appInputsSha256": "4b0234ac59bc042678610b522158c2535e8adb1f6a322f21bf1d16d56c5d3d67",
+  "files": [
+    {
+      "path": "content/browser/BUILD.gn",
+      "inputSha256": "d909e5330be826974016bf35b63c5b42f7f09471ccbdb61b14b45094d8c66736",
+      "outputSha256": "7f3fd37f37e8c045c38e9fdee6661136888b238a227bcde80059481d1ee00bf0",
+      "edits": [
+        {
+          "find": "    \"service_worker/service_worker_context_wrapper.cc\",\n",
+          "replace": "    \"service_worker/aux_service_worker_admission_state.cc\",\n    \"service_worker/aux_service_worker_admission_state.h\",\n    \"service_worker/aux_service_worker_migration.cc\",\n    \"service_worker/aux_service_worker_migration.h\",\n    \"service_worker/service_worker_context_wrapper.cc\",\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "inputSha256": "3bae61738d23816df7e3afc48a2b778606dfecc983f0550bebb3335d3856c2be",
+      "outputSha256": "f56ec8ede325d5bcb29f825130d242c9b09febcf82d580e9718f434098c52c22",
+      "edits": [
+        {
+          "find": "    \"aux_renderer_navigation_admission.h\",\n",
+          "replace": "    \"aux_renderer_navigation_admission.h\",\n    \"aux_service_worker_migration.h\",\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "inputSha256": "50e33255b13eeb262f750077090fed6cc8dcbe6aed4b62184ca118f6fdc45749",
+      "outputSha256": "2fbccfdb15fe32c35a75886207695cf5b3e1fb7e57a3b1ffd847318a49a0dcd0",
+      "edits": [
+        {
+          "find": "#include \"content/public/browser/aux_renderer_navigation_admission.h\"\n",
+          "replace": "#include \"content/public/browser/aux_renderer_navigation_admission.h\"\n#include \"content/public/browser/aux_service_worker_migration.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};\n",
+          "replace": "  content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};\n  content::aux_migration::ServiceWorkerMigrationSnapshot service_workers{};\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "inputSha256": "fff924e29cab3c34269088ba1b3a49c622fb2d8debc878daf111e81992be84d2",
+      "outputSha256": "01e543c80124e9254b8b2caeb518f57e19cd586e2b705be28e452d386a52dadc",
+      "edits": [
+        {
+          "find": "      InspectRendererNavigationAdmissionForMigration();\n",
+          "replace": "      InspectRendererNavigationAdmissionForMigration();\n  result.service_workers = content::aux_migration::\n      InspectServiceWorkerMigrationAdmission();\n",
+          "count": 1
+        },
+        {
+          "find": "  content::aux_migration::CloseRendererNavigationAdmissionForMigration();\n",
+          "replace": "  content::aux_migration::CloseRendererNavigationAdmissionForMigration();\n  content::aux_migration::CloseServiceWorkerStartAdmissionForMigration();\n",
+          "count": 1
+        },
+        {
+          "find": "  extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();\n",
+          "replace": "  extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();\n\n  // All admission gates are closed before StopWorker can reenter. Its callback\n  // is an observation, never proof of worker exit or storage custody. Pending,\n  // detached and unresolved work remain explicit in each returned snapshot.\n  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "afed8d6331b0ea0af1440fa0cb6eae4233b24de80c95fb76030760dbce56e46f"
+}

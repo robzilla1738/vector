@@ -1,0 +1,9 @@
+# Worker and installed-app session integration
+
+This unapplied successor extends the reviewed renderer/native-owner composition with the actual content service-worker participant and the existing installed-app session writer. Four count-checked root source changes register the implementation/public header in GN, close worker admission before any callback-capable stop work, request stops only on retained existing contexts, and expose the current raw worker snapshot in the owner result. All other gates close before the first StopWorker call. No context, profile or keyed service is created.
+
+A stop callback does not prove worker-thread exit, renderer exit, storage drain or whole-profile custody. The owner callback can return while worker callbacks/cleanup remain pending; these counts, lost callbacks, unavailable cores and detach observations remain explicit in its snapshot. Installed-app writes/closes use independent observations and the existing session submission guards. No startup caller, migration permission or state2 bypass is added.
+
+`prepare-composition.py` verifies exact source/pin/patch anchors and composes three staged extensions. The final inventory contains808 source records and all23 predecessor assets unchanged. The first dry composition used an incorrect803-record assertion: all10 worker files, including five modified upstream files previously outside the manifest, add records. All three extensions completed before that assertion; the corrected successor is separately recorded. This inventory correction changes no product source.
+
+Focused worker, installed-app and renderer compile requests are queued behind the preceding full browser build. Composition is not compilation or app acceptance. No native checkout application, signing, protected-storage access, UI/view/CSS/artwork change, or accepted-app replacement occurs here.

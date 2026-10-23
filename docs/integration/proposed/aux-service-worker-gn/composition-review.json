@@ -1,0 +1,32 @@
+{
+  "format": "aux.worker-app.gn-owner.review.v1",
+  "composition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-worker-app-verified/owner",
+  "compositionSha256": "7882b94e00678a518e6fe3f8c6e3e3ef67e6b90c910db387fcca7808b2e49f81",
+  "sourceRecords": 808,
+  "assets": 23,
+  "changedSources": [
+    "content/browser/service_worker/service_worker_context_wrapper.cc",
+    "content/browser/service_worker/service_worker_version.cc",
+    "content/browser/service_worker/embedded_worker_instance.cc",
+    "content/browser/service_worker/service_worker_context_wrapper.h",
+    "content/browser/service_worker/embedded_worker_instance.h",
+    "content/public/browser/aux_service_worker_migration.h",
+    "content/browser/service_worker/aux_service_worker_admission_state.h",
+    "content/browser/service_worker/aux_service_worker_admission_state.cc",
+    "content/browser/service_worker/aux_service_worker_migration.h",
+    "content/browser/service_worker/aux_service_worker_migration.cc",
+    "chrome/browser/ui/aux_session_writer_participant.h",
+    "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "content/browser/BUILD.gn",
+    "content/public/browser/BUILD.gn",
+    "chrome/browser/ui/aux_owned_browser_quiesce.h",
+    "chrome/browser/ui/aux_owned_browser_quiesce.cc"
+  ],
+  "applied": false,
+  "compiled": false,
+  "appRuntimeAccepted": false,
+  "viewsOrArtworkChanged": false,
+  "state2Authorized": false,
+  "wholeProfileCustodyClaimed": false,
+  "workerCallbacksProveStorageOrThreadExit": false
+}

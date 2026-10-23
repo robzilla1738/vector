@@ -1,0 +1,67 @@
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -2007,6 +2007,10 @@
+     "service_worker/service_worker_context_core_observer.h",
+     "service_worker/service_worker_context_watcher.cc",
+     "service_worker/service_worker_context_watcher.h",
++    "service_worker/aux_service_worker_admission_state.cc",
++    "service_worker/aux_service_worker_admission_state.h",
++    "service_worker/aux_service_worker_migration.cc",
++    "service_worker/aux_service_worker_migration.h",
+     "service_worker/service_worker_context_wrapper.cc",
+     "service_worker/service_worker_context_wrapper.h",
+     "service_worker/service_worker_controllee_request_handler.cc",
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -41,6 +41,7 @@
+     "audio_stream_broker.h",
+     "authenticator_common.h",
+     "aux_renderer_navigation_admission.h",
++    "aux_service_worker_migration.h",
+     "ax_inspect_factory.cc",
+     "ax_inspect_factory.h",
+     "back_forward_cache.h",
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.h
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.h
+@@ -9,6 +9,7 @@
+ #include "chrome/browser/profiles/aux_async_profile_creation_admission.h"
+ #include "chrome/browser/ui/aux_session_writer_participant.h"
+ #include "content/public/browser/aux_renderer_navigation_admission.h"
++#include "content/public/browser/aux_service_worker_migration.h"
+ #include "extensions/browser/service_worker/service_worker_task_queue.h"
+ 
+ namespace aux {
+@@ -23,6 +24,7 @@
+   extensions::ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
+       extension_worker_starts;
+   content::aux_migration::RendererNavigationAdmissionSnapshot renderer_navigation{};
++  content::aux_migration::ServiceWorkerMigrationSnapshot service_workers{};
+   std::optional<OwnedDirectHelperQuiesceObservation> helpers;
+   std::optional<SessionWriterParticipantObservation> sessions;
+ };
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.cc
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.cc
+@@ -62,6 +62,8 @@
+       InspectStartAdmissionForMigration();
+   result.renderer_navigation = content::aux_migration::
+       InspectRendererNavigationAdmissionForMigration();
++  result.service_workers = content::aux_migration::
++      InspectServiceWorkerMigrationAdmission();
+   if (state.helper_observed) {
+     // Carrier operations may outlive the daemon callback. Keep their actual
+     // current custody snapshot rather than treating that callback as a drain.
+@@ -85,8 +87,14 @@
+   state.helper_pending = true;
+   state.session_pending = true;
+   content::aux_migration::CloseRendererNavigationAdmissionForMigration();
++  content::aux_migration::CloseServiceWorkerStartAdmissionForMigration();
+   CloseAsyncProfileCreationAdmission();
+   extensions::ServiceWorkerTaskQueue::CloseStartAdmissionForMigration();
++
++  // All admission gates are closed before StopWorker can reenter. Its callback
++  // is an observation, never proof of worker exit or storage custody. Pending,
++  // detached and unresolved work remain explicit in each returned snapshot.
++  content::aux_migration::StopAlreadyOwnedServiceWorkerContextsForMigration();
+ 
+   BrowserPlatform::Get().QuiesceOwnedDirectHelpersForMigration(base::BindOnce(
+       [](OwnedDirectHelperQuiesceObservation) {
