@@ -9,13 +9,13 @@ verified browser source overlay and regenerates the actual GN dependency graph.
 through the shared native-build lock. The latter adds `-Wl,-no_adhoc_codesign`
 only to the cloned macOS linker configuration, regenerates GN, inventories real
 Ninja commands, refuses signing/notarization actions or link commands missing
-the unsigned flag, and runs actual `ninja -j4 chrome`. Changed virtual interfaces
+the unsigned flag, and runs actual bundled `siso ninja -offline -local_jobs=4 chrome`. Changed virtual interfaces
 are rebuilt by Ninja's dependency graph; no checked-object shortcut is used.
 
 Current process status and logs reside at:
 `/private/tmp/aux-chromium-recovery-snapshot-20261023/completion-watch.json`,
-`completion-watch.log`, and (once started) `unsigned-build/build.log` plus
-`unsigned-build/receipt.json`. A watcher or successful preparation is not a
+`completion-watch.log`, and (once started) `unsigned-siso-build/build.log` plus
+`unsigned-siso-build/receipt.json`. A watcher or successful preparation is not a
 successful full build. The cold protected feature stays off, and a completed
 browser binary still needs exact daemon/resources/package association and real
 runtime acceptance. The accepted app is not replaced or launched.
@@ -26,3 +26,10 @@ late persistent writes, some service objects are intentionally retained, and
 macOS child termination schedules later reaping. No clean-admitted-state resume
 marker or fabricated drain capability was added. The existing six native
 shutdown observations remain truthful diagnostics and new-admission closure.
+
+The initial direct-Ninja dry-run was stopped before compilation after identifying
+that AuxFast uses Siso dependency state. Direct Ninja discarded a compatibility
+log and scheduled 57,863 actions. The corrected executor uses the existing
+cloned Siso dependency state, explicit offline mode and an isolated cache.
+Historical refused attempt stays in `unsigned-build/`; final attempt is
+`unsigned-siso-build/`. This change preserves dependency-driven ABI rebuilds.
