@@ -1,0 +1,417 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+
+
+
+
+/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.node:
+Load command 0
+      cmd LC_SEGMENT_64
+  cmdsize 632
+  segname __TEXT
+   vmaddr 0x0000000000000000
+   vmsize 0x0000000000010000
+  fileoff 0
+ filesize 65536
+  maxprot 0x00000005
+ initprot 0x00000005
+   nsects 7
+    flags 0x0
+Section
+  sectname __text
+   segname __TEXT
+      addr 0x00000000000006a0
+      size 0x000000000000b120
+    offset 1696
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x80000400
+ reserved1 0
+ reserved2 0
+Section
+  sectname __stubs
+   segname __TEXT
+      addr 0x000000000000b7c0
+      size 0x00000000000009d8
+    offset 47040
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x80000408
+ reserved1 0 (index into indirect symbol table)
+ reserved2 12 (size of stubs)
+Section
+  sectname __stub_helper
+   segname __TEXT
+      addr 0x000000000000c198
+      size 0x0000000000000504
+    offset 49560
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x80000400
+ reserved1 0
+ reserved2 0
+Section
+  sectname __gcc_except_tab
+   segname __TEXT
+      addr 0x000000000000c69c
+      size 0x0000000000000770
+    offset 50844
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x00000000
+ reserved1 0
+ reserved2 0
+Section
+  sectname __cstring
+   segname __TEXT
+      addr 0x000000000000ce0c
+      size 0x000000000000043a
+    offset 52748
+     align 2^0 (1)
+    reloff 0
+    nreloc 0
+     flags 0x00000002
+ reserved1 0
+ reserved2 0
+Section
+  sectname __const
+   segname __TEXT
+      addr 0x000000000000d248
+      size 0x0000000000000278
+    offset 53832
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x00000000
+ reserved1 0
+ reserved2 0
+Section
+  sectname __unwind_info
+   segname __TEXT
+      addr 0x000000000000d4c0
+      size 0x00000000000005d8
+    offset 54464
+     align 2^2 (4)
+    reloff 0
+    nreloc 0
+     flags 0x00000000
+ reserved1 0
+ reserved2 0
+Load command 1
+      cmd LC_SEGMENT_64
+  cmdsize 232
+  segname __DATA_CONST
+   vmaddr 0x0000000000010000
+   vmsize 0x0000000000004000
+  fileoff 65536
+ filesize 16384
+  maxprot 0x00000003
+ initprot 0x00000003
+   nsects 2
+    flags 0x10
+Section
+  sectname __const
+   segname __DATA_CONST
+      addr 0x0000000000010000
+      size 0x0000000000000200
+    offset 65536
+     align 2^3 (8)
+    reloff 0
+    nreloc 0
+     flags 0x00000000
+ reserved1 0
+ reserved2 0
+Section
+  sectname __got
+   segname __DATA_CONST
+      addr 0x0000000000010200
+      size 0x00000000000003b8
+    offset 66048
+     align 2^3 (8)
+    reloff 0
+    nreloc 0
+     flags 0x00000006
+ reserved1 210 (index into indirect symbol table)
+ reserved2 0
+Load command 2
+      cmd LC_SEGMENT_64
+  cmdsize 312
+  segname __DATA
+   vmaddr 0x0000000000014000
+   vmsize 0x0000000000004000
+  fileoff 81920
+ filesize 16384
+  maxprot 0x00000003
+ initprot 0x00000003
+   nsects 3
+    flags 0x0
+Section
+  sectname __la_symbol_ptr
+   segname __DATA
+      addr 0x0000000000014000
+      size 0x0000000000000348
+    offset 81920
+     align 2^3 (8)
+    reloff 0
+    nreloc 0
+     flags 0x00000007
+ reserved1 329 (index into indirect symbol table)
+ reserved2 0
+Section
+  sectname __data
+   segname __DATA
+      addr 0x0000000000014348
+      size 0x0000000000000008
+    offset 82760
+     align 2^3 (8)
+    reloff 0
+    nreloc 0
+     flags 0x00000000
+ reserved1 0
+ reserved2 0
+Section
+  sectname __bss
+   segname __DATA
+      addr 0x0000000000014350
+      size 0x0000000000000008
+    offset 0
+     align 2^3 (8)
+    reloff 0
+    nreloc 0
+     flags 0x00000001
+ reserved1 0
+ reserved2 0
+Load command 3
+      cmd LC_SEGMENT_64
+  cmdsize 72
+  segname __LINKEDIT
+   vmaddr 0x0000000000018000
+   vmsize 0x0000000000014000
+  fileoff 98304
+ filesize 69240
+  maxprot 0x00000001
+ initprot 0x00000001
+   nsects 0
+    flags 0x0
+Load command 4
+            cmd LC_DYLD_INFO_ONLY
+        cmdsize 48
+     rebase_off 98304
+    rebase_size 40
+       bind_off 98344
+      bind_size 760
+  weak_bind_off 99104
+ weak_bind_size 6864
+  lazy_bind_off 105968
+ lazy_bind_size 3176
+     export_off 109144
+    export_size 5960
+Load command 5
+     cmd LC_SYMTAB
+ cmdsize 24
+  symoff 115592
+   nsyms 626
+  stroff 127344
+ strsize 40200
+Load command 6
+            cmd LC_DYSYMTAB
+        cmdsize 80
+      ilocalsym 0
+      nlocalsym 389
+     iextdefsym 389
+     nextdefsym 110
+      iundefsym 499
+      nundefsym 127
+         tocoff 0
+           ntoc 0
+      modtaboff 0
+        nmodtab 0
+   extrefsymoff 0
+    nextrefsyms 0
+ indirectsymoff 125608
+  nindirectsyms 434
+      extreloff 0
+        nextrel 0
+      locreloff 0
+        nlocrel 0
+Load command 7
+     cmd LC_UUID
+ cmdsize 24
+    uuid 1E23A368-7DAC-328E-B260-50D639F1F40C
+Load command 8
+      cmd LC_BUILD_VERSION
+  cmdsize 32
+ platform 1
+    minos 13.5
+      sdk 27.0
+   ntools 1
+     tool 3
+  version 27037.1
+Load command 9
+      cmd LC_SOURCE_VERSION
+  cmdsize 16
+  version 0.0
+Load command 10
+          cmd LC_LOAD_DYLIB
+      cmdsize 48
+         name /usr/lib/libc++.1.dylib (offset 24)
+   time stamp 2 Wed Dec 31 18:00:02 1969
+      current version 2200.27.0
+compatibility version 1.0.0
+Load command 11
+          cmd LC_LOAD_DYLIB
+      cmdsize 56
+         name /usr/lib/libSystem.B.dylib (offset 24)
+   time stamp 2 Wed Dec 31 18:00:02 1969
+      current version 1359.0.0
+compatibility version 1.0.0
+Load command 12
+      cmd LC_FUNCTION_STARTS
+  cmdsize 16
+  dataoff 115104
+ datasize 488
+Load command 13
+      cmd LC_DATA_IN_CODE
+  cmdsize 16
+  dataoff 115592
+ datasize 0
+
+_AuxNativePtyBeginCurrent
+_AuxNativePtyCanSpawn
+_AuxNativePtyChildCreated
+_AuxNativePtyDirectWaitResult
+_AuxNativePtySpawnFailed
+__Unwind_Resume
+__ZNKSt3__119__shared_weak_count13__get_deleterERKSt9type_info
+__ZNKSt9exception4whatEv
+__ZNSt20bad_array_new_lengthC1Ev
+__ZNSt20bad_array_new_lengthD1Ev
+__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6resizeEmc
+__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7reserveEm
+__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED1Ev
+__ZNSt3__115__thread_structC1Ev
+__ZNSt3__115__thread_structD1Ev
+__ZNSt3__118condition_variable10notify_oneEv
+__ZNSt3__118condition_variable4waitERNS_11unique_lockINS_5mutexEEE
+__ZNSt3__118condition_variableD1Ev
+__ZNSt3__119__shared_weak_count14__release_weakEv
+__ZNSt3__119__shared_weak_countD2Ev
+__ZNSt3__119__thread_local_dataEv
+__ZNSt3__120__throw_system_errorEiPKc
+__ZNSt3__15mutex4lockEv
+__ZNSt3__15mutex6unlockEv
+__ZNSt3__15mutexD1Ev
+__ZNSt3__16thread4joinEv
+__ZNSt3__16threadD1Ev
+__ZNSt9exceptionD2Ev
+__ZSt9terminatev
+__ZTINSt3__119__shared_weak_countE
+__ZTISt20bad_array_new_length
+__ZTISt9exception
+__ZTVN10__cxxabiv117__class_type_infoE
+__ZTVN10__cxxabiv120__si_class_type_infoE
+__ZTVN10__cxxabiv121__vmi_class_type_infoE
+__ZTVNSt3__114__shared_countE
+__ZTVNSt3__119__shared_weak_countE
+__ZTVSt9exception
+__ZdaPv
+__ZdlPv
+__ZdlPvSt11align_val_t
+__Znam
+__Znwm
+__ZnwmSt11align_val_t
+___cxa_allocate_exception
+___cxa_begin_catch
+___cxa_end_catch
+___cxa_free_exception
+___cxa_pure_virtual
+___cxa_rethrow
+___cxa_throw
+___error
+___gxx_personality_v0
+___stack_chk_fail
+___stack_chk_guard
+_bzero
+_cfsetispeed
+_cfsetospeed
+_close
+_fcntl
+_free
+_grantpt
+_ioctl
+_memset
+_napi_add_finalizer
+_napi_call_function
+_napi_call_threadsafe_function
+_napi_close_escapable_handle_scope
+_napi_close_handle_scope
+_napi_create_double
+_napi_create_error
+_napi_create_function
+_napi_create_object
+_napi_create_reference
+_napi_create_string_utf8
+_napi_create_threadsafe_function
+_napi_create_type_error
+_napi_define_properties
+_napi_delete_reference
+_napi_escape_handle
+_napi_fatal_error
+_napi_get_and_clear_last_exception
+_napi_get_array_length
+_napi_get_cb_info
+_napi_get_element
+_napi_get_last_error_info
+_napi_get_named_property
+_napi_get_property
+_napi_get_reference_value
+_napi_get_undefined
+_napi_get_value_bool
+_napi_get_value_int32
+_napi_get_value_string_utf8
+_napi_has_property
+_napi_is_array
+_napi_is_exception_pending
+_napi_open_escapable_handle_scope
+_napi_open_handle_scope
+_napi_release_threadsafe_function
+_napi_set_named_property
+_napi_throw
+_napi_typeof
+_open
+_openpty
+_posix_openpt
+_posix_spawn
+_posix_spawn_file_actions_addclose
+_posix_spawn_file_actions_adddup2
+_posix_spawn_file_actions_destroy
+_posix_spawn_file_actions_init
+_posix_spawnattr_destroy
+_posix_spawnattr_init
+_posix_spawnattr_setflags
+_posix_spawnattr_setsigdefault
+_posix_spawnattr_setsigmask
+_pthread_create
+_pthread_setspecific
+_ptsname
+_strcmp
+_strdup
+_strlen
+_sysctl
+_tcgetpgrp
+_tcsetattr
+_unlockpt
+_waitpid
+dyld_stub_binder
+
+patching file 'src/unix/pty.cc'

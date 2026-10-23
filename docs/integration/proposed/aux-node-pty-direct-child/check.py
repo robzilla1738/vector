@@ -63,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix='aux-pty-compile-') as temporary:
     symbols = run(['nm', '-u', str(output / 'pty.node')])
     assert '_waitpid' in symbols
     bridge_symbols = [
-        'AuxNativePtyBeginCurrent', 'AuxNativePtyCanSpawn',
+        'AuxNativePtyBeginCurrent', 'AuxNativePtyCanSpawn', 'AuxNativePtyCopyHelperPath',
         'AuxNativePtySpawnFailed', 'AuxNativePtyChildCreated',
         'AuxNativePtyDirectWaitResult',
     ]

@@ -1,0 +1,105 @@
+{
+  "format": "aux.node-pty.direct-child.compile.v1",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+  "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+  "commands": [
+    [
+      "xcrun",
+      "--find",
+      "clang++"
+    ],
+    [
+      "xcrun",
+      "--show-sdk-path"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "--version"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-std=c++17",
+      "-fexceptions",
+      "-DNAPI_CPP_EXCEPTIONS",
+      "-DNAPI_VERSION=8",
+      "-DNODE_GYP_MODULE_NAME=pty",
+      "-mmacosx-version-min=13.5",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-I",
+      "/private/tmp/aux-node-pty-build-deps-20261023/node_modules/node-addon-api",
+      "-I",
+      "/private/tmp/aux-pty-environment-bridge/docs/integration/proposed/aux-native-pty-environment-bridge/source",
+      "-idirafter",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+      "-c",
+      "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc",
+      "-o",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.o"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-bundle",
+      "-undefined",
+      "dynamic_lookup",
+      "-Wl,-no_adhoc_codesign",
+      "-mmacosx-version-min=13.5",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.o",
+      "-o",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.node"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-std=c++17",
+      "-c",
+      "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/check-wait.cc",
+      "-o",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/check-wait.o"
+    ],
+    [
+      "otool",
+      "-l",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.node"
+    ],
+    [
+      "nm",
+      "-u",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-qsrxxwve/pty.node"
+    ],
+    [
+      "patch",
+      "-p1",
+      "-i",
+      "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/pty.patch"
+    ]
+  ],
+  "sourceSha256": "43830514c565407cf39d39e3bce98749e328fa734aefa25855f3be089c2b0906",
+  "sourceInputsMatchedBeforeAndAfterCompilation": true,
+  "waitHeaderSha256": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+  "patchSha256": "bd5a71a3dcfa30f435017552c56281b1ab0f21fc563923a676444de4a1eb7572",
+  "upstreamSourceSha256": "5e1005d6bdcfbe97b486ee415419fe7adae99035047f07340fbad36419e0bae6",
+  "nodeVersionHeaderSha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+  "nodeApiHeaderSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+  "reservationHeaderSha256": "4a0d27c476b39a0d5144fe7463c5be3630764af5e592b50bc95a86842aea9220",
+  "requiredNativeHostImports": [
+    "AuxNativePtyBeginCurrent",
+    "AuxNativePtyCanSpawn",
+    "AuxNativePtySpawnFailed",
+    "AuxNativePtyChildCreated",
+    "AuxNativePtyDirectWaitResult"
+  ],
+  "hostBridgeResolvedOrExecuted": false,
+  "napiHeaderSha256": "2f2f5d1e4ca96f315c51ad96c292c18294dbb999b98f8b2f33b80816a3189fb0",
+  "napiInlineHeaderSha256": "4b053c184dfed740fbd802fdcf97e85fb8c7b0eb1d83322000d932d31662eda7",
+  "objectSha256": "ac98ab5b2ea2ec72c3111e9d25b1ee0c7ce64ae1d23e66a5a0bb1830bb0d08b4",
+  "unsignedModuleSha256": "a4e7054ba988628622c01a633c1ba4bd6d2b3ddff2bb26cc1bc30d308617f00a",
+  "actualAddonCompiledAndLinked": true,
+  "addonLoadedOrExecuted": false,
+  "compileTimeWaitResultChecksPassed": true,
+  "runtimeWaitOrFailureInjectionPerformed": false,
+  "moduleCodeSignatureAbsent": true,
+  "realPtySpawnPerformed": false,
+  "acceptedRuntimeOrPolicyChanged": false,
+  "descendantCustodyEstablished": false,
+  "temporaryOutputsRemovedAfterCheck": true
+}

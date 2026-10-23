@@ -1,0 +1,44 @@
+{
+  "format": "aux.node-pty.direct-child.source.v3",
+  "upstreamCommit": "1def5774632305246fe21f0f69e23a664d6c5910",
+  "previousRevision": "historical/spawn-fd-v2/source-pins.json",
+  "requiredHostHeader": {
+    "path": "../aux-native-pty-environment-bridge/source/AuxNativePtyReservation.h",
+    "commit": "7a3503003",
+    "sha256": "4a0d27c476b39a0d5144fe7463c5be3630764af5e592b50bc95a86842aea9220"
+  },
+  "files": {
+    "LICENSE": {
+      "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+      "bytes": 3326
+    },
+    "check-wait.cc": {
+      "sha256": "f9f675d0247488bd1677b3413b9c9557c9bad1607b8dea3f2e4258bcd1a45650",
+      "bytes": 842
+    },
+    "check.py": {
+      "sha256": "e6c701c45ef1b4fa23e4be31682460d5ab801e5ed3ea7631cffc59f5e425bbf0",
+      "bytes": 5178
+    },
+    "compiler-package-lock.json": {
+      "sha256": "bdd7ecf272de4c3cfd709d38a291de9113c8642a90a5d5d93a203046f7e81f72",
+      "bytes": 637
+    },
+    "compiler-package.json": {
+      "sha256": "c6665e739ce6687d2532435ecc595b57683122142949df6050a931c9a1911b3e",
+      "bytes": 107
+    },
+    "pty.patch": {
+      "sha256": "bd5a71a3dcfa30f435017552c56281b1ab0f21fc563923a676444de4a1eb7572",
+      "bytes": 17571
+    },
+    "source/direct-child-wait.h": {
+      "sha256": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+      "bytes": 828
+    },
+    "source/pty.cc": {
+      "sha256": "43830514c565407cf39d39e3bce98749e328fa734aefa25855f3be089c2b0906",
+      "bytes": 23361
+    }
+  }
+}

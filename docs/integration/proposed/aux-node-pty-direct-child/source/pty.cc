@@ -28,6 +28,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <memory>
+#include <new>
 #include <mutex>
 #include "direct-child-wait.h"
 #include <AuxNativePtyReservation.h>
@@ -286,6 +287,12 @@ struct DelBuf {
   }
 };
 
+static char* pty_duplicate_argument(const char* argument) {
+  char* copy = strdup(argument);
+  if (copy == nullptr) throw std::bad_alloc();
+  return copy;
+}
+
 Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   NativePtyReservation reservation(AuxNativePtyBeginCurrent());
   Napi::Env napiEnv(info.Env());
@@ -322,7 +329,7 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   env[envc] = NULL;
   for (int i = 0; i < envc; i++) {
     std::string pair = env_.Get(i).As<Napi::String>();
-    env[i] = strdup(pair.c_str());
+    env[i] = pty_duplicate_argument(pair.c_str());
   }
 
   // cwd
@@ -379,8 +386,16 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   cfsetispeed(term, B38400);
   cfsetospeed(term, B38400);
 
-  // helperPath
-  std::string helper_path = info[9].As<Napi::String>();
+  // Keep helperPath's argument shape, but only native policy selects the image.
+  char helper_path[4096] = {};
+  uint32_t helper_path_bytes = 0;
+  if (AuxNativePtyCopyHelperPath(reservation.Handle(), helper_path,
+                               sizeof(helper_path), &helper_path_bytes) != 0 ||
+      helper_path_bytes < 2 || helper_path_bytes > sizeof(helper_path) ||
+      helper_path[0] != '/' || helper_path[helper_path_bytes - 1] != '\0' ||
+      memchr(helper_path, '\0', helper_path_bytes - 1) != nullptr) {
+    throw Napi::Error::New(napiEnv, "Authenticated native PTY helper unavailable");
+  }
 
   PreparedExitCallback exit_callback(
       napiEnv, info[10].As<Napi::Function>(), reservation.Handle());
@@ -392,13 +407,13 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   int argl = argc + 4;
   std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
   char **argv = argv_unique_ptr.get();
-  argv[0] = strdup(helper_path.c_str());
-  argv[1] = strdup(cwd_.c_str());
-  argv[2] = strdup(file.c_str());
+  argv[0] = pty_duplicate_argument(helper_path);
+  argv[1] = pty_duplicate_argument(cwd_.c_str());
+  argv[2] = pty_duplicate_argument(file.c_str());
   argv[argl - 1] = NULL;
   for (int i = 0; i < argc; i++) {
     std::string arg = argv_.Get(i).As<Napi::String>();
-    argv[i + 3] = strdup(arg.c_str());
+    argv[i + 3] = pty_duplicate_argument(arg.c_str());
   }
 
   int err = -1;
@@ -415,11 +430,11 @@ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
   int argl = argc + 2;
   std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
   char** argv = argv_unique_ptr.get();
-  argv[0] = strdup(file.c_str());
+  argv[0] = pty_duplicate_argument(file.c_str());
   argv[argl - 1] = NULL;
   for (int i = 0; i < argc; i++) {
     std::string arg = argv_.Get(i).As<Napi::String>();
-    argv[i + 1] = strdup(arg.c_str());
+    argv[i + 1] = pty_duplicate_argument(arg.c_str());
   }
 
   sigset_t newmask, oldmask;

@@ -1,0 +1,553 @@
+--- a/src/unix/pty.cc
++++ b/src/unix/pty.cc
+@@ -25,6 +25,12 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <thread>
++#include <atomic>
++#include <condition_variable>
++#include <memory>
++#include <mutex>
++#include "direct-child-wait.h"
++#include <AuxNativePtyReservation.h>
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -107,110 +113,132 @@
+ #endif
+ 
+ struct ExitEvent {
+-  int exit_code = 0, signal_code = 0;
++  int exit_code = 0, signal_code = 0, wait_error = 0;
+ };
+ 
+-void SetupExitCallback(Napi::Env env, Napi::Function cb, pid_t pid) {
+-  std::thread *th = new std::thread;
+-  // Don't use Napi::AsyncWorker which is limited by UV_THREADPOOL_SIZE.
+-  auto tsfn = Napi::ThreadSafeFunction::New(
+-      env,
+-      cb,                           // JavaScript function called asynchronously
+-      "SetupExitCallback_resource", // Name
+-      0,                            // Unlimited queue
+-      1,                            // Only one thread will use this initially
+-      [th](Napi::Env) {   // Finalizer used to clean threads up
+-        th->join();
+-        delete th;
++struct UnknownChild {
++  pid_t pid = 0;
++  int wait_error = 0;
++  UnknownChild* next = nullptr;
++};
++
++// A failed sole wait cannot be turned into exit, even if JS delivery is gone.
++// Retain the native creation identity until a separately designed recovery path.
++static std::atomic<UnknownChild*> unknown_children{nullptr};
++
++class NativePtyReservation {
++ public:
++  explicit NativePtyReservation(void* handle) noexcept : handle_(handle) {}
++  ~NativePtyReservation() {
++    if (handle_ != nullptr && pending_) AuxNativePtySpawnFailed(handle_);
++  }
++  void* Handle() const noexcept { return handle_; }
++  bool CanSpawn() const noexcept { return AuxNativePtyCanSpawn(handle_) != 0; }
++  void ChildCreated(pid_t pid) noexcept {
++    pending_ = false;
++    AuxNativePtyChildCreated(handle_, pid);
++  }
++ private:
++  void* handle_;
++  bool pending_ = true;
++};
++
++class PreparedExitCallback {
++ public:
++  PreparedExitCallback(Napi::Env env, Napi::Function cb, void* reservation)
++      : state_(std::make_shared<State>()) {
++    state_->reservation = reservation;
++    auto state = state_;
++    auto tsfn = Napi::ThreadSafeFunction::New(
++        env, cb, "SetupExitCallback_resource", 0, 1,
++        [state](Napi::Env) {
++          if (state->thread.joinable()) state->thread.join();
++        });
++    try {
++      state->thread = std::thread([state, tsfn]() mutable {
++        pid_t pid;
++        {
++          std::unique_lock<std::mutex> lock(state->mutex);
++          state->ready.wait(lock, [&] { return state->published; });
++          pid = state->pid;
++        }
++        if (pid > 0) {
++          state->unknown->pid = pid;
++          const auto result = WaitForDirectChild(pid);
++          AuxNativePtyDirectWaitResult(
++              state->reservation, result.waited, result.raw_status);
++          state->event.wait_error = result.error;
++          if (result.error != 0) {
++            auto* unknown = state->unknown.release();
++            unknown->wait_error = result.error;
++            unknown->next = unknown_children.load();
++            while (!unknown_children.compare_exchange_weak(unknown->next, unknown)) {}
++          } else {
++            if (WIFEXITED(result.status))
++              state->event.exit_code = WEXITSTATUS(result.status);
++            if (WIFSIGNALED(result.status))
++              state->event.signal_code = WTERMSIG(result.status);
++          }
++          auto callback = [](Napi::Env env, Napi::Function cb, ExitEvent* event) {
++            if (env == nullptr) return;
++            if (event->wait_error != 0) {
++              // Do not call onexit: its consumer treats that as completed custody.
++              Napi::Error::New(env, "PTY child wait failed; child state is unknown")
++                  .ThrowAsJavaScriptException();
++              return;
++            }
++            cb.Call({Napi::Number::New(env, event->exit_code),
++                     Napi::Number::New(env, event->signal_code)});
++          };
++          const auto status = tsfn.BlockingCall(&state->event, callback);
++          if (status == napi_closing) return;
++          if (status != napi_ok)
++            Napi::Error::Fatal("SetupExitCallback", "Exit delivery failed");
++        }
++        if (tsfn.Release() != napi_ok)
++          Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
+       });
+-  *th = std::thread([tsfn = std::move(tsfn), pid] {
+-    auto callback = [](Napi::Env env, Napi::Function cb, ExitEvent *exit_event) {
+-      cb.Call({Napi::Number::New(env, exit_event->exit_code),
+-               Napi::Number::New(env, exit_event->signal_code)});
+-      delete exit_event;
+-    };
+-
+-    int ret;
+-    int stat_loc;
+-#if defined(__APPLE__)
+-    // Based on
+-    // https://source.chromium.org/chromium/chromium/src/+/main:base/process/kill_mac.cc;l=35-69?
+-    int kq = HANDLE_EINTR(kqueue());
+-    struct kevent change = {0};
+-    EV_SET(&change, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
+-    ret = HANDLE_EINTR(kevent(kq, &change, 1, NULL, 0, NULL));
+-    if (ret == -1) {
+-      if (errno == ESRCH) {
+-        // At this point, one of the following has occurred:
+-        // 1. The process has died but has not yet been reaped.
+-        // 2. The process has died and has already been reaped.
+-        // 3. The process is in the process of dying. It's no longer
+-        //    kqueueable, but it may not be waitable yet either. Mark calls
+-        //    this case the "zombie death race".
+-        ret = HANDLE_EINTR(waitpid(pid, &stat_loc, WNOHANG));
+-        if (ret == 0) {
+-          ret = kill(pid, SIGKILL);
+-          if (ret != -1) {
+-            HANDLE_EINTR(waitpid(pid, &stat_loc, 0));
+-          }
+-        }
+-      }
+-    } else {
+-      struct kevent event = {0};
+-      ret = HANDLE_EINTR(kevent(kq, NULL, 0, &event, 1, NULL));
+-      if (ret == 1) {
+-        if ((event.fflags & NOTE_EXIT) &&
+-            (event.ident == static_cast<uintptr_t>(pid))) {
+-          // The process is dead or dying. This won't block for long, if at
+-          // all.
+-          HANDLE_EINTR(waitpid(pid, &stat_loc, 0));
+-        }
+-      }
++    } catch (...) {
++      if (tsfn.Release() != napi_ok)
++        Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
++      throw;
+     }
+-#else
+-    while (true) {
+-      errno = 0;
+-      if ((ret = waitpid(pid, &stat_loc, 0)) != pid) {
+-        if (ret == -1 && errno == EINTR) {
+-          continue;
+-        }
+-        if (ret == -1 && errno == ECHILD) {
+-          // XXX node v0.8.x seems to have this problem.
+-          // waitpid is already handled elsewhere.
+-          ;
+-        } else {
+-          assert(false);
+-        }
+-      }
+-      break;
++  }
++
++  ~PreparedExitCallback() { Publish(0); }
++
++  void Publish(pid_t pid) noexcept {
++    {
++      std::lock_guard<std::mutex> lock(state_->mutex);
++      if (state_->published) return;
++      state_->pid = pid;
++      state_->published = true;
+     }
+-#endif
+-    ExitEvent *exit_event = new ExitEvent;
+-    if (WIFEXITED(stat_loc)) {
+-      exit_event->exit_code = WEXITSTATUS(stat_loc); // errno?
+-    }
+-    if (WIFSIGNALED(stat_loc)) {
+-      exit_event->signal_code = WTERMSIG(stat_loc);
+-    }
+-    auto status = tsfn.BlockingCall(exit_event, callback); // In main thread
+-    switch (status) {
+-      case napi_closing:
+-        break;
+-
+-      case napi_queue_full:
+-        Napi::Error::Fatal("SetupExitCallback", "Queue was full");
+-
+-      case napi_ok:
+-        if (tsfn.Release() != napi_ok) {
+-          Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.Release() failed");
+-        }
+-        break;
+-
+-      default:
+-        Napi::Error::Fatal("SetupExitCallback", "ThreadSafeFunction.BlockingCall() failed");
+-    }
+-  });
+-}
++    state_->ready.notify_one();
++  }
++
++ private:
++  struct State {
++    std::mutex mutex;
++    std::condition_variable ready;
++    bool published = false;
++    pid_t pid = 0;
++    void* reservation = nullptr;
++    ExitEvent event;
++    std::unique_ptr<UnknownChild> unknown{new UnknownChild};
++    std::thread thread;
++  };
++  std::shared_ptr<State> state_;
++};
++
++class ScopedPtyMaster {
++ public:
++  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}
++  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }
++  void Release() { fd_ = -1; }
++ private:
++  int& fd_;
++};
+ 
+ /**
+  * Methods
+@@ -243,7 +271,7 @@
+                 const struct winsize *winp,
+                 int* master,
+                 pid_t* pid,
+-                int* err);
++                int* err, NativePtyReservation& reservation);
+ #endif
+ 
+ struct DelBuf {
+@@ -259,8 +287,11 @@
+ };
+ 
+ Napi::Value PtyFork(const Napi::CallbackInfo& info) {
++  NativePtyReservation reservation(AuxNativePtyBeginCurrent());
+   Napi::Env napiEnv(info.Env());
+   Napi::HandleScope scope(napiEnv);
++  if (reservation.Handle() == nullptr)
++    throw Napi::Error::New(napiEnv, "Native PTY creation is unavailable");
+ 
+   if (info.Length() != 11 ||
+       !info[0].IsString() ||
+@@ -286,7 +317,7 @@
+   // env
+   Napi::Array env_ = info[2].As<Napi::Array>();
+   int envc = env_.Length();
+-  std::unique_ptr<char *, DelBuf> env_unique_ptr(new char *[envc + 1], DelBuf(envc + 1));
++  std::unique_ptr<char *, DelBuf> env_unique_ptr(new char *[envc + 1](), DelBuf(envc + 1));
+   char **env = env_unique_ptr.get();
+   env[envc] = NULL;
+   for (int i = 0; i < envc; i++) {
+@@ -351,12 +382,15 @@
+   // helperPath
+   std::string helper_path = info[9].As<Napi::String>();
+ 
++  PreparedExitCallback exit_callback(
++      napiEnv, info[10].As<Napi::Function>(), reservation.Handle());
+   pid_t pid;
+-  int master;
++  int master = -1;
++  ScopedPtyMaster master_owner(master);
+ #if defined(__APPLE__)
+   int argc = argv_.Length();
+   int argl = argc + 4;
+-  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl], DelBuf(argl));
++  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
+   char **argv = argv_unique_ptr.get();
+   argv[0] = strdup(helper_path.c_str());
+   argv[1] = strdup(cwd_.c_str());
+@@ -368,17 +402,18 @@
+   }
+ 
+   int err = -1;
+-  pty_posix_spawn(argv, env, term, &winp, &master, &pid, &err);
++  pty_posix_spawn(argv, env, term, &winp, &master, &pid, &err, reservation);
+   if (err != 0) {
+     throw Napi::Error::New(napiEnv, "posix_spawnp failed.");
+   }
++  exit_callback.Publish(pid);
+   if (pty_nonblock(master) == -1) {
+     throw Napi::Error::New(napiEnv, "Could not set master fd to nonblocking.");
+   }
+ #else
+   int argc = argv_.Length();
+   int argl = argc + 2;
+-  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl], DelBuf(argl));
++  std::unique_ptr<char *, DelBuf> argv_unique_ptr(new char *[argl](), DelBuf(argl));
+   char** argv = argv_unique_ptr.get();
+   argv[0] = strdup(file.c_str());
+   argv[argl - 1] = NULL;
+@@ -396,7 +431,12 @@
+   sigfillset(&newmask);
+   pthread_sigmask(SIG_SETMASK, &newmask, &oldmask);
+ 
++  if (!reservation.CanSpawn()) {
++    pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
++    throw Napi::Error::New(napiEnv, "Native PTY creation is closed");
++  }
+   pid = forkpty(&master, nullptr, static_cast<termios*>(term), static_cast<winsize*>(&winp));
++  if (pid > 0) reservation.ChildCreated(pid);
+ 
+   if (!pid) {
+     // remove all signal handler from child
+@@ -442,6 +482,7 @@
+         _exit(1);
+       }
+     default:
++      exit_callback.Publish(pid);
+       if (pty_nonblock(master) == -1) {
+         throw Napi::Error::New(napiEnv, "Could not set master fd to nonblocking.");
+       }
+@@ -453,9 +494,7 @@
+   obj.Set("pid", Napi::Number::New(napiEnv, pid));
+   obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));
+ 
+-  // Set up process exit callback.
+-  Napi::Function cb = info[10].As<Napi::Function>();
+-  SetupExitCallback(napiEnv, cb, pid);
++  master_owner.Release();
+   return obj;
+ }
+ 
+@@ -690,97 +729,121 @@
+                 const struct winsize *winp,
+                 int* master,
+                 pid_t* pid,
+-                int* err) {
+-  int low_fds[3];
++                int* err, NativePtyReservation& reservation) {
++  int low_fds[3] = {-1, -1, -1};
+   size_t count = 0;
+-
+-  for (; count < 3; count++) {
+-    low_fds[count] = posix_openpt(O_RDWR);
+-    if (low_fds[count] >= STDERR_FILENO)
+-      break;
+-  }
+-
+-  int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
+-              POSIX_SPAWN_SETSIGDEF |
+-              POSIX_SPAWN_SETSIGMASK |
+-              POSIX_SPAWN_SETSID;
+-  *master = posix_openpt(O_RDWR);
+-  if (*master == -1) {
+-    return;
+-  }
+-
+-  int res = grantpt(*master) || unlockpt(*master);
+-  if (res == -1) {
+-    return;
++  int master_fd = -1, slave = -1;
++  pid_t child_pid = -1;
++  posix_spawn_file_actions_t acts;
++  posix_spawnattr_t attrs;
++  bool acts_initialized = false, attrs_initialized = false;
++  sigset_t signal_set;
++  char slave_pty_name[128];
++  const int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
++                    POSIX_SPAWN_SETSIGDEF |
++                    POSIX_SPAWN_SETSIGMASK |
++                    POSIX_SPAWN_SETSID;
++  *master = -1;
++  *pid = -1;
++  *err = 0;
++
++  // Keep initially closed stdio slots occupied until the PTY is configured.
++  while (count < 3) {
++    const int fd = posix_openpt(O_RDWR);
++    if (fd == -1) {
++      *err = errno;
++      goto done;
++    }
++    low_fds[count++] = fd;
++    if (fd >= STDERR_FILENO) break;
++  }
++
++  master_fd = posix_openpt(O_RDWR);
++  if (master_fd == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (grantpt(master_fd) == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (unlockpt(master_fd) == -1) {
++    *err = errno;
++    goto done;
+   }
+ 
+   // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
+-  int slave;
+-  char slave_pty_name[128];
+-  res = ioctl(*master, TIOCPTYGNAME, slave_pty_name);
+-  if (res == -1) {
+-    return;
+-  }
+-
++  if (ioctl(master_fd, TIOCPTYGNAME, slave_pty_name) == -1) {
++    *err = errno;
++    goto done;
++  }
+   slave = open(slave_pty_name, O_RDWR | O_NOCTTY);
+   if (slave == -1) {
+-    return;
+-  }
+-
+-  if (termp) {
+-    res = tcsetattr(slave, TCSANOW, termp);
+-    if (res == -1) {
+-      return;
+-    };
+-  }
+-
+-  if (winp) {
+-    res = ioctl(slave, TIOCSWINSZ, winp);
+-    if (res == -1) {
+-      return;
++    *err = errno;
++    goto done;
++  }
++  if (termp && tcsetattr(slave, TCSANOW, termp) == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (winp && ioctl(slave, TIOCSWINSZ, winp) == -1) {
++    *err = errno;
++    goto done;
++  }
++
++  *err = posix_spawn_file_actions_init(&acts);
++  if (*err != 0) goto done;
++  acts_initialized = true;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDIN_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDOUT_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDERR_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_addclose(&acts, slave);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_addclose(&acts, master_fd);
++  if (*err != 0) goto done;
++
++  *err = posix_spawnattr_init(&attrs);
++  if (*err != 0) goto done;
++  attrs_initialized = true;
++  *err = posix_spawnattr_setflags(&attrs, flags);
++  if (*err != 0) goto done;
++  if (sigfillset(&signal_set) == -1) {
++    *err = errno;
++    goto done;
++  }
++  *err = posix_spawnattr_setsigdefault(&attrs, &signal_set);
++  if (*err != 0) goto done;
++  if (sigemptyset(&signal_set) == -1) {
++    *err = errno;
++    goto done;
++  }
++  *err = posix_spawnattr_setsigmask(&attrs, &signal_set);
++  if (*err != 0) goto done;
++
++  do {
++    if (!reservation.CanSpawn()) {
++      *err = ECANCELED;
++      goto done;
+     }
+-  }
+-
+-  posix_spawn_file_actions_t acts;
+-  posix_spawn_file_actions_init(&acts);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDIN_FILENO);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDOUT_FILENO);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDERR_FILENO);
+-  posix_spawn_file_actions_addclose(&acts, slave);
+-  posix_spawn_file_actions_addclose(&acts, *master);
+-
+-  posix_spawnattr_t attrs;
+-  posix_spawnattr_init(&attrs);
+-  *err = posix_spawnattr_setflags(&attrs, flags);
+-  if (*err != 0) {
+-    goto done;
+-  }
+-
+-  sigset_t signal_set;
+-  /* Reset all signal the child to their default behavior */
+-  sigfillset(&signal_set);
+-  *err = posix_spawnattr_setsigdefault(&attrs, &signal_set);
+-  if (*err != 0) {
+-    goto done;
+-  }
+-
+-  /* Reset the signal mask for all signals */
+-  sigemptyset(&signal_set);
+-  *err = posix_spawnattr_setsigmask(&attrs, &signal_set);
+-  if (*err != 0) {
+-    goto done;
+-  }
+-
+-  do
+-    *err = posix_spawn(pid, argv[0], &acts, &attrs, argv, env);
+-  while (*err == EINTR);
++    *err = posix_spawn(&child_pid, argv[0], &acts, &attrs, argv, env);
++  } while (*err == EINTR);
++  if (*err == 0) {
++    reservation.ChildCreated(child_pid);
++    *pid = child_pid;
++    *master = master_fd;
++    master_fd = -1;
++  }
+ done:
+-  posix_spawn_file_actions_destroy(&acts);
+-  posix_spawnattr_destroy(&attrs);
+-
+-  for (; count > 0; count--) {
+-    close(low_fds[count]);
+-  }
++  // Cleanup must not turn a created child into a reported spawn failure:
++  // the prepared sole reaper receives its identity immediately on return.
++  if (acts_initialized) posix_spawn_file_actions_destroy(&acts);
++  if (attrs_initialized) posix_spawnattr_destroy(&attrs);
++  if (slave != -1) close(slave);
++  if (master_fd != -1) close(master_fd);
++  while (count > 0) close(low_fds[--count]);
+ }
+ #endif
+ 
