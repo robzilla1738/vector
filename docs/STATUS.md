@@ -1,3 +1,13 @@
+# Current complete browser and daemon builds pass — 2026-10-23
+
+Actual full browser18769 passed32 incremental steps in4m24.74s, including auth_scheme_probe, framework/app/helper links, library verification and all three inventoried artifacts. The generated synthetic-key probe passed. Exact successful receipt: `docs/integration/proposed/aux-native-parent-swift-link/evidence/actual-browser-build.json`. This is the applied831-source/23-artwork runtime-link composition; source/artwork hashes were verified by the builder. No second successful compile graph was repeated.
+
+The current coherent standalone daemon68715 also linked successfully, as recorded below. These results close the current compiler/link failures only. Paired packaging of the new main still needs explicit checked integration; default-off cold startup, legacy/writer authority, protected startup and real same-candidate app/UI behavior remain unaccepted. No app was launched, signed, installed or substituted for the accepted app. Owner state/provider production and accepted UI are untouched.
+
+# Packaging integration gap identified — 2026-10-23
+
+Read-only producer audit confirms existing stage/assembly/checker/package scripts always adapt the supplied SEA daemon. They cannot yet truthfully package the newly linked standalone native main. A manual post-package binary copy would invalidate checked inventories and is not being used. A paired explicit build-receipt/replacement inventory proposal is being prepared; receipts establish build provenance only, not runtime authority. Default-off cold entry and actual state2 refusal remain unchanged. Current18769 full browser link remains live; no new candidate, signing, activation or accepted UI change occurred.
+
 # Daemon link passes; browser Swift runtime correction applied — 2026-10-23
 
 Actual current daemon build68715 passed: ten verified existing objects reused, exact shared safe-container transport recompiled,46 Swift sources linked, and metadata confirms all38 original PTY imports among145 Node-API exports. Executable SHA256 `972c221c6765d939e81534a980336eed62c38f4f9e1bc433dae5e27303b4b435`. It was not run, signed, installed or loaded. Actual receipts/logs: `docs/integration/proposed/aux-native-main-safe-transport-resume/evidence/`.

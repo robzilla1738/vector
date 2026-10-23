@@ -21,3 +21,5 @@ Source, object, real toolchain/SDK library, captured driver metadata and Python 
 ## Root actual check
 
 Actual serialized check14125 passed both compiler/linker steps against the three real parent objects. Both C wrappers were explicitly retained; the output was not run. Receipt and logs are under `evidence/`. The one-file GN correction was then composed/applied with854 verified source/artwork targets; actual full browser resume18769 remains separate and pending. No runtime or accepted-app claim follows from the bounded link result.
+
+Actual whole browser18769 subsequently passed32 incremental steps in4m24.74s, including the real authentication-probe/framework/app/helper final links and library verification. The builder inventoried three artifacts and passed its generated synthetic-key probe. `evidence/actual-browser-build.json` records exact source/artwork/artifact hashes. No app launch, protected startup, signing or accepted-app replacement occurred.

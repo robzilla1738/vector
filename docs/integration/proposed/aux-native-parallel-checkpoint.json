@@ -352,6 +352,16 @@
       "exitCode": 0,
       "role": "actual three parent Swift objects linked with genuine C++ driver and forced C wrappers retained; output never run",
       "evidence": "docs/integration/proposed/aux-native-parent-swift-link/evidence/results.json"
+    },
+    {
+      "session": 18769,
+      "exitCode": 0,
+      "role": "actual831-source browser final link, three artifacts and synthetic generated-key probe passed",
+      "receipt": "docs/integration/proposed/aux-native-parent-swift-link/evidence/actual-browser-build.json",
+      "receiptSha256": "ccb16f25292b8961f167722da3ecd2b3a6c2f1681c25b75592903217bf9d5f7e",
+      "actualSteps": 32,
+      "elapsed": "4m24.74s",
+      "runtimeAcceptance": false
     }
   ],
   "appliedCurrentNativeComposition": {
@@ -359,19 +369,10 @@
     "sources": 831,
     "assets": 23,
     "applied": true,
-    "compiled": false,
+    "compiled": true,
     "applyReceipt": "out/native-reuse-composition-aux-parent-swift-runtime/native-before-apply-19ru6kjl/apply-receipt.json"
   },
-  "rootQueuedChecks": [
-    {
-      "session": 18769,
-      "role": "actual combined browser final link with propagated Swift runtime config",
-      "receiptOnSuccess": "out/aux-parent-swift-runtime-browser-build.json",
-      "jobs": 2,
-      "nativeSourceFrozen": true,
-      "state": "live; started after actual focused parent link passed and all854 apply targets verified"
-    }
-  ],
+  "rootQueuedChecks": [],
   "lastBuildObservation": {
     "session": 93645,
     "terminal": true,
@@ -485,7 +486,7 @@
     "sixTranslationUnitsPassed": true,
     "wireSyntaxPassedWithActualSdk": true,
     "review": "docs/integration/proposed/aux-native-platform-flags-successor/evidence/actual-parent-summary.json",
-    "browserLinked": false,
+    "browserLinked": true,
     "runtimeExecuted": false
   }
 }
