@@ -1,0 +1,189 @@
+--- frozen/AuxFreshBootstrapPolicy.swift
++++ v3/AuxFreshBootstrapPolicy.swift
+@@ -47,6 +47,7 @@
+     let canonicalPrivateParent:String
+     let accessGroup:String
+     var embeddedDaemon:Bool=false
++    var ptyArtifacts:AuxFreshBootstrapPtyArtifacts?=nil
+     var includesPdf:Bool{role == .daemon}
+     var includesMacUtilities:Bool{role == .daemon}
+     var pdfSha256:String{AuxFreshBootstrapPdfIdentity.sha256}
+@@ -68,13 +69,17 @@
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+         if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
+-        let embedded=object["format"] as? String=="aux.fresh.bootstrap.policy.v2"
++        let ptyVersion=object["format"] as? String=="aux.fresh.bootstrap.policy.v3"
++        let pty:AuxFreshBootstrapPtyArtifacts?
++        if ptyVersion {pty=try AuxFreshBootstrapPtyArtifacts.decode(object)} else {pty=nil}
++        if ptyVersion {keys.formUnion(["ptyModule","ptySpawnHelper"])}
++        let embedded=object["format"] as? String=="aux.fresh.bootstrap.policy.v2" || ptyVersion
+         if embedded { keys.insert("nativeHostLayout");guard role == .daemon,object["nativeHostLayout"] as? String=="embedded-daemon" else{throw AuxFreshBootstrapPolicyError.policy} }
+         guard Set(object.keys)==keys,(embedded || object["format"] as? String==format),object["authoritySelection"] as? String==authoritySelection,
+               let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
+               parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
+               let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
+-        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded)
++        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded,ptyArtifacts:pty)
+     }
+ }
+ struct AuxCapturedFreshBootstrapSignature {
+@@ -102,6 +107,7 @@
+     if !policy.embeddedDaemon {result[bundle+"/Contents/Resources/native/aux-runtime-owned.node"]="dev.aux.browser.runtime"}
+     if policy.includesPdf {result[bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath]=AuxFreshBootstrapPdfIdentity.identifier}
+     if policy.includesMacUtilities {result[bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath]=AuxFreshBootstrapMacUtilitiesIdentity.identifier}
++    if policy.ptyArtifacts != nil {result[bundle+"/"+AuxFreshBootstrapPtyArtifacts.modulePath]=AuxFreshBootstrapPtyArtifacts.moduleIdentifier}
+     return result
+ }
+ func validateCapturedFreshBootstrapImagePaths(_ paths:[String],bundle:String,policy:AuxFreshBootstrapPolicyContents)throws {
+@@ -131,3 +137,38 @@
+ func validateCapturedFreshBootstrapMacUtilityBytes(sha256:String,bytes:Int,policy:AuxFreshBootstrapPolicyContents)throws {
+     guard policy.includesMacUtilities,sha256==AuxFreshBootstrapMacUtilitiesIdentity.sha256,bytes==AuxFreshBootstrapMacUtilitiesIdentity.bytes else{throw AuxFreshBootstrapPolicyError.image}
+ }
++
++// v3 has exactly two finite arm64 resources. Whole signed output bytes are
++// explicit sealed-policy values, populated only after a separate exact review.
++struct AuxFreshBootstrapPtyArtifact {
++    let relativePath:String
++    let identifier:String
++    let sha256:String
++    let bytes:Int
++}
++struct AuxFreshBootstrapPtyArtifacts {
++    static let modulePath="Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node"
++    static let helperPath="Contents/Resources/native/node-pty/prebuilds/darwin-arm64/spawn-helper"
++    static let moduleIdentifier="dev.aux.browser.pty"
++    static let helperIdentifier="dev.aux.browser.pty-spawn-helper"
++    static let moduleSourceSha256="a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a"
++    static let helperSourceSha256="b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f"
++    let module:AuxFreshBootstrapPtyArtifact
++    let helper:AuxFreshBootstrapPtyArtifact
++    static func decode(_ object:[String:Any])throws->Self {
++        func artifact(_ value:Any?,path:String,identifier:String,source:String)throws->AuxFreshBootstrapPtyArtifact {
++            guard let fields=value as? [String:Any],Set(fields.keys)==["path","identifier","sha256","bytes","sourceSha256","architecture"],
++                  fields["path"] as? String==path,fields["identifier"] as? String==identifier,
++                  fields["sourceSha256"] as? String==source,fields["architecture"] as? String=="arm64",
++                  let hash=fields["sha256"] as? String,hash.utf8.count==64,hash.utf8.allSatisfy({($0>=48 && $0<=57)||($0>=97 && $0<=102)}),hash != source,
++                  let count=fields["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(count.intValue),count.intValue>0,count.intValue<=32*1024*1024 else{throw AuxFreshBootstrapPolicyError.policy}
++            return .init(relativePath:path,identifier:identifier,sha256:hash,bytes:count.intValue)
++        }
++        return try .init(module:artifact(object["ptyModule"],path:modulePath,identifier:moduleIdentifier,source:moduleSourceSha256),helper:artifact(object["ptySpawnHelper"],path:helperPath,identifier:helperIdentifier,source:helperSourceSha256))
++    }
++}
++func validateCapturedFreshBootstrapPtySignature(_ captured:AuxCapturedFreshBootstrapSignature,artifact:AuxFreshBootstrapPtyArtifact)throws {
++    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
++          captured.identifier==artifact.identifier,captured.flags & 0x2==0,captured.flags & 0x10000 != 0,
++          captured.entitlements.isEmpty,captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
++}
+--- frozen/AuxSignedFreshBootstrapPolicyLoader.swift
++++ v3/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -126,13 +126,17 @@
+             } else if identifier==AuxFreshBootstrapMacUtilitiesIdentity.identifier {
+                 try validateCapturedFreshBootstrapMacUtilitySignature(captured)
+                 try validateCapturedFreshBootstrapMacUtilityBytes(sha256:nativeModuleDigest(bundle:bundle,expectedBytes:AuxFreshBootstrapMacUtilitiesIdentity.bytes,leaf:"aux-macos-utilities.node"),bytes:AuxFreshBootstrapMacUtilitiesIdentity.bytes,policy:policy)
++            } else if let pty=policy.ptyArtifacts,identifier==AuxFreshBootstrapPtyArtifacts.moduleIdentifier {
++                try validateCapturedFreshBootstrapPtySignature(captured,artifact:pty.module)
++                _ = try ptyResource(bundle:bundle,artifact:pty.module,executable:false)
+             } else {try validateCapturedFreshBootstrapSignature(captured,role:role,host:path.hasSuffix("/Contents/MacOS/"+role.executable),accessGroup:policy.accessGroup)}
+             observed.insert(path)
+         }
+         if preparing {
+             // Only the two exact native modules may be absent during native
+             // preparation. The embedded host is always present and validated.
+-            let optional=Set([bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath,bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath])
++            var optional=Set([bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath,bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath])
++            if policy.ptyArtifacts != nil {optional.insert(bundle+"/"+AuxFreshBootstrapPtyArtifacts.modulePath)}
+             guard observed.isSubset(of:Set(expected.keys)),Set(expected.keys).subtracting(optional).isSubset(of:observed) else{throw AuxFreshBootstrapPolicyError.image}
+         }else{try validateCapturedFreshBootstrapImagePaths(paths,bundle:bundle,policy:policy);guard observed==Set(expected.keys)else{throw AuxFreshBootstrapPolicyError.image}}
+         guard count==_dyld_image_count() else{throw AuxFreshBootstrapPolicyError.image}
+@@ -274,8 +278,10 @@
+         guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+         var custody=[Int32](),entries=[(Int32,String,Int32)]()
+         defer{for fd in custody.reversed(){close(fd)}}
+-        for leaf in ["aux-pdf.node","aux-macos-utilities.node"] {
+-            let path=policy.bundlePath+"/Contents/Resources/native/"+leaf
++        var resources=["Contents/Resources/native/aux-pdf.node","Contents/Resources/native/aux-macos-utilities.node"]
++        if let pty=policy.contents.ptyArtifacts {resources += [pty.module.relativePath,pty.helper.relativePath]}
++        for relative in resources {
++            let path=policy.bundlePath+"/"+relative
+             guard try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.path}
+             var parent=open("/",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+             guard parent>=0 else{throw AuxFreshBootstrapPolicyError.path}
+@@ -333,6 +339,41 @@
+             guard try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)==digest else{throw AuxFreshBootstrapPolicyError.image}
+             _ = try authenticatedBase(preparing:true)
+         }
++        if let pty=policy.contents.ptyArtifacts {
++            // Frozen utils.loadNativeModule tries these before its prebuild.
++            // Refuse their existence before Node can load any constructor.
++            for relative in ["build/Release/pty.node","build/Debug/pty.node"] {
++                var item=stat();errno=0
++                guard lstat(policy.bundlePath+"/Contents/Resources/native/node-pty/"+relative,&item) != 0,errno==ENOENT else{throw AuxFreshBootstrapPolicyError.path}
++            }
++            // The helper is authenticated as a separate executable resource;
++            // it is never dlopened or represented as an owned running child.
++            for (artifact,helper) in [(pty.helper,true),(pty.module,false)] {
++                let bytes=try ptyResource(bundle:policy.bundlePath,artifact:artifact,executable:helper)
++                let path=policy.bundlePath+"/"+artifact.relativePath
++                var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code)
++                guard created==errSecSuccess,let code else{throw AuxFreshBootstrapPolicyError.signature(created)}
++                let valid=SecStaticCodeCheckValidity(code,flags,requirement)
++                guard valid==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(valid)}
++                try validateCapturedFreshBootstrapPtySignature(signature(signingInfo(code)),artifact:artifact)
++                let relative=String(artifact.relativePath.dropFirst("Contents/".count))
++                let sealed=SecCodeValidateFileResource(ownStatic,relative as CFString,bytes as CFData,[])
++                guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
++                _ = try authenticatedBase(preparing:true)
++                try revalidateCustody()
++                if !helper {
++                    guard let handle=dlopen(path,RTLD_NOW|RTLD_LOCAL)else{throw AuxFreshBootstrapPolicyError.image}
++                    auxImagePreparationLock.lock();auxPreparedImageHandles.append(handle);auxImagePreparationLock.unlock()
++                    // Lookup only: real Node subsequently initializes exports
++                    // for each Environment via its normal Node-API loader.
++                    for name in ["napi_register_module_v1","node_api_module_get_api_version_v1"] {
++                        guard let symbol=dlsym(handle,name)else{throw AuxFreshBootstrapPolicyError.image}
++                        var info=Dl_info();guard dladdr(symbol,&info) != 0,let raw=info.dli_fname,String(cString:raw)==path else{throw AuxFreshBootstrapPolicyError.image}
++                    }
++                }
++                _ = try ptyResource(bundle:policy.bundlePath,artifact:artifact,executable:helper)
++            }
++        }
+         try revalidateCustody()
+         let final=try load()
+         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+@@ -346,3 +387,35 @@
+     auxImagePreparationStarted=true;auxImagePreparationLock.unlock()
+     do{try AuxSignedFreshBootstrapPolicyLoader.prepareEmbeddedImages();auxImagePreparationLock.lock();auxImagePreparationComplete=true;auxImagePreparationLock.unlock();return 0}catch{return -1}
+ }
++
++// Exact finite resource reader shared by full image validation/preparation.
++// It never launches the helper, calls a Node initializer or changes file mode.
++extension AuxSignedFreshBootstrapPolicyLoader {
++    fileprivate static func ptyResource(bundle:String,artifact:AuxFreshBootstrapPtyArtifact,executable:Bool)throws->Data {
++        guard [AuxFreshBootstrapPtyArtifacts.modulePath,AuxFreshBootstrapPtyArtifacts.helperPath].contains(artifact.relativePath),
++              executable==(artifact.relativePath==AuxFreshBootstrapPtyArtifacts.helperPath),try canonical(bundle)==bundle else{throw AuxFreshBootstrapPolicyError.path}
++        var held=[Int32](),entries=[(Int32,String,Int32)]();defer{for fd in held.reversed(){close(fd)}}
++        var parent=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard parent>=0 else{throw AuxFreshBootstrapPolicyError.path};held.append(parent);_ = try metadata(parent,directory:true)
++        let parts=artifact.relativePath.split(separator:"/").map(String.init)
++        for (index,name) in parts.enumerated() {
++            let directory=index != parts.count-1
++            let fd=openat(parent,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK|(directory ? O_DIRECTORY:0))
++            guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path};held.append(fd)
++            _ = try metadata(fd,directory:directory,maximumSize:Int64(artifact.bytes));try sameEntry(parent,name,fd)
++            entries.append((parent,name,fd));parent=fd
++        }
++        let before=try metadata(parent,directory:false,maximumSize:Int64(artifact.bytes))
++        guard before.st_size==Int64(artifact.bytes),!executable || before.st_mode & 0o111 != 0 else{throw AuxFreshBootstrapPolicyError.path}
++        var bytes=[UInt8](repeating:0,count:artifact.bytes),offset=0
++        while offset<bytes.count {let count=bytes.count-offset;let read=bytes.withUnsafeMutableBytes{Darwin.read(parent,$0.baseAddress!.advanced(by:offset),count)};if read<0 && errno==EINTR{continue};guard read>0 else{throw AuxFreshBootstrapPolicyError.resource};offset += read}
++        let after=try metadata(parent,directory:false,maximumSize:Int64(artifact.bytes))
++        guard before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshBootstrapPolicyError.resource}
++        for (fd,name,child) in entries {try sameEntry(fd,name,child)}
++        // Exact thin little-endian arm64 Mach-O and finite execution role.
++        guard bytes.count>=32,Array(bytes[0..<8])==[0xcf,0xfa,0xed,0xfe,0x0c,0x00,0x00,0x01],
++              Array(bytes[12..<16])==(executable ? [2,0,0,0]:[8,0,0,0]) else{throw AuxFreshBootstrapPolicyError.image}
++        let data=Data(bytes);guard freshBootstrapDigest(data)==artifact.sha256 else{throw AuxFreshBootstrapPolicyError.image}
++        return data
++    }
++}

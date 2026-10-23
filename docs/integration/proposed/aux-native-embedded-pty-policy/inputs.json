@@ -1,0 +1,20 @@
+{
+  "format": "aux.native-embedded-pty-policy.source.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "2c65730b0cb5a232abc3b7c041ba9b9f0a53680985010484bec1087d445cf975"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift": "dc87218812c7e51b5fb846ec0cbd53f6b044edfeb5fe3ea80c2ec62e95e0082e",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1"
+  },
+  "compiled": false,
+  "executed": false,
+  "signedPtyArtifactsAvailable": false,
+  "helperProcessCustodyImplemented": false,
+  "sourceEvidence": {
+    "docs/integration/proposed/aux-native-fixed-pty-loading/inventory.json": "d6c086806aedad5a3974f22c81cd532372776977eb5bd38675eb333e6fd7a23b",
+    "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-26.5.0-source/node-v26.5.0/src/node_binding.cc": "39663c68993800e0ebf157663417f90e077be3e68a8cf1da4b8335a817c91699"
+  }
+}
