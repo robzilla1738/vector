@@ -21,7 +21,7 @@ xcrun swiftc -typecheck -target arm64-apple-macos13.0 -module-name AuxNativeFres
  "$p/aux-native-fresh-resume/source/AuxFreshNativeHome.swift" \
  "$p/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift" \
  "$p/aux-native-fresh-resume/source/AuxResumedFreshNativeHome.swift" \
- "$p/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift" \
+ "$p/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift" \
  "$p/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift" \
  "$p/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift" \
  "$p/aux-native-fresh-stage-reconciliation/source/AuxNativeFreshBootstrapFactory.swift" \

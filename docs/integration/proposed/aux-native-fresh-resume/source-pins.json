@@ -3,7 +3,7 @@
   "active": false,
   "protectedCallsExecuted": false,
   "authorityGenerated": false,
-  "typecheck": "not queued; source review first",
+  "typecheck": "paired31input runtime consumer61891 queued; no duplicate25input compilation",
   "inputCount": 25,
   "inputs": [
     {
@@ -59,8 +59,8 @@
       "sha256": "0d772f790b822b410b8759bcbd3125d62ea3881b7a6568cb34ccffcb104b559c"
     },
     {
-      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
-      "sha256": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a"
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f"
     },
     {
       "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
@@ -122,10 +122,22 @@
     }
   ],
   "knownUnresolved": [
-    "Real signed policy canonical-parent parser successor pending; no parser acceptance claimed",
     "Actual early host/process custody and whole-profile readmission",
     "No new-process protected read/execution evidence",
     "No observed pre-stage absence can regenerate or replay stage Add",
     "Source-only, not registered with live host/startup"
-  ]
+  ],
+  "reviewedPolicySuccessor": {
+    "commit": "0aeb6a6fa",
+    "previous": {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a"
+    },
+    "current": {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f"
+    },
+    "reason": "Actual canonical /private parent preserved lexically; actual signed-loader and retained-FD realpath checks unchanged."
+  },
+  "pairedTypecheckSession": 61891
 }

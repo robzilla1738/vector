@@ -1,6 +1,6 @@
 # Native fresh-only staged restart successor
 
-Inactive source, not yet compiled or executed. It consumes the real authenticated
+Inactive source; paired31-input production typecheck61891 pending, no execution. It consumes the real authenticated
 fresh policy and fixed existing private reservation; it accepts no caller path,
 selector, claimed absence, review flag, candidate bytes or custody receipt.
 
@@ -29,16 +29,16 @@ Three logical successors are reviewable in `successors.patch`: fresh home change
 only private lease acquisition; staged context gains the private resumed branch;
 target coordinator changes only genuine-owner accessors. Select these copies
 instead of their baselines, never compile both. `typecheck.sh` lists the actual
-25 separate production Swift files without executing anything. It has not run.
+25 separate production Swift files without executing anything. It has not run separately; the paired31-input runtime consumer owns typecheck61891.
 
 Pre-stage crashes, missing journal/stage, unknown Add and mixed targets retain all
 evidence and fail closed. A loaded target intent remains observation-only through
 the existing reducer. Existing v1 review records cannot become native-v2 records.
 No root/private representation is written to filesystem by the resumed reader.
 
-The current pure signed-policy parent parser has a separately observed canonical
-`/private` path issue; this source does not bypass that parser or fabricate an
-authenticated policy. Its successor must be paired separately. Actual protected
-reads, signed policy/entitlement provenance at runtime, early host ownership,
+The separately reviewed canonical-parent parser successor0aeb6a6fa is selected:
+it checks lexical components without erasing `/private`, while the actual signed
+loader/home still enforce realpath and private retained FDs. This does not
+fabricate an authenticated policy. Actual protected reads, signed policy/entitlement provenance at runtime, early host ownership,
 profile/worker admission and terminal launch integration remain unexecuted and
 unactivated. Legacy migration remains separately required.
