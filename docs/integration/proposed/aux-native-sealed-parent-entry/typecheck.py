@@ -22,7 +22,7 @@ all_pins = {**pins, **own}
 for name, digest in all_pins.items():
     assert sha(repo / name) == digest, name
 sources = [str(repo / name) for name in pins]
-sources.append(str(here / 'source/AuxSealedOuterBrowserParent.swift'))
+sources.extend(str(here / name) for name in ['source/AuxSealedOuterBrowserParent.swift', 'source/AuxSealedNativeDaemonEntry.swift'])
 with tempfile.TemporaryDirectory(prefix='aux-sealed-parent-types-') as temp:
     command = ['xcrun', 'swiftc', '-typecheck', '-target', 'arm64-apple-macos13.0',
                '-module-name', 'AuxSealedParentEntry', '-module-cache-path', temp + '/cache']

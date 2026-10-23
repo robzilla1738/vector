@@ -5,7 +5,8 @@
     "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
     "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
     "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeParentConnectionBridge.h": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc",
-    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.h": "2e3cf2e2f30a7a979f5f152ffd879b9c4950a856624351b3888b78b15831f5de"
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.h": "204e4095ed8cf00e61359e71b4f45c8c95a5ef77ed3a59081930e94ee31cc745",
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedNativeDaemonEntry.swift": "ad32b442322ad196e605526962f2aff280107e8016bfc7edfe685dafda8b925a"
   },
   "compilePending": true,
   "runtimeExecuted": false,
