@@ -2,6 +2,8 @@
 
 Status: active. Owner direction, 2026-10-19. This supersedes the clean-room reconstruction plan and instructions to independently recreate the product.
 
+Launch scope update, 2026-10-23: ship without Aux payments. Reuse BYOK and integrate eligible ChatGPT/Codex plan connections; defer Aux subscriptions, paid tiers and Aux-funded inference while preserving the current UI. See [the active provider-funded launch plan](2026-10-23-provider-funded-launch.md). Earlier Stripe requirements are future paid-release work, not launch prerequisites.
+
 On 2026-10-20 the owner explicitly authorized bounded local development signing to resolve the real account startup failure. That exception is implemented for the copied v498 development app and previously approved disposable Aux scope; see `docs/acceptance/provided-v498-local-auth-repair.json`. It does not authorize release, owner-profile access or unrelated OS grants. Broader no-signing statements below retain their ordinary-development scope outside this repair.
 
 ## Native frame fidelity — owner direction 2026-10-20

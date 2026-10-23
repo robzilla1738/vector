@@ -2,6 +2,10 @@
 
 Aux reuses the owner's supplied Aside implementation on Chromium. Preserve its UI, behavior, daemon, extensions, CLI, skills, helpers and runtime. Aside wins when the retired independent implementation differs. Change visible branding to Aux and isolate app/extension identities, state and endpoints. The active [reuse plan](../plans/2026-10-19-supplied-implementation-reuse.md) supersedes independent reconstruction.
 
+## Payment-free launch scope — owner direction2026-10-23
+
+Launch with users' own provider keys and eligible ChatGPT/Codex plan connections. Aux payments, subscriptions and hosted-credit sales are deferred. Preserve the current UI design and supplied provider controls; suppress paid-plan/checkout prompts rather than redesigning the product. Do not silently spend Aux-hosted credits or present ordinary identity sign-in as permission to consume a ChatGPT plan. See [the active launch plan](../plans/2026-10-23-provider-funded-launch.md) for exact boundaries and unaccepted integration work.
+
 ## Password-manager scope exception — 2026-10-20
 
 The owner explicitly excludes the built-in password manager from Aside parity. Do not ship the supplied Vault product, Aux password storage, Vault onboarding/unlock/recovery screens, or first-party password autofill UI. Support users' existing password managers through their browser extensions (for example, 1Password). Extension installation, autofill and optional desktop-app/native-messaging compatibility require actual verification; do not claim support from Chromium compatibility alone.
