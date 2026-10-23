@@ -1,0 +1,26 @@
+{
+  "format": "aux.native-platform-flags.successor.v1",
+  "priorOutput": "/tmp/aux-native-adopted-wipe-successor-20261023",
+  "priorReceiptSha256": "5277208ed8a00ff0393562a5e59e8b6a7ba8759ad6610eda3d1a5632f6dfbb9a",
+  "retainedObjects": {
+    "chromium-AuxNativePeerTransport.cc.o": "c1be1043b1f6b3e8665378c24339058c6cf814a12df48289e6108178fef98495",
+    "chromium-AuxOwnedNativePeerChild.cc.o": "19360184789d2a7ce38ca3b9fd9c43d973f4ef3fa416eef9a68330c1c9bebc42",
+    "chromium-AuxSelectedStateHome.cc.o": "8d4fd864beebdcbe6795f47fbc6d4b1ae8686329b211a5e59e0dafe2faed120a"
+  },
+  "previousInputs": {
+    "path": "docs/integration/proposed/aux-native-adopted-wipe-successor/inputs.json",
+    "sha256": "949e616db0b476174b615f0921b83cecdee001d0ef3241660140ffb98820b41d"
+  },
+  "targetEvidence": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/obj/chrome/browser/aux/platform.ninja": "2f3d28a889d676877200e07c28a65a32207df9c6972a00a4cfc67994732a0313",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast/toolchain.ninja": "2b9f6682bfe6716856d1d6d22875d0f9bef53c7b7a4cad61def8de9ed2fa976c"
+  },
+  "targetLabel": "//chrome/browser/aux:platform",
+  "compiled": false,
+  "sourceChanges": 0,
+  "recipeSha256": "0d66516681ba768143e8a8146c1ec91b983b0132c0003ca1d60eabfe97daca6b",
+  "retainedOverlay": {
+    "include/chrome/browser/aux/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "include/chrome/browser/aux/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de"
+  }
+}
