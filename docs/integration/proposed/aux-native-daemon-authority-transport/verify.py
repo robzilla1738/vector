@@ -26,9 +26,19 @@ assert 'client->pending && !same' in source
 assert 'const bool observe = same && client->attempted' in source
 assert 'if (client->sequence == std::numeric_limits<uint64_t>::max())' in source
 assert 'acknowledging = true;' in source
+assert 'AcceptAuthorityReply(const DaemonAuthorityReply& reply' in header
+assert 'DaemonAuthorityReply(const DaemonAuthorityReply&) = delete' in header
+assert 'new DaemonAuthorityPublication(value, client)' in source
+accept = source[source.index('DaemonAuthorityStatus AuthenticatedSelectedHomeTransfer::AcceptAuthorityReply'):]
+assert 'client->completed != reply_value.payload' in accept
+assert 'request.wire.operation = kAcknowledge' in accept
+assert accept.index('publication->acknowledged = true') > accept.index('NativeOperations::Validate')
+request = source[source.index('DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority'):source.index('DaemonAuthorityStatus AuthenticatedSelectedHomeTransfer::AcceptAuthorityReply')]
+ready = request[request.index('DaemonAuthorityReply ready('):request.index('case 1:')]
+assert 'client->pending = false' not in ready and 'acknowledging = true' not in ready
 assert 'case 3:\n      client->closed = true;' in source
 assert 'operation == kInboxKey && wire.length != 32' in source
-assert 'memset_s' in source and source.count('PayloadWiper response_wiper(') == 2
+assert 'memset_s' in source and source.count('PayloadWiper response_wiper(') == 3
 assert 'All native\n  // registry/connection/server locks above have been released' in source
 assert 'if (state_->authority_starting) return 1' in source
 assert 'export_status == 1' in source and 'directory >= 0' in source

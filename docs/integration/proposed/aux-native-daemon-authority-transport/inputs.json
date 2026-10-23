@@ -3,8 +3,8 @@
   "files": {
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc": "6363bb6bfe4d93db9d88afd8ea644304459e18c40bf7091e7f112747e965479b",
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.h": "048433d6100fd0dbebfa4f63ee9fdfe6ebd1f1f8aca5926afeffb7ddb8e3afb6",
-    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "688d16cbea2d039938fd01684ebd7c0d02c820d196bb9ef7c75ee3991db28f3a",
-    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "57f8883361c4e4c35fcdbbd56c0481fb1b48d9b1e98ca31a69ac6bae7ac73a68",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "f0f9566f4640edc715799b2f94745267b909c282cde319d7f995fd61123dc545",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "4803cac60f4d92c5019efc4c139dd42fa2d6b957316567c6b07993a06dc2734f",
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
     "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
     "docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift": "b77181057bc99c054877d166a55941a8c85aa866543bcd2c64386af21c0c2e82"
@@ -24,5 +24,6 @@
     "GetAgentInboxV2MasterKey"
   ],
   "parentBackendLinked": false,
-  "compatibilitySourceChanged": false
+  "compatibilitySourceChanged": false,
+  "publicationAckAfterHolderFence": true
 }

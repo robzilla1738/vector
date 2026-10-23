@@ -74,12 +74,20 @@ struct ParentExchange {
 };
 enum class DaemonAuthorityStatus { ready, pending, busy, refused, closed, timedOut,
                                    wrongProcess, cleanupUnresolved };
+class DaemonAuthorityPublication;
 struct DaemonAuthorityReply {
   DaemonAuthorityReply();
   DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes);
   ~DaemonAuthorityReply();
+  DaemonAuthorityReply(DaemonAuthorityReply&&) noexcept;
+  DaemonAuthorityReply& operator=(DaemonAuthorityReply&&) noexcept;
+  DaemonAuthorityReply(const DaemonAuthorityReply&) = delete;
+  DaemonAuthorityReply& operator=(const DaemonAuthorityReply&) = delete;
   DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
   std::vector<uint8_t> payload;
+ private:
+  std::shared_ptr<DaemonAuthorityPublication> publication_;
+  friend class AuthenticatedSelectedHomeTransfer;
 };
 class PreparedParentEndpoint;
 class OwnedNativePeerChild;
@@ -99,6 +107,9 @@ class AuthenticatedSelectedHomeTransfer final {
                                            uint32_t timeout_ms);
   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+  // Caller invokes only after its actual owner/pulse publication fence.
+  DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply,
+                                            uint32_t timeout_ms);
   AuthenticatedSelectedHomeTransfer(const AuthenticatedSelectedHomeTransfer&) = delete;
   AuthenticatedSelectedHomeTransfer& operator=(const AuthenticatedSelectedHomeTransfer&) = delete;
  private:
@@ -109,6 +120,7 @@ class AuthenticatedSelectedHomeTransfer final {
   std::optional<ReadyHomePulse> InspectReadyPulse();
   std::shared_ptr<State> state_;
   friend class ParentTransport;
+  friend class DaemonAuthorityPublication;
   friend class SelectedNativeHome;
   friend class OwnedNativePeerChild;
 };

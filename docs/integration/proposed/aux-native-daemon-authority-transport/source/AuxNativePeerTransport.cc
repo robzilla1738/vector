@@ -31,7 +31,22 @@ namespace aux::peer {
 DaemonAuthorityReply::DaemonAuthorityReply() = default;
 DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes)
     : status(result), payload(std::move(bytes)) {}
-DaemonAuthorityReply::~DaemonAuthorityReply() = default;
+DaemonAuthorityReply::~DaemonAuthorityReply() {
+  if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
+}
+DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityReply&& other) noexcept
+    : status(other.status), payload(std::move(other.payload)),
+      publication_(std::move(other.publication_)) { other.status = DaemonAuthorityStatus::refused; }
+DaemonAuthorityReply& DaemonAuthorityReply::operator=(DaemonAuthorityReply&& other) noexcept {
+  if (this != &other) {
+    if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
+    status = other.status;
+    payload = std::move(other.payload);
+    publication_ = std::move(other.publication_);
+    other.status = DaemonAuthorityStatus::refused;
+  }
+  return *this;
+}
 namespace {
 void WipeBytes(std::span<uint8_t> bytes) {
   if (!bytes.empty()) memset_s(bytes.data(), bytes.size(), 0, bytes.size());
@@ -346,6 +361,27 @@ struct AuthenticatedSelectedHomeTransfer::State {
   const int version;
   const uint64_t generation;
 };
+class DaemonAuthorityPublication final {
+ public:
+  ~DaemonAuthorityPublication();
+ private:
+  friend class AuthenticatedSelectedHomeTransfer;
+  DaemonAuthorityPublication(std::shared_ptr<AuthenticatedSelectedHomeTransfer::State> value,
+                            std::shared_ptr<AuthorityClient> source);
+  std::weak_ptr<AuthenticatedSelectedHomeTransfer::State> selected;
+  std::weak_ptr<AuthorityClient> client;
+  uint64_t sequence;
+  uint32_t operation;
+  std::array<uint8_t, 16> nonce;
+  std::array<uint8_t, 51> message;
+  bool acknowledged = false; // Protected by that exact client's mutex.
+};
+DaemonAuthorityPublication::DaemonAuthorityPublication(
+    std::shared_ptr<AuthenticatedSelectedHomeTransfer::State> value,
+    std::shared_ptr<AuthorityClient> source)
+    : selected(value), client(source), sequence(source->sequence),
+      operation(source->operation), nonce(source->nonce), message(source->message) {}
+DaemonAuthorityPublication::~DaemonAuthorityPublication() = default;
 AuthenticatedSelectedHomeTransfer::AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> value) : state_(std::move(value)) {}
 AuthenticatedSelectedHomeTransfer::~AuthenticatedSelectedHomeTransfer() = default;
 int AuthenticatedSelectedHomeTransfer::DuplicateRevalidatedDirectory() {
@@ -1380,8 +1416,14 @@ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(
         if (client->completed.empty()) client->completed = std::move(payload);
         else WipePayload(payload);
       }
-      acknowledging = true;
-      continue;
+      {
+        DaemonAuthorityReply ready(DaemonAuthorityStatus::ready, client->completed);
+        ready.publication_ = std::shared_ptr<DaemonAuthorityPublication>(
+            new DaemonAuthorityPublication(value, client));
+        // Keep pending and backend completion intact until the genuine holder
+        // publication fence explicitly accepts this exact native observation.
+        return ready;
+      }
     case 1: return {DaemonAuthorityStatus::pending, {}};
     case 2: return {DaemonAuthorityStatus::busy, {}};
     case 3:
@@ -1397,5 +1439,112 @@ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(
   }
   }
   return {DaemonAuthorityStatus::pending, {}};
+}
+
+DaemonAuthorityStatus AuthenticatedSelectedHomeTransfer::AcceptAuthorityReply(
+    const DaemonAuthorityReply& reply_value, uint32_t timeout_ms) {
+  const auto publication = reply_value.publication_;
+  if (!publication || reply_value.status != DaemonAuthorityStatus::ready ||
+      !ValidTimeout(timeout_ms)) return DaemonAuthorityStatus::refused;
+  const auto value = publication->selected.lock();
+  if (!value || value != state_) return DaemonAuthorityStatus::refused;
+  if (getpid() != value->process) return DaemonAuthorityStatus::wrongProcess;
+  int home = DuplicateRevalidatedDirectory();
+  if (home < 0) return DaemonAuthorityStatus::refused;
+  close(home);
+  const auto owner = value->owner.lock();
+  const auto client = publication->client.lock();
+  if (!owner || !client) return DaemonAuthorityStatus::closed;
+  {
+    std::lock_guard<std::mutex> lock(owner->mutex);
+    if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
+        owner->authority != client) return DaemonAuthorityStatus::closed;
+    ++owner->snapshot.active_exchanges;
+  }
+  auto finish = +[](ParentTransport::State* retained) {
+    std::lock_guard<std::mutex> lock(retained->mutex);
+    --retained->snapshot.active_exchanges;
+  };
+  std::unique_ptr<ParentTransport::State, decltype(finish)> call(owner.get(), finish);
+  std::lock_guard<std::mutex> serial(client->mutex);
+  if (client->closed || client->sequence != publication->sequence ||
+      client->operation != publication->operation || client->nonce != publication->nonce ||
+      client->message != publication->message || client->completed_error ||
+      client->completed.empty() || client->completed != reply_value.payload)
+    return DaemonAuthorityStatus::refused;
+  if (publication->acknowledged) return DaemonAuthorityStatus::ready;
+  {
+    std::lock_guard<std::mutex> lock(owner->mutex);
+    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) {
+      WipePayload(client->completed); return DaemonAuthorityStatus::closed;
+    }
+  }
+  ReceiveRight reply;
+  if (reply.get() == MACH_PORT_NULL) return DaemonAuthorityStatus::refused;
+  AuthorityReceived request{};
+  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
+  request.wire.header.msgh_size = sizeof(AuthorityWire);
+  request.wire.header.msgh_remote_port = client->endpoint.BorrowNativeName();
+  request.wire.header.msgh_local_port = reply.get();
+  request.wire.header.msgh_id = kAuthorityRequest;
+  request.wire.operation = kAcknowledge;
+  request.wire.generation = value->generation;
+  request.wire.sequence = publication->sequence;
+  request.wire.nonce = publication->nonce;
+  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
+      sizeof(AuthorityWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
+  if (result != KERN_SUCCESS) {
+    if (RecoverableSendError(result)) {
+      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
+      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
+        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
+      return DaemonAuthorityStatus::timedOut;
+    }
+    std::lock_guard<std::mutex> lock(owner->mutex);
+    owner->snapshot.closed = true; ++owner->snapshot.generation;
+    WipePayload(client->completed);
+    return DaemonAuthorityStatus::cleanupUnresolved;
+  }
+  AuthorityReplyReceived response{};
+  PayloadWiper response_wiper(response.wire.payload);
+  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
+      reply.get(), timeout_ms, MACH_PORT_NULL);
+  if (result == MACH_RCV_TIMED_OUT) return DaemonAuthorityStatus::timedOut;
+  if (result != KERN_SUCCESS) {
+    std::lock_guard<std::mutex> lock(owner->mutex);
+    owner->snapshot.closed = true; ++owner->snapshot.generation;
+    WipePayload(client->completed);
+    return DaemonAuthorityStatus::cleanupUnresolved;
+  }
+  DestroyMessage cleanup(&response.wire.header);
+  const auto& wire = response.wire;
+  if (wire.header.msgh_size != sizeof(wire) || wire.header.msgh_id != kAuthorityReply ||
+      (wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) || wire.version != kAuthorityVersion ||
+      wire.generation != value->generation || wire.sequence != publication->sequence ||
+      wire.nonce != publication->nonce || wire.reserved != 0 || wire.length != 0 ||
+      response.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
+      response.trailer.msgh_trailer_size < sizeof(response.trailer) ||
+      audit_token_to_pid(response.trailer.msgh_audit) != owner->child->pid ||
+      audit_token_to_pidversion(response.trailer.msgh_audit) != value->version ||
+      !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
+      !NativeOperations::Validate(response.trailer.msgh_audit, *owner->policy))
+    return DaemonAuthorityStatus::refused;
+  home = DuplicateRevalidatedDirectory();
+  if (home < 0) return DaemonAuthorityStatus::refused;
+  close(home);
+  {
+    std::lock_guard<std::mutex> lock(owner->mutex);
+    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
+      return DaemonAuthorityStatus::closed;
+  }
+  if (wire.status == 1) return DaemonAuthorityStatus::pending;
+  if (wire.status == 3) {
+    client->closed = true; WipePayload(client->completed);
+    return DaemonAuthorityStatus::closed;
+  }
+  if (wire.status != 0) return DaemonAuthorityStatus::refused;
+  publication->acknowledged = true;
+  client->pending = false;
+  return DaemonAuthorityStatus::ready;
 }
 }  // namespace aux::peer

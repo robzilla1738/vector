@@ -1,0 +1,13 @@
+{
+  "format": "aux.native-main.lazy-pty-gap.v1",
+  "files": {
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/package.json": "f8b6a14f7022c14f1cd5d109486f5dacd32bffb63a9a63e38eced37dacb47439",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/lib/unixTerminal.js": "a62e3a60c3bc1b0e7261f58284856df748dcee6761a2bc7a5a5ba98b22660473",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/lib/utils.js": "f75ad341c13fbf1a9a6605d7ee42dff5bbc5d43b7b381e413fb97eb1b8300beb",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a"
+  },
+  "actualLoad": "lib/unixTerminal.js:27 calls loadNativeModule(pty); lib/utils.js requires build/Release, build/Debug or prebuilds/<platform>-<arch>/<pty>.node",
+  "currentPolicy": "embedded-daemon allows main/PDF/OS non-system images only; loaded PTY image is unsupported",
+  "runtimeExecuted": false,
+  "policyBroadened": false
+}
