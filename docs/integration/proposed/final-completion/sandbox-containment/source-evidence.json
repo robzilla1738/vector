@@ -9,6 +9,46 @@
     {
       "name": "actual MCP stdio spawn receives mandatory native-parent denial",
       "count": 1
+    },
+    {
+      "name": "models credential command uses contained pipe-only shell",
+      "count": 1
+    },
+    {
+      "name": "MCP PATH login shell has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "Claude command discovery login shell has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "configured Claude command has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "configured provider command has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "provider command discovery login shell has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "Aux command discovery login shell has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "installed CLI version probe has mandatory denial",
+      "count": 1
+    },
+    {
+      "name": "SDK bash tool session receives mandatory denial and fresh pipes",
+      "count": 1
+    },
+    {
+      "name": "SDK grep tool execution receives mandatory denial and explicit pipes",
+      "count": 1
     }
   ],
   "checks": [
@@ -19,7 +59,11 @@
     "canonical private cwd refusal",
     "actual transformed MCP start wraps before spawn and pipes all stdio",
     "native capture failure prevents actual MCP spawn",
-    "inherited MCP stderr refuses before spawn"
+    "inherited MCP stderr refuses before spawn",
+    "actual models !exec routes through fixed contained shell without stdout logging",
+    "actual login PATH and provider/Claude/version route fixtures preserve results and native refusal",
+    "SDK bash and grep expressions retain arguments under mandatory denial",
+    "configured spawn rejects inherited stdio and shell overrides"
   ],
   "nativeProducerExecuted": false,
   "sandboxExecuted": false,

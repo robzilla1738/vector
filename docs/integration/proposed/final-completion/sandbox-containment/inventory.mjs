@@ -19,6 +19,9 @@ const landmarks=[
  ['optional Seatbelt deniedPaths rules','function buildSeatbeltPolicy(Cn){'],
  ['fixed native shim loader','function loadBinding(){'],
  ['credential command interpolation shell','async function resolveConfigValue(Cn){'],
+ ['SDK Bash tool actual session','BashSession=class{'],
+ ['SDK grep tool actual process','function runRipgrep(Cn,ei,ti,ni){'],
+ ['Aux CLI version probe','async function getInstalledCliVersion(Cn){'],
  ['QuickJS guest bridge','QuickJSBridge=class Cn{'],
  ['REPL rejects external modules','External modules are not available in the REPL.'],
 ];

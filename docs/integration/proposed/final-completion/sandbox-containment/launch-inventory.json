@@ -134,6 +134,30 @@
       ]
     },
     {
+      "name": "SDK Bash tool actual session",
+      "anchor": "BashSession=class{",
+      "count": 1,
+      "offsets": [
+        5491817
+      ]
+    },
+    {
+      "name": "SDK grep tool actual process",
+      "anchor": "function runRipgrep(Cn,ei,ti,ni){",
+      "count": 1,
+      "offsets": [
+        5488221
+      ]
+    },
+    {
+      "name": "Aux CLI version probe",
+      "anchor": "async function getInstalledCliVersion(Cn){",
+      "count": 1,
+      "offsets": [
+        11840622
+      ]
+    },
+    {
       "name": "QuickJS guest bridge",
       "anchor": "QuickJSBridge=class Cn{",
       "count": 1,

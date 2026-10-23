@@ -3,7 +3,8 @@
 // This cannot establish browser-profile containment until its native producer exists.
 const path = require('node:path');
 const { realpathSync } = require('node:fs');
-const fail = message => { throw Error(`Aux exec containment: ${message}`); };
+const childProcess = require('node:child_process');
+const fail = message => { const error = Error(`Aux exec containment: ${message}`); error.code = 'AUX_EXEC_CONTAINMENT_UNAVAILABLE'; throw error; };
 function captureNativePrivateParent() {
   if (process.platform !== 'darwin') fail('mandatory macOS private-state denial is unavailable');
   const linked = process._linkedBinding;
@@ -43,4 +44,25 @@ function wrap(options) {
     auxPrivateParentDenied: true,
   };
 }
-module.exports = Object.freeze({ wrap });
+function pipeOptions(options) {
+  if (options.shell !== undefined && options.shell !== false) fail('shell overrides are not accepted');
+  if (!Array.isArray(options.stdio) || options.stdio.length !== 3 || options.stdio.some(mode => !['ignore','pipe'].includes(mode))) fail('only fresh pipe or ignored stdio may be inherited');
+}
+function spawn(command, options = {}) {
+  pipeOptions(options);
+  const contained = wrap({command,cwd:options.cwd??process.cwd(),env:options.env??process.env});
+  return childProcess.spawn(contained.command[0], contained.command.slice(1), {...options,cwd:contained.cwd,env:contained.env,shell:false});
+}
+function execShell(script, options = {}) {
+  if (typeof script !== 'string' || !script || script.includes('\0')) fail('invalid configured shell command');
+  if (options.shell !== undefined || options.stdio !== undefined) fail('configured shell descriptor overrides are not accepted');
+  const contained = wrap({command:['/bin/sh','-c',script],cwd:options.cwd??process.cwd(),env:options.env??process.env});
+  return new Promise((resolve,reject)=>{
+    // execFile creates pipe stdio. It receives no arbitrary descriptor/IPC or
+    // shell option; the script remains stdin-free shell argv after sandbox-exec.
+    childProcess.execFile(contained.command[0],contained.command.slice(1),{cwd:contained.cwd,env:contained.env,encoding:'utf8',timeout:options.timeout,signal:options.signal,maxBuffer:options.maxBuffer??1024*1024,shell:false},(error,stdout,stderr)=>{
+      if (error) { error.stdout=stdout;error.stderr=stderr;reject(error); } else resolve({stdout,stderr});
+    });
+  });
+}
+module.exports = Object.freeze({ wrap, spawn, execShell });
