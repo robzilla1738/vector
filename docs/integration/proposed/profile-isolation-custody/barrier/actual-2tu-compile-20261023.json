@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-object-only-native-compile",
+  "recordedAt": "2026-10-23T21:48:48.399213+00:00",
+  "sourceCommit": "9bdca3a565ea65d977343f0cdd4a2aea6d0efe34",
+  "sourceCommitNote": "Full argv-preserving barrier successor; source bytes verified against sources.json before compile and unchanged afterward.",
+  "command": [
+    "python3",
+    "scripts/native-build.py",
+    "python3",
+    "docs/integration/proposed/profile-isolation-custody/barrier/compile.py",
+    "--output",
+    "/private/tmp/aux-native-barrier-2tu-recovery-20261023"
+  ],
+  "receipt": {
+    "path": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/receipt.json",
+    "sha256": "8b2f57c28f8408511a964678a7f3765f95ef699aea54665802943397844a9a66"
+  },
+  "passed": true,
+  "inputsUnchanged": true,
+  "frozenInputCount": 59,
+  "frozenInputsManifestSha256": "3f7eb03f020969a8b0db71e900ed1c379118befc09c5a846852cd5af35968211",
+  "sources": {
+    "chrome/browser/aux/AuxSelectedStateHome.cc": {
+      "sha256": "ba49614b3b912387ce8425ffa274dc9e35910576a76b8e28956fee5d38edbf57",
+      "compiledSource": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/source/chrome/browser/aux/AuxSelectedStateHome.cc"
+    },
+    "chrome/browser/aux/AuxSelectedStateHome.h": {
+      "sha256": "511178394945890f0b8cfa1c6232a667da5dd4ebaca02a416b1a14edc1b2c779",
+      "compiledSource": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/source/chrome/browser/aux/AuxSelectedStateHome.h"
+    },
+    "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+      "sha256": "104a5914f95f4336aa54434cce59155963404dca2ea52bdee35e79aaea1b21ed",
+      "compiledSource": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc"
+    }
+  },
+  "results": [
+    {
+      "name": "chromium-AuxSelectedStateHome",
+      "exitCode": 0,
+      "workingDirectory": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast",
+      "commandSha256": "49dd724869ef73cbd68585691fedc16a7f7df547ef2261273034dd2b335a54ef",
+      "object": {
+        "path": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/chromium-AuxSelectedStateHome.o",
+        "bytes": 37464,
+        "sha256": "9d2e4bd1cbe527ca94a0b7d6664ebfaac5588cc5f383a08c99dfb242b5d1a1b7"
+      },
+      "log": {
+        "path": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/chromium-AuxSelectedStateHome.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "launch_context_posix",
+      "exitCode": 0,
+      "workingDirectory": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/out/AuxFast",
+      "commandSha256": "8f2649b38aefe04cefbbb7e0eca152246ddbf0d428a43f1f72323f75d10c2f42",
+      "object": {
+        "path": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/launch_context_posix.o",
+        "bytes": 24480,
+        "sha256": "9f31eab09c8b801e2b7fd8f08554ac515b44862a9f67704a762f97e00d263a2a"
+      },
+      "log": {
+        "path": "/private/tmp/aux-native-barrier-2tu-recovery-20261023/launch_context_posix.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "activeSnapshotModified": false,
+  "appExecuted": false,
+  "executableLinked": false,
+  "signed": false,
+  "allExternalWritersConfined": false,
+  "admittedRootReopenAccepted": false,
+  "limitations": [
+    "This receipt proves actual compilation of the registry and native messaging launcher only; it does not establish linking, packaged integration or runtime compatibility.",
+    "Existing external hardlinks remain a confirmed bypass of the path policy.",
+    "Whole-browser/descendant drain, all-writer custody and admitted-root reopening remain unaccepted.",
+    "The accepted app, UI, owner profiles and shared Chromium checkout were not modified."
+  ],
+  "compileScriptSha256": "2adb0c0c957666ccad32cb58a5f4df1799f4ae469d0911be0ab26163f93a465a",
+  "sourceMapSha256": "d57275e73d0f33dbed27d09be630a08b25f03d83511f184f860cd0ec03a7544e"
+}
