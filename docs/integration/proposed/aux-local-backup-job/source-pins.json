@@ -3,10 +3,12 @@
   "baseCommit": "cb902cd51",
   "files": {
     "services/aux-cloud/scripts/backup-job-core.mjs": "0db485e6c3ae610e21ed36a5d6df2314a8c6bf69ef6a71fc2d4650d3d4ffed52",
-    "services/aux-cloud/scripts/cloud-backup-job.mjs": "1f40d16cb27b9213f37fe9f0c8c2ca54a81a9422f4bdeb13ad0f9be2da878a03",
+    "services/aux-cloud/scripts/cloud-backup-job.mjs": "dc3aeb93bdbc258f915232d96c65a3c2f91cb1e285d7767604da5b51885c7a8d",
     "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
     "services/aux-cloud/scripts/cloud-recovery-online.mjs": "fb35b82925c87d27857173330547055152045c8f21a0631aa8a884516852f1fa",
-    "docs/integration/proposed/aux-local-backup-job/check.mjs": "cc1b66b2f9068ac87c1e52c4c654cdc9273acfd2706993c1f7691f445dd94db3"
+    "docs/integration/proposed/aux-local-backup-job/check.mjs": "cc1b66b2f9068ac87c1e52c4c654cdc9273acfd2706993c1f7691f445dd94db3",
+    "services/aux-cloud/scripts/backup-capture-process.mjs": "64d3ddd26b111a2c9ee3b28f8b967d1abdbeac684be585c20b4f490ebb6b643e",
+    "docs/integration/proposed/aux-local-backup-job/check-process.mjs": "4abc3994cdb6117fd6e0b97c814257ba9fa6fc839d3de865f6019a318544dd96"
   },
   "offlineFixture": {
     "exitCode": 0,
@@ -17,7 +19,7 @@
   },
   "productionCliSyntaxChecked": true,
   "productionCaptureExecuted": false,
-  "parentCommit": "75d6adacb",
+  "parentCommit": "76ce14ec6",
   "followup": {
     "changedFixturePassed": true,
     "pendingPreservedOnUnknownOrCorruptFinal": true,
@@ -25,5 +27,14 @@
     "captureTimeoutIsStopRequestNotExitProof": true,
     "captureProcessInvoked": false,
     "providerOperations": 0
+  },
+  "processFollowup": {
+    "capturedChildFixturePassed": true,
+    "postSpawnErrorDoesNotSettleBeforeActualExit": true,
+    "preSpawnFailureRejected": true,
+    "zeroExitAfterErrorRefused": true,
+    "statusPersistenceRejectionHandled": true,
+    "captureOrProviderExecuted": false,
+    "unchangedBundleFixtureRepeated": false
   }
 }

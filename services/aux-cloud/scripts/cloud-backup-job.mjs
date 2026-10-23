@@ -5,35 +5,17 @@ import { realpath } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { readRecoveryKey } from './recovery-bundle.mjs';
+import { waitForCaptureExit } from './backup-capture-process.mjs';
 import { withBackupJobLock, createBackupJob, loadBackupJob, authenticateCapturedJob,
   deliverBackupJob, expireBackupJob, recordBackupStatus } from './backup-job-core.mjs';
 
 const [command, rootArgument, targetOrId, keyArgument, ...flags] = process.argv.slice(2);
 let key, job;
 async function captureOnce(job, key, keyFile, maxBytes) {
-  await new Promise((accept, reject) => {
-    const child = spawn(process.execPath, [fileURLToPath(new URL('./cloud-recovery-online.mjs', import.meta.url)),
-      'capture', join(job.path, 'bundle'), keyFile, '--max-bytes=' + maxBytes],
-      { env: process.env, stdio: ['ignore', 'ignore', 'ignore'] });
-    // Intent already persisted. A timeout/error never causes another capture.
-    let stopRequested = false, stopTask = Promise.resolve();
-    const timer = setTimeout(() => {
-      stopTask = (async () => {
-        stopRequested = true;
-        try { await recordBackupStatus(job, 'capture-stop-requested-outcome-uncertain', key); }
-        catch { /* Still request a stop; no durable-stop receipt is claimed. */ }
-        child.kill('SIGTERM');
-        // An ignored SIGTERM is not a bounded exit: retain this pending capture
-        // and lock until the real child exits. Never recapture or report success.
-      })();
-    }, 15 * 60_000);
-    child.once('error', () => { clearTimeout(timer); reject(Error('Capture process unavailable')); });
-    child.once('exit', async code => {
-      clearTimeout(timer);
-      await stopTask;
-      code === 0 && !stopRequested ? accept() : reject(Error('Capture failed or outcome uncertain'));
-    });
-  });
+  const child = spawn(process.execPath, [fileURLToPath(new URL('./cloud-recovery-online.mjs', import.meta.url)),
+    'capture', join(job.path, 'bundle'), keyFile, '--max-bytes=' + maxBytes],
+    { env: process.env, stdio: ['ignore', 'ignore', 'ignore'] });
+  await waitForCaptureExit(child, phase => recordBackupStatus(job, phase, key));
 }
 async function deliverWithBoundedRetry(job, key) {
   for (let attempt = 1; attempt <= 3; attempt++) {
