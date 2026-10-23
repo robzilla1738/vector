@@ -7,5 +7,5 @@ extern "C" mach_port_t AuxTakeNativeParentEndpointForBootstrap(void) {
   auto* actual = base::MachPortRendezvousClient::GetInstance();
   if (!actual) return MACH_PORT_NULL;
   auto right = actual->TakeSendRight(kNativeParentPeerPort);
-  return right ? right.release() : MACH_PORT_NULL;
+  return right.is_valid() ? right.release() : MACH_PORT_NULL;
 }

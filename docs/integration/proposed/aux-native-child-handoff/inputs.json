@@ -5,7 +5,7 @@
     {
       "path": "source/AuxNativeEndpointDelivery.cc",
       "inputSha256": null,
-      "outputSha256": "9fd57330f5c4d588d1009ae696c83d17bd28c90841f5cc1b931726a73f7ae565",
+      "outputSha256": "5cdefc38ed0ea72946aa619af8a36a2cae6c218ef698400da2bf35b056643886",
       "new": true
     },
     {
@@ -94,7 +94,7 @@
   "activeColdCallerIntegrated": false,
   "firstRefusalChanged": false,
   "wholeCohortCustodyClaimed": false,
-  "compileRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+  "compileRecipeSha256": "69743b6ef6841729d98cfb5ed42ce11bf93dea7aaf36b9c152cefa05f381c07e",
   "copySendReviewSha256": "57384f415506f31974221e4bd9402c18626e60fc9ea48b3e709d9495aad13748",
   "nodeCompiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
   "compileInputs": [
@@ -133,5 +133,13 @@
     "oneBridgeSourceChanged": true,
     "compilePending": true,
     "queuedRecipeMustConsumeSuccessorPins": true
+  },
+  "endpointDeliverySuccessor": {
+    "priorInputsSha256": "4ccb75f8176d99511530830255203a6d0485a54da6d7d97c5007c68121ce439d",
+    "priorRecipeSha256": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+    "priorResultSha256": "3f3c1743a87ba146a61d5ca87aaf516c176c94aa2a4de551679984409d3470da",
+    "oneSourceExpressionChanged": true,
+    "remainingThreeCompilePending": true,
+    "priorTwoObjectsUnchanged": true
   }
 }

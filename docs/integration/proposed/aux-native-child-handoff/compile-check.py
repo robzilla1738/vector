@@ -37,6 +37,8 @@ def verify_pins(inputs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--remaining-after-85029', action='store_true',
+                        help='Compile only corrected delivery and the two not-yet-run Node objects')
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists() or NATIVE == output or NATIVE in output.parents:
@@ -51,6 +53,23 @@ def main():
     try:
         verify_pins(inputs)
         results['prePinsVerified'] = True
+        results['mode'] = 'remaining-after-85029' if args.remaining_after_85029 else 'full'
+        if args.remaining_after_85029:
+            prior = HERE.parent / 'aux-native-endpoint-delivery-fix' / 'results.json'
+            if sha(prior) != inputs['endpointDeliverySuccessor']['priorResultSha256']:
+                raise ValueError('Failed85029 evidence changed')
+            previous = json.loads(prior.read_text())
+            if not previous.get('prePinsVerified') or not previous.get('postPinsVerified'):
+                raise ValueError('Previous graph was not source-pinned')
+            expected = [('AuxNativePeerTransport.cc', 0), ('AuxOwnedNativePeerChild.cc', 0),
+                        ('AuxNativeEndpointDelivery.cc', 1)]
+            if [(entry['source'], entry['exitCode']) for entry in previous['commands']] != expected:
+                raise ValueError('Unexpected prior graph result')
+            for entry in previous['commands'][:2]:
+                if sha(HERE / 'source' / entry['source']) != entry['sourceSha256']:
+                    raise ValueError('Previously passed source changed')
+            results['priorPassedObjects'] = previous['commands'][:2]
+            results['priorResultSha256'] = sha(prior)
         variables = {}
         for line in (BUILD / 'obj/base/base.ninja').read_text().splitlines():
             if ' = ' in line and not line.startswith(' '):
@@ -72,6 +91,8 @@ def main():
                                          'AuxNativeParentConnectionBridge.cc']),
         ]
         for graph, prefix, names in graphs:
+            if args.remaining_after_85029 and graph == 'chromium':
+                names = ['AuxNativeEndpointDelivery.cc']
             for name in names:
                 source = HERE / 'source' / name
                 stem = graph + '-' + name
@@ -101,7 +122,8 @@ def main():
         (output / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
     if error:
         raise SystemExit(str(error))
-    print('PASS: five objects, two ABI graphs; no link/native execution')
+    count = 3 if args.remaining_after_85029 else 5
+    print(f'PASS: {count} newly compiled objects, two ABI graphs; no link/native execution')
 
 
 if __name__ == '__main__':

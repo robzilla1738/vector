@@ -1,0 +1,27 @@
+{
+  "format": "aux.endpoint-delivery-fix.review.v1",
+  "failedSession": 85029,
+  "failedOutput": "/Users/rcourson/Documents/Vibe/web/out/aux-native-child-handoff-split-check",
+  "preservedFiles": {
+    "AuxNativeEndpointDelivery.cc": "9fd57330f5c4d588d1009ae696c83d17bd28c90841f5cc1b931726a73f7ae565",
+    "chromium-AuxNativeEndpointDelivery.cc.log": "a43a1e743ae1c6b393c7a200453a56484d24ed41748b9d612f7e175c9e26c060",
+    "chromium-AuxNativePeerTransport.cc.log": "e7719d4dd8a05035af527a5ea832ece51017c78ea0681b6d28f0adedd990e54d",
+    "chromium-AuxOwnedNativePeerChild.cc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compile-check.py": "46b6dda8bf68902bc0ef5737b84d6e87ef77d1f42f386a14da94842bc7c2569f",
+    "inputs.json": "4ccb75f8176d99511530830255203a6d0485a54da6d7d97c5007c68121ce439d",
+    "results.json": "3f3c1743a87ba146a61d5ca87aaf516c176c94aa2a4de551679984409d3470da"
+  },
+  "changedSource": "AuxNativeEndpointDelivery.cc",
+  "change": "right ? -> right.is_valid() ?",
+  "priorActualPassedObjects": [
+    "chromium-AuxNativePeerTransport.cc",
+    "chromium-AuxOwnedNativePeerChild.cc"
+  ],
+  "remainingCompilePending": [
+    "chromium-AuxNativeEndpointDelivery.cc",
+    "node-system-libcxx-AuxNativePeerTransport.cc",
+    "node-system-libcxx-AuxNativeParentConnectionBridge.cc"
+  ],
+  "compilerQueued": false,
+  "ipcOrSecurityExecuted": false
+}

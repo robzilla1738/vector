@@ -1,0 +1,4 @@
+[1m/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-child-handoff/source/AuxNativeEndpointDelivery.cc:10:10: [0m[0;1;31merror: [0m[1mvalue of type 'apple::ScopedMachSendRight' (aka 'ScopedGeneric<unsigned int, internal::SendRightTraits>') is not contextually convertible to 'bool'[0m
+   10 |   return right ? right.release() : MACH_PORT_NULL;[0m
+      | [0;1;32m         ^~~~~
+[0m1 error generated.
