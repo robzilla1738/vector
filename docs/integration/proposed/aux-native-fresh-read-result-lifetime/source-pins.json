@@ -57,5 +57,13 @@
     "docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source/AuxDevelopmentWorkerHost.cc": "768baff50ad087b0d8c373e70cd65255bfa4f5cd0e8cd02dd8b4257a721b4998",
     "docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source/aux-owned-command-dispatcher.h": "99049551d842c94624e4ef8c27fe02e5af30cc148e93e92e34ffdd4261741622",
     "docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h": "242803863a67315ade8477a9c738e40e1f7429e05bd02c90955a79c559a885e5"
+  },
+  "nativeSources": {
+    "docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source/AuxDevelopmentWorkerHost.cc": "768baff50ad087b0d8c373e70cd65255bfa4f5cd0e8cd02dd8b4257a721b4998",
+    "docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source/aux-owned-command-dispatcher.h": "99049551d842c94624e4ef8c27fe02e5af30cc148e93e92e34ffdd4261741622",
+    "docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h": "242803863a67315ade8477a9c738e40e1f7429e05bd02c90955a79c559a885e5",
+    "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f"
   }
 }

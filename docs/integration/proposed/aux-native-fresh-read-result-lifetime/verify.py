@@ -3,7 +3,7 @@ import pathlib,hashlib,json,difflib
 p=pathlib.Path(__file__).resolve().parent;repo=p.parents[3]
 def sha(q):return hashlib.sha256(q.read_bytes()).hexdigest()
 r=json.loads((p/'source-pins.json').read_text());assert len(r['swiftInputs'])==42
-for group in ('swiftInputs','baselineInputs','fixtureInputs','nativeUnchanged'):
+for group in ('swiftInputs','baselineInputs','fixtureInputs','nativeUnchanged','nativeSources'):
  for name,h in r[group].items():assert sha(repo/name)==h,name
 b=p/'baseline/AuxOwnedCommandDispatcher.swift';s=p/'source/AuxOwnedCommandDispatcher.swift'
 assert ''.join(difflib.unified_diff(b.read_text().splitlines(True),s.read_text().splitlines(True),fromfile='baseline/'+b.name,tofile='source/'+s.name))==(p/'successor.patch').read_text()
