@@ -1,0 +1,8 @@
+# Proposal only; not imported by the native graph.
+# Copy the exact pinned codec headers/sources into a disposable source overlay.
+aux_legacy_inbox_fixture_sources = [
+  "chrome/browser/notifications/aux_inbox_codec.cc",
+  "chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+  "legacy-inbox-test.cc",
+]
+aux_legacy_inbox_fixture_deps = [ "//crypto" ]

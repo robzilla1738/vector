@@ -1,0 +1,66 @@
+{
+  "format": "aux.explicit-legacy-inbox.source.v1",
+  "scope": "static-source-only; no compile or execution",
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h",
+      "sha256": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc",
+      "sha256": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9"
+    },
+    {
+      "path": "docs/integration/proposed/native-notification-inbox-pipeline/source/chrome/browser/notifications/aux_notification_inbox.cc",
+      "sha256": "157ae7e62b47a63cab8902ecab3c2b6f365ba2d7b28aa98492265cf7989902ee"
+    },
+    {
+      "path": "docs/integration/proposed/native-notification-inbox-key-source/source-evidence.json",
+      "sha256": "ddc06194f0aca7787675e1e9c42a6d0348bdc287404ff61b8952575d32139247"
+    },
+    {
+      "path": "docs/integration/proposed/native-notification-inbox-key-source/key-query.asm",
+      "sha256": "05900e8bb30ba562fda4d38dfb6fcd75ebd0d0285eb4f1d2700f4bd98dd4e9ad"
+    },
+    {
+      "path": "docs/integration/proposed/native-notification-inbox-key-source/master-key.asm",
+      "sha256": "21fcef55266328e875b246e804b519fb390bc04fbaa917d69c36f964566741ee"
+    },
+    {
+      "path": "docs/integration/proposed/native-notification-inbox-key-source/save-worker.asm",
+      "sha256": "c136b5b50b41fcc55527944dea441fa3ea6208dfd6284cdb10f5d88f17cf0ff3"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-master-key.mm",
+      "sha256": "ec54a67bc8b4ed1a12fe097cae61f60b8c392c7894d1d056e25807d91930ec01"
+    },
+    {
+      "path": "vendor/provided/native/agent-inbox-keychain-map.mm",
+      "sha256": "fa180ae31ab41690ed73dd353378ddc2cf84784b98a97ffc420076fe477841ab"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.cc",
+      "sha256": "35213300f345197ce640eaf3f5fc0d53abf1922404e6185423d0f80b6cdaf0d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/README.md",
+      "sha256": "4fb82082695302835ffe8f28c828454e5e12bf47c43dc0409de95d40ee99606b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/deferred-target.gni",
+      "sha256": "bcefd6e956df005470875b7487668e1ea60b75fccbe14b8ff864eafa9b6f5d5c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+      "sha256": "5f11bac3d2b7a686a9c3ba865036fb2a7e2f5463a66a8611e6c2b76f5446acf7"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/source/chrome/browser/notifications/aux_legacy_inbox_codec.h",
+      "sha256": "e2a5bcec03489bb69b5854d32ceaa55a73786fce32228f69d9d6ec1e56ec0d5a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-legacy-inbox-decoder/tests/legacy-inbox-test.cc",
+      "sha256": "a69ba69cd7f381924fb2aafbc45aee334dc514fcfe7aa9cb3c04085686a4ce48"
+    }
+  ]
+}
