@@ -6,7 +6,6 @@ private let daemonAuthorityProcess=getpid()
 private let daemonAuthorityLock=NSLock()
 private var daemonAuthorityNext:UInt64=1
 private var daemonAuthorities=[UInt64:PreparedDaemonAuthority]()
-private var unpublishedDaemonAuthorities=[PreparedDaemonAuthority]()
 private let daemonAuthPrefix=Data("Aux Daemon Auth v1\0".utf8) //19 exact bytes.
 private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey}
 // Exact backend-owned cache allocation; no Data COW alias can retain its old
@@ -104,7 +103,13 @@ private func callPreparedDaemonAuthority(_ entry:PreparedDaemonAuthority,_ reque
 }
 @_cdecl("AuxCreatePreparedDaemonAuthority")
 func AuxCreatePreparedDaemonAuthority(_ provider:UInt64)->UInt64 {
-    guard getpid()==daemonAuthorityProcess,AuxRetainPreparedFreshRuntimeProvider(provider)==0 else{return 0}
+    guard getpid()==daemonAuthorityProcess else{return 0}
+    // Reserve routing BEFORE any retained provider/protected owner exists.
+    // Exhaustion therefore cannot strand an unpublished successful owner.
+    daemonAuthorityLock.lock()
+    guard daemonAuthorityNext<UInt64.max else{daemonAuthorityLock.unlock();return 0}
+    let id=daemonAuthorityNext;daemonAuthorityNext += 1;daemonAuthorityLock.unlock()
+    guard AuxRetainPreparedFreshRuntimeProvider(provider)==0 else{return 0}
     var handle:UInt64=0,retained:UnsafeMutableRawPointer?
     guard AuxCreatePreparedFreshRuntimeOwner(provider,&handle,&retained)==0,handle != 0,let retained else{
         AuxReleasePreparedFreshRuntimeProvider(provider);return 0
@@ -115,10 +120,7 @@ func AuxCreatePreparedDaemonAuthority(_ provider:UInt64)->UInt64 {
     let entry=PreparedDaemonAuthority(provider:provider,owner:owner)
     guard getpid()==daemonAuthorityProcess else{return 0}
     daemonAuthorityLock.lock()
-    guard daemonAuthorityNext<UInt64.max else{
-        entry.closing=true;unpublishedDaemonAuthorities.append(entry);daemonAuthorityLock.unlock();return 0
-    }
-    let id=daemonAuthorityNext;daemonAuthorityNext += 1;daemonAuthorities[id]=entry
+    daemonAuthorities[id]=entry
     daemonAuthorityLock.unlock();return id
 }
 private func emitPreparedDaemonAuthority(_ result:DaemonAuthorityResult,_ output:UnsafeMutablePointer<UInt8>,_ written:UnsafeMutablePointer<UInt32>)->Int32 {
