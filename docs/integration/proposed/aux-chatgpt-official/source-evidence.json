@@ -1,0 +1,114 @@
+{
+  "schema": "aux.chatgpt.official-source-check.v1",
+  "originalSha256": "5e35dfa1eb76d4614246f954b652fd505e271a0b3f1ac3168132fb8bc03814f5",
+  "identity": "aux-v1",
+  "stateVersion": 2,
+  "anchors": [
+    {
+      "name": "credential read is local-only",
+      "count": 1
+    },
+    {
+      "name": "new tokens never enter synced file",
+      "count": 1
+    },
+    {
+      "name": "local disconnect retains registration",
+      "count": 1
+    },
+    {
+      "name": "local state never enters synced file",
+      "count": 1
+    },
+    {
+      "name": "generic credential mutation refuses",
+      "count": 1
+    },
+    {
+      "name": "generic credential deletion stays local",
+      "count": 1
+    },
+    {
+      "name": "model auth uses issued-client refresh",
+      "count": 1
+    },
+    {
+      "name": "rejected token uses local refresh",
+      "count": 1
+    },
+    {
+      "name": "provider list uses local token presence",
+      "count": 1
+    },
+    {
+      "name": "credential list includes local registration",
+      "count": 1
+    },
+    {
+      "name": "legacy synced ChatGPT tokens never selected",
+      "count": 1
+    },
+    {
+      "name": "legacy generic login refuses",
+      "count": 1
+    },
+    {
+      "name": "remote revocation on logout",
+      "count": 1
+    },
+    {
+      "name": "official authorization with existing dialog",
+      "count": 1
+    },
+    {
+      "name": "verified completion with no public tokens",
+      "count": 1
+    },
+    {
+      "name": "cancel clears private pending state",
+      "count": 1
+    },
+    {
+      "name": "callback origin is exact IPv4 loopback",
+      "count": 1
+    },
+    {
+      "name": "public Responses API reused",
+      "count": 1
+    },
+    {
+      "name": "public Responses implementation initialized",
+      "count": 1
+    },
+    {
+      "name": "public provider origin",
+      "count": 1
+    },
+    {
+      "name": "public account-scoped model catalog",
+      "count": 1
+    },
+    {
+      "name": "account model names and ordering populate supplied picker",
+      "count": 1
+    },
+    {
+      "name": "catalog cache stays account-token bound and local",
+      "count": 1
+    },
+    {
+      "name": "no private ChatGPT usage requests",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "full transformed ESM syntax",
+    "actual supplied CredentialStorage local selection and metadata-only enumeration",
+    "legacy credential bytes preserved",
+    "unverified generic writes refused",
+    "callback IPv4 exact anchor"
+  ],
+  "network": false,
+  "ownerState": false,
+  "runtimeAcceptance": false
+}
