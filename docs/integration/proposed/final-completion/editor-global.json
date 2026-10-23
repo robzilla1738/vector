@@ -1,0 +1,31 @@
+{
+  "pairedPublisherReader": true,
+  "persistedStateChanged": false,
+  "actualAppRun": false,
+  "rows": [
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux new-tab editor publisher and reader",
+          "find": "window.__asideNewTabEditor",
+          "replace": "window.__auxNewTabEditor",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/search-navigation-TWhZq3-H.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux new-tab editor publisher and reader",
+          "find": "window.__asideNewTabEditor",
+          "replace": "window.__auxNewTabEditor",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

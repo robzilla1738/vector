@@ -1,0 +1,73 @@
+{
+  "format": "aux.product-links.v1",
+  "rows": [
+    {
+      "path": "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://asidehq.com/policy/terms",
+          "replace": "https://getaux.co/policy/terms",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://asidehq.com/policy/privacy",
+          "replace": "https://getaux.co/policy/privacy",
+          "count": 1
+        }
+      ],
+      "sourceSha256": "7f8aa8cccc5749b2f148a465fee9bc7fd5e289329a3b4c6b634bd29a19282c61",
+      "outputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46",
+      "classNamesUnchanged": true
+    },
+    {
+      "path": "assets/ai-CzEX5E7S.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://asidehq.com/policy/terms",
+          "replace": "https://getaux.co/policy/terms",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://asidehq.com/policy/privacy",
+          "replace": "https://getaux.co/policy/privacy",
+          "count": 1
+        }
+      ],
+      "sourceSha256": "adfc9ec1c23303bb07652a694cf440571285892cd2332f63c9455af721c2decc",
+      "outputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633",
+      "classNamesUnchanged": true
+    },
+    {
+      "path": "assets/route-TQyeTEXE.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://docs.aside.com",
+          "replace": "https://getaux.co/docs",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux-owned product destination",
+          "find": "https://discord.gg/2h4cNW6ayc",
+          "replace": "https://getaux.co/community",
+          "count": 1
+        }
+      ],
+      "sourceSha256": "dcdc30ffc5e24807db5a01be3a7f3a01c27f84377c867571a0d7554b69c7bfc1",
+      "outputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4",
+      "classNamesUnchanged": true
+    }
+  ],
+  "actualAppChanged": false,
+  "destinationsPublished": false
+}

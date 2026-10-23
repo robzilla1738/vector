@@ -1,3 +1,4 @@
+import { applyAuxProductLinks, applyAuxEditorGlobalIdentity } from '../../vendor/provided/aux-product-links.mjs';
 import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { transformProviderFundedLaunch } from '../../vendor/provided/provider-funded-launch.mjs';
@@ -312,6 +313,11 @@ export async function stageProvidedUi({
             text = apply(text, callback); anchors.push(callback);
             if (text !== updated) throw Error('ChatGPT callback replay mismatch');
           }
+          const productLinks = applyAuxProductLinks({component, path: file.path, text, stateIdentityVersion});
+          text = productLinks.text;
+          anchors.push(...productLinks.anchors);
+          const editorIdentity = applyAuxEditorGlobalIdentity({component, path: file.path, text, stateIdentityVersion});
+          text = editorIdentity.text; anchors.push(...editorIdentity.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

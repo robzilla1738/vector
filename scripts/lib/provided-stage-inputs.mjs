@@ -1,6 +1,7 @@
 // Transform provenance prevents an older, internally consistent UI stage from
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
+  'vendor/provided/aux-product-links.mjs',
   'vendor/provided/provider-funded-launch.mjs',
   'vendor/provided/provider-launch-stage.mjs',
   'vendor/provided/provider-funded-launch-ui.json',
