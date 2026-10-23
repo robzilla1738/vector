@@ -6,11 +6,13 @@ p=pathlib.Path(__file__).resolve().parent;repo=p.parents[3];headers=pathlib.Path
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 pins=json.loads((p/'source-pins.json').read_text())['nativeSources']
 for name,digest in pins.items():assert sha(repo/name)==digest,name
+workerSources=[repo/name for name in pins if pathlib.Path(name).name=='AuxDevelopmentWorkerHost.cc']
+assert len(workerSources)==1
 # Inventory all actual frozen header bytes, not a claim of signed runtime origin.
 headerPins={str(x.relative_to(headers)):sha(x) for x in sorted(headers.rglob('*')) if x.is_file()}
 assert 'node.h' in headerPins and 'node_api.h' in headerPins
 with tempfile.TemporaryDirectory(prefix='aux-fresh-provider-worker-') as temporary:
- command=['xcrun','clang++','-std=c++20','-arch','arm64','-mmacosx-version-min=13.0','-DNAPI_VERSION=8','-fPIC','-I',str(headers),'-I',str(repo/'docs/integration/proposed/aux-owned-napi-adapter/source'),'-c',str(p/'source/AuxDevelopmentWorkerHost.cc'),'-o',temporary+'/worker.o']
+ command=['xcrun','clang++','-std=c++20','-arch','arm64','-mmacosx-version-min=13.0','-DNAPI_VERSION=8','-fPIC','-I',str(headers),'-I',str(repo/'docs/integration/proposed/aux-owned-napi-adapter/source'),'-c',str(workerSources[0]),'-o',temporary+'/worker.o']
  started=time.time();result=subprocess.run(command,capture_output=True,text=True)
  for name,digest in pins.items():assert sha(repo/name)==digest,name
  for name,digest in headerPins.items():assert sha(headers/name)==digest,name
