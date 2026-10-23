@@ -1,0 +1,15 @@
+{
+  "format": "aux.native-peer-safe-containers.v1",
+  "actualNativeInputs": {
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/AuxNativePeerTransport.cc": "0f595da0f28ffdaa74c10fd850743170592b6e519ea9718c63a086241431161b",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc": "9233fffc3f15fba4cad433f8b87153252b07fcd85de2df5b1c25c33d4a132f38",
+    "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/AuxNativeParentColdLaunch.cc": "f293217f677fea2090a0d1ad54a0e5c869fe1bf88ecd236404a0bf5bd5e9678a"
+  },
+  "files": {
+    "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxNativePeerTransport.cc": "c734d4608bb0fc0e9aac21c37ac6db6419ddfc95f5fdd3bb2524e7988e8d6538",
+    "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc": "e6793f89c00cd0d9a309e43bd01dca074f195eca5f6003c9270cbcb0e344da67",
+    "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc": "368c7c453d1983bb14a1ebedc20934558799f3a5ad46831ef19946a16099e293"
+  },
+  "nativeMutated": false,
+  "compiled": false
+}

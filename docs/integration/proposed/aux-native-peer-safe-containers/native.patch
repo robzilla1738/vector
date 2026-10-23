@@ -1,0 +1,107 @@
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -17,6 +17,9 @@
+ #include <sys/wait.h>
+ #include <unistd.h>
+ #include <array>
++#include <bit>
++#include <cstddef>
++#include <iterator>
+ #include <algorithm>
+ #include <atomic>
+ #include <limits>
+@@ -34,8 +37,10 @@
+ // Volatile stores are observable side effects and cannot be optimized into a
+ // discarded ordinary memset. No libc optional-extension declaration required.
+ void WipeOwnedBytes(std::span<uint8_t> bytes) {
+-  volatile uint8_t* output = bytes.data();
+-  for (size_t index = 0; index < bytes.size(); ++index) output[index] = 0;
++  for (auto& byte : bytes) {
++    volatile uint8_t& owned_byte = byte;
++    owned_byte = 0;
++  }
+ }
+ }  // namespace
+ DaemonAuthorityReply::DaemonAuthorityReply() = default;
+@@ -246,9 +251,14 @@
+       CFTypeRef unique = CFDictionaryGetValue(information, kSecCodeInfoUnique);
+       if (unique && CFGetTypeID(unique) == CFDataGetTypeID()) {
+         auto bytes = static_cast<CFDataRef>(unique);
+-        valid = CFDataGetLength(bytes) == static_cast<CFIndex>(policy.data_->cd_hash.size()) &&
+-            std::memcmp(CFDataGetBytePtr(bytes), policy.data_->cd_hash.data(),
+-                        policy.data_->cd_hash.size()) == 0;
++        const auto length = static_cast<CFIndex>(policy.data_->cd_hash.size());
++        if (CFDataGetLength(bytes) == length) {
++          // Policy construction admits only20/32bytes. CFDataGetBytes copies
++          // exactly this verified range into an equally sized owned vector.
++          std::vector<uint8_t> observed(policy.data_->cd_hash.size());
++          CFDataGetBytes(bytes, CFRangeMake(0, length), observed.data());
++          valid = observed == policy.data_->cd_hash;
++        }
+       }
+     }
+     if (information) CFRelease(information);
+@@ -595,8 +605,7 @@
+   mach_port_t incoming_fileport = MACH_PORT_NULL;
+   if (selected_request || authority_registration) {
+     if (header->msgh_size != sizeof(SelectedHomeWire)) return ExchangeStatus::refused;
+-    SelectedHomeReceived parsed{};
+-    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    auto parsed = std::bit_cast<SelectedHomeReceived>(incoming);
+     if (authority_registration) {
+       if (parsed.wire.version != kAuthorityVersion) return ExchangeStatus::refused;
+       parsed.wire.header.msgh_id = kSelectedHomeRequest;
+@@ -608,8 +617,11 @@
+     incoming_fileport = parsed.wire.fileport.name;
+   } else {
+     if (header->msgh_size != sizeof(Wire)) return ExchangeStatus::refused;
+-    Received parsed{};
+-    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    const auto bytes = std::bit_cast<std::array<std::byte, sizeof(Incoming)>>(incoming);
++    std::array<std::byte, sizeof(Received)> prefix{};
++    static_assert(sizeof(Received) <= sizeof(Incoming));
++    std::copy_n(bytes.begin(), prefix.size(), prefix.begin());
++    auto parsed = std::bit_cast<Received>(prefix);
+     if (!ValidWire(parsed, kRequest) || parsed.wire.generation != 0)
+       return ExchangeStatus::refused;
+     audit = parsed.trailer.msgh_audit;
+@@ -1282,7 +1294,7 @@
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::SignDaemonChallenge(
+     std::span<const uint8_t> message, uint32_t timeout_ms) {
+   constexpr char domain[] = "Aux Daemon Auth v1"; // Includes exact terminating NUL.
+-  if (message.size() != 51 || std::memcmp(message.data(), domain, sizeof(domain)) != 0)
++  if (message.size() != 51 || !std::equal(std::begin(domain), std::end(domain), message.begin()))
+     return {};
+   return RequestAuthority(kSign, message, timeout_ms);
+ }
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -298,8 +298,10 @@
+   auto reply = state_->transfer->GetAgentInboxV2MasterKey(timeout_ms);
+   auto after = InspectOwnedChild();
+   if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid) {
+-    volatile uint8_t* owned_bytes = reply.payload.data();
+-    for (size_t index = 0; index < reply.payload.size(); ++index) owned_bytes[index] = 0;
++    for (auto& byte : reply.payload) {
++      volatile uint8_t& owned_byte = byte;
++      owned_byte = 0;
++    }
+     return {DaemonAuthorityStatus::closed, {}};
+   }
+   return reply;
+--- a/chrome/browser/aux/AuxNativeParentColdLaunch.cc
++++ b/chrome/browser/aux/AuxNativeParentColdLaunch.cc
+@@ -113,8 +113,11 @@
+   if (!bundle || !bundle->ends_with(".app") || !main_path ||
+       *main_path != *bundle + "/Contents/MacOS/" + *leaf_name || !hash ||
+       (CFDataGetLength(hash) != 20 && CFDataGetLength(hash) != 32)) return std::nullopt;
+-  return Image{*bundle, base::FilePath(*main_path),
+-      std::vector<uint8_t>(CFDataGetBytePtr(hash), CFDataGetBytePtr(hash) + CFDataGetLength(hash))};
++  // The preceding guard permits only20/32bytes; the copy range and owned
++  // destination have exactly that verified CFData length.
++  std::vector<uint8_t> captured_hash(static_cast<size_t>(CFDataGetLength(hash)));
++  CFDataGetBytes(hash, CFRangeMake(0, CFDataGetLength(hash)), captured_hash.data());
++  return Image{*bundle, base::FilePath(*main_path), std::move(captured_hash)};
+ }
+ std::unique_ptr<OwnedNativePeerChild> PrepareCurrentSealedChild() {
+   auto browser_requirement = Requirement("dev.aux.browser");

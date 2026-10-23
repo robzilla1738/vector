@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "baselineSha256": "0f595da0f28ffdaa74c10fd850743170592b6e519ea9718c63a086241431161b",
+      "outputSha256": "c734d4608bb0fc0e9aac21c37ac6db6419ddfc95f5fdd3bb2524e7988e8d6538",
+      "origin": "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxNativePeerTransport.cc"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "baselineSha256": "9233fffc3f15fba4cad433f8b87153252b07fcd85de2df5b1c25c33d4a132f38",
+      "outputSha256": "e6793f89c00cd0d9a309e43bd01dca074f195eca5f6003c9270cbcb0e344da67",
+      "origin": "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "baselineSha256": "f293217f677fea2090a0d1ad54a0e5c869fe1bf88ecd236404a0bf5bd5e9678a",
+      "outputSha256": "368c7c453d1983bb14a1ebedc20934558799f3a5ad46831ef19946a16099e293",
+      "origin": "docs/integration/proposed/aux-native-peer-safe-containers/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc"
+    }
+  ],
+  "applied": false,
+  "compiled": false,
+  "patchSha256": "fc453811be9f9b8505869afa1ed6afeef056d03274bdc6e905c0117ff556875c"
+}
