@@ -1,0 +1,94 @@
+--- baseline/AuxDevelopmentWorkerHost.cc
++++ source/AuxDevelopmentWorkerHost.cc
+@@ -380,8 +380,8 @@
+   auto result = AuxDevelopmentWorkerDrain::drained;
+   if (state_->prepared_fresh_provider) {
+     const int32_t creation = AuxClosePreparedFreshRuntimeCreation(state_->prepared_fresh_provider);
+-    if (creation < 0) result = AuxDevelopmentWorkerDrain::untracked;
+-    else if (creation > 0) result = AuxDevelopmentWorkerDrain::pending;
++    if (creation < 0 || creation == 2) result = AuxDevelopmentWorkerDrain::untracked;
++    else if (creation == 1) result = AuxDevelopmentWorkerDrain::pending;
+   }
+   const auto retained_utility = AuxLoadedUtilityLifetime::InspectRetainedClosures();
+   if (retained_utility == AuxUtilityHostDrain::wrongProcess) result = AuxDevelopmentWorkerDrain::wrongProcess;
+--- baseline/AuxPreparedFreshRuntimeProvider.swift
++++ source/AuxPreparedFreshRuntimeProvider.swift
+@@ -19,7 +19,7 @@
+         let id=try PreparedFreshRuntimeProviders.publish(terminal:terminal,captured:captured,scoped:scoped)
+         return .init(id)
+     }
+-    // 0: no owner creation in flight, 1: creation pending, -1: wrong/closed handle.
++    // 0: creation settled, 1: creation pending, 2: quarantined/untracked late owner, -1: invalid handle.
+     // Existing per-Environment owners must separately retire through WorkerHost.
+     func closeCreationAdmission()->Int32{PreparedFreshRuntimeProviders.close(nativeHandle)}
+     deinit{PreparedFreshRuntimeProviders.release(nativeHandle)}
+@@ -32,6 +32,7 @@
+         var references:UInt64=1
+         var active:UInt64=0
+         var closed=false
++        var quarantinedOwners:[AuxOwnedCommandDispatcher]=[]
+         init(terminal:NativeFreshTerminalSelection,captured:NativeFreshRuntimeCapturedContext,scoped:ScopedAuxCommandContext){
+             self.terminal=terminal;preparedCapture=captured;preparedScoped=scoped
+         }
+@@ -60,7 +61,10 @@
+         lock.lock()
+         if let e=entries[id],e.references>0 {
+             e.references -= 1
+-            if e.references==0 {e.closed=true;released=entries.removeValue(forKey:id)}
++            if e.references==0 {
++                e.closed=true
++                if e.active==0 && e.quarantinedOwners.isEmpty{released=entries.removeValue(forKey:id)}
++            }
+         }
+         lock.unlock();withExtendedLifetime(released){}
+     }
+@@ -68,6 +72,7 @@
+         guard getpid()==process else{return -1}
+         lock.lock();defer{lock.unlock()}
+         guard let e=entries[id]else{return -1};e.closed=true
++        if !e.quarantinedOwners.isEmpty{return 2}
+         return e.active==0 ? 0:1
+     }
+     static func create(_ id:UInt64,_ handle:UnsafeMutablePointer<UInt64>,_ retained:UnsafeMutablePointer<UnsafeMutableRawPointer?>)->Int32 {
+@@ -77,6 +82,7 @@
+         guard let found=entries[id],!found.closed,found.active<UInt64.max else{lock.unlock();return -1}
+         found.active += 1;entry=found;lock.unlock()
+         var owner:AuxOwnedCommandDispatcher?
++        var preparationSucceeded=false
+         do {
+             // Each Environment imports its own actual current target authority;
+             // never share one mutable dispatcher/root handle across Environments.
+@@ -86,9 +92,10 @@
+             let utilities=AuxMacOSUtilityCommandCore(boundary:AuxAppKitUtilityBoundary(custody:custody))
+             owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped,macOSUtilities:utilities)
+             try captured.revalidate()
++            preparationSucceeded=true
+         }catch{}
+         lock.lock()
+-        if let owner,!entry.closed {
++        if let owner,preparationSucceeded,!entry.closed {
+             // Only pointer stores/ARC retain here; no callback or protected call.
+             handle.pointee=owner.handle;retained.pointee=Unmanaged.passRetained(owner).toOpaque()
+             entry.active -= 1;lock.unlock();return 0
+@@ -96,8 +103,19 @@
+         lock.unlock()
+         // Keep creation pending until a late owner has actually retired. Never
+         // hold the registry mutex across retirement or any native destructor.
+-        if let owner{try? owner.retire()}
+-        lock.lock();entry.active -= 1;lock.unlock();return -1
++        var unresolved:AuxOwnedCommandDispatcher?
++        if let owner {
++            do{try owner.retire()}
++            catch AuxDispatcherLifetimeError.invalidHandle {} // Exact owner already absent.
++            catch{unresolved=owner} // Reentrant/retiring/unknown is NOT observed completion.
++        }
++        lock.lock()
++        if let unresolved{entry.quarantinedOwners.append(unresolved)}
++        entry.active -= 1
++        // Even after all native references release, uncertain owners retain the
++        // genuine context and remain observable; no timeout/reset/reopen/delete.
++        if entry.references==0 && entry.active==0 && entry.quarantinedOwners.isEmpty{entries.removeValue(forKey:id)}
++        lock.unlock();return -1
+     }
+ }
+ @_cdecl("AuxRetainPreparedFreshRuntimeProvider")

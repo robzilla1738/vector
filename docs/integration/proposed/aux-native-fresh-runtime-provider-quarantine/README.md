@@ -1,0 +1,11 @@
+# Preserve unresolved late fresh owners
+
+This successor corrects two actual prepared-provider defects. Late factory cleanup no longer discards thrown retirement with `try?`: exact invalidHandle alone is treated as the existing registry's already-absent observation; reentrant/retiring/unknown failures retain the exact owner in the provider entry's quarantine. That entry retains the genuine terminal/capture/scoped context even after the last native publisher/host reference releases. It cannot reopen or be retained for new owner creation. No automatic deletion/reset/retry claims recovery. Creation remains pending until the cleanup attempt returns; no mutex crosses retirement/destruction.
+
+Close-creation status is 0 settled creation, 1 creation pending, 2 unresolved/untracked quarantined owner, -1 invalid/wrong process. The WorkerHost successor explicitly maps2 to untracked rather than pending/success. Existing active owner retirement remains a separate WorkerHost responsibility. Quarantine is observation, not a proof that the underlying owner is active or inactive.
+
+A second defect allowed a nonnil constructed owner to publish if its subsequent captured-context revalidation threw. Publication now additionally requires preparationSucceeded set only after that final validation. Failed validation follows the same observed cleanup/quarantine path.
+
+The focused fixture compiles the actual provider Swift registry against explicitly fake terminal/crypto/OS/dispatcher types. It proves only new mutable registry sequencing: closure during capture/scoped/owner/final-validation callbacks refuses publication, reentrant close observes pending while cleanup executes, unknown retirement retains context/untracked state after final release, invalidHandle settles, and failed final validation never publishes. It performs no authentication, Keychain, real authority generation or OS effect. Source-only/static evidence until its queued compile/run completes.
+
+The original provider and original36 recipe remain historical. The same waiting40860 serializer is redirected to this pinned36 graph before child dispatch; there is no duplicate whole graph. Existing25336 and66115 fixtures remain unchanged. Cold cross-process/Node admission, real production bootstrap and quarantine recovery remain incomplete; UI and current protected refusal remain unchanged.
