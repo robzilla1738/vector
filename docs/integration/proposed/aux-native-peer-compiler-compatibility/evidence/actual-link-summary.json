@@ -21,6 +21,10 @@
     "actual-11.log": "8279e555f980bdd7d8f98970416f90303170f88a828693873ad09de0a6d79a81",
     "actual-9.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "actual-pty-main-exports.log": "aec915aa642c86ff4588a30590d97ec87ffca74fca6559882959a3288b4eddbd",
-    "actual-resume-build.json": "02ccef3ddb78b1d70df341f11b817f12e2666978e0e24e281478549993d36cb9"
-  }
+    "actual-resume-build.json": "02ccef3ddb78b1d70df341f11b817f12e2666978e0e24e281478549993d36cb9",
+    "actual-main-build-version.txt": "705ecb73fab718f1cc4a6d8a68334beee22688a0578abc0ec242f9c3e635cd80"
+  },
+  "measuredMainMinimumOS": "13.5",
+  "measuredMainSDK": "27.0",
+  "wholeProductCompatibilityEstablished": false
 }
