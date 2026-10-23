@@ -2,6 +2,10 @@
 
 Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speech and production preparation; preserve the existing desktop UI and existing provider data. No final desktop release, notarization or distribution. Work remains active until actual service and desktop behavior is verified.
 
+## Actual development email delivery — later 2026-10-22
+
+The owner authorized one sign-in email to a specified inbox. The deployed native-email route accepted exactly one request, and the actual Aux Resend dashboard confirmed the matching recipient, subject and **Delivered** status. No email body/code was read or used, no verification was attempted, and no account or sign-in session was created. This closes the development outbound-delivery check only. Actual real-email sign-in completion, desktop auth and Production delivery remain separate acceptance requirements. Committed evidence redacts the recipient: `services/aux-cloud/evidence/email-delivery.json`. Earlier “real email delivery unverified” statements below are historical for their respective checks.
+
 ## Identity migration integration — 2026-10-22
 
 Owner requires all delivered product identities to use Aux, including internal protocols, while preserving current UI. The new protocol-only unsigned desktop candidate builds and passes actual packaged static pairing/visual preservation; it is not launched or runtime-accepted. Separate local cloud changes emit Aux provider/header/plan identities and retain explicit pending-checkout continuity without changing Stripe objects. They are not deployed and must roll out with the source/count-pinned desktop provider migration after its durable state transaction is integrated. Native preferences and crypto migration hooks are prepared but not activated. Complete identity and native-addon recovery remain work; see `../plans/2026-10-22-complete-aux-identity.md` and STATUS. Earlier service acceptance remains historical for its exact deployment, not proof of the new desktop/provider stack.
