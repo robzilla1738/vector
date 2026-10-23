@@ -34,3 +34,8 @@ This is a linked source/resource association, not permission or proof for startu
 ## Root applied integration and actual package
 
 Root applied the paired resource/reader package successors and actual new package27703 passed in a fresh directory. The fixed reader compiled/linked in95354 and the actual copied binary/resource hashes match. Ordinary index remains unchanged/refused; all1217 Agent/five CSS files match the preceding recovery-enrollment stage. `aux-native-current-entry-reader-build/evidence/actual-paired-package.json` records exact observed package/bundle hashes. No app/module was run, signed or activated; current native cold hook remains off. Previous unapplied/uncompiled descriptions above are historical for their source-only lane, not current package status.
+
+
+## Direct static comparison to the accepted app
+
+`evidence/accepted-agent-static-comparison.json` compares the actual packaged Agent directories of the accepted local-browser app and the separate paired native-entry candidate. All five CSS files match byte-for-byte. Six of seven renamed artwork files also match; one artwork file differs, alongside47 changed JavaScript/metadata files and two added recovery-enrollment files. This records static differences honestly; it is not a rendered comparison, native-corner/toolbar comparison or behavior acceptance. The accepted app remains untouched.

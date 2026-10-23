@@ -1,0 +1,150 @@
+{
+  "format": "aux.accepted-candidate.agent-static-comparison.v1",
+  "checkedAt": "2026-10-23T06:30:42.388513+00:00",
+  "acceptedRoot": "out/provided-candidate-local-browser-pass/Aux.app/Contents/Resources/aux/apps/extension/dist",
+  "candidateRoot": "out/provided-candidate-aux-native-entry-paired/Aux.app/Contents/Resources/aux/apps/extension/dist",
+  "acceptedFiles": 1215,
+  "candidateFiles": 1217,
+  "styles": [
+    {
+      "path": "assets/globals-B-8L9em-.css",
+      "acceptedSha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d",
+      "candidateSha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d",
+      "equal": true
+    },
+    {
+      "path": "assets/liquid-glass-BmSyeXQT.css",
+      "acceptedSha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7",
+      "candidateSha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7",
+      "equal": true
+    },
+    {
+      "path": "assets/minipopup-options-CxOtM5A8.css",
+      "acceptedSha256": "09f02ad43bd0d784f80d047fcdfcb0ca526c9df926d0e4018f02f9f404b3134c",
+      "candidateSha256": "09f02ad43bd0d784f80d047fcdfcb0ca526c9df926d0e4018f02f9f404b3134c",
+      "equal": true
+    },
+    {
+      "path": "assets/session-composer-BoATOu3F.css",
+      "acceptedSha256": "17d617a57cb9ede5721f536bb8546527250a2a05648bb2a4b00748ebc611c8d0",
+      "candidateSha256": "17d617a57cb9ede5721f536bb8546527250a2a05648bb2a4b00748ebc611c8d0",
+      "equal": true
+    },
+    {
+      "path": "assets/styles-CEC_MU8r.css",
+      "acceptedSha256": "28827594ce0d06f78970aa129b1e366f781f2450e5c2eb88f753d5e01098c2f5",
+      "candidateSha256": "28827594ce0d06f78970aa129b1e366f781f2450e5c2eb88f753d5e01098c2f5",
+      "equal": true
+    }
+  ],
+  "renamedAssets": [
+    {
+      "acceptedPath": "assets/aside-CeBDTZrg.webp",
+      "candidatePath": "assets/aux-CeBDTZrg.webp",
+      "equal": false
+    },
+    {
+      "acceptedPath": "assets/aside-cli-3UABIqGq.webp",
+      "candidatePath": "assets/aux-cli-3UABIqGq.webp",
+      "equal": true
+    },
+    {
+      "acceptedPath": "assets/aside-context-awareness-CQFhCmYA.webp",
+      "candidatePath": "assets/aux-context-awareness-CQFhCmYA.webp",
+      "equal": true
+    },
+    {
+      "acceptedPath": "assets/aside-lasso-BhzH82rC.webp",
+      "candidatePath": "assets/aux-lasso-BhzH82rC.webp",
+      "equal": true
+    },
+    {
+      "acceptedPath": "assets/aside-mini-popup-DpI8c-u_.webp",
+      "candidatePath": "assets/aux-mini-popup-DpI8c-u_.webp",
+      "equal": true
+    },
+    {
+      "acceptedPath": "assets/aside-password-manager-CZ9IYl_W.webp",
+      "candidatePath": "assets/aux-password-manager-CZ9IYl_W.webp",
+      "equal": true
+    },
+    {
+      "acceptedPath": "assets/aside-payment-use-BBKr-NnX.webp",
+      "candidatePath": "assets/aux-payment-use-BBKr-NnX.webp",
+      "equal": true
+    }
+  ],
+  "added": [
+    "assets/aux-CeBDTZrg.webp",
+    "assets/aux-cli-3UABIqGq.webp",
+    "assets/aux-context-awareness-CQFhCmYA.webp",
+    "assets/aux-lasso-BhzH82rC.webp",
+    "assets/aux-mini-popup-DpI8c-u_.webp",
+    "assets/aux-password-manager-CZ9IYl_W.webp",
+    "assets/aux-payment-use-BBKr-NnX.webp",
+    "assets/aux-sync-recovery-enrollment-controller.js",
+    "assets/aux-sync-recovery-enrollment.js"
+  ],
+  "removed": [
+    "assets/aside-CeBDTZrg.webp",
+    "assets/aside-cli-3UABIqGq.webp",
+    "assets/aside-context-awareness-CQFhCmYA.webp",
+    "assets/aside-lasso-BhzH82rC.webp",
+    "assets/aside-mini-popup-DpI8c-u_.webp",
+    "assets/aside-password-manager-CZ9IYl_W.webp",
+    "assets/aside-payment-use-BBKr-NnX.webp"
+  ],
+  "changed": [
+    "assets/-types-Wy38XkNB.js",
+    "assets/_sessionId-ClN_BWh5.js",
+    "assets/_skillId-CAwCRjA8.js",
+    "assets/account-Dr_CA8LL.js",
+    "assets/add-on-credits-dialog-Dn5FxOyZ.js",
+    "assets/agents-urkO3LLg.js",
+    "assets/ai-CzEX5E7S.js",
+    "assets/artifact-test-CdjpLuI1.js",
+    "assets/browser-binding-CzDmxQNA.js",
+    "assets/browser-icon-DvnonVC4.js",
+    "assets/chat-wBzshK0k.js",
+    "assets/coding-agent-nudge-Cy9BtLdb.js",
+    "assets/connect-dialog-CacgpFap.js",
+    "assets/context-awareness-BocPTg31.js",
+    "assets/conversation-D9Q3VEsl.js",
+    "assets/developers-DTvaoVBC.js",
+    "assets/error-test-BKjD4Ku7.js",
+    "assets/experimental-Xq3YsEPK.js",
+    "assets/icons-C7UupG-g.js",
+    "assets/inbox-BIWs6dWb.js",
+    "assets/lasso-LoarCzmz.js",
+    "assets/mcps-DmPp5oo9.js",
+    "assets/mini-popup-BBLwe-a8.js",
+    "assets/model-BrFuJM2w.js",
+    "assets/model-categories-BLKcCTS7.js",
+    "assets/model-select-BvZsM1Kl.js",
+    "assets/openai-codex-oauth-DBNnab2L.js",
+    "assets/payment-use-CqnbXHDE.js",
+    "assets/privacy-BeEEt9Qu.js",
+    "assets/progress-CS-jrVXz.js",
+    "assets/provider-Cw0zhujt.js",
+    "assets/provider-context-A_wu0fRN.js",
+    "assets/queries-ldd77hNk.js",
+    "assets/session-composer-Dc0LRfZA.js",
+    "assets/sidebar-Cj9gldy1.js",
+    "assets/skill-activation-fields-wmmVsYeN.js",
+    "assets/skills-CfSQ7MCw.js",
+    "assets/strip-markdown-DRcmtuJc.js",
+    "assets/subscription-usage-BB4arJ0Z.js",
+    "assets/tool-definition-registry-Cc6FCFb2.js",
+    "assets/types-BEI3ap6-.js",
+    "assets/use-agent-settings-DiedG0R1.js",
+    "assets/utils-WfPpT5w5.js",
+    "background.js",
+    "content/content.js",
+    "manifest.json",
+    "newtab-theme.js"
+  ],
+  "uiRuntimeObserved": false,
+  "renderedParityProven": false,
+  "nativeWindowGeometryCompared": false,
+  "acceptedAppReplaced": false
+}

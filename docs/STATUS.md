@@ -1,3 +1,9 @@
+# Recovery subprocess cleanup corrected; local PostgreSQL restore exercise underway — 2026-10-23
+
+Both online and historical capture commands now retain the actual PostgreSQL tool until exit and archive-stream settlement after error or a stop request. A real temporary writer exceeded its byte budget, ignored SIGTERM and later exited zero; the corrected runner waited and rejected that uncertain outcome. The restore CLI similarly retains its actual importer after post-spawn errors/timeouts and refuses exit0 success after uncertainty; one focused lifecycle fixture passed. No provider capture/restore was repeated for these new bytes. See `aux-recovery-tool-process/` and `aux-cloud-restore-process-lifetime/` under `docs/integration/proposed/`.
+
+A disposable Unix-socket-only PostgreSQL18 exercise is being prepared for actual current12-schema archive import and restore-core checks with synthetic attachment/avatar data. It will not establish Neon/Blob provider restoration, remote custody, cutover or activation. Direct accepted-app static comparison confirms all five Agent CSS files match the paired candidate;47 JavaScript/metadata differences and one renamed artwork difference remain explicitly recorded, not rendered/runtime acceptance. No accepted app/UI was changed.
+
 # Operator recovery job completed and actual empty-production capture verified — 2026-10-23
 
 The inactive macOS27 descendant observer now has one actual serialized syntax/link-only pass40009 against the real SDK/EndpointSecurity/libbsm. Its source required no changes. The library was not loaded, no client/factory was invoked and no entitlement/signature/process observation changed. Initial population, delivery completion and whole-subtree drain remain unproven; no product registration or startup claim follows. Exact receipt: `docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/receipt.json`.

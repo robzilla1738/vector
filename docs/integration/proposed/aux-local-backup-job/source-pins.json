@@ -5,10 +5,11 @@
     "services/aux-cloud/scripts/backup-job-core.mjs": "0db485e6c3ae610e21ed36a5d6df2314a8c6bf69ef6a71fc2d4650d3d4ffed52",
     "services/aux-cloud/scripts/cloud-backup-job.mjs": "dc3aeb93bdbc258f915232d96c65a3c2f91cb1e285d7767604da5b51885c7a8d",
     "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
-    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "fb35b82925c87d27857173330547055152045c8f21a0631aa8a884516852f1fa",
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720",
     "docs/integration/proposed/aux-local-backup-job/check.mjs": "cc1b66b2f9068ac87c1e52c4c654cdc9273acfd2706993c1f7691f445dd94db3",
     "services/aux-cloud/scripts/backup-capture-process.mjs": "64d3ddd26b111a2c9ee3b28f8b967d1abdbeac684be585c20b4f490ebb6b643e",
-    "docs/integration/proposed/aux-local-backup-job/check-process.mjs": "4abc3994cdb6117fd6e0b97c814257ba9fa6fc839d3de865f6019a318544dd96"
+    "docs/integration/proposed/aux-local-backup-job/check-process.mjs": "4abc3994cdb6117fd6e0b97c814257ba9fa6fc839d3de865f6019a318544dd96",
+    "services/aux-cloud/scripts/recovery-tool-process.mjs": "c7a65ad72805a03180de813005a5301e62a4e2beeb3f4d7d8d20db2b139354b4"
   },
   "offlineFixture": {
     "exitCode": 0,
@@ -36,5 +37,11 @@
     "statusPersistenceRejectionHandled": true,
     "captureOrProviderExecuted": false,
     "unchangedBundleFixtureRepeated": false
+  },
+  "toolLifetimeFollowup": {
+    "integrationCommit": "7c5922423",
+    "actualWriterFailureCheckPassed": true,
+    "providerCaptureRepeated": false,
+    "historicalActualCaptureEvidence": "services/aux-cloud/evidence/backup-job-empty-production.json"
   }
 }
