@@ -1,3 +1,9 @@
+# Interrupted browser build resumed from completed outputs — 2026-10-23
+
+The earlier `unsigned-approved-macro-route-build` stopped after the user interruption at40,301/56,815 actions. It has no successful final receipt; the incomplete log is historical evidence, not a compiler failure or a completed build. Process/lock inspection confirmed the old workers were gone before resuming. The same isolated snapshot now runs `unsigned-recovered-base-build-20261023` with fresh GN/action review,8jobs and16,514 remaining actions. Completed outputs are reused; the shared checkout and accepted app remain untouched.
+
+The two-unit path-defense object check is queued behind that build under the native lock. Final source projection, fresh incremental compilation with pinned inputs and actual package assembly still depend on their successful receipts. The existing exact68host-output ad-hoc exception remains the only signing exception used; product outputs remain configured unsigned. No runtime/UI readiness claim.
+
 # Bundled runtime remains usable when optional release metadata is offline — 2026-10-23
 
 A one-count supplied performInstall correction now preserves a valid non-quarantined local runtime when only optional release metadata fails, reporting installed with latestVersion:null. Forced updates, missing/incomplete runtime, quarantine and actual install/bootstrap errors still fail. The extracted actual-function fixture reproduces the prior false failure after seed and verifies those refusal cases with controlled dependencies. No network/product execution or UI layout change occurred.
