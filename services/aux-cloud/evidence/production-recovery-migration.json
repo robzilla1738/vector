@@ -1,0 +1,38 @@
+{
+  "format": "aux.production.recovery.schema-preparation.v1",
+  "checkedAt": "2026-10-23T01:54:33.288Z",
+  "projectId": "ancient-river-76453764",
+  "databaseHost": "ep-red-snow-b8ctxcyx-pooler.c-14.us-east-1.aws.neon.tech",
+  "beforeMigrations": 11,
+  "afterMigrations": 12,
+  "migrationSha256": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e",
+  "manifestSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
+  "tables": [
+    "aux_sync_recovery_challenges_v2",
+    "aux_sync_recovery_v2"
+  ],
+  "recoveryRoutinePresent": true,
+  "allMigrationHashesMatch": true,
+  "additiveOnly": true,
+  "accountOrExistingKeyUpdates": false,
+  "secretValuesPrinted": false,
+  "productionActivated": false,
+  "deploymentOrDomainChanged": false,
+  "developmentTouched": false,
+  "desktopChanged": false,
+  "executionSession": 57690,
+  "executionExitCode": 0,
+  "scriptSha256": "86996e81a31a231f01e4a19cc7a5c351c1f57bbfd8ce98f6fe83d141ef655fdd",
+  "personalIdentityVerified": true,
+  "projectLinkVerified": true,
+  "environment": "production",
+  "emptyWorkingDirectory": true,
+  "localDevelopmentEnvFallback": false,
+  "unavailableProviderSecretsPulled": false,
+  "initialNativeCliArgumentFailure": {
+    "session": 60251,
+    "exitCode": 2,
+    "migrationTwelveStillAbsentAtFinalPreflight": true
+  },
+  "installedJavaScriptCliFallback": true
+}

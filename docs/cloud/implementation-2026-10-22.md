@@ -2,6 +2,12 @@
 
 Owner objective: complete sign-in, subscriptions, sync, sharing, hosted AI/speech and production preparation; preserve the existing desktop UI and existing provider data. No final desktop release, notarization or distribution. Work remains active until actual service and desktop behavior is verified.
 
+## Production recovery schema prepared — later 2026-10-22
+
+The separately approved Aux production database now has additive migration012. Actual target project/hostname and all11 predecessor hashes were checked before application; all12 hashes, both new recovery tables and the exact recovery routine were verified afterward. No account/CSK/session content was read or changed, no fixture records were needed, and no deployment/domain was modified. Production's resource profile remains null and production activation/readiness is **not** claimed. Evidence: `services/aux-cloud/evidence/production-recovery-migration.json`.
+
+The initial installed native CLI rejected command arguments before the migration; final preflight still observed11 migrations. The installed JavaScript CLI then ran the guarded script from a newly created empty temporary directory, avoiding the CLI's local-development-env fallback. Five unavailable Production Secret values stayed unavailable; no bypass, secret readback or new credential was used. The empty temporary directory was removed. The actual database connection was scoped to the approved target and never printed. This advances schema preparation only; live Stripe/webhook/provider configuration, production sender verification, independent backup operations and actual production activation remain outstanding.
+
 ## Actual development email delivery — later 2026-10-22
 
 The owner authorized one sign-in email to a specified inbox. The deployed native-email route accepted exactly one request, and the actual Aux Resend dashboard confirmed the matching recipient, subject and **Delivered** status. No email body/code was read or used, no verification was attempted, and no account or sign-in session was created. This closes the development outbound-delivery check only. Actual real-email sign-in completion, desktop auth and Production delivery remain separate acceptance requirements. Committed evidence redacts the recipient: `services/aux-cloud/evidence/email-delivery.json`. Earlier “real email delivery unverified” statements below are historical for their respective checks.
