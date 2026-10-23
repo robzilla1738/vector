@@ -1,0 +1,148 @@
+{
+  "format": "aux.native-browser-authority.integration.v1",
+  "workspaceInputs": {
+    "docs/integration/proposed/aux-native-adopted-daemon/source/browser_platform.cc": "600148c4f62d39ce1bd3672b34d0af159e3f64b74f9e562f35afe528b119a00e",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.cc": "3c8f32d8c268cc4baa182b7e08e74b6cfffd80d8b014fc7cbde09171bd4462cf",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.cc": "35213300f345197ce640eaf3f5fc0d53abf1922404e6185423d0f80b6cdaf0d6",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc": "0ab5e23e8efd6a7720e7366941e5f3e609f8ea9bc39463b5b42a52e9588407d4",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h": "5f76de5f8dcb12e4238a0fbe48f49d34aeadf8669751749fa0ec7370bb130dee",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc": "407f2cf2964bd960082b09be73514fcda573f5ee495e73340a535bdca9b3063f",
+    "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h": "0a92527b2177fb0ad4a9574c0d2d2db0d58937647f6245a700bb29c1551b222a",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.cc": "b2c00363429d13414ae5a37c86a6664f02845d232ebe7d716c6f68103575362a",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
+    "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxAuthenticatedChildParentPolicyReader.swift": "85be3fcc4b2c7b2b55e80b411f75d548317e5cd2313993b717e7039f73032aff",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
+    "docs/integration/proposed/aux-native-peer-link-boundary/BUILD.gn.proposed": "7d20ca53b0b0aca0eee42173b87c9997a340ef9adca5120284c45c8a2a7df9d4",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_notification_inbox.cc": "7ba04067c8235cb310eb2ab741cf0628ea535256f2274cae32ec1d2ee347c486",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9",
+    "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/BUILD.gn": "29e08dcffcc67a1427a4c3bde6c8e8099edcbd00670dcc289df220f901207e30",
+    "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/main.cc": "203288404e21dc0dc58f741048b9a09a12f0d991206b9742a3bc74bba127d487",
+    "docs/integration/proposed/aux-native-browser-authority-integration/prepare.py": "1ced9776d9668ec10106840dac02bfb517ae4ca9c828e45e8f8ae8be8bebb0b7"
+  },
+  "nativeInputs": {
+    "chrome/browser/aux/browser_platform.cc": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2",
+    "chrome/browser/aux/daemon_supervisor.cc": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed",
+    "chrome/browser/aux/daemon_supervisor.h": "e1794c4a164a648228220d5f02dfe089e6c194c743fe5111e392be42f4939cb4",
+    "chrome/browser/aux/installation_auth.cc": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb",
+    "chrome/browser/aux/installation_auth.h": "d89c83637f0711c2a52a405f0426e65ca803e969f71715477f49025f6c6d81a6",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": null,
+    "chrome/browser/aux/AuxOwnedNativePeerChild.h": null,
+    "chrome/browser/aux/AuxSelectedStateHome.cc": null,
+    "chrome/browser/aux/AuxSelectedStateHome.h": null,
+    "chrome/browser/aux/AuxNativePeerTransport.cc": null,
+    "chrome/browser/aux/AuxNativePeerTransport.h": null,
+    "chrome/browser/aux/AuxNativePeerWire.h": null,
+    "chrome/browser/aux/AuxSelectedHomePolicyBridge.h": null,
+    "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift": null,
+    "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift": null,
+    "chrome/browser/aux/native_peer_policy/BUILD.gn": null,
+    "chrome/browser/notifications/aux_notification_inbox.cc": "6485cdd5bcf46ca1007a82cad7f96de36ac5bc093ee41cdd703f6148bf53a91d",
+    "chrome/browser/notifications/aux_inbox_codec.cc": null,
+    "chrome/browser/notifications/aux_inbox_codec.h": null,
+    "chrome/browser/aux/inbox_v2_fixture/BUILD.gn": null,
+    "chrome/browser/aux/inbox_v2_fixture/main.cc": null,
+    "chrome/browser/aux/BUILD.gn": "26bb7d57234b2865da5ca52c7d890958fe20a8138b300b56f8f4b50a3ebdf928",
+    "chrome/browser/notifications/BUILD.gn": "d66b1a028a8caf948cfe97f6a5772ac9a6d08d9056605fb147025e7b30d24456",
+    "BUILD.gn": "e38b612778a41dd52c073f8633b3f22c6078e227baa892666e92ac29a9738391"
+  },
+  "copies": [
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/browser_platform.cc",
+      "target": "chrome/browser/aux/browser_platform.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.cc",
+      "target": "chrome/browser/aux/daemon_supervisor.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/daemon_supervisor.h",
+      "target": "chrome/browser/aux/daemon_supervisor.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.cc",
+      "target": "chrome/browser/aux/installation_auth.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/installation_auth.h",
+      "target": "chrome/browser/aux/installation_auth.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.cc",
+      "target": "chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxOwnedNativePeerChild.h",
+      "target": "chrome/browser/aux/AuxOwnedNativePeerChild.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.cc",
+      "target": "chrome/browser/aux/AuxSelectedStateHome.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-adopted-daemon/source/AuxSelectedStateHome.h",
+      "target": "chrome/browser/aux/AuxSelectedStateHome.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.cc",
+      "target": "chrome/browser/aux/AuxNativePeerTransport.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.h",
+      "target": "chrome/browser/aux/AuxNativePeerTransport.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h",
+      "target": "chrome/browser/aux/AuxNativePeerWire.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-selected-home-fileport-retry/source/AuxSelectedHomePolicyBridge.h",
+      "target": "chrome/browser/aux/AuxSelectedHomePolicyBridge.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxAuthenticatedChildParentPolicyReader.swift",
+      "target": "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxFreshBootstrapPolicy.swift",
+      "target": "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-peer-link-boundary/BUILD.gn.proposed",
+      "target": "chrome/browser/aux/native_peer_policy/BUILD.gn"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_notification_inbox.cc",
+      "target": "chrome/browser/notifications/aux_notification_inbox.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.cc",
+      "target": "chrome/browser/notifications/aux_inbox_codec.cc"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-inbox-v2/source/chrome/browser/notifications/aux_inbox_codec.h",
+      "target": "chrome/browser/notifications/aux_inbox_codec.h"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/BUILD.gn",
+      "target": "chrome/browser/aux/inbox_v2_fixture/BUILD.gn"
+    },
+    {
+      "source": "docs/integration/proposed/aux-native-inbox-v2-check/source/chrome/browser/aux/inbox_v2_fixture/main.cc",
+      "target": "chrome/browser/aux/inbox_v2_fixture/main.cc"
+    }
+  ],
+  "acceptedUiModified": false,
+  "applied": false,
+  "compiled": false,
+  "startupHookIntegrated": false,
+  "limits": [
+    "No actual native startup caller included yet; separately under source preparation.",
+    "No new compile/link/runtime/protected authority acceptance.",
+    "Current Node and frozen focused queues must drain before applying or GN generation."
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "format": "aux.native-browser-authority.composition.v1",
+  "composition": "out/native-reuse-composition-aux-browser-authority",
+  "manifestSha256": "8b74457d5182aeb96c92cffd5856e8642a612ce18831b7532f046480d8dc6303",
+  "sources": 824,
+  "assets": 23,
+  "followupRecords": 24,
+  "patchReplayed": true,
+  "applied": false,
+  "compiled": false,
+  "runtimeAccepted": false,
+  "acceptedUiModified": false,
+  "startupHookIncluded": false
+}

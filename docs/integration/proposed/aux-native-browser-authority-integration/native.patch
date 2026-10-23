@@ -1,0 +1,3811 @@
+diff --git a/BUILD.gn b/BUILD.gn
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1663,3 +1663,11 @@
+          ] + build_gn_logs
+ 
+ write_file("$root_build_dir/gn_logs.txt", _lines)
++
++# Optional synthetic codec check; no browser/startup dependency.
++if (is_mac && enable_aux_browser) {
++  group("aux_native_inbox_v2_checks") {
++    testonly = true
++    deps = [ "//chrome/browser/aux/inbox_v2_fixture:aux_inbox_v2_codec_fixture" ]
++  }
++}
+diff --git a/chrome/browser/aux/AuxNativePeerTransport.cc b/chrome/browser/aux/AuxNativePeerTransport.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -0,0 +1,1554 @@
++#include "AuxNativePeerTransport.h"
++#include "AuxNativePeerWire.h"
++#include "AuxSelectedHomePolicyBridge.h"
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++#include "AuxFreshColdBootstrapNativeBridge.h"
++#endif
++#include <sys/fileport.h>
++#include <sys/acl.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <cstdlib>
++#include <string>
++#include <bsm/libbsm.h>
++#include <libproc.h>
++#include <sys/proc_info.h>
++#include <sys/wait.h>
++#include <unistd.h>
++#include <array>
++#include <algorithm>
++#include <atomic>
++#include <limits>
++#include <string.h>
++#include <cstring>
++#include <mutex>
++#include <optional>
++#include <functional>
++#include <type_traits>
++#include <utility>
++#include <vector>
++
++namespace aux::peer {
++DaemonAuthorityReply::DaemonAuthorityReply() = default;
++DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes)
++    : status(result), payload(std::move(bytes)) {}
++DaemonAuthorityReply::~DaemonAuthorityReply() {
++  if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++}
++DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityReply&& other) noexcept
++    : status(other.status), payload(std::move(other.payload)),
++      publication_(std::move(other.publication_)) { other.status = DaemonAuthorityStatus::refused; }
++DaemonAuthorityReply& DaemonAuthorityReply::operator=(DaemonAuthorityReply&& other) noexcept {
++  if (this != &other) {
++    if (!payload.empty()) memset_s(payload.data(), payload.size(), 0, payload.size());
++    status = other.status;
++    payload = std::move(other.payload);
++    publication_ = std::move(other.publication_);
++    other.status = DaemonAuthorityStatus::refused;
++  }
++  return *this;
++}
++namespace {
++void WipeBytes(std::span<uint8_t> bytes) {
++  if (!bytes.empty()) memset_s(bytes.data(), bytes.size(), 0, bytes.size());
++}
++struct PayloadWiper {
++  explicit PayloadWiper(std::span<uint8_t> value);
++  ~PayloadWiper();
++  std::span<uint8_t> bytes;
++};
++PayloadWiper::PayloadWiper(std::span<uint8_t> value) : bytes(value) {}
++PayloadWiper::~PayloadWiper() { WipeBytes(bytes); }
++void WipePayload(std::vector<uint8_t>& value) {
++  WipeBytes(value);
++  value.clear();
++}
++using namespace detail;
++struct BirthIdentity {
++  pid_t pid;
++  uint64_t seconds;
++  uint64_t microseconds;
++};
++std::optional<BirthIdentity> ReadBirth(pid_t pid, pid_t expected_parent) {
++  proc_bsdinfo info{};
++  if (pid <= 1 || proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != static_cast<int>(sizeof(info)) ||
++      info.pbi_start_tvsec == 0 ||
++      info.pbi_pid != static_cast<uint32_t>(pid) ||
++      (expected_parent > 0 && info.pbi_ppid != static_cast<uint32_t>(expected_parent)))
++    return std::nullopt;
++  return BirthIdentity{pid, info.pbi_start_tvsec, info.pbi_start_tvusec};
++}
++bool SameBirth(const BirthIdentity& identity, pid_t expected_parent) {
++  auto now = ReadBirth(identity.pid, expected_parent);
++  return now && now->seconds == identity.seconds &&
++      now->microseconds == identity.microseconds;
++}
++bool WaitableLiveChild(pid_t child) {
++  siginfo_t observed{};
++  // Observation only: never reap, signal, stop or replace a process.
++  return waitid(P_PID, static_cast<id_t>(child), &observed,
++                WEXITED | WNOHANG | WNOWAIT) == 0 && observed.si_pid == 0;
++}
++class DestroyMessage {
++ public:
++  explicit DestroyMessage(mach_msg_header_t* value);
++  ~DestroyMessage();
++  void Disarm();
++ private:
++  std::optional<std::reference_wrapper<mach_msg_header_t>> value_;
++  const pid_t process_ = getpid();
++};
++DestroyMessage::DestroyMessage(mach_msg_header_t* value) : value_(std::ref(*value)) {}
++DestroyMessage::~DestroyMessage() {
++  if (getpid() == process_ && value_) mach_msg_destroy(&value_->get());
++}
++void DestroyMessage::Disarm() { value_.reset(); }
++class ReceiveRight {
++ public:
++  ReceiveRight();
++  ~ReceiveRight();
++  mach_port_t get() const;
++ private:
++  mach_port_t port_ = MACH_PORT_NULL;
++  const pid_t process_ = getpid();
++};
++ReceiveRight::ReceiveRight() {
++  if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port_) != KERN_SUCCESS)
++    port_ = MACH_PORT_NULL;
++}
++ReceiveRight::~ReceiveRight() {
++  if (getpid() == process_ && port_ != MACH_PORT_NULL)
++    mach_port_mod_refs(mach_task_self(), port_, MACH_PORT_RIGHT_RECEIVE, -1);
++}
++mach_port_t ReceiveRight::get() const { return getpid() == process_ ? port_ : MACH_PORT_NULL; }
++bool PrivateDirectory(int descriptor) {
++  struct stat value{};
++  if (descriptor < 0 || fstat(descriptor, &value) != 0 || value.st_uid != geteuid() ||
++      !S_ISDIR(value.st_mode) || (value.st_mode & 07777) != 0700) return false;
++  errno = 0;
++  acl_t acl = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED);
++  if (!acl && errno == ENOENT) return true;
++  if (!acl) return false;
++  acl_entry_t entry = nullptr;
++  errno = 0;
++  const bool valid = acl_valid(acl) == 0 && acl_get_entry(acl, ACL_FIRST_ENTRY, &entry) == -1 &&
++      errno == EINVAL && entry == nullptr;
++  acl_free(acl);
++  return valid;
++}
++std::optional<std::string> PhysicalPath(int descriptor) {
++  char reported[PATH_MAX]{};
++  if (fcntl(descriptor, F_GETPATH, reported) != 0) return std::nullopt;
++  char resolved[PATH_MAX]{};
++  if (!realpath(reported, resolved)) return std::nullopt;
++  return std::string(resolved);
++}
++bool FreshChildLeaf(const std::string& leaf) {
++  if (!leaf.starts_with("aux-home-") || leaf.size() != 45) return false;
++  for (size_t i = 9; i < leaf.size(); ++i) {
++    const size_t index = i - 9;
++    if (index == 8 || index == 13 || index == 18 || index == 23) {
++      if (leaf[i] != '-') return false;
++    } else if (!((leaf[i] >= '0' && leaf[i] <= '9') || (leaf[i] >= 'a' && leaf[i] <= 'f'))) return false;
++  }
++  return true;
++}
++bool SameDirectory(int left, int right) {
++  struct stat a{}, b{};
++  return fstat(left, &a) == 0 && fstat(right, &b) == 0 && a.st_dev == b.st_dev && a.st_ino == b.st_ino;
++}
++bool HomeMatchesParent(int home, int parent) {
++  if (!PrivateDirectory(home) || !PrivateDirectory(parent) ||
++      (fcntl(home, F_GETFL) & O_ACCMODE) != O_RDONLY) return false;
++  auto home_path = PhysicalPath(home), parent_path = PhysicalPath(parent);
++  if (!home_path || !parent_path || !home_path->starts_with(*parent_path + "/")) return false;
++  auto leaf = home_path->substr(parent_path->size() + 1);
++  if (!FreshChildLeaf(leaf)) return false;
++  int opened = openat(parent, leaf.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
++  if (opened < 0) return false;
++  const bool same = PrivateDirectory(opened) && SameDirectory(home, opened);
++  close(opened);
++  return same;
++}
++constexpr mach_msg_option_t kReceiveOptions =
++    MACH_RCV_MSG | MACH_RCV_TIMEOUT |
++    MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) |
++    MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT);
++}  // namespace
++
++namespace {
++struct ReleaseRequirement {
++  const pid_t process = getpid();
++  void operator()(SecRequirementRef requirement) const {
++    if (getpid() == process && requirement) CFRelease(requirement);
++  }
++};
++SecRequirementRef RetainRequirement(SecRequirementRef value) {
++  CFRetain(value);
++  return value;
++}
++using OwnedRequirement = std::unique_ptr<std::remove_pointer_t<SecRequirementRef>, ReleaseRequirement>;
++}
++struct ExactCodePolicy::Data {
++  Data(SecRequirementRef value, std::span<const uint8_t> hash);
++  ~Data();
++  OwnedRequirement requirement;
++  std::vector<uint8_t> cd_hash;
++  const pid_t process = getpid();
++};
++ExactCodePolicy::Data::Data(SecRequirementRef value, std::span<const uint8_t> hash)
++    : requirement(RetainRequirement(value)), cd_hash(hash.begin(), hash.end()) {}
++ExactCodePolicy::Data::~Data() = default;
++ExactCodePolicy::ExactCodePolicy(SecRequirementRef requirement, std::span<const uint8_t> hash)
++    : data_(std::make_unique<Data>(requirement, hash)) {}
++ExactCodePolicy::~ExactCodePolicy() = default;
++std::shared_ptr<const ExactCodePolicy> ExactCodePolicy::CopyNativePolicy(
++    SecRequirementRef requirement, std::span<const uint8_t> hash) {
++  if (!requirement || CFGetTypeID(requirement) != SecRequirementGetTypeID() ||
++      (hash.size() != 20 && hash.size() != 32)) return {};
++  return std::shared_ptr<const ExactCodePolicy>(new ExactCodePolicy(requirement, hash));
++}
++struct NativeOperations {
++  static mach_port_t Port(const NativeSendRight& right) {
++    return getpid() == right.process_ ? right.right_ : MACH_PORT_NULL;
++  }
++  static bool Validate(audit_token_t token, const ExactCodePolicy& policy) {
++    if (getpid() != policy.data_->process) return false;
++    CFDataRef audit = CFDataCreate(kCFAllocatorDefault,
++        reinterpret_cast<const UInt8*>(&token), sizeof(token));
++    if (!audit) return false;
++    const void* key = kSecGuestAttributeAudit;
++    const void* value = audit;
++    CFDictionaryRef attributes = CFDictionaryCreate(kCFAllocatorDefault, &key, &value, 1,
++        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFRelease(audit);
++    if (!attributes) return false;
++    SecCodeRef code = nullptr;
++    OSStatus status = SecCodeCopyGuestWithAttributes(nullptr, attributes, kSecCSDefaultFlags, &code);
++    CFRelease(attributes);
++    if (status != errSecSuccess || !code) return false;
++    status = SecCodeCheckValidity(code, kSecCSDefaultFlags, policy.data_->requirement.get());
++    CFDictionaryRef information = nullptr;
++    if (status == errSecSuccess)
++      status = SecCodeCopySigningInformation(code, kSecCSSigningInformation, &information);
++    CFRelease(code);
++    bool valid = false;
++    if (status == errSecSuccess && information) {
++      CFTypeRef unique = CFDictionaryGetValue(information, kSecCodeInfoUnique);
++      if (unique && CFGetTypeID(unique) == CFDataGetTypeID()) {
++        auto bytes = static_cast<CFDataRef>(unique);
++        valid = CFDataGetLength(bytes) == static_cast<CFIndex>(policy.data_->cd_hash.size()) &&
++            std::memcmp(CFDataGetBytePtr(bytes), policy.data_->cd_hash.data(),
++                        policy.data_->cd_hash.size()) == 0;
++      }
++    }
++    if (information) CFRelease(information);
++    return valid;
++  }
++  static int AuthenticatedGuestParent(audit_token_t token, const ExactCodePolicy& policy) {
++    if (getpid() != policy.data_->process) return -1;
++    CFDataRef audit = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(&token), sizeof(token));
++    if (!audit) return -1;
++    const void* key = kSecGuestAttributeAudit; const void* value = audit;
++    CFDictionaryRef attrs = CFDictionaryCreate(kCFAllocatorDefault, &key, &value, 1,
++        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFRelease(audit);
++    if (!attrs) return -1;
++    SecCodeRef guest = nullptr;
++    OSStatus result = SecCodeCopyGuestWithAttributes(nullptr, attrs, kSecCSDefaultFlags, &guest);
++    CFRelease(attrs);
++    if (result != errSecSuccess || !guest) return -1;
++    SecStaticCodeRef code = nullptr;
++    result = SecCodeCopyStaticCode(guest, kSecCSDefaultFlags, &code);
++    CFRelease(guest);
++    if (result != errSecSuccess || !code) return -1;
++    int32_t descriptor = -1;
++    const int32_t status = AuxCopyAuthenticatedFreshChildParentDescriptor(
++        code, policy.data_->requirement, policy.data_->cd_hash.data(),
++        static_cast<uint32_t>(policy.data_->cd_hash.size()), &descriptor);
++    CFRelease(code);
++    if (status != 0) { if (descriptor >= 0) close(descriptor); return -1; }
++    return descriptor;
++  }
++
++};
++NativeSendRight::NativeSendRight(mach_port_t value) : right_(value), process_(getpid()) {}
++NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
++  mach_port_type_t type = 0;
++  if (value == MACH_PORT_NULL || mach_port_type(mach_task_self(), value, &type) != KERN_SUCCESS ||
++      !(type & MACH_PORT_TYPE_SEND)) return NativeSendRight(MACH_PORT_NULL);
++  return NativeSendRight(value);
++}
++bool NativeSendRight::is_valid() const { return getpid() == process_ && right_ != MACH_PORT_NULL; }
++NativeSendRight NativeSendRight::CopyOwnedRight() const {
++  if (getpid() != process_ || right_ == MACH_PORT_NULL ||
++      mach_port_mod_refs(mach_task_self(), right_, MACH_PORT_RIGHT_SEND, 1) != KERN_SUCCESS)
++    return NativeSendRight(MACH_PORT_NULL);
++  return NativeSendRight(right_);
++}
++mach_port_t NativeSendRight::BorrowNativeName() const {
++  return getpid() == process_ ? right_ : MACH_PORT_NULL;
++}
++mach_port_t NativeSendRight::ReleaseForNativeHandoff() {
++  if (getpid() != process_) return MACH_PORT_NULL;
++  return std::exchange(right_, MACH_PORT_NULL);
++}
++NativeSendRight::NativeSendRight(NativeSendRight&& other) noexcept
++    : right_(std::exchange(other.right_, MACH_PORT_NULL)),
++      process_(std::exchange(other.process_, -1)) {}
++NativeSendRight& NativeSendRight::operator=(NativeSendRight&& other) noexcept {
++  if (this != &other) {
++    if (getpid() == process_ && right_ != MACH_PORT_NULL)
++      mach_port_deallocate(mach_task_self(), right_);
++    right_ = std::exchange(other.right_, MACH_PORT_NULL);
++    process_ = std::exchange(other.process_, -1);
++  }
++  return *this;
++}
++NativeSendRight::~NativeSendRight() {
++  if (getpid() == process_ && right_ != MACH_PORT_NULL)
++    mach_port_deallocate(mach_task_self(), right_);
++}
++struct AuthorityClient {
++  explicit AuthorityClient(NativeSendRight right);
++  ~AuthorityClient();
++  NativeSendRight endpoint;
++  std::mutex mutex;
++  bool closed = false;
++  bool started = false;
++  bool attempted = false;
++  bool pending = false;
++  uint32_t operation = 0;
++  uint64_t sequence = 0;
++  std::vector<uint8_t> completed;
++  bool completed_error = false;
++  std::array<uint8_t, 16> nonce{};
++  std::array<uint8_t, 51> message{};
++};
++AuthorityClient::AuthorityClient(NativeSendRight right) : endpoint(std::move(right)) {}
++AuthorityClient::~AuthorityClient() { WipePayload(completed); }
++struct AuthorityServer;
++struct ParentTransport::State {
++  explicit State(std::shared_ptr<const ExactCodePolicy> value);
++  ~State();
++  const pid_t process = getpid();
++  std::optional<BirthIdentity> child;
++  const std::shared_ptr<const ExactCodePolicy> policy;
++  ReceiveRight receiver;
++  std::mutex mutex;
++  TransportSnapshot snapshot;
++  std::optional<int> child_pid_version;
++  std::shared_ptr<AuthorityClient> authority;
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> pending_home;
++  // Retains the actual accepted identity even after its one-shot typed take.
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> accepted_home;
++  bool selected_home_taken = false;
++  std::chrono::steady_clock::time_point last_ready_export;
++};
++ParentTransport::State::State(std::shared_ptr<const ExactCodePolicy> value)
++    : policy(std::move(value)) {}
++ParentTransport::State::~State() = default;
++struct AuthenticatedSelectedHomeTransfer::State {
++  State(std::shared_ptr<ParentTransport::State> owner_value, int home_value, int parent_value,
++        audit_token_t token_value, int version_value, uint64_t generation_value)
++      : owner(std::move(owner_value)), home(home_value), parent(parent_value),
++        token(token_value), version(version_value), generation(generation_value) {}
++  ~State() { if (getpid() == process) { close(home); close(parent); } }
++  const pid_t process = getpid();
++  const std::weak_ptr<ParentTransport::State> owner;
++  const int home;
++  const int parent;
++  const audit_token_t token;
++  const int version;
++  const uint64_t generation;
++};
++class DaemonAuthorityPublication final {
++ public:
++  ~DaemonAuthorityPublication();
++ private:
++  friend class AuthenticatedSelectedHomeTransfer;
++  DaemonAuthorityPublication(std::shared_ptr<AuthenticatedSelectedHomeTransfer::State> value,
++                            std::shared_ptr<AuthorityClient> source);
++  std::weak_ptr<AuthenticatedSelectedHomeTransfer::State> selected;
++  std::weak_ptr<AuthorityClient> client;
++  uint64_t sequence;
++  uint32_t operation;
++  std::array<uint8_t, 16> nonce;
++  std::array<uint8_t, 51> message;
++  bool acknowledged = false; // Protected by that exact client's mutex.
++};
++DaemonAuthorityPublication::DaemonAuthorityPublication(
++    std::shared_ptr<AuthenticatedSelectedHomeTransfer::State> value,
++    std::shared_ptr<AuthorityClient> source)
++    : selected(value), client(source), sequence(source->sequence),
++      operation(source->operation), nonce(source->nonce), message(source->message) {}
++DaemonAuthorityPublication::~DaemonAuthorityPublication() = default;
++AuthenticatedSelectedHomeTransfer::AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> value) : state_(std::move(value)) {}
++AuthenticatedSelectedHomeTransfer::~AuthenticatedSelectedHomeTransfer() = default;
++int AuthenticatedSelectedHomeTransfer::DuplicateRevalidatedDirectory() {
++  auto value = state_;
++  auto owner = value->owner.lock();
++  if (!owner) return -1;
++  if (getpid() != value->process) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
++        !owner->child_pid_version || *owner->child_pid_version != value->version) return -1;
++    ++owner->snapshot.active_selected_home_validations;
++  }
++  auto finish = +[](ParentTransport::State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_selected_home_validations;
++  };
++  std::unique_ptr<ParentTransport::State, decltype(finish)> active(owner.get(), finish);
++  if (!owner->child || !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
++      !NativeOperations::Validate(value->token, *owner->policy)) return -1;
++  int checked_parent = NativeOperations::AuthenticatedGuestParent(value->token, *owner->policy);
++  if (checked_parent < 0) return -1;
++  const bool valid = SameDirectory(checked_parent, value->parent) && HomeMatchesParent(value->home, checked_parent);
++  close(checked_parent);
++  if (!valid || !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid)) return -1;
++  int duplicate = fcntl(value->home, F_DUPFD_CLOEXEC, 0);
++  if (duplicate < 0) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) { close(duplicate); return -1; }
++  }
++  return duplicate;
++}
++std::optional<ReadyHomePulse> AuthenticatedSelectedHomeTransfer::InspectReadyPulse() {
++  auto value = state_;
++  if (getpid() != value->process) return std::nullopt;
++  auto owner = value->owner.lock();
++  if (!owner) return std::nullopt;
++  std::lock_guard<std::mutex> lock(owner->mutex);
++  if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
++      owner->accepted_home.get() != this || !owner->snapshot.authenticated_ready_home_exports)
++    return std::nullopt;
++  return ReadyHomePulse{value->generation, owner->snapshot.authenticated_ready_home_exports,
++                       owner->last_ready_export};
++}
++std::shared_ptr<AuthenticatedSelectedHomeTransfer> ParentTransport::TakeSelectedHomeTransfer() {
++  auto state = state_;
++  if (getpid() != state->process) return {};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed || state->selected_home_taken) return {};
++  auto selected = std::move(state->pending_home);
++  if (selected) state->selected_home_taken = true;
++  state->snapshot.selected_home_pending = false;
++  return selected;
++}
++ParentTransport::ParentTransport(std::shared_ptr<State> state) : state_(std::move(state)) {}
++ParentTransport::~ParentTransport() { CloseAndInspect(); }
++std::unique_ptr<ParentTransport> ParentTransport::BindActualDirectChild(
++    pid_t child, std::shared_ptr<const ExactCodePolicy> policy) {
++  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
++  return prepared ? prepared->BindActualDirectChild(child) : nullptr;
++}
++PreparedParentEndpoint::PreparedParentEndpoint(std::shared_ptr<ParentTransport::State> state)
++    : state_(std::move(state)) {}
++PreparedParentEndpoint::~PreparedParentEndpoint() = default;
++std::unique_ptr<PreparedParentEndpoint> PreparedParentEndpoint::PrepareBeforeSpawn(
++    std::shared_ptr<const ExactCodePolicy> policy) {
++  if (!policy) return {};
++  auto state = std::make_shared<ParentTransport::State>(std::move(policy));
++  if (state->receiver.get() == MACH_PORT_NULL) return {};
++  return std::unique_ptr<PreparedParentEndpoint>(new PreparedParentEndpoint(std::move(state)));
++}
++NativeSendRight PreparedParentEndpoint::CopySendRightForNativeHandoff() {
++  if (getpid() != state_->process) return NativeSendRight::AdoptReceivedRight(MACH_PORT_NULL);
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (state_->snapshot.closed || state_->child ||
++      mach_port_insert_right(mach_task_self(), state_->receiver.get(),
++          state_->receiver.get(), MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
++    return NativeSendRight::AdoptReceivedRight(MACH_PORT_NULL);
++  return NativeSendRight::AdoptReceivedRight(state_->receiver.get());
++}
++std::unique_ptr<ParentTransport> PreparedParentEndpoint::BindActualDirectChild(pid_t child) {
++  if (getpid() != state_->process || !WaitableLiveChild(child)) return {};
++  auto birth = ReadBirth(child, state_->process);
++  if (!birth || !WaitableLiveChild(child)) return {};
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (state_->snapshot.closed || state_->child) return {};
++  state_->child = *birth;
++  state_->snapshot.child_bound = true;
++  return std::unique_ptr<ParentTransport>(new ParentTransport(state_));
++}
++TransportSnapshot PreparedParentEndpoint::CloseAndInspect() {
++  if (getpid() != state_->process)
++    return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  if (!state_->snapshot.closed) {
++    state_->snapshot.closed = true;
++    ++state_->snapshot.generation;
++  }
++  state_->authority.reset();
++  state_->pending_home.reset();
++  state_->accepted_home.reset();
++  state_->snapshot.selected_home_pending = false;
++  return state_->snapshot;
++}
++TransportSnapshot PreparedParentEndpoint::Inspect() const {
++  if (getpid() != state_->process)
++    return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  return state_->snapshot;
++}
++NativeSendRight ParentTransport::CopySendRightForNativeHandoff() {
++  auto state = state_;
++  if (getpid() != state->process) return NativeSendRight(MACH_PORT_NULL);
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed || mach_port_insert_right(mach_task_self(), state->receiver.get(),
++      state->receiver.get(), MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
++    return NativeSendRight(MACH_PORT_NULL);
++  return NativeSendRight(state->receiver.get());
++}
++TransportSnapshot ParentTransport::CloseAndInspect() {
++  auto state = state_;
++  if (getpid() != state->process) return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (!state->snapshot.closed) {
++    state->snapshot.closed = true;
++    ++state->snapshot.generation;
++  }
++  state->authority.reset();
++  state->pending_home.reset();
++  state->accepted_home.reset();
++  state->snapshot.selected_home_pending = false;
++  // Receive right remains retained by every live call; close is not a claim
++  // that its Security validation/IPC thread has returned.
++  return state->snapshot;
++}
++TransportSnapshot ParentTransport::Inspect() const {
++  auto state = state_;
++  if (getpid() != state->process) return TransportSnapshot{.generation = 0, .closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  return state->snapshot;
++}
++ExchangeStatus ParentTransport::ServiceOne(uint32_t timeout_ms) {
++  auto state = state_;
++  if (getpid() != state->process) return ExchangeStatus::wrongProcess;
++  if (!ValidTimeout(timeout_ms)) return ExchangeStatus::refused;
++  uint64_t generation;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return ExchangeStatus::closed;
++    if (!state->child) return ExchangeStatus::refused;
++    generation = state->snapshot.generation;
++    ++state->snapshot.active_exchanges; ++state->snapshot.active_receives;
++  }
++  auto finish_exchange = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_exchanges;
++  };
++  std::unique_ptr<State, decltype(finish_exchange)> active(state.get(), finish_exchange);
++  // Mach writes the actual received wire and trailer at that wire's size;
++  // never read the large-frame trailer offset for a normal v1 heartbeat.
++  struct Incoming {
++    mach_msg_header_t header{};
++    std::array<uint8_t, sizeof(SelectedHomeReceived) - sizeof(mach_msg_header_t)> bytes{};
++  };
++  static_assert(sizeof(Incoming) == sizeof(SelectedHomeReceived));
++  static_assert(std::is_trivially_copyable_v<Received>);
++  static_assert(std::is_trivially_copyable_v<SelectedHomeReceived>);
++  alignas(SelectedHomeReceived) Incoming incoming{};
++  auto* header = &incoming.header;
++  auto result = mach_msg(header, kReceiveOptions, 0, sizeof(incoming),
++      state->receiver.get(), timeout_ms, MACH_PORT_NULL);
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    --state->snapshot.active_receives;
++    if (result != KERN_SUCCESS && result != MACH_RCV_TIMED_OUT) {
++      // XNU may copy out a partial body with real rights on BODY_ERROR.
++      // Ownership is not established by a failed receive: retain uncertainty,
++      // close admission, and never destroy a fabricated/copied descriptor list.
++      ++state->snapshot.unresolved_receive_cleanup;
++      state->snapshot.last_receive_error = result;
++      state->snapshot.closed = true;
++      ++state->snapshot.generation;
++      return ExchangeStatus::refused;
++    }
++    if (state->snapshot.closed) {
++      if (result == KERN_SUCCESS) mach_msg_destroy(header);
++      return ExchangeStatus::closed;
++    }
++  }
++  if (result == MACH_RCV_TIMED_OUT) return ExchangeStatus::timedOut;
++  DestroyMessage destroy(header);
++  const bool authority_registration = header->msgh_id == kAuthorityRegister;
++  const bool selected_request = header->msgh_id == kSelectedHomeRequest;
++  if (MACH_MSGH_BITS_REMOTE(header->msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
++    return ExchangeStatus::refused;
++  audit_token_t audit{};
++  std::array<uint8_t, 32> nonce{};
++  mach_port_t incoming_fileport = MACH_PORT_NULL;
++  if (selected_request || authority_registration) {
++    if (header->msgh_size != sizeof(SelectedHomeWire)) return ExchangeStatus::refused;
++    SelectedHomeReceived parsed{};
++    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    if (authority_registration) {
++      if (parsed.wire.version != kAuthorityVersion) return ExchangeStatus::refused;
++      parsed.wire.header.msgh_id = kSelectedHomeRequest;
++      parsed.wire.version = kSelectedHomeVersion;
++    }
++    if (!ValidSelectedHomeWire(parsed)) return ExchangeStatus::refused;
++    audit = parsed.trailer.msgh_audit;
++    nonce = parsed.wire.nonce;
++    incoming_fileport = parsed.wire.fileport.name;
++  } else {
++    if (header->msgh_size != sizeof(Wire)) return ExchangeStatus::refused;
++    Received parsed{};
++    std::memcpy(&parsed, &incoming, sizeof(parsed));
++    if (!ValidWire(parsed, kRequest) || parsed.wire.generation != 0)
++      return ExchangeStatus::refused;
++    audit = parsed.trailer.msgh_audit;
++    nonce = parsed.wire.nonce;
++  }
++  const int version = audit_token_to_pidversion(audit);
++  bool valid = audit_token_to_pid(audit) == state->child->pid && version >= 0 &&
++      SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.active_code_validations;
++    valid = valid && (!state->child_pid_version || *state->child_pid_version == version);
++  }
++  if (valid) valid = NativeOperations::Validate(audit, *state->policy);
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> selected;
++  if (valid && selected_request) {
++    // Only a kernel-delivered fileport from this exact owned live/code peer.
++    int home = fileport_makefd(incoming_fileport);
++    int parent = home >= 0 ? NativeOperations::AuthenticatedGuestParent(audit, *state->policy) : -1;
++    valid = home >= 0 && parent >= 0 && HomeMatchesParent(home, parent) &&
++        fcntl(home, F_SETFD, FD_CLOEXEC) == 0;
++    if (valid) {
++      selected = std::shared_ptr<AuthenticatedSelectedHomeTransfer>(new AuthenticatedSelectedHomeTransfer(
++          std::make_shared<AuthenticatedSelectedHomeTransfer::State>(state, home, parent, audit, version, generation)));
++    } else {
++      if (home >= 0) close(home);
++      if (parent >= 0) close(parent);
++    }
++  }
++  valid = valid && SameBirth(*state->child, state->process) && WaitableLiveChild(state->child->pid);
++  std::lock_guard<std::mutex> lock(state->mutex);
++  --state->snapshot.active_code_validations;
++  if (state->snapshot.closed || state->snapshot.generation != generation) return ExchangeStatus::closed;
++  // Retry ACK is bound to the originally accepted real directory identity.
++  // The new incoming FD was freshly audit/code/sealed-policy/path validated;
++  // neither a nonce nor a status can replace a pending or already-taken home.
++  const bool retry = selected_request && state->accepted_home;
++  const bool same_selection = !retry || (selected &&
++      state->accepted_home->state_->version == version &&
++      state->accepted_home->state_->generation == generation &&
++      SameDirectory(state->accepted_home->state_->home, selected->state_->home) &&
++      SameDirectory(state->accepted_home->state_->parent, selected->state_->parent));
++  if (!valid || !same_selection ||
++      (state->child_pid_version && *state->child_pid_version != version)) {
++    ++state->snapshot.rejected_peer_identities;
++    return ExchangeStatus::refused;
++  }
++  std::shared_ptr<AuthorityClient> registered;
++  if (authority_registration) {
++    if (!state->accepted_home || !state->child_pid_version ||
++        *state->child_pid_version != version) return ExchangeStatus::refused;
++    if (state->authority && state->authority->endpoint.BorrowNativeName() != incoming_fileport)
++      return ExchangeStatus::refused;
++    if (!state->authority) {
++      registered = std::make_shared<AuthorityClient>(
++          NativeSendRight::AdoptReceivedRight(incoming_fileport));
++      // The new RAII owner consumes the received descriptor on every outcome.
++      auto* actual = reinterpret_cast<SelectedHomeWire*>(header);
++      actual->fileport.name = MACH_PORT_NULL;
++    }
++  }
++  Wire reply{};
++  reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
++  reply.header.msgh_size = sizeof(reply);
++  reply.header.msgh_remote_port = header->msgh_remote_port;
++  reply.header.msgh_id = authority_registration ? kAuthorityRegistered : selected_request ? kSelectedHomeReply : kReply;
++  reply.version = authority_registration ? kAuthorityVersion : selected_request ? kSelectedHomeVersion : kVersion;
++  reply.generation = generation; reply.nonce = nonce;
++  header->msgh_remote_port = MACH_PORT_NULL;
++  DestroyMessage reply_cleanup(&reply.header);
++  result = mach_msg(&reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(reply), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (!RecoverableSendError(result)) {
++      reply_cleanup.Disarm(); ++state->snapshot.unresolved_reply_cleanup;
++      if (selected_request) ++state->snapshot.selected_home_cleanup_unresolved;
++      state->snapshot.closed = true; ++state->snapshot.generation;
++    }
++    return ExchangeStatus::refused;
++  }
++  reply_cleanup.Disarm();
++  if (registered) state->authority = std::move(registered);
++  state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
++  ++state->snapshot.authenticated_exchanges;
++  if (selected_request) {
++    ++state->snapshot.authenticated_ready_home_exports;
++    state->last_ready_export = std::chrono::steady_clock::now();
++  }
++  if (selected_request && !retry) {
++    state->accepted_home = selected;
++    state->pending_home = std::move(selected);
++    state->snapshot.selected_home_pending = true;
++  }
++  return ExchangeStatus::authenticated;
++}
++ParentExchange AuthenticateActualNativeParent(const NativeSendRight& endpoint,
++    std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
++  ParentExchange observation;
++  if (!endpoint.is_valid() || !policy || !ValidTimeout(timeout_ms)) return observation;
++  const pid_t parent = getppid();
++  auto birth = ReadBirth(parent, 0);
++  if (!birth) return observation;
++  ReceiveRight reply_port;
++  if (reply_port.get() == MACH_PORT_NULL) return observation;
++  Received exchange{};
++  exchange.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  exchange.wire.header.msgh_size = sizeof(Wire);
++  exchange.wire.header.msgh_remote_port = NativeOperations::Port(endpoint);
++  exchange.wire.header.msgh_local_port = reply_port.get();
++  exchange.wire.header.msgh_id = kRequest;
++  arc4random_buf(exchange.wire.nonce.data(), exchange.wire.nonce.size());
++  const auto nonce = exchange.wire.nonce;
++  auto result = mach_msg(&exchange.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(Wire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      // Match libsyscall's unsent-message handling, including a pseudo-received
++      // local MOVE right. The independent owned endpoint ref remains retained.
++      const auto local = MACH_MSGH_BITS_LOCAL(exchange.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) {
++        mach_port_deallocate(mach_task_self(), exchange.wire.header.msgh_local_port);
++        exchange.wire.header.msgh_local_port = MACH_PORT_NULL;
++      }
++      mach_msg_destroy(&exchange.wire.header);
++    } else {
++      observation.right_cleanup_unresolved = true;
++    }
++    if (result == MACH_SEND_TIMED_OUT) observation.status = ExchangeStatus::timedOut;
++    return observation;
++  }
++  exchange = Received{};
++  result = mach_msg(&exchange.wire.header, kReceiveOptions, 0,
++      sizeof(exchange), reply_port.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) {
++    observation.status = ExchangeStatus::timedOut;
++    return observation;
++  }
++  if (result != KERN_SUCCESS) {
++    observation.right_cleanup_unresolved = true;
++    observation.receive_error = result;
++    return observation;
++  }
++  DestroyMessage destroy(&exchange.wire.header);
++  const auto audit = exchange.trailer.msgh_audit;
++  if (!ValidWire(exchange, kReply) || exchange.wire.nonce != nonce ||
++      exchange.wire.generation != 1 || audit_token_to_pid(audit) != parent ||
++      audit_token_to_pidversion(audit) < 0 || getppid() != parent || !SameBirth(*birth, 0) ||
++      !NativeOperations::Validate(audit, *policy) || getppid() != parent || !SameBirth(*birth, 0))
++    return observation;
++  observation.status = ExchangeStatus::authenticated;
++  observation.transport_generation = exchange.wire.generation;
++  observation.peer_pid = parent;
++  observation.peer_pid_version = audit_token_to_pidversion(audit);
++  return observation;
++}
++}  // namespace aux::peer
++
++namespace aux::peer {
++struct AuthenticatedNativeParentConnection::State {
++  std::shared_ptr<AuthorityServer> authority;
++  bool authority_starting = false;
++  bool authority_closed = false;
++  State(NativeSendRight right, std::shared_ptr<const ExactCodePolicy> value,
++        BirthIdentity birth_value, ParentExchange verified);
++  ~State();
++  const pid_t process = getpid();
++  NativeSendRight endpoint;
++  const std::shared_ptr<const ExactCodePolicy> policy;
++  const BirthIdentity birth;
++  std::mutex mutex;
++  NativeParentConnectionSnapshot snapshot;
++};
++AuthenticatedNativeParentConnection::State::State(NativeSendRight right,
++    std::shared_ptr<const ExactCodePolicy> value, BirthIdentity birth_value, ParentExchange verified)
++    : endpoint(std::move(right)), policy(std::move(value)), birth(birth_value) {
++  snapshot.parent_pid = verified.peer_pid;
++  snapshot.parent_pid_version = verified.peer_pid_version;
++}
++AuthenticatedNativeParentConnection::State::~State() = default;
++AuthenticatedNativeParentConnection::AuthenticatedNativeParentConnection(std::shared_ptr<State> state)
++    : state_(std::move(state)) {}
++std::unique_ptr<AuthenticatedNativeParentConnection> AuthenticatedNativeParentConnection::Connect(
++    NativeSendRight endpoint, std::shared_ptr<const ExactCodePolicy> policy, uint32_t timeout_ms) {
++  // No externally supplied status/evidence can reach this constructor. This
++  // observation is produced here by the actual kernel/live-code handshake.
++  if (!ValidTimeout(timeout_ms)) return {};
++  auto verified = AuthenticateActualNativeParent(endpoint, policy, timeout_ms);
++  if (verified.status != ExchangeStatus::authenticated) return {};
++  auto birth = ReadBirth(verified.peer_pid, 0);
++  if (!birth || getppid() != verified.peer_pid) return {};
++  return std::unique_ptr<AuthenticatedNativeParentConnection>(new AuthenticatedNativeParentConnection(
++      std::make_shared<State>(std::move(endpoint), std::move(policy), *birth, verified)));
++}
++AuthenticatedNativeParentConnection::~AuthenticatedNativeParentConnection() { CloseAndInspect(); }
++NativeParentConnectionSnapshot AuthenticatedNativeParentConnection::CloseAndInspect() {
++  auto state = state_;
++  if (getpid() != state->process)
++    return NativeParentConnectionSnapshot{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  state->snapshot.closed = true;
++  return state->snapshot;
++}
++NativeParentConnectionSnapshot AuthenticatedNativeParentConnection::Inspect() const {
++  auto state = state_;
++  if (getpid() != state->process)
++    return NativeParentConnectionSnapshot{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  return state->snapshot;
++}
++ExchangeStatus AuthenticatedNativeParentConnection::Revalidate(uint32_t timeout_ms) {
++  if (!ValidTimeout(timeout_ms)) return ExchangeStatus::refused;
++  auto state = state_;
++  if (getpid() != state->process) return ExchangeStatus::wrongProcess;
++  // NativeSendRight is non-default-constructible; its temporary is acquired
++  // before dropping the lock and retained through the actual exchange.
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return ExchangeStatus::closed;
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if (!endpoint->is_valid()) {
++      state->snapshot.closed = true;
++      return ExchangeStatus::refused;
++    }
++    ++state->snapshot.active_checks;
++  }
++  auto finish_check = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<State, decltype(finish_check)> retained(state.get(), finish_check);
++  auto current = AuthenticateActualNativeParent(*endpoint, state->policy, timeout_ms);
++  const bool same = current.status == ExchangeStatus::authenticated &&
++      current.peer_pid == state->birth.pid && getppid() == state->birth.pid &&
++      SameBirth(state->birth, 0) &&
++      current.peer_pid_version == state->snapshot.parent_pid_version;
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (current.right_cleanup_unresolved) {
++    if (current.receive_error) {
++      ++state->snapshot.unresolved_receive_cleanup;
++      state->snapshot.last_receive_error = current.receive_error;
++    } else {
++      ++state->snapshot.unresolved_send_cleanup;
++    }
++    state->snapshot.closed = true;
++  }
++  if (state->snapshot.closed) return ExchangeStatus::closed;
++  if (!same) {
++    // No reply is not evidence of peer loss. Retain the same immutable peer
++    // binding for a later real handshake; this call grants no admission.
++    if (current.status == ExchangeStatus::timedOut &&
++        getppid() == state->birth.pid && SameBirth(state->birth, 0))
++      return ExchangeStatus::timedOut;
++    state->snapshot.closed = true;
++    return current.status == ExchangeStatus::authenticated ? ExchangeStatus::refused : current.status;
++  }
++  return ExchangeStatus::authenticated;
++}
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++ParentExchange AuthenticatedNativeParentConnection::SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms) {
++  ParentExchange observation;
++  auto state = state_;
++  if (getpid() != state->process) { observation.status = ExchangeStatus::wrongProcess; return observation; }
++  if (!ready_service || !ValidTimeout(timeout_ms)) return observation;
++  const auto current = Revalidate(timeout_ms);
++  if (current != ExchangeStatus::authenticated) { observation.status = current; return observation; }
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if (!endpoint->is_valid()) return observation;
++    ++state->snapshot.active_checks;
++  }
++  auto finish = +[](State* retained) {
++    if (getpid() != retained->process) return;
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<State, decltype(finish)> active(state.get(), finish);
++  int32_t directory = -1;
++  // This stronger producer refuses reserved/prepared/no-provider services and
++  // revalidates actual terminal/scoped/current state around its real FD dup.
++  const auto export_status = AuxCopyAuthenticatedFreshColdHomeDescriptor(ready_service, &directory);
++  if (export_status == 1) {
++    if (directory >= 0) { close(directory); return observation; }
++    observation.status = ExchangeStatus::timedOut; return observation;
++  }
++  if (export_status != 0 || directory < 0) {
++    if (directory >= 0) close(directory);
++    return observation;
++  }
++  auto close_directory = +[](int32_t* owned) { if (*owned >= 0) close(*owned); };
++  std::unique_ptr<int32_t, decltype(close_directory)> retained_directory(&directory, close_directory);
++  if (!PrivateDirectory(directory)) return observation;
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return observation;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++  }
++  fileport_t port = MACH_PORT_NULL;
++  if (fileport_makeport(directory, &port) != 0 || port == MACH_PORT_NULL) return observation;
++  SelectedHomeWire request{};
++  request.header.msgh_bits = MACH_MSGH_BITS_COMPLEX |
++      MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.header.msgh_size = sizeof(request);
++  request.header.msgh_remote_port = NativeOperations::Port(*endpoint);
++  request.header.msgh_local_port = reply.get();
++  request.header.msgh_id = kSelectedHomeRequest;
++  request.body.msgh_descriptor_count = 1;
++  request.fileport.name = port;
++  request.fileport.type = MACH_MSG_PORT_DESCRIPTOR;
++  request.fileport.disposition = MACH_MSG_TYPE_MOVE_SEND;
++  arc4random_buf(request.nonce.data(), request.nonce.size());
++  const auto nonce = request.nonce;
++  auto result = mach_msg(&request.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(request), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) {
++        mach_port_deallocate(mach_task_self(), request.header.msgh_local_port);
++        request.header.msgh_local_port = MACH_PORT_NULL;
++      }
++      // Destroy only the actual kernel-rewritten buffer, including its real
++      // fileport descriptor. Never clean a stale pre-send copy of the right.
++      mach_msg_destroy(&request.header);
++    } else {
++      std::lock_guard<std::mutex> lock(state->mutex);
++      ++state->snapshot.selected_home_cleanup_unresolved;
++      state->snapshot.closed = true;
++      observation.right_cleanup_unresolved = true;
++    }
++    if (result == MACH_SEND_TIMED_OUT) observation.status = ExchangeStatus::timedOut;
++    return observation;
++  }
++  Received received{};
++  result = mach_msg(&received.wire.header, kReceiveOptions, 0, sizeof(received),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) { observation.status = ExchangeStatus::timedOut; return observation; }
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.unresolved_receive_cleanup;
++    state->snapshot.last_receive_error = result;
++    state->snapshot.closed = true;
++    observation.right_cleanup_unresolved = true;
++    observation.receive_error = result;
++    return observation;
++  }
++  DestroyMessage destroy(&received.wire.header);
++  const auto audit = received.trailer.msgh_audit;
++  const bool valid = received.wire.header.msgh_size == sizeof(Wire) &&
++      received.wire.header.msgh_id == kSelectedHomeReply &&
++      !(received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      received.wire.version == kSelectedHomeVersion && received.wire.reserved == 0 &&
++      received.wire.generation == 1 && received.wire.nonce == nonce &&
++      received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t) &&
++      audit_token_to_pid(audit) == state->birth.pid &&
++      audit_token_to_pidversion(audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0) &&
++      NativeOperations::Validate(audit, *state->policy) &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0);
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->snapshot.closed) { observation.status = ExchangeStatus::closed; return observation; }
++  if (!valid) { state->snapshot.closed = true; return observation; }
++  observation.status = ExchangeStatus::authenticated;
++  observation.transport_generation = received.wire.generation;
++  observation.peer_pid = state->birth.pid;
++  observation.peer_pid_version = state->snapshot.parent_pid_version;
++  return observation;
++}
++#endif
++
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++#include "AuxPreparedDaemonAuthority.h"
++struct AuthorityServer {
++  AuthorityServer(std::shared_ptr<AuthenticatedNativeParentConnection::State> owner,
++                  uint64_t provider_value, uint64_t backend_value);
++  ~AuthorityServer();
++  int32_t Register(uint32_t timeout_ms);
++  int32_t Service(uint32_t timeout_ms);
++  int32_t Close();
++  const pid_t process = getpid();
++  const std::weak_ptr<AuthenticatedNativeParentConnection::State> connection;
++  const uint64_t provider;
++  const uint64_t backend;
++  ReceiveRight receiver;
++  std::optional<NativeSendRight> send_right;
++  std::mutex mutex;
++  bool closed = false;
++  std::atomic<uint64_t> generation{0};
++  uint64_t active_receives = 0;
++  uint64_t active_operations = 0;
++  bool cleanup_unresolved = false;
++};
++AuthorityServer::AuthorityServer(std::shared_ptr<AuthenticatedNativeParentConnection::State> owner,
++    uint64_t provider_value, uint64_t backend_value)
++    : connection(owner), provider(provider_value), backend(backend_value) {
++  if (receiver.get() != MACH_PORT_NULL &&
++      mach_port_insert_right(mach_task_self(), receiver.get(), receiver.get(),
++                             MACH_MSG_TYPE_MAKE_SEND) == KERN_SUCCESS)
++    send_right.emplace(NativeSendRight::AdoptReceivedRight(receiver.get()));
++}
++AuthorityServer::~AuthorityServer() {
++  if (getpid() == process) {
++    Close();
++    // Backend's real release retains pending/untracked exact owner itself.
++    AuxReleasePreparedDaemonAuthority(backend);
++  }
++}
++int32_t AuthorityServer::Close() {
++  if (getpid() != process) return -2;
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    closed = true;
++  }
++  const auto outcome = AuxClosePreparedDaemonAuthority(backend);
++  std::lock_guard<std::mutex> lock(mutex);
++  if (cleanup_unresolved) return 2;
++  if (active_receives || active_operations) return 1;
++  return outcome;
++}
++int32_t AuthorityServer::Register(uint32_t timeout_ms) {
++  if (getpid() != process) return -3;
++  auto state = connection.lock();
++  if (!state || !send_right || !send_right->is_valid()) return -1;
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed) return -2;
++  }
++  auto endpoint = [&] {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    return state->endpoint.CopyOwnedRight();
++  }();
++  if (!endpoint.is_valid()) return -1;
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return -1;
++  SelectedHomeReceived request{};
++  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,
++      MACH_MSG_TYPE_MAKE_SEND_ONCE) | MACH_MSGH_BITS_COMPLEX;
++  request.wire.header.msgh_size = sizeof(SelectedHomeWire);
++  request.wire.header.msgh_remote_port = endpoint.BorrowNativeName();
++  request.wire.header.msgh_local_port = reply.get();
++  request.wire.header.msgh_id = kAuthorityRegister;
++  request.wire.body.msgh_descriptor_count = 1;
++  request.wire.fileport.name = send_right->BorrowNativeName();
++  request.wire.fileport.disposition = MACH_MSG_TYPE_COPY_SEND;
++  request.wire.fileport.type = MACH_MSG_PORT_DESCRIPTOR;
++  request.wire.version = kAuthorityVersion;
++  arc4random_buf(request.wire.nonce.data(), request.wire.nonce.size());
++  const auto nonce = request.wire.nonce;
++  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(SelectedHomeWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
++    } else {
++      std::lock_guard<std::mutex> lock(mutex);
++      cleanup_unresolved = true; closed = true;
++      return -4;
++    }
++    return 1;
++  }
++  Received response{};
++  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return 1;
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(mutex);
++    cleanup_unresolved = true; closed = true;
++    return -4;
++  }
++  DestroyMessage destroy(&response.wire.header);
++  auto checked = response;
++  checked.wire.version = kVersion;
++  const bool valid = ValidWire(checked, kAuthorityRegistered) &&
++      response.wire.version == kAuthorityVersion && response.wire.nonce == nonce &&
++      response.wire.generation != 0 &&
++      audit_token_to_pid(response.trailer.msgh_audit) == state->birth.pid &&
++      audit_token_to_pidversion(response.trailer.msgh_audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0) &&
++      NativeOperations::Validate(response.trailer.msgh_audit, *state->policy);
++  std::lock_guard<std::mutex> parent_lock(state->mutex);
++  std::lock_guard<std::mutex> lock(mutex);
++  if (state->snapshot.closed || closed) return -2;
++  if (!valid || (generation && generation != response.wire.generation)) {
++    closed = true; return -1;
++  }
++  generation = response.wire.generation;
++  return 0;
++}
++int32_t AuthorityServer::Service(uint32_t timeout_ms) {
++  if (getpid() != process) return -3;
++  auto state = connection.lock();
++  if (!state || !ValidTimeout(timeout_ms)) return -1;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++    ++state->snapshot.active_checks;
++  }
++  auto finish_check = +[](AuthenticatedNativeParentConnection::State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<AuthenticatedNativeParentConnection::State, decltype(finish_check)> actual_call(state.get(), finish_check);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed || !generation) return -2;
++    ++active_receives;
++  }
++  AuthorityReceived request{};
++  const auto received = mach_msg(&request.wire.header, kReceiveOptions, 0, sizeof(request),
++      receiver.get(), timeout_ms, MACH_PORT_NULL);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    --active_receives;
++    if (received != KERN_SUCCESS && received != MACH_RCV_TIMED_OUT) {
++      cleanup_unresolved = true; closed = true; return -4;
++    }
++    if (closed) {
++      if (received == KERN_SUCCESS) mach_msg_destroy(&request.wire.header);
++      return -2;
++    }
++    if (received == MACH_RCV_TIMED_OUT) return 1;
++    ++active_operations;
++  }
++  auto finish = +[](AuthorityServer* server) {
++    std::lock_guard<std::mutex> lock(server->mutex);
++    --server->active_operations;
++  };
++  std::unique_ptr<AuthorityServer, decltype(finish)> active(this, finish);
++  DestroyMessage destroy(&request.wire.header);
++  const auto& wire = request.wire;
++  bool valid = wire.header.msgh_size == sizeof(wire) && wire.header.msgh_id == kAuthorityRequest &&
++      !(wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      MACH_MSGH_BITS_REMOTE(wire.header.msgh_bits) == MACH_MSG_TYPE_PORT_SEND_ONCE &&
++      wire.version == kAuthorityVersion && wire.padding == 0 && wire.generation == generation &&
++      (wire.operation == kSign || wire.operation == kPublicKeys || wire.operation == kObserve ||
++       wire.operation == kInboxKey || wire.operation == kAcknowledge) && wire.sequence != 0 &&
++      request.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      request.trailer.msgh_trailer_size >= sizeof(request.trailer) &&
++      audit_token_to_pid(request.trailer.msgh_audit) == state->birth.pid &&
++      audit_token_to_pidversion(request.trailer.msgh_audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0);
++  if (valid) valid = NativeOperations::Validate(request.trailer.msgh_audit, *state->policy);
++  if (wire.operation != kSign)
++    valid = valid && std::all_of(wire.message.begin(), wire.message.end(), [](uint8_t b) { return b == 0; });
++  if (!valid) {
++    std::lock_guard<std::mutex> lock(mutex); closed = true; return -1;
++  }
++  AuthorityReplyWire response{};
++  PayloadWiper response_wiper(response.payload);
++  response.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
++  response.header.msgh_size = sizeof(response);
++  response.header.msgh_remote_port = request.wire.header.msgh_remote_port;
++  response.header.msgh_id = kAuthorityReply;
++  response.generation = generation;
++  response.sequence = wire.sequence;
++  response.nonce = wire.nonce;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++  }
++  // Guard validation reenters this same connection's Revalidate. All native
++  // registry/connection/server locks above have been released before callbacks.
++  if (wire.operation == kSign)
++    response.status = AuxBeginPreparedDaemonSignature(backend, wire.sequence, wire.nonce.data(),
++        wire.message.data(), response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kPublicKeys)
++    response.status = AuxBeginPreparedDaemonPublicKeys(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kInboxKey)
++    response.status = AuxBeginPreparedDaemonInboxKey(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kAcknowledge)
++    response.status = AuxAckPreparedDaemonAuthority(backend, wire.sequence, wire.nonce.data());
++  else
++    response.status = AuxObservePreparedDaemonAuthority(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  if (response.length > response.payload.size() ||
++      (response.status != 0 && response.length != 0)) return -1;
++  if (response.status != 0) WipeBytes(response.payload);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed) return -2;
++  }
++  if (getppid() != state->birth.pid || !SameBirth(state->birth, 0)) return -1;
++  request.wire.header.msgh_remote_port = MACH_PORT_NULL;
++  DestroyMessage reply_cleanup(&response.header);
++  const auto sent = mach_msg(&response.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(response), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (sent != KERN_SUCCESS) {
++    if (!RecoverableSendError(sent)) {
++      reply_cleanup.Disarm();
++      std::lock_guard<std::mutex> lock(mutex);
++      cleanup_unresolved = true; closed = true; return -4;
++    }
++    return 1;
++  }
++  reply_cleanup.Disarm();
++  return 0;
++}
++int32_t AuthenticatedNativeParentConnection::StartPreparedDaemonAuthorityServer(uint64_t provider,
++    uint32_t timeout_ms) {
++  if (!provider || !ValidTimeout(timeout_ms)) return -1;
++  const auto checked = Revalidate(timeout_ms);
++  if (checked != ExchangeStatus::authenticated) {
++    if (checked == ExchangeStatus::timedOut) return 1;
++    if (checked == ExchangeStatus::closed) return -2;
++    if (checked == ExchangeStatus::wrongProcess) return -3;
++    return -1;
++  }
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    if (state_->snapshot.closed || state_->authority_closed) return -2;
++    server = state_->authority;
++    if (!server) {
++      if (state_->authority_starting) return 1;
++      state_->authority_starting = true;
++    }
++  }
++  if (!server) {
++    const auto backend = AuxCreatePreparedDaemonAuthority(provider);
++    if (!backend) {
++      std::lock_guard<std::mutex> lock(state_->mutex);
++      state_->authority_starting = false;
++      return -1;
++    }
++    auto created = std::make_shared<AuthorityServer>(state_, provider, backend);
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    state_->authority_starting = false;
++    // Preserve a late actual backend even after close so its pending/untracked
++    // owner remains queryable; do not publish a listener after terminal close.
++    if (!state_->authority) state_->authority = created;
++    server = state_->authority;
++    if (state_->snapshot.closed || state_->authority_closed) return -2;
++  }
++  if (server->provider != provider) return -1;
++  return server->Register(timeout_ms);
++}
++int32_t AuthenticatedNativeParentConnection::ServicePreparedDaemonAuthorityServer(uint32_t timeout_ms) {
++  if (getpid() != state_->process) return -3;
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    if (state_->snapshot.closed) return -2;
++    server = state_->authority;
++  }
++  return server ? server->Service(timeout_ms) : -1;
++}
++int32_t AuthenticatedNativeParentConnection::ClosePreparedDaemonAuthorityServer() {
++  if (getpid() != state_->process) return -2;
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    state_->authority_closed = true;
++    if (state_->authority_starting) return 1;
++    server = state_->authority;
++  }
++  return server ? server->Close() : 0;
++}
++#endif
++
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::SignDaemonChallenge(
++    std::span<const uint8_t> message, uint32_t timeout_ms) {
++  constexpr char domain[] = "Aux Daemon Auth v1"; // Includes exact terminating NUL.
++  if (message.size() != 51 || std::memcmp(message.data(), domain, sizeof(domain)) != 0)
++    return {};
++  return RequestAuthority(kSign, message, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetInstallationPublicKeys(uint32_t timeout_ms) {
++  return RequestAuthority(kPublicKeys, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
++  return RequestAuthority(kInboxKey, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(
++    uint32_t operation, std::span<const uint8_t> message, uint32_t timeout_ms) {
++  if (!ValidTimeout(timeout_ms)) return {};
++  const auto value = state_;
++  if (getpid() != value->process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  int home = DuplicateRevalidatedDirectory();
++  if (home < 0) return {};
++  close(home);
++  const auto owner = value->owner.lock();
++  if (!owner) return {DaemonAuthorityStatus::closed, {}};
++  std::shared_ptr<AuthorityClient> client;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
++      return {DaemonAuthorityStatus::closed, {}};
++    client = owner->authority;
++    if (client) ++owner->snapshot.active_exchanges;
++  }
++  if (!client) return {};
++  auto finish_call = +[](ParentTransport::State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_exchanges;
++  };
++  std::unique_ptr<ParentTransport::State, decltype(finish_call)> owned_call(owner.get(), finish_call);
++  // One exact outstanding operation per native selected installation. This
++  // serialization lock is not a browser/host lock and crosses no JS callback.
++  std::lock_guard<std::mutex> serial(client->mutex);
++  if (client->closed) return {DaemonAuthorityStatus::closed, {}};
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) {
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::closed, {}};
++    }
++  }
++  std::array<uint8_t, 51> body{};
++  std::copy(message.begin(), message.end(), body.begin());
++  const bool same = client->started && client->operation == operation && client->message == body;
++  if (client->pending && !same) return {DaemonAuthorityStatus::busy, {}};
++  if (!same) {
++    if (client->sequence == std::numeric_limits<uint64_t>::max()) return {};
++    ++client->sequence;
++    WipePayload(client->completed);
++    client->attempted = false;
++    client->completed_error = false;
++    client->operation = operation;
++    client->message = body;
++    arc4random_buf(client->nonce.data(), client->nonce.size());
++    client->started = true;
++  }
++  const bool observe = same && client->attempted;
++  bool acknowledging = false;
++  for (unsigned phase = 0; phase < 2; ++phase) {
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return {};
++  AuthorityReceived request{};
++  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.wire.header.msgh_size = sizeof(AuthorityWire);
++  request.wire.header.msgh_remote_port = client->endpoint.BorrowNativeName();
++  request.wire.header.msgh_local_port = reply.get();
++  request.wire.header.msgh_id = kAuthorityRequest;
++  request.wire.operation = acknowledging ? kAcknowledge : observe ? kObserve : operation;
++  request.wire.generation = value->generation;
++  request.wire.sequence = client->sequence;
++  request.wire.nonce = client->nonce;
++  if (!observe && !acknowledging) request.wire.message = body;
++  // Once send is attempted the nonce is retained, including all timeout/error
++  // outcomes. A later call can only observe it, never silently sign again.
++  client->pending = true;
++  client->attempted = true;
++  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(AuthorityWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
++    } else {
++      std::lock_guard<std::mutex> lock(owner->mutex);
++      owner->snapshot.closed = true; ++owner->snapshot.generation;
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::cleanupUnresolved, {}};
++    }
++    return {DaemonAuthorityStatus::timedOut, {}};
++  }
++  AuthorityReplyReceived response{};
++  PayloadWiper response_wiper(response.wire.payload);
++  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return {DaemonAuthorityStatus::timedOut, {}};
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    owner->snapshot.closed = true; ++owner->snapshot.generation;
++    WipePayload(client->completed);
++    return {DaemonAuthorityStatus::cleanupUnresolved, {}};
++  }
++  DestroyMessage cleanup(&response.wire.header);
++  const auto& wire = response.wire;
++  if (wire.header.msgh_size != sizeof(wire) || wire.header.msgh_id != kAuthorityReply ||
++      (wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) || wire.version != kAuthorityVersion ||
++      wire.generation != value->generation || wire.sequence != client->sequence ||
++      wire.nonce != client->nonce || wire.reserved != 0 ||
++      wire.length > wire.payload.size() ||
++      response.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
++      response.trailer.msgh_trailer_size < sizeof(response.trailer) ||
++      audit_token_to_pid(response.trailer.msgh_audit) != owner->child->pid ||
++      audit_token_to_pidversion(response.trailer.msgh_audit) != value->version ||
++      !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
++      !NativeOperations::Validate(response.trailer.msgh_audit, *owner->policy)) {
++    WipePayload(client->completed); return {};
++  }
++  home = DuplicateRevalidatedDirectory();
++  if (home < 0) { WipePayload(client->completed); return {}; }
++  close(home);
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
++      { WipePayload(client->completed); return {DaemonAuthorityStatus::closed, {}}; }
++  }
++  switch (wire.status) {
++    case 0:
++      if (acknowledging) {
++        if (wire.length != 0 || (!client->completed_error && client->completed.empty())) return {};
++        client->pending = false;
++        if (client->completed_error) return {};
++        return {DaemonAuthorityStatus::ready, client->completed};
++      }
++      if (!wire.length || (operation == kInboxKey && wire.length != 32)) return {};
++      {
++        std::vector<uint8_t> payload(wire.payload.begin(), wire.payload.begin() + wire.length);
++        if (!client->completed.empty() && client->completed != payload) {
++          WipePayload(payload); WipePayload(client->completed); return {};
++        }
++        if (client->completed.empty()) client->completed = std::move(payload);
++        else WipePayload(payload);
++      }
++      {
++        DaemonAuthorityReply ready(DaemonAuthorityStatus::ready, client->completed);
++        ready.publication_ = std::shared_ptr<DaemonAuthorityPublication>(
++            new DaemonAuthorityPublication(value, client));
++        // Keep pending and backend completion intact until the genuine holder
++        // publication fence explicitly accepts this exact native observation.
++        return ready;
++      }
++    case 1: return {DaemonAuthorityStatus::pending, {}};
++    case 2: return {DaemonAuthorityStatus::busy, {}};
++    case 3:
++      client->closed = true;
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::closed, {}};
++    case 4:
++      if (acknowledging) return {};
++      client->completed_error = true;
++      acknowledging = true;
++      continue;
++    default: return {};
++  }
++  }
++  return {DaemonAuthorityStatus::pending, {}};
++}
++
++DaemonAuthorityStatus AuthenticatedSelectedHomeTransfer::AcceptAuthorityReply(
++    const DaemonAuthorityReply& reply_value, uint32_t timeout_ms) {
++  const auto publication = reply_value.publication_;
++  if (!publication || reply_value.status != DaemonAuthorityStatus::ready ||
++      !ValidTimeout(timeout_ms)) return DaemonAuthorityStatus::refused;
++  const auto value = publication->selected.lock();
++  if (!value || value != state_) return DaemonAuthorityStatus::refused;
++  if (getpid() != value->process) return DaemonAuthorityStatus::wrongProcess;
++  int home = DuplicateRevalidatedDirectory();
++  if (home < 0) return DaemonAuthorityStatus::refused;
++  close(home);
++  const auto owner = value->owner.lock();
++  const auto client = publication->client.lock();
++  if (!owner || !client) return DaemonAuthorityStatus::closed;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation ||
++        owner->authority != client) return DaemonAuthorityStatus::closed;
++    ++owner->snapshot.active_exchanges;
++  }
++  auto finish = +[](ParentTransport::State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_exchanges;
++  };
++  std::unique_ptr<ParentTransport::State, decltype(finish)> call(owner.get(), finish);
++  std::lock_guard<std::mutex> serial(client->mutex);
++  if (client->closed || client->sequence != publication->sequence ||
++      client->operation != publication->operation || client->nonce != publication->nonce ||
++      client->message != publication->message || client->completed_error ||
++      client->completed.empty() || client->completed != reply_value.payload)
++    return DaemonAuthorityStatus::refused;
++  if (publication->acknowledged) return DaemonAuthorityStatus::ready;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) {
++      WipePayload(client->completed); return DaemonAuthorityStatus::closed;
++    }
++  }
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return DaemonAuthorityStatus::refused;
++  AuthorityReceived request{};
++  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.wire.header.msgh_size = sizeof(AuthorityWire);
++  request.wire.header.msgh_remote_port = client->endpoint.BorrowNativeName();
++  request.wire.header.msgh_local_port = reply.get();
++  request.wire.header.msgh_id = kAuthorityRequest;
++  request.wire.operation = kAcknowledge;
++  request.wire.generation = value->generation;
++  request.wire.sequence = publication->sequence;
++  request.wire.nonce = publication->nonce;
++  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(AuthorityWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
++      return DaemonAuthorityStatus::timedOut;
++    }
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    owner->snapshot.closed = true; ++owner->snapshot.generation;
++    WipePayload(client->completed);
++    return DaemonAuthorityStatus::cleanupUnresolved;
++  }
++  AuthorityReplyReceived response{};
++  PayloadWiper response_wiper(response.wire.payload);
++  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return DaemonAuthorityStatus::timedOut;
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    owner->snapshot.closed = true; ++owner->snapshot.generation;
++    WipePayload(client->completed);
++    return DaemonAuthorityStatus::cleanupUnresolved;
++  }
++  DestroyMessage cleanup(&response.wire.header);
++  const auto& wire = response.wire;
++  if (wire.header.msgh_size != sizeof(wire) || wire.header.msgh_id != kAuthorityReply ||
++      (wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) || wire.version != kAuthorityVersion ||
++      wire.generation != value->generation || wire.sequence != publication->sequence ||
++      wire.nonce != publication->nonce || wire.reserved != 0 || wire.length != 0 ||
++      response.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
++      response.trailer.msgh_trailer_size < sizeof(response.trailer) ||
++      audit_token_to_pid(response.trailer.msgh_audit) != owner->child->pid ||
++      audit_token_to_pidversion(response.trailer.msgh_audit) != value->version ||
++      !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
++      !NativeOperations::Validate(response.trailer.msgh_audit, *owner->policy))
++    return DaemonAuthorityStatus::refused;
++  home = DuplicateRevalidatedDirectory();
++  if (home < 0) return DaemonAuthorityStatus::refused;
++  close(home);
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
++      return DaemonAuthorityStatus::closed;
++  }
++  if (wire.status == 1) return DaemonAuthorityStatus::pending;
++  if (wire.status == 3) {
++    client->closed = true; WipePayload(client->completed);
++    return DaemonAuthorityStatus::closed;
++  }
++  if (wire.status != 0) return DaemonAuthorityStatus::refused;
++  publication->acknowledged = true;
++  client->pending = false;
++  return DaemonAuthorityStatus::ready;
++}
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/AuxNativePeerTransport.h b/chrome/browser/aux/AuxNativePeerTransport.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxNativePeerTransport.h
+@@ -0,0 +1,207 @@
++#pragma once
++#include <Security/Security.h>
++#include <mach/mach.h>
++#include <sys/types.h>
++#include <cstdint>
++#include <memory>
++#include <span>
++#include <vector>
++#include <chrono>
++#include <optional>
++
++namespace aux::peer {
++// Immutable code policy supplied by trusted native host policy. Copying this
++// policy does not authenticate that host or establish profile writer custody.
++class ExactCodePolicy final {
++ public:
++  static std::shared_ptr<const ExactCodePolicy> CopyNativePolicy(
++      SecRequirementRef requirement, std::span<const uint8_t> cd_hash);
++  ~ExactCodePolicy();
++ private:
++  ExactCodePolicy(SecRequirementRef requirement, std::span<const uint8_t> hash);
++  struct Data;
++  std::unique_ptr<Data> data_;
++  friend class ParentTransport;
++  friend struct NativeOperations;
++};
++class NativeSendRight final {
++ public:
++  // Adopts one real received send-right ref, not a descriptor supplied by JS.
++  static NativeSendRight AdoptReceivedRight(mach_port_t right);
++  bool is_valid() const;
++  NativeSendRight CopyOwnedRight() const;
++  mach_port_t ReleaseForNativeHandoff();
++  mach_port_t BorrowNativeName() const;
++  NativeSendRight(NativeSendRight&& other) noexcept;
++  NativeSendRight& operator=(NativeSendRight&& other) noexcept;
++  ~NativeSendRight();
++  NativeSendRight(const NativeSendRight&) = delete;
++  NativeSendRight& operator=(const NativeSendRight&) = delete;
++ private:
++  explicit NativeSendRight(mach_port_t right);
++  mach_port_t right_ = MACH_PORT_NULL;
++  pid_t process_ = -1;
++  friend class ParentTransport;
++  friend struct NativeOperations;
++};
++struct TransportSnapshot {
++  uint64_t generation = 1;
++  bool closed = false;
++  bool wrong_process = false;
++  uint64_t active_exchanges = 0;
++  uint64_t active_receives = 0;
++  uint64_t active_code_validations = 0;
++  uint64_t active_selected_home_validations = 0;
++  uint64_t authenticated_exchanges = 0;
++  uint64_t authenticated_ready_home_exports = 0;
++  uint64_t rejected_peer_identities = 0;
++  uint64_t unresolved_reply_cleanup = 0;
++  bool child_pid_version_observed = false;
++  bool child_bound = false;
++  bool selected_home_pending = false;
++  uint64_t selected_home_cleanup_unresolved = 0;
++  uint64_t unresolved_receive_cleanup = 0;
++  int32_t last_receive_error = 0;
++};
++enum class ExchangeStatus { authenticated, timedOut, refused, closed, wrongProcess };
++struct ParentExchange {
++  ExchangeStatus status = ExchangeStatus::refused;
++  uint64_t transport_generation = 0;
++  int peer_pid = -1;
++  int peer_pid_version = -1;
++  bool right_cleanup_unresolved = false;
++  int32_t receive_error = 0;
++};
++enum class DaemonAuthorityStatus { ready, pending, busy, refused, closed, timedOut,
++                                   wrongProcess, cleanupUnresolved };
++class DaemonAuthorityPublication;
++struct DaemonAuthorityReply {
++  DaemonAuthorityReply();
++  DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes);
++  ~DaemonAuthorityReply();
++  DaemonAuthorityReply(DaemonAuthorityReply&&) noexcept;
++  DaemonAuthorityReply& operator=(DaemonAuthorityReply&&) noexcept;
++  DaemonAuthorityReply(const DaemonAuthorityReply&) = delete;
++  DaemonAuthorityReply& operator=(const DaemonAuthorityReply&) = delete;
++  DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
++  std::vector<uint8_t> payload;
++ private:
++  std::shared_ptr<DaemonAuthorityPublication> publication_;
++  friend class AuthenticatedSelectedHomeTransfer;
++};
++class PreparedParentEndpoint;
++class OwnedNativePeerChild;
++class SelectedNativeHome;
++// Observational only: constructed from completed genuine ready-home exchanges.
++struct ReadyHomePulse {
++  uint64_t generation;
++  uint64_t exports;
++  std::chrono::steady_clock::time_point observed;
++};
++// Internal transport product: only actual authenticated Mach FD receipt creates
++// it; only the real owned child can promote it to a retained selected home.
++class AuthenticatedSelectedHomeTransfer final {
++ public:
++  ~AuthenticatedSelectedHomeTransfer();
++  DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> exact_message,
++                                           uint32_t timeout_ms);
++  DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
++  DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
++  // Caller invokes only after its actual owner/pulse publication fence.
++  DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply,
++                                            uint32_t timeout_ms);
++  AuthenticatedSelectedHomeTransfer(const AuthenticatedSelectedHomeTransfer&) = delete;
++  AuthenticatedSelectedHomeTransfer& operator=(const AuthenticatedSelectedHomeTransfer&) = delete;
++ private:
++  struct State;
++  explicit AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> state);
++  int DuplicateRevalidatedDirectory();
++  DaemonAuthorityReply RequestAuthority(uint32_t operation, std::span<const uint8_t> message, uint32_t timeout_ms);
++  std::optional<ReadyHomePulse> InspectReadyPulse();
++  std::shared_ptr<State> state_;
++  friend class ParentTransport;
++  friend class DaemonAuthorityPublication;
++  friend class SelectedNativeHome;
++  friend class OwnedNativePeerChild;
++};
++class ParentTransport final {
++ public:
++  // Native launch owner calls only after its actual spawn. Kernel checks require
++  // this process's live direct, waitable child; SIGCHLD auto-reaping is refused.
++  static std::unique_ptr<ParentTransport> BindActualDirectChild(
++      pid_t child, std::shared_ptr<const ExactCodePolicy> child_policy);
++  ~ParentTransport();
++  NativeSendRight CopySendRightForNativeHandoff();
++  // One bounded native exchange. Real IPC/live Security operations occur here.
++  ExchangeStatus ServiceOne(uint32_t timeout_ms);
++  TransportSnapshot CloseAndInspect();
++  TransportSnapshot Inspect() const;
++ private:
++  friend class PreparedParentEndpoint;
++  friend class OwnedNativePeerChild;
++  friend class AuthenticatedSelectedHomeTransfer;
++  std::shared_ptr<AuthenticatedSelectedHomeTransfer> TakeSelectedHomeTransfer();
++  struct State;
++  explicit ParentTransport(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++};
++// Native launch prepares its actual receive right before spawn; binding can be
++// completed only once using the actual live direct child after spawn returns.
++class PreparedParentEndpoint final {
++ public:
++  ~PreparedParentEndpoint();
++  static std::unique_ptr<PreparedParentEndpoint> PrepareBeforeSpawn(
++      std::shared_ptr<const ExactCodePolicy> child_policy);
++  NativeSendRight CopySendRightForNativeHandoff();
++  std::unique_ptr<ParentTransport> BindActualDirectChild(pid_t child);
++  TransportSnapshot CloseAndInspect();
++  TransportSnapshot Inspect() const;
++ private:
++  explicit PreparedParentEndpoint(std::shared_ptr<ParentTransport::State> state);
++  std::shared_ptr<ParentTransport::State> state_;
++};
++struct NativeParentConnectionSnapshot {
++  bool closed = false;
++  bool wrong_process = false;
++  uint64_t active_checks = 0;
++  int parent_pid = -1;
++  int parent_pid_version = -1;
++  uint64_t selected_home_cleanup_unresolved = 0;
++  uint64_t unresolved_receive_cleanup = 0;
++  uint64_t unresolved_send_cleanup = 0;
++  int32_t last_receive_error = 0;
++};
++// Only a real live handshake can construct this retained native connection.
++// The type authenticates a peer, NEVER profile/cohort/installer custody.
++class AuthenticatedNativeParentConnection final {
++ public:
++  static std::unique_ptr<AuthenticatedNativeParentConnection> Connect(
++      NativeSendRight endpoint,
++      std::shared_ptr<const ExactCodePolicy> parent_policy, uint32_t timeout_ms);
++  ~AuthenticatedNativeParentConnection();
++  AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
++  AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
++  ExchangeStatus Revalidate(uint32_t timeout_ms);
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++  // Descriptor source is ONLY actual ready-service C producer, never a caller FD.
++  ParentExchange SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms);
++#endif
++  int32_t StartPreparedDaemonAuthorityServer(uint64_t provider, uint32_t timeout_ms);
++  int32_t ServicePreparedDaemonAuthorityServer(uint32_t timeout_ms);
++  int32_t ClosePreparedDaemonAuthorityServer();
++  NativeParentConnectionSnapshot CloseAndInspect();
++  NativeParentConnectionSnapshot Inspect() const;
++ private:
++  struct State;
++  explicit AuthenticatedNativeParentConnection(std::shared_ptr<State> state);
++  friend struct AuthorityServer;
++  std::shared_ptr<State> state_;
++};
++// Child native bootstrap consumes a private endpoint transferred by actual
++// launch IPC. The peer is checked against its actual living parent, not a PID
++// argument/ENV value. Success authenticates this exchange only, NEVER a cohort.
++ParentExchange AuthenticateActualNativeParent(
++    const NativeSendRight& endpoint,
++    std::shared_ptr<const ExactCodePolicy> parent_policy,
++    uint32_t timeout_ms);
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/AuxNativePeerWire.h b/chrome/browser/aux/AuxNativePeerWire.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxNativePeerWire.h
+@@ -0,0 +1,105 @@
++#pragma once
++#include <mach/mach.h>
++#include <array>
++#include <cstdint>
++
++namespace aux::peer::detail {
++constexpr mach_msg_id_t kRequest = 0x41555851;  // AUXQ
++constexpr mach_msg_id_t kReply = 0x41555852;    // AUXR
++constexpr uint32_t kVersion = 1;
++constexpr uint32_t kMaximumTimeoutMs = 2'000;
++inline constexpr bool ValidTimeout(uint32_t timeout_ms) {
++  return timeout_ms > 0 && timeout_ms <= kMaximumTimeoutMs;
++}
++struct Wire {
++  mach_msg_header_t header{};
++  uint32_t version = kVersion;
++  uint32_t reserved = 0;
++  uint64_t generation = 0;
++  std::array<uint8_t, 32> nonce{};
++};
++struct Received {
++  Wire wire;
++  mach_msg_audit_trailer_t trailer;
++};
++static_assert(sizeof(Wire) % 4 == 0);
++inline bool ValidWire(const Received& received, mach_msg_id_t kind) {
++  return received.wire.header.msgh_size == sizeof(Wire) &&
++      received.wire.header.msgh_id == kind &&
++      !(received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      received.wire.version == kVersion && received.wire.reserved == 0 &&
++      received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
++}
++
++// Distinct complex protocol; v1 heartbeats remain byte-for-byte noncomplex.
++constexpr mach_msg_id_t kSelectedHomeRequest = 0x41555848;  // AUXH
++constexpr mach_msg_id_t kSelectedHomeReply = 0x41555849;    // AUXI
++constexpr uint32_t kSelectedHomeVersion = 2;
++struct SelectedHomeWire {
++  mach_msg_header_t header{};
++  mach_msg_body_t body{};
++  mach_msg_port_descriptor_t fileport{};
++  uint32_t version = kSelectedHomeVersion;
++  uint32_t reserved = 0;
++  uint64_t generation = 0;
++  std::array<uint8_t, 32> nonce{};
++};
++struct SelectedHomeReceived {
++  SelectedHomeWire wire;
++  mach_msg_audit_trailer_t trailer;
++};
++static_assert(sizeof(SelectedHomeWire) % 4 == 0);
++inline bool ValidSelectedHomeWire(const SelectedHomeReceived& received) {
++  return received.wire.header.msgh_size == sizeof(SelectedHomeWire) &&
++      received.wire.header.msgh_id == kSelectedHomeRequest &&
++      (received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      received.wire.body.msgh_descriptor_count == 1 &&
++      received.wire.fileport.type == MACH_MSG_PORT_DESCRIPTOR &&
++      received.wire.fileport.disposition == MACH_MSG_TYPE_PORT_SEND &&
++      received.wire.fileport.name != MACH_PORT_NULL &&
++      received.wire.version == kSelectedHomeVersion && received.wire.reserved == 0 &&
++      received.wire.generation == 0 &&
++      received.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
++}
++
++// Finite native daemon authority RPC; never a generic command envelope.
++constexpr mach_msg_id_t kAuthorityRegister = 0x4155584a; // AUXJ
++constexpr mach_msg_id_t kAuthorityRegistered = 0x4155584b; // AUXK
++constexpr mach_msg_id_t kAuthorityRequest = 0x4155584c; // AUXL
++constexpr mach_msg_id_t kAuthorityReply = 0x4155584d; // AUXM
++constexpr uint32_t kAuthorityVersion = 4;
++constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5;
++struct AuthorityWire {
++  mach_msg_header_t header{};
++  uint32_t version = kAuthorityVersion;
++  uint32_t operation = 0;
++  uint64_t generation = 0;
++  uint64_t sequence = 0;
++  std::array<uint8_t, 16> nonce{};
++  std::array<uint8_t, 51> message{};
++  uint8_t padding = 0;
++};
++struct AuthorityReceived { AuthorityWire wire; mach_msg_audit_trailer_t trailer; };
++struct AuthorityReplyWire {
++  mach_msg_header_t header{};
++  uint32_t version = kAuthorityVersion;
++  int32_t status = -1;
++  uint64_t generation = 0;
++  uint64_t sequence = 0;
++  std::array<uint8_t, 16> nonce{};
++  uint32_t length = 0;
++  uint32_t reserved = 0;
++  std::array<uint8_t, 8192> payload{};
++};
++struct AuthorityReplyReceived { AuthorityReplyWire wire; mach_msg_audit_trailer_t trailer; };
++static_assert(sizeof(AuthorityWire) % 4 == 0);
++static_assert(sizeof(AuthorityReplyWire) % 4 == 0);
++
++// Apple libsyscall only treats these send errors as recoverable for cleanup.
++inline bool RecoverableSendError(mach_msg_return_t result) {
++  return result == MACH_SEND_INVALID_DEST || result == MACH_SEND_TIMED_OUT ||
++      result == MACH_SEND_INTERRUPTED;
++}
++}  // namespace aux::peer::detail
+diff --git a/chrome/browser/aux/AuxOwnedNativePeerChild.cc b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -0,0 +1,358 @@
++#include "AuxOwnedNativePeerChild.h"
++#include "base/apple/mach_port_rendezvous.h"
++#include "base/apple/scoped_mach_port.h"
++#include "base/process/process.h"
++#include "base/time/time.h"
++#include <sys/wait.h>
++#include <unistd.h>
++#include <mutex>
++#include <optional>
++#include <limits>
++#include <algorithm>
++#include <utility>
++#include <vector>
++
++namespace aux::peer {
++struct OwnedNativePeerChild::State {
++  State(base::CommandLine command_value, base::LaunchOptions options_value,
++        std::unique_ptr<PreparedParentEndpoint> prepared_value, NativeSendRight handoff_value);
++  ~State();
++  static pid_t RegistryProcess();
++  static std::mutex& RetainedMutex();
++  static std::vector<std::shared_ptr<State>>& Retained();
++  static void CloseAndRetain(std::shared_ptr<State> state);
++  NativeChildObservation ObserveLocked();
++  NativeChildObservation ReapLocked();
++  const pid_t process = getpid();
++  std::mutex mutex;
++  base::CommandLine command;
++  base::LaunchOptions options;
++  std::unique_ptr<PreparedParentEndpoint> prepared;
++  NativeSendRight handoff;
++  std::shared_ptr<ParentTransport> peer;
++  base::Process child;
++  base::Time child_created;
++  NativeChildObservation observation;
++  bool retained_for_exit = false;
++};
++OwnedNativePeerChild::State::State(base::CommandLine command_value,
++    base::LaunchOptions options_value, std::unique_ptr<PreparedParentEndpoint> prepared_value,
++    NativeSendRight handoff_value)
++    : command(std::move(command_value)), options(std::move(options_value)),
++      prepared(std::move(prepared_value)), handoff(std::move(handoff_value)) {}
++OwnedNativePeerChild::State::~State() = default;
++pid_t OwnedNativePeerChild::State::RegistryProcess() { static const pid_t owner = getpid(); return owner; }
++std::mutex& OwnedNativePeerChild::State::RetainedMutex() {
++  static auto* mutex = new std::mutex;
++  return *mutex;
++}
++std::vector<std::shared_ptr<OwnedNativePeerChild::State>>& OwnedNativePeerChild::State::Retained() {
++  static auto* children = new std::vector<std::shared_ptr<State>>;
++  return *children;
++}
++NativeChildObservation OwnedNativePeerChild::State::ObserveLocked() {
++  observation.peer = peer ? peer->Inspect() : prepared->Inspect();
++  return observation;
++}
++OwnedNativePeerChild::OwnedNativePeerChild(std::shared_ptr<State> state) : state_(std::move(state)) {}
++std::unique_ptr<OwnedNativePeerChild> OwnedNativePeerChild::PrepareBeforeSpawn(
++    base::CommandLine command, base::LaunchOptions options,
++    std::shared_ptr<const ExactCodePolicy> policy) {
++  // This fresh cold path cannot carry the historical Keychain interposer. Its
++  // absence is a required real launch property, never an admission grant.
++  if (!policy || !options.clear_environment ||
++      options.environment.contains("DYLD_INSERT_LIBRARIES") ||
++      options.environment.contains("NODE_OPTIONS") ||
++      options.environment.contains("NODE_PATH") ||
++      options.environment.contains("AUX_ENABLE_PROVIDED_NATIVE_CARRIER") ||
++      options.environment.contains("AUX_PROVIDED_NATIVE_LOAD_ONLY") ||
++      options.mach_ports_for_rendezvous.contains(kNativeParentPeerPort)) return {};
++  auto prepared = PreparedParentEndpoint::PrepareBeforeSpawn(std::move(policy));
++  if (!prepared) return {};
++  auto right = prepared->CopySendRightForNativeHandoff();
++  if (!right.is_valid()) return {};
++  options.mach_ports_for_rendezvous.emplace(kNativeParentPeerPort,
++      base::MachRendezvousPort(right.BorrowNativeName(), MACH_MSG_TYPE_COPY_SEND));
++  return std::unique_ptr<OwnedNativePeerChild>(new OwnedNativePeerChild(
++      std::make_shared<State>(std::move(command), std::move(options), std::move(prepared), std::move(right))));
++}
++void OwnedNativePeerChild::State::CloseAndRetain(std::shared_ptr<State> state) {
++  if (getpid() != state->process || getpid() != RegistryProcess()) return;
++  bool retain = false;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    state->observation.closed = true;
++    state->prepared->CloseAndInspect();
++    if (state->peer) state->peer->CloseAndInspect();
++    auto observed = state->ReapLocked();
++    retain = observed.launch_attempted && !observed.launch_failed &&
++        !observed.exit_observed_and_reaped && !state->retained_for_exit;
++    if (retain) state->retained_for_exit = true;
++  }
++  if (retain) {
++    std::lock_guard<std::mutex> lock(RetainedMutex());
++    Retained().push_back(std::move(state));
++  }
++}
++OwnedNativePeerChild::~OwnedNativePeerChild() {
++  if (getpid() != state_->process) return;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    // The private selected object now owns close/quarantine of this actual
++    // waitable child state. An observer or raw Boolean cannot set this field.
++    if (state_->observation.selected_home_owner_transferred) return;
++  }
++  State::CloseAndRetain(state_);
++}
++bool OwnedNativePeerChild::LaunchOnce() {
++  auto state = state_;
++  if (getpid() != state->process) return false;
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (state->observation.closed || state->observation.launch_attempted) return false;
++  state->observation.launch_attempted = true;
++  // Actual spawn is serialized with this owner's terminal close, matching the
++  // supplied supervisor's RunAdmittedLaunch generation-lock boundary.
++  // COPY_SEND borrows the original ref, retained in state->handoff throughout
++  // launch, early returns, rendezvous delivery and actual child exit.
++  state->child = base::LaunchProcess(state->command, state->options);
++  if (!state->child.IsValid()) {
++    state->observation.launch_failed = true;
++    state->prepared->CloseAndInspect();
++    return false;
++  }
++  state->observation.child_pid = state->child.Pid();
++  state->child_created = state->child.CreationTime();
++  state->peer = state->prepared->BindActualDirectChild(state->child.Pid());
++  state->observation.child_binding_failed = !state->peer;
++  if (!state->peer) state->prepared->CloseAndInspect();
++  // A failed binding does not discard/kill the child already spawned.
++  return static_cast<bool>(state->peer);
++}
++ExchangeStatus OwnedNativePeerChild::ServicePeerOnce(uint32_t timeout_ms) {
++  auto state = state_;
++  if (getpid() != state->process) return ExchangeStatus::wrongProcess;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->observation.closed) return ExchangeStatus::closed;
++    peer = state->peer;
++  }
++  return peer ? peer->ServiceOne(timeout_ms) : ExchangeStatus::refused;
++}
++NativeChildObservation OwnedNativePeerChild::CloseAndInspect() {
++  auto state = state_;
++  if (getpid() != state->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  state->observation.closed = true;
++  state->prepared->CloseAndInspect();
++  if (state->peer) state->peer->CloseAndInspect();
++  return state->ObserveLocked();
++}
++NativeChildObservation OwnedNativePeerChild::ObserveAndReapExitedChild() {
++  auto state = state_;
++  if (getpid() != state->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state->mutex);
++  return state->ReapLocked();
++}
++NativeChildObservation OwnedNativePeerChild::State::ReapLocked() {
++  if (!child.IsValid() || observation.exit_observed_and_reaped)
++    return ObserveLocked();
++  siginfo_t exit{};
++  const pid_t pid = child.Pid();
++  if (child_created.is_null() || child.CreationTime() != child_created ||
++      waitid(P_PID, static_cast<id_t>(pid), &exit, WEXITED | WNOHANG | WNOWAIT) != 0) {
++    observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
++  if (!exit.si_pid) return ObserveLocked();
++  int status = 0;
++  if (exit.si_pid != pid || waitpid(pid, &status, WNOHANG) != pid) {
++    observation.exit_ownership_unknown = true;
++    return ObserveLocked();
++  }
++  observation.wait_status = status;
++  observation.exit_observed_and_reaped = true;
++  observation.closed = true;
++  prepared->CloseAndInspect();
++  if (peer) peer->CloseAndInspect();
++  child.Close();
++  return ObserveLocked();
++}
++size_t OwnedNativePeerChild::RetainedUnresolvedChildren() {
++  if (getpid() != State::RegistryProcess()) return std::numeric_limits<size_t>::max();
++  std::lock_guard<std::mutex> lock(State::RetainedMutex());
++  return State::Retained().size();
++}
++size_t OwnedNativePeerChild::PollRetainedOwnedChildren() {
++  if (getpid() != State::RegistryProcess()) return std::numeric_limits<size_t>::max();
++  std::vector<std::shared_ptr<State>> retained;
++  {
++    std::lock_guard<std::mutex> lock(State::RetainedMutex());
++    retained = State::Retained();
++  }
++  for (auto& state : retained) {
++    bool terminal = false;
++    {
++      std::lock_guard<std::mutex> lock(state->mutex);
++      terminal = state->ReapLocked().exit_observed_and_reaped;
++    }
++    if (terminal) {
++      std::lock_guard<std::mutex> lock(State::RetainedMutex());
++      std::erase(State::Retained(), state);
++    }
++  }
++  return RetainedUnresolvedChildren();
++}
++}  // namespace aux::peer
++
++namespace aux::peer {
++struct SelectedNativeHome::State {
++  State(std::shared_ptr<OwnedNativePeerChild::State> child_value,
++        std::shared_ptr<AuthenticatedSelectedHomeTransfer> transfer_value)
++      : child(std::move(child_value)), transfer(std::move(transfer_value)) {}
++  const pid_t process = getpid();
++  const std::shared_ptr<OwnedNativePeerChild::State> child;
++  const std::shared_ptr<AuthenticatedSelectedHomeTransfer> transfer;
++};
++SelectedNativeHome::SelectedNativeHome(std::shared_ptr<State> state) : state_(std::move(state)) {}
++SelectedNativeHome::~SelectedNativeHome() {
++  if (getpid() == state_->process) OwnedNativePeerChild::State::CloseAndRetain(state_->child);
++}
++int SelectedNativeHome::DuplicateRevalidatedDirectory() {
++  auto selected = state_;
++  auto owner = selected->child;
++  if (getpid() != selected->process || getpid() != owner->process) return -1;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.child_binding_failed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !owner->child.IsValid()) return -1;
++    peer = owner->peer;
++  }
++  if (!peer) return -1;
++  int descriptor = selected->transfer->DuplicateRevalidatedDirectory();
++  if (descriptor < 0) return -1;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped || observation.exit_ownership_unknown ||
++        owner->peer != peer) { close(descriptor); return -1; }
++  }
++  return descriptor;
++}
++std::optional<ReadyHomePulse> SelectedNativeHome::InspectReadyPulse() {
++  auto selected = state_;
++  auto owner = selected->child;
++  if (getpid() != selected->process || getpid() != owner->process) return std::nullopt;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !owner->child.IsValid()) return std::nullopt;
++  }
++  return selected->transfer->InspectReadyPulse();
++}
++ExchangeStatus SelectedNativeHome::ServicePeerOnce(uint32_t timeout_ms) {
++  auto owner = state_->child;
++  if (getpid() != owner->process) return ExchangeStatus::wrongProcess;
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    auto observation = owner->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown) return ExchangeStatus::closed;
++    peer = owner->peer;
++  }
++  return peer ? peer->ServiceOne(timeout_ms) : ExchangeStatus::refused;
++}
++NativeChildObservation SelectedNativeHome::InspectOwnedChild() {
++  if (getpid() != state_->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  std::lock_guard<std::mutex> lock(state_->child->mutex);
++  return state_->child->ReapLocked();
++}
++DaemonAuthorityReply SelectedNativeHome::SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->SignDaemonChallenge(message, timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
++DaemonAuthorityReply SelectedNativeHome::GetInstallationPublicKeys(uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->GetInstallationPublicKeys(timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
++DaemonAuthorityReply SelectedNativeHome::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->GetAgentInboxV2MasterKey(timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.exit_observed_and_reaped || after.exit_ownership_unknown || after.child_pid != before.child_pid) {
++    if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++    return {DaemonAuthorityStatus::closed, {}};
++  }
++  return reply;
++}
++DaemonAuthorityStatus SelectedNativeHome::AcceptAuthorityReply(
++    const DaemonAuthorityReply& reply, uint32_t timeout_ms) {
++  auto child = InspectOwnedChild();
++  if (child.closed || child.wrong_process || child.exit_observed_and_reaped || child.exit_ownership_unknown)
++    return DaemonAuthorityStatus::closed;
++  return state_->transfer->AcceptAuthorityReply(reply, timeout_ms);
++}
++NativeChildObservation SelectedNativeHome::CloseNativeAdmission() {
++  if (getpid() != state_->process) return NativeChildObservation{.closed = true, .wrong_process = true};
++  OwnedNativePeerChild::State::CloseAndRetain(state_->child);
++  std::lock_guard<std::mutex> lock(state_->child->mutex);
++  return state_->child->ObserveLocked();
++}
++std::unique_ptr<SelectedNativeHome> OwnedNativePeerChild::TakeSelectedHome() {
++  auto state = state_;
++  if (getpid() != state->process) return {};
++  std::shared_ptr<ParentTransport> peer;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    auto observation = state->ReapLocked();
++    if (observation.closed || observation.selected_home_owner_transferred || !state->observation.launch_attempted || observation.launch_failed ||
++        observation.child_binding_failed || observation.exit_observed_and_reaped ||
++        observation.exit_ownership_unknown || !state->child.IsValid()) return {};
++    peer = state->peer;
++  }
++  if (!peer) return {};
++  auto transfer = peer->TakeSelectedHomeTransfer();
++  if (!transfer) return {};
++  // The FD is revalidated before constructing the private selected object; no
++  // public status/snapshot/JSON descriptor can manufacture this ownership.
++  int descriptor = transfer->DuplicateRevalidatedDirectory();
++  if (descriptor < 0) return {};
++  close(descriptor);
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    auto observation = state->ReapLocked();
++    if (observation.closed || observation.exit_observed_and_reaped || observation.exit_ownership_unknown ||
++        state->peer != peer) return {};
++  }
++  auto selected = std::unique_ptr<SelectedNativeHome>(new SelectedNativeHome(
++      std::make_shared<SelectedNativeHome::State>(state, std::move(transfer))));
++  bool transferred = false;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (!state->observation.closed && !state->observation.selected_home_owner_transferred) {
++      state->observation.selected_home_owner_transferred = true;
++      transferred = true;
++    }
++  }
++  if (!transferred) return {};
++  return selected;
++}
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/AuxOwnedNativePeerChild.h b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+@@ -0,0 +1,65 @@
++#pragma once
++#include "AuxNativePeerTransport.h"
++#include "base/command_line.h"
++#include "base/process/launch.h"
++#include <memory>
++
++namespace aux::peer {
++inline constexpr uint32_t kNativeParentPeerPort = 0x41555850;  // AUXP
++struct NativeChildObservation {
++  bool launch_attempted = false;
++  bool launch_failed = false;
++  bool closed = false;
++  bool child_binding_failed = false;
++  bool exit_observed_and_reaped = false;
++  bool exit_ownership_unknown = false;
++  bool wrong_process = false;
++  bool selected_home_owner_transferred = false;
++  int child_pid = -1;
++  int wait_status = 0;  // Meaningful only after actual observed+reaped exit.
++  TransportSnapshot peer;
++};
++// Private-constructor result retaining actual waitable child owner and directory.
++class SelectedNativeHome final {
++ public:
++  ~SelectedNativeHome();
++  SelectedNativeHome(const SelectedNativeHome&) = delete;
++  SelectedNativeHome& operator=(const SelectedNativeHome&) = delete;
++  int DuplicateRevalidatedDirectory();
++  std::optional<ReadyHomePulse> InspectReadyPulse();
++  ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
++  NativeChildObservation CloseNativeAdmission();
++  NativeChildObservation InspectOwnedChild();
++  DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms);
++  DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
++  DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
++  DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply, uint32_t timeout_ms);
++ private:
++  struct State;
++  explicit SelectedNativeHome(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++  friend class OwnedNativePeerChild;
++};
++// Actual cold native launch primitive. It does not authenticate its caller or
++// own all profile writers. Unlike the compatibility supervisor, it never
++// publishes a mutable Process handle to a second reaper.
++class OwnedNativePeerChild final {
++ public:
++  static std::unique_ptr<OwnedNativePeerChild> PrepareBeforeSpawn(
++      base::CommandLine command, base::LaunchOptions options,
++      std::shared_ptr<const ExactCodePolicy> child_policy);
++  ~OwnedNativePeerChild();
++  bool LaunchOnce();
++  ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
++  std::unique_ptr<SelectedNativeHome> TakeSelectedHome();
++  NativeChildObservation CloseAndInspect();
++  NativeChildObservation ObserveAndReapExitedChild();
++  static size_t RetainedUnresolvedChildren();
++  static size_t PollRetainedOwnedChildren();
++ private:
++  friend class SelectedNativeHome;
++  struct State;
++  explicit OwnedNativePeerChild(std::shared_ptr<State> state);
++  std::shared_ptr<State> state_;
++};
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/AuxSelectedHomePolicyBridge.h b/chrome/browser/aux/AuxSelectedHomePolicyBridge.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxSelectedHomePolicyBridge.h
+@@ -0,0 +1,15 @@
++#pragma once
++#include <stdint.h>
++#ifdef __cplusplus
++extern "C" {
++#endif
++// Actual Security refs from kernel-audit-validated child only. Success returns
++// an owned private parent FD bound to the exact sealed freshpolicy resource.
++// This is not selected-home readiness or native writer-admission evidence.
++int32_t AuxCopyAuthenticatedFreshChildParentDescriptor(
++    const void* static_code, const void* requirement,
++    const uint8_t* expected_cd_hash, uint32_t expected_cd_hash_bytes,
++    int32_t* parent_descriptor);
++#ifdef __cplusplus
++}
++#endif
+diff --git a/chrome/browser/aux/AuxSelectedStateHome.cc b/chrome/browser/aux/AuxSelectedStateHome.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -0,0 +1,295 @@
++#include "AuxSelectedStateHome.h"
++#include "base/files/scoped_file.h"
++#include "base/base64.h"
++#include "base/functional/bind.h"
++#include "base/threading/thread.h"
++#include <unistd.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <chrono>
++#include <algorithm>
++#include <cstdlib>
++#include <cstring>
++#include <mutex>
++#include <optional>
++
++namespace aux::peer {
++namespace {
++constexpr auto kMaximumReadyPulseAge = std::chrono::seconds(10);
++constexpr uint32_t kServiceReceiveTimeoutMs = 250;
++struct State {
++  const pid_t process = getpid();
++  std::mutex mutex;
++  bool selected_route = false;
++  bool closed = false;
++  bool initializing = false;
++  bool monitor_running = false;
++  uint64_t active_reads = 0;
++  std::shared_ptr<SelectedNativeHome> selected;
++  std::optional<NativeChildObservation> child_close;
++  std::unique_ptr<base::Thread> monitor;
++  std::optional<base::PlatformThreadRef> monitor_creator;
++};
++State& CurrentState() {
++  static auto* state = new State;
++  return *state;
++}
++bool Fresh(const ReadyHomePulse& pulse) {
++  auto now = std::chrono::steady_clock::now();
++  return pulse.exports && pulse.observed <= now && now - pulse.observed <= kMaximumReadyPulseAge;
++}
++std::optional<base::FilePath> PhysicalPath(int descriptor) {
++  char path[PATH_MAX]{}, resolved[PATH_MAX]{};
++  if (fcntl(descriptor, F_GETPATH, path) != 0 || !realpath(path, resolved) ||
++      std::strcmp(path, resolved) != 0) return std::nullopt;
++  base::ScopedFD reopened(open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC));
++  struct stat retained{}, current{};
++  if (!reopened.is_valid() || fstat(descriptor, &retained) != 0 || fstat(reopened.get(), &current) != 0 ||
++      retained.st_dev != current.st_dev || retained.st_ino != current.st_ino) return std::nullopt;
++  return base::FilePath(path);
++}
++void Monitor(std::shared_ptr<SelectedNativeHome> selected) {
++  auto& state = CurrentState();
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.selected != selected) return;
++    state.monitor_running = true;
++  }
++  for (;;) {
++    {
++      std::lock_guard<std::mutex> lock(state.mutex);
++      if (state.closed || state.selected != selected) break;
++    }
++    auto status = selected->ServicePeerOnce(kServiceReceiveTimeoutMs);
++    if (status == ExchangeStatus::authenticated || status == ExchangeStatus::timedOut) continue;
++    {
++      std::lock_guard<std::mutex> lock(state.mutex);
++      state.closed = true;
++    }
++    auto closed = selected->CloseNativeAdmission();
++    {
++      std::lock_guard<std::mutex> lock(state.mutex);
++      state.child_close = closed;
++    }
++    break;
++  }
++  std::lock_guard<std::mutex> lock(state.mutex);
++  state.monitor_running = false;
++}
++SelectedStateHomeObservation ObserveLocked(const State& state) {
++  auto route = SelectedStateHomeRoute::unselected;
++  if (state.closed) route = SelectedStateHomeRoute::closed;
++  else if (state.selected_route) route = SelectedStateHomeRoute::unavailable;
++  return {route, state.monitor_running, state.active_reads, state.initializing,
++          state.monitor != nullptr, state.child_close};
++}
++enum class AuthorityOperation { daemonSignature, publicKeys, inboxKeyV2 };
++void ClearPayload(DaemonAuthorityReply& reply) {
++  if (!reply.payload.empty()) explicit_bzero(reply.payload.data(), reply.payload.size());
++  reply.payload.clear();
++}
++DaemonAuthorityReply CallAuthority(AuthorityOperation operation, std::span<const uint8_t> message) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  std::shared_ptr<SelectedNativeHome> owner;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed) return {DaemonAuthorityStatus::closed, {}};
++    if (!state.selected_route || state.initializing || !state.selected)
++      return {DaemonAuthorityStatus::refused, {}};
++    owner = state.selected;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->active_reads;
++  };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto before = owner->InspectReadyPulse();
++  if (!before || !Fresh(*before)) return {DaemonAuthorityStatus::pending, {}};
++  DaemonAuthorityReply reply;
++  switch (operation) {
++    case AuthorityOperation::daemonSignature: reply = owner->SignDaemonChallenge(message, 2'000); break;
++    case AuthorityOperation::publicKeys: reply = owner->GetInstallationPublicKeys(2'000); break;
++    case AuthorityOperation::inboxKeyV2: reply = owner->GetAgentInboxV2MasterKey(2'000); break;
++  }
++  if (reply.status == DaemonAuthorityStatus::closed || reply.status == DaemonAuthorityStatus::wrongProcess ||
++      reply.status == DaemonAuthorityStatus::cleanupUnresolved) {
++    {
++      std::lock_guard<std::mutex> lock(state.mutex);
++      state.closed = true;
++    }
++    auto closed = owner->CloseNativeAdmission();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.child_close = closed;
++    ClearPayload(reply);
++    return reply;
++  }
++  if (reply.status != DaemonAuthorityStatus::ready) {
++    ClearPayload(reply);
++    return reply;
++  }
++  auto after = owner->InspectReadyPulse();
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.selected != owner) {
++      ClearPayload(reply);
++      return {DaemonAuthorityStatus::closed, {}};
++    }
++    if (!after || !Fresh(*after) || after->generation != before->generation || after->exports < before->exports) {
++      ClearPayload(reply);
++      return {DaemonAuthorityStatus::pending, {}};
++    }
++  }
++  if (reply.payload.empty() || reply.payload.size() > 8192 ||
++      (operation == AuthorityOperation::inboxKeyV2 && reply.payload.size() != 32)) {
++    ClearPayload(reply);
++    return {DaemonAuthorityStatus::refused, {}};
++  }
++  // The private response ticket remains unacknowledged until this actual
++  // publication fence. The transport revalidates owner/generation at ACK.
++  // No mutex crosses that authenticated peer callback.
++  const auto accepted = owner->AcceptAuthorityReply(reply, 2'000);
++  if (accepted != DaemonAuthorityStatus::ready) {
++    ClearPayload(reply);
++    return {accepted, {}};
++  }
++  // Do not discard an acknowledged signature in a second post-ACK fence:
++  // the supervisor retains it before its own later publication validation.
++  return reply;
++}
++}  // namespace
++bool InstallNativeSelectedStateHome(std::unique_ptr<SelectedNativeHome> selected) {
++  auto& state = CurrentState();
++  if (getpid() != state.process || !selected) return false;
++  auto owner = std::shared_ptr<SelectedNativeHome>(std::move(selected));
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.selected_route) return false;
++    state.selected_route = true;
++    state.initializing = true;
++    state.selected = owner;
++  }
++  // No mutex crosses Security/resource callbacks or thread initialization.
++  auto pulse = owner->InspectReadyPulse();
++  base::ScopedFD directory(owner->DuplicateRevalidatedDirectory());
++  auto monitor = std::make_unique<base::Thread>("AuxSelectedHomePeer");
++  const bool thread_started = pulse && Fresh(*pulse) && directory.is_valid() && monitor->Start();
++  const bool queued = thread_started && monitor->task_runner()->PostTask(FROM_HERE, base::BindOnce(&Monitor, owner));
++  bool installed = false;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.initializing = false;
++    if (thread_started) {
++      // Even failed/closed initialization retains its actual thread until a
++      // later creator-thread close observes the monitor has left callbacks.
++      state.monitor_creator = base::PlatformThread::CurrentRef();
++      state.monitor = std::move(monitor);
++    }
++    installed = queued && !state.closed;
++    if (!installed) state.closed = true;
++  }
++  if (!installed) {
++    auto closed = owner->CloseNativeAdmission();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.child_close = closed;
++  }
++  return installed;
++}
++SelectedStateHomeResolution ReadNativeSelectedStateHome() {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {SelectedStateHomeRoute::wrongProcess, {}};
++  std::shared_ptr<SelectedNativeHome> owner;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed) return {SelectedStateHomeRoute::closed, {}};
++    if (!state.selected_route) return {SelectedStateHomeRoute::unselected, {}};
++    if (state.initializing || !state.selected) return {SelectedStateHomeRoute::unavailable, {}};
++    owner = state.selected;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->active_reads;
++  };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto pulse = owner->InspectReadyPulse();
++  if (!pulse || !Fresh(*pulse)) return {SelectedStateHomeRoute::unavailable, {}};
++  base::ScopedFD directory(owner->DuplicateRevalidatedDirectory());
++  auto path = directory.is_valid() ? PhysicalPath(directory.get()) : std::nullopt;
++  if (!path) return {SelectedStateHomeRoute::unavailable, {}};
++  auto current = owner->InspectReadyPulse();
++  auto child = owner->InspectOwnedChild();
++  if (child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++      child.exit_ownership_unknown || child.child_pid <= 1) return {SelectedStateHomeRoute::unavailable, {}};
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.closed) return {SelectedStateHomeRoute::closed, {}};
++  if (state.selected != owner || !current || current->generation != pulse->generation ||
++      current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
++  return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
++}
++SelectedStateHomeObservation CloseNativeSelectedStateHome() {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {SelectedStateHomeRoute::wrongProcess};
++  std::shared_ptr<SelectedNativeHome> owner;
++  std::unique_ptr<base::Thread> monitor;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.closed = true;
++    owner = state.selected;
++    // Never wait for a protected/resource callback on this close path. Join
++    // only after the monitor has left callbacks, from its actual creator.
++    // Other calls retain explicit pending thread/initialization observations.
++    if (state.monitor && !state.monitor_running && !state.initializing &&
++        state.monitor_creator == base::PlatformThread::CurrentRef() &&
++        !state.monitor->task_runner()->RunsTasksInCurrentSequence())
++      monitor = std::move(state.monitor);
++  }
++  if (owner) {
++    auto closed = owner->CloseNativeAdmission();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    state.child_close = closed;
++  }
++  if (monitor) monitor->Stop();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  return ObserveLocked(state);
++}
++NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message) {
++  auto message = base::Base64Decode(encoded_message);
++  constexpr char prefix[] = "Aux Daemon Auth v1\0";
++  constexpr size_t prefix_size = sizeof(prefix) - 1;
++  if (!message || message->size() != prefix_size + 32 ||
++      std::memcmp(message->data(), prefix, prefix_size) != 0)
++    return {DaemonAuthorityStatus::refused, std::nullopt};
++  auto reply = CallAuthority(AuthorityOperation::daemonSignature,
++      std::span(reinterpret_cast<const uint8_t*>(message->data()), message->size()));
++  if (reply.status != DaemonAuthorityStatus::ready) return {reply.status, std::nullopt};
++  auto signature = base::Base64Encode(reply.payload);
++  ClearPayload(reply);
++  if (signature.empty() || signature.size() > 8192) return {DaemonAuthorityStatus::refused, std::nullopt};
++  return {DaemonAuthorityStatus::ready, std::move(signature)};
++}
++std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message) {
++  auto reply = ObserveNativeSelectedDaemonChallenge(encoded_message);
++  return reply.status == DaemonAuthorityStatus::ready ? std::move(reply.signature) : std::nullopt;
++}
++std::optional<std::string> GetNativeSelectedInstallationPublicKeys() {
++  auto reply = CallAuthority(AuthorityOperation::publicKeys, {});
++  if (reply.status != DaemonAuthorityStatus::ready) return std::nullopt;
++  std::string json(reply.payload.begin(), reply.payload.end());
++  ClearPayload(reply);
++  return json;
++}
++std::optional<std::array<uint8_t, 32>> GetNativeSelectedAgentInboxV2MasterKey() {
++  auto reply = CallAuthority(AuthorityOperation::inboxKeyV2, {});
++  if (reply.status != DaemonAuthorityStatus::ready || reply.payload.size() != 32) {
++    ClearPayload(reply);
++    return std::nullopt;
++  }
++  std::array<uint8_t, 32> key;
++  std::copy(reply.payload.begin(), reply.payload.end(), key.begin());
++  ClearPayload(reply);
++  return key;
++}
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/AuxSelectedStateHome.h b/chrome/browser/aux/AuxSelectedStateHome.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -0,0 +1,38 @@
++#pragma once
++#include "AuxOwnedNativePeerChild.h"
++#include "base/files/file_path.h"
++#include <memory>
++#include <array>
++#include <string>
++#include <string_view>
++
++namespace aux::peer {
++enum class SelectedStateHomeRoute { unselected, current, unavailable, closed, wrongProcess };
++struct SelectedStateHomeResolution {
++  SelectedStateHomeRoute route;
++  base::FilePath path;
++  uint64_t ready_exports = 0;
++  int child_pid = -1;
++};
++struct SelectedStateHomeObservation {
++  SelectedStateHomeRoute route;
++  bool monitor_running = false;
++  uint64_t active_reads = 0;
++  bool initialization_pending = false;
++  bool monitor_join_pending = false;
++  std::optional<NativeChildObservation> child_close = std::nullopt;
++};
++struct NativeDaemonSignatureReply {
++  DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
++  std::optional<std::string> signature;
++};
++NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);
++std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message);
++std::optional<std::string> GetNativeSelectedInstallationPublicKeys();
++std::optional<std::array<uint8_t, 32>> GetNativeSelectedAgentInboxV2MasterKey();
++// Native-only, one-shot selected route. No path/env/status/JSON setter exists.
++// It retains actual selected child ownership; it does not admit profile writers.
++bool InstallNativeSelectedStateHome(std::unique_ptr<SelectedNativeHome> selected);
++SelectedStateHomeResolution ReadNativeSelectedStateHome();
++SelectedStateHomeObservation CloseNativeSelectedStateHome();
++}  // namespace aux::peer
+diff --git a/chrome/browser/aux/BUILD.gn b/chrome/browser/aux/BUILD.gn
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -18,6 +18,21 @@
+     "../devtools/aux_cdp_authority.h",
+   ]
+   deps = [ "//base", "//crypto", "//net", "//services/network/public/cpp", "//components/crx_file" ]
++  if (is_mac) {
++    sources += [
++      "AuxNativePeerTransport.cc",
++      "AuxNativePeerTransport.h",
++      "AuxNativePeerWire.h",
++      "AuxOwnedNativePeerChild.cc",
++      "AuxOwnedNativePeerChild.h",
++      "AuxSelectedStateHome.cc",
++      "AuxSelectedStateHome.h",
++      "AuxSelectedHomePolicyBridge.h",
++    ]
++    deps += [ "native_peer_policy:aux_parent_sealed_policy" ]
++    frameworks = [ "CoreFoundation.framework", "Security.framework" ]
++    libs = [ "bsm" ]
++  }
+ }
+ 
+ executable("auth_probe") {
+diff --git a/chrome/browser/aux/browser_platform.cc b/chrome/browser/aux/browser_platform.cc
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -11,6 +11,7 @@
+ #include "base/task/thread_pool.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "AuxSelectedStateHome.h"
+ namespace aux {
+ BrowserPlatform::BrowserPlatform() = default;
+ BrowserPlatform::~BrowserPlatform() = default;
+@@ -28,6 +29,9 @@
+   if (!paths) {
+     return false;
+   }
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::unselected &&
++      selected.route != peer::SelectedStateHomeRoute::current) return false;
+   auto home = StateHome();
+   if (home.empty()) {
+     return false;
+@@ -54,19 +58,29 @@
+   }
+   uint16_t port = 21520;
+   auto env = base::Environment::Create();
+-  if (auto text = env->GetVar("AUX_PORT"); text) {
++  if (auto text = env->GetVar("AUX_PORT");
++      selected.route == peer::SelectedStateHomeRoute::unselected && text) {
+     unsigned number = 0;
+     if (!base::StringToUint(*text, &number) || number == 0 || number > 65535) {
+       return false;
+     }
+     port = number;
+   }
+-  supervisor_ = std::make_unique<DaemonSupervisor>(
+-      *paths, home, port, std::move(factory),
+-      base::BindRepeating(&BrowserPlatform::DidChangeDaemonState,
+-                          weak_.GetWeakPtr()),
+-      base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          "aux-development-runtime"));
++  // The native route already owns the spawned daemon. Its exact selected
++  // owner supplies home/PID; Start polls it and can never issue another spawn.
++  if (selected.route == peer::SelectedStateHomeRoute::current) {
++    supervisor_ = DaemonSupervisor::AdoptInstalledNativeChild(
++        *paths, port, std::move(factory),
++        base::BindRepeating(&BrowserPlatform::DidChangeDaemonState, weak_.GetWeakPtr()));
++    if (!supervisor_) return false;
++  } else {
++    // A selected route may have installed while the component loop waited.
++    if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) return false;
++    supervisor_ = std::make_unique<DaemonSupervisor>(
++        *paths, home, port, std::move(factory),
++        base::BindRepeating(&BrowserPlatform::DidChangeDaemonState, weak_.GetWeakPtr()),
++        base::CommandLine::ForCurrentProcess()->HasSwitch("aux-development-runtime"));
++  }
+   supervisor_->Start();
+   return true;
+ }
+@@ -116,7 +130,10 @@
+ bool BrowserPlatform::WaitForStartupReadiness(
+     base::RepeatingCallback<bool()> extensions_ready) {
+   if (startup_state_ == StartupState::kReady) {
+-    return true;
++    auto selected = peer::ReadNativeSelectedStateHome();
++    return selected.route == peer::SelectedStateHomeRoute::unselected ||
++        (selected.route == peer::SelectedStateHomeRoute::current && supervisor_ &&
++         supervisor_->healthy() && !supervisor_->authorization().empty());
+   }
+   if (startup_state_ == StartupState::kFailed || !supervisor_) {
+     return false;
+@@ -145,15 +162,20 @@
+   }
+   const bool extensions_ready = startup_extensions_ready_.Run();
+   const bool healthy = supervisor_ && supervisor_->healthy();
+-  if (!(extensions_ready && healthy) &&
++  auto selected = peer::ReadNativeSelectedStateHome();
++  const bool selected_ready = selected.route == peer::SelectedStateHomeRoute::unselected ||
++      (selected.route == peer::SelectedStateHomeRoute::current && healthy &&
++       supervisor_ && !supervisor_->authorization().empty());
++  if (!(extensions_ready && healthy && selected_ready) &&
+       base::TimeTicks::Now() < startup_deadline_) {
+     return;
+   }
+-  startup_state_ = extensions_ready ? StartupState::kReady
+-                                    : StartupState::kFailed;
++  startup_state_ = extensions_ready && selected_ready ? StartupState::kReady : StartupState::kFailed;
+   if (!extensions_ready) {
+     LOG(ERROR) << "Aux startup extensions did not become ready before the "
+                   "startup readiness timeout";
++  } else if (!selected_ready) {
++    LOG(ERROR) << "Aux selected native daemon authorization/readiness is unavailable";
+   } else if (!healthy) {
+     LOG(WARNING) << "Aux daemon did not become healthy before the startup "
+                     "readiness timeout; continuing browser startup because "
+@@ -163,7 +185,7 @@
+   startup_extensions_ready_.Reset();
+   auto waiters = std::move(startup_waiters_);
+   for (auto& waiter : waiters) {
+-    std::move(waiter).Run(extensions_ready);
++    std::move(waiter).Run(startup_state_ == StartupState::kReady);
+   }
+ }
+ 
+diff --git a/chrome/browser/aux/daemon_supervisor.cc b/chrome/browser/aux/daemon_supervisor.cc
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -9,6 +9,7 @@
+ #if BUILDFLAG(IS_POSIX)
+ #include <cerrno>
+ #include <signal.h>
++#include <sys/wait.h>
+ #endif
+ 
+ #include "base/command_line.h"
+@@ -47,6 +48,8 @@
+     std::shared_ptr<DaemonLaunchAdmission> admission,
+     uint64_t generation,
+     base::OnceCallback<base::Process()> launch) {
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return base::Process();
+   base::AutoLock hold(admission->lock);
+   if (!admission->open || admission->generation != generation) {
+     return base::Process();
+@@ -212,10 +215,52 @@
+       allow_node_fallback_(allow_node_fallback),
+       launch_admission_(std::make_shared<DaemonLaunchAdmission>()) {}
+ DaemonSupervisor::~DaemonSupervisor() = default;
++std::unique_ptr<DaemonSupervisor> DaemonSupervisor::AdoptInstalledNativeChild(
++    BundlePaths paths, uint16_t port,
++    scoped_refptr<network::SharedURLLoaderFactory> factory, StateCallback changed) {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.child_pid <= 1) return {};
++  auto supervisor = std::make_unique<DaemonSupervisor>(
++      std::move(paths), selected.path, port, std::move(factory), std::move(changed));
++  supervisor->adopted_native_child_ = true;
++  return supervisor;
++}
++std::optional<int> DaemonSupervisor::OwnedDaemonPid() const {
++  if (!adopted_native_child_) return process_.IsValid() ? std::make_optional(process_.Pid()) : std::nullopt;
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.path != home_ ||
++      selected.child_pid <= 1) return std::nullopt;
++  return selected.child_pid;
++}
++bool DaemonSupervisor::CheckNativeSelection() {
++  if (!adopted_native_child_ || OwnedDaemonPid()) return true;
++  healthy_ = false;
++  authorization_.clear();
++  token_expires_ = base::TimeTicks();
++  CompleteAuthorizationRequests(std::nullopt);
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route == peer::SelectedStateHomeRoute::closed ||
++      selected.route == peer::SelectedStateHomeRoute::wrongProcess) {
++    admission_closed_ = true;
++    SetState(State::kFailed, "Selected native daemon closed");
++    return false;
++  }
++  SetState(State::kStarting, "Waiting for current native provider readiness");
++  timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
++  return false;
++}
++bool DaemonSupervisor::healthy() const {
++  return healthy_ && (!adopted_native_child_ || OwnedDaemonPid().has_value());
++}
++const std::string& DaemonSupervisor::authorization() const {
++  static const auto* empty = new std::string;
++  if (adopted_native_child_ && !OwnedDaemonPid()) return *empty;
++  return authorization_;
++}
+ void DaemonSupervisor::SetState(State state, std::string error) {
+   if (state_ != state) {
+     LOG(INFO) << "Aux daemon state " << static_cast<int>(state)
+-              << " pid=" << (process_.IsValid() ? process_.Pid() : 0)
++              << " pid=" << OwnedDaemonPid().value_or(0)
+               << " " << error;
+   }
+   state_ = state;
+@@ -230,6 +275,21 @@
+   changed_.Run(state, std::move(error));
+ }
+ void DaemonSupervisor::Start() {
++  if (adopted_native_child_) {
++    if (admission_closed_ || (state_ != State::kStopped && state_ != State::kFailed)) return;
++    if (!OwnedDaemonPid()) {
++      SetState(State::kFailed, "Selected native daemon is unavailable");
++      return;
++    }
++    activation_deadline_ = base::TimeTicks::Now() + base::Seconds(90);
++    SetState(State::kStarting);
++    Poll();
++    return;  // Never launch/restart/reap a second Process for this native child.
++  }
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) {
++    SetState(State::kFailed, "Selected native route refuses legacy daemon launch");
++    return;
++  }
+   if (admission_closed_ || launch_pending_ || process_.IsValid() ||
+       (state_ != State::kStopped && state_ != State::kFailed)) {
+     return;
+@@ -284,6 +344,11 @@
+     std::optional<std::string> body,
+     base::OnceCallback<void(std::optional<std::string>)> done,
+     std::optional<std::string> authorization_override) {
++  if (adopted_native_child_ && !OwnedDaemonPid()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(std::move(done), std::nullopt));
++    return;
++  }
+   auto request = std::make_unique<network::ResourceRequest>();
+   request->url = GURL("http://127.0.0.1:" + base::NumberToString(port_) + path);
+   request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+@@ -304,7 +369,7 @@
+   loader_->DownloadToString(factory_.get(), std::move(done), 65536);
+ }
+ void DaemonSupervisor::Poll() {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   Request("/health", std::nullopt,
+           base::BindOnce(&DaemonSupervisor::DidReadHealth, weak_.GetWeakPtr()));
+ }
+@@ -314,12 +379,13 @@
+   }
+   auto health = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                      : std::nullopt;
+-  const bool healthy = health && health->FindString("service") &&
++  const auto owned_pid = OwnedDaemonPid();
++  const bool healthy = owned_pid && health && health->FindString("service") &&
+                        *health->FindString("service") == "aux-daemon" &&
+                        health->FindString("version") &&
+                        *health->FindString("version") == "1.26.1016.1852" &&
+                        health->FindBool("ready").value_or(false) &&
+-                       health->FindInt("pid") == process_.Pid();
++                       health->FindInt("pid") == *owned_pid;
+   healthy_ = healthy;
+   if (healthy) {
+     if (authorization_.empty() ||
+@@ -339,6 +405,10 @@
+   if (base::TimeTicks::Now() >= activation_deadline_) {
+     SetState(State::kFailed, "Bundled daemon did not become ready");
+     return;
++  }
++  if (adopted_native_child_) {
++    timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::Poll);
++    return;  // Its genuine native owner alone may observe/reap this child.
+   }
+   // Only restart a child after its freshly observed exit. Never adopt a health
+   // PID.
+@@ -382,7 +452,7 @@
+     authorization_.clear();
+     token_expires_ = base::TimeTicks();
+   }
+-  if (admission_closed_ || !healthy_ || !process_.IsValid() || state_ == State::kStopping ||
++  if (admission_closed_ || !healthy() || !OwnedDaemonPid() || state_ == State::kStopping ||
+       state_ == State::kStopped) {
+     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+@@ -406,14 +476,18 @@
+   Authenticate();
+ }
+ void DaemonSupervisor::Authenticate() {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   SetState(State::kAuthenticating);
++  if (adopted_native_child_ && native_challenge_id_ && native_challenge_) {
++    ObserveNativeSignature();
++    return;
++  }
+   Request(
+       "/auth/daemon/challenge?clientKind=chromium", std::nullopt,
+       base::BindOnce(&DaemonSupervisor::DidReadChallenge, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadChallenge(std::optional<std::string> body) {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* id = value ? value->FindString("challengeId") : nullptr;
+@@ -422,15 +496,72 @@
+     SetState(State::kFailed, "Daemon authentication challenge unavailable");
+     return;
+   }
++  if (adopted_native_child_) {
++    if (native_challenge_id_ || native_challenge_) {
++      SetState(State::kFailed, "A native daemon challenge is already pending");
++      return;
++    }
++    native_challenge_id_ = *id;
++    native_challenge_ = *challenge;
++    ObserveNativeSignature();
++    return;
++  }
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
+       base::BindOnce(&SignDaemonChallenge, home_, *challenge),
+       base::BindOnce(&DaemonSupervisor::DidSignChallenge, weak_.GetWeakPtr(),
+                      *id));
+ }
++void DaemonSupervisor::ObserveNativeSignature() {
++  if (admission_closed_ || native_sign_inflight_ || !native_challenge_id_ || !native_challenge_ ||
++      !CheckNativeSelection()) return;
++  if (native_completed_signature_) {
++    DidSignChallenge(*native_challenge_id_, native_completed_signature_);
++    return;
++  }
++  native_sign_inflight_ = true;
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::WithBaseSyncPrimitives()},
++      base::BindOnce(&ObserveNativeDaemonChallenge, *native_challenge_),
++      base::BindOnce(&DaemonSupervisor::DidObserveNativeSignature, weak_.GetWeakPtr(),
++                     *native_challenge_id_, *native_challenge_));
++}
++void DaemonSupervisor::DidObserveNativeSignature(
++    std::string id, std::string challenge, peer::NativeDaemonSignatureReply reply) {
++  native_sign_inflight_ = false;
++  if (admission_closed_ || !native_challenge_id_ || !native_challenge_ ||
++      *native_challenge_id_ != id || *native_challenge_ != challenge) return;
++  // Keep the genuine completed response before the UI-sequence publication
++  // fence. Another finite operation may advance its transport cache later.
++  if (reply.status == peer::DaemonAuthorityStatus::ready && reply.signature)
++    native_completed_signature_ = std::move(reply.signature);
++  if (!CheckNativeSelection()) return;
++  switch (reply.status) {
++    case peer::DaemonAuthorityStatus::ready:
++      if (!native_completed_signature_) {
++        SetState(State::kFailed, "Native daemon signature response is invalid");
++        return;
++      }
++      DidSignChallenge(std::move(id), native_completed_signature_);
++      return;
++    case peer::DaemonAuthorityStatus::pending:
++    case peer::DaemonAuthorityStatus::busy:
++    case peer::DaemonAuthorityStatus::timedOut:
++      // The native peer retains the exact nonce/body. Re-entering this finite
++      // method observes that same attempt; never fetch a new server challenge.
++      timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::ObserveNativeSignature);
++      return;
++    case peer::DaemonAuthorityStatus::refused:
++    case peer::DaemonAuthorityStatus::closed:
++    case peer::DaemonAuthorityStatus::wrongProcess:
++    case peer::DaemonAuthorityStatus::cleanupUnresolved:
++      SetState(State::kFailed, "Native daemon authority refused the pending challenge");
++      return;
++  }
++}
+ void DaemonSupervisor::DidSignChallenge(std::string id,
+                                         std::optional<std::string> signature) {
+-  if (admission_closed_ || state_ == State::kStopping) {
++  if (admission_closed_ || state_ == State::kStopping || !CheckNativeSelection()) {
+     return;
+   }
+   if (!signature) {
+@@ -445,7 +576,7 @@
+       base::BindOnce(&DaemonSupervisor::DidReadSession, weak_.GetWeakPtr()));
+ }
+ void DaemonSupervisor::DidReadSession(std::optional<std::string> body) {
+-  if (admission_closed_) return;
++  if (admission_closed_ || !CheckNativeSelection()) return;
+   auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
+                     : std::nullopt;
+   const auto* type = value ? value->FindString("token_type") : nullptr;
+@@ -458,6 +589,11 @@
+     SetState(State::kFailed, "Daemon installation authorization failed");
+     return;
+   }
++  if (adopted_native_child_) {
++    native_challenge_id_.reset();
++    native_challenge_.reset();
++    native_completed_signature_.reset();
++  }
+   authorization_ = "AuxDaemonSessionToken " + *token;
+   token_expires_ = base::TimeTicks::Now() + base::Seconds(*seconds);
+   SetState(State::kReady);
+@@ -487,6 +623,13 @@
+   token_expires_ = base::TimeTicks();
+   SetState(State::kStopping);
+   if (launch_pending_) return;  // DidLaunch must collect even a stale child.
++  if (adopted_native_child_) {
++    Request("/shutdown", std::string("{}"),
++            base::BindOnce([](base::WeakPtr<DaemonSupervisor> self, std::optional<std::string>) {
++              if (self) self->FinishShutdown();
++            }, weak_.GetWeakPtr()), std::move(shutdown_authorization));
++    return;
++  }
+   if (!process_.IsValid()) {
+     DidFinishShutdown({true, std::nullopt});
+     return;
+@@ -505,6 +648,10 @@
+       }, std::move(done)));
+ }
+ void DaemonSupervisor::FinishShutdown() {
++  if (adopted_native_child_) {
++    FinishNativeShutdown();
++    return;
++  }
+   if (drain_pending_) return;
+   loader_.reset();
+   if (!process_.IsValid()) {
+@@ -519,16 +666,39 @@
+                      paths_.root),
+       base::BindOnce(&DaemonSupervisor::DidFinishShutdown, weak_.GetWeakPtr()));
+ }
++void DaemonSupervisor::FinishNativeShutdown() {
++  loader_.reset();
++  if (native_shutdown_deadline_.is_null())
++    native_shutdown_deadline_ = base::TimeTicks::Now() + base::Seconds(5);
++  native_close_observation_ = peer::CloseNativeSelectedStateHome();
++  const auto& closed = *native_close_observation_;
++  const bool exited = closed.child_close && closed.child_close->exit_observed_and_reaped &&
++      !closed.child_close->exit_ownership_unknown && !closed.monitor_running &&
++      !closed.monitor_join_pending && !closed.initialization_pending && !closed.active_reads;
++  if (exited) {
++    std::optional<int> code;
++#if BUILDFLAG(IS_POSIX)
++    if (WIFEXITED(closed.child_close->wait_status)) code = WEXITSTATUS(closed.child_close->wait_status);
++#endif
++    DidFinishShutdown({true, code});
++    return;
++  }
++  if (base::TimeTicks::Now() < native_shutdown_deadline_) {
++    timer_.Start(FROM_HERE, base::Milliseconds(250), this, &DaemonSupervisor::FinishNativeShutdown);
++    return;
++  }
++  DidFinishShutdown({false, std::nullopt});  // Actual native owner/pending observations stay retained.
++}
+ void DaemonSupervisor::DidFinishShutdown(DirectDaemonDrainResult drained) {
+   drain_pending_ = false;
+-  const bool owned = process_.IsValid();
++  const bool owned = adopted_native_child_ || process_.IsValid();
+   DirectDaemonQuiesceResult result;
+   result.outcome = !drained.exited
+                        ? DirectDaemonQuiesceResult::Outcome::kDrainFailed
+                        : owned ? DirectDaemonQuiesceResult::Outcome::kExited
+                                : DirectDaemonQuiesceResult::Outcome::kNoOwnedProcess;
+   result.exit_code = drained.exit_code;
+-  if (drained.exited) process_.Close();
++  if (drained.exited && process_.IsValid()) process_.Close();
+   authorization_.clear();
+   activation_deadline_ = base::TimeTicks();
+   quiesce_result_ = result;
+diff --git a/chrome/browser/aux/daemon_supervisor.h b/chrome/browser/aux/daemon_supervisor.h
+--- a/chrome/browser/aux/daemon_supervisor.h
++++ b/chrome/browser/aux/daemon_supervisor.h
+@@ -8,6 +8,7 @@
+ #include <vector>
+ 
+ #include "base/files/file_path.h"
++#include "AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/direct_daemon_quiesce_result.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/scoped_refptr.h"
+@@ -49,6 +50,10 @@
+                    StateCallback changed,
+                    bool allow_node_fallback = false);
+   ~DaemonSupervisor();
++  // Sources the home/process only from the actual installed native owner.
++  static std::unique_ptr<DaemonSupervisor> AdoptInstalledNativeChild(
++      BundlePaths paths, uint16_t port,
++      scoped_refptr<network::SharedURLLoaderFactory> factory, StateCallback changed);
+   void Start();
+   void SetStateCallback(StateCallback callback) {
+     changed_ = std::move(callback);
+@@ -60,8 +65,8 @@
+   void QuiesceDirectDaemonForMigration(DirectDaemonQuiesceCallback done);
+   void Shutdown(base::OnceClosure done);
+   State state() const { return state_; }
+-  bool healthy() const { return healthy_; }
+-  const std::string& authorization() const { return authorization_; }
++  bool healthy() const;
++  const std::string& authorization() const;
+   // UI sequence; completion is always posted. Force invalidates the cached
+   // token and joins or starts the same real installation challenge/session.
+   void RequestAuthorization(bool force, AuthorizationCallback callback);
+@@ -80,10 +85,16 @@
+       std::shared_ptr<DaemonLaunchAdmission> admission,
+       uint64_t generation);
+   void SetState(State state, std::string error = {});
++  std::optional<int> OwnedDaemonPid() const;
++  bool CheckNativeSelection();
++  void FinishNativeShutdown();
+   void DidLaunch(uint64_t generation, base::Process process);
+   void Poll();
+   void DidReadHealth(std::optional<std::string> body);
+   void Authenticate();
++  void ObserveNativeSignature();
++  void DidObserveNativeSignature(std::string id, std::string challenge,
++                                 peer::NativeDaemonSignatureReply reply);
+   void CompleteAuthorizationRequests(std::optional<std::string> result);
+   void DidReadChallenge(std::optional<std::string> body);
+   void DidSignChallenge(std::string id, std::optional<std::string> signature);
+@@ -109,6 +120,12 @@
+   std::vector<DirectDaemonQuiesceCallback> quiesce_waiters_;
+   std::optional<DirectDaemonQuiesceResult> quiesce_result_;
+   bool healthy_ = false;
++  bool adopted_native_child_ = false;
++  base::TimeTicks native_shutdown_deadline_;
++  std::optional<std::string> native_challenge_id_, native_challenge_;
++  std::optional<std::string> native_completed_signature_;
++  bool native_sign_inflight_ = false;
++  std::optional<peer::SelectedStateHomeObservation> native_close_observation_;
+   base::Process process_;
+   base::Time process_created_;
+   base::TimeTicks activation_deadline_, token_expires_;
+diff --git a/chrome/browser/aux/inbox_v2_fixture/BUILD.gn b/chrome/browser/aux/inbox_v2_fixture/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/inbox_v2_fixture/BUILD.gn
+@@ -0,0 +1,13 @@
++# Inactive optional fixture target. No startup or browser target dependency.
++executable("aux_inbox_v2_codec_fixture") {
++  testonly = true
++  sources = [
++    "main.cc",
++    "//chrome/browser/notifications/aux_inbox_codec.cc",
++    "//chrome/browser/notifications/aux_inbox_codec.h",
++  ]
++  deps = [
++    "//base",
++    "//crypto",
++  ]
++}
+diff --git a/chrome/browser/aux/inbox_v2_fixture/main.cc b/chrome/browser/aux/inbox_v2_fixture/main.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/inbox_v2_fixture/main.cc
+@@ -0,0 +1,67 @@
++// Actual codec and Chromium crypto only; synthetic bytes, no profile/storage.
++#include <array>
++#include <cstdio>
++#include <string>
++#include <string_view>
++
++#include "base/check.h"
++#include "base/containers/span.h"
++#include "chrome/browser/notifications/aux_inbox_codec.h"
++#include "crypto/hash.h"
++#include "crypto/kdf.h"
++
++namespace {
++size_t checks = 0;
++void Expect(bool result) {
++  CHECK(result);
++  ++checks;
++}
++}  // namespace
++
++int main() {
++  std::array<uint8_t, 32> root;
++  for (size_t i = 0; i < root.size(); ++i)
++    root[i] = static_cast<uint8_t>(i);
++  constexpr std::string_view info = "aux.agent-inbox.master-key.v2";
++  const auto key = crypto::kdf::Hkdf<32>(crypto::hash::kSha256, root, {},
++                                      base::as_byte_span(info));
++  // RFC5869 independent Python hmac/hashlib vector pinned by root proposal.
++  constexpr std::array<uint8_t, 32> expected = {
++      0x56, 0x66, 0xac, 0x7f, 0x86, 0xa8, 0x8f, 0xfa,
++      0xea, 0x84, 0x26, 0x99, 0xae, 0x97, 0x2e, 0x27,
++      0x0a, 0x0a, 0x97, 0xd1, 0xeb, 0x94, 0xb8, 0x15,
++      0x71, 0x13, 0x95, 0xc8, 0x64, 0x29, 0xd0, 0x03};
++  Expect(key == expected);
++  std::string plaintext("notification\0binary\xff", 20);
++  const auto record = aux::SealInboxV2(plaintext, key);
++  Expect(record.has_value());
++  Expect(record->size() == 8 + 12 + plaintext.size() + 16);
++  Expect(aux::ClassifyInboxEnvelope(*record) == aux::InboxEnvelope::auxV2);
++  Expect(aux::OpenInboxV2(*record, key) == plaintext);
++  const auto empty = aux::SealInboxV2({}, key);
++  Expect(empty.has_value());
++  Expect(aux::OpenInboxV2(*empty, key) == std::string());
++  auto other_key = key;
++  other_key[0] ^= 1;
++  Expect(!aux::OpenInboxV2(*record, other_key));
++  // Every byte: version, nonce, ciphertext and tag must resist alteration.
++  for (size_t i = 0; i < record->size(); ++i) {
++    auto changed = *record;
++    changed[i] ^= 1;
++    Expect(!aux::OpenInboxV2(changed, key));
++  }
++  for (size_t length = 0; length < record->size(); ++length)
++    Expect(!aux::OpenInboxV2(std::string_view(*record).substr(0, length), key));
++  auto legacy = *record;
++  legacy.replace(0, 8, "ASIDEAI1");
++  Expect(aux::ClassifyInboxEnvelope(legacy) == aux::InboxEnvelope::legacyV1);
++  Expect(!aux::OpenInboxV2(legacy, key));
++  auto unknown = *record;
++  unknown.replace(0, 8, "AUXAI003");
++  Expect(aux::ClassifyInboxEnvelope(unknown) == aux::InboxEnvelope::unknown);
++  Expect(!aux::OpenInboxV2(unknown, key));
++  auto extra = *record + "x";
++  Expect(!aux::OpenInboxV2(extra, key));
++  std::printf("PASS:%zu actual codec/HKDF synthetic checks; no storage, caller or authority execution\n", checks);
++  return 0;
++}
+diff --git a/chrome/browser/aux/installation_auth.cc b/chrome/browser/aux/installation_auth.cc
+--- a/chrome/browser/aux/installation_auth.cc
++++ b/chrome/browser/aux/installation_auth.cc
+@@ -29,6 +29,7 @@
+ #include "base/strings/string_util.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/aux/daemon_supervisor.h"
++#include "AuxSelectedStateHome.h"
+ #include "crypto/sign.h"
+ namespace aux {
+ namespace {
+@@ -68,6 +69,9 @@
+ std::optional<base::DictValue> RunCarrier(const base::FilePath &home,
+                                           std::string_view command,
+                                           base::DictValue input) {
++  // Selected native authority is never delegated back to legacy helper/env gates.
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return std::nullopt;
+   auto custody = CarrierCustody().BeginCall();
+   if (!custody) return std::nullopt;
+   auto env = base::Environment::Create();
+@@ -266,6 +270,9 @@
+   return CarrierCustody().Inspect();
+ }
+ base::FilePath StateHome() {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::unselected)
++    return selected.route == peer::SelectedStateHomeRoute::current ? selected.path : base::FilePath();
+   auto env = base::Environment::Create();
+   if (auto value = env->GetVar("AUX_HOME"); value && !value->empty())
+     return base::FilePath(*value);
+@@ -274,6 +281,11 @@
+              ? home.AppendASCII(".aux")
+              : base::FilePath();
+ }
++std::optional<std::array<uint8_t, 32>> LoadAgentInboxV2MasterKey(const base::FilePath& home) {
++  auto selected = peer::ReadNativeSelectedStateHome();
++  if (selected.route != peer::SelectedStateHomeRoute::current || selected.path != home) return std::nullopt;
++  return peer::GetNativeSelectedAgentInboxV2MasterKey();
++}
+ std::optional<std::array<uint8_t, 32>>
+ LoadAgentInboxMasterKey(const base::FilePath &home) {
+   auto result = RunCarrier(home, "agent-inbox-key", {});
+@@ -314,15 +326,26 @@
+ }
+ std::optional<crypto::keypair::PublicKey>
+ LoadInstallationPublicKey(const base::FilePath &home) {
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected) {
++    auto json = peer::GetNativeSelectedInstallationPublicKeys();
++    return json ? ParseInstallationPublicKey(*json) : std::nullopt;
++  }
+   auto result = RunCarrier(home, "get-public-keys", {});
+   auto json = result ? base::WriteJson(*result) : std::nullopt;
+   return json ? ParseInstallationPublicKey(*json) : std::nullopt;
++}
++peer::NativeDaemonSignatureReply ObserveNativeDaemonChallenge(std::string_view challenge) {
++  auto message = HttpMessage(challenge);
++  if (!message) return {peer::DaemonAuthorityStatus::refused, std::nullopt};
++  return peer::ObserveNativeSelectedDaemonChallenge(base::Base64Encode(*message));
+ }
+ std::optional<std::string> SignDaemonChallenge(const base::FilePath &home,
+                                                std::string_view challenge) {
+   auto message = HttpMessage(challenge);
+   if (!message)
+     return std::nullopt;
++  if (peer::ReadNativeSelectedStateHome().route != peer::SelectedStateHomeRoute::unselected)
++    return peer::SignNativeSelectedDaemonChallenge(base::Base64Encode(*message));
+   base::DictValue input;
+   input.Set("challenge", base::Base64Encode(*message));
+   auto result = RunCarrier(home, "cdp-sign", std::move(input));
+diff --git a/chrome/browser/aux/installation_auth.h b/chrome/browser/aux/installation_auth.h
+--- a/chrome/browser/aux/installation_auth.h
++++ b/chrome/browser/aux/installation_auth.h
+@@ -2,6 +2,7 @@
+ // Supplied native-authority integration; HTTP and raw CDP inputs are distinct.
+ #ifndef CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
+ #define CHROME_BROWSER_AUX_INSTALLATION_AUTH_H_
++#include "AuxSelectedStateHome.h"
+ #include <array>
+ #include <cstdint>
+ #include <optional>
+@@ -13,6 +14,8 @@
+ #include "base/process/process.h"
+ #include "crypto/keypair.h"
+ namespace aux {
++peer::NativeDaemonSignatureReply ObserveNativeDaemonChallenge(std::string_view challenge);
++std::optional<std::array<uint8_t, 32>> LoadAgentInboxV2MasterKey(const base::FilePath& home);
+ namespace internal {
+ // Blocking production timeout reaper, shared with the synthetic-child fixture.
+ // The caller transfers its owned unreaped child and retained call; never a PID.
+diff --git a/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift b/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -0,0 +1,121 @@
++// Exact read-only guest-policy subset. No installation, image loading, authority creation or credential API.
++import Foundation
++import Security
++import CryptoKit
++import Darwin
++
++enum AuxAuthenticatedChildParentPolicyReader {
++    private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))
++    private static func canonical(_ path:String)throws->String {
++        guard let result=realpath(path,nil)else{throw AuxFreshBootstrapPolicyError.path};defer{free(result)};return String(cString:result)
++    }
++    private static func metadata(_ fd:Int32,directory:Bool,privateDirectory:Bool=false,maximumSize:Int64=16_384)throws->stat {
++        var value=stat();guard fstat(fd,&value)==0,value.st_mode & mode_t(S_IFMT)==mode_t(directory ? S_IFDIR:S_IFREG),value.st_uid==geteuid() || (!privateDirectory && value.st_uid==0),value.st_mode & 0o022==0,
++              !privateDirectory || value.st_mode & 0o7777==0o700,directory || (value.st_nlink==1 && value.st_size>0 && value.st_size<=maximumSize) else{throw AuxFreshBootstrapPolicyError.path}
++        errno=0;let captured=acl_get_fd_np(fd,ACL_TYPE_EXTENDED);if captured==nil && errno==ENOENT{return value}
++        guard let acl=captured else{throw AuxFreshBootstrapPolicyError.path};defer{acl_free(UnsafeMutableRawPointer(acl))};var entry:acl_entry_t?;errno=0
++        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxFreshBootstrapPolicyError.path};return value
++    }
++    private static func sameEntry(_ parent:Int32,_ name:String,_ fd:Int32)throws {
++        var entry=stat(),current=stat();guard fstatat(parent,name,&entry,AT_SYMLINK_NOFOLLOW)==0,fstat(fd,&current)==0,entry.st_dev==current.st_dev,entry.st_ino==current.st_ino,entry.st_mode==current.st_mode,entry.st_uid==current.st_uid else{throw AuxFreshBootstrapPolicyError.path}
++    }
++    private static func signingInfo(_ code:SecStaticCode)throws->[String:Any] {
++        var dictionary:CFDictionary?;let status=SecCodeCopySigningInformation(code,SecCSFlags(rawValue:kSecCSSigningInformation),&dictionary)
++        guard status==errSecSuccess,let info=dictionary as? [String:Any]else{throw AuxFreshBootstrapPolicyError.signature(status)};return info
++    }
++    private static func signature(_ info:[String:Any])throws->AuxCapturedFreshBootstrapSignature {
++        guard let identifier=info[kSecCodeInfoIdentifier as String] as? String,let team=info[kSecCodeInfoTeamIdentifier as String] as? String,let certificates=info[kSecCodeInfoCertificates as String] as? [SecCertificate],let leaf=certificates.first,let flags=info[kSecCodeInfoFlags as String] as? NSNumber else{throw AuxFreshBootstrapPolicyError.identity}
++        let entitlements=info[kSecCodeInfoEntitlementsDict as String] as? [String:Any] ?? [:]
++        return .init(identifier:identifier,team:team,certificateSha256:freshBootstrapDigest(SecCertificateCopyData(leaf) as Data),applicationIdentifier:entitlements["com.apple.application-identifier"] as? String ?? "",accessGroups:entitlements["keychain-access-groups"] as? [String] ?? [],flags:flags.uint32Value,entitlements:entitlements)
++    }
++    private static func resource(_ bundle:String)throws->Data {
++        guard try canonical(bundle)==bundle else{throw AuxFreshBootstrapPolicyError.path}
++        let root=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard root>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(root)};_ = try metadata(root,directory:true)
++        let contents=openat(root,"Contents",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard contents>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(contents)};_ = try metadata(contents,directory:true);try sameEntry(root,"Contents",contents)
++        let resources=openat(contents,"Resources",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard resources>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(resources)};_ = try metadata(resources,directory:true);try sameEntry(contents,"Resources",resources)
++        let fd=openat(resources,AuxFreshBootstrapIdentity.resource,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(fd)};let before=try metadata(fd,directory:false);try sameEntry(resources,AuxFreshBootstrapIdentity.resource,fd)
++        var bytes=[UInt8](repeating:0,count:Int(before.st_size));var offset=0
++        while offset<bytes.count {let remaining=bytes.count-offset;let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),remaining)};if amount<0 && errno==EINTR{continue};guard amount>0 else{throw AuxFreshBootstrapPolicyError.resource};offset += amount}
++        let after=try metadata(fd,directory:false)
++        guard before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshBootstrapPolicyError.resource}
++        try sameEntry(resources,AuxFreshBootstrapIdentity.resource,fd);try sameEntry(contents,"Resources",resources);try sameEntry(root,"Contents",contents)
++        let fresh=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard fresh>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(fresh)}
++        let a=try metadata(root,directory:true),b=try metadata(fresh,directory:true);guard a.st_dev==b.st_dev,a.st_ino==b.st_ino else{throw AuxFreshBootstrapPolicyError.path};return Data(bytes)
++    }
++    fileprivate static func authenticatedGuestParent(
++        code: SecStaticCode, requirement: SecRequirement, expectedCdHash: Data
++    ) throws -> Int32 {
++        guard [20, 32].contains(expectedCdHash.count) else { throw AuxFreshBootstrapPolicyError.identity }
++        let validity = SecStaticCodeCheckValidity(code, flags, requirement)
++        guard validity == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(validity) }
++        let info = try signingInfo(code)
++        guard let actualHash = info[kSecCodeInfoUnique as String] as? Data, actualHash == expectedCdHash else {
++            throw AuxFreshBootstrapPolicyError.identity
++        }
++        let captured = try signature(info)
++        guard let role = [AuxFreshBootstrapPolicyContents.Role.daemon, .cli].first(where: { $0.identifier == captured.identifier }),
++              let plist = info[kSecCodeInfoPList as String] as? [String: Any],
++              plist["CFBundlePackageType"] as? String == "APPL",
++              plist["CFBundleIdentifier"] as? String == role.identifier,
++              plist["CFBundleExecutable"] as? String == role.executable else { throw AuxFreshBootstrapPolicyError.identity }
++        var path: CFURL?
++        let located = SecCodeCopyPath(code, [], &path)
++        guard located == errSecSuccess, let path else { throw AuxFreshBootstrapPolicyError.signature(located) }
++        let bundle = (path as URL).path
++        guard try canonical(bundle) == bundle, bundle.hasSuffix(".app"),
++              let main = info[kSecCodeInfoMainExecutable as String] as? URL,
++              main.path == bundle + "/Contents/MacOS/" + role.executable else { throw AuxFreshBootstrapPolicyError.path }
++        let bytes = try resource(bundle)
++        let sealed = SecCodeValidateFileResource(code, AuxFreshBootstrapIdentity.resourceRelative as CFString, bytes as CFData, [])
++        guard sealed == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(sealed) }
++        let policy = try AuxFreshBootstrapPolicyContents.decode(bytes)
++        guard policy.role == role else { throw AuxFreshBootstrapPolicyError.policy }
++        try validateCapturedFreshBootstrapSignature(captured, role: role, host: true, accessGroup: policy.accessGroup)
++        // This is a guest-resource proof, not current-process image inspection.
++        // The actual child producer separately revalidates its live image/guard
++        // and provider-ready terminal around selected-home duplication.
++        let parent = policy.canonicalPrivateParent
++        guard try canonical(parent) == parent else { throw AuxFreshBootstrapPolicyError.path }
++        let descriptor = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        guard descriptor >= 0 else { throw AuxFreshBootstrapPolicyError.path }
++        var returned = false
++        defer { if !returned { close(descriptor) } }
++        _ = try metadata(descriptor, directory: true, privateDirectory: true)
++        let repeated = open(parent, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++        guard repeated >= 0 else { throw AuxFreshBootstrapPolicyError.path }
++        defer { close(repeated) }
++        var before = stat(), after = stat()
++        guard fstat(descriptor, &before) == 0, fstat(repeated, &after) == 0,
++              before.st_dev == after.st_dev, before.st_ino == after.st_ino,
++              try resource(bundle) == bytes else { throw AuxFreshBootstrapPolicyError.path }
++        let final = SecStaticCodeCheckValidity(code, flags, requirement)
++        guard final == errSecSuccess,
++              (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == expectedCdHash else {
++            throw AuxFreshBootstrapPolicyError.identity
++        }
++        returned = true
++        return descriptor
++    }
++}
++
++@_cdecl("AuxCopyAuthenticatedFreshChildParentDescriptor")
++func AuxCopyAuthenticatedFreshChildParentDescriptor(
++    _ codePointer: UnsafeRawPointer?, _ requirementPointer: UnsafeRawPointer?,
++    _ expectedHash: UnsafePointer<UInt8>?, _ expectedHashBytes: UInt32,
++    _ parentDescriptor: UnsafeMutablePointer<Int32>?
++) -> Int32 {
++    guard let parentDescriptor else { return -1 }
++    parentDescriptor.pointee = -1
++    guard let codePointer, let requirementPointer, let expectedHash,
++          expectedHashBytes == 20 || expectedHashBytes == 32 else { return -1 }
++    let code = Unmanaged<SecStaticCode>.fromOpaque(codePointer).takeUnretainedValue()
++    let requirement = Unmanaged<SecRequirement>.fromOpaque(requirementPointer).takeUnretainedValue()
++    guard CFGetTypeID(code) == SecStaticCodeGetTypeID(), CFGetTypeID(requirement) == SecRequirementGetTypeID() else { return -1 }
++    do {
++        parentDescriptor.pointee = try AuxAuthenticatedChildParentPolicyReader.authenticatedGuestParent(
++            code: code, requirement: requirement,
++            expectedCdHash: Data(bytes: expectedHash, count: Int(expectedHashBytes))
++        )
++        return 0
++    } catch { return -1 }
++}
+diff --git a/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift b/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift
+@@ -0,0 +1,133 @@
++// Bounded development identity, not a production-policy override or admission.
++import Foundation
++import CryptoKit
++import Security
++
++enum AuxFreshBootstrapPolicyError:Error {case identity,policy,signature(OSStatus),resource,path,image,scope}
++enum AuxFreshBootstrapIdentity {
++    static let team="9F2JXY8TCK"
++    static let leafCertificateSha256="ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c"
++    static let historicalHome="/private/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-provided-dp-approval-mqbKLj"
++    static let resource="AuxFreshBootstrapPolicy.json"
++    static let resourceRelative="Resources/"+resource // SecCode resource base is Contents.
++}
++func freshBootstrapDigest(_ bytes:Data)->String{SHA256.hash(data:bytes).map{String(format:"%02x",$0)}.joined()}
++enum AuxFreshBootstrapPdfIdentity {
++    static let relativePath="Contents/Resources/native/aux-pdf.node"
++    static let identifier="dev.aux.browser.pdf"
++    static let sha256="ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0"
++    static let bytes=9_474_752
++    static func validate(_ value:Any?)throws {
++        guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
++              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,object["sha256"] as? String==sha256,
++              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
++    }
++}
++enum AuxFreshBootstrapMacUtilitiesIdentity {
++    static let relativePath="Contents/Resources/native/aux-macos-utilities.node"
++    static let identifier="dev.aux.browser.macos-utilities"
++    // Actual retained unsigned production build; signing requires a new review.
++    static let sha256="7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e"
++    static let bytes=393_720
++    static func validate(_ value:Any?)throws {
++        guard let object=value as? [String:Any],Set(object.keys)==["path","identifier","sha256","bytes"],
++              object["path"] as? String==relativePath,object["identifier"] as? String==identifier,object["sha256"] as? String==sha256,
++              let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
++    }
++}
++// A pre-generation resource contract. Decoding content grants no authority.
++struct AuxFreshBootstrapPolicyContents {
++    enum Role:String {case daemon,cli
++        var identifier:String{self == .daemon ? "dev.aux.browser.daemon":"dev.aux.browser.cli"}
++        var executable:String{self == .daemon ? "aux-daemon":"aux-cli"}
++    }
++    static let format="aux.fresh.bootstrap.policy.v1"
++    static let authoritySelection="aux.fresh.authority.host-availability.v1"
++    let role:Role
++    let canonicalPrivateParent:String
++    let accessGroup:String
++    var embeddedDaemon:Bool=false
++    var includesPdf:Bool{role == .daemon}
++    var includesMacUtilities:Bool{role == .daemon}
++    var pdfSha256:String{AuxFreshBootstrapPdfIdentity.sha256}
++    var pdfBytes:Int{AuxFreshBootstrapPdfIdentity.bytes}
++    static func validAccessGroup(_ group:String)->Bool {
++        let prefix=AuxFreshBootstrapIdentity.team+".dev.aux."
++        guard group.hasPrefix(prefix),group.utf8.count<=200 else{return false}
++        let suffix=group.dropFirst(prefix.count)
++        return !suffix.isEmpty && suffix.utf8.allSatisfy{($0>=97 && $0<=122) || ($0>=48 && $0<=57) || $0==46 || $0==45}
++    }
++    // Lexical validation only. Foundation standardization resolves existing /private
++    // aliases on macOS; realpath/retained-FD validation belongs to the signed reader.
++    static func validCanonicalParentSyntax(_ parent:String)->Bool {
++        guard parent.hasPrefix("/"),parent != "/",parent.utf8.count<=4096,!parent.utf8.contains(0) else{return false}
++        return parent.dropFirst().split(separator:"/",omittingEmptySubsequences:false).allSatisfy{!$0.isEmpty && $0 != "." && $0 != ".."}
++    }
++    static func decode(_ bytes:Data)throws->Self {
++        let object=try strictEnvelopeObject(bytes)
++        guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
++        var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
++        if role == .daemon {keys.formUnion(["pdfModule","macOSUtilitiesModule"]);try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])}
++        let embedded=object["format"] as? String=="aux.fresh.bootstrap.policy.v2"
++        if embedded { keys.insert("nativeHostLayout");guard role == .daemon,object["nativeHostLayout"] as? String=="embedded-daemon" else{throw AuxFreshBootstrapPolicyError.policy} }
++        guard Set(object.keys)==keys,(embedded || object["format"] as? String==format),object["authoritySelection"] as? String==authoritySelection,
++              let parent=object["canonicalPrivateParent"] as? String,validCanonicalParentSyntax(parent),
++              parent != AuxFreshBootstrapIdentity.historicalHome,!parent.hasPrefix(AuxFreshBootstrapIdentity.historicalHome+"/"),
++              let group=object["accessGroup"] as? String,validAccessGroup(group) else{throw AuxFreshBootstrapPolicyError.policy}
++        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,embeddedDaemon:embedded)
++    }
++}
++struct AuxCapturedFreshBootstrapSignature {
++    let identifier:String;let team:String;let certificateSha256:String
++    let applicationIdentifier:String;let accessGroups:[String];let flags:UInt32
++    let entitlements:[String:Any]
++}
++func validateCapturedFreshBootstrapSignature(_ captured:AuxCapturedFreshBootstrapSignature,role:AuxFreshBootstrapPolicyContents.Role,host:Bool,accessGroup:String)throws {
++    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
++          captured.identifier==(host ? role.identifier:"dev.aux.browser.runtime"),captured.flags & 0x2==0 else{throw AuxFreshBootstrapPolicyError.identity}
++    if host {
++        guard captured.applicationIdentifier==AuxFreshBootstrapIdentity.team+"."+role.identifier,AuxFreshBootstrapPolicyContents.validAccessGroup(accessGroup),captured.accessGroups==[accessGroup],captured.flags & 0x10000 != 0 else{throw AuxFreshBootstrapPolicyError.identity}
++        let allowed:Set<String>=["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups","com.apple.security.cs.allow-jit","com.apple.security.cs.allow-dyld-environment-variables","com.apple.security.cs.allow-unsigned-executable-memory","com.apple.security.cs.disable-library-validation","com.apple.security.cs.disable-executable-page-protection","com.apple.security.get-task-allow","get-task-allow"]
++        guard Set(captured.entitlements.keys).isSubset(of:allowed)else{throw AuxFreshBootstrapPolicyError.identity}
++        if let team=captured.entitlements["com.apple.developer.team-identifier"] {guard team as? String==AuxFreshBootstrapIdentity.team else{throw AuxFreshBootstrapPolicyError.identity}}
++        for key in allowed.subtracting(["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups"]) {
++            if let value=captured.entitlements[key] {guard CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,key=="com.apple.security.cs.allow-jit" || !boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}}
++        }
++    } else {guard captured.entitlements.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}}
++}
++
++// Pure captured snapshot validation. No signature, image loading or owner call.
++func freshBootstrapExpectedImageIdentifiers(bundle:String,policy:AuxFreshBootstrapPolicyContents)->[String:String] {
++    var result=[bundle+"/Contents/MacOS/"+policy.role.executable:policy.role.identifier]
++    if !policy.embeddedDaemon {result[bundle+"/Contents/Resources/native/aux-runtime-owned.node"]="dev.aux.browser.runtime"}
++    if policy.includesPdf {result[bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath]=AuxFreshBootstrapPdfIdentity.identifier}
++    if policy.includesMacUtilities {result[bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath]=AuxFreshBootstrapMacUtilitiesIdentity.identifier}
++    return result
++}
++func validateCapturedFreshBootstrapImagePaths(_ paths:[String],bundle:String,policy:AuxFreshBootstrapPolicyContents)throws {
++    let expected=freshBootstrapExpectedImageIdentifiers(bundle:bundle,policy:policy);var observed=Set<String>()
++    guard !paths.isEmpty,paths.count<=4096 else{throw AuxFreshBootstrapPolicyError.image}
++    for path in paths {
++        guard path.hasPrefix("/"),URL(fileURLWithPath:path).standardizedFileURL.path==path else{throw AuxFreshBootstrapPolicyError.image}
++        if path.hasPrefix("/System/Library/") || path.hasPrefix("/usr/lib/"){continue}
++        guard expected[path] != nil,observed.insert(path).inserted else{throw AuxFreshBootstrapPolicyError.image}
++    }
++    guard observed==Set(expected.keys)else{throw AuxFreshBootstrapPolicyError.image}
++}
++func validateCapturedFreshBootstrapPdfSignature(_ captured:AuxCapturedFreshBootstrapSignature)throws {
++    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
++          captured.identifier==AuxFreshBootstrapPdfIdentity.identifier,captured.flags & 0x2==0,captured.entitlements.isEmpty,
++          captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
++}
++func validateCapturedFreshBootstrapPdfBytes(sha256:String,bytes:Int,policy:AuxFreshBootstrapPolicyContents)throws {
++    guard policy.includesPdf,sha256==policy.pdfSha256,bytes==policy.pdfBytes else{throw AuxFreshBootstrapPolicyError.image}
++}
++
++func validateCapturedFreshBootstrapMacUtilitySignature(_ captured:AuxCapturedFreshBootstrapSignature)throws {
++    guard captured.team==AuxFreshBootstrapIdentity.team,captured.certificateSha256==AuxFreshBootstrapIdentity.leafCertificateSha256,
++          captured.identifier==AuxFreshBootstrapMacUtilitiesIdentity.identifier,captured.flags & 0x2==0,captured.entitlements.isEmpty,
++          captured.applicationIdentifier.isEmpty,captured.accessGroups.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}
++}
++func validateCapturedFreshBootstrapMacUtilityBytes(sha256:String,bytes:Int,policy:AuxFreshBootstrapPolicyContents)throws {
++    guard policy.includesMacUtilities,sha256==AuxFreshBootstrapMacUtilitiesIdentity.sha256,bytes==AuxFreshBootstrapMacUtilitiesIdentity.bytes else{throw AuxFreshBootstrapPolicyError.image}
++}
+diff --git a/chrome/browser/aux/native_peer_policy/BUILD.gn b/chrome/browser/aux/native_peer_policy/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/aux/native_peer_policy/BUILD.gn
+@@ -0,0 +1,18 @@
++# New native destination is chosen by the integrator; this is not applied.
++import("//build/config/apple/swift_source_set.gni")
++
++# C ABI only. No Swift/C++ interop, runtime factory, installation or child code.
++swift_source_set("aux_parent_sealed_policy") {
++  sources = [
++    "AuxAuthenticatedChildParentPolicyReader.swift",
++    "AuxFreshBootstrapPolicy.swift",
++  ]
++  module_name = "AuxParentSealedPolicy"
++  frameworks = [ "Foundation.framework", "Security.framework", "CryptoKit.framework" ]
++}
++# The actual browser target containing AuxNativePeerTransport.cc must depend on
++# :aux_parent_sealed_policy. This target must NOT be linked into the child graph,
++# which already supplies the same C symbol from its complete sealed loader.
++# Parent transport: no AUX_NATIVE_DAEMON_AUTHORITY_SERVER define.
++# Child transport: define AUX_NATIVE_DAEMON_AUTHORITY_SERVER=1 and link real
++# AuxFreshColdBootstrapNativeBridge.swift plus prepared authority backend.
+diff --git a/chrome/browser/notifications/BUILD.gn b/chrome/browser/notifications/BUILD.gn
+--- a/chrome/browser/notifications/BUILD.gn
++++ b/chrome/browser/notifications/BUILD.gn
+@@ -174,7 +174,7 @@
+ 
+ source_set("impl") {
+   if (enable_aux_browser) {
+-    sources = [ "aux_notification_inbox.cc", "aux_notification_inbox.h" ]
++    sources = [ "aux_notification_inbox.cc", "aux_notification_inbox.h", "aux_inbox_codec.cc", "aux_inbox_codec.h" ]
+     deps = [
+       "//chrome/browser/aux:platform",
+       "//crypto",
+diff --git a/chrome/browser/notifications/aux_inbox_codec.cc b/chrome/browser/notifications/aux_inbox_codec.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/notifications/aux_inbox_codec.cc
+@@ -0,0 +1,39 @@
++#include "chrome/browser/notifications/aux_inbox_codec.h"
++#include "base/containers/span.h"
++#include "crypto/aead.h"
++#include "crypto/random.h"
++namespace aux {
++namespace {
++constexpr std::string_view kPrefix="AUXAI002";
++// Compatibility detection only; actual historical key recovery is separate.
++constexpr std::string_view kLegacyPrefix="ASIDEAI1";
++constexpr size_t kNonceBytes=12;
++constexpr size_t kTagBytes=16;
++}
++InboxEnvelope ClassifyInboxEnvelope(std::string_view record) {
++  if(record.starts_with(kPrefix)) return InboxEnvelope::auxV2;
++  if(record.starts_with(kLegacyPrefix)) return InboxEnvelope::legacyV1;
++  return InboxEnvelope::unknown;
++}
++std::optional<std::string> SealInboxV2(std::string_view plaintext,
++    const std::array<uint8_t,32>& key) {
++  crypto::Aead aead(crypto::Aead::AES_256_GCM,key);
++  if(aead.NonceLength()!=kNonceBytes) return std::nullopt;
++  std::string nonce(kNonceBytes,'\0');
++  crypto::RandBytes(base::as_writable_byte_span(nonce));
++  std::string encrypted;
++  if(!aead.Seal(plaintext,nonce,kPrefix,&encrypted)) return std::nullopt;
++  return std::string(kPrefix)+nonce+encrypted;
++}
++std::optional<std::string> OpenInboxV2(std::string_view record,
++    const std::array<uint8_t,32>& key) {
++  if(ClassifyInboxEnvelope(record)!=InboxEnvelope::auxV2 ||
++      record.size()<kPrefix.size()+kNonceBytes+kTagBytes) return std::nullopt;
++  crypto::Aead aead(crypto::Aead::AES_256_GCM,key);
++  if(aead.NonceLength()!=kNonceBytes) return std::nullopt;
++  std::string plaintext;
++  if(!aead.Open(record.substr(kPrefix.size()+kNonceBytes),
++      record.substr(kPrefix.size(),kNonceBytes),kPrefix,&plaintext)) return std::nullopt;
++  return plaintext;
++}
++}
+diff --git a/chrome/browser/notifications/aux_inbox_codec.h b/chrome/browser/notifications/aux_inbox_codec.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/notifications/aux_inbox_codec.h
+@@ -0,0 +1,16 @@
++#pragma once
++#include <array>
++#include <optional>
++#include <string>
++#include <string_view>
++#include <cstdint>
++namespace aux {
++// A versioned codec, not key provenance/admission. Legacy blobs are never
++// decrypted with a new derived key or rewritten by these functions.
++enum class InboxEnvelope { auxV2, legacyV1, unknown };
++InboxEnvelope ClassifyInboxEnvelope(std::string_view record);
++std::optional<std::string> SealInboxV2(std::string_view plaintext,
++    const std::array<uint8_t,32>& key);
++std::optional<std::string> OpenInboxV2(std::string_view record,
++    const std::array<uint8_t,32>& key);
++}
+diff --git a/chrome/browser/notifications/aux_notification_inbox.cc b/chrome/browser/notifications/aux_notification_inbox.cc
+--- a/chrome/browser/notifications/aux_notification_inbox.cc
++++ b/chrome/browser/notifications/aux_notification_inbox.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/notifications/aux_notification_inbox.h"
++#include "chrome/browser/notifications/aux_inbox_codec.h"
+ 
+ #include <utility>
+ #include "base/base64.h"
+@@ -21,8 +22,6 @@
+ #include "components/content_settings/core/common/content_settings_types.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
+-#include "crypto/aead.h"
+-#include "crypto/random.h"
+ #include "extensions/browser/api/messaging/channel_endpoint.h"
+ #include "extensions/browser/api/messaging/message_port.h"
+ #include "extensions/browser/api/messaging/message_service.h"
+@@ -99,22 +98,17 @@
+   if (!database.Open(path) || !database.Execute(kCreateTable)) return std::nullopt;
+   std::string serialized;
+   if (!base::JSONWriter::Write(payload, &serialized)) return std::nullopt;
+-  auto key = LoadAgentInboxMasterKey(StateHome());
++  // New records use the fixed v2 purpose from the actual owned native peer.
++  // Historical encrypted rows are never rewritten or tried with this key.
++  auto key = LoadAgentInboxV2MasterKey(StateHome());
+   if (!key) return std::nullopt;
+-  crypto::Aead aead(crypto::Aead::AES_256_GCM, *key);
+-  std::string nonce(aead.NonceLength(), '\0');
+-  crypto::RandBytes(base::as_writable_byte_span(nonce));
+-  std::string ciphertext;
+-  if (!aead.Seal(serialized, nonce, std::string_view(), &ciphertext))
+-    return std::nullopt;
+-  std::string encrypted = "ASIDEAI1";
+-  encrypted.append(nonce);
+-  encrypted.append(ciphertext);
++  auto encrypted = SealInboxV2(serialized, *key);
++  if (!encrypted) return std::nullopt;
+   sql::Statement statement(database.GetCachedStatement(SQL_FROM_HERE, kInsert));
+   statement.BindTime(0, base::Time::Now());
+   const auto* site = payload.FindString("site_url");
+   statement.BindString(1, site ? *site : std::string());
+-  statement.BindBlob(2, std::move(encrypted));
++  statement.BindBlob(2, std::move(*encrypted));
+   statement.BindBool(3, persistent);
+   if (!statement.Run()) return std::nullopt;
+   return database.GetLastInsertRowId();
