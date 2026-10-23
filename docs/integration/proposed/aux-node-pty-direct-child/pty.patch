@@ -262,3 +262,195 @@
    return obj;
  }
  
+@@ -691,96 +699,115 @@
+                 int* master,
+                 pid_t* pid,
+                 int* err) {
+-  int low_fds[3];
++  int low_fds[3] = {-1, -1, -1};
+   size_t count = 0;
+-
+-  for (; count < 3; count++) {
+-    low_fds[count] = posix_openpt(O_RDWR);
+-    if (low_fds[count] >= STDERR_FILENO)
+-      break;
+-  }
+-
+-  int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
+-              POSIX_SPAWN_SETSIGDEF |
+-              POSIX_SPAWN_SETSIGMASK |
+-              POSIX_SPAWN_SETSID;
+-  *master = posix_openpt(O_RDWR);
+-  if (*master == -1) {
+-    return;
+-  }
+-
+-  int res = grantpt(*master) || unlockpt(*master);
+-  if (res == -1) {
+-    return;
++  int master_fd = -1, slave = -1;
++  pid_t child_pid = -1;
++  posix_spawn_file_actions_t acts;
++  posix_spawnattr_t attrs;
++  bool acts_initialized = false, attrs_initialized = false;
++  sigset_t signal_set;
++  char slave_pty_name[128];
++  const int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
++                    POSIX_SPAWN_SETSIGDEF |
++                    POSIX_SPAWN_SETSIGMASK |
++                    POSIX_SPAWN_SETSID;
++  *master = -1;
++  *pid = -1;
++  *err = 0;
++
++  // Keep initially closed stdio slots occupied until the PTY is configured.
++  while (count < 3) {
++    const int fd = posix_openpt(O_RDWR);
++    if (fd == -1) {
++      *err = errno;
++      goto done;
++    }
++    low_fds[count++] = fd;
++    if (fd >= STDERR_FILENO) break;
++  }
++
++  master_fd = posix_openpt(O_RDWR);
++  if (master_fd == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (grantpt(master_fd) == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (unlockpt(master_fd) == -1) {
++    *err = errno;
++    goto done;
+   }
+ 
+   // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
+-  int slave;
+-  char slave_pty_name[128];
+-  res = ioctl(*master, TIOCPTYGNAME, slave_pty_name);
+-  if (res == -1) {
+-    return;
+-  }
+-
++  if (ioctl(master_fd, TIOCPTYGNAME, slave_pty_name) == -1) {
++    *err = errno;
++    goto done;
++  }
+   slave = open(slave_pty_name, O_RDWR | O_NOCTTY);
+   if (slave == -1) {
+-    return;
+-  }
+-
+-  if (termp) {
+-    res = tcsetattr(slave, TCSANOW, termp);
+-    if (res == -1) {
+-      return;
+-    };
+-  }
+-
+-  if (winp) {
+-    res = ioctl(slave, TIOCSWINSZ, winp);
+-    if (res == -1) {
+-      return;
+-    }
+-  }
+-
+-  posix_spawn_file_actions_t acts;
+-  posix_spawn_file_actions_init(&acts);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDIN_FILENO);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDOUT_FILENO);
+-  posix_spawn_file_actions_adddup2(&acts, slave, STDERR_FILENO);
+-  posix_spawn_file_actions_addclose(&acts, slave);
+-  posix_spawn_file_actions_addclose(&acts, *master);
+-
+-  posix_spawnattr_t attrs;
+-  posix_spawnattr_init(&attrs);
++    *err = errno;
++    goto done;
++  }
++  if (termp && tcsetattr(slave, TCSANOW, termp) == -1) {
++    *err = errno;
++    goto done;
++  }
++  if (winp && ioctl(slave, TIOCSWINSZ, winp) == -1) {
++    *err = errno;
++    goto done;
++  }
++
++  *err = posix_spawn_file_actions_init(&acts);
++  if (*err != 0) goto done;
++  acts_initialized = true;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDIN_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDOUT_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_adddup2(&acts, slave, STDERR_FILENO);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_addclose(&acts, slave);
++  if (*err != 0) goto done;
++  *err = posix_spawn_file_actions_addclose(&acts, master_fd);
++  if (*err != 0) goto done;
++
++  *err = posix_spawnattr_init(&attrs);
++  if (*err != 0) goto done;
++  attrs_initialized = true;
+   *err = posix_spawnattr_setflags(&attrs, flags);
+-  if (*err != 0) {
++  if (*err != 0) goto done;
++  if (sigfillset(&signal_set) == -1) {
++    *err = errno;
+     goto done;
+   }
+-
+-  sigset_t signal_set;
+-  /* Reset all signal the child to their default behavior */
+-  sigfillset(&signal_set);
+   *err = posix_spawnattr_setsigdefault(&attrs, &signal_set);
+-  if (*err != 0) {
++  if (*err != 0) goto done;
++  if (sigemptyset(&signal_set) == -1) {
++    *err = errno;
+     goto done;
+   }
+-
+-  /* Reset the signal mask for all signals */
+-  sigemptyset(&signal_set);
+   *err = posix_spawnattr_setsigmask(&attrs, &signal_set);
+-  if (*err != 0) {
+-    goto done;
+-  }
+-
+-  do
+-    *err = posix_spawn(pid, argv[0], &acts, &attrs, argv, env);
+-  while (*err == EINTR);
++  if (*err != 0) goto done;
++
++  do {
++    *err = posix_spawn(&child_pid, argv[0], &acts, &attrs, argv, env);
++  } while (*err == EINTR);
++  if (*err == 0) {
++    *pid = child_pid;
++    *master = master_fd;
++    master_fd = -1;
++  }
+ done:
+-  posix_spawn_file_actions_destroy(&acts);
+-  posix_spawnattr_destroy(&attrs);
+-
+-  for (; count > 0; count--) {
+-    close(low_fds[count]);
+-  }
++  // Cleanup must not turn a created child into a reported spawn failure:
++  // the prepared sole reaper receives its identity immediately on return.
++  if (acts_initialized) posix_spawn_file_actions_destroy(&acts);
++  if (attrs_initialized) posix_spawnattr_destroy(&attrs);
++  if (slave != -1) close(slave);
++  if (master_fd != -1) close(master_fd);
++  while (count > 0) close(low_fds[--count]);
+ }
+ #endif
+ 

@@ -1,6 +1,7 @@
 {
-  "format": "aux.node-pty.direct-child.source.v1",
+  "format": "aux.node-pty.direct-child.source.v2",
   "upstreamCommit": "1def5774632305246fe21f0f69e23a664d6c5910",
+  "previousRevision": "historical/direct-child-reaper-v1/source-pins.json",
   "files": {
     "LICENSE": {
       "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
@@ -23,16 +24,16 @@
       "bytes": 107
     },
     "pty.patch": {
-      "sha256": "150e27c4de9f5ba9be68c0b86b0e22908c9af0e9625b88798b56a5ad9a856947",
-      "bytes": 8823
+      "sha256": "a84f4d5f210e9246b7e5b19668c027175316815b6363ff06442b34608e7f88f3",
+      "bytes": 14039
     },
     "source/direct-child-wait.h": {
       "sha256": "117fb4941d04784dfa9c5b751c6f6ea57e370615eb8093a4656d22775e0f1b96",
       "bytes": 753
     },
     "source/pty.cc": {
-      "sha256": "19ceb2bd96e2db00d4ea688c696d05d9ca2ca7742ceaa1023579ca74782d9f17",
-      "bytes": 20960
+      "sha256": "35c98894509dba99b309f09c8324931e3f9c0f088ac6f9edf2faad6086ecbb91",
+      "bytes": 21983
     }
   }
 }

@@ -1,0 +1,38 @@
+{
+  "format": "aux.node-pty.direct-child.source.v1",
+  "upstreamCommit": "1def5774632305246fe21f0f69e23a664d6c5910",
+  "files": {
+    "LICENSE": {
+      "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+      "bytes": 3326
+    },
+    "check-wait.cc": {
+      "sha256": "2f49cdcc2d078d82f82b5aad65b8ec5c9757021ff5cc4a7249948bd8ec2897dc",
+      "bytes": 701
+    },
+    "check.py": {
+      "sha256": "683daf43916a10705354ec1bf8816082c50dae10481b205de55e58c146403d00",
+      "bytes": 4042
+    },
+    "compiler-package-lock.json": {
+      "sha256": "bdd7ecf272de4c3cfd709d38a291de9113c8642a90a5d5d93a203046f7e81f72",
+      "bytes": 637
+    },
+    "compiler-package.json": {
+      "sha256": "c6665e739ce6687d2532435ecc595b57683122142949df6050a931c9a1911b3e",
+      "bytes": 107
+    },
+    "pty.patch": {
+      "sha256": "150e27c4de9f5ba9be68c0b86b0e22908c9af0e9625b88798b56a5ad9a856947",
+      "bytes": 8823
+    },
+    "source/direct-child-wait.h": {
+      "sha256": "117fb4941d04784dfa9c5b751c6f6ea57e370615eb8093a4656d22775e0f1b96",
+      "bytes": 753
+    },
+    "source/pty.cc": {
+      "sha256": "19ceb2bd96e2db00d4ea688c696d05d9ca2ca7742ceaa1023579ca74782d9f17",
+      "bytes": 20960
+    }
+  }
+}

@@ -33,7 +33,7 @@
       "-c",
       "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc",
       "-o",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/pty.o"
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.o"
     ],
     [
       "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
@@ -42,9 +42,9 @@
       "dynamic_lookup",
       "-Wl,-no_adhoc_codesign",
       "-mmacosx-version-min=13.5",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/pty.o",
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.o",
       "-o",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/pty.node"
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.node"
     ],
     [
       "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
@@ -52,17 +52,17 @@
       "-c",
       "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/check-wait.cc",
       "-o",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/check-wait.o"
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/check-wait.o"
     ],
     [
       "otool",
       "-l",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/pty.node"
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.node"
     ],
     [
       "nm",
       "-u",
-      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-t_ivc7xb/pty.node"
+      "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-pty-compile-798uig3d/pty.node"
     ],
     [
       "patch",
@@ -71,16 +71,16 @@
       "/private/tmp/aux-pty-direct-child-fix/docs/integration/proposed/aux-node-pty-direct-child/pty.patch"
     ]
   ],
-  "sourceSha256": "19ceb2bd96e2db00d4ea688c696d05d9ca2ca7742ceaa1023579ca74782d9f17",
+  "sourceSha256": "35c98894509dba99b309f09c8324931e3f9c0f088ac6f9edf2faad6086ecbb91",
   "waitHeaderSha256": "117fb4941d04784dfa9c5b751c6f6ea57e370615eb8093a4656d22775e0f1b96",
-  "patchSha256": "150e27c4de9f5ba9be68c0b86b0e22908c9af0e9625b88798b56a5ad9a856947",
+  "patchSha256": "a84f4d5f210e9246b7e5b19668c027175316815b6363ff06442b34608e7f88f3",
   "upstreamSourceSha256": "5e1005d6bdcfbe97b486ee415419fe7adae99035047f07340fbad36419e0bae6",
   "nodeVersionHeaderSha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
   "nodeApiHeaderSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
   "napiHeaderSha256": "2f2f5d1e4ca96f315c51ad96c292c18294dbb999b98f8b2f33b80816a3189fb0",
   "napiInlineHeaderSha256": "4b053c184dfed740fbd802fdcf97e85fb8c7b0eb1d83322000d932d31662eda7",
-  "objectSha256": "031bfa81684da35af74967e26e5fe1a73acce0eb93af6cc4442a20ba9e2a41de",
-  "unsignedModuleSha256": "36db449b762096c0127bc1b3bdb13e180a1f38fb54e78de114eca4724c3bc612",
+  "objectSha256": "76f07c94a9ec8b8b0cfb6c46206f7c02526802295fede41c0b41d499ec21d62e",
+  "unsignedModuleSha256": "8e29cd26f4a8a3c81c00d4e543fbb26dbcc0241a895086c05f14cfc2558b679c",
   "actualAddonCompiledAndLinked": true,
   "addonLoadedOrExecuted": false,
   "compileTimeWaitResultChecksPassed": true,
