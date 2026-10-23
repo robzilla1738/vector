@@ -1,0 +1,14 @@
+{
+  "format": "aux.participant-addresses.composition.v1",
+  "parentManifestSha256": "7cf6934daac5bae801fce6bf8fbcc82a89a423fd12e444e68871227f5d983666",
+  "composition": "out/native-reuse-composition-aux-participant-addresses",
+  "compositionSha256": "34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107",
+  "sources": 808,
+  "assets": 23,
+  "metadataSha256": "0f5e49625551db512bcb0b39392aa92f9b3d11ddf07d3def74a5c6af5a15e24b",
+  "patchSha256": "e4f60f5fc75932847dcf7d29ea608e3e3b72838eb5ea22554852a14c6e78bdb7",
+  "applied": false,
+  "compiled": false,
+  "appAccepted": false,
+  "state2Authorized": false
+}

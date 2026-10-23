@@ -1,0 +1,51 @@
+{
+  "format": "aux.worker-identity.actual-check.v1",
+  "firstSession": 21096,
+  "firstResult": "three original modified TUs passed; new state TU failed chromium-rawptr; remaining TU and fixture not run",
+  "correctedSession": 90019,
+  "correctedTUResults": [
+    {
+      "source": "aux_service_worker_admission_state.cc",
+      "sourceSha256": "1f81bedd48a59959387fb20e3d44f2536e24ce15fa01e44b17315075f605eb41",
+      "exitCode": 0,
+      "seconds": 0.223079875
+    },
+    {
+      "source": "aux_service_worker_migration.cc",
+      "sourceSha256": "d74c4ac9f4da0732683879d339b2ceb51f98898250e36b78d1db02c87fb433ca",
+      "exitCode": 0,
+      "seconds": 5.809016417
+    }
+  ],
+  "correctedResult": "two remaining real TUs passed; fixture compiler rejected uninitialized address sentinels",
+  "fixtureSession": 40001,
+  "fixtureResult": {
+    "format": "aux.worker-address.actual-fixture.v1",
+    "exitCode": 0,
+    "command": [
+      "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang++",
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pthread",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-content-service-worker-admission/source",
+      "-I",
+      "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-service-worker-identity-storage/source/content/browser/service_worker/aux_service_worker_admission_state.cc",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-service-worker-identity-storage/tests/admission_state.cc",
+      "-o",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-service-worker-address-fixture/admission"
+    ],
+    "productionSourceSha256": "1f81bedd48a59959387fb20e3d44f2536e24ce15fa01e44b17315075f605eb41",
+    "fixtureSha256": "f228ec55748708a93bb03886a3787b258e62cf1542d16d658200c2108e4228fe",
+    "artifactSha256": "b202f842a9cbfec7512c75a3bd0af735a46ae77c946d3d09d2a1b0abee7d1f71",
+    "nativeTUReceiptSha256": "61480dcf10500e9e9f36aa1ec402c0e9acb9815fad5cad922369f6237be09332",
+    "protectedOperations": 0,
+    "browserExecuted": false
+  },
+  "productionTUsRepeatedAfterFixtureOnlyChange": false,
+  "nativeApplied": false,
+  "appAccepted": false
+}

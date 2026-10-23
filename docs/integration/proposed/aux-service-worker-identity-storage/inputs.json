@@ -1,0 +1,62 @@
+{
+  "format": "aux.service-worker.identity-storage.v1",
+  "predecessor": "docs/integration/proposed/aux-content-service-worker-admission",
+  "files": [
+    {
+      "path": "content/browser/service_worker/aux_service_worker_admission_state.cc",
+      "inputSha256": "d0ba4e823f04376c3f9d6bd4bad34eea28d9adc0aa0f5798c2ec64723c2dc9d4",
+      "outputSha256": "1f81bedd48a59959387fb20e3d44f2536e24ce15fa01e44b17315075f605eb41",
+      "edits": [
+        {
+          "find": "#include <limits>",
+          "replace": "#include <cstdint>\n#include <limits>",
+          "count": 1
+        },
+        {
+          "find": "  const void* context;",
+          "replace": "  uintptr_t context_identity;",
+          "count": 1
+        },
+        {
+          "find": "  std::set<const void*> contexts;",
+          "replace": "  std::set<uintptr_t> contexts;",
+          "count": 1
+        },
+        {
+          "find": "    if (stop.context == context)",
+          "replace": "    if (stop.context_identity == reinterpret_cast<uintptr_t>(context))",
+          "count": 1
+        },
+        {
+          "find": "  state.contexts.insert(context);",
+          "replace": "  state.contexts.insert(reinterpret_cast<uintptr_t>(context));",
+          "count": 1
+        },
+        {
+          "find": "  state.contexts.erase(context);",
+          "replace": "  state.contexts.erase(reinterpret_cast<uintptr_t>(context));",
+          "count": 1
+        },
+        {
+          "find": "state.stops.emplace(token, Stop{context, !core_available});",
+          "replace": "state.stops.emplace(\n        token, Stop{reinterpret_cast<uintptr_t>(context), !core_available});",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "5c9752b1f7f5e6713018be55d092b64a07a3b45437c6c1822519ca862b9bc6c7",
+  "nativeApplied": false,
+  "protectedExecution": false,
+  "fixture": {
+    "predecessor": "docs/integration/proposed/aux-content-service-worker-admission/tests/admission_state.cc",
+    "predecessorSha256": "dcb14efd087955d96c9b87c399045287b755e4572d6ae68459cfd9f1dab37e5a",
+    "path": "tests/admission_state.cc",
+    "sha256": "f228ec55748708a93bb03886a3787b258e62cf1542d16d658200c2108e4228fe",
+    "edit": {
+      "find": "  int context, missing;",
+      "replace": "  int context = 0, missing = 0;",
+      "count": 1
+    }
+  }
+}

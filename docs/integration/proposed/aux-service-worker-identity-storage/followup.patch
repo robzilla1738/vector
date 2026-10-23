@@ -1,0 +1,61 @@
+--- a/content/browser/service_worker/aux_service_worker_admission_state.cc
++++ b/content/browser/service_worker/aux_service_worker_admission_state.cc
+@@ -1,5 +1,6 @@
+ #include "content/browser/service_worker/aux_service_worker_admission_state.h"
+ 
++#include <cstdint>
+ #include <limits>
+ #include <map>
+ #include <mutex>
+@@ -8,7 +9,7 @@
+ namespace content::aux_migration {
+ namespace {
+ struct Stop {
+-  const void* context;
++  uintptr_t context_identity;
+   bool unavailable;
+ };
+ struct State {
+@@ -19,7 +20,7 @@
+   uint64_t next_token = 0;
+   std::set<uint64_t> starts;
+   std::set<uint64_t> active_callbacks;
+-  std::set<const void*> contexts;
++  std::set<uintptr_t> contexts;
+   std::map<uint64_t, Stop> stops;
+   size_t unresolved_starts = 0;
+   size_t late_successes = 0;
+@@ -46,7 +47,7 @@
+ }
+ void MarkContextUnavailable(State& state, const void* context) {
+   for (auto& [token, stop] : state.stops) {
+-    if (stop.context == context)
++    if (stop.context_identity == reinterpret_cast<uintptr_t>(context))
+       stop.unavailable = true;
+   }
+ }
+@@ -113,12 +114,12 @@
+ void ObserveServiceWorkerContextRegistered(const void* context) {
+   auto& state = Current();
+   std::lock_guard<std::mutex> lock(state.mutex);
+-  state.contexts.insert(context);
++  state.contexts.insert(reinterpret_cast<uintptr_t>(context));
+ }
+ void ObserveServiceWorkerContextUnregistered(const void* context) {
+   auto& state = Current();
+   std::lock_guard<std::mutex> lock(state.mutex);
+-  state.contexts.erase(context);
++  state.contexts.erase(reinterpret_cast<uintptr_t>(context));
+   MarkContextUnavailable(state, context);
+ }
+ void ObserveServiceWorkerContextShutdown(const void* context) {
+@@ -134,7 +135,8 @@
+   if (!core_available)
+     Increment(state.unavailable_cores);
+   if (token)
+-    state.stops.emplace(token, Stop{context, !core_available});
++    state.stops.emplace(
++        token, Stop{reinterpret_cast<uintptr_t>(context), !core_available});
+   else
+     Increment(state.unresolved_stops);
+   return token;

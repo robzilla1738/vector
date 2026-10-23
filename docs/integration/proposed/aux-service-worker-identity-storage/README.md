@@ -1,0 +1,5 @@
+# Address identity storage correction
+
+The first actual service-worker compile passed its three modified upstream files, then Chromium rejected a stored raw pointer used only as an address identity. This seven-anchor successor uses uintptr_t values for that internal identity accounting; it never dereferences them or claims ownership. Public API, callback lifetimes and behavior are unchanged. The two remaining actual production TUs then compiled successfully. Their unchanged source was not recompiled after a fixture-only correction initialized its two address sentinels; the actual production-state fixture subsequently compiled and passed. Failed attempts and exact successful evidence remain in execution.json.
+
+The one-file source correction dry-composes on the808-source/23-asset staged parent. It changes no views, art, UI, owner data or first state2 refusal. Separate root renderer identity integration follows. No actual browser/storage/runtime acceptance is inferred from these compile/state checks.

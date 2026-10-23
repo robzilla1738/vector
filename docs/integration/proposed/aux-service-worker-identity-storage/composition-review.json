@@ -1,0 +1,16 @@
+{
+  "format": "aux.worker-identity.composition.v1",
+  "parentManifestSha256": "2bab7214042dbf2fead85cd9e1925cbbeaf3f56c0ce4ccbbd3b1d935f073bc76",
+  "composition": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-worker-address-identity",
+  "compositionSha256": "7cf6934daac5bae801fce6bf8fbcc82a89a423fd12e444e68871227f5d983666",
+  "sourceRecords": 808,
+  "assets": 23,
+  "changedSources": [
+    "content/browser/service_worker/aux_service_worker_admission_state.cc"
+  ],
+  "applied": false,
+  "compiled": false,
+  "appAccepted": false,
+  "state2Authorized": false,
+  "uiChanged": false
+}
