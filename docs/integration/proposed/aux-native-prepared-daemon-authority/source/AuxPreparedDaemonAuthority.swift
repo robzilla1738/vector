@@ -129,7 +129,7 @@ private func emitPreparedDaemonAuthority(_ result:DaemonAuthorityResult,_ output
     case .pending:return 1
     case .failed:return 4
     case .completed(let bytes):
-        guard !bytes.isEmpty,bytes.count<=8192 else{return 4}
+        guard bytes.count>0,bytes.count<=8192 else{return 4}
         guard bytes.copy(to:output)else{return 4}
         written.pointee=UInt32(bytes.count);return 0
     }

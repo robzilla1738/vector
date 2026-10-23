@@ -1,6 +1,6 @@
 {
   "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift": "84b60e71e559b33a97fb0b6d9ebb56df839f6e115ae0b9e40f0969f30466b7b8",
-  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift": "3b605d406fd5f1e902f14e8be78e79616bdc8c9bfd5b2c26b4fb859aa4e635b8",
+  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift": "00658efd8f27d9926b584d0ed714e6b3b10b220e34f4451f1d659da319e71238",
   "docs/integration/proposed/aux-native-prepared-daemon-authority/source/aux-owned-command-dispatcher.h": "ef6afc8471569816128421d15ffb19170cc48e1f113a78001db26fbf4fd3660f",
   "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
   "docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift": "ef2f6f1f7dacf34c3eb9f1e61a171845567f8cda2a906f265eafdb35b0a04ff1",
