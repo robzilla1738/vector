@@ -1,0 +1,214 @@
+--- baseline/AuxAccountsCskCoordinator.swift
++++ source/AuxAccountsCskCoordinator.swift
+@@ -8,21 +8,48 @@
+ enum AuxAccountsCskError:Error { case unavailable }
+ final class AuxAccountsCskCoordinator {
+     private let process=getpid()
++    private let retainedHomeFD:Int32?
+     private let home:String
+     private let review:ReviewedAuxSecureStoreScope
+     private let installation:AuxInstallationCommandCore
+     private let boundary:AuxSecureStoreBoundary
+-    init(home:String,review:ReviewedAuxSecureStoreScope,installation:AuxInstallationCommandCore,boundary:AuxSecureStoreBoundary)throws {
++    init(home:String,review:ReviewedAuxSecureStoreScope,installation:AuxInstallationCommandCore,boundary:AuxSecureStoreBoundary,retainedHomeDescriptor:Int32? = nil)throws {
+         guard home.hasPrefix("/"),!home.utf8.contains(0),
+               SHA256.hash(data:Data(home.utf8)).map({String(format:"%02x",$0)}).joined()==review.scope else{throw AuxAccountsCskError.unavailable}
++        if let retainedHomeDescriptor {
++            let fd=fcntl(retainedHomeDescriptor,F_DUPFD_CLOEXEC,0)
++            guard fd>=0 else{throw AuxAccountsCskError.unavailable}
++            do{try Self.requireRetainedHome(home,fd:fd)}catch{close(fd);throw error}
++            retainedHomeFD=fd
++        }else{retainedHomeFD=nil}
+         self.home=home;self.review=review;self.installation=installation;self.boundary=boundary
++    }
++    deinit{if let retainedHomeFD{close(retainedHomeFD)}}
++    private static func requireRetainedHome(_ home:String,fd:Int32)throws {
++        guard let canonical=realpath(home,nil)else{throw AuxAccountsCskError.unavailable}
++        defer{free(canonical)}
++        var held=stat(),entry=stat()
++        guard String(cString:canonical)==home,fstat(fd,&held)==0,lstat(home,&entry)==0,
++              held.st_dev==entry.st_dev,held.st_ino==entry.st_ino,
++              (held.st_mode&S_IFMT)==S_IFDIR,held.st_uid==geteuid(),held.st_mode&0o7777==0o700 else{throw AuxAccountsCskError.unavailable}
++        errno=0
++        let acl=acl_get_fd_np(fd,ACL_TYPE_EXTENDED)
++        if acl==nil && errno==ENOENT{return}
++        guard let acl else{throw AuxAccountsCskError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
++        guard acl_valid(acl)==0 else{throw AuxAccountsCskError.unavailable}
++        var aclEntry:acl_entry_t?;errno=0
++        guard acl_get_entry(acl,0,&aclEntry) == -1,errno==EINVAL,aclEntry==nil else{throw AuxAccountsCskError.unavailable}
+     }
+     // Whole synchronous callback executes under the actual OS lock AND caller's
+     // owned dispatcher lease. Never release it between JSON read and write.
+     func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {try withDirectoryLock{_ in try body()}}
+     private func withDirectoryLock<T>(_ body:(Int32)throws->T)throws->T {
+         guard getpid()==process else{throw AuxAccountsCskError.unavailable}
+-        let directory=open(home,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        let directory:Int32
++        if let retainedHomeFD {
++            try Self.requireRetainedHome(home,fd:retainedHomeFD)
++            directory=fcntl(retainedHomeFD,F_DUPFD_CLOEXEC,0)
++        }else{directory=open(home,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)}
+         guard directory>=0 else{throw AuxAccountsCskError.unavailable};defer{close(directory)}
+         var parent=stat();guard fstat(directory,&parent)==0,parent.st_uid==geteuid(),parent.st_mode & 0o077==0 else{throw AuxAccountsCskError.unavailable}
+         let fd=openat(directory,".aux-accounts-csk.lock",O_CREAT|O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)
+--- baseline/AuxNativeFreshTargetCoordinator.swift
++++ source/AuxNativeFreshTargetCoordinator.swift
+@@ -32,13 +32,14 @@
+ }
+ #else
+ struct NativeFreshTerminalSelection {
++    let context:NativeFreshStagedContext
+     let core:AuxInstallationCommandCore
+     let selection:AuxRuntimeSelection
+     let initialJournalSha256:String
+     let targetJournalSha256:String
+     let policySha256:String
+     let reservationSha256:String
+-    fileprivate init(core:AuxInstallationCommandCore,selection:AuxRuntimeSelection,initial:NativeFreshBootstrapJournal,initialSha:String,targetSha:String){self.core=core;self.selection=selection;initialJournalSha256=initialSha;targetJournalSha256=targetSha;policySha256=initial.policySha256;reservationSha256=initial.reservationSha256}
++    fileprivate init(context:NativeFreshStagedContext,core:AuxInstallationCommandCore,selection:AuxRuntimeSelection,initial:NativeFreshBootstrapJournal,initialSha:String,targetSha:String){self.context=context;self.core=core;self.selection=selection;initialJournalSha256=initialSha;targetJournalSha256=targetSha;policySha256=initial.policySha256;reservationSha256=initial.reservationSha256}
+ }
+ #endif
+ enum NativeFreshTargetOutcome {
+@@ -158,7 +159,7 @@
+             guard let current=try store.loadCurrent(),current.sha256==stored.sha256,current.journal==j,
+                   let scheme=initial.publicDescriptor["scheme"],let sigText=initial.publicDescriptor["sig_pub"],let kemText=initial.publicDescriptor["kem_pub"],let sig=Data(base64Encoded:sigText),let kem=Data(base64Encoded:kemText)else{throw NativeFreshTargetError.binding}
+             let selection=try AuxRuntimeSelection(scope:initial.scope,generationId:initial.reservationTransactionId,accessGroup:initial.accessGroup,scheme:scheme,signingPublicKey:sig,kemPublicKey:kem,targetHashes:initial.targetHashes)
+-            return .ready(.init(core:core,selection:selection,initial:initial,initialSha:initialSha,targetSha:stored.sha256))
++            return .ready(.init(context:context,core:core,selection:selection,initial:initial,initialSha:initialSha,targetSha:stored.sha256))
+ #endif
+         }
+     }
+--- baseline/AuxOwnedCommandDispatcher.swift
++++ source/AuxOwnedCommandDispatcher.swift
+@@ -10,6 +10,9 @@
+     static let shared=AuxCommandDispatcherRegistry()
+     private enum Phase { case open,retiring,closed }
+     private final class Entry {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        private var nativeFreshOwner:NativeFreshStagedContext? = nil
++#endif
+         let core:AuxInstallationCommandCore
+ #if AUX_MACOS_UTILITY_DISPATCH
+         let macOSUtilities:AuxMacOSUtilityCommandCore?
+@@ -56,6 +59,9 @@
+ #if AUX_SCOPED_SECURE_STORE_DISPATCH
+         init(_ context:ScopedAuxCommandContext){
+             core=context.installation;secureStore=context.secureStore
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            nativeFreshOwner=context.nativeFreshOwner
++#endif
+ #if AUX_MACOS_UTILITY_DISPATCH
+             macOSUtilities=nil
+ #endif
+@@ -66,6 +72,9 @@
+         // immutable utility capability. It cannot create an installation authority.
+         init(wrapping entry:Entry,utilities:AuxMacOSUtilityCommandCore){
+             core=entry.core;macOSUtilities=utilities
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            nativeFreshOwner=entry.nativeFreshOwner
++#endif
+ #if AUX_SCOPED_SECURE_STORE_DISPATCH
+             secureStore=entry.secureStore
+ #endif
+@@ -244,6 +253,11 @@
+     }
+ #endif
+ #if AUX_SCOPED_SECURE_STORE_DISPATCH
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++    convenience init(nativeFresh:NativeFreshRuntimeCapturedContext)throws {
++        try self.init(scopedTerminal:ScopedAuxCommandContext.nativeFresh(nativeFresh))
++    }
++#endif
+     init(scopedTerminal:ScopedAuxCommandContext)throws {
+         handle=try AuxCommandDispatcherRegistry.shared.install(scopedTerminal)
+ #if AUX_MACOS_UTILITY_DISPATCH
+--- baseline/AuxSecureStore.swift
++++ source/AuxSecureStore.swift
+@@ -107,9 +107,9 @@
+     private let lock=NSLock() // This instance only; not cross-process custody/CAS.
+ #if AUX_ATOMIC_CSK_DISPATCH
+     private let accounts:AuxAccountsCskCoordinator?
+-    init(review:ReviewedAuxSecureStoreScope,boundary:AuxSecureStoreBoundary,installation:AuxInstallationCommandCore,accountHome:String)throws {
++    init(review:ReviewedAuxSecureStoreScope,boundary:AuxSecureStoreBoundary,installation:AuxInstallationCommandCore,accountHome:String,retainedAccountHomeDescriptor:Int32? = nil)throws {
+         self.review=review;self.boundary=boundary
+-        accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary)
++        accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary,retainedHomeDescriptor:retainedAccountHomeDescriptor)
+     }
+     func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {
+         guard let accounts else{throw AuxAccountsCskError.unavailable};return try accounts.withAccountRegistryLock(body)
+--- baseline/ScopedAuxCommandContext.swift
++++ source/ScopedAuxCommandContext.swift
+@@ -1,6 +1,7 @@
+ // Inactive native-only capability pairing. No JS factory or runtime admission.
+ import Foundation
+ import CryptoKit
++import Darwin
+ 
+ enum ScopedAuxCommandContextError:Error {case binding,scope,logicalPolicy}
+ struct ImmutableAuxLogicalKeyPolicy {
+@@ -32,13 +33,16 @@
+     let runtimeAdmissionVerified=false
+ }
+ struct ScopedAuxCommandContext {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++    private(set) var nativeFreshOwner:NativeFreshStagedContext? = nil
++#endif
+     let installation:AuxInstallationCommandCore
+     let secureStore:AuxSecureStoreCommandCore
+     let evidence:ScopedAuxCommandEvidence
+     private struct Selector {let service:String;let account:String;let group:String}
+     private init(installation:AuxInstallationCommandCore,mode:String,transactionId:String?,journal:String?,
+                  bindingHash:String,selectors:[Selector],expectedScope:String?,securityReview:String?,reserved:[Selector]=[],
+-                 policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,runtimeGeneration:String?=nil,runtimeSelection:String?=nil,atomicAccountHome:String?=nil)throws {
++                 policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,runtimeGeneration:String?=nil,runtimeSelection:String?=nil,atomicAccountHome:String?=nil,retainedAccountHomeDescriptor:Int32?=nil)throws {
+         guard selectors.count==4,let first=selectors.first else{throw ScopedAuxCommandContextError.binding}
+         func prefix(_ value:String)throws->String {
+             let parts=value.split(separator:".",omittingEmptySubsequences:false)
+@@ -67,10 +71,10 @@
+         for key in policy.keys {guard !protected.contains(try review.selector(key)) else{throw ScopedAuxCommandContextError.binding}}
+         self.installation=installation
+ #if AUX_ATOMIC_CSK_DISPATCH
+-        if let home=atomicAccountHome {secureStore=try .init(review:review,boundary:boundary,installation:installation,accountHome:home)}
++        if let home=atomicAccountHome {secureStore=try .init(review:review,boundary:boundary,installation:installation,accountHome:home,retainedAccountHomeDescriptor:retainedAccountHomeDescriptor)}
+         else {secureStore = .init(review:review,boundary:boundary)}
+ #else
+-        guard atomicAccountHome==nil else{throw ScopedAuxCommandContextError.scope}
++        guard atomicAccountHome==nil && retainedAccountHomeDescriptor==nil else{throw ScopedAuxCommandContextError.scope}
+         secureStore = .init(review:review,boundary:boundary)
+ #endif
+         evidence = .init(mode:mode,transactionId:transactionId,journalSha256:journal,runtimeGenerationId:runtimeGeneration,runtimeSelectionSha256:runtimeSelection,installationBindingsSha256:bindingHash,scope:scope,
+@@ -111,11 +115,24 @@
+     }
+ #endif
+ #if AUX_MINIMAL_RUNTIME_DISPATCH
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++    static func nativeFresh(_ captured:NativeFreshRuntimeCapturedContext)throws->Self {
++        guard let lease=captured.owner.targetProgressLease.tryAcquire()else{throw NativeFreshRuntimeConsumerError.busy}
++        defer{lease.finish()}
++        try captured.revalidate()
++        let fd=try captured.owner.duplicateRetainedHomeDescriptor();defer{Darwin.close(fd)}
++        var result=try runtime(terminal:captured.runtime,policy:.sourceKnownV2(),boundary:ActualAuxSecureStoreBoundary(),
++            atomicAccountHome:captured.owner.canonicalHome,retainedAccountHomeDescriptor:fd)
++        result.nativeFreshOwner=captured.owner
++        try captured.revalidate()
++        return result
++    }
++#endif
+     static func runtimeSourceKnownFamiliesV2(terminal:AuxRuntimeCapturedCommandContext,boundary:AuxSecureStoreBoundary)throws->Self {
+         try runtime(terminal:terminal,policy:.sourceKnownV2(),boundary:boundary)
+     }
+     static func runtime(terminal:AuxRuntimeCapturedCommandContext,
+-                        policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,atomicAccountHome:String?=nil)throws->Self {
++                        policy:ImmutableAuxLogicalKeyPolicy,boundary:AuxSecureStoreBoundary,atomicAccountHome:String?=nil,retainedAccountHomeDescriptor:Int32?=nil)throws->Self {
+         let selection=terminal.selection
+         let selected=try AuxRuntimeSelection.roles.map{try selection.selector($0)}
+         let bindings=zip(AuxRuntimeSelection.roles,selected).map{role,s in
+@@ -131,7 +148,7 @@
+         return try .init(installation:terminal.core,mode:"runtime-target-capture",transactionId:nil,journal:nil,
+             bindingHash:digest,selectors:selected.map{.init(service:$0.service,account:$0.account,group:$0.accessGroup)},
+             expectedScope:selection.scope,securityReview:nil,policy:policy,boundary:boundary,
+-            runtimeGeneration:selection.generationId,runtimeSelection:selectionDigest,atomicAccountHome:atomicAccountHome)
++            runtimeGeneration:selection.generationId,runtimeSelection:selectionDigest,atomicAccountHome:atomicAccountHome,retainedAccountHomeDescriptor:retainedAccountHomeDescriptor)
+     }
+ #endif
+ 

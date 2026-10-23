@@ -1,0 +1,7 @@
+{
+  "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshTargetCoordinator.swift": "236ad674bdefd947861c745d585d38c96e91b6c329fbf7319b2c5190e8ff9fd4",
+  "docs/integration/proposed/aux-atomic-csk-publication/source/AuxAccountsCskCoordinator.swift": "07fc94cd45a0b1539ef2cc40fd9348e042f5d313b96c53e224ba1be75d9e5852",
+  "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c",
+  "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e",
+  "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3"
+}
