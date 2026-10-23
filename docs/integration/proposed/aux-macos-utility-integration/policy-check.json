@@ -1,0 +1,31 @@
+{
+  "format": "aux.development.host.v4.content-check.v1",
+  "checksPassed": 24,
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/check-policy.py",
+      "sha256": "3375bae3a7c23fdc0cb7a8120610f05cc54925ae2cad1c92432d00320fee57fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/tests/main.swift",
+      "sha256": "a0d76de0dcd6fa4aaa68b9ea0aacb4ccd0b72617135fe3d1d12c7c42f30c42bc"
+    }
+  ],
+  "actualProductionGraphCompiled": true,
+  "productionGraphReceipt": "docs/integration/proposed/aux-development-worker-host/evidence/current-utilities-atomic-v4-compile-only.json",
+  "sealedPolicyLoaderExecuted": false,
+  "protectedFactoryExecuted": false,
+  "securityOperations": 0,
+  "productionOSCalls": 0,
+  "productionModuleLoaded": false,
+  "signingPerformed": false,
+  "state2Authorized": false
+}

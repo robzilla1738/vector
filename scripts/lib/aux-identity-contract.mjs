@@ -144,11 +144,14 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
     let cryptoPreload = '';
     if (apps.components.daemon.cryptoRuntime) {
       const crypto = JSON.parse(await regular(join(repository, 'docs/integration/proposed/aux-crypto-stage-integration/inputs.json')));
-      const variants = crypto.variants[stage.cloudPolicy?.mode ?? 'local'];
+      const policy = stage.cloudPolicy?.mode ?? 'local';
+      const utilityPins = apps.components.daemon.macOSUtilities
+        ? JSON.parse(await regular(join(repository, 'docs/integration/proposed/aux-macos-utility-integration/inputs.json'))) : null;
+      const variants = (utilityPins ?? crypto).variants[policy];
       if (!variants || sha(texts.daemon) !== variants.sea.outputSha256 || sha(developmentText) !== variants['node-development'].outputSha256 ||
           !texts.daemon.startsWith(AUX_COLD_ENTRY_REFUSAL + crypto.preloads.sea))
         throw Error('Unreviewed state2 crypto entry projection');
-      cryptoPreload = crypto.preloads['node-development'];
+      cryptoPreload = utilityPins ? utilityPins.preloads['node-development'] : crypto.preloads['node-development'];
     }
     const generatedPrefix = AUX_COLD_ENTRY_REFUSAL + cryptoPreload + 'const { daemonResources: __auxDaemonResources, daemonMacOS: __auxDaemonMacOS, daemonAppRoot: __auxDaemonAppRoot, getAsset: __auxProvidedGetAsset } = await import("./assets.mjs");\n';
     if (typeof developmentText !== 'string' || !developmentText.startsWith(generatedPrefix) || developmentText.split(AUX_COLD_ENTRY_REFUSAL).length !== 2)

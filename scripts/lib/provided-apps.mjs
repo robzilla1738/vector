@@ -6,7 +6,8 @@ import { lstat, readdir, readFile, mkdir, mkdtemp, writeFile, rename, rm } from 
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adaptDaemonBinaryWithAuxCrypto as adaptDaemonBinary, buildDaemonNodeDevelopmentWithAuxCrypto as buildDaemonNodeDevelopment, auxCryptoSeaResources } from '../../vendor/provided/aux-crypto-stage.mjs';
+import { adaptDaemonBinaryWithMacUtilities as adaptDaemonBinary, buildDaemonNodeDevelopmentWithMacUtilities as buildDaemonNodeDevelopment, macUtilityResources } from '../../vendor/provided/aux-macos-utility-stage.mjs';
+import { auxCryptoSeaResources } from '../../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliBinary } from '../../vendor/provided/cli-adapter.mjs';
 import { CLI_COMMAND } from '../../vendor/aside/patches/brand.mjs';
 import { disabledSeed } from '../../vendor/provided/vault-product-exclusion.mjs';
@@ -96,6 +97,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       const app = join(temporary, component, target.app), files = [], removed = [];
       let executable, nodeDevelopment;
       const cryptoRuntime = component === 'daemon' ? auxCryptoSeaResources(stateIdentityVersion) : null;
+      const utilities = component === 'daemon' ? macUtilityResources(stateIdentityVersion) : null;
       for (const file of actual.components[component].files) {
         const source = await readFile(join(sourceRoots[component], file.path));
         if (hash(source) !== file.sha256) throw new Error('Static app input changed during staging');
@@ -158,7 +160,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       }
       if (nodeDevelopment) {
         const prefix = `apps/${component}/${target.app}/`;
-        for (const generated of [...(cryptoRuntime?.files ?? []), ...nodeDevelopment.files]) {
+        for (const generated of [...(cryptoRuntime?.files ?? []), ...(utilities?.files ?? []), ...nodeDevelopment.files]) {
           if (!generated.path.startsWith(prefix) || generated.path.slice(prefix.length).split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('Unexpected daemon development resource');
           const path = generated.path.slice(prefix.length);
           const destination = join(app, path);
@@ -177,6 +179,7 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       report.components[component] = { app: `${component}/${target.app}`, files, removed,
         ...(nodeDevelopment ? { nodeDevelopment: nodeDevelopment.manifest } : {}),
         ...(cryptoRuntime?.manifest ? { cryptoRuntime: cryptoRuntime.manifest } : {}),
+        ...(utilities?.manifest ? { macOSUtilities: utilities.manifest } : {}),
         executable: { codeSha256: executable.codeSha256, applied: executable.applied, assets: executable.assets,
           ...(executable.cloudPolicy ? { cloudPolicy: executable.cloudPolicy, cloudAnchors: executable.cloudAnchors } : {}) } };
     }

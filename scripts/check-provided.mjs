@@ -11,7 +11,8 @@ import { resolveCloudServicePolicy } from '../vendor/provided/cloud-service-poli
 import { providedAppRoots, providedIntegrationFiles, providedIntegrationInput } from './lib/provided-apps.mjs';
 import { providedStageInputs } from './lib/provided-stage-inputs.mjs';
 import { parseProvidedCheckArguments, resolveProvidedSourceSnapshot } from './lib/provided-source-snapshot.mjs';
-import { adaptDaemonCodeWithAuxCrypto as adaptDaemonCode, buildDaemonNodeDevelopmentWithAuxCrypto as buildDaemonNodeDevelopment, auxCryptoSeaResources } from '../vendor/provided/aux-crypto-stage.mjs';
+import { adaptDaemonCodeWithMacUtilities as adaptDaemonCode, buildDaemonNodeDevelopmentWithMacUtilities as buildDaemonNodeDevelopment, macUtilityResources } from '../vendor/provided/aux-macos-utility-stage.mjs';
+import { auxCryptoSeaResources } from '../vendor/provided/aux-crypto-stage.mjs';
 import { adaptCliCode } from '../vendor/provided/cli-adapter.mjs';
 import { findMachOSeaSection, readSeaBlob } from '../vendor/aside/lib/sea.mjs';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -116,8 +117,10 @@ for (const component of ['daemon', 'cli']) {
   const sources = new Map(appPins.components[component].files.map((file) => [file.path, file]));
   const development = component === 'daemon' ? buildDaemonNodeDevelopment(binary, cloudOptions, identityProfile, stateIdentityVersion) : null;
   const cryptoRuntime = component === 'daemon' ? auxCryptoSeaResources(stateIdentityVersion) : null;
+  const utilities = component === 'daemon' ? macUtilityResources(stateIdentityVersion) : null;
+  if (JSON.stringify(report.macOSUtilities) !== JSON.stringify(utilities?.manifest)) throw new Error('Restage current fixed macOS utilities');
   if (JSON.stringify(report.cryptoRuntime) !== JSON.stringify(cryptoRuntime?.manifest)) throw new Error('Restage current Aux crypto assets');
-  const developmentFiles = new Map([...(cryptoRuntime?.files ?? []), ...(development?.files ?? [])].map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
+  const developmentFiles = new Map([...(cryptoRuntime?.files ?? []), ...(utilities?.files ?? []), ...(development?.files ?? [])].map(file => [file.path.slice(`apps/${report.app}/`.length), file]));
   if (development && JSON.stringify(report.nodeDevelopment) !== JSON.stringify(development.manifest)) throw new Error('Restage current supplied daemon development code/assets');
   if (report.files.filter(file => file.generatedBy).length !== developmentFiles.size) throw new Error('Missing or unexpected generated daemon development resources');
   for (const [path, expected] of developmentFiles) {
