@@ -1,3 +1,15 @@
+# Background-write and interrupted-startup batch linked unsigned — 2026-10-23
+
+Parallel source work added23 guarded supplied-daemon seams covering session JSONL, attachment copies, memory/routine files, REPL mutations and producer-owned background output. Shutdown waits for actual stream closure without ending a live producer's output early. Child and descendant custody remain independently unresolved where unknown.
+
+V8 policy/v2 browser markers now recover only an interrupted, exact pre-grant prepared pair under both native locks and authenticated policy/root identity checks. Durable admitted transition precedes grant publication. Previously admitted, partial, unknown or nonempty roots refuse automatic recovery. Focused pure-policy and disposable native admission fixtures passed.
+
+Six actual Chrome shutdown phases now close new admissions and record ordered lifecycle observations. Both actual changed browser units compiled. These observations deliberately do not certify whole-browser drain or allow admitted-root recovery; late Local State/metrics/content/network/descendant writers still need closure.
+
+The corrected combined48-source Swift/12-object daemon full link passed, with unchanged pins, paired module imports and no code signature or execution. Executable SHA256: `75fa202003c8ed5f8253d91fc809e1dad3697fa3160b524ebec8392ef4dcd1af`. Exact final dormant-entry projection/syntax passed. Prior stale-source check is recorded as failed, not reused as proof. Details: `docs/integration/proposed/profile-isolation-recovery/`.
+
+A separate APFS clone-only Chromium source/build snapshot is in progress at `/private/tmp/aux-chromium-recovery-snapshot-20261023`; its progress/receipt distinguishes incomplete preparation from success. The checked overlay and GN/Ninja preparation script are committed. Full Chromium rebuild, packaging and actual protected browser/UI acceptance have not passed. Accepted app/UI and shared Chromium remain intact. Signing and release stayed separate. Remaining producer/drain/recovery implementation is listed in the batch README; no new owner setup is needed for that source work.
+
 # Early authorization and awaited-write batch linked unsigned — 2026-10-23
 
 Three parallel lanes integrated without altering the accepted app or UI. Fresh-only v7 browser-root authorization now has a retained native Owner/descriptor lease and real browser request/receipt validation before Local State reads. A discovered home-transfer/authority-registration race is corrected. Nonempty or previously marked roots refuse; existing-profile migration and restart recovery are not implemented by this grant.

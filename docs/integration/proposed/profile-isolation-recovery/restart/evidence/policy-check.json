@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "stdout": "PASS: v1-v8 decode, v8-only current daemon route, source-version separation, unchanged-source/unknown-key/CLI refusal and ad-hoc captured-signature refusal; no live Security or module execution\n",
+  "stderr": "",
+  "inputs": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-recovery/restart/source/policy-check.swift": "d90d9b12185d65db4b51e35a33ab58762e1cda0c146411ba56f6782412599499"
+  },
+  "inputsUnchanged": true,
+  "liveSecurityCalls": false,
+  "protectedIO": false,
+  "moduleLoaded": false
+}

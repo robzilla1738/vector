@@ -1,0 +1,24 @@
+{
+  "baseManifest": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-final/integration/daemon-inputs.json",
+  "baseReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-final/integration/evidence/daemon-link.json",
+  "output": "/private/tmp/aux-recovery-link-20261023",
+  "replacements": [
+    {
+      "before": "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshBootstrapPolicy.swift",
+      "after": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "beforeSha256": "dcba5bbb5baee4a5d3b248cd19bf40df35db8ca315e9529c62e255b6e6782d2e",
+      "afterSha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22"
+    },
+    {
+      "before": "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxBrowserFreshRootAdmission.swift",
+      "after": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxBrowserFreshRootAdmission.swift",
+      "beforeSha256": "2294779a7e7857518dcba38df29dfcefc3a745269d8078ad05a97a1e30e2d41b",
+      "afterSha256": "e8eedbb2bdbdcf5c7dd40115b4572acfa61ac8068c71fa63b57ee2bafffefc4c"
+    }
+  ],
+  "additions": [],
+  "checkedInputs": {},
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "additionalPrivateDefinitions": [],
+  "manifestOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-recovery/integration/daemon-inputs.json"
+}

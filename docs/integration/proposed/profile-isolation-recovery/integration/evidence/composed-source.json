@@ -1,0 +1,101 @@
+{
+  "inputSha256": "bf82847ebfcdf0aa369f9c900bcc22de0cf2bad4b24eb36ba8285ba7522bf0e0",
+  "outputSha256": "18edabeb2303d834f51f3d99effcdf1c49286fc495d76dd16cfe2e6de56a5596",
+  "changes": [
+    {
+      "name": "passive background stream lifecycle",
+      "count": 1
+    },
+    {
+      "name": "appendSessionMessageJsonlRow",
+      "count": 1
+    },
+    {
+      "name": "rewriteSessionMessageJsonlRows",
+      "count": 1
+    },
+    {
+      "name": "prepareFileAttachment",
+      "count": 1
+    },
+    {
+      "name": "atomicWrite",
+      "count": 1
+    },
+    {
+      "name": "saveDreamState",
+      "count": 1
+    },
+    {
+      "name": "ensureRoutineMemory",
+      "count": 1
+    },
+    {
+      "name": "REPL fs writeFile",
+      "count": 1
+    },
+    {
+      "name": "REPL fs mkdir",
+      "count": 1
+    },
+    {
+      "name": "REPL fs unlink",
+      "count": 1
+    },
+    {
+      "name": "REPL fs rm",
+      "count": 1
+    },
+    {
+      "name": "REPL fs rename",
+      "count": 1
+    },
+    {
+      "name": "REPL fs copyFile",
+      "count": 1
+    },
+    {
+      "name": "session directory creation",
+      "count": 1
+    },
+    {
+      "name": "session temporary directory creation",
+      "count": 1
+    },
+    {
+      "name": "background log directory",
+      "count": 1
+    },
+    {
+      "name": "background stdout stderr resource custody",
+      "count": 1
+    },
+    {
+      "name": "background detached delivery admission",
+      "count": 1
+    },
+    {
+      "name": "channel attachment restoration",
+      "count": 1
+    },
+    {
+      "name": "generated image artifact",
+      "count": 1
+    },
+    {
+      "name": "REPL display image",
+      "count": 1
+    },
+    {
+      "name": "tool edit write",
+      "count": 1
+    },
+    {
+      "name": "tool direct write and directory",
+      "count": 1
+    }
+  ],
+  "passed": true,
+  "coldRefusalPreserved": true,
+  "composedSha256": "18edabeb2303d834f51f3d99effcdf1c49286fc495d76dd16cfe2e6de56a5596"
+}
