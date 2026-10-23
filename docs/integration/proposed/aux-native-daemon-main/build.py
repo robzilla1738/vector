@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 import subprocess
+import sys
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
@@ -126,6 +127,25 @@ def main():
                 if process.returncode:
                     raise RuntimeError('Build command failed: ' + str(index))
             result['executableSha256'] = sha(output / 'Aux Daemon')
+            # Inspect actual dyld exports without executing the new binary or
+            # loading any addon. This original-module reference is distinct
+            # from future signed-module/policy and Node-API runtime acceptance.
+            reference = pins['ptyImportReference']
+            export_receipt = output / 'pty-main-exports.json'
+            metadata = subprocess.run([
+                sys.executable,
+                str(REPO / 'docs/integration/proposed/aux-native-embedded-pty-policy/check-final-exports.py'),
+                '--main', str(output / 'Aux Daemon'),
+                '--main-sha256', result['executableSha256'],
+                '--module', str(REPO / reference['path']),
+                '--module-sha256', reference['sha256'],
+                '--module-reference', '--output', str(export_receipt),
+            ], capture_output=True, text=True)
+            (output / 'pty-main-exports.log').write_text(metadata.stdout + metadata.stderr)
+            result['ptyExportMetadataExitCode'] = metadata.returncode
+            if metadata.returncode:
+                raise RuntimeError('Actual executable Node-API export check failed')
+            result['ptyExportMetadataSha256'] = sha(export_receipt)
         result['passed'] = True
     except Exception as error:
         failure = error

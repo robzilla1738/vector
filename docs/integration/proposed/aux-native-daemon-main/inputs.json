@@ -11,15 +11,13 @@
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "f0f9566f4640edc715799b2f94745267b909c282cde319d7f995fd61123dc545",
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "4803cac60f4d92c5019efc4c139dd42fa2d6b957316567c6b07993a06dc2734f",
     "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
-    "docs/integration/proposed/aux-native-daemon-main/build.py": "e08167445b84482a90b4b1ad2a3bb27b1bae77bbe9f3fc925fbeed88b5820adc",
+    "docs/integration/proposed/aux-native-daemon-main/build.py": "7c076b583b8fbb7fffbe336e376d1549d583a83a395c20cec1d998fd7dfdea43",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.cc": "35a2635bacf6f4fa1572c0506aae05bc08f673f12ad40c705baf2ac32a8b947d",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.h": "3e6254dfce678e0036cb2bbfd7956ababea4cb4dd4375f5ae39c4705a2ce184d",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxNativeDaemonMain.cc": "16a394a12e8ab2d8541f172c4776f99cefce14a4098ea0697fae4d015c19cff3",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
     "docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
-    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
-    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift": "dc87218812c7e51b5fb846ec0cbd53f6b044edfeb5fe3ea80c2ec62e95e0082e",
     "docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.cc": "4864d389114736b0c3ac8d5439e5715f67af0b1a227deb7de46a5e9fe0580f2c",
     "docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.h": "8fc9494209576427fb37038a1862eacb42ed1c59c28cba1e5010483c5158ab62",
     "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxFreshColdBootstrapNativeBridge.h": "78009c7c8d1dfca0685bfda9b3649bee300c9eb4d43330a89241056b132b7782",
@@ -71,7 +69,11 @@
     "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
     "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040",
     "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f",
-    "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "2c65730b0cb5a232abc3b7c041ba9b9f0a53680985010484bec1087d445cf975",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/check-final-exports.py": "b048775d7cf70938d08d0831cea6c2d6f604b9b3d31f3be65ac571b64a6d6615",
+    "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a"
   },
   "swiftSources": [
     "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
@@ -85,8 +87,8 @@
     "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
     "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
     "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift",
-    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift",
-    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxFreshBootstrapPolicy.swift",
+    "docs/integration/proposed/aux-native-embedded-pty-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
     "docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
     "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
     "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
@@ -225,5 +227,13 @@
     "AUX_NATIVE_DAEMON_AUTHORITY_SERVER=1"
   ],
   "authorityRpcProtocolVersion": 4,
-  "publicationAckAfterHolderFence": true
+  "publicationAckAfterHolderFence": true,
+  "ptyImportReference": {
+    "path": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+    "sha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+    "futureSignedOutput": false,
+    "actualNodeApiRequireAccepted": false
+  },
+  "embeddedPtyPolicySuccessor": "085867750",
+  "finalExportMetadataRequired": true
 }

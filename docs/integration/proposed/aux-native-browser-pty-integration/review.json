@@ -1,0 +1,21 @@
+{
+  "format": "aux.browser-pty-policy.static-review.v1",
+  "composition": "out/native-reuse-composition-aux-browser-pty-policy",
+  "compositionManifestSha256": "03d42b6f3c2ddc183d41030db12b5615cb84c2d0e78bd64c2a0750ca052c5df5",
+  "nativeRecords": 826,
+  "binaryAssets": 23,
+  "changedSourceRecords": 2,
+  "unchangedSourceRecords": 824,
+  "unchangedBinaryAssets": 23,
+  "parentReaderAndDecoderPaired": true,
+  "mainSwiftInputs": 46,
+  "mainCppInputs": 11,
+  "previousMainInputsPreservedExactly": true,
+  "sourceChecksPassed": true,
+  "nativeApplied": false,
+  "compiled": false,
+  "executableRun": false,
+  "moduleLoaded": false,
+  "futureSignedPtyArtifactsAvailable": false,
+  "referenceExportsScope": "supplied original runtime and original PTY only"
+}

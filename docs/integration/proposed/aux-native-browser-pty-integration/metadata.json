@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+      "baselineSha256": "c5e25b216dd59496a00acff534434ed78b7601ef7bcbc8d7faccf998e6b0fb6d",
+      "outputSha256": "63a0203e6646c58bf5b303b73407e2d72356c694b836e5aba1b73f175afaaef5",
+      "source": "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxAuthenticatedChildParentPolicyReader.swift"
+    },
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "baselineSha256": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
+      "outputSha256": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+      "source": "docs/integration/proposed/aux-native-parent-pty-policy/source/AuxFreshBootstrapPolicy.swift"
+    }
+  ],
+  "patchSha256": "f318acaf3b9e1cd17dccde1710990b17edbe90c2c79fd6f7845ead36e906ad33",
+  "applied": false,
+  "compiled": false
+}
