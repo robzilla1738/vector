@@ -1,0 +1,23 @@
+{
+  "format": "aux.gateway.checkout-review.v1",
+  "checkedAt": "2026-10-23T06:14:54.721770+00:00",
+  "team": "robzilla1738s-projects",
+  "teamPlan": "Pro",
+  "source": "Actual logged-in personal-team Vercel checkout via desktop controls",
+  "creditUsd": 10,
+  "processingFeeUsd": 0.59,
+  "estimatedTaxUsd": 0.99,
+  "displayedTotalUsd": 11.58,
+  "priorApprovedPurchaseCeilingUsd": 12,
+  "auxTestSpendCapUsd": 5,
+  "autoReloadEnabled": false,
+  "creditsExpireAfterYears": 1,
+  "termsUrl": "https://vercel.com/legal/ai-product-terms",
+  "payActionAcceptsTerms": true,
+  "explicitTermsConfirmationRequested": true,
+  "termsAcceptanceConfirmed": false,
+  "payClicked": false,
+  "purchaseSucceeded": false,
+  "providerInferencePerformed": false,
+  "paymentDetailsRecorded": false
+}

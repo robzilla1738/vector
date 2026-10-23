@@ -1,3 +1,11 @@
+# Operator recovery job implementation underway; Gateway checkout awaits consent — 2026-10-23
+
+The inactive macOS27 descendant observer now has one actual serialized syntax/link-only pass40009 against the real SDK/EndpointSecurity/libbsm. Its source required no changes. The library was not loaded, no client/factory was invoked and no entitlement/signature/process observation changed. Initial population, delivery completion and whole-subtree drain remain unproven; no product registration or startup claim follows. Exact receipt: `docs/integration/proposed/aux-native-es-descendant-observer-check/evidence/receipt.json`.
+
+A concrete local operator capture/delivery/retry/retention producer is being implemented against the actual encrypted bundle format. It will not establish independent remote custody, activate a scheduler or send data/alerts externally. The previous paired unsigned candidate and accepted UI remain unchanged.
+
+Actual personal Vercel checkout again shows$10 credit+$0.59 fee+$0.99 estimated tax=$11.58, with auto-reload disabled and a one-year credit lifetime. Pay explicitly also accepts AI Product Terms. Checkout is prepared but unsubmitted; action-time explicit terms/payment confirmation was requested, and no answer has been received. Existing purchase ceiling$12 and AI-test cap$5 remain. Nonsecret evidence: `services/aux-cloud/evidence/gateway-checkout-review.json`. No paid request, terms acceptance, new provider credential, new email, production activation or owner-data modification occurred.
+
 # Paired native entry candidate packaged; production profile prepared — 2026-10-23
 
 Actual package27703 passed: new separate `out/provided-candidate-aux-native-entry-paired/Aux.app`,10766 supplied resources and418 native leaves. Independent actual-copy checks match the new daemon `0c335eb4102383f8b9b020fcb2cc7554ddd57ef5957b8549d20eaa60e3c0644e` to its compiled fixed reader and both dedicated entry/owned-loader resources. Ordinary index bytes remain `e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3`. All1217 packaged Agent files, including five CSS files, match the preceding recovery-enrollment UI exactly. Evidence: `docs/integration/proposed/aux-native-current-entry-reader-build/evidence/actual-paired-package.json`.
