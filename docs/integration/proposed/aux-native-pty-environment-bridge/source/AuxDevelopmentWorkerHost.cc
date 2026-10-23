@@ -24,6 +24,9 @@ extern "C" void AuxReleaseSignedDevelopmentOwner(void*);
 extern "C" int32_t AuxCloseDevelopmentOwnerOSAdmission(void*);
 
 namespace {
+// Captured at image initialization, not a lazy singleton in a fork child.
+// Inspect before any host mutex or V8 API; inherited locks may be held forever.
+const pid_t kHostProcess = getpid();
 struct Owner {
   const uint64_t handle;
   void* const retained;
@@ -205,7 +208,8 @@ void DetachCompletedEnvironment(const std::shared_ptr<Worker>& worker) {
   }
   if (!worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown) Registry().retained.erase(worker->generation);
 }
-std::shared_ptr<PtyReservation> LookupPty(void* token) {
+std::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {
+  if (getpid() != kHostProcess) return nullptr;
   std::lock_guard<std::mutex> lock(Registry().mutex);
   auto found = Registry().pty.find(token);
   return found == Registry().pty.end() ? nullptr : found->second;
@@ -295,7 +299,8 @@ class Initialization {
 
 // These are native producer entry points only. In particular they are not
 // properties on the owned NAPI dispatcher and accept no JS routing authority.
-extern "C" void* AuxNativePtyBeginCurrent(void) {
+extern "C" void* AuxNativePtyBeginCurrent(void) noexcept {
+  if (getpid() != kHostProcess) return nullptr;
   try {
     auto* isolate = v8::Isolate::GetCurrent();
     if (!isolate || isolate->GetCurrentContext().IsEmpty()) return nullptr;
@@ -324,7 +329,8 @@ extern "C" void* AuxNativePtyBeginCurrent(void) {
     return reservation.get();
   } catch (...) { return nullptr; }
 }
-extern "C" int32_t AuxNativePtyCanSpawn(void* token) {
+extern "C" int32_t AuxNativePtyCanSpawn(void* token) noexcept {
+  if (getpid() != kHostProcess) return 0;
   auto reservation = LookupPty(token);
   if (!reservation || getpid() != reservation->process) return 0;
   auto worker = reservation->worker;
@@ -334,7 +340,8 @@ extern "C" int32_t AuxNativePtyCanSpawn(void* token) {
       !worker->terminal && !worker->initializing && !worker->environment_detached &&
       worker->owner == reservation->owner;
 }
-extern "C" void AuxNativePtySpawnFailed(void* token) {
+extern "C" void AuxNativePtySpawnFailed(void* token) noexcept {
+  if (getpid() != kHostProcess) return;
   auto reservation = LookupPty(token);
   if (!reservation || getpid() != reservation->process) return;
   auto worker = reservation->worker;
@@ -359,7 +366,8 @@ extern "C" void AuxNativePtySpawnFailed(void* token) {
   if (closed) worker->Close();
   DetachCompletedEnvironment(worker);
 }
-extern "C" void AuxNativePtyChildCreated(void* token, int64_t child) {
+extern "C" void AuxNativePtyChildCreated(void* token, int64_t child) noexcept {
+  if (getpid() != kHostProcess) return;
   auto reservation = LookupPty(token);
   if (!reservation || getpid() != reservation->process) return;
   auto worker = reservation->worker;
@@ -379,7 +387,8 @@ extern "C" void AuxNativePtyChildCreated(void* token, int64_t child) {
   ++worker->pty_direct;
 }
 extern "C" void AuxNativePtyDirectWaitResult(void* token, int64_t result,
-                                             int32_t status) {
+                                             int32_t status) noexcept {
+  if (getpid() != kHostProcess) return;
   auto reservation = LookupPty(token);
   if (!reservation || getpid() != reservation->process) return;
   auto worker = reservation->worker;

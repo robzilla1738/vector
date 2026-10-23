@@ -2,7 +2,7 @@
 
 This is a distinct host-source successor, paired with native-only producer hooks. It does not modify the historical daemon inputs, signed PTY addon, spawn helper, embedded v3 policy, startup gate, accepted app or UI.
 
-`AuxNativePtyBeginCurrent` looks up the actual current Node Environment through V8 and the native host registry. It validates process, creator thread, isolate, event loop, generation-specific active Worker, completed authenticated factory, and open admission. It reserves the exact Worker and authenticated Owner before callback-capable producer argument/property reads. No JS Environment, generation, PID or helper path supplies authority.
+`AuxNativePtyBeginCurrent` looks up the actual current Node Environment through V8 and the native host registry. It validates process, creator thread, isolate, event loop, generation-specific active Worker, completed authenticated factory, and open admission. It reserves the exact Worker and authenticated Owner before callback-capable producer argument/property reads. No JS Environment, generation, PID or helper path supplies authority. Every bridge API rejects a changed process against an image-initialized PID before any mutex or V8 lookup, including a fork child with inherited locked mutexes. The C ABI is `noexcept` in C++; post-spawn failures cannot unwind into a false no-child cancellation.
 
 `CanSpawn` repeats the real native-context/admission checks after argument conversion, immediately before every spawn attempt. Cross-thread close after that check may still race the syscall; the pending reservation remains counted until native failure or actual child publication, so close cannot transiently report drain or release ownership.
 
