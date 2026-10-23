@@ -1,0 +1,195 @@
+{
+  "format": "aux.existing-migration-native-producer.boundary.v1",
+  "staticOnly": true,
+  "protectedCallsExecuted": false,
+  "newCustodyProofCreated": false,
+  "actualFindings": [
+    "Historical helper validates actual current dynamic signature and a single fixed already-Aux entitlement group, but Gate also relies on environment approval and original interposer symbols; it is not a clean native migration producer.",
+    "Historical inspect performs exact omitted-group attributes-only DP queries and returns status/group hash, not row data or durable ownership.",
+    "Current selected dev policy authenticates Aux-v2 selection fields; using it as implicit authorization for historical source capture would widen its contract.",
+    "Fresh-only authenticated policy/home cannot be cast to existing-home migration custody; fresh guard owner explicitly refuses unknown legacy parent state.",
+    "ExistingTerminalCskHandoff removes caller DK but remains external captured terminal consumer; no source row provenance or process custody is gained."
+  ],
+  "smallestRequiredNativeProducer": {
+    "owner": "real early native existing-home migration coordinator, before profiles/Node/children receive the home",
+    "authority": "separately authenticated legacy migration resource with exact approved home/scope/source physical binding and actual current signed host/group entitlement validation",
+    "closedCohort": "real retained native process/worker/profile close-and-drain handles plus descendant/peer lifetime, not environment flags, advisory lock, disk JSON or caller PID",
+    "query": "single exact fixed prefixed old-selector DP read returning attributes+Data; validate returned service/account/group against authenticated fixed policy and actual effective entitlement; no fallback group/enumeration/owner product selector",
+    "result": "typed missing/unavailable/invalid/data observations only, bound to genuine retained native coordinator; unavailable never absence",
+    "nextConsumers": [
+      "four-row inspect/recovery archive + additive create-only transaction",
+      "terminal preserved authority + DurableCapturedCskHandoff paired by ExistingTerminalCskHandoff"
+    ]
+  },
+  "cannotImplementCustodyFromCurrentSources": "No existing-home native custody producer exists in current guard. A fabricated private-init token based only on these public/static observations would falsely promote them to migration admission.",
+  "inputs": [
+    {
+      "path": "vendor/provided/native/development-dp-scope-helper.mm",
+      "sha256": "21fcf19fc86f522ebeadfda99b58e76a8144d39e5d2ea42f1116eb7ce3f04570",
+      "anchors": [
+        {
+          "anchor": "bool DevelopmentSignature()",
+          "lines": [
+            19
+          ]
+        },
+        {
+          "anchor": "groups.count==1",
+          "lines": [
+            36
+          ]
+        },
+        {
+          "anchor": "bool Gate()",
+          "lines": [
+            43
+          ]
+        },
+        {
+          "anchor": "getenv(\"AUX_DP_PROBE_APPROVED\")",
+          "lines": [
+            44
+          ]
+        },
+        {
+          "anchor": "NSString *service=[prefix stringByAppendingString:@\"aside.install\"]",
+          "lines": [
+            58
+          ]
+        },
+        {
+          "anchor": "kSecReturnAttributes",
+          "lines": [
+            65
+          ]
+        },
+        {
+          "anchor": "kSecAttrAccessGroup",
+          "lines": [
+            68
+          ]
+        },
+        {
+          "anchor": "napi_set_named_property(env,result,\"accessGroupHashes\",groups)",
+          "lines": [
+            73
+          ]
+        }
+      ]
+    },
+    {
+      "path": "vendor/provided/native/keychain-query-map.mm",
+      "sha256": "b5f9d51bdc0cdb6ab4da64882ee7deffb452af125511a00a52534aaa25cc3aab",
+      "anchors": [
+        {
+          "anchor": "[result removeObjectForKey:(__bridge id)kSecAttrAccessGroup];",
+          "lines": [
+            55
+          ]
+        },
+        {
+          "anchor": "NSString *Isolate(",
+          "lines": [
+            24
+          ]
+        },
+        {
+          "anchor": "return Map(input, scope, false, 0, &identity);",
+          "lines": [
+            103
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900",
+      "anchors": [
+        {
+          "anchor": "let selection:AuxRuntimeSelection",
+          "lines": [
+            57
+          ]
+        },
+        {
+          "anchor": "object[\"home\"] as? String==AuxReviewedDevelopmentIdentity.home",
+          "lines": [
+            80
+          ]
+        },
+        {
+          "anchor": "let selection=try AuxRuntimeSelection(",
+          "lines": [
+            93
+          ]
+        },
+        {
+          "anchor": "captured.accessGroups==[AuxReviewedDevelopmentIdentity.group]",
+          "lines": [
+            106
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f",
+      "anchors": [
+        {
+          "anchor": "fileprivate init(contents:AuxDevelopmentPolicyContents",
+          "lines": [
+            18
+          ]
+        },
+        {
+          "anchor": "SecCodeValidateFileResource",
+          "lines": [
+            141
+          ]
+        },
+        {
+          "anchor": "try images(bundle:bundle,policy:policy,requirement:requirement);try home()",
+          "lines": [
+            143
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
+      "anchors": [
+        {
+          "anchor": "func createFreshHome()",
+          "lines": [
+            21
+          ]
+        },
+        {
+          "anchor": "let writerCustodyVerified=false",
+          "lines": [
+            16
+          ]
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/aux-disposable-selector-bindings-v2/review.json",
+      "sha256": "50285c5b186ee778148821a5ee133548e0cc3ef492e32fd09f5975e15e3afe46",
+      "anchors": [
+        {
+          "anchor": "\"scope\"",
+          "lines": [
+            4
+          ]
+        },
+        {
+          "anchor": "\"bindingsSha256\"",
+          "lines": [
+            15
+          ]
+        }
+      ]
+    }
+  ]
+}
