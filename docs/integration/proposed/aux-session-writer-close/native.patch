@@ -1,0 +1,603 @@
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -258,6 +258,18 @@
+   command_storage_manager_->SaveWithCompletion(std::move(report));
+ }
+ 
++void SessionServiceBase::CloseCommandWriterAdmissionAndObserve(
++    base::OnceCallback<void(sessions::SessionManagerCloseObservation)> done) {
++  if (!command_storage_manager_) {
++    sessions::SessionManagerCloseObservation result;
++    result.manager_unavailable = true;
++    auto report = base::BindPostTaskToCurrentDefault(std::move(done));
++    std::move(report).Run(std::move(result));
++    return;
++  }
++  command_storage_manager_->CloseWriterAdmissionAndObserve(std::move(done));
++}
++
+ void SessionServiceBase::SetTabWindow(SessionID window_id, SessionID tab_id) {
+   if (!ShouldTrackChangesToWindow(window_id)) {
+     return;
+--- a/chrome/browser/sessions/session_service_base.h
++++ b/chrome/browser/sessions/session_service_base.h
+@@ -25,6 +25,7 @@
+ #include "components/sessions/core/command_storage_manager_delegate.h"
+ #include "components/sessions/core/session_service_commands.h"
+ #include "components/sessions/core/session_write_completion.h"
++#include "components/sessions/core/session_writer_admission.h"
+ #include "components/sessions/core/tab_restore_service_client.h"
+ #include "content/public/browser/web_contents.h"
+ #include "ui/base/mojom/window_show_state.mojom-forward.h"
+@@ -86,6 +87,11 @@
+   // their existing backend(s), with actual asynchronous write outcomes.
+   void ResetFromCurrentBrowsersWithWriteCompletion(
+       base::OnceCallback<void(sessions::SessionWriteCompletion)> done);
++
++  // Native owning-service entry; permanent closure of this command writer,
++  // not profile/renderer shutdown or authorization to migrate its files.
++  void CloseCommandWriterAdmissionAndObserve(
++      base::OnceCallback<void(sessions::SessionManagerCloseObservation)> done);
+ 
+   // Associates a tab with a window.
+   void SetTabWindow(SessionID window_id, SessionID tab_id);
+--- a/components/sessions/core/command_storage_backend.cc
++++ b/components/sessions/core/command_storage_backend.cc
+@@ -478,7 +478,11 @@
+     std::vector<std::unique_ptr<SessionCommand>> commands,
+     bool truncate,
+     base::OnceClosure error_callback) {
+-  AppendCommandsImpl(std::move(commands), truncate, std::move(error_callback));
++  if (!writer_admission_.Admit()) return;
++  const auto outcome = ToObservedOutcome(AppendCommandsImpl(
++      std::move(commands), truncate, std::move(error_callback)));
++  if (outcome != SessionBackendWriteOutcome::kWritten)
++    writer_admission_.ObserveFailedWrite();
+ }
+ 
+ void CommandStorageBackend::AppendCommandsWithCompletion(
+@@ -486,8 +490,19 @@
+     bool truncate,
+     base::OnceClosure error_callback,
+     base::OnceCallback<void(SessionBackendWriteOutcome)> completion) {
+-  const WriteStatus status = AppendCommandsImpl(
+-      std::move(commands), truncate, std::move(error_callback));
++  SessionBackendWriteOutcome outcome = SessionBackendWriteOutcome::kAdmissionClosed;
++  if (writer_admission_.Admit()) {
++    outcome = ToObservedOutcome(AppendCommandsImpl(
++        std::move(commands), truncate, std::move(error_callback)));
++    if (outcome != SessionBackendWriteOutcome::kWritten)
++      writer_admission_.ObserveFailedWrite();
++  }
++  callback_task_runner_->PostTask(
++      FROM_HERE, base::BindOnce(std::move(completion), outcome));
++}
++
++SessionBackendWriteOutcome CommandStorageBackend::ToObservedOutcome(
++    WriteStatus status) {
+   SessionBackendWriteOutcome outcome;
+   switch (status) {
+     case WriteStatus::kUnknown:
+@@ -509,8 +524,26 @@
+       outcome = SessionBackendWriteOutcome::kEncryptionUnavailable;
+       break;
+   }
++  return outcome;
++}
++
++void CommandStorageBackend::CloseWriterAdmissionAndObserve(
++    base::OnceCallback<void(SessionBackendCloseObservation)> done) {
++  CHECK(owning_task_runner()->RunsTasksInCurrentSequence());
++  writer_admission_.Close();
++  // Do NOT call CloseFile(): it deletes an incomplete session. Preserve bytes.
++  open_file_.reset();
++  SessionBackendCloseObservation result;
++  result.kind = is_encrypted() ? SessionBackendKind::kEncrypted
++                               : SessionBackendKind::kClear;
++  result.admission_closed = writer_admission_.closed();
++  result.owning_sequence_observed = true;
++  result.owned_file_object_released = !open_file_;
++  result.refused_requests = writer_admission_.refused();
++  result.failed_write_returns = writer_admission_.failed_writes();
++  result.accounting_unknown = writer_admission_.unknown();
+   callback_task_runner_->PostTask(
+-      FROM_HERE, base::BindOnce(std::move(completion), outcome));
++      FROM_HERE, base::BindOnce(std::move(done), result));
+ }
+ 
+ CommandStorageBackend::WriteStatus CommandStorageBackend::AppendCommandsImpl(
+@@ -620,6 +653,11 @@
+ 
+ CommandStorageBackend::ReadCommandsResult
+ CommandStorageBackend::ReadLastSessionCommands() {
++  if (!writer_admission_.Admit()) {
++    ReadCommandsResult result;
++    result.error_reading = true;
++    return result;
++  }
+   const base::TimeTicks start_time = base::TimeTicks::Now();
+   InitIfNecessary();
+ 
+@@ -648,6 +686,11 @@
+ 
+ CommandStorageBackend::ReadCommandsResult
+ CommandStorageBackend::ReadLastSessionCommandsPreservingFiles() {
++  if (!writer_admission_.Admit()) {
++    ReadCommandsResult result;
++    result.error_reading = true;
++    return result;
++  }
+   // FindLastSessionFile is a const directory/header/marker read. Do not call
+   // InitIfNecessary: it deletes all older and invalid session candidates.
+   const auto info = inited_ ? last_session_info_ : FindLastSessionFile();
+@@ -664,6 +707,7 @@
+ }
+ 
+ void CommandStorageBackend::DeleteLastSession() {
++  if (!writer_admission_.Admit()) return;
+   InitIfNecessary();
+   if (last_session_info_) {
+     VLOG(1)
+@@ -675,6 +719,7 @@
+ }
+ 
+ void CommandStorageBackend::MoveCurrentSessionToLastSession() {
++  if (!writer_admission_.Admit()) return;
+   InitIfNecessary();
+   CloseFile();
+   DeleteLastSession();
+--- a/components/sessions/core/command_storage_backend.h
++++ b/components/sessions/core/command_storage_backend.h
+@@ -24,6 +24,7 @@
+ #include "components/sessions/core/command_storage_manager.h"
+ #include "components/sessions/core/session_command.h"
+ #include "components/sessions/core/session_write_completion.h"
++#include "components/sessions/core/session_writer_admission.h"
+ #include "components/sessions/core/sessions_export.h"
+ 
+ namespace base {
+@@ -125,6 +126,12 @@
+       base::OnceClosure error_callback,
+       base::OnceCallback<void(SessionBackendWriteOutcome)> completion);
+ 
++  // Must be posted on owning_task_runner after manager admission closes.
++  // Permanently fences this instance; releases the owned File without cleanup
++  // deletion, initialization or reopening. Not a durability/global barrier.
++  void CloseWriterAdmissionAndObserve(
++      base::OnceCallback<void(SessionBackendCloseObservation)> done);
++
+   bool inited_for_testing() const { return inited_; }
+ 
+   // Parses out the timestamp from a path pointing to a session file.
+@@ -189,6 +196,9 @@
+       std::vector<std::unique_ptr<SessionCommand>> commands,
+       bool truncate,
+       base::OnceClosure error_callback);
++
++  static SessionBackendWriteOutcome ToObservedOutcome(WriteStatus status);
++  SessionWriterAdmission writer_admission_;
+ 
+   static bool IsError(WriteStatus status) {
+     return status != WriteStatus::kSuccess;
+--- a/components/sessions/core/command_storage_manager.cc
++++ b/components/sessions/core/command_storage_manager.cc
+@@ -191,7 +191,7 @@
+         base::BindOnce(preserve_files
+                            ? &CommandStorageBackend::ReadLastSessionCommandsPreservingFiles
+                            : &CommandStorageBackend::ReadLastSessionCommands,
+-                       backend.get()),
++                       backend),
+         base::BindOnce(&OnBackendReadFinished, /*saved_result=*/nullptr,
+                        std::move(callback)));
+   }
+@@ -289,6 +289,7 @@
+ void CommandStorageManager::OnEncryptorReady(
+     base::TimeTicks start_time,
+     scoped_refptr<os_crypt_async::Encryptor> encryptor) {
++  if (!writer_admission_.Admit()) return;
+   CHECK(ShouldWriteEncryptedFiles());
+   CHECK(encrypted_backend_ == nullptr);
+   base::UmaHistogramTimes(
+@@ -299,13 +300,23 @@
+       /*clock=*/nullptr);
+ 
+   std::vector<base::OnceClosure> ops = std::move(pending_encrypted_ops_);
+-  for (base::OnceClosure& op : ops) {
+-    std::move(op).Run();
++  active_encryption_replay_operations_ = ops.size();
++  auto weak = weak_factory_.GetWeakPtr();
++  for (size_t i = 0; i < ops.size(); ++i) {
++    std::move(ops[i]).Run();
++    if (!weak) return;
++    --active_encryption_replay_operations_;
++    if (writer_admission_.closed()) {
++      RetainUnrunSessionOperations(pending_encrypted_ops_, ops, i + 1);
++      active_encryption_replay_operations_ = 0;
++      return;
++    }
+   }
+ }
+ 
+ void CommandStorageManager::ScheduleCommand(
+     std::unique_ptr<SessionCommand> command) {
++  if (!writer_admission_.Admit()) return;
+   DCHECK(command);
+   commands_since_reset_++;
+   pending_commands_.push_back(std::move(command));
+@@ -321,6 +332,7 @@
+ 
+ void CommandStorageManager::AppendRebuildCommands(
+     std::vector<std::unique_ptr<SessionCommand>> commands) {
++  if (!writer_admission_.Admit()) return;
+   commands_since_reset_ += commands.size();
+   pending_commands_.insert(pending_commands_.end(),
+                            std::make_move_iterator(commands.begin()),
+@@ -328,6 +340,7 @@
+ }
+ 
+ void CommandStorageManager::EraseCommand(SessionCommand* old_command) {
++  if (!writer_admission_.Admit()) return;
+   auto it = std::ranges::find(pending_commands_, old_command,
+                               &std::unique_ptr<SessionCommand>::get);
+   CHECK(it != pending_commands_.end());
+@@ -339,6 +352,7 @@
+ void CommandStorageManager::SwapCommand(
+     SessionCommand* old_command,
+     std::unique_ptr<SessionCommand> new_command) {
++  if (!writer_admission_.Admit()) return;
+   auto it = std::ranges::find(pending_commands_, old_command,
+                               &std::unique_ptr<SessionCommand>::get);
+   CHECK(it != pending_commands_.end());
+@@ -346,12 +360,14 @@
+ }
+ 
+ void CommandStorageManager::ClearPendingCommands() {
++  if (!writer_admission_.Admit()) return;
+   DCHECK_GE(commands_since_reset_, static_cast<int>(pending_commands_.size()));
+   commands_since_reset_ -= static_cast<int>(pending_commands_.size());
+   pending_commands_.clear();
+ }
+ 
+ void CommandStorageManager::StartSaveTimer() {
++  if (!writer_admission_.Admit()) return;
+   // Don't start a timer when testing.
+   if (delegate_->ShouldUseDelayedSave() &&
+       base::SingleThreadTaskRunner::HasCurrentDefault() && !HasPendingSave()) {
+@@ -364,12 +380,20 @@
+ }
+ 
+ void CommandStorageManager::Save() {
++  if (!writer_admission_.Admit()) return;
+   SaveImpl({});
+ }
+ 
+ void CommandStorageManager::SaveWithCompletion(
+     base::OnceCallback<void(SessionWriteCompletion)> done) {
+-  SaveImpl(base::BindPostTaskToCurrentDefault(std::move(done)));
++  auto report = base::BindPostTaskToCurrentDefault(std::move(done));
++  if (!writer_admission_.Admit()) {
++    SessionWriteCompletion result;
++    result.backend_outcomes.push_back(SessionBackendWriteOutcome::kAdmissionClosed);
++    std::move(report).Run(std::move(result));
++    return;
++  }
++  SaveImpl(std::move(report));
+ }
+ 
+ void CommandStorageManager::SaveImpl(
+@@ -384,6 +408,17 @@
+     if (done) {
+       SessionWriteCompletion result;
+       result.backend_outcomes.push_back(SessionBackendWriteOutcome::kOwnerLost);
++      std::move(done).Run(std::move(result));
++    }
++    return;
++  }
++
++  // OnWillSaveCommands may synchronously close this manager.
++  if (writer_admission_.closed()) {
++    writer_admission_.Admit();
++    if (done) {
++      SessionWriteCompletion result;
++      result.backend_outcomes.push_back(SessionBackendWriteOutcome::kAdmissionClosed);
+       std::move(done).Run(std::move(result));
+     }
+     return;
+@@ -498,16 +533,63 @@
+   }
+ }
+ 
++void CommandStorageManager::CloseWriterAdmissionAndObserve(
++    base::OnceCallback<void(SessionManagerCloseObservation)> done) {
++  writer_admission_.Close();
++  weak_factory_for_timer_.InvalidateWeakPtrs();
++  SessionManagerCloseObservation initial;
++  initial.admission_closed = writer_admission_.closed();
++  initial.admission_accounting_unknown = writer_admission_.unknown();
++  initial.unsubmitted_commands = pending_commands_.size();
++  initial.unsubmitted_reset = pending_reset_;
++  initial.deferred_encryption_operations = pending_encrypted_ops_.size();
++  initial.active_encryption_replay_operations = active_encryption_replay_operations_;
++  initial.refused_requests_at_close = writer_admission_.refused();
++  initial.required_encrypted_backend_missing =
++      ShouldWriteEncryptedFiles() && !encrypted_backend_;
++  auto report = base::BindPostTaskToCurrentDefault(std::move(done));
++  auto observe = base::BarrierCallback<SessionBackendCloseObservation>(
++      encrypted_backend_ ? 2 : 1,
++      base::BindOnce(
++          [](SessionManagerCloseObservation result,
++             base::OnceCallback<void(SessionManagerCloseObservation)> callback,
++             std::vector<SessionBackendCloseObservation> observations) {
++            result.backends = std::move(observations);
++            std::move(callback).Run(std::move(result));
++          }, std::move(initial), std::move(report)));
++  for (auto backend : {backend_, encrypted_backend_}) {
++    if (!backend) continue;
++    const auto kind = backend == encrypted_backend_ ? SessionBackendKind::kEncrypted
++                                                    : SessionBackendKind::kClear;
++    auto completion = base::BindOnce(
++        [](base::RepeatingCallback<void(SessionBackendCloseObservation)> callback,
++           SessionBackendCloseObservation result) { callback.Run(result); },
++        observe);
++    if (!backend_task_runner_->PostNonNestableTask(
++            FROM_HERE,
++            base::BindOnce(&CommandStorageBackend::CloseWriterAdmissionAndObserve,
++                           std::move(backend), std::move(completion)))) {
++      SessionBackendCloseObservation result;
++      result.kind = kind;
++      result.task_rejected = true;
++      observe.Run(result);
++    }
++  }
++}
++
+ bool CommandStorageManager::HasPendingSave() const {
+   return weak_factory_for_timer_.HasWeakPtrs();
+ }
+ 
+ void CommandStorageManager::MoveCurrentSessionToLastSession() {
++  if (!writer_admission_.Admit()) return;
++  auto weak = weak_factory_.GetWeakPtr();
+   Save();
++  if (!weak || !writer_admission_.Admit()) return;
+   backend_task_runner_->PostNonNestableTask(
+       FROM_HERE,
+       base::BindOnce(&CommandStorageBackend::MoveCurrentSessionToLastSession,
+-                     backend_.get()));
++                     backend_));
+   if (ShouldWriteEncryptedFiles()) {
+     if (!encrypted_backend_) {
+       // This should be uncommon, but could occur if OnEncryptorReady is slow.
+@@ -521,14 +603,15 @@
+     backend_task_runner_->PostNonNestableTask(
+         FROM_HERE,
+         base::BindOnce(&CommandStorageBackend::MoveCurrentSessionToLastSession,
+-                       encrypted_backend_.get()));
++                       encrypted_backend_));
+   }
+ }
+ 
+ void CommandStorageManager::DeleteLastSession() {
++  if (!writer_admission_.Admit()) return;
+   backend_task_runner_->PostNonNestableTask(
+       FROM_HERE, base::BindOnce(&CommandStorageBackend::DeleteLastSession,
+-                                backend_.get()));
++                                backend_));
+   if (ShouldWriteEncryptedFiles()) {
+     if (!encrypted_backend_) {
+       // This should be uncommon, but could occur if OnEncryptorReady is slow.
+@@ -541,7 +624,7 @@
+     }
+     backend_task_runner_->PostNonNestableTask(
+         FROM_HERE, base::BindOnce(&CommandStorageBackend::DeleteLastSession,
+-                                  encrypted_backend_.get()));
++                                  encrypted_backend_));
+   }
+ }
+ 
+@@ -557,6 +640,11 @@
+ 
+ void CommandStorageManager::GetLastSessionCommandsImpl(
+     GetCommandsCallback callback, bool preserve_files) {
++  if (!writer_admission_.Admit()) {
++    auto report = base::BindPostTaskToCurrentDefault(std::move(callback));
++    std::move(report).Run({}, true);
++    return;
++  }
+   const auto read_method = preserve_files
+       ? &CommandStorageBackend::ReadLastSessionCommandsPreservingFiles
+       : &CommandStorageBackend::ReadLastSessionCommands;
+@@ -566,7 +654,7 @@
+       backend_task_runner_->PostTaskAndReplyWithResult(
+           FROM_HERE,
+           base::BindOnce(read_method,
+-                         backend_.get()),
++                         backend_),
+           base::BindOnce(&OnBackendReadFinished, /*saved_result=*/nullptr,
+                          std::move(callback)));
+       break;
+@@ -578,14 +666,14 @@
+       backend_task_runner_->PostTaskAndReplyWithResult(
+           FROM_HERE,
+           base::BindOnce(read_method,
+-                         backend_.get()),
++                         backend_),
+           base::BindOnce(&OnBackendReadFinished, saved_cleartext_result,
+                          std::move(callback)));
+       if (encrypted_backend_) {
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+             base::BindOnce(read_method,
+-                           encrypted_backend_.get()),
++                           encrypted_backend_),
+             base::BindOnce(&CompareCleartextAndEncryptedReadResults,
+                            saved_cleartext_result));
+       } else {
+@@ -604,13 +692,13 @@
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+             base::BindOnce(read_method,
+-                           backend_.get()),
++                           backend_),
+             base::BindOnce(&OnBackendReadFinished, saved_cleartext_result,
+                            base::DoNothing()));
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+             base::BindOnce(read_method,
+-                           encrypted_backend_.get()),
++                           encrypted_backend_),
+             base::BindOnce(&OnEncryptedBackendReadFinishedWithPreferEncrypted,
+                            saved_cleartext_result, backend_task_runner_,
+                            backend_, preserve_files, std::move(callback)));
+@@ -630,7 +718,7 @@
+         backend_task_runner_->PostTaskAndReplyWithResult(
+             FROM_HERE,
+             base::BindOnce(read_method,
+-                           encrypted_backend_.get()),
++                           encrypted_backend_),
+             base::BindOnce(&OnEncryptedBackendReadFinishedWithPreferEncrypted,
+                            /*saved_cleartext_result=*/nullptr,
+                            backend_task_runner_, backend_, preserve_files,
+@@ -672,6 +760,7 @@
+ }
+ 
+ void CommandStorageManager::OnErrorWritingToFile() {
++  if (!writer_admission_.Admit()) return;
+   delegate_->OnErrorWritingSessionCommands();
+ }
+ 
+--- a/components/sessions/core/command_storage_manager.h
++++ b/components/sessions/core/command_storage_manager.h
+@@ -22,6 +22,7 @@
+ #include "components/os_crypt/async/common/encryptor.h"
+ #include "components/sessions/core/sessions_export.h"
+ #include "components/sessions/core/session_write_completion.h"
++#include "components/sessions/core/session_writer_admission.h"
+ 
+ namespace base {
+ class Value;
+@@ -75,7 +76,9 @@
+   }
+ 
+   // Whether the next save resets the file before writing to it.
+-  void set_pending_reset(bool value) { pending_reset_ = value; }
++  void set_pending_reset(bool value) {
++    if (writer_admission_.Admit()) pending_reset_ = value;
++  }
+   bool pending_reset() const { return pending_reset_; }
+ 
+   // Returns the number of commands sent down since the last reset.
+@@ -119,6 +122,12 @@
+   // Returns true if StartSaveTimer() has been called, but a save has not yet
+   // occurred.
+   bool HasPendingSave() const;
++
++  // Closes this manager before posting per-owned-backend close observations.
++  // Pending commands/deferred operations remain retained and unresolved; this
++  // method does not save, delete or silently discard them to claim completion.
++  void CloseWriterAdmissionAndObserve(
++      base::OnceCallback<void(SessionManagerCloseObservation)> done);
+ 
+   // Moves the current session to the last session.
+   void MoveCurrentSessionToLastSession();
+@@ -163,6 +172,8 @@
+   void OnEncryptorReady(base::TimeTicks start_time,
+                         scoped_refptr<os_crypt_async::Encryptor> encryptor);
+ 
++  SessionWriterAdmission writer_admission_;
++  uint64_t active_encryption_replay_operations_ = 0;
+   const base::FilePath file_path_;
+   const SessionType session_type_;
+ 
+--- a/components/sessions/core/session_write_completion.h
++++ b/components/sessions/core/session_write_completion.h
+@@ -19,6 +19,7 @@
+   kTaskRejected,
+   kOwnerLost,
+   kSavingDisabled,
++  kAdmissionClosed,
+ };
+ 
+ struct SessionWriteCompletion {
+diff --git a/components/sessions/core/session_writer_admission.h b/components/sessions/core/session_writer_admission.h
+new file mode 100644
+--- /dev/null
++++ b/components/sessions/core/session_writer_admission.h
+@@ -0,0 +1,77 @@
++// Copyright 2026 The Aux Authors
++#ifndef COMPONENTS_SESSIONS_CORE_SESSION_WRITER_ADMISSION_H_
++#define COMPONENTS_SESSIONS_CORE_SESSION_WRITER_ADMISSION_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <utility>
++#include <limits>
++#include <vector>
++
++namespace sessions {
++
++// Sequence-local native writer state; no reopen, timeout or custody grant.
++class SessionWriterAdmission {
++ public:
++  bool Admit() {
++    if (!closed_) return true;
++    Increment(refused_);
++    return false;
++  }
++  void Close() { closed_ = true; }
++  void ObserveFailedWrite() { Increment(failed_writes_); }
++  bool closed() const { return closed_; }
++  uint64_t refused() const { return refused_; }
++  uint64_t failed_writes() const { return failed_writes_; }
++  bool unknown() const { return unknown_; }
++ private:
++  void Increment(uint64_t& value) {
++    if (value == std::numeric_limits<uint64_t>::max()) unknown_ = true;
++    else ++value;
++  }
++  bool closed_ = false;
++  bool unknown_ = false;
++  uint64_t refused_ = 0;
++  uint64_t failed_writes_ = 0;
++};
++
++// Observes this actual backend instance on its owning sequence. File release
++// means its RAII File object was destroyed; no fsync/close-error claim exists.
++enum class SessionBackendKind { kClear, kEncrypted };
++
++struct SessionBackendCloseObservation {
++  SessionBackendKind kind = SessionBackendKind::kClear;
++  bool admission_closed = false;
++  bool owning_sequence_observed = false;
++  bool owned_file_object_released = false;
++  bool task_rejected = false;
++  bool accounting_unknown = false;
++  uint64_t refused_requests = 0;
++  uint64_t failed_write_returns = 0;
++};
++
++// Retain unexecuted opaque closures after a reentrant close. This is not a
++// replay API: manager admission remains permanently closed.
++template <typename Operation>
++void RetainUnrunSessionOperations(std::vector<Operation>& pending,
++                                 std::vector<Operation>& running,
++                                 size_t first_unrun) {
++  for (size_t i = first_unrun; i < running.size(); ++i)
++    pending.push_back(std::move(running[i]));
++}
++
++struct SessionManagerCloseObservation {
++  bool manager_unavailable = false;
++  bool admission_closed = false;
++  bool required_encrypted_backend_missing = false;
++  bool admission_accounting_unknown = false;
++  uint64_t unsubmitted_commands = 0;
++  bool unsubmitted_reset = false;
++  uint64_t deferred_encryption_operations = 0;
++  uint64_t active_encryption_replay_operations = 0;
++  uint64_t refused_requests_at_close = 0;
++  std::vector<SessionBackendCloseObservation> backends;
++};
++
++}  // namespace sessions
++#endif  // COMPONENTS_SESSIONS_CORE_SESSION_WRITER_ADMISSION_H_

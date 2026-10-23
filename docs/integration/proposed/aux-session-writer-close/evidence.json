@@ -1,0 +1,76 @@
+{
+  "format": "aux.session.writer-close.focused-check.v1",
+  "currentProductionTUsCompiled": 3,
+  "compileResults": [
+    {
+      "path": "components/sessions/core/command_storage_backend.cc",
+      "exitCode": 0,
+      "seconds": 3.6363272089999996
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.cc",
+      "exitCode": 0,
+      "seconds": 1.832434708
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "exitCode": 0,
+      "seconds": 5.300722042
+    }
+  ],
+  "compileCommandsSha256": "9ded1fe2e22dd3f15cc7aae766b01c3ab6ddcf86c7f848f1ceeff1880872e6e4",
+  "compileInputsSha256": "47163aaa654d590cd4d45e913d7d1cdc2b97547bcd708c54a5f85d8082cfbdda",
+  "sourceManifestSha256": "5c17f671ca84a7cedec6214ce7f23766a6ae197f56d45be060e58889ed0eae7a",
+  "productionAdmissionResultChecksPassed": 17,
+  "realBackendIOExecuted": false,
+  "fileObjectCloseExecuted": false,
+  "nativeApplied": false,
+  "wholeBrowserBuilt": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "ownerStateRead": false,
+  "originalAddonExecuted": false,
+  "uiChanged": false,
+  "signed": false,
+  "fsyncClaimed": false,
+  "wholeProfileCustodyClaimed": false,
+  "compiledObjects": [
+    {
+      "path": "command_storage_backend.o",
+      "sha256": "cdbaab94e84c802564331b8909649760a7ee348c89b2a1adfb3efdd3cc517076",
+      "bytes": 75840
+    },
+    {
+      "path": "command_storage_manager.o",
+      "sha256": "09540e5ad30052dfb04eeb0cf606888f5a36fa7745ab4827559761120d728b0a",
+      "bytes": 117632
+    },
+    {
+      "path": "session_service_base.o",
+      "sha256": "25c8d216811898b63df29059bc81307e580db7321fbfe1a41d17682178d34210",
+      "bytes": 75200
+    }
+  ],
+  "checkSourcePins": [
+    {
+      "path": "verify.py",
+      "sha256": "43e79887acdf87e6223f0ca877100adaf93f53d2a5890b9e0a7ab21800d86a67"
+    },
+    {
+      "path": "tests/main.cc",
+      "sha256": "97bdfb1fcef227e88a91457816c1d6005b173f37c6298cacffb05241166762ca"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "082b3528cac9fefc381c2c5bc5df102b153801b1549abeb955f641755778531b"
+    },
+    {
+      "path": "compile-check.py",
+      "sha256": "f9db14ec778d527c8cab628aab553d7fa2807e9a10aa587002482b7ea9576bd8"
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "332cee7ee3391c1b66e77cd32758bac638e7e879cd753a21e50f02d7dd978fe8"
+    }
+  ]
+}

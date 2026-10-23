@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.session-writer-close-composition.v1",
+  "parentSourcesPreserved": 777,
+  "successorSources": 778,
+  "unchangedBinaryAssets": 23,
+  "modifiedSources": 7,
+  "newHeaders": 1,
+  "parentSha256": "eac2e5cba8b41fe82611378892a55cd424ffe4a7b19c1031beea30a3ce59c806",
+  "successorSha256": "e74fca5ffe89cae3a8b2871e766bd61257da351c3d492afd18746655850f6ff2",
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false,
+  "allWriterCustodyClaimed": false,
+  "fsyncClaimed": false
+}
