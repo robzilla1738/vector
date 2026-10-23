@@ -1,0 +1,14 @@
+
+/private/tmp/aux-profile-continuation-link-20261023/Aux Daemon:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+00000001005d73b4 <_BrotliDecoderVersion>:
+1005d73b4: 52840020    	mov	w0, #0x2001             ; =8193
+1005d73b8: 72a02000    	movk	w0, #0x100, lsl #16
+1005d73bc: d65f03c0    	ret
+
+000000010062896c <_BrotliEncoderVersion>:
+10062896c: 52840020    	mov	w0, #0x2001             ; =8193
+100628970: 72a02000    	movk	w0, #0x100, lsl #16
+100628974: d65f03c0    	ret

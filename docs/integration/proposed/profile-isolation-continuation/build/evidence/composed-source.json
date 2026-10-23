@@ -1,0 +1,56 @@
+{
+  "format": "aux.profile-isolation.composed-source.v1",
+  "passed": true,
+  "sourceSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+  "taskOutputSha256": "dc4d57bf49beac888e4e75cc4429d537e806a76fd7b5b70fd521c36510049909",
+  "brokerOutputSha256": "dcf6b529a89d4e90bcfe61c0ab482f63b65f47da30311fd4dfff484795cbd19a",
+  "preludeSha256": "b8069227a1f25701b8ce5886fe628163ad61ca3664c41020caa7ccb98d7b1656",
+  "composedSha256": "6a2b15fe81ed3eb0cd8f13bbc0af0dee2d714accf3d9b4f73292fde0f3d17ed0",
+  "taskRuleCount": 81,
+  "brokerRules": [
+    {
+      "name": "finite atomic JSON primitive",
+      "count": 1
+    },
+    {
+      "name": "SQLite constructor",
+      "count": 1
+    },
+    {
+      "name": "detached migration uncertainty",
+      "count": 1
+    },
+    {
+      "name": "protected HTTP native admission",
+      "count": 1
+    },
+    {
+      "name": "actual account procedure",
+      "count": 1
+    },
+    {
+      "name": "resolved WS account admission",
+      "count": 1
+    },
+    {
+      "name": "agent WS open custody",
+      "count": 1
+    },
+    {
+      "name": "agent WS message custody",
+      "count": 1
+    },
+    {
+      "name": "graceful shutdown closes new writes",
+      "count": 1
+    }
+  ],
+  "syntaxExitCode": 0,
+  "sourcePreserved": true,
+  "coldRefusalPreserved": true,
+  "daemonExecuted": false,
+  "uiChanged": false,
+  "acceptedAppChanged": false,
+  "protectedStartupReady": false,
+  "recipeSha256": "1f6a87bac7c0c0365df428f8559b54492c8702a19f6e244c4eeb63b852fbc5d4"
+}

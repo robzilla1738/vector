@@ -1,0 +1,13 @@
+{
+  "format": "aux.linked-brotli-version.v1",
+  "passed": true,
+  "executableSha256": "e927c56fc521b8a02377e771e8408c263c2a6f1859d02a165869c65cd851c6bb",
+  "decoderVersionHex": "0x01002001",
+  "encoderVersionHex": "0x01002001",
+  "actualVersion": "1.2.1",
+  "executed": false,
+  "method": "llvm-objdump -d --disassemble-symbols=_BrotliEncoderVersion,_BrotliDecoderVersion",
+  "initialMachoModeIgnoredSymbolFilter": true,
+  "initialOverbroadInspectionStopped": true,
+  "disassemblySha256": "917f84906b1816f9bf9f93fcf1c5cc050aec0fd2170055777a78a1b81d535871"
+}
