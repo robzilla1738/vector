@@ -1,0 +1,17 @@
+{
+  "parent": "out/native-reuse-composition-aux-browser-cold-api-ready",
+  "parentManifestSha256": "1421718da01ab018070ce60e0068a7f262f74d82d043b68e35c09300ed1d18d2",
+  "sourceInputs": {
+    "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/BUILD.gn": "bef2094d0672780870809eda52e343490cdd3afdfa77686c03e4a6fbe0a1c799",
+    "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.h": "e2a5bcec03489bb69b5854d32ceaa55a73786fce32228f69d9d6ec1e56ec0d5a",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc": "5f11bac3d2b7a686a9c3ba865036fb2a7e2f5463a66a8611e6c2b76f5446acf7",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_inbox_codec.h": "83cd76c0b248a7d38d93e9f36d757b35e4113b86f47ffd244e40df936c3fde2c",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_inbox_codec.cc": "7ba708b052326ead2c8d0c6b24b200b9a8d0961665e386d6b929dbf4cc93d9c9",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/main.cc": "a69ba69cd7f381924fb2aafbc45aee334dc514fcfe7aa9cb3c04085686a4ce48",
+    "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/BUILD.gn": "54a924b736fb4ff4e6afd5af96c1b67e33b65070713c8338947a8847d9a188cf"
+  },
+  "shippingDependencyAdded": false,
+  "productStartupEnabled": false,
+  "uiChanged": false
+}

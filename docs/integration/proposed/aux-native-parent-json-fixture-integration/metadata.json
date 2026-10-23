@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "path": "BUILD.gn",
+      "baselineSha256": "d570f066644ad762b2b77e3f0f666e3276955abed3e372e67653ff49795aa341",
+      "outputSha256": "6f015bee8eb6c416f1eab1ed416b64bf8c6ed85916d02f3f927145212a367a89",
+      "origin": "optional test-only root GN group"
+    },
+    {
+      "path": "chrome/browser/aux/legacy_inbox_fixture/BUILD.gn",
+      "baselineSha256": null,
+      "outputSha256": "54a924b736fb4ff4e6afd5af96c1b67e33b65070713c8338947a8847d9a188cf",
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/BUILD.gn"
+    },
+    {
+      "path": "chrome/browser/aux/legacy_inbox_fixture/main.cc",
+      "baselineSha256": null,
+      "outputSha256": "a69ba69cd7f381924fb2aafbc45aee334dc514fcfe7aa9cb3c04085686a4ce48",
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/aux/legacy_inbox_fixture/main.cc"
+    },
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift",
+      "baselineSha256": null,
+      "outputSha256": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+      "origin": "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift"
+    },
+    {
+      "path": "chrome/browser/aux/native_peer_policy/BUILD.gn",
+      "baselineSha256": "7d20ca53b0b0aca0eee42173b87c9997a340ef9adca5120284c45c8a2a7df9d4",
+      "outputSha256": "bef2094d0672780870809eda52e343490cdd3afdfa77686c03e4a6fbe0a1c799",
+      "origin": "docs/integration/proposed/aux-native-parent-strict-json/source/chrome/browser/aux/native_peer_policy/BUILD.gn"
+    },
+    {
+      "path": "chrome/browser/notifications/aux_legacy_inbox_codec.cc",
+      "baselineSha256": null,
+      "outputSha256": "5f11bac3d2b7a686a9c3ba865036fb2a7e2f5463a66a8611e6c2b76f5446acf7",
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.cc"
+    },
+    {
+      "path": "chrome/browser/notifications/aux_legacy_inbox_codec.h",
+      "baselineSha256": null,
+      "outputSha256": "e2a5bcec03489bb69b5854d32ceaa55a73786fce32228f69d9d6ec1e56ec0d5a",
+      "origin": "docs/integration/proposed/aux-native-legacy-inbox-check/source/chrome/browser/notifications/aux_legacy_inbox_codec.h"
+    }
+  ],
+  "patchSha256": "71fe5ef0d309915e6ce2de3bc003d9c89edda4efc6c244e7f5cd98ae2ce1dc8c",
+  "applied": false,
+  "compiled": false
+}

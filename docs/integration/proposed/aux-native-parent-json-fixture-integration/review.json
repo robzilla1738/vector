@@ -1,0 +1,15 @@
+{
+  "format": "aux.parent-json-fixture.source-composition.v1",
+  "manifestSha256": "8bb91c6e269a9706758e5d78b39039eb5114b62b612e6316eec6897c8378ef47",
+  "sources": 831,
+  "assets": 23,
+  "incrementalRecords": 7,
+  "newSourceRecords": 5,
+  "allArtworkBytesUnchanged": true,
+  "pureParserActualModulePassed": true,
+  "parserSession": 98397,
+  "legacyFixtureExecuted": false,
+  "browserCompiled": false,
+  "applied": false,
+  "optionalFixtureShippingDependency": false
+}
