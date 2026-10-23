@@ -266,6 +266,42 @@ extension AuxSignedFreshBootstrapPolicyLoader {
     fileprivate static func prepareEmbeddedImages()throws {
         let policy=try authenticatedBase(preparing:true)
         guard policy.contents.embeddedDaemon,policy.contents.role == .daemon else{throw AuxFreshBootstrapPolicyError.policy}
+        // dlopen has no reviewed retained-FD loading API on macOS. Hold the
+        // complete real path in a root-owned namespace instead. The app runs
+        // as an unprivileged user; every mutable namespace component is owned
+        // only by the trusted installer. A mere chown of formerly writable
+        // files is not an accepted installation procedure.
+        guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+        var custody=[Int32](),entries=[(Int32,String,Int32)]()
+        defer{for fd in custody.reversed(){close(fd)}}
+        for leaf in ["aux-pdf.node","aux-macos-utilities.node"] {
+            let path=policy.bundlePath+"/Contents/Resources/native/"+leaf
+            guard try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.path}
+            var parent=open("/",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+            guard parent>=0 else{throw AuxFreshBootstrapPolicyError.path}
+            custody.append(parent)
+            let root=try metadata(parent,directory:true)
+            guard root.st_uid==0,root.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+            let components=path.dropFirst().split(separator:"/",omittingEmptySubsequences:false).map(String.init)
+            for (index,name) in components.enumerated() {
+                let directory=index != components.count-1
+                let fd=openat(parent,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK|(directory ? O_DIRECTORY:0))
+                guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path}
+                custody.append(fd)
+                let item=try metadata(fd,directory:directory,maximumSize:32*1024*1024)
+                guard item.st_uid==0,item.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+                try sameEntry(parent,name,fd);entries.append((parent,name,fd));parent=fd
+            }
+        }
+        func revalidateCustody()throws {
+            guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+            for (parent,name,fd) in entries {
+                var value=stat();guard fstat(fd,&value)==0,value.st_uid==0,value.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+                _ = try metadata(fd,directory:value.st_mode & mode_t(S_IFMT)==mode_t(S_IFDIR),maximumSize:32*1024*1024)
+                try sameEntry(parent,name,fd)
+            }
+        }
+        try revalidateCustody()
         let requirement=try requirement()
         var own:SecCode?;let ownStatus=SecCodeCopySelf([],&own)
         guard ownStatus==errSecSuccess,let own else{throw AuxFreshBootstrapPolicyError.signature(ownStatus)}
@@ -290,12 +326,14 @@ extension AuxSignedFreshBootstrapPolicyLoader {
             let sealed=SecCodeValidateFileResource(ownStatic,("Resources/native/"+leaf) as CFString,moduleBytes as CFData,[])
             guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
             _ = try authenticatedBase(preparing:true)
+            try revalidateCustody()
             guard let handle=dlopen(path,RTLD_NOW|RTLD_LOCAL)else{throw AuxFreshBootstrapPolicyError.image}
             // Never dlclose an image whose constructors/threads may have run.
             auxImagePreparationLock.lock();auxPreparedImageHandles.append(handle);auxImagePreparationLock.unlock()
             guard try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)==digest else{throw AuxFreshBootstrapPolicyError.image}
             _ = try authenticatedBase(preparing:true)
         }
+        try revalidateCustody()
         let final=try load()
         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
     }
