@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "stdout": "PASS: live exclusion, interrupted prepared-pair recovery/current generation, idempotent same-owner grant, admitted/nonempty/partial refusal; synthetic policy only\n",
+  "stderr": "",
+  "sourceSha256": "f8cf506d60dbc5119e9744d7dd30c6b5e057923419aff2431997036cd519ccd7",
+  "liveSecurity": false,
+  "realBrowserRootAccess": false,
+  "syntheticPolicyDouble": true
+}
