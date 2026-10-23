@@ -1,6 +1,6 @@
 {
   "format": "aux.noncreating-profile-manager-style.build-run.v1",
-  "state": "running",
+  "state": "passed",
   "session": 51532,
   "composition": "out/native-reuse-composition-aux-noncreating-profile-manager-style",
   "compositionSha256": "812079b0b3ba9e8a49ba5bae7e6ea8d8247cbf9e4c1a4aa84b0f07594ef54f43",
@@ -19,5 +19,11 @@
   "firstPreviouslyFailingTranslationUnitCompiled": true,
   "acceptedPreviewReplaced": false,
   "appLaunched": false,
-  "state2Authorized": false
+  "state2Authorized": false,
+  "buildExitCode": 0,
+  "receiptSha256": "36ea7599ed692651a62f52ae31951d38073e625952151b9db29f34f936bf5a50",
+  "frameworkSha256": "2c1182d5e4141efd372cfb70633f5df5af3d391ff163eb9777b90178caf8faec",
+  "buildSteps": 833,
+  "buildSeconds": 2361.84,
+  "recordedAt": "2026-10-23T02:14:59.713361+00:00"
 }

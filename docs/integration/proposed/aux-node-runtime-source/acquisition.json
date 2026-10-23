@@ -1,0 +1,119 @@
+{
+  "format": "aux.node.runtime-source.acquisition.v1",
+  "release": "26.5.0",
+  "sourceUrl": "https://nodejs.org/download/release/v26.5.0/node-v26.5.0.tar.xz",
+  "binaryUrl": "https://nodejs.org/download/release/v26.5.0/node-v26.5.0-darwin-arm64.tar.xz",
+  "checksumUrl": "https://nodejs.org/download/release/v26.5.0/SHASUMS256.txt",
+  "checksumVerification": "SHA-256 against official HTTPS checksum document; no independent OpenPGP verification claimed",
+  "sourcesExecuted": false,
+  "runtimeReplaced": false,
+  "nativeSourceCheckoutModified": false,
+  "buildStarted": false,
+  "inputs": [
+    {
+      "path": "out/aux-node-26.5.0-source/SHASUMS256.txt",
+      "sha256": "c293d34153b5d2357e6c1e521907dbf6bd3833a18565e3eb19839e5589a2bd9d",
+      "bytes": 2943
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0.tar.xz",
+      "sha256": "0e179470097e247a0c0769b77cc1359fc3e1baf0686df89bafe1fb48cb1887f4",
+      "bytes": 61405476
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0-darwin-arm64.tar.xz",
+      "sha256": "48231d6204eca6be13e6c5184dfdffa1d64ad88880364cc2cfb198f872cb2b13",
+      "bytes": 30176284
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+      "bytes": 72762
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+      "bytes": 10370
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node_api_types.h",
+      "sha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00",
+      "bytes": 1930
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node_version.h",
+      "sha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+      "bytes": 4239
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node_main.cc",
+      "sha256": "c946687691d86754f5d53560b54a70d17cfed62bf23158ac457497b8b912d740",
+      "bytes": 3913
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node.cc",
+      "sha256": "67001df7c3010e8bc306eb104855f13942d2b3332df4b558fe2c146d8be7f751",
+      "bytes": 57906
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/src/node_api.cc",
+      "sha256": "e1446ad5a450eca9347c070964a8d2736b1a7e391da068446a20fe15f37c1066",
+      "bytes": 49197
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/configure.py",
+      "sha256": "c04a8ae0c668ee349587f187493cabaf17e75defc71b52c097340437f84ac7cf",
+      "bytes": 108013
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/node.gyp",
+      "sha256": "25872cb9f8c14f8a17a207ee4a63665f287f6ad7298fccd1f4cdf94db170f1f2",
+      "bytes": 56480
+    },
+    {
+      "path": "out/aux-node-26.5.0-source/node-v26.5.0/LICENSE",
+      "sha256": "148eacf7863ef4329224a29398623077200a27194aa075569faf4a0a85566ca5",
+      "bytes": 157606
+    }
+  ],
+  "suppliedHeaderComparison": [
+    {
+      "path": "node.h",
+      "suppliedSha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+      "upstreamSha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+      "identical": true
+    },
+    {
+      "path": "node_api.h",
+      "suppliedSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+      "upstreamSha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+      "identical": true
+    },
+    {
+      "path": "node_api_types.h",
+      "suppliedSha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00",
+      "upstreamSha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00",
+      "identical": true
+    },
+    {
+      "path": "node_version.h",
+      "suppliedSha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+      "upstreamSha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+      "identical": true
+    }
+  ],
+  "suppliedRuntimeComparison": [
+    {
+      "path": "bin/node",
+      "suppliedSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+      "upstreamSha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+      "identical": true
+    },
+    {
+      "path": "include/node/config.gypi",
+      "suppliedSha256": "0f6a2951dbad3fa3e85da6d16e9b01ae1264b03a5192822b0c49311db3ef865e",
+      "upstreamSha256": "0f6a2951dbad3fa3e85da6d16e9b01ae1264b03a5192822b0c49311db3ef865e",
+      "identical": true
+    }
+  ]
+}
