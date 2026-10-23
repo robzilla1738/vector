@@ -1,0 +1,67 @@
+{
+  "format": "aux.fresh.bootstrap.policy.focused-evidence.v1",
+  "sourceCommit": "20383f8ed",
+  "sourcePinsSha256": "0e4fece692334a432e9e6bbdc17d7401c03cbcbd2eb0d6273b0b78eed8d08d6a",
+  "serializedBuildLock": "/tmp/aux-build.lock",
+  "capturedChecks": {
+    "command": [
+      "python3",
+      "scripts/native-build.py",
+      "sh",
+      "docs/integration/proposed/aux-fresh-bootstrap-policy/check.sh"
+    ],
+    "exitCode": 0,
+    "checks": 30,
+    "output": "PASS:30 captured pre-generation policy/signature/image checks; no authentication/OS/secure-row execution"
+  },
+  "actualReaderTypecheck": {
+    "command": [
+      "python3",
+      "scripts/native-build.py",
+      "sh",
+      "docs/integration/proposed/aux-fresh-bootstrap-policy/typecheck.sh"
+    ],
+    "exitCode": 0,
+    "target": "arm64-apple-macos13.0",
+    "separateSwiftInputs": [
+      "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "docs/integration/proposed/aux-fresh-native-home/source/AuxFreshNativeHome.swift",
+      "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
+      "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift"
+    ],
+    "output": "PASS:actual fresh signed reader and retained-home producer typechecked as separate Swift files; no loader executed",
+    "linked": false,
+    "loaded": false
+  },
+  "toolchain": "Apple Swift 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+  "checksInputs": [
+    {
+      "path": "verify.py",
+      "sha256": "863dbed282551b65fdc74eafcc1b277f2364822f139d5e1ec57ce8cf1bc2d63e"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "766cf706f72152ca1a9742f0f82d70e1a3afe97f6370674d42688bee917c8ae3"
+    },
+    {
+      "path": "typecheck.sh",
+      "sha256": "c56ba0b517060ff3c73a63241aeda067f1273f040d15ae0927fc86a8cca10407"
+    },
+    {
+      "path": "tests/main.swift",
+      "sha256": "a7746f0d50ce258e30b623d49fca838d081d0ea429fdc9ddc9b93e030cb2d5a0"
+    }
+  ],
+  "signedReaderExecuted": false,
+  "authenticatedPolicyCreated": false,
+  "freshHomeCreatedByPolicy": false,
+  "authorityGenerated": false,
+  "secureRowsReadWritten": false,
+  "actualSecurityOperations": 0,
+  "ownerStateRead": false,
+  "nativeCheckoutChanged": false,
+  "uiChanged": false,
+  "signed": false,
+  "wholeProfileCustodyClaimed": false
+}
