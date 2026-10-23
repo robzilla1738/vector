@@ -45,7 +45,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
-      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1",
+      "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040",
       "anchors": [
         {
           "anchor": "AuxAttachOwnedDispatcher",
@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
-      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664",
+      "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e",
       "anchors": [
         {
           "anchor": "static func runtime(terminal:AuxRuntimeCapturedCommandContext",
@@ -69,7 +69,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f",
+      "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3",
       "anchors": [
         {
           "anchor": "init(scopedTerminal:ScopedAuxCommandContext)",
@@ -145,5 +145,25 @@
       "priorSha256": "74a200abb688b7e99047f4a67027140f91a112aba9ab775c77063950b0c638ce",
       "currentSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
     }
-  ]
+  ],
+  "utilitiesAtomicV4Successor": {
+    "changes": [
+      {
+        "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+        "previousSha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1",
+        "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040"
+      },
+      {
+        "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+        "previousSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664",
+        "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e"
+      },
+      {
+        "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+        "previousSha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f",
+        "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3"
+      }
+    ],
+    "historicalEvidenceUpdated": false
+  }
 }

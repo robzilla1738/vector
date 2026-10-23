@@ -1,0 +1,193 @@
+{
+  "format": "aux.worker.current-utilities-atomic-v4.compile-only.v1",
+  "baseCommit": "9cb417451",
+  "mode": "--compile-only",
+  "productionSourceCompiled": true,
+  "compilationReportedByIntegrator": true,
+  "terminalExitCode": 0,
+  "productionGraphRebuiltByThisCheck": false,
+  "swiftTranslationUnits": 22,
+  "cppTranslationUnits": 6,
+  "actualTranslationUnits": 28,
+  "inputs": [
+    {
+      "path": "aux-atomic-csk-publication/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "07fc94cd45a0b1539ef2cc40fd9348e042f5d313b96c53e224ba1be75d9e5852"
+    },
+    {
+      "path": "aux-clean-host-preflight/source/AuxCleanHostImports.cc",
+      "sha256": "f4cd144a84311ca592fd0b38fff65049b0f5ad4c49a81768044eee1cd915bbc1"
+    },
+    {
+      "path": "aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900"
+    },
+    {
+      "path": "aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2"
+    },
+    {
+      "path": "aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f"
+    },
+    {
+      "path": "aux-development-host/source/aux-development-host-attach.cc",
+      "sha256": "c1940718232b7a5502e508d08bc8726ce5b4d8b1d7518a856a1b61e0459990e9"
+    },
+    {
+      "path": "aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+    },
+    {
+      "path": "aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae"
+    },
+    {
+      "path": "aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+      "sha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28"
+    },
+    {
+      "path": "aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "aux-native-secure-store/source/AuxSecureStore.swift",
+      "sha256": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c"
+    },
+    {
+      "path": "aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.cc",
+      "sha256": "806034f3d67e18eacf3a939c18085f762617ab31ab3051c88e18c2955d959f27"
+    },
+    {
+      "path": "aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3"
+    },
+    {
+      "path": "aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+      "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040"
+    },
+    {
+      "path": "aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    },
+    {
+      "path": "aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+      "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e"
+    }
+  ],
+  "productionSourceInputsSha256": "c3be74a922c498723519271b22a911280ea4d08b53d95b302a59aa5f51d33477",
+  "generatedSourceRecipeSha256": "fed4a54fe82c4aad8af33542e9e9da96f228be7f8541161f5640213671ac0685",
+  "sourcePinsSha256": "8cd1dbdbcfc31c0d2747bbb3fd4571b1bf319a0a170b3d6040a7234fb7cad662",
+  "hostSourcePinsSha256": "768fc899c168bd6a84ba3b708d137d50091576beedf7fb54aac988617afba379",
+  "historicalReceiptHashes": {
+    "docs/integration/proposed/aux-development-host/evidence/check.json": "c06125cc3a00d0d37052a68aa2bde1d789beb8ef0a55393e8c3d1e55472b59f9",
+    "docs/integration/proposed/aux-development-host/evidence/pdf-image-policy.json": "b4d577041670261a3c0cc41e9c720fabf6501c35a05d31f543ccfc39e3be89c1",
+    "docs/integration/proposed/aux-development-host/evidence/owned-os-producer.json": "53b5867f1759a919159c32ee516d62c2c610ad1d3e24e10660cbd48013a86235",
+    "docs/integration/proposed/aux-development-host/evidence/sealed-key-policy-v3.json": "68381f5c28a8146caf00726880431eb4ed64bdb757a6fa9b41b46fc4295fb09d",
+    "docs/integration/proposed/aux-development-worker-host/evidence/check.json": "15db3e4efdf028b2d151df0a7e8b2612179f13e7bad669f565a03a9b9407a816",
+    "docs/integration/proposed/aux-development-worker-host/evidence/compile-only.json": "69f4c6a3a433b3361e9227cdd7efdd624ea69e3b46d5af685d7f5fd262870e98",
+    "docs/integration/proposed/aux-development-worker-host/evidence/current-host-v3-compile-only.json": "004d50986310d935fa7c4f43982a5d6545e0aa494430c1b0b16a5ba4cee376b5",
+    "docs/integration/proposed/aux-development-worker-host/evidence/current-direct-attach-refusal-compile-only.json": "fa37f90cbc21b2363e9a6fc1b71ad21505221b10460da9e9ca5b717cc7cec367"
+  },
+  "artifactPath": "out/aux-runtime-utilities-atomic-v4/aux-runtime-owned.node",
+  "artifactRetained": true,
+  "artifactSha256": "65d89da3aa148831a4ace2d22d2a3b335c28aa18e986d08851937515c502a780",
+  "artifactBytes": 1406856,
+  "architecture": "arm64",
+  "minimumMacOS": "13.0",
+  "sdk": "27.0",
+  "machPlatform": 1,
+  "compiledOldProductLiteralCount": 0,
+  "undefinedImportsSha256": "9e9885ffae39efe98e2606cd5c34654a2ed79b2eda153f0a1cf9f1ff6c318301",
+  "undefinedImportsCount": 751,
+  "definedSymbolsSha256": "4d9e811dcfeb0333856188a9689f5d277a2e59f5ab57af9a83a8c34969e80026",
+  "linkedDependencies": [
+    "\t/Users/rcourson/Documents/Vibe/web/out/aux-runtime-utilities-atomic-v4/aux-runtime-owned.node (compatibility version 0.0.0, current version 0.0.0)",
+    "\t/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit (compatibility version 45.0.0, current version 2775.10.103)",
+    "\t/System/Library/Frameworks/QuickLookThumbnailing.framework/Versions/A/QuickLookThumbnailing (compatibility version 1.0.0, current version 0.0.0)",
+    "\t/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO (compatibility version 1.0.0, current version 1.0.0)",
+    "\t/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2200.27.0)",
+    "\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)",
+    "\t/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 5027.0.69)",
+    "\t/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit (compatibility version 1.0.0, current version 1.0.0)",
+    "\t/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 5027.0.69)",
+    "\t/System/Library/Frameworks/Security.framework/Versions/A/Security (compatibility version 1.0.0, current version 62460.1.2)",
+    "\t/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)",
+    "\t/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)",
+    "\t/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)",
+    "\t/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 3.0.0, weak)",
+    "\t/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 428.0.10)",
+    "\t/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 1605.0.2)",
+    "\t/usr/lib/swift/libswiftIOKit.dylib (compatibility version 1.0.0, current version 1.0.0, weak)",
+    "\t/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 382.5.3, weak)",
+    "\t/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)",
+    "\t/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 973.1.0, weak)",
+    "\t/usr/lib/swift/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 5.0.0, weak)",
+    "\t/usr/lib/swift/libswiftSpatial.dylib (compatibility version 1.0.0, current version 1.0.0, weak)",
+    "\t/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib (compatibility version 1.0.0, current version 917.0.1, weak)",
+    "\t/usr/lib/swift/libswiftXPC.dylib (compatibility version 1.0.0, current version 167.0.2, weak)",
+    "\t/usr/lib/swift/libswiftos.dylib (compatibility version 1.0.0, current version 1090.0.0, weak)",
+    "\t/usr/lib/swift/libswiftsimd.dylib (compatibility version 1.0.0, current version 25.0.0, weak)"
+  ],
+  "v4CapturedPolicyChecksReportedByIntegrator": 24,
+  "v4PolicyFixtureRerunByThisCheck": false,
+  "productionArtifactLoaded": false,
+  "signedPolicyProducerExecuted": false,
+  "nativeAttachmentExecuted": false,
+  "signingPerformed": false,
+  "state2Authorized": false,
+  "historicalEvidenceUpdated": false,
+  "fixtureCompiled": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "lifecycleChecksRunByThisCheck": 0,
+  "evidenceScope": "Existing integrator production compile/link output statically inspected once; no graph rebuild, module load, protected factory, OS effects, signing or runtime authorization."
+}

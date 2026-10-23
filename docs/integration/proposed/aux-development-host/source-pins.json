@@ -39,7 +39,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/build.sh",
-      "sha256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca"
+      "sha256": "bfe35cb440acabec543650be0131b2f018f74c18c5f692a9d68465c6761ac8ce"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/check.mjs",
@@ -51,19 +51,19 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source-contract.json",
-      "sha256": "cc90141b23e38b5ea9cc4eb7ec31d9a1cb35b68fa512bb643f96b2aec3a8258c"
+      "sha256": "994794a3c198a6e68b2efdc09dcb36552c4f654beb4a46afb5a402ad6fe54cf3"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
-      "sha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa"
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
-      "sha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413"
+      "sha256": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
-      "sha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd"
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
@@ -79,7 +79,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
-      "sha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd"
+      "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
     },
     {
       "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
@@ -103,7 +103,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
-      "sha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252"
+      "sha256": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c"
     },
     {
       "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
@@ -115,11 +115,11 @@
     },
     {
       "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
-      "sha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f"
+      "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3"
     },
     {
       "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
-      "sha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1"
+      "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040"
     },
     {
       "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
@@ -131,7 +131,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
-      "sha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664"
+      "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e"
     },
     {
       "path": "scripts/native-build.py",
@@ -151,7 +151,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/verify.mjs",
-      "sha256": "70fa5bb340b5511d36d0e2dbf1fd73c473d48225bf36b92af30490e18db08b36"
+      "sha256": "d9dd08d7a2a72890c8146fea7bf3bab9a0e4249c11e9513d6209d2522fefd53e"
     },
     {
       "path": "docs/integration/proposed/aux-clean-host-preflight/source/AuxCleanHostPreflight.swift",
@@ -191,7 +191,7 @@
     },
     {
       "path": "docs/integration/proposed/aux-development-host/verify-os-owner.mjs",
-      "sha256": "ff9547659e87fea7a7a2ddb83db329db7134fc7912112be62f24d7b77cd28890"
+      "sha256": "a6e30d1317d484457b991a7b0c06931d683b3d1b27d30b9e40c1092abe2b31bd"
     },
     {
       "path": "docs/integration/proposed/aux-development-host/evidence/sealed-key-policy-v3.json",
@@ -204,6 +204,54 @@
     {
       "path": "docs/integration/proposed/aux-development-host/tests/v3/main.swift",
       "sha256": "dd71d2cf134c49ad639d8e1668836a5f157f28cc27420cb5e1ac62359b8c5801"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "07fc94cd45a0b1539ef2cc40fd9348e042f5d313b96c53e224ba1be75d9e5852"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+      "sha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.cc",
+      "sha256": "806034f3d67e18eacf3a939c18085f762617ab31ab3051c88e18c2955d959f27"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/check-policy.py",
+      "sha256": "3375bae3a7c23fdc0cb7a8120610f05cc54925ae2cad1c92432d00320fee57fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/tests/main.swift",
+      "sha256": "a0d76de0dcd6fa4aaa68b9ea0aacb4ccd0b72617135fe3d1d12c7c42f30c42bc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/artifact.json",
+      "sha256": "d9ecd74397a6388a7d195e3ed9a91b5c9496811a867edfc0c445b4b72edb7c24"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h",
+      "sha256": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+      "sha256": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "sha256": "325bb8ba6a5c33beb5f785b3293f263f5fc3e1b60b92b9a5a6c54b18c18bd4e1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h",
+      "sha256": "2beb2e3f8cafa4c109107e80f099576b39d3367572efead5f5e6d69f971eedf8"
     }
   ],
   "optionalOSProjectionReview": {
@@ -276,5 +324,134 @@
     ],
     "historicalEvidenceUpdated": false,
     "reason": "Retain old C ABI as fixed refusal; no protected factory/adapter bypass; actual WorkerHost source unchanged."
+  },
+  "historicalReceipts": {
+    "docs/integration/proposed/aux-development-host/evidence/check.json": "c06125cc3a00d0d37052a68aa2bde1d789beb8ef0a55393e8c3d1e55472b59f9",
+    "docs/integration/proposed/aux-development-host/evidence/pdf-image-policy.json": "b4d577041670261a3c0cc41e9c720fabf6501c35a05d31f543ccfc39e3be89c1",
+    "docs/integration/proposed/aux-development-host/evidence/owned-os-producer.json": "53b5867f1759a919159c32ee516d62c2c610ad1d3e24e10660cbd48013a86235",
+    "docs/integration/proposed/aux-development-host/evidence/sealed-key-policy-v3.json": "68381f5c28a8146caf00726880431eb4ed64bdb757a6fa9b41b46fc4295fb09d",
+    "docs/integration/proposed/aux-development-worker-host/evidence/check.json": "15db3e4efdf028b2d151df0a7e8b2612179f13e7bad669f565a03a9b9407a816",
+    "docs/integration/proposed/aux-development-worker-host/evidence/compile-only.json": "69f4c6a3a433b3361e9227cdd7efdd624ea69e3b46d5af685d7f5fd262870e98",
+    "docs/integration/proposed/aux-development-worker-host/evidence/current-host-v3-compile-only.json": "004d50986310d935fa7c4f43982a5d6545e0aa494430c1b0b16a5ba4cee376b5",
+    "docs/integration/proposed/aux-development-worker-host/evidence/current-direct-attach-refusal-compile-only.json": "fa37f90cbc21b2363e9a6fc1b71ad21505221b10460da9e9ca5b717cc7cec367"
+  },
+  "utilitiesAtomicV4Successor": {
+    "compiledSourceCommit": "9cb417451",
+    "previousCurrentPinsSha256": "f1e15a57c4e642a1574ca4e887d4bdd4741974807f791aae4ecf4b269af9660c",
+    "reviewedChanges": [
+      {
+        "path": "docs/integration/proposed/aux-development-host/build.sh",
+        "previousSha256": "6f9106d8b5cbfa32057c2e1a68464339ea784a39a00a7f611a267135cdea0aca",
+        "sha256": "bfe35cb440acabec543650be0131b2f018f74c18c5f692a9d68465c6761ac8ce"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source-contract.json",
+        "previousSha256": "cc90141b23e38b5ea9cc4eb7ec31d9a1cb35b68fa512bb643f96b2aec3a8258c",
+        "sha256": "994794a3c198a6e68b2efdc09dcb36552c4f654beb4a46afb5a402ad6fe54cf3"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+        "previousSha256": "aa5ded634dc93fb4148e0df033c511d9c363b687a3620eb5b717326d8bd4f3fa",
+        "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+        "previousSha256": "0a98ce6ffce43c966e576db7819580080b95cc96a532e98ae76c8e43b75c8413",
+        "sha256": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+        "previousSha256": "e3d06ece192e41ccfe37b39e8ea50b89e17238729236cacf2490c14f242ca9dd",
+        "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f"
+      },
+      {
+        "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+        "previousSha256": "759270179add7e51e984e1931f29c7cbc0dc2b25286cd649a327b9a0c30f50dd",
+        "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-secure-store/source/AuxSecureStore.swift",
+        "previousSha256": "1521a578605f942a000cc78ae7a34c86ee862e2c420d5ad36fbd71d9c4baf252",
+        "sha256": "eb389d1ccf2ab5b73521aeb2e6218676eb665aa7c5af7557b836c08df86f4d6c"
+      },
+      {
+        "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOwnedCommandDispatcher.swift",
+        "previousSha256": "8fff9970a8b6b55ae92911a8f666d2850a0de3dba4d94338b04aefd4011b019f",
+        "sha256": "84e4656f8acae38c1e27007086d0a1fb6ae0ff9be7fefc21ea42cd5c2928dcf3"
+      },
+      {
+        "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.cc",
+        "previousSha256": "1f397779ffd7983a29e78251323188ed6806c8dc62ff43b7ba6861c01de9aed1",
+        "sha256": "373193d15b59a20289aa17d93cc1fa53d986442f8b9255c7afe907b6f04bf040"
+      },
+      {
+        "path": "docs/integration/proposed/aux-scoped-secure-dispatch/source/ScopedAuxCommandContext.swift",
+        "previousSha256": "392be85d3fdd7f13ea619d71766821486a975006b83995a782e3b2ff4ec61664",
+        "sha256": "aac455ee7b9a637ecae0f75dee58e0b1007750b91af9285cb7be9601a2aaff2e"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/verify.mjs",
+        "previousSha256": "70fa5bb340b5511d36d0e2dbf1fd73c473d48225bf36b92af30490e18db08b36",
+        "sha256": "d9dd08d7a2a72890c8146fea7bf3bab9a0e4249c11e9513d6209d2522fefd53e"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-host/verify-os-owner.mjs",
+        "previousSha256": "ff9547659e87fea7a7a2ddb83db329db7134fc7912112be62f24d7b77cd28890",
+        "sha256": "a6e30d1317d484457b991a7b0c06931d683b3d1b27d30b9e40c1092abe2b31bd"
+      }
+    ],
+    "additionalCurrentInputs": [
+      {
+        "path": "docs/integration/proposed/aux-atomic-csk-publication/source/AuxAccountsCskCoordinator.swift",
+        "sha256": "07fc94cd45a0b1539ef2cc40fd9348e042f5d313b96c53e224ba1be75d9e5852"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+        "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+        "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+        "sha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.cc",
+        "sha256": "806034f3d67e18eacf3a939c18085f762617ab31ab3051c88e18c2955d959f27"
+      },
+      {
+        "path": "docs/integration/proposed/aux-macos-utility-integration/check-policy.py",
+        "sha256": "3375bae3a7c23fdc0cb7a8120610f05cc54925ae2cad1c92432d00320fee57fc"
+      },
+      {
+        "path": "docs/integration/proposed/aux-macos-utility-integration/tests/main.swift",
+        "sha256": "a0d76de0dcd6fa4aaa68b9ea0aacb4ccd0b72617135fe3d1d12c7c42f30c42bc"
+      },
+      {
+        "path": "docs/integration/proposed/aux-macos-utility-integration/artifact.json",
+        "sha256": "d9ecd74397a6388a7d195e3ed9a91b5c9496811a867edfc0c445b4b72edb7c24"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h",
+        "sha256": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87"
+      },
+      {
+        "path": "docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+        "sha256": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2"
+      },
+      {
+        "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+        "sha256": "325bb8ba6a5c33beb5f785b3293f263f5fc3e1b60b92b9a5a6c54b18c18bd4e1"
+      },
+      {
+        "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/aux-owned-command-dispatcher.h",
+        "sha256": "2beb2e3f8cafa4c109107e80f099576b39d3367572efead5f5e6d69f971eedf8"
+      }
+    ],
+    "historicalEvidenceUpdated": false,
+    "actualProductionSourceInputsSha256": "c3be74a922c498723519271b22a911280ea4d08b53d95b302a59aa5f51d33477",
+    "reason": "Actual22-Swift/6-C++ v4 utility image and atomic CSK coordinator graph; verify both image cleanup fences; old receipt source inputs stay historical."
   }
 }
