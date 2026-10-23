@@ -1,0 +1,49 @@
+{
+  "format": "aux.protected-bootstrap.node-contract.v1",
+  "baseCommit": "76dec5dbb",
+  "readOnly": true,
+  "nativeRuntimeLoaded": false,
+  "protectedFactoryCalled": false,
+  "inputs": [
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+      "bytes": 72762
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+      "bytes": 10370
+    },
+    {
+      "path": "out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api_types.h",
+      "sha256": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00",
+      "bytes": 1930
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "sha256": "325bb8ba6a5c33beb5f785b3293f263f5fc3e1b60b92b9a5a6c54b18c18bd4e1",
+      "bytes": 1769
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae",
+      "bytes": 17947
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/aux-development-host-attach.cc",
+      "sha256": "c1940718232b7a5502e508d08bc8726ce5b4d8b1d7518a856a1b61e0459990e9",
+      "bytes": 600
+    },
+    {
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentPolicyLoader.swift",
+      "sha256": "aea0811dd137351653586bffb288e999e3fba1c7dd8c5415b498af4b37cb702f",
+      "bytes": 17447
+    },
+    {
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "bytes": 2771
+    }
+  ]
+}
