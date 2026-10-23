@@ -1,0 +1,411 @@
+diff --git a/extensions/browser/service_worker/service_worker_start_admission.h b/extensions/browser/service_worker/service_worker_start_admission.h
+new file mode 100644
+--- /dev/null
++++ b/extensions/browser/service_worker/service_worker_start_admission.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef EXTENSIONS_BROWSER_SERVICE_WORKER_SERVICE_WORKER_START_ADMISSION_H_
++#define EXTENSIONS_BROWSER_SERVICE_WORKER_SERVICE_WORKER_START_ADMISSION_H_
++#include <cstdint>
++namespace extensions {
++// Native process-owner state. Access is restricted by the queue to the browser
++// UI sequence. No reopen/reset path: existing and future queues share it.
++class ServiceWorkerStartAdmission {
++ public:
++  uint64_t generation() const { return generation_; }
++  bool open() const { return open_; }
++  bool Accepts(uint64_t captured_generation) const {
++    return open_ && captured_generation == generation_;
++  }
++  void Close() {
++    if (open_) {
++      open_ = false;
++      ++generation_;  // Exactly one transition, never a caller-supplied epoch.
++    }
++  }
++ private:
++  bool open_ = true;
++  uint64_t generation_ = 1;
++};
++}  // namespace extensions
++#endif
+--- a/extensions/browser/service_worker/service_worker_task_queue.cc
++++ b/extensions/browser/service_worker/service_worker_task_queue.cc
+@@ -14,6 +14,8 @@
+ #include "base/containers/map_util.h"
+ #include "base/functional/bind.h"
+ #include "base/metrics/histogram_functions.h"
++#include "base/no_destructor.h"
++#include "extensions/browser/service_worker/service_worker_start_admission.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/syslog_logging.h"
+@@ -82,12 +84,30 @@
+ 
+ ServiceWorkerTaskQueue::TestObserver* g_test_observer = nullptr;
+ 
++struct ProcessWorkerStartAdmission {
++  ServiceWorkerStartAdmission gate;
++  std::set<ServiceWorkerTaskQueue*> queues;
++  std::vector<ServiceWorkerTaskQueue::QueueStartAdmissionSnapshot> destroyed;
++};
++ProcessWorkerStartAdmission& WorkerStartAdmissionOwner() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  static base::NoDestructor<ProcessWorkerStartAdmission> owner;
++  return *owner;
++}
++
+ }  // namespace
+ 
+ ServiceWorkerTaskQueue::ServiceWorkerTaskQueue(BrowserContext* browser_context)
+-    : browser_context_(browser_context) {}
++    : start_admission_generation_(WorkerStartAdmissionOwner().gate.generation()),
++      browser_context_(browser_context) {
++  WorkerStartAdmissionOwner().queues.insert(this);
++}
+ 
+ ServiceWorkerTaskQueue::~ServiceWorkerTaskQueue() {
++  auto& owner = WorkerStartAdmissionOwner();
++  // Retain unresolved ownership even if this queue disappears before close.
++  owner.destroyed.push_back(InspectQueueStartAdmission());
++  owner.queues.erase(this);
+   for (const auto& entry : observing_worker_contexts_) {
+     entry.first->RemoveSyncObserver(this);
+   }
+@@ -104,6 +124,66 @@
+ ServiceWorkerTaskQueue::RetryState::RetryState(
+     const net::BackoffEntry::Policy* policy)
+     : backoff_entry(policy) {}
++
++bool ServiceWorkerTaskQueue::CanAdmitStart() const {
++  return WorkerStartAdmissionOwner().gate.Accepts(start_admission_generation_);
++}
++
++ServiceWorkerTaskQueue::QueueStartAdmissionSnapshot
++ServiceWorkerTaskQueue::InspectQueueStartAdmission() const {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  QueueStartAdmissionSnapshot result;
++  result.browser_context_token = browser_context_->UniqueToken();
++  result.captured_generation = start_admission_generation_;
++  for (const auto& [context, state] : worker_state_map_) {
++    result.workers.push_back({context, state->worker_id(), state->IsStarting(),
++                              state->IsReady()});
++  }
++  result.retired_workers = retired_worker_observations_;
++  for (const auto& [context, tasks] : pending_tasks_map_) {
++    result.pending_tasks += tasks.size();
++  }
++  result.registration_callbacks = registration_callbacks_;
++  result.verification_callbacks = verification_callbacks_;
++  result.pending_storage_registrations = pending_storage_registrations_.size();
++  result.pending_unregistrations = pending_unregistrations_.size();
++  result.closed_registration_results = closed_registration_results_;
++  result.closed_verification_results = closed_verification_results_;
++  return result;
++}
++
++void ServiceWorkerTaskQueue::CloseQueueStartAdmission() {
++  // Destroying OneShotTimers cancels their pending retries. Keep worker states,
++  // activations and tasks: empty retry maps are not worker-stop evidence.
++  worker_start_retries_.clear();
++  worker_registration_retries_.clear();
++  worker_unregistration_wait_retries_.clear();
++}
++
++// static
++ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
++ServiceWorkerTaskQueue::InspectStartAdmissionForMigration() {
++  auto& owner = WorkerStartAdmissionOwner();
++  ProcessStartAdmissionSnapshot result;
++  result.admission_open = owner.gate.open();
++  result.generation = owner.gate.generation();
++  for (auto* queue : owner.queues) {
++    result.queues.push_back(queue->InspectQueueStartAdmission());
++  }
++  result.destroyed_queues = owner.destroyed;
++  return result;
++}
++
++// static
++ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
++ServiceWorkerTaskQueue::CloseStartAdmissionForMigration() {
++  auto& owner = WorkerStartAdmissionOwner();
++  owner.gate.Close();  // Close globally BEFORE cancelling current queue timers.
++  for (auto* queue : owner.queues) {
++    queue->CloseQueueStartAdmission();
++  }
++  return InspectStartAdmissionForMigration();
++}
+ 
+ ServiceWorkerTaskQueue::TestObserver::TestObserver() = default;
+ 
+@@ -165,6 +245,12 @@
+     return;
+   }
+ 
++  if (!CanAdmitStart()) {
++    ProcessManager::Get(browser_context_)
++        ->StartTrackingServiceWorkerRunningInstance(worker_id);
++    return;  // Observe the real worker, never activate it for new API work.
++  }
++
+   if (BackgroundInfo::HasAsyncListenerRegistration(extension)) {
+     // Asynchronous listener registration does not support sub-event-named
+     // listeners (e.g. "webRequest.onBeforeRequest/s1"), which exist only in
+@@ -211,6 +297,7 @@
+ 
+ bool ServiceWorkerTaskQueue::RendererDidCompleteListenerRegistrationPhase(
+     const WorkerId& worker_id) {
++  if (!CanAdmitStart()) { return false; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   const ExtensionId& extension_id = worker_id.extension_id;
+ 
+@@ -292,6 +379,7 @@
+ bool ServiceWorkerTaskQueue::IsReadyToRunTasks(
+     content::BrowserContext* context,
+     const Extension* extension) const {
++  if (!CanAdmitStart()) { return false; }
+   if (!extension) {
+     // TODO(crbug.com/339908207): Create tests for this once crash is confirmed
+     // fixed.
+@@ -316,6 +404,7 @@
+ void ServiceWorkerTaskQueue::AddPendingTask(
+     const LazyContextId& lazy_context_id,
+     PendingTask task) {
++  if (!CanAdmitStart()) { std::move(task).Run(nullptr); return; }
+   DCHECK(lazy_context_id.IsForServiceWorker());
+   base::UmaHistogramBoolean(
+       "Extensions.ServiceWorkerBackground.AddPendingTaskForRunningWorker3",
+@@ -362,6 +451,11 @@
+ void ServiceWorkerTaskQueue::DispatchTasksImmediately(
+     const SequencedContextId& context_id,
+     base::span<PendingTask> tasks) {
++  if (!CanAdmitStart()) {
++    for (auto& task : tasks) { std::move(task).Run(nullptr); }
++    return;
++  }
++  auto self = weak_factory_.GetWeakPtr();
+   ServiceWorkerState* worker_state = GetWorkerState(context_id);
+   DCHECK(worker_state);
+   DCHECK(worker_state->IsReady());
+@@ -374,12 +468,17 @@
+       Extension::GetServiceWorkerScopeFromExtensionId(context_id.extension_id));
+ 
+   for (auto& task : tasks) {
++    if (!self || !self->CanAdmitStart()) {
++      std::move(task).Run(nullptr);
++      continue;
++    }
+     std::move(task).Run(
+         std::make_unique<LazyContextTaskQueue::ContextInfo>(context_info));
+   }
+ }
+ 
+ void ServiceWorkerTaskQueue::ActivateExtension(const Extension* extension) {
++  if (!CanAdmitStart()) { return; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+ 
+   // TODO(crbug.com/362791965): Enable this check once it is no longer possible
+@@ -431,6 +530,8 @@
+     content::ServiceWorkerContext* service_worker_context,
+     const SequencedContextId& context_id,
+     const GURL& scope) {
++  if (!CanAdmitStart()) { return; }
++  ++verification_callbacks_;
+   service_worker_context->CheckHasServiceWorker(
+       scope, blink::StorageKey::CreateFirstParty(url::Origin::Create(scope)),
+       base::BindOnce(&ServiceWorkerTaskQueue::DidVerifyRegistration,
+@@ -449,6 +550,7 @@
+ 
+ void ServiceWorkerTaskQueue::OnWorkerStart(const SequencedContextId& context_id,
+                                            const WorkerId& worker_id) {
++  if (!CanAdmitStart()) { return; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (!IsCurrentActivation(context_id.extension_id, context_id.token)) {
+     // Extension run with |activation_token| was already deactivated.
+@@ -489,6 +591,7 @@
+     const SequencedContextId& context_id,
+     base::Time start_time,
+     content::StatusCodeResponse status) {
++  if (!CanAdmitStart()) { return; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (!IsCurrentActivation(context_id.extension_id, context_id.token)) {
+     // This can happen when the registration got unregistered right before we
+@@ -587,6 +690,7 @@
+     RegistrationReason reason,
+     const SequencedContextId& context_id,
+     const Extension& extension) {
++  if (!CanAdmitStart()) { return; }
+   // If there is a pending unregistration for this extension, the registration
+   // may get aborted by the unregistration and fail with
+   // blink::ServiceWorkerStatusCode::kErrorAbort. Avoid this by retrying the
+@@ -614,6 +718,7 @@
+ 
+   content::ServiceWorkerContext* service_worker_context =
+       GetServiceWorkerContext(extension.id());
++  ++registration_callbacks_;
+   service_worker_context->RegisterServiceWorker(
+       script_url,
+       blink::StorageKey::CreateFirstParty(url::Origin::Create(option.scope)),
+@@ -650,6 +755,11 @@
+   }
+ 
+   RunAndClearPendingTasksWithNullContext(context_id);
++  if (worker_state->IsStarting() || worker_state->worker_id().has_value()) {
++    retired_worker_observations_.push_back(
++        {context_id, worker_state->worker_id(), worker_state->IsStarting(),
++         worker_state->IsReady()});
++  }
+   worker_state_observations_.RemoveObservation(worker_state);
+   worker_state_map_.erase(context_id);
+   pending_tasks_map_.erase(context_id);
+@@ -696,6 +806,7 @@
+ void ServiceWorkerTaskQueue::AddPendingTaskForContext(
+     PendingTask&& pending_task,
+     const SequencedContextId& context_id) {
++  if (!CanAdmitStart()) { std::move(pending_task).Run(nullptr); return; }
+   GetOrAddPendingTasks(context_id).push_back(std::move(pending_task));
+ }
+ 
+@@ -722,6 +833,7 @@
+ void ServiceWorkerTaskQueue::MaybeStartWorker(
+     ServiceWorkerState* worker_state,
+     const SequencedContextId& context_id) {
++  if (!CanAdmitStart()) { return; }
+   if (worker_state->IsStarting()) {
+     return;
+   }
+@@ -736,6 +848,7 @@
+ void ServiceWorkerTaskQueue::RetryRegisterServiceWorker(
+     const SequencedContextId& context_id,
+     RegistrationReason reason) {
++  if (!CanAdmitStart()) { return; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+ 
+   // Ensure the activation is still current.
+@@ -762,6 +875,7 @@
+ 
+ void ServiceWorkerTaskQueue::RetryStartWorker(
+     const SequencedContextId& context_id) {
++  if (!CanAdmitStart()) { return; }
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+ 
+   // Ensure the activation is still current.
+@@ -895,6 +1009,7 @@
+ bool ServiceWorkerTaskQueue::ScheduleRetry(const base::UnguessableToken& token,
+                                            RetryMap& retry_map,
+                                            base::OnceClosure retry_callback) {
++  if (!CanAdmitStart()) { return false; }
+   auto& retry_state = retry_map[token];
+   if (!retry_state) {
+     retry_state = std::make_unique<RetryState>(&kRetryBackoffPolicy);
+@@ -931,6 +1046,12 @@
+     RegistrationReason reason,
+     base::Time start_time,
+     blink::ServiceWorkerStatusCode status_code) {
++  CHECK_GT(registration_callbacks_, 0u);
++  --registration_callbacks_;
++  if (!CanAdmitStart()) {
++    closed_registration_results_.push_back({context_id, status_code});
++    return;
++  }
+   const bool success = IsWorkerRegistrationSuccess(status_code);
+   base::UmaHistogramBoolean(
+       "Extensions.ServiceWorkerBackground.WorkerRegistrationState2", success);
+@@ -1206,6 +1327,7 @@
+   SequencedContextId context_id = {
+       extension_id, browser_context_->UniqueToken(), activation_token};
+   pending_storage_registrations_.erase(iter);
++  if (!CanAdmitStart()) { return; }
+ 
+   ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
+   const Extension* extension =
+@@ -1377,6 +1499,12 @@
+ void ServiceWorkerTaskQueue::DidVerifyRegistration(
+     const SequencedContextId& context_id,
+     content::ServiceWorkerCapability capability) {
++  CHECK_GT(verification_callbacks_, 0u);
++  --verification_callbacks_;
++  if (!CanAdmitStart()) {
++    closed_verification_results_.push_back({context_id, capability});
++    return;
++  }
+   const bool is_registered =
+       capability != content::ServiceWorkerCapability::NO_SERVICE_WORKER;
+   base::UmaHistogramBoolean(
+--- a/extensions/browser/service_worker/service_worker_task_queue.h
++++ b/extensions/browser/service_worker/service_worker_task_queue.h
+@@ -5,6 +5,7 @@
+ #ifndef EXTENSIONS_BROWSER_SERVICE_WORKER_SERVICE_WORKER_TASK_QUEUE_H_
+ #define EXTENSIONS_BROWSER_SERVICE_WORKER_SERVICE_WORKER_TASK_QUEUE_H_
+ 
++#include <cstdint>
+ #include <map>
+ #include <optional>
+ #include <string>
+@@ -152,6 +153,46 @@
+       public content::ServiceWorkerContextObserverSynchronous,
+       public ServiceWorkerState::Observer {
+  public:
++  struct WorkerAdmissionObservation {
++    SequencedContextId context_id;
++    std::optional<WorkerId> worker_id;
++    bool starting;
++    bool ready;
++  };
++  struct ClosedRegistrationObservation {
++    SequencedContextId context_id;
++    blink::ServiceWorkerStatusCode status;
++  };
++  struct ClosedVerificationObservation {
++    SequencedContextId context_id;
++    content::ServiceWorkerCapability capability;
++  };
++  struct QueueStartAdmissionSnapshot {
++    base::UnguessableToken browser_context_token;
++    uint64_t captured_generation;
++    std::vector<WorkerAdmissionObservation> workers;
++    // These observations survive deactivation; they are not stop receipts.
++    std::vector<WorkerAdmissionObservation> retired_workers;
++    size_t pending_tasks = 0;
++    size_t registration_callbacks = 0;
++    size_t verification_callbacks = 0;
++    size_t pending_storage_registrations = 0;
++    size_t pending_unregistrations = 0;
++    std::vector<ClosedRegistrationObservation> closed_registration_results;
++    std::vector<ClosedVerificationObservation> closed_verification_results;
++  };
++  struct ProcessStartAdmissionSnapshot {
++    bool admission_open;
++    uint64_t generation;
++    std::vector<QueueStartAdmissionSnapshot> queues;
++    // Destruction cannot prove a pending content-layer start was cancelled.
++    std::vector<QueueStartAdmissionSnapshot> destroyed_queues;
++  };
++  // Browser UI sequence only, irreversible for the lifetime of this process.
++  // Cancels queue retry timers, not content-layer starts or running workers.
++  static ProcessStartAdmissionSnapshot CloseStartAdmissionForMigration();
++  static ProcessStartAdmissionSnapshot InspectStartAdmissionForMigration();
++
+   explicit ServiceWorkerTaskQueue(content::BrowserContext* browser_context);
+ 
+   ServiceWorkerTaskQueue(const ServiceWorkerTaskQueue&) = delete;
+@@ -525,6 +566,16 @@
+                        const char* histogram_name,
+                        bool success);
+ 
++  bool CanAdmitStart() const;
++  QueueStartAdmissionSnapshot InspectQueueStartAdmission() const;
++  void CloseQueueStartAdmission();
++  const uint64_t start_admission_generation_;
++  size_t registration_callbacks_ = 0;
++  size_t verification_callbacks_ = 0;
++  std::vector<ClosedRegistrationObservation> closed_registration_results_;
++  std::vector<ClosedVerificationObservation> closed_verification_results_;
++  std::vector<WorkerAdmissionObservation> retired_worker_observations_;
++
+   // Whether the task queue (as a keyed service) has been informed that the
+   // browser context is shutting down. Used for metrics purposes.
+   bool browser_context_shutting_down_ = false;

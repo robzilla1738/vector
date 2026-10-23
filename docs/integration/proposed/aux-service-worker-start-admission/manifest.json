@@ -1,0 +1,29 @@
+{
+  "format": "aux.native.service-worker-start-admission.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "parentComposition": "out/native-reuse-composition-aux-session-writer-close-gn",
+  "parentCompositionSha256": "2f2d89447a39710b711db114c5578b745e8b5a71a930ca0ffd9f0e7a614fd1a9",
+  "parentSourceCount": 778,
+  "parentBinaryAssetCount": 23,
+  "files": [
+    {
+      "path": "extensions/browser/service_worker/service_worker_start_admission.h",
+      "baselineSha256": null,
+      "sourceSha256": "9e0c43de2fff0caa058da21602d3f893b44df54b30ad2578c4b5b9fb2db275ed"
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_task_queue.cc",
+      "baselineSha256": "b92d2a0bda24adcf4848a1849ea93218c9a099bd8a158bf7f51c419751ba7666",
+      "sourceSha256": "2196a54d2a9e715fae77785528f30063c8f3c410ef0af8adbd1307968a3e1d42"
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_task_queue.h",
+      "baselineSha256": "e769de1590d3bc1e2be7712fcc90f73e2ca4bb610913782d083799de3463b7e9",
+      "sourceSha256": "2237b7ec8144900c8baf0e3a065c7014a5ba0024e7ed1d6989d2a2dffb163335"
+    }
+  ],
+  "patchSha256": "eaa9041f0efc9b5bdaeb37c98782d494fa1fd2a0dbfafa44db5fc8e636cd2370",
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "appliedToNative": false,
+  "wholeProfileCustodyClaimed": false
+}

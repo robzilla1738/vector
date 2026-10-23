@@ -1,0 +1,26 @@
+{
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "gn": "out/AuxFast/obj/extensions/browser/browser_sources.ninja",
+  "inputs": [
+    {
+      "path": "out/AuxFast/obj/extensions/browser/browser_sources.ninja",
+      "sha256": "fef0239f06f238ac64a38224d114aae177d7a455311bfbc6917a2aa30fb81c43"
+    },
+    {
+      "path": "out/AuxFast/args.gn",
+      "sha256": "0f484d6155c81fb28108deaf7c13d2999eb8b7c0077b62b171b69d710f714407"
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_state.h",
+      "sha256": "5732a934aca5b1b22e2ae8035a023ec3fb34f14491a923c4d37fd1782bd89ffe"
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_state.cc",
+      "sha256": "d0664b67e520f43e4923247aaeedad03bd63bb4257de309e45bc40d608cc68ba"
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_task_queue.h",
+      "sha256": "e769de1590d3bc1e2be7712fcc90f73e2ca4bb610913782d083799de3463b7e9"
+    }
+  ]
+}
