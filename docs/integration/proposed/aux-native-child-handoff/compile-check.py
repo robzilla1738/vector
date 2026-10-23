@@ -59,6 +59,18 @@ def main():
             if sha(prior) != inputs['endpointDeliverySuccessor']['priorResultSha256']:
                 raise ValueError('Failed85029 evidence changed')
             previous = json.loads(prior.read_text())
+            historical_path = prior.parent / 'inputs.json'
+            if sha(historical_path) != previous['inputsSha256']:
+                raise ValueError('Previous exact input manifest changed')
+            historical = json.loads(historical_path.read_text())
+            for key in ('compileInputs', 'referenceInputs', 'nodeCompiler', 'proposedGnSha256'):
+                if inputs[key] != historical[key]:
+                    raise ValueError('Previously passed compiler/configuration changed: ' + key)
+            old_sources = {entry['path']: entry['outputSha256'] for entry in historical['files']}
+            for entry in inputs['files']:
+                if entry['path'] != 'source/AuxNativeEndpointDelivery.cc' and (
+                        entry['outputSha256'] != old_sources[entry['path']]):
+                    raise ValueError('Previously passed source/header graph changed')
             if not previous.get('prePinsVerified') or not previous.get('postPinsVerified'):
                 raise ValueError('Previous graph was not source-pinned')
             expected = [('AuxNativePeerTransport.cc', 0), ('AuxOwnedNativePeerChild.cc', 0),
