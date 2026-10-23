@@ -1,0 +1,89 @@
+{
+  "format": "aux.native-child-bootstrap.feasibility.v1",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/bin/node",
+      "sha256": "cbee2298aee5cc476bf8d5441e7348b627254a39d869743a5b04489028c729d4",
+      "bytes": 145307392
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node.h",
+      "sha256": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+      "bytes": 72762
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_api.h",
+      "sha256": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+      "bytes": 10370
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/node_version.h",
+      "sha256": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+      "bytes": 4239
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/runtime/node/include/node/config.gypi",
+      "sha256": "0f6a2951dbad3fa3e85da6d16e9b01ae1264b03a5192822b0c49311db3ef865e",
+      "bytes": 20972
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/process/launch.h",
+      "sha256": "52b4dc784b0e8678697b10c847fa03f2b482578a323fcd0574d95ef68d6ed008",
+      "bytes": 24114
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.h",
+      "sha256": "c54d30debfa721763774774ad85e197b8a7b1337d3cb78a830258cd30d73f74f",
+      "bytes": 8813
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous.cc",
+      "sha256": "ea2852469c36dc1eb81280f6d6ad30f3487691fa6980c6c7877927878be56db6",
+      "bytes": 10787
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous_mac.h",
+      "sha256": "165ce754dea614c0e8c0591e5484886336ecb913ef9256d4dc6ba412d1229be8",
+      "bytes": 7184
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/base/apple/mach_port_rendezvous_mac.cc",
+      "sha256": "1de18c3104a1b7edc92f9e7ec9615c4dc1d49be114d564baf0b4ec94c2f46d34",
+      "bytes": 14130
+    },
+    {
+      "path": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed",
+      "bytes": 22799
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae",
+      "bytes": 17947
+    }
+  ],
+  "nodeVersion": "26.5.0",
+  "moduleABI": 147,
+  "sourceCommitOrReleaseChecksumVerified": false,
+  "exactNodeLibraryAvailable": false,
+  "symbolEvidence": {
+    "tool": "nm -gU; ordinary static inspection, not REA execution",
+    "lines": [
+      "0000000100015f10 T __ZN4node15LoadEnvironmentEPNS_11EnvironmentENSt3__117basic_string_viewIcNS2_11char_traitsIcEEEENS2_8functionIFvS1_N2v85LocalINS8_5ValueEEESB_EEE",
+      "0000000100015c74 T __ZN4node15LoadEnvironmentEPNS_11EnvironmentENSt3__18functionIFN2v810MaybeLocalINS4_5ValueEEERKNS_26StartExecutionCallbackInfoEEEENS3_IFvS1_NS4_5LocalIS6_EESE_EEE",
+      "000000010001579c T __ZN4node15LoadEnvironmentEPNS_11EnvironmentENSt3__18functionIFN2v810MaybeLocalINS4_5ValueEEERKNS_36StartExecutionCallbackInfoWithModuleEEEENS3_IFvS1_NS4_5LocalIS6_EESE_EEE",
+      "0000000100016044 T __ZN4node15LoadEnvironmentEPNS_11EnvironmentEPKNS_10ModuleDataENSt3__18functionIFvS1_N2v85LocalINS7_5ValueEEESA_EEE",
+      "0000000100016a40 T __ZN4node16AddLinkedBindingEPNS_11EnvironmentEPKcPFP12napi_value__P10napi_env__S5_Ei",
+      "000000010001698c T __ZN4node16AddLinkedBindingEPNS_11EnvironmentEPKcPFvN2v85LocalINS4_6ObjectEEENS5_INS4_5ValueEEENS5_INS4_7ContextEEEPvESC_",
+      "00000001000168d8 T __ZN4node16AddLinkedBindingEPNS_11EnvironmentERK11napi_module",
+      "0000000100016840 T __ZN4node16AddLinkedBindingEPNS_11EnvironmentERKNS_11node_moduleE",
+      "000000010258f5b4 T __ZN4node19GetCurrentEventLoopEPN2v87IsolateE",
+      "000000010258f394 T __ZN4node21GetCurrentEnvironmentEN2v85LocalINS0_7ContextEEE",
+      "00000001000c9d14 T _napi_add_env_cleanup_hook",
+      "00000001000cb1b8 T _napi_get_uv_event_loop"
+    ]
+  },
+  "protectedExecution": false,
+  "compiled": false,
+  "implementationAdded": false
+}
