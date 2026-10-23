@@ -1,0 +1,20 @@
+{
+  "format": "aux.local-backup-job.source-pins.v1",
+  "baseCommit": "cb902cd51",
+  "files": {
+    "services/aux-cloud/scripts/backup-job-core.mjs": "e276ef74dc860dac7176befbc5d77225916ca7d5266fcfafe6393c4abe5148c5",
+    "services/aux-cloud/scripts/cloud-backup-job.mjs": "f5b6c5475e3dcf914c7a7d3b9bf844c160e662c41753928656a20786630b811b",
+    "services/aux-cloud/scripts/recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "fb35b82925c87d27857173330547055152045c8f21a0631aa8a884516852f1fa",
+    "docs/integration/proposed/aux-local-backup-job/check.mjs": "a2bfb24e4fea16e9e08c98e1681284e1d9c8dbf5c3650b9dad1fc408bd74bdb4"
+  },
+  "offlineFixture": {
+    "exitCode": 0,
+    "actualEncryptedBundle": true,
+    "captureProcessInvoked": false,
+    "providerOperations": 0,
+    "remoteCustodyEstablished": false
+  },
+  "productionCliSyntaxChecked": true,
+  "productionCaptureExecuted": false
+}

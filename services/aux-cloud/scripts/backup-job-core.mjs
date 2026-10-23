@@ -159,6 +159,28 @@ async function checkFiles(path, identity, files, allowMissing) {
   for (const name of names) assert.deepEqual(await fingerprint(join(path, name)),
     { size: expected.get(name).size, sha256: expected.get(name).sha256 }, 'Ciphertext integrity mismatch');
 }
+async function checkTargetBeforeMutation(job, files) {
+  await directory(job.target, job.targetIdentity);
+  const names = await readdir(job.target);
+  const expected = new Map(files.map(file => [file.name, file]));
+  assert(names.every(name => expected.has(name) ||
+    (name.endsWith('.pending') && expected.has(name.slice(0, -8)))), 'Unowned delivery entry; refusing mutation');
+  for (const name of names) {
+    if (!name.endsWith('.pending')) {
+      const file = expected.get(name);
+      assert.deepEqual(await fingerprint(join(job.target, name)),
+        { size: file.size, sha256: file.sha256 }, 'Ciphertext integrity mismatch');
+      continue;
+    }
+    const file = expected.get(name.slice(0, -8));
+    const descriptor = await open(join(job.target, name), fileFlags);
+    try {
+      const state = await descriptor.stat();
+      assert(state.isFile() && state.nlink === 1 && state.uid === process.getuid() &&
+        (state.mode & 0o7777) === 0o600 && state.size <= file.size, 'Unsafe pending ciphertext');
+    } finally { await descriptor.close(); }
+  }
+}
 async function removePendingCopies(job, files) {
   await directory(job.target, job.targetIdentity);
   for (const file of files) {
@@ -190,7 +212,13 @@ async function copyCiphertext(source, target, expected) {
       assert(size <= expected.size, 'Source grew during delivery');
       const part = buffer.subarray(0, bytesRead); hash.update(part);
       let written = 0;
-      while (written < bytesRead) written += (await output.write(part, written, bytesRead - written)).bytesWritten;
+      while (written < bytesRead) {
+        const remaining = bytesRead - written;
+        const { bytesWritten } = await output.write(part, written, remaining);
+        assert(Number.isInteger(bytesWritten) && bytesWritten > 0 && bytesWritten <= remaining,
+          'Invalid delivery write progress');
+        written += bytesWritten;
+      }
     }
     assert.equal(size, expected.size); assert.equal(hash.digest('hex'), expected.sha256);
     await output.sync();
@@ -204,12 +232,13 @@ export async function deliverBackupJob(job, key) {
   assert(Date.now() < inventory.expiresAt, 'Capture expired; never recapture on retry');
   const source = join(job.path, 'bundle');
   await checkFiles(source, inventory.sourceIdentity, inventory.files, false);
+  await checkTargetBeforeMutation(job, inventory.files);
+  await recordBackupStatus(job, 'delivery-intent', key);
   await removePendingCopies(job, inventory.files);
   await checkFiles(job.target, job.targetIdentity, inventory.files, true);
   // bundle.json is the existing format's completion marker. A crash leaves no
   // apparently complete backup until every ciphertext has been read back.
   const ordered = [...inventory.files].sort((a, b) => (a.name === 'bundle.json') - (b.name === 'bundle.json'));
-  await recordBackupStatus(job, 'delivery-intent', key);
   for (const file of ordered) {
     if ((await readdir(job.target)).includes(file.name)) continue; // Exact inventory was verified above.
     await directory(job.target, job.targetIdentity);
@@ -227,9 +256,10 @@ export async function expireBackupJob(job, key) {
   // Validate the entire remaining set BEFORE any unlink. Interrupted expiry can
   // continue missing-file deletion, but modified/unknown entries never qualify.
   await checkFiles(source, inventory.sourceIdentity, inventory.files, true);
+  await checkTargetBeforeMutation(job, inventory.files);
+  await recordBackupStatus(job, 'expiry-delete-intent', key);
   await removePendingCopies(job, inventory.files);
   await checkFiles(job.target, job.targetIdentity, inventory.files, true);
-  await recordBackupStatus(job, 'expiry-delete-intent', key);
   for (const [path, identity] of [[job.target, job.targetIdentity], [source, inventory.sourceIdentity]]) {
     const ordered = [...inventory.files].sort((a, b) => (b.name === 'bundle.json') - (a.name === 'bundle.json'));
     for (const file of ordered) {

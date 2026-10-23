@@ -10,15 +10,29 @@ import { withBackupJobLock, createBackupJob, loadBackupJob, authenticateCaptured
 
 const [command, rootArgument, targetOrId, keyArgument, ...flags] = process.argv.slice(2);
 let key, job;
-async function captureOnce(path, keyFile, maxBytes) {
+async function captureOnce(job, key, keyFile, maxBytes) {
   await new Promise((accept, reject) => {
     const child = spawn(process.execPath, [fileURLToPath(new URL('./cloud-recovery-online.mjs', import.meta.url)),
-      'capture', join(path, 'bundle'), keyFile, '--max-bytes=' + maxBytes],
+      'capture', join(job.path, 'bundle'), keyFile, '--max-bytes=' + maxBytes],
       { env: process.env, stdio: ['ignore', 'ignore', 'ignore'] });
     // Intent already persisted. A timeout/error never causes another capture.
-    const timer = setTimeout(() => child.kill('SIGTERM'), 15 * 60_000);
+    let stopRequested = false, stopTask = Promise.resolve();
+    const timer = setTimeout(() => {
+      stopTask = (async () => {
+        stopRequested = true;
+        try { await recordBackupStatus(job, 'capture-stop-requested-outcome-uncertain', key); }
+        catch { /* Still request a stop; no durable-stop receipt is claimed. */ }
+        child.kill('SIGTERM');
+        // An ignored SIGTERM is not a bounded exit: retain this pending capture
+        // and lock until the real child exits. Never recapture or report success.
+      })();
+    }, 15 * 60_000);
     child.once('error', () => { clearTimeout(timer); reject(Error('Capture process unavailable')); });
-    child.once('exit', code => { clearTimeout(timer); code === 0 ? accept() : reject(Error('Capture failed or outcome uncertain')); });
+    child.once('exit', async code => {
+      clearTimeout(timer);
+      await stopTask;
+      code === 0 && !stopRequested ? accept() : reject(Error('Capture failed or outcome uncertain'));
+    });
   });
 }
 async function deliverWithBoundedRetry(job, key) {
@@ -42,9 +56,9 @@ try {
         const target = await realpath(targetOrId);
         assert(!keyFile.startsWith(target + '/'), 'Keep the recovery key outside delivery');
         const maxBytes = Number(flags.find(value => value.startsWith('--max-bytes='))?.slice(12));
-        assert(Number.isSafeInteger(maxBytes) && maxBytes > 0 && flags.length === 1, 'Explicit bounded capture required');
+        assert(Number.isSafeInteger(maxBytes) && maxBytes > 0 && flags.length === 1, 'Explicit capture byte budget required');
         job = await createBackupJob(root, target, key);
-        await captureOnce(job.path, keyFile, maxBytes);
+        await captureOnce(job, key, keyFile, maxBytes);
         await authenticateCapturedJob(job, key, maxBytes);
         return await deliverWithBoundedRetry(job, key);
       }
