@@ -12,6 +12,8 @@ Read the [supplied contract](docs/design/aside-contract.md), [active reuse plan]
 
 The [final completion execution plan](docs/ROADMAP-EXECUTION-GRAPH.md) defines the remaining implementation, three parallel worker lanes, shared ownership, focused acceptance journeys, and separate development-signing/production/distribution gates. It is a plan, not a readiness claim or authorization to release.
 
+The [desktop feature expansion plan](docs/plans/2026-10-23-browser-feature-expansion.md) covers the owner's new organization, navigation, window and productivity requirements while preserving the accepted UI. Desktop windows share a tab list with independent viewing; mobile is explicitly deferred. This planning-only roadmap supplements the existing startup/isolation and pre-release gates.
+
 ## Current local preview
 
 The current copied app is `out/provided-candidate-local-browser-pass/Aux.app`. It uses an explicitly accepted, isolated disposable development profile; it is not installed or released. Ordinary opening now has an accepted-startup record for the exact reviewed app bytes. Replacing that app requires a verified successor record, not copying the old acceptance to new code. See [current status](docs/STATUS.md) and the [actual comparison](out/pass1-ui-completion/compare.html). Functional acceptance and remaining gaps are recorded in [the continuation ledger](docs/acceptance/completion-continuation-2026-10-20.json); this preview is not declared complete.

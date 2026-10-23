@@ -1,5 +1,7 @@
 # Aux final completion execution plan
 
+New feature scope is tracked in the [desktop feature expansion plan](plans/2026-10-23-browser-feature-expansion.md), drafted 2026-10-23 from the owner's requirements and three read-only audits. It preserves this graph's unfinished readiness gates and stable IDs. Local windows will share tab organization with independent viewing; mobile is explicitly deferred. The feature plan has not been executed.
+
 Drafted 2026-10-23 for parallel execution. This is the canonical remaining-work plan. It preserves the original outcome IDs and replaces scheduling/current-state claims in the [archived previous graph](archive/execution-graph-2026-10-23-before-final-completion-plan.md). Historical receipts remain unchanged.
 
 Execution was subsequently authorized by the owner on 2026-10-23. Local implementation and unsigned builds are in progress; signing, provisioning, deployment and release remain separate. See `docs/integration/proposed/final-completion/` for current evidence. The original planning baseline below remains historical. Read [STATUS](STATUS.md), the [supplied contract](design/aside-contract.md), [reuse plan](plans/2026-10-19-supplied-implementation-reuse.md) and [provider-funded scope](plans/2026-10-23-provider-funded-launch.md).

@@ -1,3 +1,7 @@
+# Desktop feature expansion planned; implementation not started — 2026-10-23
+
+The owner requested a comprehensive parallel-ready feature plan. Three read-only audits distinguish selected native/supplied features from retired shell code and actual acceptance. The owner explicitly deferred mobile and selected one shared local tab list with independent viewing per desktop window. The [feature expansion plan](plans/2026-10-23-browser-feature-expansion.md) maps all 30 requested items (one deferred), defines interactions, native ownership and migrations, and schedules three isolated workers plus an integrator in rolling substantial batches with focused checks. Existing startup/custody/recovery and pre-release gates remain open. Saved actual-app captures were inspected; no new live comparison, source implementation, build, launch, shutdown/restart, signing, provider/cloud action or accepted-app replacement occurred.
+
 # Startup fix integrated into a new paired daemon/package — 2026-10-23
 
 Owner authorized integrating the startup-only source fix while prohibiting launch/shutdown/restart/signing/replacement. Actual48-Swift/12-object compile/link passed under the native lock, with unchanged frozen inputs and native module import/private-capability pairing. The command differs only by the reviewed Swift replacement and fresh output/cache path. New unsigned daemon SHA256: `420fae0a46654433a2f3f449bab0114619c352e5915385721a9926cdfabf6b17`. No executable/module execution occurred.
