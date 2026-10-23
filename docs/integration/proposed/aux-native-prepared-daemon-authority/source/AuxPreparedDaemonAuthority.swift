@@ -8,24 +8,51 @@ private var daemonAuthorityNext:UInt64=1
 private var daemonAuthorities=[UInt64:PreparedDaemonAuthority]()
 private var unpublishedDaemonAuthorities=[PreparedDaemonAuthority]()
 private let daemonAuthPrefix=Data("Aux Daemon Auth v1\0".utf8) //19 exact bytes.
-private enum DaemonAuthorityKind:Equatable{case signature,publicKeys}
-private enum DaemonAuthorityResult{case running,pending,completed(Data),failed}
+private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey}
+// Exact backend-owned cache allocation; no Data COW alias can retain its old
+// cache buffer after wipe. This does not promise zeroization of Foundation's
+// transient JSON/base64 String copies or separately owned transport buffers.
+private final class DaemonAuthorityPayload {
+    let count:Int
+    private var storage:UnsafeMutableRawPointer?
+    init(_ bytes:inout Data){
+        count=bytes.count;storage=UnsafeMutableRawPointer.allocate(byteCount:count,alignment:1)
+        bytes.withUnsafeBytes{source in storage!.copyMemory(from:source.baseAddress!,byteCount:count)}
+        bytes.resetBytes(in:0..<bytes.count)
+    }
+    func copy(to output:UnsafeMutablePointer<UInt8>)->Bool {
+        guard let storage else{return false}
+        output.update(from:storage.assumingMemoryBound(to:UInt8.self),count:count);return true
+    }
+    func wipe(){if let storage{_ = memset_s(storage,count,0,count);storage.deallocate();self.storage=nil}}
+    deinit{wipe()}
+}
+private enum DaemonAuthorityResult{case running,pending,completed(DaemonAuthorityPayload),failed}
 private final class DaemonAuthorityRequest {
+    let sequence:UInt64
+    let nonce:Data
     let kind:DaemonAuthorityKind
     let message:Data
     let command:String
     let input:String
     var result=DaemonAuthorityResult.running
-    init(kind:DaemonAuthorityKind,message:Data){
-        self.kind=kind;self.message=message
-        command=kind == .signature ? "cdp-sign":"get-public-keys"
+    var acknowledged=false
+    init(sequence:UInt64,nonce:Data,kind:DaemonAuthorityKind,message:Data){
+        self.sequence=sequence;self.nonce=nonce;self.kind=kind;self.message=message
+        switch kind {
+        case .signature:command="cdp-sign"
+        case .publicKeys:command="get-public-keys"
+        case .inboxKey:command="inbox-key-v2"
+        }
         input=kind == .signature ? "{\"challenge\":\""+message.base64EncodedString()+"\"}":"{}"
     }
+    func wipePayload(){if case .completed(let payload)=result{payload.wipe()};result = .failed}
 }
 private final class PreparedDaemonAuthority {
     let provider:UInt64
     let owner:AuxOwnedCommandDispatcher
-    var requests=[Data:DaemonAuthorityRequest]()
+    var current:DaemonAuthorityRequest?
+    var retiredThrough:UInt64=0
     var active=false
     var closing=false
     var retiring=false
@@ -37,13 +64,19 @@ private final class PreparedDaemonAuthority {
 private func validDaemonAuthMessage(_ message:Data)->Bool {
     message.count==51 && message.prefix(19)==daemonAuthPrefix
 }
-private func daemonAuthorityPayload(_ response:String,kind:DaemonAuthorityKind)->Data? {
+private func daemonAuthorityPayload(_ response:String,kind:DaemonAuthorityKind)->DaemonAuthorityPayload? {
     guard let object=try? strictEnvelopeObject(Data(response.utf8))else{return nil}
     if kind == .signature {
         guard Set(object.keys)==["signature"],let encoded=object["signature"] as? String,
-              let bytes=Data(base64Encoded:encoded),!bytes.isEmpty,bytes.count<=8192,
+              var bytes=Data(base64Encoded:encoded),!bytes.isEmpty,bytes.count<=8192,
               bytes.base64EncodedString()==encoded else{return nil}
-        return bytes
+        return DaemonAuthorityPayload(&bytes)
+    }
+    if kind == .inboxKey {
+        guard Set(object.keys)==["key"],let encoded=object["key"] as? String,
+              var bytes=Data(base64Encoded:encoded),bytes.count==32,
+              bytes.base64EncodedString()==encoded else{return nil}
+        return DaemonAuthorityPayload(&bytes)
     }
     guard Set(object.keys)==["scheme","sig","kem"],let scheme=object["scheme"] as? String,
           ["p256_v1","pq_v1"].contains(scheme) else{return nil}
@@ -51,8 +84,8 @@ private func daemonAuthorityPayload(_ response:String,kind:DaemonAuthorityKind)-
         guard let encoded=object[key] as? String,let bytes=Data(base64Encoded:encoded),
               !bytes.isEmpty,bytes.count<=8192,bytes.base64EncodedString()==encoded else{return nil}
     }
-    let bytes=Data(response.utf8)
-    return bytes.count<=8192 ? bytes:nil // Actual core response, not a rewritten key schema.
+    var bytes=Data(response.utf8)
+    return bytes.count<=8192 ? DaemonAuthorityPayload(&bytes):nil // Actual core response, not a rewritten key schema.
 }
 private func callPreparedDaemonAuthority(_ entry:PreparedDaemonAuthority,_ request:DaemonAuthorityRequest)->DaemonAuthorityResult {
     let response:String?=request.command.utf8CString.withUnsafeBufferPointer{command in
@@ -95,16 +128,17 @@ private func emitPreparedDaemonAuthority(_ result:DaemonAuthorityResult,_ output
     case .failed:return 4
     case .completed(let bytes):
         guard !bytes.isEmpty,bytes.count<=8192 else{return 4}
-        bytes.copyBytes(to:output,count:bytes.count);written.pointee=UInt32(bytes.count);return 0
+        guard bytes.copy(to:output)else{return 4}
+        written.pointee=UInt32(bytes.count);return 0
     }
 }
-private func operatePreparedDaemonAuthority(_ id:UInt64,nonce:UnsafePointer<UInt8>?,kind:DaemonAuthorityKind?,message:UnsafePointer<UInt8>?,output:UnsafeMutablePointer<UInt8>?,capacity:UInt32,written:UnsafeMutablePointer<UInt32>?)->Int32 {
+private enum DaemonAuthorityTask:Equatable{case execute,recover,cached}
+private func operatePreparedDaemonAuthority(_ id:UInt64,sequence:UInt64,nonce:UnsafePointer<UInt8>?,kind:DaemonAuthorityKind?,message:UnsafePointer<UInt8>?,output:UnsafeMutablePointer<UInt8>?,capacity:UInt32,written:UnsafeMutablePointer<UInt32>?)->Int32 {
     guard getpid()==daemonAuthorityProcess else{return -2}
     daemonAuthorityLock.lock()
     guard let entry=daemonAuthorities[id]else{daemonAuthorityLock.unlock();return -1}
     daemonAuthorityLock.unlock()
-    // Lookup precedes dereferencing any caller buffers. Native caller owns them.
-    guard let nonce,let output,let written,capacity==8192 else{return -1}
+    guard sequence>0,let nonce,let output,let written,capacity==8192 else{return -1}
     written.pointee=0
     let token=Data(bytes:nonce,count:16)
     let bytes:Data
@@ -114,61 +148,94 @@ private func operatePreparedDaemonAuthority(_ id:UInt64,nonce:UnsafePointer<UInt
     }else{bytes=Data()}
     daemonAuthorityLock.lock()
     guard !entry.closing else{daemonAuthorityLock.unlock();return 3}
-    let request:DaemonAuthorityRequest
-    let observing:Bool
-    if let previous=entry.requests[token] {
-        if let kind,kind != previous.kind || bytes != previous.message{daemonAuthorityLock.unlock();return 3}
-        if kind != nil {
-            // Begin never reruns an uncertain/attempted request. Observe is the
-            // only recovery route, including after transport reply timeout.
-            let status=emitPreparedDaemonAuthority(previous.result,output,written)
-            daemonAuthorityLock.unlock();return status
-        }
-        switch previous.result {
-        case .pending:break
-        default:let status=emitPreparedDaemonAuthority(previous.result,output,written);daemonAuthorityLock.unlock();return status
-        }
-        request=previous;observing=true
-    }else {
-        guard let kind else{daemonAuthorityLock.unlock();return -1}
-        guard entry.requests.count<32 else{daemonAuthorityLock.unlock();return 5}
-        guard !entry.active,!entry.requests.values.contains(where:{if case .pending=$0.result{return true};return false})else{daemonAuthorityLock.unlock();return 2}
-        request=DaemonAuthorityRequest(kind:kind,message:bytes);entry.requests[token]=request;observing=false
-    }
+    guard sequence>entry.retiredThrough else{daemonAuthorityLock.unlock();return 3}
     guard !entry.active else{daemonAuthorityLock.unlock();return 2}
-    entry.active=true;request.result = .running;daemonAuthorityLock.unlock()
+    let request:DaemonAuthorityRequest,task:DaemonAuthorityTask
+    if let previous=entry.current,sequence==previous.sequence {
+        guard previous.nonce==token else{daemonAuthorityLock.unlock();return 3}
+        if let kind,kind != previous.kind || bytes != previous.message{daemonAuthorityLock.unlock();return 3}
+        switch previous.result {
+        case .completed:task = .cached // Must freshly validate EXACT owner before publication.
+        case .failed:daemonAuthorityLock.unlock();return 4
+        case .running:daemonAuthorityLock.unlock();return 2
+        case .pending:
+            guard kind==nil else{daemonAuthorityLock.unlock();return 1}
+            task = .recover
+        }
+        request=previous
+    }else {
+        guard let kind else{daemonAuthorityLock.unlock();return 3}
+        if let previous=entry.current {
+            guard sequence>previous.sequence else{daemonAuthorityLock.unlock();return 3}
+            guard previous.acknowledged else{daemonAuthorityLock.unlock();return 2}
+            guard previous.sequence<UInt64.max,sequence==previous.sequence+1 else{daemonAuthorityLock.unlock();return 5}
+            // Explicit ACK plus a new exact next sequence retires only the old
+            // completed reply. High-watermark permanently rejects its replay.
+            entry.retiredThrough=previous.sequence
+            previous.wipePayload()
+        }else{guard sequence==1 else{daemonAuthorityLock.unlock();return 3}}
+        request=DaemonAuthorityRequest(sequence:sequence,nonce:token,kind:kind,message:bytes)
+        entry.current=request;task = .execute
+    }
+    entry.active=true
+    if task != .cached{request.result = .running}
+    daemonAuthorityLock.unlock()
     let result:DaemonAuthorityResult
-    if observing {
-        // A dedicated private owner has no other command callers. Only an
-        // actual retained read result may reach ContextRun again; that exact
-        // current implementation resolves it without repeating cdp-sign/read.
+    var validation:Int32=0
+    switch task {
+    case .cached:
+        validation=auxNativeContextValidateCurrentAuthority(entry.owner.handle)
+        result=request.result
+    case .recover:
         let current=auxNativeContextObserveOperationState(entry.owner.handle)
         if current==2{result=callPreparedDaemonAuthority(entry,request)}
         else if current==1{result = .pending}
-        else{result = .failed}
-    }else{result=callPreparedDaemonAuthority(entry,request)}
+        else{result = .failed} // Never rerun if no actual retained read exists.
+    case .execute:result=callPreparedDaemonAuthority(entry,request)
+    }
     guard getpid()==daemonAuthorityProcess else{return -2}
-    let lost=auxNativeContextObserveOperationState(entry.owner.handle)==4
-    daemonAuthorityLock.lock();request.result=result;entry.active=false
-    if lost{entry.closing=true;entry.closeResult=2}
-    let status=entry.closing ? 3:emitPreparedDaemonAuthority(result,output,written)
+    let lost=auxNativeContextObserveOperationState(entry.owner.handle)==4 || validation==3 || validation < 0
+    daemonAuthorityLock.lock()
+    if task != .cached{request.result=result}
+    entry.active=false
+    if lost{entry.closing=true;entry.closeResult=2;request.wipePayload()}
+    let status:Int32=entry.closing ? 3:(validation==0 ? emitPreparedDaemonAuthority(result,output,written):1)
     let close=entry.closing;daemonAuthorityLock.unlock()
-    // No mutex crosses native retirement/revalidation or imported-owner deinit.
     if close{_ = AuxClosePreparedDaemonAuthority(id)}
     withExtendedLifetime(entry){}
     return status
 }
 @_cdecl("AuxBeginPreparedDaemonSignature")
-func AuxBeginPreparedDaemonSignature(_ id:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
-    operatePreparedDaemonAuthority(id,nonce:nonce,kind:.signature,message:message,output:output,capacity:capacity,written:written)
+func AuxBeginPreparedDaemonSignature(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.signature,message:message,output:output,capacity:capacity,written:written)
 }
 @_cdecl("AuxBeginPreparedDaemonPublicKeys")
-func AuxBeginPreparedDaemonPublicKeys(_ id:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
-    operatePreparedDaemonAuthority(id,nonce:nonce,kind:.publicKeys,message:nil,output:output,capacity:capacity,written:written)
+func AuxBeginPreparedDaemonPublicKeys(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.publicKeys,message:nil,output:output,capacity:capacity,written:written)
+}
+@_cdecl("AuxBeginPreparedDaemonInboxKey")
+func AuxBeginPreparedDaemonInboxKey(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.inboxKey,message:nil,output:output,capacity:capacity,written:written)
 }
 @_cdecl("AuxObservePreparedDaemonAuthority")
-func AuxObservePreparedDaemonAuthority(_ id:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
-    operatePreparedDaemonAuthority(id,nonce:nonce,kind:nil,message:nil,output:output,capacity:capacity,written:written)
+func AuxObservePreparedDaemonAuthority(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:nil,message:nil,output:output,capacity:capacity,written:written)
+}
+@_cdecl("AuxAckPreparedDaemonAuthority")
+func AuxAckPreparedDaemonAuthority(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?)->Int32 {
+    guard getpid()==daemonAuthorityProcess else{return -2}
+    daemonAuthorityLock.lock()
+    guard let entry=daemonAuthorities[id]else{daemonAuthorityLock.unlock();return -1}
+    daemonAuthorityLock.unlock()
+    guard let nonce else{return -1};let token=Data(bytes:nonce,count:16)
+    daemonAuthorityLock.lock();defer{daemonAuthorityLock.unlock();withExtendedLifetime(entry){}}
+    guard !entry.closing else{return 3}
+    guard let current=entry.current,current.sequence==sequence,current.nonce==token else{return 2}
+    guard !entry.active else{return 1}
+    switch current.result {
+    case .running,.pending:return 1
+    case .completed,.failed:current.acknowledged=true;return 0
+    }
 }
 @_cdecl("AuxClosePreparedDaemonAuthority")
 func AuxClosePreparedDaemonAuthority(_ id:UInt64)->Int32 {
@@ -183,6 +250,7 @@ func AuxClosePreparedDaemonAuthority(_ id:UInt64)->Int32 {
     guard getpid()==daemonAuthorityProcess else{return -2}
     let status:Int32=(retired==0 || retired == -1) ? 0:(state==4 || state==3 || retired == -4 ? 2:1)
     daemonAuthorityLock.lock();entry.retiring=false;entry.closeResult=status
+    if status==0{entry.current?.wipePayload();entry.current=nil}
     if status==0 && entry.released{daemonAuthorities.removeValue(forKey:id)}
     daemonAuthorityLock.unlock();withExtendedLifetime(entry){}
     return status

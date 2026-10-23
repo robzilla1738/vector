@@ -1,8 +1,11 @@
 {
-  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift": "2c9336847c535479968a38de1ab3423542263e13c2b976982a71a40276f23b6f",
-  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "9818060655eda616e15d5854498ab283ffce67489e64a419c4adb0aaf0372b1c",
+  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift": "84b60e71e559b33a97fb0b6d9ebb56df839f6e115ae0b9e40f0969f30466b7b8",
+  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.swift": "3e0a17571e5bace8714709569c78592ec1f7e328ca39db8f68a658cadb56a7b3",
+  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/aux-owned-command-dispatcher.h": "ef6afc8471569816128421d15ffb19170cc48e1f113a78001db26fbf4fd3660f",
+  "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
   "docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift": "ef2f6f1f7dacf34c3eb9f1e61a171845567f8cda2a906f265eafdb35b0a04ff1",
   "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
   "docs/integration/proposed/complete-aux-protocol-identity/source/chrome/browser/aux/installation_auth.cc": "11ce5636d7d137d4f75f456d148e87da75ae87f5cf24c0f822953a47679268b2",
-  "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+  "docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+  "docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a"
 }

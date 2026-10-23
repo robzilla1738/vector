@@ -1,0 +1,43 @@
+--- docs/integration/proposed/aux-native-fresh-read-result-lifetime/source/AuxOwnedCommandDispatcher.swift
++++ docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxOwnedCommandDispatcher.swift
+@@ -18,7 +18,7 @@
+     // Pinned actual core routes: these return reads, public material/signatures
+     // or imported root bytes. init aliases only return existing captured keys;
+     // actual absent-state generation is refused by the unchanged core.
+-    private static let readOnlyCommands:Set<String>=["install-status","keys-status","get-public-keys","public-keys","install-init","init-keys","cdp-sign","dk-unwrap","secure-read"]
++    private static let readOnlyCommands:Set<String>=["install-status","keys-status","get-public-keys","public-keys","install-init","init-keys","cdp-sign","dk-unwrap","secure-read","inbox-key-v2"]
+     private static func requestDigest(_ input:String)->Data{Data(SHA256.hash(data:Data(input.utf8)))}
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+@@ -367,6 +367,24 @@
+ #endif
+         return 0
+     }
++    // Exact existing owner only; this observation creates no capability and
++    // performs no command/callback. Both internal authority reads are guarded
++    // by the context itself. A transient failure has no action to quarantine.
++    func validateCurrentAuthority(_ handle:UInt64)->Int32 {
++        do {
++            try withEntry(handle,guardGenericAction:false){entry in try requireFreshGuard(entry,moment:.beforeAction)}
++            return 0
++        }catch let failure as AuxNativeFreshGuardFailure {
++            switch failure.disposition {
++            case .provenBindingLoss:return 3
++            case .postOutcomeUnknown:return 2
++            case .retryableNoCommand,.unknownNoCommand:return 1
++            }
++        }catch AuxDispatcherLifetimeError.invalidHandle{return -1}
++        catch AuxNativeFreshGuardProcessError.wrongProcess{return -2}
++        catch AuxDispatcherLifetimeError.retiring{return 3}
++        catch{return 1}
++    }
+     func retire(_ handle:UInt64)throws {
+         guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
+@@ -542,3 +560,6 @@
+ 
+ @_cdecl("AuxNativeContextObserveOperationState")
+ func auxNativeContextObserveOperationState(_ handle:UInt64)->Int32{AuxCommandDispatcherRegistry.shared.observeOperationState(handle)}
++
++@_cdecl("AuxNativeContextValidateCurrentAuthority")
++func auxNativeContextValidateCurrentAuthority(_ handle:UInt64)->Int32{AuxCommandDispatcherRegistry.shared.validateCurrentAuthority(handle)}
