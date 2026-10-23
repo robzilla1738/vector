@@ -61,10 +61,10 @@ def main():
   pin(old/rel,item['previousSha256']);pin(item['input'],item['sha256']);changes.append(item)
  # The caller's full build is the base: no warm native-object mixing.
  out.mkdir(mode=0o700);app=out/'Aux.app'
- subprocess.run(['/bin/cp','-cR',str(native),str(app)],check=True)
- if (app/resources).exists():raise ValueError('native seed contains unexpected supplied resources')
- subprocess.run(['/bin/cp','-cR',str(old),str(app/resources)],check=True)
  try:
+  subprocess.run(['/bin/cp','-cR',str(native),str(app)],check=True)
+  if (app/resources).exists():raise ValueError('native seed contains unexpected supplied resources')
+  subprocess.run(['/bin/cp','-cR',str(old),str(app/resources)],check=True)
   for item in changes:
    dst=app/resources/item['path']
    if not dst.resolve().is_relative_to((app/resources).resolve()):raise ValueError('replacement escape')
