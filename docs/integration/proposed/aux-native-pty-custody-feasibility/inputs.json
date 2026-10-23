@@ -1,0 +1,11 @@
+{
+  "sdk.json": "8ba372e3a8c7a09d2cce77e3fe66034edc2f907493212ecd9c64991aa3f95157",
+  "sources.json": "3e7d3fe40f4d4a2638bcf3f865b46961c5a0abb686d6f9417ed37b524291948c",
+  "README.md": "d23a8bd7522dc85ae9baac1cddce86c7a2c9b3496d9b6a74eb2e929e7dcd8f48",
+  "verify.py": "34d6399659fe5f1f7cd46645208bd0646faef75e73a84f156d21fdbe1df2e20a",
+  "upstream/LICENSE": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+  "upstream/binding.gyp": "2e6fdfd713f8b3485dd4e2f4efe93bf5436a5ff4eec4deb45533b09b6932efff",
+  "upstream/pty.cc": "5e1005d6bdcfbe97b486ee415419fe7adae99035047f07340fbad36419e0bae6",
+  "upstream/package.json": "40c5fe8c9f97e1e5a022a1aacce9876d61ac99a06d6471491a7c703201d5cbe1",
+  "upstream/spawn-helper.cc": "22195de1710b574d5904fc89be5624c25e531de20d5e17e5998a2fd19d86e0e6"
+}

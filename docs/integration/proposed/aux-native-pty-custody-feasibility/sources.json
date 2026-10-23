@@ -1,0 +1,95 @@
+{
+  "nodePtyTag": "v1.1.0",
+  "nodePtyCommit": "1def5774632305246fe21f0f69e23a664d6c5910",
+  "tagObject": {
+    "sha": "1def5774632305246fe21f0f69e23a664d6c5910",
+    "type": "commit",
+    "url": "https://api.github.com/repos/microsoft/node-pty/git/commits/1def5774632305246fe21f0f69e23a664d6c5910"
+  },
+  "upstream": {
+    "src/unix/pty.cc": {
+      "url": "https://raw.githubusercontent.com/microsoft/node-pty/1def5774632305246fe21f0f69e23a664d6c5910/src/unix/pty.cc",
+      "sha256": "5e1005d6bdcfbe97b486ee415419fe7adae99035047f07340fbad36419e0bae6",
+      "bytes": 20771,
+      "localPath": "upstream/pty.cc"
+    },
+    "src/unix/spawn-helper.cc": {
+      "url": "https://raw.githubusercontent.com/microsoft/node-pty/1def5774632305246fe21f0f69e23a664d6c5910/src/unix/spawn-helper.cc",
+      "sha256": "22195de1710b574d5904fc89be5624c25e531de20d5e17e5998a2fd19d86e0e6",
+      "bytes": 494,
+      "localPath": "upstream/spawn-helper.cc"
+    },
+    "LICENSE": {
+      "url": "https://raw.githubusercontent.com/microsoft/node-pty/1def5774632305246fe21f0f69e23a664d6c5910/LICENSE",
+      "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+      "bytes": 3326,
+      "localPath": "upstream/LICENSE"
+    },
+    "binding.gyp": {
+      "url": "https://raw.githubusercontent.com/microsoft/node-pty/1def5774632305246fe21f0f69e23a664d6c5910/binding.gyp",
+      "sha256": "2e6fdfd713f8b3485dd4e2f4efe93bf5436a5ff4eec4deb45533b09b6932efff",
+      "bytes": 2807,
+      "localPath": "upstream/binding.gyp"
+    },
+    "package.json": {
+      "url": "https://raw.githubusercontent.com/microsoft/node-pty/1def5774632305246fe21f0f69e23a664d6c5910/package.json",
+      "sha256": "40c5fe8c9f97e1e5a022a1aacce9876d61ac99a06d6471491a7c703201d5cbe1",
+      "bytes": 1616,
+      "localPath": "upstream/package.json"
+    }
+  },
+  "xnuCommit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+  "kernel": {
+    "bsd/sys/event.h": {
+      "url": "https://raw.githubusercontent.com/apple-oss-distributions/xnu/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/sys/event.h",
+      "sha256": "a172b971272e10ced09ea58b2d74aea333901b8a7ed27864a261df79adc4714c",
+      "bytes": 18152,
+      "anchors": [
+        {
+          "needle": "NOTE_TRACK, NOTE_TRACKERR, and NOTE_CHILD",
+          "line": 364,
+          "snippet": " * contains the name of the actual port detected with a message waiting.\n */\n\n/*\n * DEPRECATED!!!!!!!!!\n * NOTE_TRACK, NOTE_TRACKERR, and NOTE_CHILD are no longer supported as of 10.5\n */\n/* additional flags for EVFILT_PROC */\n#define NOTE_TRACK      0x00000001              /* follow across forks */"
+        },
+        {
+          "needle": "pid does not get passed through",
+          "line": 261,
+          "snippet": " * of the hint contain the signal. IF NOTE_FORK is passed, then the lower bits\n * contain the PID of the child (but the pid does not get passed through in\n * the actual kevent).\n */\nenum {\n\teNoteReapDeprecated __deprecated_enum_msg(\"This kqueue(2) EVFILT_PROC flag is deprecated\") = 0x10000000\n};\n\n#define NOTE_EXIT               0x80000000      /* process exited */"
+        }
+      ]
+    },
+    "bsd/kern/kern_event.c": {
+      "url": "https://raw.githubusercontent.com/apple-oss-distributions/xnu/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_event.c",
+      "sha256": "d6bd6351f97713c24d05235179d67ec6947be0114dec1298f77e4deb457b618d",
+      "bytes": 265849,
+      "anchors": [
+        {
+          "needle": "kn->kn_sfflags & (NOTE_TRACK | NOTE_TRACKERR | NOTE_CHILD)",
+          "line": 1105,
+          "snippet": "filt_procattach(struct knote *kn, __unused struct kevent_qos_s *kev)\n{\n\tstruct proc *p;\n\n\tassert(PID_MAX < NOTE_PDATAMASK);\n\n\tif ((kn->kn_sfflags & (NOTE_TRACK | NOTE_TRACKERR | NOTE_CHILD)) != 0) {\n\t\tknote_set_error(kn, ENOTSUP);\n\t\treturn 0;\n\t}\n\n\tp = proc_find((int)kn->kn_id);\n\tif (p == NULL) {\n\t\tknote_set_error(kn, ESRCH);\n\t\treturn 0;\n\t}"
+        },
+        {
+          "needle": "knote_set_error(kn, ENOTSUP)",
+          "line": 1106,
+          "snippet": "\tassert(PID_MAX < NOTE_PDATAMASK);\n\n\tif ((kn->kn_sfflags & (NOTE_TRACK | NOTE_TRACKERR | NOTE_CHILD)) != 0) {\n\t\tknote_set_error(kn, ENOTSUP);\n\t\treturn 0;\n\t}\n\n\tp = proc_find((int)kn->kn_id);\n\tif (p == NULL) {\n\t\tknote_set_error(kn, ESRCH);\n\t\treturn 0;\n\t}\n\n\tconst uint32_t NoteExitStatusBits = NOTE_EXIT | NOTE_EXITSTATUS;"
+        },
+        {
+          "needle": "event = (u_int)hint & NOTE_PCTRLMASK;",
+          "line": 1193,
+          "snippet": "\t * To free some of those bits, see <rdar://problem/12592988> Freeing up\n\t * bits in hint for filt_procevent\n\t *\n\t * mask off extra data\n\t */\n\tevent = (u_int)hint & NOTE_PCTRLMASK;\n\n\t/*\n\t * termination lifecycle events can happen while a debugger\n\t * has reparented a process, in which case notifications\n\t * should be quashed except to the tracing parent. When"
+        }
+      ]
+    },
+    "bsd/sys/spawn.h": {
+      "url": "https://raw.githubusercontent.com/apple-oss-distributions/xnu/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/sys/spawn.h",
+      "sha256": "2bab0146f4274a3aed928b58671ef81510a62268058d107d2246314077a86d96",
+      "bytes": 3952,
+      "anchors": [
+        {
+          "needle": "#define POSIX_SPAWN_START_SUSPENDED",
+          "line": 60,
+          "snippet": "#if     !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)\n/*\n * Darwin-specific flags\n */\n#define POSIX_SPAWN_SETEXEC             0x0040\n#define POSIX_SPAWN_START_SUSPENDED     0x0080\n#ifdef  PRIVATE\n#define _POSIX_SPAWN_DISABLE_ASLR       0x0100\n#define _POSIX_SPAWN_NANO_ALLOCATOR     0x0200\n#endif  /* PRIVATE */\n#define POSIX_SPAWN_SETSID              0x0400"
+        }
+      ]
+    }
+  }
+}
