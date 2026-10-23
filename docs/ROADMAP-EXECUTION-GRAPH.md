@@ -1,113 +1,330 @@
-# Aux execution and completion graph
+# Aux final completion execution plan
 
-Current scope update — 2026-10-23: the provider-funded launch supersedes older Stripe, paid-tier and Aux-funded inference/speech launch requirements below. Do not resume payment setup. BYOK and eligible official ChatGPT plan connection source is integrated; the final source stage passed preservation checks, and the native retirement successor passed a full unsigned link. These are distinct from protected startup, complete profile/process custody and actual final-candidate provider/UI acceptance. Production desktop/cloud activation and backup runner operations remain separate. See [current status](STATUS.md) and the [active launch plan](plans/2026-10-23-provider-funded-launch.md); older build/evidence rows below are historical, not the latest artifact state.
+Drafted 2026-10-23 for parallel execution. This is the canonical remaining-work plan. It preserves the original outcome IDs and replaces scheduling/current-state claims in the [archived previous graph](archive/execution-graph-2026-10-23-before-final-completion-plan.md). Historical receipts remain unchanged.
 
-Updated 2026-10-22. This reconciles the owner's continuing implementation goal with current source, artifacts and actual evidence. It does not replace historical receipts or narrow the goal to source compilation. Execution is authorized; final desktop release/distribution remains excluded. Preserve the supplied implementation and current accepted UI, canonical Aux logo, owner data, existing provider projects and password-manager exclusion.
+This planning request does not start implementation, builds, signing, provisioning, deployment or release. Read [STATUS](STATUS.md), the [supplied contract](design/aside-contract.md), [reuse plan](plans/2026-10-19-supplied-implementation-reuse.md) and [provider-funded scope](plans/2026-10-23-provider-funded-launch.md).
 
-## Starting point and immediate queue
+## 1. Desired result and boundaries
 
-Current continuation: the unapplied browser/startup composition contains826 source records and23 unchanged artwork assets. A paired PTY-policy successor retains those counts. Neither is a compiled replacement. The accepted preview remains unchanged. The native parent launch hook is implemented as default-off source; source implementation is no longer the missing step for that hook. Actual linking, protected startup, legacy/profile writer custody and final same-app acceptance remain open.
+Deliver one reproducible, runnable Aux candidate with the accepted UI, reliable startup/profile/process ownership, working BYOK and eligible official ChatGPT connections, accepted browser/agent workflows, production account/sync/sharing integration and operational recovery. Finish pre-distribution acceptance before final release signing/notarization/public distribution.
 
-The first Node26.5 static library build1414 completed successfully; all42 archive hashes were independently checked. Actual corrected daemon build31927 reused nine checked objects, compiled two remaining C++ objects and compiled/linked46 Swift inputs successfully. Its actual export trie satisfies all38 original PTY Node-API imports. No executable/module was run, signed or installed. Parent compile correction, new browser source integration, future signed module acceptance and runtime behavior remain pending; the supplied-runtime reference evidence remains separate.
+- Reuse the supplied implementation. Preserve CSS, typography, geometry, glass, corners, transitions and interactions. Fix observed regressions; do not redesign.
+- Keep the full two-path `assets/brand/arch-mark.svg`. Preserve required legal attribution and HTML `aside` semantics. Identity/crypto changes must follow a reviewed versioned migration, never blind substring replacement.
+- No built-in Vault/password manager. Retain secure installation/provider credentials and verify external password-manager integration.
+- No Aux payments, paid-plan gates, hosted-credit sales or Aux-funded inference/speech at launch. Preserve deferred implementations; do not resume Stripe setup.
+- Do not silently drop promised features to pass readiness. Unsupported ChatGPT images and deferred speech need honest availability states; any launch-scope reduction needs owner disposition.
+- Preserve owner data, credentials, profiles, Chromium changes and reverse-engineering jobs. Use disposable state; do not access or stop Aside services.
+- No push, hosted Actions, signing, provisioning, production activation, new OS grants or distribution under ordinary implementation authority. Prepare exact reviews; prior exceptions apply only to their actual scope.
+- Provider requests require applicable model, budget and data-handling authorization. Never expose secrets in source, logs, screenshots or URLs.
 
-The current package's measured maximum minimum-OS requirement is macOS27.0, including five Aux boundary artifacts. Document tools require26.0. A future main compiled for13.5 cannot establish whole-product13.5 compatibility. See `aux-native-compatibility-metadata/` under integration proposals for exact paths and metadata.
+## 2. Audited baseline
 
-Actual node-pty1.1.0 source exposes a successful-spawn/error-before-reaper path. Source-level exec leases now retain real close/exit observations, but are not recursive native process custody. macOS kqueue does not support NOTE_TRACK descendant tracking. The macOS27 descendants API requires a new entitlement and still needs a justified event-delivery/closure model; no empty map establishes drain. This gap remains implementation and platform integration work.
+Planning source: clean local `main` at `e1cef9ad535070d94973be9d5e23d404151e5ad2`. Record the actual planning commit as the worker baseline before dispatch. Recheck for intervening owner/agent changes; do not reset or blindly commit a dirty tree. Inspect existing agents/worktrees/build sessions before creating duplicate work.
 
-- Local main checkpoint `4f74e71e5` includes the recovery/runtime source chain and exact participant corrections. Later source integrations remain separately identified in Git and STATUS.
-- Accepted preview remains `out/provided-candidate-local-browser-pass/Aux.app`. The unsigned recovery-enrollment package is a separately inventoried, unlaunched/state2-refused candidate; it is not its replacement.
-- Applied native composition: `out/native-reuse-composition-aux-participant-addresses`, SHA256 `34f8baa6086a707488181d3a08663efd515ffaae9f01b8e2cec8776478283107`,808 source records/23 assets. Actual build93645 passed433 steps in53m48.79s, three artifacts and generated-key probe; Siso reduced the initially scheduled2765 tasks. Native checkout stays unchanged until queued focused checks using its flags/source references drain. The preceding792-source result remains historical.
-- Renderer3TUs, worker5TUs, installed-app1TU and their focused state fixtures passed. These establish changed compilation/state boundaries, not browser shutdown/storage custody or final app behavior. The actual23-input fresh graph and53 target cases passed; the actual42-input provider graph and23 resumed filesystem cases also passed in their exact scoped evidence.
-- Separate development backend is deployed at `dev-cloud.getaux.co`. Its actual auth/rotation, sandbox subscription/payment/refund, encrypted transport, cookie export and synthetic recovery evidence is retained in `docs/cloud/implementation-2026-10-22.md`. One real development email was delivered; no owner code/sign-in was used.
-- Separate production database now has12 matching migrations. Production profile remains null/inactive, nine live billing/webhook settings remain absent, provider pairing/operations are incomplete. No production-ready claim.
-- Exact supplied Node26.5.0 executable/config and relevant headers match official archives. Preload component compiled as one object. Real Node Environment runner source now calls ModuleData/preload loading, event loop and explicit native drain; its single object check77772 passed. A concrete native executable source and exact target-archive link plan now exist; no executable link or runtime activation is proven. Queued library job26750 was canceled before execution to prioritize corrected graphs; do not treat it as running or as a compiler failure.
+| Surface | Established | Still open |
+| --- | --- | --- |
+| Accepted preview | `out/provided-candidate-local-browser-pass/Aux.app`, historical actual UI evidence | Acceptance does not transfer to new code |
+| New candidate | `out/provided-candidate-provider-funded-20261023/Aux.app`; package passed, 10,767 supplied resources, 418 native leaves | Unsigned/inactive/unrun; ordinary startup refuses, cold hook off |
+| UI | All 1,217 Agent leaves match final stage; five CSS files unchanged from preceding candidate; eleven JS chunks and manifest changed | Actual new-candidate comparison |
+| Native | Coherent unsigned link, retirement corrections and PTY pairing | Genuine fresh/resume/legacy admission and whole-writer/descendant custody |
+| Providers | Payment-free policy and official ChatGPT registration/refresh/catalog/stream/disconnect integrated | Real connections, model metadata gaps, crash-lock recovery |
+| Cloud | Development service, production resources, payment-free source/config | Current production deployment and actual desktop integration/delivery |
+| Recovery | Current-schema local/hosted restore and encrypted R2 delivery/readback/expiry verified | Scheduled runner, monitoring, renewal and independent owner key retrieval |
 
-The original BASE, FRAME, BROWSER, AGENT, TOOLS, PACKAGE, JOURNEY and READY identifiers remain stable. The owner’s later cloud/production objective expands READY; it does not waive the older local-browser requirements. The prior detailed dated execution record is preserved in `docs/archive/execution-graph-2026-10-21-before-cloud-integration.md`; its active-worker/build statements are historical.
+Exact inputs/hashes: [provider integration evidence](integration/proposed/provider-funded-integration/README.md), `actual-package.json`, `stage-evidence.json`, `entry-projections.json`, `ui-preservation.json`. Reuse these authoritative records instead of duplicating immutable receipts. Do not infer running jobs from old STATUS entries.
 
-Provider-quarantine, sealed parent/script readers and actual cold readiness now have immutable42-file Swift typecheck evidence. The changed WorkerHost and Environment runner objects passed. Two original parent objects and the corrected delivery/two Node bridge objects passed across85029/74818, preserving the failed endpoint check and avoiding repeated successful compiles. New2000ms fileport retry/receive and read-result reconciliation successors are integrated source with static checks only. Node static build1414 is live; it is the first actual library build, not the canceled26750. Actual parent-start/selected-home lifetime and before-Node executable linking remain the next integration work. No app acceptance or protected execution follows from these compiler results. Exact terminal/scheduling records are in `docs/integration/proposed/aux-native-parallel-checkpoint.json`.
+## 3. Dependency graph
 
-## Dependency graph
-
-Solid arrows are implementation prerequisites. Dashed arrows are integrated acceptance prerequisites; they do not prevent independent source work. Build-lock and dashboard contention are scheduling constraints below, not product dependencies.
+Solid arrows are implementation prerequisites. Dashed arrows are acceptance dependencies: independent source and fixture work can begin earlier. Build/device/dashboard contention is scheduled separately.
 
 ```mermaid
-flowchart LR
-  BASE[Preserved UI/source/provider baseline] --> AUTH[Fresh and resumed authority lifecycle]
-  AUTH --> OWNER[Typed runtime owner and Environment provider]
-  BASE --> PEER[Live native parent/child transport]
-  PEER --> COLD[Actual cold owner and private child handoff]
-  AUTH --> COLD
-  OWNER --> EMBED[Real Node embedding and native module routing]
-  COLD --> EMBED
-  BASE --> LEGACY[Explicit authority preserving legacy transition]
-  EMBED --> PACKAGE[One complete Aux candidate]
-  LEGACY --> PACKAGE
-  PACKAGE --> JOURNEY[Disposable real desktop journeys]
-  BASE --> CLOUD[Compatible development service integration]
-  CLOUD -.-> JOURNEY
-  CLOUD --> AI[Funded strict ZDR text and speech]
-  CLOUD --> PROD[Production configuration and operational readiness]
-  BASE --> OPS[Independent backup and recovery operations]
-  OPS --> PROD
-  PACKAGE -.-> EXT[External manager and OS integration]
-  BASE --> BROWSER[Ordinary browser and persistence]
-  PACKAGE -.-> BROWSER
-  CLOUD -.-> AGENT[Real supplied Agent workflows]
-  EMBED -.-> AGENT
-  AI -.-> TOOLS[Tools shortcuts and capture]
-  EXT -.-> TOOLS
-  BROWSER -.-> JOURNEY
-  AGENT -.-> JOURNEY
-  TOOLS -.-> JOURNEY
-  JOURNEY --> READY[Complete product before final release]
-  AI --> READY
+flowchart TD
+  BASE[BASE: snapshot and interfaces] --> NATIVE[NATIVE: custody feasibility]
+  BASE --> AI[AI: providers]
+  BASE --> CLOUD[CLOUD: production source]
+  BASE --> OPS[OPS: backup preparation]
+  BASE --> FRAME[FRAME: UI and identity]
+  BASE --> COMPAT[COMPAT: platform support]
+  NATIVE --> AUTH[AUTH OWNER PEER: authority]
+  NATIVE --> LEGACY[LEGACY: migration]
+  AUTH --> COLD[COLD EMBED: integrated lifecycle]
+  LEGACY --> COLD
+  COLD --> PACKAGE[PACKAGE: exact candidate]
+  AI --> PACKAGE
+  FRAME -.-> PACKAGE
+  COMPAT -.-> PACKAGE
+  PACKAGE --> DEVAUTH[DEVAUTH: approved local signing]
+  DEVAUTH --> JOURNEY[JOURNEY: real desktop acceptance]
+  PACKAGE -.-> FEATURES[BROWSER AGENT TOOLS EXT]
+  FEATURES -.-> JOURNEY
+  FRAME -.-> JOURNEY
+  AI -.-> JOURNEY
+  CLOUD --> PROD[PROD: authorized activation]
+  PROD -.-> JOURNEY
+  OPS --> READY[READY: pre-distribution acceptance]
   PROD --> READY
-  EXT --> READY
-  PACKAGE -.-> FRAME[Actual app UI and delivered identity audit]
-  FRAME --> READY
+  COMPAT --> READY
+  JOURNEY --> READY
+  READY --> RELEASE[RELEASE: separate distribution authorization]
 ```
 
-Critical edges: the real native caller must own the installation and lifecycle before an Environment can receive a protected dispatcher. A signed policy or authenticated IPC peer alone cannot grant whole-profile custody. The supplied entry/native routing cannot be activated merely because an object compiled. Legacy migration cannot be silently replaced with key regeneration. Real desktop/cloud journeys require the same assembled native/resource generation; old service tests or UI screenshots cannot accept it. Production operations require independent recoverable content and key custody, not only a database branch restore.
+Critical path: native feasibility → actual ownership/admission → cold integration → coherent candidate → scoped development authority → real runtime acceptance. Production activation and backup operations may become a second critical path. More UI/provider workers cannot remove native platform constraints.
 
-## Outcome registry and requirement coverage
+Every implementation edge has a concrete reason: authority consumers require a stable custody mechanism; cold startup must select valid fresh/resume/legacy state; packaging needs paired native and provider inputs; protected runtime requires exact approved bytes. Production preparation is independent of native compilation. Cloud journeys require actual deployment; ordinary local journeys do not wait for unrelated cloud work.
 
-| ID / state | Scope and current evidence | Completion evidence / next action |
-| --- | --- | --- |
-| BASE / preserved | Accepted supplied UI, two-path logo, original static source pins, separate Aux storage/resources; no builtin Vault. | Keep all current UI/layout/glass assets byte-identical through this native/cloud batch. Count/hash every integration delta; no resets or owner-profile reads. |
-| AUTH / implemented source, partly checked | Real fresh private-home creator, retained FD journal, five-row capture, immutable v2 stage, one-shot intents, four-row readback, terminal crypto, shared alias lease. Resumed-only owner/context and canonical-parent correction now exist. Actual23-input graph/53 target cases,14 parser cases,55/33 captured checks are scoped evidence. | Final combined graph plus focused real resumed filesystem cases; actual signed/protected fresh/restart/recovery behavior in the approved disposable scope. No absent/unavailable-to-fresh inference, replay or lost private authority. |
-| OWNER / guarded source integrated, acceptance pending | Genuine terminal → recaptured scoped context → retained-home CSK coordinator → owned dispatcher; after-flock identity recheck. Provider adds native-only routing and per-Environment creation. Late failed retirement requires retained/quarantined observation. | One final source-pinned graph (same deferred40860), changed FD/lock/provider fixtures, actual cleanup/late-close behavior; no JS supplied selectors/cores/provider or generic admission flag. Root integrates actual host recipe once. |
-| PEER / implementation under review | Real Mach audit transport source uses direct waitable-child/birth observation, audit PID version, exact native code policy, nonce and monotonic closure. Root review requires wrong-process right-destruction correction. | Actual SDK compile/pure-wire check, then bounded real authenticated parent/child, negative peer and closure cases after a genuine native producer exists. Authenticated transport is not installation authority. |
-| COLD / default-off caller source integrated, custody incomplete | Existing first native/SEA/Node refusal stays first. Async-profile, helper, session, renderer/navigation and worker participants provide partial real observations only. | Implement actual earliest parent owner, cold fresh/resume/legacy choice, sealed peer-policy provenance, private right handoff and retained spawned-process/descendant lifecycle. Explicitly cover remaining renderer/storage/CLI/foreign writers; never promote raw callback counts/locks into all-writers success. |
-| EMBED / actual executable linked, inactive | Exact runtime source acquired; real LoadEnvironment preload component compiles and Node propagates it into child Worker environments. Explicit provider-backed WorkerHost source is separate from its unchanged selected default. | Exact-version library and46Swift/11Cpp executable now compile/link; actual original PTY import metadata passes. Integrate the exact browser/package generation, then verify genuine cold/native provider consumption, actual validated PDF/utility/PTy loading, Environment cleanup/descendant closure and supplied daemon/CLI synchronous/Worker routing. Retire original common addon against full command inventory. Preserve original runtime files; do not replace them opportunistically. |
-| LEGACY / partial implementation | Versioned Aux-v2 crypto/selector ports and private-authority-preserving journal/prepared handoff sources exist; earlier software/FS checks are historical narrow evidence. | Complete explicit migration/recovery for existing formats and current account/session/cache/context ledgers, immutable catalog/trust transitions and rollback. Verify same private authority/data, no reset/delete or unauthorized old-group reads. Scope any real owner-data operation separately. |
-| PACKAGE / prior package static only | Recovery-enrollment package inventoried10,764 resources/418 native leaves;1217 UI files retained with reviewed enrollment deltas. Current native/owner successors are not in an accepted running package. | Assemble one complete native/resource/SEA/Node/extension/CLI/carrier generation; preserve exact addons required by reviewed plan; verify actual paired identities/wires/resources/retired leaves. Prepare concrete exact-byte local runtime/signing review where required. No release/notarization. |
-| CLOUD / implemented and deployed development, desktop inactive | Compatible auth, rotating sessions, Clerk, sandbox Stripe, encrypted sync/media/sharing/recovery/cookie API and strict provider adapters have actual development evidence. Current desktop still needs the paired new stack. | Reuse unchanged API evidence; finish actual app sign-in/token exchange/restart, subscription UI/portal/entitlements, independent-device sync/conflict/recovery, cookie restore and explicit share/revoke/large attachment journeys. No fabricated accounts/plans or owner email-code use. |
-| AI / implemented, funded acceptance pending | Gateway server-held credentials, per-request ZDR and configurable model; owner selected GPT-6 Luna ≤$5. Prior credit checkout separately needs unanswered AI Product Terms consent. | After that consent, complete only approved purchase (≤$12, auto reload off) and bounded real ZDR text/browser-task/fast-model/lasso and synthetic speech checks, including debit/refund/routing/error evidence. Confirm actual desktop controls, microphone/recording separately. No provider call before approval. |
-| BROWSER / historically implemented, current-generation acceptance pending | Existing supplied tabs/navigation/bookmarks/history/downloads/imports, normal/popup/installed-app session restoration and external extension paths remain. | Reuse unchanged historical evidence; prove affected ordinary browser/persistence/import/native-message boundaries on the exact final candidate without owner profiles or password import. Vendor trust is EXT, not inferred here. |
-| AGENT / supplied implementation preserved, new stack pending | Original chat/model/reasoning/project/guard/task/stream/cancel/history/context/settings contracts and the20 genuine prior Muse cases remain the baseline. | Real packaged current-provider and profile-scoped task/config/context journeys using the agreed bounded model; no UI approximation or repeat of the unaffected20-case suite. Final failures/availability must remain truthful. |
-| TOOLS / partial local evidence, setup-specific acceptance pending | Notifications, Mini Popup, lasso, observer/Computer Use, hosted dictation and native CLI/runtime utilities remain distinct capabilities. | Focus affected routes through real reviewed native helpers and services; actual physical shortcut/capture/microphone/OS permission evidence only where required. AI/EXT carry external prerequisites; source registration alone does not accept this outcome. |
-| JOURNEY / not accepted current generation | Historical profile/window/draft/attachment/notification/sidebar tests remain valid only for their named previews; current resources/native startup are not accepted. | One focused real app batch: active work across profiles, normal+popup+installed-app restart, drafts/attachment recovery/failure, notification target, shortcuts/sidebars/chat/settings, cloud/provider work. Preserve current UI; capture exact candidate/state/evidence and cleanup. Do not repeat unrelated20-case browser-agent suite. |
-| EXT / partly checked, external setup pending | Generic native-message and dummy fill checks passed. Existing owner-approved observer checks/grants are exact-helper historical evidence. | Real1Password official extension/desktop pairing with exact Apple identity and explicit trust using only a dummy login; actual reviewed observer/helper permissions and bounded capture if required; physical Mini Popup/global shortcut confirmation. No owner vault, unrelated Contacts/Messages or new OS grant inferred. |
-| OPS / tooling and narrow drills verified, operations missing | Independent archive/local restore and isolated Neon/Blob synthetic recovery drills passed. Online snapshot capture now includes private avatars and aborts incomplete object capture; its focused offline encrypted-bundle fixture passed. Actual independent destination, scheduler, alerting and complete current-schema cross-store restore are not established. Database restore alone cannot restore deleted Blob or lost wrapping keys. | Provision/authorize durable independent backup and key custody, scheduling, retention deletion and alerts; run one complete restore from those actual stores, record cleanup and measured limits. Do not claim production RPO/RTO from fixture size. |
-| PROD / resources/schema prepared, configuration incomplete | Separate Aux prod DB/Blob/credentials,12 matching migrations and public origins exist; nine live billing/webhook settings plus provider/sender pairing/runtime verification remain. | Owner completes live Stripe business/KYC where required; prepare exact Aux live prices/portal/webhooks, Clerk/Resend pairing and production resource profile. Obtain concrete activation approval only after reviewable preparation. Perform authorized isolated readiness/provider/operations checks; marketing and old projects stay untouched. |
-| FRAME / accepted baseline preserved, final observation missing | Current batch changes no UI views/CSS/artwork. Static package preservation and older actual side-by-side captures are scoped historical evidence. | Compare the actual final app to accepted Aux/Aside references at matching scale: window and both-sidebar corners, toolbar/bookmarks blend, glass/transparency, collapsed/hover/floating/pinned states, chat/model controls, settings and empty/loading/error states. Audit actual delivered files/native identifiers/endpoints; retain HTML semantics and required legal attribution. No screenshot/static grep substitutes for behavior. |
-| READY / unproven | Whole owner objective, not a package/compiler milestone. | All above outcomes accepted at their stated scope, one reproducible ready candidate and operational handoff with clear optional owner choices. Final desktop release/distribution remains excluded. No completion percentage or “ready” from unresolved gates. |
+## 4. Outcome registry
 
-## Ownership, scheduling and execution protocol
+Track each outcome as **source implemented → integrated → built/deployed → observed → accepted**. Keep failed/blocked observations open. Relative effort below is active engineering effort, not an elapsed-time promise; approval/build waits are separate.
 
-| Resource / surface | Exclusive owner / rule |
+### BASE — recoverable snapshot and dispatch contracts
+
+**Owner:** integrator. **State:** planning evidence reviewed; execution snapshot pending. **Effort:** small, high confidence.
+
+- Inspect current changes, agents/worktrees, native jobs and approvals. Preserve essential uncommitted work without including secrets or unrelated files.
+- Record the worker baseline; create separate worktrees and one-writer reservations.
+- Freeze the existing native owner/generation, admission, retirement, cancellation and journal interfaces before parallel consumers diverge. Prefer existing typed contracts.
+- Pin accepted Aux/Aside references, candidate paths, display/theme/scale and disposable-state policy.
+
+**Deliverable:** `docs/integration/proposed/final-completion/baseline.md`. **Done:** dispatchable snapshot, actual reservations and input links; no guessed versions or authority.
+
+### NATIVE — resolve custody feasibility first
+
+**Owner:** native worker. **Prerequisite:** BASE. **Effort:** bounded discovery, highest uncertainty.
+
+- Enumerate all profile writers: browser/profile services, renderer/storage work, daemon Environments/Workers, CLI, PTY children/descendants, PDF/utilities, helpers and late/foreign participants.
+- Map each to real admission ownership, observation and terminal conditions. Account for detached descendants, PID reuse, missed events, crashes and late joiners.
+- Select a supported custody mechanism. kqueue does not provide NOTE_TRACK descendant tracking. The macOS 27 descendant API requires entitlement plus initial-population/event-completion guarantees; a compiled observer or empty map does not prove drain.
+- Determine whether macOS 27 is essential or an avoidable packaging dependency; send findings to COMPAT.
+- If full custody is unavailable, retain safe refusal/quarantine and report the exact blocker. Do not call restricted switching full parity.
+
+**Deliverable:** `final-completion/native-feasibility.md`, writer coverage matrix, exact interface proposal and only necessary bounded API/compiler evidence. **Exit:** implementable design accounts for every writer, or explicit external blocker/owner decision. Do not spend another full build on an unjustified mechanism.
+
+### AUTH / OWNER / PEER — genuine native admission and ownership
+
+**Owner:** native worker. **Prerequisites:** BASE, NATIVE. **Effort:** substantial, medium/low confidence until discovery closes.
+
+- Finish fresh/resumed installation admission, actual signed policy/resource verification and retained private-home authority.
+- Bind Environments, Workers and helper operations to native owner/generation; reject stale and foreign-process reuse.
+- Finish authenticated parent/child handoff, launch failure and closure handling. Authenticated IPC alone does not grant profile custody.
+- Preserve strongest uncertainty: wrong-process/unknown/pending retirement cannot become drained after a benign callback.
+- Keep required secure identity formats and migration boundaries; no synthesized account/unlock/admission flags.
+
+**Checks:** changed replay/stale-owner/closure boundaries, focused disposable filesystem cases where relevant, affected-unit compile. **Exit:** paired producers/consumers retain uncertainty safely. Protected behavior remains a JOURNEY gate.
+
+### LEGACY — upgrade and interrupted recovery
+
+**Owner:** native worker, or a free worker after interfaces are frozen and exact paths reserved. **Prerequisites:** BASE, NATIVE; AUTH interfaces for integration. **Effort:** substantial, medium confidence.
+
+- Reconcile old Aux identity/crypto formats, sessions, caches, contexts and catalog/trust state with explicit versioned migration.
+- Distinguish fresh, resumed and legacy state. Inaccessible/unavailable state must not be treated as a new installation.
+- Finish journal interruption/resume and rollback without regeneration/deletion of existing keys/data.
+- Use synthetic historical fixtures. Real owner migration requires separately scoped access.
+
+**Exit:** synthetic upgrade and interrupted-resume preserve original authority/data and refuse ambiguity. Record supported source versions and recovery instructions.
+
+### COLD / EMBED — complete the actual startup lifecycle
+
+**Owner:** native worker proposes; integrator owns shared native wiring. **Prerequisites:** AUTH, OWNER, PEER, LEGACY. **Effort:** substantial, medium confidence.
+
+- Connect earliest browser ownership, admission, private handoff, Node preload/Environment, Worker registration and validated module/helper loading.
+- Integrate PTY, PDF and utility lifetimes into the complete writer model.
+- Handle normal quit, failed startup, crash, cancel, profile switching and multi-window reuse without releasing unresolved ownership.
+- Replace deliberate first refusal only when genuine authority exists. Do not just flip the cold hook or weaken package gates.
+
+**Exit:** coherent source and changed-unit compile; all exact build operands ready. Runtime success still requires DEVAUTH/JOURNEY.
+
+### AI — finish BYOK and official ChatGPT integration
+
+**Owner:** provider worker. **Prerequisite:** BASE; independent of native source work. **Effort:** medium/substantial, medium confidence.
+
+**Owned paths:** `vendor/aside/patches/chatgpt.mjs`, `vendor/aside/shims/aux-chatgpt.cjs`, corresponding focused tests, `vendor/provided/provider-funded-launch.mjs`, its tests/recipe, provider evidence. Shared stage/manifests are integrator proposals.
+
+- Complete model metadata/capability mapping using supported contracts. Unknown limits/tools/vision must remain conservative, not fabricated.
+- Implement crash-left authentication lock recovery without stealing a live operation or crossing accounts.
+- Reconcile BYOK key add/remove/restart, errors, cancellation, retries and isolation with supplied credential API.
+- Preserve ChatGPT registration, PKCE/state/nonce, identity/scope validation, account-bound catalog, refresh, streaming completion and awaited revocation.
+- Verify intended public-distribution eligibility against current official docs before live registration; record any client approval/application needed. Do not reuse another product's identity or owner auth cache.
+- Resolve whether supported public-plan image functionality can be completed; retain honest unavailable state otherwise and obtain scope disposition before claiming complete parity.
+- Check payment/hosted denial across actual client/daemon routes while retaining real account authentication.
+
+**Focused checks:** changed lock collision/crash cases, metadata mapping, transformed credential/provider boundaries. **Source done:** coherent connection lifecycle and truthful supplied UI states. **Accepted:** real connect/model/completed request/tool/cancel/restart/account switch/disconnect on final candidate with authorized usage and credential cleanup. Fixtures alone do not accept refresh or consent.
+
+### CLOUD — current production source and configuration readiness
+
+**Owner:** cloud worker. **Prerequisite:** BASE. **Effort:** medium, relatively high confidence; provider waits separate.
+
+**Owned paths:** `services/aux-cloud/` plus `final-completion/cloud/`; explicitly reserve recovery files if OPS is delegated separately. No worker dashboard mutations.
+
+- Compare current source with deployed development evidence. Reconcile configuration without exposing secrets.
+- Finish remaining desktop/server mismatches for sign-in, revocation, encrypted sync/media/conflicts, sharing/revoke and account deletion.
+- Verify default mode cannot create allowances, process billing mutations or spend Aux Gateway balance; preserve old financial records.
+- Check changed webhook authentication/idempotency, public-share authorization, attachment limits and deletion boundaries.
+- Prepare exact deployment, migrations, domain/webhook, monitoring and rollback review.
+- Prepare truthful onboarding/support/privacy copy describing local provider tokens, cloud data and unavailable features.
+
+**Exit:** deployable source, reconciled required settings, focused checks and concrete activation review. Production deployment/delivery remains PROD.
+
+### OPS — make backups operational
+
+**Owner:** cloud worker after CLOUD or free worker with exclusive recovery ownership. **Prerequisite:** BASE. **Effort:** medium; provisioning and owner retrieval waits separate.
+
+- Reuse successful current-schema full restore and R2 evidence; no redundant broad drill for unchanged code.
+- Finalize dedicated runner installation/configuration: private persistent disk, scoped credentials, schedule, retries, retention and alert routing.
+- Prepare stale/failed-backup alerts, credential rotation and restore/cutover runbooks; independently recoverable key custody must be real.
+- Track existing recovery credential expiry **November 22, 2026**; prepare renewal and pre-expiry alert, without unauthorized new access.
+- After concrete approval, provision and demonstrate one actual scheduled encrypted backup, alert path and bounded recovery/readback from its output. Clean only owned fixtures/plaintext scratch.
+- Record measured results; a tiny synthetic restore does not establish production RPO/RTO.
+
+**Exit:** working schedule, monitored failure, owner emergency key retrieval and recoverable scheduled output. A prepared script/manual historical R2 check is insufficient.
+
+### FRAME — UI fidelity and complete delivered identity
+
+**Owner:** free worker for audit/proposals; integrator applies shared native/UI wiring. **Prerequisite:** BASE. **Effort:** medium, no redesign.
+
+- Inventory accepted references and required states; separate account-content differences from visual implementation differences.
+- Audit delivered product names, endpoints, identifiers and canonical logos. Reconcile historical identity/crypto preservation instructions with the current versioned migration; resolve conflicts before changing protocol bytes.
+- Cover expanded/collapsed/hover/pinned sidebar, both panels, corners, glass/color blur, toolbar/bookmark blending, chat context/composer/model controls, settings/onboarding and empty/loading/error/disconnected states in both themes.
+- Make only evidence-backed fixes, preserving unaffected supplied structure/styles. Return narrow native proposals.
+
+**Exit before runtime:** state matrix and allowed-difference inventory. **Accepted:** matched-scale actual comparison and genuine hover/transition observation on final candidate. Hashes/screenshots do not prove motion.
+
+### COMPAT / EXT — OS, vendor and helper support
+
+**Owner:** free worker, read-only audit first. **Prerequisite:** BASE. **Effort:** medium; vendor/OS waits uncertain.
+
+- Establish whole-package OS/architecture support from actual artifacts. Current measured minimum maximum is macOS 27; main compiler target 13.5 does not establish older support.
+- If older systems are intended, list exact incompatible components and required rebuild/adaptation work; get support-matrix disposition rather than promise unverified compatibility.
+- Verify official password-manager extension install/autofill with a dummy login. Treat desktop/native messaging separately.
+- Prepare exact Apple identity/vendor trust requirements for 1Password companion pairing. Do not bypass trust or use owner vault contents.
+- Inventory per-helper Computer Use/observer/capture/shortcut permissions. Historical grants are not automatic authority for new helpers; no unrelated Contacts/Messages permissions.
+
+**Exit:** truthful supported matrix, actual extension behavior, promised companion/helper acceptance and clear optional setup. Unsupported vendor pairing remains open or explicitly scoped out by the owner.
+
+### PACKAGE — one coherent integration build
+
+**Owner:** integrator only. **Prerequisites:** COLD/EMBED, AI and any shipped-file changes from FRAME/COMPAT. **Effort:** medium integration plus serialized build time.
+
+- Integrate coherent local worker commits; own root stage/package/patch manifests, identity registry, GN/registration/startup and native apply steps.
+- Keep immutable predecessor receipts; introduce exact successor records for changed native/entry/helper/extension combinations.
+- Compile affected units, then one combined native/browser build through `scripts/native-build.py` and `/tmp/aux-build.lock`.
+- Stage with exact final app path and frozen snapshot; preservation check once per coherent candidate; package to a new directory and independently check critical copied bytes.
+- Record exact source/artifact identities and invalidated prior evidence. Keep accepted preview intact.
+
+**Exit:** reproducible paired candidate, no unexplained mixed generations. This does not establish runtime acceptance.
+
+### DEVAUTH — scoped protected-runtime authorization
+
+**Owner:** integrator. **Prerequisite:** PACKAGE. **Effort:** small/medium preparation plus external wait.
+
+Prepare exact app/helper hashes, developer identity, entitlements, disposable state, Keychain/OS scope, cleanup and bounded checks. Explain the actual protected-startup/resource-seal dependency. Obtain only the current required authorization; do not reuse old exceptions beyond their scope. Execute approved development signing/permissions and record exact resulting artifact identity.
+
+**Exit:** approved candidate can undergo protected runtime checks. This is not distribution signing or release approval. Continue independent work if approval is pending; leave runtime gates open.
+
+### BROWSER / AGENT / TOOLS / JOURNEY — bounded real-app acceptance
+
+**Owner:** integrator on actual Mac; workers diagnose traces separately. **Prerequisites for execution:** PACKAGE + DEVAUTH; PROD only for cloud journeys. **Effort:** bounded observation plus demonstrated fixes.
+
+Prepare fixtures early. Run each affected journey once on final candidate; repeat only invalid/failed trials or behavior affected by new changes.
+
+| ID | Journey and acceptance |
 | --- | --- |
-| Shared Chromium tree, GN, root stage/package/patch manifests and `/tmp/aux-build.lock` | Integrator. Node1414 and the queued source-dependent checks retain the native source freeze;93645 is terminal. Preserve preexisting changes and exact apply receipts. Never restart a confirmed live job because of elapsed time. |
-| Provider/WorkerHost and account-runtime proposals | `/root/aux_identity_native_audit`, separate worktree/new successor paths. Return frozen source/pins, actual queue IDs/results and precise root integration edits. Same40860 may change its deferred recipe only before execution, preserving original recipes/failure receipts. |
-| Resumed-only filesystem implementation/check | `/root/aux_identity_crypto`, separate worktree/new test proposal. Frozen production sources stay unchanged; captured identity is explicitly not actual signing authentication. One narrow physical-FS fixture; no duplicate25/31/36 graphs. |
-| Mach peer transport and native embedding proposal | `/root/aux_identity_package_gate`, separate worktree/new paths. No shared launch/GN changes. Real transport/Environment ownership cannot fabricate parent/profile authority. Root reviews then queues the focused compile. |
-| Vercel/Neon/Clerk/Stripe/Resend and production switches | Integrator, exact Aux project/environment/account checks. Do not mix metadata/accounts or local Development env into Production. Never print/read back secrets or mutate old projects. |
-| Actual app/CUA/OS state | Integrator only, disposable scope; coordinate one bounded session with owner when needed. Keep current preview intact until the replacement is reviewable and authorized. |
+| J1 | Fresh startup, normal restart, interrupted launch and synthetic legacy resume preserve authority/data; errors are truthful |
+| J2 | Switch during streaming/tool work/approval/open terminal; work never crosses profile/account, uncertainty blocks safely, no false drained result |
+| J3 | Normal/popup/installed-app windows and tabs restore separately after quit; crash recovery does not duplicate or cross profiles |
+| J4 | Draft and attachment restoration; oversized/missing/unreadable/quota failures retain clear retry/remove behavior without silent loss |
+| J5 | Real BYOK/ChatGPT lifecycle; model/reasoning/context/project controls, streaming/cancel/history and one tool action without Aux payment state |
+| J6 | Notification targets correct profile/window/chat after target closes; physical shortcut/Mini Popup and capture/lasso/helper denial behave honestly |
+| J7 | Navigation/bookmarks/downloads and changed import/session/native-message boundaries; dummy password-manager fill and companion pairing recorded separately |
+| J8 | Actual FRAME comparison at matched scale/theme; real hover and both-sidebar transitions, no corner clipping, toolbar seam or missing controls |
+| J9 | Production sign-in/restart/revocation; two independent sessions sync/conflict; attachment/avatar; synthetic share/revoke and disposable deletion |
+| J10 | Offline/provider rejection/expired auth do not fabricate success, expose credentials or corrupt drafts; fixtures/test credentials cleaned |
 
-At most three implementation workers plus the integrator. Prefer finish/integrate current outcomes over starting more proposals. When a lane waits, choose an independently useful next node only if its exact producer/contract is available. Frozen source proposals are not running integration, and a proposed lane is not an agent.
+Do not repeat the historical twenty-task agent suite or spend inference for visual tests. Use minimum authorized requests and synthetic data. If automation cannot send genuine hover/physical shortcuts, get one bounded owner observation and label it correctly. Deferred speech is unavailable, not silently accepted by a text check.
 
-Native compile/apply work uses the existing serializer. Focused changed sources first, one combined integration link at a stable boundary, then one actual-app journey per changed behavior. Reuse unaffected evidence. Node library compilation is a necessary implementation build, not a reason to block higher-priority corrected source checks; schedule it after those checks and never replace supplied runtime bytes implicitly. Owner's two analysis jobs remain untouched.
+**Exit:** applicable journeys observed on exact candidate/backend versions; unresolved failures remain open. Static preservation does not establish functional parity.
 
-External boundaries are explicit: no new signing/provisioning/Keychain/OS operation based on historical exceptions; prepare exact current bytes first. No funded AI/legal acceptance inferred from credit-purchase approval. No real sign-in/account creation inferred from the single delivery approval. No production activation inferred from resource bootstrap approval. Keep pending owner decisions in the existing request flow rather than repeatedly asking.
+### PROD — authorized activation and operational acceptance
 
-Continue this graph within the active goal: integrate reviewed current lanes, prove real native admission/embedding, assemble and exercise one unchanged-UI desktop/cloud generation, and finish production operations/configuration. Update nodes when authoritative evidence changes. Keep the full objective active until completion is proven requirement by requirement.
+**Owner:** integrator, sole dashboard writer. **Prerequisite:** CLOUD review and applicable approval. OPS required for production readiness, not independent deployment preparation.
+
+- Verify exact Aux Vercel/Neon/Blob/Clerk/Resend resources and production-only secrets; preserve marketing, older projects and Hostinger email DNS.
+- Apply approved deployment/migration/domain/webhook actions with snapshot and rollback.
+- Verify health, actual authorized sign-in delivery, revocation/deletion webhooks/idempotency and synthetic encrypted sync/media/share authorization.
+- Verify deployed no-payment/no-hosted-spend behavior; environment values alone do not update old deployment.
+- Enable error/health/backup alerting and record operating costs/limits, support contacts and honest public claims.
+
+**Exit:** current production backend operational and paired with final desktop, delivery and recovery evidence recorded. Dev/source checks are insufficient.
+
+### READY — complete pre-distribution acceptance
+
+**Owner:** integrator. **Prerequisites:** all promised outcomes accepted; optional/deferred gaps explicitly dispositioned.
+
+Produce one acceptance ledger containing feature, source commit, candidate/backend identity, observation, limitations, cleanup and evidence. Review credential/log hygiene, artifacts, identity, Vault exclusion, provider-only policy and support matrix. Prepare install/update/rollback/support instructions and required privacy/third-party notices without claiming legal approval. Reconcile STATUS/open graph nodes. Hand owner an actually runnable accepted candidate for final review; do not replace accepted preview prematurely.
+
+**Done:** reproducible candidate; no unresolved critical startup/data-loss/account-isolation defects; all promised launch behavior implemented and observed; recovery operational; owner review recorded. No completion percentages or readiness claims from compiler/package milestones.
+
+### RELEASE — separate final distribution handoff
+
+Planned only. After READY and explicit approval: confirm final signing identity/entitlements, sign, notarize/staple, verify downloaded/quarantined install on a supported clean system, verify updater/rollback packaging and publish. Repeat protected-startup/vendor checks affected by changed signatures on exact distribution bytes. Development signing is not release acceptance.
+
+## 5. Dispatch-ready parallel lanes
+
+Maximum **four agents total: one integrator plus three workers**. Separate worktrees; local coherent commits. All first workers start from the recorded planning baseline.
+
+| Slot | First outcome | Exclusive ownership | Next ready work |
+| --- | --- | --- | --- |
+| Integrator | BASE; interfaces and acceptance fixture preparation | Shared root manifests/scripts/native tree/GN/startup, graph/STATUS, final builds and device | FRAME/COMPAT audit, integration and review preparation |
+| Worker A native | NATIVE then AUTH/OWNER/PEER/COLD | New `docs/integration/proposed/final-completion/native/` source proposals/successors; no shared Chromium mutation | LEGACY, or split it after contracts freeze |
+| Worker B providers | AI | ChatGPT/provider files listed under AI and own evidence | FRAME/COMPAT or disjoint LEGACY after reservation |
+| Worker C cloud | CLOUD then OPS | `services/aux-cloud/`, cloud evidence; explicitly reserve recovery files | Runner/alert preparation and production review; no dashboard writes |
+
+Dispatch instruction:
+
+> Work from [recorded baseline] on [outcome ID]. Read this graph/current evidence. Own only [reserved files]. Preserve UI/data. Deliver a coherent implementation, focused changed-boundary checks, local commit, exact source/evidence, runtime gaps and shared-file proposals. Do not sign/deploy/access owner state/spend funds or spawn beyond the four-slot total. Fixtures do not establish acceptance. Report exact blockers and continue only independently ready assigned work.
+
+Use a rolling queue. Prioritize native feasibility/unblock value, then complete provider/cloud outcomes. Do not wait for the slowest lane before integrating completed work. Do not create overlapping proposals for an unresolved native interface. Reassign only after a coherent slice is delivered and ownership released.
+
+## 6. Reservations and substantial integration batches
+
+| Shared resource | Exclusive rule |
+| --- | --- |
+| Chromium/native build tree | Integrator; preserve changes, serialize via native-build.py and lock; inspect live jobs first |
+| Stage/package/identity/GN manifests | Integrator; workers send narrow proposals; freeze operands during builds |
+| Real Aux/Aside UI/OS settings | Integrator; disposable state, one bounded uninterrupted session |
+| Dashboards/secrets/production | Integrator within actual authority; no secret output/account mixing |
+| Accepted preview | Immutable until accepted authorized successor |
+| STATUS/graph | Integrator; workers write owned evidence directories |
+
+**Batch A: finish implementation.** Native, providers and cloud/operations preparation in parallel. Integrate coherent slices; avoid repeated packages while startup is still unsolved.
+
+**Batch B: build together.** After native prerequisites close, integrate provider and necessary UI changes, compile changed units and perform one combined build/package. Record all failed attempts honestly.
+
+**Batch C: observe and repair.** Approved protected startup plus bounded J1–J10 campaign; production/backup setup can proceed independently through sole operator. Fix concrete failures; repeat affected observations only.
+
+**Batch D: owner handoff.** Close evidence ledger, owner test, operating docs and distinct release review. Any changed dependency identifies the precise evidence to invalidate/repeat.
+
+## 7. Owner/external dependencies
+
+| Dependency | Prepare now | Owner/provider action | Gate |
+| --- | --- | --- | --- |
+| Native platform | Exact feasible mechanism/OS/entitlement review | Concrete new entitlement/provisioning decision if needed | COLD/COMPAT |
+| Development signing | Built exact-byte review, scope and cleanup | Current bounded protected-runtime authorization | DEVAUTH |
+| Provider connections | Working flow and minimum request plan | Direct consent/login or secure key entry where required | AI acceptance |
+| ChatGPT public eligibility | Current official requirements and Aux identity | Vendor application/approval if required | Public ChatGPT launch |
+| Backup runner | Concrete cost/access/install/schedule review | Provisioning approval and independent key retrieval | OPS |
+| Production activation | Exact deploy/config/migration/rollback review | Activation approval where not already covered | PROD |
+| Vendor/OS trust | Exact browser/helper and dummy fixture | Trust prompts/physical shortcut observation | EXT/TOOLS |
+| OS/optional features | Evidence-backed support/gap inventory | Disposition for older OS/images/speech if incomplete | READY |
+| Distribution | Accepted candidate and checklist | Explicit signing/notarization/release authority | RELEASE |
+
+Do not request repeated approval for already-authorized exact actions. Resource/bootstrap approval does not automatically authorize activation, owner-data access or distribution. Continue independent work while external gates wait.
+
+## 8. Evidence and lean verification
+
+One outcome record identifies source commit, exact inputs/output hashes, scope/environment, command/action, result, cleanup and limitation. Never include secrets/personal content. Preserve unaffected historical evidence, but do not transfer it to changed native/provider generations. Workers run focused checks; integrator runs shared checks once per coherent candidate. No test-count targets, speculative benchmarks, repeated broad restores or twenty-task reruns. Report source/integrated/built/observed/accepted separately.
+
+Before READY, reconcile every old graph ID: BASE, AUTH, OWNER, PEER, COLD, EMBED, LEGACY, PACKAGE, CLOUD, AI, BROWSER, AGENT, TOOLS, JOURNEY, EXT, OPS, PROD, FRAME, READY. New NATIVE/COMPAT/DEVAUTH/RELEASE nodes expose previously implicit dependencies; they do not erase old requirements.
+
+## 9. Reusable execution instruction
+
+> Execute `docs/ROADMAP-EXECUTION-GRAPH.md` through READY. Preserve accepted Aux UI/preview. Use one integrator and up to three workers in isolated worktrees from a recorded baseline. Start NATIVE, AI and CLOUD in parallel; use the rolling queue. Integrate coherent slices, serialize native builds and use focused changed-boundary checks plus actual final-app acceptance. Prepare concrete external/signing/production reviews without assuming authorization. Keep unimplemented and unverified items open. Do not release or distribute. Return the accepted runnable candidate, evidence ledger and remaining owner actions.

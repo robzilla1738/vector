@@ -1,3 +1,7 @@
+# Final completion plan drafted — 2026-10-23
+
+The owner requested a thorough parallel execution plan. `docs/ROADMAP-EXECUTION-GRAPH.md` now reconciles the latest provider-funded candidate and remaining native, provider, cloud, operations, UI and compatibility work. It retains original outcome IDs, adds explicit native feasibility/development-authorization gates, assigns one integrator plus three workers, and defines bounded final-app journeys. Previous graph preserved at `docs/archive/execution-graph-2026-10-23-before-final-completion-plan.md`. Planning only: no implementation, build, runtime observation, signing, deployment or release was performed; current readiness is unchanged.
+
 # Final provider-funded unsigned candidate assembled — 2026-10-23
 
 Actual package99383 passed in separate `out/provided-candidate-provider-funded-20261023/Aux.app`:10767 supplied resources and418 native leaves. The exact new main450e4ad8, rebuilt PTY module5b703ca2, final ordinary entry1aad24f5, ChatGPT sidecar26392b34 and two dormant native resources are bound to the new receipt association. Both package/bundle inventories record the distinct provider-native mode. Independent copied-byte checks passed for all1217 Agent leaves and five CSS files against the final stage; no visual/native-frame redesign occurred.
