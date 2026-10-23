@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/browser_process.h b/chrome/browser/browser_process.h
+--- a/chrome/browser/browser_process.h
++++ b/chrome/browser/browser_process.h
+@@ -179,7 +179,7 @@
+   // Returns only an already-owned manager. Unlike profile_manager(), this must
+   // never construct a manager or initiate profile/pref/filesystem work.
+   // Other/test BrowserProcess implementations conservatively report absent.
+-  virtual ProfileManager* profile_manager_if_initialized() { return nullptr; }
++  virtual ProfileManager* profile_manager_if_initialized();
+   virtual PrefService* local_state() = 0;
+   virtual scoped_refptr<network::SharedURLLoaderFactory>
+   shared_url_loader_factory() = 0;
+diff --git a/chrome/browser/browser_process.cc b/chrome/browser/browser_process.cc
+--- a/chrome/browser/browser_process.cc
++++ b/chrome/browser/browser_process.cc
+@@ -9,3 +9,7 @@
+ BrowserProcess::BrowserProcess() = default;
+ 
+ BrowserProcess::~BrowserProcess() = default;
++
++ProfileManager* BrowserProcess::profile_manager_if_initialized() {
++  return nullptr;
++}

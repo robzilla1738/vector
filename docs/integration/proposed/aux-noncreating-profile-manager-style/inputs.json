@@ -1,0 +1,29 @@
+{
+  "format": "aux.noncreating-profile-manager.style-successor.v1",
+  "parentManifest": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-noncreating-profile-manager/manifest.json",
+  "parentManifestSha256": "3fbf8b1c59ea8286aed1c98d5a0903575dddff4c42fba522e296c918f5e933c1",
+  "sourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/browser_process.h",
+      "inputSha256": "35246440dc5bb671fc4a24d4b54960f80f52ef343569bbac59ab91f55d26add2",
+      "outputSha256": "80d3984b7b0aa3bf893b1ad1d0e94db4dffb011eb1b1f6e5e5a2396310d151b3",
+      "find": "  virtual ProfileManager* profile_manager_if_initialized() { return nullptr; }",
+      "replace": "  virtual ProfileManager* profile_manager_if_initialized();",
+      "count": 1,
+      "inParentManifest": true
+    },
+    {
+      "path": "chrome/browser/browser_process.cc",
+      "inputSha256": "b68218adb71c14231d7c4a8dc1c60155abf086ab0da5d858cffa272eadcdae62",
+      "outputSha256": "9527bf49abaea2f5c14ac50f7a8c5ec42a61e6557986252b7577e35175e7fb84",
+      "find": "BrowserProcess::~BrowserProcess() = default;",
+      "replace": "BrowserProcess::~BrowserProcess() = default;\n\nProfileManager* BrowserProcess::profile_manager_if_initialized() {\n  return nullptr;\n}",
+      "count": 1,
+      "inParentManifest": false
+    }
+  ],
+  "patchSha256": "915f478a4b6b353d40f1559e8ba3c0423897f78ffe5a393980d0f48e4a8ed871",
+  "parentSourceCount": 791,
+  "parentAssetCount": 23
+}

@@ -1,0 +1,12 @@
+{
+  "format": "aux.noncreating-profile-manager.style-composition.v1",
+  "parentManifestSha256": "3fbf8b1c59ea8286aed1c98d5a0903575dddff4c42fba522e296c918f5e933c1",
+  "successorManifestSha256": "dfa390363c6a86cacc880490ab2e3475ade189960c801f89d021e1881910e77e",
+  "successorPath": "/private/tmp/aux-noncreating-profile-owner-20261022/out/noncreating-profile-manager-style",
+  "sourceRecords": 792,
+  "binaryAssets": 23,
+  "stagedBaseForced": false,
+  "applied": false,
+  "compiled": false,
+  "reportedStyleErrorRemovedWithoutSuppression": true
+}
