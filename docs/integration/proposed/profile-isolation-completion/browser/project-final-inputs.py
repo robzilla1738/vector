@@ -64,10 +64,14 @@ for name, key in [('build/toolchain/apple/linker_driver.py', 'linkerDriverSHA256
     if sha(source / name) != activation[key]:
         raise SystemExit('Approved build-tool guard differs: ' + name)
     pins[name] = activation[key]
+authorization_path = repo / 'docs/integration/proposed/profile-isolation-completion/browser/host-tool-signing-review/authorization.json'
+approved_lists = load(authorization_path)['files']
 for name in ['host-output-allowlist.json', 'host-proc-macro-allowlist.json',
              'excluded-product-outputs.json']:
     path = source / 'build/toolchain/apple' / name
-    pins[str(path.relative_to(source))] = sha(path)
+    if path.is_symlink() or sha(path) != approved_lists[name]:
+        raise SystemExit('Approved host output scope differs: ' + name)
+    pins[str(path.relative_to(source))] = approved_lists[name]
 pins['build/config/mac/BUILD.gn'] = sha(source / 'build/config/mac/BUILD.gn')
 for name, before, after, supplied in changes:
     destination = source / name
@@ -85,6 +89,7 @@ record = {
     'baseBuildReceiptSha256': sha(base),
     'barrierSourceMapSha256': sha(barrier / 'sources.json'),
     'barrierGnMapSha256': sha(barrier / 'integration/gn-registration.json'),
+    'hostToolAuthorizationSha256': sha(authorization_path),
     'hostToolApprovalActivationSha256': sha(root / 'approved-host-tool-filter-activation.json'),
     'successorProjection': [{'path': n, 'before': b, 'after': c} for n,b,c,_ in changes],
     'requiresFreshGnAndCommandReview': True,
