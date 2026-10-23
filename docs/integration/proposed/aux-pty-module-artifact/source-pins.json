@@ -1,0 +1,17 @@
+{
+  "format": "aux.pty.module.artifact.source.v1",
+  "files": {
+    "build.py": {
+      "sha256": "e373a09d7d9b1da07bf96ab67289505d4a100190d9d783f16a15050c952f7d1d",
+      "bytes": 5571
+    },
+    "inputs.json": {
+      "sha256": "b0118ef1b83aedfca53f164d750990afdf83f19e3ce4d278a2c3254be6d63c9a",
+      "bytes": 2583
+    },
+    "evidence/artifact-receipt.json": {
+      "sha256": "6a5633dbb369166759b76938872abf7be54bbfc38c45c1f3513dc86db69768bf",
+      "bytes": 18809
+    }
+  }
+}
