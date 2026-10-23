@@ -205,7 +205,7 @@ class ChatGPTPlanClient {
           const result = await this.fetch(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: record.refresh, token_type_hint: 'refresh_token', client_id: record.clientId }) });
           revoked = result.status === 200;
         }
-      } finally { this.store.clearTokens(account); }
+      } catch { revoked = false; } finally { this.store.clearTokens(account); }
       return { revoked };
     });
   }

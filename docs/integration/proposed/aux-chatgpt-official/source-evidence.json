@@ -73,6 +73,22 @@
       "count": 1
     },
     {
+      "name": "unintegrated ChatGPT image capability suppressed",
+      "count": 1
+    },
+    {
+      "name": "legacy ChatGPT image driver refuses before private transport",
+      "count": 1
+    },
+    {
+      "name": "actual model disconnect awaits remote revocation",
+      "count": 1
+    },
+    {
+      "name": "actual disconnect RPC awaits completion",
+      "count": 1
+    },
+    {
       "name": "public Responses API reused",
       "count": 1
     },
@@ -106,7 +122,9 @@
     "actual supplied CredentialStorage local selection and metadata-only enumeration",
     "legacy credential bytes preserved",
     "unverified generic writes refused",
-    "callback IPv4 exact anchor"
+    "callback IPv4 exact anchor",
+    "image capability suppressed and private transport refused",
+    "actual disconnect awaits revocation and reports unconfirmed status"
   ],
   "network": false,
   "ownerState": false,

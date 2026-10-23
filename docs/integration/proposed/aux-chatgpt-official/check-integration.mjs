@@ -39,7 +39,21 @@ try {
   assert.equal(JSON.stringify(credentials.getAll()).includes('fixture-private'), false);
   assert.throws(() => credentials.set('openai-codex', local), /verified local/);
   assert.equal(synced['openai-codex'].access, 'legacy-fixture');
+  const imageStart = result.source.indexOf('function openaiCodexImagesProvider(){');
+  const imageEnd = result.source.indexOf('var CHATGPT_IMAGE_GENERATION_MODEL', imageStart);
+  let privateTouched = false;
+  const imageProvider = runInNewContext(`(${result.source.slice(imageStart, imageEnd)})`, { createImagesProvider: config => config, openaiCodexProvider: () => ({auth:{}}), openAICodexImagesApi: () => {privateTouched=true;throw Error('private transport reached');} });
+  const imageConfig = imageProvider(); assert.equal(imageConfig.models.length, 0);
+  await assert.rejects(imageConfig.api.generateImages(), /not available in Aux/); assert.equal(privateTouched, false);
+  const disconnectStart = result.source.indexOf('async removeCredential(Cn){if(Cn===`openai-codex`)');
+  const disconnectEnd = result.source.indexOf('async getModelAuthForProvider', disconnectStart);
+  const disconnect = runInNewContext(`({${result.source.slice(disconnectStart, disconnectEnd)}})`);
+  let removed = false;
+  disconnect.credentials = {logout:async()=>({revoked:false})};disconnect.modelsJson={removeProviderConfig:()=>{removed=true;}};
+  await assert.rejects(disconnect.removeCredential('openai-codex'),/remote revocation was not confirmed/);assert.equal(removed,true);
+  disconnect.credentials.logout=async()=>({revoked:true});await disconnect.removeCredential('openai-codex');
+  assert.equal(result.source.includes('await ti.removeCredential(ei.providerId),await ti.rewriteRoutingSelectionsToAvailableModels()'),true);
   const callback = applyOfficialChatGPTCallbackAsset(readFileSync(assetPath, 'utf8'));
   assert.equal(callback.includes('http://localhost:1455'), false);
-  console.log(JSON.stringify({ schema: 'aux.chatgpt.official-source-check.v1', originalSha256: DAEMON_CODE_SHA256, identity: 'aux-v1', stateVersion: 2, anchors: result.patches, checks: ['full transformed ESM syntax', 'actual supplied CredentialStorage local selection and metadata-only enumeration', 'legacy credential bytes preserved', 'unverified generic writes refused', 'callback IPv4 exact anchor'], network: false, ownerState: false, runtimeAcceptance: false }, null, 2));
+  console.log(JSON.stringify({ schema: 'aux.chatgpt.official-source-check.v1', originalSha256: DAEMON_CODE_SHA256, identity: 'aux-v1', stateVersion: 2, anchors: result.patches, checks: ['full transformed ESM syntax', 'actual supplied CredentialStorage local selection and metadata-only enumeration', 'legacy credential bytes preserved', 'unverified generic writes refused', 'callback IPv4 exact anchor', 'image capability suppressed and private transport refused', 'actual disconnect awaits revocation and reports unconfirmed status'], network: false, ownerState: false, runtimeAcceptance: false }, null, 2));
 } finally { rmSync(temp, { recursive: true, force: true }); }

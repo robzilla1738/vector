@@ -1,9 +1,9 @@
-✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (62.732ms)
-✔ callback state, nonce, signature, identity, permissions and replay fail closed (47.751542ms)
-✔ unsafe storage refuses; logout retains registration and clears all local tokens (43.605583ms)
-✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.260791ms)
-✔ inference stream requires actual completion; interrupted and incomplete streams refuse (4.010625ms)
-✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (31.68125ms)
+✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (58.477541ms)
+✔ callback state, nonce, signature, identity, permissions and replay fail closed (49.11275ms)
+✔ unsafe storage refuses; logout retains registration and clears all local tokens (41.623875ms)
+✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.228167ms)
+✔ inference stream requires actual completion; interrupted and incomplete streams refuse (3.793ms)
+✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (30.301083ms)
 ℹ tests 6
 ℹ suites 0
 ℹ pass 6
@@ -11,4 +11,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 387.540708
+ℹ duration_ms 424.291417
