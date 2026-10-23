@@ -1,0 +1,142 @@
+{
+  "format": "aux.native-fresh-target-cohort-lease.actual-typecheck.v1",
+  "startedAtUTC": "2026-10-23T02:15:57.347794+00:00",
+  "sourcePinsSha256": "c3ddf9144badcbbb243c65690546ff9fc484ce77de02bb6ca86a85e181edc57f",
+  "recipeSha256": "d2ad7f8e545d7866017f077299cbe7d94fc2bab74cdd652ea6debd57d2986cb2",
+  "inputs": [
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+      "sha256": "6f37b02c38e9e9556a8c3c42635ee54b96743b7a02cecc3bc3ca9161ab62d3f8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/AuxFreshNativeHome.swift",
+      "sha256": "f6e3df00ccc17dace3f15cabe18fb566b9e8da85ae6955c7c27867d95b6ad7e9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "8858ffadff0cc9809b4dd279988f60fc4b80b6c378e801fcf89b81338fa0fa4a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "sha256": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/AuxNativeFreshBootstrapFactory.swift",
+      "sha256": "fddbfbff1198ef094b2d8e5e757866ff0a4358ce4d59400419365f264557cf41"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "sha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "sha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "7f34be5f11881c53be065133c114c4480ad106a4a534c028eb362a6dd6c3ec0d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "sha256": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "sha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/AuxNativeFreshTargetCoordinator.swift",
+      "sha256": "419365e54ba4173581c517f0ce3dd6eaa6aa7bcb5ef9c2f9b0ad20e2ad3fcfaf"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "sha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0"
+    }
+  ],
+  "inputsUnchangedThroughCompile": true,
+  "command": [
+    "xcrun",
+    "swiftc",
+    "-typecheck",
+    "-target",
+    "arm64-apple-macos13.0",
+    "-module-name",
+    "AuxNativeFreshCohortLease",
+    "-module-cache-path",
+    "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-cohort-lease-typecheck-pdbbbynh/cache",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-installation-command-core/source/AuxInstallationCommandCore.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/AuxFreshNativeHome.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxFreshBootstrapPolicy.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/AuxNativeFreshBootstrapFactory.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-coordinator/source/AuxNativeFreshStageCoordinator.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/AuxNativeFreshTargetCoordinator.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+    "/private/tmp/aux-fresh-bootstrap-policy-20261022/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift"
+  ],
+  "exitCode": 0,
+  "seconds": 6.5673903750000004,
+  "compilerLogSha256": "a9547e475e7b36d9dea6abdea7eee6da01ffccfd7c319364ed0bd52f6efe5426",
+  "linked": false,
+  "loaded": false,
+  "protectedOperations": 0,
+  "authorityGeneration": false
+}

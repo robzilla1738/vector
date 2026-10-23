@@ -1,0 +1,43 @@
+{
+  "format": "aux.native-fresh-cohort.focused-checks.v1",
+  "sourceCommit": "de1993670",
+  "jobs": [
+    {
+      "session": 24645,
+      "exitCode": 0,
+      "checks": "23 actual separate-file Swift inputs typechecked; see exact receipt"
+    },
+    {
+      "session": 30993,
+      "exitCode": 0,
+      "checks": 53,
+      "output": "PASS:53 actual shared-cohort alias/unavailable deferral and native-v2 progress cases; captured effects, no Security/generation"
+    },
+    {
+      "session": 82218,
+      "exitCode": 0,
+      "checks": 30,
+      "scope": "historical target coordinator before shared-cohort successor"
+    },
+    {
+      "session": 38492,
+      "exitCode": 0,
+      "checks": 14,
+      "scope": "historical initial v2 journal/private FD store"
+    },
+    {
+      "session": 69805,
+      "exitCode": 0,
+      "checks": 19,
+      "scope": "historical corrected stage submission/observation"
+    }
+  ],
+  "protectedOperations": 0,
+  "authorityGeneration": false,
+  "linkedOrLoadedProductionGraph": false,
+  "limits": [
+    "The 53-case fixture uses captured effects and disposable filesystem only.",
+    "Historical fixture counts do not prove later source changes.",
+    "No startup or cross-process writer admission established."
+  ]
+}
