@@ -50,10 +50,11 @@ def verify_pair(r):
  source=json.loads(P(r['sourceReceipt']).read_text());entry=json.loads(P(r['entryReceipt']).read_text())
  if source['passed'] is not True or entry['passed'] is not True or not source['coldRefusalPreserved'] or not entry['defaultEntryRefusalPreserved']:raise ValueError('checked refused projections required')
  if source['composedSha256']!=pair['sourceSha256'] or entry['sourceSha256']!=pair['sourceSha256'] or entry['entrySha256']!=pair['entrySha256'] or entry['loaderSha256']!=pair['loaderSha256'] or entry['sourceReceiptSha256']!=r['sourceReceiptSha256']:raise ValueError('projection receipt pairing mismatch')
+ return pair
 def main():
  a=argparse.ArgumentParser();a.add_argument('recipe');v=a.parse_args();recipe=P(v.recipe).resolve();r=json.loads(recipe.read_text());out=P(r['output']);baseline=P(r['baselineApp']);native=P(r['nativeApp']);receipt=P(r['nativeReceipt']);pin(receipt,r['nativeReceiptSha256']);build=json.loads(receipt.read_text())
  if not build['passed'] or build['signed'] or not build['sharedLinkConfigUnchanged'] or not build['appStableDuringInventory'] or not build['allInspectedMachoUnsigned']:raise ValueError('successful unsigned full build required')
- verify_pair(r)
+ pair=verify_pair(r)
  if out.exists() or not out.is_absolute() or any(out.resolve().is_relative_to(p.resolve()) for p in [baseline,native]):raise ValueError('fresh separate output required')
  link=P(r['daemonReceipt']);pin(link,r['daemonReceiptSha256']);linked=json.loads(link.read_text())
  if not linked['passed'] or not linked['inputsUnchanged'] or linked['signed']:raise ValueError('successful unsigned daemon link required')
@@ -67,6 +68,10 @@ def main():
  if digest(base_inv)!=r['baselineInventorySha256'] or digest(native_inv)!=r['nativeInventorySha256']:raise ValueError('app inventory mismatch')
  resources='Contents/Resources/aux';old=baseline/resources
  bundle=json.loads((old/'bundle.json').read_text());changes=[]
+ boundary=r['outerBoundary']
+ if boundary['path']!='Contents/Resources/package.json' or P(boundary['input']).resolve()!=(baseline/boundary['path']).resolve() or boundary['mode']!=0o644:raise ValueError('exact outer package boundary required')
+ pin(boundary['input'],boundary['sha256'])
+ if P(boundary['input']).read_bytes()!=b'{\n  "private": true\n}\n':raise ValueError('outer package semantics changed')
  paths=[x['path'] for x in r['replacements']]
  if len(paths)!=len(REPLACEMENTS) or set(paths)!=set(REPLACEMENTS):raise ValueError('exact five replacement leaves required')
  for item in r['replacements']:
@@ -80,6 +85,13 @@ def main():
   subprocess.run(['/bin/cp','-cR',str(native),str(app)],check=True)
   if (app/resources).exists():raise ValueError('native seed contains unexpected supplied resources')
   subprocess.run(['/bin/cp','-cR',str(old),str(app/resources)],check=True)
+  marker=app/boundary['path']
+  if not marker.resolve().is_relative_to(app.resolve()):raise ValueError('outer boundary escape')
+  if marker.exists():
+   pin(marker,boundary['sha256'])
+   if marker.stat().st_mode&0o777!=boundary['mode']:raise ValueError('outer boundary mode changed')
+  else:
+   shutil.copyfile(boundary['input'],marker);os.chmod(marker,boundary['mode'])
   for item in changes:
    dst=app/resources/item['path']
    if not dst.resolve().is_relative_to((app/resources).resolve()):raise ValueError('replacement escape')
@@ -87,7 +99,13 @@ def main():
    entries=[x for x in bundle['files'] if x['path']==item['path']]
    if len(entries)!=1:raise ValueError('unique bundle leaf required')
    entries[0].update(sha256=item['sha256'],mode=item['mode'],changeKinds=['integration'])
-  bundle['successorIntegration']={'recipeSha256':sha(recipe),'daemonReceiptSha256':sha(link),'nativeReceiptSha256':sha(receipt),'dormant':True,'runtimeAuthorityGranted':False,'replacements':changes}
+  historical={key:bundle[key] for key in ['finalApp','nativeEntryProjection','finalLocalNativeReplacement','deliveryProvenance'] if key in bundle}
+  projection=dict(format='aux.dormant-native-entry.package.v4',dormant=True,sourceSha256=pair['sourceSha256'],files=[dict(path=x['path'],sha256=x['sha256'],mode=x['mode'],bytes=P(x['input']).stat().st_size) for x in changes if PAIR_KEYS[x['path']] in ['entry','loader']],sourceReceiptSha256=r['sourceReceiptSha256'],entryReceiptSha256=r['entryReceiptSha256'],pairedBuildReceiptSha256=sha(link),pairedExecutableSha256=pair['daemonSha256'],defaultEntryRefusalPreserved=True,coldHookEnabled=False,runtimeAuthorityGranted=False)
+  bundle['finalApp']=str(app)
+  bundle['nativeEntryProjection']=projection
+  bundle['finalLocalNativeReplacement']=dict(format='aux.inactive-successor-native.package-inputs.v2',buildReceiptSha256=sha(link),policyFormatSupported=pair['policyFormat'],signedPolicyAccepted=False,authorityGranted=False,coldHookEnabled=False,defaultEntryRefusalPreserved=True,replacements=changes,nativeEntryProjection=projection)
+  if 'deliveryProvenance' in bundle:bundle['deliveryProvenance']={**bundle['deliveryProvenance'],'scope':'historical-source-delivery-before-successor-integration'}
+  bundle['successorIntegration']={'recipeSha256':sha(recipe),'daemonReceiptSha256':sha(link),'nativeReceiptSha256':sha(receipt),'sourcePairSha256':r['sourcePairSha256'],'baselineMetadata':historical,'outerBoundary':boundary,'dormant':True,'runtimeAuthorityGranted':False,'replacements':changes}
   (app/resources/'bundle.json').write_text(json.dumps(bundle,indent=2)+'\n')
   changed={x['path'] for x in changes}|{'bundle.json'}
   before=inventory(old);after=inventory(app/resources)

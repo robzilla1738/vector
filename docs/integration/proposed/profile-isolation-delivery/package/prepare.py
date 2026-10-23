@@ -18,6 +18,7 @@ items=[(base+'MacOS/aux-daemon',daemon,0o755),(base+'Resources/node-development/
 replacements=[dict(path=rel,previousSha256=m.sha(root/rel),input=str(src.resolve()),sha256=m.sha(src),mode=mode) for rel,src,mode in items]
 r=dict(format='aux.inactive-successor.recipe.v1',baselineApp=str(baseline),baselineInventorySha256=m.digest(m.inventory(baseline)),nativeApp=str(native),nativeInventorySha256=m.digest(m.inventory(native)),nativeReceipt=str(nr),nativeReceiptSha256=m.sha(nr),daemonReceipt=str(dr),daemonReceiptSha256=m.sha(dr),sourceReceiptSha256=m.sha(sr),entryReceiptSha256=m.sha(er),output=str(P(a.output).absolute()),replacements=replacements)
 r.update(sourcePair=str(P(a.source_pair).resolve()),sourcePairSha256=m.sha(a.source_pair),sourceReceipt=str(sr),entryReceipt=str(er))
+r['outerBoundary']=dict(path='Contents/Resources/package.json',input=str(baseline/'Contents/Resources/package.json'),sha256=m.sha(baseline/'Contents/Resources/package.json'),mode=0o644)
 m.verify_pair(r)
 with P(a.recipe).open('x') as f:f.write(json.dumps(r,indent=2)+'\n')
 print('Prepared exact inactive recipe; not assembled or authorized')
