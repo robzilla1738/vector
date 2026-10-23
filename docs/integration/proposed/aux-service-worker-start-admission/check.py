@@ -1,17 +1,36 @@
 #!/usr/bin/env python3
 """Execute production gate/owner/start/retry bodies with captured worker boundaries."""
 from pathlib import Path
-import subprocess,tempfile,json
-P=Path(__file__).resolve().parent
-s=(P/'source/extensions/browser/service_worker/service_worker_task_queue.cc').read_text()
-def body(marker):
- start=s.index(marker);brace=s.index('{',start);depth=1;i=brace+1
- while depth:
-  depth+=(s[i]=='{')-(s[i]=='}');i+=1
- return s[start:i]
-owner=s[s.index('struct ProcessWorkerStartAdmission {'):s.index('\n}  // namespace',s.index('struct ProcessWorkerStartAdmission {'))]
-methods=[body(m) for m in ['bool ServiceWorkerTaskQueue::CanAdmitStart()', 'ServiceWorkerTaskQueue::QueueStartAdmissionSnapshot\nServiceWorkerTaskQueue::InspectQueueStartAdmission()', 'void ServiceWorkerTaskQueue::CloseQueueStartAdmission()', 'ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot\nServiceWorkerTaskQueue::InspectStartAdmissionForMigration()', 'ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot\nServiceWorkerTaskQueue::CloseStartAdmissionForMigration()', 'void ServiceWorkerTaskQueue::MaybeStartWorker(', 'void ServiceWorkerTaskQueue::RetryStartWorker(']]
-preamble=r'''
+
+import subprocess, tempfile, json
+
+PROPOSAL_ROOT = Path(__file__).resolve().parent
+source = (PROPOSAL_ROOT / 'source/extensions/browser/service_worker/service_worker_task_queue.cc').read_text()
+
+
+def function_body(marker):
+    start = source.index(marker)
+    brace = source.index('{', start)
+    depth = 1
+    cursor = brace + 1
+    while depth:
+        depth += (source[cursor] == '{') - (source[cursor] == '}')
+        cursor += 1
+    return source[start:cursor]
+
+
+owner = source[source.index('struct ProcessWorkerStartAdmission {'):source.index('\n}  // namespace',
+    source.index('struct ProcessWorkerStartAdmission {'))]
+methods = [function_body(marker) for marker in [
+    'bool ServiceWorkerTaskQueue::CanAdmitStart()',
+    'ServiceWorkerTaskQueue::QueueStartAdmissionSnapshot\nServiceWorkerTaskQueue::InspectQueueStartAdmission()',
+    'void ServiceWorkerTaskQueue::CloseQueueStartAdmission()',
+    'ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot\nServiceWorkerTaskQueue::InspectStartAdmissionForMigration()',
+    'ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot\nServiceWorkerTaskQueue::CloseStartAdmissionForMigration()',
+    'void ServiceWorkerTaskQueue::MaybeStartWorker(',
+    'void ServiceWorkerTaskQueue::RetryStartWorker(',
+]]
+preamble = r'''
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -60,11 +79,11 @@ public:
  std::map<int,int> worker_start_retries_,worker_registration_retries_,worker_unregistration_wait_retries_,pending_storage_registrations_,pending_unregistrations_;
 };
 '''
-# Real constructor registration body; destructor's context-observer loop requires
-# Chromium objects and is source-checked separately rather than simulated here.
-constructor=body('ServiceWorkerTaskQueue::ServiceWorkerTaskQueue(BrowserContext* browser_context)')
-# Marker parser starts at ctor then finds its body, preserving initializer list.
-fixture=preamble+owner+'\n'+constructor+'\n'+'\n'.join(methods)+r'''
+# Keep the real constructor registration and generation capture.
+constructor = function_body('ServiceWorkerTaskQueue::ServiceWorkerTaskQueue(BrowserContext* browser_context)')
+# The destructor below captures observer teardown; its production body is
+# source-checked and compiled by the separate real-TU check.
+fixture = preamble + owner + '\n' + constructor + '\n' + '\n'.join(methods) + r'''
 ServiceWorkerTaskQueue::~ServiceWorkerTaskQueue(){auto& o=WorkerStartAdmissionOwner();o.destroyed.push_back(InspectQueueStartAdmission());o.queues.erase(this);}
 }
 int main(){using namespace extensions;int checks=0;auto check=[&](bool v){assert(v);++checks;};
@@ -82,7 +101,22 @@ int main(){using namespace extensions;int checks=0;auto check=[&](bool v){assert
  std::cout<<"PASS:"<<checks<<" production gate/owner/start/retry checks; captured workers, no actual worker launch\n";
 }
 '''
-with tempfile.TemporaryDirectory(prefix='aux-sw-admission-check-') as tmp:
- f=Path(tmp)/'check.cc';f.write_text(fixture);exe=Path(tmp)/'check'
- subprocess.run(['clang++','-std=c++20','-Wall','-Wextra','-Werror','-I'+str(P/'source'),str(f),'-o',str(exe)],check=True)
- subprocess.run([str(exe)],check=True)
+with tempfile.TemporaryDirectory(prefix='aux-sw-admission-check-') as temporary_directory:
+    fixture_path = Path(temporary_directory) / 'check.cc'
+    fixture_path.write_text(fixture)
+    executable = Path(temporary_directory) / 'check'
+    subprocess.run(
+        [
+            'clang++',
+            '-std=c++20',
+            '-Wall',
+            '-Wextra',
+            '-Werror',
+            '-I' + str(PROPOSAL_ROOT / 'source'),
+            str(fixture_path),
+            '-o',
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)

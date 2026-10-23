@@ -1,0 +1,31 @@
+{
+  "format": "aux.native.worker-current-tooling.v1",
+  "historicalExecutionEvidence": "evidence.json",
+  "historicalExecutionEvidenceSha256": "2deca97f9c0166cbfc967bbf29dc99514c7a64d383607e3b73ec629f1ed0e39f",
+  "derivation": "tooling-format-derivation.json",
+  "derivationSha256": "21f1bba4fbf0011c1245bdcfdeff8e9d3322d25588be100b1f3352a4942165ec",
+  "tools": [
+    {
+      "path": "compile-check.py",
+      "sha256": "f5d6555bc41a438d61fd068448de70680099031df79bc707e707f593ea7f966f",
+      "syntaxParsed": true
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "c369dd26727c367b0f0abb47c148cdd09b4ae73ca93053f5e864c5b8e2e59b09",
+      "syntaxParsed": true
+    },
+    {
+      "path": "verify.py",
+      "sha256": "88ce42b821513cb51032f53ce836277118000400a164cb20a78eb5dd2d39200d",
+      "syntaxParsed": true
+    },
+    {
+      "path": "check.py",
+      "sha256": "496c11fd92c78fa65415ca472aba288071c476abaa453bd002b979299f2e2f04",
+      "syntaxParsed": true
+    }
+  ],
+  "executedCurrentNativeCheck": false,
+  "executedCurrent24CaseSuite": false
+}

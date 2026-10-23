@@ -1,0 +1,113 @@
+{
+  "format": "aux.native.worker-tooling-format.v1",
+  "historicalSourceCommit": "75d2401e4",
+  "nativeBytesChanged": false,
+  "historicalEvidenceUnchanged": true,
+  "productionChecksRepeated": false,
+  "records": [
+    {
+      "path": "compile-check.py",
+      "historicalSha256": "9c7b6da093927ca0fdc327637591193864e002fea76b2983e61b3f7d921ae318",
+      "formattedSha256": "f5d6555bc41a438d61fd068448de70680099031df79bc707e707f593ea7f966f",
+      "identifierRenames": {
+        "P": "PROPOSAL_ROOT",
+        "a": "arguments",
+        "pins": "compile_pins",
+        "native": "native_root",
+        "build": "build_root",
+        "out": "output_root",
+        "f": "item",
+        "variables": "gn_variables",
+        "cmd": "command",
+        "t": "started",
+        "r": "result"
+      },
+      "astEquivalentAfterOnlyListedIdentifierRenames": true,
+      "stringConstantsUnchanged": true,
+      "exactASTEquivalentWithoutIdentifierNormalization": false,
+      "normalizedASTSha256": "1513c2cf1949772311d54ba581d3781b2faf09a7e5c0696ca4b9cb34a71181c4",
+      "stringConstantsSha256": "16a2df2d4f700e1f6409566b5b69f0a3b3bd879ff3dcf3e4ab40155abd60590a",
+      "syntaxParsed": true
+    },
+    {
+      "path": "prepare-composition.py",
+      "historicalSha256": "97b3c0202de7ea5f42be076b71f6d35a599845036b9fd9738f686485e97c4b8a",
+      "formattedSha256": "c369dd26727c367b0f0abb47c148cdd09b4ae73ca93053f5e864c5b8e2e59b09",
+      "identifierRenames": {
+        "P": "PROPOSAL_ROOT",
+        "sha": "sha256",
+        "m": "manifest",
+        "a": "parser",
+        "o": "arguments",
+        "repo": "artifact_root",
+        "parent": "parent_root",
+        "raw": "parent_bytes",
+        "old": "parent_manifest",
+        "d": "temporary_directory",
+        "meta": "metadata_path",
+        "p": "manifest_path",
+        "new": "successor_manifest",
+        "before": "parent_files",
+        "after": "successor_files",
+        "name": "source_path",
+        "v": "record",
+        "x": "item",
+        "f": "record"
+      },
+      "astEquivalentAfterOnlyListedIdentifierRenames": true,
+      "stringConstantsUnchanged": true,
+      "exactASTEquivalentWithoutIdentifierNormalization": false,
+      "normalizedASTSha256": "d0ed23aba60608e5ede50b24ba0ce191dc324ff8f6d53c213bc0a795628f8b3b",
+      "stringConstantsSha256": "873dac792a5408135160dd1c7da80440fce3a91847fbe25033db5c7dc9164982",
+      "syntaxParsed": true
+    },
+    {
+      "path": "verify.py",
+      "historicalSha256": "3a8aec3eaf8bead7130f964750699ba6a4fc927c0d439345d5fc5e424753fbd2",
+      "formattedSha256": "88ce42b821513cb51032f53ce836277118000400a164cb20a78eb5dd2d39200d",
+      "identifierRenames": {
+        "P": "PROPOSAL_ROOT",
+        "sha": "sha256",
+        "m": "manifest",
+        "f": "record",
+        "p": "relative_path",
+        "a": "baseline_path",
+        "b": "source_path",
+        "s": "source",
+        "body": "function_body",
+        "i": "cursor",
+        "old": "current_source"
+      },
+      "astEquivalentAfterOnlyListedIdentifierRenames": true,
+      "stringConstantsUnchanged": true,
+      "exactASTEquivalentWithoutIdentifierNormalization": false,
+      "normalizedASTSha256": "0e74469a31bdff6011996b4965da32128e7d3e4517b0fe835ae9d11622d1ce83",
+      "stringConstantsSha256": "cef67c9395421f483ea8a17b02caf606bfe6c00371d35e519dbc8057b626332c",
+      "syntaxParsed": true
+    },
+    {
+      "path": "check.py",
+      "historicalSha256": "72b7ff036ac7d5e75644cfd24f9643e29fec9f9d71a6198cdb29c47f52d59d9c",
+      "formattedSha256": "496c11fd92c78fa65415ca472aba288071c476abaa453bd002b979299f2e2f04",
+      "identifierRenames": {
+        "P": "PROPOSAL_ROOT",
+        "s": "source",
+        "body": "function_body",
+        "i": "cursor",
+        "m": "marker",
+        "f": "fixture_path",
+        "exe": "executable",
+        "tmp": "temporary_directory"
+      },
+      "astEquivalentAfterOnlyListedIdentifierRenames": true,
+      "stringConstantsUnchanged": true,
+      "exactASTEquivalentWithoutIdentifierNormalization": false,
+      "normalizedASTSha256": "9c3bcfbaa34db2a5df52acbda7319591bc08dfe3c6da8e7fa558e95809cb1b79",
+      "stringConstantsSha256": "7d2bb56a716c5ba9411a007bbdd59baa516a2e4c63178845da6a1f1fe42666b4",
+      "syntaxParsed": true
+    }
+  ],
+  "verification": "Compare ast.dump(..., include_attributes=False), applying ONLY listed Name.id, arg.arg and FunctionDef.name identifier renames to historical AST. No imports/control flow/constants/calls or C++ bytes changed.",
+  "historicalExecutionEvidenceSha256": "2deca97f9c0166cbfc967bbf29dc99514c7a64d383607e3b73ec629f1ed0e39f",
+  "newToolExecution": "No native compile or 24-case fixture rerun; syntax/AST equivalence only."
+}
