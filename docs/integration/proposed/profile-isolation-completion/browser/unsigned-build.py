@@ -14,7 +14,19 @@ unsigned=s.replace(needle,needle+'  # This isolated local candidate must not be 
 if cfg.read_text() not in [s,unsigned]:raise SystemExit('link config not matching exact unsigned successor')
 if cfg.read_text()!=unsigned:cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
+def verify_input_pins():
+ pins=O/'final-native-input-pins.json'
+ if not pins.exists():return
+ contents=json.loads(pins.read_text())
+ for name,digest in contents['files'].items():
+  path=S/name
+  if not path.resolve().is_relative_to(S.resolve()) or sha(path)!=digest:raise RuntimeError('native input changed: '+name)
+ digest=sha(pins)
+ if r.get('nativeInputPinsSha256',digest)!=digest:raise RuntimeError('native input manifest changed')
+ r['nativeInputPinsSha256']=digest;r['nativeInputPins']=contents
+
 try:
+ verify_input_pins()
  activation=O/'approved-host-tool-filter-activation.json'
  if activation.exists():
   authorized=json.loads(activation.read_text())
@@ -51,6 +63,7 @@ try:
   with (R/'build.log').open('w') as log:run=subprocess.run(cmd,cwd=S,stdout=log,stderr=subprocess.STDOUT)
   r['runs'].append({'name':'full-build','command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t});r['passed']=run.returncode==0
   if r['passed']:
+   verify_input_pins()
    app=B/'Aux.app'
    if not app.is_dir():raise RuntimeError('expected Aux.app missing')
    leaves=[];macho=[]
@@ -79,6 +92,7 @@ try:
       macho.append({'path':name,'hasCodeSignatureLoadCommand':signed})
    # Re-read every regular file to detect an output mutation during inventory.
    if not all(sha(app/x['path'])==x['sha256'] for x in leaves if x['type']=='file'):raise RuntimeError('app changed during inventory')
+   verify_input_pins()
    payload=json.dumps(leaves,sort_keys=True,separators=(',',':')).encode()
    (R/'app-inventory.json').write_text(json.dumps(leaves,indent=2)+'\n')
    (R/'macho-inventory.json').write_text(json.dumps(macho,indent=2)+'\n')
