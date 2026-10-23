@@ -1,0 +1,22 @@
+[
+  "./libEGL.dylib",
+  "./libGLESv2.dylib",
+  "./libvk_swiftshader.dylib",
+  "./libvulkan.dylib",
+  "./libVkICD_mock_icd.dylib",
+  "./libVkLayer_khronos_validation.dylib",
+  "obj/chrome/chrome_framework_shared_library/Aux Framework",
+  "./libaperitif.dylib",
+  "./app_mode_loader",
+  "./chrome_crashpad_handler",
+  "./web_app_shortcut_copier",
+  "obj/chrome/chrome_helper_app_default_executable/Aux Helper",
+  "obj/chrome/chrome_helper_app_renderer_executable/Aux Helper (Renderer)",
+  "obj/chrome/chrome_helper_app_gpu_executable/Aux Helper (GPU)",
+  "obj/chrome/chrome_helper_app_aperitif_executable/Aux Helper (Aperitif)",
+  "obj/chrome/chrome_helper_app_aperitif_renderer_executable/Aux Helper (Aperitif Renderer)",
+  "obj/chrome/chrome_helper_app_aperitif_gpu_executable/Aux Helper (Aperitif GPU)",
+  "obj/chrome/chrome_helper_app_alerts_executable/Aux Helper (Alerts)",
+  "obj/chrome/chrome_helper_app_aperitif_alerts_executable/Aux Helper (Aperitif Alerts)",
+  "obj/chrome/chrome_app_executable/Aux"
+]
