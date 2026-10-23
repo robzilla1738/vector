@@ -37,3 +37,7 @@ const providerNativeReplacement = providerNativeEvidence
 ```
 
 Select its nativeEntryProjection ahead of the older optional modes. Do not call addDormantCurrentNativeEntry for this mode. Include providerNativeReplacement in the final outer package report. Invoke with the new receipt path docs/integration/proposed/aux-native-worker-close-main-build/evidence/results.json, exact unchanged out/native-reuse-composition-aux-parent-swift-runtime composition, final out/provided-provider-funded-final-20261023 stage and its already-declared finalApp path. No signing/runtime option is added.
+
+## Focused actual source/private-copy check
+
+Final stage manifest85c2402f and ordinary index1aad24f5 project to native entryc03344bf (12212539 bytes); Node's parse-only check passes. Actual private-copy fixture91098 passes using the real final staged daemon/module/helper/index/sidecar and actual new native executable. It verifies both replacements, both generated dormant files, unchanged ordinary index/helper/ChatGPT sidecar, stale stage/composition denial, changed index denial, mixed-mode/replayed evidence refusal and distinct provider report. Temporary private copied artifacts were removed. No generated JavaScript, native executable, module or helper was executed/loaded. This is not an actual full-app package or runtime acceptance; the root assembler owns those separate steps. Evidence is evidence/check.json; reproduction is check.mjs.
