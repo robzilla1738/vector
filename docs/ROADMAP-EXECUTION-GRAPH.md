@@ -1,5 +1,7 @@
 # Aux execution and completion graph
 
+Current scope update — 2026-10-23: the provider-funded launch supersedes older Stripe, paid-tier and Aux-funded inference/speech launch requirements below. Do not resume payment setup. BYOK and eligible official ChatGPT plan connection source is integrated; the final source stage passed preservation checks, and the native retirement successor passed a full unsigned link. These are distinct from protected startup, complete profile/process custody and actual final-candidate provider/UI acceptance. Production desktop/cloud activation and backup runner operations remain separate. See [current status](STATUS.md) and the [active launch plan](plans/2026-10-23-provider-funded-launch.md); older build/evidence rows below are historical, not the latest artifact state.
+
 Updated 2026-10-22. This reconciles the owner's continuing implementation goal with current source, artifacts and actual evidence. It does not replace historical receipts or narrow the goal to source compilation. Execution is authorized; final desktop release/distribution remains excluded. Preserve the supplied implementation and current accepted UI, canonical Aux logo, owner data, existing provider projects and password-manager exclusion.
 
 ## Starting point and immediate queue

@@ -1,5 +1,7 @@
 # Provider-funded desktop launch
 
+Root integration update: exact final staging, preservation audit and unsigned successor packaging have now passed. See `docs/integration/proposed/provider-funded-integration/README.md` and `actual-package.json` for current evidence. The handoff details below retain their source history; actual provider/native/UI runtime acceptance remains unfinished.
+
 Owner-selected source policy: `paymentsEnabled:false`, `hostedAiEnabled:false`. No environment lookup or fake Pro/Max account state. Existing account/auth/credential and external-provider errors remain real. Existing paid implementation remains in source behind public policy; old hosted connection records are not deleted or repurposed.
 
 ## Integrator hooks

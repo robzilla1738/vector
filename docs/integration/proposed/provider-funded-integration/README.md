@@ -21,8 +21,16 @@ The full native successor is unsigned, was not executed, and retains the fixed r
 
 ## Remaining implementation and acceptance
 
-1. Pair the final provider resources, dormant entry projection and newly linked main in an exact successor package. Keep startup refusal/default-off policy until genuine authority exists.
+1. Exact successor packaging is complete (details below). Genuine installation/policy/resource-seal authority and startup admission remain; no unsigned inclusion receipt grants them.
 2. Finish native fresh/resume/legacy profile admission and whole-writer/descendant custody; compiled shutdown corrections do not prove complete active-work profile switching.
 3. Accept a real disposable BYOK connection and ChatGPT registration/callback, model selection, completed request, expiry/refresh, account switch, restart and disconnect on the same authorized candidate. No owner credentials or paid request were used in this batch. Unknown model capabilities currently use conservative text-only limits; public-plan images remain unavailable.
 4. Check the affected real UI/sidebar/chat/settings states against Aside on that candidate. The current accepted UI is untouched, but that does not make a changed candidate runtime-accepted.
 5. Separately finish desktop/cloud production sign-in/sync/sharing acceptance and approved operational setup. Production activation and the dedicated backup runner remain separate work/authorization. Aux payments and funded hosted speech/inference remain deferred.
+
+## Final actual package
+
+Actual package99383 passed at `out/provided-candidate-provider-funded-20261023/Aux.app`, using the exact final stage, unchanged browser composition/receipt, CLI boundary receipt and the new exclusive `--provider-native-receipt` mode. It contains10767 supplied resources and418 native leaves. The separate mode is mutually exclusive with older main/PTY/development-signing layouts. Both inventories record the distinct provider-native association.
+
+The producer initially refused the new crypto-containing entry at its identity gate, because that gate recognized only the frozen predecessor hashes. `entry-projections.json` now registers only the exact new SEA/node hashes and their builtin lazy prelude; the validator additionally binds the unchanged predecessor, disabled payment/hosted policy and first-refusal/asset initialization order. No historical crypto/utility input or receipt was changed or generically relaxed.
+
+`actual-package.json` records independent post-copy checks: exact new main/module, unchanged final ordinary entry/helper/ChatGPT sidecar, exact two dormant resources, all1217 Agent files and five CSS files match the final stage. New native executable SHA450e4ad8 and native-entry SHAc03344bf are paired; cold hook remains off. No signing, app execution, real UI comparison, protected runtime acceptance or accepted-preview replacement occurred. This artifact cannot yet serve as a user-testable replacement.

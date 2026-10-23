@@ -1,5 +1,7 @@
 # Final provider-stage/native retirement package association
 
+Root integration update: exact final staging, preservation audit and unsigned successor packaging have now passed. See `docs/integration/proposed/provider-funded-integration/README.md` and `actual-package.json` for current evidence. The handoff details below retain their source history; actual provider/native/UI runtime acceptance remains unfinished.
+
 This distinct inactive helper pins the owner's final provider-funded source stage, the actual coherent Worker-retirement native executable and the retained rebuilt PTY module together. No existing receipt/input/reader/projection is relabeled. Ordinary state2 index remains unchanged and refused. Only two native leaves are replaced and exactly two dormant resources added within the root assembler's existing private transaction.
 
 The actual fixed Swift reader1076fd85 does not compile the old JavaScript hash into its executable. It selects only node-development/aux-native-entry.mjs through checked no-follow FDs, verifies those bytes against the running signed bundle's resource seal and revalidates native policy identity. It is already in the successful native main450e4ad8. No new reader or full link is needed solely because provider JavaScript changed. Proper signing/resource sealing and actual runtime acceptance remain missing; a source/package association supplies no authority.

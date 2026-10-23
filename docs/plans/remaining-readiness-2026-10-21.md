@@ -1,5 +1,7 @@
 > Current cross-workstream execution and completion gates: [Aux execution graph](../ROADMAP-EXECUTION-GRAPH.md). The dated preview evidence below remains historical; cloud/native progress is reconciled in that graph and STATUS.
 
+Current scope update — 2026-10-23: the provider-funded launch supersedes older Stripe, paid-tier and Aux-funded inference/speech launch requirements below. Do not resume payment setup. BYOK and eligible official ChatGPT plan connection source is integrated; the final source stage passed preservation checks, and the native retirement successor passed a full unsigned link. These are distinct from protected startup, complete profile/process custody and actual final-candidate provider/UI acceptance. Production desktop/cloud activation and backup runner operations remain separate. See [current status](../STATUS.md) and the [active launch plan](2026-10-23-provider-funded-launch.md); older build/evidence rows below are historical, not the latest artifact state.
+
 # Aux completion and setup checklist
 
 This is the current implementation checklist, replacing the stale open-item summaries in older build records. Preserve the supplied UI and existing Aux glass, corners, spacing and interactions. Aux excludes the built-in Vault/password manager. A successful local browser build is not hosted-service or release readiness.

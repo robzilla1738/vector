@@ -1,0 +1,46 @@
+{
+  "format": "aux.provider-funded.actual-package.v1",
+  "passed": true,
+  "candidate": "out/provided-candidate-provider-funded-20261023/Aux.app",
+  "suppliedResources": 10767,
+  "nativeLeaves": 418,
+  "agentFilesVerified": 1217,
+  "agentStylesheetsVerified": 5,
+  "agentMatchesFinalStage": true,
+  "exactNativeReplacements": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "replacedSha256": "dd2489cb5b560c1103ab74dd5963936306ba42426791652ffa8ea0ca6b50d860",
+      "outputSha256": "450e4ad830fb169f6342a77e9ef551e519df3a59547823e437448f57e89f8dc2",
+      "outputBytes": 143851568
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "replacedSha256": "a8b049f93353a68a8c289c1a868e8c8ae29fa4caf2f56af676b57b780d25c19a",
+      "outputSha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726",
+      "outputBytes": 168040
+    }
+  ],
+  "defaultEntryUnchanged": true,
+  "sidecarAndHelperUnchanged": true,
+  "dormantResources": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "c03344bf93c5924081bf12adc9fd0304ac701382c1a4798e8af9bb0d6592aa92",
+      "mode": 420
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+      "mode": 420
+    }
+  ],
+  "packageReportSha256": "b435e90b40012b72e3d50e8b63c31c01279c339a043e2025b171ff8940e6aaf1",
+  "bundleManifestSha256": "7842d105fd748046d34277aa2f15e0cca67f40b43c12eef9637a22ed3bc94f24",
+  "signed": false,
+  "coldHookEnabled": false,
+  "executed": false,
+  "realAppComparisonPerformed": false,
+  "protectedRuntimeAccepted": false,
+  "acceptedAppChanged": false
+}

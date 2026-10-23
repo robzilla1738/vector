@@ -1,5 +1,7 @@
 # Official ChatGPT plan source integration — 2026-10-23
 
+Root integration update: exact final staging, preservation audit and unsigned successor packaging have now passed. See `docs/integration/proposed/provider-funded-integration/README.md` and `actual-package.json` for current evidence. The handoff details below retain their source history; actual provider/native/UI runtime acceptance remains unfinished.
+
 This slice replaces the supplied daemon's legacy ChatGPT connection path while retaining its connection dialog, OAuthFlowManager public status contract, provider ID and model-picker renderer. No CSS, geometry, logo, accepted app or owner state changed. It is source integration, not real account or inference acceptance.
 
 `vendor/aside/shims/aux-chatgpt.cjs` implements Aux dynamic registration and a stable host ID; exact IPv4 loopback callback, state, nonce and S256 PKCE; issued-client persistence before exchange in a separate unconnected registration; RS256 signature/JWKS and issuer/audience/azp/time/nonce/subject validation; returned plan-scope validation; per-local-account registration/session records; serialized rotating refresh; cancellation and local-session checks before persistence; and remote revocation support. Generic provider credentials cannot install a ChatGPT token set. A returned status contains no tokens.
