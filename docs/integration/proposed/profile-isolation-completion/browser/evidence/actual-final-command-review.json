@@ -1,0 +1,14 @@
+{
+  "format": "aux.chromium.final-post-build-command-review.v1",
+  "buildReceiptSha256": "96a62cb4742814f90ec082bdb6b08640bfac7f0f74a8c5affd927a3413b6ad35",
+  "nativeInputPinsSha256": "d5f38604087819d43d67a464576dd55d765cb4a31689dfe1713862485226d5f4",
+  "initialCommandInventorySha256": "57cd89206349386492b94b92939cc3ed59b7b6b4a74e5f0114ed02ed2c216fa4",
+  "postBuildCommandInventorySha256": "57cd89206349386492b94b92939cc3ed59b7b6b4a74e5f0114ed02ed2c216fa4",
+  "graphBeforeSha256": "6c6eaa1c3334b5b4227378ccf9b4890391a54bf8a2b587a5717bd5515c22dd3d",
+  "graphAfterSha256": "6c6eaa1c3334b5b4227378ccf9b4890391a54bf8a2b587a5717bd5515c22dd3d",
+  "reviewedCommandCount": 57863,
+  "reviewedLinkCount": 68,
+  "productSigned": false,
+  "appExecuted": false,
+  "passed": true
+}
