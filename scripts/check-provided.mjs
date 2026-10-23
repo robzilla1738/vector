@@ -167,9 +167,9 @@ for (const component of ['daemon', 'cli']) {
         if (stateIdentityVersion === 2) {
           text = applyAuxRuntimeContractIdentity({component: 'skill', path: source.slice('Contents/Resources/static/skills/'.length), text, original: original.toString('utf8'), branding: 'aux'}).text;
           if (component === 'daemon' && cloudOptions.enableCloud) {
-            const icons = applyAuxBuiltinIconIdentity({component, path: source, text, original}, cloudOptions);
+            const icons = applyAuxBuiltinIconIdentity({component, path: file.path, text, original}, cloudOptions);
             text = icons.text;
-            if (icons.anchors.length) builtinIconEdits.push({path: source, sourceSha256: hash(original), anchors: icons.anchors});
+            if (icons.anchors.length) builtinIconEdits.push({path: file.path, sourceSha256: hash(original), anchors: icons.anchors});
           }
         }
         text = text.replace(CLI_COMMAND, 'aux ');

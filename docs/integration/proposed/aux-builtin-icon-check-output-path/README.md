@@ -1,0 +1,7 @@
+# Builtin icon audit output-path correction
+
+The actual fresh stage `out/provided-reuse-aux-current-native` records47 reviewed builtin icon identity rows. All original source hashes, icon anchors and resulting skill bytes match. Its one renamed skill has source path `Contents/Resources/static/skills/builtin/aside/SKILL.md` and output path `Contents/Resources/static/skills/builtin/aux/SKILL.md`.
+
+`stageProvidedApps` intentionally passes/records that output path. The checker reconstructed its audit row with the source path, causing `Unreported builtin icon identity changes` before package assembly despite matching bytes. The correction uses `file.path` for both the icon adapter path and its audit row, exactly matching the producer. Source loading, original hash pinning, source-path classification, transformation replay, exact47 count, whole-report equality and actual output-byte verification remain unchanged. No stage manifest, icon/UI bytes, source adaptation or package runtime behavior changes.
+
+The focused check extracts and executes the actual changed checker skill block against all actual staged skills. All47 icon rows now compare exactly; the legacy-path audit differs and a changed source hash still rejects. It does not run the full checker, restage, package, launch, sign or access owner state. `evidence.json` records the result. Existing state1/CLI branches and absent-cloud behavior are unchanged.

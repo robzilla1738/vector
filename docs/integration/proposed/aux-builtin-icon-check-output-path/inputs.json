@@ -1,0 +1,7 @@
+{
+  "sourceSha256": "257c6631af924324cacc28d6c16d09aead3a659b338a1dae824e9c12c6d42ab6",
+  "outputSha256": "893a2f975c883805aae69964bc5e469a04afc471a849043ba6ecc3fd82eefc06",
+  "changedFile": "scripts/check-provided.mjs",
+  "changedSites": 2,
+  "runtimeOrUIChanges": false
+}
