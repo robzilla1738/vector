@@ -1,3 +1,11 @@
+# Further writer coverage and cancellation closure linked; full browser job queued — 2026-10-23
+
+Parallel local work added25 count-checked supplied-source seams for downloads, sync metadata SQLite, migration mutations, runtime directory copying, queued sync admission and watcher/dream producer uncertainty. Exact composed-source/dormant-entry syntax and focused disposable checks passed. Detached producer completion still does not certify drain.
+
+Native cancellation now closes Dispatcher admissions while retaining unresolved browser custody, including failed/racing durable grant attempts. The combined48-source Swift/12-object unsigned daemon compile/link passed, exact pins unchanged, paired module imports resolved, and no signing/execution. Executable SHA256: `9c156c01b12fc5e3dae9d7652efe5f3b924e470be42f670cbfca11bcc9e5e0df`. Evidence: `docs/integration/proposed/profile-isolation-completion/`.
+
+The isolated APFS snapshot continues at `/private/tmp/aux-chromium-recovery-snapshot-20261023`. A root preparation job waits for successful snapshot receipt; the full-build watcher then performs clone-only no-ad-hoc-sign linker configuration, GN regeneration, graph/action checks and Ninja-j4. Inspect live receipts for actual state; queued is not built. The shared checkout/current app/UI remains unchanged. No full browser/package/runtime/UI acceptance yet. Admitted-session restart remains blocked on true whole-browser/service/descendant drain; no invented clean marker is produced. Remaining source work is listed in the batch README. Signing and release remain separate.
+
 # Background-write and interrupted-startup batch linked unsigned — 2026-10-23
 
 Parallel source work added23 guarded supplied-daemon seams covering session JSONL, attachment copies, memory/routine files, REPL mutations and producer-owned background output. Shutdown waits for actual stream closure without ending a live producer's output early. Child and descendant custody remain independently unresolved where unknown.
