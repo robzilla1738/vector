@@ -1,3 +1,13 @@
+# Embedded daemon graph and owned routing source prepared — 2026-10-22
+
+The actual Node library build1414 remains live: the same handle was polled and compilation advanced from ICU into LIEF. It has not linked an embedding executable or replaced the supplied runtime. No repeated full browser build was launched.
+
+A separate strictly sealed v2 `embedded-daemon` policy now models the actual static executable graph rather than requiring a nonexistent separately loaded runtime module. v1 retains its original required image graph. The native image preparation source authenticates the real host/policy, fixed PDF/OS signatures, exact bytes and containing resource seal. Review caught a validation-to-dlopen path race: the corrected source requires an unprivileged process plus retained root-owned, no-group/other-write/no-ACL path custody over every ancestor and module before constructors can run. Handles remain retained on partial failure. This deliberately refuses the current user-owned development bundle; a fresh trusted privileged installation, matching signed bytes and explicit review are later prerequisites. No privileged install, Security validation or module load executed.
+
+A count-checked three-edit proposed daemon projection routes main and actual Worker commands through the same finite native linked binding/account coordinator, preserving the separate PDF loader. Projected full-entry syntax passed and actual plain Node refused the shim because no native binding was registered. The entry itself was not evaluated. Default SEA/CLI/fallback quarantine and accepted UI/app remain untouched. This is not packaged or runtime-accepted code. See `aux-native-embedded-image-preparation/` and `aux-native-owned-entry-routing/` under the proposals directory.
+
+One existing queued42-file Swift check is being paired with the final policy/loader and dispatcher changes while its exact waiting serializer is stopped without a child. Prior recipes/pins remain preserved. Separate current native transport/selected-home and actual executable main/adoption work continue in parallel. Original common-addon retirement, real parent adoption/auth, legacy migration and actual startup/cloud journeys remain incomplete; no ready-app claim follows from these source changes.
+
 # Native checks completed; paired retry fixes integrated — 2026-10-22
 
 Actual immutable evidence now records the42-file Swift graph exit0,28 captured dispatcher cases and6 captured pre-Add stage cases. The actual resumed-only disposable filesystem fixture passed23 cases. Provider-backed WorkerHost51207 and Node Environment runner77772 each compiled their actual C++ translation unit. These are scoped compile/fixture results, not linked/protected runtime acceptance.
