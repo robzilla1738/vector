@@ -1,0 +1,53 @@
+{
+  "format": "aux.fresh-readiness.actual-captured-checks.v1",
+  "frozenSourceCommit": "c89c613f2",
+  "checks": [
+    {
+      "name": "dispatcher",
+      "session": 82351,
+      "command": [
+        "python3",
+        "scripts/native-build.py",
+        "sh",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/check-dispatcher.sh"
+      ],
+      "exitCode": 0,
+      "assertions": 28,
+      "stdout": "PASS:28 actual guarded dispatcher/retirement/account-callback assertions; explicit fake authorities; protected calls0",
+      "postExecutionSourceHashes": {
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxOwnedCommandDispatcher.swift": "54d0ff096ccd791100c2448a1a8927235a06dc96f48efeb015c2213b6b1e7434",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/tests/dispatcher-main.swift": "795a97531cd313f92c7beb031294d3efdb5503c657a419e6578371a1c59fd375",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/check-dispatcher.sh": "467d554b34150916eccfc69bf2e49e034efaedc11b1a9787724fb046c6704b0f",
+        "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+      }
+    },
+    {
+      "name": "stage",
+      "session": 50721,
+      "command": [
+        "python3",
+        "scripts/native-build.py",
+        "sh",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/check-stage.sh"
+      ],
+      "exitCode": 0,
+      "assertions": 6,
+      "stdout": "PASS:6 actual stage pre-Add deferral/reentry/unknown observation assertions; captured effects only",
+      "postExecutionSourceHashes": {
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshStageCoordinator.swift": "7763379c8779e37bdc4a08fd9f7493a01d11c5e65f447709ba407057407dec18",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/tests/stage-main.swift": "af828d5a36663b0d0157b3193cb0ab262e359800c473b249d637649630634b80",
+        "docs/integration/proposed/aux-native-fresh-runtime-readiness/check-stage.sh": "5d1394ad6339a5b43fa87cac2cb5f0f69b2815c8a565adbc05cdc6e5127a79de",
+        "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+        "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
+        "docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+        "docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114"
+      }
+    }
+  ],
+  "actualSecurityCalls": 0,
+  "keyGeneration": false,
+  "ipc": false,
+  "startupActivated": false,
+  "limits": "Captured effects/explicit fake authorities do not authenticate a genuine production owner. Source hashes below captured after execution; source remained frozen since c89, not a claim of in-command before/after sampling."
+}
