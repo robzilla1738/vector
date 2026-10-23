@@ -1,0 +1,5 @@
+0000000100053c40 (__TEXT,__text) non-external (was a private external) _AuxCaptureAuthenticatedPtyHelper
+000000010005407c (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperRevalidate
+0000000100054158 (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperCopyPath
+0000000100054740 (__TEXT,__text) non-external (was a private external) _AuxAuthenticatedPtyHelperRelease
+0000000100055240 (__TEXT,__text) non-external (was a private external) _AuxCopyAuthenticatedExecPrivateParent

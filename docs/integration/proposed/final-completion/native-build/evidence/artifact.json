@@ -1,0 +1,42 @@
+{
+  "format": "aux.final-completion.native-main.artifact.v1",
+  "passed": true,
+  "files": {
+    "/private/tmp/aux-final-native-main-20261023/Aux Daemon": {
+      "sha256": "3e48f01554e35228945604fdeafcb1aaccee248151b2337f3596cfe0d1b75e2e",
+      "bytes": 143860288
+    },
+    "/private/tmp/aux-final-native-main-20261023/results.json": {
+      "sha256": "4fd5bbda6455b7b7b853f87108e449bb0d081193699ee4b626517eee361ec467",
+      "bytes": 21016
+    },
+    "/private/tmp/aux-final-native-main-20261023/link.log": {
+      "sha256": "8279e555f980bdd7d8f98970416f90303170f88a828693873ad09de0a6d79a81",
+      "bytes": 8523
+    },
+    "/private/tmp/aux-final-native-main-20261023/paired-symbols.txt": {
+      "sha256": "920c0f081c77beb731d659cba88fa01c577c5c025ecc7fff2cb6b1a7509f3d19",
+      "bytes": 534
+    },
+    "/private/tmp/aux-final-native-main-20261023/module-imports.txt": {
+      "sha256": "185a5ff915e7c10d93229a0fa053c98fc3c7f55292cab1d62c557c8b8ae8b262",
+      "bytes": 6560
+    },
+    "/private/tmp/aux-final-native-main-20261023/main-exports.txt": {
+      "sha256": "3132b2ca55e3184e2c8936f605b2eea015ea0a03181022e85adfb2c1d2f51bdd",
+      "bytes": 2475430
+    },
+    "/private/tmp/aux-final-native-main-20261023/load-commands.txt": {
+      "sha256": "6091b93b2247792db774830930d9a384aaded3571b0df7dc6a2c025d59b00579",
+      "bytes": 18311
+    }
+  },
+  "actualLinkReceipt": "/private/tmp/aux-final-native-main-20261023/results.json",
+  "signed": false,
+  "run": false,
+  "loaded": false,
+  "protectedOperations": 0,
+  "acceptedAppChanged": false,
+  "browserPeerLinkedByThisRecipe": false,
+  "wholeCustodyAccepted": false
+}
