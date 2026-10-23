@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "native-feature-proposal",
+  "sourceBaseline": "02ce77253",
+  "files": {
+    "chrome/browser/aux/organization/organization_codec.cc": "f657f7e64d11156d24623ae86096115361b0848ed374100ca345ef94fa31bb8d",
+    "chrome/browser/aux/organization/organization_codec.h": "2977da779fc63adbc09d02a41fd35c2352fb8b82b77f95ce99ae95ab0298c080",
+    "chrome/browser/aux/organization/organization_model.cc": "1f5cf28cc27268a58a9b702c72c52705cef98d0113b7c3d9a81717c166de63dc",
+    "chrome/browser/aux/organization/organization_model.h": "922957bb4dbb1f7c9260d810d852e01bb632d17bbc2d44ee755e5b533c7a2285",
+    "chrome/browser/aux/organization/organization_model_unittest.cc": "c81c36203e056caa651de1b69843023168f28f4a71b010d249f34bd9c2acaec2",
+    "chrome/browser/aux/organization/organization_service.cc": "8533a9cb5f33bcf94d9e13d8ca5a542f7ba7c7ced868864f53724e7d898f1e05",
+    "chrome/browser/aux/organization/organization_service.h": "f64d8cb93d91b3ca744dadedebb2152796be1934a7f136af5f2b603d5d2936e7"
+  },
+  "actualRuntimeAccepted": false,
+  "sharedRegistrationOwner": "integrator"
+}
