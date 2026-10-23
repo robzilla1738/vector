@@ -1,0 +1,22 @@
+{
+  "path": "scripts/lib/provided-package.mjs",
+  "sourceSha256": "a864b7268c7586a72a27ec2a2106aaf9039c1bf00ff46c69b19345323370509f",
+  "outputSha256": "631f6387297b97e491e70f5ffabe14423570789b626889e3b0424404b5eb88b8",
+  "edits": [
+    {
+      "find": "import { verifyNativeMainPackageInput",
+      "replace": "import { addDormantCurrentNativeEntry } from '../../docs/integration/proposed/aux-native-current-entry-package/source/resources.mjs';\nimport { verifyNativeMainPackageInput",
+      "count": 1
+    },
+    {
+      "find": "    const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;",
+      "replace": "    const nativeMainReplacement = nativeMainEvidence ? await replaceCopiedDaemonWithNativeMain({ resources, assembled, evidence: nativeMainEvidence }) : null;\n    const nativeEntryProjection = nativeMainReplacement ? await addDormantCurrentNativeEntry({ resources, assembled, repositoryRoot: repository }) : null;",
+      "count": 1
+    },
+    {
+      "find": "      ...(nativeMainReplacement ? { nativeMainReplacement } : {}),",
+      "replace": "      ...(nativeMainReplacement ? { nativeMainReplacement } : {}),\n      ...(nativeEntryProjection ? { nativeEntryProjection } : {}),",
+      "count": 1
+    }
+  ]
+}

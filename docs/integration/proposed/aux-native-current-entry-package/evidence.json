@@ -1,0 +1,28 @@
+{
+  "format": "aux.current-native-entry.source-check.v1",
+  "passed": true,
+  "current20748InputMatchesPriorReviewedProjection": true,
+  "inputSha256": "e3ca08e182127f5eb0330a96d91b43cdec9e935045eb6aff8073059246003ac3",
+  "outputSha256": "d6288135e178d25540ab139e637bd44ed101274532769ed005054ae32f826541",
+  "generatedFiles": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "d6288135e178d25540ab139e637bd44ed101274532769ed005054ae32f826541",
+      "bytes": 12211782
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+      "bytes": 581
+    }
+  ],
+  "syntaxOnly": true,
+  "actualPrivateResourceCopierDisposableFixture": true,
+  "defaultIndexPreserved": true,
+  "readerLiteralChanges": 4,
+  "mainRebuilt": false,
+  "entryExecuted": false,
+  "nativeModuleLoaded": false,
+  "currentStageChanged": false,
+  "actualPackageProduced": false
+}

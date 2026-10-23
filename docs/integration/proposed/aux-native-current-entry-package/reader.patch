@@ -1,0 +1,34 @@
+--- a/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedNativeDaemonEntry.swift
++++ b/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedNativeDaemonEntry.swift
+@@ -54,7 +54,7 @@
+         _ = try sealedEntryMetadata(next, directory: true)
+     }
+     let parent = descriptors.last!
+-    let file = openat(parent, "index.mjs", O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
++    let file = openat(parent, "aux-native-entry.mjs", O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
+     guard file >= 0 else { throw AuxSealedDaemonEntryError.file }
+     descriptors.append(file)
+     let initial = try sealedEntryMetadata(file, directory: false)
+@@ -70,7 +70,7 @@
+     }
+     try sealedEntrySame(file, initial)
+     var entry = stat()
+-    guard fstatat(parent, "index.mjs", &entry, AT_SYMLINK_NOFOLLOW) == 0,
++    guard fstatat(parent, "aux-native-entry.mjs", &entry, AT_SYMLINK_NOFOLLOW) == 0,
+           entry.st_dev == initial.st_dev, entry.st_ino == initial.st_ino else {
+         throw AuxSealedDaemonEntryError.changed
+     }
+@@ -80,11 +80,11 @@
+     var code: SecStaticCode?
+     status = SecCodeCopyStaticCode(dynamic, [], &code)
+     guard status == errSecSuccess, let code else { throw AuxSealedDaemonEntryError.signature(status) }
+-    status = SecCodeValidateFileResource(code, "Resources/node-development/index.mjs" as CFString, bytes as CFData, [])
++    status = SecCodeValidateFileResource(code, "Resources/node-development/aux-native-entry.mjs" as CFString, bytes as CFData, [])
+     guard status == errSecSuccess else { throw AuxSealedDaemonEntryError.signature(status) }
+     try sealedEntrySame(file, initial)
+     try policy.revalidateCurrentIdentity()
+-    return (bytes, URL(fileURLWithPath: policy.bundlePath + "/Contents/Resources/node-development/index.mjs").absoluteString)
++    return (bytes, URL(fileURLWithPath: policy.bundlePath + "/Contents/Resources/node-development/aux-native-entry.mjs").absoluteString)
+ }
+ 
+ // Plain malloc buffers cross the native C boundary, never Swift/C++ containers.
