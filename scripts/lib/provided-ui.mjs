@@ -1,5 +1,6 @@
 import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
+import { transformProviderFundedLaunch } from '../../vendor/provided/provider-funded-launch.mjs';
 import { relocateAuxAssetPath, applyAuxAssetReferenceIdentity } from '../../vendor/provided/aux-asset-path-identity.mjs';
 import { applyAuxCaptureContractIdentity } from '../../vendor/provided/aux-capture-contract-identity.mjs';
 import { applyAuxProfileContextIdentity } from '../../vendor/provided/aux-profile-context-identity.mjs';
@@ -302,6 +303,8 @@ export async function stageProvidedUi({
             const billingFallback = applyAuxBillingReturnFallback({component, path: file.path, text, original: source.toString('utf8')}, originCloudOptions);
             text = billingFallback.text; anchors.push(...billingFallback.anchors);
           }
+          const launch = transformProviderFundedLaunch({component, path: file.path, text, stateIdentityVersion});
+          text = launch.text; anchors.push(...launch.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

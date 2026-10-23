@@ -33,8 +33,9 @@ test('actual pinned UI: replay every edit, preserve className tokens and provide
 test('actual daemon: compiled source and payment/hosted boundary fails before token/network access',()=>{
  const binary=readFileSync(join(snapshot,'daemon/Contents/MacOS/aside-daemon')),section=findMachOSeaSection(binary),source=readSeaBlob(binary.subarray(section.offset,section.offset+section.size)).code;
  for(const [identityProfile,stateIdentityVersion] of [['compatibility',1],['aux-v1',2]]){
- const adapted=adaptDaemonCode(source,{},identityProfile,stateIdentityVersion).code;
- const {text,anchors}=transformProviderFundedLaunch({component:'daemon',path:'entry.mjs',text:adapted,stateIdentityVersion});assert.equal(anchors.length,10);syntax(text);
+ const adapted=adaptDaemonCode(source,{},identityProfile,stateIdentityVersion);
+ const text=adapted.code;assert.equal(adapted.applied.filter(a=>a.name==='public provider-funded launch policy').length,1);syntax(text);
+ assert.throws(()=>transformProviderFundedLaunch({component:'daemon',path:'entry.mjs',text,stateIdentityVersion}),/already applied/);
  const policy=text.slice(text.indexOf('const AUX_LAUNCH_POLICY='),text.indexOf('import{createRequire}'));
  const context=vm.createContext({});vm.runInContext(policy+';globalThis.check=assertAuxLaunchRequest;',context);
  for(const p of ['/ai/v1/responses','/ai/private-input','/speech/transcribe','/stt/transcribe'])assert.throws(()=>context.check(p,{method:'POST'}),/Aux-hosted AI is unavailable/);
