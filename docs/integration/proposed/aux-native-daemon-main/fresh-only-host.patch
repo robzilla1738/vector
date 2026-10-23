@@ -1,0 +1,49 @@
+--- docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source/AuxDevelopmentWorkerHost.cc
++++ docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.cc
+@@ -1,4 +1,4 @@
+-#include "../../aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h"
++#include "AuxDevelopmentWorkerHost.h"
+ #include "../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
+ #include "../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
+ #include "aux-owned-napi-adapter.h"
+@@ -13,7 +13,7 @@
+ #include <new>
+ #include <limits>
+ 
+-extern "C" int32_t AuxCreateSignedDevelopmentOwner(uint64_t*, void**);
++
+ extern "C" int32_t AuxRetainPreparedFreshRuntimeProvider(uint64_t);
+ extern "C" void AuxReleasePreparedFreshRuntimeProvider(uint64_t);
+ extern "C" int32_t AuxClosePreparedFreshRuntimeCreation(uint64_t);
+@@ -267,7 +267,7 @@
+   bool closed = false;
+   std::vector<std::shared_ptr<Worker>> workers;
+ };
+-AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost() : state_(std::make_shared<State>()) {}
++
+ AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost(uint64_t provider)
+     : state_(std::make_shared<State>(provider)) {}
+ AuxDevelopmentWorkerHost::~AuxDevelopmentWorkerHost() { CloseAndDrain(); }
+@@ -324,9 +324,8 @@
+   if (!worker->CanContinue()) return napi_closing;
+   uint64_t handle = 0;
+   void* retained_owner = nullptr;
+-  int32_t prepared = state_->prepared_fresh_provider
+-      ? AuxCreatePreparedFreshRuntimeOwner(state_->prepared_fresh_provider, &handle, &retained_owner)
+-      : AuxCreateSignedDevelopmentOwner(&handle, &retained_owner);
++  int32_t prepared = AuxCreatePreparedFreshRuntimeOwner(
++      state_->prepared_fresh_provider, &handle, &retained_owner);
+   if (prepared || !handle || !retained_owner) {
+     if (handle) AuxNativeContextRetire(handle);
+     if (retained_owner) AuxReleaseSignedDevelopmentOwner(retained_owner);
+--- docs/integration/proposed/aux-native-fresh-runtime-provider-quarantine/source/AuxDevelopmentWorkerHost.h
++++ docs/integration/proposed/aux-native-daemon-main/source/AuxDevelopmentWorkerHost.h
+@@ -9,7 +9,7 @@
+ // Construction establishes only process-local ownership, NOT cohort admission.
+ class AuxDevelopmentWorkerHost final {
+  public:
+-  AuxDevelopmentWorkerHost();
++  AuxDevelopmentWorkerHost() = delete;
+   // Explicit immutable native provider from genuine typed terminal preparation.
+   // Token is routing/lifetime only, never JS input or cohort admission.
+   explicit AuxDevelopmentWorkerHost(uint64_t prepared_fresh_provider);
