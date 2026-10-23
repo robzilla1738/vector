@@ -236,6 +236,20 @@
       "reusedObjects": 9,
       "ptyImportsSatisfied": 38,
       "nativeExecutableRun": false
+    },
+    {
+      "session": 89233,
+      "exitCode": 1,
+      "role": "corrected Chromium transportTU passed; next ownedchildTU failed unavailable explicit_bzero; laterTUs unrun",
+      "receipt": "/tmp/aux-native-parent-compiler-successor-20261023/results.json",
+      "correctionPending": true
+    },
+    {
+      "session": 41279,
+      "exitCode": 1,
+      "role": "ownedchild and selectedhome ChromiumTUs passed, then supervisor blocked by upstream signedness warning under sampled flags",
+      "receipt": "/tmp/aux-native-adopted-wipe-successor-20261023/results.json",
+      "flagsCorrectionReviewPending": true
     }
   ],
   "appliedCurrentNativeComposition": {
