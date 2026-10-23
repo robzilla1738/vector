@@ -1,0 +1,7 @@
+# Aux command discovery marker widths
+
+The supplied login-shell parsers retained numeric offsets for the original product's markers after Aux identity projection shortened those markers. MCP PATH discovery can discard the beginning of `PATH=`; Claude/provider/CLI discovery can discard the leading slash. The active outer provider stage now repairs four exact parser bodies, using each existing start marker's `.length`. Compatibility staging remains unchanged; this correction runs only for `aux-v1`, after immutable identity/native projections. No commands, fallback policy, UI, styles or capabilities change.
+
+`vendor/provided/aux-command-path-parsers.mjs` is a required new staging source input. Root owns its input pin and new generated daemon hashes. The existing `provider-launch-stage.mjs` hook includes four counted anchors (seven offset sites). Frozen inner projections are unchanged. Reapplying or changed function/offset counts refuse.
+
+Focused check: `node docs/integration/proposed/aux-command-path-parsers/check.mjs <static staged node-development/index.mjs>`. Evidence pins the old provider-funded candidate actually read. It syntax-checks the full transformed entry and evaluates its actual four parser functions against synthetic stream outputs, including missing/multiple results and fallback. Native host, auth, provider calls, real shell commands, accepted app and owner state are untouched. Final stage/package provenance must be rebuilt; actual runtime acceptance remains pending.

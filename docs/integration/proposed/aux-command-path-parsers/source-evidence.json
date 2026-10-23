@@ -1,0 +1,27 @@
+{
+  "format": "aux.command-path-parser-fixtures.v1",
+  "inputSha256": "1aad24f51525251838593f3c06adab824c3eec6962dfc26434b6901194c3c92b",
+  "outputSha256": "241e68079bfbd5f219bd7804815cbc61ed85adff38abfea012e1ede2e13d60c8",
+  "anchors": [
+    {
+      "name": "mcp-login-path-marker-width",
+      "count": 2
+    },
+    {
+      "name": "claude-command-marker-width",
+      "count": 1
+    },
+    {
+      "name": "provider-command-marker-width",
+      "count": 2
+    },
+    {
+      "name": "aux-cli-command-marker-width",
+      "count": 2
+    }
+  ],
+  "syntax": true,
+  "actualSuppliedParserFixtures": true,
+  "realShellExecuted": false,
+  "appRuntimeAccepted": false
+}
