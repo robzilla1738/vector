@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 
@@ -36,16 +37,32 @@ def main():
     if node['sourceArchiveSha256'] != SOURCE_ARCHIVE or node['configure'] != [
             '--enable-static', '--dest-cpu=arm64']:
         raise SystemExit('Wrong Node source/configuration')
-    archives = [tree / entry['path'] for entry in node['archives']]
+    reviewed_archives = {str((tree / entry['path']).resolve()): entry['sha256']
+                         for entry in node['archives']}
+    target = tree / 'out/node.target.mk'
+    if sha(target) != pins['nodeTargetLinkGraphSha256']:
+        raise SystemExit('Exact configured Node target link graph changed')
+    lines = [line for line in target.read_text().splitlines()
+             if line.startswith('$(builddir)/node: LD_INPUTS := ')]
+    if len(lines) != 1:
+        raise SystemExit('Expected single actual Node LD_INPUTS')
+    names = re.findall(r'\$\(builddir\)/(lib[^ /]+\.a)', lines[0])
+    if names != pins['nodeTargetArchives'] or len(names) != len(set(names)):
+        raise SystemExit('Target archive dependency order changed')
+    archives = [tree / 'out/Release' / name for name in names]
+    for path in archives:
+        if str(path.resolve()) not in reviewed_archives:
+            raise SystemExit('Target archive absent from reviewed build receipt')
     libnode = [path for path in archives if path.name == 'libnode.a']
     if len(libnode) != 1 or len(set(archives)) != len(archives):
         raise SystemExit('Exact distinct Node archive graph required')
     artifact_pins = {str(receipt): args.node_receipt_sha256,
                      str(tree / 'config.gypi'): node['configSha256']}
-    for entry, path in zip(node['archives'], archives):
+    artifact_pins[str(target)] = pins['nodeTargetLinkGraphSha256']
+    for path in archives:
         if not path.resolve().is_relative_to(tree):
             raise SystemExit('Archive outside reviewed Node tree')
-        artifact_pins[str(path)] = entry['sha256']
+        artifact_pins[str(path)] = reviewed_archives[str(path.resolve())]
 
     def verify():
         for name, digest in pins['files'].items():
@@ -71,14 +88,14 @@ def main():
     for index, name in enumerate(pins['cppSources']):
         obj = output / (str(index) + '.o')
         command = ['xcrun', 'clang++', '-std=c++20', '-arch', 'arm64',
-                   '-mmacosx-version-min=13.0', '-DNAPI_VERSION=8',
+                   '-mmacosx-version-min=13.5', '-DNAPI_VERSION=8',
                    '-DAUX_ATOMIC_CSK_DISPATCH=1', '-fPIC']
         for directory in includes:
             command += ['-I', str(directory)]
         command += ['-c', str(REPO / name), '-o', str(obj)]
         cpp_commands.append(command)
         objects.append(str(obj))
-    link = ['xcrun', 'swiftc', '-parse-as-library', '-target', 'arm64-apple-macos13.0',
+    link = ['xcrun', 'swiftc', '-parse-as-library', '-target', 'arm64-apple-macos13.5',
             '-module-cache-path', str(output / 'swift-cache'),
             '-module-name', 'AuxNativeDaemonExecutable']
     for define in pins['swiftDefines']:
@@ -88,8 +105,10 @@ def main():
         link += ['-framework', framework]
     link += [str(REPO / name) for name in pins['swiftSources']] + objects
     # No Chromium/base objects or custom libc++ archives enter this graph.
-    link += ['-Xlinker', '-force_load', '-Xlinker', str(libnode[0])]
-    link += [str(path) for path in archives if path != libnode[0]]
+    for name in pins['nodeForceLoadArchives']:
+        link += ['-Xlinker', '-force_load', '-Xlinker', str(tree / 'out/Release' / name)]
+    link += [str(path) for path in archives]
+    link += ['-Xlinker', '-search_paths_first']
     link += ['-Xlinker', '-export_dynamic', '-Xlinker', '-lc++', '-Xlinker', '-lbsm',
              '-o', str(output / 'Aux Daemon')]
     result = {'format': 'aux.native-daemon-main.build.v1', 'executed': args.execute,
