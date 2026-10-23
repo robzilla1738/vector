@@ -1,0 +1,25 @@
+{
+  "format": "aux.chromium.unsigned-full-build.v1",
+  "passed": false,
+  "prepared": false,
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "sharedLinkConfigSha256": "3b909bd53d1e2335db1fea63c5c22498b57c3deff3a4a6dddfe66ed281d316b5",
+  "isolatedLinkConfigSha256": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+  "coldFeatureEnabled": false,
+  "appExecuted": false,
+  "signed": false,
+  "runs": [
+    {
+      "name": "gn",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+        "gen",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+      ],
+      "exitCode": 0,
+      "seconds": 30.50922529201489
+    }
+  ],
+  "error": "'utf-8' codec can't decode byte 0xc3 in position 34246920: invalid continuation byte",
+  "sharedLinkConfigUnchanged": true
+}

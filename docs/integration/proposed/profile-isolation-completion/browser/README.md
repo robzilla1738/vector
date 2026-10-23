@@ -33,3 +33,13 @@ log and scheduled 57,863 actions. The corrected executor uses the existing
 cloned Siso dependency state, explicit offline mode and an isolated cache.
 Historical refused attempt stays in `unsigned-build/`; final attempt is
 `unsigned-siso-build/`. This change preserves dependency-driven ABI rebuilds.
+
+The relocated Siso dry-run computed 57,861 actions but then stalled retrying
+unsupported `file://` blob materialization while flushing its transplanted
+state. Its owned dry-run process was stopped after process sampling and repeated
+30-second diagnostics; no compiler was interrupted. The refused receipt is
+preserved. Because Siso offered no incremental rebuild advantage, the final
+pipeline uses the complete direct Ninja graph, four jobs, with the same reviewed
+unsigned configuration. Final receipt/log/inventories are now under
+`unsigned-direct-build/`; the two earlier attempt directories remain historical.
+No owner/shared cache was used, and no prebuilt-object substitution was made.

@@ -3,7 +3,7 @@
 import argparse,pathlib,hashlib,json,subprocess,time,re,os,stat,struct
 H=pathlib.Path(__file__).resolve().parent;N=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/'unsigned-siso-build'
+p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/'unsigned-direct-build'
 prior=json.loads((O/'build-preparation.json').read_text())
 if not prior['passed']:raise SystemExit('initial preparation must pass')
 if R.exists():raise SystemExit('fresh build receipt directory required')
@@ -14,7 +14,7 @@ if cfg.read_text() not in [s,unsigned]:raise SystemExit('link config not matchin
 cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
 try:
- for name,cmd in [('gn',[str(S/'buildtools/mac/gn'),'gen',str(B)]),('dryrun',[str(S/'third_party/siso/cipd/siso'),'ninja','-offline','-cache_dir',str(O/'siso-cache'),'-C',str(B),'-n','chrome']),('commands',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-t','commands','chrome'])]:
+ for name,cmd in [('gn',[str(S/'buildtools/mac/gn'),'gen',str(B)]),('dryrun',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-n','chrome']),('commands',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-t','commands','chrome'])]:
   t=time.monotonic();run=subprocess.run(cmd,cwd=S,capture_output=True,text=True);(R/(name+'.log')).write_text(run.stdout+run.stderr);r['runs'].append({'name':name,'command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t})
   if run.returncode:raise RuntimeError(name+' failed')
  commands=(R/'commands.log').read_text().splitlines()
@@ -25,7 +25,7 @@ try:
  r['reviewedCommandCount']=len(commands);r['reviewedLinkCount']=len(links);r['dryRunActionCount']=sum(bool(re.match(r'^\[\d+/\d+\]',x)) for x in (R/'dryrun.log').read_text().splitlines());r['prepared']=True
  (R/'receipt.json').write_text(json.dumps(r,indent=2)+'\n')
  if a.build:
-  cmd=[str(S/'third_party/siso/cipd/siso'),'ninja','-offline','-cache_dir',str(O/'siso-cache'),'-C',str(B),'-local_jobs=4','chrome'];t=time.monotonic()
+  cmd=[str(S/'third_party/ninja/ninja'),'-C',str(B),'-j4','chrome'];t=time.monotonic()
   with (R/'build.log').open('w') as log:run=subprocess.run(cmd,cwd=S,stdout=log,stderr=subprocess.STDOUT)
   r['runs'].append({'name':'full-build','command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t});r['passed']=run.returncode==0
   if r['passed']:
