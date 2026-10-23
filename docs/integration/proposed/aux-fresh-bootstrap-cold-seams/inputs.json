@@ -1,0 +1,339 @@
+{
+  "format": "aux.fresh-bootstrap.cold-seams.v1",
+  "reviewedRepositoryCommit": "ac3646e449728c09482c70788b35441ed8ce28d6",
+  "sourceRoots": {
+    "repository": "/Users/rcourson/Documents/Vibe/web",
+    "native": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src"
+  },
+  "files": [
+    {
+      "root": "native",
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "sha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+      "anchors": [
+        {
+          "anchor": "ChromeMainDelegate::BasicStartupComplete",
+          "lines": [
+            1128,
+            1163
+          ]
+        },
+        {
+          "anchor": "PackagedIdentityAllowsStartup",
+          "lines": [
+            1132
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "sha256": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7",
+      "anchors": [
+        {
+          "anchor": "PackagedIdentityAllowsStartup",
+          "lines": [
+            100
+          ]
+        },
+        {
+          "anchor": "return state == 1",
+          "lines": [
+            68
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/app/aux_accepted_development_startup.h",
+      "sha256": "71eeda00a10220c8eea89b152ebbced38a14014a9d53e9c60e90c4d90a1487cf",
+      "anchors": [
+        {
+          "anchor": "inline bool Apply()",
+          "lines": [
+            105
+          ]
+        },
+        {
+          "anchor": "getpwuid",
+          "lines": [
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "sha256": "9eb302bff817a204b6c0bc5845eb9aa4e8d19380582e543aeb9b23e09fa8161b",
+      "anchors": [
+        {
+          "anchor": "ChromeBrowserMainParts::PreMainMessageLoopRunImpl",
+          "lines": [
+            1783,
+            1784
+          ]
+        },
+        {
+          "anchor": "aux::BrowserPlatform::Get().Start",
+          "lines": [
+            1919
+          ]
+        },
+        {
+          "anchor": "PreProfileInit();",
+          "lines": [
+            1548,
+            1928
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "sha256": "d311ef22ef0455ae6b985baead8d6f2c78a74aed81ac95b16339a60d7fbedac2",
+      "anchors": [
+        {
+          "anchor": "bool BrowserPlatform::Start",
+          "lines": [
+            21
+          ]
+        },
+        {
+          "anchor": "supervisor_->Start();",
+          "lines": [
+            70
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "50830410aca2ab113b2064fc19071ef4d62c61846f888788484daeb3403839ed",
+      "anchors": [
+        {
+          "anchor": "base::Process DaemonSupervisor::Launch",
+          "lines": [
+            57
+          ]
+        },
+        {
+          "anchor": "base::LaunchProcess(command, options)",
+          "lines": [
+            133
+          ]
+        },
+        {
+          "anchor": "DYLD_INSERT_LIBRARIES",
+          "lines": [
+            99
+          ]
+        }
+      ]
+    },
+    {
+      "root": "native",
+      "path": "chrome/browser/aux/installation_auth.cc",
+      "sha256": "b236e7e95bf97535aec9eda648c7757a434e05bde0135f52b3acd8113f3949bb",
+      "anchors": [
+        {
+          "anchor": "RunCarrier(",
+          "lines": [
+            68,
+            279,
+            317,
+            328
+          ]
+        },
+        {
+          "anchor": "provided-native.node",
+          "lines": [
+            137
+          ]
+        },
+        {
+          "anchor": "base::LaunchProcess(line, options)",
+          "lines": [
+            173
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-development-host/source/AuxSignedDevelopmentOwner.swift",
+      "sha256": "f8c31278ca84f54a8abffbe56b77e13310ee21b2cb6c77ed95011fca03d1b2d2",
+      "anchors": [
+        {
+          "anchor": "AuxCreateSignedDevelopmentOwner",
+          "lines": [
+            10,
+            11
+          ]
+        },
+        {
+          "anchor": "AuxSignedDevelopmentPolicyLoader.load()",
+          "lines": [
+            16,
+            18,
+            21
+          ]
+        },
+        {
+          "anchor": "AuxRuntimeDataProtectionCapture.capture",
+          "lines": [
+            17
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-development-host/source/AuxDevelopmentPolicy.swift",
+      "sha256": "7c014f3bb680729bef9111740b577faeef3b7330c14d4034aacb6b5c00451900",
+      "anchors": [
+        {
+          "anchor": "static let home=",
+          "lines": [
+            10
+          ]
+        },
+        {
+          "anchor": "AuxRuntimeSelection(scope:",
+          "lines": [
+            93
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.h",
+      "sha256": "325bb8ba6a5c33beb5f785b3293f263f5fc3e1b60b92b9a5a6c54b18c18bd4e1",
+      "anchors": [
+        {
+          "anchor": "RegisterCurrentWorker",
+          "lines": [
+            19
+          ]
+        },
+        {
+          "anchor": "CloseAndDrain",
+          "lines": [
+            31
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "261ff584efc4c59dd1d135f6ac9fc0086dbafc24fe69c6750710b114c4803fae",
+      "anchors": [
+        {
+          "anchor": "napi_status AuxDevelopmentWorkerHost::RegisterCurrentWorker",
+          "lines": [
+            258
+          ]
+        },
+        {
+          "anchor": "node::GetCurrentEnvironment",
+          "lines": [
+            190,
+            207,
+            262
+          ]
+        },
+        {
+          "anchor": "napi_add_env_cleanup_hook",
+          "lines": [
+            299
+          ]
+        },
+        {
+          "anchor": "AuxCreateSignedDevelopmentOwner(&handle",
+          "lines": [
+            310
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h",
+      "sha256": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f",
+      "anchors": [
+        {
+          "anchor": "AuxAttachOwnedDispatcher",
+          "lines": [
+            17
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "vendor/provided/aux-native.cjs",
+      "sha256": "7765273d393b715baed94e97a39a83249e1af603b0e80d6c51976a2ec2e8b26d",
+      "anchors": [
+        {
+          "anchor": "require(owned('aux-native-guard.node'))",
+          "lines": [
+            29
+          ]
+        },
+        {
+          "anchor": "guard.prepare(home, loadOnly)",
+          "lines": [
+            30
+          ]
+        },
+        {
+          "anchor": "const original = require(bindingPath)",
+          "lines": [
+            39
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161",
+      "anchors": [
+        {
+          "anchor": "AUX_STATE_IDENTITY_QUARANTINED",
+          "lines": [
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "root": "repository",
+      "path": "docs/integration/proposed/aux-protected-bootstrap-node-contract/README.md",
+      "sha256": "822eec59eded291877e5e28333b16a43bea59e5285ddc25265353d501e6ef67f",
+      "anchors": [
+        {
+          "anchor": "AddLinkedBinding",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "anchor": "no production call site",
+          "lines": [
+            9
+          ]
+        }
+      ]
+    }
+  ],
+  "runtimeExecuted": false,
+  "registrationProducerAdded": false,
+  "coldRefusalChanged": false
+}
