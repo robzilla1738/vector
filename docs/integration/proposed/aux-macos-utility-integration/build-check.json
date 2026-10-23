@@ -1,0 +1,16 @@
+{
+  "format": "aux.recovery-utilities.package-build.v1",
+  "implementationCommit": "90ee58e57",
+  "stage": "out/provided-reuse-aux-recovery-utilities",
+  "app": "out/provided-candidate-aux-recovery-utilities/Aux.app",
+  "terminalSession": 10032,
+  "exitCode": 0,
+  "suppliedResources": 10762,
+  "nativeLeaves": 418,
+  "packageReceiptSha256": "0b3fbd55eb131221f0baf161e931fed5254a6e8c2494f8f09567c65d2ee33ee2",
+  "acceptedPreviewReplaced": false,
+  "appLaunched": false,
+  "signingPerformed": false,
+  "state2Authorized": false,
+  "productionReady": false
+}
