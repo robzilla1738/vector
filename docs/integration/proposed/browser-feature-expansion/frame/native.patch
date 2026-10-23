@@ -1,0 +1,379 @@
+diff --git a/chrome/browser/ui/views/frame/aux_frame_presentation_state.h b/chrome/browser/ui/views/frame/aux_frame_presentation_state.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_frame_presentation_state.h
+@@ -0,0 +1,70 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_FRAME_PRESENTATION_STATE_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_FRAME_PRESENTATION_STATE_H_
++
++namespace aux {
++
++// Preferences request a mode; the real vertical-tab controller remains the
++// collapse/animation owner. Do not persist transient hover/focus state.
++enum class SidebarMode { kDocked, kAutoHide };
++enum class SidebarSurface { kDocked, kHidden, kHoverPreview };
++enum class NavigationHost { kTop, kSidebar };
++
++struct FramePresentationInputs {
++  bool sidebar_collapsed = false;
++  bool hover_revealed = false;
++  bool sidebar_navigation = false;
++  bool minimal = false;
++  bool always_show_full_url = false;
++  bool sidebar_has_focus = false;
++  bool navigation_has_focus = false;
++  bool menu_open = false;
++  bool drag_active = false;
++  bool transition_active = false;
++};
++
++struct FramePresentationState {
++  SidebarSurface sidebar = SidebarSurface::kDocked;
++  NavigationHost navigation = NavigationHost::kTop;
++  bool reserve_sidebar_width = true;
++  bool relocation_deferred = false;
++  bool suppress_redundant_chrome = false;
++  bool full_url_required = false;
++  // Minimal mode may suppress redundant chrome, never the sole trusted URL
++  // control. Consumers must not equate suppress_redundant_chrome with hiding
++  // the navigation host or its permissions/security indicators.
++  bool show_top_navigation = true;
++};
++
++constexpr bool FrameRelocationLocked(const FramePresentationInputs& inputs) {
++  return inputs.navigation_has_focus || inputs.menu_open || inputs.drag_active ||
++         inputs.transition_active;
++}
++
++// current_host comes from the actual navigation view's parent, not a saved
++// preference. This projection adds no timers, animation curves or colors.
++constexpr FramePresentationState ResolveFramePresentation(
++    const FramePresentationInputs& inputs, NavigationHost current_host) {
++  FramePresentationState result;
++  const auto desired = inputs.sidebar_navigation && !inputs.sidebar_collapsed
++                           ? NavigationHost::kSidebar
++                           : NavigationHost::kTop;
++  result.relocation_deferred =
++      desired != current_host && FrameRelocationLocked(inputs);
++  result.navigation = result.relocation_deferred ? current_host : desired;
++  result.reserve_sidebar_width = !inputs.sidebar_collapsed;
++  result.sidebar = !inputs.sidebar_collapsed
++                       ? SidebarSurface::kDocked
++                       : (inputs.hover_revealed || inputs.sidebar_has_focus ||
++                          inputs.menu_open || inputs.drag_active ||
++                          result.navigation == NavigationHost::kSidebar)
++                             ? SidebarSurface::kHoverPreview
++                             : SidebarSurface::kHidden;
++  result.suppress_redundant_chrome = inputs.minimal;
++  result.full_url_required = inputs.always_show_full_url;
++  result.show_top_navigation = result.navigation == NavigationHost::kTop;
++  return result;
++}
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_FRAME_PRESENTATION_STATE_H_
+diff --git a/chrome/browser/ui/views/frame/aux_navigation_placement.cc b/chrome/browser/ui/views/frame/aux_navigation_placement.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_navigation_placement.cc
+@@ -0,0 +1,114 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_navigation_placement.h"
++
++#include <algorithm>
++
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "ui/views/focus/focus_manager.h"
++#include "ui/views/view.h"
++
++namespace aux {
++
++AuxNavigationPlacement::AuxNavigationPlacement(views::View& navigation,
++                                             views::View& top_host,
++                                             views::View& sidebar_host)
++    : navigation_(&navigation),
++      top_host_(&top_host),
++      sidebar_host_(&sidebar_host),
++      top_index_(top_host.GetIndexOf(&navigation)
++                     .value_or(top_host.children().size())) {
++  navigation_.SetTrackEntireViewHierarchy(true);
++  top_host_.SetTrackEntireViewHierarchy(true);
++  sidebar_host_.SetTrackEntireViewHierarchy(true);
++  state_.navigation = navigation.parent() == &sidebar_host
++                          ? NavigationHost::kSidebar
++                          : NavigationHost::kTop;
++  state_.show_top_navigation = state_.navigation == NavigationHost::kTop;
++}
++
++AuxNavigationPlacement::~AuxNavigationPlacement() = default;
++
++AuxNavigationPlacement::Result AuxNavigationPlacement::Update(
++    FramePresentationInputs inputs, int available_sidebar_width) {
++  if (updating_)
++    return Result::kDeferred;
++  updating_ = true;
++  const auto alive = weak_factory_.GetWeakPtr();
++  base::ScopedClosureRunner finish(base::BindOnce(
++      [](base::WeakPtr<AuxNavigationPlacement> owner) {
++        if (owner)
++          owner->updating_ = false;
++      }, alive));
++  auto* navigation = navigation_.view();
++  auto* top = top_host_.view();
++  auto* sidebar = sidebar_host_.view();
++  if (!navigation || !top || !sidebar || top == sidebar ||
++      navigation->Contains(top) || navigation->Contains(sidebar) ||
++      !top->GetWidget() || top->GetWidget() != sidebar->GetWidget() ||
++      navigation->GetWidget() != top->GetWidget() ||
++      (navigation->parent() != top && navigation->parent() != sidebar)) {
++    return Result::kUnavailable;
++  }
++
++  const auto current = navigation->parent() == sidebar
++                           ? NavigationHost::kSidebar
++                           : NavigationHost::kTop;
++  if (const auto* focus = navigation->GetFocusManager()) {
++    inputs.navigation_has_focus |= navigation->Contains(focus->GetFocusedView());
++  }
++  auto resolved = ResolveFramePresentation(inputs, current);
++  if (resolved.relocation_deferred) {
++    state_ = resolved;
++    return Result::kDeferred;
++  }
++
++  // A full native toolbar may not fit a 280-DIP sidebar. Refuse rather than
++  // clip its origin/security/permission controls. Root may provide a reviewed
++  // native compact toolbar layout; this controller never forces the width.
++  if (resolved.navigation == NavigationHost::kSidebar &&
++      available_sidebar_width < std::max(1, navigation->GetMinimumSize().width())) {
++    inputs.sidebar_navigation = false;
++    resolved = ResolveFramePresentation(inputs, current);
++    if (resolved.relocation_deferred) {
++      state_ = resolved;
++      return Result::kDeferred;
++    }
++    state_ = resolved;
++    if (current == NavigationHost::kTop)
++      return Result::kInsufficientWidth;
++  }
++
++  if (resolved.navigation == current) {
++    state_ = resolved;
++    return Result::kUnchanged;
++  }
++  auto* destination = resolved.navigation == NavigationHost::kSidebar
++                          ? sidebar
++                          : top;
++  const auto index = destination == top
++                         ? std::min(top_index_, top->children().size())
++                         : destination->children().size();
++  // Views' native reparent operation preserves the real ToolbarView and its
++  // controller ownership. No intermediate unique_ptr owns/destroys that view.
++  destination->AddChildViewAt(navigation, index);
++  // View-hierarchy notifications can synchronously tear down an owner.
++  if (!alive || !navigation_.view() || !top_host_.view() || !sidebar_host_.view() ||
++      navigation_.view()->parent() != destination) {
++    return Result::kUnavailable;
++  }
++  state_ = resolved;
++  top_host_.view()->InvalidateLayout();
++  if (!alive || !sidebar_host_.view())
++    return Result::kUnavailable;
++  sidebar_host_.view()->InvalidateLayout();
++  return Result::kMoved;
++}
++
++AuxNavigationPlacement::Result AuxNavigationPlacement::RestoreToTop(
++    FramePresentationInputs inputs) {
++  inputs.sidebar_navigation = false;
++  return Update(inputs, 0);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/views/frame/aux_navigation_placement.h b/chrome/browser/ui/views/frame/aux_navigation_placement.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_navigation_placement.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NAVIGATION_PLACEMENT_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NAVIGATION_PLACEMENT_H_
++
++#include <cstddef>
++
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_frame_presentation_state.h"
++#include "ui/views/view_tracker.h"
++
++namespace aux {
++
++// BrowserView owns this controller and supplies the genuine ToolbarView as
++// navigation. No duplicate editor, URL model, history or security UI is made.
++// Hosts and navigation remain view-hierarchy-owned. The controller observes
++// destruction and never resurrects a detached view during teardown.
++class AuxNavigationPlacement {
++ public:
++  enum class Result {
++    kUnchanged,
++    kMoved,
++    kDeferred,
++    kInsufficientWidth,
++    kUnavailable,
++  };
++
++  AuxNavigationPlacement(views::View& navigation, views::View& top_host,
++                         views::View& sidebar_host);
++  AuxNavigationPlacement(const AuxNavigationPlacement&) = delete;
++  AuxNavigationPlacement& operator=(const AuxNavigationPlacement&) = delete;
++  ~AuxNavigationPlacement();
++
++  // Invoke outside a layout traversal, after actual focus/menu/drag/collapse
++  // state changes. available_sidebar_width is the post-inset host allocation,
++  // not a preference/desired width. Zero means it is not ready for docking.
++  // Actual focus is rechecked here, even if a caller omitted the input bit.
++  Result Update(FramePresentationInputs inputs, int available_sidebar_width);
++  const FramePresentationState& state() const { return state_; }
++
++  // The root must restore before removing/replacing the sidebar host. This is
++  // a normal guarded update: active editing/menu/drag may defer it. Teardown
++  // must not destroy a host holding the genuine toolbar while this is pending.
++  Result RestoreToTop(FramePresentationInputs inputs);
++
++ private:
++  views::ViewTracker navigation_;
++  views::ViewTracker top_host_;
++  views::ViewTracker sidebar_host_;
++  const size_t top_index_;
++  FramePresentationState state_;
++  bool updating_ = false;
++  base::WeakPtrFactory<AuxNavigationPlacement> weak_factory_{this};
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NAVIGATION_PLACEMENT_H_
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -20,6 +20,7 @@
+ #include "chrome/browser/ui/views/frame/aux_sidebar_body.h"
+ #include "chrome/browser/ui/views/frame/aux_sidebar_presentation.h"
+ #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "components/prefs/pref_service.h"
+@@ -968,6 +969,31 @@
+   }
+ }
+ 
++void VerticalTabStripRegionView::SetAuxSidebarMode(aux::SidebarMode mode) {
++  const bool auto_hide = mode == aux::SidebarMode::kAutoHide;
++  state_controller_->SetExpandOnHoverEnabled(auto_hide);
++  state_controller_->RequestCollapse(auto_hide);
++}
++
++aux::FramePresentationInputs
++VerticalTabStripRegionView::GetAuxFramePresentationInputs() const {
++  aux::FramePresentationInputs inputs;
++  inputs.sidebar_collapsed = state_controller_->IsCollapsed();
++  inputs.hover_revealed = is_expanded_on_hover_ ||
++      (aux_profile_preview_admission_ &&
++       aux_profile_preview_admission_->retained());
++  inputs.transition_active = IsAnimatingSize();
++  inputs.sidebar_has_focus = GetFocusManager() &&
++      Contains(GetFocusManager()->GetFocusedView());
++  inputs.menu_open = keep_current_state_lock_count_ > 0 ||
++                    keep_expanded_lock_count_ > 0 || !!omnibox_open_lock_;
++  inputs.drag_active = !!link_drag_lock_ || aux_empty_pinned_drop_active_ ||
++                       state_controller_->is_resizing();
++  // Actual navigation focus is rechecked by AuxNavigationPlacement. Root adds
++  // preferences, actual native menus, and tab-drag ownership to this snapshot.
++  return inputs;
++}
++
+ void VerticalTabStripRegionView::RefreshAuxPinnedPresentation() {
+   auto* strip = tab_strip_view();
+   if (!strip || !strip->GetPinnedTabsContainer() || !aux_profile_preview_admission_)
+@@ -1181,7 +1207,7 @@
+   }
+ 
+   // If the keep expanded lock is held, expand the tab strip.
+-  if (keep_expanded_lock_count_ > 0) {
++  if (KeepExpandedLocked()) {
+     if (!is_expanded_on_hover_) {
+       AnimateExpandOnHover(/*expand=*/true);
+     }
+@@ -1206,10 +1232,11 @@
+       retained && (aux_profile_preview_admission_->browser_retention() ||
+                    aux_profile_preview_admission_->edge_retention() ||
+                    pointer_inside);
+-  // Original34f97b8: focus alone cannot keep a retained presentation alive.
++  // A retained hover panel must remain reachable while its real children
++  // own keyboard focus. The old supplied predicate excluded retained focus,
++  // allowing pointer exit to dismiss a focused field/menu anchor.
+   const bool focus_should_show =
+-      !retained && GetFocusManager() &&
+-      Contains(GetFocusManager()->GetFocusedView());
++      GetFocusManager() && Contains(GetFocusManager()->GetFocusedView());
+   const bool should_expand =
+       retained_should_show ||
+       (!suppress_expand_on_hover_ &&
+@@ -1484,8 +1511,12 @@
+ void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
+   if (is_open) {
+     if (!omnibox_open_lock_) {
+-      omnibox_open_lock_ =
+-          GetExpandOnHoverLock(ExpandOnHoverLockType::kForceCollapse);
++      // Keep the actual editor's host visible. The historical force-collapse
++      // remains correct only for an omnibox outside the sidebar.
++      const auto* toolbar = browser_view()->toolbar();
++      omnibox_open_lock_ = GetExpandOnHoverLock(
++          toolbar && Contains(toolbar) ? ExpandOnHoverLockType::kKeepExpanded
++                                       : ExpandOnHoverLockType::kForceCollapse);
+       UpdateExpandOnHoverState();
+     }
+   } else {
+@@ -1524,7 +1555,17 @@
+          aux_profile_preview_retention_->RetainedPointerInside();
+ }
+ bool VerticalTabStripRegionView::KeepExpandedLocked() const {
+-  return keep_expanded_lock_count_ > 0;
++  if (force_collapse_lock_count_ > 0)
++    return false;
++  // The retention timer must honor the same real menu/drag/focus ownership as
++  // hover expansion. In particular a keep-current drag lock cannot lose its
++  // overlay when the native cursor briefly leaves the region.
++  return keep_expanded_lock_count_ > 0 ||
++      (keep_current_state_lock_count_ > 0 &&
++       (is_expanded_on_hover_ ||
++        (aux_profile_preview_admission_ &&
++         aux_profile_preview_admission_->retained()))) ||
++      (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView()));
+ }
+ void VerticalTabStripRegionView::UpdateExpandOnHover(
+     std::optional<bool> hovered) {
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -16,6 +16,7 @@
+ #include "base/containers/flat_set.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
++#include "chrome/browser/ui/views/frame/aux_frame_presentation_state.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
+ #include "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.h"
+ #include "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h"
+@@ -117,6 +118,11 @@
+   uint64_t BeginAuxProfileSwitch(Profile* target);
+   void RebindAuxProfileSwitch();
+   void EndAuxProfileSwitch(uint64_t generation);
++
++  // Root supplies persisted per-profile preferences. This method delegates to
++  // the existing collapse/animation controller; it creates no second timer.
++  void SetAuxSidebarMode(aux::SidebarMode mode);
++  aux::FramePresentationInputs GetAuxFramePresentationInputs() const;
+ 
+   void RefreshAuxPinnedPresentation();
+   void ClearAuxEmptyPinnedDrop();

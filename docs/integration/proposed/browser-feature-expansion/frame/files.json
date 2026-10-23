@@ -1,0 +1,33 @@
+{
+  "baselineCommit": "02ce77253",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "scope": "inactive frame proposal; no selected native tree mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_frame_presentation_state.h",
+      "baselineSha256": null,
+      "sourceSha256": "3c3c45fda71c0769bebada66a07c8d2adb4eb2ca7fe033e320f7b0b227dfa6d3"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_navigation_placement.cc",
+      "baselineSha256": null,
+      "sourceSha256": "b8fbe684517fbcda3d32bbe7b23f3e9db6a9925a76fee05b9f5f829a2bd3be24"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_navigation_placement.h",
+      "baselineSha256": null,
+      "sourceSha256": "a4c277ee916555b5b4471d7845972fe96602b8c1f280ef314f61d7db8cd29e97"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "baselineSha256": "2e6272a8eef6d1689c1ec88eef126a7f1a3f682c6769d2b38daf0bc032146ed5",
+      "sourceSha256": "304859bf3801fbf62117cbbf9b31383bf6684a7fea21fe75599831bd8fbdc76a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "baselineSha256": "6e6504b22ae60b6e812b2a56c76173957ddf8ac2c480224152335bfed32766be",
+      "sourceSha256": "a9d5c6a7d18c99e19037ca433bb254141835c06d8fdd4a0f0c981192056e937b"
+    }
+  ],
+  "patchSha256": "0545f432d16f46c693a133b9e37132d1c6bd9d4f7d56bad8a033288ed568aac4"
+}
