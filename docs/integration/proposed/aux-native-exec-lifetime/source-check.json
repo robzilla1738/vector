@@ -1,0 +1,14 @@
+{
+  "format": "aux.exec-lifetime.source-check.v1",
+  "status": "passed",
+  "projectedSha256": "d6288135e178d25540ab139e637bd44ed101274532769ed005054ae32f826541",
+  "syntaxExitCode": 0,
+  "backgroundResponsePreserved": true,
+  "actualCloseOnlyRelease": true,
+  "reentrantNewGenerationPreserved": true,
+  "unknownRetained": true,
+  "entryExecuted": false,
+  "nativeModuleLoaded": false,
+  "OSCalls": 0,
+  "queuedNewBuild": false
+}

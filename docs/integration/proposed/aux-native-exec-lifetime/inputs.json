@@ -1,0 +1,10 @@
+{
+  "docs/integration/proposed/aux-native-exec-lifetime/README.md": "96ee8da3705662e81f72e457f96815d639b8cf9c538ce1532cf8d0cdd74ef170",
+  "docs/integration/proposed/aux-native-exec-lifetime/source-check.json": "f0e675e6b3b20692e7a2012e9ed7cb2c75032e22cf60aeaad63a00c256e82704",
+  "docs/integration/proposed/aux-native-exec-lifetime/edits.json": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736",
+  "docs/integration/proposed/aux-native-exec-lifetime/source/project.mjs": "3b092b0e2ada7065a0dcb0afa0b9b5e776fc6f9c254e9f4e74caa0bfb0422c74",
+  "docs/integration/proposed/aux-native-exec-lifetime/tests/check.mjs": "c0a77f37f66647a2a344dfb321cbb3c40253e3a107aa8f281d2aaf134c111c70",
+  "docs/integration/proposed/aux-native-owned-entry-pty/source/project.mjs": "a85cf50e65a3a92fc22e75080b315b88e3bae0fb6bea877788f8d286a7998663",
+  "docs/integration/proposed/aux-native-owned-entry-pty/inputs.json": "c93a22d73a529f740495e22223a78227d46cad8855be0b7edd2c7dd8b4f43fd1",
+  "docs/integration/proposed/aux-native-owned-entry-pty/source-check.json": "46ac532f461fdbc12d6e276e585781f3cd8df49c566b6d210e73659cc3c0d2b6"
+}
