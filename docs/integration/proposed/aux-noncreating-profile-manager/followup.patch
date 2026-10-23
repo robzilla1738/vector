@@ -1,0 +1,52 @@
+diff --git a/chrome/browser/browser_process.h b/chrome/browser/browser_process.h
+--- a/chrome/browser/browser_process.h
++++ b/chrome/browser/browser_process.h
+@@ -176,6 +176,10 @@
+   // Services: any of these getters may return null.
+   virtual metrics::MetricsService* metrics_service() = 0;
+   virtual ProfileManager* profile_manager() = 0;
++  // Returns only an already-owned manager. Unlike profile_manager(), this must
++  // never construct a manager or initiate profile/pref/filesystem work.
++  // Other/test BrowserProcess implementations conservatively report absent.
++  virtual ProfileManager* profile_manager_if_initialized() { return nullptr; }
+   virtual PrefService* local_state() = 0;
+   virtual scoped_refptr<network::SharedURLLoaderFactory>
+   shared_url_loader_factory() = 0;
+diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
+--- a/chrome/browser/browser_process_impl.h
++++ b/chrome/browser/browser_process_impl.h
+@@ -188,6 +188,7 @@
+   embedder_support::OriginTrialsSettingsStorage*
+   GetOriginTrialsSettingsStorage() override;
+   ProfileManager* profile_manager() override;
++  ProfileManager* profile_manager_if_initialized() override;
+   PrefService* local_state() override;
+   signin::ActivePrimaryAccountsMetricsRecorder*
+   active_primary_accounts_metrics_recorder() override;
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -1024,6 +1024,11 @@
+   return profile_manager_.get();
+ }
+ 
++ProfileManager* BrowserProcessImpl::profile_manager_if_initialized() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  return profile_manager_.get();
++}
++
+ PrefService* BrowserProcessImpl::local_state() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   return local_state_.get();
+diff --git a/chrome/browser/ui/aux_owned_browser_quiesce.cc b/chrome/browser/ui/aux_owned_browser_quiesce.cc
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.cc
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.cc
+@@ -94,7 +94,7 @@
+       }));
+ 
+   ProfileManager* manager = g_browser_process
+-                                ? g_browser_process->profile_manager()
++                                ? g_browser_process->profile_manager_if_initialized()
+                                 : nullptr;
+   if (!manager) {
+     state.profile_manager_unavailable = true;

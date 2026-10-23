@@ -1,0 +1,11 @@
+# Non-creating browser profile-manager observation
+
+This corrective successor fixes a concrete integration defect in the applied native owner: `CloseOwnedBrowserParticipantsForMigration()` used `g_browser_process->profile_manager()`. The actual `BrowserProcessImpl::profile_manager()` calls `CreateProfileManager()` when `created_profile_manager_` is false. Therefore observing an absent manager could itself initiate mutable profile/preferences/filesystem work after admission had been closed.
+
+The four count-one source changes introduce `BrowserProcess::profile_manager_if_initialized()`. Its conservative default returns null, so existing test/other BrowserProcess subclasses need not acquire or construct a manager. The real BrowserProcessImpl override checks its actual sequence and returns only `profile_manager_.get()`. It does not consult/create the manager, mutate ownership or call another getter. The migration aggregate uses this accessor exactly once. Ordinary `profile_manager()` behavior remains byte-identical.
+
+`inputs.json` pins the **current applied** composition `out/native-reuse-composition-aux-owned-browser-quiesce-mac/owner/manifest.json`, SHA-256 `0095039dad1a8061db63fca5651ee5ab2c8fc8a84f7a060a6778dc5bc4596d8e`, 788 source records /23 assets. The three BrowserProcess source/header files are additional independently pinned actual native inputs; the aggregate input matches its existing parent output. No historical baseline or receipts were rewritten.
+
+`prepare-composition.py --output <fresh-directory>` uses the existing extender's applied-base verification (no `--staged-base`) and produces an unapplied 791-source /23-asset successor. `verify.py` checks exact source bytes and confirms the real accessor body is sequence-check plus get-only and the aggregate has no lazy manager getter. This is static source/composition evidence, not runtime or compilation proof. Native build42082 was still active during preparation; no compiler, native checkout apply, owner/profile access, app launch, UI edit, Security operation or signing occurred.
+
+Root owns application, changed-TU/full native compilation and subsequent aggregate integration. The unavailable-manager observation remains conservative. This fix supplies no whole-profile authority, startup admission or ready claim and does not weaken the state-2 cold refusal.

@@ -1,0 +1,49 @@
+{
+  "format": "aux.noncreating-profile-manager.successor.v1",
+  "parentManifest": "/Users/rcourson/Documents/Vibe/web/out/native-reuse-composition-aux-owned-browser-quiesce-mac/owner/manifest.json",
+  "parentManifestSha256": "0095039dad1a8061db63fca5651ee5ab2c8fc8a84f7a060a6778dc5bc4596d8e",
+  "parentSources": 788,
+  "parentAssets": 23,
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/browser_process.h",
+      "inputSha256": "de9a884a0d435b38a3f2e508da9e63b76de358fb9717d3eb1fff21e38b55d227",
+      "outputSha256": "35246440dc5bb671fc4a24d4b54960f80f52ef343569bbac59ab91f55d26add2",
+      "inParentManifest": false,
+      "find": "  virtual ProfileManager* profile_manager() = 0;",
+      "replace": "  virtual ProfileManager* profile_manager() = 0;\n  // Returns only an already-owned manager. Unlike profile_manager(), this must\n  // never construct a manager or initiate profile/pref/filesystem work.\n  // Other/test BrowserProcess implementations conservatively report absent.\n  virtual ProfileManager* profile_manager_if_initialized() { return nullptr; }",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/browser_process_impl.h",
+      "inputSha256": "616a89510c62d42155c6870d31f306187e61e717d464a60501f9bc2586c29bb6",
+      "outputSha256": "91647e3b95490308a335c429782641d680401854f5e776ce878bf94c8c3999aa",
+      "inParentManifest": false,
+      "find": "  ProfileManager* profile_manager() override;",
+      "replace": "  ProfileManager* profile_manager() override;\n  ProfileManager* profile_manager_if_initialized() override;",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/browser_process_impl.cc",
+      "inputSha256": "a9f393fe5ea6984b6d6fc48f1250e37d6a0e42f369143f161f1f64a4112f3c66",
+      "outputSha256": "40a413db1e643af1ffd82364af692363be11968d61079f2dcf4d641c605cbd25",
+      "inParentManifest": false,
+      "find": "PrefService* BrowserProcessImpl::local_state() {",
+      "replace": "ProfileManager* BrowserProcessImpl::profile_manager_if_initialized() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  return profile_manager_.get();\n}\n\nPrefService* BrowserProcessImpl::local_state() {",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "inputSha256": "c0c309dcf37b8897c80a0490c99f221d081952a54eac3daf6bfaa90b60365f1a",
+      "outputSha256": "36e9e9f8ff7b829b6ecb0d3519007cb239559171ff988151b0c2497893f8da8a",
+      "inParentManifest": true,
+      "find": "? g_browser_process->profile_manager()",
+      "replace": "? g_browser_process->profile_manager_if_initialized()",
+      "count": 1
+    }
+  ],
+  "patchSha256": "6431bcec7d63822aae0ca5073bf8b644f1f46de9bfed21a24d5e8e7bf00c41d8",
+  "applied": false,
+  "compiled": false
+}

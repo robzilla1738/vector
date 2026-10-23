@@ -1,0 +1,17 @@
+{
+  "format": "aux.noncreating-profile-manager.static.v1",
+  "verified": true,
+  "verifySourceSha256": "9fbe3637bd08eef2390f5cda4327d62d3599c55dd002a9f04acc9a735b2ad293",
+  "compiled": false,
+  "executedNative": false,
+  "appliedToNative": false,
+  "build42082LeftUntouched": true,
+  "successor": {
+    "path": "/private/tmp/aux-noncreating-profile-owner-20261022/out/noncreating-profile-manager",
+    "manifestSha256": "2d6e02ee0b277d191ae2b1c08cfdb1de32f858404bb7891de1c6a0936f9a0e20",
+    "sourceRecords": 791,
+    "assetCount": 23,
+    "appliedBaseVerified": true,
+    "stagedBaseForced": false
+  }
+}
