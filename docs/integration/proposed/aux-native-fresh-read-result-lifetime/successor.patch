@@ -1,0 +1,24 @@
+--- baseline/AuxOwnedCommandDispatcher.swift
++++ source/AuxOwnedCommandDispatcher.swift
+@@ -209,7 +209,12 @@
+             let disposition=classifyAuxNativeFreshGuard(error)
+             if disposition == .provenBindingLoss {
+                 let lost=AuxNativeFreshGuardFailure(moment:.beforeAction,underlying:error,operationError:nil,disposition:.provenBindingLoss)
+-                condition.lock();entry.nativeGuardFailure=lost;entry.phase = .retiring;condition.broadcast();condition.unlock()
++                condition.lock();entry.nativeGuardFailure=lost;entry.phase = .retiring
++                // This reply can never be released under lost authority. Drop
++                // only its private response reference; retain failure/context.
++                // Swift String storage zeroization is NOT claimed.
++                entry.retainedRead=nil
++                condition.broadcast();condition.unlock()
+ #if AUX_MACOS_UTILITY_DISPATCH
+                 entry.macOSUtilities?.closeAdmission()
+ #endif
+@@ -292,6 +297,7 @@
+             condition.lock()
+             if disposition == .provenBindingLoss {
+                 entry.nativeGuardFailure=entry.nativeGuardFailure ?? failure;entry.phase = .retiring
++                entry.retainedRead=nil // Never retain a now-unusable secret reply.
+             }else{
+                 // An operation may already have happened. Retain an unresolved
+                 // observation fence, not a permanent identity-loss assertion.
