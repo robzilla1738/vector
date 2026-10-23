@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "02ce77253fce3298cd6035b43be75a6bcbc0ff7a",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "acceptedApp": "out/provided-candidate-local-browser-pass/Aux.app",
+  "inactiveCandidate": "out/provided-candidate-protected-startup-integration-20261023/Aux.app",
+  "runtimeAccepted": false,
+  "sourcePins": {
+    "chrome/browser/aux/BUILD.gn": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb",
+    "chrome/browser/ui/tabs/aux_pinned_tab_entries.h": "44bac58082b7f739fd65e632ae739887c907923c17c5c0d29b915bda4233a03e",
+    "chrome/browser/ui/tabs/aux_pinned_tab_entries.cc": "4a9504e9c91f86a03b19afd92ad5493fb476bd0ca7c1900b265cd15aefa487c5",
+    "chrome/browser/ui/views/frame/aux_sidebar_presentation.h": "7e0da12ed7cd2815c1b151dc8d5b1a0f5445cc4466f89ff44d928854f81f3e98",
+    "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc": "29f5c485e11bdd8647256eba08aa135e3777502d07c0c4afdf1bdee00128aa32",
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc": "2e6272a8eef6d1689c1ec88eef126a7f1a3f682c6769d2b38daf0bc032146ed5",
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.h": "6aa9d1c9bdd9cc0643d960a5a4906ceeb52b72e9fa73b79e1ec93b4b5738483e",
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e",
+    "chrome/browser/ui/aux_keyboard_shortcuts.h": "c2ddb76106759eec41d3fc4c2218583e98a8a366df509963c6d3fa953c8e3e91",
+    "chrome/browser/ui/aux_keyboard_shortcuts.mm": "0deb0d52a5efb3282f4b98196bdf27d00ac3f9c3d2fe1d8a9ae6cd162b496477"
+  }
+}
