@@ -1,0 +1,12 @@
+{
+  "scope": "synthetic filesystem policy only; not authenticated root capture or custody",
+  "exit": 0,
+  "stdout": "synthetic sandbox exit=0; refusal checks passed\n",
+  "stderr": "",
+  "allowedOutput": true,
+  "deniedWritesAbsent": true,
+  "sources": {
+    "envelope-check.cc": "b24a572a6a3c8ff264dd44202714afbdf4cd73360c31cb3d21f06167a50ed9ed",
+    "AuxExecSpawnEnvelope.h": "87be38a59da8c21d97062c4a54ff1049d9db73efafc1dedf0fd9f41ed725dff2"
+  }
+}
