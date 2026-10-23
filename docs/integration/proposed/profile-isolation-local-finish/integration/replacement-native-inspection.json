@@ -1,0 +1,22 @@
+{
+  "format": "aux.replacement-native.signature-load-commands.v1",
+  "passed": true,
+  "files": [
+    {
+      "role": "daemon",
+      "path": "/private/tmp/aux-delivery-link-20261023/Aux Daemon",
+      "sha256": "22d6a634a413b97aa4df6ca70d9650a3c9dd6b626ce625169021f94be34a8626",
+      "hasCodeSignatureLoadCommand": false
+    },
+    {
+      "role": "pty",
+      "path": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+      "sha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+      "hasCodeSignatureLoadCommand": false
+    }
+  ],
+  "inspection": "otool",
+  "executed": false,
+  "signingPerformed": false,
+  "scope": "Two new replacement Mach-O inputs only; unchanged supplied helper/runtime signatures are preserved"
+}

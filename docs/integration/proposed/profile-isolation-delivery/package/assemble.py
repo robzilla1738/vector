@@ -19,7 +19,7 @@ def inventory(root):
  return result
 def digest(value):return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 def unsigned(root):
- for p in root.rglob('*'):
+ for p in ([root] if root.is_file() else root.rglob('*')):
   if not p.is_file() or p.is_symlink():continue
   with p.open('rb') as stream:magic=stream.read(4)
   if magic not in [bytes.fromhex(x) for x in ['cffaedfe','feedfacf','cefaedfe','feedface','cafebabe','bebafeca','cafebabf','bfbafeca']]:continue
@@ -88,6 +88,7 @@ def main():
  if digest(leaves)!=build['appInventorySha256']:raise ValueError('build inventory digest')
  native_inv=verify_native_inventory(native,leaves)
  unsigned(native)
+ for key in ['daemon','pty']:unsigned(P(pair[key]))
  base_inv=inventory(baseline)
  if digest(base_inv)!=r['baselineInventorySha256'] or digest(native_inv)!=r['nativeInventorySha256']:raise ValueError('app inventory mismatch')
  resources='Contents/Resources/aux';old=baseline/resources
